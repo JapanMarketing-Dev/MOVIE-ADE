@@ -3,18 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Data and privacy · Ferret docs</title>
-  <meta name="description" content="Reviews live in your project folder. Settings live in ~/.ferret/, and keys and accounts in the OS user-data folder. Only crash reports reach the developer, through Sentry, and you can turn them off. Feedback you choose to send from the app becomes a public GitHub issue.">
+  <title>Datos y privacidad · Documentación de Ferret</title>
+  <meta name="description" content="Las revisiones están en la carpeta de tu proyecto. Los ajustes están en ~/.ferret/, y las claves y las cuentas en la carpeta de datos de usuario del sistema operativo. Solo los informes de fallos llegan al desarrollador, a través de Sentry, y puedes desactivarlos. El feedback que decidas enviar desde la app se convierte en un issue público de GitHub.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
-  <meta name="robots" content="noindex, follow">
-  <link rel="canonical" href="https://ferretade.dev/docs/privacy">
+  <link rel="canonical" href="https://ferretade.dev/docs/es/privacy">
   <link rel="alternate" hreflang="en" href="https://ferretade.dev/docs/privacy">
+  <link rel="alternate" hreflang="ja" href="https://ferretade.dev/docs/ja/privacy">
+  <link rel="alternate" hreflang="zh-CN" href="https://ferretade.dev/docs/zh-CN/privacy">
+  <link rel="alternate" hreflang="zh-TW" href="https://ferretade.dev/docs/zh-TW/privacy">
+  <link rel="alternate" hreflang="ko" href="https://ferretade.dev/docs/ko/privacy">
+  <link rel="alternate" hreflang="es" href="https://ferretade.dev/docs/es/privacy">
+  <link rel="alternate" hreflang="fr" href="https://ferretade.dev/docs/fr/privacy">
+  <link rel="alternate" hreflang="de" href="https://ferretade.dev/docs/de/privacy">
+  <link rel="alternate" hreflang="it" href="https://ferretade.dev/docs/it/privacy">
+  <link rel="alternate" hreflang="pt-BR" href="https://ferretade.dev/docs/pt-BR/privacy">
+  <link rel="alternate" hreflang="ru" href="https://ferretade.dev/docs/ru/privacy">
+  <link rel="alternate" hreflang="hi" href="https://ferretade.dev/docs/hi/privacy">
+  <link rel="alternate" hreflang="id" href="https://ferretade.dev/docs/id/privacy">
+  <link rel="alternate" hreflang="vi" href="https://ferretade.dev/docs/vi/privacy">
   <link rel="alternate" hreflang="x-default" href="https://ferretade.dev/docs/privacy">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
-  <meta property="og:title" content="Data and privacy · Ferret docs">
-  <meta property="og:description" content="Reviews live in your project folder. Settings live in ~/.ferret/, and keys and accounts in the OS user-data folder. Only crash reports reach the developer, through Sentry, and you can turn them off. Feedback you choose to send from the app becomes a public GitHub issue.">
+  <meta property="og:title" content="Datos y privacidad · Documentación de Ferret">
+  <meta property="og:description" content="Las revisiones están en la carpeta de tu proyecto. Los ajustes están en ~/.ferret/, y las claves y las cuentas en la carpeta de datos de usuario del sistema operativo. Solo los informes de fallos llegan al desarrollador, a través de Sentry, y puedes desactivarlos. El feedback que decidas enviar desde la app se convierte en un issue público de GitHub.">
   <meta property="og:url" content="https://ferretade.dev/docs/es/privacy">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="es_ES">
@@ -23,8 +35,8 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Data and privacy · Ferret docs">
-  <meta name="twitter:description" content="Reviews live in your project folder. Settings live in ~/.ferret/, and keys and accounts in the OS user-data folder. Only crash reports reach the developer, through Sentry, and you can turn them off. Feedback you choose to send from the app becomes a public GitHub issue.">
+  <meta name="twitter:title" content="Datos y privacidad · Documentación de Ferret">
+  <meta name="twitter:description" content="Las revisiones están en la carpeta de tu proyecto. Los ajustes están en ~/.ferret/, y las claves y las cuentas en la carpeta de datos de usuario del sistema operativo. Solo los informes de fallos llegan al desarrollador, a través de Sentry, y puedes desactivarlos. El feedback que decidas enviar desde la app se convierte en un issue público de GitHub.">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -35,8 +47,8 @@
   <script src="../docs.js?v=cb59f7a6" defer></script>
 </head>
 <!-- Generated by tools/docs/build-docs.mjs: the sidebar, header, and footer are identical on every page in site/docs/. Change them there. -->
-<body data-page="docs" data-copy="Copy" data-copied="Copied" data-copy-failed="Copy failed">
-  <a class="skip" href="#docs-main">Skip to content</a>
+<body data-page="docs" data-copy="Copiar" data-copied="Copiado" data-copy-failed="No se pudo copiar">
+  <a class="skip" href="#docs-main">Saltar al contenido</a>
   <svg class="sprite" width="0" height="0" aria-hidden="true">
     <symbol id="i-github" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
@@ -48,14 +60,14 @@
 
   <header class="site-header">
     <div class="wrap">
-      <a class="brand" href="../../index.html" aria-label="Ferret home">
+      <a class="brand" href="../../index.html" aria-label="Inicio de Ferret">
         <img class="wordmark" src="../../assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22">
       </a>
-      <nav class="site-nav" aria-label="Main">
-        <a href="../../index.html#features">Features</a>
-        <a href="../../download.html">Download</a>
-        <a class="nav-keep" href="quick-start.html" aria-current="page">Docs</a>
-        <a href="../../download.html#versions">Changelog</a>
+      <nav class="site-nav" aria-label="Principal">
+        <a href="../../index.html#features">Funciones</a>
+        <a href="../../download.html">Descargar</a>
+        <a class="nav-keep" href="quick-start.html" aria-current="page">Documentación</a>
+        <a href="../../download.html#versions">Novedades</a>
       </nav>
       <div class="header-actions">
         <details class="docs-lang">
@@ -77,62 +89,62 @@
             <li><a href="../vi/privacy.html" hreflang="vi" lang="vi" data-docs-lang="vi">Tiếng Việt</a></li>
           </ul>
         </details>
-        <a class="btn btn-sm btn-icon btn-ghost" href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-discord"/></svg><span class="sr-only">Discord</span><span class="sr-only"> (opens in a new tab)</span></a>
-        <a class="btn btn-sm btn-icon btn-ghost" href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-x"/></svg><span class="sr-only">X</span><span class="sr-only"> (opens in a new tab)</span></a>
+        <a class="btn btn-sm btn-icon btn-ghost" href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-discord"/></svg><span class="sr-only">Discord</span><span class="sr-only"> (se abre en una pestaña nueva)</span></a>
+        <a class="btn btn-sm btn-icon btn-ghost" href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-x"/></svg><span class="sr-only">X</span><span class="sr-only"> (se abre en una pestaña nueva)</span></a>
         <a class="btn btn-sm btn-ghost" href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">
           <svg class="icon icon-fill"><use href="#i-github"/></svg><span class="btn-label">GitHub</span>
-        <span class="sr-only"> (opens in a new tab)</span></a>
+        <span class="sr-only"> (se abre en una pestaña nueva)</span></a>
         <a class="btn btn-sm btn-primary" href="../../download.html">
-          <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">Download</span>
+          <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">Descargar</span>
         </a>
       </div>
     </div>
   </header>
 
   <div class="wrap docs-layout">
-    <nav class="docs-sidebar" aria-label="Docs pages" id="docs-sidebar">
+    <nav class="docs-sidebar" aria-label="Páginas de la documentación" id="docs-sidebar">
       <button class="docs-sidebar-toggle" type="button" aria-expanded="true" aria-controls="docs-nav-list" data-docs-nav-toggle>
-        <svg class="icon"><use href="#i-menu"/></svg>Docs menu
+        <svg class="icon"><use href="#i-menu"/></svg>Menú de la documentación
       </button>
       <div class="docs-nav-list" id="docs-nav-list">
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Start here</p>
+        <p class="docs-nav-heading">Primeros pasos</p>
         <ul>
-          <li><a href="quick-start.html">Quick start</a></li>
-          <li><a href="install.html">Install</a></li>
-          <li><a href="concepts.html">Concepts</a></li>
-          <li><a href="keyboard.html">Keyboard shortcuts</a></li>
+          <li><a href="quick-start.html">Guía rápida</a></li>
+          <li><a href="install.html">Instalación</a></li>
+          <li><a href="concepts.html">Conceptos</a></li>
+          <li><a href="keyboard.html">Atajos de teclado</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Using Ferret</p>
+        <p class="docs-nav-heading">Uso de Ferret</p>
         <ul>
-          <li><a href="projects.html">Projects and URLs</a></li>
-          <li><a href="recording.html">Recording</a></li>
-          <li><a href="agents.html">Sending to agents</a></li>
-          <li><a href="editor.html">Editor and preview</a></li>
+          <li><a href="projects.html">Proyectos y URL</a></li>
+          <li><a href="recording.html">Grabación</a></li>
+          <li><a href="agents.html">Enviar a agentes</a></li>
+          <li><a href="editor.html">Editor y vista previa</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Configure</p>
+        <p class="docs-nav-heading">Configuración</p>
         <ul>
-          <li><a href="transcription.html">Transcription and costs</a></li>
-          <li><a href="accounts.html">Accounts and usage</a></li>
-          <li><a href="settings.html">Settings reference</a></li>
-          <li><a href="settings-json.html">Configure with settings.json</a></li>
+          <li><a href="transcription.html">Transcripción y costes</a></li>
+          <li><a href="accounts.html">Cuentas y uso</a></li>
+          <li><a href="settings.html">Referencia de ajustes</a></li>
+          <li><a href="settings-json.html">Configurar con settings.json</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Reference</p>
+        <p class="docs-nav-heading">Referencia</p>
         <ul>
-          <li><a href="privacy.html" aria-current="page">Data and privacy</a></li>
-          <li><a href="files.html">Files and environment</a></li>
+          <li><a href="privacy.html" aria-current="page">Datos y privacidad</a></li>
+          <li><a href="files.html">Archivos y entorno</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Help</p>
+        <p class="docs-nav-heading">Ayuda</p>
         <ul>
-          <li><a href="troubleshooting.html">Troubleshooting</a></li>
+          <li><a href="troubleshooting.html">Solución de problemas</a></li>
         </ul>
       </div>
       </div>
@@ -140,13 +152,12 @@
 
     <main class="docs-main" id="docs-main">
       <article class="docs-content">
-        <div class="docs-callout docs-callout-i18n"><p>Esta página aún no está traducida. Se muestra en inglés. <a href="../privacy.html" hreflang="en">English</a></p></div>
-        <p class="docs-eyebrow">Reference</p>
-        <h1 lang="en">Data and privacy</h1>
-        <p class="docs-lead" lang="en">Reviews live in your project folder. Settings live in <code>~/.ferret/</code>, and keys and accounts in the OS user-data folder. Only crash reports reach the developer, through Sentry, and you can turn them off. Feedback you choose to send from the app becomes a public GitHub issue.</p>
+        <p class="docs-eyebrow">Referencia</p>
+        <h1>Datos y privacidad</h1>
+        <p class="docs-lead">Las revisiones están en la carpeta de tu proyecto. Los ajustes están en <code>~/.ferret/</code>, y las claves y las cuentas en la carpeta de datos de usuario del sistema operativo. Solo los informes de fallos llegan al desarrollador, a través de Sentry, y puedes desactivarlos. El feedback que decidas enviar desde la app se convierte en un issue público de GitHub.</p>
 
-      <section class="docs-section" aria-labelledby="reviews" lang="en">
-        <h2 id="reviews"><a class="docs-anchor" href="#reviews" aria-label="Link to Inside .ferret/reviews/">#</a>Inside .ferret/reviews/</h2>
+      <section class="docs-section" aria-labelledby="reviews">
+        <h2 id="reviews"><a class="docs-anchor" href="#reviews" aria-label="Enlace a Dentro de .ferret/reviews/">#</a>Dentro de .ferret/reviews/</h2>
         <pre><code>&lt;project&gt;/.ferret/reviews/20261003-104500/
 ├── feedback.md      # what the agent reads
 ├── 01.png, 02.png…  # one or more images per finding
@@ -154,108 +165,108 @@
 ├── events.jsonl     # action log (built-in browser only)
 ├── recording.webm   # the video
 └── work/            # intermediate audio and frames</code></pre>
-<p>Reviews made before the rename live in <code>.ade-movie/reviews/</code>. They are still listed and opened, and new reviews go to <code>.ferret/reviews/</code>.</p>
-<p>When recording starts, <code>.ferret/</code> is appended to <code>.git/info/exclude</code>. Worktrees and submodules are handled. <code>.gitignore</code> is never modified. An interrupted review can be recovered from history if its records survived. The app then warns that the last seconds may be missing.</p>
+<p>Las revisiones hechas antes del cambio de nombre están en <code>.ade-movie/reviews/</code>. Se siguen mostrando y abriendo, y las nuevas revisiones van a <code>.ferret/reviews/</code>.</p>
+<p>Al empezar a grabar, se añade <code>.ferret/</code> a <code>.git/info/exclude</code>. Se tienen en cuenta los worktrees y los submódulos. <code>.gitignore</code> nunca se modifica. Una revisión interrumpida se puede recuperar desde el historial si sus registros se conservaron. En ese caso la app avisa de que pueden faltar los últimos segundos.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="retention" lang="en">
-        <h2 id="retention"><a class="docs-anchor" href="#retention" aria-label="Link to Retention">#</a>Retention</h2>
-        <p><span class="docs-ui">Keep recordings</span> (7 days by default, 30 days, or <span class="docs-ui">Forever</span>): on startup, completed reviews older than that lose <code>recording.webm</code> and <code>work/</code>. <code>feedback.md</code> and the finding images are kept. Incomplete reviews are never pruned. Pruning runs at launch, for the last opened project.</p>
+      <section class="docs-section" aria-labelledby="retention">
+        <h2 id="retention"><a class="docs-anchor" href="#retention" aria-label="Enlace a Conservación">#</a>Conservación</h2>
+        <p><span class="docs-ui">Conservar grabaciones</span> (7 días de forma predeterminada, 30 días o <span class="docs-ui">Siempre</span>): al iniciar, las revisiones completadas más antiguas que eso pierden <code>recording.webm</code> y <code>work/</code>. Se conservan <code>feedback.md</code> y las imágenes de los hallazgos. Las revisiones incompletas nunca se limpian. La limpieza se ejecuta al iniciar, para el último proyecto abierto.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="network" lang="en">
-        <h2 id="network"><a class="docs-anchor" href="#network" aria-label="Link to What leaves your machine">#</a>What leaves your machine</h2>
+      <section class="docs-section" aria-labelledby="network">
+        <h2 id="network"><a class="docs-anchor" href="#network" aria-label="Enlace a Qué sale de tu equipo">#</a>Qué sale de tu equipo</h2>
         <table>
-  <thead><tr><th>When</th><th>Destination</th><th>Data</th></tr></thead>
+  <thead><tr><th>Cuándo</th><th>Destino</th><th>Datos</th></tr></thead>
   <tbody>
-    <tr><td>Transcription: <span class="docs-ui">On device (free)</span></td><td>none</td><td>—</td></tr>
-    <tr><td>Transcription: OpenAI / compatible</td><td>OpenAI or your Base URL</td><td>audio chunks</td></tr>
-    <tr><td>Model download</td><td>Hugging Face</td><td>file request</td></tr>
-    <tr><td><span class="docs-ui">Organize</span></td><td>your Claude Code / Codex CLI, or the LLM endpoint you set in <code>organizer</code></td><td>text and action log only (no images, audio, or video)</td></tr>
-    <tr><td>Acceptance check (decision model, off by default)</td><td>your agent, through the local relay, to Ollama / Cloudflare / AI Gateway / TypeSafe / your URL</td><td>what the agent sends: finding text, "Done when", and BEFORE/AFTER screenshots (image models only)</td></tr>
-    <tr><td><span class="docs-ui">Send to Agent</span></td><td>the agent in your terminal</td><td>one instruction pointing at <code>feedback.md</code></td></tr>
-    <tr><td><span class="docs-ui">Send to GitHub</span></td><td>GitHub via <code>gh</code></td><td>body text only (no images)</td></tr>
-    <tr><td>Footer usage (Claude Code and Codex only)</td><td>Anthropic, ChatGPT</td><td>usage request with your own login</td></tr>
-    <tr><td>GitHub star prompt</td><td>GitHub via your <code>gh</code></td><td>checks whether you starred the repo, and stars it only if you click <span class="docs-ui">Star on GitHub</span></td></tr>
-    <tr><td><span class="docs-ui">Check for Updates</span> (manual)</td><td>download server (Cloudflare R2)</td><td>request for <code>latest.json</code></td></tr>
-    <tr><td>Sending feedback from the app (only when you send it; coming soon)</td><td>the developer's feedback relay (a Cloudflare Worker), which opens a public issue in <code>JapanMarketing-Dev/ferret</code></td><td>your text, bug or idea, app / OS version and CPU, and up to 3 screenshots you attach. Keys, tokens, email addresses, and home-folder paths are masked. The relay does not store your IP address (see <a href="#feedback">Feedback from the app</a>)</td></tr>
-    <tr><td>A crash or error (<span class="docs-ui">Send crash reports</span> on)</td><td>Sentry</td><td>stack trace and OS / CPU / app versions (see <a href="#crash-reports">Crash reports</a>)</td></tr>
+    <tr><td>Transcripción: <span class="docs-ui">En el dispositivo (gratis)</span></td><td>ninguno</td><td>—</td></tr>
+    <tr><td>Transcripción: OpenAI / compatible</td><td>OpenAI o tu Base URL</td><td>fragmentos de audio</td></tr>
+    <tr><td>Descarga de modelos</td><td>Hugging Face</td><td>solicitud del archivo</td></tr>
+    <tr><td><span class="docs-ui">Organizar</span></td><td>tu CLI de Claude Code / Codex, o el endpoint de LLM que definas en <code>organizer</code></td><td>solo texto y registro de acciones (sin imágenes, audio ni vídeo)</td></tr>
+    <tr><td>Comprobación de aceptación (modelo de decisión, desactivada de forma predeterminada)</td><td>tu agente, a través del relay local, a Ollama / Cloudflare / AI Gateway / TypeSafe / tu URL</td><td>lo que envía el agente: el texto del hallazgo, «Done when» y las capturas BEFORE/AFTER (solo modelos de imagen)</td></tr>
+    <tr><td><span class="docs-ui">Enviar al agente</span></td><td>el agente de tu terminal</td><td>una instrucción que apunta a <code>feedback.md</code></td></tr>
+    <tr><td><span class="docs-ui">Enviar a GitHub</span></td><td>GitHub mediante <code>gh</code></td><td>solo el texto del cuerpo (sin imágenes)</td></tr>
+    <tr><td>Uso en el pie de la ventana (solo Claude Code y Codex)</td><td>Anthropic, ChatGPT</td><td>solicitud de uso con tu propio inicio de sesión</td></tr>
+    <tr><td>Petición de estrella en GitHub</td><td>GitHub mediante tu <code>gh</code></td><td>comprueba si diste estrella al repositorio, y solo la da si haces clic en <span class="docs-ui">Dar estrella en GitHub</span></td></tr>
+    <tr><td><span class="docs-ui">Buscar actualizaciones</span> (manual)</td><td>servidor de descarga (Cloudflare R2)</td><td>solicitud de <code>latest.json</code></td></tr>
+    <tr><td>Enviar feedback desde la app (solo cuando lo envías; próximamente)</td><td>el relay de feedback del desarrollador (un Cloudflare Worker), que abre un issue público en <code>JapanMarketing-Dev/ferret</code></td><td>tu texto, si es un error o una idea, la versión de la app y del sistema operativo y la CPU, y hasta 3 capturas que adjuntes. Se ocultan las claves, los tokens, las direcciones de correo y las rutas de la carpeta personal. El relay no guarda tu dirección IP (consulta <a href="#feedback">Feedback desde la app</a>)</td></tr>
+    <tr><td>Un fallo o un error (con <span class="docs-ui">Enviar informes de fallos</span> activado)</td><td>Sentry</td><td>stack trace y versiones del sistema operativo, la CPU y la app (consulta <a href="#crash-reports">Informes de fallos</a>)</td></tr>
   </tbody>
 </table>
 <ul>
-  <li>The app has no analytics, no performance tracing, and no session replay. The only data it sends without you asking is crash reporting: errors, one session per launch, and slow-startup and freeze warnings, all described below and all controlled by <span class="docs-ui">Send crash reports</span>.</li>
-  <li>Secret-looking values in URLs (tokens, keys) are redacted before they are written to <code>feedback.md</code>.</li>
-  <li>Text captured from the page is marked as data in <code>feedback.md</code>, so the agent is told not to follow instructions found in it.</li>
-  <li>This website (not the app) counts page views with Cloudflare Web Analytics: cookie-free, with no cross-site tracking and no personal data.</li>
+  <li>La app no tiene analítica, ni trazas de rendimiento, ni reproducción de sesiones. Los únicos datos que envía sin que lo pidas son los informes de fallos: errores, una sesión por inicio y avisos de inicio lento y de bloqueo, todo descrito más abajo y todo controlado por <span class="docs-ui">Enviar informes de fallos</span>.</li>
+  <li>Los valores de las URL que parecen secretos (tokens, claves) se ocultan antes de escribirse en <code>feedback.md</code>.</li>
+  <li>El texto capturado de la página se marca como datos en <code>feedback.md</code>, así que se indica al agente que no siga las instrucciones que contenga.</li>
+  <li>Este sitio web (no la app) cuenta las visitas con Cloudflare Web Analytics: sin cookies, sin seguimiento entre sitios y sin datos personales.</li>
 </ul>
       </section>
 
-      <section class="docs-section" aria-labelledby="feedback" lang="en">
-        <h2 id="feedback"><a class="docs-anchor" href="#feedback" aria-label="Link to Feedback from the app">#</a>Feedback from the app</h2>
-        <div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Coming soon</p><p>The in-app feedback form and its relay are not released yet. This section describes how they will work.</p></div>
-<p>You will be able to send a bug report or an idea from inside Ferret without a GitHub account. It is sent only when you send it, and it becomes a <strong>public</strong> issue in <a href="https://github.com/JapanMarketing-Dev/ferret/issues" target="_blank" rel="noopener noreferrer">JapanMarketing-Dev/ferret<span class="sr-only"> (opens in a new tab)</span></a>, labeled <code>from-app</code>. Do not include anything you would not post in public.</p>
+      <section class="docs-section" aria-labelledby="feedback">
+        <h2 id="feedback"><a class="docs-anchor" href="#feedback" aria-label="Enlace a Feedback desde la app">#</a>Feedback desde la app</h2>
+        <div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Próximamente</p><p>El formulario de feedback de la app y su relay aún no se han publicado. Esta sección describe cómo funcionarán.</p></div>
+<p>Podrás enviar un informe de error o una idea desde Ferret sin cuenta de GitHub. Solo se envía cuando tú lo envías, y se convierte en un issue <strong>público</strong> en <a href="https://github.com/JapanMarketing-Dev/ferret/issues" target="_blank" rel="noopener noreferrer">JapanMarketing-Dev/ferret<span class="sr-only"> (se abre en una pestaña nueva)</span></a>, con la etiqueta <code>from-app</code>. No incluyas nada que no publicarías en abierto.</p>
 <ul>
-  <li>The app sends it from your computer to a small relay (a Cloudflare Worker run by the developer), which opens the issue with its own GitHub token. This relay is the only server of the developer's that receives anything you write.</li>
-  <li>Sent: your title and text, whether it is a bug or an idea, the app version, and up to 3 PNG or JPEG screenshots you attach. The OS name and version, CPU architecture, and the random install ID are sent only if you leave them included. Not sent: your name, email, GitHub account, project files, recordings, or findings.</li>
-  <li>Before the issue is created, the relay masks text that looks like keys or tokens, email addresses, and the user name in home-folder paths, and stops <code>@mentions</code> from notifying anyone. It also removes location and other metadata from screenshots. Check your text anyway: masking cannot catch everything.</li>
-  <li>The relay does not store your IP address. To limit how often one sender can post (5 per hour, 20 per day), it counts a keyed hash of the IP address (and of the install ID, if sent) for up to 24 hours, then deletes it. Neither appears in the issue.</li>
-  <li>Screenshots are kept by the relay in Cloudflare R2 under unguessable names and shown in the issue. To have an issue or its screenshots removed, comment on the issue or open a new one.</li>
-  <li>The relay's code is in <code>workers/feedback-relay</code> in the repository.</li>
+  <li>La app lo envía desde tu ordenador a un pequeño relay (un Cloudflare Worker gestionado por el desarrollador), que abre el issue con su propio token de GitHub. Este relay es el único servidor del desarrollador que recibe algo de lo que escribes.</li>
+  <li>Se envía: tu título y tu texto, si es un error o una idea, la versión de la app y hasta 3 capturas PNG o JPEG que adjuntes. El nombre y la versión del sistema operativo, la arquitectura de la CPU y el ID de instalación aleatorio solo se envían si los dejas incluidos. No se envía: tu nombre, tu correo, tu cuenta de GitHub, los archivos del proyecto, las grabaciones ni los hallazgos.</li>
+  <li>Antes de crear el issue, el relay oculta el texto que parece una clave o un token, las direcciones de correo y el nombre de usuario en las rutas de la carpeta personal, y evita que las <code>@mentions</code> notifiquen a nadie. También elimina la ubicación y otros metadatos de las capturas. Revisa tu texto de todos modos: el ocultado no lo detecta todo.</li>
+  <li>El relay no guarda tu dirección IP. Para limitar la frecuencia con la que un mismo remitente puede publicar (5 por hora, 20 por día), cuenta un hash con clave de la dirección IP (y del ID de instalación, si se envía) durante un máximo de 24 horas y luego lo elimina. Ninguno de los dos aparece en el issue.</li>
+  <li>El relay guarda las capturas en Cloudflare R2 con nombres imposibles de adivinar y las muestra en el issue. Para que se elimine un issue o sus capturas, comenta en el issue o abre uno nuevo.</li>
+  <li>El código del relay está en <code>workers/feedback-relay</code> del repositorio.</li>
 </ul>
       </section>
 
-      <section class="docs-section" aria-labelledby="crash-reports" lang="en">
-        <h2 id="crash-reports"><a class="docs-anchor" href="#crash-reports" aria-label="Link to Crash reports">#</a>Crash reports</h2>
-        <p>When the app crashes or hits an unhandled error, Ferret sends a crash report to <a href="https://sentry.io/" target="_blank" rel="noopener noreferrer">Sentry<span class="sr-only"> (opens in a new tab)</span></a> so the bug can be fixed. It is on by default. Turn it off in <span class="docs-ui">Settings → Privacy → Send crash reports</span>, or with <span class="docs-ui">Turn off</span> on the notice shown at first launch. Turning it off takes effect at once. Turning it back on takes effect at the next launch. Development builds (<code>pnpm dev</code>) also send, tagged <code>development</code>, so the developers can fix crashes they hit while working. E2E runs and unit tests never send.</p>
+      <section class="docs-section" aria-labelledby="crash-reports">
+        <h2 id="crash-reports"><a class="docs-anchor" href="#crash-reports" aria-label="Enlace a Informes de fallos">#</a>Informes de fallos</h2>
+        <p>Cuando la app falla o se encuentra con un error no controlado, Ferret envía un informe de fallo a <a href="https://sentry.io/" target="_blank" rel="noopener noreferrer">Sentry<span class="sr-only"> (se abre en una pestaña nueva)</span></a> para que se pueda corregir el error. Está activado de forma predeterminada. Desactívalo en <span class="docs-ui">Ajustes → Privacidad → Enviar informes de fallos</span>, o con <span class="docs-ui">Desactivar</span> en el aviso que aparece en el primer inicio. Desactivarlo surte efecto al instante. Volver a activarlo surte efecto en el siguiente inicio. Las versiones de desarrollo (<code>pnpm dev</code>) también envían, con la etiqueta <code>development</code>, para que los desarrolladores puedan corregir los fallos que encuentran mientras trabajan. Las ejecuciones E2E y los tests unitarios nunca envían.</p>
 <table>
-  <thead><tr><th>Sent</th><th>Not sent</th></tr></thead>
+  <thead><tr><th>Se envía</th><th>No se envía</th></tr></thead>
   <tbody>
     <tr><td>
       <ul>
-        <li>Error type and message, with home-folder paths shown as <code>~</code></li>
-        <li>Stack trace (where in Ferret's code it happened)</li>
-        <li>For native crashes: only which process crashed, why it exited (for example <q>crashed</q> or <q>oom</q>), and the app version</li>
-        <li>OS name and version, CPU architecture, Electron / Chrome / Node versions, app version, screen size, memory size</li>
-        <li>App lifecycle events right before the error (for example <q>app.ready</q>), and startup failures</li>
-        <li>Which part of the app failed: a screen area that could not render (and its React component names), an IPC call, a terminal that could not start, a crashed or hung process, or a page of the app that failed to load</li>
-        <li>Where you were in the app: editor or feedback mode, the open tab (Browser, Findings, Settings, or just <q>file</q>), and whether a recording was running</li>
-        <li>One session per launch (started, ended normally, or crashed), so the crash-free rate of each version can be measured</li>
-        <li>A random install ID (created on first launch and kept in the app's settings folder), so the number of affected installs can be counted. It is not linked to your name, email, or device</li>
-        <li>For JavaScript crashes only: the last 50 of Ferret's own log lines (such as <q>[startup]</q> and <q>[recording]</q>), shortened and with paths, URLs, emails, and keys removed</li>
+        <li>Tipo y mensaje del error, con las rutas de la carpeta personal mostradas como <code>~</code></li>
+        <li>Stack trace (en qué parte del código de Ferret ocurrió)</li>
+        <li>En los fallos nativos: solo qué proceso falló, por qué terminó (por ejemplo <q>crashed</q> u <q>oom</q>) y la versión de la app</li>
+        <li>Nombre y versión del sistema operativo, arquitectura de la CPU, versiones de Electron / Chrome / Node, versión de la app, tamaño de pantalla, tamaño de memoria</li>
+        <li>Eventos del ciclo de vida de la app justo antes del error (por ejemplo <q>app.ready</q>) y fallos de inicio</li>
+        <li>Qué parte de la app falló: una zona de la pantalla que no se pudo renderizar (y los nombres de sus componentes de React), una llamada IPC, una terminal que no se pudo iniciar, un proceso que falló o se colgó, o una página de la app que no se cargó</li>
+        <li>Dónde estabas en la app: modo editor o feedback, la pestaña abierta (Navegador, Hallazgos, Ajustes o simplemente <q>file</q>) y si había una grabación en curso</li>
+        <li>Una sesión por inicio (iniciada, terminada con normalidad o con fallo), para poder medir la tasa sin fallos de cada versión</li>
+        <li>Un ID de instalación aleatorio (creado en el primer inicio y guardado en la carpeta de ajustes de la app), para poder contar las instalaciones afectadas. No está vinculado a tu nombre, tu correo ni tu dispositivo</li>
+        <li>Solo en los fallos de JavaScript: las últimas 50 líneas del propio registro de Ferret (como <q>[startup]</q> y <q>[recording]</q>), acortadas y sin rutas, URL, correos ni claves</li>
       </ul>
     </td><td>
       <ul>
-        <li>Your project folder path and file names (replaced with <code>&lt;project&gt;</code>)</li>
-        <li>URLs opened in the built-in browser, and any other web address (replaced with <code>&lt;url&gt;</code>)</li>
-        <li>Terminal output, transcripts, findings, page text, screenshots</li>
-        <li>Email addresses and API keys or tokens (replaced)</li>
-        <li>Your name, device name, IP address (not stored), cookies, local variables</li>
-        <li>Memory dumps of native crashes (minidumps). They can hold anything that was in memory, so they stay on your computer</li>
-        <li>Clicks, network requests, and any log line that isn't one of Ferret's own</li>
+        <li>La ruta de la carpeta de tu proyecto y los nombres de archivo (sustituidos por <code>&lt;project&gt;</code>)</li>
+        <li>Las URL abiertas en el navegador integrado y cualquier otra dirección web (sustituidas por <code>&lt;url&gt;</code>)</li>
+        <li>Salida de la terminal, transcripciones, hallazgos, texto de las páginas, capturas de pantalla</li>
+        <li>Direcciones de correo y claves de API o tokens (sustituidos)</li>
+        <li>Tu nombre, el nombre del dispositivo, la dirección IP (no se guarda), las cookies, las variables locales</li>
+        <li>Volcados de memoria de los fallos nativos (minidumps). Pueden contener cualquier cosa que estuviera en memoria, así que se quedan en tu ordenador</li>
+        <li>Clics, solicitudes de red y cualquier línea de registro que no sea del propio Ferret</li>
       </ul>
     </td></tr>
   </tbody>
 </table>
-<p>The installed app sends at most 10 reports per launch and only half of JavaScript errors (native crashes are always sent). Development builds send every error, up to 50 per launch. The same error is sent only once per launch. Slow startups (over 5 seconds) and long freezes of the app (over 1 second) are sent as warnings, at most once every 10 minutes. No performance tracing or session replay is used. The app uses Sentry's free plan. If it fills up, extra reports are dropped and nobody is charged.</p>
-<p>Building Ferret yourself? Set <code>FERRET_SENTRY_DSN</code> (the old name <code>MOVIE_ADE_SENTRY_DSN</code> also works) to your own Sentry DSN, or to an empty string to send nothing. The code is in <code>src/main/telemetry.ts</code> and <code>src/shared/telemetry.ts</code>.</p>
+<p>La app instalada envía como máximo 10 informes por inicio y solo la mitad de los errores de JavaScript (los fallos nativos siempre se envían). Las versiones de desarrollo envían todos los errores, hasta 50 por inicio. El mismo error solo se envía una vez por inicio. Los inicios lentos (más de 5 segundos) y los bloqueos largos de la app (más de 1 segundo) se envían como avisos, como máximo una vez cada 10 minutos. No se usan trazas de rendimiento ni reproducción de sesiones. La app usa el plan gratuito de Sentry. Si se llena, los informes adicionales se descartan y no se cobra nada a nadie.</p>
+<p>¿Compilas Ferret tú mismo? Define <code>FERRET_SENTRY_DSN</code> (el nombre antiguo <code>MOVIE_ADE_SENTRY_DSN</code> también funciona) con tu propio DSN de Sentry, o con una cadena vacía para no enviar nada. El código está en <code>src/main/telemetry.ts</code> y <code>src/shared/telemetry.ts</code>.</p>
       </section>
 
-        <nav class="docs-pager" aria-label="Previous and next page">
-          <a class="docs-pager-prev" href="settings-json.html"><span>Previous</span>Configure with settings.json</a>
-          <a class="docs-pager-next" href="files.html"><span>Next</span>Files and environment</a>
+        <nav class="docs-pager" aria-label="Página anterior y siguiente">
+          <a class="docs-pager-prev" href="settings-json.html"><span>Anterior</span>Configurar con settings.json</a>
+          <a class="docs-pager-next" href="files.html"><span>Siguiente</span>Archivos y entorno</a>
         </nav>
-        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/README.md" target="_blank" rel="noopener noreferrer">Help translate this page on GitHub<span class="sr-only"> (opens in a new tab)</span></a></p>
+        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/es/privacy.html" target="_blank" rel="noopener noreferrer">Ayuda a traducir esta página en GitHub<span class="sr-only"> (se abre en una pestaña nueva)</span></a></p>
       </article>
     </main>
 
-    <aside class="docs-toc" aria-label="On this page">
-      <p class="docs-toc-heading">On this page</p>
+    <aside class="docs-toc" aria-label="En esta página">
+      <p class="docs-toc-heading">En esta página</p>
       <ul>
-        <li><a href="#reviews">Inside .ferret/reviews/</a></li>
-        <li><a href="#retention">Retention</a></li>
-        <li><a href="#network">What leaves your machine</a></li>
-        <li><a href="#feedback">Feedback from the app</a></li>
-        <li><a href="#crash-reports">Crash reports</a></li>
+        <li><a href="#reviews">Dentro de .ferret/reviews/</a></li>
+        <li><a href="#retention">Conservación</a></li>
+        <li><a href="#network">Qué sale de tu equipo</a></li>
+        <li><a href="#feedback">Feedback desde la app</a></li>
+        <li><a href="#crash-reports">Informes de fallos</a></li>
       </ul>
     </aside>
   </div>
@@ -265,29 +276,29 @@
       <div class="footer-grid">
         <div class="footer-brand">
           <a class="brand" href="../../index.html"><img class="wordmark" src="../../assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22"></a>
-          <p class="footer-tag">The ADE for feedback by voice and screen.</p>
-          <p class="provider">Built by <a href="https://www.japan-marketing.co.jp/" target="_blank" rel="noopener noreferrer">Japan Marketing LLC<span class="sr-only"> (opens in a new tab)</span></a></p>
+          <p class="footer-tag">El ADE para dar feedback con la voz y la pantalla.</p>
+          <p class="provider">Creado por <a href="https://www.japan-marketing.co.jp/" target="_blank" rel="noopener noreferrer">Japan Marketing LLC<span class="sr-only"> (se abre en una pestaña nueva)</span></a></p>
         </div>
         <div>
-          <h2>Product</h2>
+          <h2>Producto</h2>
           <ul>
-            <li><a href="../../download.html">Download</a></li>
-            <li><a href="../../download.html#versions">Changelog</a></li>
-            <li><a href="quick-start.html">Docs</a></li>
-            <li><a href="privacy.html">Privacy</a></li>
+            <li><a href="../../download.html">Descargar</a></li>
+            <li><a href="../../download.html#versions">Novedades</a></li>
+            <li><a href="quick-start.html">Documentación</a></li>
+            <li><a href="privacy.html">Privacidad</a></li>
           </ul>
         </div>
         <div>
-          <h2>Community</h2>
+          <h2>Comunidad</h2>
           <ul>
-            <li><a href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (opens in a new tab)</span></a></li>
-            <li><a href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer">Discord<span class="sr-only"> (opens in a new tab)</span></a></li>
-            <li><a href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer">X<span class="sr-only"> (opens in a new tab)</span></a></li>
+            <li><a href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (se abre en una pestaña nueva)</span></a></li>
+            <li><a href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer">Discord<span class="sr-only"> (se abre en una pestaña nueva)</span></a></li>
+            <li><a href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer">X<span class="sr-only"> (se abre en una pestaña nueva)</span></a></li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> Japan Marketing LLC · <a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License<span class="sr-only"> (opens in a new tab)</span></a></span>
+        <span>© <span data-year>2026</span> Japan Marketing LLC · <a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Licencia MIT<span class="sr-only"> (se abre en una pestaña nueva)</span></a></span>
       </div>
     </div>
   </footer>

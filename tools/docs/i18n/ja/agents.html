@@ -1,0 +1,147 @@
+<!-- Ferret docs translation: ja / agents. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title a7a0afdf19 -->
+エージェントに送る
+
+<!-- @lead 14c9151ac0 -->
+内蔵のターミナルでコーディングエージェントを動かし、ワンクリックでレビューを渡します。よく使われるのは Claude Code と Codex ですが、下の一覧にあるエージェントならどれでも使え、自分で足した CLI も使えます。ほかの場所で動くエージェント向けに指示をコピーしたり、レビューを GitHub に投稿したりもできます。
+
+<!-- @findings 2c83c22ebb -->
+## 指摘を確かめる
+<p><span class="docs-ui">指摘</span> タブの各カードでできること:</p>
+<ul>
+  <li>題名と依頼をその場で直す</li>
+  <li><span class="docs-ui">送信する</span> / <span class="docs-ui">送信しない</span> の切り替え</li>
+  <li><span class="docs-ui">録画を見る</span>（その時刻へ移動）と <span class="docs-ui">画像を差し替え</span>（別のフレームを選ぶ）</li>
+  <li><span class="docs-ui">確定する</span> / <span class="docs-ui">要確認にする</span>、<span class="docs-ui">次とまとめる</span>、<span class="docs-ui">削除</span></li>
+</ul>
+<p><span class="docs-ui">進み具合で絞り込む</span> で、状態ごとに指摘を表示したり隠したりできます（たとえば、あなたの確認待ちのもの<span class="docs-ui">だけ表示</span>する）。<span class="docs-ui">すべて表示</span> で絞り込みを解除します。</p>
+<p>上部には <span class="docs-ui">元に戻す</span>、<span class="docs-ui">保存先を開く</span>、<span class="docs-ui">Agent向けにコピー</span>、<span class="docs-ui">GitHub / GitLab に送る</span>、<span class="docs-ui">整理</span>、<span class="docs-ui">Agentへ送信</span> があります。指摘にならなかった発話は <span class="docs-ui">除外した発話</span> に並び、<span class="docs-ui">発話を指摘に戻す</span> で戻せます。</p>
+<figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="指摘タブ（スクリーンショットは準備中）"><span>スクリーンショットは準備中です</span></div><figcaption>指摘タブ</figcaption></figure>
+
+<!-- @terminal 45dd9bf23b -->
+## 内蔵のターミナルでエージェントを動かす
+<p>プロジェクトを開くと、Ferret は <span class="docs-ui">設定 → Agent → プロジェクトを開いたら起動</span> で選んだエージェントごとにターミナルのタブを1つ開き、プロジェクトのフォルダで、そのエージェントの普通のモードで起動します。最初の設定は Claude Code と Codex です。</p>
+<pre><code>claude
+codex</code></pre>
+<p>代わりに<a href="#supported">対応している一覧</a>から好きなエージェントを選べます（選んだ順に起動します）。何も選ばないこともできます。</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">権限の確認は出たままです</p><p>プロジェクトを登録したりクローンしたりしても、Ferret がそれを信頼済みにすることはありません。Claude Code や Codex などのエージェントは、初回にそのフォルダを信頼するかを尋ね、その後もファイルを変える前やコマンドを実行する前に確認します。信頼できる1つのプロジェクトで、エージェントの権限確認・承認・サンドボックスを省くには、そのプロジェクトについて <span class="docs-ui">設定 → Agent → 権限確認を省く</span> を入にして確認します。Ferret は、分かっているエージェントにはそれぞれの省くための引数を付けます。引数が分からないエージェントは確認を出したままです。これが効くのは、そのプロジェクトのフォルダで自分で開いたエージェントだけで、プロジェクトを開いたときに起動するエージェントは常に確認を出します。引数の欄に書いた権限確認を省く引数は使われません。</p></div>
+<p>エージェントを1つも選んでいなければ、普通のシェルが開きます。<span class="docs-ui">+</span> メニューからは <span class="docs-ui">新しいターミナル</span> を開いたり、自分のエージェントを新しいタブで起動したり、<span class="docs-ui">Agent設定…</span> に移ったりできます。メニューの検索欄では、タブ、登録した URL、ファイルも探せます。</p>
+<p>タブにはエージェントの状態が出ます: <span class="docs-ui">実行中</span>、<span class="docs-ui">入力待ち</span>、<span class="docs-ui">完了（未確認）</span>、<span class="docs-ui">待機中</span>。サイドバーでは、エージェントが動いているプロジェクトに印が付くので、プロジェクトを切り替えなくても分かります。</p>
+{{clip:terminals|ターミナルのタブやペインをドラッグして、分割し、動かし、タブに戻す。}}
+<p><strong>ドラッグで分割する。</strong> タブか、ペインのつまみ（タブを分割すると出ます）をドラッグして、次の場所で離します。</p>
+<ul>
+  <li>ペインの端の外側4分の1: <span class="docs-ui">左に分割</span> / <span class="docs-ui">右に分割</span> / <span class="docs-ui">上に分割</span> / <span class="docs-ui">下に分割</span></li>
+  <li>ペインの中央: <span class="docs-ui">タブとして開く</span>（ペインは分割から外れて、独立したタブになります）</li>
+  <li>ターミナル全体を囲む細い帯: <span class="docs-ui">全体の左に分割</span> など（ペインが2つ以上あるとき）</li>
+  <li>タブバー: <span class="docs-ui">ここにタブとして置く</span></li>
+</ul>
+<p>動かしている間もプロセスは動き続け、空になったタブは閉じます。キーボードでの分割:</p>
+<table class="docs-keys">
+  <thead><tr><th>操作</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>新しいターミナル</td><td class="os-mac">{{keys-mac:Mod+T}}</td><td class="os-win">{{keys-win:Mod+T}}</td></tr>
+    <tr><td>右に分割</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
+    <tr><td>下に分割</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+    <tr><td>閉じる（ペイン／タブ）</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @supported 69600dc42f -->
+## 対応しているエージェント
+<p>Ferret は特定のエージェントに縛られません。下のコーディングエージェントを認識し、起動したり、<span class="docs-ui">Agentへ送信</span> のためにターミナルの中から見つけたり、インストール済みかどうかを表示したりできます。<span class="docs-ui">設定 → Agent</span> には、<span class="docs-ui">インストール済み</span> / <span class="docs-ui">見つかりません</span>、提供元が1行のインストーラーを公開している場合の <span class="docs-ui">インストール</span> ボタン、各エージェントのコマンドと引数が並びます。</p>
+{{agent-catalog}}
+<p>一覧に無いときは、<span class="docs-ui">設定 → Agent → カスタムエージェントを追加</span> で、どんな CLI やラッパースクリプトでも登録できます（名前、コマンド、必要なら見分けるためのプロセス名）。<a href="settings-json.html#example">settings.json</a> の <code>agents.customAgents</code> に足すこともできます。Ferret の外で動くエージェントには <span class="docs-ui">Agent向けにコピー</span> を使えます。</p>
+<p>いくつかの機能はエージェントによって違い、今のところ Claude Code と Codex だけで使えます。</p>
+<ul>
+  <li><a href="accounts.html">アカウントと使用量</a>: 複数のログインの切り替えと、フッターのレート制限のメーター。</li>
+  <li><span class="docs-ui">整理</span>: Claude Code か Codex のログイン、または自分で設定した LLM API で動きます。</li>
+</ul>
+
+<!-- @send d320d66d74 -->
+## Agentへ送信 / Agent向けにコピー
+{{clip:send|指摘タブから「Agentへ送信」で、内蔵のターミナルのエージェントへ送る。}}
+<ol class="docs-steps">
+  <li><span class="docs-ui">Agentへ送信</span> を押します。既定（<span class="docs-ui">自動（今のタブか、動いている Agent）</span>）では、いま開いているターミナルのタブのエージェントか、動いているエージェントに届きます。ボタンの横の矢印（<span class="docs-ui">送り先の Agent を選ぶ</span>）で、送り先のエージェントやタブを選べます。</li>
+  <li>Ferret はエージェントの入力欄に指示を書き込んで送信します。進み具合はターミナルで追います。</li>
+</ol>
+<p>エージェントが動いていなければ、Ferret が先に起動し、準備ができしだい送ります。エージェントが権限の確認への答えを待っている間は何も送りません。先にターミナルで答えてください。</p>
+<p><span class="docs-ui">Agent向けにコピー</span> は、ほかの場所（別のターミナル、IDE、アプリ）で動くエージェントのために、同じ指示をクリップボードに入れます。対象になるのは <span class="docs-ui">送信する</span> にした指摘だけです。動画は決して含めません。</p>
+
+<!-- @verify f8f4f5bb1d -->
+## 判定モデルでの受け入れ確認
+{{clip:verify|エージェントが指摘を直し、すべて通るまで判定モデルで1件ずつ確かめる。}}
+<p>これを入にすると、コーディングエージェントは「完了」と報告する前に、自分の作業を指摘ごとに確かめます。Ferret 自身は何も判定しません。エージェントに<em>判定モデル</em>（System One 互換の API ならどれでも）を渡し、すべての指摘が通るまで繰り返すよう <code>feedback.md</code> で指示します。</p>
+<ol class="docs-steps">
+  <li>エージェントが指摘を実装します。</li>
+  <li>指摘ごとに AFTER のスクリーンショットを撮り（BEFORE の静止画と同じビューポートとページの状態で）、指摘の文、その「完了の条件」の行、BEFORE / AFTER の画像を1つのリクエストで判定モデルに送ります。</li>
+  <li>P(done) がしきい値（既定 0.7）以上で、選ばれた答えが <code>done</code> なら、その指摘は合格です。エージェントは残りを直し、毎回<strong>すべての</strong>指摘を判定し直します。止まるのは、同じ回ですべての指摘が合格したときか、はっきり書くべき正当な理由があるときだけです（API につながらない、指摘が対象外、点数が変わらず行き詰まっている）。</li>
+  <li>最後の「完了／未完了」の一覧には、指摘ごとの点数と回数が入ります。</li>
+</ol>
+<p><span class="docs-ui">設定 → 判定モデル</span> で設定し、<span class="docs-ui">Agent への指示に判定モデルでの確認を入れる</span> を入にします。プリセットは欄を埋めるだけで、どの欄も後から直せます。<span class="docs-ui">任意の接続先</span> は互換の API ならどれでも使えます。</p>
+<table>
+  <thead><tr><th>プリセット</th><th>リクエスト URL</th><th>モデル</th><th>キー</th></tr></thead>
+  <tbody>
+    <tr><td>Ollama（既定）</td><td><code>http://localhost:11434/v1/systemone</code></td><td><code>clef-flash</code>、<code>clef</code>（画像を読める）、<code>nimble</code>、<code>tev1</code>（テキストのみ）</td><td>不要、無料</td></tr>
+    <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>、<code>clef</code>（画像を読める）</td><td><code>CLOUDFLARE_API_TOKEN</code>（Workers AI の権限）。アカウント ID は欄か <code>CLOUDFLARE_ACCOUNT_ID</code> から</td></tr>
+    <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>、<code>convaiinnovations/laya</code>（テキストのみ）</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
+    <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>、<code>jev-preview</code>（テキストのみ）</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>任意の接続先</td><td>任意の完全な URL</td><td>任意</td><td>Bearer、任意のヘッダー、またはなし。追加のヘッダーも使える</td></tr>
+  </tbody>
+</table>
+<p>Ollama を使うときは、Ollama を入れ（Clef / Clef Flash には 0.35.1 以降が必要）、ターミナルでモデルを取得します。Ferret はインストーラーを実行しません。</p>
+<pre><code>ollama pull clef-flash</code></pre>
+<p>キーは、キーの欄（ほかの API キーと一緒に保存）、名前を指定した環境変数（アプリの環境、プロジェクトの <code>.env</code>、または <code>~/.ferret/.env</code>）、または <code>settings.json</code> の <code>apiKey</code> から読みます。追加のヘッダーでは <code>${VAR}</code> で環境変数の値を使えます。</p>
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">キーが指示に入らないしくみ</p><p>エージェントがキーを見ることはありません。Ferret は <code>127.0.0.1</code> でローカルの中継を動かし、各ターミナルに <code>FERRET_DECISION_URL</code>（中継の URL。ターミナルごとのトークン付き）、<code>FERRET_DECISION_MODEL</code>、<code>FERRET_DECISION_IMAGES</code> を渡します（1リリースの間は、古い <code>MOVIE_ADE_DECISION_*</code> という名前も設定します）。中継がキーとヘッダーを付けてリクエストをそのまま転送するので、指示、<code>feedback.md</code>、エージェントのやり取りの記録には秘密の情報が入りません。設定を変えた後に開いたターミナルから反映されます。</p></div>
+<p>Cloudflare は System One のドキュメントと2点違います（実際の API で確認済み）。画像はデータ URI（<code>data:image/jpeg;base64,…</code>）でなければならず、そうでないと 422 "image must be an embedded base64 data URI" になります。また、答えは <code>{ "result": { … }, "success": true }</code> で包まれて返ります（エラーは <code>{ "success": false, "errors": [ … ] }</code>）。Cloudflare のプリセットは <span class="docs-ui">画像の渡し方</span> をデータ URI にし、エージェントはそれを <code>FERRET_DECISION_IMAGE_FORMAT</code> として受け取り、指示では <code>.result</code> があればそれを読むよう伝えます。中継は行きも帰りもそのまま通します。API トークンの代わりに Global API Key を使うときは、<span class="docs-ui">認証</span> を <span class="docs-ui">キーなし</span> にし、ヘッダー <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> と <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code> を足します。</p>
+<p>画像を読めるのは Clef と Clef Flash だけです。テキストのみのモデルでは <span class="docs-ui">BEFORE / AFTER の画像を送る</span> を切にします。その場合エージェントはテキストだけで判定するので、確かさは下がります。</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama と大きな画像</p><p>Ollama 0.35.0 は <code>/v1/systemone</code> へのリクエストを 64 KiB までに制限しているため、スクリーンショット付きのリクエストは HTTP 413 で失敗します。指示では、両方の画像を幅 1024px 以下の JPEG（品質 70 ほど）に縮めるようエージェントに伝えます。それでも 413 になるときは、Ollama を 0.35.1 以降に上げるか、Cloudflare Workers AI に切り替えてください。</p></div>
+
+<!-- @api-usage cacf2ecce0 -->
+## フッターの API 使用量
+<p>判定の呼び出しは中継を通るので、Ferret が数えられます。フッターで、エージェントの使用量メーターの横にある項目に、判定モデルと、今日の呼び出し回数・トークン数・費用が出ます（たとえば <code>clef-flash · 42 calls · 18.3k tok</code>）。押すと、今日、今月、プロジェクト別、モデル別、種類別（判定 / 文字起こし / 整理）の集計と、直近50回の呼び出しが見られます。</p>
+<p>費用が出るのは、API が費用を返すとき（Vercel AI Gateway は返します）か、<span class="docs-ui">設定 → 判定モデル</span> で 1M トークンあたりの価格を設定したときだけです。それ以外は「—」と出ます。記録するのはメタデータ（時刻、プロジェクト、モデル、状態、待ち時間、サイズ、画像の数、トークン数、費用）だけで、画像・テキスト・キーは記録しません。記録先は <code>~/.ferret/usage/decision-YYYY-MM.jsonl</code> で、月ごとに1ファイルです。</p>
+
+<!-- @prompt f46545b478 -->
+## 指示を変える
+<p><span class="docs-ui">設定 → Agent → Agentへの指示</span> を編集します。展開される変数は2つです。</p>
+<table>
+  <thead><tr><th>変数</th><th>展開される内容</th></tr></thead>
+  <tbody>
+    <tr><td><code>{{path}}</code></td><td><code>feedback.md</code> の絶対パス</td></tr>
+    <tr><td><code>{{relpath}}</code></td><td>プロジェクトからの相対パス: <code>.ferret/reviews/&lt;id&gt;/feedback.md</code></td></tr>
+  </tbody>
+</table>
+<p>空にすると既定の指示を使います。最大 2000 文字で、<span class="docs-ui">指示を既定に戻す</span> で既定に戻せます。例:</p>
+<pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
+<p>この設定は <code>settings.json</code> の <code>agentPrompt</code> に保存されます。</p>
+
+<!-- @github aba5332ec5 -->
+## GitHub や GitLab に送る（Issue / PR・MR へのコメント）
+<p><span class="docs-ui">GitHub に送る</span> は、レビューを新しい Issue として、または自分の開いている Pull Request の1つへのコメントとして投稿します。認証は <a href="https://cli.github.com/">GitHub CLI</a> に任せます。Ferret がトークンを読んだり保存したりすることはありません。</p>
+<ol class="docs-steps">
+  <li><code>gh</code> を入れます: <code>brew install gh</code>（macOS）、<code>winget install --id GitHub.cli</code>（Windows）、またはほかの方法は <a href="https://github.com/cli/cli#installation">cli/cli</a> を見てください。</li>
+  <li><span class="docs-ui">設定 → GitHub / GitLab → ターミナルでログイン</span> が、内蔵のターミナルで <code>gh auth login --web -h github.com</code> を実行します。</li>
+  <li><span class="docs-ui">GitHub に送る</span> を押し、<span class="docs-ui">新しい Issue を作る</span> か PR を選び、<span class="docs-ui">タイトル</span> と <span class="docs-ui">本文</span> を確かめます（直せます）。</li>
+  <li>確認のチェックボックスに印を付け、<span class="docs-ui">Issue を作成</span> か <span class="docs-ui">コメントを投稿</span> を押します。</li>
+</ol>
+<p>詳しくは次のとおりです。</p>
+<ul>
+  <li>リポジトリは <code>git remote get-url origin</code> から決まります。</li>
+  <li>Ferret は <code>gh issue create --repo … --title … --body-file -</code> か <code>gh pr comment &lt;n&gt; --repo … --body-file -</code> を実行します。</li>
+  <li>本文は、画像の行を除いた <code>feedback.md</code> で（画像はアップロードしません）、最大 60,000 文字です。</li>
+  <li>PR の候補は、自分の開いている PR（最大30件）です。</li>
+</ul>
+<p><code>GH_TOKEN</code> か <code>GITHUB_TOKEN</code> が設定されていると、<code>gh</code> はそちらを優先して使い、設定画面に注意が出ます。</p>
+<p><strong>GitLab。</strong> <code>origin</code> が GitLab のプロジェクト（gitlab.com またはセルフマネージドの GitLab）なら、同じボタンで <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a>（<code>glab</code>）を通して GitLab に送ります。新しい Issue か、自分の開いている Merge Request の1つへのコメントです。ログインは <span class="docs-ui">設定 → GitHub / GitLab</span> から行い、内蔵のターミナルで <code>glab auth login</code>（セルフマネージドの GitLab では <code>--hostname</code> 付き）を実行します。Ferret がトークンを読んだり保存したりすることはなく、<code>GITLAB_TOKEN</code> が設定されていると注意を出します。</p>
+<p><strong>star のお願い。</strong> 最初に <span class="docs-ui">Agentへ送信</span> した後と、終えたレビューが 3、10、30 件になったときに、Ferret が GitHub で star を付けてほしいと尋ねることがあります。尋ねるのは最大3回で、間は3日以上空け、録画中には尋ねません。<span class="docs-ui">GitHub で star</span> は自分の <code>gh</code> のログインで star を付けます（<code>gh</code> が使えなければ GitHub を開きます）。<span class="docs-ui">今後表示しない</span> を押すと、もう尋ねません。<span class="docs-ui">ヘルプ → GitHub で Ferret に star…</span> からも star を付けられます。</p>
+
+<!-- @cli-tools 01bc2517bf -->
+## CLI ツールを入れてログインする
+<p><span class="docs-ui">設定 → CLI</span> には、エージェントがよく使うコマンドラインツールが並び、インストール済みかどうかとバージョンが出ます。OS に合った公式のインストールやログインのコマンドを、新しいターミナルのタブで実行できます。</p>
+<ul>
+  <li>Git のホスティング: <code>gh</code>、<code>glab</code></li>
+  <li>AI とモデル: Ollama、Cloudflare <code>wrangler</code></li>
+  <li>デプロイ: Vercel、Netlify、Fly.io、Railway、Heroku</li>
+  <li>クラウドとサービス: Supabase、Firebase、Stripe、Google Cloud（<code>gcloud</code>）、AWS、Azure、Docker</li>
+</ul>
+<p>その OS 向けの1行の公式インストーラーが無いツールでは、<span class="docs-ui">ドキュメント</span> がそのインストール方法のページを開きます。インストールが終わると、一覧は自動でもう一度確かめます。</p>

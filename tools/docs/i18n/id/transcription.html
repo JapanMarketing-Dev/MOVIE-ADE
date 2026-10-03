@@ -1,0 +1,103 @@
+<!-- Ferret docs translation: id / transcription. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 9d4646b18d -->
+Transkripsi dan biaya
+
+<!-- @lead 456b515bb7 -->
+Pilih whisper di perangkat (gratis), key OpenAI Anda sendiri, atau endpoint apa pun yang kompatibel dengan OpenAI, misalnya mesin GPU milik Anda sendiri. Audio dikirim langsung dari mesin Anda ke layanan yang Anda pilih.
+
+<!-- @cost-model 251147437b -->
+## Siapa yang membayar, dan ke mana lalu lintas dikirim
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">Model biaya dan jaringan</p><ul>
+  <li>Pengembang (Japan Marketing LLC) tidak membayar, mem-proxy, atau menagih penggunaan transkripsi maupun AI apa pun.</li>
+  <li>Permintaan dikirim langsung dari komputer Anda ke OpenAI atau endpoint Anda, tidak pernah melalui server pengembang.</li>
+  <li>Penggunaan OpenAI ditagihkan ke akun OpenAI Anda sendiri.</li>
+  <li><span class="docs-ui">Rapikan</span> memakai CLI Claude Code / Codex yang sudah Anda masuki, kecuali Anda secara eksplisit memilih runner API (<code>organizer.runner: "api:&lt;provider&gt;"</code>, lihat <a href="settings-json.html#example">Konfigurasi dengan settings.json</a>). Fitur ini tidak pernah beralih ke API key dengan sendirinya.</li>
+</ul></div>
+
+<!-- @methods d7ad6a3f10 -->
+## Metode
+<p>Pilih di <span class="docs-ui">Pengaturan → Transkripsi → Mesin</span>. Popover <span class="docs-ui">Mikrofon &amp; Transkripsi</span> di footer menampilkan pilihan saat ini.</p>
+<table>
+  <thead><tr><th>Mesin</th><th>Audio dikirim ke</th><th>Biaya</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Di perangkat (gratis)</span> (bawaan)</td><td>Tidak ke mana pun</td><td>Gratis</td></tr>
+    <tr><td><span class="docs-ui">OpenAI (key Anda)</span></td><td>OpenAI</td><td>Tagihan OpenAI Anda: <code>gpt-transcribe</code> seharga $0.0045/menit (sekitar $0.27/jam)</td></tr>
+    <tr><td><span class="docs-ui">Kompatibel OpenAI (GPU self-hosted, Groq, dll.)</span></td><td><span class="docs-ui">Base URL endpoint</span> Anda</td><td>Tergantung endpoint-nya</td></tr>
+  </tbody>
+</table>
+<p><span class="docs-ui">Pengaturan → Transkripsi → Bahasa</span>: <span class="docs-ui">Otomatis</span>, <span class="docs-ui">Jepang</span>, atau <span class="docs-ui">Inggris</span>. Ini adalah bahasa yang diucapkan, terpisah dari bahasa antarmuka.</p>
+
+<!-- @whisper 867ce20365 -->
+## whisper di perangkat (gratis)
+<p>Transkripsi di perangkat memakai <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a>: binary <code>whisper-cli</code> ditambah model GGML.</p>
+<p><strong>1. Instal whisper-cli</strong>. Ferret mencari salinan yang dibundel (<code>resources/whisper/&lt;platform&gt;-&lt;arch&gt;/</code>), lalu <code>PATH</code>, lalu lokasi umum seperti Homebrew.</p>
+<pre><code># macOS
+brew install whisper-cpp
+
+# Linux: build from source, then add build/bin to PATH
+git clone https://github.com/ggml-org/whisper.cpp &amp;&amp; cd whisper.cpp
+cmake -B build &amp;&amp; cmake --build build -j --config Release
+
+# Windows: download the zip from github.com/ggml-org/whisper.cpp/releases
+# and add the folder containing whisper-cli.exe to PATH</code></pre>
+<p><strong>2. Dapatkan model</strong>. Dengan <span class="docs-ui">Di perangkat (gratis)</span> terpilih, pilih <span class="docs-ui">Model</span> lalu klik <span class="docs-ui">Unduh model</span>. File diambil langsung dari Hugging Face (<code>ggerganov/whisper.cpp</code>), dicocokkan dengan sha256 yang dipatok di aplikasi (jika tidak cocok, file dihapus), dan disimpan ke <code>&lt;userData&gt;/models/</code>. Model yang diunduh dipilih secara otomatis. <span class="docs-ui">Batal</span> menyimpan file yang baru sebagian, dan <span class="docs-ui">Lanjutkan unduhan</span> meneruskan dari situ.</p>
+<table>
+  <thead><tr><th>Model</th><th>Ukuran</th><th>Catatan</th></tr></thead>
+  <tbody>
+    <tr><td><code>large-v3-turbo</code></td><td>1.6 GB</td><td>Bawaan yang disarankan. Cepat di Metal / GPU</td></tr>
+    <tr><td><code>large-v3-turbo-q5_0</code></td><td>574 MB</td><td>Terkuantisasi. Menghemat disk dan memori</td></tr>
+    <tr><td><code>small</code></td><td>488 MB</td><td>Untuk mesin yang hanya memakai CPU</td></tr>
+    <tr><td><code>base</code></td><td>148 MB</td><td>Ringan. Banyak kesalahan untuk bahasa Jepang</td></tr>
+    <tr><td><code>tiny</code></td><td>78 MB</td><td>Paling cepat. Kurang akurat untuk bahasa Jepang</td></tr>
+  </tbody>
+</table>
+<p>Sudah punya model? Gunakan <span class="docs-ui">Pilih file…</span> untuk menunjuk <code>ggml-*.bin</code> mana pun. Tanpa model, Pengaturan menyatakan bahwa belum ada model yang diatur. Anda tetap bisa merekam: audio disimpan, dan hanya temuan pena yang dihasilkan.</p>
+<p>whisper-cli tidak dibundel dengan aplikasi. Instal sendiri seperti yang ditunjukkan di atas. Jika tidak ditemukan, Pengaturan menampilkan <q>whisper.cpp (whisper-cli) tidak ditemukan. Instal terlebih dahulu, lalu buka kembali pengaturan.</q> beserta petunjuk yang sama.</p>
+
+<!-- @openai 2160e9a2fc -->
+## Key OpenAI Anda sendiri
+<ol class="docs-steps">
+  <li>Atur <span class="docs-ui">Mesin</span> ke <span class="docs-ui">OpenAI (key Anda)</span>.</li>
+  <li>Tempel key yang diawali <code>sk-</code> ke <span class="docs-ui">API key OpenAI</span> lalu klik <span class="docs-ui">Simpan</span>.</li>
+  <li>Klik <span class="docs-ui">Uji koneksi</span>. Ini mengirim 1 detik keheningan (sekitar $0.0001).</li>
+</ol>
+<p>Modelnya tetap <code>gpt-transcribe</code>. Hanya saat pengembangan (<code>pnpm dev</code>), <code>OPENAI_API_KEY</code> dari file <code>.env</code> yang diabaikan git juga dibaca. Build yang dipaketkan tidak pernah membaca <code>.env</code>.</p>
+
+<!-- @compatible 8c200e00b1 -->
+## Endpoint yang kompatibel dengan OpenAI
+<p>Ferret mengirim <code>POST &lt;base&gt;/v1/audio/transcriptions</code> (multipart: <code>file</code>, <code>model</code>, <code>response_format=json</code>, <code>language</code>, <code>prompt</code>), sehingga dirancang untuk server yang mengimplementasikan rute transkripsi OpenAI.</p>
+<ol class="docs-steps">
+  <li>Atur <span class="docs-ui">Mesin</span> ke <span class="docs-ui">Kompatibel OpenAI (GPU self-hosted, Groq, dll.)</span>.</li>
+  <li>Isi <span class="docs-ui">Base URL endpoint</span> dan <span class="docs-ui">Model</span> (nama model di endpoint tersebut).</li>
+  <li>Jika server memerlukannya, masukkan <span class="docs-ui">API key endpoint (opsional)</span> lalu klik <span class="docs-ui">Simpan</span>.</li>
+  <li>Klik <span class="docs-ui">Uji koneksi</span>. Pesan error menyebutkan penyebabnya, misalnya Base URL yang salah (tidak ada <code>/v1/audio/transcriptions</code>), key yang ditolak, atau nama model yang tidak dikenal.</li>
+</ol>
+<table>
+  <thead><tr><th>Server</th><th>Base URL</th><th>Model (contoh)</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://github.com/speaches-ai/speaches">speaches</a> (sebelumnya faster-whisper-server)</td><td><code>http://localhost:8000/v1</code></td><td><code>Systran/faster-whisper-small</code></td></tr>
+    <tr><td><a href="https://docs.vllm.ai/">vLLM</a> (<code>vllm serve openai/whisper-large-v3</code>)</td><td><code>http://localhost:8000/v1</code></td><td><code>openai/whisper-large-v3</code></td></tr>
+    <tr><td><a href="https://console.groq.com/docs/speech-to-text">Groq</a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
+  </tbody>
+</table>
+<div class="docs-callout docs-callout-warn"><p>Ferret dirancang untuk server yang kompatibel dengan OpenAI seperti ini, tetapi server-server tersebut belum diuji dengan Ferret. URL dan nama model di atas adalah nilai bawaan yang didokumentasikan oleh masing-masing server.</p></div>
+<ul>
+  <li><code>/v1</code> di akhir atau <code>/v1/audio/transcriptions</code> yang ikut ditempel akan dibuang saat disimpan, jadi kedua bentuk bisa dipakai.</li>
+  <li>URL yang mengandung nama pengguna atau kata sandi ditolak, sehingga key tidak pernah berakhir di <code>settings.json</code>.</li>
+  <li>Untuk mesin GPU di LAN atau tailnet Anda, gunakan alamatnya, misalnya <code>http://100.x.y.z:8000/v1</code>.</li>
+</ul>
+
+<!-- @limit 7bee560470 -->
+## Batas biaya
+<p>Untuk OpenAI dan endpoint yang kompatibel, atur <span class="docs-ui">Batas biaya</span>: <span class="docs-ui">Tidak ada</span>, atau <span class="docs-ui">Hingga $0.10 per tinjauan</span> sampai $0.50, $1 (bawaan), $5, dan $20. Untuk GPU milik sendiri, <span class="docs-ui">Tidak ada</span> masuk akal. Pengaturan ini disimpan sebagai <code>capture.costLimitUsd</code> (maksimum 1000, <code>null</code> berarti tanpa batas). Endpoint yang kompatibel diperkirakan seharga $0.006/menit.</p>
+<p>Jika potongan audio berikutnya akan melampaui batas, Ferret berhenti mengirim dan menyimpan audionya. Panggilan API yang gagal tidak dicoba ulang secara otomatis.</p>
+
+<!-- @keys a6be4d5386 -->
+## Tempat key disimpan
+<p>Key yang dimasukkan di <span class="docs-ui">Pengaturan</span> dienkripsi dengan <code>safeStorage</code> Electron dan ditulis ke <code>&lt;userData&gt;/stt-keys.bin</code>. Aplikasi tidak pernah menuliskannya ke <code>settings.json</code>. Untuk merujuk key dari <code>settings.json</code> (variabel lingkungan atau entri <code>.env</code>), lihat <a href="settings-json.html#keys">API key</a>.</p>
+<ul>
+  <li>macOS: Keychain</li>
+  <li>Windows: DPAPI</li>
+  <li>Linux: libsecret atau KWallet. Jika hanya backend <code>basic_text</code> yang tersedia, key hanya disimpan di memori untuk sesi saat ini (tombolnya bertuliskan <span class="docs-ui">Atur untuk sesi ini</span>).</li>
+</ul>
+<p><span class="docs-ui">Hapus key</span> menghapusnya. Untuk path <code>&lt;userData&gt;</code>, lihat <a href="files.html#userdata">File dan lingkungan</a>.</p>

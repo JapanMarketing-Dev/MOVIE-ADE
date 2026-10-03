@@ -1,0 +1,176 @@
+<!-- Ferret docs translation: vi / settings-json. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 356c52a302 -->
+Cấu hình bằng settings.json
+
+<!-- @lead a353948c8f -->
+Mọi cài đặt của Ferret nằm trong một tệp JSON, kèm một JSON Schema bên cạnh, nên bạn hoặc coding agent của bạn (ví dụ Claude Code, Codex hay Gemini CLI) có thể cấu hình ứng dụng chỉ bằng cách sửa tệp. Thay đổi được áp dụng khi ứng dụng đang chạy.
+
+<!-- @path de46fc6989 -->
+## Vị trí của tệp
+<p>Đường dẫn giống nhau trên mọi hệ điều hành:</p>
+<pre><code>~/.ferret/settings.json          # your settings (edit this)
+~/.ferret/settings.schema.json   # JSON Schema, rewritten by the app on launch
+~/.ferret/state.json             # open folder, last URL, open tabs (managed by the app)
+~/.ferret/.env                   # optional: API keys referenced by apiKeyEnv</code></pre>
+<ul>
+  <li>Đặt <code>FERRET_CONFIG_DIR</code> (tên cũ <code>MOVIE_ADE_CONFIG_DIR</code> vẫn dùng được) để dùng một thư mục khác, ví dụ một thư mục trong repo dotfiles. <code>~</code> sẽ được mở rộng.</li>
+  <li>Bản build phát triển (<code>pnpm dev</code>) dùng <code>~/.ferret/dev/</code>, nên việc phát triển Ferret không bao giờ ghi đè cài đặt thật của bạn.</li>
+  <li>Nâng cấp từ 0.1.0: ở lần khởi động đầu tiên, tệp cũ <code>&lt;userData&gt;/settings.json</code> được sao chép sang các tệp mới. Tệp cũ được giữ nguyên chỗ làm bản sao lưu và không bao giờ bị sửa.</li>
+</ul>
+<p>Nâng cấp từ MOVIE-ADE: ở lần khởi động đầu tiên, <code>settings.json</code>, <code>state.json</code>, <code>usage/</code> và <code>.env</code> được sao chép từ <code>~/.movie-ade/</code> sang <code>~/.ferret/</code>. Thư mục cũ được giữ nguyên và không bị sửa.</p>
+<p>Trong ứng dụng, phần đầu trang <span class="docs-ui">Cài đặt</span> hiển thị đường dẫn, cùng nút <span class="docs-ui">Mở settings.json</span> (sửa trong editor tích hợp có gợi ý theo schema) và <span class="docs-ui">Hiện trong thư mục</span>.</p>
+
+<!-- @schema 9eeea0d22b -->
+## Schema và kiểm tra hợp lệ
+<p>Dòng đầu tiên của <code>settings.json</code> là <code>"$schema": "./settings.schema.json"</code>. Các editor như VS Code và các agent như Claude Code dùng nó để gợi ý, kiểm tra hợp lệ và hiển thị mô tả của từng trường. Schema đi kèm trong ứng dụng và được ghi ra cạnh tệp mỗi lần khởi động, nên luôn khớp với phiên bản đã cài.</p>
+<p>Các key mà Ferret không biết được giữ nguyên khi ứng dụng lưu. Các tab đang mở, URL gần nhất và trạng thái phiên khác được lưu trong <code>state.json</code>, không phải ở đây.</p>
+
+<!-- @example fece1b6b16 -->
+## Ví dụ có chú thích
+<p>JSON không có chú thích, nên phần giải thích nằm bên dưới ví dụ. Mọi trường đều không bắt buộc; bỏ qua những gì bạn không cần.</p>
+<pre><code>{
+  "$schema": "./settings.schema.json",
+  "theme": "dark",
+  "locale": "en",
+  "projects": [
+    {
+      "id": "shop",
+      "name": "shop",
+      "folderPath": "/Users/you/src/shop",
+      "kind": "web",
+      "urls": [
+        { "id": "local", "label": "local", "url": "http://localhost:3000" },
+        { "id": "prd", "label": "prd", "url": "https://shop.example.com" }
+      ]
+    }
+  ],
+  "agents": {
+    "customAgents": [
+      { "id": "custom:my-agent", "name": "My agent", "command": "my-agent", "args": "--yes" }
+    ],
+    "startupAgents": ["claude", "custom:my-agent"]
+  },
+  "capture": {
+    "transcription": "compatible",
+    "language": "auto",
+    "costLimitUsd": null,
+    "sttEndpoints": {
+      "compatible": {
+        "baseUrl": "http://gpu-box.local:8000/v1",
+        "model": "Systran/faster-whisper-large-v3",
+        "apiKeyEnv": "WHISPER_SERVER_TOKEN"
+      }
+    }
+  },
+  "organizer": {
+    "runner": "api:compatible",
+    "endpoints": {
+      "compatible": { "baseUrl": "http://localhost:11434/v1", "model": "qwen3:14b" }
+    }
+  },
+  "decision": {
+    "enabled": true,
+    "preset": "ollama",
+    "endpoint": "http://localhost:11434/v1/systemone",
+    "model": "clef-flash"
+  },
+  "layout": {
+    "panels": {
+      "projects": { "dock": "left", "visible": true },
+      "terminal": { "dock": "bottom", "visible": true },
+      "files": { "dock": "right", "visible": false }
+    }
+  }
+}</code></pre>
+<ul>
+  <li><code>projects[].urls</code>: các mục tiêu review cho menu URL. URL đầu tiên được mở khi mở dự án. <code>id</code> có thể là bất kỳ chuỗi duy nhất nào.</li>
+  <li><code>agents.customAgents</code>: bất kỳ CLI hay script wrapper nào. <code>startupAgents</code> liệt kê theo thứ tự các tab agent được mở cùng dự án.</li>
+  <li><code>capture.sttEndpoints.compatible</code>: bất kỳ server nào triển khai <code>/v1/audio/transcriptions</code> của OpenAI (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> tắt giới hạn chi phí, hợp lý khi dùng GPU của chính bạn. Xem <a href="transcription.html">Chuyển văn bản và chi phí</a>.</li>
+  <li><code>organizer</code>: <span class="docs-ui">Sắp xếp góp ý</span> được gửi thẳng tới một server <code>/v1/chat/completions</code> tương thích OpenAI (ở đây là Ollama). Dùng <code>"runner": "claude-code"</code> hoặc <code>"codex"</code> để dùng thông tin đăng nhập CLI của bạn thay vào đó, và <code>organizer.cliModels</code> để chọn model của chúng.</li>
+  <li><code>decision</code>: model kiểm tra xem từng góp ý đã được sửa hay chưa. Clef Flash trên Ollama cục bộ thì miễn phí và đọc được ảnh chụp màn hình. <code>preset</code> cũng có thể là <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code> hoặc <code>custom</code>.</li>
+  <li>Mọi khối provider (<code>sttEndpoints.*</code>, <code>organizer.endpoints.*</code>) cũng nhận <code>timeoutMs</code>, <code>headers</code> và, với Azure, <code>apiVersion</code>.</li>
+</ul>
+<div class="docs-callout docs-callout-note"><p>Ferret không bao giờ trả tiền AI thay cho bạn. Không có key tích hợp sẵn và không có server trung gian: mọi request đi từ máy của bạn tới endpoint bạn cấu hình, bằng key của bạn.</p></div>
+
+<!-- @custom 3d0b17a588 -->
+## Mọi provider: endpoint tùy chỉnh
+<p>Preset chỉ điền sẵn URL và model. Mọi kết nối (chuyển văn bản, Sắp xếp góp ý, model quyết định) đều nhận bất kỳ URL, model, header và cách xác thực nào, nên bạn có thể dùng bất kỳ provider nào: Cloudflare, một gateway, proxy của công ty hay server của riêng bạn. Các trường dưới đây có cùng tên và cấu trúc ở cả ba.</p>
+<table>
+  <thead><tr><th>Trường</th><th>Ý nghĩa</th></tr></thead>
+  <tbody>
+    <tr><td><code>baseUrl</code>, <code>model</code></td><td>Bất kỳ URL http(s) và tên model nào. <code>{account_id}</code> trong URL được thay bằng <code>accountId</code>, hoặc bằng biến môi trường <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
+    <tr><td><code>authScheme</code></td><td><code>bearer</code> (<code>Authorization: Bearer &lt;key&gt;</code>), <code>header</code> (key nằm trong header có tên do <code>authHeader</code> chỉ định) hoặc <code>none</code>. Bỏ qua để giữ mặc định của provider</td></tr>
+    <tr><td><code>headers</code></td><td>Header bổ sung. Giá trị là một chuỗi thường, hoặc <code>{"env": "VAR"}</code> để đọc từ biến môi trường (tìm giống như <code>apiKeyEnv</code>). Header bí mật như <code>Authorization</code> hay token của gateway chỉ được chấp nhận ở dạng <code>{"env": …}</code>. Trong trang Cài đặt, hãy viết <code>Name: ${VAR}</code></td></tr>
+    <tr><td><code>apiKey</code> / <code>apiKeyEnv</code></td><td>Key, xem <a href="#keys">API key</a></td></tr>
+  </tbody>
+</table>
+<p><strong>Chuyển văn bản</strong> với bất kỳ server <code>/v1/audio/transcriptions</code> tương thích OpenAI nào yêu cầu key trong header <code>api-key</code>:</p>
+<pre><code>"capture": {
+  "transcription": "compatible",
+  "sttEndpoints": {
+    "compatible": {
+      "baseUrl": "https://stt.internal.example.com/v1",
+      "model": "whisper-large-v3",
+      "authScheme": "header",
+      "authHeader": "api-key",
+      "apiKeyEnv": "INTERNAL_STT_KEY",
+      "headers": { "X-Team": "design" }
+    }
+  }
+}</code></pre>
+<p><strong>Sắp xếp góp ý</strong> với Cloudflare Workers AI (chat completions tương thích OpenAI), có thể đi qua AI Gateway:</p>
+<pre><code>"organizer": {
+  "runner": "api:compatible",
+  "endpoints": {
+    "compatible": {
+      "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
+      "model": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      "apiKeyEnv": "CLOUDFLARE_API_TOKEN",
+      "headers": { "cf-aig-authorization": { "env": "CF_AIG_TOKEN" } }
+    }
+  }
+}</code></pre>
+<p><strong>Model quyết định</strong> trên Cloudflare Workers AI (Clef Flash), hoặc với <code>"preset": "custom"</code> trên bất kỳ server nào dùng System One API. Model quyết định nhận URL request đầy đủ trong <code>endpoint</code> (đã điền <code>{account_id}</code> và <code>{model}</code>); mọi trường khác có cùng tên và cấu trúc như trên:</p>
+<pre><code>"decision": {
+  "enabled": true,
+  "preset": "cloudflare",
+  "endpoint": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}",
+  "model": "clef-flash",
+  "authScheme": "bearer",
+  "apiKeyEnv": "CLOUDFLARE_API_TOKEN",
+  "headers": { "cf-aig-authorization": { "env": "CF_AIG_TOKEN" } }
+}</code></pre>
+<p>Đặt <code>CLOUDFLARE_ACCOUNT_ID</code>, <code>CLOUDFLARE_API_TOKEN</code> và các biến khác trong <code>~/.ferret/.env</code>. Tên model ở trên chỉ là ví dụ. Hãy kiểm tra danh sách model của provider bạn dùng.</p>
+
+<!-- @keys d478d4a8f1 -->
+## API key
+<p>Mỗi khối provider nhận key theo một trong ba cách. Cách nào được tìm thấy trước sẽ được dùng:</p>
+<ol>
+  <li><code>"apiKey": "…"</code>: key dạng văn bản thuần trong <code>settings.json</code>. Ai đọc được tệp cũng đọc được key, và <span class="docs-ui">Cài đặt</span> hiển thị cảnh báo khi có key như vậy. Hãy tránh cách này, nhất là khi tệp nằm trong repo dotfiles.</li>
+  <li><code>"apiKeyEnv": "OPENAI_API_KEY"</code>: tên một biến môi trường. Ferret tìm trong môi trường của chính nó, rồi đến <code>.env</code> của dự án đang mở, rồi <code>~/.ferret/.env</code>. Ứng dụng mở từ Finder hoặc menu Start không thấy các biến được export trong shell profile, nên <code>~/.ferret/.env</code> là nơi đáng tin cậy.</li>
+  <li>Key được lưu trong <span class="docs-ui">Cài đặt</span>: được mã hóa bằng keychain của hệ điều hành trong <code>&lt;userData&gt;/stt-keys.bin</code> (xem <a href="transcription.html#keys">Nơi lưu key</a>).</li>
+</ol>
+<p>Ferret chỉ đọc một biến môi trường khi bạn ghi tên nó trong <code>apiKeyEnv</code>. Key không bao giờ được ghi log, không bao giờ hiển thị trên giao diện và không bao giờ có trong báo cáo crash.</p>
+
+<!-- @reload 4c8b56784b -->
+## Tải lại tức thì
+{{clip:settings-json|Sửa settings.json: ứng dụng áp dụng thay đổi ngay khi đang chạy.}}
+<p>Ferret theo dõi <code>settings.json</code>. Khi tệp thay đổi, ứng dụng đọc lại, kiểm tra theo schema rồi áp dụng: chủ đề, ngôn ngữ, bố cục, agent, dự án và endpoint AI được cập nhật mà không cần khởi động lại, và trang Cài đặt được làm mới.</p>
+<ul>
+  <li>Nếu tệp có lỗi cú pháp JSON hoặc một giá trị sai kiểu, không thay đổi nào từ lần sửa đó được áp dụng. Ứng dụng giữ cài đặt hợp lệ gần nhất, hiển thị lỗi kèm số dòng, và không ghi đè tệp của bạn cho đến khi bạn sửa xong.</li>
+  <li>Khi chính ứng dụng lưu (bạn thay đổi gì đó trong <span class="docs-ui">Cài đặt</span>), nó ghi vào một tệp tạm rồi đổi tên đè lên <code>settings.json</code>, nên một lần crash không bao giờ để lại tệp ghi dở.</li>
+</ul>
+
+<!-- @agent d9a63aa906 -->
+## Để coding agent cấu hình Ferret
+<p>Dán đoạn này vào Claude Code, Codex hoặc bất kỳ agent nào có thể sửa tệp:</p>
+<pre><code>Edit ~/.ferret/settings.json following the JSON Schema in
+~/.ferret/settings.schema.json (read the field descriptions first).
+Keep unknown keys and keep the file valid JSON. Never write API keys in
+plaintext: set "apiKeyEnv" to an environment variable name instead and
+tell me which variable to put in ~/.ferret/.env.
+Ferret applies the change as soon as the file is saved.
+
+Task: &lt;what you want, e.g. "use my Ollama at http://localhost:11434 with
+qwen3:14b for Organize findings and add a prd URL for the shop project"&gt;</code></pre>
+<p>Cùng prompt này, với đường dẫn thật của bạn đã được điền sẵn, có trong <span class="docs-ui">Cài đặt</span> → <span class="docs-ui">Để coding agent cấu hình Ferret</span> với nút <span class="docs-ui">Sao chép prompt</span>.</p>

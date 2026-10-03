@@ -1,0 +1,24 @@
+<!-- Ferret docs translation: pt-BR / accounts. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title cb165a192d -->
+Contas e uso
+
+<!-- @lead 6a6ab3126f -->
+Alterne entre vários logins do Claude Code ou do Codex e acompanhe as janelas de limite de uso no rodapé. Por enquanto, os dois recursos funcionam só com o Claude Code e o Codex; os outros agentes continuam usando o próprio login normalmente.
+
+<!-- @accounts f0d5cb0211 -->
+## Várias contas
+<p>As contas são opcionais. Adicione-as só se você alterna entre várias.</p>
+<ol class="docs-steps">
+  <li>Abra <span class="docs-ui">Configurações → Contas</span> ou <span class="docs-ui">Gerenciar contas…</span> no menu de uso do rodapé.</li>
+  <li><span class="docs-ui">Adicionar conta</span> inicia o login do agente em uma aba do terminal integrado.</li>
+  <li>Escolha a conta a usar. As abas em execução mantêm a conta delas. As novas abas usam a selecionada.</li>
+</ol>
+<p>Como funciona: cada conta adicionada recebe o próprio diretório de configuração, <code>&lt;userData&gt;/accounts/&lt;agent&gt;/&lt;id&gt;/</code>. O Ferret inicia o agente com <code>CLAUDE_CONFIG_DIR</code> (Claude Code) ou <code>CODEX_HOME</code> (Codex) apontando para lá. <span class="docs-ui">Padrão do sistema</span> usa os seus <code>~/.claude</code> / <code>~/.codex</code> de sempre, sem alterações.</p>
+<p>Remover uma conta exclui o diretório de configuração dela. Isso não encerra a sua sessão no servidor.</p>
+
+<!-- @usage bb03a3a17a -->
+## Uso no rodapé
+<p>O rodapé mostra quanto de cada janela de limite de uso já foi consumido: a janela de 5 horas e a janela semanal, além da janela semanal por modelo no caso do Claude. As cores ficam amarelas em 60% e vermelhas em 80%. Os valores são atualizados a cada 15 minutos ou ao clicar em <span class="docs-ui">Atualizar uso</span>.</p>
+<p>O quanto é exibido depende do espaço no rodapé. Com espaço, ele mostra barras, nomes das janelas e porcentagens. À medida que o rodapé fica mais estreito, ele remove primeiro as partes menos úteis, até sobrar uma porcentagem por agente. Clique no uso para ver tudo em um popover.</p>
+<p>O uso é obtido diretamente da Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) e do ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) com as próprias credenciais da conta conectada.</p>
+<figure class="docs-shot" data-shot="usage"><div class="docs-shot-slot" role="img" aria-label="Uso no rodapé (captura de tela em breve)"><span>Captura de tela em breve</span></div><figcaption>Uso no rodapé</figcaption></figure>

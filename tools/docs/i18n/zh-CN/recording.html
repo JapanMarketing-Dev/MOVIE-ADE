@@ -1,0 +1,54 @@
+<!-- Ferret docs translation: zh-CN / recording. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 80e8dd1a5a -->
+录制
+
+<!-- @lead 14988eae28 -->
+录制内置浏览器、整个屏幕或其他窗口。一边使用页面，一边说话、圈画和打字。
+
+<!-- @target 133550362a -->
+## 选择录制内容
+<p>在反馈模式下，点击 <span class="docs-ui">选择录制对象</span>。<span class="docs-ui">录制对象</span> 对话框提供以下选项：</p>
+<table>
+  <thead><tr><th>对象</th><th>录制内容</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">内置浏览器</span>（默认）</td><td>视频、语音和画笔，以及 URL、元素选择器、点击和滚动。不需要操作系统权限。</td></tr>
+    <tr><td><span class="docs-ui">整个屏幕</span></td><td>视频、语音和画笔。没有 URL、元素或操作记录（这一点会在 <code>feedback.md</code> 中注明）。</td></tr>
+    <tr><td><span class="docs-ui">窗口</span></td><td>同上。Ferret 自己的窗口不会列出。</td></tr>
+  </tbody>
+</table>
+<p>你的选择会被记住。在 macOS 上，录制屏幕和窗口需要“屏幕录制”权限（<a href="troubleshooting.html#screen-permission">如何授予</a>）。</p>
+
+<!-- @record 0d1af48c7a -->
+## 开始、暂停、停止
+{{clip:record|录制：一边讲解页面，一边用画笔圈出位置。}}
+<ol class="docs-steps">
+  <li>在内置浏览器中打开要审查的页面。</li>
+  <li>点击标题栏中的 <span class="docs-ui">录制</span>，或按 {{keys:Mod+Shift+R}}。</li>
+  <li><span class="docs-ui">暂停</span> 会停止绘制和计时。<span class="docs-ui">继续</span> 会接着录制。</li>
+  <li>点击 <span class="docs-ui">停止</span>，或再按一次 {{keys:Mod+Shift+R}}。</li>
+</ol>
+<p>在侧边栏中，每个项目都有自己的 <span class="docs-ui">新建审查</span>（或其所在行上的 <span class="docs-ui">+</span>，即 <span class="docs-ui">在 &lt;name&gt; 中新建审查</span>）。在其他项目上使用时，会先切换到该项目，再开始录制。另一段录制正在进行时不会开始。</p>
+<p>每段录制最长 90 分钟。接近上限时会收到警告，达到上限时录制会自动停止并保存。</p>
+<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="反馈模式工具栏（截图即将推出）"><span>截图即将推出</span></div><figcaption>反馈模式工具栏</figcaption></figure>
+
+<!-- @pen 0232dc7983 -->
+## 画笔
+<ul>
+  <li><strong><span class="docs-ui">画笔</span></strong>：选中它，或按住 {{keys:Alt}}，仅在按住期间绘制（在输入框中打字时会被忽略）。</li>
+  <li><strong><span class="docs-ui">清除</span></strong>：移除当前的标记。</li>
+</ul>
+<p>一边讲解一边圈出位置：话语和标记会进入同一条反馈。画笔仅在录制时可用。没有文字工具，请直接说出来。画笔、方框和颜色的按键见<a href="keyboard.html#drawing">键盘快捷键</a>。</p>
+
+<!-- @annotations-clear ea2e57b47b -->
+## 标记何时消失
+<p>标记属于绘制时所在的画面。在以下情况下，它们会被记录到当前反馈中，然后清除：</p>
+<ul>
+  <li>页面发生跳转：完整载入，或 SPA 路由变更到新的路径或查询参数。仅哈希变化时会保留标记。</li>
+  <li>你滚动了页面</li>
+  <li>一段语音结束</li>
+</ul>
+
+<!-- @mic 3540329978 -->
+## 麦克风
+<p>麦克风默认开启。可以在底栏中切换（<span class="docs-ui">关闭麦克风</span> / <span class="docs-ui">打开麦克风</span>），也可以在设置中使用 <span class="docs-ui">录制我的语音</span>。在 <span class="docs-ui">麦克风</span> 下选择设备。</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">即将推出</p><p><span class="docs-ui">同时录制对方的声音</span>（通过系统音频录制会议中其他参与者的声音）处于测试阶段，尚未在会议应用中验证。</p></div>

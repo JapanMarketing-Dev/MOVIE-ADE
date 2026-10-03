@@ -1,0 +1,24 @@
+<!-- Ferret docs translation: zh-CN / accounts. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title cb165a192d -->
+账户与用量
+
+<!-- @lead 6a6ab3126f -->
+在多个 Claude Code 或 Codex 登录之间切换，并在底部栏查看速率限制窗口的用量。这两项功能目前只支持 Claude Code 和 Codex；其他 Agent 照常使用各自的登录。
+
+<!-- @accounts f0d5cb0211 -->
+## 多个账户
+<p>账户是可选的。只有需要在多个账户之间切换时才需要添加。</p>
+<ol class="docs-steps">
+  <li>打开 <span class="docs-ui">设置 → 账户</span>，或从底部栏的用量菜单中选择 <span class="docs-ui">管理账户…</span>。</li>
+  <li><span class="docs-ui">添加账户</span> 会在内置终端标签页中启动该 Agent 的登录流程。</li>
+  <li>选择要使用的账户。正在运行的标签页保持原来的账户，新标签页使用所选账户。</li>
+</ol>
+<p>工作原理：每个添加的账户都有自己的配置目录 <code>&lt;userData&gt;/accounts/&lt;agent&gt;/&lt;id&gt;/</code>。Ferret 启动 Agent 时，会将 <code>CLAUDE_CONFIG_DIR</code>（Claude Code）或 <code>CODEX_HOME</code>（Codex）指向该目录。<span class="docs-ui">系统默认</span> 则原样使用你平常的 <code>~/.claude</code> / <code>~/.codex</code>。</p>
+<p>移除账户会删除其配置目录，但不会在服务器端注销登录。</p>
+
+<!-- @usage bb03a3a17a -->
+## 底部栏中的用量
+<p>底部栏显示每个速率限制窗口已用的比例：5 小时窗口和每周窗口，Claude 还有按模型计算的每周窗口。达到 60% 时颜色变黄，达到 80% 时变红。数值每 15 分钟刷新一次，也可以点击 <span class="docs-ui">刷新用量</span> 立即刷新。</p>
+<p>显示多少内容取决于底部栏的空间。空间充足时会显示进度条、窗口名称和百分比。底部栏越窄，越先省略不太重要的部分，最少只显示每个 Agent 一个百分比。点击用量可以在弹出框中查看全部内容。</p>
+<p>用量直接从 Anthropic（<code>api.anthropic.com/api/oauth/usage</code>）和 ChatGPT（<code>chatgpt.com/backend-api/wham/usage</code>）获取，使用的是已登录账户自身的凭据。</p>
+<figure class="docs-shot" data-shot="usage"><div class="docs-shot-slot" role="img" aria-label="底部栏中的用量（截图即将推出）"><span>截图即将推出</span></div><figcaption>底部栏中的用量</figcaption></figure>

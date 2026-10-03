@@ -1,0 +1,80 @@
+<!-- Ferret docs translation: it / keyboard. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title e9bef0b0f3 -->
+Scorciatoie da tastiera
+
+<!-- @lead 659f5284aa -->
+Le scorciatoie sono mostrate per il sistema operativo da cui stai leggendo; usa il selettore qui sotto per vedere l'altro. Quasi tutte usano Command su macOS dove Windows e Linux usano Ctrl, e Option dove usano Alt. Alcune differiscono di più, e le tabelle le riportano entrambe. Fonte: <code>src/main/menu.ts</code>, <code>src/shared/browserNav.ts</code>, <code>src/shared/annotation.ts</code> e la gestione dei tasti del terminale.
+
+<!-- @recording 0658b25c43 -->
+## Registrazione
+<table class="docs-keys">
+  <thead><tr><th>Azione</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Avvia / ferma registrazione</td><td class="os-mac">{{keys-mac:Mod+Shift+R}}</td><td class="os-win">{{keys-win:Mod+Shift+R}}</td></tr>
+    <tr><td>Cambia modalità (Editor / Feedback)</td><td class="os-mac">{{keys-mac:Mod+Shift+M}}</td><td class="os-win">{{keys-win:Mod+Shift+M}}</td></tr>
+    <tr><td>Penna finché è premuto</td><td class="os-mac">{{keys-mac:Alt}}</td><td class="os-win">{{keys-win:Alt}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @drawing 5c4ca7f875 -->
+## Disegnare durante la registrazione
+<table class="docs-keys">
+  <thead><tr><th>Azione</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Penna</td><td class="os-mac">{{keys-mac:P}}</td><td class="os-win">{{keys-win:P}}</td></tr>
+    <tr><td>Riquadro</td><td class="os-mac">{{keys-mac:B / R}}</td><td class="os-win">{{keys-win:B / R}}</td></tr>
+    <tr><td>Usa la pagina (smetti di disegnare)</td><td class="os-mac">{{keys-mac:V / Esc}}</td><td class="os-win">{{keys-win:V / Esc}}</td></tr>
+    <tr><td>Colore successivo</td><td class="os-mac">{{keys-mac:C}}</td><td class="os-win">{{keys-win:C}}</td></tr>
+    <tr><td>Annulla l'ultimo segno</td><td class="os-mac">{{keys-mac:Mod+Z}}</td><td class="os-win">{{keys-win:Mod+Z}}</td></tr>
+    <tr><td>Ripristina</td><td class="os-mac">{{keys-mac:Mod+Shift+Z|Ctrl+Shift+Z / Ctrl+Y}}</td><td class="os-win">{{keys-win:Mod+Shift+Z|Ctrl+Shift+Z / Ctrl+Y}}</td></tr>
+  </tbody>
+</table><p>Questi tasti funzionano mentre registri il browser integrato e la pagina ha il focus. Vengono ignorati mentre scrivi in un campo della pagina, e i tasti con lettere funzionano solo senza tasti modificatori, così le scorciatoie della pagina continuano a funzionare.</p>
+
+<!-- @browser 0417bf5b2e -->
+## Browser e vista
+<table class="docs-keys">
+  <thead><tr><th>Azione</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Attiva barra URL</td><td class="os-mac">{{keys-mac:Mod+L}}</td><td class="os-win">{{keys-win:Mod+L}}</td></tr>
+    <tr><td>Ricarica pagina</td><td class="os-mac">{{keys-mac:Mod+R}}</td><td class="os-win">{{keys-win:Mod+R}}</td></tr>
+    <tr><td>Indietro</td><td class="os-mac">{{keys-mac:Mod+[|Alt+Left}}</td><td class="os-win">{{keys-win:Mod+[|Alt+Left}}</td></tr>
+    <tr><td>Avanti</td><td class="os-mac">{{keys-mac:Mod+]|Alt+Right}}</td><td class="os-win">{{keys-win:Mod+]|Alt+Right}}</td></tr>
+    <tr><td>Alterna larghezza desktop / mobile</td><td class="os-mac">{{keys-mac:Mod+Shift+V}}</td><td class="os-win">{{keys-win:Mod+Shift+V}}</td></tr>
+    <tr><td>Mostra/nascondi barra laterale</td><td class="os-mac">{{keys-mac:Mod+B}}</td><td class="os-win">{{keys-win:Mod+B}}</td></tr>
+    <tr><td>Mostra/nascondi albero dei file</td><td class="os-mac">{{keys-mac:Mod+Shift+E}}</td><td class="os-win">{{keys-win:Mod+Shift+E}}</td></tr>
+    <tr><td>Mostra/nascondi target di revisione</td><td class="os-mac">{{keys-mac:Mod+Shift+K}}</td><td class="os-win">{{keys-win:Mod+Shift+K}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @files 5e0093248b -->
+## File
+<table class="docs-keys">
+  <thead><tr><th>Azione</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Apri cartella progetto…</td><td class="os-mac">{{keys-mac:Mod+O}}</td><td class="os-win">{{keys-win:Mod+O}}</td></tr>
+    <tr><td>Vai al file…</td><td class="os-mac">{{keys-mac:Mod+P}}</td><td class="os-win">{{keys-win:Mod+P}}</td></tr>
+    <tr><td>Salva</td><td class="os-mac">{{keys-mac:Mod+S}}</td><td class="os-win">{{keys-win:Mod+S}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @terminal a714e034c2 -->
+## Terminale
+<table class="docs-keys">
+  <thead><tr><th>Azione</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Nuovo terminale</td><td class="os-mac">{{keys-mac:Mod+T}}</td><td class="os-win">{{keys-win:Mod+T}}</td></tr>
+    <tr><td>Chiudi riquadro / scheda</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
+    <tr><td>Dividi a destra</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
+    <tr><td>Dividi in basso</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+  </tbody>
+</table><p>Le scorciatoie per dividere funzionano mentre un terminale ha il focus.</p>
+
+<!-- @window 84ff87d3b5 -->
+## Finestra e impostazioni
+<table class="docs-keys">
+  <thead><tr><th>Azione</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Impostazioni…</td><td class="os-mac">{{keys-mac:Mod+,}}</td><td class="os-win">{{keys-win:Mod+,}}</td></tr>
+    <tr><td>Chiudi finestra</td><td class="os-mac">{{keys-mac:Mod+Shift+W|}}</td><td class="os-win">{{keys-win:Mod+Shift+W|}}</td></tr>
+  </tbody>
+</table><p>Windows e Linux non hanno una scorciatoia per chiudere la finestra: <span class="docs-ui">File → Esci</span> chiude l'app.</p>

@@ -1,0 +1,56 @@
+<!-- Ferret docs translation: de / projects. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 5c9e1003a2 -->
+Projekte und URLs
+
+<!-- @lead 4a937bd356 -->
+Ein Projekt ist ein Ordner (meist das Stammverzeichnis Ihres Repositorys). Jedes Projekt hat eigene gespeicherte URLs, sodass lokal, Dev und Produktion nur einen Klick voneinander entfernt sind.
+
+<!-- @add-project eb372d2531 -->
+## Projekt hinzufügen
+<ol class="docs-steps">
+  <li><span class="docs-ui">Ablage → Projektordner öffnen …</span> ({{keys:Mod+O}}), <span class="docs-ui">Projekt hinzufügen</span> in der Seitenleiste oder <span class="docs-ui">Projekt hinzufügen …</span> im Projektmenü der Titelleiste.</li>
+  <li>Wählen Sie, woher das Projekt kommt:
+    <ul>
+      <li><span class="docs-ui">Auf diesem Computer</span>: Wählen Sie einen Ordner.</li>
+      <li><span class="docs-ui">Von GitHub / GitLab klonen</span>: Wählen Sie eines Ihrer Repositorys (aufgelistet über Ihre Anmeldung bei <code>gh</code> oder <code>glab</code>) oder fügen Sie eine URL ein und wählen Sie den übergeordneten Ordner. Ferret klont das Repository und öffnet es.</li>
+      <li><span class="docs-ui">Über SSH öffnen</span>: Wählen Sie einen Host aus <code>~/.ssh/config</code>. Terminal und Agents laufen auf dem entfernten Rechner; die Reviews bleiben auf diesem Computer.</li>
+    </ul>
+  </li>
+</ol>
+<p>Als Name wird standardmäßig der Ordnername verwendet. Fügen Sie einen bereits registrierten Ordner hinzu, wird stattdessen dieser geöffnet (unter macOS und Windows werden Pfade ohne Beachtung der Groß-/Kleinschreibung verglichen). Über das Menü in der Seitenleiste können Sie ein Projekt <span class="docs-ui">Umbenennen</span> oder <span class="docs-ui">Aus Liste entfernen</span>. Beim Entfernen wird der Ordner nie gelöscht.</p>
+<p>Terminals öffnen sich im Projektordner, und Reviews werden unter <code>&lt;project&gt;/.ferret/</code> gespeichert.</p>
+
+<!-- @save-url 8914160725 -->
+## URLs speichern
+<ol class="docs-steps">
+  <li>Öffnen Sie die Seite im integrierten Browser.</li>
+  <li>Klicken Sie in der Browser-Werkzeugleiste auf <span class="docs-ui">+</span> (<span class="docs-ui">Aktuelle URL speichern</span>). Die aktuelle URL ist bereits eingetragen.</li>
+  <li>Geben Sie einen <span class="docs-ui">Name</span> ein und klicken Sie auf <span class="docs-ui">Speichern</span>.</li>
+</ol>
+<p>Es werden nur URLs mit <code>http://</code> und <code>https://</code> akzeptiert. Wenn Sie den vorgeschlagenen Namen übernehmen, wird er aus dem Host abgeleitet:</p>
+<table>
+  <thead><tr><th>Host</th><th>Name</th></tr></thead>
+  <tbody>
+    <tr><td><code>localhost</code>, <code>127.*</code>, <code>::1</code>, <code>0.0.0.0</code>, <code>*.localhost</code></td><td><code>local</code></td></tr>
+    <tr><td>enthält <code>dev</code>, <code>develop</code>, <code>development</code></td><td><code>dev</code></td></tr>
+    <tr><td>enthält <code>stg</code>, <code>stage</code>, <code>staging</code></td><td><code>stg</code></td></tr>
+    <tr><td>alles andere</td><td><code>prd</code></td></tr>
+  </tbody>
+</table>
+<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="Gespeicherte URLs in der Browser-Werkzeugleiste (Screenshot folgt)"><span>Screenshot folgt</span></div><figcaption>Gespeicherte URLs in der Browser-Werkzeugleiste</figcaption></figure>
+
+<!-- @review-targets 351621051d -->
+## Bereich „Review-Ziele“
+{{clip:targets|Review-Ziele und Seiten wechseln, ohne die Aufnahme zu stoppen.}}
+<p>Im Feedback-Modus listet der Bereich <span class="docs-ui">Review-Ziele</span> rechts alles auf, was Sie im aktuellen Projekt prüfen können. Ein Wechsel des Ziels stoppt die Aufnahme nicht. Blenden Sie den Bereich mit <span class="docs-ui">Darstellung → Review-Ziele ein/aus</span> ({{keys:Mod+Shift+K}}) oder <span class="docs-ui">Bereich ausblenden</span> ein und aus.</p>
+<ul>
+  <li><strong><span class="docs-ui">Ziele</span></strong>: die gespeicherten URLs des Projekts. Unter jeder steht ein Baum der Seiten, die Sie auf dieser Site besucht haben. Besuchte Sites, die nicht gespeichert sind, erscheinen als eigene Gruppen.</li>
+  <li><strong><span class="docs-ui">Dateien</span></strong>: der Projektordner. Eine Datei öffnet sich als Vorschau (Markdown und Mermaid gerendert, anderer Text schreibgeschützt), sodass Sie auch Dokumentation prüfen können. Der Stift (<span class="docs-ui">Im Editor öffnen</span>) öffnet sie im Editor.</li>
+</ul>
+<p><span class="docs-ui">Ziele filtern</span> filtert Ziele, Seiten und Dateien gemeinsam, mit derselben unscharfen Suche wie <span class="docs-ui">Gehe zu Datei …</span>. In der Liste wechseln <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> oder <kbd>1</kbd>–<kbd>9</kbd> das Ziel. <span class="docs-ui">URL öffnen…</span> öffnet eine einmalige URL, und <span class="docs-ui">In Projekt-URLs speichern</span> behält sie.</p>
+<p>Die Ziele stammen aus <code>projects[].urls</code> in <code>settings.json</code> (siehe <a href="settings-json.html#example">das Beispiel</a>). Jeder Eintrag braucht eine <code>url</code>, einen <code>launchCommand</code> (wird in einem Terminal ausgeführt, z. B. um eine Desktop-App zu starten) oder ein <code>windowMatch</code> (das aufzunehmende Fenster). Die Auswahl eines Fensterziels legt es als Aufnahmequelle fest und ist daher während einer Aufnahme nicht möglich. Besuchte Seiten werden pro Projekt gespeichert, nur auf diesem Rechner (bis zu 200).</p>
+
+<!-- @switch-env 5103621352 -->
+## Umgebungen öffnen und wechseln
+<p>Klicken Sie auf eine gespeicherte URL, um sie zu öffnen. Liegt die aktuelle Seite unter einer anderen gespeicherten URL, behält Ferret Pfad, Query und Hash bei und tauscht nur den Origin aus. Ein Beispiel: Auf <code>http://localhost:3000/pricing?plan=pro</code> öffnet ein Klick auf <code>prd</code> die Adresse <code>https://example.com/pricing?plan=pro</code>.</p>
+<p>Der Chip, der zur aktuellen Seite passt (längstes Präfix), ist hervorgehoben. Klicken Sie mit der rechten Maustaste auf einen Chip oder verwenden Sie sein Stiftsymbol, um ihn zu bearbeiten oder zu <span class="docs-ui">Löschen</span>. Wird ein Projekt geöffnet und gibt es keine vorherige URL, wird seine erste gespeicherte URL geladen.</p>

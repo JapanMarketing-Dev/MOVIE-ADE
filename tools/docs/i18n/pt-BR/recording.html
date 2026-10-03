@@ -1,0 +1,54 @@
+<!-- Ferret docs translation: pt-BR / recording. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 80e8dd1a5a -->
+Gravação
+
+<!-- @lead 14988eae28 -->
+Grave o navegador integrado, a tela inteira ou outra janela. Fale, circule e digite enquanto usa a página.
+
+<!-- @target 133550362a -->
+## Escolher o que gravar
+<p>No modo Feedback, clique em <span class="docs-ui">Escolher alvo da gravação</span>. A caixa de diálogo <span class="docs-ui">Alvo da gravação</span> oferece:</p>
+<table>
+  <thead><tr><th>Alvo</th><th>O que é capturado</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Navegador integrado</span> (padrão)</td><td>Vídeo, voz e caneta, além de URL, seletores de elementos, cliques e rolagens. Não exige permissão do sistema.</td></tr>
+    <tr><td><span class="docs-ui">Tela inteira</span></td><td>Vídeo, voz e caneta. Sem URL, elemento nem registro de ações (isso é anotado no <code>feedback.md</code>).</td></tr>
+    <tr><td><span class="docs-ui">Janela</span></td><td>O mesmo que acima. As janelas do próprio Ferret não aparecem na lista.</td></tr>
+  </tbody>
+</table>
+<p>Sua escolha é lembrada. No macOS, a captura da tela e de janelas exige a permissão de Gravação de Tela (<a href="troubleshooting.html#screen-permission">como concedê-la</a>).</p>
+
+<!-- @record 0d1af48c7a -->
+## Iniciar, pausar, parar
+{{clip:record|Gravando: fale sobre a página e circule o ponto com a caneta.}}
+<ol class="docs-steps">
+  <li>Abra a página a revisar no navegador integrado.</li>
+  <li><span class="docs-ui">Gravar</span> na barra de título, ou {{keys:Mod+Shift+R}}.</li>
+  <li><span class="docs-ui">Pausar</span> interrompe o desenho e o cronômetro. <span class="docs-ui">Retomar</span> continua.</li>
+  <li><span class="docs-ui">Parar</span> ou {{keys:Mod+Shift+R}} de novo.</li>
+</ol>
+<p>Na barra lateral, cada projeto tem o próprio <span class="docs-ui">Nova revisão</span> (ou o <span class="docs-ui">+</span> na linha dele, <span class="docs-ui">Nova revisão em &lt;name&gt;</span>). Em outro projeto, ele primeiro muda para esse projeto e depois começa a gravar. Ele não inicia enquanto outra gravação estiver em andamento.</p>
+<p>Uma gravação tem limite de 90 minutos. Você recebe um aviso perto do limite e, quando ele é atingido, a gravação para e é salva automaticamente.</p>
+<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="Barra de ferramentas do modo Feedback (captura de tela em breve)"><span>Captura de tela em breve</span></div><figcaption>Barra de ferramentas do modo Feedback</figcaption></figure>
+
+<!-- @pen 0232dc7983 -->
+## Caneta
+<ul>
+  <li><strong><span class="docs-ui">Caneta</span></strong>: selecione-a, ou segure {{keys:Alt}} para desenhar só enquanto a tecla estiver pressionada (ignorado enquanto você digita em um campo).</li>
+  <li><strong><span class="docs-ui">Limpar</span></strong>: remove as marcas atuais.</li>
+</ul>
+<p>Circule o ponto enquanto fala sobre ele: as palavras e as marcas ficam no mesmo apontamento. A caneta só está disponível durante a gravação. Não há ferramenta de texto: diga em voz alta. As teclas da caneta, da caixa e das cores estão em <a href="keyboard.html#drawing">Atalhos de teclado</a>.</p>
+
+<!-- @annotations-clear ea2e57b47b -->
+## Quando as marcas somem
+<p>As marcas pertencem à tela em que foram desenhadas. Elas são registradas no apontamento atual e depois apagadas quando:</p>
+<ul>
+  <li>a página navega: um carregamento completo ou uma mudança de rota de SPA para um novo caminho ou query. Uma mudança só no hash as mantém.</li>
+  <li>você rola a página</li>
+  <li>um trecho de fala termina</li>
+</ul>
+
+<!-- @mic 3540329978 -->
+## Microfone
+<p>O microfone fica ligado por padrão. Ligue ou desligue pelo rodapé (<span class="docs-ui">Desligar microfone</span> / <span class="docs-ui">Ligar microfone</span>) ou com <span class="docs-ui">Gravar minha voz</span> nas Configurações. Escolha um dispositivo em <span class="docs-ui">Microfone</span>.</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Em breve</p><p><span class="docs-ui">Gravar também o outro lado</span> (capturar os outros participantes de uma reunião pelo áudio do sistema) está em beta. Ainda não foi validado com apps de reunião.</p></div>

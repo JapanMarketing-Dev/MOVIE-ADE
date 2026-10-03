@@ -1,0 +1,56 @@
+<!-- Ferret docs translation: ru / projects. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 5c9e1003a2 -->
+Проекты и URL
+
+<!-- @lead 4a937bd356 -->
+Проект — это папка (обычно корень репозитория). У каждого проекта свои сохранённые URL, поэтому между локальной, dev- и продакшен-средой — один щелчок.
+
+<!-- @add-project eb372d2531 -->
+## Добавление проекта
+<ol class="docs-steps">
+  <li><span class="docs-ui">Файл → Открыть папку проекта…</span> ({{keys:Mod+O}}), <span class="docs-ui">Добавить проект</span> на боковой панели или <span class="docs-ui">Добавить проект…</span> в меню проекта в заголовке окна.</li>
+  <li>Выберите, откуда взять проект:
+    <ul>
+      <li><span class="docs-ui">На этом компьютере</span>: выберите папку.</li>
+      <li><span class="docs-ui">Клонировать с GitHub / GitLab</span>: выберите один из своих репозиториев (список берётся через ваш вход в <code>gh</code> или <code>glab</code>) или вставьте URL, укажите родительскую папку, и Ferret склонирует и откроет его.</li>
+      <li><span class="docs-ui">Открыть по SSH</span>: выберите хост из <code>~/.ssh/config</code>. Терминал и агенты работают на удалённой машине, а ревью остаются на этом компьютере.</li>
+    </ul>
+  </li>
+</ol>
+<p>По умолчанию имя проекта совпадает с именем папки. Если добавить уже зарегистрированную папку, она просто откроется (на macOS и Windows пути сравниваются без учёта регистра). В меню на боковой панели проект можно <span class="docs-ui">Переименовать</span> или <span class="docs-ui">Убрать из списка</span>. Удаление из списка никогда не удаляет саму папку.</p>
+<p>Терминалы открываются в папке проекта, а ревью сохраняются в <code>&lt;project&gt;/.ferret/</code>.</p>
+
+<!-- @save-url 8914160725 -->
+## Сохранение URL
+<ol class="docs-steps">
+  <li>Откройте страницу во встроенном браузере.</li>
+  <li>Нажмите <span class="docs-ui">+</span> (<span class="docs-ui">Сохранить текущий URL</span>) на панели браузера. Текущий URL подставится автоматически.</li>
+  <li>Введите <span class="docs-ui">Название</span> и нажмите <span class="docs-ui">Сохранить</span>.</li>
+</ol>
+<p>Принимаются только URL <code>http://</code> и <code>https://</code>. Если оставить предложенное название, оно определяется по хосту:</p>
+<table>
+  <thead><tr><th>Хост</th><th>Название</th></tr></thead>
+  <tbody>
+    <tr><td><code>localhost</code>, <code>127.*</code>, <code>::1</code>, <code>0.0.0.0</code>, <code>*.localhost</code></td><td><code>local</code></td></tr>
+    <tr><td>содержит <code>dev</code>, <code>develop</code>, <code>development</code></td><td><code>dev</code></td></tr>
+    <tr><td>содержит <code>stg</code>, <code>stage</code>, <code>staging</code></td><td><code>stg</code></td></tr>
+    <tr><td>всё остальное</td><td><code>prd</code></td></tr>
+  </tbody>
+</table>
+<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="Сохранённые URL на панели браузера (скриншот скоро появится)"><span>Скриншот скоро появится</span></div><figcaption>Сохранённые URL на панели браузера</figcaption></figure>
+
+<!-- @review-targets 351621051d -->
+## Панель целей ревью
+{{clip:targets|Переключение целей ревью и страниц без остановки записи.}}
+<p>В режиме фидбэка панель <span class="docs-ui">Цели ревью</span> справа показывает всё, что можно проверить в текущем проекте. Переключение целей не останавливает запись. Показать или скрыть панель можно через <span class="docs-ui">Вид → Цели ревью</span> ({{keys:Mod+Shift+K}}) или кнопкой <span class="docs-ui">Скрыть панель</span>.</p>
+<ul>
+  <li><strong><span class="docs-ui">Цели</span></strong>: сохранённые URL проекта. Под каждым — дерево страниц, которые вы посетили на этом сайте. Посещённые сайты, которые не сохранены, выводятся отдельными группами.</li>
+  <li><strong><span class="docs-ui">Файлы</span></strong>: папка проекта. Файл открывается в предпросмотре (Markdown и Mermaid отображаются, прочий текст — только для чтения), так что проверять можно и документацию. Карандаш (<span class="docs-ui">Открыть в редакторе</span>) открывает файл в редакторе.</li>
+</ul>
+<p><span class="docs-ui">Фильтр целей</span> фильтрует цели, страницы и файлы одновременно, с тем же нечётким поиском, что и <span class="docs-ui">Перейти к файлу…</span>. В списке цели переключаются клавишами <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> или <kbd>1</kbd>–<kbd>9</kbd>. <span class="docs-ui">Открыть URL…</span> открывает разовый URL, а <span class="docs-ui">Сохранить в URL проекта</span> сохраняет его.</p>
+<p>Цели берутся из <code>projects[].urls</code> в <code>settings.json</code> (см. <a href="settings-json.html#example">пример</a>). Каждой записи нужен <code>url</code>, <code>launchCommand</code> (запускается в терминале, например чтобы открыть настольное приложение) или <code>windowMatch</code> (окно для записи). Выбор цели-окна делает его источником записи, поэтому во время записи это невозможно. Посещённые страницы запоминаются для каждого проекта, только на этом компьютере (не более 200).</p>
+
+<!-- @switch-env 5103621352 -->
+## Открытие и переключение сред
+<p>Щёлкните сохранённый URL, чтобы открыть его. Если текущая страница относится к другому сохранённому URL, Ferret сохраняет путь, параметры запроса и хеш и меняет только origin. Например, на странице <code>http://localhost:3000/pricing?plan=pro</code> щелчок по <code>prd</code> откроет <code>https://example.com/pricing?plan=pro</code>.</p>
+<p>Подсвечивается чип, соответствующий текущей странице (по самому длинному префиксу). Чтобы изменить чип или <span class="docs-ui">Удалить</span> его, щёлкните по нему правой кнопкой мыши или нажмите значок карандаша. Если при открытии проекта предыдущего URL нет, загружается первый сохранённый URL.</p>

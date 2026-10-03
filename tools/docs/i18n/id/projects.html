@@ -1,0 +1,56 @@
+<!-- Ferret docs translation: id / projects. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 5c9e1003a2 -->
+Proyek dan URL
+
+<!-- @lead 4a937bd356 -->
+Proyek adalah sebuah folder (biasanya root repo Anda). Setiap proyek menyimpan URL-nya sendiri, sehingga lingkungan local, dev, dan production hanya berjarak satu klik.
+
+<!-- @add-project eb372d2531 -->
+## Menambahkan proyek
+<ol class="docs-steps">
+  <li>Pilih <span class="docs-ui">File → Buka Folder Proyek…</span> ({{keys:Mod+O}}), <span class="docs-ui">Tambah Proyek</span> di sidebar, atau <span class="docs-ui">Tambah Proyek…</span> di menu proyek pada bilah judul.</li>
+  <li>Pilih asal proyek:
+    <ul>
+      <li><span class="docs-ui">Di komputer ini</span>: pilih folder.</li>
+      <li><span class="docs-ui">Clone dari GitHub / GitLab</span>: pilih salah satu repositori Anda (didaftar melalui login <code>gh</code> atau <code>glab</code> Anda) atau tempel URL, pilih folder induk, lalu Ferret akan meng-clone dan membukanya.</li>
+      <li><span class="docs-ui">Buka lewat SSH</span>: pilih host dari <code>~/.ssh/config</code>. Terminal dan agent berjalan di mesin remote; tinjauan tetap tersimpan di komputer ini.</li>
+    </ul>
+  </li>
+</ol>
+<p>Nama bawaannya adalah nama folder. Menambahkan folder yang sudah terdaftar akan membukanya (path dibandingkan tanpa membedakan huruf besar-kecil di macOS dan Windows). Dari menu sidebar, Anda bisa memilih <span class="docs-ui">Ganti Nama</span> untuk proyek atau <span class="docs-ui">Hapus dari Daftar</span>. Menghapus dari daftar tidak pernah menghapus foldernya.</p>
+<p>Terminal dibuka di folder proyek, dan tinjauan disimpan di bawah <code>&lt;project&gt;/.ferret/</code>.</p>
+
+<!-- @save-url 8914160725 -->
+## Menyimpan URL
+<ol class="docs-steps">
+  <li>Buka halamannya di browser bawaan.</li>
+  <li>Klik <span class="docs-ui">+</span> (<span class="docs-ui">Simpan URL saat ini</span>) di toolbar browser. URL saat ini sudah terisi.</li>
+  <li>Masukkan <span class="docs-ui">Nama</span> lalu klik <span class="docs-ui">Simpan</span>.</li>
+</ol>
+<p>Hanya URL <code>http://</code> dan <code>https://</code> yang diterima. Jika Anda membiarkan nama sesuai saran, nama ditebak dari host-nya:</p>
+<table>
+  <thead><tr><th>Host</th><th>Nama</th></tr></thead>
+  <tbody>
+    <tr><td><code>localhost</code>, <code>127.*</code>, <code>::1</code>, <code>0.0.0.0</code>, <code>*.localhost</code></td><td><code>local</code></td></tr>
+    <tr><td>mengandung <code>dev</code>, <code>develop</code>, <code>development</code></td><td><code>dev</code></td></tr>
+    <tr><td>mengandung <code>stg</code>, <code>stage</code>, <code>staging</code></td><td><code>stg</code></td></tr>
+    <tr><td>lainnya</td><td><code>prd</code></td></tr>
+  </tbody>
+</table>
+<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="URL tersimpan di toolbar browser (screenshot segera hadir)"><span>Screenshot segera hadir</span></div><figcaption>URL tersimpan di toolbar browser</figcaption></figure>
+
+<!-- @review-targets 351621051d -->
+## Panel target tinjauan
+{{clip:targets|Berpindah target tinjauan dan halaman tanpa menghentikan rekaman.}}
+<p>Dalam mode Umpan Balik, panel <span class="docs-ui">Target tinjauan</span> di kanan mencantumkan semua yang bisa Anda tinjau untuk proyek saat ini. Berpindah target tidak menghentikan rekaman. Tampilkan atau sembunyikan panel dengan <span class="docs-ui">Tampilan → Tampilkan/Sembunyikan Target Tinjauan</span> ({{keys:Mod+Shift+K}}) atau <span class="docs-ui">Sembunyikan panel</span>.</p>
+<ul>
+  <li><strong><span class="docs-ui">Target</span></strong>: URL tersimpan milik proyek. Di bawah masing-masing ada pohon halaman yang pernah Anda kunjungi di situs tersebut. Situs yang Anda kunjungi tetapi tidak tersimpan muncul sebagai grup tersendiri.</li>
+  <li><strong><span class="docs-ui">File</span></strong>: folder proyek. File dibuka sebagai pratinjau (Markdown dan Mermaid dirender, teks lain hanya-baca), sehingga Anda juga bisa meninjau dokumen. Ikon pensil (<span class="docs-ui">Buka di editor</span>) membukanya di editor.</li>
+</ul>
+<p><span class="docs-ui">Filter target</span> menyaring target, halaman, dan file sekaligus, dengan pencocokan fuzzy yang sama seperti <span class="docs-ui">Buka File…</span>. Di dalam daftar, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> atau <kbd>1</kbd>–<kbd>9</kbd> berpindah target. <span class="docs-ui">Buka URL…</span> membuka URL sekali pakai, dan <span class="docs-ui">Simpan ke URL proyek</span> menyimpannya.</p>
+<p>Target berasal dari <code>projects[].urls</code> di <code>settings.json</code> (lihat <a href="settings-json.html#example">contohnya</a>). Setiap entri memerlukan <code>url</code>, <code>launchCommand</code> (dijalankan di terminal, misalnya untuk memulai aplikasi desktop), atau <code>windowMatch</code> (jendela yang direkam). Memilih target jendela akan menjadikannya sumber perekaman, jadi tidak bisa dilakukan saat sedang merekam. Halaman yang dikunjungi diingat per proyek, hanya di mesin ini (hingga 200).</p>
+
+<!-- @switch-env 5103621352 -->
+## Membuka dan berpindah lingkungan
+<p>Klik URL tersimpan untuk membukanya. Jika halaman saat ini berada di bawah URL tersimpan lain, Ferret mempertahankan path, query, dan hash, lalu hanya mengganti origin-nya. Misalnya, di <code>http://localhost:3000/pricing?plan=pro</code>, mengklik <code>prd</code> akan membuka <code>https://example.com/pricing?plan=pro</code>.</p>
+<p>Chip yang cocok dengan halaman saat ini (prefiks terpanjang) disorot. Klik kanan chip atau gunakan ikon pensilnya untuk mengedit atau <span class="docs-ui">Hapus</span>. Saat proyek dibuka dan belum ada URL sebelumnya, URL tersimpan pertamanya akan dimuat.</p>

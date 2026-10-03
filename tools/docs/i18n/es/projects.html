@@ -1,0 +1,56 @@
+<!-- Ferret docs translation: es / projects. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 5c9e1003a2 -->
+Proyectos y URL
+
+<!-- @lead 4a937bd356 -->
+Un proyecto es una carpeta (normalmente la raíz de tu repositorio). Cada proyecto guarda sus propias URL, así que local, dev y producción están a un clic de distancia.
+
+<!-- @add-project eb372d2531 -->
+## Añadir un proyecto
+<ol class="docs-steps">
+  <li><span class="docs-ui">Archivo → Abrir carpeta de proyecto…</span> ({{keys:Mod+O}}), <span class="docs-ui">Añadir proyecto</span> en la barra lateral o <span class="docs-ui">Añadir proyecto…</span> en el menú de proyectos de la barra de título.</li>
+  <li>Elige de dónde viene el proyecto:
+    <ul>
+      <li><span class="docs-ui">En este equipo</span>: elige una carpeta.</li>
+      <li><span class="docs-ui">Clonar desde GitHub / GitLab</span>: elige uno de tus repositorios (listados mediante tu sesión de <code>gh</code> o <code>glab</code>) o pega una URL, elige la carpeta superior, y Ferret lo clona y lo abre.</li>
+      <li><span class="docs-ui">Abrir por SSH</span>: elige un host de <code>~/.ssh/config</code>. La terminal y los agentes se ejecutan en la máquina remota; las revisiones se quedan en este equipo.</li>
+    </ul>
+  </li>
+</ol>
+<p>El nombre predeterminado es el de la carpeta. Si añades una carpeta que ya está registrada, se abre en su lugar (en macOS y Windows las rutas se comparan sin distinguir mayúsculas y minúsculas). Desde el menú de la barra lateral puedes <span class="docs-ui">Renombrar</span> un proyecto o <span class="docs-ui">Quitar de la lista</span>. Quitarlo nunca elimina la carpeta.</p>
+<p>Las terminales se abren en la carpeta del proyecto y las revisiones se guardan en <code>&lt;project&gt;/.ferret/</code>.</p>
+
+<!-- @save-url 8914160725 -->
+## Guardar URL
+<ol class="docs-steps">
+  <li>Abre la página en el navegador integrado.</li>
+  <li>Haz clic en <span class="docs-ui">+</span> (<span class="docs-ui">Guardar URL actual</span>) en la barra de herramientas del navegador. La URL actual aparece ya rellenada.</li>
+  <li>Escribe un <span class="docs-ui">Nombre</span> y haz clic en <span class="docs-ui">Guardar</span>.</li>
+</ol>
+<p>Solo se aceptan URL <code>http://</code> y <code>https://</code>. Si dejas el nombre sugerido, se deduce del host:</p>
+<table>
+  <thead><tr><th>Host</th><th>Nombre</th></tr></thead>
+  <tbody>
+    <tr><td><code>localhost</code>, <code>127.*</code>, <code>::1</code>, <code>0.0.0.0</code>, <code>*.localhost</code></td><td><code>local</code></td></tr>
+    <tr><td>contiene <code>dev</code>, <code>develop</code>, <code>development</code></td><td><code>dev</code></td></tr>
+    <tr><td>contiene <code>stg</code>, <code>stage</code>, <code>staging</code></td><td><code>stg</code></td></tr>
+    <tr><td>cualquier otro</td><td><code>prd</code></td></tr>
+  </tbody>
+</table>
+<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="URL guardadas en la barra de herramientas del navegador (captura disponible próximamente)"><span>Captura disponible próximamente</span></div><figcaption>URL guardadas en la barra de herramientas del navegador</figcaption></figure>
+
+<!-- @review-targets 351621051d -->
+## Panel de objetivos de revisión
+{{clip:targets|Cambiar de objetivo de revisión y de página sin detener la grabación.}}
+<p>En el modo Feedback, el panel <span class="docs-ui">Objetivos de revisión</span> de la derecha muestra todo lo que puedes revisar en el proyecto actual. Cambiar de objetivo no detiene la grabación. Muestra u oculta el panel con <span class="docs-ui">Visualización → Mostrar/ocultar objetivos de revisión</span> ({{keys:Mod+Shift+K}}) o con <span class="docs-ui">Ocultar panel</span>.</p>
+<ul>
+  <li><strong><span class="docs-ui">Objetivos</span></strong>: las URL guardadas del proyecto. Debajo de cada una hay un árbol con las páginas que has visitado en ese sitio. Los sitios visitados que no están guardados aparecen como grupos propios.</li>
+  <li><strong><span class="docs-ui">Archivos</span></strong>: la carpeta del proyecto. Un archivo se abre como vista previa (Markdown y Mermaid renderizados, el resto de texto en solo lectura), así que también puedes revisar documentación. El lápiz (<span class="docs-ui">Abrir en el editor</span>) lo abre en el editor.</li>
+</ul>
+<p><span class="docs-ui">Filtrar objetivos</span> filtra a la vez objetivos, páginas y archivos, con la misma búsqueda aproximada que <span class="docs-ui">Ir al archivo…</span>. En la lista, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> o <kbd>1</kbd>–<kbd>9</kbd> cambian de objetivo. <span class="docs-ui">Abrir URL…</span> abre una URL puntual y <span class="docs-ui">Guardar en las URL del proyecto</span> la conserva.</p>
+<p>Los objetivos vienen de <code>projects[].urls</code> en <code>settings.json</code> (consulta <a href="settings-json.html#example">el ejemplo</a>). Cada entrada necesita una <code>url</code>, un <code>launchCommand</code> (se ejecuta en una terminal, p. ej. para iniciar una app de escritorio) o un <code>windowMatch</code> (la ventana que se graba). Elegir un objetivo de ventana lo establece como origen de la grabación, así que no se puede hacer mientras grabas. Las páginas visitadas se recuerdan por proyecto, solo en este equipo (hasta 200).</p>
+
+<!-- @switch-env 5103621352 -->
+## Abrir y cambiar de entorno
+<p>Haz clic en una URL guardada para abrirla. Si la página actual está bajo otra URL guardada, Ferret conserva la ruta, la query y el hash y solo cambia el origen. Por ejemplo, en <code>http://localhost:3000/pricing?plan=pro</code>, al hacer clic en <code>prd</code> se abre <code>https://example.com/pricing?plan=pro</code>.</p>
+<p>Se resalta la etiqueta que corresponde a la página actual (el prefijo más largo). Haz clic derecho en una etiqueta o usa su icono de lápiz para editarla o eliminarla (<span class="docs-ui">Eliminar</span>). Cuando se abre un proyecto y no hay URL anterior, se carga su primera URL guardada.</p>

@@ -1,0 +1,54 @@
+<!-- Ferret docs translation: ko / recording. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 80e8dd1a5a -->
+녹화
+
+<!-- @lead 14988eae28 -->
+내장 브라우저, 전체 화면, 또는 다른 창을 녹화합니다. 페이지를 사용하면서 말하고, 동그라미를 그리고, 입력하세요.
+
+<!-- @target 133550362a -->
+## 녹화할 대상 고르기
+<p>피드백 모드에서 <span class="docs-ui">녹화 대상 선택</span>을 클릭합니다. <span class="docs-ui">녹화 대상</span> 대화 상자에서 다음 중 하나를 고를 수 있습니다.</p>
+<table>
+  <thead><tr><th>대상</th><th>기록되는 것</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">내장 브라우저</span>(기본값)</td><td>동영상, 음성, 펜과 함께 URL, 요소 선택자, 클릭, 스크롤. OS 권한이 필요 없습니다.</td></tr>
+    <tr><td><span class="docs-ui">전체 화면</span></td><td>동영상, 음성, 펜. URL, 요소, 조작 기록은 없습니다(<code>feedback.md</code>에 그렇게 적힙니다).</td></tr>
+    <tr><td><span class="docs-ui">창</span></td><td>위와 같습니다. Ferret 자신의 창은 목록에 나오지 않습니다.</td></tr>
+  </tbody>
+</table>
+<p>선택한 대상은 기억됩니다. macOS에서 화면과 창을 녹화하려면 화면 기록 권한이 필요합니다(<a href="troubleshooting.html#screen-permission">권한을 주는 방법</a>).</p>
+
+<!-- @record 0d1af48c7a -->
+## 시작, 일시 정지, 중지
+{{clip:record|녹화: 페이지에 대해 말하면서 펜으로 그 위치를 동그라미로 표시합니다.}}
+<ol class="docs-steps">
+  <li>리뷰할 페이지를 내장 브라우저에서 엽니다.</li>
+  <li>제목 표시줄의 <span class="docs-ui">녹화</span> 또는 {{keys:Mod+Shift+R}}.</li>
+  <li><span class="docs-ui">일시 정지</span>는 그리기와 타이머를 멈춥니다. <span class="docs-ui">재개</span>로 계속합니다.</li>
+  <li><span class="docs-ui">중지</span> 또는 {{keys:Mod+Shift+R}}을 다시 누릅니다.</li>
+</ol>
+<p>사이드바에서는 프로젝트마다 <span class="docs-ui">새 리뷰</span>가 있습니다(또는 그 행의 <span class="docs-ui">+</span>, <span class="docs-ui">&lt;name&gt;에서 새 리뷰</span>). 다른 프로젝트에서 누르면 먼저 그 프로젝트로 전환한 뒤 녹화를 시작합니다. 다른 녹화가 진행 중이면 시작되지 않습니다.</p>
+<p>녹화는 최대 90분입니다. 한도에 가까워지면 경고가 표시되고, 한도에 도달하면 녹화가 자동으로 중지되고 저장됩니다.</p>
+<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="피드백 모드 도구 모음(스크린샷 준비 중)"><span>스크린샷 준비 중</span></div><figcaption>피드백 모드 도구 모음</figcaption></figure>
+
+<!-- @pen 0232dc7983 -->
+## 펜
+<ul>
+  <li><strong><span class="docs-ui">펜</span></strong>: 선택하거나, {{keys:Alt}}를 누르고 있는 동안에만 그릴 수 있습니다(입력란에 입력하는 중에는 무시됨).</li>
+  <li><strong><span class="docs-ui">지우기</span></strong>: 현재 표시를 지웁니다.</li>
+</ul>
+<p>말하면서 그 위치를 동그라미로 표시하세요. 말과 표시가 같은 지적 사항에 들어갑니다. 펜은 녹화 중에만 사용할 수 있습니다. 텍스트 도구는 없으니 말로 전하세요. 펜, 사각형, 색에 대한 키는 <a href="keyboard.html#drawing">키보드 단축키</a>에 있습니다.</p>
+
+<!-- @annotations-clear ea2e57b47b -->
+## 표시가 사라질 때
+<p>표시는 그려진 화면에 속합니다. 다음과 같은 경우 표시는 현재 지적 사항에 기록된 뒤 지워집니다.</p>
+<ul>
+  <li>페이지가 이동할 때: 전체 로드, 또는 새 경로나 쿼리로의 SPA 라우트 변경. 해시만 바뀌면 유지됩니다.</li>
+  <li>페이지를 스크롤할 때</li>
+  <li>말한 구간이 끝날 때</li>
+</ul>
+
+<!-- @mic 3540329978 -->
+## 마이크
+<p>마이크는 기본적으로 켜져 있습니다. 푸터(<span class="docs-ui">마이크 끄기</span> / <span class="docs-ui">마이크 켜기</span>)나 설정의 <span class="docs-ui">내 음성 녹음</span>으로 켜고 끕니다. 장치는 <span class="docs-ui">마이크</span>에서 고릅니다.</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">곧 제공 예정</p><p><span class="docs-ui">상대방 음성도 녹음</span>(시스템 오디오를 통해 회의의 다른 참가자 음성을 녹음)은 베타입니다. 아직 회의 앱에서 검증되지 않았습니다.</p></div>

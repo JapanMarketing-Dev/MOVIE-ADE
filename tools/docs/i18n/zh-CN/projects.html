@@ -1,0 +1,56 @@
+<!-- Ferret docs translation: zh-CN / projects. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 5c9e1003a2 -->
+项目与 URL
+
+<!-- @lead 4a937bd356 -->
+项目就是一个文件夹（通常是仓库的根目录）。每个项目都保存自己的 URL，因此本地、开发和生产环境只需一次点击即可切换。
+
+<!-- @add-project eb372d2531 -->
+## 添加项目
+<ol class="docs-steps">
+  <li>使用 <span class="docs-ui">文件 → 打开项目文件夹…</span>（{{keys:Mod+O}}）、侧边栏中的 <span class="docs-ui">添加项目</span>，或标题栏项目菜单中的 <span class="docs-ui">添加项目…</span>。</li>
+  <li>选择项目的来源：
+    <ul>
+      <li><span class="docs-ui">在这台电脑上</span>：选择一个文件夹。</li>
+      <li><span class="docs-ui">从 GitHub / GitLab 克隆</span>：从你的仓库中选择一个（通过你的 <code>gh</code> 或 <code>glab</code> 登录列出），或粘贴 URL，再选择父文件夹，Ferret 会克隆并打开它。</li>
+      <li><span class="docs-ui">通过 SSH 打开</span>：从 <code>~/.ssh/config</code> 中选择一个主机。终端和 Agent 在远程机器上运行；审查保存在这台电脑上。</li>
+    </ul>
+  </li>
+</ol>
+<p>名称默认是文件夹名。添加一个已登记的文件夹时，会直接打开它（在 macOS 和 Windows 上，路径比较不区分大小写）。在侧边栏菜单中可以对项目执行 <span class="docs-ui">重命名</span> 或 <span class="docs-ui">从列表中移除</span>。移除绝不会删除文件夹。</p>
+<p>终端在项目文件夹中打开，审查保存在 <code>&lt;project&gt;/.ferret/</code> 下。</p>
+
+<!-- @save-url 8914160725 -->
+## 保存 URL
+<ol class="docs-steps">
+  <li>在内置浏览器中打开页面。</li>
+  <li>点击浏览器工具栏中的 <span class="docs-ui">+</span>（<span class="docs-ui">保存当前 URL</span>）。当前 URL 会预先填好。</li>
+  <li>输入 <span class="docs-ui">名称</span>，然后点击 <span class="docs-ui">保存</span>。</li>
+</ol>
+<p>只接受 <code>http://</code> 和 <code>https://</code> URL。如果保留建议的名称，它会根据主机推断：</p>
+<table>
+  <thead><tr><th>主机</th><th>名称</th></tr></thead>
+  <tbody>
+    <tr><td><code>localhost</code>、<code>127.*</code>、<code>::1</code>、<code>0.0.0.0</code>、<code>*.localhost</code></td><td><code>local</code></td></tr>
+    <tr><td>包含 <code>dev</code>、<code>develop</code>、<code>development</code></td><td><code>dev</code></td></tr>
+    <tr><td>包含 <code>stg</code>、<code>stage</code>、<code>staging</code></td><td><code>stg</code></td></tr>
+    <tr><td>其他任何主机</td><td><code>prd</code></td></tr>
+  </tbody>
+</table>
+<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="浏览器工具栏中保存的 URL（截图即将推出）"><span>截图即将推出</span></div><figcaption>浏览器工具栏中保存的 URL</figcaption></figure>
+
+<!-- @review-targets 351621051d -->
+## 审查对象面板
+{{clip:targets|在不停止录制的情况下切换审查对象和页面。}}
+<p>在反馈模式下，右侧的 <span class="docs-ui">审查对象</span> 面板会列出当前项目中所有可以审查的内容。切换对象不会停止录制。可以用 <span class="docs-ui">显示 → 显示 / 隐藏审查对象</span>（{{keys:Mod+Shift+K}}）或 <span class="docs-ui">隐藏面板</span> 来切换面板。</p>
+<ul>
+  <li><strong><span class="docs-ui">目标</span></strong>：项目中保存的 URL。每个 URL 下方是你在该站点访问过的页面树。访问过但未保存的站点会作为单独的分组显示。</li>
+  <li><strong><span class="docs-ui">文件</span></strong>：项目文件夹。文件以预览方式打开（渲染 Markdown 和 Mermaid，其他文本为只读），因此也可以审查文档。铅笔图标（<span class="docs-ui">在编辑器中打开</span>）会在编辑器中打开它。</li>
+</ul>
+<p><span class="docs-ui">筛选对象</span> 会同时筛选目标、页面和文件，模糊匹配方式与 <span class="docs-ui">转到文件…</span> 相同。在列表中，按 <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> 或 <kbd>1</kbd>–<kbd>9</kbd> 切换对象。<span class="docs-ui">打开 URL…</span> 用于临时打开一个 URL，<span class="docs-ui">保存到项目 URL</span> 会把它保存下来。</p>
+<p>目标来自 <code>settings.json</code> 中的 <code>projects[].urls</code>（参见<a href="settings-json.html#example">示例</a>）。每个条目需要一个 <code>url</code>、一个 <code>launchCommand</code>（在终端中运行，例如用来启动桌面应用）或一个 <code>windowMatch</code>（要录制的窗口）。选择窗口类目标会把它设为录制来源，因此录制过程中无法这样做。访问过的页面按项目记住，仅保存在这台机器上（最多 200 个）。</p>
+
+<!-- @switch-env 5103621352 -->
+## 打开和切换环境
+<p>点击保存的 URL 即可打开。如果当前页面位于另一个已保存的 URL 下，Ferret 会保留路径、查询参数和哈希，只替换源（origin）。例如在 <code>http://localhost:3000/pricing?plan=pro</code> 上点击 <code>prd</code>，会打开 <code>https://example.com/pricing?plan=pro</code>。</p>
+<p>与当前页面匹配（最长前缀）的标签会高亮显示。右键点击标签或使用其铅笔图标，可以编辑或 <span class="docs-ui">删除</span> 它。项目打开时如果没有上次的 URL，会载入它的第一个已保存 URL。</p>

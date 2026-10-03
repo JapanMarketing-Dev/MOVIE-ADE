@@ -1,0 +1,54 @@
+<!-- Ferret docs translation: id / recording. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 80e8dd1a5a -->
+Perekaman
+
+<!-- @lead 14988eae28 -->
+Rekam browser bawaan, seluruh layar, atau jendela lain. Bicaralah, lingkari, dan ketik sambil menggunakan halaman.
+
+<!-- @target 133550362a -->
+## Memilih yang direkam
+<p>Dalam mode Umpan Balik, klik <span class="docs-ui">Pilih target perekaman</span>. Dialog <span class="docs-ui">Target Perekaman</span> menyediakan:</p>
+<table>
+  <thead><tr><th>Target</th><th>Yang direkam</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Browser Bawaan</span> (bawaan)</td><td>Video, suara, dan pena, ditambah URL, selector elemen, klik, dan scroll. Tidak memerlukan izin OS.</td></tr>
+    <tr><td><span class="docs-ui">Seluruh Layar</span></td><td>Video, suara, dan pena. Tanpa URL, elemen, atau log tindakan (hal ini dicatat di <code>feedback.md</code>).</td></tr>
+    <tr><td><span class="docs-ui">Jendela</span></td><td>Sama seperti di atas. Jendela milik Ferret sendiri tidak dicantumkan.</td></tr>
+  </tbody>
+</table>
+<p>Pilihan Anda diingat. Di macOS, perekaman layar dan jendela memerlukan izin Perekaman Layar (<a href="troubleshooting.html#screen-permission">cara memberikannya</a>).</p>
+
+<!-- @record 0d1af48c7a -->
+## Mulai, jeda, berhenti
+{{clip:record|Merekam: bicarakan halamannya dan lingkari bagiannya dengan pena.}}
+<ol class="docs-steps">
+  <li>Buka halaman yang akan ditinjau di browser bawaan.</li>
+  <li>Klik <span class="docs-ui">Rekam</span> di bilah judul, atau tekan {{keys:Mod+Shift+R}}.</li>
+  <li><span class="docs-ui">Jeda</span> menghentikan gambar dan timer. <span class="docs-ui">Lanjutkan</span> meneruskannya.</li>
+  <li>Klik <span class="docs-ui">Berhenti</span> atau tekan {{keys:Mod+Shift+R}} lagi.</li>
+</ol>
+<p>Di sidebar, setiap proyek memiliki <span class="docs-ui">Tinjauan Baru</span> sendiri (atau tombol <span class="docs-ui">+</span> di barisnya, <span class="docs-ui">Tinjauan baru di &lt;name&gt;</span>). Pada proyek lain, tombol ini berpindah ke proyek tersebut terlebih dahulu, lalu mulai merekam. Perekaman tidak dimulai selama rekaman lain sedang berjalan.</p>
+<p>Satu rekaman dibatasi 90 menit. Anda mendapat peringatan menjelang batas, dan rekaman berhenti serta tersimpan otomatis saat batas tercapai.</p>
+<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="Toolbar mode Umpan Balik (screenshot segera hadir)"><span>Screenshot segera hadir</span></div><figcaption>Toolbar mode Umpan Balik</figcaption></figure>
+
+<!-- @pen 0232dc7983 -->
+## Pena
+<ul>
+  <li><strong><span class="docs-ui">Pena</span></strong>: pilih, atau tahan {{keys:Alt}} untuk menggambar hanya selama tombol ditahan (diabaikan saat mengetik di kolom input).</li>
+  <li><strong><span class="docs-ui">Bersihkan</span></strong>: menghapus coretan saat ini.</li>
+</ul>
+<p>Lingkari bagian yang sedang Anda bicarakan: kata-kata dan coretan akan masuk ke temuan yang sama. Pena hanya tersedia saat merekam. Tidak ada alat teks; ucapkan saja. Tombol untuk pena, kotak, dan warna tercantum di <a href="keyboard.html#drawing">Pintasan keyboard</a>.</p>
+
+<!-- @annotations-clear ea2e57b47b -->
+## Kapan coretan menghilang
+<p>Coretan terikat pada layar tempat coretan itu digambar. Coretan direkam ke temuan saat ini, lalu dibersihkan, ketika:</p>
+<ul>
+  <li>halaman berpindah: pemuatan penuh, atau perubahan rute SPA ke path atau query baru. Perubahan yang hanya pada hash tetap mempertahankannya.</li>
+  <li>Anda menggulir halaman</li>
+  <li>satu segmen ucapan berakhir</li>
+</ul>
+
+<!-- @mic 3540329978 -->
+## Mikrofon
+<p>Mikrofon aktif secara bawaan. Alihkan dari footer (<span class="docs-ui">Matikan mikrofon</span> / <span class="docs-ui">Nyalakan mikrofon</span>) atau dengan <span class="docs-ui">Rekam suara saya</span> di Pengaturan. Pilih perangkat di <span class="docs-ui">Mikrofon</span>.</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Segera hadir</p><p><span class="docs-ui">Rekam juga pihak lain</span> (merekam peserta lain dalam rapat melalui audio sistem) masih beta. Fitur ini belum divalidasi dengan aplikasi rapat.</p></div>

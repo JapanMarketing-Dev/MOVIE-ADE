@@ -1,0 +1,73 @@
+<!-- Ferret docs translation: pt-BR / troubleshooting. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title c3af076f92 -->
+Solução de problemas
+
+<!-- @lead eabdc6539a -->
+Problemas comuns e como resolvê-los. As mensagens entre aspas são as que o app mostra em português.
+
+<!-- @screen-permission 45fa22d7c7 -->
+## A captura da tela ou de janelas falha (macOS)
+<p>Mensagem: <q>Gravar a tela inteira ou outra janela exige a permissão de Gravação de tela do macOS.</q></p>
+<ol class="docs-steps">
+  <li>Na caixa de diálogo <span class="docs-ui">Alvo da gravação</span>, clique em <span class="docs-ui">Abrir Ajustes do Sistema</span>.</li>
+  <li><span class="docs-ui">Privacidade e Segurança → Gravação de Tela e Áudio do Sistema</span>: ative o Ferret.</li>
+  <li>Reinicie o app e clique em <span class="docs-ui">Verificar novamente</span>.</li>
+</ol>
+<p>Gravar o <span class="docs-ui">Navegador integrado</span> não exige permissão.</p>
+<p>Ao rodar a partir do código-fonte no macOS, o <code>pnpm dev</code> inicia uma cópia renomeada do Electron, com assinatura ad hoc, que também se chama Ferret (<code>scripts/prepare-dev-electron.mjs</code>); por isso ela aparece como uma entrada separada do Ferret nessas listas. Na primeira execução, o macOS pede de novo o acesso à Gravação de Tela e ao Microfone. Depois disso, não pede mais. As versões de desenvolvimento usam um keychain simulado (<code>--use-mock-keychain</code>), então não aparece o pedido do Keychain: cookies e chaves salvos em uma versão de desenvolvimento são criptografados com uma chave fixa, não com o Keychain real. Defina <code>ADE_DEV_REAL_KEYCHAIN=1</code> para usar o Keychain real.</p>
+
+<!-- @mic 400e196b24 -->
+## O microfone não abre
+<p>Mensagem: <q>Não foi possível abrir o microfone. Verifique a permissão nas configurações do sistema.</q></p>
+<ul>
+  <li>macOS: <span class="docs-ui">Ajustes do Sistema → Privacidade e Segurança → Microfone</span> e ative o Ferret.</li>
+  <li>Windows: <span class="docs-ui">Configurações → Privacidade e segurança → Microfone</span> e permita os aplicativos da área de trabalho.</li>
+</ul>
+<p>Sem microfone, os círculos da caneta ainda criam apontamentos, mas sem pedido falado.</p>
+
+<!-- @whisper ec2a54a0ef -->
+## Sem modelo no dispositivo / whisper-cli não encontrado
+<p>Mensagem: <q>Nenhum modelo de transcrição no dispositivo encontrado. O áudio será salvo, e só os apontamentos de caneta serão processados.</q></p>
+<p>Baixe um modelo nas Configurações ou escolha um <code>ggml-*.bin</code> existente. Se as Configurações disserem <q>O whisper.cpp (whisper-cli) não foi encontrado</q>, instale-o (<a href="transcription.html#whisper">instruções</a>), confira se ele está no <code>PATH</code> e reabra as Configurações. Apps empacotados abertos pelo Finder ou pelo Explorer podem não enxergar o <code>PATH</code> do seu shell, então instale em um local padrão, como o do Homebrew.</p>
+<p>Um download de modelo que falha na verificação do sha256 é descartado. Tente de novo.</p>
+
+<!-- @node-pty bb433d3335 -->
+## Terminal: não foi possível carregar o node-pty
+<p>Isso acontece ao rodar a partir do código-fonte quando o node-pty foi compilado para uma ABI diferente do Node ou do Electron.</p>
+<pre><code>pnpm rebuild:native</code></pre>
+
+<!-- @agent 1b8e87d730 -->
+## Agente não encontrado / Enviar ao Agent não envia
+<ul>
+  <li><code>command not found: claude</code> (ou <code>codex</code>, <code>gemini</code> ou o comando de outro agente) no terminal: a CLI não está instalada ou não está no <code>PATH</code>. O Ferret mostra o erro do próprio shell e não acrescenta dicas. Verifique se o comando funciona no seu terminal normal, use <span class="docs-ui">Instalar</span> em <span class="docs-ui">Configurações → Agents</span> ou defina um caminho absoluto como o <span class="docs-ui">Comando</span> desse agente.</li>
+  <li><q>O agent está aguardando confirmação. Responda no terminal e depois envie.</q> Responda primeiro ao prompt do agente.</li>
+  <li><q>A entrada do agent ainda não está pronta.</q> Espere o agente terminar de iniciar.</li>
+  <li><q>O texto foi digitado, mas não enviado. Aperte Enter no terminal.</q></li>
+  <li><q>Abra um terminal primeiro.</q></li>
+  <li><q>Não é possível interpretar os argumentos de inicialização: Aspas não fechadas.</q> Corrija as aspas nos argumentos do agente.</li>
+</ul>
+
+<!-- @cannot-record 7b2c3ffb80 -->
+## A gravação não começa
+<ul>
+  <li><q>Abra uma pasta de projeto primeiro.</q></li>
+  <li><q>Abra uma URL para revisar primeiro.</q></li>
+  <li><q>A página não carregou. Abra uma URL que seja exibida e depois grave.</q> Verifique se o servidor de desenvolvimento está rodando. <q>Não foi possível conectar ao servidor</q> significa que nada está escutando naquela porta.</li>
+</ul>
+
+<!-- @openai a24af71f0e -->
+## Chave da OpenAI ou endpoint não definidos
+<p><q>Nenhuma chave de API da OpenAI definida…</q> ou <q>O endpoint de transcrição (Base URL / modelo) não está definido…</q>: adicione-os nas Configurações ou troque para <span class="docs-ui">No dispositivo (gratuito)</span>. O áudio daquela gravação já está salvo.</p>
+
+<!-- @github 81f6d68f2f -->
+## Erros do GitHub
+<ul>
+  <li><q>GitHub CLI (gh) não encontrado.</q> Instale o <code>gh</code>.</li>
+  <li><q>Sem login no GitHub.</q> <span class="docs-ui">Configurações → GitHub / GitLab → Fazer login no terminal</span>.</li>
+  <li><q>Nenhum remote origin.</q> ou <q>origin não é um repositório do GitHub.</q> Confira <code>git remote -v</code>.</li>
+  <li><q>Repositório não encontrado ou você não tem acesso.</q> Confira <code>gh auth status</code> e <code>GH_TOKEN</code>.</li>
+</ul>
+
+<!-- @report 20a1889e90 -->
+## Relatar um bug
+<p>Abra uma issue em <a href="https://github.com/JapanMarketing-Dev/ferret/issues">github.com/JapanMarketing-Dev/ferret/issues</a> com o seu sistema operacional, a versão do app (rodapé → <span class="docs-ui">Atualizações</span>) e os passos para reproduzir. Não anexe conteúdo de <code>.ferret/</code> que contenha telas privadas.</p>

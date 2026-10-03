@@ -3,18 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sending to agents · Ferret ドキュメント</title>
-  <meta name="description" content="Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.">
+  <title>エージェントに送る · Ferret ドキュメント</title>
+  <meta name="description" content="内蔵のターミナルでコーディングエージェントを動かし、ワンクリックでレビューを渡します。よく使われるのは Claude Code と Codex ですが、下の一覧にあるエージェントならどれでも使え、自分で足した CLI も使えます。ほかの場所で動くエージェント向けに指示をコピーしたり、レビューを GitHub に投稿したりもできます。">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
-  <meta name="robots" content="noindex, follow">
-  <link rel="canonical" href="https://ferretade.dev/docs/agents">
+  <link rel="canonical" href="https://ferretade.dev/docs/ja/agents">
   <link rel="alternate" hreflang="en" href="https://ferretade.dev/docs/agents">
+  <link rel="alternate" hreflang="ja" href="https://ferretade.dev/docs/ja/agents">
+  <link rel="alternate" hreflang="zh-CN" href="https://ferretade.dev/docs/zh-CN/agents">
+  <link rel="alternate" hreflang="zh-TW" href="https://ferretade.dev/docs/zh-TW/agents">
+  <link rel="alternate" hreflang="ko" href="https://ferretade.dev/docs/ko/agents">
+  <link rel="alternate" hreflang="es" href="https://ferretade.dev/docs/es/agents">
+  <link rel="alternate" hreflang="fr" href="https://ferretade.dev/docs/fr/agents">
+  <link rel="alternate" hreflang="de" href="https://ferretade.dev/docs/de/agents">
+  <link rel="alternate" hreflang="it" href="https://ferretade.dev/docs/it/agents">
+  <link rel="alternate" hreflang="pt-BR" href="https://ferretade.dev/docs/pt-BR/agents">
+  <link rel="alternate" hreflang="ru" href="https://ferretade.dev/docs/ru/agents">
+  <link rel="alternate" hreflang="hi" href="https://ferretade.dev/docs/hi/agents">
+  <link rel="alternate" hreflang="id" href="https://ferretade.dev/docs/id/agents">
+  <link rel="alternate" hreflang="vi" href="https://ferretade.dev/docs/vi/agents">
   <link rel="alternate" hreflang="x-default" href="https://ferretade.dev/docs/agents">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
-  <meta property="og:title" content="Sending to agents · Ferret ドキュメント">
-  <meta property="og:description" content="Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.">
+  <meta property="og:title" content="エージェントに送る · Ferret ドキュメント">
+  <meta property="og:description" content="内蔵のターミナルでコーディングエージェントを動かし、ワンクリックでレビューを渡します。よく使われるのは Claude Code と Codex ですが、下の一覧にあるエージェントならどれでも使え、自分で足した CLI も使えます。ほかの場所で動くエージェント向けに指示をコピーしたり、レビューを GitHub に投稿したりもできます。">
   <meta property="og:url" content="https://ferretade.dev/docs/ja/agents">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="ja_JP">
@@ -23,8 +35,8 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Sending to agents · Ferret ドキュメント">
-  <meta name="twitter:description" content="Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.">
+  <meta name="twitter:title" content="エージェントに送る · Ferret ドキュメント">
+  <meta name="twitter:description" content="内蔵のターミナルでコーディングエージェントを動かし、ワンクリックでレビューを渡します。よく使われるのは Claude Code と Codex ですが、下の一覧にあるエージェントならどれでも使え、自分で足した CLI も使えます。ほかの場所で動くエージェント向けに指示をコピーしたり、レビューを GitHub に投稿したりもできます。">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -99,40 +111,40 @@
         <p class="docs-nav-heading">はじめに</p>
         <ul>
           <li><a href="quick-start.html">クイックスタート</a></li>
-          <li><a href="install.html">Install</a></li>
-          <li><a href="concepts.html">Concepts</a></li>
-          <li><a href="keyboard.html">Keyboard shortcuts</a></li>
+          <li><a href="install.html">インストール</a></li>
+          <li><a href="concepts.html">考え方</a></li>
+          <li><a href="keyboard.html">キーボードショートカット</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
         <p class="docs-nav-heading">Ferret の使い方</p>
         <ul>
-          <li><a href="projects.html">Projects and URLs</a></li>
-          <li><a href="recording.html">Recording</a></li>
-          <li><a href="agents.html" aria-current="page">Sending to agents</a></li>
-          <li><a href="editor.html">Editor and preview</a></li>
+          <li><a href="projects.html">プロジェクトと URL</a></li>
+          <li><a href="recording.html">録画</a></li>
+          <li><a href="agents.html" aria-current="page">エージェントに送る</a></li>
+          <li><a href="editor.html">エディタとプレビュー</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
         <p class="docs-nav-heading">設定</p>
         <ul>
-          <li><a href="transcription.html">Transcription and costs</a></li>
-          <li><a href="accounts.html">Accounts and usage</a></li>
-          <li><a href="settings.html">Settings reference</a></li>
-          <li><a href="settings-json.html">Configure with settings.json</a></li>
+          <li><a href="transcription.html">文字起こしと費用</a></li>
+          <li><a href="accounts.html">アカウントと使用量</a></li>
+          <li><a href="settings.html">設定の一覧</a></li>
+          <li><a href="settings-json.html">settings.json で設定する</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
         <p class="docs-nav-heading">リファレンス</p>
         <ul>
-          <li><a href="privacy.html">Data and privacy</a></li>
-          <li><a href="files.html">Files and environment</a></li>
+          <li><a href="privacy.html">データとプライバシー</a></li>
+          <li><a href="files.html">ファイルと環境変数</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
         <p class="docs-nav-heading">ヘルプ</p>
         <ul>
-          <li><a href="troubleshooting.html">Troubleshooting</a></li>
+          <li><a href="troubleshooting.html">困ったときは</a></li>
         </ul>
       </div>
       </div>
@@ -140,65 +152,64 @@
 
     <main class="docs-main" id="docs-main">
       <article class="docs-content">
-        <div class="docs-callout docs-callout-i18n"><p>このページはまだ翻訳されていないため、英語で表示しています。 <a href="../agents.html" hreflang="en">English</a></p></div>
         <p class="docs-eyebrow">Ferret の使い方</p>
-        <h1 lang="en">Sending to agents</h1>
-        <p class="docs-lead" lang="en">Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.</p>
+        <h1>エージェントに送る</h1>
+        <p class="docs-lead">内蔵のターミナルでコーディングエージェントを動かし、ワンクリックでレビューを渡します。よく使われるのは Claude Code と Codex ですが、下の一覧にあるエージェントならどれでも使え、自分で足した CLI も使えます。ほかの場所で動くエージェント向けに指示をコピーしたり、レビューを GitHub に投稿したりもできます。</p>
         <div class="docs-os" role="group" aria-label="ショートカットの表示" data-docs-os hidden>
           <span class="docs-os-label">ショートカットの表示</span>
           <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">macOS</button>
           <button type="button" class="docs-os-btn" data-os-choice="win" aria-pressed="false">Windows / Linux</button>
         </div>
 
-      <section class="docs-section" aria-labelledby="findings" lang="en">
-        <h2 id="findings"><a class="docs-anchor" href="#findings" aria-label="「Review findings」へのリンク">#</a>Review findings</h2>
-        <p>Each card in the <span class="docs-ui">Findings</span> tab supports:</p>
+      <section class="docs-section" aria-labelledby="findings">
+        <h2 id="findings"><a class="docs-anchor" href="#findings" aria-label="「指摘を確かめる」へのリンク">#</a>指摘を確かめる</h2>
+        <p><span class="docs-ui">指摘</span> タブの各カードでできること:</p>
 <ul>
-  <li>Inline edit of the title and request</li>
-  <li><span class="docs-ui">Send</span> / <span class="docs-ui">Don't send</span> toggle</li>
-  <li><span class="docs-ui">Watch Recording</span> (seeks to that time) and <span class="docs-ui">Replace Image</span> (pick another frame)</li>
-  <li><span class="docs-ui">Confirm</span> / <span class="docs-ui">Mark as Needs Review</span>, <span class="docs-ui">Merge with Next</span>, <span class="docs-ui">Delete</span></li>
+  <li>題名と依頼をその場で直す</li>
+  <li><span class="docs-ui">送信する</span> / <span class="docs-ui">送信しない</span> の切り替え</li>
+  <li><span class="docs-ui">録画を見る</span>（その時刻へ移動）と <span class="docs-ui">画像を差し替え</span>（別のフレームを選ぶ）</li>
+  <li><span class="docs-ui">確定する</span> / <span class="docs-ui">要確認にする</span>、<span class="docs-ui">次とまとめる</span>、<span class="docs-ui">削除</span></li>
 </ul>
-<p><span class="docs-ui">Filter by progress</span> shows or hides findings by status (for example <span class="docs-ui">Only</span> the ones waiting for your review); <span class="docs-ui">Show all</span> clears it.</p>
-<p>The header has <span class="docs-ui">Undo</span>, <span class="docs-ui">Open Folder</span>, <span class="docs-ui">Copy for Agent</span>, <span class="docs-ui">Send to GitHub / GitLab</span>, <span class="docs-ui">Organize</span>, and <span class="docs-ui">Send to Agent</span>. Speech that didn't become a finding is listed under <span class="docs-ui">Excluded speech</span>, where <span class="docs-ui">Restore as Finding</span> brings it back. <span class="docs-ui">Overall Note</span> adds a note for the whole review.</p>
-<figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="The Findings tab (screenshot coming soon)"><span>Screenshot coming soon</span></div><figcaption>The Findings tab</figcaption></figure>
+<p><span class="docs-ui">進み具合で絞り込む</span> で、状態ごとに指摘を表示したり隠したりできます（たとえば、あなたの確認待ちのもの<span class="docs-ui">だけ表示</span>する）。<span class="docs-ui">すべて表示</span> で絞り込みを解除します。</p>
+<p>上部には <span class="docs-ui">元に戻す</span>、<span class="docs-ui">保存先を開く</span>、<span class="docs-ui">Agent向けにコピー</span>、<span class="docs-ui">GitHub / GitLab に送る</span>、<span class="docs-ui">整理</span>、<span class="docs-ui">Agentへ送信</span> があります。指摘にならなかった発話は <span class="docs-ui">除外した発話</span> に並び、<span class="docs-ui">発話を指摘に戻す</span> で戻せます。</p>
+<figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="指摘タブ（スクリーンショットは準備中）"><span>スクリーンショットは準備中です</span></div><figcaption>指摘タブ</figcaption></figure>
       </section>
 
-      <section class="docs-section" aria-labelledby="terminal" lang="en">
-        <h2 id="terminal"><a class="docs-anchor" href="#terminal" aria-label="「Run agents in the built-in terminal」へのリンク">#</a>Run agents in the built-in terminal</h2>
-        <p>When a project opens, Ferret starts one terminal tab per agent in <span class="docs-ui">Settings → Agents → Start When a Project Opens</span>, in the project folder and in the agent's normal mode. The default is Claude Code and Codex:</p>
+      <section class="docs-section" aria-labelledby="terminal">
+        <h2 id="terminal"><a class="docs-anchor" href="#terminal" aria-label="「内蔵のターミナルでエージェントを動かす」へのリンク">#</a>内蔵のターミナルでエージェントを動かす</h2>
+        <p>プロジェクトを開くと、Ferret は <span class="docs-ui">設定 → Agent → プロジェクトを開いたら起動</span> で選んだエージェントごとにターミナルのタブを1つ開き、プロジェクトのフォルダで、そのエージェントの普通のモードで起動します。最初の設定は Claude Code と Codex です。</p>
 <pre><code>claude
 codex</code></pre>
-<p>Pick any agents from the <a href="#supported">supported list</a> instead (they start in the order you pick them), or none.</p>
-<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Permission prompts stay on</p><p>Registering or cloning a project does not make Ferret trust it. Agents such as Claude Code and Codex ask whether you trust the folder the first time, and keep asking before they edit files or run commands. To let agents skip permission prompts, approvals and the sandbox in one project you trust, turn it on for that project under <span class="docs-ui">Settings → Agents → Skip permission prompts</span> and confirm. Ferret adds each agent's own skip flag where one is known; agents without a known flag keep their prompts. It then applies only to agents you open yourself in that project folder; agents started when the project opens always keep their prompts. Skip-permission flags typed into the arguments are ignored.</p></div>
-<p>If no agent is selected, a plain shell opens. The <span class="docs-ui">+</span> menu opens <span class="docs-ui">New Terminal</span>, launches any of your agents in a new tab, or jumps to <span class="docs-ui">Agent settings…</span>. Its search box also finds tabs, saved URLs, and files.</p>
-<p>Tabs show the agent state: <span class="docs-ui">Running</span>, <span class="docs-ui">Waiting for input</span>, <span class="docs-ui">Done (unread)</span>, <span class="docs-ui">Idle</span>. In the sidebar, a project where an agent is running is marked, so you can see it without switching projects.</p>
+<p>代わりに<a href="#supported">対応している一覧</a>から好きなエージェントを選べます（選んだ順に起動します）。何も選ばないこともできます。</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">権限の確認は出たままです</p><p>プロジェクトを登録したりクローンしたりしても、Ferret がそれを信頼済みにすることはありません。Claude Code や Codex などのエージェントは、初回にそのフォルダを信頼するかを尋ね、その後もファイルを変える前やコマンドを実行する前に確認します。信頼できる1つのプロジェクトで、エージェントの権限確認・承認・サンドボックスを省くには、そのプロジェクトについて <span class="docs-ui">設定 → Agent → 権限確認を省く</span> を入にして確認します。Ferret は、分かっているエージェントにはそれぞれの省くための引数を付けます。引数が分からないエージェントは確認を出したままです。これが効くのは、そのプロジェクトのフォルダで自分で開いたエージェントだけで、プロジェクトを開いたときに起動するエージェントは常に確認を出します。引数の欄に書いた権限確認を省く引数は使われません。</p></div>
+<p>エージェントを1つも選んでいなければ、普通のシェルが開きます。<span class="docs-ui">+</span> メニューからは <span class="docs-ui">新しいターミナル</span> を開いたり、自分のエージェントを新しいタブで起動したり、<span class="docs-ui">Agent設定…</span> に移ったりできます。メニューの検索欄では、タブ、登録した URL、ファイルも探せます。</p>
+<p>タブにはエージェントの状態が出ます: <span class="docs-ui">実行中</span>、<span class="docs-ui">入力待ち</span>、<span class="docs-ui">完了（未確認）</span>、<span class="docs-ui">待機中</span>。サイドバーでは、エージェントが動いているプロジェクトに印が付くので、プロジェクトを切り替えなくても分かります。</p>
 <figure class="docs-clip" data-clip="terminals">
-  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/terminals.webp" data-src="../assets/clips/terminals.mp4" data-src-webm="../assets/clips/terminals.webm" aria-label="Dragging terminal tabs and panes to split, move, and turn them back into tabs."></video>
-  <figcaption>Dragging terminal tabs and panes to split, move, and turn them back into tabs.</figcaption>
+  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/terminals.webp" data-src="../assets/clips/terminals.mp4" data-src-webm="../assets/clips/terminals.webm" aria-label="ターミナルのタブやペインをドラッグして、分割し、動かし、タブに戻す。"></video>
+  <figcaption>ターミナルのタブやペインをドラッグして、分割し、動かし、タブに戻す。</figcaption>
 </figure>
-<p><strong>Drag to split.</strong> Drag a tab, or a pane by its handle (shown once a tab is split), and drop it:</p>
+<p><strong>ドラッグで分割する。</strong> タブか、ペインのつまみ（タブを分割すると出ます）をドラッグして、次の場所で離します。</p>
 <ul>
-  <li>on the outer quarter of a pane's edge: <span class="docs-ui">Split left</span> / <span class="docs-ui">Split right</span> / <span class="docs-ui">Split up</span> / <span class="docs-ui">Split down</span></li>
-  <li>on the center of a pane: <span class="docs-ui">Open as a tab</span> (a pane leaves its split and becomes its own tab)</li>
-  <li>on the thin band around the whole terminal area: <span class="docs-ui">Split the whole area left</span> and so on (when there are 2 or more panes)</li>
-  <li>on the tab bar: <span class="docs-ui">Place as a tab here</span></li>
+  <li>ペインの端の外側4分の1: <span class="docs-ui">左に分割</span> / <span class="docs-ui">右に分割</span> / <span class="docs-ui">上に分割</span> / <span class="docs-ui">下に分割</span></li>
+  <li>ペインの中央: <span class="docs-ui">タブとして開く</span>（ペインは分割から外れて、独立したタブになります）</li>
+  <li>ターミナル全体を囲む細い帯: <span class="docs-ui">全体の左に分割</span> など（ペインが2つ以上あるとき）</li>
+  <li>タブバー: <span class="docs-ui">ここにタブとして置く</span></li>
 </ul>
-<p>Processes keep running while you move them, and a tab left empty closes. Keyboard splits:</p>
+<p>動かしている間もプロセスは動き続け、空になったタブは閉じます。キーボードでの分割:</p>
 <table class="docs-keys">
-  <thead><tr><th>Action</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <thead><tr><th>操作</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
   <tbody>
-    <tr><td>New Terminal</td><td class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></td></tr>
-    <tr><td>Split Right</td><td class="os-mac"><kbd>⌘</kbd><kbd>D</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
-    <tr><td>Split Down</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>D</kbd></td><td class="os-win"><kbd>Alt</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
-    <tr><td>Close Pane / Tab</td><td class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></td></tr>
+    <tr><td>新しいターミナル</td><td class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></td></tr>
+    <tr><td>右に分割</td><td class="os-mac"><kbd>⌘</kbd><kbd>D</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
+    <tr><td>下に分割</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>D</kbd></td><td class="os-win"><kbd>Alt</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
+    <tr><td>閉じる（ペイン／タブ）</td><td class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></td></tr>
   </tbody>
 </table>
       </section>
 
-      <section class="docs-section" aria-labelledby="supported" lang="en">
-        <h2 id="supported"><a class="docs-anchor" href="#supported" aria-label="「Supported agents」へのリンク">#</a>Supported agents</h2>
-        <p>Ferret is not tied to one agent. It recognizes the coding agents below: it can start them, detect them in a terminal for <span class="docs-ui">Send to Agent</span>, and show whether they are installed. <span class="docs-ui">Settings → Agents</span> lists them with <span class="docs-ui">Installed</span> / <span class="docs-ui">Not found</span>, an <span class="docs-ui">Install</span> button where the vendor publishes a one-line installer, and the command and arguments for each.</p>
+      <section class="docs-section" aria-labelledby="supported">
+        <h2 id="supported"><a class="docs-anchor" href="#supported" aria-label="「対応しているエージェント」へのリンク">#</a>対応しているエージェント</h2>
+        <p>Ferret は特定のエージェントに縛られません。下のコーディングエージェントを認識し、起動したり、<span class="docs-ui">Agentへ送信</span> のためにターミナルの中から見つけたり、インストール済みかどうかを表示したりできます。<span class="docs-ui">設定 → Agent</span> には、<span class="docs-ui">インストール済み</span> / <span class="docs-ui">見つかりません</span>、提供元が1行のインストーラーを公開している場合の <span class="docs-ui">インストール</span> ボタン、各エージェントのコマンドと引数が並びます。</p>
 <ul class="docs-agent-list">
   <li><a href="https://code.claude.com/docs/en/setup" target="_blank" rel="noopener noreferrer">Claude Code<span class="sr-only"> （新しいタブで開きます）</span></a> <code>claude</code></li>
   <li><a href="https://github.com/openai/codex" target="_blank" rel="noopener noreferrer">Codex<span class="sr-only"> （新しいタブで開きます）</span></a> <code>codex</code></li>
@@ -248,135 +259,135 @@ codex</code></pre>
   <li><a href="https://docs.trae.cn/cli_get-started-with-trae-code-cli-2" target="_blank" rel="noopener noreferrer">Trae CLI<span class="sr-only"> （新しいタブで開きます）</span></a> <code>traecli</code></li>
   <li><a href="https://zcode.z.ai/en/docs" target="_blank" rel="noopener noreferrer">ZCode<span class="sr-only"> （新しいタブで開きます）</span></a> <code>zcode</code></li>
 </ul>
-<p>Not in the list? <span class="docs-ui">Settings → Agents → Add Custom Agent</span> registers any CLI or wrapper script (a name, a command, and optionally the process name used to recognize it), or add it to <code>agents.customAgents</code> in <a href="settings-json.html#example">settings.json</a>. Agents running outside Ferret can use <span class="docs-ui">Copy for Agent</span>.</p>
-<p>A few features depend on the agent and are limited to Claude Code and Codex for now:</p>
+<p>一覧に無いときは、<span class="docs-ui">設定 → Agent → カスタムエージェントを追加</span> で、どんな CLI やラッパースクリプトでも登録できます（名前、コマンド、必要なら見分けるためのプロセス名）。<a href="settings-json.html#example">settings.json</a> の <code>agents.customAgents</code> に足すこともできます。Ferret の外で動くエージェントには <span class="docs-ui">Agent向けにコピー</span> を使えます。</p>
+<p>いくつかの機能はエージェントによって違い、今のところ Claude Code と Codex だけで使えます。</p>
 <ul>
-  <li><a href="accounts.html">Accounts and usage</a>: switching between several logins and the rate-limit meter in the footer.</li>
-  <li><span class="docs-ui">Organize</span>: runs on your Claude Code or Codex login, or on an LLM API you configure.</li>
+  <li><a href="accounts.html">アカウントと使用量</a>: 複数のログインの切り替えと、フッターのレート制限のメーター。</li>
+  <li><span class="docs-ui">整理</span>: Claude Code か Codex のログイン、または自分で設定した LLM API で動きます。</li>
 </ul>
       </section>
 
-      <section class="docs-section" aria-labelledby="send" lang="en">
-        <h2 id="send"><a class="docs-anchor" href="#send" aria-label="「Send to Agent / Copy for Agent」へのリンク">#</a>Send to Agent / Copy for Agent</h2>
+      <section class="docs-section" aria-labelledby="send">
+        <h2 id="send"><a class="docs-anchor" href="#send" aria-label="「Agentへ送信 / Agent向けにコピー」へのリンク">#</a>Agentへ送信 / Agent向けにコピー</h2>
         <figure class="docs-clip" data-clip="send">
-  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/send.webp" data-src="../assets/clips/send.mp4" data-src-webm="../assets/clips/send.webm" aria-label="From the Findings tab to the agent in the built-in terminal with Send to Agent."></video>
-  <figcaption>From the Findings tab to the agent in the built-in terminal with Send to Agent.</figcaption>
+  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/send.webp" data-src="../assets/clips/send.mp4" data-src-webm="../assets/clips/send.webm" aria-label="指摘タブから「Agentへ送信」で、内蔵のターミナルのエージェントへ送る。"></video>
+  <figcaption>指摘タブから「Agentへ送信」で、内蔵のターミナルのエージェントへ送る。</figcaption>
 </figure>
 <ol class="docs-steps">
-  <li>Click <span class="docs-ui">Send to Agent</span>. By default (<span class="docs-ui">Auto (current tab or a running agent)</span>) it goes to the agent in the current terminal tab, or to one that is running. Use the arrow next to the button (<span class="docs-ui">Choose the agent to send to</span>) to pick a specific agent or tab.</li>
-  <li>Ferret writes the instruction into the agent's input and submits it. Follow progress in the terminal.</li>
+  <li><span class="docs-ui">Agentへ送信</span> を押します。既定（<span class="docs-ui">自動（今のタブか、動いている Agent）</span>）では、いま開いているターミナルのタブのエージェントか、動いているエージェントに届きます。ボタンの横の矢印（<span class="docs-ui">送り先の Agent を選ぶ</span>）で、送り先のエージェントやタブを選べます。</li>
+  <li>Ferret はエージェントの入力欄に指示を書き込んで送信します。進み具合はターミナルで追います。</li>
 </ol>
-<p>If no agent is running, Ferret starts one first and sends as soon as it is ready. Nothing is sent while the agent is waiting for a permission answer. Answer in the terminal first.</p>
-<p><span class="docs-ui">Copy for Agent</span> puts the same instruction on the clipboard for an agent running elsewhere (another terminal, IDE, or app). Only findings toggled to <span class="docs-ui">Send</span> are addressed. The video is never included.</p>
+<p>エージェントが動いていなければ、Ferret が先に起動し、準備ができしだい送ります。エージェントが権限の確認への答えを待っている間は何も送りません。先にターミナルで答えてください。</p>
+<p><span class="docs-ui">Agent向けにコピー</span> は、ほかの場所（別のターミナル、IDE、アプリ）で動くエージェントのために、同じ指示をクリップボードに入れます。対象になるのは <span class="docs-ui">送信する</span> にした指摘だけです。動画は決して含めません。</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="verify" lang="en">
-        <h2 id="verify"><a class="docs-anchor" href="#verify" aria-label="「Acceptance check with a decision model」へのリンク">#</a>Acceptance check with a decision model</h2>
+      <section class="docs-section" aria-labelledby="verify">
+        <h2 id="verify"><a class="docs-anchor" href="#verify" aria-label="「判定モデルでの受け入れ確認」へのリンク">#</a>判定モデルでの受け入れ確認</h2>
         <figure class="docs-clip" data-clip="verify">
-  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/verify.webp" data-src="../assets/clips/verify.mp4" aria-label="The agent fixes the findings and checks each one with the decision model until all pass."></video>
-  <figcaption>The agent fixes the findings and checks each one with the decision model until all pass.</figcaption>
+  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/verify.webp" data-src="../assets/clips/verify.mp4" aria-label="エージェントが指摘を直し、すべて通るまで判定モデルで1件ずつ確かめる。"></video>
+  <figcaption>エージェントが指摘を直し、すべて通るまで判定モデルで1件ずつ確かめる。</figcaption>
 </figure>
-<p>Turn this on and your coding agent checks its own work against each finding before it reports Done. Ferret does not judge anything itself: it gives the agent a <em>decision model</em> (any System One compatible API) and tells it, in <code>feedback.md</code>, to loop until every finding passes.</p>
+<p>これを入にすると、コーディングエージェントは「完了」と報告する前に、自分の作業を指摘ごとに確かめます。Ferret 自身は何も判定しません。エージェントに<em>判定モデル</em>（System One 互換の API ならどれでも）を渡し、すべての指摘が通るまで繰り返すよう <code>feedback.md</code> で指示します。</p>
 <ol class="docs-steps">
-  <li>The agent implements the findings.</li>
-  <li>For each finding it captures an AFTER screenshot (same viewport and page state as the BEFORE still) and sends one request with the finding text, its "Done when" line and the BEFORE/AFTER images to the decision model.</li>
-  <li>A finding passes when P(done) is at least the threshold (default 0.7) and the choice is <code>done</code>. The agent fixes the rest and re-judges <strong>all</strong> findings every round, and stops only when every finding passes in the same round, or for an honest reason it must state: the API is unreachable, a finding is out of scope, or a finding is stuck with unchanged scores.</li>
-  <li>The final Done / Not done list includes each finding's scores and the number of rounds.</li>
+  <li>エージェントが指摘を実装します。</li>
+  <li>指摘ごとに AFTER のスクリーンショットを撮り（BEFORE の静止画と同じビューポートとページの状態で）、指摘の文、その「完了の条件」の行、BEFORE / AFTER の画像を1つのリクエストで判定モデルに送ります。</li>
+  <li>P(done) がしきい値（既定 0.7）以上で、選ばれた答えが <code>done</code> なら、その指摘は合格です。エージェントは残りを直し、毎回<strong>すべての</strong>指摘を判定し直します。止まるのは、同じ回ですべての指摘が合格したときか、はっきり書くべき正当な理由があるときだけです（API につながらない、指摘が対象外、点数が変わらず行き詰まっている）。</li>
+  <li>最後の「完了／未完了」の一覧には、指摘ごとの点数と回数が入ります。</li>
 </ol>
-<p>Set it up in <span class="docs-ui">Settings → Decision model</span> and turn on <span class="docs-ui">Add the decision-model check to agent instructions</span>. Presets only fill in the fields; every field stays editable, and <span class="docs-ui">Custom</span> works with any compatible API.</p>
+<p><span class="docs-ui">設定 → 判定モデル</span> で設定し、<span class="docs-ui">Agent への指示に判定モデルでの確認を入れる</span> を入にします。プリセットは欄を埋めるだけで、どの欄も後から直せます。<span class="docs-ui">任意の接続先</span> は互換の API ならどれでも使えます。</p>
 <table>
-  <thead><tr><th>Preset</th><th>Request URL</th><th>Models</th><th>Key</th></tr></thead>
+  <thead><tr><th>プリセット</th><th>リクエスト URL</th><th>モデル</th><th>キー</th></tr></thead>
   <tbody>
-    <tr><td>Ollama (default)</td><td><code>http://localhost:11434/v1/systemone</code></td><td><code>clef-flash</code>, <code>clef</code> (read images); <code>nimble</code>, <code>tev1</code> (text only)</td><td>none, free</td></tr>
-    <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (read images)</td><td><code>CLOUDFLARE_API_TOKEN</code> (Workers AI permission); account ID from the field or <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
-    <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (text only)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
-    <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (text only)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
-    <tr><td>Custom</td><td>any full URL</td><td>any</td><td>Bearer, a custom header, or none; extra headers allowed</td></tr>
+    <tr><td>Ollama（既定）</td><td><code>http://localhost:11434/v1/systemone</code></td><td><code>clef-flash</code>、<code>clef</code>（画像を読める）、<code>nimble</code>、<code>tev1</code>（テキストのみ）</td><td>不要、無料</td></tr>
+    <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>、<code>clef</code>（画像を読める）</td><td><code>CLOUDFLARE_API_TOKEN</code>（Workers AI の権限）。アカウント ID は欄か <code>CLOUDFLARE_ACCOUNT_ID</code> から</td></tr>
+    <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>、<code>convaiinnovations/laya</code>（テキストのみ）</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
+    <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>、<code>jev-preview</code>（テキストのみ）</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>任意の接続先</td><td>任意の完全な URL</td><td>任意</td><td>Bearer、任意のヘッダー、またはなし。追加のヘッダーも使える</td></tr>
   </tbody>
 </table>
-<p>For Ollama, install it (0.35.1 or later for Clef / Clef Flash) and pull the model in a terminal. Ferret doesn't run installers:</p>
+<p>Ollama を使うときは、Ollama を入れ（Clef / Clef Flash には 0.35.1 以降が必要）、ターミナルでモデルを取得します。Ferret はインストーラーを実行しません。</p>
 <pre><code>ollama pull clef-flash</code></pre>
-<p>Keys come from the key field (saved with your other API keys), an environment variable you name (the app's environment, the project <code>.env</code>, or <code>~/.ferret/.env</code>), or <code>apiKey</code> in <code>settings.json</code>. Extra headers can read values from environment variables with <code>${VAR}</code>.</p>
-<div class="docs-callout docs-callout-note"><p class="docs-callout-title">How the key stays out of prompts</p><p>Agents never see your key. Ferret runs a local relay on <code>127.0.0.1</code> and gives each terminal <code>FERRET_DECISION_URL</code> (the relay, with a per-terminal token), <code>FERRET_DECISION_MODEL</code> and <code>FERRET_DECISION_IMAGES</code> (for one release, the old <code>MOVIE_ADE_DECISION_*</code> names are set too). The relay adds the key and headers and forwards the request unchanged, so prompts, <code>feedback.md</code> and agent transcripts contain no secrets. Terminals opened after you change the settings pick them up.</p></div>
-<p>Cloudflare differs from the System One docs in two ways (checked against the live API): images must be data URIs (<code>data:image/jpeg;base64,…</code>, otherwise 422 "image must be an embedded base64 data URI"), and the answer is wrapped as <code>{ "result": { … }, "success": true }</code> (errors come back as <code>{ "success": false, "errors": [ … ] }</code>). The Cloudflare preset sets <span class="docs-ui">Image encoding</span> to data URI, agents get it as <code>FERRET_DECISION_IMAGE_FORMAT</code>, and the instructions tell them to read <code>.result</code> when present. The relay passes both directions through unchanged. To use a Global API Key instead of an API token, set <span class="docs-ui">Authentication</span> to <span class="docs-ui">No key</span> and add the headers <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> and <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code>.</p>
-<p>Only Clef and Clef Flash read images. With a text-only model, turn off <span class="docs-ui">Send BEFORE/AFTER images</span>; the agent then judges from text alone, which is less reliable.</p>
-<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama and large images</p><p>Ollama 0.35.0 limits <code>/v1/systemone</code> requests to 64 KiB, so requests with screenshots fail with HTTP 413. The instructions tell the agent to shrink both images to at most 1024px wide as JPEG (quality about 70). If it still gets 413, update Ollama to 0.35.1 or later, or switch to Cloudflare Workers AI.</p></div>
+<p>キーは、キーの欄（ほかの API キーと一緒に保存）、名前を指定した環境変数（アプリの環境、プロジェクトの <code>.env</code>、または <code>~/.ferret/.env</code>）、または <code>settings.json</code> の <code>apiKey</code> から読みます。追加のヘッダーでは <code>${VAR}</code> で環境変数の値を使えます。</p>
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">キーが指示に入らないしくみ</p><p>エージェントがキーを見ることはありません。Ferret は <code>127.0.0.1</code> でローカルの中継を動かし、各ターミナルに <code>FERRET_DECISION_URL</code>（中継の URL。ターミナルごとのトークン付き）、<code>FERRET_DECISION_MODEL</code>、<code>FERRET_DECISION_IMAGES</code> を渡します（1リリースの間は、古い <code>MOVIE_ADE_DECISION_*</code> という名前も設定します）。中継がキーとヘッダーを付けてリクエストをそのまま転送するので、指示、<code>feedback.md</code>、エージェントのやり取りの記録には秘密の情報が入りません。設定を変えた後に開いたターミナルから反映されます。</p></div>
+<p>Cloudflare は System One のドキュメントと2点違います（実際の API で確認済み）。画像はデータ URI（<code>data:image/jpeg;base64,…</code>）でなければならず、そうでないと 422 "image must be an embedded base64 data URI" になります。また、答えは <code>{ "result": { … }, "success": true }</code> で包まれて返ります（エラーは <code>{ "success": false, "errors": [ … ] }</code>）。Cloudflare のプリセットは <span class="docs-ui">画像の渡し方</span> をデータ URI にし、エージェントはそれを <code>FERRET_DECISION_IMAGE_FORMAT</code> として受け取り、指示では <code>.result</code> があればそれを読むよう伝えます。中継は行きも帰りもそのまま通します。API トークンの代わりに Global API Key を使うときは、<span class="docs-ui">認証</span> を <span class="docs-ui">キーなし</span> にし、ヘッダー <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> と <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code> を足します。</p>
+<p>画像を読めるのは Clef と Clef Flash だけです。テキストのみのモデルでは <span class="docs-ui">BEFORE / AFTER の画像を送る</span> を切にします。その場合エージェントはテキストだけで判定するので、確かさは下がります。</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama と大きな画像</p><p>Ollama 0.35.0 は <code>/v1/systemone</code> へのリクエストを 64 KiB までに制限しているため、スクリーンショット付きのリクエストは HTTP 413 で失敗します。指示では、両方の画像を幅 1024px 以下の JPEG（品質 70 ほど）に縮めるようエージェントに伝えます。それでも 413 になるときは、Ollama を 0.35.1 以降に上げるか、Cloudflare Workers AI に切り替えてください。</p></div>
       </section>
 
-      <section class="docs-section" aria-labelledby="api-usage" lang="en">
-        <h2 id="api-usage"><a class="docs-anchor" href="#api-usage" aria-label="「API usage in the footer」へのリンク">#</a>API usage in the footer</h2>
-        <p>Decision calls go through the relay, so Ferret can count them. The footer item next to the agent usage meter shows the decision model and today's calls, tokens and cost (for example <code>clef-flash · 42 calls · 18.3k tok</code>). Click it for today, this month, per project, per model and per kind (decision / transcription / organize), and the last 50 calls.</p>
-<p>Cost appears only when the API reports it (Vercel AI Gateway does) or when you set prices per 1M tokens in <span class="docs-ui">Settings → Decision model</span>; otherwise it shows "—". Only metadata is logged (time, project, model, status, latency, size, image count, tokens, cost), never images, text or keys, in <code>~/.ferret/usage/decision-YYYY-MM.jsonl</code>, one file per month.</p>
+      <section class="docs-section" aria-labelledby="api-usage">
+        <h2 id="api-usage"><a class="docs-anchor" href="#api-usage" aria-label="「フッターの API 使用量」へのリンク">#</a>フッターの API 使用量</h2>
+        <p>判定の呼び出しは中継を通るので、Ferret が数えられます。フッターで、エージェントの使用量メーターの横にある項目に、判定モデルと、今日の呼び出し回数・トークン数・費用が出ます（たとえば <code>clef-flash · 42 calls · 18.3k tok</code>）。押すと、今日、今月、プロジェクト別、モデル別、種類別（判定 / 文字起こし / 整理）の集計と、直近50回の呼び出しが見られます。</p>
+<p>費用が出るのは、API が費用を返すとき（Vercel AI Gateway は返します）か、<span class="docs-ui">設定 → 判定モデル</span> で 1M トークンあたりの価格を設定したときだけです。それ以外は「—」と出ます。記録するのはメタデータ（時刻、プロジェクト、モデル、状態、待ち時間、サイズ、画像の数、トークン数、費用）だけで、画像・テキスト・キーは記録しません。記録先は <code>~/.ferret/usage/decision-YYYY-MM.jsonl</code> で、月ごとに1ファイルです。</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="prompt" lang="en">
-        <h2 id="prompt"><a class="docs-anchor" href="#prompt" aria-label="「Customize the instruction」へのリンク">#</a>Customize the instruction</h2>
-        <p>Edit <span class="docs-ui">Settings → Agents → Instructions for Agent</span>. Two variables are expanded:</p>
+      <section class="docs-section" aria-labelledby="prompt">
+        <h2 id="prompt"><a class="docs-anchor" href="#prompt" aria-label="「指示を変える」へのリンク">#</a>指示を変える</h2>
+        <p><span class="docs-ui">設定 → Agent → Agentへの指示</span> を編集します。展開される変数は2つです。</p>
 <table>
-  <thead><tr><th>Variable</th><th>Expands to</th></tr></thead>
+  <thead><tr><th>変数</th><th>展開される内容</th></tr></thead>
   <tbody>
-    <tr><td><code>{{path}}</code></td><td>Absolute path of <code>feedback.md</code></td></tr>
-    <tr><td><code>{{relpath}}</code></td><td>Path relative to the project: <code>.ferret/reviews/&lt;id&gt;/feedback.md</code></td></tr>
+    <tr><td><code>{{path}}</code></td><td><code>feedback.md</code> の絶対パス</td></tr>
+    <tr><td><code>{{relpath}}</code></td><td>プロジェクトからの相対パス: <code>.ferret/reviews/&lt;id&gt;/feedback.md</code></td></tr>
   </tbody>
 </table>
-<p>Leave it empty to use the default. The maximum length is 2000 characters, and <span class="docs-ui">Reset Instructions</span> restores the default. Example:</p>
+<p>空にすると既定の指示を使います。最大 2000 文字で、<span class="docs-ui">指示を既定に戻す</span> で既定に戻せます。例:</p>
 <pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
-<p>The setting is stored as <code>agentPrompt</code> in <code>settings.json</code>.</p>
+<p>この設定は <code>settings.json</code> の <code>agentPrompt</code> に保存されます。</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="github" lang="en">
-        <h2 id="github"><a class="docs-anchor" href="#github" aria-label="「Send to GitHub or GitLab (Issue / PR or MR comment)」へのリンク">#</a>Send to GitHub or GitLab (Issue / PR or MR comment)</h2>
-        <p><span class="docs-ui">Send to GitHub</span> posts the review as a new issue or as a comment on one of your open pull requests. Authentication is delegated to the <a href="https://cli.github.com/" target="_blank" rel="noopener noreferrer">GitHub CLI<span class="sr-only"> （新しいタブで開きます）</span></a>. Ferret never reads or stores a token.</p>
+      <section class="docs-section" aria-labelledby="github">
+        <h2 id="github"><a class="docs-anchor" href="#github" aria-label="「GitHub や GitLab に送る（Issue / PR・MR へのコメント）」へのリンク">#</a>GitHub や GitLab に送る（Issue / PR・MR へのコメント）</h2>
+        <p><span class="docs-ui">GitHub に送る</span> は、レビューを新しい Issue として、または自分の開いている Pull Request の1つへのコメントとして投稿します。認証は <a href="https://cli.github.com/" target="_blank" rel="noopener noreferrer">GitHub CLI<span class="sr-only"> （新しいタブで開きます）</span></a> に任せます。Ferret がトークンを読んだり保存したりすることはありません。</p>
 <ol class="docs-steps">
-  <li>Install <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), or see <a href="https://github.com/cli/cli#installation" target="_blank" rel="noopener noreferrer">cli/cli<span class="sr-only"> （新しいタブで開きます）</span></a>.</li>
-  <li><span class="docs-ui">Settings → GitHub → Sign In in Terminal</span> runs <code>gh auth login --web -h github.com</code> in the built-in terminal.</li>
-  <li>Click <span class="docs-ui">Send to GitHub</span>, choose <span class="docs-ui">Create a new issue</span> or a PR, and review the <span class="docs-ui">Title</span> and <span class="docs-ui">Body</span> (editable).</li>
-  <li>Tick the confirmation checkbox, then <span class="docs-ui">Create Issue</span> or <span class="docs-ui">Post Comment</span>.</li>
+  <li><code>gh</code> を入れます: <code>brew install gh</code>（macOS）、<code>winget install --id GitHub.cli</code>（Windows）、またはほかの方法は <a href="https://github.com/cli/cli#installation" target="_blank" rel="noopener noreferrer">cli/cli<span class="sr-only"> （新しいタブで開きます）</span></a> を見てください。</li>
+  <li><span class="docs-ui">設定 → GitHub / GitLab → ターミナルでログイン</span> が、内蔵のターミナルで <code>gh auth login --web -h github.com</code> を実行します。</li>
+  <li><span class="docs-ui">GitHub に送る</span> を押し、<span class="docs-ui">新しい Issue を作る</span> か PR を選び、<span class="docs-ui">タイトル</span> と <span class="docs-ui">本文</span> を確かめます（直せます）。</li>
+  <li>確認のチェックボックスに印を付け、<span class="docs-ui">Issue を作成</span> か <span class="docs-ui">コメントを投稿</span> を押します。</li>
 </ol>
-<p>Details:</p>
+<p>詳しくは次のとおりです。</p>
 <ul>
-  <li>The repository comes from <code>git remote get-url origin</code>.</li>
-  <li>Ferret runs <code>gh issue create --repo … --title … --body-file -</code> or <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>.</li>
-  <li>The body is <code>feedback.md</code> without the image lines (images are not uploaded), up to 60,000 characters.</li>
-  <li>PR candidates are your own open PRs (up to 30).</li>
+  <li>リポジトリは <code>git remote get-url origin</code> から決まります。</li>
+  <li>Ferret は <code>gh issue create --repo … --title … --body-file -</code> か <code>gh pr comment &lt;n&gt; --repo … --body-file -</code> を実行します。</li>
+  <li>本文は、画像の行を除いた <code>feedback.md</code> で（画像はアップロードしません）、最大 60,000 文字です。</li>
+  <li>PR の候補は、自分の開いている PR（最大30件）です。</li>
 </ul>
-<p>If <code>GH_TOKEN</code> or <code>GITHUB_TOKEN</code> is set, <code>gh</code> uses it first, and the settings panel warns about it.</p>
-<p><strong>GitLab.</strong> When <code>origin</code> is a GitLab project (gitlab.com or a self-managed GitLab), the same button sends to GitLab through the <a href="https://gitlab.com/gitlab-org/cli" target="_blank" rel="noopener noreferrer">GitLab CLI<span class="sr-only"> （新しいタブで開きます）</span></a> (<code>glab</code>): a new issue, or a comment on one of your open merge requests. Sign in with <span class="docs-ui">Settings → GitHub / GitLab</span>, which runs <code>glab auth login</code> (with <code>--hostname</code> for a self-managed GitLab) in the built-in terminal. Ferret never reads or stores the token, and warns when <code>GITLAB_TOKEN</code> is set.</p>
-<p><strong>Star prompt.</strong> After your first <span class="docs-ui">Send to Agent</span>, and when you reach 3, 10, and 30 finished reviews, Ferret may ask you to star it on GitHub. It asks at most 3 times, at least 3 days apart, and never while recording. <span class="docs-ui">Star on GitHub</span> stars it through your own <code>gh</code> login (or opens GitHub if <code>gh</code> isn't available), and <span class="docs-ui">Don't Ask Again</span> stops the prompts. You can also star from <span class="docs-ui">Help → Star Ferret on GitHub</span>.</p>
+<p><code>GH_TOKEN</code> か <code>GITHUB_TOKEN</code> が設定されていると、<code>gh</code> はそちらを優先して使い、設定画面に注意が出ます。</p>
+<p><strong>GitLab。</strong> <code>origin</code> が GitLab のプロジェクト（gitlab.com またはセルフマネージドの GitLab）なら、同じボタンで <a href="https://gitlab.com/gitlab-org/cli" target="_blank" rel="noopener noreferrer">GitLab CLI<span class="sr-only"> （新しいタブで開きます）</span></a>（<code>glab</code>）を通して GitLab に送ります。新しい Issue か、自分の開いている Merge Request の1つへのコメントです。ログインは <span class="docs-ui">設定 → GitHub / GitLab</span> から行い、内蔵のターミナルで <code>glab auth login</code>（セルフマネージドの GitLab では <code>--hostname</code> 付き）を実行します。Ferret がトークンを読んだり保存したりすることはなく、<code>GITLAB_TOKEN</code> が設定されていると注意を出します。</p>
+<p><strong>star のお願い。</strong> 最初に <span class="docs-ui">Agentへ送信</span> した後と、終えたレビューが 3、10、30 件になったときに、Ferret が GitHub で star を付けてほしいと尋ねることがあります。尋ねるのは最大3回で、間は3日以上空け、録画中には尋ねません。<span class="docs-ui">GitHub で star</span> は自分の <code>gh</code> のログインで star を付けます（<code>gh</code> が使えなければ GitHub を開きます）。<span class="docs-ui">今後表示しない</span> を押すと、もう尋ねません。<span class="docs-ui">ヘルプ → GitHub で Ferret に star…</span> からも star を付けられます。</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="cli-tools" lang="en">
-        <h2 id="cli-tools"><a class="docs-anchor" href="#cli-tools" aria-label="「Install and sign in to CLI tools」へのリンク">#</a>Install and sign in to CLI tools</h2>
-        <p><span class="docs-ui">Settings → CLI tools</span> lists command-line tools your agents often need, shows which are installed and their version, and runs the official install or sign-in command for your OS in a new terminal tab:</p>
+      <section class="docs-section" aria-labelledby="cli-tools">
+        <h2 id="cli-tools"><a class="docs-anchor" href="#cli-tools" aria-label="「CLI ツールを入れてログインする」へのリンク">#</a>CLI ツールを入れてログインする</h2>
+        <p><span class="docs-ui">設定 → CLI</span> には、エージェントがよく使うコマンドラインツールが並び、インストール済みかどうかとバージョンが出ます。OS に合った公式のインストールやログインのコマンドを、新しいターミナルのタブで実行できます。</p>
 <ul>
-  <li>Git hosting: <code>gh</code>, <code>glab</code></li>
-  <li>AI and models: Ollama, Cloudflare <code>wrangler</code></li>
-  <li>Deploy: Vercel, Netlify, Fly.io, Railway, Heroku</li>
-  <li>Cloud and services: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+  <li>Git のホスティング: <code>gh</code>、<code>glab</code></li>
+  <li>AI とモデル: Ollama、Cloudflare <code>wrangler</code></li>
+  <li>デプロイ: Vercel、Netlify、Fly.io、Railway、Heroku</li>
+  <li>クラウドとサービス: Supabase、Firebase、Stripe、Google Cloud（<code>gcloud</code>）、AWS、Azure、Docker</li>
 </ul>
-<p>Where a tool has no one-line official installer for your OS, <span class="docs-ui">Docs</span> opens its install page instead. The list checks again on its own once an install finishes.</p>
+<p>その OS 向けの1行の公式インストーラーが無いツールでは、<span class="docs-ui">ドキュメント</span> がそのインストール方法のページを開きます。インストールが終わると、一覧は自動でもう一度確かめます。</p>
       </section>
 
         <nav class="docs-pager" aria-label="前と次のページ">
-          <a class="docs-pager-prev" href="recording.html"><span>前へ</span>Recording</a>
-          <a class="docs-pager-next" href="editor.html"><span>次へ</span>Editor and preview</a>
+          <a class="docs-pager-prev" href="recording.html"><span>前へ</span>録画</a>
+          <a class="docs-pager-next" href="editor.html"><span>次へ</span>エディタとプレビュー</a>
         </nav>
-        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/README.md" target="_blank" rel="noopener noreferrer">GitHub でこのページの翻訳を手伝う<span class="sr-only"> （新しいタブで開きます）</span></a></p>
+        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/ja/agents.html" target="_blank" rel="noopener noreferrer">GitHub でこのページの翻訳を手伝う<span class="sr-only"> （新しいタブで開きます）</span></a></p>
       </article>
     </main>
 
     <aside class="docs-toc" aria-label="このページの内容">
       <p class="docs-toc-heading">このページの内容</p>
       <ul>
-        <li><a href="#findings">Review findings</a></li>
-        <li><a href="#terminal">Run agents in the built-in terminal</a></li>
-        <li><a href="#supported">Supported agents</a></li>
-        <li><a href="#send">Send to Agent / Copy for Agent</a></li>
-        <li><a href="#verify">Acceptance check with a decision model</a></li>
-        <li><a href="#api-usage">API usage in the footer</a></li>
-        <li><a href="#prompt">Customize the instruction</a></li>
-        <li><a href="#github">Send to GitHub or GitLab (Issue / PR or MR comment)</a></li>
-        <li><a href="#cli-tools">Install and sign in to CLI tools</a></li>
+        <li><a href="#findings">指摘を確かめる</a></li>
+        <li><a href="#terminal">内蔵のターミナルでエージェントを動かす</a></li>
+        <li><a href="#supported">対応しているエージェント</a></li>
+        <li><a href="#send">Agentへ送信 / Agent向けにコピー</a></li>
+        <li><a href="#verify">判定モデルでの受け入れ確認</a></li>
+        <li><a href="#api-usage">フッターの API 使用量</a></li>
+        <li><a href="#prompt">指示を変える</a></li>
+        <li><a href="#github">GitHub や GitLab に送る（Issue / PR・MR へのコメント）</a></li>
+        <li><a href="#cli-tools">CLI ツールを入れてログインする</a></li>
       </ul>
     </aside>
   </div>

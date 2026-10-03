@@ -1,0 +1,50 @@
+<!-- Ferret docs translation: ja / files. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 647281bf9e -->
+ファイルと環境変数
+
+<!-- @lead b2a7619b5e -->
+Ferret が自分のファイルを置く場所と、読んだり設定したりする環境変数です。
+
+<!-- @userdata ee70336b22 -->
+## userData フォルダ
+<p>アプリのデータは Electron の <code>userData</code> フォルダにあります。フォルダ名は製品名ではなく <code>ade-movie</code> に固定しているので、名前が変わってもデータは残ります。<code>--user-data-dir=&lt;path&gt;</code> で場所を変えられます。</p>
+<table>
+  <thead><tr><th>OS</th><th>パス</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td><code>~/Library/Application Support/ade-movie/</code></td></tr>
+    <tr><td>Windows</td><td><code>%APPDATA%\ade-movie\</code></td></tr>
+    <tr><td>Linux</td><td><code>~/.config/ade-movie/</code>（または <code>$XDG_CONFIG_HOME/ade-movie/</code>）</td></tr>
+  </tbody>
+</table>
+<pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
+stt-keys.bin        # API keys, encrypted with safeStorage
+models/             # downloaded whisper models (ggml-*.bin)
+accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts
+accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
+<p>設定はこのフォルダにはありません。<code>~/.ferret/</code> にあります（<a href="settings-json.html">settings.json で設定する</a>を参照）。</p>
+<p>自分で選んだモデルはどこに置いてもかまいません。以前の既定の場所 <code>~/.cache/ade-movie/models/ggml-small.bin</code> も引き続き探します。</p>
+
+<!-- @env 1d9b0a6a78 -->
+## 環境変数
+<table>
+  <thead><tr><th>変数</th><th>働き</th></tr></thead>
+  <tbody>
+    <tr><td><code>CLAUDE_CONFIG_DIR</code>, <code>CODEX_HOME</code></td><td>追加したアカウントを選んでいるとき、Ferret がエージェントのタブに設定します</td></tr>
+    <tr><td><code>GH_TOKEN</code>, <code>GITHUB_TOKEN</code></td><td><code>gh</code> が自分のログインより優先して使います。どちらかが設定されていると Ferret が警告します</td></tr>
+    <tr><td><code>FERRET_CONFIG_DIR</code>（または以前の <code>MOVIE_ADE_CONFIG_DIR</code>）</td><td><code>~/.ferret</code> の代わりに <code>settings.json</code>、<code>state.json</code>、<code>settings.schema.json</code> を置くフォルダ</td></tr>
+    <tr><td><code>apiKeyEnv</code> に書いた名前</td><td><code>settings.json</code> から指す API キー。プロジェクトの <code>.env</code> と <code>~/.ferret/.env</code> からも読みます</td></tr>
+    <tr><td><code>ADE_PROJECT_DIR</code></td><td>起動時にこのフォルダをプロジェクトとして開きます（登録もします）</td></tr>
+    <tr><td><code>ADE_INITIAL_URL</code></td><td>起動時にこの URL を内蔵ブラウザで開きます</td></tr>
+    <tr><td><code>ADE_WHISPER_MODEL</code></td><td>端末内の文字起こしに使う GGML モデルの絶対パス。ダウンロードした既定のモデルより優先します</td></tr>
+    <tr><td><code>FERRET_SENTRY_DSN</code>（または以前の <code>MOVIE_ADE_SENTRY_DSN</code>）</td><td>クラッシュレポートの送り先。空なら何も送りません（<a href="privacy.html#crash-reports">クラッシュレポート</a>を参照）</td></tr>
+    <tr><td><code>OPENAI_API_KEY</code></td><td>開発時（<code>pnpm dev</code>）だけ <code>.env</code> から読みます。配布用のビルドでは読みません</td></tr>
+    <tr><td><code>PATH</code></td><td>エージェントのコマンド（<code>claude</code>、<code>codex</code>、<code>gemini</code>…）、<code>gh</code>、<code>git</code>、<code>whisper-cli</code> を探すのに使います。macOS と Linux では Homebrew、linuxbrew、snap の場所も足します</td></tr>
+  </tbody>
+</table>
+
+<!-- @project aa7d8b3567 -->
+## プロジェクトの中
+<ul>
+  <li><code>.ferret/reviews/&lt;id&gt;/</code>: レビュー（<a href="privacy.html#reviews">データとプライバシー</a>を参照）。<code>.ade-movie/reviews/</code> にある以前のレビューも読みます</li>
+  <li><code>.git/info/exclude</code>: 最初の録画のときに <code>.ferret/</code> の1行を足します</li>
+</ul>

@@ -1,0 +1,96 @@
+<!-- Ferret docs translation: id / privacy. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title bd3b785878 -->
+Data dan privasi
+
+<!-- @lead f52bb23052 -->
+Tinjauan berada di folder proyek Anda. Pengaturan berada di <code>~/.ferret/</code>, sedangkan key dan akun di folder data pengguna OS. Hanya laporan crash yang sampai ke pengembang, melalui Sentry, dan Anda bisa mematikannya. Umpan balik yang Anda pilih untuk dikirim dari aplikasi menjadi issue GitHub publik.
+
+<!-- @reviews 2d1a3289b5 -->
+## Isi .ferret/reviews/
+<pre><code>&lt;project&gt;/.ferret/reviews/20261003-104500/
+├── feedback.md      # what the agent reads
+├── 01.png, 02.png…  # one or more images per finding
+├── session.json     # review state and edit history
+├── events.jsonl     # action log (built-in browser only)
+├── recording.webm   # the video
+└── work/            # intermediate audio and frames</code></pre>
+<p>Tinjauan yang dibuat sebelum penggantian nama berada di <code>.ade-movie/reviews/</code>. Tinjauan tersebut tetap ditampilkan dan bisa dibuka, sedangkan tinjauan baru masuk ke <code>.ferret/reviews/</code>.</p>
+<p>Saat perekaman dimulai, <code>.ferret/</code> ditambahkan ke <code>.git/info/exclude</code>. Worktree dan submodule juga ditangani. <code>.gitignore</code> tidak pernah diubah. Tinjauan yang terputus dapat dipulihkan dari riwayat jika catatannya masih ada. Aplikasi kemudian memperingatkan bahwa beberapa detik terakhir mungkin hilang.</p>
+
+<!-- @retention 41bc6cfa7d -->
+## Masa simpan
+<p><span class="docs-ui">Simpan rekaman</span> (7 hari secara bawaan, 30 hari, atau <span class="docs-ui">Selamanya</span>): saat aplikasi dimulai, tinjauan selesai yang lebih lama dari itu kehilangan <code>recording.webm</code> dan <code>work/</code>. <code>feedback.md</code> dan gambar temuan tetap disimpan. Tinjauan yang belum selesai tidak pernah dipangkas. Pemangkasan berjalan saat peluncuran, untuk proyek yang terakhir dibuka.</p>
+
+<!-- @network 8886bf9546 -->
+## Apa yang keluar dari mesin Anda
+<table>
+  <thead><tr><th>Kapan</th><th>Tujuan</th><th>Data</th></tr></thead>
+  <tbody>
+    <tr><td>Transkripsi: <span class="docs-ui">Di perangkat (gratis)</span></td><td>tidak ada</td><td>—</td></tr>
+    <tr><td>Transkripsi: OpenAI / kompatibel</td><td>OpenAI atau Base URL Anda</td><td>potongan audio</td></tr>
+    <tr><td>Unduhan model</td><td>Hugging Face</td><td>permintaan file</td></tr>
+    <tr><td><span class="docs-ui">Rapikan</span></td><td>CLI Claude Code / Codex Anda, atau endpoint LLM yang Anda atur di <code>organizer</code></td><td>hanya teks dan log tindakan (tanpa gambar, audio, atau video)</td></tr>
+    <tr><td>Pemeriksaan penerimaan (model keputusan, nonaktif secara bawaan)</td><td>agent Anda, melalui relay lokal, ke Ollama / Cloudflare / AI Gateway / TypeSafe / URL Anda</td><td>yang dikirim agent: teks temuan, "Selesai jika", dan screenshot BEFORE/AFTER (hanya model gambar)</td></tr>
+    <tr><td><span class="docs-ui">Kirim ke Agent</span></td><td>agent di terminal Anda</td><td>satu instruksi yang menunjuk ke <code>feedback.md</code></td></tr>
+    <tr><td><span class="docs-ui">Kirim ke GitHub</span></td><td>GitHub melalui <code>gh</code></td><td>hanya teks isi (tanpa gambar)</td></tr>
+    <tr><td>Penggunaan di footer (hanya Claude Code dan Codex)</td><td>Anthropic, ChatGPT</td><td>permintaan data penggunaan dengan login Anda sendiri</td></tr>
+    <tr><td>Ajakan memberi bintang di GitHub</td><td>GitHub melalui <code>gh</code> Anda</td><td>memeriksa apakah Anda sudah memberi bintang pada repo, dan memberi bintang hanya jika Anda mengklik <span class="docs-ui">Beri bintang di GitHub</span></td></tr>
+    <tr><td><span class="docs-ui">Periksa Pembaruan</span> (manual)</td><td>server unduhan (Cloudflare R2)</td><td>permintaan untuk <code>latest.json</code></td></tr>
+    <tr><td>Mengirim umpan balik dari aplikasi (hanya saat Anda mengirimnya; segera hadir)</td><td>relay umpan balik milik pengembang (Cloudflare Worker), yang membuka issue publik di <code>JapanMarketing-Dev/ferret</code></td><td>teks Anda, bug atau ide, versi aplikasi / OS dan CPU, serta hingga 3 screenshot yang Anda lampirkan. Key, token, alamat email, dan path folder home disamarkan. Relay tidak menyimpan alamat IP Anda (lihat <a href="#feedback">Umpan balik dari aplikasi</a>)</td></tr>
+    <tr><td>Crash atau error (<span class="docs-ui">Kirim laporan crash</span> aktif)</td><td>Sentry</td><td>stack trace dan versi OS / CPU / aplikasi (lihat <a href="#crash-reports">Laporan crash</a>)</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li>Aplikasi ini tidak memiliki analitik, pelacakan performa, maupun session replay. Satu-satunya data yang dikirimnya tanpa Anda minta adalah pelaporan crash: error, satu sesi per peluncuran, serta peringatan startup lambat dan aplikasi macet, yang semuanya dijelaskan di bawah dan semuanya dikendalikan oleh <span class="docs-ui">Kirim laporan crash</span>.</li>
+  <li>Nilai di URL yang tampak seperti rahasia (token, key) disamarkan sebelum ditulis ke <code>feedback.md</code>.</li>
+  <li>Teks yang diambil dari halaman ditandai sebagai data di <code>feedback.md</code>, sehingga agent diberi tahu untuk tidak mengikuti instruksi yang ada di dalamnya.</li>
+  <li>Situs web ini (bukan aplikasinya) menghitung tampilan halaman dengan Cloudflare Web Analytics: tanpa cookie, tanpa pelacakan lintas situs, dan tanpa data pribadi.</li>
+</ul>
+
+<!-- @feedback ba5f3fb0a3 -->
+## Umpan balik dari aplikasi
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Segera hadir</p><p>Formulir umpan balik dalam aplikasi dan relay-nya belum dirilis. Bagian ini menjelaskan cara kerjanya nanti.</p></div>
+<p>Anda akan bisa mengirim laporan bug atau ide dari dalam Ferret tanpa akun GitHub. Umpan balik hanya dikirim saat Anda mengirimnya, dan menjadi issue <strong>publik</strong> di <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a> dengan label <code>from-app</code>. Jangan sertakan apa pun yang tidak akan Anda unggah secara publik.</p>
+<ul>
+  <li>Aplikasi mengirimnya dari komputer Anda ke relay kecil (Cloudflare Worker yang dijalankan pengembang), yang membuka issue dengan token GitHub miliknya sendiri. Relay ini adalah satu-satunya server milik pengembang yang menerima apa pun yang Anda tulis.</li>
+  <li>Yang dikirim: judul dan teks Anda, apakah itu bug atau ide, versi aplikasi, dan hingga 3 screenshot PNG atau JPEG yang Anda lampirkan. Nama dan versi OS, arsitektur CPU, serta ID instalasi acak hanya dikirim jika Anda membiarkannya tetap disertakan. Yang tidak dikirim: nama, email, akun GitHub, file proyek, rekaman, atau temuan Anda.</li>
+  <li>Sebelum issue dibuat, relay menyamarkan teks yang tampak seperti key atau token, alamat email, dan nama pengguna di path folder home, serta mencegah <code>@mentions</code> memberi notifikasi kepada siapa pun. Relay juga menghapus lokasi dan metadata lain dari screenshot. Tetap periksa teks Anda: penyamaran tidak bisa menangkap semuanya.</li>
+  <li>Relay tidak menyimpan alamat IP Anda. Untuk membatasi seberapa sering satu pengirim bisa mengirim (5 per jam, 20 per hari), relay menghitung hash berkunci dari alamat IP (dan dari ID instalasi, jika dikirim) hingga 24 jam, lalu menghapusnya. Keduanya tidak muncul di issue.</li>
+  <li>Screenshot disimpan oleh relay di Cloudflare R2 dengan nama yang tidak bisa ditebak dan ditampilkan di issue. Untuk meminta penghapusan issue atau screenshot-nya, beri komentar di issue tersebut atau buka issue baru.</li>
+  <li>Kode relay ada di <code>workers/feedback-relay</code> di repositori.</li>
+</ul>
+
+<!-- @crash-reports 3fdd78f6c3 -->
+## Laporan crash
+<p>Saat aplikasi crash atau mengalami error yang tidak tertangani, Ferret mengirim laporan crash ke <a href="https://sentry.io/">Sentry</a> agar bug-nya bisa diperbaiki. Fitur ini aktif secara bawaan. Matikan di <span class="docs-ui">Pengaturan → Privasi → Kirim laporan crash</span>, atau dengan <span class="docs-ui">Nonaktifkan</span> pada pemberitahuan yang muncul saat peluncuran pertama. Mematikannya langsung berlaku. Menyalakannya kembali berlaku pada peluncuran berikutnya. Build pengembangan (<code>pnpm dev</code>) juga mengirim, dengan tag <code>development</code>, agar pengembang bisa memperbaiki crash yang mereka alami saat bekerja. Pengujian E2E dan unit test tidak pernah mengirim.</p>
+<table>
+  <thead><tr><th>Dikirim</th><th>Tidak dikirim</th></tr></thead>
+  <tbody>
+    <tr><td>
+      <ul>
+        <li>Jenis dan pesan error, dengan path folder home ditampilkan sebagai <code>~</code></li>
+        <li>Stack trace (di bagian mana kode Ferret hal itu terjadi)</li>
+        <li>Untuk crash native: hanya proses mana yang crash, mengapa proses keluar (misalnya <q>crashed</q> atau <q>oom</q>), dan versi aplikasi</li>
+        <li>Nama dan versi OS, arsitektur CPU, versi Electron / Chrome / Node, versi aplikasi, ukuran layar, ukuran memori</li>
+        <li>Peristiwa siklus hidup aplikasi sesaat sebelum error (misalnya <q>app.ready</q>), dan kegagalan startup</li>
+        <li>Bagian aplikasi mana yang gagal: area layar yang tidak bisa dirender (beserta nama komponen React-nya), panggilan IPC, terminal yang tidak bisa dimulai, proses yang crash atau macet, atau halaman aplikasi yang gagal dimuat</li>
+        <li>Posisi Anda di aplikasi: mode editor atau umpan balik, tab yang terbuka (Browser, Temuan, Pengaturan, atau hanya <q>file</q>), dan apakah perekaman sedang berjalan</li>
+        <li>Satu sesi per peluncuran (dimulai, berakhir normal, atau crash), agar tingkat bebas crash setiap versi bisa diukur</li>
+        <li>ID instalasi acak (dibuat saat peluncuran pertama dan disimpan di folder pengaturan aplikasi), agar jumlah instalasi yang terdampak bisa dihitung. ID ini tidak terkait dengan nama, email, atau perangkat Anda</li>
+        <li>Khusus crash JavaScript: 50 baris log terakhir milik Ferret sendiri (seperti <q>[startup]</q> dan <q>[recording]</q>), dipersingkat dan dengan path, URL, email, serta key dihapus</li>
+      </ul>
+    </td><td>
+      <ul>
+        <li>Path folder proyek dan nama file Anda (diganti dengan <code>&lt;project&gt;</code>)</li>
+        <li>URL yang dibuka di browser bawaan, dan alamat web lainnya (diganti dengan <code>&lt;url&gt;</code>)</li>
+        <li>Output terminal, transkrip, temuan, teks halaman, screenshot</li>
+        <li>Alamat email serta API key atau token (diganti)</li>
+        <li>Nama Anda, nama perangkat, alamat IP (tidak disimpan), cookie, variabel lokal</li>
+        <li>Memory dump dari crash native (minidump). Isinya bisa berupa apa saja yang ada di memori, sehingga tetap berada di komputer Anda</li>
+        <li>Klik, permintaan jaringan, dan baris log apa pun yang bukan milik Ferret sendiri</li>
+      </ul>
+    </td></tr>
+  </tbody>
+</table>
+<p>Aplikasi yang terinstal mengirim paling banyak 10 laporan per peluncuran dan hanya separuh dari error JavaScript (crash native selalu dikirim). Build pengembangan mengirim setiap error, hingga 50 per peluncuran. Error yang sama hanya dikirim sekali per peluncuran. Startup lambat (lebih dari 5 detik) dan aplikasi macet lama (lebih dari 1 detik) dikirim sebagai peringatan, paling banyak sekali setiap 10 menit. Tidak ada pelacakan performa maupun session replay yang dipakai. Aplikasi memakai paket gratis Sentry. Jika kuotanya penuh, laporan tambahan dibuang dan tidak ada yang dikenai biaya.</p>
+<p>Membangun Ferret sendiri? Atur <code>FERRET_SENTRY_DSN</code> (nama lama <code>MOVIE_ADE_SENTRY_DSN</code> juga berfungsi) ke DSN Sentry Anda sendiri, atau ke string kosong agar tidak mengirim apa pun. Kodenya ada di <code>src/main/telemetry.ts</code> dan <code>src/shared/telemetry.ts</code>.</p>

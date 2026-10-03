@@ -1,0 +1,35 @@
+<!-- Ferret docs translation: vi / editor. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 05d78374e2 -->
+Editor và xem trước
+
+<!-- @lead 97cbc36c8d -->
+Mở và sửa tệp trong dự án, xem trước Markdown và Mermaid. Bản xem trước mở trong trình duyệt tích hợp có thể được ghi và review như mọi trang web.
+
+<!-- @files f1e2c27cca -->
+## Mở và sửa tệp
+<ul>
+  <li><span class="docs-ui">Tệp</span> (cây tệp): {{keys:Mod+Shift+E}}, với <span class="docs-ui">Lọc theo tên tệp</span>, <span class="docs-ui">Làm mới</span> và <span class="docs-ui">Thu gọn tất cả</span>.</li>
+  <li><span class="docs-ui">Đi đến tệp…</span>: {{keys:Mod+P}}.</li>
+  <li>Lưu bằng {{keys:Mod+S}}. Khi đóng một tệp đã sửa, ứng dụng hỏi <q>Lưu thay đổi cho &lt;name&gt;?</q> với <span class="docs-ui">Lưu</span>, <span class="docs-ui">Không lưu</span> và <span class="docs-ui">Hủy</span>.</li>
+  <li>Nếu tệp thay đổi trên đĩa trong khi bạn còn chỉnh sửa chưa lưu, chọn <span class="docs-ui">Tải lại từ đĩa</span> hoặc <span class="docs-ui">Giữ thay đổi của tôi</span>.</li>
+</ul>
+<p>Editor là Monaco. Các tệp không phải văn bản sẽ mở trong trình xem: hình ảnh (phóng to, thu nhỏ; SVG cũng có thể hiển thị dưới dạng mã), video và âm thanh có thanh tua, PDF, và với mọi tệp nhị phân khác là kích thước cùng dạng hex của các byte đầu. Trình xem chỉ đọc, và các tệp nằm ngoài thư mục dự án hoặc được truy cập qua symbolic link trỏ ra ngoài thư mục đó sẽ không được hiển thị.</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Sắp có</p><p>Tạo, đổi tên và xóa tệp từ cây tệp.</p></div>
+
+<!-- @preview b8c0baaad4 -->
+## Xem trước Markdown và Mermaid
+<p>Xem trước hoạt động với <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> và <code>.mermaid</code>. Mermaid được đóng gói sẵn trong ứng dụng, nên sơ đồ hiển thị được khi không có mạng.</p>
+<ul>
+  <li><span class="docs-ui">Mở xem trước ở bên cạnh</span>: bên cạnh editor</li>
+  <li><span class="docs-ui">Mở xem trước</span>: trong trình duyệt tích hợp (<code>ade-preview://</code>), để bạn có thể ghi và review nó</li>
+</ul>
+
+<!-- @review-docs 3956ed6f10 -->
+## Review tài liệu bằng cách ghi
+<ol class="docs-steps">
+  <li>Mở một tệp Markdown và bấm <span class="docs-ui">Mở xem trước</span>.</li>
+  <li>Ghi như bình thường. Vừa nói về bản đặc tả hay tài liệu thiết kế vừa khoanh vùng chỗ sai.</li>
+  <li>Dừng. Các góp ý tham chiếu đường dẫn của tệp tính từ thư mục dự án thay vì URL.</li>
+  <li>Bấm <span class="docs-ui">Gửi cho Agent</span> để nhờ sửa tài liệu.</li>
+</ol>
+<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="Xem trước Markdown trong trình duyệt tích hợp (ảnh chụp màn hình sắp có)"><span>Ảnh chụp màn hình sắp có</span></div><figcaption>Xem trước Markdown trong trình duyệt tích hợp</figcaption></figure>

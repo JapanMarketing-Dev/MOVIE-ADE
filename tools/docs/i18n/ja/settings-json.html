@@ -1,0 +1,176 @@
+<!-- Ferret docs translation: ja / settings-json. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 356c52a302 -->
+settings.json で設定する
+
+<!-- @lead a353948c8f -->
+Ferret の設定はすべて1つの JSON ファイルにあり、隣に JSON Schema が置かれています。そのため、自分で、またはコーディングエージェント（たとえば Claude Code、Codex、Gemini CLI）にファイルを編集させて、アプリを設定できます。変更はアプリの起動中に反映されます。
+
+<!-- @path de46fc6989 -->
+## ファイルの場所
+<p>パスはどの OS でも同じです。</p>
+<pre><code>~/.ferret/settings.json          # your settings (edit this)
+~/.ferret/settings.schema.json   # JSON Schema, rewritten by the app on launch
+~/.ferret/state.json             # open folder, last URL, open tabs (managed by the app)
+~/.ferret/.env                   # optional: API keys referenced by apiKeyEnv</code></pre>
+<ul>
+  <li>別のフォルダ（たとえば dotfiles リポジトリの中）を使うには <code>FERRET_CONFIG_DIR</code> を設定します（以前の名前 <code>MOVIE_ADE_CONFIG_DIR</code> も使えます）。<code>~</code> は展開されます。</li>
+  <li>開発用のビルド（<code>pnpm dev</code>）は <code>~/.ferret/dev/</code> を使うので、Ferret 自体を開発しても普段の設定は書き換わりません。</li>
+  <li>0.1.0 からの更新: 初回の起動で、以前の <code>&lt;userData&gt;/settings.json</code> を新しいファイルにコピーします。古いファイルはバックアップとしてそのまま残し、変更しません。</li>
+</ul>
+<p>MOVIE-ADE からの更新: 初回の起動で、<code>settings.json</code>、<code>state.json</code>、<code>usage/</code>、<code>.env</code> を <code>~/.movie-ade/</code> から <code>~/.ferret/</code> にコピーします。古いフォルダはそのまま残し、変更しません。</p>
+<p>アプリの <span class="docs-ui">設定</span> では、上部にパスが表示され、<span class="docs-ui">settings.json を開く</span>（スキーマの補完つきで内蔵エディタで編集）と <span class="docs-ui">フォルダで表示</span> があります。</p>
+
+<!-- @schema 9eeea0d22b -->
+## スキーマと検証
+<p><code>settings.json</code> の最初の行は <code>"$schema": "./settings.schema.json"</code> です。VS Code などのエディタや Claude Code などのエージェントは、これを使って補完・検証し、各項目の説明を表示します。スキーマはアプリに同梱され、起動のたびにファイルの隣へ書き出されるので、常にインストールしているバージョンと一致します。</p>
+<p>Ferret が知らないキーは、アプリが保存するときもそのまま残します。開いているタブや最後の URL などのセッションの状態は、ここではなく <code>state.json</code> に保存します。</p>
+
+<!-- @example fece1b6b16 -->
+## 注釈つきの例
+<p>JSON にはコメントが書けないので、説明は例の下に置きます。どの項目も省略でき、要らないものは書かなくてかまいません。</p>
+<pre><code>{
+  "$schema": "./settings.schema.json",
+  "theme": "dark",
+  "locale": "en",
+  "projects": [
+    {
+      "id": "shop",
+      "name": "shop",
+      "folderPath": "/Users/you/src/shop",
+      "kind": "web",
+      "urls": [
+        { "id": "local", "label": "local", "url": "http://localhost:3000" },
+        { "id": "prd", "label": "prd", "url": "https://shop.example.com" }
+      ]
+    }
+  ],
+  "agents": {
+    "customAgents": [
+      { "id": "custom:my-agent", "name": "My agent", "command": "my-agent", "args": "--yes" }
+    ],
+    "startupAgents": ["claude", "custom:my-agent"]
+  },
+  "capture": {
+    "transcription": "compatible",
+    "language": "auto",
+    "costLimitUsd": null,
+    "sttEndpoints": {
+      "compatible": {
+        "baseUrl": "http://gpu-box.local:8000/v1",
+        "model": "Systran/faster-whisper-large-v3",
+        "apiKeyEnv": "WHISPER_SERVER_TOKEN"
+      }
+    }
+  },
+  "organizer": {
+    "runner": "api:compatible",
+    "endpoints": {
+      "compatible": { "baseUrl": "http://localhost:11434/v1", "model": "qwen3:14b" }
+    }
+  },
+  "decision": {
+    "enabled": true,
+    "preset": "ollama",
+    "endpoint": "http://localhost:11434/v1/systemone",
+    "model": "clef-flash"
+  },
+  "layout": {
+    "panels": {
+      "projects": { "dock": "left", "visible": true },
+      "terminal": { "dock": "bottom", "visible": true },
+      "files": { "dock": "right", "visible": false }
+    }
+  }
+}</code></pre>
+<ul>
+  <li><code>projects[].urls</code>: URL メニューに出るレビュー対象。プロジェクトを開くと最初のものが開きます。<code>id</code> は重複しなければどんな文字列でもかまいません。</li>
+  <li><code>agents.customAgents</code>: 任意の CLI やラッパースクリプト。<code>startupAgents</code> は、プロジェクトと一緒に開くエージェントのタブを順に並べたものです。</li>
+  <li><code>capture.sttEndpoints.compatible</code>: OpenAI の <code>/v1/audio/transcriptions</code> を実装したサーバーならどれでも使えます（speaches、vLLM、LocalAI…）。<code>costLimitUsd: null</code> で費用の上限を外します。自前の GPU ならこれが妥当です。<a href="transcription.html">文字起こしと費用</a>を見てください。</li>
+  <li><code>organizer</code>: <span class="docs-ui">指摘を整理</span> を OpenAI 互換の <code>/v1/chat/completions</code> サーバー（ここでは Ollama）に直接送ります。代わりに自分の CLI のログインを使うなら <code>"runner": "claude-code"</code> か <code>"codex"</code> にし、そのモデルは <code>organizer.cliModels</code> で選びます。</li>
+  <li><code>decision</code>: 各指摘が直ったかを判定するモデル。ローカルの Ollama で動く Clef Flash は無料で、スクリーンショットも読めます。<code>preset</code> には <code>cloudflare</code>、<code>vercel</code>、<code>typesafe</code>、<code>custom</code> も指定できます。</li>
+  <li>どの接続先のブロック（<code>sttEndpoints.*</code>、<code>organizer.endpoints.*</code>）も、<code>timeoutMs</code>、<code>headers</code>、Azure なら <code>apiVersion</code> を受け付けます。</li>
+</ul>
+<div class="docs-callout docs-callout-note"><p>Ferret があなたの代わりに AI の費用を払うことはありません。組み込みのキーも中継サーバーも無く、すべてのリクエストはあなたのマシンから、あなたが設定した接続先へ、あなたのキーで送られます。</p></div>
+
+<!-- @custom 3d0b17a588 -->
+## どのプロバイダでも: カスタムの接続先
+<p>プリセットは URL とモデルを埋めるだけです。どの接続（文字起こし、指摘を整理、判定モデル）も任意の URL、モデル、ヘッダー、認証を受け付けるので、Cloudflare、ゲートウェイ、社内のプロキシ、自前のサーバーなど、どのプロバイダでも使えます。下の項目は3つとも同じ名前・同じ形です。</p>
+<table>
+  <thead><tr><th>項目</th><th>意味</th></tr></thead>
+  <tbody>
+    <tr><td><code>baseUrl</code>, <code>model</code></td><td>任意の http(s) の URL とモデル名。URL の中の <code>{account_id}</code> は <code>accountId</code>、または環境変数 <code>CLOUDFLARE_ACCOUNT_ID</code> に置き換わります</td></tr>
+    <tr><td><code>authScheme</code></td><td><code>bearer</code>（<code>Authorization: Bearer &lt;key&gt;</code>）、<code>header</code>（<code>authHeader</code> で指定した名前のヘッダーにキーを入れる）、<code>none</code> のどれか。省略するとプロバイダの既定のままです</td></tr>
+    <tr><td><code>headers</code></td><td>追加のヘッダー。値はただの文字列か、環境変数から読む <code>{"env": "VAR"}</code>（<code>apiKeyEnv</code> と同じ順で探します）。<code>Authorization</code> やゲートウェイのトークンのような秘密のヘッダーは <code>{"env": …}</code> の形でしか受け付けません。設定画面では <code>Name: ${VAR}</code> と書きます</td></tr>
+    <tr><td><code>apiKey</code> / <code>apiKeyEnv</code></td><td>キー。<a href="#keys">API キー</a>を参照</td></tr>
+  </tbody>
+</table>
+<p>キーを <code>api-key</code> ヘッダーで受け取る、OpenAI 互換の <code>/v1/audio/transcriptions</code> サーバーで<strong>文字起こし</strong>する例:</p>
+<pre><code>"capture": {
+  "transcription": "compatible",
+  "sttEndpoints": {
+    "compatible": {
+      "baseUrl": "https://stt.internal.example.com/v1",
+      "model": "whisper-large-v3",
+      "authScheme": "header",
+      "authHeader": "api-key",
+      "apiKeyEnv": "INTERNAL_STT_KEY",
+      "headers": { "X-Team": "design" }
+    }
+  }
+}</code></pre>
+<p>Cloudflare Workers AI（OpenAI 互換の chat completions）で<strong>指摘を整理</strong>する例。AI Gateway を通すこともできます:</p>
+<pre><code>"organizer": {
+  "runner": "api:compatible",
+  "endpoints": {
+    "compatible": {
+      "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
+      "model": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      "apiKeyEnv": "CLOUDFLARE_API_TOKEN",
+      "headers": { "cf-aig-authorization": { "env": "CF_AIG_TOKEN" } }
+    }
+  }
+}</code></pre>
+<p>Cloudflare Workers AI（Clef Flash）の<strong>判定モデル</strong>の例。<code>"preset": "custom"</code> にすれば、System One API を話すどのサーバーでも使えます。判定モデルは <code>endpoint</code> にリクエスト先の完全な URL を取ります（<code>{account_id}</code> と <code>{model}</code> は埋められます）。ほかの項目は上と同じ名前・同じ形です:</p>
+<pre><code>"decision": {
+  "enabled": true,
+  "preset": "cloudflare",
+  "endpoint": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}",
+  "model": "clef-flash",
+  "authScheme": "bearer",
+  "apiKeyEnv": "CLOUDFLARE_API_TOKEN",
+  "headers": { "cf-aig-authorization": { "env": "CF_AIG_TOKEN" } }
+}</code></pre>
+<p><code>CLOUDFLARE_ACCOUNT_ID</code>、<code>CLOUDFLARE_API_TOKEN</code> などの変数は <code>~/.ferret/.env</code> に書きます。上のモデル名は例です。プロバイダのモデル一覧を確かめてください。</p>
+
+<!-- @keys d478d4a8f1 -->
+## API キー
+<p>どの接続先のブロックも、キーを次の3通りのどれかで受け付けます。最初に見つかったものが使われます。</p>
+<ol>
+  <li><code>"apiKey": "…"</code>: <code>settings.json</code> に平文で書いたキー。ファイルを読める人はキーも読め、キーがある間は <span class="docs-ui">設定</span> に警告が出ます。特にファイルを dotfiles リポジトリに置いているなら避けてください。</li>
+  <li><code>"apiKeyEnv": "OPENAI_API_KEY"</code>: 環境変数の名前。Ferret は自分の環境、開いているプロジェクトの <code>.env</code>、<code>~/.ferret/.env</code> の順に探します。Finder やスタートメニューから開いたアプリには、シェルのプロファイルで export した変数が見えないので、<code>~/.ferret/.env</code> に置くのが確実です。</li>
+  <li><span class="docs-ui">設定</span> で保存したキー: OS のキーチェーンで暗号化して <code>&lt;userData&gt;/stt-keys.bin</code> に保存します（<a href="transcription.html#keys">キーの保存場所</a>を参照）。</li>
+</ol>
+<p>Ferret が環境変数を読むのは、<code>apiKeyEnv</code> にその名前を書いたときだけです。キーをログに残したり、画面に表示したり、クラッシュレポートに含めたりすることはありません。</p>
+
+<!-- @reload 4c8b56784b -->
+## 編集するとすぐ反映
+{{clip:settings-json|settings.json を編集すると、起動中のアプリにそのまま反映される。}}
+<p>Ferret は <code>settings.json</code> を見張っています。変わると読み直し、スキーマで確かめてから反映します。配色、言語、レイアウト、エージェント、プロジェクト、AI の接続先は再起動なしで更新され、設定画面も更新されます。</p>
+<ul>
+  <li>ファイルに JSON の構文エラーや型の違う値があると、その編集は何も反映しません。アプリは直前の正しい設定のまま動き、エラーを行番号つきで表示し、直すまでファイルを上書きしません。</li>
+  <li>アプリ自身が保存するとき（<span class="docs-ui">設定</span> で何かを変えたとき）は、一時ファイルに書いてから <code>settings.json</code> へ名前を変えて置き換えるので、途中で落ちても書きかけのファイルは残りません。</li>
+</ul>
+
+<!-- @agent d9a63aa906 -->
+## コーディングエージェントに Ferret を設定させる
+<p>次の文を Claude Code、Codex など、ファイルを編集できるエージェントに貼り付けます。</p>
+<pre><code>Edit ~/.ferret/settings.json following the JSON Schema in
+~/.ferret/settings.schema.json (read the field descriptions first).
+Keep unknown keys and keep the file valid JSON. Never write API keys in
+plaintext: set "apiKeyEnv" to an environment variable name instead and
+tell me which variable to put in ~/.ferret/.env.
+Ferret applies the change as soon as the file is saved.
+
+Task: &lt;what you want, e.g. "use my Ollama at http://localhost:11434 with
+qwen3:14b for Organize findings and add a prd URL for the shop project"&gt;</code></pre>
+<p>同じプロンプトが、実際のパスを埋めた形で <span class="docs-ui">設定</span> → <span class="docs-ui">コーディングエージェントに設定させる</span> にあり、<span class="docs-ui">プロンプトをコピー</span> ボタンでコピーできます。</p>

@@ -1,0 +1,56 @@
+<!-- Ferret docs translation: ko / projects. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 5c9e1003a2 -->
+프로젝트와 URL
+
+<!-- @lead 4a937bd356 -->
+프로젝트는 폴더(보통 저장소의 루트)입니다. 프로젝트마다 저장한 URL을 따로 가지므로 local, dev, 프로덕션을 한 번의 클릭으로 오갈 수 있습니다.
+
+<!-- @add-project eb372d2531 -->
+## 프로젝트 추가하기
+<ol class="docs-steps">
+  <li><span class="docs-ui">파일 → 프로젝트 폴더 열기…</span>({{keys:Mod+O}}), 사이드바의 <span class="docs-ui">프로젝트 추가</span>, 또는 제목 표시줄 프로젝트 메뉴의 <span class="docs-ui">프로젝트 추가…</span>를 사용합니다.</li>
+  <li>프로젝트를 가져올 곳을 고릅니다.
+    <ul>
+      <li><span class="docs-ui">이 컴퓨터에서</span>: 폴더를 선택합니다.</li>
+      <li><span class="docs-ui">GitHub / GitLab에서 클론</span>: 내 저장소 중 하나(<code>gh</code> 또는 <code>glab</code> 로그인으로 목록을 가져옴)를 고르거나 URL을 붙여 넣고 상위 폴더를 선택하면, Ferret이 클론한 뒤 엽니다.</li>
+      <li><span class="docs-ui">SSH로 열기</span>: <code>~/.ssh/config</code>에서 호스트를 고릅니다. 터미널과 에이전트는 원격 머신에서 실행되고, 리뷰는 이 컴퓨터에 남습니다.</li>
+    </ul>
+  </li>
+</ol>
+<p>이름의 기본값은 폴더 이름입니다. 이미 등록된 폴더를 추가하면 대신 그 프로젝트가 열립니다(macOS와 Windows에서는 경로를 대소문자 구분 없이 비교합니다). 사이드바 메뉴에서 프로젝트를 <span class="docs-ui">이름 변경</span>하거나 <span class="docs-ui">목록에서 제거</span>할 수 있습니다. 제거해도 폴더는 삭제되지 않습니다.</p>
+<p>터미널은 프로젝트 폴더에서 열리고, 리뷰는 <code>&lt;project&gt;/.ferret/</code> 아래에 저장됩니다.</p>
+
+<!-- @save-url 8914160725 -->
+## URL 저장하기
+<ol class="docs-steps">
+  <li>내장 브라우저에서 페이지를 엽니다.</li>
+  <li>브라우저 도구 모음의 <span class="docs-ui">+</span>(<span class="docs-ui">현재 URL 저장</span>)를 클릭합니다. 현재 URL이 미리 입력되어 있습니다.</li>
+  <li><span class="docs-ui">이름</span>을 입력하고 <span class="docs-ui">저장</span>을 클릭합니다.</li>
+</ol>
+<p><code>http://</code>와 <code>https://</code> URL만 사용할 수 있습니다. 제안된 이름을 그대로 두면 호스트에서 이름을 추측합니다.</p>
+<table>
+  <thead><tr><th>호스트</th><th>이름</th></tr></thead>
+  <tbody>
+    <tr><td><code>localhost</code>, <code>127.*</code>, <code>::1</code>, <code>0.0.0.0</code>, <code>*.localhost</code></td><td><code>local</code></td></tr>
+    <tr><td><code>dev</code>, <code>develop</code>, <code>development</code> 포함</td><td><code>dev</code></td></tr>
+    <tr><td><code>stg</code>, <code>stage</code>, <code>staging</code> 포함</td><td><code>stg</code></td></tr>
+    <tr><td>그 외</td><td><code>prd</code></td></tr>
+  </tbody>
+</table>
+<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="브라우저 도구 모음의 저장된 URL(스크린샷 준비 중)"><span>스크린샷 준비 중</span></div><figcaption>브라우저 도구 모음의 저장된 URL</figcaption></figure>
+
+<!-- @review-targets 351621051d -->
+## 리뷰 대상 패널
+{{clip:targets|녹화를 멈추지 않고 리뷰 대상과 페이지를 전환합니다.}}
+<p>피드백 모드에서는 오른쪽의 <span class="docs-ui">리뷰 대상</span> 패널에 현재 프로젝트에서 리뷰할 수 있는 모든 것이 나열됩니다. 대상을 전환해도 녹화는 멈추지 않습니다. 패널은 <span class="docs-ui">보기 → 리뷰 대상 표시/숨기기</span>({{keys:Mod+Shift+K}}) 또는 <span class="docs-ui">패널 숨기기</span>로 표시하거나 숨깁니다.</p>
+<ul>
+  <li><strong><span class="docs-ui">대상</span></strong>: 프로젝트에 저장된 URL입니다. 각 URL 아래에는 그 사이트에서 방문한 페이지가 트리로 표시됩니다. 저장하지 않았지만 방문한 사이트는 별도의 그룹으로 표시됩니다.</li>
+  <li><strong><span class="docs-ui">파일</span></strong>: 프로젝트 폴더입니다. 파일은 미리 보기로 열리므로(Markdown과 Mermaid는 렌더링되고, 그 밖의 텍스트는 읽기 전용) 문서도 리뷰할 수 있습니다. 연필(<span class="docs-ui">에디터에서 열기</span>)을 누르면 에디터에서 열립니다.</li>
+</ul>
+<p><span class="docs-ui">대상 필터</span>는 대상, 페이지, 파일을 한꺼번에 걸러 내며, <span class="docs-ui">파일로 이동…</span>과 같은 퍼지 매칭을 사용합니다. 목록에서는 <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> 또는 <kbd>1</kbd>–<kbd>9</kbd>로 대상을 전환합니다. <span class="docs-ui">URL 열기…</span>는 일회성 URL을 열고, <span class="docs-ui">프로젝트 URL에 저장</span>은 그 URL을 저장합니다.</p>
+<p>대상은 <code>settings.json</code>의 <code>projects[].urls</code>에서 가져옵니다(<a href="settings-json.html#example">예시</a> 참고). 각 항목에는 <code>url</code>, <code>launchCommand</code>(터미널에서 실행. 예: 데스크톱 앱 시작), <code>windowMatch</code>(녹화할 창) 중 하나가 필요합니다. 창 대상을 고르면 그 창이 녹화 소스로 설정되므로 녹화 중에는 고를 수 없습니다. 방문한 페이지는 프로젝트별로 이 컴퓨터에만 기억됩니다(최대 200개).</p>
+
+<!-- @switch-env 5103621352 -->
+## 환경 열기와 전환
+<p>저장한 URL을 클릭하면 열립니다. 현재 페이지가 다른 저장된 URL 아래에 있으면, Ferret은 경로, 쿼리, 해시를 유지하고 origin만 바꿉니다. 예를 들어 <code>http://localhost:3000/pricing?plan=pro</code>에서 <code>prd</code>를 클릭하면 <code>https://example.com/pricing?plan=pro</code>가 열립니다.</p>
+<p>현재 페이지와 일치하는 칩(가장 긴 접두사)이 강조 표시됩니다. 칩을 마우스 오른쪽 버튼으로 클릭하거나 연필 아이콘을 사용해 편집하거나 <span class="docs-ui">삭제</span>할 수 있습니다. 프로젝트를 열 때 이전 URL이 없으면 첫 번째 저장된 URL이 로드됩니다.</p>

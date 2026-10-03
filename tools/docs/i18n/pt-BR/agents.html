@@ -1,0 +1,147 @@
+<!-- Ferret docs translation: pt-BR / agents. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title a7a0afdf19 -->
+Enviar a agentes
+
+<!-- @lead 14c9151ac0 -->
+Rode seu agente de programação no terminal integrado e entregue a ele uma revisão com um clique. Claude Code e Codex são os exemplos mais comuns, mas qualquer agente da lista abaixo funciona, assim como uma CLI que você mesmo adicionar. Você também pode copiar a instrução para um agente que roda em outro lugar ou publicar a revisão no GitHub.
+
+<!-- @findings 2c83c22ebb -->
+## Revisar os apontamentos
+<p>Cada cartão da aba <span class="docs-ui">Apontamentos</span> permite:</p>
+<ul>
+  <li>Editar o título e o pedido ali mesmo</li>
+  <li>Alternar entre <span class="docs-ui">Enviar</span> / <span class="docs-ui">Não enviar</span></li>
+  <li><span class="docs-ui">Ver gravação</span> (vai até aquele momento) e <span class="docs-ui">Substituir imagem</span> (escolher outro quadro)</li>
+  <li><span class="docs-ui">Confirmar</span> / <span class="docs-ui">Marcar como Precisa de revisão</span>, <span class="docs-ui">Mesclar com o próximo</span>, <span class="docs-ui">Excluir</span></li>
+</ul>
+<p><span class="docs-ui">Filtrar por progresso</span> mostra ou oculta os apontamentos por status (por exemplo, <span class="docs-ui">Somente</span> os que aguardam a sua revisão); <span class="docs-ui">Mostrar tudo</span> remove o filtro.</p>
+<p>O cabeçalho tem <span class="docs-ui">Desfazer</span>, <span class="docs-ui">Abrir pasta</span>, <span class="docs-ui">Copiar para o Agent</span>, <span class="docs-ui">Enviar ao GitHub / GitLab</span>, <span class="docs-ui">Organizar</span> e <span class="docs-ui">Enviar ao Agent</span>. As falas que não viraram apontamento aparecem em <span class="docs-ui">Falas excluídas</span>, onde <span class="docs-ui">Restaurar como apontamento</span> as traz de volta.</p>
+<figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="A aba Apontamentos (captura de tela em breve)"><span>Captura de tela em breve</span></div><figcaption>A aba Apontamentos</figcaption></figure>
+
+<!-- @terminal 45dd9bf23b -->
+## Rodar agentes no terminal integrado
+<p>Quando um projeto abre, o Ferret inicia uma aba de terminal para cada agente de <span class="docs-ui">Configurações → Agents → Iniciar ao abrir um projeto</span>, na pasta do projeto e no modo normal do agente. O padrão é Claude Code e Codex:</p>
+<pre><code>claude
+codex</code></pre>
+<p>Você pode escolher outros agentes da <a href="#supported">lista de suportados</a> (eles iniciam na ordem em que você os escolher) ou nenhum.</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Os pedidos de permissão continuam ativos</p><p>Registrar ou clonar um projeto não faz o Ferret confiar nele. Agentes como Claude Code e Codex perguntam se você confia na pasta na primeira vez e continuam perguntando antes de editar arquivos ou executar comandos. Para permitir que os agentes pulem pedidos de permissão, aprovações e o sandbox em um projeto em que você confia, ative isso para esse projeto em <span class="docs-ui">Configurações → Agents → Pular pedidos de permissão</span> e confirme. O Ferret adiciona a flag de pular permissões própria de cada agente, quando ela é conhecida; agentes sem uma flag conhecida mantêm os pedidos. A partir daí, isso vale só para os agentes que você mesmo abrir na pasta desse projeto; os agentes iniciados quando o projeto abre sempre mantêm os pedidos. Flags de pular permissões digitadas nos argumentos são ignoradas.</p></div>
+<p>Se nenhum agente estiver selecionado, abre-se um shell comum. O menu <span class="docs-ui">+</span> abre um <span class="docs-ui">Novo terminal</span>, inicia qualquer um dos seus agentes em uma nova aba ou leva a <span class="docs-ui">Configurações de Agents…</span>. A caixa de busca dele também encontra abas, URLs salvas e arquivos.</p>
+<p>As abas mostram o estado do agente: <span class="docs-ui">Em execução</span>, <span class="docs-ui">Aguardando entrada</span>, <span class="docs-ui">Concluído (não lido)</span>, <span class="docs-ui">Ocioso</span>. Na barra lateral, um projeto com um agente em execução fica marcado, então você vê isso sem trocar de projeto.</p>
+{{clip:terminals|Arrastando abas e painéis do terminal para dividir, mover e transformá-los de volta em abas.}}
+<p><strong>Arraste para dividir.</strong> Arraste uma aba, ou um painel pela alça (que aparece quando uma aba está dividida), e solte:</p>
+<ul>
+  <li>no quarto externo da borda de um painel: <span class="docs-ui">Dividir à esquerda</span> / <span class="docs-ui">Dividir à direita</span> / <span class="docs-ui">Dividir acima</span> / <span class="docs-ui">Dividir abaixo</span></li>
+  <li>no centro de um painel: <span class="docs-ui">Abrir como aba</span> (um painel sai da divisão e vira uma aba própria)</li>
+  <li>na faixa fina ao redor de toda a área do terminal: <span class="docs-ui">Dividir toda a área à esquerda</span> e assim por diante (quando há 2 ou mais painéis)</li>
+  <li>na barra de abas: <span class="docs-ui">Colocar como aba aqui</span></li>
+</ul>
+<p>Os processos continuam rodando enquanto você os move, e uma aba que fica vazia é fechada. Divisões pelo teclado:</p>
+<table class="docs-keys">
+  <thead><tr><th>Ação</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Novo terminal</td><td class="os-mac">{{keys-mac:Mod+T}}</td><td class="os-win">{{keys-win:Mod+T}}</td></tr>
+    <tr><td>Dividir à direita</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
+    <tr><td>Dividir abaixo</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+    <tr><td>Fechar painel / aba</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @supported 69600dc42f -->
+## Agentes suportados
+<p>O Ferret não está preso a um único agente. Ele reconhece os agentes de programação abaixo: consegue iniciá-los, detectá-los em um terminal para o <span class="docs-ui">Enviar ao Agent</span> e mostrar se estão instalados. <span class="docs-ui">Configurações → Agents</span> os lista com <span class="docs-ui">Instalado</span> / <span class="docs-ui">Não encontrado</span>, um botão <span class="docs-ui">Instalar</span> quando o fornecedor publica um instalador de uma linha, e o comando e os argumentos de cada um.</p>
+{{agent-catalog}}
+<p>Não está na lista? <span class="docs-ui">Configurações → Agents → Adicionar agent personalizado</span> registra qualquer CLI ou script wrapper (um nome, um comando e, opcionalmente, o nome do processo usado para reconhecê-lo), ou adicione-o a <code>agents.customAgents</code> no <a href="settings-json.html#example">settings.json</a>. Agentes que rodam fora do Ferret podem usar <span class="docs-ui">Copiar para o Agent</span>.</p>
+<p>Alguns recursos dependem do agente e, por enquanto, estão limitados ao Claude Code e ao Codex:</p>
+<ul>
+  <li><a href="accounts.html">Contas e uso</a>: alternar entre vários logins e o medidor de limite de uso no rodapé.</li>
+  <li><span class="docs-ui">Organizar</span>: roda com o seu login do Claude Code ou do Codex, ou com uma API de LLM que você configurar.</li>
+</ul>
+
+<!-- @send d320d66d74 -->
+## Enviar ao Agent / Copiar para o Agent
+{{clip:send|Da aba Apontamentos para o agente no terminal integrado com Enviar ao Agent.}}
+<ol class="docs-steps">
+  <li>Clique em <span class="docs-ui">Enviar ao Agent</span>. Por padrão (<span class="docs-ui">Automático (aba atual ou um agent em execução)</span>), o envio vai para o agente da aba de terminal atual ou para um que esteja em execução. Use a seta ao lado do botão (<span class="docs-ui">Escolha o agent de destino</span>) para escolher um agente ou uma aba específica.</li>
+  <li>O Ferret escreve a instrução na entrada do agente e a envia. Acompanhe o progresso no terminal.</li>
+</ol>
+<p>Se nenhum agente estiver em execução, o Ferret inicia um primeiro e envia assim que ele estiver pronto. Nada é enviado enquanto o agente aguarda uma resposta a um pedido de permissão. Responda no terminal primeiro.</p>
+<p><span class="docs-ui">Copiar para o Agent</span> coloca a mesma instrução na área de transferência para um agente que roda em outro lugar (outro terminal, IDE ou app). Só os apontamentos marcados como <span class="docs-ui">Enviar</span> são incluídos. O vídeo nunca é incluído.</p>
+
+<!-- @verify f8f4f5bb1d -->
+## Verificação de aceitação com um modelo de decisão
+{{clip:verify|O agente corrige os apontamentos e verifica cada um com o modelo de decisão até que todos sejam aprovados.}}
+<p>Ative isso e o seu agente de programação confere o próprio trabalho em relação a cada apontamento antes de informar que terminou. O Ferret não julga nada por conta própria: ele dá ao agente um <em>modelo de decisão</em> (qualquer API compatível com System One) e, no <code>feedback.md</code>, diz a ele para repetir até que todos os apontamentos sejam aprovados.</p>
+<ol class="docs-steps">
+  <li>O agente implementa os apontamentos.</li>
+  <li>Para cada apontamento, ele faz uma captura de tela DEPOIS (com a mesma viewport e o mesmo estado da página da imagem ANTES) e envia ao modelo de decisão uma requisição com o texto do apontamento, a linha "Done when" dele e as imagens ANTES/DEPOIS.</li>
+  <li>Um apontamento é aprovado quando P(done) é pelo menos o limiar (padrão 0.7) e a escolha é <code>done</code>. O agente corrige o restante e reavalia <strong>todos</strong> os apontamentos a cada rodada, e só para quando todos são aprovados na mesma rodada ou por um motivo honesto que ele precisa declarar: a API está inacessível, um apontamento está fora do escopo ou um apontamento está travado com as pontuações inalteradas.</li>
+  <li>A lista final de Concluído / Não concluído inclui as pontuações de cada apontamento e o número de rodadas.</li>
+</ol>
+<p>Configure em <span class="docs-ui">Configurações → Modelo de decisão</span> e ative <span class="docs-ui">Adicionar a verificação do modelo de decisão às instruções do agent</span>. As predefinições só preenchem os campos; todos os campos continuam editáveis, e <span class="docs-ui">Personalizado</span> funciona com qualquer API compatível.</p>
+<table>
+  <thead><tr><th>Predefinição</th><th>URL da requisição</th><th>Modelos</th><th>Chave</th></tr></thead>
+  <tbody>
+    <tr><td>Ollama (padrão)</td><td><code>http://localhost:11434/v1/systemone</code></td><td><code>clef-flash</code>, <code>clef</code> (leem imagens); <code>nimble</code>, <code>tev1</code> (só texto)</td><td>nenhuma, gratuito</td></tr>
+    <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (leem imagens)</td><td><code>CLOUDFLARE_API_TOKEN</code> (permissão Workers AI); ID da conta pelo campo ou por <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
+    <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (só texto)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
+    <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (só texto)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>Personalizado</td><td>qualquer URL completa</td><td>qualquer</td><td>Bearer, um cabeçalho personalizado ou nenhuma; cabeçalhos extras permitidos</td></tr>
+  </tbody>
+</table>
+<p>Para o Ollama, instale-o (0.35.1 ou posterior para Clef / Clef Flash) e baixe o modelo em um terminal. O Ferret não executa instaladores:</p>
+<pre><code>ollama pull clef-flash</code></pre>
+<p>As chaves vêm do campo de chave (salva junto com suas outras chaves de API), de uma variável de ambiente que você indicar (o ambiente do app, o <code>.env</code> do projeto ou <code>~/.ferret/.env</code>) ou de <code>apiKey</code> no <code>settings.json</code>. Cabeçalhos extras podem ler valores de variáveis de ambiente com <code>${VAR}</code>.</p>
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">Como a chave fica fora dos prompts</p><p>Os agentes nunca veem a sua chave. O Ferret roda um relay local em <code>127.0.0.1</code> e entrega a cada terminal <code>FERRET_DECISION_URL</code> (o relay, com um token por terminal), <code>FERRET_DECISION_MODEL</code> e <code>FERRET_DECISION_IMAGES</code> (durante uma versão, os nomes antigos <code>MOVIE_ADE_DECISION_*</code> também são definidos). O relay adiciona a chave e os cabeçalhos e encaminha a requisição sem alterações, então prompts, o <code>feedback.md</code> e as transcrições dos agentes não contêm segredos. Os terminais abertos depois que você muda as configurações passam a usá-las.</p></div>
+<p>O Cloudflare difere da documentação do System One em dois pontos (verificados na API real): as imagens precisam ser data URIs (<code>data:image/jpeg;base64,…</code>; caso contrário, 422 "image must be an embedded base64 data URI"), e a resposta vem envolvida como <code>{ "result": { … }, "success": true }</code> (os erros voltam como <code>{ "success": false, "errors": [ … ] }</code>). A predefinição do Cloudflare define <span class="docs-ui">Codificação das imagens</span> como data URI, os agentes recebem isso como <code>FERRET_DECISION_IMAGE_FORMAT</code>, e as instruções dizem a eles para ler <code>.result</code> quando existir. O relay repassa as duas direções sem alterações. Para usar uma Global API Key em vez de um API token, defina <span class="docs-ui">Autenticação</span> como <span class="docs-ui">Sem chave</span> e adicione os cabeçalhos <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> e <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code>.</p>
+<p>Só o Clef e o Clef Flash leem imagens. Com um modelo só de texto, desative <span class="docs-ui">Enviar imagens ANTES/DEPOIS</span>; o agente então avalia só pelo texto, o que é menos confiável.</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama e imagens grandes</p><p>O Ollama 0.35.0 limita as requisições a <code>/v1/systemone</code> a 64 KiB, então requisições com capturas de tela falham com HTTP 413. As instruções dizem ao agente para reduzir as duas imagens a no máximo 1024px de largura em JPEG (qualidade em torno de 70). Se ainda receber 413, atualize o Ollama para 0.35.1 ou posterior, ou troque para o Cloudflare Workers AI.</p></div>
+
+<!-- @api-usage cacf2ecce0 -->
+## Uso da API no rodapé
+<p>As chamadas de decisão passam pelo relay, então o Ferret consegue contá-las. O item do rodapé ao lado do medidor de uso do agente mostra o modelo de decisão e as chamadas, tokens e custo do dia (por exemplo <code>clef-flash · 42 calls · 18.3k tok</code>). Clique nele para ver hoje, este mês, por projeto, por modelo e por tipo (decisão / transcrição / organização), além das últimas 50 chamadas.</p>
+<p>O custo só aparece quando a API o informa (o Vercel AI Gateway informa) ou quando você define preços por 1M de tokens em <span class="docs-ui">Configurações → Modelo de decisão</span>; caso contrário, aparece "—". Só metadados são registrados (horário, projeto, modelo, status, latência, tamanho, número de imagens, tokens, custo), nunca imagens, textos ou chaves, em <code>~/.ferret/usage/decision-YYYY-MM.jsonl</code>, um arquivo por mês.</p>
+
+<!-- @prompt f46545b478 -->
+## Personalizar a instrução
+<p>Edite <span class="docs-ui">Configurações → Agents → Instruções para o Agent</span>. Duas variáveis são expandidas:</p>
+<table>
+  <thead><tr><th>Variável</th><th>Expande para</th></tr></thead>
+  <tbody>
+    <tr><td><code>{{path}}</code></td><td>Caminho absoluto do <code>feedback.md</code></td></tr>
+    <tr><td><code>{{relpath}}</code></td><td>Caminho relativo ao projeto: <code>.ferret/reviews/&lt;id&gt;/feedback.md</code></td></tr>
+  </tbody>
+</table>
+<p>Deixe em branco para usar o padrão. O tamanho máximo é de 2000 caracteres, e <span class="docs-ui">Redefinir instruções</span> restaura o padrão. Exemplo:</p>
+<pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
+<p>A configuração é armazenada como <code>agentPrompt</code> no <code>settings.json</code>.</p>
+
+<!-- @github aba5332ec5 -->
+## Enviar ao GitHub ou ao GitLab (issue / comentário em PR ou MR)
+<p><span class="docs-ui">Enviar ao GitHub</span> publica a revisão como uma nova issue ou como um comentário em um dos seus pull requests abertos. A autenticação fica a cargo da <a href="https://cli.github.com/">GitHub CLI</a>. O Ferret nunca lê nem armazena um token.</p>
+<ol class="docs-steps">
+  <li>Instale o <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows) ou veja <a href="https://github.com/cli/cli#installation">cli/cli</a>.</li>
+  <li><span class="docs-ui">Configurações → GitHub / GitLab → Fazer login no terminal</span> executa <code>gh auth login --web -h github.com</code> no terminal integrado.</li>
+  <li>Clique em <span class="docs-ui">Enviar ao GitHub</span>, escolha <span class="docs-ui">Criar uma nova Issue</span> ou um PR e revise o <span class="docs-ui">Título</span> e o <span class="docs-ui">Corpo</span> (editáveis).</li>
+  <li>Marque a caixa de confirmação e clique em <span class="docs-ui">Criar Issue</span> ou <span class="docs-ui">Publicar comentário</span>.</li>
+</ol>
+<p>Detalhes:</p>
+<ul>
+  <li>O repositório vem de <code>git remote get-url origin</code>.</li>
+  <li>O Ferret executa <code>gh issue create --repo … --title … --body-file -</code> ou <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>.</li>
+  <li>O corpo é o <code>feedback.md</code> sem as linhas de imagem (as imagens não são enviadas), com até 60.000 caracteres.</li>
+  <li>Os PRs candidatos são os seus próprios PRs abertos (até 30).</li>
+</ul>
+<p>Se <code>GH_TOKEN</code> ou <code>GITHUB_TOKEN</code> estiver definido, o <code>gh</code> o usa primeiro, e o painel de configurações avisa sobre isso.</p>
+<p><strong>GitLab.</strong> Quando o <code>origin</code> é um projeto do GitLab (gitlab.com ou um GitLab autogerenciado), o mesmo botão envia ao GitLab pela <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a> (<code>glab</code>): uma nova issue ou um comentário em um dos seus merge requests abertos. Faça login com <span class="docs-ui">Configurações → GitHub / GitLab</span>, que executa <code>glab auth login</code> (com <code>--hostname</code> para um GitLab autogerenciado) no terminal integrado. O Ferret nunca lê nem armazena o token e avisa quando <code>GITLAB_TOKEN</code> está definido.</p>
+<p><strong>Pedido de estrela.</strong> Depois do seu primeiro <span class="docs-ui">Enviar ao Agent</span>, e quando você chega a 3, 10 e 30 revisões concluídas, o Ferret pode pedir que você dê uma estrela a ele no GitHub. Ele pede no máximo 3 vezes, com pelo menos 3 dias de intervalo, e nunca durante uma gravação. <span class="docs-ui">Dar estrela no GitHub</span> dá a estrela pelo seu próprio login do <code>gh</code> (ou abre o GitHub se o <code>gh</code> não estiver disponível), e <span class="docs-ui">Não perguntar novamente</span> encerra os pedidos. Você também pode dar a estrela em <span class="docs-ui">Ajuda → Dar estrela ao Ferret no GitHub</span>.</p>
+
+<!-- @cli-tools 01bc2517bf -->
+## Instalar ferramentas CLI e fazer login nelas
+<p><span class="docs-ui">Configurações → Ferramentas CLI</span> lista ferramentas de linha de comando de que seus agentes costumam precisar, mostra quais estão instaladas e a versão delas, e executa o comando oficial de instalação ou de login para o seu sistema em uma nova aba de terminal:</p>
+<ul>
+  <li>Hospedagem Git: <code>gh</code>, <code>glab</code></li>
+  <li>IA e modelos: Ollama, Cloudflare <code>wrangler</code></li>
+  <li>Deploy: Vercel, Netlify, Fly.io, Railway, Heroku</li>
+  <li>Nuvem e serviços: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+</ul>
+<p>Quando uma ferramenta não tem um instalador oficial de uma linha para o seu sistema, <span class="docs-ui">Documentação</span> abre a página de instalação dela. A lista verifica de novo sozinha quando uma instalação termina.</p>

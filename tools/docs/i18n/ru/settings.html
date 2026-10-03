@@ -1,0 +1,71 @@
+<!-- Ferret docs translation: ru / settings. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 526d0b4160 -->
+Справочник по настройкам
+
+<!-- @lead bb6030179f -->
+Откройте <span class="docs-ui">Настройки</span> значком шестерёнки в заголовке окна. Во время записи настройки менять нельзя.
+
+<!-- @microphone afd769f38a -->
+## Микрофон
+<table>
+  <thead><tr><th>Параметр</th><th>По умолчанию</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Записывать мой голос</span></td><td>Вкл.</td></tr>
+    <tr><td><span class="docs-ui">Микрофон</span></td><td><span class="docs-ui">Системный по умолчанию</span></td></tr>
+    <tr><td><span class="docs-ui">Записывать и собеседника</span> (бета)</td><td>Выкл.</td></tr>
+  </tbody>
+</table>
+
+<!-- @transcription 89ff79d384 -->
+## Распознавание
+<table>
+  <thead><tr><th>Параметр</th><th>По умолчанию</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Язык</span> (речи)</td><td><span class="docs-ui">Авто</span></td></tr>
+    <tr><td><span class="docs-ui">Движок</span></td><td><span class="docs-ui">На устройстве (бесплатно)</span></td></tr>
+    <tr><td><span class="docs-ui">Модель</span> (на устройстве)</td><td><code>large-v3-turbo</code> (рекомендуется)</td></tr>
+    <tr><td><span class="docs-ui">Base URL эндпоинта</span> / <span class="docs-ui">Модель</span> (совместимый)</td><td>пусто</td></tr>
+    <tr><td><span class="docs-ui">API-ключ OpenAI</span> / <span class="docs-ui">API-ключ эндпоинта (необязательно)</span></td><td>не задан</td></tr>
+    <tr><td><span class="docs-ui">Лимит расходов</span></td><td>До $1 на ревью</td></tr>
+  </tbody>
+</table>
+<p>См. <a href="transcription.html">Распознавание речи и расходы</a>.</p>
+
+<!-- @storage 24cf46ed41 -->
+## Хранение
+<table>
+  <thead><tr><th>Параметр</th><th>По умолчанию</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Хранить записи</span>: 7 дней / 30 дней / <span class="docs-ui">Всегда</span></td><td>7 дней</td></tr>
+    <tr><td><span class="docs-ui">Оставаться на экране фидбэка после остановки</span></td><td>Выкл.</td></tr>
+  </tbody>
+</table>
+
+<!-- @agent e6bb38101d -->
+## Агенты
+<table>
+  <thead><tr><th>Параметр</th><th>По умолчанию</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Запуск при открытии проекта</span></td><td>Claude Code, Codex (можно выбрать любых <a href="agents.html#supported">поддерживаемых агентов</a> или ни одного)</td></tr>
+    <tr><td><span class="docs-ui">Показывать &lt;agent&gt; в меню</span></td><td>Вкл. для всех агентов</td></tr>
+    <tr><td><span class="docs-ui">Команда</span> / <span class="docs-ui">аргументы</span> (для каждого агента)</td><td>Собственная команда агента (например, <code>claude</code>, <code>codex</code>, <code>gemini</code>) / нет</td></tr>
+    <tr><td><span class="docs-ui">Свои агенты</span></td><td>Нет (<span class="docs-ui">Добавить своего агента</span> регистрирует любой CLI)</td></tr>
+    <tr><td><span class="docs-ui">Пропускать запросы разрешений</span> (для проекта)</td><td>Выкл. для всех проектов (<a href="agents.html#terminal">подробнее</a>)</td></tr>
+    <tr><td><span class="docs-ui">Инструкции для агента</span></td><td>Встроенный текст (<a href="agents.html#prompt">переменные</a>)</td></tr>
+  </tbody>
+</table>
+
+<!-- @other 37b81ab14b -->
+## Аккаунты, GitHub, оформление, язык
+<ul>
+  <li><span class="docs-ui">Аккаунты</span>: см. <a href="accounts.html">Аккаунты и использование</a>.</li>
+  <li><span class="docs-ui">GitHub / GitLab</span>: вход в <code>gh</code> и <code>glab</code>. См. <a href="agents.html#github">Отправка в GitHub или GitLab</a>.</li>
+  <li><span class="docs-ui">CLI-инструменты</span>: установка CLI сервисов и вход в них. См. <a href="agents.html#cli-tools">CLI-инструменты</a>.</li>
+  <li><span class="docs-ui">Оформление → Тема</span>: <span class="docs-ui">Системная</span> (по умолчанию), <span class="docs-ui">Светлая</span>, <span class="docs-ui">Тёмная</span>.</li>
+  <li><span class="docs-ui">Язык → Интерфейс</span>: <span class="docs-ui">Системный</span> (по умолчанию; следует языку ОС, если Ferret его поддерживает, иначе английский) или один из 14 языков: English, 日本語, 简体中文, 繁體中文, 한국어, Español, Français, Deutsch, Italiano, Português (Brasil), Русский, हिन्दी, Bahasa Indonesia, Tiếng Việt.</li>
+</ul>
+<p>В нижней панели: положение терминала (справа / снизу) и переключатель микрофона.</p>
+
+<!-- @settings-json ed64241c44 -->
+## settings.json
+<p>Всё перечисленное хранится в <code>~/.ferret/settings.json</code> (путь одинаков во всех ОС), а рядом лежит JSON Schema. Файл можно редактировать, пока приложение работает, вручную или с помощью агента для написания кода; изменения применяются сразу. См. <a href="settings-json.html">Настройка через settings.json</a>.</p>

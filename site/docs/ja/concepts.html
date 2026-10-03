@@ -3,18 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Concepts · Ferret ドキュメント</title>
-  <meta name="description" content="Ferret turns a screen recording into a list of findings an agent can read: images and text, not video.">
+  <title>考え方 · Ferret ドキュメント</title>
+  <meta name="description" content="Ferret は画面の録画を、エージェントが読める指摘の一覧に変えます。渡すのは動画ではなく、画像と文字です。">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
-  <meta name="robots" content="noindex, follow">
-  <link rel="canonical" href="https://ferretade.dev/docs/concepts">
+  <link rel="canonical" href="https://ferretade.dev/docs/ja/concepts">
   <link rel="alternate" hreflang="en" href="https://ferretade.dev/docs/concepts">
+  <link rel="alternate" hreflang="ja" href="https://ferretade.dev/docs/ja/concepts">
+  <link rel="alternate" hreflang="zh-CN" href="https://ferretade.dev/docs/zh-CN/concepts">
+  <link rel="alternate" hreflang="zh-TW" href="https://ferretade.dev/docs/zh-TW/concepts">
+  <link rel="alternate" hreflang="ko" href="https://ferretade.dev/docs/ko/concepts">
+  <link rel="alternate" hreflang="es" href="https://ferretade.dev/docs/es/concepts">
+  <link rel="alternate" hreflang="fr" href="https://ferretade.dev/docs/fr/concepts">
+  <link rel="alternate" hreflang="de" href="https://ferretade.dev/docs/de/concepts">
+  <link rel="alternate" hreflang="it" href="https://ferretade.dev/docs/it/concepts">
+  <link rel="alternate" hreflang="pt-BR" href="https://ferretade.dev/docs/pt-BR/concepts">
+  <link rel="alternate" hreflang="ru" href="https://ferretade.dev/docs/ru/concepts">
+  <link rel="alternate" hreflang="hi" href="https://ferretade.dev/docs/hi/concepts">
+  <link rel="alternate" hreflang="id" href="https://ferretade.dev/docs/id/concepts">
+  <link rel="alternate" hreflang="vi" href="https://ferretade.dev/docs/vi/concepts">
   <link rel="alternate" hreflang="x-default" href="https://ferretade.dev/docs/concepts">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
-  <meta property="og:title" content="Concepts · Ferret ドキュメント">
-  <meta property="og:description" content="Ferret turns a screen recording into a list of findings an agent can read: images and text, not video.">
+  <meta property="og:title" content="考え方 · Ferret ドキュメント">
+  <meta property="og:description" content="Ferret は画面の録画を、エージェントが読める指摘の一覧に変えます。渡すのは動画ではなく、画像と文字です。">
   <meta property="og:url" content="https://ferretade.dev/docs/ja/concepts">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="ja_JP">
@@ -23,8 +35,8 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Concepts · Ferret ドキュメント">
-  <meta name="twitter:description" content="Ferret turns a screen recording into a list of findings an agent can read: images and text, not video.">
+  <meta name="twitter:title" content="考え方 · Ferret ドキュメント">
+  <meta name="twitter:description" content="Ferret は画面の録画を、エージェントが読める指摘の一覧に変えます。渡すのは動画ではなく、画像と文字です。">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -99,40 +111,40 @@
         <p class="docs-nav-heading">はじめに</p>
         <ul>
           <li><a href="quick-start.html">クイックスタート</a></li>
-          <li><a href="install.html">Install</a></li>
-          <li><a href="concepts.html" aria-current="page">Concepts</a></li>
-          <li><a href="keyboard.html">Keyboard shortcuts</a></li>
+          <li><a href="install.html">インストール</a></li>
+          <li><a href="concepts.html" aria-current="page">考え方</a></li>
+          <li><a href="keyboard.html">キーボードショートカット</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
         <p class="docs-nav-heading">Ferret の使い方</p>
         <ul>
-          <li><a href="projects.html">Projects and URLs</a></li>
-          <li><a href="recording.html">Recording</a></li>
-          <li><a href="agents.html">Sending to agents</a></li>
-          <li><a href="editor.html">Editor and preview</a></li>
+          <li><a href="projects.html">プロジェクトと URL</a></li>
+          <li><a href="recording.html">録画</a></li>
+          <li><a href="agents.html">エージェントに送る</a></li>
+          <li><a href="editor.html">エディタとプレビュー</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
         <p class="docs-nav-heading">設定</p>
         <ul>
-          <li><a href="transcription.html">Transcription and costs</a></li>
-          <li><a href="accounts.html">Accounts and usage</a></li>
-          <li><a href="settings.html">Settings reference</a></li>
-          <li><a href="settings-json.html">Configure with settings.json</a></li>
+          <li><a href="transcription.html">文字起こしと費用</a></li>
+          <li><a href="accounts.html">アカウントと使用量</a></li>
+          <li><a href="settings.html">設定の一覧</a></li>
+          <li><a href="settings-json.html">settings.json で設定する</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
         <p class="docs-nav-heading">リファレンス</p>
         <ul>
-          <li><a href="privacy.html">Data and privacy</a></li>
-          <li><a href="files.html">Files and environment</a></li>
+          <li><a href="privacy.html">データとプライバシー</a></li>
+          <li><a href="files.html">ファイルと環境変数</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
         <p class="docs-nav-heading">ヘルプ</p>
         <ul>
-          <li><a href="troubleshooting.html">Troubleshooting</a></li>
+          <li><a href="troubleshooting.html">困ったときは</a></li>
         </ul>
       </div>
       </div>
@@ -140,48 +152,47 @@
 
     <main class="docs-main" id="docs-main">
       <article class="docs-content">
-        <div class="docs-callout docs-callout-i18n"><p>このページはまだ翻訳されていないため、英語で表示しています。 <a href="../concepts.html" hreflang="en">English</a></p></div>
         <p class="docs-eyebrow">はじめに</p>
-        <h1 lang="en">Concepts</h1>
-        <p class="docs-lead" lang="en">Ferret turns a screen recording into a list of findings an agent can read: images and text, not video.</p>
+        <h1>考え方</h1>
+        <p class="docs-lead">Ferret は画面の録画を、エージェントが読める指摘の一覧に変えます。渡すのは動画ではなく、画像と文字です。</p>
         <div class="docs-os" role="group" aria-label="ショートカットの表示" data-docs-os hidden>
           <span class="docs-os-label">ショートカットの表示</span>
           <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">macOS</button>
           <button type="button" class="docs-os-btn" data-os-choice="win" aria-pressed="false">Windows / Linux</button>
         </div>
 
-      <section class="docs-section" aria-labelledby="modes" lang="en">
-        <h2 id="modes"><a class="docs-anchor" href="#modes" aria-label="「Two modes」へのリンク">#</a>Two modes</h2>
+      <section class="docs-section" aria-labelledby="modes">
+        <h2 id="modes"><a class="docs-anchor" href="#modes" aria-label="「2つのモード」へのリンク">#</a>2つのモード</h2>
         <table>
-  <thead><tr><th>Mode</th><th>Shows</th><th>Use it for</th></tr></thead>
+  <thead><tr><th>モード</th><th>表示するもの</th><th>使う場面</th></tr></thead>
   <tbody>
-    <tr><td>Editor</td><td>Built-in browser, terminal, <span class="docs-ui">Findings</span> tab, file tree</td><td>Reviewing findings, sending to agents, fixing</td></tr>
-    <tr><td>Feedback</td><td>Only the page under review and a small recording toolbar</td><td>Recording, solo or while screen-sharing in a meeting</td></tr>
+    <tr><td>エディタ</td><td>内蔵ブラウザ、ターミナル、<span class="docs-ui">指摘</span> タブ、ファイルツリー</td><td>指摘の確認、エージェントへの送信、修正</td></tr>
+    <tr><td>フィードバック</td><td>レビューするページと、小さな録画用ツールバーだけ</td><td>録画（ひとりでも、会議で画面共有しながらでも）</td></tr>
   </tbody>
 </table>
 <figure class="shot docs-figure">
-  <img class="shot-light" src="../assets/editor-light.png" width="1600" height="972" alt="Ferret in Editor mode: projects and reviews on the left, the built-in browser in the center, a terminal and the file tree on the right.">
-  <img class="shot-dark" src="../assets/editor-dark.png" width="1600" height="972" alt="Ferret in Editor mode: projects and reviews on the left, the built-in browser in the center, a terminal and the file tree on the right. (dark theme)">
-  <figcaption>Editor mode: Record is at the top right, and Findings is the tab next to the browser.</figcaption>
+  <img class="shot-light" src="../assets/editor-light.png" width="1600" height="972" alt="エディタモードの Ferret。左にプロジェクトとレビュー、中央に内蔵ブラウザ、右にターミナルとファイルツリー。">
+  <img class="shot-dark" src="../assets/editor-dark.png" width="1600" height="972" alt="エディタモードの Ferret。左にプロジェクトとレビュー、中央に内蔵ブラウザ、右にターミナルとファイルツリー。（ダークテーマ）">
+  <figcaption>エディタモード: 録画は右上、指摘はブラウザの隣のタブです。</figcaption>
 </figure>
-<p>The app starts in Editor mode. Recording switches to Feedback mode, and stopping switches back unless <span class="docs-ui">Stay on the feedback screen after stopping</span> is on. Switch manually with <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>M</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>M</kbd></span></span>.</p>
+<p>アプリはエディタモードで起動します。録画を始めるとフィードバックモードに切り替わり、止めると元に戻ります（<span class="docs-ui">停止後もフィードバック画面のまま</span> が ON のときは戻りません）。手で切り替えるには <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>M</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>M</kbd></span></span> を押します。</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="findings" lang="en">
-        <h2 id="findings"><a class="docs-anchor" href="#findings" aria-label="「Findings」へのリンク">#</a>Findings</h2>
-        <p>A finding is created whenever you speak or circle with the pen. Each one carries:</p>
+      <section class="docs-section" aria-labelledby="findings">
+        <h2 id="findings"><a class="docs-anchor" href="#findings" aria-label="「指摘」へのリンク">#</a>指摘</h2>
+        <p>話したりペンで囲んだりするたびに、指摘が1件できます。1件には次のものが入ります。</p>
 <ul>
-  <li>a timecode and a title</li>
-  <li>the request ("what should change") and the original transcribed words</li>
-  <li>one or more PNGs with your pen marks and cursor ring</li>
-  <li>the URL, the CSS selector and text of the element you pointed at, and the actions just before. These are recorded only when you capture the built-in browser.</li>
+  <li>タイムコードと題名</li>
+  <li>依頼（「何を変えてほしいか」）と、文字起こしした元の言葉</li>
+  <li>ペンの跡とカーソルの輪が入った PNG（1枚以上）</li>
+  <li>URL、指した要素の CSS セレクタとテキスト、直前の操作。これらは内蔵ブラウザを録画したときだけ記録します。</li>
 </ul>
-<p>Right after you stop, findings are a draft split by rules. <span class="docs-ui">Organize</span> asks Claude Code or Codex (your own CLI login, non-interactive; these two are the only agents it can use), or an LLM API you configure, to tidy titles and requests from the text and action log only. No images or audio are sent.</p>
+<p>止めた直後の指摘は、決まりに沿って分けただけの下書きです。<span class="docs-ui">整理</span> を押すと、Claude Code か Codex（自分の CLI のログインを使い、対話なしで動かします。使えるのはこの2つだけです）、または設定した LLM API に、文字と操作の記録だけから題名と依頼を整えてもらいます。画像や音声は送りません。</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="feedback-md" lang="en">
-        <h2 id="feedback-md"><a class="docs-anchor" href="#feedback-md" aria-label="「What the agent receives」へのリンク">#</a>What the agent receives</h2>
-        <p>Every review is written to <code>&lt;project&gt;/.ferret/reviews/&lt;YYYYMMDD-HHMMSS&gt;/feedback.md</code>, with the images next to it. Its layout:</p>
+      <section class="docs-section" aria-labelledby="feedback-md">
+        <h2 id="feedback-md"><a class="docs-anchor" href="#feedback-md" aria-label="「エージェントが受け取るもの」へのリンク">#</a>エージェントが受け取るもの</h2>
+        <p>レビューはどれも <code>&lt;project&gt;/.ferret/reviews/&lt;YYYYMMDD-HHMMSS&gt;/feedback.md</code> に書き出し、その横に画像を置きます。中身の構成は次のとおりです。</p>
 <pre><code># UI feedback (N)
 - target URL, recorded at / duration
 - notes for the agent (pen = red lines, transcription may contain errors,
@@ -194,30 +205,30 @@
 - URL / viewport
 - element: `button.plan-cta` ("Sign up")
 - prior actions</code></pre>
-<p>The headings and labels in <code>feedback.md</code> follow the interface language (Settings → Language).</p>
-<p>Agents read this with the tools they already have (file read, image view), so no plugin or MCP server is needed. Any agent that can read files and images can use it.</p>
+<p><code>feedback.md</code> の見出しと項目名は、画面の言語（設定 → 言語）に合わせて変わります。</p>
+<p>エージェントはこれを、もともと持っている道具（ファイルの読み込み、画像の表示）で読むので、プラグインや MCP サーバーは要りません。ファイルと画像を読めるエージェントなら、どれでも使えます。</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="local-first" lang="en">
-        <h2 id="local-first"><a class="docs-anchor" href="#local-first" aria-label="「Local first」へのリンク">#</a>Local first</h2>
-        <p>Recordings, images, and notes stay in your project folder. Transcription runs on-device by default. Anything that leaves your machine goes straight from your computer to the service you chose (OpenAI, your endpoint, GitHub). There are two exceptions: crash reporting to Sentry (errors, one session per launch, and freeze warnings; on by default, off in Settings), and in-app feedback you choose to send (coming soon), which goes through the developer's small relay and becomes a public GitHub issue. The relay does not store your IP address. Apart from that relay, the developer runs no servers and pays for nothing on your behalf. See <a href="privacy.html">Data and privacy</a>.</p>
+      <section class="docs-section" aria-labelledby="local-first">
+        <h2 id="local-first"><a class="docs-anchor" href="#local-first" aria-label="「ローカルファースト」へのリンク">#</a>ローカルファースト</h2>
+        <p>録画、画像、メモはプロジェクトのフォルダに残ります。文字起こしは最初の設定では端末の中で動きます。手元の外に出るものは、自分の PC から選んだサービス（OpenAI、自分のエンドポイント、GitHub）へ直接送られます。例外は2つです。Sentry へのクラッシュレポート（エラー、起動ごとに1つのセッション、固まったときの警告。最初の設定で ON、設定で OFF にできます）と、自分で送ると決めたアプリ内のフィードバック（準備中）です。後者は開発元の小さな中継サーバーを通り、公開の GitHub Issue になります。中継サーバーは IP アドレスを保存しません。この中継サーバーのほかに、開発元が動かしているサーバーは無く、利用者の代わりに費用を払っているものもありません。<a href="privacy.html">データとプライバシー</a>を見てください。</p>
       </section>
 
         <nav class="docs-pager" aria-label="前と次のページ">
-          <a class="docs-pager-prev" href="install.html"><span>前へ</span>Install</a>
-          <a class="docs-pager-next" href="keyboard.html"><span>次へ</span>Keyboard shortcuts</a>
+          <a class="docs-pager-prev" href="install.html"><span>前へ</span>インストール</a>
+          <a class="docs-pager-next" href="keyboard.html"><span>次へ</span>キーボードショートカット</a>
         </nav>
-        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/README.md" target="_blank" rel="noopener noreferrer">GitHub でこのページの翻訳を手伝う<span class="sr-only"> （新しいタブで開きます）</span></a></p>
+        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/ja/concepts.html" target="_blank" rel="noopener noreferrer">GitHub でこのページの翻訳を手伝う<span class="sr-only"> （新しいタブで開きます）</span></a></p>
       </article>
     </main>
 
     <aside class="docs-toc" aria-label="このページの内容">
       <p class="docs-toc-heading">このページの内容</p>
       <ul>
-        <li><a href="#modes">Two modes</a></li>
-        <li><a href="#findings">Findings</a></li>
-        <li><a href="#feedback-md">What the agent receives</a></li>
-        <li><a href="#local-first">Local first</a></li>
+        <li><a href="#modes">2つのモード</a></li>
+        <li><a href="#findings">指摘</a></li>
+        <li><a href="#feedback-md">エージェントが受け取るもの</a></li>
+        <li><a href="#local-first">ローカルファースト</a></li>
       </ul>
     </aside>
   </div>

@@ -1,0 +1,35 @@
+<!-- Ferret docs translation: pt-BR / editor. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 05d78374e2 -->
+Editor e prévia
+
+<!-- @lead 97cbc36c8d -->
+Abra e edite os arquivos do projeto e veja a prévia de Markdown e Mermaid. Uma prévia aberta no navegador integrado pode ser gravada e revisada como qualquer página web.
+
+<!-- @files f1e2c27cca -->
+## Abrir e editar arquivos
+<ul>
+  <li><span class="docs-ui">Arquivos</span> (a árvore de arquivos): {{keys:Mod+Shift+E}}, com <span class="docs-ui">Filtrar por nome de arquivo</span>, <span class="docs-ui">Atualizar</span> e <span class="docs-ui">Recolher tudo</span>.</li>
+  <li><span class="docs-ui">Ir para arquivo…</span>: {{keys:Mod+P}}.</li>
+  <li>Salve com {{keys:Mod+S}}. Ao fechar um arquivo modificado, aparece <q>Salvar as alterações em &lt;name&gt;?</q> com <span class="docs-ui">Salvar</span>, <span class="docs-ui">Não salvar</span> e <span class="docs-ui">Cancelar</span>.</li>
+  <li>Se o arquivo mudar no disco enquanto você tem edições não salvas, escolha <span class="docs-ui">Recarregar do disco</span> ou <span class="docs-ui">Manter minhas alterações</span>.</li>
+</ul>
+<p>O editor é o Monaco. Arquivos que não são texto abrem em um visualizador: imagens (com zoom; SVG também pode ser exibido como código), vídeo e áudio com barra de busca, PDF e, para qualquer outro arquivo binário, o tamanho e uma visualização hexadecimal dos primeiros bytes. Os visualizadores são somente leitura, e arquivos fora da pasta do projeto ou acessados por um link simbólico que sai dela não são exibidos.</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Em breve</p><p>Criar, renomear e excluir arquivos pela árvore de arquivos.</p></div>
+
+<!-- @preview b8c0baaad4 -->
+## Prévia de Markdown e Mermaid
+<p>A prévia funciona para <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> e <code>.mermaid</code>. O Mermaid vem embutido no app, então os diagramas são renderizados offline.</p>
+<ul>
+  <li><span class="docs-ui">Abrir prévia ao lado</span>: ao lado do editor</li>
+  <li><span class="docs-ui">Abrir prévia</span>: no navegador integrado (<code>ade-preview://</code>), para que você possa gravá-la e revisá-la</li>
+</ul>
+
+<!-- @review-docs 3956ed6f10 -->
+## Revisar documentos gravando
+<ol class="docs-steps">
+  <li>Abra um arquivo Markdown e clique em <span class="docs-ui">Abrir prévia</span>.</li>
+  <li>Grave normalmente. Comente a especificação ou o documento de design e circule o que está errado.</li>
+  <li>Pare. Os apontamentos fazem referência ao caminho do arquivo relativo ao projeto, em vez de uma URL.</li>
+  <li>Use <span class="docs-ui">Enviar ao Agent</span> para que o documento seja corrigido.</li>
+</ol>
+<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="Prévia de Markdown no navegador integrado (captura de tela em breve)"><span>Captura de tela em breve</span></div><figcaption>Prévia de Markdown no navegador integrado</figcaption></figure>

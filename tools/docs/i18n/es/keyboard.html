@@ -1,0 +1,80 @@
+<!-- Ferret docs translation: es / keyboard. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title e9bef0b0f3 -->
+Atajos de teclado
+
+<!-- @lead 659f5284aa -->
+Los atajos se muestran para el sistema operativo desde el que lees; usa el selector de abajo para ver los del otro. La mayoría usan Command en macOS donde Windows y Linux usan Ctrl, y Option donde usan Alt. Unos pocos difieren más, y las tablas muestran ambos. Fuente: <code>src/main/menu.ts</code>, <code>src/shared/browserNav.ts</code>, <code>src/shared/annotation.ts</code> y la gestión de teclas de la terminal.
+
+<!-- @recording 0658b25c43 -->
+## Grabación
+<table class="docs-keys">
+  <thead><tr><th>Acción</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Iniciar / detener grabación</td><td class="os-mac">{{keys-mac:Mod+Shift+R}}</td><td class="os-win">{{keys-win:Mod+Shift+R}}</td></tr>
+    <tr><td>Cambiar modo (Editor / Feedback)</td><td class="os-mac">{{keys-mac:Mod+Shift+M}}</td><td class="os-win">{{keys-win:Mod+Shift+M}}</td></tr>
+    <tr><td>Lápiz mientras se mantiene pulsado</td><td class="os-mac">{{keys-mac:Alt}}</td><td class="os-win">{{keys-win:Alt}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @drawing 5c4ca7f875 -->
+## Dibujar mientras grabas
+<table class="docs-keys">
+  <thead><tr><th>Acción</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Lápiz</td><td class="os-mac">{{keys-mac:P}}</td><td class="os-win">{{keys-win:P}}</td></tr>
+    <tr><td>Recuadro</td><td class="os-mac">{{keys-mac:B / R}}</td><td class="os-win">{{keys-win:B / R}}</td></tr>
+    <tr><td>Usar la página (dejar de dibujar)</td><td class="os-mac">{{keys-mac:V / Esc}}</td><td class="os-win">{{keys-win:V / Esc}}</td></tr>
+    <tr><td>Siguiente color</td><td class="os-mac">{{keys-mac:C}}</td><td class="os-win">{{keys-win:C}}</td></tr>
+    <tr><td>Deshacer el último trazo</td><td class="os-mac">{{keys-mac:Mod+Z}}</td><td class="os-win">{{keys-win:Mod+Z}}</td></tr>
+    <tr><td>Rehacer</td><td class="os-mac">{{keys-mac:Mod+Shift+Z|Ctrl+Shift+Z / Ctrl+Y}}</td><td class="os-win">{{keys-win:Mod+Shift+Z|Ctrl+Shift+Z / Ctrl+Y}}</td></tr>
+  </tbody>
+</table><p>Estas teclas funcionan mientras grabas el navegador integrado y la página tiene el foco. Se ignoran mientras escribes en un campo de la página, y las teclas de letras solo funcionan sin teclas modificadoras, así que los atajos propios de la página siguen funcionando.</p>
+
+<!-- @browser 0417bf5b2e -->
+## Navegador y vista
+<table class="docs-keys">
+  <thead><tr><th>Acción</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Enfocar barra de URL</td><td class="os-mac">{{keys-mac:Mod+L}}</td><td class="os-win">{{keys-win:Mod+L}}</td></tr>
+    <tr><td>Recargar página</td><td class="os-mac">{{keys-mac:Mod+R}}</td><td class="os-win">{{keys-win:Mod+R}}</td></tr>
+    <tr><td>Atrás</td><td class="os-mac">{{keys-mac:Mod+[|Alt+Left}}</td><td class="os-win">{{keys-win:Mod+[|Alt+Left}}</td></tr>
+    <tr><td>Adelante</td><td class="os-mac">{{keys-mac:Mod+]|Alt+Right}}</td><td class="os-win">{{keys-win:Mod+]|Alt+Right}}</td></tr>
+    <tr><td>Alternar ancho de escritorio / móvil</td><td class="os-mac">{{keys-mac:Mod+Shift+V}}</td><td class="os-win">{{keys-win:Mod+Shift+V}}</td></tr>
+    <tr><td>Mostrar/ocultar barra lateral</td><td class="os-mac">{{keys-mac:Mod+B}}</td><td class="os-win">{{keys-win:Mod+B}}</td></tr>
+    <tr><td>Mostrar/ocultar árbol de archivos</td><td class="os-mac">{{keys-mac:Mod+Shift+E}}</td><td class="os-win">{{keys-win:Mod+Shift+E}}</td></tr>
+    <tr><td>Mostrar/ocultar objetivos de revisión</td><td class="os-mac">{{keys-mac:Mod+Shift+K}}</td><td class="os-win">{{keys-win:Mod+Shift+K}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @files 5e0093248b -->
+## Archivos
+<table class="docs-keys">
+  <thead><tr><th>Acción</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Abrir carpeta de proyecto…</td><td class="os-mac">{{keys-mac:Mod+O}}</td><td class="os-win">{{keys-win:Mod+O}}</td></tr>
+    <tr><td>Ir al archivo…</td><td class="os-mac">{{keys-mac:Mod+P}}</td><td class="os-win">{{keys-win:Mod+P}}</td></tr>
+    <tr><td>Guardar</td><td class="os-mac">{{keys-mac:Mod+S}}</td><td class="os-win">{{keys-win:Mod+S}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @terminal a714e034c2 -->
+## Terminal
+<table class="docs-keys">
+  <thead><tr><th>Acción</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Nueva terminal</td><td class="os-mac">{{keys-mac:Mod+T}}</td><td class="os-win">{{keys-win:Mod+T}}</td></tr>
+    <tr><td>Cerrar panel / pestaña</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
+    <tr><td>Dividir a la derecha</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
+    <tr><td>Dividir hacia abajo</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+  </tbody>
+</table><p>Los atajos de división funcionan mientras una terminal tiene el foco.</p>
+
+<!-- @window 84ff87d3b5 -->
+## Ventana y ajustes
+<table class="docs-keys">
+  <thead><tr><th>Acción</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Ajustes…</td><td class="os-mac">{{keys-mac:Mod+,}}</td><td class="os-win">{{keys-win:Mod+,}}</td></tr>
+    <tr><td>Cerrar ventana</td><td class="os-mac">{{keys-mac:Mod+Shift+W|}}</td><td class="os-win">{{keys-win:Mod+Shift+W|}}</td></tr>
+  </tbody>
+</table><p>Windows y Linux no tienen atajo para cerrar la ventana: <span class="docs-ui">Archivo → Salir</span> cierra la app.</p>

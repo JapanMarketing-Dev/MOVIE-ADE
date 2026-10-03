@@ -1,0 +1,54 @@
+<!-- Ferret docs translation: es / recording. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 80e8dd1a5a -->
+Grabación
+
+<!-- @lead 14988eae28 -->
+Graba el navegador integrado, toda la pantalla u otra ventana. Habla, rodea y escribe mientras usas la página.
+
+<!-- @target 133550362a -->
+## Elegir qué grabar
+<p>En el modo Feedback, haz clic en <span class="docs-ui">Elegir objetivo de grabación</span>. El diálogo <span class="docs-ui">Objetivo de grabación</span> ofrece:</p>
+<table>
+  <thead><tr><th>Objetivo</th><th>Qué se captura</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Navegador integrado</span> (predeterminado)</td><td>Vídeo, voz y lápiz, además de la URL, los selectores de elementos, los clics y los desplazamientos. No necesita permisos del sistema operativo.</td></tr>
+    <tr><td><span class="docs-ui">Toda la pantalla</span></td><td>Vídeo, voz y lápiz. Sin URL, elemento ni registro de acciones (se indica en <code>feedback.md</code>).</td></tr>
+    <tr><td><span class="docs-ui">Ventana</span></td><td>Igual que lo anterior. Las ventanas de Ferret no aparecen en la lista.</td></tr>
+  </tbody>
+</table>
+<p>Tu elección se recuerda. En macOS, la captura de pantalla y de ventana requiere el permiso de Grabación de pantalla (<a href="troubleshooting.html#screen-permission">cómo concederlo</a>).</p>
+
+<!-- @record 0d1af48c7a -->
+## Iniciar, pausar, detener
+{{clip:record|Grabación: habla sobre la página y rodea el punto con el lápiz.}}
+<ol class="docs-steps">
+  <li>Abre en el navegador integrado la página que vas a revisar.</li>
+  <li><span class="docs-ui">Grabar</span> en la barra de título, o {{keys:Mod+Shift+R}}.</li>
+  <li><span class="docs-ui">Pausar</span> detiene el dibujo y el temporizador. <span class="docs-ui">Reanudar</span> continúa.</li>
+  <li><span class="docs-ui">Detener</span> o {{keys:Mod+Shift+R}} otra vez.</li>
+</ol>
+<p>En la barra lateral, cada proyecto tiene su propio <span class="docs-ui">Nueva revisión</span> (o el <span class="docs-ui">+</span> de su fila, <span class="docs-ui">Nueva revisión en &lt;name&gt;</span>). Si es otro proyecto, primero cambia a ese proyecto y luego empieza a grabar. No se inicia mientras haya otra grabación en curso.</p>
+<p>Una grabación dura como máximo 90 minutos. Recibes un aviso cerca del límite y, al alcanzarlo, la grabación se detiene y se guarda automáticamente.</p>
+<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="Barra de herramientas del modo Feedback (captura disponible próximamente)"><span>Captura disponible próximamente</span></div><figcaption>Barra de herramientas del modo Feedback</figcaption></figure>
+
+<!-- @pen 0232dc7983 -->
+## Lápiz
+<ul>
+  <li><strong><span class="docs-ui">Lápiz</span></strong>: selecciónalo o mantén pulsada {{keys:Alt}} para dibujar solo mientras la mantienes (se ignora mientras escribes en un campo).</li>
+  <li><strong><span class="docs-ui">Borrar</span></strong>: elimina los trazos actuales.</li>
+</ul>
+<p>Rodea el punto mientras hablas de él: las palabras y los trazos acaban en el mismo hallazgo. El lápiz solo está disponible mientras grabas. No hay herramienta de texto: dilo en voz alta. Las teclas del lápiz, el recuadro y los colores están en <a href="keyboard.html#drawing">Atajos de teclado</a>.</p>
+
+<!-- @annotations-clear ea2e57b47b -->
+## Cuándo desaparecen los trazos
+<p>Los trazos pertenecen a la pantalla en la que se dibujaron. Se registran en el hallazgo actual y luego se borran cuando:</p>
+<ul>
+  <li>la página navega: una carga completa, o un cambio de ruta de una SPA a una nueva ruta o query. Un cambio solo del hash los conserva.</li>
+  <li>desplazas la página</li>
+  <li>termina un segmento hablado</li>
+</ul>
+
+<!-- @mic 3540329978 -->
+## Micrófono
+<p>El micrófono está activado de forma predeterminada. Actívalo o desactívalo desde el pie de la ventana (<span class="docs-ui">Desactivar micrófono</span> / <span class="docs-ui">Activar micrófono</span>) o con <span class="docs-ui">Grabar mi voz</span> en Ajustes. Elige un dispositivo en <span class="docs-ui">Micrófono</span>.</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Próximamente</p><p><span class="docs-ui">Grabar también a la otra parte</span> (capturar a los demás participantes de una reunión mediante el audio del sistema) está en beta. Aún no se ha validado con apps de reuniones.</p></div>

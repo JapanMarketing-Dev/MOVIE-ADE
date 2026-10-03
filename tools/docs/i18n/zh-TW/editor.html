@@ -1,0 +1,35 @@
+<!-- Ferret docs translation: zh-TW / editor. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 05d78374e2 -->
+編輯器與預覽
+
+<!-- @lead 97cbc36c8d -->
+開啟並編輯專案檔案，以及預覽 Markdown 與 Mermaid。在內建瀏覽器中開啟的預覽，可以像任何網頁一樣錄製並審查。
+
+<!-- @files f1e2c27cca -->
+## 開啟並編輯檔案
+<ul>
+  <li><span class="docs-ui">檔案</span>（檔案樹）：{{keys:Mod+Shift+E}}，提供 <span class="docs-ui">依檔名篩選</span>、<span class="docs-ui">重新整理</span> 與 <span class="docs-ui">全部收合</span>。</li>
+  <li><span class="docs-ui">前往檔案…</span>：{{keys:Mod+P}}。</li>
+  <li>按 {{keys:Mod+S}} 儲存。關閉已修改的檔案時，會詢問 <q>要儲存對 &lt;name&gt; 的變更嗎？</q>，並提供 <span class="docs-ui">儲存</span>、<span class="docs-ui">不儲存</span> 與 <span class="docs-ui">取消</span>。</li>
+  <li>如果在你有未儲存的編輯時，檔案在磁碟上被變更，請選擇 <span class="docs-ui">從磁碟重新載入</span> 或 <span class="docs-ui">保留我的變更</span>。</li>
+</ul>
+<p>編輯器使用 Monaco。非文字檔案會改用檢視器開啟：圖片（可放大縮小；SVG 也能以程式碼顯示）、附播放進度列的影片與音訊、PDF，其他二進位檔案則顯示檔案大小與開頭位元組的十六進位檢視。檢視器為唯讀，專案資料夾外的檔案，或經由指向資料夾外的符號連結才能到達的檔案，都不會顯示。</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">即將推出</p><p>從檔案樹建立、重新命名與刪除檔案。</p></div>
+
+<!-- @preview b8c0baaad4 -->
+## Markdown 與 Mermaid 預覽
+<p>預覽支援 <code>.md</code>、<code>.markdown</code>、<code>.mdx</code>、<code>.mmd</code> 與 <code>.mermaid</code>。Mermaid 已內建於 App 中，因此離線也能繪製圖表。</p>
+<ul>
+  <li><span class="docs-ui">在側邊開啟預覽</span>：在編輯器旁邊</li>
+  <li><span class="docs-ui">開啟預覽</span>：在內建瀏覽器中（<code>ade-preview://</code>），因此可以錄製並審查</li>
+</ul>
+
+<!-- @review-docs 3956ed6f10 -->
+## 用錄製來審查文件
+<ol class="docs-steps">
+  <li>開啟 Markdown 檔案，然後按 <span class="docs-ui">開啟預覽</span>。</li>
+  <li>照常錄製。一邊說明規格書或設計文件，一邊圈出有問題的地方。</li>
+  <li>停止。意見會以檔案相對於專案的路徑來參照，而不是 URL。</li>
+  <li>按 <span class="docs-ui">傳送給 Agent</span>，讓 Agent 修正文件。</li>
+</ol>
+<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="內建瀏覽器中的 Markdown 預覽（螢幕截圖即將提供）"><span>螢幕截圖即將提供</span></div><figcaption>內建瀏覽器中的 Markdown 預覽</figcaption></figure>

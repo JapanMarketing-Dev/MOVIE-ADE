@@ -1,0 +1,56 @@
+<!-- Ferret docs translation: it / projects. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 5c9e1003a2 -->
+Progetti e URL
+
+<!-- @lead 4a937bd356 -->
+Un progetto è una cartella (di solito la radice del tuo repository). Ogni progetto conserva i propri URL salvati, così locale, dev e produzione sono a un clic di distanza.
+
+<!-- @add-project eb372d2531 -->
+## Aggiungere un progetto
+<ol class="docs-steps">
+  <li><span class="docs-ui">File → Apri cartella progetto…</span> ({{keys:Mod+O}}), <span class="docs-ui">Aggiungi progetto</span> nella barra laterale, oppure <span class="docs-ui">Aggiungi progetto…</span> nel menu dei progetti della barra del titolo.</li>
+  <li>Scegli da dove viene il progetto:
+    <ul>
+      <li><span class="docs-ui">Su questo computer</span>: scegli una cartella.</li>
+      <li><span class="docs-ui">Clona da GitHub / GitLab</span>: scegli uno dei tuoi repository (elencati tramite il tuo accesso a <code>gh</code> o <code>glab</code>) o incolla un URL, scegli la cartella superiore, e Ferret lo clona e lo apre.</li>
+      <li><span class="docs-ui">Apri tramite SSH</span>: scegli un host da <code>~/.ssh/config</code>. Il terminale e gli agent girano sulla macchina remota; le revisioni restano su questo computer.</li>
+    </ul>
+  </li>
+</ol>
+<p>Il nome predefinito è quello della cartella. Se aggiungi una cartella già registrata, viene semplicemente aperta (su macOS e Windows i percorsi sono confrontati senza distinguere maiuscole e minuscole). Dal menu della barra laterale puoi usare <span class="docs-ui">Rinomina</span> su un progetto oppure <span class="docs-ui">Rimuovi dall'elenco</span>. La rimozione non elimina mai la cartella.</p>
+<p>I terminali si aprono nella cartella del progetto, e le revisioni vengono salvate in <code>&lt;project&gt;/.ferret/</code>.</p>
+
+<!-- @save-url 8914160725 -->
+## Salvare gli URL
+<ol class="docs-steps">
+  <li>Apri la pagina nel browser integrato.</li>
+  <li>Fai clic su <span class="docs-ui">+</span> (<span class="docs-ui">Salva URL corrente</span>) nella barra degli strumenti del browser. L'URL corrente è già compilato.</li>
+  <li>Inserisci un <span class="docs-ui">Nome</span> e fai clic su <span class="docs-ui">Salva</span>.</li>
+</ol>
+<p>Sono accettati solo URL <code>http://</code> e <code>https://</code>. Se lasci il nome suggerito, viene dedotto dall'host:</p>
+<table>
+  <thead><tr><th>Host</th><th>Nome</th></tr></thead>
+  <tbody>
+    <tr><td><code>localhost</code>, <code>127.*</code>, <code>::1</code>, <code>0.0.0.0</code>, <code>*.localhost</code></td><td><code>local</code></td></tr>
+    <tr><td>contiene <code>dev</code>, <code>develop</code>, <code>development</code></td><td><code>dev</code></td></tr>
+    <tr><td>contiene <code>stg</code>, <code>stage</code>, <code>staging</code></td><td><code>stg</code></td></tr>
+    <tr><td>qualsiasi altro</td><td><code>prd</code></td></tr>
+  </tbody>
+</table>
+<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="URL salvati nella barra degli strumenti del browser (screenshot in arrivo)"><span>Screenshot in arrivo</span></div><figcaption>URL salvati nella barra degli strumenti del browser</figcaption></figure>
+
+<!-- @review-targets 351621051d -->
+## Pannello dei target di revisione
+{{clip:targets|Cambiare target di revisione e pagina senza fermare la registrazione.}}
+<p>In modalità Feedback, il pannello <span class="docs-ui">Target di revisione</span> a destra elenca tutto ciò che puoi rivedere nel progetto attuale. Cambiare target non ferma la registrazione. Mostra o nascondi il pannello con <span class="docs-ui">Vista → Mostra/nascondi target di revisione</span> ({{keys:Mod+Shift+K}}) oppure con <span class="docs-ui">Nascondi pannello</span>.</p>
+<ul>
+  <li><strong><span class="docs-ui">Target</span></strong>: gli URL salvati del progetto. Sotto ciascuno c'è un albero delle pagine che hai visitato su quel sito. I siti visitati ma non salvati compaiono come gruppi a sé.</li>
+  <li><strong><span class="docs-ui">File</span></strong>: la cartella del progetto. Un file si apre come anteprima (Markdown e Mermaid renderizzati, altro testo in sola lettura), quindi puoi rivedere anche la documentazione. La matita (<span class="docs-ui">Apri nell'editor</span>) lo apre nell'editor.</li>
+</ul>
+<p><span class="docs-ui">Filtra target</span> filtra insieme target, pagine e file, con la stessa ricerca approssimata di <span class="docs-ui">Vai al file…</span>. Nell'elenco, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> oppure <kbd>1</kbd>–<kbd>9</kbd> cambiano target. <span class="docs-ui">Apri URL…</span> apre un URL occasionale, e <span class="docs-ui">Salva negli URL del progetto</span> lo conserva.</p>
+<p>I target provengono da <code>projects[].urls</code> in <code>settings.json</code> (vedi <a href="settings-json.html#example">l'esempio</a>). Ogni voce richiede un <code>url</code>, un <code>launchCommand</code> (eseguito in un terminale, ad es. per avviare un'app desktop) oppure un <code>windowMatch</code> (la finestra da registrare). Scegliere un target finestra lo imposta come sorgente di registrazione, quindi non si può fare durante la registrazione. Le pagine visitate vengono ricordate per progetto, solo su questa macchina (fino a 200).</p>
+
+<!-- @switch-env 5103621352 -->
+## Aprire e cambiare ambiente
+<p>Fai clic su un URL salvato per aprirlo. Se la pagina attuale è sotto un altro URL salvato, Ferret mantiene percorso, query e hash e cambia solo l'origine. Per esempio, su <code>http://localhost:3000/pricing?plan=pro</code>, un clic su <code>prd</code> apre <code>https://example.com/pricing?plan=pro</code>.</p>
+<p>Il chip corrispondente alla pagina attuale (il prefisso più lungo) è evidenziato. Fai clic destro su un chip o usa la sua icona a forma di matita per modificarlo, oppure per rimuoverlo con <span class="docs-ui">Elimina</span>. Quando un progetto si apre e non c'è un URL precedente, viene caricato il suo primo URL salvato.</p>

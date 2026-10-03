@@ -1,0 +1,103 @@
+<!-- Ferret docs translation: vi / transcription. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 9d4646b18d -->
+Chuyển văn bản và chi phí
+
+<!-- @lead 456b515bb7 -->
+Chọn whisper chạy trên máy (miễn phí), OpenAI key của riêng bạn, hoặc bất kỳ endpoint tương thích OpenAI nào, chẳng hạn máy GPU của riêng bạn. Âm thanh đi thẳng từ máy của bạn đến dịch vụ bạn chọn.
+
+<!-- @cost-model 251147437b -->
+## Ai trả tiền, và dữ liệu đi đâu
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">Mô hình chi phí và mạng</p><ul>
+  <li>Nhà phát triển (Japan Marketing LLC) không trả tiền, không làm proxy và không tính phí cho bất kỳ việc chuyển văn bản hay sử dụng AI nào.</li>
+  <li>Request đi thẳng từ máy tính của bạn đến OpenAI hoặc endpoint của bạn, không bao giờ qua server của nhà phát triển.</li>
+  <li>Chi phí OpenAI được tính vào tài khoản OpenAI của chính bạn.</li>
+  <li><span class="docs-ui">Sắp xếp</span> dùng Claude Code / Codex CLI mà bạn đã đăng nhập, trừ khi bạn chủ động chọn một API runner (<code>organizer.runner: "api:&lt;provider&gt;"</code>, xem <a href="settings-json.html#example">Cấu hình bằng settings.json</a>). Nó không bao giờ tự chuyển sang dùng API key.</li>
+</ul></div>
+
+<!-- @methods d7ad6a3f10 -->
+## Các phương thức
+<p>Chọn trong <span class="docs-ui">Cài đặt → Chuyển văn bản → Engine</span>. Popover <span class="docs-ui">Microphone &amp; chuyển văn bản</span> ở footer hiển thị lựa chọn hiện tại.</p>
+<table>
+  <thead><tr><th>Engine</th><th>Âm thanh được gửi đến</th><th>Chi phí</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Trên máy (miễn phí)</span> (mặc định)</td><td>Không đi đâu cả</td><td>Miễn phí</td></tr>
+    <tr><td><span class="docs-ui">OpenAI (key của bạn)</span></td><td>OpenAI</td><td>Tính vào hóa đơn OpenAI của bạn: <code>gpt-transcribe</code> giá $0.0045/phút (khoảng $0.27/giờ)</td></tr>
+    <tr><td><span class="docs-ui">Tương thích OpenAI (GPU tự host, Groq, v.v.)</span></td><td><span class="docs-ui">Base URL của endpoint</span> của bạn</td><td>Tùy endpoint</td></tr>
+  </tbody>
+</table>
+<p><span class="docs-ui">Cài đặt → Chuyển văn bản → Ngôn ngữ</span>: <span class="docs-ui">Tự động</span>, <span class="docs-ui">Tiếng Nhật</span> hoặc <span class="docs-ui">Tiếng Anh</span>. Đây là ngôn ngữ nói, tách biệt với ngôn ngữ giao diện.</p>
+
+<!-- @whisper 867ce20365 -->
+## Whisper trên máy (miễn phí)
+<p>Chuyển văn bản trên máy dùng <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a>: tệp thực thi <code>whisper-cli</code> cùng một model GGML.</p>
+<p><strong>1. Cài whisper-cli</strong>. Ferret tìm bản đi kèm (<code>resources/whisper/&lt;platform&gt;-&lt;arch&gt;/</code>), sau đó trong <code>PATH</code>, rồi đến các vị trí thường gặp như Homebrew.</p>
+<pre><code># macOS
+brew install whisper-cpp
+
+# Linux: build from source, then add build/bin to PATH
+git clone https://github.com/ggml-org/whisper.cpp &amp;&amp; cd whisper.cpp
+cmake -B build &amp;&amp; cmake --build build -j --config Release
+
+# Windows: download the zip from github.com/ggml-org/whisper.cpp/releases
+# and add the folder containing whisper-cli.exe to PATH</code></pre>
+<p><strong>2. Lấy model</strong>. Khi đã chọn <span class="docs-ui">Trên máy (miễn phí)</span>, chọn một <span class="docs-ui">Model</span> và nhấn <span class="docs-ui">Tải model</span>. Tệp được tải thẳng từ Hugging Face (<code>ggerganov/whisper.cpp</code>), được kiểm tra với sha256 cố định trong ứng dụng (nếu không khớp, tệp bị xóa), và được lưu vào <code>&lt;userData&gt;/models/</code>. Model đã tải được tự động chọn. <span class="docs-ui">Hủy</span> giữ lại tệp tải dở, và <span class="docs-ui">Tiếp tục tải</span> sẽ tải tiếp từ đó.</p>
+<table>
+  <thead><tr><th>Model</th><th>Kích thước</th><th>Ghi chú</th></tr></thead>
+  <tbody>
+    <tr><td><code>large-v3-turbo</code></td><td>1.6 GB</td><td>Mặc định được khuyên dùng. Nhanh trên Metal / GPU</td></tr>
+    <tr><td><code>large-v3-turbo-q5_0</code></td><td>574 MB</td><td>Đã lượng tử hóa. Tiết kiệm ổ đĩa và bộ nhớ</td></tr>
+    <tr><td><code>small</code></td><td>488 MB</td><td>Cho máy chỉ có CPU</td></tr>
+    <tr><td><code>base</code></td><td>148 MB</td><td>Nhẹ. Nhiều lỗi với tiếng Nhật</td></tr>
+    <tr><td><code>tiny</code></td><td>78 MB</td><td>Nhanh nhất. Không đủ chính xác cho tiếng Nhật</td></tr>
+  </tbody>
+</table>
+<p>Đã có sẵn model? Dùng <span class="docs-ui">Chọn tệp…</span> để trỏ đến bất kỳ tệp <code>ggml-*.bin</code> nào. Khi chưa có model, Cài đặt sẽ báo chưa đặt model. Bạn vẫn có thể ghi: âm thanh được lưu, và chỉ các góp ý bằng bút được tạo ra.</p>
+<p>whisper-cli không đi kèm ứng dụng. Hãy tự cài như hướng dẫn ở trên. Khi không tìm thấy nó, Cài đặt hiển thị <q>Không tìm thấy whisper.cpp (whisper-cli). Hãy cài đặt, rồi mở lại cài đặt.</q> cùng với hướng dẫn tương tự.</p>
+
+<!-- @openai 2160e9a2fc -->
+## OpenAI key của riêng bạn
+<ol class="docs-steps">
+  <li>Đặt <span class="docs-ui">Engine</span> thành <span class="docs-ui">OpenAI (key của bạn)</span>.</li>
+  <li>Dán key bắt đầu bằng <code>sk-</code> vào <span class="docs-ui">OpenAI API key</span> và nhấn <span class="docs-ui">Lưu</span>.</li>
+  <li>Nhấn <span class="docs-ui">Kiểm tra kết nối</span>. Thao tác này gửi 1 giây im lặng (khoảng $0.0001).</li>
+</ol>
+<p>Model cố định là <code>gpt-transcribe</code>. Chỉ khi phát triển (<code>pnpm dev</code>), <code>OPENAI_API_KEY</code> trong tệp <code>.env</code> (đã bị git bỏ qua) cũng được đọc. Bản build đóng gói không bao giờ đọc <code>.env</code>.</p>
+
+<!-- @compatible 8c200e00b1 -->
+## Endpoint tương thích OpenAI
+<p>Ferret gửi <code>POST &lt;base&gt;/v1/audio/transcriptions</code> (multipart: <code>file</code>, <code>model</code>, <code>response_format=json</code>, <code>language</code>, <code>prompt</code>), nên được thiết kế cho các server có triển khai route chuyển văn bản của OpenAI.</p>
+<ol class="docs-steps">
+  <li>Đặt <span class="docs-ui">Engine</span> thành <span class="docs-ui">Tương thích OpenAI (GPU tự host, Groq, v.v.)</span>.</li>
+  <li>Điền <span class="docs-ui">Base URL của endpoint</span> và <span class="docs-ui">Model</span> (tên model của endpoint).</li>
+  <li>Nếu server yêu cầu, nhập <span class="docs-ui">API key của endpoint (không bắt buộc)</span> và nhấn <span class="docs-ui">Lưu</span>.</li>
+  <li>Nhấn <span class="docs-ui">Kiểm tra kết nối</span>. Thông báo lỗi nêu rõ nguyên nhân, ví dụ Base URL sai (không có <code>/v1/audio/transcriptions</code>), key bị từ chối, hoặc tên model không xác định.</li>
+</ol>
+<table>
+  <thead><tr><th>Server</th><th>Base URL</th><th>Model (ví dụ)</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://github.com/speaches-ai/speaches">speaches</a> (trước đây là faster-whisper-server)</td><td><code>http://localhost:8000/v1</code></td><td><code>Systran/faster-whisper-small</code></td></tr>
+    <tr><td><a href="https://docs.vllm.ai/">vLLM</a> (<code>vllm serve openai/whisper-large-v3</code>)</td><td><code>http://localhost:8000/v1</code></td><td><code>openai/whisper-large-v3</code></td></tr>
+    <tr><td><a href="https://console.groq.com/docs/speech-to-text">Groq</a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
+  </tbody>
+</table>
+<div class="docs-callout docs-callout-warn"><p>Ferret được thiết kế cho các server tương thích OpenAI như trên, nhưng chúng chưa được kiểm thử với Ferret. URL và tên model là giá trị mặc định do chính các server đó công bố trong tài liệu.</p></div>
+<ul>
+  <li><code>/v1</code> ở cuối hoặc <code>/v1/audio/transcriptions</code> được dán vào sẽ bị cắt bỏ khi lưu, nên dạng nào cũng dùng được.</li>
+  <li>URL chứa tên người dùng hoặc mật khẩu bị từ chối, để key không bao giờ lọt vào <code>settings.json</code>.</li>
+  <li>Với máy GPU trong mạng LAN hoặc tailnet của bạn, dùng địa chỉ của nó, ví dụ <code>http://100.x.y.z:8000/v1</code>.</li>
+</ul>
+
+<!-- @limit 7bee560470 -->
+## Giới hạn chi phí
+<p>Với OpenAI và endpoint tương thích, đặt <span class="docs-ui">Giới hạn chi phí</span>: <span class="docs-ui">Không</span>, hoặc từ <span class="docs-ui">Tối đa $0.10 mỗi review</span> đến $0.50, $1 (mặc định), $5 và $20. Với GPU của riêng bạn, chọn <span class="docs-ui">Không</span> là hợp lý. Thiết lập được lưu dưới dạng <code>capture.costLimitUsd</code> (tối đa 1000, <code>null</code> nghĩa là không giới hạn). Endpoint tương thích được ước tính ở mức $0.006/phút.</p>
+<p>Khi đoạn âm thanh tiếp theo sẽ vượt giới hạn, Ferret ngừng gửi và giữ lại âm thanh. Các lệnh gọi API thất bại không được tự động thử lại.</p>
+
+<!-- @keys a6be4d5386 -->
+## Key được lưu ở đâu
+<p>Key nhập trong <span class="docs-ui">Cài đặt</span> được mã hóa bằng Electron <code>safeStorage</code> và ghi vào <code>&lt;userData&gt;/stt-keys.bin</code>. Ứng dụng không bao giờ ghi chúng vào <code>settings.json</code>. Để trỏ đến key từ <code>settings.json</code> thay vào đó (một biến môi trường hoặc mục trong <code>.env</code>), xem <a href="settings-json.html#keys">API key</a>.</p>
+<ul>
+  <li>macOS: Keychain</li>
+  <li>Windows: DPAPI</li>
+  <li>Linux: libsecret hoặc KWallet. Nếu chỉ có backend <code>basic_text</code>, key chỉ được giữ trong bộ nhớ cho phiên hiện tại (nút sẽ hiển thị <span class="docs-ui">Đặt cho phiên này</span>).</li>
+</ul>
+<p><span class="docs-ui">Xóa key</span> sẽ xóa key đó. Về các đường dẫn <code>&lt;userData&gt;</code>, xem <a href="files.html#userdata">Tệp và môi trường</a>.</p>

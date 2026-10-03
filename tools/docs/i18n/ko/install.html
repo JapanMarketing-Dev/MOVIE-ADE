@@ -1,0 +1,93 @@
+<!-- Ferret docs translation: ko / install. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 569ca49f4a -->
+설치
+
+<!-- @lead 1947d59ea4 -->
+Ferret은 macOS, Windows, Linux용 데스크톱 앱입니다. macOS 빌드는 Developer ID로 서명되어 있고 Apple의 공증을 받았습니다. Windows와 Linux 빌드는 아직 코드 서명이 되어 있지 않아, 처음 실행할 때 OS가 확인을 요청합니다.
+
+<!-- @download 91a49c9274 -->
+## 다운로드
+<p><a href="../download.html">다운로드 페이지</a>에서 사용하는 OS와 CPU에 맞는 파일을 받습니다. 파일은 GitHub Releases가 아니라 Cloudflare R2에서 제공되며, 최근 10개 버전만 보관됩니다.</p>
+<table>
+  <thead><tr><th>OS</th><th>파일</th></tr></thead>
+  <tbody>
+    <tr><td>macOS (Apple silicon / Intel)</td><td><code>Ferret-&lt;version&gt;-mac-arm64.dmg</code>, <code>Ferret-&lt;version&gt;-mac-x64.dmg</code></td></tr>
+    <tr><td>Windows (x64 / arm64)</td><td><code>Ferret-&lt;version&gt;-win-x64.exe</code>, <code>Ferret-&lt;version&gt;-win-arm64.exe</code> (NSIS 설치 프로그램)</td></tr>
+    <tr><td>Linux (x64)</td><td><code>Ferret-&lt;version&gt;-linux-x86_64.AppImage</code>, <code>Ferret-&lt;version&gt;-linux-amd64.deb</code></td></tr>
+  </tbody>
+</table>
+<p>0.1.x까지의 릴리스는 예전 이름인 <code>MOVIE-ADE-&lt;version&gt;-…</code>로 공개되었습니다. <code>Ferret-…</code> 이름은 0.2.0부터 사용합니다.</p>
+<div class="docs-callout docs-callout-warn"><p>Ferret은 macOS, Windows, Linux를 지원합니다. Windows와 Linux 빌드는 아직 코드 서명이 되어 있지 않아, 처음 실행할 때 확인을 요청합니다(아래 절차 참고).</p></div>
+
+<!-- @verify 14ef497c52 -->
+## 다운로드 검증(서명된 SHA256SUMS)
+<p>모든 릴리스에는 <code>SHA256SUMS</code> 파일과 그 서명 <code>SHA256SUMS.sig</code>가 있습니다. 서명은 다운로드 서버와 분리해 보관하는 Ferret 릴리스 키로 만들기 때문에, 다운로드 서버의 설치 프로그램이 바뀌더라도 유효한 서명이 함께 따라올 수는 없습니다. 공개 키는 다운로드 서버에서 가져오지 <em>않습니다</em>. 저장소(<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers"><code>build/release-signing/allowed_signers</code></a>)에서 받거나 여기서 복사하세요.</p>
+<pre><code>release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9</code></pre>
+<p>지문은 <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code>입니다. 같은 파일이 GitHub의 각 릴리스에도 첨부되어 있습니다. <code>ssh-keygen</code>(macOS, Windows 10 이상, Linux에 포함)으로 서명을 확인한 뒤, 내려받은 파일의 해시를 서명된 목록과 비교합니다.</p>
+<pre><code># the download server (currently the R2 public URL; it may move to a custom domain)
+BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
+VERSION=$(curl -s $BASE/latest.json | jq -r .version)
+curl -sO $BASE/releases/$VERSION/SHA256SUMS
+curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
+
+# save the public key above as allowed_signers, then:
+ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
+# → Good "ferret-release" signature for release@ferretade.dev …
+
+# macOS
+shasum -a 256 -c SHA256SUMS --ignore-missing
+# Linux
+sha256sum -c SHA256SUMS --ignore-missing</code></pre>
+<pre><code># Windows (PowerShell): compare with the line for your file in SHA256SUMS
+Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
+<p><code>ssh-keygen</code>이 <q>Good "ferret-release" signature</q>를 출력하지 않거나 해시가 목록에 없으면 중단하세요. Ferret의 <span class="docs-ui">업데이트 확인</span>도 앱에 내장된 키로 같은 확인을 하며, 서명이 일치하지 않는 버전은 안내하지 않습니다. macOS에서는 <code>spctl -a -vv /Applications/Ferret.app</code>으로 Developer ID 서명과 공증도 확인할 수 있습니다. Windows와 Linux 설치 프로그램은 아직 Microsoft나 Linux 배포판의 코드 서명을 받지 않았습니다. 0.3.0까지의 릴리스는 서명을 시작하기 전에 공개되어, <code>releases/&lt;version&gt;/manifest.json</code>에 서명되지 않은 해시만 있습니다.</p>
+
+<!-- @macos 1aa07136fd -->
+## macOS
+<ol class="docs-steps">
+  <li><code>.dmg</code>를 열고 <code>Ferret.app</code>을 <code>/Applications</code>로 드래그합니다.</li>
+  <li>앱을 실행합니다. Developer ID로 서명되고 Apple의 공증을 받았으므로(티켓이 스테이플되어 있음) 경고 없이 열립니다.</li>
+</ol>
+<p>서명을 직접 확인하려면:</p>
+<pre><code>spctl -a -vv /Applications/Ferret.app
+# accepted
+# source=Notarized Developer ID</code></pre>
+<p><strong>이전 버전(0.2.0 build 2 이하)만</strong> 서명되지 않았습니다. 이 버전에서는 macOS가 개발자를 확인할 수 없다고 표시합니다. 대화 상자를 닫고 <span class="docs-ui">시스템 설정 → 개인정보 보호 및 보안</span>을 열어 Ferret 메시지 옆의 <span class="docs-ui">그래도 열기</span>를 클릭한 뒤 <span class="docs-ui">열기</span>로 확인합니다. 앱이 "손상되었다"고 표시되면 격리 속성을 제거합니다.</p>
+<pre><code>xattr -dr com.apple.quarantine /Applications/Ferret.app</code></pre>
+
+<!-- @windows b5761835f1 -->
+## Windows
+<ol class="docs-steps">
+  <li><code>Ferret-&lt;version&gt;-win-&lt;arch&gt;.exe</code>를 실행합니다.</li>
+  <li>SmartScreen에 "Windows의 PC 보호" 화면이 나타나면 <span class="docs-ui">추가 정보</span>를 클릭한 다음 <span class="docs-ui">실행</span>을 클릭합니다.</li>
+  <li>설치 폴더를 선택합니다. 설치 프로그램이 바탕 화면 바로 가기를 만듭니다.</li>
+</ol>
+
+<!-- @linux c46965a0c5 -->
+## Linux
+<p>AppImage:</p>
+<pre><code>chmod +x Ferret-&lt;version&gt;-linux-x86_64.AppImage
+./Ferret-&lt;version&gt;-linux-x86_64.AppImage</code></pre>
+<p>Debian / Ubuntu:</p>
+<pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
+<p>deb는 <code>ferret</code> 패키지와 명령을 설치합니다.</p>
+<p>Ubuntu 23.10 이상에서는 AppArmor가 Electron 샌드박스가 사용하는 사용자 네임스페이스를 제한하기 때문에, AppImage가 실행 시 샌드박스 오류로 멈출 수 있습니다. 대신 <code>.deb</code>를 설치하세요. 샌드박스 도우미를 설정해 줍니다.</p>
+
+<!-- @source 06a127ac19 -->
+## 소스에서 빌드
+<p>Node.js 20 이상(CI와 로컬 개발은 22 사용), pnpm, git이 필요합니다.</p>
+<pre><code>git clone https://github.com/JapanMarketing-Dev/ferret.git
+cd ferret
+pnpm install          # postinstall prepares node-pty for Electron
+pnpm dev              # run in development mode</code></pre>
+<p>설치 프로그램을 패키징하려면 다음을 실행합니다(출력은 <code>dist/release/</code>, 설정은 <code>electron-builder.config.cjs</code>). Linux 빌드는 Linux에서만 실행됩니다.</p>
+<pre><code>pnpm dist:mac     # dmg (arm64, x64)
+pnpm dist:win     # NSIS installers (x64, arm64)
+pnpm dist:linux   # AppImage + deb (x64)</code></pre>
+<p><code>build:&lt;os&gt;:dev</code> 스크립트는 압축하지 않은 앱만(<code>--dir</code>) 만들므로 로컬 테스트에 더 빠릅니다.</p>
+<p>Windows에서 <code>pnpm install</code>은 다시 빌드하지 않고 node-pty에 포함된 미리 빌드된 바이너리를 사용합니다(다시 빌드하려면 Visual Studio C++ 빌드 도구가 필요합니다). 강제로 다시 빌드하려면 <code>ADE_FORCE_NATIVE_REBUILD=1</code>을 설정하세요.</p>
+<p>터미널에 node-pty를 불러올 수 없다고 표시되면 <code>pnpm rebuild:native</code>를 실행하세요.</p>
+
+<!-- @update 7f4d958687 -->
+## 업데이트
+<p>Ferret은 자동으로 업데이트되지 않습니다. 푸터에서 <span class="docs-ui">업데이트</span>를 열고 <span class="docs-ui">업데이트 확인</span>을 클릭하세요. 다운로드 서버(R2)에서 <code>latest.json</code>을 가져와 버전을 비교하고, 다운로드 페이지로 연결합니다. 0.4.0부터는 해당 버전의 <code>SHA256SUMS</code> 서명도 앱에 내장된 릴리스 키로 확인하며, 서명을 검증할 수 없는 버전은 안내하지 않습니다. 클릭하기 전에는 아무것도 확인하지 않으며, 자동으로 설치되는 것도 없습니다.</p>

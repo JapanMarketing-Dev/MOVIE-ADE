@@ -1,0 +1,24 @@
+<!-- Ferret docs translation: id / accounts. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title cb165a192d -->
+Akun dan penggunaan
+
+<!-- @lead 6a6ab3126f -->
+Berpindah antara beberapa login Claude Code atau Codex, dan pantau jendela batas rate Anda di footer. Untuk saat ini kedua fitur hanya berfungsi dengan Claude Code dan Codex; agent lain tetap memakai login masing-masing seperti biasa.
+
+<!-- @accounts f0d5cb0211 -->
+## Beberapa akun
+<p>Akun bersifat opsional. Tambahkan hanya jika Anda berpindah-pindah di antara beberapa akun.</p>
+<ol class="docs-steps">
+  <li>Buka <span class="docs-ui">Pengaturan → Akun</span>, atau <span class="docs-ui">Kelola Akun…</span> dari menu penggunaan di footer.</li>
+  <li><span class="docs-ui">Tambah Akun</span> memulai login agent di tab terminal bawaan.</li>
+  <li>Pilih akun yang akan dipakai. Tab yang sedang berjalan tetap memakai akunnya. Tab baru memakai akun yang dipilih.</li>
+</ol>
+<p>Cara kerjanya: setiap akun yang ditambahkan mendapat direktori konfigurasi sendiri, <code>&lt;userData&gt;/accounts/&lt;agent&gt;/&lt;id&gt;/</code>. Ferret menjalankan agent dengan <code>CLAUDE_CONFIG_DIR</code> (Claude Code) atau <code>CODEX_HOME</code> (Codex) yang menunjuk ke sana. <span class="docs-ui">Default Sistem</span> memakai <code>~/.claude</code> / <code>~/.codex</code> Anda yang biasa tanpa perubahan.</p>
+<p>Menghapus akun akan menghapus direktori konfigurasinya. Tindakan ini tidak mengeluarkan Anda (sign out) di sisi server.</p>
+
+<!-- @usage bb03a3a17a -->
+## Penggunaan di footer
+<p>Footer menampilkan seberapa banyak setiap jendela batas rate sudah terpakai: jendela 5 jam dan jendela mingguan, ditambah jendela mingguan per model untuk Claude. Warna berubah menjadi kuning di 60% dan merah di 80%. Nilai diperbarui setiap 15 menit, atau saat Anda mengklik <span class="docs-ui">Segarkan penggunaan</span>.</p>
+<p>Seberapa banyak yang ditampilkan bergantung pada ruang di footer. Jika ruangnya cukup, footer menampilkan bar, nama jendela, dan persentase. Saat footer makin sempit, bagian yang kurang berguna dihilangkan lebih dulu, hingga tersisa satu persentase per agent. Klik penggunaan untuk melihat semuanya di popover.</p>
+<p>Data penggunaan diambil langsung dari Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) dan ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) dengan kredensial milik akun yang sedang masuk.</p>
+<figure class="docs-shot" data-shot="usage"><div class="docs-shot-slot" role="img" aria-label="Penggunaan di footer (screenshot segera hadir)"><span>Screenshot segera hadir</span></div><figcaption>Penggunaan di footer</figcaption></figure>

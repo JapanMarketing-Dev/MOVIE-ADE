@@ -1,0 +1,103 @@
+<!-- Ferret docs translation: it / transcription. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 9d4646b18d -->
+Trascrizione e costi
+
+<!-- @lead 456b515bb7 -->
+Scegli whisper sul dispositivo (gratuito), la tua chiave OpenAI oppure qualsiasi endpoint compatibile con OpenAI, come la tua macchina con GPU. L'audio va direttamente dal tuo computer al servizio che scegli.
+
+<!-- @cost-model 251147437b -->
+## Chi paga e dove va il traffico
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">Modello di costi e di rete</p><ul>
+  <li>Lo sviluppatore (Japan Marketing LLC) non paga, non fa da proxy e non fattura alcun utilizzo di trascrizione o IA.</li>
+  <li>Le richieste vanno direttamente dal tuo computer a OpenAI o al tuo endpoint, mai attraverso un server dello sviluppatore.</li>
+  <li>L'utilizzo di OpenAI è addebitato sul tuo account OpenAI.</li>
+  <li><span class="docs-ui">Organizza</span> usa la CLI di Claude Code / Codex a cui hai già effettuato l'accesso, a meno che tu non scelga esplicitamente un runner API (<code>organizer.runner: "api:&lt;provider&gt;"</code>, vedi <a href="settings-json.html#example">Configurare con settings.json</a>). Non passa mai da solo a una chiave API.</li>
+</ul></div>
+
+<!-- @methods d7ad6a3f10 -->
+## Metodi
+<p>Scegli in <span class="docs-ui">Impostazioni → Trascrizione → Motore</span>. Il popover <span class="docs-ui">Microfono e trascrizione</span> del footer mostra la scelta attuale.</p>
+<table>
+  <thead><tr><th>Motore</th><th>Dove va l'audio</th><th>Costo</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Sul dispositivo (gratuito)</span> (predefinito)</td><td>Da nessuna parte</td><td>Gratuito</td></tr>
+    <tr><td><span class="docs-ui">OpenAI (la tua chiave)</span></td><td>OpenAI</td><td>Sulla tua fattura OpenAI: <code>gpt-transcribe</code> a $0.0045/min (circa $0.27/ora)</td></tr>
+    <tr><td><span class="docs-ui">Compatibile con OpenAI (GPU self-hosted, Groq, ecc.)</span></td><td>Il tuo <span class="docs-ui">Base URL dell'endpoint</span></td><td>Dipende dall'endpoint</td></tr>
+  </tbody>
+</table>
+<p><span class="docs-ui">Impostazioni → Trascrizione → Lingua</span>: <span class="docs-ui">Automatica</span>, <span class="docs-ui">Giapponese</span> o <span class="docs-ui">Inglese</span>. È la lingua parlata, distinta dalla lingua dell'interfaccia.</p>
+
+<!-- @whisper 867ce20365 -->
+## Whisper sul dispositivo (gratuito)
+<p>La trascrizione sul dispositivo usa <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a>: il binario <code>whisper-cli</code> più un modello GGML.</p>
+<p><strong>1. Installa whisper-cli</strong>. Ferret cerca una copia inclusa (<code>resources/whisper/&lt;platform&gt;-&lt;arch&gt;/</code>), poi nel <code>PATH</code>, poi in percorsi comuni come quelli di Homebrew.</p>
+<pre><code># macOS
+brew install whisper-cpp
+
+# Linux: build from source, then add build/bin to PATH
+git clone https://github.com/ggml-org/whisper.cpp &amp;&amp; cd whisper.cpp
+cmake -B build &amp;&amp; cmake --build build -j --config Release
+
+# Windows: download the zip from github.com/ggml-org/whisper.cpp/releases
+# and add the folder containing whisper-cli.exe to PATH</code></pre>
+<p><strong>2. Procurati un modello</strong>. Con <span class="docs-ui">Sul dispositivo (gratuito)</span> selezionato, scegli un <span class="docs-ui">Modello</span> e fai clic su <span class="docs-ui">Scarica modello</span>. I file arrivano direttamente da Hugging Face (<code>ggerganov/whisper.cpp</code>), vengono confrontati con uno sha256 fissato nell'app (in caso di mancata corrispondenza il file viene eliminato) e salvati in <code>&lt;userData&gt;/models/</code>. Il modello scaricato viene selezionato automaticamente. <span class="docs-ui">Annulla</span> conserva il file parziale, e <span class="docs-ui">Riprendi download</span> riparte da lì.</p>
+<table>
+  <thead><tr><th>Modello</th><th>Dimensione</th><th>Note</th></tr></thead>
+  <tbody>
+    <tr><td><code>large-v3-turbo</code></td><td>1.6 GB</td><td>Predefinito consigliato. Veloce su Metal / GPU</td></tr>
+    <tr><td><code>large-v3-turbo-q5_0</code></td><td>574 MB</td><td>Quantizzato. Risparmia disco e memoria</td></tr>
+    <tr><td><code>small</code></td><td>488 MB</td><td>Per macchine con sola CPU</td></tr>
+    <tr><td><code>base</code></td><td>148 MB</td><td>Leggero. Molti errori in giapponese</td></tr>
+    <tr><td><code>tiny</code></td><td>78 MB</td><td>Il più veloce. Non abbastanza preciso per il giapponese</td></tr>
+  </tbody>
+</table>
+<p>Hai già un modello? Usa <span class="docs-ui">Scegli un file…</span> per indicare un qualsiasi <code>ggml-*.bin</code>. Senza un modello, le Impostazioni indicano che non è impostato alcun modello. Puoi comunque registrare: l'audio viene salvato e vengono prodotte solo le segnalazioni della penna.</p>
+<p>whisper-cli non è incluso nell'app. Installalo tu come mostrato sopra. Quando non viene trovato, le Impostazioni mostrano <q>whisper.cpp (whisper-cli) non trovato. Installalo, poi riapri le impostazioni.</q> con le stesse istruzioni.</p>
+
+<!-- @openai 2160e9a2fc -->
+## La tua chiave OpenAI
+<ol class="docs-steps">
+  <li>Imposta <span class="docs-ui">Motore</span> su <span class="docs-ui">OpenAI (la tua chiave)</span>.</li>
+  <li>Incolla una chiave che inizia con <code>sk-</code> in <span class="docs-ui">Chiave API OpenAI</span> e fai clic su <span class="docs-ui">Salva</span>.</li>
+  <li>Fai clic su <span class="docs-ui">Verifica connessione</span>. Invia 1 secondo di silenzio (circa $0.0001).</li>
+</ol>
+<p>Il modello è fisso su <code>gpt-transcribe</code>. Solo in sviluppo (<code>pnpm dev</code>) viene letto anche <code>OPENAI_API_KEY</code> da un file <code>.env</code> ignorato da git. Le build pacchettizzate non leggono mai <code>.env</code>.</p>
+
+<!-- @compatible 8c200e00b1 -->
+## Endpoint compatibili con OpenAI
+<p>Ferret invia <code>POST &lt;base&gt;/v1/audio/transcriptions</code> (multipart: <code>file</code>, <code>model</code>, <code>response_format=json</code>, <code>language</code>, <code>prompt</code>), quindi è pensato per server che implementano la route di trascrizione di OpenAI.</p>
+<ol class="docs-steps">
+  <li>Imposta <span class="docs-ui">Motore</span> su <span class="docs-ui">Compatibile con OpenAI (GPU self-hosted, Groq, ecc.)</span>.</li>
+  <li>Compila <span class="docs-ui">Base URL dell'endpoint</span> e <span class="docs-ui">Modello</span> (il nome del modello dell'endpoint).</li>
+  <li>Se il server la richiede, inserisci la <span class="docs-ui">Chiave API dell'endpoint (facoltativa)</span> e fai clic su <span class="docs-ui">Salva</span>.</li>
+  <li>Fai clic su <span class="docs-ui">Verifica connessione</span>. Gli errori indicano la causa, ad es. un Base URL errato (senza <code>/v1/audio/transcriptions</code>), una chiave rifiutata o un nome di modello sconosciuto.</li>
+</ol>
+<table>
+  <thead><tr><th>Server</th><th>Base URL</th><th>Modello (esempio)</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://github.com/speaches-ai/speaches">speaches</a> (in precedenza faster-whisper-server)</td><td><code>http://localhost:8000/v1</code></td><td><code>Systran/faster-whisper-small</code></td></tr>
+    <tr><td><a href="https://docs.vllm.ai/">vLLM</a> (<code>vllm serve openai/whisper-large-v3</code>)</td><td><code>http://localhost:8000/v1</code></td><td><code>openai/whisper-large-v3</code></td></tr>
+    <tr><td><a href="https://console.groq.com/docs/speech-to-text">Groq</a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
+  </tbody>
+</table>
+<div class="docs-callout docs-callout-warn"><p>Ferret è pensato per server compatibili con OpenAI come questi, ma non sono ancora stati testati con Ferret. Gli URL e i nomi dei modelli sono i valori predefiniti documentati dai server stessi.</p></div>
+<ul>
+  <li>Un <code>/v1</code> finale o un <code>/v1/audio/transcriptions</code> incollato vengono rimossi al salvataggio, quindi funzionano entrambe le forme.</li>
+  <li>Gli URL che contengono un nome utente o una password vengono rifiutati, così le chiavi non finiscono mai in <code>settings.json</code>.</li>
+  <li>Per una macchina con GPU nella tua LAN o tailnet, usa il suo indirizzo, ad es. <code>http://100.x.y.z:8000/v1</code>.</li>
+</ul>
+
+<!-- @limit 7bee560470 -->
+## Limite di spesa
+<p>Per OpenAI e gli endpoint compatibili, imposta <span class="docs-ui">Limite di spesa</span>: <span class="docs-ui">Nessuno</span>, oppure da <span class="docs-ui">Fino a $0.10 per revisione</span> passando per $0.50, $1 (predefinito), $5 e $20. Per una tua GPU ha senso <span class="docs-ui">Nessuno</span>. L'impostazione è memorizzata come <code>capture.costLimitUsd</code> (massimo 1000, <code>null</code> significa nessun limite). Per gli endpoint compatibili la stima è di $0.006/min.</p>
+<p>Quando il blocco successivo supererebbe il limite, Ferret smette di inviare e conserva l'audio. Le chiamate API non riuscite non vengono ritentate automaticamente.</p>
+
+<!-- @keys a6be4d5386 -->
+## Dove sono memorizzate le chiavi
+<p>Le chiavi inserite nelle <span class="docs-ui">Impostazioni</span> sono cifrate con <code>safeStorage</code> di Electron e scritte in <code>&lt;userData&gt;/stt-keys.bin</code>. L'app non le scrive mai in <code>settings.json</code>. Per fare invece riferimento a una chiave da <code>settings.json</code> (una variabile d'ambiente o una voce di <code>.env</code>), vedi <a href="settings-json.html#keys">Chiavi API</a>.</p>
+<ul>
+  <li>macOS: Portachiavi</li>
+  <li>Windows: DPAPI</li>
+  <li>Linux: libsecret o KWallet. Se è disponibile solo il backend <code>basic_text</code>, la chiave viene tenuta in memoria solo per la sessione corrente (il pulsante indica <span class="docs-ui">Imposta per questa sessione</span>).</li>
+</ul>
+<p><span class="docs-ui">Elimina chiave</span> la rimuove. Per i percorsi di <code>&lt;userData&gt;</code>, vedi <a href="files.html#userdata">File e ambiente</a>.</p>

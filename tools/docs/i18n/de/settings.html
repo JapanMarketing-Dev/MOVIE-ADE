@@ -1,0 +1,71 @@
+<!-- Ferret docs translation: de / settings. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 526d0b4160 -->
+Einstellungen im Überblick
+
+<!-- @lead bb6030179f -->
+Öffnen Sie die <span class="docs-ui">Einstellungen</span> über das Zahnrad in der Titelleiste. Während einer Aufnahme lassen sich die Einstellungen nicht ändern.
+
+<!-- @microphone afd769f38a -->
+## Mikrofon
+<table>
+  <thead><tr><th>Einstellung</th><th>Standard</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Meine Stimme aufnehmen</span></td><td>An</td></tr>
+    <tr><td><span class="docs-ui">Mikrofon</span></td><td><span class="docs-ui">Systemstandard</span></td></tr>
+    <tr><td><span class="docs-ui">Auch die Gegenseite aufnehmen</span> (Beta)</td><td>Aus</td></tr>
+  </tbody>
+</table>
+
+<!-- @transcription 89ff79d384 -->
+## Transkription
+<table>
+  <thead><tr><th>Einstellung</th><th>Standard</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Sprache</span> (gesprochen)</td><td><span class="docs-ui">Auto</span></td></tr>
+    <tr><td><span class="docs-ui">Engine</span></td><td><span class="docs-ui">Auf dem Gerät (kostenlos)</span></td></tr>
+    <tr><td><span class="docs-ui">Modell</span> (auf dem Gerät)</td><td><code>large-v3-turbo</code> (empfohlen)</td></tr>
+    <tr><td><span class="docs-ui">Endpoint-Base-URL</span> / <span class="docs-ui">Modell</span> (kompatibel)</td><td>leer</td></tr>
+    <tr><td><span class="docs-ui">OpenAI-API-Schlüssel</span> / <span class="docs-ui">Endpoint-API-Schlüssel (optional)</span></td><td>nicht gesetzt</td></tr>
+    <tr><td><span class="docs-ui">Kostenlimit</span></td><td>Bis $1 pro Review</td></tr>
+  </tbody>
+</table>
+<p>Siehe <a href="transcription.html">Transkription und Kosten</a>.</p>
+
+<!-- @storage 24cf46ed41 -->
+## Speicher
+<table>
+  <thead><tr><th>Einstellung</th><th>Standard</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Aufnahmen behalten</span>: 7 Tage / 30 Tage / <span class="docs-ui">Für immer</span></td><td>7 Tage</td></tr>
+    <tr><td><span class="docs-ui">Nach dem Stoppen im Feedback-Bildschirm bleiben</span></td><td>Aus</td></tr>
+  </tbody>
+</table>
+
+<!-- @agent e6bb38101d -->
+## Agents
+<table>
+  <thead><tr><th>Einstellung</th><th>Standard</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Beim Öffnen eines Projekts starten</span></td><td>Claude Code, Codex (beliebige <a href="agents.html#supported">unterstützte Agents</a> oder keiner)</td></tr>
+    <tr><td><span class="docs-ui">&lt;agent&gt; in Menüs anzeigen</span></td><td>Für jeden Agent an</td></tr>
+    <tr><td><span class="docs-ui">Befehl</span> / <span class="docs-ui">&lt;agent&gt;-Argumente</span> (pro Agent)</td><td>Der eigene Befehl des Agents (zum Beispiel <code>claude</code>, <code>codex</code>, <code>gemini</code>) / keine</td></tr>
+    <tr><td><span class="docs-ui">Eigene Agents</span></td><td>Keine (<span class="docs-ui">Eigenen Agent hinzufügen</span> registriert ein beliebiges CLI)</td></tr>
+    <tr><td><span class="docs-ui">Berechtigungsabfragen überspringen</span> (pro Projekt)</td><td>Für jedes Projekt aus (<a href="agents.html#terminal">Details</a>)</td></tr>
+    <tr><td><span class="docs-ui">Anweisungen für Agent</span></td><td>Integrierter Text (<a href="agents.html#prompt">Variablen</a>)</td></tr>
+  </tbody>
+</table>
+
+<!-- @other 37b81ab14b -->
+## Konten, GitHub, Darstellung, Sprache
+<ul>
+  <li><span class="docs-ui">Konten</span>: siehe <a href="accounts.html">Konten und Nutzung</a>.</li>
+  <li><span class="docs-ui">GitHub / GitLab</span>: Anmeldung bei <code>gh</code> und <code>glab</code>. Siehe <a href="agents.html#github">An GitHub oder GitLab senden</a>.</li>
+  <li><span class="docs-ui">CLI-Tools</span>: CLIs von Diensten installieren und dort anmelden. Siehe <a href="agents.html#cli-tools">CLI-Tools</a>.</li>
+  <li><span class="docs-ui">Darstellung → Theme</span>: <span class="docs-ui">System</span> (Standard), <span class="docs-ui">Hell</span>, <span class="docs-ui">Dunkel</span>.</li>
+  <li><span class="docs-ui">Sprache → Oberfläche</span>: <span class="docs-ui">System</span> (Standard; folgt der Sprache des Betriebssystems, sofern Ferret sie anbietet, sonst Englisch) oder eine von 14 Sprachen: English, 日本語, 简体中文, 繁體中文, 한국어, Español, Français, Deutsch, Italiano, Português (Brasil), Русский, हिन्दी, Bahasa Indonesia, Tiếng Việt.</li>
+</ul>
+<p>In der Fußleiste: Position des Terminals (rechts / unten) und der Mikrofon-Schalter.</p>
+
+<!-- @settings-json ed64241c44 -->
+## settings.json
+<p>Alle oben genannten Einstellungen werden in <code>~/.ferret/settings.json</code> gespeichert (auf jedem Betriebssystem derselbe Pfad), daneben liegt ein JSON Schema. Sie können die Datei bearbeiten, während die App läuft, von Hand oder mit Ihrem Coding-Agent; Änderungen werden sofort übernommen. Siehe <a href="settings-json.html">Mit settings.json konfigurieren</a>.</p>

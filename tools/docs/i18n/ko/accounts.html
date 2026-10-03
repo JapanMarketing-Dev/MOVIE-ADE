@@ -1,0 +1,24 @@
+<!-- Ferret docs translation: ko / accounts. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title cb165a192d -->
+계정과 사용량
+
+<!-- @lead 6a6ab3126f -->
+여러 Claude Code 또는 Codex 로그인을 전환하고, 푸터에서 사용량 제한 구간을 확인합니다. 두 기능 모두 현재는 Claude Code와 Codex에서만 작동하며, 다른 에이전트는 평소처럼 자체 로그인을 계속 사용합니다.
+
+<!-- @accounts f0d5cb0211 -->
+## 여러 계정
+<p>계정은 선택 사항입니다. 여러 계정을 전환해 쓸 때만 추가하세요.</p>
+<ol class="docs-steps">
+  <li><span class="docs-ui">설정 → 계정</span>을 열거나, 푸터의 사용량 메뉴에서 <span class="docs-ui">계정 관리…</span>를 엽니다.</li>
+  <li><span class="docs-ui">계정 추가</span>를 누르면 내장 터미널 탭에서 에이전트의 로그인이 시작됩니다.</li>
+  <li>사용할 계정을 고릅니다. 실행 중인 탭은 원래 계정을 유지하고, 새 탭은 선택한 계정을 사용합니다.</li>
+</ol>
+<p>작동 방식: 추가한 계정마다 별도의 설정 디렉터리 <code>&lt;userData&gt;/accounts/&lt;agent&gt;/&lt;id&gt;/</code>가 만들어집니다. Ferret은 <code>CLAUDE_CONFIG_DIR</code>(Claude Code) 또는 <code>CODEX_HOME</code>(Codex)이 그곳을 가리키도록 해서 에이전트를 실행합니다. <span class="docs-ui">시스템 기본값</span>은 평소의 <code>~/.claude</code> / <code>~/.codex</code>를 그대로 사용합니다.</p>
+<p>계정을 제거하면 그 설정 디렉터리가 삭제됩니다. 서버에서 로그아웃되지는 않습니다.</p>
+
+<!-- @usage bb03a3a17a -->
+## 푸터의 사용량
+<p>푸터에는 각 사용량 제한 구간을 얼마나 썼는지가 표시됩니다. 5시간 구간과 주간 구간, 그리고 Claude는 모델별 주간 구간도 표시됩니다. 60%에서 노란색, 80%에서 빨간색으로 바뀝니다. 값은 15분마다 또는 <span class="docs-ui">사용량 새로고침</span>을 누를 때 갱신됩니다.</p>
+<p>표시되는 정보의 양은 푸터의 공간에 따라 달라집니다. 공간이 충분하면 막대, 구간 이름, 백분율이 표시됩니다. 푸터가 좁아질수록 덜 중요한 부분부터 숨겨지며, 마지막에는 에이전트당 백분율 하나만 남습니다. 사용량을 클릭하면 팝오버에서 모든 정보를 볼 수 있습니다.</p>
+<p>사용량은 로그인한 계정 자체의 자격 증명으로 Anthropic(<code>api.anthropic.com/api/oauth/usage</code>)과 ChatGPT(<code>chatgpt.com/backend-api/wham/usage</code>)에서 직접 가져옵니다.</p>
+<figure class="docs-shot" data-shot="usage"><div class="docs-shot-slot" role="img" aria-label="푸터의 사용량(스크린샷 준비 중)"><span>스크린샷 준비 중</span></div><figcaption>푸터의 사용량</figcaption></figure>

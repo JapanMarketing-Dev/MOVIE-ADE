@@ -3,18 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Configure with settings.json · Ferret docs</title>
-  <meta name="description" content="Every Ferret setting lives in one JSON file with a JSON Schema next to it, so you or your own coding agent (for example Claude Code, Codex or Gemini CLI) can configure the app by editing a file. Changes apply while the app is running.">
+  <title>Configurar com o settings.json · Documentação do Ferret</title>
+  <meta name="description" content="Todas as configurações do Ferret ficam em um único arquivo JSON com um JSON Schema ao lado, então você ou o seu próprio agente de programação (por exemplo Claude Code, Codex ou Gemini CLI) podem configurar o app editando um arquivo. As alterações são aplicadas com o app em execução.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
-  <meta name="robots" content="noindex, follow">
-  <link rel="canonical" href="https://ferretade.dev/docs/settings-json">
+  <link rel="canonical" href="https://ferretade.dev/docs/pt-BR/settings-json">
   <link rel="alternate" hreflang="en" href="https://ferretade.dev/docs/settings-json">
+  <link rel="alternate" hreflang="ja" href="https://ferretade.dev/docs/ja/settings-json">
+  <link rel="alternate" hreflang="zh-CN" href="https://ferretade.dev/docs/zh-CN/settings-json">
+  <link rel="alternate" hreflang="zh-TW" href="https://ferretade.dev/docs/zh-TW/settings-json">
+  <link rel="alternate" hreflang="ko" href="https://ferretade.dev/docs/ko/settings-json">
+  <link rel="alternate" hreflang="es" href="https://ferretade.dev/docs/es/settings-json">
+  <link rel="alternate" hreflang="fr" href="https://ferretade.dev/docs/fr/settings-json">
+  <link rel="alternate" hreflang="de" href="https://ferretade.dev/docs/de/settings-json">
+  <link rel="alternate" hreflang="it" href="https://ferretade.dev/docs/it/settings-json">
+  <link rel="alternate" hreflang="pt-BR" href="https://ferretade.dev/docs/pt-BR/settings-json">
+  <link rel="alternate" hreflang="ru" href="https://ferretade.dev/docs/ru/settings-json">
+  <link rel="alternate" hreflang="hi" href="https://ferretade.dev/docs/hi/settings-json">
+  <link rel="alternate" hreflang="id" href="https://ferretade.dev/docs/id/settings-json">
+  <link rel="alternate" hreflang="vi" href="https://ferretade.dev/docs/vi/settings-json">
   <link rel="alternate" hreflang="x-default" href="https://ferretade.dev/docs/settings-json">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
-  <meta property="og:title" content="Configure with settings.json · Ferret docs">
-  <meta property="og:description" content="Every Ferret setting lives in one JSON file with a JSON Schema next to it, so you or your own coding agent (for example Claude Code, Codex or Gemini CLI) can configure the app by editing a file. Changes apply while the app is running.">
+  <meta property="og:title" content="Configurar com o settings.json · Documentação do Ferret">
+  <meta property="og:description" content="Todas as configurações do Ferret ficam em um único arquivo JSON com um JSON Schema ao lado, então você ou o seu próprio agente de programação (por exemplo Claude Code, Codex ou Gemini CLI) podem configurar o app editando um arquivo. As alterações são aplicadas com o app em execução.">
   <meta property="og:url" content="https://ferretade.dev/docs/pt-BR/settings-json">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="pt_BR">
@@ -23,8 +35,8 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Configure with settings.json · Ferret docs">
-  <meta name="twitter:description" content="Every Ferret setting lives in one JSON file with a JSON Schema next to it, so you or your own coding agent (for example Claude Code, Codex or Gemini CLI) can configure the app by editing a file. Changes apply while the app is running.">
+  <meta name="twitter:title" content="Configurar com o settings.json · Documentação do Ferret">
+  <meta name="twitter:description" content="Todas as configurações do Ferret ficam em um único arquivo JSON com um JSON Schema ao lado, então você ou o seu próprio agente de programação (por exemplo Claude Code, Codex ou Gemini CLI) podem configurar o app editando um arquivo. As alterações são aplicadas com o app em execução.">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -35,8 +47,8 @@
   <script src="../docs.js?v=cb59f7a6" defer></script>
 </head>
 <!-- Generated by tools/docs/build-docs.mjs: the sidebar, header, and footer are identical on every page in site/docs/. Change them there. -->
-<body data-page="docs" data-copy="Copy" data-copied="Copied" data-copy-failed="Copy failed">
-  <a class="skip" href="#docs-main">Skip to content</a>
+<body data-page="docs" data-copy="Copiar" data-copied="Copiado" data-copy-failed="Falha ao copiar">
+  <a class="skip" href="#docs-main">Pular para o conteúdo</a>
   <svg class="sprite" width="0" height="0" aria-hidden="true">
     <symbol id="i-github" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
@@ -48,14 +60,14 @@
 
   <header class="site-header">
     <div class="wrap">
-      <a class="brand" href="../../index.html" aria-label="Ferret home">
+      <a class="brand" href="../../index.html" aria-label="Página inicial do Ferret">
         <img class="wordmark" src="../../assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22">
       </a>
-      <nav class="site-nav" aria-label="Main">
-        <a href="../../index.html#features">Features</a>
+      <nav class="site-nav" aria-label="Principal">
+        <a href="../../index.html#features">Recursos</a>
         <a href="../../download.html">Download</a>
-        <a class="nav-keep" href="quick-start.html" aria-current="page">Docs</a>
-        <a href="../../download.html#versions">Changelog</a>
+        <a class="nav-keep" href="quick-start.html" aria-current="page">Documentação</a>
+        <a href="../../download.html#versions">Novidades</a>
       </nav>
       <div class="header-actions">
         <details class="docs-lang">
@@ -77,11 +89,11 @@
             <li><a href="../vi/settings-json.html" hreflang="vi" lang="vi" data-docs-lang="vi">Tiếng Việt</a></li>
           </ul>
         </details>
-        <a class="btn btn-sm btn-icon btn-ghost" href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-discord"/></svg><span class="sr-only">Discord</span><span class="sr-only"> (opens in a new tab)</span></a>
-        <a class="btn btn-sm btn-icon btn-ghost" href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-x"/></svg><span class="sr-only">X</span><span class="sr-only"> (opens in a new tab)</span></a>
+        <a class="btn btn-sm btn-icon btn-ghost" href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-discord"/></svg><span class="sr-only">Discord</span><span class="sr-only"> (abre em uma nova aba)</span></a>
+        <a class="btn btn-sm btn-icon btn-ghost" href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-x"/></svg><span class="sr-only">X</span><span class="sr-only"> (abre em uma nova aba)</span></a>
         <a class="btn btn-sm btn-ghost" href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">
           <svg class="icon icon-fill"><use href="#i-github"/></svg><span class="btn-label">GitHub</span>
-        <span class="sr-only"> (opens in a new tab)</span></a>
+        <span class="sr-only"> (abre em uma nova aba)</span></a>
         <a class="btn btn-sm btn-primary" href="../../download.html">
           <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">Download</span>
         </a>
@@ -90,49 +102,49 @@
   </header>
 
   <div class="wrap docs-layout">
-    <nav class="docs-sidebar" aria-label="Docs pages" id="docs-sidebar">
+    <nav class="docs-sidebar" aria-label="Páginas da documentação" id="docs-sidebar">
       <button class="docs-sidebar-toggle" type="button" aria-expanded="true" aria-controls="docs-nav-list" data-docs-nav-toggle>
-        <svg class="icon"><use href="#i-menu"/></svg>Docs menu
+        <svg class="icon"><use href="#i-menu"/></svg>Menu da documentação
       </button>
       <div class="docs-nav-list" id="docs-nav-list">
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Start here</p>
+        <p class="docs-nav-heading">Comece aqui</p>
         <ul>
-          <li><a href="quick-start.html">Quick start</a></li>
-          <li><a href="install.html">Install</a></li>
-          <li><a href="concepts.html">Concepts</a></li>
-          <li><a href="keyboard.html">Keyboard shortcuts</a></li>
+          <li><a href="quick-start.html">Início rápido</a></li>
+          <li><a href="install.html">Instalação</a></li>
+          <li><a href="concepts.html">Conceitos</a></li>
+          <li><a href="keyboard.html">Atalhos de teclado</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Using Ferret</p>
+        <p class="docs-nav-heading">Usando o Ferret</p>
         <ul>
-          <li><a href="projects.html">Projects and URLs</a></li>
-          <li><a href="recording.html">Recording</a></li>
-          <li><a href="agents.html">Sending to agents</a></li>
-          <li><a href="editor.html">Editor and preview</a></li>
+          <li><a href="projects.html">Projetos e URLs</a></li>
+          <li><a href="recording.html">Gravação</a></li>
+          <li><a href="agents.html">Enviar a agentes</a></li>
+          <li><a href="editor.html">Editor e prévia</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Configure</p>
+        <p class="docs-nav-heading">Configuração</p>
         <ul>
-          <li><a href="transcription.html">Transcription and costs</a></li>
-          <li><a href="accounts.html">Accounts and usage</a></li>
-          <li><a href="settings.html">Settings reference</a></li>
-          <li><a href="settings-json.html" aria-current="page">Configure with settings.json</a></li>
+          <li><a href="transcription.html">Transcrição e custos</a></li>
+          <li><a href="accounts.html">Contas e uso</a></li>
+          <li><a href="settings.html">Referência de configurações</a></li>
+          <li><a href="settings-json.html" aria-current="page">Configurar com o settings.json</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Reference</p>
+        <p class="docs-nav-heading">Referência</p>
         <ul>
-          <li><a href="privacy.html">Data and privacy</a></li>
-          <li><a href="files.html">Files and environment</a></li>
+          <li><a href="privacy.html">Dados e privacidade</a></li>
+          <li><a href="files.html">Arquivos e ambiente</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Help</p>
+        <p class="docs-nav-heading">Ajuda</p>
         <ul>
-          <li><a href="troubleshooting.html">Troubleshooting</a></li>
+          <li><a href="troubleshooting.html">Solução de problemas</a></li>
         </ul>
       </div>
       </div>
@@ -140,36 +152,35 @@
 
     <main class="docs-main" id="docs-main">
       <article class="docs-content">
-        <div class="docs-callout docs-callout-i18n"><p>Esta página ainda não foi traduzida. Ela é exibida em inglês. <a href="../settings-json.html" hreflang="en">English</a></p></div>
-        <p class="docs-eyebrow">Configure</p>
-        <h1 lang="en">Configure with settings.json</h1>
-        <p class="docs-lead" lang="en">Every Ferret setting lives in one JSON file with a JSON Schema next to it, so you or your own coding agent (for example Claude Code, Codex or Gemini CLI) can configure the app by editing a file. Changes apply while the app is running.</p>
+        <p class="docs-eyebrow">Configuração</p>
+        <h1>Configurar com o settings.json</h1>
+        <p class="docs-lead">Todas as configurações do Ferret ficam em um único arquivo JSON com um JSON Schema ao lado, então você ou o seu próprio agente de programação (por exemplo Claude Code, Codex ou Gemini CLI) podem configurar o app editando um arquivo. As alterações são aplicadas com o app em execução.</p>
 
-      <section class="docs-section" aria-labelledby="path" lang="en">
-        <h2 id="path"><a class="docs-anchor" href="#path" aria-label="Link to Where the file lives">#</a>Where the file lives</h2>
-        <p>The path is the same on every OS:</p>
+      <section class="docs-section" aria-labelledby="path">
+        <h2 id="path"><a class="docs-anchor" href="#path" aria-label="Link para Onde fica o arquivo">#</a>Onde fica o arquivo</h2>
+        <p>O caminho é o mesmo em todos os sistemas:</p>
 <pre><code>~/.ferret/settings.json          # your settings (edit this)
 ~/.ferret/settings.schema.json   # JSON Schema, rewritten by the app on launch
 ~/.ferret/state.json             # open folder, last URL, open tabs (managed by the app)
 ~/.ferret/.env                   # optional: API keys referenced by apiKeyEnv</code></pre>
 <ul>
-  <li>Set <code>FERRET_CONFIG_DIR</code> (the old name <code>MOVIE_ADE_CONFIG_DIR</code> also works) to use another folder, e.g. one inside a dotfiles repo. <code>~</code> is expanded.</li>
-  <li>Development builds (<code>pnpm dev</code>) use <code>~/.ferret/dev/</code>, so hacking on Ferret never rewrites your real settings.</li>
-  <li>Upgrading from 0.1.0: on first launch, the old <code>&lt;userData&gt;/settings.json</code> is copied into the new files. The old file is left in place as a backup and is never modified.</li>
+  <li>Defina <code>FERRET_CONFIG_DIR</code> (o nome antigo <code>MOVIE_ADE_CONFIG_DIR</code> também funciona) para usar outra pasta, por exemplo uma dentro de um repositório de dotfiles. O <code>~</code> é expandido.</li>
+  <li>As versões de desenvolvimento (<code>pnpm dev</code>) usam <code>~/.ferret/dev/</code>, então mexer no código do Ferret nunca reescreve as suas configurações reais.</li>
+  <li>Atualizando a partir da 0.1.0: na primeira execução, o antigo <code>&lt;userData&gt;/settings.json</code> é copiado para os novos arquivos. O arquivo antigo fica no lugar como backup e nunca é modificado.</li>
 </ul>
-<p>Upgrading from MOVIE-ADE: on first launch, <code>settings.json</code>, <code>state.json</code>, <code>usage/</code>, and <code>.env</code> are copied from <code>~/.movie-ade/</code> into <code>~/.ferret/</code>. The old folder is left in place and not modified.</p>
-<p>In the app, <span class="docs-ui">Settings</span> shows the path at the top, with <span class="docs-ui">Open settings.json</span> (edits it in the built-in editor with schema completion) and <span class="docs-ui">Reveal in folder</span>.</p>
+<p>Atualizando a partir do MOVIE-ADE: na primeira execução, <code>settings.json</code>, <code>state.json</code>, <code>usage/</code> e <code>.env</code> são copiados de <code>~/.movie-ade/</code> para <code>~/.ferret/</code>. A pasta antiga fica no lugar e não é modificada.</p>
+<p>No app, as <span class="docs-ui">Configurações</span> mostram o caminho no topo, com <span class="docs-ui">Abrir settings.json</span> (edita o arquivo no editor integrado com autocompletar pelo schema) e <span class="docs-ui">Mostrar na pasta</span>.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="schema" lang="en">
-        <h2 id="schema"><a class="docs-anchor" href="#schema" aria-label="Link to Schema and validation">#</a>Schema and validation</h2>
-        <p>The first line of <code>settings.json</code> is <code>"$schema": "./settings.schema.json"</code>. Editors such as VS Code and agents such as Claude Code use it for completion, validation and the description of every field. The schema ships inside the app and is written next to the file on every launch, so it always matches the installed version.</p>
-<p>Keys Ferret doesn't know are kept as they are when the app saves. Open tabs, the last URL and other session state are kept in <code>state.json</code>, not here.</p>
+      <section class="docs-section" aria-labelledby="schema">
+        <h2 id="schema"><a class="docs-anchor" href="#schema" aria-label="Link para Schema e validação">#</a>Schema e validação</h2>
+        <p>A primeira linha do <code>settings.json</code> é <code>"$schema": "./settings.schema.json"</code>. Editores como o VS Code e agentes como o Claude Code o usam para autocompletar, validar e descrever cada campo. O schema vem dentro do app e é gravado ao lado do arquivo a cada execução, então sempre corresponde à versão instalada.</p>
+<p>Chaves que o Ferret não conhece são mantidas como estão quando o app salva. Abas abertas, a última URL e outros estados da sessão ficam no <code>state.json</code>, não aqui.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="example" lang="en">
-        <h2 id="example"><a class="docs-anchor" href="#example" aria-label="Link to Annotated example">#</a>Annotated example</h2>
-        <p>JSON has no comments, so the notes are below the example. Every field is optional; leave out what you don't need.</p>
+      <section class="docs-section" aria-labelledby="example">
+        <h2 id="example"><a class="docs-anchor" href="#example" aria-label="Link para Exemplo comentado">#</a>Exemplo comentado</h2>
+        <p>JSON não tem comentários, então as observações ficam abaixo do exemplo. Todos os campos são opcionais; deixe de fora o que você não precisa.</p>
 <pre><code>{
   "$schema": "./settings.schema.json",
   "theme": "dark",
@@ -225,29 +236,29 @@
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>: review targets for the URL menu. The first one opens when the project opens. <code>id</code> can be any unique string.</li>
-  <li><code>agents.customAgents</code>: any CLI or wrapper script. <code>startupAgents</code> lists the agent tabs opened with a project, in order.</li>
-  <li><code>capture.sttEndpoints.compatible</code>: any server that implements OpenAI's <code>/v1/audio/transcriptions</code> (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> turns off the cost cap, which makes sense for your own GPU. See <a href="transcription.html">Transcription and costs</a>.</li>
-  <li><code>organizer</code>: <span class="docs-ui">Organize findings</span> sent straight to an OpenAI-compatible <code>/v1/chat/completions</code> server (here Ollama). Use <code>"runner": "claude-code"</code> or <code>"codex"</code> to use your own CLI login instead, and <code>organizer.cliModels</code> to pick their model.</li>
-  <li><code>decision</code>: the model that checks whether each finding was fixed. Clef Flash on a local Ollama is free and reads screenshots. <code>preset</code> can also be <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code> or <code>custom</code>.</li>
-  <li>Every provider block (<code>sttEndpoints.*</code>, <code>organizer.endpoints.*</code>) also takes <code>timeoutMs</code>, <code>headers</code> and, for Azure, <code>apiVersion</code>.</li>
+  <li><code>projects[].urls</code>: alvos de revisão para o menu de URLs. O primeiro abre quando o projeto abre. <code>id</code> pode ser qualquer string única.</li>
+  <li><code>agents.customAgents</code>: qualquer CLI ou script wrapper. <code>startupAgents</code> lista, em ordem, as abas de agentes abertas com um projeto.</li>
+  <li><code>capture.sttEndpoints.compatible</code>: qualquer servidor que implemente o <code>/v1/audio/transcriptions</code> da OpenAI (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> desativa o limite de custo, o que faz sentido para a sua própria GPU. Veja <a href="transcription.html">Transcrição e custos</a>.</li>
+  <li><code>organizer</code>: <span class="docs-ui">Organizar apontamentos</span> enviado direto a um servidor <code>/v1/chat/completions</code> compatível com OpenAI (aqui, o Ollama). Use <code>"runner": "claude-code"</code> ou <code>"codex"</code> para usar o seu próprio login da CLI, e <code>organizer.cliModels</code> para escolher o modelo deles.</li>
+  <li><code>decision</code>: o modelo que verifica se cada apontamento foi corrigido. O Clef Flash em um Ollama local é gratuito e lê capturas de tela. <code>preset</code> também pode ser <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code> ou <code>custom</code>.</li>
+  <li>Todo bloco de provedor (<code>sttEndpoints.*</code>, <code>organizer.endpoints.*</code>) também aceita <code>timeoutMs</code>, <code>headers</code> e, para o Azure, <code>apiVersion</code>.</li>
 </ul>
-<div class="docs-callout docs-callout-note"><p>Ferret never pays for AI on your behalf. There is no built-in key and no relay server: every request goes from your machine to the endpoint you configure, with your key.</p></div>
+<div class="docs-callout docs-callout-note"><p>O Ferret nunca paga por IA em seu nome. Não há chave embutida nem servidor relay: cada requisição vai da sua máquina para o endpoint que você configurar, com a sua chave.</p></div>
       </section>
 
-      <section class="docs-section" aria-labelledby="custom" lang="en">
-        <h2 id="custom"><a class="docs-anchor" href="#custom" aria-label="Link to Any provider: custom endpoints">#</a>Any provider: custom endpoints</h2>
-        <p>Presets only prefill the URL and model. Every connection (transcription, Organize findings, decision model) also accepts any URL, model, headers and auth, so you can use any provider: Cloudflare, a gateway, a corporate proxy or your own server. The fields below have the same names and shape in all three.</p>
+      <section class="docs-section" aria-labelledby="custom">
+        <h2 id="custom"><a class="docs-anchor" href="#custom" aria-label="Link para Qualquer provedor: endpoints personalizados">#</a>Qualquer provedor: endpoints personalizados</h2>
+        <p>As predefinições só preenchem a URL e o modelo. Toda conexão (transcrição, Organizar apontamentos, modelo de decisão) também aceita qualquer URL, modelo, cabeçalhos e autenticação, então você pode usar qualquer provedor: Cloudflare, um gateway, um proxy corporativo ou o seu próprio servidor. Os campos abaixo têm os mesmos nomes e o mesmo formato nos três.</p>
 <table>
-  <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+  <thead><tr><th>Campo</th><th>Significado</th></tr></thead>
   <tbody>
-    <tr><td><code>baseUrl</code>, <code>model</code></td><td>Any http(s) URL and model name. <code>{account_id}</code> in the URL is replaced by <code>accountId</code>, or by the <code>CLOUDFLARE_ACCOUNT_ID</code> environment variable</td></tr>
-    <tr><td><code>authScheme</code></td><td><code>bearer</code> (<code>Authorization: Bearer &lt;key&gt;</code>), <code>header</code> (the key in the header named by <code>authHeader</code>) or <code>none</code>. Omit it to keep the provider's default</td></tr>
-    <tr><td><code>headers</code></td><td>Extra headers. A value is a plain string, or <code>{"env": "VAR"}</code> to read it from an environment variable (looked up like <code>apiKeyEnv</code>). Secret headers such as <code>Authorization</code> or a gateway token are accepted only as <code>{"env": …}</code>. In the Settings page, write <code>Name: ${VAR}</code></td></tr>
-    <tr><td><code>apiKey</code> / <code>apiKeyEnv</code></td><td>The key, see <a href="#keys">API keys</a></td></tr>
+    <tr><td><code>baseUrl</code>, <code>model</code></td><td>Qualquer URL http(s) e nome de modelo. <code>{account_id}</code> na URL é substituído por <code>accountId</code> ou pela variável de ambiente <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
+    <tr><td><code>authScheme</code></td><td><code>bearer</code> (<code>Authorization: Bearer &lt;key&gt;</code>), <code>header</code> (a chave no cabeçalho indicado por <code>authHeader</code>) ou <code>none</code>. Omita para manter o padrão do provedor</td></tr>
+    <tr><td><code>headers</code></td><td>Cabeçalhos extras. Um valor é uma string simples ou <code>{"env": "VAR"}</code> para lê-lo de uma variável de ambiente (procurada como em <code>apiKeyEnv</code>). Cabeçalhos secretos, como <code>Authorization</code> ou um token de gateway, só são aceitos como <code>{"env": …}</code>. Na página de Configurações, escreva <code>Name: ${VAR}</code></td></tr>
+    <tr><td><code>apiKey</code> / <code>apiKeyEnv</code></td><td>A chave; veja <a href="#keys">Chaves de API</a></td></tr>
   </tbody>
 </table>
-<p><strong>Transcription</strong> with any OpenAI-compatible <code>/v1/audio/transcriptions</code> server that wants its key in an <code>api-key</code> header:</p>
+<p><strong>Transcrição</strong> com qualquer servidor <code>/v1/audio/transcriptions</code> compatível com OpenAI que espera a chave em um cabeçalho <code>api-key</code>:</p>
 <pre><code>"capture": {
   "transcription": "compatible",
   "sttEndpoints": {
@@ -261,7 +272,7 @@
     }
   }
 }</code></pre>
-<p><strong>Organize findings</strong> with Cloudflare Workers AI (OpenAI-compatible chat completions), optionally through AI Gateway:</p>
+<p><strong>Organizar apontamentos</strong> com o Cloudflare Workers AI (chat completions compatível com OpenAI), opcionalmente pelo AI Gateway:</p>
 <pre><code>"organizer": {
   "runner": "api:compatible",
   "endpoints": {
@@ -273,7 +284,7 @@
     }
   }
 }</code></pre>
-<p><strong>Decision model</strong> on Cloudflare Workers AI (Clef Flash), or with <code>"preset": "custom"</code> on any server that speaks the System One API. The decision model takes a full request URL in <code>endpoint</code> (with <code>{account_id}</code> and <code>{model}</code> filled in); every other field has the same name and shape as above:</p>
+<p><strong>Modelo de decisão</strong> no Cloudflare Workers AI (Clef Flash) ou, com <code>"preset": "custom"</code>, em qualquer servidor que fale a API System One. O modelo de decisão recebe uma URL de requisição completa em <code>endpoint</code> (com <code>{account_id}</code> e <code>{model}</code> preenchidos); todos os outros campos têm o mesmo nome e formato que acima:</p>
 <pre><code>"decision": {
   "enabled": true,
   "preset": "cloudflare",
@@ -283,36 +294,36 @@
   "apiKeyEnv": "CLOUDFLARE_API_TOKEN",
   "headers": { "cf-aig-authorization": { "env": "CF_AIG_TOKEN" } }
 }</code></pre>
-<p>Put <code>CLOUDFLARE_ACCOUNT_ID</code>, <code>CLOUDFLARE_API_TOKEN</code> and the other variables in <code>~/.ferret/.env</code>. The model names above are examples. Check your provider's model list.</p>
+<p>Coloque <code>CLOUDFLARE_ACCOUNT_ID</code>, <code>CLOUDFLARE_API_TOKEN</code> e as outras variáveis em <code>~/.ferret/.env</code>. Os nomes de modelos acima são exemplos. Confira a lista de modelos do seu provedor.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="keys" lang="en">
-        <h2 id="keys"><a class="docs-anchor" href="#keys" aria-label="Link to API keys">#</a>API keys</h2>
-        <p>Each provider block accepts a key in one of three ways. The first one found wins:</p>
+      <section class="docs-section" aria-labelledby="keys">
+        <h2 id="keys"><a class="docs-anchor" href="#keys" aria-label="Link para Chaves de API">#</a>Chaves de API</h2>
+        <p>Cada bloco de provedor aceita uma chave de uma de três formas. A primeira encontrada vale:</p>
 <ol>
-  <li><code>"apiKey": "…"</code>: the key in plaintext in <code>settings.json</code>. Anyone who can read the file can read the key, and <span class="docs-ui">Settings</span> shows a warning while one is present. Avoid it, especially if the file is in a dotfiles repo.</li>
-  <li><code>"apiKeyEnv": "OPENAI_API_KEY"</code>: the name of an environment variable. Ferret looks in its own environment, then the open project's <code>.env</code>, then <code>~/.ferret/.env</code>. Apps opened from the Finder or Start menu don't see variables exported in your shell profile, so <code>~/.ferret/.env</code> is the reliable place.</li>
-  <li>The key saved in <span class="docs-ui">Settings</span>: encrypted with the OS keychain in <code>&lt;userData&gt;/stt-keys.bin</code> (see <a href="transcription.html#keys">Where keys are stored</a>).</li>
+  <li><code>"apiKey": "…"</code>: a chave em texto puro no <code>settings.json</code>. Qualquer pessoa que consiga ler o arquivo consegue ler a chave, e as <span class="docs-ui">Configurações</span> mostram um aviso enquanto houver uma. Evite isso, principalmente se o arquivo estiver em um repositório de dotfiles.</li>
+  <li><code>"apiKeyEnv": "OPENAI_API_KEY"</code>: o nome de uma variável de ambiente. O Ferret procura no próprio ambiente, depois no <code>.env</code> do projeto aberto e depois em <code>~/.ferret/.env</code>. Apps abertos pelo Finder ou pelo menu Iniciar não veem variáveis exportadas no perfil do seu shell, então <code>~/.ferret/.env</code> é o lugar confiável.</li>
+  <li>A chave salva nas <span class="docs-ui">Configurações</span>: criptografada com o chaveiro do sistema em <code>&lt;userData&gt;/stt-keys.bin</code> (veja <a href="transcription.html#keys">Onde as chaves são armazenadas</a>).</li>
 </ol>
-<p>Ferret reads an environment variable only when you name it in <code>apiKeyEnv</code>. Keys are never logged, never shown in the UI, and never included in crash reports.</p>
+<p>O Ferret só lê uma variável de ambiente quando você a indica em <code>apiKeyEnv</code>. As chaves nunca são registradas em log, nunca aparecem na interface e nunca são incluídas nos relatórios de falhas.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="reload" lang="en">
-        <h2 id="reload"><a class="docs-anchor" href="#reload" aria-label="Link to Live reload">#</a>Live reload</h2>
+      <section class="docs-section" aria-labelledby="reload">
+        <h2 id="reload"><a class="docs-anchor" href="#reload" aria-label="Link para Recarregamento ao vivo">#</a>Recarregamento ao vivo</h2>
         <figure class="docs-clip" data-clip="settings-json">
-  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/settings-json.webp" data-src="../assets/clips/settings-json.mp4" data-src-webm="../assets/clips/settings-json.webm" aria-label="Editing settings.json: the app applies the change while it is running."></video>
-  <figcaption>Editing settings.json: the app applies the change while it is running.</figcaption>
+  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/settings-json.webp" data-src="../assets/clips/settings-json.mp4" data-src-webm="../assets/clips/settings-json.webm" aria-label="Editando o settings.json: o app aplica a alteração enquanto está em execução."></video>
+  <figcaption>Editando o settings.json: o app aplica a alteração enquanto está em execução.</figcaption>
 </figure>
-<p>Ferret watches <code>settings.json</code>. When it changes, the app re-reads it, checks it against the schema and applies it: theme, language, layout, agents, projects and AI endpoints update without a restart, and the Settings page refreshes.</p>
+<p>O Ferret observa o <code>settings.json</code>. Quando ele muda, o app o relê, valida com o schema e aplica: tema, idioma, layout, agentes, projetos e endpoints de IA são atualizados sem reiniciar, e a página de Configurações é atualizada.</p>
 <ul>
-  <li>If the file has a JSON syntax error or a value of the wrong type, nothing from that edit is applied. The app keeps the last valid settings, shows the error with its line number, and doesn't overwrite your file until you fix it.</li>
-  <li>When the app itself saves (you changed something in <span class="docs-ui">Settings</span>), it writes to a temporary file and renames it over <code>settings.json</code>, so a crash never leaves a half-written file.</li>
+  <li>Se o arquivo tiver um erro de sintaxe JSON ou um valor do tipo errado, nada dessa edição é aplicado. O app mantém as últimas configurações válidas, mostra o erro com o número da linha e não sobrescreve o seu arquivo até que você o corrija.</li>
+  <li>Quando o próprio app salva (você mudou algo nas <span class="docs-ui">Configurações</span>), ele grava em um arquivo temporário e o renomeia por cima do <code>settings.json</code>, então uma falha nunca deixa um arquivo gravado pela metade.</li>
 </ul>
       </section>
 
-      <section class="docs-section" aria-labelledby="agent" lang="en">
-        <h2 id="agent"><a class="docs-anchor" href="#agent" aria-label="Link to Let your coding agent configure Ferret">#</a>Let your coding agent configure Ferret</h2>
-        <p>Paste this into Claude Code, Codex or any agent that can edit files:</p>
+      <section class="docs-section" aria-labelledby="agent">
+        <h2 id="agent"><a class="docs-anchor" href="#agent" aria-label="Link para Deixe seu agente de programação configurar o Ferret">#</a>Deixe seu agente de programação configurar o Ferret</h2>
+        <p>Cole isto no Claude Code, no Codex ou em qualquer agente que consiga editar arquivos:</p>
 <pre><code>Edit ~/.ferret/settings.json following the JSON Schema in
 ~/.ferret/settings.schema.json (read the field descriptions first).
 Keep unknown keys and keep the file valid JSON. Never write API keys in
@@ -322,27 +333,27 @@ Ferret applies the change as soon as the file is saved.
 
 Task: &lt;what you want, e.g. "use my Ollama at http://localhost:11434 with
 qwen3:14b for Organize findings and add a prd URL for the shop project"&gt;</code></pre>
-<p>The same prompt, with your actual paths filled in, is under <span class="docs-ui">Settings</span> → <span class="docs-ui">Let your coding agent configure Ferret</span> with a <span class="docs-ui">Copy prompt</span> button.</p>
+<p>O mesmo prompt, com os seus caminhos reais preenchidos, está em <span class="docs-ui">Configurações</span> → <span class="docs-ui">Deixe seu agent de código configurar o Ferret</span>, com um botão <span class="docs-ui">Copiar prompt</span>.</p>
       </section>
 
-        <nav class="docs-pager" aria-label="Previous and next page">
-          <a class="docs-pager-prev" href="settings.html"><span>Previous</span>Settings reference</a>
-          <a class="docs-pager-next" href="privacy.html"><span>Next</span>Data and privacy</a>
+        <nav class="docs-pager" aria-label="Página anterior e próxima">
+          <a class="docs-pager-prev" href="settings.html"><span>Anterior</span>Referência de configurações</a>
+          <a class="docs-pager-next" href="privacy.html"><span>Próxima</span>Dados e privacidade</a>
         </nav>
-        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/README.md" target="_blank" rel="noopener noreferrer">Help translate this page on GitHub<span class="sr-only"> (opens in a new tab)</span></a></p>
+        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/pt-BR/settings-json.html" target="_blank" rel="noopener noreferrer">Ajude a traduzir esta página no GitHub<span class="sr-only"> (abre em uma nova aba)</span></a></p>
       </article>
     </main>
 
-    <aside class="docs-toc" aria-label="On this page">
-      <p class="docs-toc-heading">On this page</p>
+    <aside class="docs-toc" aria-label="Nesta página">
+      <p class="docs-toc-heading">Nesta página</p>
       <ul>
-        <li><a href="#path">Where the file lives</a></li>
-        <li><a href="#schema">Schema and validation</a></li>
-        <li><a href="#example">Annotated example</a></li>
-        <li><a href="#custom">Any provider: custom endpoints</a></li>
-        <li><a href="#keys">API keys</a></li>
-        <li><a href="#reload">Live reload</a></li>
-        <li><a href="#agent">Let your coding agent configure Ferret</a></li>
+        <li><a href="#path">Onde fica o arquivo</a></li>
+        <li><a href="#schema">Schema e validação</a></li>
+        <li><a href="#example">Exemplo comentado</a></li>
+        <li><a href="#custom">Qualquer provedor: endpoints personalizados</a></li>
+        <li><a href="#keys">Chaves de API</a></li>
+        <li><a href="#reload">Recarregamento ao vivo</a></li>
+        <li><a href="#agent">Deixe seu agente de programação configurar o Ferret</a></li>
       </ul>
     </aside>
   </div>
@@ -352,29 +363,29 @@ qwen3:14b for Organize findings and add a prd URL for the shop project"&gt;</cod
       <div class="footer-grid">
         <div class="footer-brand">
           <a class="brand" href="../../index.html"><img class="wordmark" src="../../assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22"></a>
-          <p class="footer-tag">The ADE for feedback by voice and screen.</p>
-          <p class="provider">Built by <a href="https://www.japan-marketing.co.jp/" target="_blank" rel="noopener noreferrer">Japan Marketing LLC<span class="sr-only"> (opens in a new tab)</span></a></p>
+          <p class="footer-tag">O ADE para feedback por voz e tela.</p>
+          <p class="provider">Desenvolvido por <a href="https://www.japan-marketing.co.jp/" target="_blank" rel="noopener noreferrer">Japan Marketing LLC<span class="sr-only"> (abre em uma nova aba)</span></a></p>
         </div>
         <div>
-          <h2>Product</h2>
+          <h2>Produto</h2>
           <ul>
             <li><a href="../../download.html">Download</a></li>
-            <li><a href="../../download.html#versions">Changelog</a></li>
-            <li><a href="quick-start.html">Docs</a></li>
-            <li><a href="privacy.html">Privacy</a></li>
+            <li><a href="../../download.html#versions">Novidades</a></li>
+            <li><a href="quick-start.html">Documentação</a></li>
+            <li><a href="privacy.html">Privacidade</a></li>
           </ul>
         </div>
         <div>
-          <h2>Community</h2>
+          <h2>Comunidade</h2>
           <ul>
-            <li><a href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (opens in a new tab)</span></a></li>
-            <li><a href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer">Discord<span class="sr-only"> (opens in a new tab)</span></a></li>
-            <li><a href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer">X<span class="sr-only"> (opens in a new tab)</span></a></li>
+            <li><a href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (abre em uma nova aba)</span></a></li>
+            <li><a href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer">Discord<span class="sr-only"> (abre em uma nova aba)</span></a></li>
+            <li><a href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer">X<span class="sr-only"> (abre em uma nova aba)</span></a></li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> Japan Marketing LLC · <a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License<span class="sr-only"> (opens in a new tab)</span></a></span>
+        <span>© <span data-year>2026</span> Japan Marketing LLC · <a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Licença MIT<span class="sr-only"> (abre em uma nova aba)</span></a></span>
       </div>
     </div>
   </footer>

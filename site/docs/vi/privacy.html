@@ -3,18 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Data and privacy · Ferret docs</title>
-  <meta name="description" content="Reviews live in your project folder. Settings live in ~/.ferret/, and keys and accounts in the OS user-data folder. Only crash reports reach the developer, through Sentry, and you can turn them off. Feedback you choose to send from the app becomes a public GitHub issue.">
+  <title>Dữ liệu và quyền riêng tư · Tài liệu Ferret</title>
+  <meta name="description" content="Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong ~/.ferret/, còn key và tài khoản nằm trong thư mục dữ liệu người dùng của hệ điều hành. Chỉ có báo cáo crash được gửi đến nhà phát triển, qua Sentry, và bạn có thể tắt chúng. Feedback mà bạn chọn gửi từ ứng dụng sẽ trở thành một issue GitHub công khai.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
-  <meta name="robots" content="noindex, follow">
-  <link rel="canonical" href="https://ferretade.dev/docs/privacy">
+  <link rel="canonical" href="https://ferretade.dev/docs/vi/privacy">
   <link rel="alternate" hreflang="en" href="https://ferretade.dev/docs/privacy">
+  <link rel="alternate" hreflang="ja" href="https://ferretade.dev/docs/ja/privacy">
+  <link rel="alternate" hreflang="zh-CN" href="https://ferretade.dev/docs/zh-CN/privacy">
+  <link rel="alternate" hreflang="zh-TW" href="https://ferretade.dev/docs/zh-TW/privacy">
+  <link rel="alternate" hreflang="ko" href="https://ferretade.dev/docs/ko/privacy">
+  <link rel="alternate" hreflang="es" href="https://ferretade.dev/docs/es/privacy">
+  <link rel="alternate" hreflang="fr" href="https://ferretade.dev/docs/fr/privacy">
+  <link rel="alternate" hreflang="de" href="https://ferretade.dev/docs/de/privacy">
+  <link rel="alternate" hreflang="it" href="https://ferretade.dev/docs/it/privacy">
+  <link rel="alternate" hreflang="pt-BR" href="https://ferretade.dev/docs/pt-BR/privacy">
+  <link rel="alternate" hreflang="ru" href="https://ferretade.dev/docs/ru/privacy">
+  <link rel="alternate" hreflang="hi" href="https://ferretade.dev/docs/hi/privacy">
+  <link rel="alternate" hreflang="id" href="https://ferretade.dev/docs/id/privacy">
+  <link rel="alternate" hreflang="vi" href="https://ferretade.dev/docs/vi/privacy">
   <link rel="alternate" hreflang="x-default" href="https://ferretade.dev/docs/privacy">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
-  <meta property="og:title" content="Data and privacy · Ferret docs">
-  <meta property="og:description" content="Reviews live in your project folder. Settings live in ~/.ferret/, and keys and accounts in the OS user-data folder. Only crash reports reach the developer, through Sentry, and you can turn them off. Feedback you choose to send from the app becomes a public GitHub issue.">
+  <meta property="og:title" content="Dữ liệu và quyền riêng tư · Tài liệu Ferret">
+  <meta property="og:description" content="Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong ~/.ferret/, còn key và tài khoản nằm trong thư mục dữ liệu người dùng của hệ điều hành. Chỉ có báo cáo crash được gửi đến nhà phát triển, qua Sentry, và bạn có thể tắt chúng. Feedback mà bạn chọn gửi từ ứng dụng sẽ trở thành một issue GitHub công khai.">
   <meta property="og:url" content="https://ferretade.dev/docs/vi/privacy">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="vi_VN">
@@ -23,8 +35,8 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Data and privacy · Ferret docs">
-  <meta name="twitter:description" content="Reviews live in your project folder. Settings live in ~/.ferret/, and keys and accounts in the OS user-data folder. Only crash reports reach the developer, through Sentry, and you can turn them off. Feedback you choose to send from the app becomes a public GitHub issue.">
+  <meta name="twitter:title" content="Dữ liệu và quyền riêng tư · Tài liệu Ferret">
+  <meta name="twitter:description" content="Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong ~/.ferret/, còn key và tài khoản nằm trong thư mục dữ liệu người dùng của hệ điều hành. Chỉ có báo cáo crash được gửi đến nhà phát triển, qua Sentry, và bạn có thể tắt chúng. Feedback mà bạn chọn gửi từ ứng dụng sẽ trở thành một issue GitHub công khai.">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -35,8 +47,8 @@
   <script src="../docs.js?v=cb59f7a6" defer></script>
 </head>
 <!-- Generated by tools/docs/build-docs.mjs: the sidebar, header, and footer are identical on every page in site/docs/. Change them there. -->
-<body data-page="docs" data-copy="Copy" data-copied="Copied" data-copy-failed="Copy failed">
-  <a class="skip" href="#docs-main">Skip to content</a>
+<body data-page="docs" data-copy="Sao chép" data-copied="Đã sao chép" data-copy-failed="Không sao chép được">
+  <a class="skip" href="#docs-main">Chuyển đến nội dung</a>
   <svg class="sprite" width="0" height="0" aria-hidden="true">
     <symbol id="i-github" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
@@ -48,14 +60,14 @@
 
   <header class="site-header">
     <div class="wrap">
-      <a class="brand" href="../../index.html" aria-label="Ferret home">
+      <a class="brand" href="../../index.html" aria-label="Trang chủ Ferret">
         <img class="wordmark" src="../../assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22">
       </a>
-      <nav class="site-nav" aria-label="Main">
-        <a href="../../index.html#features">Features</a>
-        <a href="../../download.html">Download</a>
-        <a class="nav-keep" href="quick-start.html" aria-current="page">Docs</a>
-        <a href="../../download.html#versions">Changelog</a>
+      <nav class="site-nav" aria-label="Chính">
+        <a href="../../index.html#features">Tính năng</a>
+        <a href="../../download.html">Tải xuống</a>
+        <a class="nav-keep" href="quick-start.html" aria-current="page">Tài liệu</a>
+        <a href="../../download.html#versions">Nhật ký thay đổi</a>
       </nav>
       <div class="header-actions">
         <details class="docs-lang">
@@ -77,62 +89,62 @@
             <li><a href="../vi/privacy.html" hreflang="vi" lang="vi" aria-current="true" data-docs-lang="vi">Tiếng Việt</a></li>
           </ul>
         </details>
-        <a class="btn btn-sm btn-icon btn-ghost" href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-discord"/></svg><span class="sr-only">Discord</span><span class="sr-only"> (opens in a new tab)</span></a>
-        <a class="btn btn-sm btn-icon btn-ghost" href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-x"/></svg><span class="sr-only">X</span><span class="sr-only"> (opens in a new tab)</span></a>
+        <a class="btn btn-sm btn-icon btn-ghost" href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-discord"/></svg><span class="sr-only">Discord</span><span class="sr-only"> (mở trong tab mới)</span></a>
+        <a class="btn btn-sm btn-icon btn-ghost" href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-x"/></svg><span class="sr-only">X</span><span class="sr-only"> (mở trong tab mới)</span></a>
         <a class="btn btn-sm btn-ghost" href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">
           <svg class="icon icon-fill"><use href="#i-github"/></svg><span class="btn-label">GitHub</span>
-        <span class="sr-only"> (opens in a new tab)</span></a>
+        <span class="sr-only"> (mở trong tab mới)</span></a>
         <a class="btn btn-sm btn-primary" href="../../download.html">
-          <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">Download</span>
+          <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">Tải xuống</span>
         </a>
       </div>
     </div>
   </header>
 
   <div class="wrap docs-layout">
-    <nav class="docs-sidebar" aria-label="Docs pages" id="docs-sidebar">
+    <nav class="docs-sidebar" aria-label="Các trang tài liệu" id="docs-sidebar">
       <button class="docs-sidebar-toggle" type="button" aria-expanded="true" aria-controls="docs-nav-list" data-docs-nav-toggle>
-        <svg class="icon"><use href="#i-menu"/></svg>Docs menu
+        <svg class="icon"><use href="#i-menu"/></svg>Menu tài liệu
       </button>
       <div class="docs-nav-list" id="docs-nav-list">
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Start here</p>
+        <p class="docs-nav-heading">Bắt đầu</p>
         <ul>
-          <li><a href="quick-start.html">Quick start</a></li>
-          <li><a href="install.html">Install</a></li>
-          <li><a href="concepts.html">Concepts</a></li>
-          <li><a href="keyboard.html">Keyboard shortcuts</a></li>
+          <li><a href="quick-start.html">Bắt đầu nhanh</a></li>
+          <li><a href="install.html">Cài đặt</a></li>
+          <li><a href="concepts.html">Khái niệm</a></li>
+          <li><a href="keyboard.html">Phím tắt</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Using Ferret</p>
+        <p class="docs-nav-heading">Sử dụng Ferret</p>
         <ul>
-          <li><a href="projects.html">Projects and URLs</a></li>
-          <li><a href="recording.html">Recording</a></li>
-          <li><a href="agents.html">Sending to agents</a></li>
-          <li><a href="editor.html">Editor and preview</a></li>
+          <li><a href="projects.html">Dự án và URL</a></li>
+          <li><a href="recording.html">Ghi</a></li>
+          <li><a href="agents.html">Gửi cho agent</a></li>
+          <li><a href="editor.html">Editor và xem trước</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Configure</p>
+        <p class="docs-nav-heading">Cấu hình</p>
         <ul>
-          <li><a href="transcription.html">Transcription and costs</a></li>
-          <li><a href="accounts.html">Accounts and usage</a></li>
-          <li><a href="settings.html">Settings reference</a></li>
-          <li><a href="settings-json.html">Configure with settings.json</a></li>
+          <li><a href="transcription.html">Chuyển văn bản và chi phí</a></li>
+          <li><a href="accounts.html">Tài khoản và mức sử dụng</a></li>
+          <li><a href="settings.html">Tham chiếu cài đặt</a></li>
+          <li><a href="settings-json.html">Cấu hình bằng settings.json</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Reference</p>
+        <p class="docs-nav-heading">Tham khảo</p>
         <ul>
-          <li><a href="privacy.html" aria-current="page">Data and privacy</a></li>
-          <li><a href="files.html">Files and environment</a></li>
+          <li><a href="privacy.html" aria-current="page">Dữ liệu và quyền riêng tư</a></li>
+          <li><a href="files.html">Tệp và biến môi trường</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Help</p>
+        <p class="docs-nav-heading">Trợ giúp</p>
         <ul>
-          <li><a href="troubleshooting.html">Troubleshooting</a></li>
+          <li><a href="troubleshooting.html">Khắc phục sự cố</a></li>
         </ul>
       </div>
       </div>
@@ -140,13 +152,12 @@
 
     <main class="docs-main" id="docs-main">
       <article class="docs-content">
-        <div class="docs-callout docs-callout-i18n"><p>Trang này chưa được dịch nên đang hiển thị bằng tiếng Anh. <a href="../privacy.html" hreflang="en">English</a></p></div>
-        <p class="docs-eyebrow">Reference</p>
-        <h1 lang="en">Data and privacy</h1>
-        <p class="docs-lead" lang="en">Reviews live in your project folder. Settings live in <code>~/.ferret/</code>, and keys and accounts in the OS user-data folder. Only crash reports reach the developer, through Sentry, and you can turn them off. Feedback you choose to send from the app becomes a public GitHub issue.</p>
+        <p class="docs-eyebrow">Tham khảo</p>
+        <h1>Dữ liệu và quyền riêng tư</h1>
+        <p class="docs-lead">Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong <code>~/.ferret/</code>, còn key và tài khoản nằm trong thư mục dữ liệu người dùng của hệ điều hành. Chỉ có báo cáo crash được gửi đến nhà phát triển, qua Sentry, và bạn có thể tắt chúng. Feedback mà bạn chọn gửi từ ứng dụng sẽ trở thành một issue GitHub công khai.</p>
 
-      <section class="docs-section" aria-labelledby="reviews" lang="en">
-        <h2 id="reviews"><a class="docs-anchor" href="#reviews" aria-label="Link to Inside .ferret/reviews/">#</a>Inside .ferret/reviews/</h2>
+      <section class="docs-section" aria-labelledby="reviews">
+        <h2 id="reviews"><a class="docs-anchor" href="#reviews" aria-label="Liên kết tới Bên trong .ferret/reviews/">#</a>Bên trong .ferret/reviews/</h2>
         <pre><code>&lt;project&gt;/.ferret/reviews/20261003-104500/
 ├── feedback.md      # what the agent reads
 ├── 01.png, 02.png…  # one or more images per finding
@@ -154,108 +165,108 @@
 ├── events.jsonl     # action log (built-in browser only)
 ├── recording.webm   # the video
 └── work/            # intermediate audio and frames</code></pre>
-<p>Reviews made before the rename live in <code>.ade-movie/reviews/</code>. They are still listed and opened, and new reviews go to <code>.ferret/reviews/</code>.</p>
-<p>When recording starts, <code>.ferret/</code> is appended to <code>.git/info/exclude</code>. Worktrees and submodules are handled. <code>.gitignore</code> is never modified. An interrupted review can be recovered from history if its records survived. The app then warns that the last seconds may be missing.</p>
+<p>Các review tạo trước khi đổi tên nằm trong <code>.ade-movie/reviews/</code>. Chúng vẫn được liệt kê và mở được, còn review mới được lưu vào <code>.ferret/reviews/</code>.</p>
+<p>Khi bắt đầu ghi, <code>.ferret/</code> được thêm vào <code>.git/info/exclude</code>. Worktree và submodule cũng được xử lý. <code>.gitignore</code> không bao giờ bị sửa. Một review bị gián đoạn có thể được khôi phục từ lịch sử nếu dữ liệu của nó còn lại. Khi đó ứng dụng sẽ cảnh báo rằng vài giây cuối có thể bị thiếu.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="retention" lang="en">
-        <h2 id="retention"><a class="docs-anchor" href="#retention" aria-label="Link to Retention">#</a>Retention</h2>
-        <p><span class="docs-ui">Keep recordings</span> (7 days by default, 30 days, or <span class="docs-ui">Forever</span>): on startup, completed reviews older than that lose <code>recording.webm</code> and <code>work/</code>. <code>feedback.md</code> and the finding images are kept. Incomplete reviews are never pruned. Pruning runs at launch, for the last opened project.</p>
+      <section class="docs-section" aria-labelledby="retention">
+        <h2 id="retention"><a class="docs-anchor" href="#retention" aria-label="Liên kết tới Thời gian lưu giữ">#</a>Thời gian lưu giữ</h2>
+        <p><span class="docs-ui">Giữ bản ghi</span> (mặc định 7 ngày, 30 ngày, hoặc <span class="docs-ui">Vĩnh viễn</span>): khi khởi động, các review đã hoàn tất cũ hơn mức đó sẽ bị xóa <code>recording.webm</code> và <code>work/</code>. <code>feedback.md</code> và ảnh của các góp ý được giữ lại. Review chưa hoàn tất không bao giờ bị dọn. Việc dọn chạy khi khởi động, cho dự án được mở gần nhất.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="network" lang="en">
-        <h2 id="network"><a class="docs-anchor" href="#network" aria-label="Link to What leaves your machine">#</a>What leaves your machine</h2>
+      <section class="docs-section" aria-labelledby="network">
+        <h2 id="network"><a class="docs-anchor" href="#network" aria-label="Liên kết tới Dữ liệu nào rời khỏi máy của bạn">#</a>Dữ liệu nào rời khỏi máy của bạn</h2>
         <table>
-  <thead><tr><th>When</th><th>Destination</th><th>Data</th></tr></thead>
+  <thead><tr><th>Khi nào</th><th>Đích đến</th><th>Dữ liệu</th></tr></thead>
   <tbody>
-    <tr><td>Transcription: <span class="docs-ui">On device (free)</span></td><td>none</td><td>—</td></tr>
-    <tr><td>Transcription: OpenAI / compatible</td><td>OpenAI or your Base URL</td><td>audio chunks</td></tr>
-    <tr><td>Model download</td><td>Hugging Face</td><td>file request</td></tr>
-    <tr><td><span class="docs-ui">Organize</span></td><td>your Claude Code / Codex CLI, or the LLM endpoint you set in <code>organizer</code></td><td>text and action log only (no images, audio, or video)</td></tr>
-    <tr><td>Acceptance check (decision model, off by default)</td><td>your agent, through the local relay, to Ollama / Cloudflare / AI Gateway / TypeSafe / your URL</td><td>what the agent sends: finding text, "Done when", and BEFORE/AFTER screenshots (image models only)</td></tr>
-    <tr><td><span class="docs-ui">Send to Agent</span></td><td>the agent in your terminal</td><td>one instruction pointing at <code>feedback.md</code></td></tr>
-    <tr><td><span class="docs-ui">Send to GitHub</span></td><td>GitHub via <code>gh</code></td><td>body text only (no images)</td></tr>
-    <tr><td>Footer usage (Claude Code and Codex only)</td><td>Anthropic, ChatGPT</td><td>usage request with your own login</td></tr>
-    <tr><td>GitHub star prompt</td><td>GitHub via your <code>gh</code></td><td>checks whether you starred the repo, and stars it only if you click <span class="docs-ui">Star on GitHub</span></td></tr>
-    <tr><td><span class="docs-ui">Check for Updates</span> (manual)</td><td>download server (Cloudflare R2)</td><td>request for <code>latest.json</code></td></tr>
-    <tr><td>Sending feedback from the app (only when you send it; coming soon)</td><td>the developer's feedback relay (a Cloudflare Worker), which opens a public issue in <code>JapanMarketing-Dev/ferret</code></td><td>your text, bug or idea, app / OS version and CPU, and up to 3 screenshots you attach. Keys, tokens, email addresses, and home-folder paths are masked. The relay does not store your IP address (see <a href="#feedback">Feedback from the app</a>)</td></tr>
-    <tr><td>A crash or error (<span class="docs-ui">Send crash reports</span> on)</td><td>Sentry</td><td>stack trace and OS / CPU / app versions (see <a href="#crash-reports">Crash reports</a>)</td></tr>
+    <tr><td>Chuyển văn bản: <span class="docs-ui">Trên máy (miễn phí)</span></td><td>không có</td><td>—</td></tr>
+    <tr><td>Chuyển văn bản: OpenAI / tương thích</td><td>OpenAI hoặc Base URL của bạn</td><td>các đoạn âm thanh</td></tr>
+    <tr><td>Tải model</td><td>Hugging Face</td><td>yêu cầu tải tệp</td></tr>
+    <tr><td><span class="docs-ui">Sắp xếp</span></td><td>Claude Code / Codex CLI của bạn, hoặc endpoint LLM bạn đặt trong <code>organizer</code></td><td>chỉ văn bản và nhật ký thao tác (không có ảnh, âm thanh hay video)</td></tr>
+    <tr><td>Kiểm tra nghiệm thu (model quyết định, mặc định tắt)</td><td>agent của bạn, qua relay cục bộ, đến Ollama / Cloudflare / AI Gateway / TypeSafe / URL của bạn</td><td>những gì agent gửi: văn bản góp ý, "Done when", và ảnh chụp màn hình BEFORE/AFTER (chỉ với model đọc được ảnh)</td></tr>
+    <tr><td><span class="docs-ui">Gửi cho Agent</span></td><td>agent trong terminal của bạn</td><td>một chỉ dẫn trỏ đến <code>feedback.md</code></td></tr>
+    <tr><td><span class="docs-ui">Gửi lên GitHub</span></td><td>GitHub qua <code>gh</code></td><td>chỉ phần nội dung văn bản (không có ảnh)</td></tr>
+    <tr><td>Mức sử dụng ở footer (chỉ Claude Code và Codex)</td><td>Anthropic, ChatGPT</td><td>yêu cầu xem mức sử dụng bằng chính thông tin đăng nhập của bạn</td></tr>
+    <tr><td>Lời mời gắn sao GitHub</td><td>GitHub qua <code>gh</code> của bạn</td><td>kiểm tra xem bạn đã gắn sao repo chưa, và chỉ gắn sao khi bạn nhấn <span class="docs-ui">Gắn sao trên GitHub</span></td></tr>
+    <tr><td><span class="docs-ui">Kiểm tra cập nhật</span> (thủ công)</td><td>server tải xuống (Cloudflare R2)</td><td>yêu cầu tải <code>latest.json</code></td></tr>
+    <tr><td>Gửi feedback từ ứng dụng (chỉ khi bạn gửi; sắp ra mắt)</td><td>relay feedback của nhà phát triển (một Cloudflare Worker), relay này mở một issue công khai trong <code>JapanMarketing-Dev/ferret</code></td><td>văn bản của bạn, loại lỗi hay ý tưởng, phiên bản ứng dụng / hệ điều hành và CPU, cùng tối đa 3 ảnh chụp màn hình bạn đính kèm. Key, token, địa chỉ email và đường dẫn thư mục home được che đi. Relay không lưu địa chỉ IP của bạn (xem <a href="#feedback">Feedback từ ứng dụng</a>)</td></tr>
+    <tr><td>Khi có crash hoặc lỗi (<span class="docs-ui">Gửi báo cáo crash</span> đang bật)</td><td>Sentry</td><td>stack trace và phiên bản hệ điều hành / CPU / ứng dụng (xem <a href="#crash-reports">Báo cáo crash</a>)</td></tr>
   </tbody>
 </table>
 <ul>
-  <li>The app has no analytics, no performance tracing, and no session replay. The only data it sends without you asking is crash reporting: errors, one session per launch, and slow-startup and freeze warnings, all described below and all controlled by <span class="docs-ui">Send crash reports</span>.</li>
-  <li>Secret-looking values in URLs (tokens, keys) are redacted before they are written to <code>feedback.md</code>.</li>
-  <li>Text captured from the page is marked as data in <code>feedback.md</code>, so the agent is told not to follow instructions found in it.</li>
-  <li>This website (not the app) counts page views with Cloudflare Web Analytics: cookie-free, with no cross-site tracking and no personal data.</li>
+  <li>Ứng dụng không có analytics, không có performance tracing và không có session replay. Dữ liệu duy nhất được gửi mà bạn không yêu cầu là báo cáo crash: lỗi, một phiên cho mỗi lần khởi chạy, và cảnh báo khởi động chậm hoặc bị treo, tất cả đều được mô tả bên dưới và đều do <span class="docs-ui">Gửi báo cáo crash</span> kiểm soát.</li>
+  <li>Các giá trị trông giống bí mật trong URL (token, key) được che đi trước khi ghi vào <code>feedback.md</code>.</li>
+  <li>Văn bản lấy từ trang được đánh dấu là dữ liệu trong <code>feedback.md</code>, nên agent được dặn không làm theo các chỉ dẫn nằm trong đó.</li>
+  <li>Website này (không phải ứng dụng) đếm lượt xem trang bằng Cloudflare Web Analytics: không dùng cookie, không theo dõi chéo giữa các trang web và không thu thập dữ liệu cá nhân.</li>
 </ul>
       </section>
 
-      <section class="docs-section" aria-labelledby="feedback" lang="en">
-        <h2 id="feedback"><a class="docs-anchor" href="#feedback" aria-label="Link to Feedback from the app">#</a>Feedback from the app</h2>
-        <div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Coming soon</p><p>The in-app feedback form and its relay are not released yet. This section describes how they will work.</p></div>
-<p>You will be able to send a bug report or an idea from inside Ferret without a GitHub account. It is sent only when you send it, and it becomes a <strong>public</strong> issue in <a href="https://github.com/JapanMarketing-Dev/ferret/issues" target="_blank" rel="noopener noreferrer">JapanMarketing-Dev/ferret<span class="sr-only"> (opens in a new tab)</span></a>, labeled <code>from-app</code>. Do not include anything you would not post in public.</p>
+      <section class="docs-section" aria-labelledby="feedback">
+        <h2 id="feedback"><a class="docs-anchor" href="#feedback" aria-label="Liên kết tới Feedback từ ứng dụng">#</a>Feedback từ ứng dụng</h2>
+        <div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Sắp ra mắt</p><p>Biểu mẫu feedback trong ứng dụng và relay của nó chưa được phát hành. Phần này mô tả cách chúng sẽ hoạt động.</p></div>
+<p>Bạn sẽ có thể gửi báo cáo lỗi hoặc ý tưởng ngay trong Ferret mà không cần tài khoản GitHub. Nội dung chỉ được gửi khi bạn gửi, và sẽ trở thành một issue <strong>công khai</strong> trong <a href="https://github.com/JapanMarketing-Dev/ferret/issues" target="_blank" rel="noopener noreferrer">JapanMarketing-Dev/ferret<span class="sr-only"> (mở trong tab mới)</span></a>, gắn nhãn <code>from-app</code>. Đừng đưa vào bất cứ thứ gì bạn không muốn đăng công khai.</p>
 <ul>
-  <li>The app sends it from your computer to a small relay (a Cloudflare Worker run by the developer), which opens the issue with its own GitHub token. This relay is the only server of the developer's that receives anything you write.</li>
-  <li>Sent: your title and text, whether it is a bug or an idea, the app version, and up to 3 PNG or JPEG screenshots you attach. The OS name and version, CPU architecture, and the random install ID are sent only if you leave them included. Not sent: your name, email, GitHub account, project files, recordings, or findings.</li>
-  <li>Before the issue is created, the relay masks text that looks like keys or tokens, email addresses, and the user name in home-folder paths, and stops <code>@mentions</code> from notifying anyone. It also removes location and other metadata from screenshots. Check your text anyway: masking cannot catch everything.</li>
-  <li>The relay does not store your IP address. To limit how often one sender can post (5 per hour, 20 per day), it counts a keyed hash of the IP address (and of the install ID, if sent) for up to 24 hours, then deletes it. Neither appears in the issue.</li>
-  <li>Screenshots are kept by the relay in Cloudflare R2 under unguessable names and shown in the issue. To have an issue or its screenshots removed, comment on the issue or open a new one.</li>
-  <li>The relay's code is in <code>workers/feedback-relay</code> in the repository.</li>
+  <li>Ứng dụng gửi nội dung từ máy tính của bạn đến một relay nhỏ (một Cloudflare Worker do nhà phát triển vận hành), relay này mở issue bằng GitHub token của chính nó. Relay này là server duy nhất của nhà phát triển nhận bất cứ thứ gì bạn viết.</li>
+  <li>Được gửi: tiêu đề và nội dung của bạn, đó là lỗi hay ý tưởng, phiên bản ứng dụng, và tối đa 3 ảnh chụp màn hình PNG hoặc JPEG bạn đính kèm. Tên và phiên bản hệ điều hành, kiến trúc CPU và ID cài đặt ngẫu nhiên chỉ được gửi nếu bạn để chúng được đính kèm. Không được gửi: tên, email, tài khoản GitHub, tệp dự án, bản ghi hay góp ý của bạn.</li>
+  <li>Trước khi tạo issue, relay che các đoạn văn bản trông giống key hoặc token, địa chỉ email, và tên người dùng trong đường dẫn thư mục home, đồng thời ngăn <code>@mentions</code> gửi thông báo cho bất kỳ ai. Relay cũng xóa vị trí và các metadata khác khỏi ảnh chụp màn hình. Dù vậy, hãy tự kiểm tra văn bản của bạn: việc che không thể bắt được mọi thứ.</li>
+  <li>Relay không lưu địa chỉ IP của bạn. Để giới hạn tần suất một người gửi có thể đăng (5 lần mỗi giờ, 20 lần mỗi ngày), relay đếm một hash có khóa của địa chỉ IP (và của ID cài đặt, nếu được gửi) trong tối đa 24 giờ, sau đó xóa đi. Cả hai đều không xuất hiện trong issue.</li>
+  <li>Ảnh chụp màn hình được relay lưu trong Cloudflare R2 với tên không thể đoán được và hiển thị trong issue. Để yêu cầu xóa một issue hoặc ảnh chụp màn hình của nó, hãy comment trong issue đó hoặc mở một issue mới.</li>
+  <li>Mã nguồn của relay nằm trong <code>workers/feedback-relay</code> của repository.</li>
 </ul>
       </section>
 
-      <section class="docs-section" aria-labelledby="crash-reports" lang="en">
-        <h2 id="crash-reports"><a class="docs-anchor" href="#crash-reports" aria-label="Link to Crash reports">#</a>Crash reports</h2>
-        <p>When the app crashes or hits an unhandled error, Ferret sends a crash report to <a href="https://sentry.io/" target="_blank" rel="noopener noreferrer">Sentry<span class="sr-only"> (opens in a new tab)</span></a> so the bug can be fixed. It is on by default. Turn it off in <span class="docs-ui">Settings → Privacy → Send crash reports</span>, or with <span class="docs-ui">Turn off</span> on the notice shown at first launch. Turning it off takes effect at once. Turning it back on takes effect at the next launch. Development builds (<code>pnpm dev</code>) also send, tagged <code>development</code>, so the developers can fix crashes they hit while working. E2E runs and unit tests never send.</p>
+      <section class="docs-section" aria-labelledby="crash-reports">
+        <h2 id="crash-reports"><a class="docs-anchor" href="#crash-reports" aria-label="Liên kết tới Báo cáo crash">#</a>Báo cáo crash</h2>
+        <p>Khi ứng dụng bị crash hoặc gặp lỗi không được xử lý, Ferret gửi báo cáo crash đến <a href="https://sentry.io/" target="_blank" rel="noopener noreferrer">Sentry<span class="sr-only"> (mở trong tab mới)</span></a> để lỗi có thể được sửa. Tính năng này mặc định bật. Tắt nó trong <span class="docs-ui">Cài đặt → Quyền riêng tư → Gửi báo cáo crash</span>, hoặc bằng nút <span class="docs-ui">Tắt</span> trên thông báo hiển thị ở lần khởi chạy đầu tiên. Tắt có hiệu lực ngay lập tức. Bật lại có hiệu lực từ lần khởi chạy tiếp theo. Bản build phát triển (<code>pnpm dev</code>) cũng gửi, kèm thẻ <code>development</code>, để nhà phát triển có thể sửa các crash gặp phải khi làm việc. Các lần chạy E2E và unit test không bao giờ gửi.</p>
 <table>
-  <thead><tr><th>Sent</th><th>Not sent</th></tr></thead>
+  <thead><tr><th>Được gửi</th><th>Không được gửi</th></tr></thead>
   <tbody>
     <tr><td>
       <ul>
-        <li>Error type and message, with home-folder paths shown as <code>~</code></li>
-        <li>Stack trace (where in Ferret's code it happened)</li>
-        <li>For native crashes: only which process crashed, why it exited (for example <q>crashed</q> or <q>oom</q>), and the app version</li>
-        <li>OS name and version, CPU architecture, Electron / Chrome / Node versions, app version, screen size, memory size</li>
-        <li>App lifecycle events right before the error (for example <q>app.ready</q>), and startup failures</li>
-        <li>Which part of the app failed: a screen area that could not render (and its React component names), an IPC call, a terminal that could not start, a crashed or hung process, or a page of the app that failed to load</li>
-        <li>Where you were in the app: editor or feedback mode, the open tab (Browser, Findings, Settings, or just <q>file</q>), and whether a recording was running</li>
-        <li>One session per launch (started, ended normally, or crashed), so the crash-free rate of each version can be measured</li>
-        <li>A random install ID (created on first launch and kept in the app's settings folder), so the number of affected installs can be counted. It is not linked to your name, email, or device</li>
-        <li>For JavaScript crashes only: the last 50 of Ferret's own log lines (such as <q>[startup]</q> and <q>[recording]</q>), shortened and with paths, URLs, emails, and keys removed</li>
+        <li>Loại lỗi và thông điệp lỗi, với đường dẫn thư mục home hiển thị là <code>~</code></li>
+        <li>Stack trace (vị trí trong mã của Ferret nơi lỗi xảy ra)</li>
+        <li>Với crash native: chỉ tiến trình nào bị crash, lý do thoát (ví dụ <q>crashed</q> hoặc <q>oom</q>), và phiên bản ứng dụng</li>
+        <li>Tên và phiên bản hệ điều hành, kiến trúc CPU, phiên bản Electron / Chrome / Node, phiên bản ứng dụng, kích thước màn hình, dung lượng bộ nhớ</li>
+        <li>Các sự kiện vòng đời ứng dụng ngay trước lỗi (ví dụ <q>app.ready</q>), và các lỗi khi khởi động</li>
+        <li>Phần nào của ứng dụng bị lỗi: một vùng màn hình không hiển thị được (và tên các React component của nó), một lệnh gọi IPC, một terminal không khởi động được, một tiến trình bị crash hoặc treo, hoặc một trang của ứng dụng không tải được</li>
+        <li>Bạn đang ở đâu trong ứng dụng: chế độ Editor hay Feedback, tab đang mở (Browser, Findings, Settings, hoặc chỉ <q>file</q>), và có đang ghi hay không</li>
+        <li>Một phiên cho mỗi lần khởi chạy (đã bắt đầu, kết thúc bình thường, hoặc bị crash), để đo tỷ lệ không crash của từng phiên bản</li>
+        <li>Một ID cài đặt ngẫu nhiên (tạo ở lần khởi chạy đầu tiên và lưu trong thư mục cài đặt của ứng dụng), để đếm số bản cài đặt bị ảnh hưởng. ID này không liên kết với tên, email hay thiết bị của bạn</li>
+        <li>Chỉ với crash JavaScript: 50 dòng log gần nhất của chính Ferret (như <q>[startup]</q> và <q>[recording]</q>), đã được rút gọn và loại bỏ đường dẫn, URL, email và key</li>
       </ul>
     </td><td>
       <ul>
-        <li>Your project folder path and file names (replaced with <code>&lt;project&gt;</code>)</li>
-        <li>URLs opened in the built-in browser, and any other web address (replaced with <code>&lt;url&gt;</code>)</li>
-        <li>Terminal output, transcripts, findings, page text, screenshots</li>
-        <li>Email addresses and API keys or tokens (replaced)</li>
-        <li>Your name, device name, IP address (not stored), cookies, local variables</li>
-        <li>Memory dumps of native crashes (minidumps). They can hold anything that was in memory, so they stay on your computer</li>
-        <li>Clicks, network requests, and any log line that isn't one of Ferret's own</li>
+        <li>Đường dẫn thư mục dự án và tên tệp của bạn (thay bằng <code>&lt;project&gt;</code>)</li>
+        <li>URL mở trong trình duyệt tích hợp, và mọi địa chỉ web khác (thay bằng <code>&lt;url&gt;</code>)</li>
+        <li>Output của terminal, bản chuyển văn bản, góp ý, văn bản trang, ảnh chụp màn hình</li>
+        <li>Địa chỉ email và API key hoặc token (được thay thế)</li>
+        <li>Tên của bạn, tên thiết bị, địa chỉ IP (không được lưu), cookie, biến cục bộ</li>
+        <li>Memory dump của crash native (minidump). Chúng có thể chứa bất cứ thứ gì có trong bộ nhớ, nên được giữ lại trên máy tính của bạn</li>
+        <li>Thao tác nhấp chuột, request mạng, và mọi dòng log không phải của chính Ferret</li>
       </ul>
     </td></tr>
   </tbody>
 </table>
-<p>The installed app sends at most 10 reports per launch and only half of JavaScript errors (native crashes are always sent). Development builds send every error, up to 50 per launch. The same error is sent only once per launch. Slow startups (over 5 seconds) and long freezes of the app (over 1 second) are sent as warnings, at most once every 10 minutes. No performance tracing or session replay is used. The app uses Sentry's free plan. If it fills up, extra reports are dropped and nobody is charged.</p>
-<p>Building Ferret yourself? Set <code>FERRET_SENTRY_DSN</code> (the old name <code>MOVIE_ADE_SENTRY_DSN</code> also works) to your own Sentry DSN, or to an empty string to send nothing. The code is in <code>src/main/telemetry.ts</code> and <code>src/shared/telemetry.ts</code>.</p>
+<p>Ứng dụng đã cài đặt gửi tối đa 10 báo cáo mỗi lần khởi chạy và chỉ một nửa số lỗi JavaScript (crash native luôn được gửi). Bản build phát triển gửi mọi lỗi, tối đa 50 lỗi mỗi lần khởi chạy. Cùng một lỗi chỉ được gửi một lần mỗi lần khởi chạy. Khởi động chậm (trên 5 giây) và ứng dụng bị treo lâu (trên 1 giây) được gửi dưới dạng cảnh báo, tối đa một lần mỗi 10 phút. Không dùng performance tracing hay session replay. Ứng dụng dùng gói miễn phí của Sentry. Nếu gói đầy, các báo cáo dư sẽ bị bỏ và không ai bị tính phí.</p>
+<p>Tự build Ferret? Đặt <code>FERRET_SENTRY_DSN</code> (tên cũ <code>MOVIE_ADE_SENTRY_DSN</code> vẫn dùng được) thành Sentry DSN của riêng bạn, hoặc thành chuỗi rỗng để không gửi gì cả. Mã nguồn nằm trong <code>src/main/telemetry.ts</code> và <code>src/shared/telemetry.ts</code>.</p>
       </section>
 
-        <nav class="docs-pager" aria-label="Previous and next page">
-          <a class="docs-pager-prev" href="settings-json.html"><span>Previous</span>Configure with settings.json</a>
-          <a class="docs-pager-next" href="files.html"><span>Next</span>Files and environment</a>
+        <nav class="docs-pager" aria-label="Trang trước và trang sau">
+          <a class="docs-pager-prev" href="settings-json.html"><span>Trước</span>Cấu hình bằng settings.json</a>
+          <a class="docs-pager-next" href="files.html"><span>Tiếp</span>Tệp và biến môi trường</a>
         </nav>
-        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/README.md" target="_blank" rel="noopener noreferrer">Help translate this page on GitHub<span class="sr-only"> (opens in a new tab)</span></a></p>
+        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/vi/privacy.html" target="_blank" rel="noopener noreferrer">Giúp dịch trang này trên GitHub<span class="sr-only"> (mở trong tab mới)</span></a></p>
       </article>
     </main>
 
-    <aside class="docs-toc" aria-label="On this page">
-      <p class="docs-toc-heading">On this page</p>
+    <aside class="docs-toc" aria-label="Trong trang này">
+      <p class="docs-toc-heading">Trong trang này</p>
       <ul>
-        <li><a href="#reviews">Inside .ferret/reviews/</a></li>
-        <li><a href="#retention">Retention</a></li>
-        <li><a href="#network">What leaves your machine</a></li>
-        <li><a href="#feedback">Feedback from the app</a></li>
-        <li><a href="#crash-reports">Crash reports</a></li>
+        <li><a href="#reviews">Bên trong .ferret/reviews/</a></li>
+        <li><a href="#retention">Thời gian lưu giữ</a></li>
+        <li><a href="#network">Dữ liệu nào rời khỏi máy của bạn</a></li>
+        <li><a href="#feedback">Feedback từ ứng dụng</a></li>
+        <li><a href="#crash-reports">Báo cáo crash</a></li>
       </ul>
     </aside>
   </div>
@@ -265,29 +276,29 @@
       <div class="footer-grid">
         <div class="footer-brand">
           <a class="brand" href="../../index.html"><img class="wordmark" src="../../assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22"></a>
-          <p class="footer-tag">The ADE for feedback by voice and screen.</p>
-          <p class="provider">Built by <a href="https://www.japan-marketing.co.jp/" target="_blank" rel="noopener noreferrer">Japan Marketing LLC<span class="sr-only"> (opens in a new tab)</span></a></p>
+          <p class="footer-tag">ADE cho góp ý bằng giọng nói và màn hình.</p>
+          <p class="provider">Phát triển bởi <a href="https://www.japan-marketing.co.jp/" target="_blank" rel="noopener noreferrer">Japan Marketing LLC<span class="sr-only"> (mở trong tab mới)</span></a></p>
         </div>
         <div>
-          <h2>Product</h2>
+          <h2>Sản phẩm</h2>
           <ul>
-            <li><a href="../../download.html">Download</a></li>
-            <li><a href="../../download.html#versions">Changelog</a></li>
-            <li><a href="quick-start.html">Docs</a></li>
-            <li><a href="privacy.html">Privacy</a></li>
+            <li><a href="../../download.html">Tải xuống</a></li>
+            <li><a href="../../download.html#versions">Nhật ký thay đổi</a></li>
+            <li><a href="quick-start.html">Tài liệu</a></li>
+            <li><a href="privacy.html">Quyền riêng tư</a></li>
           </ul>
         </div>
         <div>
-          <h2>Community</h2>
+          <h2>Cộng đồng</h2>
           <ul>
-            <li><a href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (opens in a new tab)</span></a></li>
-            <li><a href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer">Discord<span class="sr-only"> (opens in a new tab)</span></a></li>
-            <li><a href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer">X<span class="sr-only"> (opens in a new tab)</span></a></li>
+            <li><a href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (mở trong tab mới)</span></a></li>
+            <li><a href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer">Discord<span class="sr-only"> (mở trong tab mới)</span></a></li>
+            <li><a href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer">X<span class="sr-only"> (mở trong tab mới)</span></a></li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> Japan Marketing LLC · <a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License<span class="sr-only"> (opens in a new tab)</span></a></span>
+        <span>© <span data-year>2026</span> Japan Marketing LLC · <a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Giấy phép MIT<span class="sr-only"> (mở trong tab mới)</span></a></span>
       </div>
     </div>
   </footer>

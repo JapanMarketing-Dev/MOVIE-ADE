@@ -1,0 +1,103 @@
+<!-- Ferret docs translation: de / transcription. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 9d4646b18d -->
+Transkription und Kosten
+
+<!-- @lead 456b515bb7 -->
+Wählen Sie whisper auf dem Gerät (kostenlos), Ihren eigenen OpenAI-Schlüssel oder einen beliebigen OpenAI-kompatiblen Endpoint, etwa Ihren eigenen GPU-Rechner. Das Audio geht direkt von Ihrem Rechner an den gewählten Dienst.
+
+<!-- @cost-model 251147437b -->
+## Wer zahlt und wohin der Datenverkehr geht
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">Kosten- und Netzwerkmodell</p><ul>
+  <li>Der Entwickler (Japan Marketing LLC) bezahlt keine Transkriptions- oder KI-Nutzung, leitet sie nicht über eigene Server und stellt sie nicht in Rechnung.</li>
+  <li>Anfragen gehen direkt von Ihrem Computer an OpenAI oder Ihren Endpoint, nie über einen Server des Entwicklers.</li>
+  <li>Die OpenAI-Nutzung wird Ihrem eigenen OpenAI-Konto berechnet.</li>
+  <li><span class="docs-ui">Ordnen</span> verwendet die Claude Code / Codex CLI, bei der Sie bereits angemeldet sind, es sei denn, Sie wählen ausdrücklich einen API-Runner (<code>organizer.runner: "api:&lt;provider&gt;"</code>, siehe <a href="settings-json.html#example">Mit settings.json konfigurieren</a>). Es wechselt nie von selbst zu einem API-Schlüssel.</li>
+</ul></div>
+
+<!-- @methods d7ad6a3f10 -->
+## Methoden
+<p>Die Auswahl treffen Sie unter <span class="docs-ui">Einstellungen → Transkription → Engine</span>. Das Popover <span class="docs-ui">Mikrofon &amp; Transkription</span> in der Fußzeile zeigt die aktuelle Wahl.</p>
+<table>
+  <thead><tr><th>Engine</th><th>Audio geht an</th><th>Kosten</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Auf dem Gerät (kostenlos)</span> (Standard)</td><td>Nirgendwohin</td><td>Kostenlos</td></tr>
+    <tr><td><span class="docs-ui">OpenAI (eigener Schlüssel)</span></td><td>OpenAI</td><td>Ihre OpenAI-Rechnung: <code>gpt-transcribe</code> für 0,0045 $/Min. (etwa 0,27 $/Stunde)</td></tr>
+    <tr><td><span class="docs-ui">OpenAI-kompatibel (eigene GPU, Groq usw.)</span></td><td>Ihre <span class="docs-ui">Endpoint-Base-URL</span></td><td>Hängt vom Endpoint ab</td></tr>
+  </tbody>
+</table>
+<p><span class="docs-ui">Einstellungen → Transkription → Sprache</span>: <span class="docs-ui">Auto</span>, <span class="docs-ui">Japanisch</span> oder <span class="docs-ui">Englisch</span>. Das ist die gesprochene Sprache, unabhängig von der Sprache der Benutzeroberfläche.</p>
+
+<!-- @whisper 867ce20365 -->
+## whisper auf dem Gerät (kostenlos)
+<p>Die Transkription auf dem Gerät nutzt <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a>: das Programm <code>whisper-cli</code> plus ein GGML-Modell.</p>
+<p><strong>1. whisper-cli installieren</strong>. Ferret sucht zuerst nach einer mitgelieferten Kopie (<code>resources/whisper/&lt;platform&gt;-&lt;arch&gt;/</code>), dann im <code>PATH</code> und dann an üblichen Orten wie Homebrew.</p>
+<pre><code># macOS
+brew install whisper-cpp
+
+# Linux: build from source, then add build/bin to PATH
+git clone https://github.com/ggml-org/whisper.cpp &amp;&amp; cd whisper.cpp
+cmake -B build &amp;&amp; cmake --build build -j --config Release
+
+# Windows: download the zip from github.com/ggml-org/whisper.cpp/releases
+# and add the folder containing whisper-cli.exe to PATH</code></pre>
+<p><strong>2. Ein Modell besorgen</strong>. Wählen Sie bei ausgewähltem <span class="docs-ui">Auf dem Gerät (kostenlos)</span> ein <span class="docs-ui">Modell</span> und klicken Sie auf <span class="docs-ui">Modell laden</span>. Die Dateien kommen direkt von Hugging Face (<code>ggerganov/whisper.cpp</code>), werden gegen einen in der App festgelegten sha256 geprüft (bei Abweichung wird die Datei gelöscht) und in <code>&lt;userData&gt;/models/</code> gespeichert. Das heruntergeladene Modell wird automatisch ausgewählt. <span class="docs-ui">Abbrechen</span> behält die unvollständige Datei, und <span class="docs-ui">Download fortsetzen</span> macht dort weiter.</p>
+<table>
+  <thead><tr><th>Modell</th><th>Größe</th><th>Hinweise</th></tr></thead>
+  <tbody>
+    <tr><td><code>large-v3-turbo</code></td><td>1,6 GB</td><td>Empfohlener Standard. Schnell mit Metal / GPU</td></tr>
+    <tr><td><code>large-v3-turbo-q5_0</code></td><td>574 MB</td><td>Quantisiert. Spart Speicherplatz und Arbeitsspeicher</td></tr>
+    <tr><td><code>small</code></td><td>488 MB</td><td>Für Rechner ohne GPU (nur CPU)</td></tr>
+    <tr><td><code>base</code></td><td>148 MB</td><td>Leicht. Viele Fehler bei Japanisch</td></tr>
+    <tr><td><code>tiny</code></td><td>78 MB</td><td>Am schnellsten. Für Japanisch nicht genau genug</td></tr>
+  </tbody>
+</table>
+<p>Sie haben schon ein Modell? Mit <span class="docs-ui">Datei auswählen …</span> verweisen Sie auf eine beliebige <code>ggml-*.bin</code>. Ohne Modell zeigen die Einstellungen an, dass kein Modell festgelegt ist. Sie können trotzdem aufnehmen: Das Audio wird gespeichert, und es entstehen nur Befunde aus dem Stift.</p>
+<p>whisper-cli ist nicht in der App enthalten. Installieren Sie es selbst wie oben gezeigt. Wird es nicht gefunden, zeigen die Einstellungen <q>whisper.cpp (whisper-cli) wurde nicht gefunden. Installieren Sie es und öffnen Sie die Einstellungen erneut.</q> mit denselben Anleitungen.</p>
+
+<!-- @openai 2160e9a2fc -->
+## Ihr eigener OpenAI-Schlüssel
+<ol class="docs-steps">
+  <li>Setzen Sie <span class="docs-ui">Engine</span> auf <span class="docs-ui">OpenAI (eigener Schlüssel)</span>.</li>
+  <li>Fügen Sie einen Schlüssel, der mit <code>sk-</code> beginnt, in <span class="docs-ui">OpenAI-API-Schlüssel</span> ein und klicken Sie auf <span class="docs-ui">Speichern</span>.</li>
+  <li>Klicken Sie auf <span class="docs-ui">Verbindung testen</span>. Dabei wird 1 Sekunde Stille gesendet (etwa 0,0001 $).</li>
+</ol>
+<p>Das Modell ist fest auf <code>gpt-transcribe</code> eingestellt. Nur in der Entwicklung (<code>pnpm dev</code>) wird zusätzlich <code>OPENAI_API_KEY</code> aus einer ignorierten <code>.env</code>-Datei gelesen. Paketierte Builds lesen <code>.env</code> nie.</p>
+
+<!-- @compatible 8c200e00b1 -->
+## OpenAI-kompatible Endpoints
+<p>Ferret sendet <code>POST &lt;base&gt;/v1/audio/transcriptions</code> (multipart: <code>file</code>, <code>model</code>, <code>response_format=json</code>, <code>language</code>, <code>prompt</code>) und ist daher für Server ausgelegt, die die Transkriptionsroute von OpenAI implementieren.</p>
+<ol class="docs-steps">
+  <li>Setzen Sie <span class="docs-ui">Engine</span> auf <span class="docs-ui">OpenAI-kompatibel (eigene GPU, Groq usw.)</span>.</li>
+  <li>Füllen Sie <span class="docs-ui">Endpoint-Base-URL</span> und <span class="docs-ui">Modell</span> (den Modellnamen des Endpoints) aus.</li>
+  <li>Falls der Server einen verlangt, geben Sie <span class="docs-ui">Endpoint-API-Schlüssel (optional)</span> ein und klicken Sie auf <span class="docs-ui">Speichern</span>.</li>
+  <li>Klicken Sie auf <span class="docs-ui">Verbindung testen</span>. Fehlermeldungen nennen die Ursache, z. B. eine falsche Base URL (kein <code>/v1/audio/transcriptions</code>), einen abgelehnten Schlüssel oder einen unbekannten Modellnamen.</li>
+</ol>
+<table>
+  <thead><tr><th>Server</th><th>Base URL</th><th>Modell (Beispiel)</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://github.com/speaches-ai/speaches">speaches</a> (früher faster-whisper-server)</td><td><code>http://localhost:8000/v1</code></td><td><code>Systran/faster-whisper-small</code></td></tr>
+    <tr><td><a href="https://docs.vllm.ai/">vLLM</a> (<code>vllm serve openai/whisper-large-v3</code>)</td><td><code>http://localhost:8000/v1</code></td><td><code>openai/whisper-large-v3</code></td></tr>
+    <tr><td><a href="https://console.groq.com/docs/speech-to-text">Groq</a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
+  </tbody>
+</table>
+<div class="docs-callout docs-callout-warn"><p>Ferret ist für OpenAI-kompatible Server wie diese ausgelegt, sie wurden aber noch nicht mit Ferret getestet. Die URLs und Modellnamen sind die dokumentierten Standardwerte der jeweiligen Server.</p></div>
+<ul>
+  <li>Ein abschließendes <code>/v1</code> oder ein eingefügtes <code>/v1/audio/transcriptions</code> wird beim Speichern entfernt, beide Formen funktionieren also.</li>
+  <li>URLs mit Benutzername oder Passwort werden abgelehnt, damit Schlüssel nie in <code>settings.json</code> landen.</li>
+  <li>Für einen GPU-Rechner in Ihrem LAN oder Tailnet verwenden Sie dessen Adresse, z. B. <code>http://100.x.y.z:8000/v1</code>.</li>
+</ul>
+
+<!-- @limit 7bee560470 -->
+## Kostenlimit
+<p>Für OpenAI und kompatible Endpoints legen Sie ein <span class="docs-ui">Kostenlimit</span> fest: <span class="docs-ui">Keins</span> oder <span class="docs-ui">Bis $0.10 pro Review</span> sowie 0,50 $, 1 $ (Standard), 5 $ und 20 $. Für Ihre eigene GPU ist <span class="docs-ui">Keins</span> sinnvoll. Die Einstellung wird als <code>capture.costLimitUsd</code> gespeichert (maximal 1000, <code>null</code> bedeutet kein Limit). Kompatible Endpoints werden mit 0,006 $/Min. veranschlagt.</p>
+<p>Würde der nächste Abschnitt das Limit überschreiten, sendet Ferret nichts mehr und behält das Audio. Fehlgeschlagene API-Aufrufe werden nicht automatisch wiederholt.</p>
+
+<!-- @keys a6be4d5386 -->
+## Wo Schlüssel gespeichert werden
+<p>In den <span class="docs-ui">Einstellungen</span> eingegebene Schlüssel werden mit Electron <code>safeStorage</code> verschlüsselt und in <code>&lt;userData&gt;/stt-keys.bin</code> geschrieben. Die App schreibt sie nie in <code>settings.json</code>. Wie Sie stattdessen aus <code>settings.json</code> auf einen Schlüssel verweisen (eine Umgebungsvariable oder einen <code>.env</code>-Eintrag), steht unter <a href="settings-json.html#keys">API-Schlüssel</a>.</p>
+<ul>
+  <li>macOS: Schlüsselbund (Keychain)</li>
+  <li>Windows: DPAPI</li>
+  <li>Linux: libsecret oder KWallet. Ist nur das Backend <code>basic_text</code> verfügbar, wird der Schlüssel nur für die aktuelle Sitzung im Arbeitsspeicher gehalten (die Schaltfläche heißt dann <span class="docs-ui">Für diese Sitzung setzen</span>).</li>
+</ul>
+<p><span class="docs-ui">Schlüssel löschen</span> entfernt ihn. Zu den <code>&lt;userData&gt;</code>-Pfaden siehe <a href="files.html#userdata">Dateien und Umgebung</a>.</p>

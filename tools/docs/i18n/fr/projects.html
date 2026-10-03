@@ -1,0 +1,56 @@
+<!-- Ferret docs translation: fr / projects. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 5c9e1003a2 -->
+Projets et URL
+
+<!-- @lead 4a937bd356 -->
+Un projet est un dossier (en général la racine de votre dépôt). Chaque projet garde ses propres URL enregistrées : local, dev et production sont ainsi à un clic l'un de l'autre.
+
+<!-- @add-project eb372d2531 -->
+## Ajouter un projet
+<ol class="docs-steps">
+  <li><span class="docs-ui">Fichier → Ouvrir un dossier de projet…</span> ({{keys:Mod+O}}), <span class="docs-ui">Ajouter un projet</span> dans la barre latérale, ou <span class="docs-ui">Ajouter un projet…</span> dans le menu des projets de la barre de titre.</li>
+  <li>Choisissez la provenance du projet :
+    <ul>
+      <li><span class="docs-ui">Sur cet ordinateur</span> : choisissez un dossier.</li>
+      <li><span class="docs-ui">Cloner depuis GitHub / GitLab</span> : choisissez l'un de vos dépôts (listés grâce à votre connexion <code>gh</code> ou <code>glab</code>) ou collez une URL, choisissez le dossier parent, et Ferret le clone puis l'ouvre.</li>
+      <li><span class="docs-ui">Ouvrir via SSH</span> : choisissez un hôte dans <code>~/.ssh/config</code>. Le terminal et les agents s'exécutent sur la machine distante ; les relectures restent sur cet ordinateur.</li>
+    </ul>
+  </li>
+</ol>
+<p>Par défaut, le nom est celui du dossier. Ajouter un dossier déjà enregistré l'ouvre simplement (sur macOS et Windows, les chemins sont comparés sans tenir compte de la casse). Depuis le menu de la barre latérale, vous pouvez <span class="docs-ui">Renommer</span> un projet ou le <span class="docs-ui">Retirer de la liste</span>. Le retirer ne supprime jamais le dossier.</p>
+<p>Les terminaux s'ouvrent dans le dossier du projet, et les relectures sont enregistrées sous <code>&lt;project&gt;/.ferret/</code>.</p>
+
+<!-- @save-url 8914160725 -->
+## Enregistrer des URL
+<ol class="docs-steps">
+  <li>Ouvrez la page dans le navigateur intégré.</li>
+  <li>Cliquez sur <span class="docs-ui">+</span> (<span class="docs-ui">Enregistrer l'URL actuelle</span>) dans la barre d'outils du navigateur. L'URL actuelle est préremplie.</li>
+  <li>Saisissez un <span class="docs-ui">Nom</span> et cliquez sur <span class="docs-ui">Enregistrer</span>.</li>
+</ol>
+<p>Seules les URL <code>http://</code> et <code>https://</code> sont acceptées. Si vous gardez le nom proposé, il est déduit de l'hôte :</p>
+<table>
+  <thead><tr><th>Hôte</th><th>Nom</th></tr></thead>
+  <tbody>
+    <tr><td><code>localhost</code>, <code>127.*</code>, <code>::1</code>, <code>0.0.0.0</code>, <code>*.localhost</code></td><td><code>local</code></td></tr>
+    <tr><td>contient <code>dev</code>, <code>develop</code>, <code>development</code></td><td><code>dev</code></td></tr>
+    <tr><td>contient <code>stg</code>, <code>stage</code>, <code>staging</code></td><td><code>stg</code></td></tr>
+    <tr><td>tout autre hôte</td><td><code>prd</code></td></tr>
+  </tbody>
+</table>
+<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="URL enregistrées dans la barre d'outils du navigateur (capture d'écran bientôt disponible)"><span>Capture d'écran bientôt disponible</span></div><figcaption>URL enregistrées dans la barre d'outils du navigateur</figcaption></figure>
+
+<!-- @review-targets 351621051d -->
+## Panneau des cibles de relecture
+{{clip:targets|Changer de cible de relecture et de page sans arrêter l'enregistrement.}}
+<p>En mode Retours, le panneau <span class="docs-ui">Cibles de relecture</span>, à droite, liste tout ce que vous pouvez relire pour le projet actuel. Changer de cible n'arrête pas l'enregistrement. Affichez ou masquez le panneau avec <span class="docs-ui">Présentation → Afficher/masquer les cibles de relecture</span> ({{keys:Mod+Shift+K}}) ou <span class="docs-ui">Masquer le panneau</span>.</p>
+<ul>
+  <li><strong><span class="docs-ui">Cibles</span></strong> : les URL enregistrées du projet. Sous chacune se trouve l'arborescence des pages que vous avez visitées sur ce site. Les sites visités qui ne sont pas enregistrés apparaissent dans leurs propres groupes.</li>
+  <li><strong><span class="docs-ui">Fichiers</span></strong> : le dossier du projet. Un fichier s'ouvre en aperçu (Markdown et Mermaid rendus, autres textes en lecture seule), ce qui permet aussi de relire de la documentation. Le crayon (<span class="docs-ui">Ouvrir dans l'éditeur</span>) l'ouvre dans l'éditeur.</li>
+</ul>
+<p><span class="docs-ui">Filtrer les cibles</span> filtre à la fois les cibles, les pages et les fichiers, avec la même recherche approximative que <span class="docs-ui">Aller au fichier…</span>. Dans la liste, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> ou <kbd>1</kbd>–<kbd>9</kbd> changent de cible. <span class="docs-ui">Ouvrir une URL…</span> ouvre une URL ponctuelle, et <span class="docs-ui">Enregistrer dans les URL du projet</span> la conserve.</p>
+<p>Les cibles proviennent de <code>projects[].urls</code> dans <code>settings.json</code> (voir <a href="settings-json.html#example">l'exemple</a>). Chaque entrée a besoin d'une <code>url</code>, d'une <code>launchCommand</code> (exécutée dans un terminal, par exemple pour lancer une application de bureau) ou d'un <code>windowMatch</code> (la fenêtre à enregistrer). Choisir une cible de type fenêtre en fait la source d'enregistrement : ce n'est donc pas possible pendant un enregistrement. Les pages visitées sont mémorisées par projet, sur cette machine uniquement (jusqu'à 200).</p>
+
+<!-- @switch-env 5103621352 -->
+## Ouvrir et changer d'environnement
+<p>Cliquez sur une URL enregistrée pour l'ouvrir. Si la page actuelle relève d'une autre URL enregistrée, Ferret conserve le chemin, la query et le hash, et ne remplace que l'origine. Par exemple, sur <code>http://localhost:3000/pricing?plan=pro</code>, cliquer sur <code>prd</code> ouvre <code>https://example.com/pricing?plan=pro</code>.</p>
+<p>La puce correspondant à la page actuelle (préfixe le plus long) est mise en évidence. Faites un clic droit sur une puce ou utilisez son icône de crayon pour la modifier ou la <span class="docs-ui">Supprimer</span>. À l'ouverture d'un projet sans URL précédente, sa première URL enregistrée se charge.</p>

@@ -1,0 +1,73 @@
+<!-- Ferret docs translation: ja / troubleshooting. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title c3af076f92 -->
+困ったときは
+
+<!-- @lead eabdc6539a -->
+よくある問題と直し方です。引用したメッセージは、アプリが日本語で出す文言です。
+
+<!-- @screen-permission 45fa22d7c7 -->
+## 画面やウインドウを録画できない（macOS）
+<p>メッセージ: <q>画面全体や別のウインドウを録画するには、macOS の「画面収録」の許可が必要です。</q></p>
+<ol class="docs-steps">
+  <li><span class="docs-ui">録画の対象</span> のダイアログで <span class="docs-ui">システム設定を開く</span> を押します。</li>
+  <li><span class="docs-ui">プライバシーとセキュリティ → 画面とシステムオーディオ収録</span> で Ferret をオンにします。</li>
+  <li>アプリを再起動してから、<span class="docs-ui">確認し直す</span> を押します。</li>
+</ol>
+<p><span class="docs-ui">内蔵ブラウザ</span> を録画するだけなら、許可は要りません。</p>
+<p>macOS でソースから動かすと、<code>pnpm dev</code> は名前を変えてアドホック署名した Electron のコピーを起動します。これも Ferret という名前なので（<code>scripts/prepare-dev-electron.mjs</code>）、上の一覧には別の Ferret として出ます。初めて動かすときは、macOS が画面収録とマイクの許可をもう一度求めます。2回目からは聞かれません。開発用のビルドはモックのキーチェーン（<code>--use-mock-keychain</code>）を使うので、キーチェーンの確認は出ません。そのため、開発用のビルドで保存した Cookie やキーは、本物のキーチェーンではなく固定の鍵で暗号化されます。本物のキーチェーンを使うには <code>ADE_DEV_REAL_KEYCHAIN=1</code> を設定します。</p>
+
+<!-- @mic 400e196b24 -->
+## マイクが開かない
+<p>メッセージ: <q>マイクを開けませんでした。OSの設定で許可を確認してください</q></p>
+<ul>
+  <li>macOS: <span class="docs-ui">システム設定 → プライバシーとセキュリティ → マイク</span> で Ferret をオンにします。</li>
+  <li>Windows: <span class="docs-ui">設定 → プライバシーとセキュリティ → マイク</span> で、デスクトップアプリに許可します。</li>
+</ul>
+<p>マイクが無くてもペンで囲んだところは指摘になりますが、話した依頼は付きません。</p>
+
+<!-- @whisper ec2a54a0ef -->
+## 端末内のモデルが無い / whisper-cli が見つからない
+<p>メッセージ: <q>端末内の文字起こしモデルがありません。音声は保存し、ペンの指摘だけを分解します。</q></p>
+<p>設定でモデルをダウンロードするか、手元の <code>ggml-*.bin</code> を選びます。設定に <q>whisper.cpp（whisper-cli）が見つかりません</q> と出るときは、それをインストールし（<a href="transcription.html#whisper">手順</a>）、<code>PATH</code> に入っていることを確かめてから設定を開き直します。Finder やエクスプローラーから起動したパッケージ版のアプリには、シェルの <code>PATH</code> が見えないことがあります。Homebrew の場所のような標準の場所に入れてください。</p>
+<p>sha256 の確認に通らなかったモデルのダウンロードは捨てられます。もう一度試してください。</p>
+
+<!-- @node-pty bb433d3335 -->
+## ターミナル: node-pty を読み込めない
+<p>ソースから動かしていて、node-pty が別の Node や Electron の ABI 向けにビルドされているときに起きます。</p>
+<pre><code>pnpm rebuild:native</code></pre>
+
+<!-- @agent 1b8e87d730 -->
+## エージェントが見つからない / Agentへ送信 で送られない
+<ul>
+  <li>ターミナルに <code>command not found: claude</code>（または <code>codex</code>、<code>gemini</code>、ほかのエージェントのコマンド）と出る: CLI がインストールされていないか、<code>PATH</code> に入っていません。Ferret はシェル自身のエラーを出すだけで、ヒントは足しません。ふだんのターミナルでそのコマンドが動くか確かめるか、<span class="docs-ui">設定 → Agent</span> の <span class="docs-ui">インストール</span> を使うか、そのエージェントの <span class="docs-ui">コマンド</span> に絶対パスを入れてください。</li>
+  <li><q>Agentが確認を待っています。ターミナルで応答してから送信してください。</q> 先にエージェントの問いに答えてください。</li>
+  <li><q>Agentの入力欄がまだ準備できていません。</q> エージェントの起動が終わるまで待ってください。</li>
+  <li><q>本文は入力しましたが送信できませんでした。ターミナルでEnterを押してください。</q></li>
+  <li><q>ターミナルを開いてください。</q></li>
+  <li><q>起動引数を解釈できません: クォートが閉じていません。</q> エージェントの引数のクォートを直してください。</li>
+</ul>
+
+<!-- @cannot-record 7b2c3ffb80 -->
+## 録画が始まらない
+<ul>
+  <li><q>プロジェクトフォルダを開いてください</q></li>
+  <li><q>レビューするURLを開いてください</q></li>
+  <li><q>ページを開けていません。表示できるURLを開いてから録画してください</q> 開発サーバーが動いているか確かめてください。<q>サーバーに接続できません</q> は、そのポートで何も待ち受けていないという意味です。</li>
+</ul>
+
+<!-- @openai a24af71f0e -->
+## OpenAI のキーや接続先が未設定
+<p><q>OpenAIのAPIキーが設定されていません。…</q> や <q>文字起こしの接続先（Base URL・モデル名）が未設定です。…</q>: 設定で入れるか、<span class="docs-ui">この端末（無料）</span> に切り替えてください。その録画の音声はすでに保存されています。</p>
+
+<!-- @github 81f6d68f2f -->
+## GitHub のエラー
+<ul>
+  <li><q>GitHub CLI（gh）が見つかりません。</q> <code>gh</code> をインストールしてください。</li>
+  <li><q>GitHub にログインしていません。</q> <span class="docs-ui">設定 → GitHub / GitLab → ターミナルでログイン</span> を使ってください。</li>
+  <li><q>origin のリモートがありません。</q> や <q>origin が GitHub のリポジトリではありません。</q> <code>git remote -v</code> を確かめてください。</li>
+  <li><q>リポジトリが見つからないか、アクセスする権限がありません。</q> <code>gh auth status</code> と <code>GH_TOKEN</code> を確かめてください。</li>
+</ul>
+
+<!-- @report 20a1889e90 -->
+## 不具合を報告する
+<p><a href="https://github.com/JapanMarketing-Dev/ferret/issues">github.com/JapanMarketing-Dev/ferret/issues</a> に issue を作り、OS、アプリのバージョン（フッター → <span class="docs-ui">アップデート</span>）、再現の手順を書いてください。人に見せられない画面が入った <code>.ferret/</code> の中身は添付しないでください。</p>

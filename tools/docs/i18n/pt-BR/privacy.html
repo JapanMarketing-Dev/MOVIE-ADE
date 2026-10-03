@@ -1,0 +1,96 @@
+<!-- Ferret docs translation: pt-BR / privacy. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title bd3b785878 -->
+Dados e privacidade
+
+<!-- @lead f52bb23052 -->
+As revisões ficam na pasta do seu projeto. As configurações ficam em <code>~/.ferret/</code>, e as chaves e contas na pasta de dados do usuário do sistema. Só os relatórios de falhas chegam ao desenvolvedor, pelo Sentry, e você pode desativá-los. O feedback que você decidir enviar pelo app vira uma issue pública no GitHub.
+
+<!-- @reviews 2d1a3289b5 -->
+## Dentro de .ferret/reviews/
+<pre><code>&lt;project&gt;/.ferret/reviews/20261003-104500/
+├── feedback.md      # what the agent reads
+├── 01.png, 02.png…  # one or more images per finding
+├── session.json     # review state and edit history
+├── events.jsonl     # action log (built-in browser only)
+├── recording.webm   # the video
+└── work/            # intermediate audio and frames</code></pre>
+<p>As revisões feitas antes da mudança de nome ficam em <code>.ade-movie/reviews/</code>. Elas continuam sendo listadas e abertas, e as novas revisões vão para <code>.ferret/reviews/</code>.</p>
+<p>Quando a gravação começa, <code>.ferret/</code> é acrescentado ao <code>.git/info/exclude</code>. Worktrees e submódulos são tratados. O <code>.gitignore</code> nunca é modificado. Uma revisão interrompida pode ser recuperada pelo histórico se os registros dela sobreviveram. Nesse caso, o app avisa que os últimos segundos podem estar faltando.</p>
+
+<!-- @retention 41bc6cfa7d -->
+## Retenção
+<p><span class="docs-ui">Manter gravações</span> (7 dias por padrão, 30 dias ou <span class="docs-ui">Para sempre</span>): ao iniciar, as revisões concluídas mais antigas que isso perdem o <code>recording.webm</code> e a pasta <code>work/</code>. O <code>feedback.md</code> e as imagens dos apontamentos são mantidos. Revisões incompletas nunca são limpas. A limpeza é feita ao iniciar, no último projeto aberto.</p>
+
+<!-- @network 8886bf9546 -->
+## O que sai da sua máquina
+<table>
+  <thead><tr><th>Quando</th><th>Destino</th><th>Dados</th></tr></thead>
+  <tbody>
+    <tr><td>Transcrição: <span class="docs-ui">No dispositivo (gratuito)</span></td><td>nenhum</td><td>—</td></tr>
+    <tr><td>Transcrição: OpenAI / compatível</td><td>OpenAI ou a sua Base URL</td><td>trechos de áudio</td></tr>
+    <tr><td>Download de modelo</td><td>Hugging Face</td><td>requisição do arquivo</td></tr>
+    <tr><td><span class="docs-ui">Organizar</span></td><td>a sua CLI do Claude Code / Codex, ou o endpoint de LLM que você definir em <code>organizer</code></td><td>apenas texto e registro de ações (sem imagens, áudio ou vídeo)</td></tr>
+    <tr><td>Verificação de aceitação (modelo de decisão, desativada por padrão)</td><td>o seu agente, pelo relay local, para Ollama / Cloudflare / AI Gateway / TypeSafe / a sua URL</td><td>o que o agente envia: o texto do apontamento, o "Done when" e as capturas de tela ANTES/DEPOIS (só modelos de imagem)</td></tr>
+    <tr><td><span class="docs-ui">Enviar ao Agent</span></td><td>o agente no seu terminal</td><td>uma instrução que aponta para o <code>feedback.md</code></td></tr>
+    <tr><td><span class="docs-ui">Enviar ao GitHub</span></td><td>GitHub, via <code>gh</code></td><td>apenas o texto do corpo (sem imagens)</td></tr>
+    <tr><td>Uso no rodapé (só Claude Code e Codex)</td><td>Anthropic, ChatGPT</td><td>requisição de uso com o seu próprio login</td></tr>
+    <tr><td>Pedido de estrela no GitHub</td><td>GitHub, via o seu <code>gh</code></td><td>verifica se você deu estrela ao repositório e só dá a estrela se você clicar em <span class="docs-ui">Dar estrela no GitHub</span></td></tr>
+    <tr><td><span class="docs-ui">Verificar atualizações</span> (manual)</td><td>servidor de download (Cloudflare R2)</td><td>requisição do <code>latest.json</code></td></tr>
+    <tr><td>Envio de feedback pelo app (só quando você envia; em breve)</td><td>o relay de feedback do desenvolvedor (um Cloudflare Worker), que abre uma issue pública em <code>JapanMarketing-Dev/ferret</code></td><td>o seu texto, se é bug ou ideia, versão do app / do sistema e CPU, e até 3 capturas de tela que você anexar. Chaves, tokens, endereços de e-mail e caminhos da pasta pessoal são mascarados. O relay não armazena o seu endereço IP (veja <a href="#feedback">Feedback pelo app</a>)</td></tr>
+    <tr><td>Uma falha ou erro (<span class="docs-ui">Enviar relatórios de falhas</span> ativado)</td><td>Sentry</td><td>stack trace e versões do sistema / CPU / app (veja <a href="#crash-reports">Relatórios de falhas</a>)</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li>O app não tem analytics, rastreamento de desempenho nem gravação de sessão (session replay). Os únicos dados que ele envia sem você pedir são os relatórios de falhas: erros, uma sessão por execução e avisos de inicialização lenta e de travamento, todos descritos abaixo e todos controlados por <span class="docs-ui">Enviar relatórios de falhas</span>.</li>
+  <li>Valores com cara de segredo em URLs (tokens, chaves) são ocultados antes de serem gravados no <code>feedback.md</code>.</li>
+  <li>O texto capturado da página é marcado como dados no <code>feedback.md</code>, então o agente é instruído a não seguir instruções encontradas nele.</li>
+  <li>Este site (não o app) conta visualizações de página com o Cloudflare Web Analytics: sem cookies, sem rastreamento entre sites e sem dados pessoais.</li>
+</ul>
+
+<!-- @feedback ba5f3fb0a3 -->
+## Feedback pelo app
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Em breve</p><p>O formulário de feedback dentro do app e o relay dele ainda não foram lançados. Esta seção descreve como vão funcionar.</p></div>
+<p>Você vai poder enviar um relato de bug ou uma ideia de dentro do Ferret sem uma conta no GitHub. Ele só é enviado quando você o envia e vira uma issue <strong>pública</strong> em <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a>, com o rótulo <code>from-app</code>. Não inclua nada que você não publicaria abertamente.</p>
+<ul>
+  <li>O app envia do seu computador para um pequeno relay (um Cloudflare Worker mantido pelo desenvolvedor), que abre a issue com o próprio token do GitHub. Esse relay é o único servidor do desenvolvedor que recebe algo que você escreve.</li>
+  <li>Enviado: o seu título e texto, se é um bug ou uma ideia, a versão do app e até 3 capturas de tela PNG ou JPEG que você anexar. O nome e a versão do sistema operacional, a arquitetura da CPU e o ID aleatório de instalação só são enviados se você os mantiver incluídos. Não enviado: seu nome, e-mail, conta do GitHub, arquivos do projeto, gravações ou apontamentos.</li>
+  <li>Antes de criar a issue, o relay mascara textos que parecem chaves ou tokens, endereços de e-mail e o nome de usuário em caminhos da pasta pessoal, e impede que <code>@mentions</code> notifiquem alguém. Ele também remove a localização e outros metadados das capturas de tela. Confira o seu texto mesmo assim: o mascaramento não pega tudo.</li>
+  <li>O relay não armazena o seu endereço IP. Para limitar a frequência com que um mesmo remetente pode publicar (5 por hora, 20 por dia), ele conta um hash com chave do endereço IP (e do ID de instalação, se enviado) por até 24 horas e depois o exclui. Nenhum dos dois aparece na issue.</li>
+  <li>As capturas de tela são guardadas pelo relay no Cloudflare R2 com nomes impossíveis de adivinhar e exibidas na issue. Para que uma issue ou as capturas dela sejam removidas, comente na issue ou abra uma nova.</li>
+  <li>O código do relay está em <code>workers/feedback-relay</code> no repositório.</li>
+</ul>
+
+<!-- @crash-reports 3fdd78f6c3 -->
+## Relatórios de falhas
+<p>Quando o app falha ou encontra um erro não tratado, o Ferret envia um relatório de falha ao <a href="https://sentry.io/">Sentry</a> para que o bug possa ser corrigido. Isso vem ativado por padrão. Desative em <span class="docs-ui">Configurações → Privacidade → Enviar relatórios de falhas</span> ou com <span class="docs-ui">Desativar</span> no aviso mostrado na primeira execução. Desativar tem efeito imediato. Reativar tem efeito na próxima execução. As versões de desenvolvimento (<code>pnpm dev</code>) também enviam, marcadas como <code>development</code>, para que os desenvolvedores possam corrigir as falhas que encontram enquanto trabalham. Execuções de E2E e testes unitários nunca enviam.</p>
+<table>
+  <thead><tr><th>Enviado</th><th>Não enviado</th></tr></thead>
+  <tbody>
+    <tr><td>
+      <ul>
+        <li>Tipo e mensagem do erro, com os caminhos da pasta pessoal exibidos como <code>~</code></li>
+        <li>Stack trace (em que ponto do código do Ferret aconteceu)</li>
+        <li>Em falhas nativas: apenas qual processo falhou, por que ele terminou (por exemplo <q>crashed</q> ou <q>oom</q>) e a versão do app</li>
+        <li>Nome e versão do sistema operacional, arquitetura da CPU, versões do Electron / Chrome / Node, versão do app, tamanho da tela, quantidade de memória</li>
+        <li>Eventos do ciclo de vida do app logo antes do erro (por exemplo <q>app.ready</q>) e falhas na inicialização</li>
+        <li>Qual parte do app falhou: uma área da tela que não pôde ser renderizada (e os nomes dos componentes React dela), uma chamada IPC, um terminal que não pôde iniciar, um processo que falhou ou travou, ou uma página do app que não carregou</li>
+        <li>Onde você estava no app: modo Editor ou Feedback, a aba aberta (Navegador, Apontamentos, Configurações ou apenas <q>file</q>) e se havia uma gravação em andamento</li>
+        <li>Uma sessão por execução (iniciada, encerrada normalmente ou com falha), para medir a taxa de execuções sem falhas de cada versão</li>
+        <li>Um ID aleatório de instalação (criado na primeira execução e guardado na pasta de configurações do app), para contar quantas instalações foram afetadas. Ele não é vinculado ao seu nome, e-mail ou dispositivo</li>
+        <li>Somente em falhas de JavaScript: as últimas 50 linhas de log do próprio Ferret (como <q>[startup]</q> e <q>[recording]</q>), encurtadas e sem caminhos, URLs, e-mails e chaves</li>
+      </ul>
+    </td><td>
+      <ul>
+        <li>O caminho da pasta do seu projeto e os nomes dos arquivos (substituídos por <code>&lt;project&gt;</code>)</li>
+        <li>URLs abertas no navegador integrado e qualquer outro endereço web (substituídos por <code>&lt;url&gt;</code>)</li>
+        <li>Saída do terminal, transcrições, apontamentos, texto das páginas, capturas de tela</li>
+        <li>Endereços de e-mail e chaves de API ou tokens (substituídos)</li>
+        <li>Seu nome, nome do dispositivo, endereço IP (não armazenado), cookies, variáveis locais</li>
+        <li>Dumps de memória de falhas nativas (minidumps). Eles podem conter qualquer coisa que estivesse na memória, então ficam no seu computador</li>
+        <li>Cliques, requisições de rede e qualquer linha de log que não seja do próprio Ferret</li>
+      </ul>
+    </td></tr>
+  </tbody>
+</table>
+<p>O app instalado envia no máximo 10 relatórios por execução e só metade dos erros de JavaScript (as falhas nativas são sempre enviadas). As versões de desenvolvimento enviam todos os erros, até 50 por execução. O mesmo erro só é enviado uma vez por execução. Inicializações lentas (mais de 5 segundos) e travamentos longos do app (mais de 1 segundo) são enviados como avisos, no máximo uma vez a cada 10 minutos. Não é usado rastreamento de desempenho nem gravação de sessão. O app usa o plano gratuito do Sentry. Se ele lotar, os relatórios extras são descartados e ninguém é cobrado.</p>
+<p>Vai compilar o Ferret você mesmo? Defina <code>FERRET_SENTRY_DSN</code> (o nome antigo <code>MOVIE_ADE_SENTRY_DSN</code> também funciona) com o seu próprio DSN do Sentry, ou com uma string vazia para não enviar nada. O código está em <code>src/main/telemetry.ts</code> e <code>src/shared/telemetry.ts</code>.</p>

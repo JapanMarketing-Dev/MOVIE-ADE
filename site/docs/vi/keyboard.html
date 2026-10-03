@@ -3,18 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Keyboard shortcuts · Ferret docs</title>
-  <meta name="description" content="Shortcuts are shown for the OS you are reading on; use the switch below to see the other one. Most use Command on macOS where Windows and Linux use Ctrl, and Option where they use Alt. A few differ more than that, and the tables list both. Source: src/main/menu.ts, src/shared/browserNav.ts, src/shared/annotation.ts, and the terminal's key handling.">
+  <title>Phím tắt · Tài liệu Ferret</title>
+  <meta name="description" content="Phím tắt được hiển thị theo hệ điều hành bạn đang dùng để đọc; dùng nút chuyển bên dưới để xem của hệ điều hành kia. Phần lớn dùng Command trên macOS ở chỗ Windows và Linux dùng Ctrl, và Option ở chỗ chúng dùng Alt. Một số phím khác nhau nhiều hơn thế, và bảng liệt kê cả hai. Nguồn: src/main/menu.ts, src/shared/browserNav.ts, src/shared/annotation.ts và phần xử lý phím của terminal.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
-  <meta name="robots" content="noindex, follow">
-  <link rel="canonical" href="https://ferretade.dev/docs/keyboard">
+  <link rel="canonical" href="https://ferretade.dev/docs/vi/keyboard">
   <link rel="alternate" hreflang="en" href="https://ferretade.dev/docs/keyboard">
+  <link rel="alternate" hreflang="ja" href="https://ferretade.dev/docs/ja/keyboard">
+  <link rel="alternate" hreflang="zh-CN" href="https://ferretade.dev/docs/zh-CN/keyboard">
+  <link rel="alternate" hreflang="zh-TW" href="https://ferretade.dev/docs/zh-TW/keyboard">
+  <link rel="alternate" hreflang="ko" href="https://ferretade.dev/docs/ko/keyboard">
+  <link rel="alternate" hreflang="es" href="https://ferretade.dev/docs/es/keyboard">
+  <link rel="alternate" hreflang="fr" href="https://ferretade.dev/docs/fr/keyboard">
+  <link rel="alternate" hreflang="de" href="https://ferretade.dev/docs/de/keyboard">
+  <link rel="alternate" hreflang="it" href="https://ferretade.dev/docs/it/keyboard">
+  <link rel="alternate" hreflang="pt-BR" href="https://ferretade.dev/docs/pt-BR/keyboard">
+  <link rel="alternate" hreflang="ru" href="https://ferretade.dev/docs/ru/keyboard">
+  <link rel="alternate" hreflang="hi" href="https://ferretade.dev/docs/hi/keyboard">
+  <link rel="alternate" hreflang="id" href="https://ferretade.dev/docs/id/keyboard">
+  <link rel="alternate" hreflang="vi" href="https://ferretade.dev/docs/vi/keyboard">
   <link rel="alternate" hreflang="x-default" href="https://ferretade.dev/docs/keyboard">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
-  <meta property="og:title" content="Keyboard shortcuts · Ferret docs">
-  <meta property="og:description" content="Shortcuts are shown for the OS you are reading on; use the switch below to see the other one. Most use Command on macOS where Windows and Linux use Ctrl, and Option where they use Alt. A few differ more than that, and the tables list both. Source: src/main/menu.ts, src/shared/browserNav.ts, src/shared/annotation.ts, and the terminal's key handling.">
+  <meta property="og:title" content="Phím tắt · Tài liệu Ferret">
+  <meta property="og:description" content="Phím tắt được hiển thị theo hệ điều hành bạn đang dùng để đọc; dùng nút chuyển bên dưới để xem của hệ điều hành kia. Phần lớn dùng Command trên macOS ở chỗ Windows và Linux dùng Ctrl, và Option ở chỗ chúng dùng Alt. Một số phím khác nhau nhiều hơn thế, và bảng liệt kê cả hai. Nguồn: src/main/menu.ts, src/shared/browserNav.ts, src/shared/annotation.ts và phần xử lý phím của terminal.">
   <meta property="og:url" content="https://ferretade.dev/docs/vi/keyboard">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="vi_VN">
@@ -23,8 +35,8 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Keyboard shortcuts · Ferret docs">
-  <meta name="twitter:description" content="Shortcuts are shown for the OS you are reading on; use the switch below to see the other one. Most use Command on macOS where Windows and Linux use Ctrl, and Option where they use Alt. A few differ more than that, and the tables list both. Source: src/main/menu.ts, src/shared/browserNav.ts, src/shared/annotation.ts, and the terminal's key handling.">
+  <meta name="twitter:title" content="Phím tắt · Tài liệu Ferret">
+  <meta name="twitter:description" content="Phím tắt được hiển thị theo hệ điều hành bạn đang dùng để đọc; dùng nút chuyển bên dưới để xem của hệ điều hành kia. Phần lớn dùng Command trên macOS ở chỗ Windows và Linux dùng Ctrl, và Option ở chỗ chúng dùng Alt. Một số phím khác nhau nhiều hơn thế, và bảng liệt kê cả hai. Nguồn: src/main/menu.ts, src/shared/browserNav.ts, src/shared/annotation.ts và phần xử lý phím của terminal.">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -35,8 +47,8 @@
   <script src="../docs.js?v=cb59f7a6" defer></script>
 </head>
 <!-- Generated by tools/docs/build-docs.mjs: the sidebar, header, and footer are identical on every page in site/docs/. Change them there. -->
-<body data-page="docs" data-copy="Copy" data-copied="Copied" data-copy-failed="Copy failed">
-  <a class="skip" href="#docs-main">Skip to content</a>
+<body data-page="docs" data-copy="Sao chép" data-copied="Đã sao chép" data-copy-failed="Không sao chép được">
+  <a class="skip" href="#docs-main">Chuyển đến nội dung</a>
   <svg class="sprite" width="0" height="0" aria-hidden="true">
     <symbol id="i-github" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
@@ -48,14 +60,14 @@
 
   <header class="site-header">
     <div class="wrap">
-      <a class="brand" href="../../index.html" aria-label="Ferret home">
+      <a class="brand" href="../../index.html" aria-label="Trang chủ Ferret">
         <img class="wordmark" src="../../assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22">
       </a>
-      <nav class="site-nav" aria-label="Main">
-        <a href="../../index.html#features">Features</a>
-        <a href="../../download.html">Download</a>
-        <a class="nav-keep" href="quick-start.html" aria-current="page">Docs</a>
-        <a href="../../download.html#versions">Changelog</a>
+      <nav class="site-nav" aria-label="Chính">
+        <a href="../../index.html#features">Tính năng</a>
+        <a href="../../download.html">Tải xuống</a>
+        <a class="nav-keep" href="quick-start.html" aria-current="page">Tài liệu</a>
+        <a href="../../download.html#versions">Nhật ký thay đổi</a>
       </nav>
       <div class="header-actions">
         <details class="docs-lang">
@@ -77,62 +89,62 @@
             <li><a href="../vi/keyboard.html" hreflang="vi" lang="vi" aria-current="true" data-docs-lang="vi">Tiếng Việt</a></li>
           </ul>
         </details>
-        <a class="btn btn-sm btn-icon btn-ghost" href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-discord"/></svg><span class="sr-only">Discord</span><span class="sr-only"> (opens in a new tab)</span></a>
-        <a class="btn btn-sm btn-icon btn-ghost" href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-x"/></svg><span class="sr-only">X</span><span class="sr-only"> (opens in a new tab)</span></a>
+        <a class="btn btn-sm btn-icon btn-ghost" href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-discord"/></svg><span class="sr-only">Discord</span><span class="sr-only"> (mở trong tab mới)</span></a>
+        <a class="btn btn-sm btn-icon btn-ghost" href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-x"/></svg><span class="sr-only">X</span><span class="sr-only"> (mở trong tab mới)</span></a>
         <a class="btn btn-sm btn-ghost" href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">
           <svg class="icon icon-fill"><use href="#i-github"/></svg><span class="btn-label">GitHub</span>
-        <span class="sr-only"> (opens in a new tab)</span></a>
+        <span class="sr-only"> (mở trong tab mới)</span></a>
         <a class="btn btn-sm btn-primary" href="../../download.html">
-          <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">Download</span>
+          <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">Tải xuống</span>
         </a>
       </div>
     </div>
   </header>
 
   <div class="wrap docs-layout">
-    <nav class="docs-sidebar" aria-label="Docs pages" id="docs-sidebar">
+    <nav class="docs-sidebar" aria-label="Các trang tài liệu" id="docs-sidebar">
       <button class="docs-sidebar-toggle" type="button" aria-expanded="true" aria-controls="docs-nav-list" data-docs-nav-toggle>
-        <svg class="icon"><use href="#i-menu"/></svg>Docs menu
+        <svg class="icon"><use href="#i-menu"/></svg>Menu tài liệu
       </button>
       <div class="docs-nav-list" id="docs-nav-list">
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Start here</p>
+        <p class="docs-nav-heading">Bắt đầu</p>
         <ul>
-          <li><a href="quick-start.html">Quick start</a></li>
-          <li><a href="install.html">Install</a></li>
-          <li><a href="concepts.html">Concepts</a></li>
-          <li><a href="keyboard.html" aria-current="page">Keyboard shortcuts</a></li>
+          <li><a href="quick-start.html">Bắt đầu nhanh</a></li>
+          <li><a href="install.html">Cài đặt</a></li>
+          <li><a href="concepts.html">Khái niệm</a></li>
+          <li><a href="keyboard.html" aria-current="page">Phím tắt</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Using Ferret</p>
+        <p class="docs-nav-heading">Sử dụng Ferret</p>
         <ul>
-          <li><a href="projects.html">Projects and URLs</a></li>
-          <li><a href="recording.html">Recording</a></li>
-          <li><a href="agents.html">Sending to agents</a></li>
-          <li><a href="editor.html">Editor and preview</a></li>
+          <li><a href="projects.html">Dự án và URL</a></li>
+          <li><a href="recording.html">Ghi</a></li>
+          <li><a href="agents.html">Gửi cho agent</a></li>
+          <li><a href="editor.html">Editor và xem trước</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Configure</p>
+        <p class="docs-nav-heading">Cấu hình</p>
         <ul>
-          <li><a href="transcription.html">Transcription and costs</a></li>
-          <li><a href="accounts.html">Accounts and usage</a></li>
-          <li><a href="settings.html">Settings reference</a></li>
-          <li><a href="settings-json.html">Configure with settings.json</a></li>
+          <li><a href="transcription.html">Chuyển văn bản và chi phí</a></li>
+          <li><a href="accounts.html">Tài khoản và mức sử dụng</a></li>
+          <li><a href="settings.html">Tham chiếu cài đặt</a></li>
+          <li><a href="settings-json.html">Cấu hình bằng settings.json</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Reference</p>
+        <p class="docs-nav-heading">Tham khảo</p>
         <ul>
-          <li><a href="privacy.html">Data and privacy</a></li>
-          <li><a href="files.html">Files and environment</a></li>
+          <li><a href="privacy.html">Dữ liệu và quyền riêng tư</a></li>
+          <li><a href="files.html">Tệp và biến môi trường</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Help</p>
+        <p class="docs-nav-heading">Trợ giúp</p>
         <ul>
-          <li><a href="troubleshooting.html">Troubleshooting</a></li>
+          <li><a href="troubleshooting.html">Khắc phục sự cố</a></li>
         </ul>
       </div>
       </div>
@@ -140,113 +152,112 @@
 
     <main class="docs-main" id="docs-main">
       <article class="docs-content">
-        <div class="docs-callout docs-callout-i18n"><p>Trang này chưa được dịch nên đang hiển thị bằng tiếng Anh. <a href="../keyboard.html" hreflang="en">English</a></p></div>
-        <p class="docs-eyebrow">Start here</p>
-        <h1 lang="en">Keyboard shortcuts</h1>
-        <p class="docs-lead" lang="en">Shortcuts are shown for the OS you are reading on; use the switch below to see the other one. Most use Command on macOS where Windows and Linux use Ctrl, and Option where they use Alt. A few differ more than that, and the tables list both. Source: <code>src/main/menu.ts</code>, <code>src/shared/browserNav.ts</code>, <code>src/shared/annotation.ts</code>, and the terminal's key handling.</p>
+        <p class="docs-eyebrow">Bắt đầu</p>
+        <h1>Phím tắt</h1>
+        <p class="docs-lead">Phím tắt được hiển thị theo hệ điều hành bạn đang dùng để đọc; dùng nút chuyển bên dưới để xem của hệ điều hành kia. Phần lớn dùng Command trên macOS ở chỗ Windows và Linux dùng Ctrl, và Option ở chỗ chúng dùng Alt. Một số phím khác nhau nhiều hơn thế, và bảng liệt kê cả hai. Nguồn: <code>src/main/menu.ts</code>, <code>src/shared/browserNav.ts</code>, <code>src/shared/annotation.ts</code> và phần xử lý phím của terminal.</p>
         <div class="docs-os" role="group" aria-label="Phím tắt cho" data-docs-os hidden>
           <span class="docs-os-label">Phím tắt cho</span>
           <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">macOS</button>
           <button type="button" class="docs-os-btn" data-os-choice="win" aria-pressed="false">Windows / Linux</button>
         </div>
 
-      <section class="docs-section" aria-labelledby="recording" lang="en">
-        <h2 id="recording"><a class="docs-anchor" href="#recording" aria-label="Link to Recording">#</a>Recording</h2>
+      <section class="docs-section" aria-labelledby="recording">
+        <h2 id="recording"><a class="docs-anchor" href="#recording" aria-label="Liên kết tới Ghi">#</a>Ghi</h2>
         <table class="docs-keys">
-  <thead><tr><th>Action</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <thead><tr><th>Thao tác</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
   <tbody>
-    <tr><td>Start / Stop Recording</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>R</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>R</kbd></td></tr>
-    <tr><td>Switch Mode (Editor / Feedback)</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>M</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>M</kbd></td></tr>
-    <tr><td>Pen while held</td><td class="os-mac"><kbd>⌥</kbd></td><td class="os-win"><kbd>Alt</kbd></td></tr>
+    <tr><td>Bắt đầu / Dừng ghi</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>R</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>R</kbd></td></tr>
+    <tr><td>Chuyển chế độ (Editor / Feedback)</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>M</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>M</kbd></td></tr>
+    <tr><td>Bút khi giữ phím</td><td class="os-mac"><kbd>⌥</kbd></td><td class="os-win"><kbd>Alt</kbd></td></tr>
   </tbody>
 </table>
       </section>
 
-      <section class="docs-section" aria-labelledby="drawing" lang="en">
-        <h2 id="drawing"><a class="docs-anchor" href="#drawing" aria-label="Link to Drawing while recording">#</a>Drawing while recording</h2>
+      <section class="docs-section" aria-labelledby="drawing">
+        <h2 id="drawing"><a class="docs-anchor" href="#drawing" aria-label="Liên kết tới Vẽ trong khi ghi">#</a>Vẽ trong khi ghi</h2>
         <table class="docs-keys">
-  <thead><tr><th>Action</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <thead><tr><th>Thao tác</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
   <tbody>
-    <tr><td>Pen</td><td class="os-mac"><kbd>P</kbd></td><td class="os-win"><kbd>P</kbd></td></tr>
-    <tr><td>Box</td><td class="os-mac"><kbd>B</kbd> / <kbd>R</kbd></td><td class="os-win"><kbd>B</kbd> / <kbd>R</kbd></td></tr>
-    <tr><td>Use the page (stop drawing)</td><td class="os-mac"><kbd>V</kbd> / <kbd>Esc</kbd></td><td class="os-win"><kbd>V</kbd> / <kbd>Esc</kbd></td></tr>
-    <tr><td>Next color</td><td class="os-mac"><kbd>C</kbd></td><td class="os-win"><kbd>C</kbd></td></tr>
-    <tr><td>Undo the last mark</td><td class="os-mac"><kbd>⌘</kbd><kbd>Z</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Z</kbd></td></tr>
-    <tr><td>Redo</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>Z</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Z</kbd> / <kbd>Ctrl</kbd><kbd>Y</kbd></td></tr>
+    <tr><td>Bút</td><td class="os-mac"><kbd>P</kbd></td><td class="os-win"><kbd>P</kbd></td></tr>
+    <tr><td>Khung</td><td class="os-mac"><kbd>B</kbd> / <kbd>R</kbd></td><td class="os-win"><kbd>B</kbd> / <kbd>R</kbd></td></tr>
+    <tr><td>Thao tác trên trang (ngừng vẽ)</td><td class="os-mac"><kbd>V</kbd> / <kbd>Esc</kbd></td><td class="os-win"><kbd>V</kbd> / <kbd>Esc</kbd></td></tr>
+    <tr><td>Màu tiếp theo</td><td class="os-mac"><kbd>C</kbd></td><td class="os-win"><kbd>C</kbd></td></tr>
+    <tr><td>Hoàn tác nét vẽ cuối</td><td class="os-mac"><kbd>⌘</kbd><kbd>Z</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Z</kbd></td></tr>
+    <tr><td>Làm lại</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>Z</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Z</kbd> / <kbd>Ctrl</kbd><kbd>Y</kbd></td></tr>
   </tbody>
-</table><p>These keys work while you record the built-in browser and the page has focus. They are ignored while you type in a field on the page, and the letter keys only work without modifier keys, so the page's own shortcuts keep working.</p>
+</table><p>Các phím này hoạt động khi bạn ghi trình duyệt tích hợp và trang đang được focus. Chúng bị bỏ qua khi bạn đang gõ vào một ô nhập trên trang, và các phím chữ chỉ hoạt động khi không kèm phím bổ trợ, nên phím tắt riêng của trang vẫn dùng được.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="browser" lang="en">
-        <h2 id="browser"><a class="docs-anchor" href="#browser" aria-label="Link to Browser and view">#</a>Browser and view</h2>
+      <section class="docs-section" aria-labelledby="browser">
+        <h2 id="browser"><a class="docs-anchor" href="#browser" aria-label="Liên kết tới Trình duyệt và hiển thị">#</a>Trình duyệt và hiển thị</h2>
         <table class="docs-keys">
-  <thead><tr><th>Action</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <thead><tr><th>Thao tác</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
   <tbody>
-    <tr><td>Focus URL Bar</td><td class="os-mac"><kbd>⌘</kbd><kbd>L</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>L</kbd></td></tr>
-    <tr><td>Reload Page</td><td class="os-mac"><kbd>⌘</kbd><kbd>R</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>R</kbd></td></tr>
-    <tr><td>Back</td><td class="os-mac"><kbd>⌘</kbd><kbd>[</kbd></td><td class="os-win"><kbd>Alt</kbd><kbd>←</kbd></td></tr>
-    <tr><td>Forward</td><td class="os-mac"><kbd>⌘</kbd><kbd>]</kbd></td><td class="os-win"><kbd>Alt</kbd><kbd>→</kbd></td></tr>
-    <tr><td>Toggle Desktop / Mobile Width</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>V</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>V</kbd></td></tr>
-    <tr><td>Toggle Sidebar</td><td class="os-mac"><kbd>⌘</kbd><kbd>B</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>B</kbd></td></tr>
-    <tr><td>Toggle File Tree</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></td></tr>
-    <tr><td>Toggle Review Targets</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>K</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>K</kbd></td></tr>
-  </tbody>
-</table>
-      </section>
-
-      <section class="docs-section" aria-labelledby="files" lang="en">
-        <h2 id="files"><a class="docs-anchor" href="#files" aria-label="Link to Files">#</a>Files</h2>
-        <table class="docs-keys">
-  <thead><tr><th>Action</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
-  <tbody>
-    <tr><td>Open Project Folder…</td><td class="os-mac"><kbd>⌘</kbd><kbd>O</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>O</kbd></td></tr>
-    <tr><td>Go to File…</td><td class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></td></tr>
-    <tr><td>Save</td><td class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></td></tr>
+    <tr><td>Focus thanh URL</td><td class="os-mac"><kbd>⌘</kbd><kbd>L</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>L</kbd></td></tr>
+    <tr><td>Tải lại trang</td><td class="os-mac"><kbd>⌘</kbd><kbd>R</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>R</kbd></td></tr>
+    <tr><td>Lùi</td><td class="os-mac"><kbd>⌘</kbd><kbd>[</kbd></td><td class="os-win"><kbd>Alt</kbd><kbd>←</kbd></td></tr>
+    <tr><td>Tiến</td><td class="os-mac"><kbd>⌘</kbd><kbd>]</kbd></td><td class="os-win"><kbd>Alt</kbd><kbd>→</kbd></td></tr>
+    <tr><td>Chuyển độ rộng Desktop / Mobile</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>V</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>V</kbd></td></tr>
+    <tr><td>Bật/tắt thanh bên</td><td class="os-mac"><kbd>⌘</kbd><kbd>B</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>B</kbd></td></tr>
+    <tr><td>Bật/tắt cây tệp</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></td></tr>
+    <tr><td>Bật/tắt mục tiêu review</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>K</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>K</kbd></td></tr>
   </tbody>
 </table>
       </section>
 
-      <section class="docs-section" aria-labelledby="terminal" lang="en">
-        <h2 id="terminal"><a class="docs-anchor" href="#terminal" aria-label="Link to Terminal">#</a>Terminal</h2>
+      <section class="docs-section" aria-labelledby="files">
+        <h2 id="files"><a class="docs-anchor" href="#files" aria-label="Liên kết tới Tệp">#</a>Tệp</h2>
         <table class="docs-keys">
-  <thead><tr><th>Action</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <thead><tr><th>Thao tác</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
   <tbody>
-    <tr><td>New Terminal</td><td class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></td></tr>
-    <tr><td>Close Pane / Tab</td><td class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></td></tr>
-    <tr><td>Split Right</td><td class="os-mac"><kbd>⌘</kbd><kbd>D</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
-    <tr><td>Split Down</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>D</kbd></td><td class="os-win"><kbd>Alt</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
+    <tr><td>Mở thư mục dự án…</td><td class="os-mac"><kbd>⌘</kbd><kbd>O</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>O</kbd></td></tr>
+    <tr><td>Đi đến tệp…</td><td class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></td></tr>
+    <tr><td>Lưu</td><td class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></td></tr>
   </tbody>
-</table><p>Split shortcuts work while a terminal has focus.</p>
+</table>
       </section>
 
-      <section class="docs-section" aria-labelledby="window" lang="en">
-        <h2 id="window"><a class="docs-anchor" href="#window" aria-label="Link to Window and settings">#</a>Window and settings</h2>
+      <section class="docs-section" aria-labelledby="terminal">
+        <h2 id="terminal"><a class="docs-anchor" href="#terminal" aria-label="Liên kết tới Terminal">#</a>Terminal</h2>
         <table class="docs-keys">
-  <thead><tr><th>Action</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <thead><tr><th>Thao tác</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
   <tbody>
-    <tr><td>Settings…</td><td class="os-mac"><kbd>⌘</kbd><kbd>,</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>,</kbd></td></tr>
-    <tr><td>Close Window</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>W</kbd></td><td class="os-win">—</td></tr>
+    <tr><td>Terminal mới</td><td class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></td></tr>
+    <tr><td>Đóng pane / tab</td><td class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></td></tr>
+    <tr><td>Chia sang phải</td><td class="os-mac"><kbd>⌘</kbd><kbd>D</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
+    <tr><td>Chia xuống dưới</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>D</kbd></td><td class="os-win"><kbd>Alt</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
   </tbody>
-</table><p>Windows and Linux have no shortcut to close the window: <span class="docs-ui">File → Exit</span> quits the app.</p>
+</table><p>Phím tắt chia pane hoạt động khi terminal đang được focus.</p>
       </section>
 
-        <nav class="docs-pager" aria-label="Previous and next page">
-          <a class="docs-pager-prev" href="concepts.html"><span>Previous</span>Concepts</a>
-          <a class="docs-pager-next" href="projects.html"><span>Next</span>Projects and URLs</a>
+      <section class="docs-section" aria-labelledby="window">
+        <h2 id="window"><a class="docs-anchor" href="#window" aria-label="Liên kết tới Cửa sổ và cài đặt">#</a>Cửa sổ và cài đặt</h2>
+        <table class="docs-keys">
+  <thead><tr><th>Thao tác</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Cài đặt…</td><td class="os-mac"><kbd>⌘</kbd><kbd>,</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>,</kbd></td></tr>
+    <tr><td>Đóng cửa sổ</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>W</kbd></td><td class="os-win">—</td></tr>
+  </tbody>
+</table><p>Windows và Linux không có phím tắt để đóng cửa sổ: <span class="docs-ui">Tệp → Thoát</span> sẽ thoát ứng dụng.</p>
+      </section>
+
+        <nav class="docs-pager" aria-label="Trang trước và trang sau">
+          <a class="docs-pager-prev" href="concepts.html"><span>Trước</span>Khái niệm</a>
+          <a class="docs-pager-next" href="projects.html"><span>Tiếp</span>Dự án và URL</a>
         </nav>
-        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/README.md" target="_blank" rel="noopener noreferrer">Help translate this page on GitHub<span class="sr-only"> (opens in a new tab)</span></a></p>
+        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/vi/keyboard.html" target="_blank" rel="noopener noreferrer">Giúp dịch trang này trên GitHub<span class="sr-only"> (mở trong tab mới)</span></a></p>
       </article>
     </main>
 
-    <aside class="docs-toc" aria-label="On this page">
-      <p class="docs-toc-heading">On this page</p>
+    <aside class="docs-toc" aria-label="Trong trang này">
+      <p class="docs-toc-heading">Trong trang này</p>
       <ul>
-        <li><a href="#recording">Recording</a></li>
-        <li><a href="#drawing">Drawing while recording</a></li>
-        <li><a href="#browser">Browser and view</a></li>
-        <li><a href="#files">Files</a></li>
+        <li><a href="#recording">Ghi</a></li>
+        <li><a href="#drawing">Vẽ trong khi ghi</a></li>
+        <li><a href="#browser">Trình duyệt và hiển thị</a></li>
+        <li><a href="#files">Tệp</a></li>
         <li><a href="#terminal">Terminal</a></li>
-        <li><a href="#window">Window and settings</a></li>
+        <li><a href="#window">Cửa sổ và cài đặt</a></li>
       </ul>
     </aside>
   </div>
@@ -256,29 +267,29 @@
       <div class="footer-grid">
         <div class="footer-brand">
           <a class="brand" href="../../index.html"><img class="wordmark" src="../../assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22"></a>
-          <p class="footer-tag">The ADE for feedback by voice and screen.</p>
-          <p class="provider">Built by <a href="https://www.japan-marketing.co.jp/" target="_blank" rel="noopener noreferrer">Japan Marketing LLC<span class="sr-only"> (opens in a new tab)</span></a></p>
+          <p class="footer-tag">ADE cho góp ý bằng giọng nói và màn hình.</p>
+          <p class="provider">Phát triển bởi <a href="https://www.japan-marketing.co.jp/" target="_blank" rel="noopener noreferrer">Japan Marketing LLC<span class="sr-only"> (mở trong tab mới)</span></a></p>
         </div>
         <div>
-          <h2>Product</h2>
+          <h2>Sản phẩm</h2>
           <ul>
-            <li><a href="../../download.html">Download</a></li>
-            <li><a href="../../download.html#versions">Changelog</a></li>
-            <li><a href="quick-start.html">Docs</a></li>
-            <li><a href="privacy.html">Privacy</a></li>
+            <li><a href="../../download.html">Tải xuống</a></li>
+            <li><a href="../../download.html#versions">Nhật ký thay đổi</a></li>
+            <li><a href="quick-start.html">Tài liệu</a></li>
+            <li><a href="privacy.html">Quyền riêng tư</a></li>
           </ul>
         </div>
         <div>
-          <h2>Community</h2>
+          <h2>Cộng đồng</h2>
           <ul>
-            <li><a href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (opens in a new tab)</span></a></li>
-            <li><a href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer">Discord<span class="sr-only"> (opens in a new tab)</span></a></li>
-            <li><a href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer">X<span class="sr-only"> (opens in a new tab)</span></a></li>
+            <li><a href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (mở trong tab mới)</span></a></li>
+            <li><a href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer">Discord<span class="sr-only"> (mở trong tab mới)</span></a></li>
+            <li><a href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer">X<span class="sr-only"> (mở trong tab mới)</span></a></li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> Japan Marketing LLC · <a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License<span class="sr-only"> (opens in a new tab)</span></a></span>
+        <span>© <span data-year>2026</span> Japan Marketing LLC · <a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Giấy phép MIT<span class="sr-only"> (mở trong tab mới)</span></a></span>
       </div>
     </div>
   </footer>

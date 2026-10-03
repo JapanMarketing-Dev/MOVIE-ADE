@@ -1,0 +1,24 @@
+<!-- Ferret docs translation: es / accounts. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title cb165a192d -->
+Cuentas y uso
+
+<!-- @lead 6a6ab3126f -->
+Cambia entre varios inicios de sesión de Claude Code o Codex y sigue tus ventanas de límite de uso en el pie de la ventana. Por ahora, ambas funciones solo sirven con Claude Code y Codex; los demás agentes siguen usando su propio inicio de sesión como siempre.
+
+<!-- @accounts f0d5cb0211 -->
+## Varias cuentas
+<p>Las cuentas son opcionales. Añádelas solo si cambias entre varias.</p>
+<ol class="docs-steps">
+  <li>Abre <span class="docs-ui">Ajustes → Cuentas</span>, o <span class="docs-ui">Gestionar cuentas…</span> desde el menú de uso del pie de la ventana.</li>
+  <li><span class="docs-ui">Añadir cuenta</span> inicia el inicio de sesión del agente en una pestaña de la terminal integrada.</li>
+  <li>Elige la cuenta que quieres usar. Las pestañas en ejecución conservan su cuenta. Las pestañas nuevas usan la seleccionada.</li>
+</ol>
+<p>Cómo funciona: cada cuenta añadida tiene su propio directorio de configuración, <code>&lt;userData&gt;/accounts/&lt;agent&gt;/&lt;id&gt;/</code>. Ferret inicia el agente con <code>CLAUDE_CONFIG_DIR</code> (Claude Code) o <code>CODEX_HOME</code> (Codex) apuntando ahí. <span class="docs-ui">Predeterminada del sistema</span> usa tus <code>~/.claude</code> / <code>~/.codex</code> habituales sin cambios.</p>
+<p>Quitar una cuenta elimina su directorio de configuración. No cierra la sesión en el servidor.</p>
+
+<!-- @usage bb03a3a17a -->
+## Uso en el pie de la ventana
+<p>El pie de la ventana muestra cuánto se ha usado de cada ventana de límite de uso: la ventana de 5 horas y la semanal, además de la semanal por modelo en el caso de Claude. Los colores pasan a amarillo al 60% y a rojo al 80%. Los valores se actualizan cada 15 minutos o con <span class="docs-ui">Actualizar uso</span>.</p>
+<p>Lo que se muestra depende del espacio disponible en el pie. Si hay sitio, muestra barras, nombres de ventana y porcentajes. A medida que el pie se estrecha, quita primero las partes menos útiles, hasta quedar en un porcentaje por agente. Haz clic en el uso para verlo todo en una ventana emergente.</p>
+<p>El uso se obtiene directamente de Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) y ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) con las credenciales de la propia cuenta con la sesión iniciada.</p>
+<figure class="docs-shot" data-shot="usage"><div class="docs-shot-slot" role="img" aria-label="Uso en el pie de la ventana (captura disponible próximamente)"><span>Captura disponible próximamente</span></div><figcaption>Uso en el pie de la ventana</figcaption></figure>

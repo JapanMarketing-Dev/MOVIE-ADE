@@ -1,0 +1,35 @@
+<!-- Ferret docs translation: ru / editor. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 05d78374e2 -->
+Редактор и предпросмотр
+
+<!-- @lead 97cbc36c8d -->
+Открывайте и редактируйте файлы проекта, просматривайте Markdown и Mermaid. Предпросмотр, открытый во встроенном браузере, можно записывать и проверять, как любую веб-страницу.
+
+<!-- @files f1e2c27cca -->
+## Открытие и редактирование файлов
+<ul>
+  <li><span class="docs-ui">Файлы</span> (дерево файлов): {{keys:Mod+Shift+E}}, с кнопками <span class="docs-ui">Фильтр по имени файла</span>, <span class="docs-ui">Обновить</span> и <span class="docs-ui">Свернуть все</span>.</li>
+  <li><span class="docs-ui">Перейти к файлу…</span>: {{keys:Mod+P}}.</li>
+  <li>Сохранение — {{keys:Mod+S}}. При закрытии изменённого файла появится вопрос <q>Сохранить изменения в &lt;name&gt;?</q> с кнопками <span class="docs-ui">Сохранить</span>, <span class="docs-ui">Не сохранять</span> и <span class="docs-ui">Отменить</span>.</li>
+  <li>Если файл изменился на диске, пока у вас есть несохранённые правки, выберите <span class="docs-ui">Загрузить с диска</span> или <span class="docs-ui">Оставить мои изменения</span>.</li>
+</ul>
+<p>Редактор — Monaco. Нетекстовые файлы открываются в просмотрщике: изображения (с масштабированием; SVG можно также показать как код), видео и аудио с полосой перемотки, PDF, а для любого другого двоичного файла — его размер и шестнадцатеричное представление первых байтов. Просмотрщики работают только для чтения; файлы вне папки проекта или доступные через символическую ссылку, ведущую за её пределы, не показываются.</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Скоро</p><p>Создание, переименование и удаление файлов в дереве файлов.</p></div>
+
+<!-- @preview b8c0baaad4 -->
+## Предпросмотр Markdown и Mermaid
+<p>Предпросмотр работает для <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> и <code>.mermaid</code>. Mermaid входит в состав приложения, поэтому диаграммы отображаются без подключения к сети.</p>
+<ul>
+  <li><span class="docs-ui">Открыть предпросмотр сбоку</span>: рядом с редактором</li>
+  <li><span class="docs-ui">Предпросмотр</span>: во встроенном браузере (<code>ade-preview://</code>), чтобы его можно было записать и проверить</li>
+</ul>
+
+<!-- @review-docs 3956ed6f10 -->
+## Ревью документов с помощью записи
+<ol class="docs-steps">
+  <li>Откройте файл Markdown и нажмите <span class="docs-ui">Предпросмотр</span>.</li>
+  <li>Записывайте как обычно. Проговорите спецификацию или дизайн-документ и обведите то, что неверно.</li>
+  <li>Остановите запись. Вместо URL замечания ссылаются на путь к файлу относительно проекта.</li>
+  <li>Нажмите <span class="docs-ui">Отправить агенту</span>, чтобы документ исправили.</li>
+</ol>
+<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="Предпросмотр Markdown во встроенном браузере (скриншот скоро появится)"><span>Скриншот скоро появится</span></div><figcaption>Предпросмотр Markdown во встроенном браузере</figcaption></figure>

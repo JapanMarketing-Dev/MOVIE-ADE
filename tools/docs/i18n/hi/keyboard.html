@@ -1,0 +1,80 @@
+<!-- Ferret docs translation: hi / keyboard. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title e9bef0b0f3 -->
+कीबोर्ड शॉर्टकट
+
+<!-- @lead 659f5284aa -->
+शॉर्टकट उसी OS के लिए दिखाए जाते हैं जिस पर आप यह पढ़ रहे हैं; दूसरे OS के शॉर्टकट देखने के लिए नीचे का स्विच इस्तेमाल करें। ज़्यादातर शॉर्टकट में जहाँ Windows और Linux पर Ctrl होता है, वहाँ macOS पर Command होता है, और जहाँ Alt होता है वहाँ Option। कुछ शॉर्टकट इससे ज़्यादा अलग हैं, और तालिकाओं में दोनों दिए गए हैं। स्रोत: <code>src/main/menu.ts</code>, <code>src/shared/browserNav.ts</code>, <code>src/shared/annotation.ts</code>, और टर्मिनल की key handling।
+
+<!-- @recording 0658b25c43 -->
+## रिकॉर्डिंग
+<table class="docs-keys">
+  <thead><tr><th>काम</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>रिकॉर्डिंग शुरू / बंद करें</td><td class="os-mac">{{keys-mac:Mod+Shift+R}}</td><td class="os-win">{{keys-win:Mod+Shift+R}}</td></tr>
+    <tr><td>मोड बदलें (Editor / Feedback)</td><td class="os-mac">{{keys-mac:Mod+Shift+M}}</td><td class="os-win">{{keys-win:Mod+Shift+M}}</td></tr>
+    <tr><td>दबाए रखने तक पेन</td><td class="os-mac">{{keys-mac:Alt}}</td><td class="os-win">{{keys-win:Alt}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @drawing 5c4ca7f875 -->
+## रिकॉर्डिंग के दौरान ड्रॉ करना
+<table class="docs-keys">
+  <thead><tr><th>काम</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>पेन</td><td class="os-mac">{{keys-mac:P}}</td><td class="os-win">{{keys-win:P}}</td></tr>
+    <tr><td>बॉक्स</td><td class="os-mac">{{keys-mac:B / R}}</td><td class="os-win">{{keys-win:B / R}}</td></tr>
+    <tr><td>पेज इस्तेमाल करें (ड्रॉ करना बंद करें)</td><td class="os-mac">{{keys-mac:V / Esc}}</td><td class="os-win">{{keys-win:V / Esc}}</td></tr>
+    <tr><td>अगला रंग</td><td class="os-mac">{{keys-mac:C}}</td><td class="os-win">{{keys-win:C}}</td></tr>
+    <tr><td>आख़िरी निशान पूर्ववत करें</td><td class="os-mac">{{keys-mac:Mod+Z}}</td><td class="os-win">{{keys-win:Mod+Z}}</td></tr>
+    <tr><td>फिर से करें</td><td class="os-mac">{{keys-mac:Mod+Shift+Z|Ctrl+Shift+Z / Ctrl+Y}}</td><td class="os-win">{{keys-win:Mod+Shift+Z|Ctrl+Shift+Z / Ctrl+Y}}</td></tr>
+  </tbody>
+</table><p>ये keys तब काम करती हैं जब आप बिल्ट-इन ब्राउज़र रिकॉर्ड कर रहे हों और पेज पर focus हो। पेज के किसी field में टाइप करते समय इन्हें अनदेखा किया जाता है, और अक्षर वाली keys सिर्फ़ modifier keys के बिना काम करती हैं, ताकि पेज के अपने शॉर्टकट काम करते रहें।</p>
+
+<!-- @browser 0417bf5b2e -->
+## ब्राउज़र और व्यू
+<table class="docs-keys">
+  <thead><tr><th>काम</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>URL बार पर फ़ोकस करें</td><td class="os-mac">{{keys-mac:Mod+L}}</td><td class="os-win">{{keys-win:Mod+L}}</td></tr>
+    <tr><td>पेज रीलोड करें</td><td class="os-mac">{{keys-mac:Mod+R}}</td><td class="os-win">{{keys-win:Mod+R}}</td></tr>
+    <tr><td>पीछे</td><td class="os-mac">{{keys-mac:Mod+[|Alt+Left}}</td><td class="os-win">{{keys-win:Mod+[|Alt+Left}}</td></tr>
+    <tr><td>आगे</td><td class="os-mac">{{keys-mac:Mod+]|Alt+Right}}</td><td class="os-win">{{keys-win:Mod+]|Alt+Right}}</td></tr>
+    <tr><td>डेस्कटॉप / मोबाइल चौड़ाई टॉगल करें</td><td class="os-mac">{{keys-mac:Mod+Shift+V}}</td><td class="os-win">{{keys-win:Mod+Shift+V}}</td></tr>
+    <tr><td>साइडबार टॉगल करें</td><td class="os-mac">{{keys-mac:Mod+B}}</td><td class="os-win">{{keys-win:Mod+B}}</td></tr>
+    <tr><td>फ़ाइल ट्री टॉगल करें</td><td class="os-mac">{{keys-mac:Mod+Shift+E}}</td><td class="os-win">{{keys-win:Mod+Shift+E}}</td></tr>
+    <tr><td>Review targets टॉगल करें</td><td class="os-mac">{{keys-mac:Mod+Shift+K}}</td><td class="os-win">{{keys-win:Mod+Shift+K}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @files 5e0093248b -->
+## फ़ाइलें
+<table class="docs-keys">
+  <thead><tr><th>काम</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>प्रोजेक्ट फ़ोल्डर खोलें…</td><td class="os-mac">{{keys-mac:Mod+O}}</td><td class="os-win">{{keys-win:Mod+O}}</td></tr>
+    <tr><td>फ़ाइल पर जाएँ…</td><td class="os-mac">{{keys-mac:Mod+P}}</td><td class="os-win">{{keys-win:Mod+P}}</td></tr>
+    <tr><td>सेव करें</td><td class="os-mac">{{keys-mac:Mod+S}}</td><td class="os-win">{{keys-win:Mod+S}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @terminal a714e034c2 -->
+## टर्मिनल
+<table class="docs-keys">
+  <thead><tr><th>काम</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>नया Terminal</td><td class="os-mac">{{keys-mac:Mod+T}}</td><td class="os-win">{{keys-win:Mod+T}}</td></tr>
+    <tr><td>Pane / टैब बंद करें</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
+    <tr><td>दाईं ओर विभाजित करें</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
+    <tr><td>नीचे विभाजित करें</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+  </tbody>
+</table><p>विभाजन वाले शॉर्टकट तब काम करते हैं जब किसी टर्मिनल पर focus हो।</p>
+
+<!-- @window 84ff87d3b5 -->
+## विंडो और सेटिंग्स
+<table class="docs-keys">
+  <thead><tr><th>काम</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Settings…</td><td class="os-mac">{{keys-mac:Mod+,}}</td><td class="os-win">{{keys-win:Mod+,}}</td></tr>
+    <tr><td>विंडो बंद करें</td><td class="os-mac">{{keys-mac:Mod+Shift+W|}}</td><td class="os-win">{{keys-win:Mod+Shift+W|}}</td></tr>
+  </tbody>
+</table><p>Windows और Linux पर विंडो बंद करने का कोई शॉर्टकट नहीं है: <span class="docs-ui">फ़ाइल → बाहर निकलें</span> ऐप बंद कर देता है।</p>

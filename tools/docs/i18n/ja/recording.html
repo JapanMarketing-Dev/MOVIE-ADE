@@ -1,0 +1,54 @@
+<!-- Ferret docs translation: ja / recording. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 80e8dd1a5a -->
+録画
+
+<!-- @lead 14988eae28 -->
+内蔵ブラウザ、画面全体、またはほかのウインドウを録画します。ページを操作しながら、話し、囲み、入力します。
+
+<!-- @target 133550362a -->
+## 録画の対象を選ぶ
+<p>フィードバックモードで <span class="docs-ui">録画の対象を選ぶ</span> を押します。<span class="docs-ui">録画の対象</span> ダイアログでは次から選べます。</p>
+<table>
+  <thead><tr><th>対象</th><th>記録するもの</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">内蔵ブラウザ</span>（最初の設定）</td><td>動画、声、ペンに加えて、URL、要素のセレクタ、クリック、スクロール。OS の許可は要りません。</td></tr>
+    <tr><td><span class="docs-ui">画面全体</span></td><td>動画、声、ペン。URL、要素、操作の記録はありません（そのことを <code>feedback.md</code> に書きます）。</td></tr>
+    <tr><td><span class="docs-ui">ウインドウ</span></td><td>上と同じです。Ferret 自身のウインドウは一覧に出ません。</td></tr>
+  </tbody>
+</table>
+<p>選んだものは覚えておきます。macOS では、画面とウインドウの録画に画面収録の許可が要ります（<a href="troubleshooting.html#screen-permission">許可のしかた</a>）。</p>
+
+<!-- @record 0d1af48c7a -->
+## 開始・一時停止・停止
+{{clip:record|録画: ページについて話しながら、ペンでその場所を囲む。}}
+<ol class="docs-steps">
+  <li>レビューするページを内蔵ブラウザで開きます。</li>
+  <li>タイトルバーの <span class="docs-ui">録画</span> か、{{keys:Mod+Shift+R}} を押します。</li>
+  <li><span class="docs-ui">一時停止</span> で描画とタイマーが止まります。<span class="docs-ui">再開</span> で続けます。</li>
+  <li><span class="docs-ui">停止</span> か、もう一度 {{keys:Mod+Shift+R}} を押します。</li>
+</ol>
+<p>サイドバーでは、プロジェクトごとに <span class="docs-ui">新しいレビュー</span> があります（その行の <span class="docs-ui">+</span>、<span class="docs-ui">「&lt;name&gt;」で新しいレビュー</span> でも同じです）。別のプロジェクトのものを押すと、先にそのプロジェクトに切り替えてから録画を始めます。ほかの録画が動いている間は始まりません。</p>
+<p>1回の録画は90分までです。上限が近づくと警告が出て、上限に達すると録画は自動で止まり、保存されます。</p>
+<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="フィードバックモードのツールバー（スクリーンショットは準備中）"><span>スクリーンショットは準備中です</span></div><figcaption>フィードバックモードのツールバー</figcaption></figure>
+
+<!-- @pen 0232dc7983 -->
+## ペン
+<ul>
+  <li><strong><span class="docs-ui">ペン</span></strong>: 選ぶか、{{keys:Alt}} を押している間だけ描けます（入力欄で文字を打っている間は無視します）。</li>
+  <li><strong><span class="docs-ui">消去</span></strong>: いまの書き込みを消します。</li>
+</ul>
+<p>話しながらその場所を囲むと、言葉と書き込みが同じ指摘に入ります。ペンは録画中だけ使えます。文字を書く道具はありません。代わりに声で伝えてください。ペン、四角の枠、色のキーは<a href="keyboard.html#drawing">キーボードショートカット</a>に載っています。</p>
+
+<!-- @annotations-clear ea2e57b47b -->
+## 書き込みが消えるとき
+<p>書き込みは、描いたときの画面に属します。次のときには、いまの指摘に記録してから消します。</p>
+<ul>
+  <li>ページが移動したとき: ページ全体の読み込み、または SPA のルート変更で新しいパスやクエリになったとき。ハッシュだけの変更では消えません。</li>
+  <li>ページをスクロールしたとき</li>
+  <li>話したひとまとまりが終わったとき</li>
+</ul>
+
+<!-- @mic 3540329978 -->
+## マイク
+<p>マイクは最初の設定で ON です。フッター（<span class="docs-ui">マイクをオフにする</span> / <span class="docs-ui">マイクをオンにする</span>）か、設定の <span class="docs-ui">自分の声を録る</span> で切り替えます。使う機器は <span class="docs-ui">マイク</span> で選びます。</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">準備中</p><p><span class="docs-ui">相手の声も録る</span>（会議のほかの参加者の声をシステム音声から録る）はベータ版です。会議アプリでの動作はまだ確かめていません。</p></div>

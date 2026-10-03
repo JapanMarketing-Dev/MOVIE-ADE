@@ -1,0 +1,24 @@
+<!-- Ferret docs translation: zh-TW / accounts. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title cb165a192d -->
+帳號與用量
+
+<!-- @lead 6a6ab3126f -->
+在多個 Claude Code 或 Codex 登入之間切換，並在頁尾查看速率限制時段的用量。這兩項功能目前只支援 Claude Code 與 Codex；其他 Agent 照常使用各自的登入。
+
+<!-- @accounts f0d5cb0211 -->
+## 多個帳號
+<p>帳號是選用的。只有在需要於多個帳號之間切換時才需要新增。</p>
+<ol class="docs-steps">
+  <li>開啟 <span class="docs-ui">設定 → 帳號</span>，或從頁尾的用量選單開啟 <span class="docs-ui">管理帳號…</span>。</li>
+  <li><span class="docs-ui">新增帳號</span> 會在內建的終端機分頁中啟動該 Agent 的登入流程。</li>
+  <li>選擇要使用的帳號。執行中的分頁會維持原本的帳號，新分頁則使用所選的帳號。</li>
+</ol>
+<p>運作方式：每個新增的帳號都有自己的設定目錄 <code>&lt;userData&gt;/accounts/&lt;agent&gt;/&lt;id&gt;/</code>。Ferret 啟動 Agent 時，會將 <code>CLAUDE_CONFIG_DIR</code>（Claude Code）或 <code>CODEX_HOME</code>（Codex）指向該目錄。<span class="docs-ui">系統預設</span> 則直接使用你平常的 <code>~/.claude</code> / <code>~/.codex</code>。</p>
+<p>移除帳號會刪除它的設定目錄，但不會在伺服器端將你登出。</p>
+
+<!-- @usage bb03a3a17a -->
+## 頁尾的用量
+<p>頁尾會顯示各個速率限制時段已使用的比例：5 小時時段與每週時段，Claude 另外還有各模型的每週時段。用量達 60% 時會變成黃色，達 80% 時變成紅色。數值每 15 分鐘更新一次，也可以按 <span class="docs-ui">重新整理用量</span> 立即更新。</p>
+<p>顯示多少內容取決於頁尾的空間。空間足夠時，會顯示長條、時段名稱與百分比。頁尾越窄，就會先省略較不重要的部分，最少只顯示每個 Agent 一個百分比。按一下用量，即可在彈出視窗中查看所有內容。</p>
+<p>用量是以已登入帳號本身的憑證，直接向 Anthropic（<code>api.anthropic.com/api/oauth/usage</code>）與 ChatGPT（<code>chatgpt.com/backend-api/wham/usage</code>）取得。</p>
+<figure class="docs-shot" data-shot="usage"><div class="docs-shot-slot" role="img" aria-label="頁尾的用量（螢幕截圖即將提供）"><span>螢幕截圖即將提供</span></div><figcaption>頁尾的用量</figcaption></figure>

@@ -1,0 +1,80 @@
+<!-- Ferret docs translation: zh-TW / keyboard. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title e9bef0b0f3 -->
+鍵盤快速鍵
+
+<!-- @lead 659f5284aa -->
+快速鍵會依你目前閱讀所用的作業系統顯示；可用下方的切換開關查看另一種。大多數快速鍵在 Windows 與 Linux 上使用 Ctrl 的地方，macOS 改用 Command；使用 Alt 的地方，macOS 改用 Option。少數快速鍵差異更大，表格中會同時列出兩者。來源：<code>src/main/menu.ts</code>、<code>src/shared/browserNav.ts</code>、<code>src/shared/annotation.ts</code>，以及終端機的按鍵處理。
+
+<!-- @recording 0658b25c43 -->
+## 錄製
+<table class="docs-keys">
+  <thead><tr><th>動作</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>開始 / 停止錄製</td><td class="os-mac">{{keys-mac:Mod+Shift+R}}</td><td class="os-win">{{keys-win:Mod+Shift+R}}</td></tr>
+    <tr><td>切換模式（編輯器 / 意見）</td><td class="os-mac">{{keys-mac:Mod+Shift+M}}</td><td class="os-win">{{keys-win:Mod+Shift+M}}</td></tr>
+    <tr><td>按住時使用畫筆</td><td class="os-mac">{{keys-mac:Alt}}</td><td class="os-win">{{keys-win:Alt}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @drawing 5c4ca7f875 -->
+## 錄製時繪圖
+<table class="docs-keys">
+  <thead><tr><th>動作</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>畫筆</td><td class="os-mac">{{keys-mac:P}}</td><td class="os-win">{{keys-win:P}}</td></tr>
+    <tr><td>方框</td><td class="os-mac">{{keys-mac:B / R}}</td><td class="os-win">{{keys-win:B / R}}</td></tr>
+    <tr><td>操作頁面（停止繪圖）</td><td class="os-mac">{{keys-mac:V / Esc}}</td><td class="os-win">{{keys-win:V / Esc}}</td></tr>
+    <tr><td>下一個顏色</td><td class="os-mac">{{keys-mac:C}}</td><td class="os-win">{{keys-win:C}}</td></tr>
+    <tr><td>復原上一個標記</td><td class="os-mac">{{keys-mac:Mod+Z}}</td><td class="os-win">{{keys-win:Mod+Z}}</td></tr>
+    <tr><td>重做</td><td class="os-mac">{{keys-mac:Mod+Shift+Z|Ctrl+Shift+Z / Ctrl+Y}}</td><td class="os-win">{{keys-win:Mod+Shift+Z|Ctrl+Shift+Z / Ctrl+Y}}</td></tr>
+  </tbody>
+</table><p>這些按鍵在錄製內建瀏覽器且頁面取得焦點時有效。在頁面上的欄位中輸入文字時會被忽略，而字母鍵只有在未按修飾鍵時才有效，因此頁面本身的快速鍵仍可照常使用。</p>
+
+<!-- @browser 0417bf5b2e -->
+## 瀏覽器與檢視
+<table class="docs-keys">
+  <thead><tr><th>動作</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>聚焦網址列</td><td class="os-mac">{{keys-mac:Mod+L}}</td><td class="os-win">{{keys-win:Mod+L}}</td></tr>
+    <tr><td>重新載入頁面</td><td class="os-mac">{{keys-mac:Mod+R}}</td><td class="os-win">{{keys-win:Mod+R}}</td></tr>
+    <tr><td>上一頁</td><td class="os-mac">{{keys-mac:Mod+[|Alt+Left}}</td><td class="os-win">{{keys-win:Mod+[|Alt+Left}}</td></tr>
+    <tr><td>下一頁</td><td class="os-mac">{{keys-mac:Mod+]|Alt+Right}}</td><td class="os-win">{{keys-win:Mod+]|Alt+Right}}</td></tr>
+    <tr><td>切換桌面 / 行動版寬度</td><td class="os-mac">{{keys-mac:Mod+Shift+V}}</td><td class="os-win">{{keys-win:Mod+Shift+V}}</td></tr>
+    <tr><td>切換側邊欄</td><td class="os-mac">{{keys-mac:Mod+B}}</td><td class="os-win">{{keys-win:Mod+B}}</td></tr>
+    <tr><td>切換檔案樹</td><td class="os-mac">{{keys-mac:Mod+Shift+E}}</td><td class="os-win">{{keys-win:Mod+Shift+E}}</td></tr>
+    <tr><td>切換審查目標</td><td class="os-mac">{{keys-mac:Mod+Shift+K}}</td><td class="os-win">{{keys-win:Mod+Shift+K}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @files 5e0093248b -->
+## 檔案
+<table class="docs-keys">
+  <thead><tr><th>動作</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>開啟專案資料夾…</td><td class="os-mac">{{keys-mac:Mod+O}}</td><td class="os-win">{{keys-win:Mod+O}}</td></tr>
+    <tr><td>前往檔案…</td><td class="os-mac">{{keys-mac:Mod+P}}</td><td class="os-win">{{keys-win:Mod+P}}</td></tr>
+    <tr><td>儲存</td><td class="os-mac">{{keys-mac:Mod+S}}</td><td class="os-win">{{keys-win:Mod+S}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @terminal a714e034c2 -->
+## 終端機
+<table class="docs-keys">
+  <thead><tr><th>動作</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>新增終端機</td><td class="os-mac">{{keys-mac:Mod+T}}</td><td class="os-win">{{keys-win:Mod+T}}</td></tr>
+    <tr><td>關閉窗格 / 分頁</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
+    <tr><td>向右分割</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
+    <tr><td>向下分割</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+  </tbody>
+</table><p>分割的快速鍵在終端機取得焦點時有效。</p>
+
+<!-- @window 84ff87d3b5 -->
+## 視窗與設定
+<table class="docs-keys">
+  <thead><tr><th>動作</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>設定…</td><td class="os-mac">{{keys-mac:Mod+,}}</td><td class="os-win">{{keys-win:Mod+,}}</td></tr>
+    <tr><td>關閉視窗</td><td class="os-mac">{{keys-mac:Mod+Shift+W|}}</td><td class="os-win">{{keys-win:Mod+Shift+W|}}</td></tr>
+  </tbody>
+</table><p>Windows 與 Linux 沒有關閉視窗的快速鍵：<span class="docs-ui">檔案 → 結束</span> 會結束 App。</p>

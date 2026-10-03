@@ -1,0 +1,24 @@
+<!-- Ferret docs translation: ja / accounts. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title cb165a192d -->
+アカウントと使用量
+
+<!-- @lead 6a6ab3126f -->
+Claude Code や Codex の複数のログインを切り替え、レート制限の枠をフッターで見られます。どちらの機能も今のところ Claude Code と Codex だけで使えます。ほかのエージェントはいつもどおり自分のログインを使います。
+
+<!-- @accounts f0d5cb0211 -->
+## 複数のアカウント
+<p>アカウントの登録は任意です。複数を切り替えるときだけ追加してください。</p>
+<ol class="docs-steps">
+  <li><span class="docs-ui">設定 → アカウント</span> を開くか、フッターの使用量のメニューから <span class="docs-ui">Manage Accounts…</span> を開きます。</li>
+  <li><span class="docs-ui">アカウントを追加</span> を押すと、内蔵のターミナルのタブでエージェントのログインが始まります。</li>
+  <li>使うアカウントを選びます。動いているタブはそのアカウントのままで、新しいタブから選んだアカウントを使います。</li>
+</ol>
+<p>しくみ: 追加したアカウントごとに専用の設定フォルダ <code>&lt;userData&gt;/accounts/&lt;agent&gt;/&lt;id&gt;/</code> ができます。Ferret は <code>CLAUDE_CONFIG_DIR</code>（Claude Code）か <code>CODEX_HOME</code>（Codex）をそこに向けてエージェントを起動します。<span class="docs-ui">システムの既定</span> は、いつもの <code>~/.claude</code> / <code>~/.codex</code> をそのまま使います。</p>
+<p>アカウントを削除すると、その設定フォルダが消えます。サーバー側でログアウトされるわけではありません。</p>
+
+<!-- @usage bb03a3a17a -->
+## フッターの使用量
+<p>フッターには、レート制限の枠ごとにどれだけ使ったかが出ます。5時間の枠と週の枠、Claude ではモデルごとの週の枠もあります。60% で黄色、80% で赤になります。値は15分ごとか、<span class="docs-ui">使用量を再読み込み</span> を押したときに更新されます。</p>
+<p>どこまで表示するかは、フッターの空きで変わります。余裕があればバー、枠の名前、割合を出します。フッターが狭くなるにつれて重要度の低いものから省き、最後はエージェントごとに割合1つだけになります。使用量を押すと、ポップオーバーですべてを見られます。</p>
+<p>使用量は、ログインしているアカウント自身の認証情報で、Anthropic（<code>api.anthropic.com/api/oauth/usage</code>）と ChatGPT（<code>chatgpt.com/backend-api/wham/usage</code>）から直接取得します。</p>
+<figure class="docs-shot" data-shot="usage"><div class="docs-shot-slot" role="img" aria-label="フッターの使用量（スクリーンショットは準備中）"><span>スクリーンショットは準備中です</span></div><figcaption>フッターの使用量</figcaption></figure>
