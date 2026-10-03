@@ -4,9 +4,8 @@
  * 中間ファイル（work/）も一緒に片付ける。
  */
 import { rm, stat } from 'node:fs/promises'
-import { isSessionId, reviewsRoot, sessionPaths } from './paths'
+import { listSessionIds, sessionPaths, takePaths } from './paths'
 import { loadSession } from './store'
-import { readdir } from 'node:fs/promises'
 
 export const DEFAULT_KEEP_DAYS = 7
 
@@ -42,27 +41,30 @@ export async function pruneRecordings(
   const now = (options.now ?? new Date()).getTime()
   const cutoff = now - keepDays * 24 * 60 * 60 * 1000
 
-  // まだ録画していないプロジェクトにはフォルダが無い（想定内）
-  const names = await readdir(reviewsRoot(projectDir)).catch(() => [] as string[])
+  // .ferret/ と改名前の .ade-movie/ の両方（まだ録画していないプロジェクトにはフォルダが無い。想定内）
+  const names = await listSessionIds(projectDir)
   for (const name of names) {
-    if (!isSessionId(name)) continue
-    const paths = sessionPaths(projectDir, name)
-    if (!await loadSession(paths)) continue // 未処理の素材は、復元するまで削除しない
+    const review = sessionPaths(projectDir, name)
+    const record = await loadSession(review)
+    if (!record) continue // 未処理の素材は、復元するまで削除しない
 
-    // 録画の無い・消し済みのレビュー（想定内）
-    const video = await stat(paths.recording).catch(() => null)
-    if (video?.isFile() && video.mtimeMs < cutoff) {
-      result.removedRecordings.push(paths.recording)
-      result.freedBytes += video.size
-      if (!options.dryRun) await rm(paths.recording, { force: true })
-    }
+    // 追記した録画（takes/<n>/）も同じ期間で片付ける。足し終えていない録画は残す
+    for (const paths of [review, ...(record.takes ?? []).filter((take) => Number.isInteger(take?.n) && take.n >= 2).map((take) => takePaths(review, take.n))]) {
+      // 録画の無い・消し済みのレビュー（想定内）
+      const video = await stat(paths.recording).catch(() => null)
+      if (video?.isFile() && video.mtimeMs < cutoff) {
+        result.removedRecordings.push(paths.recording)
+        result.freedBytes += video.size
+        if (!options.dryRun) await rm(paths.recording, { force: true })
+      }
 
-    // 中間ファイルは分解が終われば不要。期間を過ぎたものは消す
-    // 中間ファイルの無いレビュー（想定内）
-    const work = await stat(paths.workDir).catch(() => null)
-    if (work?.isDirectory() && work.mtimeMs < cutoff) {
-      result.removedWork.push(paths.workDir)
-      if (!options.dryRun) await rm(paths.workDir, { recursive: true, force: true })
+      // 中間ファイルは分解が終われば不要。期間を過ぎたものは消す
+      // 中間ファイルの無いレビュー（想定内）
+      const work = await stat(paths.workDir).catch(() => null)
+      if (work?.isDirectory() && work.mtimeMs < cutoff) {
+        result.removedWork.push(paths.workDir)
+        if (!options.dryRun) await rm(paths.workDir, { recursive: true, force: true })
+      }
     }
   }
   return result

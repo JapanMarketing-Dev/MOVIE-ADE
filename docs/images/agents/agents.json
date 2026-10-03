@@ -1,0 +1,287 @@
+{
+  "source": "Generated from src/shared/agentLogos.ts. Logos ported from stablyai/orca (MIT, Copyright 2026 Lovecast Inc.) and each vendor; trademarks belong to their owners.",
+  "agents": [
+    {
+      "id": "claude",
+      "name": "Claude Code",
+      "homepageUrl": "https://code.claude.com/docs/en/setup",
+      "icon": "docs/images/agents/claude.svg"
+    },
+    {
+      "id": "codex",
+      "name": "Codex",
+      "homepageUrl": "https://github.com/openai/codex",
+      "icon": "docs/images/agents/codex.svg"
+    },
+    {
+      "id": "grok",
+      "name": "Grok",
+      "homepageUrl": "https://github.com/xai-org/grok-build",
+      "icon": "docs/images/agents/grok.png"
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "homepageUrl": "https://cursor.com/docs/cli/installation",
+      "icon": "docs/images/agents/cursor.png"
+    },
+    {
+      "id": "copilot",
+      "name": "GitHub Copilot",
+      "homepageUrl": "https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli",
+      "icon": "docs/images/agents/copilot.png"
+    },
+    {
+      "id": "muse",
+      "name": "Muse",
+      "homepageUrl": "https://dev.meta.ai/docs/muse-code",
+      "icon": "docs/images/agents/muse.png"
+    },
+    {
+      "id": "dsh",
+      "name": "DeepSeek Harness",
+      "homepageUrl": "https://deepseek-harness.github.io/deepseek-harness/",
+      "icon": "docs/images/agents/dsh.png"
+    },
+    {
+      "id": "zcode",
+      "name": "ZCode",
+      "homepageUrl": "https://zcode.z.ai/en/docs",
+      "icon": "docs/images/agents/zcode.png"
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "homepageUrl": "https://opencode.ai/docs/",
+      "icon": "docs/images/agents/opencode.png"
+    },
+    {
+      "id": "mimo-code",
+      "name": "MiMo Code",
+      "homepageUrl": "https://mimo.xiaomi.com/coder",
+      "icon": "docs/images/agents/mimo-code.png"
+    },
+    {
+      "id": "amp",
+      "name": "Amp",
+      "homepageUrl": "https://ampcode.com/docs/cli",
+      "icon": "docs/images/agents/amp.png"
+    },
+    {
+      "id": "openclaude",
+      "name": "OpenClaude",
+      "homepageUrl": "https://openclaude.gitlawb.com/",
+      "icon": "docs/images/agents/openclaude.png"
+    },
+    {
+      "id": "antigravity",
+      "name": "Antigravity",
+      "homepageUrl": "https://antigravity.google/docs/cli/install",
+      "icon": "docs/images/agents/antigravity.png"
+    },
+    {
+      "id": "pi",
+      "name": "Pi",
+      "homepageUrl": "https://pi.dev",
+      "icon": "docs/images/agents/pi.svg"
+    },
+    {
+      "id": "omp",
+      "name": "oh-my-pi",
+      "homepageUrl": "https://omp.sh/docs",
+      "icon": "docs/images/agents/omp.svg"
+    },
+    {
+      "id": "hermes",
+      "name": "Hermes Agent",
+      "homepageUrl": "https://hermes-agent.nousresearch.com/docs/",
+      "icon": "docs/images/agents/hermes.png"
+    },
+    {
+      "id": "devin",
+      "name": "Devin",
+      "homepageUrl": "https://docs.devin.ai/work-with-devin/devin-cli",
+      "icon": "docs/images/agents/devin.png"
+    },
+    {
+      "id": "goose",
+      "name": "Goose",
+      "homepageUrl": "https://goose-docs.ai/docs/getting-started/installation/",
+      "icon": "docs/images/agents/goose.png"
+    },
+    {
+      "id": "aug",
+      "name": "Auggie",
+      "homepageUrl": "https://docs.augmentcode.com/cli/overview",
+      "icon": "docs/images/agents/aug.png"
+    },
+    {
+      "id": "autohand",
+      "name": "Autohand Code",
+      "homepageUrl": "https://github.com/autohandai/code-cli",
+      "icon": "docs/images/agents/autohand.png"
+    },
+    {
+      "id": "crush",
+      "name": "Charm (Crush)",
+      "homepageUrl": "https://github.com/charmbracelet/crush",
+      "icon": "docs/images/agents/crush.png"
+    },
+    {
+      "id": "cline",
+      "name": "Cline",
+      "homepageUrl": "https://docs.cline.bot/cline-cli/overview",
+      "icon": "docs/images/agents/cline.png"
+    },
+    {
+      "id": "codebuddy",
+      "name": "CodeBuddy",
+      "homepageUrl": "https://www.codebuddy.ai/docs/cli/installation",
+      "icon": "docs/images/agents/codebuddy.png"
+    },
+    {
+      "id": "codebuff",
+      "name": "Codebuff",
+      "homepageUrl": "https://www.codebuff.com/docs/help/quick-start",
+      "icon": "docs/images/agents/codebuff.png"
+    },
+    {
+      "id": "freebuff",
+      "name": "Freebuff",
+      "homepageUrl": "https://freebuff.com/cli",
+      "icon": "docs/images/agents/freebuff.png"
+    },
+    {
+      "id": "command-code",
+      "name": "Command Code",
+      "homepageUrl": "https://commandcode.ai/docs/quickstart",
+      "icon": "docs/images/agents/command-code.png"
+    },
+    {
+      "id": "continue",
+      "name": "Continue",
+      "homepageUrl": "https://docs.continue.dev/cli/quickstart",
+      "icon": "docs/images/agents/continue.png"
+    },
+    {
+      "id": "droid",
+      "name": "Droid",
+      "homepageUrl": "https://docs.factory.com/cli/getting-started/quickstart",
+      "icon": "docs/images/agents/droid.svg"
+    },
+    {
+      "id": "kilo",
+      "name": "Kilocode",
+      "homepageUrl": "https://kilo.ai/docs/code-with-ai/platforms/cli",
+      "icon": "docs/images/agents/kilo.svg"
+    },
+    {
+      "id": "kimi",
+      "name": "Kimi",
+      "homepageUrl": "https://www.kimi.com/code/docs/en/kimi-code-cli/guides/getting-started",
+      "icon": "docs/images/agents/kimi.png"
+    },
+    {
+      "id": "kiro",
+      "name": "Kiro",
+      "homepageUrl": "https://kiro.dev/docs/cli/",
+      "icon": "docs/images/agents/kiro.png"
+    },
+    {
+      "id": "mistral-vibe",
+      "name": "Mistral Vibe",
+      "homepageUrl": "https://github.com/mistralai/mistral-vibe",
+      "icon": "docs/images/agents/mistral-vibe.png"
+    },
+    {
+      "id": "qwen-code",
+      "name": "Qwen Code",
+      "homepageUrl": "https://github.com/QwenLM/qwen-code",
+      "icon": "docs/images/agents/qwen-code.png"
+    },
+    {
+      "id": "rovo",
+      "name": "Rovo Dev",
+      "homepageUrl": "https://support.atlassian.com/rovo/docs/install-and-run-rovo-dev-cli-on-your-device/",
+      "icon": "docs/images/agents/rovo.png"
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini CLI",
+      "homepageUrl": "https://github.com/google-gemini/gemini-cli",
+      "icon": "docs/images/agents/gemini.png"
+    },
+    {
+      "id": "aider",
+      "name": "Aider",
+      "homepageUrl": "https://aider.chat/docs/install.html",
+      "icon": "docs/images/agents/aider.svg"
+    },
+    {
+      "id": "ante",
+      "name": "Ante",
+      "homepageUrl": "https://ante.run/start/quickstart/",
+      "icon": "docs/images/agents/ante.png"
+    },
+    {
+      "id": "blackbox",
+      "name": "BLACKBOX CLI",
+      "homepageUrl": "https://docs.blackbox.ai/features/blackbox-cli/getting-started",
+      "icon": null
+    },
+    {
+      "id": "forge",
+      "name": "ForgeCode",
+      "homepageUrl": "https://forgecode.dev/docs/",
+      "icon": null
+    },
+    {
+      "id": "junie",
+      "name": "Junie CLI",
+      "homepageUrl": "https://junie.jetbrains.com/docs/junie-cli.html",
+      "icon": null
+    },
+    {
+      "id": "letta",
+      "name": "Letta Code",
+      "homepageUrl": "https://github.com/letta-ai/letta-code",
+      "icon": null
+    },
+    {
+      "id": "openclaw",
+      "name": "OpenClaw",
+      "homepageUrl": "https://github.com/openclaw/openclaw",
+      "icon": "docs/images/agents/openclaw.png"
+    },
+    {
+      "id": "openhands",
+      "name": "OpenHands CLI",
+      "homepageUrl": "https://docs.openhands.dev/openhands/usage/cli/installation",
+      "icon": null
+    },
+    {
+      "id": "prime-agent",
+      "name": "Prime Agent",
+      "homepageUrl": "https://github.com/PrimeIntellect-ai/prime-agent",
+      "icon": "docs/images/agents/prime-agent.png"
+    },
+    {
+      "id": "qoder",
+      "name": "Qoder CLI",
+      "homepageUrl": "https://docs.qoder.com/cli/installation",
+      "icon": "docs/images/agents/qoder.png"
+    },
+    {
+      "id": "roo",
+      "name": "Roo Code CLI",
+      "homepageUrl": "https://github.com/RooCodeInc/Roo-Code/tree/main/apps/cli",
+      "icon": null
+    },
+    {
+      "id": "trae",
+      "name": "Trae CLI",
+      "homepageUrl": "https://docs.trae.cn/cli_get-started-with-trae-code-cli-2",
+      "icon": "docs/images/agents/trae.png"
+    }
+  ]
+}

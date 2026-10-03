@@ -6,6 +6,7 @@ import { Button, EmptyState, IconTile } from '../ui'
 import { acquireTerminal, getTerminal, releaseTerminal } from '../terminal/terminalClient'
 import { onAccountLoginRequest } from '../lib/accountLogin'
 import { onTerminalCommandRequest } from '../lib/terminalCommand'
+import { onAgentLaunchRequest } from '../lib/agentLaunchRequest'
 import {
   ACTIVE_PANE_OPACITY,
   DIVIDER_HIT_PADDING_PX,
@@ -17,6 +18,8 @@ import {
   neighborLeaf,
   ratioFromDrag,
   removeLeaf,
+  resolvePaneDropZone,
+  resolveRootEdge,
   setRatio,
   splitLeaf,
   type PaneNode,
@@ -29,7 +32,7 @@ import { useT } from '../lib/i18n'
 import { t as tNow, type TranslationKey } from '@shared/i18n'
 import { QuickLaunchButton, type QuickLaunchAgent, type QuickLaunchSearch } from './QuickLaunchButton'
 import { agentLabel } from '@shared/agentCatalog'
-import { moveItem } from '@shared/layout'
+import { applyTerminalDrop, type TerminalDragSource, type TerminalDropTarget } from '../terminal/paneDrop'
 import {
   TERMINAL_SNAPSHOT_KEY,
   buildTerminalSnapshot,
@@ -40,6 +43,7 @@ import {
   type TerminalSnapshot
 } from '../terminal/restorePlan'
 import { reportHandled } from '@shared/report'
+import { errorMessage } from '../lib/errors'
 
 /**
  * 内蔵ターミナル（WS-4）。タブで複数のシェルを開き、閉じられる。
@@ -53,6 +57,8 @@ import { reportHandled } from '@shared/report'
  *
  * 1つのタブの中は、Orca と同じく左右・上下に何度でも分割できる（⌘D で右、⌘⇧D で下）。
  * ペインごとに別のPTYで、「Agentへ送信」の宛先はフォーカス中のペインになる。
+ * タブ（分割中ならペインのつまみ）をドラッグして、ペインの辺に落とすと分割、中央かタブ列に落とすとタブになる
+ * （組み替えは terminal/paneDrop.ts。ペインのキーに PTY が結びついているので、動かしても作り直さない）。
  * Orca由来: ~/bench/orca/src/renderer/src/components/terminal-pane/terminal-shortcut-policy.ts,
  *           ~/bench/orca/src/shared/keybindings/definitions-core-4.ts,
  *           ~/bench/orca/src/renderer/src/lib/pane-manager/pane-divider.ts,
@@ -113,6 +119,23 @@ interface Tab {
 const FALLBACK_SIZE = { cols: 80, rows: 24 }
 /** ターミナルのタブをドラッグするときのデータの種類（中央のタブ 'application/x-ade-center-tab' とは別） */
 const TAB_DRAG_TYPE = 'application/x-ade-terminal-tab'
+/** 分割中のペインのつまみをドラッグするときのデータの種類（パネルの移動・ファイルのドロップとも別） */
+const PANE_DRAG_TYPE = 'application/x-ade-terminal-pane'
+/** ドラッグ中に落とす先の案内（.terminal-surfaces の中の位置） */
+interface DropHint {
+  target: TerminalDropTarget
+  box: { left: number; top: number; width: number; height: number }
+}
+function isTerminalDrag(e: React.DragEvent): boolean {
+  return e.dataTransfer.types.includes(TAB_DRAG_TYPE) || e.dataTransfer.types.includes(PANE_DRAG_TYPE)
+}
+function dropLabel(target: TerminalDropTarget): TranslationKey {
+  if (target.kind === 'tabbar') return 'terminal.drop.tabbar'
+  if (target.kind === 'root') {
+    return ({ left: 'terminal.drop.rootLeft', right: 'terminal.drop.rootRight', top: 'terminal.drop.rootTop', bottom: 'terminal.drop.rootBottom' } as const)[target.edge]
+  }
+  return `terminal.drop.${target.zone}` as const
+}
 /** Resource Manager（フッター）から、そのターミナルのタブへ移るよう頼むイベント。detail は { id: ptyId } */
 const FOCUS_TERMINAL_EVENT = 'ade:focus-terminal'
 /** 分割元のカレントを調べるのを待つ上限。macOS の lsof は初回だけ遅いことがある（Orca と同じ値） */
@@ -403,6 +426,8 @@ export function TerminalPane({
     () => onTerminalCommandRequest((req) => addTabRef.current(null, { command: req.command, title: req.title ?? null })),
     []
   )
+  // 「Agentへ送信」でどこにも Agent が居なかったとき、既定の Agent のタブを開く（ReviewFindings）
+  useEffect(() => onAgentLaunchRequest((agent) => addTabRef.current(agent)), [])
 
   // メニューの「右に分割／下に分割」をクリックしたとき（キーは下の onKeyDownCapture が拾う）
   const splitPaneRef = useRef<(direction: PaneSplitDirection) => void>(() => undefined)
@@ -456,7 +481,7 @@ export function TerminalPane({
     () =>
       agentOptions
         .filter((o) => o.enabled && (o.installed || (o.custom && o.command.trim() !== '')))
-        .map((o) => ({ id: o.id, label: o.label })),
+        .map((o) => ({ id: o.id, label: o.label, ...(o.icon ? { icon: o.icon } : {}) })),
     [agentOptions]
   )
   const agentOptionsRef = useRef(agentOptions)
@@ -619,7 +644,8 @@ export function TerminalPane({
           onReady?.()
         })
         .catch((err: unknown) => {
-          const message = err instanceof Error ? err.message : String(err)
+          // IPC の前置き（Error invoking remote method '…': Error:）を外して本文だけを出す
+          const message = errorMessage(err)
           handle.write(`\r\n\u001b[31m${tNow('terminal.startFailed', { message })}\u001b[0m\r\n`)
           if (message.includes('node-pty')) {
             handle.write(
@@ -715,38 +741,154 @@ export function TerminalPane({
     void splitPane(direction)
   }
 
-  // Orca のタブ列と同じく、タブをドラッグして別のタブの前（左半分）か後ろ（右半分）へ落とすと並びが変わる。
-  // 中央のタブ（CenterTabs）とは別のデータの種類にして、混ざらないようにする
+  // タブ・ペインのドラッグ＆ドロップ（Orca のタブ列・ペインの並べ替え・タブを辺に落として分割）。
+  // ドラッグ中のものは dragover ではデータを読めないので ref に持つ。データの種類は中央のタブ・パネルの移動・
+  // ファイルのドロップと別にして、混ざらないようにする
+  const dragRef = useRef<TerminalDragSource | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const [dropHint, setDropHint] = useState<DropHint | null>(null)
   const [tabDrop, setTabDrop] = useState<{ key: string; before: boolean } | null>(null)
+  const [dropAnnouncement, setDropAnnouncement] = useState('')
+
+  const startDrag = (e: React.DragEvent<HTMLElement>, source: TerminalDragSource) => {
+    e.stopPropagation()
+    dragRef.current = source
+    e.dataTransfer.setData(source.kind === 'tab' ? TAB_DRAG_TYPE : PANE_DRAG_TYPE, source.kind === 'tab' ? source.tabKey : source.paneKey)
+    e.dataTransfer.effectAllowed = 'move'
+    // 描き直しでドラッグが始まらなくならないよう、案内の層は次のフレームで出す
+    requestAnimationFrame(() => setDragging(true))
+  }
+  const endDrag = () => {
+    dragRef.current = null
+    setDragging(false)
+    setDropHint(null)
+    setTabDrop(null)
+  }
+
+  const newDropTab = (projectId: string | null, paneKey: string): Tab => ({ key: `tab${++tabSeq}`, projectId, layout: leaf(paneKey), activePane: paneKey })
+  const previewDrop = (target: TerminalDropTarget) =>
+    dragRef.current ? applyTerminalDrop(tabs, dragRef.current, target, () => ({ key: '', projectId: null, layout: leaf(''), activePane: '' })) : null
+  const commitDrop = (target: TerminalDropTarget) => {
+    const source = dragRef.current
+    endDrag()
+    if (!source) return
+    const result = applyTerminalDrop(tabs, source, target, newDropTab)
+    if (!result) return
+    setTabs(result.tabs)
+    setActiveByProject((prev) => ({ ...prev, [projectKey]: result.activeTab }))
+    setDropAnnouncement(t('terminal.drop.moved', { title: panes[result.activePane]?.title ?? t('terminal.shell') }))
+  }
+
+  // タブ列: タブの左半分なら前、右半分なら後ろ。タブの無いところなら最後
+  const tabBarTarget = (key: string | null, before: boolean): TerminalDropTarget => {
+    if (key === null) return { kind: 'tabbar', beforeTabKey: null }
+    if (before) return { kind: 'tabbar', beforeTabKey: key }
+    const index = tabs.findIndex((tab) => tab.key === key)
+    return { kind: 'tabbar', beforeTabKey: tabs[index + 1]?.key ?? null }
+  }
   const tabDragProps = (key: string) => ({
     draggable: true,
-    onDragStart: (e: React.DragEvent<HTMLElement>) => {
-      e.dataTransfer.setData(TAB_DRAG_TYPE, key)
-      e.dataTransfer.effectAllowed = 'move'
-    },
+    onDragStart: (e: React.DragEvent<HTMLElement>) => startDrag(e, { kind: 'tab', tabKey: key }),
     onDragOver: (e: React.DragEvent<HTMLElement>) => {
-      if (!e.dataTransfer.types.includes(TAB_DRAG_TYPE)) return
-      e.preventDefault()
+      if (!isTerminalDrag(e)) return
+      e.stopPropagation()
       const rect = e.currentTarget.getBoundingClientRect()
       const before = e.clientX < rect.left + rect.width / 2
-      if (tabDrop?.key !== key || tabDrop.before !== before) setTabDrop({ key, before })
+      const target = tabBarTarget(key, before)
+      if (!previewDrop(target)) {
+        if (tabDrop) setTabDrop(null)
+        return
+      }
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      if (tabDrop?.key !== key || tabDrop.before !== before) {
+        setTabDrop({ key, before })
+        setDropAnnouncement(t('terminal.drop.tabbar'))
+      }
     },
     onDragLeave: () => setTabDrop(null),
     onDrop: (e: React.DragEvent<HTMLElement>) => {
+      if (!isTerminalDrag(e)) return
       e.preventDefault()
-      const from = e.dataTransfer.getData(TAB_DRAG_TYPE)
-      const before = tabDrop?.before ?? true
-      setTabDrop(null)
-      if (!from) return
-      // 全プロジェクトのタブを1列で持っているので、並びの中で動かせば裏のプロジェクトのタブの順は変わらない
-      setTabs((prev) => {
-        const order = moveItem(prev.map((tab) => tab.key), from, key, before)
-        return order.flatMap((k) => prev.filter((tab) => tab.key === k))
-      })
+      e.stopPropagation()
+      const rect = e.currentTarget.getBoundingClientRect()
+      commitDrop(tabBarTarget(key, e.clientX < rect.left + rect.width / 2))
     },
-    onDragEnd: () => setTabDrop(null),
+    onDragEnd: endDrag,
     'data-drop': tabDrop?.key === key ? (tabDrop.before ? 'before' : 'after') : undefined
   })
+  // タブ列の空いているところ（最後のタブの右）
+  const tabBarDropProps = {
+    onDragOver: (e: React.DragEvent<HTMLElement>) => {
+      if (!isTerminalDrag(e) || !previewDrop(tabBarTarget(null, false))) return
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+    },
+    onDrop: (e: React.DragEvent<HTMLElement>) => {
+      if (!isTerminalDrag(e)) return
+      e.preventDefault()
+      commitDrop(tabBarTarget(null, false))
+    }
+  }
+
+  // 表示中のタブの領域: 外周の帯ならいちばん外側で分割、ペインの上なら辺で分割・中央でタブ
+  const surfaceTarget = (e: React.DragEvent<HTMLElement>): DropHint | null => {
+    if (!activeTab) return null
+    const surfaces = e.currentTarget.getBoundingClientRect()
+    const point = { x: e.clientX, y: e.clientY }
+    const relative = (rect: { left: number; top: number; width: number; height: number }) => ({
+      left: rect.left - surfaces.left,
+      top: rect.top - surfaces.top,
+      width: rect.width,
+      height: rect.height
+    })
+    const half = (rect: DOMRect, zone: 'left' | 'right' | 'top' | 'bottom' | 'center') => {
+      const box = relative(rect)
+      if (zone === 'center') return box
+      if (zone === 'left' || zone === 'right') return { ...box, width: box.width / 2, left: box.left + (zone === 'right' ? box.width / 2 : 0) }
+      return { ...box, height: box.height / 2, top: box.top + (zone === 'bottom' ? box.height / 2 : 0) }
+    }
+    if (activeTab.layout.type === 'split') {
+      const edge = resolveRootEdge(surfaces, point)
+      if (edge) {
+        const target: TerminalDropTarget = { kind: 'root', tabKey: activeTab.key, edge }
+        return previewDrop(target) ? { target, box: half(surfaces, edge) } : null
+      }
+    }
+    const leafEl = (e.target as Element | null)?.closest<HTMLElement>('[data-pane]')
+    const paneKey = leafEl?.dataset.pane
+    if (!leafEl || !paneKey || !hasLeaf(activeTab.layout, paneKey)) return null
+    const rect = leafEl.getBoundingClientRect()
+    const zone = resolvePaneDropZone(rect, point)
+    const target: TerminalDropTarget = { kind: 'pane', tabKey: activeTab.key, paneKey, zone }
+    return previewDrop(target) ? { target, box: half(rect, zone) } : null
+  }
+  const surfaceDropProps = {
+    onDragOver: (e: React.DragEvent<HTMLElement>) => {
+      if (!isTerminalDrag(e)) return
+      const hint = surfaceTarget(e)
+      if (!hint) {
+        if (dropHint) setDropHint(null)
+        return
+      }
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      if (JSON.stringify(hint) !== JSON.stringify(dropHint)) {
+        setDropHint(hint)
+        setDropAnnouncement(t(dropLabel(hint.target)))
+      }
+    },
+    onDragLeave: (e: React.DragEvent<HTMLElement>) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropHint(null)
+    },
+    onDrop: (e: React.DragEvent<HTMLElement>) => {
+      if (!isTerminalDrag(e)) return
+      const hint = surfaceTarget(e)
+      e.preventDefault()
+      if (hint) commitDrop(hint.target)
+      else endDrag()
+    }
+  }
 
   const quickSearch = useMemo<QuickLaunchSearch>(
     () => ({
@@ -754,7 +896,7 @@ export function TerminalPane({
       // 表示中のプロジェクトのURLを先に出す
       urls: [...projects]
         .sort((a, b) => Number(b.id === projectId) - Number(a.id === projectId))
-        .flatMap((project) => project.urls.map((u) => ({ label: u.label, url: u.url, project: project.name }))),
+        .flatMap((project) => project.urls.flatMap((u) => (u.url ? [{ label: u.label, url: u.url, project: project.name }] : []))),
       onSelectTab: setActiveKey,
       onOpenUrl: (url) => void window.ade.invoke('browser:navigate', url),
       ...(onOpenFile ? { searchFiles: searchFileNames, onOpenFile } : {})
@@ -773,10 +915,25 @@ export function TerminalPane({
           data-active={active}
           data-testid={`terminal-pane-${node.leafId}`}
           style={{ opacity: !split || active ? ACTIVE_PANE_OPACITY : INACTIVE_PANE_OPACITY }}
+          data-split={split || undefined}
+          data-drag-source={dragging && dragRef.current?.kind === 'pane' && dragRef.current.paneKey === node.leafId ? true : undefined}
           ref={leafRef(node.leafId)}
           onMouseDown={() => focusPane(tab.key, node.leafId)}
           onFocus={() => focusPane(tab.key, node.leafId)}
-        />
+        >
+          {/* 分割中のペインを動かすつまみ（Orca の .pane-drag-handle）。xterm の器はこの後ろに足される */}
+          <div
+            className="terminal-leaf__handle"
+            draggable={split}
+            role="button"
+            aria-label={t('terminal.dragPane')}
+            title={t('terminal.dragPane')}
+            data-testid={`terminal-pane-handle-${node.leafId}`}
+            onMouseDown={(e) => e.stopPropagation()}
+            onDragStart={(e) => startDrag(e, { kind: 'pane', tabKey: tab.key, paneKey: node.leafId })}
+            onDragEnd={endDrag}
+          />
+        </div>
       )
     }
     const vertical = node.direction === 'vertical'
@@ -801,7 +958,7 @@ export function TerminalPane({
       data-testid="terminal-pane"
       aria-label={t('terminal.label')}
     >
-      <div className="terminal-tabs" role="tablist">
+      <div className="terminal-tabs" role="tablist" {...tabBarDropProps}>
         {visibleTabs.map((tab) => {
           const ids = leafIds(tab.layout)
           const pane = panes[tab.activePane]
@@ -885,7 +1042,7 @@ export function TerminalPane({
         </div>
       </div>
 
-      <div className="terminal-surfaces">
+      <div className="terminal-surfaces" data-dragging={dragging || undefined} {...surfaceDropProps}>
         {visibleTabs.length === 0 && (
           <EmptyState
             size="sm"
@@ -910,7 +1067,7 @@ export function TerminalPane({
                   <Button
                     key={agent.id}
                     variant="ghost"
-                    icon={<AgentIcon agent={agent.id} label={agent.label} size={15} />}
+                    icon={<AgentIcon agent={agent.id} label={agent.icon ?? agent.label} size={15} />}
                     onClick={() => addTab(agent.id)}
                     data-testid={`terminal-empty-launch-${agent.id.replace(':', '-')}`}
                   >
@@ -926,6 +1083,20 @@ export function TerminalPane({
             }
           />
         )}
+        {/* ドラッグ中に、落とすとどうなるかを示す（Orca の .pane-drop-overlay）。マウスは下のペインに通す */}
+        {dragging && dropHint && (
+          <div
+            className="terminal-drop-overlay"
+            data-kind={dropHint.target.kind}
+            data-testid="terminal-drop-overlay"
+            style={{ left: dropHint.box.left, top: dropHint.box.top, width: dropHint.box.width, height: dropHint.box.height }}
+          >
+            <span className="terminal-drop-overlay__label">{t(dropLabel(dropHint.target))}</span>
+          </div>
+        )}
+        <div className="visually-hidden" aria-live="polite" data-testid="terminal-drop-live">
+          {dropAnnouncement}
+        </div>
         {/* 裏のプロジェクトのタブも描画したまま隠す（PTYと分割の形を保つ） */}
         {tabs.map((tab) => (
           <div

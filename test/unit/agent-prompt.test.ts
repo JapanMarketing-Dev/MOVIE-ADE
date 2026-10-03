@@ -11,6 +11,7 @@ const { sanitize } = await import('../../src/main/settings')
 const relativeDir = '.ade-movie/reviews/20261003-101500'
 const feedbackMd = '/Users/me/my app/.ade-movie/reviews/20261003-101500/feedback.md'
 const target = { relativeDir, feedbackMd }
+const progressJson = '/Users/me/my app/.ade-movie/reviews/20261003-101500/progress.json'
 
 describe('Agentへ渡す指示のテンプレート', () => {
   it('{{path}} は絶対パス、{{relpath}} は相対パスに置き換える（何度出てきても）', () => {
@@ -20,7 +21,7 @@ describe('Agentへ渡す指示のテンプレート', () => {
   })
 
   it('空・空白だけ・未設定なら既定文（絶対パスを引用符で囲む）を使う', () => {
-    const expected = defaultAgentPrompt().replace('{{path}}', feedbackMd)
+    const expected = defaultAgentPrompt().replace('{{path}}', feedbackMd).replace('{{progress}}', progressJson)
     expect(expected.startsWith(`Read "${feedbackMd}"`)).toBe(true)
     expect(defaultAgentPrompt()).toContain('{{path}}')
     expect(renderAgentPrompt(target)).toBe(expected)
@@ -31,7 +32,7 @@ describe('Agentへ渡す指示のテンプレート', () => {
 
   it('既定文は画面の言語に合わせる。利用者が書き換えた文は言語に依らずそのまま使う', () => {
     setLocale('ja')
-    expect(renderAgentPrompt(target)).toBe(`"${feedbackMd}" と、同じフォルダにある各指摘の画像を読み、送信対象の指摘をすべて実装してください。受け入れ条件は、すべての指摘が実装され、指摘ごとに完了したことを確かめたことです。確かめるときは、変更した画面や動作を実際に確認してください。テストやビルドが通るだけでは完了としません。最後に、指摘ごとに「完了／未完了（理由）」と確かめた方法を一覧で報告してください。未完了の指摘が残っている間は、完了と報告しないでください。`)
+    expect(renderAgentPrompt(target)).toBe(`"${feedbackMd}" と、同じフォルダにある各指摘の画像を読み、送信対象の指摘をすべて実装してください。受け入れ条件は、すべての指摘が実装され、指摘ごとに完了したことを確かめたことです。確かめるときは、変更した画面や動作を実際に確認してください。テストやビルドが通るだけでは完了としません。最後に、指摘ごとに「完了／未完了（理由）」と確かめた方法を一覧で報告してください。未完了の指摘が残っている間は、完了と報告しないでください。 作業しながら、feedback.md の「進み具合」の節に従って "${progressJson}" に指摘ごとの進み具合を書いてください（着手したら in_progress、終えたら done）。 未完了の指摘は、使えるならサブエージェントで並列に進めてください。前提が合わない指摘（録画が古いなど）は直さず、理由を note に書いて needs_human にしてください。`)
     expect(renderAgentPrompt(target, 'Fix {{path}}')).toBe(`Fix ${feedbackMd}`)
     setLocale('en')
     expect(renderAgentPrompt(target, '{{path}} を直して')).toBe(`${feedbackMd} を直して`)

@@ -8,6 +8,10 @@
  *
  *   2. 確認が済んだら公開する
  *      node scripts/release-r2.mjs promote --version 0.1.0 [--replace] [--yes] [--dry-run]
+ *
+ *   公開しないことにした staging の版を片付ける
+ *      node scripts/release-r2.mjs discard --version 0.1.2 [--yes] [--dry-run]
+ *      → staging/<version>/ のファイルと manifest.json を、表示して確認を求めてから消す（releases/ には触らない）
  *      → staging から releases/<version>/ へ移し、versions.json（最新10版）と latest.json を更新し、
  *        10版を超えた古い版を、消す対象を表示してから消す。最後に staging/<version>/ を消す
  *
@@ -54,7 +58,7 @@ const root = resolve(import.meta.dirname, '..')
 function parseArgs(argv) {
   const args = { command: 'stage', dir: 'dist/release', preview: [], prerelease: false, dryRun: false, replace: false, yes: false }
   let i = 0
-  if (argv[0] === 'stage' || argv[0] === 'promote') args.command = argv[i++]
+  if (argv[0] === 'stage' || argv[0] === 'promote' || argv[0] === 'discard') args.command = argv[i++]
   for (; i < argv.length; i++) {
     const key = argv[i]
     const value = () => argv[++i]
@@ -150,7 +154,11 @@ async function stage(args, work) {
   const dir = resolve(root, args.dir)
   if (!existsSync(dir)) throw new Error(`フォルダがありません: ${dir}（先に pnpm dist:<os> で作る）`)
   const found = readdirSync(dir).map((name) => parseArtifactName(name, args.version)).filter(Boolean)
-  if (found.length === 0) throw new Error(`${dir} に MOVIE-ADE-${args.version}-*.{dmg,exe,AppImage,deb} がありません`)
+  if (found.length === 0) throw new Error(`${dir} に Ferret-${args.version}-*.{dmg,exe,AppImage,deb} がありません`)
+  // 1つの版に製品名を混ぜない（Ferret と MOVIE-ADE のファイルが同じ版で並ぶと、サイトの表示がおかしくなる）
+  const products = [...new Set(found.map((f) => f.product))]
+  if (products.length > 1) throw new Error(`同じ版に製品名が混ざっています: ${products.join(', ')}`)
+  const product = products[0]
 
   console.log(`版 ${args.version} の配布物（${found.length} 件）:`)
   const files = []
@@ -181,10 +189,11 @@ async function stage(args, work) {
     version: args.version,
     date: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
     prerelease: args.prerelease,
-    notes: args.notes ? readFileSync(resolve(root, args.notes), 'utf8') : `MOVIE-ADE ${args.version}. These builds are not code-signed yet.`,
+    notes: args.notes ? readFileSync(resolve(root, args.notes), 'utf8') : `${product} ${args.version}. These builds are not code-signed yet.`,
     notesUrl: args.notesUrl,
     files: files.map(({ name, os, arch, kind, size, sha256: hash }) => ({ name, os, arch, kind, size, sha256: hash })),
     previewOs: args.preview,
+    product,
     build
   })
 
@@ -197,6 +206,17 @@ async function stage(args, work) {
   console.log(`\n確認用: ${PUBLIC_BASE}/staging/${args.version}/manifest.json`)
   console.log(`公開するには: node scripts/release-r2.mjs promote --version ${args.version}${args.replace ? ' --replace' : ''}`)
   console.log(`合計 ${mib(files.reduce((n, f) => n + f.size, 0))}`)
+}
+
+async function discard(args) {
+  const manifest = getJson(`staging/${args.version}/manifest.json`)
+  if (!manifest) throw new Error(`staging/${args.version}/manifest.json がありません（片付けるものがない）`)
+  const keys = [...manifest.files.map((f) => stagingKey(f.path)), `staging/${args.version}/manifest.json`]
+  console.log(`公開しない ${args.version} を staging から消します:`)
+  for (const key of keys) console.log(`  ${key}`)
+  await confirm('消しますか', args)
+  for (const key of keys) remove(key, args.dryRun)
+  console.log(args.dryRun ? '確認だけ' : '片付けました')
 }
 
 async function promote(args, work) {
@@ -261,12 +281,18 @@ async function promote(args, work) {
   for (const f of manifest.files) remove(stagingKey(f.path), args.dryRun)
   remove(`staging/${args.version}/manifest.json`, args.dryRun)
   console.log(`\n${args.dryRun ? '確認だけ' : '公開しました'}: ${PUBLIC_BASE}/releases/${args.version}/manifest.json`)
+
+  // Sentry のリリースにコミット（変更したファイル付き）・公開日・デプロイ（production）を付ける。
+  // 認証が無ければ警告だけで進む（scripts/sentry-release.mjs）。公開そのものは済んでいるので失敗でも止めない
+  const sentry = spawnSync(process.execPath, [join(import.meta.dirname, 'sentry-release.mjs'), 'publish', '--version', args.version, ...(args.dryRun ? ['--dry-run'] : [])], { stdio: 'inherit' })
+  if (sentry.status !== 0) console.warn('Sentry のリリースの情報を付けられませんでした。あとで node scripts/sentry-release.mjs publish --version で付けられます')
 }
 
 const args = parseArgs(process.argv.slice(2))
-const work = mkdtempSync(join(tmpdir(), 'movie-ade-r2-'))
+const work = mkdtempSync(join(tmpdir(), 'ferret-r2-'))
 try {
   if (args.command === 'promote') await promote(args, work)
+  else if (args.command === 'discard') await discard(args)
   else await stage(args, work)
 } finally {
   rmSync(work, { recursive: true, force: true })

@@ -14,6 +14,7 @@ export const SETTINGS_SECTIONS = [
   'recording',
   'transcription',
   'organize',
+  'verify',
   'agents',
   'accounts',
   'github',
@@ -33,11 +34,13 @@ export const SECTION_KEYWORDS: Record<SettingsSectionId, readonly string[]> = {
     '文字起こし', 'モデル', 'キー', '費用', '上限', '接続', '端末内', '言語'],
   organize: ['organize', 'findings', 'llm', 'anthropic', 'claude api', 'gemini', 'openrouter', 'api key', 'model', 'split',
     '整理', '指摘', 'キー', 'モデル', '分割'],
+  verify: ['decision', 'verify', 'judge', 'done', 'ollama', 'clef', 'typesafe', 'jev', 'vercel', 'gateway', 'system one', 'api key',
+    '判定', '検証', '完了', 'キー'],
   agents: ['agent', 'claude', 'codex', 'gemini', 'opencode', 'cursor', 'copilot', 'aider', 'grok', 'qwen', 'amp', 'custom', 'install',
     'command', 'args', 'arguments', 'prompt', 'instruction', 'startup', 'エージェント', 'カスタム', 'インストール', 'コマンド', '引数', '指示', 'プロンプト', '起動'],
   accounts: ['account', 'login', 'sign in', 'usage', 'manage', 'アカウント', 'ログイン', '使用量', '管理'],
   github: ['github', 'gh', 'pull request', 'pr', 'issue', 'repository', 'リポジトリ', 'プルリクエスト', 'イシュー'],
-  about: ['about', 'version', 'update', 'movie-ade', 'バージョン', '更新', 'について']
+  about: ['about', 'version', 'update', 'ferret', 'movie-ade', 'バージョン', '更新', 'について']
 }
 
 /** 全角・大文字小文字の揺れをならす */

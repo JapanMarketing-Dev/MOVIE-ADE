@@ -77,3 +77,18 @@ export function providersToRefresh(options: {
     return now - options.lastFailureRetryAt[provider] >= failureRetryDelayMs(options.failureStreak[provider])
   })
 }
+
+/**
+ * 失敗したあと、自動でもう一度取りに行くまでの間隔。取りに行かないときは null。
+ * 1度の失敗（起動直後の回線の揺れなど）がそのまま残らないよう、間隔を空けて静かに再試行する。
+ * ただし、再試行しても直らないもの・OS の確認を出しうるものは、手動の再読み込みだけにする：
+ *   keychain-unavailable … 自動で Keychain を読みに行くと確認のダイアログが出うる
+ *   missing-credentials / stale-token … ログインし直すまで直らない
+ * 取得制限（rate-limited）は、相手の Retry-After より前には行かない。
+ */
+export function failureRetryAfterMs(p: ProviderRateLimits, streak: number, now: number = Date.now()): number | null {
+  if (p.status !== 'error') return null
+  if (p.failureKind === 'keychain-unavailable' || p.failureKind === 'missing-credentials' || p.failureKind === 'stale-token') return null
+  const delay = failureRetryDelayMs(streak)
+  return p.retryAtMs && p.retryAtMs > now ? Math.max(delay, p.retryAtMs - now) : delay
+}

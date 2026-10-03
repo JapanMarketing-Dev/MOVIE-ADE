@@ -1,5 +1,7 @@
 {
-  // ダウンロードサイト（site/）を Cloudflare Pages（movie-ade.pages.dev）で公開する。ビルド工程はない。
+  // Ferret のダウンロードサイト（site/）を Cloudflare Pages で公開する。ビルド工程はない。
+  // 公開先は ferretade.dev（www も同じプロジェクト）。プロジェクト名 movie-ade は改名前のまま、わざと残している。
+  // 作り直すとドメインの付け直しが要り、0.1.x のアプリがリンクしている movie-ade.pages.dev も失うため。
   // デプロイ: npx wrangler pages deploy site --project-name movie-ade --branch main
   // 配布ファイルは Cloudflare R2 に置き、サイトは site/js/config.js の DOWNLOAD_BASE から読む。
   "name": "movie-ade",

@@ -7,6 +7,7 @@ import {
   FolderPlus,
   Pencil,
   Plus,
+  Settings2,
   Trash2
 } from 'lucide-react'
 import type { Project, ProjectsState } from '@shared/types'
@@ -16,6 +17,7 @@ import { useT } from '../lib/i18n'
 import { Button, EmptyState, Field, IconButton, useToast } from '../ui'
 import { filterReviews, isEmptyDraft, reviewHosts, type ReviewFilter } from '@shared/reviewList'
 import { PanelCloseButton } from './LayoutToggles'
+import { ProjectEditDialog } from './ProjectTargetsEditor'
 import { ReviewFilterBar, ReviewList, loadReviewFilter, saveReviewFilter, toReviewSession, type ReviewSession } from './ReviewList'
 
 export { toReviewSession, type ReviewSession }
@@ -63,8 +65,10 @@ export function Sidebar({
   sessions,
   selectedId,
   onSelect,
-  onStartRecording,
-  onHistoryChanged
+  onNewReview,
+  recording = false,
+  onHistoryChanged,
+  onOverlayChange
 }: {
   projects: ProjectsState
   /** 開いているプロジェクト。sessions はこのプロジェクトの履歴 */
@@ -72,9 +76,14 @@ export function Sidebar({
   sessions: ReviewSession[]
   selectedId: string | null
   onSelect: (id: string) => void
-  onStartRecording: () => void
+  /** そのプロジェクトで新しいレビュー（録画）を始める。開いていなければ切り替えてから（App が行う） */
+  onNewReview: (projectId: string) => void
+  /** 録画中は ＋ を押せなくする（⌘⇧R と違い、＋ で録画を止めないため） */
+  recording?: boolean
   /** 開いているプロジェクトの履歴を名前の変更・アーカイブ・削除したあと。消した ID を渡す */
   onHistoryChanged?: (deletedIds: string[]) => void
+  /** 「プロジェクトを編集」のダイアログの開閉。開いている間は内蔵ブラウザのビューを隠す */
+  onOverlayChange?: (open: boolean) => void
 }) {
   const recordKey = formatShortcut('Mod', 'Shift', 'R')
   const toast = useToast()
@@ -87,6 +96,12 @@ export function Sidebar({
   const [renaming, setRenamingState] = useState<{ id: string; name: string } | null>(null)
   const renamingRef = useRef<{ id: string; name: string } | null>(null)
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
+  /** 「プロジェクトを編集」で開いているプロジェクト */
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const openEdit = (id: string | null) => {
+    setEditingId(id)
+    onOverlayChange?.(id !== null)
+  }
 
   const setRenaming = (next: { id: string; name: string } | null) => {
     renamingRef.current = next
@@ -191,7 +206,13 @@ export function Sidebar({
     setMenu({ id, x, y: Math.max(4, Math.min(clientY - box.top, box.height - 116)) })
   }
 
-  const addProject = () => run(() => window.ade.invoke('project:add'))
+  // 足したら、種類と確認先を決めてもらうため「プロジェクトを編集」を開く
+  const addProject = () => run(async () => {
+    const before = new Set(projects.projects.map((p) => p.id))
+    const state = await window.ade.invoke('project:add')
+    const added = state?.projects.find((p) => !before.has(p.id))
+    if (added) openEdit(added.id)
+  })
 
   const switchTo = (project: Project) => run(async () => {
     await window.ade.invoke('project:switch', project.id)
@@ -216,23 +237,10 @@ export function Sidebar({
   }
 
   const menuProject = menu ? projects.projects.find((p) => p.id === menu.id) : undefined
+  const editingProject = editingId ? projects.projects.find((p) => p.id === editingId) : undefined
 
   return (
     <aside className="sidebar" aria-label={t('sidebar.projects')} data-testid="sidebar" ref={rootRef}>
-      <div className="sidebar__top">
-        <button
-          type="button"
-          className="sidebar__new"
-          onClick={onStartRecording}
-          title={t('sidebar.startRecording', { key: recordKey })}
-          data-testid="sidebar-new-review"
-        >
-          <Plus size={14} strokeWidth={2.25} />
-          {t('sidebar.newReview')}
-          <kbd className="sidebar__new-key">{recordKey}</kbd>
-        </button>
-      </div>
-
       <div className="sidebar__list">
         <div className="sb-head">
           <span className="sb-head__title">{t('sidebar.projects')}</span>
@@ -267,7 +275,7 @@ export function Sidebar({
             testId="sidebar-empty"
             art={<EmptyStackArt />}
             title={t('sidebar.emptyTitle')}
-            description={t('sidebar.emptyDescription')}
+            description={t('sidebar.emptyStartReviewing')}
             actions={<Button icon={<FolderPlus size={14} />} onClick={addProject}>{t('sidebar.addProject')}</Button>}
           />
         ) : (
@@ -334,6 +342,17 @@ export function Sidebar({
                         <button
                           type="button"
                           className="sb-project__action"
+                          aria-label={t('sidebar.newReviewIn', { name: project.name })}
+                          title={t('sidebar.newReviewIn', { name: project.name })}
+                          disabled={recording}
+                          onClick={() => onNewReview(project.id)}
+                          data-testid="sidebar-project-new-review"
+                        >
+                          <Plus size={14} strokeWidth={1.5} />
+                        </button>
+                        <button
+                          type="button"
+                          className="sb-project__action"
                           aria-label={t('sidebar.projectMenu', { name: project.name })}
                           onClick={(e) => {
                             const r = e.currentTarget.getBoundingClientRect()
@@ -376,6 +395,19 @@ export function Sidebar({
 
                   {expanded && (
                     <div className="sb-project__children" role="group">
+                      {/* このプロジェクトで新しいレビューを始める。開いているプロジェクトには ⌘⇧R も出す */}
+                      <button
+                        type="button"
+                        className="sb-new-review"
+                        title={t('sidebar.newReviewIn', { name: project.name })}
+                        disabled={recording}
+                        onClick={() => onNewReview(project.id)}
+                        data-testid={active ? 'sidebar-new-review' : `sidebar-new-review-${project.id}`}
+                      >
+                        <Plus size={13} strokeWidth={1.75} />
+                        <span>{t('sidebar.newReview')}</span>
+                        {active && <kbd className="sb-new-review__key">{recordKey}</kbd>}
+                      </button>
                       {items !== undefined && (
                         <ReviewList
                           filter={filter}
@@ -402,12 +434,16 @@ export function Sidebar({
           <button type="button" role="menuitem" onClick={() => { setMenu(null); setRenaming({ id: menuProject.id, name: menuProject.name }) }}>
             <Pencil size={13} strokeWidth={1.75} />{t('sidebar.rename')}
           </button>
+          <button type="button" role="menuitem" onClick={() => { setMenu(null); openEdit(menuProject.id) }} data-testid="sidebar-project-edit">
+            <Settings2 size={13} strokeWidth={1.75} />{t('projectTargets.edit')}
+          </button>
           <div className="sb-menu__sep" role="separator" />
           <button type="button" role="menuitem" className="is-danger" onClick={() => { setMenu(null); setConfirmRemove(menuProject.id) }}>
             <Trash2 size={13} strokeWidth={1.75} />{t('sidebar.removeFromList')}
           </button>
         </div>
       )}
+      {editingProject && <ProjectEditDialog project={editingProject} onClose={() => openEdit(null)} />}
     </aside>
   )
 }

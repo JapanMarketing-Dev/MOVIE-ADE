@@ -1,0 +1,210 @@
+/* ── 設定: 判定モデル（候補のモデル・コマンドの例） ─────────────── */
+
+.st-decision__models {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.st-decision__model {
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  gap: var(--space-3);
+}
+
+.st-decision__model:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.st-decision__model[aria-pressed='true'] {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-wash);
+  color: var(--color-text);
+}
+
+.st-decision__model code {
+  font-family: var(--font-mono);
+}
+
+.st-decision__cap {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-2xs);
+  gap: var(--space-1);
+}
+
+.st-decision__cap.is-images {
+  color: var(--color-success);
+}
+
+.st-decision__cmd {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  overflow-x: auto;
+  user-select: text;
+  white-space: pre;
+}
+
+.st-decision__pricing {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+/* ── フッター: API の使用量（判定モデル・文字起こし・整理） ─────────── */
+
+.sb-api {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.sb-api__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sb-pop--api {
+  width: min(440px, calc(100vw - 16px));
+}
+
+.sb-api-pop {
+  display: grid;
+  min-width: 0;
+  padding: var(--space-5);
+  gap: var(--space-5);
+  font-size: var(--font-size-xs);
+}
+
+.sb-api-pop__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.sb-api-pop__title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.sb-api-pop__model {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.sb-api-pop__totals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.sb-api-pop__total {
+  display: grid;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  gap: var(--space-1);
+}
+
+.sb-api-pop__label {
+  color: var(--color-text-faint);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.sb-api-pop__big {
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.sb-api-pop__sub {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sb-api-pop__table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.sb-api-pop__table th,
+.sb-api-pop__table td {
+  padding: var(--space-1) var(--space-2);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sb-api-pop__table th:first-child,
+.sb-api-pop__table td:first-child {
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+}
+
+.sb-api-pop__col-name {
+  width: 46%;
+}
+
+.sb-api-pop__table th {
+  color: var(--color-text-faint);
+  font-weight: 500;
+}
+
+.sb-api-pop__table td {
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.sb-api-pop__table td.is-error {
+  color: var(--color-danger);
+}
+
+.sb-api-pop__note {
+  margin: 0;
+  color: var(--color-text-faint);
+}
+
+.sb-api-pop__link {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+}
+
+.sb-api-pop__link:hover {
+  color: var(--color-accent-hover);
+}
+
+.sb-api-pop__caption {
+  padding-bottom: var(--space-2);
+  text-align: left;
+}

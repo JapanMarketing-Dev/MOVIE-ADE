@@ -16,7 +16,7 @@ import type {
 import type { ValidationIssue } from '../pipeline/organize/index'
 import type { ItemEdit } from './edits'
 import type { SessionPaths } from './paths'
-import { sessionId, sessionPaths } from './paths'
+import { ADE_DIR, LEGACY_ADE_DIR, sessionId, sessionPaths } from './paths'
 import { writeSummary } from './summary'
 import { errorKind, reportHandled } from '@shared/report'
 
@@ -48,16 +48,36 @@ export interface SessionRecord {
   /** 確認画面での編集の履歴。feedback.md はここから再生成する */
   edits: ItemEdit[]
   captureGaps?: string[]
+  /**
+   * あとから追記した録画（2 本目から。takes.ts）。無ければ録画は1本だけ（古いレビューもこの形）。
+   * transcript・frames・draft・events.jsonl には、ここの offsetMs だけずらした時刻で足してある
+   */
+  takes?: TakeRecord[]
+}
+
+/** 追記した録画1本の控え */
+export interface TakeRecord {
+  /** 2, 3 … （ファイルは takes/<n>/） */
+  n: number
+  /** レビューの時間軸での開始（ms） */
+  offsetMs: number
+  durationMs: number
+  /** 録画を始めた実時刻（ISO8601） */
+  startedAt: string
+  /** このレビューに足した時刻（ISO8601）。送った時刻（label.json の sentAt）と比べて未送信を見分ける */
+  addedAt: string
 }
 
 export const SESSION_VERSION = 1 as const
 
 /** 新しいセッションのフォルダを作る */
 export async function createSession(projectDir: string, now = new Date()): Promise<SessionPaths> {
-  let paths = sessionPaths(projectDir, sessionId(now))
+  let paths = sessionPaths(projectDir, sessionId(now), ADE_DIR)
   await mkdir(dirname(paths.dir), { recursive: true })
   for (let offset = 0; ; offset++) {
-    paths = sessionPaths(projectDir, sessionId(new Date(now.getTime() + offset * 1000)))
+    paths = sessionPaths(projectDir, sessionId(new Date(now.getTime() + offset * 1000)), ADE_DIR)
+    // 改名前の .ade-movie/ に同じ ID があれば避ける（一覧で片方が隠れないように）
+    if (existsSync(sessionPaths(projectDir, paths.id, LEGACY_ADE_DIR).dir)) continue
     try { await mkdir(paths.dir); break }
     catch (err) { if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err }
   }

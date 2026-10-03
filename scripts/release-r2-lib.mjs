@@ -32,16 +32,20 @@ export const CONTENT_TYPES = {
 }
 
 /**
- * 配布物のファイル名を読む。MOVIE-ADE-<version>-<os>-<arch>.<ext> 以外（.blockmap・latest*.yml・別の版）は null。
- * @returns {{ name: string, os: 'mac'|'win'|'linux', arch: string, kind: string } | null}
+/** 製品名。0.2.0 から Ferret（それまでは MOVIE-ADE）。ファイル名の先頭でもある */
+export const PRODUCTS = ['Ferret', 'MOVIE-ADE']
+
+/**
+ * 配布物のファイル名を読む。<製品名>-<version>-<os>-<arch>.<ext> 以外（.blockmap・latest*.yml・別の版）は null。
+ * @returns {{ name: string, product: string, os: 'mac'|'win'|'linux', arch: string, kind: string } | null}
  */
 export function parseArtifactName(name, version) {
   const escaped = version.replace(/[.+]/g, (c) => `\\${c}`)
-  const match = new RegExp(`^MOVIE-ADE-${escaped}-(mac|win|linux)-([A-Za-z0-9_]+)\\.(dmg|exe|AppImage|deb)$`).exec(name)
+  const match = new RegExp(`^(${PRODUCTS.join('|')})-${escaped}-(mac|win|linux)-([A-Za-z0-9_]+)\\.(dmg|exe|AppImage|deb)$`).exec(name)
   if (!match) return null
-  const arch = ARCH_ALIASES[match[2]]
+  const arch = ARCH_ALIASES[match[3]]
   if (!arch) return null
-  return { name, os: match[1], arch, kind: KIND_BY_EXT[match[3]] }
+  return { name, product: match[1], os: match[2], arch, kind: KIND_BY_EXT[match[4]] }
 }
 
 /** 版の大小を比べる（1.2.10 > 1.2.9、1.0.0 > 1.0.0-beta.1）。新しい方が前に来るよう sort に使う */
@@ -66,7 +70,9 @@ export function compareVersionsDesc(a, b) {
  * 各版の manifest.json を作る。
  * @param {{ version: string, date: string, prerelease: boolean, notes: string, notesUrl?: string,
  *           files: Array<{ name: string, os: string, arch: string, kind: string, size: number, sha256: string }>,
- *           previewOs?: string[], build?: number }} input
+ *           previewOs?: string[], build?: number, product?: string }} input
+ *
+ * product は製品名（Ferret / MOVIE-ADE）。サイトが版ごとの名前を出すのに使う。
  *
  * build は同じ版を作り直した回数（1 から）。2 以上なら releases/<version>/b<build>/ に置く。
  * ファイル名は変えずに URL だけを変えるので、ブラウザや将来の CDN が古いファイルを返すことはなく、
@@ -92,6 +98,7 @@ export function buildManifest(input) {
   return {
     schema: SCHEMA,
     version: input.version,
+    ...(input.product ? { product: input.product } : {}),
     ...(build > 1 ? { build } : {}),
     date: input.date,
     prerelease: input.prerelease,
@@ -118,6 +125,7 @@ export function addVersionToIndex(index, manifest, keep = KEEP_VERSIONS) {
   }
   const entry = {
     version: manifest.version,
+    ...(manifest.product ? { product: manifest.product } : {}),
     date: manifest.date,
     prerelease: manifest.prerelease,
     manifest: `releases/${manifest.version}/manifest.json`,

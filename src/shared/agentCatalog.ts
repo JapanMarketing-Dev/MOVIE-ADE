@@ -13,40 +13,89 @@ import type {
  *
  * Orca由来: ~/bench/orca/src/shared/tui-agent-config.ts（detectCmd / detectCmdAliases / launchCmd / expectedProcess）,
  *           ~/bench/orca/src/shared/tui-agent-permissions.ts（YOLO_TUI_AGENT_ARGS）,
- *           ~/bench/orca/src/renderer/src/lib/agent-catalog.tsx（label / homepageUrl）,
+ *           ~/bench/orca/src/renderer/src/lib/agent-catalog.tsx（label / homepageUrl。43種）,
  *           ~/bench/orca/src/shared/agent-process-recognition.ts,
  *           ~/bench/orca/src/shared/agent-node-package-entrypoints.ts,
  *           ~/bench/orca/src/shared/agent-node-entrypoint-identities.ts（MIT, Copyright 2026 Lovecast Inc.）
  *
- * Orca の50種近いエージェントのうち、主なものだけを持ってきた。足すときは BuiltinAgent（types.ts）と
- * 下の表に1行ずつ足す。プロンプトの注入方式など、本システムで使わない項目は持ち込んでいない。
+ * Orca の一覧を土台に、2026-10 時点の公式ドキュメント・README で、実行ファイル名・入れ方・案内ページ・
+ * 権限確認を省く引数を確かめ直した（verified）。確かめられなかった引数は空にしている（推測で入れない）。
+ * Orca にあるもののうち、Orca 独自のラッパー（claude-agent-teams）と、正式版で opencode に統合された
+ * opencode2 は外した。Orca の README の Supported Agents はすべて含め、表示名もそれに合わせる
+ * （ORCA_SUPPORTED_AGENTS。単体テストで確かめる）。Orca に無い主要なもの
+ * （Junie・OpenHands・Roo Code・Letta Code・ForgeCode・BLACKBOX）を足した。
+ * 足すときは BuiltinAgent（types.ts）と下の表に1行ずつ足す。
  */
 
 export interface AgentCatalogEntry {
   label: string
   /** PATH 上にあればインストール済みとみなすコマンド（Orca の detectCmd） */
   detectCmd: string
-  /** 同じエージェントを指す別名（Orca の detectCmdAliases） */
+  /** 同じエージェントを指す別名（Orca の detectCmdAliases。旧名を含む） */
   aliases?: readonly string[]
-  /** 起動コマンド（Orca の launchCmd。省略時は detectCmd） */
+  /** 起動コマンド（Orca の launchCmd。対話の画面を開くサブコマンドが要るもの。省略時は detectCmd） */
   launchCmd?: string
-  /** 権限確認を省く引数（Orca の YOLO_TUI_AGENT_ARGS）。無いものは空 */
+  /** 権限確認を省く引数（Orca の YOLO_TUI_AGENT_ARGS を公式の資料で確かめ直したもの）。無い・確かめられないものは空 */
   yoloArgs: string
+  /** 公式の入れ方（1つ）。公式が手順を出していないものは空 */
+  install: string
+  /** 公式の入れ方・始め方のページ */
   homepageUrl: string
+  /** 2026-10 に公式の資料で、実行ファイル名・入れ方・引数を確かめられた */
+  verified: boolean
+  /** オンボーディングと設定で、検出の有無にかかわらず最初から見せる主要なもの */
+  popular?: boolean
 }
 
-/** メニューに並べる順（Orca のカタログ順を基に、よく使うものを先に） */
+/** メニューに並べる順。主要なもの（popular）を先に、残りは名前の順 */
 export const BUILTIN_AGENTS: readonly BuiltinAgent[] = [
   'claude',
   'codex',
   'gemini',
-  'opencode',
   'cursor',
   'copilot',
+  'devin',
+  'opencode',
+  'amp',
+  'droid',
+  'kiro',
   'aider',
+  'ante',
+  'antigravity',
+  'aug',
+  'autohand',
+  'blackbox',
+  'cline',
+  'codebuddy',
+  'codebuff',
+  'command-code',
+  'continue',
+  'crush',
+  'dsh',
+  'forge',
+  'freebuff',
+  'goose',
   'grok',
+  'hermes',
+  'junie',
+  'kilo',
+  'kimi',
+  'letta',
+  'mimo-code',
+  'mistral-vibe',
+  'muse',
+  'omp',
+  'openclaude',
+  'openclaw',
+  'openhands',
+  'pi',
+  'prime-agent',
+  'qoder',
   'qwen-code',
-  'amp'
+  'roo',
+  'rovo',
+  'trae',
+  'zcode'
 ]
 
 export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
@@ -54,65 +103,420 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
     label: 'Claude Code',
     detectCmd: 'claude',
     yoloArgs: '--dangerously-skip-permissions',
-    homepageUrl: 'https://code.claude.com/docs'
+    install: 'curl -fsSL https://claude.ai/install.sh | bash',
+    homepageUrl: 'https://code.claude.com/docs/en/setup',
+    verified: true,
+    popular: true
   },
   codex: {
     label: 'Codex',
     detectCmd: 'codex',
     yoloArgs: '--dangerously-bypass-approvals-and-sandbox',
-    homepageUrl: 'https://github.com/openai/codex'
+    install: 'npm install -g @openai/codex',
+    homepageUrl: 'https://github.com/openai/codex',
+    verified: true,
+    popular: true
   },
   gemini: {
     label: 'Gemini CLI',
     detectCmd: 'gemini',
+    yoloArgs: '--approval-mode=yolo',
+    install: 'npm install -g @google/gemini-cli',
+    homepageUrl: 'https://github.com/google-gemini/gemini-cli',
+    verified: true,
+    popular: true
+  },
+  cursor: {
+    label: 'Cursor',
+    detectCmd: 'agent',
+    aliases: ['cursor-agent'],
+    yoloArgs: '--force',
+    install: 'curl https://cursor.com/install -fsS | bash',
+    homepageUrl: 'https://cursor.com/docs/cli/installation',
+    verified: true,
+    popular: true
+  },
+  copilot: {
+    label: 'GitHub Copilot',
+    detectCmd: 'copilot',
     yoloArgs: '--yolo',
-    homepageUrl: 'https://github.com/google-gemini/gemini-cli'
+    install: 'npm install -g @github/copilot',
+    homepageUrl: 'https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli',
+    verified: true,
+    popular: true
+  },
+  devin: {
+    label: 'Devin',
+    detectCmd: 'devin',
+    yoloArgs: '--permission-mode bypass --respect-workspace-trust false',
+    install: 'curl -fsSL https://cli.devin.ai/install.sh | bash',
+    homepageUrl: 'https://docs.devin.ai/work-with-devin/devin-cli',
+    verified: true,
+    popular: true
   },
   opencode: {
     label: 'OpenCode',
     detectCmd: 'opencode',
-    // Orca も OpenCode には権限確認を省く引数を持たない
+    aliases: ['opencode2'],
+    yoloArgs: '--auto',
+    install: 'curl -fsSL https://opencode.ai/install | bash',
+    homepageUrl: 'https://opencode.ai/docs/',
+    verified: true,
+    popular: true
+  },
+  amp: {
+    label: 'Amp',
+    detectCmd: 'amp',
     yoloArgs: '',
-    homepageUrl: 'https://opencode.ai/docs/cli/'
+    install: 'curl -fsSL https://ampcode.com/install.sh | bash',
+    homepageUrl: 'https://ampcode.com/docs/cli',
+    verified: false,
+    popular: true
   },
-  cursor: {
-    label: 'Cursor Agent',
-    detectCmd: 'cursor-agent',
-    yoloArgs: '--yolo',
-    homepageUrl: 'https://cursor.com/cli'
+  droid: {
+    label: 'Droid',
+    detectCmd: 'droid',
+    yoloArgs: '',
+    install: 'curl -fsSL https://app.factory.ai/cli | sh',
+    homepageUrl: 'https://docs.factory.com/cli/getting-started/quickstart',
+    verified: true,
+    popular: true
   },
-  copilot: {
-    label: 'GitHub Copilot CLI',
-    detectCmd: 'copilot',
-    yoloArgs: '--yolo',
-    homepageUrl: 'https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli'
+  kiro: {
+    label: 'Kiro',
+    detectCmd: 'kiro-cli',
+    launchCmd: 'kiro-cli chat',
+    yoloArgs: '--trust-all-tools',
+    install: 'curl -fsSL https://cli.kiro.dev/install | bash',
+    homepageUrl: 'https://kiro.dev/docs/cli/',
+    verified: true,
+    popular: true
   },
   aider: {
     label: 'Aider',
     detectCmd: 'aider',
     yoloArgs: '--yes-always',
-    homepageUrl: 'https://aider.chat/docs/'
+    install: 'python -m pip install aider-install && aider-install',
+    homepageUrl: 'https://aider.chat/docs/install.html',
+    verified: true
+  },
+  antigravity: {
+    label: 'Antigravity',
+    detectCmd: 'agy',
+    yoloArgs: '--dangerously-skip-permissions',
+    install: 'curl -fsSL https://antigravity.google/cli/install.sh | bash',
+    homepageUrl: 'https://antigravity.google/docs/cli/install',
+    verified: true
+  },
+  ante: {
+    label: 'Ante',
+    detectCmd: 'ante',
+    yoloArgs: '--yolo',
+    install: 'curl -fsSL https://ante.run/install.sh | bash',
+    homepageUrl: 'https://ante.run/start/quickstart/',
+    verified: true
+  },
+  aug: {
+    label: 'Auggie',
+    detectCmd: 'auggie',
+    yoloArgs: '',
+    install: 'npm install -g @augmentcode/auggie',
+    homepageUrl: 'https://docs.augmentcode.com/cli/overview',
+    verified: true
+  },
+  autohand: {
+    label: 'Autohand Code',
+    detectCmd: 'autohand',
+    aliases: ['autohand-code'],
+    yoloArgs: '--unrestricted',
+    install: 'curl -fsSL https://autohand.ai/install.sh | bash',
+    homepageUrl: 'https://github.com/autohandai/code-cli',
+    verified: true
+  },
+  blackbox: {
+    label: 'BLACKBOX CLI',
+    detectCmd: 'blackbox',
+    yoloArgs: '',
+    install: 'curl -fsSL https://blackbox.ai/install.sh | bash',
+    homepageUrl: 'https://docs.blackbox.ai/features/blackbox-cli/getting-started',
+    verified: true
+  },
+  cline: {
+    label: 'Cline',
+    detectCmd: 'cline',
+    yoloArgs: '--auto-approve true',
+    install: 'npm i -g cline',
+    homepageUrl: 'https://docs.cline.bot/cline-cli/overview',
+    verified: true
+  },
+  codebuddy: {
+    label: 'CodeBuddy',
+    detectCmd: 'codebuddy',
+    aliases: ['cbc', 'codebuddy-code'],
+    yoloArgs: '--dangerously-skip-permissions',
+    install: 'npm install -g @tencent-ai/codebuddy-code',
+    homepageUrl: 'https://www.codebuddy.ai/docs/cli/installation',
+    verified: true
+  },
+  codebuff: {
+    label: 'Codebuff',
+    detectCmd: 'codebuff',
+    yoloArgs: '',
+    install: 'npm install -g codebuff',
+    homepageUrl: 'https://www.codebuff.com/docs/help/quick-start',
+    verified: true
+  },
+  'command-code': {
+    label: 'Command Code',
+    detectCmd: 'command-code',
+    aliases: ['cmdc'],
+    launchCmd: 'command-code --trust',
+    yoloArgs: '--yolo',
+    install: 'npm i -g command-code@latest',
+    homepageUrl: 'https://commandcode.ai/docs/quickstart',
+    verified: true
+  },
+  continue: {
+    label: 'Continue',
+    detectCmd: 'cn',
+    yoloArgs: '--auto',
+    install: 'npm i -g @continuedev/cli',
+    homepageUrl: 'https://docs.continue.dev/cli/quickstart',
+    verified: true
+  },
+  crush: {
+    label: 'Charm (Crush)',
+    detectCmd: 'crush',
+    yoloArgs: '--yolo',
+    install: 'brew install charmbracelet/tap/crush',
+    homepageUrl: 'https://github.com/charmbracelet/crush',
+    verified: true
+  },
+  dsh: {
+    label: 'DeepSeek Harness',
+    // npm の @deepseek-ai/dsh の実行ファイルは dsh。端末の画面は dsh tui（launcher-help）。
+    // Orca は旧名の dsh-tui / dst で検出している
+    detectCmd: 'dsh',
+    aliases: ['dsh-tui', 'dst'],
+    launchCmd: 'dsh tui',
+    yoloArgs: '',
+    install: 'npm install -g @deepseek-ai/dsh',
+    homepageUrl: 'https://deepseek-harness.github.io/deepseek-harness/',
+    verified: true
+  },
+  forge: {
+    label: 'ForgeCode',
+    detectCmd: 'forge',
+    yoloArgs: '',
+    install: 'curl -fsSL https://forgecode.dev/cli | sh',
+    homepageUrl: 'https://forgecode.dev/docs/',
+    verified: true
+  },
+  freebuff: {
+    label: 'Freebuff',
+    detectCmd: 'freebuff',
+    yoloArgs: '',
+    install: 'npm install -g freebuff',
+    homepageUrl: 'https://freebuff.com/cli',
+    verified: true
+  },
+  goose: {
+    label: 'Goose',
+    detectCmd: 'goose',
+    launchCmd: 'goose session',
+    yoloArgs: '',
+    install: 'curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash',
+    homepageUrl: 'https://goose-docs.ai/docs/getting-started/installation/',
+    verified: true
   },
   grok: {
     label: 'Grok',
     detectCmd: 'grok',
     yoloArgs: '--permission-mode bypassPermissions',
-    homepageUrl: 'https://x.ai/cli'
+    install: 'curl -fsSL https://x.ai/cli/install.sh | bash',
+    homepageUrl: 'https://github.com/xai-org/grok-build',
+    verified: true
+  },
+  hermes: {
+    label: 'Hermes Agent',
+    detectCmd: 'hermes',
+    launchCmd: 'hermes --tui',
+    yoloArgs: '--yolo',
+    install: 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash',
+    homepageUrl: 'https://hermes-agent.nousresearch.com/docs/',
+    verified: true
+  },
+  junie: {
+    label: 'Junie CLI',
+    detectCmd: 'junie',
+    yoloArgs: '--brave',
+    install: 'curl -fsSL https://junie.jetbrains.com/install.sh | bash',
+    homepageUrl: 'https://junie.jetbrains.com/docs/junie-cli.html',
+    verified: true
+  },
+  kilo: {
+    label: 'Kilocode',
+    detectCmd: 'kilo',
+    yoloArgs: '--auto',
+    install: 'npm install -g @kilocode/cli',
+    homepageUrl: 'https://kilo.ai/docs/code-with-ai/platforms/cli',
+    verified: true
+  },
+  kimi: {
+    label: 'Kimi',
+    detectCmd: 'kimi',
+    yoloArgs: '--yolo',
+    install: 'curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash',
+    homepageUrl: 'https://www.kimi.com/code/docs/en/kimi-code-cli/guides/getting-started',
+    verified: true
+  },
+  letta: {
+    label: 'Letta Code',
+    detectCmd: 'letta',
+    yoloArgs: '--yolo',
+    install: 'npm install -g @letta-ai/letta-code',
+    homepageUrl: 'https://github.com/letta-ai/letta-code',
+    verified: true
+  },
+  'mimo-code': {
+    label: 'MiMo Code',
+    detectCmd: 'mimo',
+    yoloArgs: '--dangerously-skip-permissions',
+    install: 'curl -fsSL https://mimo.xiaomi.com/install | bash',
+    homepageUrl: 'https://mimo.xiaomi.com/coder',
+    verified: true
+  },
+  'mistral-vibe': {
+    label: 'Mistral Vibe',
+    detectCmd: 'vibe',
+    aliases: ['mistral-vibe'],
+    yoloArgs: '--auto-approve',
+    install: 'curl -LsSf https://mistral.ai/vibe/install.sh | bash',
+    homepageUrl: 'https://github.com/mistralai/mistral-vibe',
+    verified: true
+  },
+  muse: {
+    label: 'Muse',
+    detectCmd: 'muse',
+    launchCmd: 'muse --trust-workspace',
+    yoloArgs: '--yolo',
+    install: 'curl -fsSL https://dev.meta.ai/install.sh | sh',
+    homepageUrl: 'https://dev.meta.ai/docs/muse-code',
+    verified: true
+  },
+  omp: {
+    label: 'oh-my-pi',
+    detectCmd: 'omp',
+    yoloArgs: '--yolo',
+    install: 'curl -fsSL https://omp.sh/install | sh',
+    homepageUrl: 'https://omp.sh/docs',
+    verified: true
+  },
+  openclaude: {
+    label: 'OpenClaude',
+    detectCmd: 'openclaude',
+    yoloArgs: '',
+    install: 'npm install -g @gitlawb/openclaude@latest',
+    homepageUrl: 'https://openclaude.gitlawb.com/',
+    verified: false
+  },
+  openclaw: {
+    label: 'OpenClaw',
+    detectCmd: 'openclaw',
+    launchCmd: 'openclaw chat',
+    yoloArgs: '',
+    install: 'curl -fsSL https://openclaw.ai/install.sh | bash',
+    homepageUrl: 'https://github.com/openclaw/openclaw',
+    verified: true
+  },
+  openhands: {
+    label: 'OpenHands CLI',
+    detectCmd: 'openhands',
+    yoloArgs: '--always-approve',
+    install: 'uv tool install openhands --python 3.12',
+    homepageUrl: 'https://docs.openhands.dev/openhands/usage/cli/installation',
+    verified: true
+  },
+  pi: {
+    label: 'Pi',
+    detectCmd: 'pi',
+    yoloArgs: '',
+    install: 'curl -fsSL https://pi.dev/install.sh | sh',
+    homepageUrl: 'https://pi.dev',
+    verified: true
+  },
+  'prime-agent': {
+    label: 'Prime Agent',
+    detectCmd: 'prime-agent',
+    yoloArgs: '',
+    install: 'curl -fsSL https://app.primeintellect.ai/prime-agent/install.sh | sh',
+    homepageUrl: 'https://github.com/PrimeIntellect-ai/prime-agent',
+    verified: false
+  },
+  qoder: {
+    label: 'Qoder CLI',
+    detectCmd: 'qoder',
+    aliases: ['qodercli'],
+    yoloArgs: '--yolo',
+    install: 'curl -fsSL https://qoder.com/install | bash',
+    homepageUrl: 'https://docs.qoder.com/cli/installation',
+    verified: true
   },
   'qwen-code': {
     label: 'Qwen Code',
-    // パッケージ名は qwen-code だが、PATH に入るコマンドは qwen（Orca の注記）
     detectCmd: 'qwen',
-    yoloArgs: '--approval-mode yolo',
-    homepageUrl: 'https://github.com/QwenLM/qwen-code'
+    yoloArgs: '--yolo',
+    install: 'npm install -g @qwen-code/qwen-code@latest',
+    homepageUrl: 'https://github.com/QwenLM/qwen-code',
+    verified: true
   },
-  amp: {
-    label: 'Amp',
-    detectCmd: 'amp',
-    yoloArgs: '--dangerously-allow-all',
-    homepageUrl: 'https://ampcode.com/manual#install'
+  roo: {
+    label: 'Roo Code CLI',
+    detectCmd: 'roo',
+    yoloArgs: '',
+    install: 'curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/install.sh | sh',
+    homepageUrl: 'https://github.com/RooCodeInc/Roo-Code/tree/main/apps/cli',
+    verified: true
+  },
+  rovo: {
+    label: 'Rovo Dev',
+    detectCmd: 'acli',
+    launchCmd: 'acli rovodev run',
+    yoloArgs: '--yolo',
+    install: 'brew tap atlassian/homebrew-acli && brew install acli',
+    homepageUrl: 'https://support.atlassian.com/rovo/docs/install-and-run-rovo-dev-cli-on-your-device/',
+    verified: true
+  },
+  trae: {
+    label: 'Trae CLI',
+    detectCmd: 'traecli',
+    yoloArgs: '--permission-mode bypass_permissions',
+    install: 'sh -c "$(curl -fsSL https://trae.cn/trae-cli/install_v2.sh)"',
+    homepageUrl: 'https://docs.trae.cn/cli_get-started-with-trae-code-cli-2',
+    verified: true
+  },
+  zcode: {
+    label: 'ZCode',
+    detectCmd: 'zcode',
+    yoloArgs: '',
+    install: '',
+    homepageUrl: 'https://zcode.z.ai/en/docs',
+    verified: false
   }
 }
+
+/**
+ * Orca の README「Supported Agents」に載っている順の id（2026-10 時点、+ any CLI agent はカスタムで対応）。
+ * Orca由来: ~/bench/orca/README.md（MIT, Copyright 2026 Lovecast Inc.）
+ */
+export const ORCA_SUPPORTED_AGENTS: readonly BuiltinAgent[] = [
+  'claude', 'codex', 'grok', 'cursor', 'copilot', 'muse',
+  'dsh', 'zcode', 'opencode', 'mimo-code', 'amp', 'openclaude',
+  'antigravity', 'pi', 'omp', 'hermes', 'devin', 'goose',
+  'aug', 'autohand', 'crush', 'cline', 'codebuddy', 'codebuff',
+  'freebuff', 'command-code', 'continue', 'droid', 'kilo', 'kimi',
+  'kiro', 'mistral-vibe', 'qwen-code', 'rovo'
+]
 
 /** アカウント切り替え・使用量の対象（設定フォルダを分けられるもの） */
 export const ACCOUNT_AGENTS: readonly AccountAgent[] = ['claude', 'codex']
@@ -209,8 +613,18 @@ const WRAPPER_PROCESSES = new Set(['node', 'bun', 'deno', 'python', 'python3'])
 const PACKAGE_PATH_IDENTITIES: ReadonlyArray<{ pattern: RegExp; agent: BuiltinAgent }> = [
   { pattern: /node_modules\/@openai\/codex\//, agent: 'codex' },
   { pattern: /node_modules\/@google\/gemini-cli\//, agent: 'gemini' },
-  { pattern: /(?:^|\/)cursor-agent\/versions\/[^/]+\/index\.js$/, agent: 'cursor' }
+  { pattern: /(?:^|\/)cursor-agent\/versions\/[^/]+\/index\.js$/, agent: 'cursor' },
+  // 公式インストーラの Claude Code は ~/.local/share/claude/versions/<版> の実体を claude のリンクから動かす
+  { pattern: /(?:^|\/)claude\/versions\/[^/]+$/, agent: 'claude' }
 ]
+
+/**
+ * 版番号だけの実行ファイル名（公式インストーラの Claude Code は前面プロセス名が「2.1.288」になる）。
+ * 名前では決められないので、呼び出し側はコマンド行（ps の args）で判定し直す
+ */
+export function isVersionProcessName(name: string): boolean {
+  return /^\d+\.\d+\.\d+(?:[-+.][\w.-]*)?$/.test(normalizeProcessName(name))
+}
 
 function normalizeProcessName(token: string | undefined, stripScript = false): string {
   if (!token) return ''
@@ -258,6 +672,8 @@ export function agentForProcess(commandLine: string, prefs: Pick<AgentPreference
   const head = normalizeProcessName(tokens[0])
   const direct = agentForName(head, table)
   if (direct) return direct
+  const first = tokens[0]!.replace(/^["']|["']$/g, '').replace(/\\/g, '/')
+  for (const identity of PACKAGE_PATH_IDENTITIES) if (identity.pattern.test(first)) return identity.agent
   if (!WRAPPER_PROCESSES.has(head)) return null
   const rest = tokens.slice(1).filter((token) => !token.startsWith('-'))
   // python -m aider
@@ -276,6 +692,8 @@ export function agentForProcess(commandLine: string, prefs: Pick<AgentPreference
 // ───────────────────────── 設定の読み込み ─────────────────────────
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '')
+/** 新しい版で増えるかもしれない組み込みのエージェントの id の形（小文字・数字・ハイフン） */
+const FUTURE_AGENT_ID = /^[a-z0-9][a-z0-9-]{0,47}$/
 
 /**
  * 保存された設定を型どおりに直す。壊れた値は既定へ戻し、以前の形（claude / codex だけの launch）もそのまま引き継ぐ。
@@ -286,6 +704,14 @@ export function sanitizeAgentPreferences(raw: unknown): AgentPreferences {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   const rawLaunch = (r.launch && typeof r.launch === 'object' ? r.launch : {}) as Record<string, unknown>
   const launch = { ...DEFAULT_AGENT_PREFERENCES.launch }
+  // 新しい版の設定に、この版が知らないエージェントの起動コマンドがあっても捨てずに持っておく（古い版に戻しても失わない）。
+  // 使うのは BUILTIN_AGENTS にあるものだけなので、知らないものは起動にもメニューにも出ない
+  for (const [agent, value] of Object.entries(rawLaunch)) {
+    const c = value as Partial<AgentLaunchConfig> | undefined
+    if (!isBuiltinAgent(agent) && FUTURE_AGENT_ID.test(agent) && c && text(c.command)) {
+      ;(launch as Record<string, AgentLaunchConfig>)[agent] = { command: text(c.command), args: text(c.args) }
+    }
+  }
   for (const agent of BUILTIN_AGENTS) {
     const c = rawLaunch[agent] as Partial<AgentLaunchConfig> | undefined
     // 空白だけのコマンドも未設定とみなして既定に戻す
@@ -304,7 +730,9 @@ export function sanitizeAgentPreferences(raw: unknown): AgentPreferences {
     const ids = customAgents.map((agent) => agent.id)
     const id = isCustomAgentId(c.id) && !ids.includes(c.id) ? c.id : newCustomAgentId(name, ids)
     const processName = text(c.processName)
-    customAgents.push({ id, name, command, args: text(c.args), ...(processName ? { processName } : {}) })
+    // アイコンの文字は2文字まで（絵文字などの合字も1文字として数える）
+    const icon = [...text(c.icon)].slice(0, 2).join('')
+    customAgents.push({ id, name, command, args: text(c.args), ...(processName ? { processName } : {}), ...(icon ? { icon } : {}) })
   }
 
   const known = (value: unknown): value is TuiAgent =>
@@ -314,10 +742,14 @@ export function sanitizeAgentPreferences(raw: unknown): AgentPreferences {
 
   // 書きかけ（コマンドが空）のカスタムは起動できないので、起動時に開く一覧には入れない
   const launchable = (agent: TuiAgent): boolean => isBuiltinAgent(agent) || Boolean(findCustomAgent({ customAgents }, agent)?.command)
+  // 無効の一覧は、知らない id（新しい版のエージェント）も残してよい（何も起動しない・何にも当たらない）
+  const disabledAgents = Array.isArray(r.disabledAgents)
+    ? [...new Set(r.disabledAgents.filter((value): value is TuiAgent => known(value) || (typeof value === 'string' && FUTURE_AGENT_ID.test(value))))]
+    : [...DEFAULT_AGENT_PREFERENCES.disabledAgents]
   return {
     launch,
     customAgents,
-    disabledAgents: list(r.disabledAgents, DEFAULT_AGENT_PREFERENCES.disabledAgents),
+    disabledAgents,
     startupAgents: list(r.startupAgents, DEFAULT_AGENT_PREFERENCES.startupAgents).filter(launchable)
   }
 }

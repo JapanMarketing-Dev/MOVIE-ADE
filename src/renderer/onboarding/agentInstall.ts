@@ -1,16 +1,11 @@
 import type { BuiltinAgent } from '@shared/types'
+import { AGENT_CATALOG } from '@shared/agentCatalog'
 
 /**
- * セットアップの Agent の手順で、見つからなかった CLI に出す入れ方（コピーして自分で実行してもらう）。
- * 本システムがインストーラを動かすことはない。
- * 公式の手順が npm 以外で、短い1行にできないものは載せず、ホームページ（agentCatalog の homepageUrl）だけを案内する。
+ * 見つからなかった Agent の CLI のインストールコマンド（AgentInstallTerminal で、押したときだけ実行する）。
+ * 正本はカタログ（src/shared/agentCatalog.ts）の install。空のもの（ソースからしか入れられないなど）は undefined を返し、
+ * インストール方法のリンクだけを出す。
  */
-export const AGENT_INSTALL_COMMANDS: Partial<Record<BuiltinAgent, string>> = {
-  claude: 'npm install -g @anthropic-ai/claude-code',
-  codex: 'npm install -g @openai/codex',
-  gemini: 'npm install -g @google/gemini-cli',
-  opencode: 'npm install -g opencode-ai',
-  copilot: 'npm install -g @github/copilot',
-  'qwen-code': 'npm install -g @qwen-code/qwen-code',
-  amp: 'npm install -g @sourcegraph/amp'
+export function agentInstallCommand(agent: BuiltinAgent): string | undefined {
+  return AGENT_CATALOG[agent]?.install.trim() || undefined
 }

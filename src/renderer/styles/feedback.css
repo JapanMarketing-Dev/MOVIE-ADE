@@ -346,39 +346,40 @@
   place-items: center;
 }
 
-/* 帯の右端のキー一覧。読ませるものではなく、目に入れば十分 */
-.fb-keys {
-  display: flex;
-  min-width: 0;
-  justify-content: flex-end;
-  color: var(--color-text-faint);
-  gap: var(--space-6);
-  grid-column: 3;
+/* 書き込みの色。ボタンには今の色の丸、案内の枠には候補の丸を並べる */
+.fb-color-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
 }
 
-.fb-keys__item {
+.fb-colors {
   display: inline-flex;
   align-items: center;
   gap: var(--space-3);
   -webkit-app-region: no-drag;
 }
 
-.fb-keys .fb-keycap {
-  color: var(--color-text-muted);
-}
-
-.fb-keys__rec {
-  width: 8px;
-  height: 8px;
+.fb-colors__swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
   border-radius: var(--radius-pill);
-  background: var(--color-record);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+  cursor: pointer;
 }
 
-/* ピルの横に収まらない幅では出さない（案内の枠にも同じキーが出る）*/
-@media (max-width: 1320px) {
-  .fb-keys {
-    display: none;
-  }
+.fb-colors__swatch:hover,
+.fb-colors__swatch:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+  outline: none;
+}
+
+.fb-colors__swatch[aria-checked='true'] {
+  box-shadow: 0 0 0 2px var(--color-bg-app), 0 0 0 4px rgba(255, 255, 255, 0.9);
 }
 
 /* ── 動き ────────────────────────────────────────── */
@@ -844,11 +845,17 @@
 }
 
 .fb-targets__empty {
+  /* 行は固定の高さ（ROW_HEIGHT）で並ぶので、折り返さず1行に収める（全文は title で出す） */
   margin: 0;
-  padding: var(--space-6) var(--space-4);
+  padding: 0 var(--space-4);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--color-text-faint);
   font-size: var(--font-size-xs);
-  line-height: var(--line-height-normal);
 }
 
 .fb-targets__hint {
@@ -859,4 +866,70 @@
   color: var(--color-text-faint);
   font-size: var(--font-size-2xs);
   line-height: var(--line-height-normal);
+}
+
+/* ── 右パネルの行（確認先・URL ツリー・フォルダツリー・検索結果）──────
+ * 一覧は見えている行だけを描く（fileTree.tsx の VirtualRows）ので、行は同じ高さ（28px）の1行にする。
+ */
+
+.fb-targets__list .fb-target {
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0 var(--space-3);
+}
+
+.fb-target__indent {
+  width: calc(var(--depth, 0) * 12px);
+  flex: none;
+}
+
+.fb-target__chevron {
+  flex: none;
+  color: var(--color-text-faint);
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+
+.fb-target__chevron.is-open {
+  transform: rotate(90deg);
+}
+
+.fb-target__chevron-space {
+  width: 12px;
+  flex: none;
+}
+
+.fb-targets__list .fb-target__name {
+  flex: 0 1 auto;
+  /* 後ろの印（表示中・エディタで開く）を行の右端へ寄せる。URL の行は detail が伸びるので効かない */
+  margin-right: auto;
+}
+
+.fb-targets__list .fb-target__detail {
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.fb-target__name--page.is-folder {
+  color: var(--color-text-muted);
+}
+
+.fb-target__name--hit mark {
+  background: none;
+  color: var(--color-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+.fb-target--add .fb-target__name {
+  color: var(--color-text-muted);
+}
+
+/* 「エディタで開く」は触れたとき・選んだときだけ出す（行を広く使う） */
+.fb-targets__list .fb-target__editor {
+  opacity: 0;
+}
+
+.fb-targets__list .fb-target:hover .fb-target__editor,
+.fb-targets__list .fb-target.is-selected .fb-target__editor,
+.fb-target__editor:focus-visible {
+  opacity: 1;
 }

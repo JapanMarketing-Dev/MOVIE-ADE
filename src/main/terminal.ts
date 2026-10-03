@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { promisify } from 'node:util'
 import { homedir } from 'node:os'
 import type { IPty } from 'node-pty'
-import { type TerminalAttachInfo, type TerminalCreateOptions, type TerminalSessionInfo, type TerminalSize, type TerminalTabInfo } from '@shared/types'
+import { type TerminalAttachInfo, type TerminalCreateOptions, type TerminalSessionInfo, type TerminalSize, type TerminalTabInfo, type TuiAgent } from '@shared/types'
 import { buildAgentLaunchCommand, startupShellForPath } from '@shared/agentLaunch'
 import { agentForProcess, agentLabel, findCustomAgent, isBuiltinAgent } from '@shared/agentCatalog'
 import { currentSettings } from './settings'
@@ -17,10 +17,26 @@ import { detectState, parseTitle, stripAnsi } from './agent/state'
 import type { AgentKind } from './agent/protocol'
 import { ComposerReadiness } from './agent/readiness'
 import { sendToAgent } from './agent/send'
+import { chooseSendTarget } from './agent/sendTarget'
+import { agentSubmitsPaste } from '@shared/sendTarget'
+import { agentInProcessTree, isShellProcess, parseProcessRows, type ProcessRow } from './agent/processTree'
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import { reportMainError } from './telemetry'
-import { flow, reportHandled } from '@shared/report'
+import { flow, reportHandled, timedSync } from '@shared/report'
+import { exitWhenDoneCommand } from '@shared/agentInstall'
+import { DECISION_ENV_PREFIXES } from '@shared/decision'
+
+/**
+ * 終わったら閉じる1回きりのコマンド（Agent のインストール）。
+ * 検証起動（ADE_E2E=1）では本物のインストーラを動かさない。ADE_E2E_INSTALL_COMMAND があればそれ
+ * （例: echo installing && sleep 1 && exit 0）に差し替え、無ければ実行せずに表示だけして成功にする
+ */
+function oneShotCommand(command: string): string {
+  if (process.env.ADE_E2E !== '1') return command.trim()
+  const mock = process.env.ADE_E2E_INSTALL_COMMAND?.trim()
+  return mock || `echo '[E2E] ${command.trim().replace(/'/g, `'\\''`)}'`
+}
 
 /**
  * 内蔵ターミナル（WS-4）。node-pty のPTYをメインプロセスで持ち、
@@ -69,6 +85,8 @@ function ptyEnv(extra: Record<string, string> = {}): Record<string, string> {
     if (['ELECTRON_RUN_AS_NODE', 'NODE_OPTIONS', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'].includes(key)) continue
     // 親の Claude Code / Codex のセッションの印は渡さない（新しいターミナルは親のエージェントの子ではない）
     if (isInheritedAgentSessionEnv(key, value)) continue
+    // 別の Ferret（親）の判定モデルの中継の URL は古い合言葉なので受け継がない（旧名も）。このアプリの値は extra で渡す
+    if (DECISION_ENV_PREFIXES.some((prefix) => key.startsWith(prefix))) continue
     env[key] = value
   }
   env.TERM = 'xterm-256color'
@@ -93,6 +111,19 @@ async function loadNodePty(): Promise<typeof import('node-pty')> {
     })
   }
   return nodePtyPromise
+}
+
+/**
+ * ps の結果。送信先を選ぶときは全タブを続けて調べるので、1秒だけ使い回す（タブの数だけ ps を起動しない）
+ */
+let processCache: { at: number; rows: Promise<ProcessRow[]> } | null = null
+function processRows(): Promise<ProcessRow[]> {
+  if (!processCache || Date.now() - processCache.at > 1000) {
+    const rows = promisify(execFile)('ps', ['-axo', 'pid=,ppid=,args='], { timeout: 1000, maxBuffer: 4 * 1024 * 1024 }).then(({ stdout }) => parseProcessRows(stdout))
+    processCache = { at: Date.now(), rows }
+    rows.catch(() => { processCache = null }) // 失敗は使い回さない（呼び出し側が受け取る）
+  }
+  return processCache.rows
 }
 
 interface Session {
@@ -130,6 +161,12 @@ export class TerminalManager {
     private readonly onData: (id: string, data: string) => void,
     private readonly onExit: (id: string, exitCode: number) => void
   ) {}
+
+  /**
+   * タブを開くたびに足す環境変数（判定モデルの中継の URL など。src/main/decision/service.ts）。
+   * キーのような秘密はここで渡さないこと
+   */
+  launchEnv: ((meta: { agent: string | null }) => Promise<Record<string, string>>) | null = null
 
   /**
    * 後始末が残っているPTYの数。
@@ -189,8 +226,13 @@ export class TerminalManager {
       })
       deliver(launch.command, accountEnv)
     } else if (options.command?.trim()) {
-      deliver(options.command.trim(), {})
+      deliver(options.exitWhenDone ? exitWhenDoneCommand(oneShotCommand(options.command), shell.file) : options.command.trim(), {})
     }
+    // 判定モデルの中継の URL など。用意できなくてもタブは開く（指示文の受け入れ確認が使えないだけ）
+    const launchEnv = this.launchEnv ? await this.launchEnv({ agent: agent ? agentLabel(agent, currentSettings().agents) : null }).catch((err: unknown) => {
+      reportHandled(err, { area: 'terminal', op: 'prepare decision env' })
+      return {}
+    }) : {}
     const id = `t${++this.seq}`
     let pty: ReturnType<typeof nodePty.spawn>
     try {
@@ -199,7 +241,7 @@ export class TerminalManager {
         cols: Math.max(2, size.cols),
         rows: Math.max(1, size.rows),
         cwd,
-        env: ptyEnv(extraEnv)
+        env: ptyEnv({ ...launchEnv, ...extraEnv })
       })
     } catch (err) {
       // シェルの名前だけを付ける（パスは送る前に落とす。src/main/telemetry.ts）
@@ -333,37 +375,54 @@ export class TerminalManager {
     if (session && session.screen?.text !== text.slice(-10000)) session.screen = { text: text.slice(-10000), at: Date.now() }
   }
 
-  async agentState(id: string): Promise<{ kind: AgentKind; state: string }> {
+  async agentState(id: string): Promise<{ kind: AgentKind; state: string; agent: TuiAgent | null }> {
     const session = this.sessions.get(id)
-    if (!session) return { kind: 'unknown', state: 'unknown' }
+    if (!session) return { kind: 'unknown', state: 'unknown', agent: null }
     const prefs = currentSettings().agents
     const command = session.pty.process
     let agent = agentForProcess(command, prefs)
-    // npm版のCodex・Gemini CLI などは node を前面プロセスにしたまま動く（npm版のCodexは子のネイティブCLI）。
-    // 子孫のコマンド行から同定する。シェルへ戻ったときや分からないときは推測せず、送信を止める
-    if (!agent && /(?:^|\/)(?:node|bun|deno|python3?)$/.test(command) && process.platform !== 'win32') {
+    // 名前で決まらないとき（npm 版は node、公式インストーラの Claude Code は版番号、ラッパーのスクリプトなど）は、
+    // シェルの子から1段ずつコマンド行を見て同定する（agent/processTree.ts）。シェルに戻っていれば何も居ない
+    const foreground = !isShellProcess(command)
+    if (!agent && foreground && process.platform !== 'win32') {
       try {
-        const { stdout } = await promisify(execFile)('ps', ['-axo', 'pid=,ppid=,args='], { timeout: 1000, maxBuffer: 4 * 1024 * 1024 })
-        const rows = stdout.split('\n').flatMap((line) => {
-          const m = line.trim().match(/^(\d+)\s+(\d+)\s+(.+)$/)
-          return m ? [{ pid: Number(m[1]), parent: Number(m[2]), command: m[3]! }] : []
-        })
-        const descendants = new Set([session.pty.pid])
-        for (let i = 0; i < 8; i++) for (const row of rows) if (descendants.has(row.parent)) descendants.add(row.pid)
-        const found = rows.filter((row) => descendants.has(row.pid) && row.pid !== session.pty.pid).flatMap((row) => agentForProcess(row.command, prefs) ?? [])
-        if (new Set(found).size === 1) agent = found[0]!
-      } catch { /* 同定できなければ送信しない */ }
+        agent = agentInProcessTree(await processRows(), session.pty.pid, (line) => agentForProcess(line, prefs))
+      } catch { /* ps が使えなければ下の起動時の Agent で判断する */ }
     }
+    // Agent として開いたタブで、シェルではない何かが前面で動いていれば、その Agent とみなす
+    // （独自のラッパーや、名前を変えて動く版でも送れるように。シェルに戻っていれば送らない）
+    if (!agent && foreground && session.info.agent) agent = session.info.agent
     const kind: AgentKind = agent === 'claude' ? 'claude-code' : agent === 'codex' ? 'codex' : agent ? 'generic' : 'unknown'
-    return { kind, state: kind === 'unknown' ? 'unknown' : detectState(kind, { title: session.title, tail: session.screen?.text ?? session.tail }) }
+    return { kind, agent, state: kind === 'unknown' ? 'unknown' : detectState(kind, { title: session.title, tail: session.screen?.text ?? session.tail }) }
   }
 
-  async sendReview(id: string, text: string): Promise<{ ok: boolean; message: string }> {
+  /** その Agent が動いている、同じプロジェクトのターミナル（待機中を先に）。無ければ null */
+  async findAgentTerminal(agent: TuiAgent, projectDir: string | null): Promise<string | null> {
+    const candidates = await Promise.all([...this.sessions.values()].map(async (session) => ({
+      id: session.id, cwd: session.info.cwd, ...(await this.agentState(session.id))
+    })))
+    return chooseSendTarget(null, candidates.filter((c) => c.agent === agent), projectDir)
+  }
+
+  /**
+   * 「Agentへ送信」の宛先。選んでいるターミナルに Agent が居なければ、同じプロジェクトの Agent のターミナル。
+   * どこにも居なければ null（agent/sendTarget.ts）
+   */
+  async resolveSendTarget(preferred: string | null, projectDir: string | null): Promise<string | null> {
+    const candidates = await Promise.all([...this.sessions.values()].map(async (session) => ({
+      id: session.id, cwd: session.info.cwd, ...(await this.agentState(session.id))
+    })))
+    return chooseSendTarget(preferred, candidates, projectDir)
+  }
+
+  async sendReview(id: string, text: string): Promise<{ ok: boolean; message: string; submitted?: boolean }> {
     const session = this.sessions.get(id)
     if (!session) return { ok: false, message: t('terminal.send.openTerminal') }
     if (session.sending) return { ok: false, message: t('terminal.send.busy') }
-    const { kind } = await this.agentState(id)
+    const { kind, agent } = await this.agentState(id)
     if (kind === 'unknown') return { ok: false, message: t('terminal.send.noAgent') }
+    // Enter で送信されると確かめていない Agent は、貼り付けるだけにする（@shared/sendTarget）
+    const submit = agentSubmitsPaste(agent)
     // Claude Code / Codex 以外は待機中の見え方を知らないので、確認待ちでなく、出力が落ち着いていれば送る
     // （Orca が個別の合図を持たないエージェントに使う quiet-render と同じ考え方）。結果は「確かめられない」と伝える
     const generic = kind === 'generic'
@@ -378,14 +437,15 @@ export class TerminalManager {
     }
     session.sending = true
     try {
-      const result = await sendToAgent({ text,
+      const result = await sendToAgent({ text, submit,
         terminal: { write: (data) => { if (!this.sessions.has(id)) throw new UserFacingError(t('terminal.send.exited')); session.pty.write(data) }, onData: () => () => {} },
         getState: async () => {
           const state = (await this.agentState(id)).state
           if (state === 'blocked' || state === 'idle' || state === 'working') return state
           return generic ? 'idle' : 'unknown'
         } })
-      return { ok: result.ok, message: result.ok ? t(generic ? 'terminal.send.doneUnverified' : 'terminal.send.done') : result.message }
+      if (result.ok && !result.submitted) return { ok: true, submitted: false, message: t('terminal.send.pastedNoEnter', { agent: agentLabel(agent, currentSettings().agents) }) }
+      return { ok: result.ok, submitted: result.ok, message: result.ok ? t(generic ? 'terminal.send.doneUnverified' : 'terminal.send.done') : result.message }
     } finally { session.sending = false }
   }
 
@@ -491,7 +551,8 @@ export class TerminalManager {
 function descendantPids(root: number): number[] {
   let listing: string
   try {
-    listing = execFileSync('ps', ['-Ao', 'pid=,ppid='], { encoding: 'utf8', timeout: 1000 })
+    // 同期の ps（main が止まる）。重ければ手がかりとして控える
+    listing = timedSync('ps', () => execFileSync('ps', ['-Ao', 'pid=,ppid='], { encoding: 'utf8', timeout: 1000 }))
   } catch (err) {
     // 子プロセスを数えられないだけで、終了処理は pty.kill で続ける
     reportHandled(err, { area: 'terminal', op: 'list child processes' })

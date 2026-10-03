@@ -15,15 +15,28 @@ function manifest(version: string, prerelease = false): ReleaseManifest {
 }
 
 describe('R2 へのリリース（索引と manifest）', () => {
-  it('合意したファイル名だけを拾い、OS と CPU を読む', () => {
-    expect(parseArtifactName('MOVIE-ADE-0.1.0-mac-arm64.dmg', '0.1.0')).toEqual({ name: 'MOVIE-ADE-0.1.0-mac-arm64.dmg', os: 'mac', arch: 'arm64', kind: 'dmg' })
-    expect(parseArtifactName('MOVIE-ADE-0.1.0-win-x64.exe', '0.1.0')?.arch).toBe('x64')
-    expect(parseArtifactName('MOVIE-ADE-0.1.0-linux-x86_64.AppImage', '0.1.0')?.arch).toBe('x64')
-    expect(parseArtifactName('MOVIE-ADE-0.1.0-linux-amd64.deb', '0.1.0')).toMatchObject({ os: 'linux', arch: 'x64', kind: 'deb' })
-    expect(parseArtifactName('MOVIE-ADE-0.1.0-win-x64.exe.blockmap', '0.1.0')).toBeNull()
-    expect(parseArtifactName('latest-mac.yml', '0.1.0')).toBeNull()
-    // 別の版のファイルは混ぜない
-    expect(parseArtifactName('MOVIE-ADE-0.1.1-mac-arm64.dmg', '0.1.0')).toBeNull()
+  it('合意したファイル名だけを拾い、製品名・OS・CPU を読む（0.2.0 からは Ferret、それまでは MOVIE-ADE）', () => {
+    expect(parseArtifactName('Ferret-0.2.0-mac-arm64.dmg', '0.2.0')).toEqual({ name: 'Ferret-0.2.0-mac-arm64.dmg', product: 'Ferret', os: 'mac', arch: 'arm64', kind: 'dmg' })
+    expect(parseArtifactName('Ferret-0.2.0-win-x64.exe', '0.2.0')?.arch).toBe('x64')
+    expect(parseArtifactName('Ferret-0.2.0-linux-x86_64.AppImage', '0.2.0')?.arch).toBe('x64')
+    expect(parseArtifactName('Ferret-0.2.0-linux-amd64.deb', '0.2.0')).toMatchObject({ os: 'linux', arch: 'x64', kind: 'deb' })
+    expect(parseArtifactName('MOVIE-ADE-0.1.0-mac-arm64.dmg', '0.1.0')).toMatchObject({ product: 'MOVIE-ADE', os: 'mac' })
+    expect(parseArtifactName('Ferret-0.2.0-win-x64.exe.blockmap', '0.2.0')).toBeNull()
+    expect(parseArtifactName('latest-mac.yml', '0.2.0')).toBeNull()
+    // 別の版・別の製品名（Dev 版）のファイルは混ぜない
+    expect(parseArtifactName('Ferret-0.2.1-mac-arm64.dmg', '0.2.0')).toBeNull()
+    expect(parseArtifactName('Ferret-Dev-0.2.0-mac-arm64.dmg', '0.2.0')).toBeNull()
+  })
+
+  it('版の製品名を manifest と索引に残す（索引には旧名 MOVIE-ADE の版も並ぶ）', () => {
+    const files = [{ name: 'Ferret-0.2.0-mac-arm64.dmg', os: 'mac' as const, arch: 'arm64', kind: 'dmg', size: 1, sha256: 'a' }]
+    const ferret = buildManifest({ version: '0.2.0', date: 'd', prerelease: false, notes: '', files, product: 'Ferret' })
+    expect(ferret.product).toBe('Ferret')
+    // 0.1.x の索引の項目には product が無い（サイトは MOVIE-ADE として扱う）
+    const old = addVersionToIndex(emptyIndex(), manifest('0.1.1')).index
+    const { index } = addVersionToIndex(old, ferret)
+    expect(index.versions.map((v) => [v.version, v.product])).toEqual([['0.2.0', 'Ferret'], ['0.1.1', undefined]])
+    expect(index.latest).toBe('0.2.0')
   })
 
   it('manifest は path をバケット直下からの相対にし、Preview の OS に印を付ける', () => {

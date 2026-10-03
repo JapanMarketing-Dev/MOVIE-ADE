@@ -9,12 +9,13 @@
  *                                 { schema, version, date, prerelease, notes, notesUrl?, files: [{ name, path, size, sha256, os, arch, kind }] }
  * path はバケット直下からの相対。ベース URL は config.js の DOWNLOAD_BASE を前に付ける。
  *
- * ファイル名の規則: MOVIE-ADE-<version>-<os>-<arch>.<ext>
- *   例: MOVIE-ADE-0.2.0-mac-arm64.dmg / MOVIE-ADE-0.2.0-win-x64.exe / MOVIE-ADE-0.2.0-linux-x86_64.AppImage
+ * ファイル名の規則: <製品名>-<version>-<os>-<arch>.<ext>
+ *   0.1.x は MOVIE-ADE-0.1.0-mac-arm64.dmg、0.2.0 以降は Ferret-0.2.0-mac-arm64.dmg（改名）。
+ *   判別は OS・CPU の語と拡張子だけを見るので、製品名の部分は問わない（versions.json に両方が並んでも同じに扱う）。
  * manifest の os・arch・kind を優先し、無い・不正な時だけ名前から判別する。
  */
 
-import { REPO_URL } from './config.js'
+import { REPO_URL } from './config.js?v=412f94b4'
 
 // 英語の README の見出し「Install and run」
 export const BUILD_DOC_URL = `${REPO_URL}#install-and-run`
@@ -38,6 +39,11 @@ const IGNORED = /(\.blockmap|\.yml|\.yaml|\.sig|\.asc|\.sha\d*|\.sha\d+sum|\.txt
 
 const OS_BY_KIND = { dmg: 'mac', pkg: 'mac', exe: 'win', msi: 'win', AppImage: 'linux', deb: 'linux', rpm: 'linux', snap: 'linux' }
 const OSES = ['mac', 'win', 'linux']
+
+/** 今の製品名と、manifest・索引に product が無い版（0.1.0・0.1.1）の製品名 */
+export const CURRENT_PRODUCT = 'Ferret'
+export const LEGACY_PRODUCT = 'MOVIE-ADE'
+const productOf = (item) => (typeof item?.product === 'string' && item.product.trim() ? item.product.trim() : LEGACY_PRODUCT)
 const ARCHES = ['arm64', 'x64', 'universal']
 
 /**
@@ -137,6 +143,7 @@ export function normalizeManifest(manifest, base) {
   return {
     version,
     tag: `v${version}`,
+    product: productOf(manifest),
     date: typeof manifest.date === 'string' ? manifest.date : '',
     prerelease: Boolean(manifest.prerelease),
     notes: typeof manifest.notes === 'string' ? manifest.notes : '',
@@ -159,6 +166,7 @@ export function normalizeIndex(index, base) {
       return {
         version,
         tag: `v${version}`,
+        product: productOf(v),
         date: typeof v.date === 'string' ? v.date : '',
         prerelease: Boolean(v.prerelease),
         manifestUrl: joinUrl(base, v.manifest ?? `releases/${version}/manifest.json`),

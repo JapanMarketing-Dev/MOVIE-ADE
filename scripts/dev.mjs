@@ -1,5 +1,5 @@
 /**
- * pnpm dev の入口。macOS では名前とアイコンを MOVIE-ADE Dev にした Electron.app（scripts/prepare-dev-electron.mjs）を
+ * pnpm dev の入口。macOS では名前とアイコンを Ferret にした Electron.app（scripts/prepare-dev-electron.mjs）を
  * ELECTRON_EXEC_PATH に入れてから electron-vite dev を起動する。ほかの OS はそのまま electron-vite dev。
  * 引数は electron-vite へそのまま渡す。
  */
@@ -12,7 +12,7 @@ if (!env.ELECTRON_EXEC_PATH) {
     const executable = prepareDevElectron()
     if (executable) env.ELECTRON_EXEC_PATH = executable
   } catch (err) {
-    console.warn(`[dev-electron] MOVIE-ADE Dev.app を用意できませんでした。Electron のまま起動します: ${err.message}`)
+    console.warn(`[dev-electron] Ferret.app（開発版）を用意できませんでした。Electron のまま起動します: ${err.message}`)
   }
 }
 

@@ -12,6 +12,7 @@ import {
   applyStalePolicy,
   isRetryAfterActive,
   providersToRefresh,
+  failureRetryAfterMs,
   withFetchingStatus
 } from './policy'
 import { t } from '@shared/i18n'
@@ -121,6 +122,8 @@ async function fetchProvider(agent: AccountAgent, force = false): Promise<void> 
     if (stateKey[agent] !== key) {
       stateKey[agent] = key
       state = { ...state, [agent]: null }
+      // 前のアカウントの失敗の予約は捨てる
+      cancelFailureRetry(agent)
     }
     setState(agent, withFetchingStatus(state[agent], agent))
     const fresh = await fetchFor(agent, target, force)
@@ -133,6 +136,7 @@ async function fetchProvider(agent: AccountAgent, force = false): Promise<void> 
     }
     const shown = applyStalePolicy(fresh, state[agent])
     setState(agent, shown)
+    scheduleFailureRetry(agent, fresh)
     if (shown.status === 'ok') inactiveCache.set(`${agent}:${key}`, shown)
   })()
   inFlight[agent] = work
@@ -141,6 +145,29 @@ async function fetchProvider(agent: AccountAgent, force = false): Promise<void> 
   } finally {
     inFlight[agent] = undefined
   }
+}
+
+/** 失敗したプロバイダの自動の再試行（agent ごとに1つ）。成功・切り替え・停止で取り消す */
+const retryTimers: Partial<Record<AccountAgent, NodeJS.Timeout>> = {}
+
+function cancelFailureRetry(agent: AccountAgent): void {
+  const pending = retryTimers[agent]
+  if (pending) clearTimeout(pending)
+  retryTimers[agent] = undefined
+}
+
+/** 間隔は fetchProvider が更新した failureStreak から決める（窓を前に出したときの providersToRefresh とずれない） */
+function scheduleFailureRetry(agent: AccountAgent, fresh: ProviderRateLimits): void {
+  cancelFailureRetry(agent)
+  const delay = failureRetryAfterMs(fresh, failureStreak[agent])
+  if (delay === null) return
+  const handle = setTimeout(() => {
+    retryTimers[agent] = undefined
+    // 窓が裏にあるときは取りに行かない（前に出したときの refreshStale に任せる。Orca と同じ）
+    if (started && windowActive()) void fetchProvider(agent)
+  }, delay)
+  handle.unref?.()
+  retryTimers[agent] = handle
 }
 
 function windowActive(): boolean {
@@ -165,6 +192,8 @@ export function getUsageState(): UsageState {
  */
 export async function refreshUsage(force: boolean): Promise<UsageState> {
   started = true
+  // 手動で取り直すので、古い予約がもう一度走らないようにする
+  if (force) for (const agent of AGENTS) cancelFailureRetry(agent)
   if (force) await Promise.all(AGENTS.filter((agent) => !isRetryAfterActive(state[agent])).map((agent) => fetchProvider(agent, true)))
   else await refreshStale()
   return state
@@ -223,4 +252,5 @@ export function attachUsageWindow(window: BrowserWindow, send: (state: UsageStat
 export function stopUsagePolling(): void {
   if (timer) clearInterval(timer)
   timer = null
+  for (const agent of AGENTS) cancelFailureRetry(agent)
 }

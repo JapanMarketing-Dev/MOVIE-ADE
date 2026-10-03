@@ -1,7 +1,7 @@
-import { addBreadcrumb, captureException, captureMessage, init } from '@sentry/electron/renderer'
+import { addBreadcrumb, captureEvent, captureException, init, setTag } from '@sentry/electron/renderer'
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import { renderErrorCapture, type SentryTestKind } from '@shared/telemetry'
+import { renderErrorCapture, startupBreadcrumb, uiTabTag, type SentryTestKind } from '@shared/telemetry'
 import { setReporter } from '@shared/report'
 import { ErrorBoundary } from '../ui/ErrorBoundary'
 
@@ -27,7 +27,7 @@ export async function initRendererCrashReporting(): Promise<void> {
   // 握りつぶしていた失敗・流れの区切りの送り先（src/shared/report.ts）。パンくずは main へ渡り、そこで scrub される
   setReporter({
     handled: (err, tags, level) => captureException(err instanceof Error ? err : new Error(String(err)), { level, tags }),
-    message: (message, tags, level) => captureMessage(message, { level, tags }),
+    message: (message, tags, level, fingerprint, contexts) => captureEvent({ message, level, tags, ...(fingerprint ? { fingerprint } : {}), ...(contexts ? { contexts } : {}) }),
     breadcrumb: (message, data) => addBreadcrumb({ category: 'flow', message, ...(data ? { data } : {}) })
   })
   keepStartupFailures()
@@ -39,10 +39,15 @@ function keepStartupFailures(): void {
   const original = console.error.bind(console)
   console.error = (...args: unknown[]) => {
     if (typeof args[0] === 'string' && args[0].startsWith('[startup]')) {
-      addBreadcrumb({ category: 'startup', level: 'error', message: args.map(String).join(' ') })
+      addBreadcrumb(startupBreadcrumb('error', args))
     }
     original(...args)
   }
+}
+
+/** どの画面（中央のタブ）を見ていたか。renderer のイベントにタグ ui.tab で付く（ファイルのパスは入れない） */
+export function setUiTab(tab: string): void {
+  if (initialized) setTag('ui.tab', uiTabTag(tab))
 }
 
 /** ErrorBoundary で捕まえた描画のエラーを送る。componentStack はコンポーネントの階層 */
@@ -52,20 +57,20 @@ export function reportRenderError(error: unknown, boundary: string, componentSta
 }
 
 function TestBomb(): never {
-  throw new Error('MOVIE-ADE Sentry test: render error in ErrorBoundary')
+  throw new Error('Ferret Sentry test: render error in ErrorBoundary')
 }
 
 /**
- * 確認用（MOVIE_ADE_SENTRY_TEST）。起動の少しあとに、選んだ種類の例外をわざと起こす。
+ * 確認用（FERRET_SENTRY_TEST）。起動の少しあとに、選んだ種類の例外をわざと起こす。
  * boundary は画面に出ない要素の中で、本物の ErrorBoundary に捕まえさせる。
  */
 function runSentryTests(kinds: SentryTestKind[]): void {
   if (kinds.length === 0) return
   window.setTimeout(() => {
     if (kinds.includes('renderer')) {
-      window.setTimeout(() => { throw new Error('MOVIE-ADE Sentry test: renderer uncaught error') }, 0)
+      window.setTimeout(() => { throw new Error('Ferret Sentry test: renderer uncaught error') }, 0)
       // 例外の直後は Sentry が window.onerror を少しのあいだ無視するので、間をあけて起こす
-      window.setTimeout(() => { void Promise.reject(new Error('MOVIE-ADE Sentry test: renderer unhandled rejection')) }, 1000)
+      window.setTimeout(() => { void Promise.reject(new Error('Ferret Sentry test: renderer unhandled rejection')) }, 1000)
     }
     if (kinds.includes('boundary')) {
       const host = document.createElement('div')

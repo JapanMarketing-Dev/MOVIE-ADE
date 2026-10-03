@@ -1,0 +1,36 @@
+// site/ の HTML と JS モジュールの、CSS / JS への参照に ?v=<中身の版> を付け直す（pnpm site:hash。pnpm site:meta も最後に走らせる）。
+// docs/ の HTML は tools/docs/build-docs.mjs が同じ版を付けて書き出すので、ここでは触らない。
+// CSS・JS を変えたら、これと pnpm docs:build を走らせる（単体テスト site-assets がずれを検出する）。
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { SITE_DIR, MODULE_IMPORTS, assetVersion } from './asset-version.mjs'
+
+let changed = 0
+const write = (path, before, after) => {
+  if (after === before) return
+  writeFileSync(path, after)
+  changed++
+  console.log(`updated ${path.slice(SITE_DIR.length + 1)}`)
+}
+
+// 1. モジュールの import（葉から順に）
+for (const [file, deps] of MODULE_IMPORTS) {
+  const path = join(SITE_DIR, file)
+  const before = readFileSync(path, 'utf8')
+  let after = before
+  for (const dep of deps) {
+    const v = assetVersion(`js/${dep}`)
+    after = after.replace(new RegExp(`(from '\\./${dep.replace('.', '\\.')})(\\?v=[0-9a-f]+)?'`, 'g'), `$1?v=${v}'`)
+  }
+  write(path, before, after)
+}
+
+// 2. site/ 直下の HTML（docs/ は build-docs.mjs が書く）
+for (const name of readdirSync(SITE_DIR).filter((f) => f.endsWith('.html'))) {
+  const path = join(SITE_DIR, name)
+  const before = readFileSync(path, 'utf8')
+  const after = before.replace(/((?:src|href)=")(\/?)((?:js\/)?[\w-]+\.(?:css|js))(\?v=[0-9a-f]+)?"/g, (whole, attr, slash, rel) =>
+    `${attr}${slash}${rel}?v=${assetVersion(rel)}"`)
+  write(path, before, after)
+}
+console.log(`${changed} file(s) updated`)

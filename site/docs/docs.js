@@ -1,28 +1,6 @@
-// Small behaviors for the docs: theme toggle (same key as ../js/app.js), collapsible page list on narrow
-// screens, copy buttons on code blocks, and the active heading in "On this page".
+// Small behaviors for the docs: collapsible page list on narrow screens, lazy feature clips, copy buttons on code blocks, and the active heading in "On this page".
 // ../js/app.js is not loaded here because it fetches the release list.
 ;(() => {
-  const THEME_KEY = 'ade-site-theme'
-  const root = document.documentElement
-
-  const currentTheme = () => {
-    const set = root.dataset.theme
-    if (set === 'light' || set === 'dark') return set
-    return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-
-  for (const button of document.querySelectorAll('[data-theme-toggle]')) {
-    button.addEventListener('click', () => {
-      const next = currentTheme() === 'dark' ? 'light' : 'dark'
-      root.dataset.theme = next
-      try {
-        localStorage.setItem(THEME_KEY, next)
-      } catch {
-        // Storage may be blocked; the page still switches
-      }
-    })
-  }
-
   for (const node of document.querySelectorAll('[data-year]')) node.textContent = String(new Date().getFullYear())
 
   // Collapse the page list on narrow screens. Without JS it stays open
@@ -53,6 +31,31 @@
       setTimeout(() => (button.textContent = 'Copy'), 1500)
     })
     pre.append(button)
+  }
+
+  // Feature clips: load and play only while on screen. With reduced motion, keep the poster image only
+  const clips = [...document.querySelectorAll('video.docs-clip-video[data-src]')]
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (clips.length && !reduceMotion && 'IntersectionObserver' in window) {
+    const load = (video) => {
+      if (video.dataset.loaded) return
+      video.dataset.loaded = '1'
+      if (video.dataset.srcWebm) video.append(Object.assign(document.createElement('source'), { src: video.dataset.srcWebm, type: 'video/webm' }))
+      video.append(Object.assign(document.createElement('source'), { src: video.dataset.src, type: 'video/mp4' }))
+      video.load()
+    }
+    const clipObserver = new IntersectionObserver(
+      (entries) => {
+        for (const { target, isIntersecting } of entries) {
+          if (isIntersecting) {
+            load(target)
+            target.play().catch(() => {})
+          } else target.pause()
+        }
+      },
+      { rootMargin: '200px 0px' },
+    )
+    for (const video of clips) clipObserver.observe(video)
   }
 
   // "On this page": highlight the first heading near the top of the viewport

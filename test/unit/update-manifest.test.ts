@@ -56,7 +56,8 @@ describe('pickReleaseFile', () => {
 describe('judgeManifest', () => {
   const m = parseManifest(MANIFEST)!
   it('新しければダウンロードサイトを開く先にする', () => {
-    expect(DOWNLOAD_PAGE_URL).toMatch(/^https:\/\//)
+    // ダウンロードサイトは ferretade.dev（旧ドメインも動くので、配布済みの版は影響なし）
+    expect(DOWNLOAD_PAGE_URL).toBe('https://ferretade.dev/download')
     expect(judgeManifest('0.1.0', m, 'darwin', 'arm64')).toEqual({
       state: 'available', current: '0.1.0', latest: '0.2.0', url: DOWNLOAD_PAGE_URL
     })

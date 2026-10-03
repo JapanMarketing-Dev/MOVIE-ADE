@@ -381,3 +381,30 @@
     animation: none !important;
   }
 }
+
+/*
+ * ── 言語ごとのフォント ──────────────────────────────
+ * <html lang> は画面の言語（lib/i18n.ts）。既定の --font-ui は和文のフォントが先に来るので、
+ * 中国語（簡体・繁体）・韓国語・ヒンディー語はそれぞれの文字のフォントを先に置く
+ * （同じ漢字でも日本語の字形で出さない。ハングル・デーヴァナーガリーを確実に出す）。
+ */
+:root:lang(zh-CN) {
+  --font-ui: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei UI', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', 'Source Han Sans SC',
+    system-ui, sans-serif;
+}
+
+:root:lang(zh-TW) {
+  --font-ui: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Microsoft JhengHei UI',
+    'Microsoft JhengHei', 'Noto Sans CJK TC', 'Noto Sans TC', 'Source Han Sans TC', system-ui, sans-serif;
+}
+
+:root:lang(ko) {
+  --font-ui: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic',
+    'Noto Sans CJK KR', 'Noto Sans KR', 'Source Han Sans K', system-ui, sans-serif;
+}
+
+:root:lang(hi) {
+  --font-ui: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Kohinoor Devanagari',
+    'Devanagari Sangam MN', 'Nirmala UI', 'Mangal', 'Noto Sans Devanagari', system-ui, sans-serif;
+}

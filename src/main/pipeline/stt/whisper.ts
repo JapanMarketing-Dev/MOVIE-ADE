@@ -16,6 +16,7 @@ import type { TranscriptSegment } from '../types'
 export type SttLanguage = 'ja' | 'en' | 'auto' | (string & {})
 import type { SttEngine, TranscribeChunkInput, TranscribeResult } from './engine'
 import { t as translateMessage } from '@shared/i18n'
+import { toWhisperLanguage } from '@shared/sttLanguages'
 
 export interface WhisperOptions {
   /** whisper-cli の実行パス。アプリでは同梱バイナリを指す */
@@ -66,7 +67,8 @@ export function buildWhisperArgs(opt: WhisperOptions, wavPath: string, outPrefix
   const args = [
     '-m', opt.model,
     '-f', wavPath,
-    '-l', language,
+    // whisper.cpp だけジャワ語を jw と呼ぶ（ISO 639-1 は jv）。ほかのコードはそのまま
+    '-l', language === 'auto' ? 'auto' : toWhisperLanguage(language),
     '-oj',
     '-of', outPrefix,
     '-np',

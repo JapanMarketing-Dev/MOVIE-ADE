@@ -23,7 +23,7 @@ import { errorKind, reportHandled } from '@shared/report'
  * - 一時ファイルに書いて名前を変える（原子的に置き換える）。元の権限を保つ
  * - 待つのは短い時間だけ。間に合わなければそのまま起動する（そのときはエージェントが確認を出す）
  *
- * 書くのは MOVIE-ADE に登録したプロジェクトのフォルダだけ（登録＝信頼したとみなす）。ホームなどには書かない。
+ * 書くのは Ferret に登録したプロジェクトのフォルダだけ（登録＝信頼したとみなす）。ホームなどには書かない。
  */
 
 export type TrustOutcome = 'granted' | 'unchanged' | 'missing-config' | 'locked' | 'unreadable' | 'skipped'

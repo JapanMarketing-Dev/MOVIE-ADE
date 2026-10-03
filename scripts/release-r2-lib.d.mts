@@ -16,6 +16,7 @@ export interface ReleaseFile {
 export interface ReleaseManifest {
   schema: 1
   version: string
+  product?: string
   build?: number
   date: string
   prerelease: boolean
@@ -26,6 +27,7 @@ export interface ReleaseManifest {
 
 export interface VersionsIndexEntry {
   version: string
+  product?: string
   date: string
   prerelease: boolean
   manifest: string
@@ -39,6 +41,7 @@ export interface VersionsIndex {
 }
 
 export declare const SCHEMA: 1
+export declare const PRODUCTS: string[]
 export declare const KEEP_VERSIONS: number
 export declare const IMMUTABLE_CACHE: string
 export declare const INDEX_CACHE: string
@@ -49,7 +52,7 @@ export declare const CONTENT_TYPES: Record<string, string>
 export declare function parseArtifactName(
   name: string,
   version: string
-): { name: string; os: ReleaseOs; arch: string; kind: string } | null
+): { name: string; product: string; os: ReleaseOs; arch: string; kind: string } | null
 export declare function compareVersionsDesc(a: string, b: string): number
 export declare function buildManifest(input: {
   version: string
@@ -60,6 +63,7 @@ export declare function buildManifest(input: {
   files: Array<{ name: string; os: ReleaseOs; arch: string; kind: string; size: number; sha256: string }>
   previewOs?: string[]
   build?: number
+  product?: string
 }): ReleaseManifest
 export declare function emptyIndex(): VersionsIndex
 export declare function addVersionToIndex(

@@ -284,8 +284,7 @@ Orca の共有リストテーブル規格（`orca/src/renderer/src/lib/list-tabl
 | ペンOFF時 | `pointer-events: none` | 入力を素通しする（PEN-2） |
 | ペンON時 | `pointer-events: all; cursor: crosshair` | Orca の grab と同じカーソル |
 | ペン線 | `stroke: var(--pen)`、太さ **3px**、`stroke-linecap: round`。**外側に `--pen-halo` の 1.5px ストローク**を重ねる（計6px幅） | 対象ページが暗い場合も明るい場合も読める。Orca の grab ハイライトが「白2px枠＋暗い外側影で明暗どちらでも読める」ようにしているのと同じ対処（`grab-guest-overlay-script.ts:13-16`） |
-| 置いたテキスト | 地 `rgb(10 10 10 / 0.92)`、文字 `#fafafa` 14px、`padding: 6px 10px`、`rounded-md`、`box-shadow: var(--shadow-floating)`、左上に `--pen` の 3px 縦線 | 共有画面で読める 14px。暗い pill にするのは Orca のホバーラベルと同じ |
-| カーソル位置リング | 外径 28px、`border: 3px solid var(--cursor-ring)`、`opacity: .85` | ペンもテキストもない指摘の画像に合成する（EXT-3） |
+| カーソル位置リング | 外径 28px、`border: 3px solid var(--cursor-ring)`、`opacity: .85` | ペンの書き込みがない指摘の画像に合成する（EXT-3） |
 | ヒットテスト | ホストを一瞬 `pointer-events: none` にして `document.elementFromPoint` → 戻す → `requestAnimationFrame` | Orca の grab と同じ手法（`grab-guest-overlay-script.ts:64-72`）。これで `elementFromPoint` がオーバーレイ自身を返すのを避ける |
 | 注入タイミング | **`dom-ready` ごとに再注入**。`executeJavaScriptInIsolatedWorld` の専用 world を使う | Orca は `dom-ready` ごとに注釈ブリッジを再注入し、同時にズームと viewport override も再適用している（`browser-page-webview-guest-session.ts:244-277`）。`setDeviceMetricsOverride` は same-origin ナビゲーションを越えて残るので **null でも再適用する**（同 `:272`） |
 

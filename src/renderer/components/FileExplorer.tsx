@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronRight, FileSearch, FileText, Folder, FolderOpen, ListCollapse, RefreshCw, Search } from 'lucide-react'
-import type { FsEntry } from '@shared/files'
 import { errorMessage } from '../lib/errors'
 import { SHORTCUTS } from '../lib/shortcut'
 import { PanelCloseButton } from './LayoutToggles'
 import { IconButton, Spinner } from '../ui'
+import { useFileTree } from './fileTree'
 import { useT } from '../lib/i18n'
 
 /**
@@ -18,10 +18,6 @@ import { useT } from '../lib/i18n'
  * 変更ありの「M」は、エディタで未保存の変更があるファイルに付ける。
  */
 
-type Row = { entry: FsEntry; depth: number }
-
-/** 変更通知のまとめ待ち。Agent が続けて書くときに読み直しを1回にする */
-const REFRESH_DEBOUNCE_MS = 200
 const SEARCH_DEBOUNCE_MS = 250
 
 function parentDir(path: string): string {
@@ -44,59 +40,21 @@ export function FileExplorer({
   onQuickOpen: () => void
 }) {
   const t = useT()
-  const [children, setChildren] = useState<Map<string, FsEntry[]>>(new Map())
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState<Set<string>>(new Set())
-  const [error, setError] = useState<string | null>(null)
+  // ツリーの状態（開いたときに読む・外部の変更で読み直す）はフィードバックの右パネルと共用（fileTree.tsx）
+  const tree = useFileTree(root)
+  const { rows, expanded, loading, toggleDir } = tree
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const error = tree.error ?? searchError
   const [query, setQuery] = useState('')
   const [nameResults, setNameResults] = useState<string[]>([])
   const [searching, setSearching] = useState(false)
   const [truncated, setTruncated] = useState(false)
-  const childrenRef = useRef(children)
-  childrenRef.current = children
 
-  const loadDir = useCallback(async (dir: string) => {
-    setLoading((set) => new Set(set).add(dir))
-    try {
-      const entries = await window.ade.invoke('fs:list', dir)
-      setChildren((map) => new Map(map).set(dir, entries))
-      if (dir === '') setError(null)
-    } catch (err) {
-      // 消えたフォルダは一覧から外す。根が読めないときだけ理由を出す
-      setChildren((map) => { const next = new Map(map); next.delete(dir); return next })
-      if (dir === '') setError(errorMessage(err))
-    } finally {
-      setLoading((set) => { const next = new Set(set); next.delete(dir); return next })
-    }
-  }, [])
-
-  // プロジェクトが変わったら最初から
+  // プロジェクトが変わったら絞り込みも最初から
   useEffect(() => {
-    setChildren(new Map())
-    setExpanded(new Set())
     setQuery('')
-    setError(null)
-    if (root) void loadDir('')
-  }, [root, loadDir])
-
-  // 外部の変更。読み込み済みのフォルダだけを読み直す
-  useEffect(() => {
-    if (!root) return
-    const pending = new Set<string>()
-    let timer: number | undefined
-    const off = window.ade.on('fs:changed', (event) => {
-      for (const path of event.paths) {
-        pending.add(parentDir(path))
-        pending.add(path)
-      }
-      window.clearTimeout(timer)
-      timer = window.setTimeout(() => {
-        for (const dir of pending) if (childrenRef.current.has(dir)) void loadDir(dir)
-        pending.clear()
-      }, REFRESH_DEBOUNCE_MS)
-    })
-    return () => { off(); window.clearTimeout(timer) }
-  }, [root, loadDir])
+    setSearchError(null)
+  }, [root])
 
   // ファイル名で絞り込む。打ち終わるのを少し待つ
   useEffect(() => {
@@ -112,34 +70,11 @@ export function FileExplorer({
           setTruncated(result.truncated)
           setSearching(false)
         },
-        (err) => { if (!cancelled) { setError(errorMessage(err)); setSearching(false) } }
+        (err) => { if (!cancelled) { setSearchError(errorMessage(err)); setSearching(false) } }
       )
     }, SEARCH_DEBOUNCE_MS)
     return () => { cancelled = true; window.clearTimeout(timer) }
   }, [root, query])
-
-  const toggleDir = (entry: FsEntry) => {
-    const opening = !expanded.has(entry.path)
-    setExpanded((set) => {
-      const next = new Set(set)
-      if (opening) next.add(entry.path)
-      else next.delete(entry.path)
-      return next
-    })
-    if (opening && !childrenRef.current.has(entry.path)) void loadDir(entry.path)
-  }
-
-  const rows = useMemo(() => {
-    const out: Row[] = []
-    const walk = (dir: string, depth: number) => {
-      for (const entry of children.get(dir) ?? []) {
-        out.push({ entry, depth })
-        if (entry.kind === 'directory' && expanded.has(entry.path)) walk(entry.path, depth + 1)
-      }
-    }
-    walk('', 0)
-    return out
-  }, [children, expanded])
 
   const searchingMode = query.trim().length > 0
 
@@ -149,8 +84,8 @@ export function FileExplorer({
         <span className="explorer__title">{t('fileExplorer.title')}</span>
         <span className="editor-head__spacer" />
         <IconButton size="sm" label={t('fileExplorer.quickOpen', { shortcut: SHORTCUTS.quickOpen() })} icon={<FileSearch size={14} />} onClick={onQuickOpen} disabled={!root} />
-        <IconButton size="sm" label={t('fileExplorer.refresh')} icon={<RefreshCw size={13} />} disabled={!root} onClick={() => { for (const dir of childrenRef.current.keys()) void loadDir(dir) }} />
-        <IconButton size="sm" label={t('fileExplorer.collapseAll')} icon={<ListCollapse size={14} />} disabled={!root} onClick={() => setExpanded(new Set())} />
+        <IconButton size="sm" label={t('fileExplorer.refresh')} icon={<RefreshCw size={13} />} disabled={!root} onClick={tree.refresh} />
+        <IconButton size="sm" label={t('fileExplorer.collapseAll')} icon={<ListCollapse size={14} />} disabled={!root} onClick={tree.collapseAll} />
         {/* ファイルツリーを閉じる（layout-footer の部品。開き直すのはタイトルバー・⌘⇧E・中央のタブの右端・設定） */}
         <PanelCloseButton panel="files" />
       </header>

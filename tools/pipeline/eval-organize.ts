@@ -162,11 +162,8 @@ export function evaluateOrganize(
   const frameAllValid = output.items.every((i) => i.frame_times.every((t) => frameTimes.has(t)));
   const annById = new Map(
     material.events
-      .filter((e) => e.type === 'pen' || e.type === 'text')
-      .map((e) => [
-        (e as { id: string }).id,
-        e.type === 'pen' ? (e as { t_end: number }).t_end : e.t,
-      ]),
+      .filter((e) => e.type === 'pen')
+      .map((e) => [(e as { id: string }).id, (e as { t_end: number }).t_end]),
   );
   let ok = 0;
   let late = 0;

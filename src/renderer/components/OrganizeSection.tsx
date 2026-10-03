@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CircleAlert, CircleCheck, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { LLM_API_PROVIDERS, LLM_PROVIDER_PRESETS, providerLabel, type AiEndpointConfig, type LlmApiProvider } from '@shared/aiProviders'
 import type { SttAvailability } from '@shared/types'
 import { useT } from '../lib/i18n'
-import { CheckButton, EndpointFields, KeyField } from './AiProviderFields'
+import { ProviderSetup } from './AiProviderFields'
 
 /**
  * 設定の「指摘の整理」の節。CLI（Claude Code / Codex）は各自の契約をそのまま使い、
@@ -42,29 +42,25 @@ export function OrganizeSection({ recording = false, headless = false }: { recor
   const preset = LLM_PROVIDER_PRESETS[provider]
   const endpoint = endpoints[provider]
 
+  // 提供元 → モデル → キーの3段（文字起こしと同じ部品）。どれで整理するかは指摘の画面の「整理」の横で選ぶ
   const body = <>
       <p className="st-note">{t('ai.organize.cliNote')}</p>
-      <label className="st-row"><span className="st-row__label">{t('ai.organize.provider')}</span><span className="rv-select">
+      <label className="st-row"><span className="st-row__label">{t('ai.organize.provider2')}</span><span className="rv-select">
         <select className="st-select" aria-label={t('ai.organize.provider')} value={provider} disabled={recording} onChange={(e) => setProvider(e.target.value as LlmApiProvider)} data-testid="organize-provider">
           {LLM_API_PROVIDERS.map((p) => <option key={p} value={p}>
-            {providerLabel(LLM_PROVIDER_PRESETS[p], t)} — {t(available?.llm[p] ? 'ai.organize.ready' : 'ai.organize.notReady')}
+            {p === 'compatible' ? t('ai.providerCustom') : providerLabel(LLM_PROVIDER_PRESETS[p], t)}{available?.llm[p] ? ' ✓' : ''}
           </option>)}
         </select></span></label>
-      {available?.llm[provider]
-        ? <p className="st-note st-note--ok"><CircleCheck size={12} aria-hidden="true" />{t('ai.organize.ready')}</p>
-        : <p className="st-note st-note--warn"><CircleAlert size={12} aria-hidden="true" />{t('ai.organize.notReady')}</p>}
-      <p className="st-note">{t(preset.structuredOutput ? 'ai.organize.structured' : 'ai.organize.unstructured')}</p>
-      <EndpointFields key={provider} preset={preset} value={endpoint} disabled={recording} testId="organize-endpoint"
+      {available && <ProviderSetup key={provider} preset={preset} value={endpoint} disabled={recording} testId="organize-endpoint"
+        available={available} onAvailabilityChange={() => void reload()}
         onChange={(next) => {
           const copy = { ...endpoints }
           if (next) copy[provider] = next
           else delete copy[provider]
           saveEndpoints(copy)
-        }} />
-      {available && <KeyField key={`key-${preset.vendor}`} vendor={preset.vendor} label={providerLabel(preset, t)} optional={!preset.keyRequired}
-        placeholder={preset.keyPlaceholder} available={available} disabled={recording} onChanged={() => void reload()} />}
-      <CheckButton disabled={recording} note={t('ai.organize.testNote')}
-        onCheck={() => window.ade.invoke('organize:testConnection', { provider, ...(endpoint ? { endpoint } : {}) })} />
+        }}
+        onCheck={() => window.ade.invoke('organize:testConnection', { provider, ...(endpoint ? { endpoint } : {}) })}
+        advancedExtra={<p className="st-note">{t(preset.structuredOutput ? 'ai.organize.structured' : 'ai.organize.unstructured')}</p>} />}
   </>
   // 設定ページの見出し付きの枠（PageSection）に入れるときは中身だけを出す
   if (headless) return body

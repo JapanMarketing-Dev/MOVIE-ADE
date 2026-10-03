@@ -4,6 +4,8 @@
  * どの実装も同じ `{t0, t1, speaker, text}` を返す。
  */
 import type { AudioSource, Speaker, TranscriptSegment } from '../types'
+import { dropHallucinations, segmentDbfs } from './hallucination'
+import { readWavPcm } from './wav'
 
 export interface TranscribeChunkInput {
   /** 16kHz モノラル WAV のパス */
@@ -66,8 +68,15 @@ export class IncrementalTranscriber {
     this.queue = this.queue.then(async () => {
       try {
         const r = await this.engine.transcribeChunk(input)
-        this.segments.push(...r.segments)
-        await this.onSegments?.(r.segments)
+        // 物音や無音に付いた効果音のタグ・決まり文句は話した言葉ではない（hallucination.ts）
+        let pcm: Promise<{ samples: Int16Array; info: { sampleRate: number } } | null> | null = null
+        const segments = await dropHallucinations(r.segments, async (t0, t1) => {
+          pcm ??= readWavPcm(input.wavPath).catch(() => null) // 読めなければ音量で判断しない（想定内）
+          const wav = await pcm
+          return wav ? segmentDbfs(wav.samples, wav.info.sampleRate, input.offsetMs, t0, t1) : undefined
+        })
+        this.segments.push(...segments)
+        await this.onSegments?.(segments)
         this.billedSeconds += r.billedSeconds ?? 0
       } catch (e) {
         this.errors.push(e instanceof Error ? e : new Error(String(e)))

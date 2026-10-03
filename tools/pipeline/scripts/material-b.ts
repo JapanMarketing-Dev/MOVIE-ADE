@@ -91,7 +91,7 @@ export const materialB: Material = {
       gap: 2600,
       text: 'ここの単位の書き方がページによってバラバラなんですよ',
       item: 'b6',
-      cues: [{ type: 'text', at: 1100, id: 'x1', x: 620, y: 300, body: '単位は「月額」に統一（「月々」「ひと月あたり」を廃止）', selector: 'span.plan-price-unit', elText: 'ひと月あたり' }],
+      cues: [{ type: 'pen', at: 1100, id: 'p8', durationMs: 1200, bbox: [560, 280, 140, 40], selector: 'span.plan-price-unit', text: 'ひと月あたり' }],
     },
     { speaker: 'other', gap: 800, text: '月額で統一してください。社内の表記ルールもそうなっています', item: 'b6', bleedToMic: true },
 

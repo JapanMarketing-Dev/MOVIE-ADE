@@ -2,11 +2,13 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   Archive,
   ArchiveRestore,
+  CheckCircle2,
   Ellipsis,
   History,
   Laptop,
   ListChecks,
   ListFilter,
+  MessageCircleQuestion,
   PenLine,
   Pencil,
   Search,
@@ -65,12 +67,14 @@ export function toReviewSession(h: ReviewSummary): ReviewSession {
     label: formatTime(new Date(h.startedAt)),
     target: h.targetUrl ?? tNow('app.reviewFallbackTitle'),
     findings: h.itemCount,
+    ...(h.includedCount ? { progress: { done: Math.min(h.doneCount ?? 0, h.includedCount), total: h.includedCount, ...(h.needsHumanCount ? { needsHuman: h.needsHumanCount } : {}) } } : {}),
     status: h.broken ? 'broken' : h.incomplete ? 'incomplete' : h.sentAt ? 'sent' : 'draft',
     group: formatDate(new Date(h.startedAt)),
     startedAt: h.startedAt,
     durationMs: h.durationMs,
     ...(h.title ? { title: h.title } : {}),
     ...(h.name ? { name: h.name } : {}),
+    ...(h.autoName ? { autoName: h.autoName } : {}),
     ...(h.archived ? { archived: true } : {}),
     ...(h.searchText ? { searchText: h.searchText } : {})
   }
@@ -163,16 +167,30 @@ function SessionCard({
           <span className="session__head">
             <span className="session__label">{heading}</span>
             {session.archived && <Archive className="session__archived" size={11} strokeWidth={2} aria-label={t('sidebar.archived')} />}
-            <span className="session__count" title={t('sidebar.findingsCount', { count: session.findings })}>
-              <ListChecks size={11} strokeWidth={2} aria-hidden="true" />
-              {session.findings}
-            </span>
+            {/* 送る指摘があれば「完了数/対象数」（progress.json）。すべて完了なら緑のチェック */}
+            {session.progress
+              ? <span className={`session__count${session.progress.done === session.progress.total ? ' is-complete' : ''}`} data-testid={`session-progress-${session.id}`}
+                title={t('sidebar.progress', { done: session.progress.done, total: session.progress.total })}>
+                {session.progress.done === session.progress.total
+                  ? <CheckCircle2 size={11} strokeWidth={2} aria-hidden="true" />
+                  : <ListChecks size={11} strokeWidth={2} aria-hidden="true" />}
+                {session.progress.done}/{session.progress.total}
+              </span>
+              : <span className="session__count" title={t('sidebar.findingsCount', { count: session.findings })}>
+                <ListChecks size={11} strokeWidth={2} aria-hidden="true" />
+                {session.findings}
+              </span>}
           </span>
           <span className="session__meta">
             <span className="session__when">
               {session.label}
               {duration && <span title={t('sidebar.duration', { value: duration })}> · {duration}</span>}
             </span>
+            {/* Agent が人間へ戻した指摘（needs_human）があれば琥珀色の印と件数 */}
+            {session.progress?.needsHuman ? <span className="session__ask" data-testid={`session-needs-human-${session.id}`}
+              title={t('sidebar.progressNeedsHuman', { count: session.progress.needsHuman })} role="img" aria-label={t('sidebar.progressNeedsHuman', { count: session.progress.needsHuman })}>
+              <MessageCircleQuestion size={11} strokeWidth={2.25} aria-hidden="true" />{session.progress.needsHuman}
+            </span> : null}
             {/* 幅が足りないので札はアイコンだけ。状態の名前は title と読み上げで出す（フィルタの札には文字がある） */}
             <span className={`session__status session__status--${session.status} session__status--icon`} title={t(status.label)} role="img" aria-label={t(status.label)}>
               <StatusIcon size={10} strokeWidth={2.25} aria-hidden="true" />

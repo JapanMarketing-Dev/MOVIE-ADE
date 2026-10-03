@@ -20,7 +20,8 @@ import {
 import { rankQuickOpenFiles } from '@shared/quickOpen'
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
-import { reportHandled } from '@shared/report'
+import { SLOW_OP_MS, noteSlowOp, reportHandled } from '@shared/report'
+import { progressChangedIds } from '@shared/findingProgress'
 
 /**
  * ファイルエディタの読み書き（fs:list / fs:read / fs:write / fs:files / fs:search / fs:changed）。
@@ -172,7 +173,7 @@ function findRg(): string | null {
 }
 
 /** 除外するディレクトリを rg のグロブにする */
-const RG_EXCLUDES = ['.git', 'node_modules', '.ade-movie'].flatMap((dir) => ['--glob', `!**/${dir}/**`])
+const RG_EXCLUDES = ['.git', 'node_modules', '.ferret', '.ade-movie'].flatMap((dir) => ['--glob', `!**/${dir}/**`])
 
 /**
  * rg を走らせ、1行ごとに onLine を呼ぶ。onLine が false を返したら打ち切る。
@@ -271,21 +272,39 @@ const CHANGE_BATCH_MS = 150
  * Orca は @parcel/watcher を使うが、依存（ネイティブモジュール）を増やさないため
  * Node の fs.watch(recursive) を使う（macOS / Windows は OS の仕組み、Linux も Node 20 以降で対応）。
  */
+/** 1回で renderer へ送る変更の上限（ビルドなどで大量に変わったとき） */
+const MAX_PENDING_PATHS = 1000
+/** これを超える通知が1回のまとまりで来たら、通知の嵐として控える */
+const WATCH_BURST_EVENTS = 2000
+
 export class ProjectWatcher {
   private watcher: FSWatcher | null = null
   private pending = new Set<string>()
+  /** 進み具合（progress.json）が変わったレビューのID。.ferret/ は変更通知の対象外なので別に拾う */
+  private progress = new Set<string>()
   private timer: NodeJS.Timeout | null = null
+  /** このまとまりで届いた通知の数と、最初の通知の時刻（ビルドや npm install の通知の嵐を、main の停止の手がかりに残す） */
+  private burst = { events: 0, since: 0 }
 
-  constructor(private readonly onChange: (event: FsChangedEvent) => void) {}
+  constructor(private readonly onChange: (event: FsChangedEvent) => void,
+    /** Agent が .ferret/reviews/<id>/progress.json を書いたとき（指摘の進み具合。@shared/findingProgress） */
+    private readonly onReviewProgress?: (ids: string[]) => void) {}
 
   watch(root: string | null): void {
     this.close()
     if (!root) return
     try {
       this.watcher = watch(root, { recursive: true }, (_event, filename) => {
+        if (this.burst.events++ === 0) this.burst.since = Date.now()
         if (!filename) return
         const rel = String(filename).split(sep).join('/')
+        if (this.onReviewProgress) for (const id of progressChangedIds([rel])) {
+          this.progress.add(id)
+          this.timer ??= setTimeout(() => this.flush(), CHANGE_BATCH_MS)
+        }
         if (!shouldIncludePath(rel)) return
+        // 通知の嵐で一覧が膨らみすぎないようにする（renderer へ送る量と、受け取ったあとの読み直しを抑える）
+        if (this.pending.size >= MAX_PENDING_PATHS) return
         this.pending.add(rel)
         this.timer ??= setTimeout(() => this.flush(), CHANGE_BATCH_MS)
       })
@@ -304,10 +323,19 @@ export class ProjectWatcher {
     if (this.timer) clearTimeout(this.timer)
     this.timer = null
     this.pending.clear()
+    this.progress.clear()
   }
 
   private flush(): void {
     this.timer = null
+    // 1回のまとまりで通知が多すぎたら、重い処理の手がかりとして控える（何件・何 ms のあいだか）
+    if (this.burst.events >= WATCH_BURST_EVENTS) noteSlowOp(`fswatch-burst:${this.burst.events}`, Math.max(SLOW_OP_MS, Date.now() - this.burst.since))
+    this.burst = { events: 0, since: 0 }
+    if (this.progress.size > 0) {
+      const ids = [...this.progress]
+      this.progress.clear()
+      this.onReviewProgress?.(ids)
+    }
     if (this.pending.size === 0) return
     const paths = [...this.pending]
     this.pending.clear()

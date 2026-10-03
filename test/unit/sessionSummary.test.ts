@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { appendEvents, createSession, listSessions, saveSession, type SessionRecord } from '../../src/main/sessions/index'
-import { SEARCH_TEXT_MAX, buildStoredSummary, parseStoredSummary, readFreshSummary } from '../../src/main/sessions/summary'
+import { SEARCH_TEXT_MAX, SUMMARY_VERSION, buildStoredSummary, parseStoredSummary, readFreshSummary } from '../../src/main/sessions/summary'
 import { assembleFromOrganized } from '../../src/main/pipeline/assemble'
 import { events, material } from './fixtures'
 
@@ -37,7 +37,7 @@ afterEach(async () => { await rm(project, { recursive: true, force: true }) })
 describe('要約を作る', () => {
   it('タイトルは最初の（空でない）遷移のもの。件数・長さ・URL・検索用の本文が入る', () => {
     const s = buildStoredSummary(record(), [{ url: 'http://localhost:3000/', title: '' }, { url: 'http://localhost:3000/pricing', title: '料金' }])
-    expect(s).toMatchObject({ version: 1, startedAt: material.meta.startedAt, durationMs: 60_000, itemCount: 1, needsCheckCount: 0, targetUrl: 'http://localhost:3000/', title: '料金' })
+    expect(s).toMatchObject({ version: SUMMARY_VERSION, startedAt: material.meta.startedAt, durationMs: 60_000, itemCount: 1, needsCheckCount: 0, targetUrl: 'http://localhost:3000/', title: '料金' })
     for (const text of ['料金', 'http://localhost:3000/pricing', '見出しが小さい', '大きくする', 'この見出しが小さいですね']) expect(s.searchText).toContain(text)
   })
 

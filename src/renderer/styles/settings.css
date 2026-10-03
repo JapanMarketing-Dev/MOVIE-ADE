@@ -305,6 +305,13 @@
   min-width: 0;
 }
 
+/* カスタムエージェントのアイコンの文字（1〜2文字） */
+.st-agent-row__iconfield {
+  width: 3.5em;
+  flex: none;
+  text-align: center;
+}
+
 .st-agent-row__state {
   color: var(--color-text-faint);
   font-size: var(--font-size-xs);
@@ -345,4 +352,80 @@
 
 .st-agent-row__details[open] > summary {
   margin-bottom: var(--space-3);
+}
+
+/* ── 設定: settings.json の欄（SettingsFileCard / SettingsJsonEditor） ── */
+
+.st-page__sections {
+  min-width: 0;
+}
+
+.st-file {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: var(--space-4) 0 var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-2);
+}
+
+.st-file__head {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  gap: var(--space-3);
+}
+
+.st-file__path,
+.st-json__path {
+  overflow: hidden;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.st-file__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.st-file__error code {
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.st-file__prompt {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.st-json {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: var(--space-2);
+  gap: var(--space-2);
+}
+
+.st-json__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.st-json__editor {
+  height: 420px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }

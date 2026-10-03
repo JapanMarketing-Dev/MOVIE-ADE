@@ -26,6 +26,11 @@ export function initLayout(): void {
       emit()
     })
     .catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
+  // settings.json の外部の変更（Claude Code などが書き換えた）。保存し直さずに反映だけする
+  window.ade.on('settings:changed', (settings) => {
+    current = sanitizeLayout(settings.layout)
+    emit()
+  })
 }
 
 export function currentLayout(): LayoutPrefs {

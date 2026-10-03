@@ -84,10 +84,12 @@ export function createKeychainReader(exec: SecurityExec = execSecurity) {
 
 const keychain = createKeychainReader()
 
-function parseClaudeAccessToken(raw: string): string | null {
+/** 資格情報の JSON から、アクセストークンと期限切れかどうかを取り出す（単体テストから使うため export） */
+export function parseClaudeCredentials(raw: string, now: number = Date.now()): { token: string; expired: boolean } | null {
   try {
-    const oauth = (JSON.parse(raw) as { claudeAiOauth?: { accessToken?: unknown } }).claudeAiOauth
-    return typeof oauth?.accessToken === 'string' && oauth.accessToken ? oauth.accessToken : null
+    const oauth = (JSON.parse(raw) as { claudeAiOauth?: { accessToken?: unknown; expiresAt?: unknown } }).claudeAiOauth
+    if (typeof oauth?.accessToken !== 'string' || !oauth.accessToken) return null
+    return { token: oauth.accessToken, expired: typeof oauth.expiresAt === 'number' && oauth.expiresAt < now }
   } catch {
     // 資格情報の形でない（未ログイン扱い。想定内。トークンを含むので送らない）
     return null
@@ -98,20 +100,27 @@ function parseClaudeAccessToken(raw: string): string | null {
  * Claude の OAuth アクセストークン。
  * configDir を渡すと、その CLAUDE_CONFIG_DIR 用の Keychain の項目と .credentials.json を見る。
  * 省略するとシステムの既定アカウント（無印の項目と ~/.claude/.credentials.json）。
+ *
+ * macOS では、古い .credentials.json が残っていて、新しいトークンは Keychain にあることがある
+ * （Claude Code は macOS では Keychain に書く）。ファイルのトークンが期限切れなら Keychain を見て、
+ * Keychain にも無いときだけファイルの期限切れのトークンを使う（使用量の取得が 401 になり「ログインし直し」と出る）。
  */
 export async function readClaudeAccessToken(configDir?: string, options: { retryBlocked?: boolean } = {}): Promise<CredentialRead> {
   // ファイル（Linux・Windows、または macOS でファイルに置いている場合）を先に見る。Keychain に触れずに済む
+  let file: { token: string; expired: boolean } | null = null
   try {
-    const token = parseClaudeAccessToken(await readFile(join(configDir ?? join(homedir(), '.claude'), '.credentials.json'), 'utf8'))
-    if (token) return { token }
+    file = parseClaudeCredentials(await readFile(join(configDir ?? join(homedir(), '.claude'), '.credentials.json'), 'utf8'))
   } catch {
     // 無ければ Keychain を見る
   }
-  if (process.platform !== 'darwin') return { token: null, reason: 'missing' }
+  if (file && !file.expired) return { token: file.token }
+  if (process.platform !== 'darwin') return file ? { token: file.token } : { token: null, reason: 'missing' }
   const raw = await keychain.read(claudeKeychainService(configDir), keychainUser(), options)
+  const fromKeychain = raw && raw !== 'unavailable' ? parseClaudeCredentials(raw)?.token ?? null : null
+  if (fromKeychain) return { token: fromKeychain }
+  if (file) return { token: file.token }
   if (raw === 'unavailable') return { token: null, reason: 'keychain-unavailable' }
-  const token = raw ? parseClaudeAccessToken(raw) : null
-  return token ? { token } : { token: null, reason: 'missing' }
+  return { token: null, reason: 'missing' }
 }
 
 /** Codex の auth.json のアクセストークンと ChatGPT のアカウント id */

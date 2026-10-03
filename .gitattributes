@@ -1,0 +1,18 @@
+# どの OS で clone しても、テキストは LF のまま取り出す（Windows の core.autocrlf で CRLF にしない）。
+# site/docs のように生成物と見比べるテストや、シェルスクリプト（scripts/*.sh）が CRLF で壊れないようにする。
+* text=auto eol=lf
+
+# 画像・アイコン・フォントなどは改行を変換しない
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.icns binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.mp4 binary
+*.webm binary
+*.wav binary

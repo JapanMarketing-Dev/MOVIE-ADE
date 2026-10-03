@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState, useRef } from 'react'
 import {
   AlertTriangle,
   CheckCircle2,
+  Circle,
   Clipboard,
   Code2,
   FileText,
@@ -15,6 +16,7 @@ import {
   Mic,
   PenLine,
   Play,
+  Plus,
   RotateCcw,
   Send,
   Sparkles,
@@ -24,7 +26,7 @@ import {
   Undo2,
   X
 } from 'lucide-react'
-import type { ReviewData, ReviewEdit, ReviewFrame } from '@shared/review'
+import { isUnsentTake, takeAt, type ReviewData, type ReviewEdit, type ReviewFrame } from '@shared/review'
 import { LLM_API_PROVIDERS, LLM_PROVIDER_PRESETS, isOrganizeRunnerId, providerLabel, type LlmApiProvider, type OrganizeRunnerId } from '@shared/aiProviders'
 import { Button, EmptyState, IconButton, Modal, Tooltip, useToast } from '../ui'
 import { FindingsEmptyArt, NoImageArt } from './reviewArt'
@@ -33,6 +35,13 @@ import { GitHubSendDialog } from './GitHubSendDialog'
 import { useT } from '../lib/i18n'
 import { groupByTarget, targetHeading, type ReviewTarget } from '@shared/reviewTarget'
 import { reportHandled } from '@shared/report'
+import { agentLabel } from '@shared/agentCatalog'
+import type { TuiAgent } from '@shared/types'
+import { formatShortcut } from '../lib/shortcut'
+import { loadSendTargets, rememberedSendTarget, resolveRememberedTarget, sendReviewToAgent } from '../lib/sendReview'
+import { SendTargetButton } from './SendTargetButton'
+import { NeedsHumanPanel, ProgressSummary, ProgressToggle } from './FindingProgress'
+import { nextProgress, progressOf } from '@shared/findingProgress'
 
 type FeedbackItem = ReviewData['document']['items'][number]
 
@@ -89,24 +98,44 @@ function TargetName({ target }: { target: ReviewTarget }) {
   </>
 }
 
-export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: string | null; review: ReviewData; onUpdate: (data: ReviewData) => void }) {
+export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recording = false }: {
+  terminalId: string | null
+  review: ReviewData
+  onUpdate: (data: ReviewData) => void
+  /**
+   * 今の対象でフィードバックの録画を始める。'append' はこのレビューの末尾に足す（既定）、
+   * 'new' は新しいレビューを作る（⌘⇧R と同じ）
+   */
+  onRecord?: (mode: 'append' | 'new') => void
+  recording?: boolean
+}) {
   const [runner, setRunner] = useState<OrganizeRunnerId>('codex')
+  /** Agent がどこにも居ないときに起動するもの（設定の startupAgents の先頭） */
+  const [defaultAgent, setDefaultAgent] = useState<TuiAgent>('claude')
+  /** 送り先を覚える単位（開いているプロジェクト） */
+  const [projectKey, setProjectKey] = useState('default')
   /** API キーで直接呼べる提供元（設定の「指摘の整理」でキーと接続先が揃ったもの） */
   const [apiReady, setApiReady] = useState<LlmApiProvider[]>([])
   useEffect(() => {
     void Promise.all([window.ade.invoke('app:settings'), window.ade.invoke('capture:availability')]).then(([s, a]) => {
       if (isOrganizeRunnerId(s.organizer?.runner)) setRunner(s.organizer.runner)
+      const first = s.agents?.startupAgents?.find((a) => !s.agents.disabledAgents?.includes(a))
+      if (first) setDefaultAgent(first)
+      if (s.activeProjectId) setProjectKey(s.activeProjectId)
       setApiReady(LLM_API_PROVIDERS.filter((p) => a.llm[p]))
     }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
   }, [])
   const [busy, setBusy] = useState(false)
   const [image, setImage] = useState<{ src: string; n: number } | null>(null)
   const [frames, setFrames] = useState<{ itemId: string; n: number; current: number[]; options: ReviewFrame[] } | null>(null)
-  const [videoTime, setVideoTime] = useState<number | null>(null)
+  /** 再生する動画と、その動画の中の開始時刻（追記した録画は takes ごとに別の動画） */
+  const [playing, setPlaying] = useState<{ url: string; t: number; take: number | null } | null>(null)
+  const videoTime = playing?.t ?? null
   const [githubOpen, setGithubOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const probingDuration = useRef(false)
   const queue = useRef(Promise.resolve())
+  const sending = useRef(false)
   const pending = useRef(0)
   const toast = useToast()
   const t = useT()
@@ -141,6 +170,21 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
   const rows = groups.flatMap((g) => g.items.map((item, i) => ({ item, n: ++counter, group: i === 0 ? g : null })))
     .filter((row) => !activeFilter || groups.find((g) => g.items.includes(row.item))?.target.key === activeFilter)
   const draft = !review.document.organizedByLlm && items.length > 0
+  // 押すとこのレビューに追記して録る（撮り忘れを同じレビューへ足す）。新しいレビューは隣の ＋（⌘⇧R と同じ）
+  const recordButton = (className: string) => onRecord && <span className="rv-record-group">
+    <Tooltip side="bottom" label={t('review.recordMoreTip')}>
+      <Button variant="record" className={className} icon={<Circle size={10} fill="currentColor" strokeWidth={0} />} disabled={recording}
+        data-testid={className === 'rv-record' ? 'findings-record' : 'findings-record-empty'} onClick={() => onRecord('append')}>{t('review.recordMore')}</Button>
+    </Tooltip>
+    <Tool side="bottom" tip={t('review.recordNewReviewTip', { shortcut: formatShortcut('Mod', 'Shift', 'R') })} label={t('review.recordNewReview')} icon={<Plus size={14} />}
+      disabled={recording} data-testid="findings-record-new" onClick={() => onRecord('new')} />
+  </span>
+  /** 指摘の時刻から、どの録画のどの時刻を再生するか（追記していなければ最初の動画のその時刻） */
+  const playbackOf = (item: FeedbackItem): { url: string; t: number; take: number | null } | null => {
+    const take = takeAt(review.takes, item.t)
+    if (!take) return review.videoUrl ? { url: review.videoUrl, t: item.t, take: null } : null
+    return take.videoUrl ? { url: take.videoUrl, t: Math.max(0, item.t - take.offsetMs), take: take.n } : null
+  }
 
   return <div className="findings rv" data-testid="findings" aria-busy={busy}>
     <header className="rv-head">
@@ -151,7 +195,10 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
           {busy ? t('review.saving') : t('review.saved')} · {t('review.sendCount', { sendable, total: items.length })} · {time(review.document.meta.durationMs)}
           {draft && <span className="rv-head__draft" title={t('review.draftHint')}>{t('review.draft')}</span>}
         </span>
+        {/* 指摘の進み具合（progress.json。Agent が作業しながら書く） */}
+        <ProgressSummary items={items} progress={review.progress} />
       </div>
+      <p className="rv-head__hint">{t('review.headHint')}</p>
       <div className="rv-head__actions">
         <div className="rv-head__tools">
           <Tool side="bottom" tip={t('review.undo')} label={t('review.undoLabel')} icon={<Undo2 size={15} />} disabled={busy || !review.canUndo} onClick={() => void edit({ kind: 'undo' })} />
@@ -173,7 +220,7 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
               <Sparkles size={14} /><span>{t('review.organize')}</span>
             </button>
           </Tooltip>
-          <span className="rv-select"><select className="rv-organize__runner" aria-label={t('review.organizeRunner')} value={runner} disabled={busy} onChange={(e) => {
+          <Tooltip side="bottom" label={t('review.organizeRunnerTip')}><span className="rv-select"><select className="rv-organize__runner" aria-label={t('review.organizeRunner')} value={runner} disabled={busy} onChange={(e) => {
             const next = e.target.value as OrganizeRunnerId
             setRunner(next)
             void window.ade.invoke('settings:organizer', { runner: next })
@@ -183,14 +230,27 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
             {(apiReady.length > 0 || runner.startsWith('api:')) && <optgroup label={t('review.organizeRunnerApi')}>
               {LLM_API_PROVIDERS.filter((p) => apiReady.includes(p) || runner === `api:${p}`).map((p) => <option key={p} value={`api:${p}`}>{providerLabel(LLM_PROVIDER_PRESETS[p], t)}</option>)}
             </optgroup>}
-          </select></span>
+          </select></span></Tooltip>
         </div>
-        <Button variant="primary" className="rv-send" icon={<Send size={14} />} disabled={busy || !terminalId || !sendable}
-          title={!terminalId ? t('review.openTerminalFirst') : undefined}
-          onClick={() => void action(async () => {
-            const result = await window.ade.invoke('review:send', review.id, terminalId!)
-            toast({ tone: result.ok ? 'success' : 'warning', message: result.message })
-          })}>{t('review.sendToAgent')}</Button>
+        {/* 録る・送るは1組。幅が足りないときも離さず、まとめて次の行へ回す */}
+        <div className="rv-head__primary">
+        {recordButton('rv-record')}
+        <SendTargetButton projectKey={projectKey} disabled={busy || !sendable}
+          onSend={(target) => {
+            // 押し直し・二度押しで同じ送信を重ねない（トーストが2回出ていた）
+            if (sending.current) return
+            sending.current = true
+            void action(async () => {
+              // 宛先に Agent が居なければ、その Agent（自動なら既定の Agent）を起動してから送る（lib/sendReview.ts）
+              const result = await sendReviewToAgent({ reviewId: review.id, target, focusedTerminalId: terminalId, defaultAgent,
+                onStarting: (agent) => toast({ tone: 'info', message: t('review.startingAgent', { agent: agentLabel(agent) }) }) })
+              // 送った時刻（sentAt）を読み直す。追記した指摘の「未送信」の印を外すため。
+              // 読み直せなくても送信は済んでいるので、結果の知らせはそのまま出す（失敗は main の IPC が送る）
+              if (result.ok) await window.ade.invoke('review:load', review.id).then(onUpdate, () => undefined)
+              toast({ tone: result.ok ? (result.submitted === false ? 'warning' : 'success') : 'warning', message: result.message })
+            }).finally(() => { sending.current = false })
+          }} />
+        </div>
       </div>
     </header>
 
@@ -201,7 +261,7 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
       </div>}
 
       {items.length === 0 && <EmptyState art={<FindingsEmptyArt />} title={t('review.emptyTitle')}
-        description={t('review.emptyDescription')} />}
+        description={t('review.emptyDescription')} actions={recordButton('rv-record rv-record--empty')} />}
 
       {grouped && <div className="rv-targets" role="group" aria-label={t('review.targets.filter')}>
         <button type="button" className="rv-targets__chip" aria-pressed={activeFilter === null} onClick={() => setTargetFilter(null)}>
@@ -220,15 +280,17 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
         const src = shown ? review.images[shown] : undefined
         const source = sourcesOf(item)
         const checking = item.status === 'needs_check'
-        const requestRepeats = same(item.request, item.title)
-        // 見出し・要望と同じ原文は引用に出さない（原文は保存されている）
-        const quotes = item.quotes.filter((q) => !same(q.text, item.title) && !same(q.text, item.request))
+        const take = takeAt(review.takes, item.t)
+        const unsent = isUnsentTake(take, review.sentAt)
+        const playback = playbackOf(item)
+        // 要望と同じ原文は引用に出さない（下書きでは要望＝話した全文。原文は保存されている）
+        const quotes = same(item.quotes.map((q) => q.text).join(''), item.request) ? [] : item.quotes.filter((q) => !same(q.text, item.request))
         return <Fragment key={item.id}>
           {grouped && group && <h3 className="rv-target" title={group.target.url ?? group.target.name}>
             <TargetName target={group.target} />
             <span className="rv-targets__count">{group.items.length}</span>
           </h3>}
-          <article className={`rv-card${item.include ? '' : ' is-excluded'}${checking ? ' is-checking' : ''}`} data-testid={`review-item-${n}`}>
+          <article className={`rv-card${item.include ? '' : ' is-excluded'}${checking ? ' is-checking' : ''}${progressOf(review.progress, item.id) === 'done' ? ' is-done' : ''}${item.include && progressOf(review.progress, item.id) === 'needs_human' ? ' is-asking' : ''}`} data-testid={`review-item-${n}`}>
           <button type="button" className="rv-card__shot" aria-label={t('review.zoomImage', { n })} disabled={!src}
             onClick={() => src && setImage({ src, n })}>
             {src ? <img src={src} alt={t('review.imageAlt', { n })} /> : <NoImageArt />}
@@ -242,17 +304,51 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
               <input className="rv-card__title" aria-label={t('review.titleLabel', { n })} key={`${item.id}-title-${item.title}`} defaultValue={item.title} disabled={busy} spellCheck={false}
                 onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
                 onBlur={(e) => { if (e.target.value.trim() && e.target.value !== item.title) void edit({ kind: 'text', id: item.id, title: e.target.value.trim() }); else e.target.value = item.title }} />
-              {checking && <span className="rv-flag"><Flag size={11} />{t('review.needsCheck')}</span>}
+              {/* 進み具合（未対応 → 対応中 → 完了）。Agent と同じ progress.json に書く */}
+              <ProgressToggle n={n} progress={progressOf(review.progress, item.id)} disabled={busy}
+                onChange={() => void action(async () => {
+                  const progress = await window.ade.invoke('review:progress', review.id, { [item.id]: nextProgress(progressOf(review.progress, item.id)) })
+                  onUpdate({ ...review, progress })
+                })} />
+              {checking &&<span className="rv-flag"><Flag size={11} />{t('review.needsCheck')}</span>}
+              {/* 追記した録画の指摘。まだ Agent へ送っていなければ強調する */}
+              {take?.addedAt && <span className={`rv-added${unsent ? ' is-unsent' : ''}`} data-testid="review-item-added"
+                title={t(unsent ? 'review.addedUnsentTip' : 'review.addedTip', { n: take.n })}>{t('review.addedBadge')}</span>}
             </div>
-            {/* 見出しと同じ要望は空欄に見せる（同じ文を2度出さない）。空のまま離れても要望は変えない */}
-            <textarea className="rv-card__request" aria-label={t('review.requestLabel', { n })} key={`${item.id}-request-${item.request}-${requestRepeats}`} defaultValue={requestRepeats ? '' : item.request}
-              placeholder={requestRepeats ? t('review.requestPlaceholderExtra') : t('review.requestPlaceholder')} disabled={busy} rows={2}
+            {/* Agent が前提違いで人間へ戻した指摘（needs_human）。返答して送り直す／取り下げる／撮り直す */}
+            {item.include && review.progress?.[item.id]?.status === 'needs_human' && <NeedsHumanPanel n={n} entry={review.progress[item.id]!} busy={busy}
+              onReply={async (reply) => {
+                let ok = false
+                await action(async () => {
+                  // 宛先は Send to Agent のボタンと同じ（最後に選んだ宛先を今の Agent・タブに合わせる。居なければ起動してから送る）
+                  const text = await window.ade.invoke('review:replyPrompt', review.id, item.id, reply)
+                  const { agents, running } = await loadSendTargets()
+                  const target = resolveRememberedTarget(rememberedSendTarget(projectKey), agents, running)
+                  const result = await sendReviewToAgent({ reviewId: review.id, target, focusedTerminalId: terminalId, defaultAgent, text,
+                    onStarting: (agent) => toast({ tone: 'info', message: t('review.startingAgent', { agent: agentLabel(agent) }) }) })
+                  if (result.ok) {
+                    ok = true
+                    onUpdate({ ...review, progress: await window.ade.invoke('review:progress', review.id, { [item.id]: { status: 'in_progress', reply } }) })
+                  }
+                  // submitted === false は貼り付けただけ（利用者が Enter を押す）。その案内は result.message に入っている
+                  toast({ tone: result.ok && result.submitted !== false ? 'success' : 'warning', message: result.ok && result.submitted !== false ? t('review.needsHuman.sent') : result.message })
+                })
+                return ok
+              }}
+              onWithdraw={() => void action(async () => {
+                // Send to Agent から外し、進み具合も未対応へ戻す（完了扱いにしない）
+                const next = await window.ade.invoke('review:edit', review.id, { kind: 'include', id: item.id, include: false })
+                onUpdate({ ...next, progress: await window.ade.invoke('review:progress', review.id, { [item.id]: 'todo' }) })
+              })}
+              {...(onRecord ? { onRerecord: () => onRecord('append') } : {})} />}
+            {/* 要望は Agent に渡す本文。空に見えると何も伝わらないように見えるので、見出しと同じでもそのまま出す */}
+            <textarea className="rv-card__request" aria-label={t('review.requestLabel', { n })} key={`${item.id}-request-${item.request}`} defaultValue={item.request}
+              placeholder={t('review.requestPlaceholder')} disabled={busy} rows={2}
               onBlur={(e) => {
-                const next = e.target.value.trim()
-                if (requestRepeats && next === '') return
-                if (e.target.value !== item.request) void edit({ kind: 'text', id: item.id, request: next })
+                if (e.target.value !== item.request) void edit({ kind: 'text', id: item.id, request: e.target.value.trim() })
               }} />
-            {quotes.length > 0 && <p className="rv-card__quote">{quotes.map((q) => t('review.quote', { text: q.text })).join(' ')}</p>}
+            {/* 話した言葉（文字起こし）。要望と同じなら出さない */}
+            {quotes.length > 0 && <p className="rv-card__quote rv-card__transcript"><Mic size={11} aria-hidden="true" /><span className="rv-card__transcript-label">{t('review.transcriptLabel')}</span>{quotes.map((q) => t('review.quote', { text: q.text })).join(' ')}</p>}
 
             <div className="rv-card__foot">
               <div className="rv-card__chips">
@@ -268,7 +364,7 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
                   <Send size={12} aria-hidden="true" />
                 </label>
                 <span className="rv-card__sep" aria-hidden="true" />
-                {review.videoUrl && <Tool tip={t('review.watchRecording')} label={t('review.watchRecordingLabel')} icon={<Play size={14} />} disabled={busy} onClick={() => setVideoTime(item.t)} />}
+                {playback && <Tool tip={t('review.watchRecording')} label={t('review.watchRecordingLabel')} icon={<Play size={14} />} disabled={busy} onClick={() => setPlaying(playback)} />}
                 <Tool tip={t('review.replaceImage')} label={t('review.replaceImage')} icon={<Images size={14} />} disabled={busy}
                   onClick={() => void action(async () => setFrames({ itemId: item.id, n, current: item.frameTimes, options: await window.ade.invoke('review:frames', review.id, item.id) }))} />
                 {checking
@@ -323,10 +419,10 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
       </div>
     </Modal>}
 
-    {videoTime !== null && review.videoUrl && <Modal className="rv-modal" label={t('review.recordingPlayback')} onClose={() => setVideoTime(null)}>
+    {videoTime !== null && playing && <Modal className="rv-modal" label={t('review.recordingPlayback')} onClose={() => setPlaying(null)}>
       <div className="rv-modal__media">
-        <ModalClose onClose={() => setVideoTime(null)} />
-        <video ref={videoRef} src={review.videoUrl} controls
+        <ModalClose onClose={() => setPlaying(null)} />
+        <video ref={videoRef} src={playing.url} controls
           onLoadedMetadata={() => {
             const video = videoRef.current
             if (!video) return
@@ -341,7 +437,7 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
             video.currentTime = videoTime / 1000
           }}
           onError={() => toast({ tone: 'warning', message: t('review.playbackFailed') })} />
-        <span className="rv-modal__caption"><Play size={12} />{t('review.fromTime', { time: time(videoTime) })}</span>
+        <span className="rv-modal__caption"><Play size={12} />{playing.take ? t('review.fromTake', { n: playing.take, time: time(videoTime) }) : t('review.fromTime', { time: time(videoTime) })}</span>
       </div>
     </Modal>}
 

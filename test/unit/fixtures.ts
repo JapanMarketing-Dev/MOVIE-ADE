@@ -22,7 +22,6 @@ export const events: Event[] = [
     bbox: [590, 380, 180, 64],
     el: { selector: 'button.plan-cta', text: '申し込む' },
   },
-  { t: 25_100, type: 'text', id: 'x1', x: 300, y: 520, body: 'ここは「月額」表記に統一' },
   { t: 40_000, type: 'pen', id: 'p9', t_end: 41_000, bbox: [10, 10, 20, 20], el: { selector: 'div.footer' } },
 ]
 
@@ -41,7 +40,7 @@ export const transcript: TranscriptSegment[] = [
   { t0: 5_500, t1: 7_000, speaker: 'self', text: 'もう少し大きくしてください', source: 'mic' },
   // 2件目: 間隔が2秒以上あるので別のまとまり
   { t0: 18_000, t1: 21_000, speaker: 'self', text: 'このボタンの色が薄いです', source: 'mic' },
-  // 3件目: 置かれたテキストと重なる発話
+  // 3件目: 書き込みの無い発話
   { t0: 24_800, t1: 26_500, speaker: 'self', text: '表記がばらばらです', source: 'mic' },
 ]
 

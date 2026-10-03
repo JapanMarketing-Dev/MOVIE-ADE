@@ -1,7 +1,7 @@
 /**
- * electron-builder の設定（MOVIE-ADE。当面は署名・公証しない）。
+ * electron-builder の設定（Ferret。旧名 MOVIE-ADE。当面は署名・公証しない）。
  *
- * 3つのOSの配布物（ファイル名は download-site と合意した MOVIE-ADE-<version>-<os>-<arch>.<ext>）：
+ * 3つのOSの配布物（ファイル名は download-site と合意した Ferret-<version>-<os>-<arch>.<ext>。0.1.x は MOVIE-ADE-…）：
  *   macOS   … dmg（arm64・x64）
  *   Windows … nsis（x64・arm64。1つのインストーラに両方入らないよう、CPU ごとに別々に走らせる）
  *   Linux   … AppImage / deb（x64。Linux の上でだけ作れる）
@@ -44,10 +44,13 @@ function listDirs(dir) {
 
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
-  appId: 'com.japanmarketing.movieade',
-  productName: 'MOVIE-ADE',
+  // 0.1.x（MOVIE-ADE）は com.japanmarketing.movieade。変えると macOS では画面収録・マイクの許可を取り直すことになる。
+  // Windows はインストーラの GUID を下の nsis.guid で旧版のまま保ち、上書きで入れ替わるようにしている
+  appId: 'dev.ferretade.ferret',
+  productName: 'Ferret',
+  copyright: 'Copyright © 2026 JapanMarketing-Dev',
   // 各ターゲットの既定。OS と CPU の語はダウンロードサイトがファイル名から判別する
-  artifactName: 'MOVIE-ADE-${version}-${os}-${arch}.${ext}',
+  artifactName: 'Ferret-${version}-${os}-${arch}.${ext}',
   electronDist: (options) => {
     const sameHost = options.platformName === process.platform && options.arch === process.arch
     return sameHost && existsSync(localElectronDist) ? localElectronDist : null
@@ -120,17 +123,17 @@ module.exports = {
     notarize: false,
     category: 'public.app-category.developer-tools',
     extendInfo: {
-      NSMicrophoneUsageDescription: 'MOVIE-ADE records your voice during a review and saves it with the findings on screen.'
+      NSMicrophoneUsageDescription: 'Ferret records your voice during a review and saves it with the findings on screen.'
     },
     target: [{ target: 'dmg', arch: ['arm64', 'x64'] }]
   },
   dmg: {
-    artifactName: 'MOVIE-ADE-${version}-mac-${arch}.${ext}',
+    artifactName: 'Ferret-${version}-mac-${arch}.${ext}',
     title: '${productName} ${version}'
   },
   win: {
     icon: 'build/icon.ico',
-    executableName: 'MOVIE-ADE',
+    executableName: 'Ferret',
     // この Mac で作った node-pty の build/Release は Windows では読めない。prebuilds/win32-<cpu> だけを使わせる
     files: ['!node_modules/node-pty/build/**'],
     // ウインドウのアイコン（src/main/index.ts の windowIcon。exe のアイコンとは別にタイトルバー用）
@@ -142,7 +145,10 @@ module.exports = {
   // Mac で作るとき、makensis（wine 経由で uninstaller を作る）は長いパスの下で失敗する（-1 で落ちる）。
   // 浅いフォルダ（このリポジトリの dist/release など）で作る
   nsis: {
-    artifactName: 'MOVIE-ADE-${version}-win-${arch}.${ext}',
+    artifactName: 'Ferret-${version}-win-${arch}.${ext}',
+    // MOVIE-ADE 0.1.x の appId（com.japanmarketing.movieade）から electron-builder が作った GUID。
+    // 同じ GUID にしておくと、Ferret のインストーラが旧版を「同じアプリの更新」として入れ替える（アンインストールの項目が二重にならない）
+    guid: 'a380747a-7ef6-5f56-83af-53845ee2cb83',
     oneClick: false,
     perMachine: false,
     allowToChangeInstallationDirectory: true,
@@ -154,8 +160,8 @@ module.exports = {
     // フォルダの NxN.png を hicolor の各サイズに配る（scripts/build-icon.mjs が書き出す）
     icon: 'build/icons',
     // 製品名の空白と括弧はコマンド名・パッケージ名に使えない
-    executableName: 'movie-ade',
-    // .desktop のファイル名・StartupWMClass を package.json の desktopName（movie-ade.desktop）に揃える。
+    executableName: 'ferret',
+    // .desktop のファイル名・StartupWMClass を package.json の desktopName（ferret.desktop）に揃える。
     // Electron はこれをウインドウの app_id / WM_CLASS に使うので、ドックでランチャーと同じアイコンにまとまる
     syncDesktopName: true,
     // ウインドウのアイコン（src/main/index.ts の windowIcon）
@@ -170,12 +176,14 @@ module.exports = {
   },
   appImage: {
     // x64 は x86_64 になる
-    artifactName: 'MOVIE-ADE-${version}-linux-${arch}.${ext}'
+    artifactName: 'Ferret-${version}-linux-${arch}.${ext}'
   },
   deb: {
-    packageName: 'movie-ade',
+    packageName: 'ferret',
+    // 旧パッケージ（movie-ade）が入っていれば、置き換える
+    fpm: ['--replaces=movie-ade', '--conflicts=movie-ade'],
     // x64 は amd64 になる
-    artifactName: 'MOVIE-ADE-${version}-linux-${arch}.${ext}',
+    artifactName: 'Ferret-${version}-linux-${arch}.${ext}',
     depends: debElectronRuntimeDependencies
   },
   // 配布は R2 に scripts/release-r2.mjs で上げる。electron-builder からは公開しない（latest*.yml も作らない）

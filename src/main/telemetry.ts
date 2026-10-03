@@ -1,14 +1,17 @@
-import { app, crashReporter, session, type WebContents } from 'electron'
+import { app, crashReporter, dialog, session, type WebContents } from 'electron'
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import * as Sentry from '@sentry/electron/main'
+import { IS_PACKAGED } from './runtime'
 import {
   crashReportsEnabled,
   createEventLimiter,
   parseSentryTestKinds,
   resolveSentryDsn,
+  sentryEnv,
   sampleEvent,
   scrubBreadcrumb,
   scrubEvent,
@@ -18,15 +21,24 @@ import {
   shouldSendCrashReports,
   telemetryProfile,
   createAnomalyGate,
-  durationBucket,
-  EVENT_LOOP_BLOCK_MS,
+  createLogRing,
+  createSendGate,
+  gateTransport,
+  resolveEnvironment,
+  startupBreadcrumb,
+  isCrashEvent,
+  resolveInstallId,
+  createBreadcrumbFilter,
+  createInflightTracker,
+  eventLoopBlockContext,
+  eventLoopBlockThreshold,
   type ScrubContext,
   type SentryTestKind
 } from '@shared/telemetry'
-import { flow, reportAnomaly, reportHandled, setReporter } from '@shared/report'
+import { flow, noteSlowOp, recentSlowOps, reportHandled, reportPerf, setReporter } from '@shared/report'
 import { version } from '../../package.json'
-import { currentSettings } from './settings'
-import { remapDevFrames } from './telemetrySourceMaps'
+import { configDir, currentSettings } from './settings'
+import { attachDebugIds, remapDevFrames } from './telemetrySourceMaps'
 
 /**
  * クラッシュレポート（Sentry）。設定の「クラッシュレポートを送る」と src/shared/telemetry.ts を参照。
@@ -35,7 +47,10 @@ import { remapDevFrames } from './telemetrySourceMaps'
  *   配布版は JS の例外を半分・1回の起動で10件まで、dev は全部・50件まで。同じエラーはどちらも1度だけ。
  * - 起動時に設定が OFF なら初期化しない。起動後に OFF にしたら beforeSend で全部捨てる
  *   （ON に戻したときは次の起動から送る。minidump の受け口は ready の前にしか入れられないため）。
- * - パフォーマンスの計測・セッション・リプレイ・スクリーンショットは使わない。
+ * - 起動ごとのセッション（リリースごとのクラッシュしなかった割合・使っている人の数）は送る。
+ *   利用者はインストール ID（userData に置くランダムな UUID）だけで数え、名前・メール・IP は送らない。
+ * - パフォーマンスの計測・リプレイ・スクリーンショットは使わない。
+ * - クラッシュ（minidump・fatal・捕まえていない例外）には、main の直近50行のログ（見出し付きの行だけ・伏せ字済み）を添付する。
  * - 未処理の例外のほかに、レンダラー・子プロセスの異常終了、ウインドウの応答なし、アプリ側の読み込み失敗、
  *   PTY の起動失敗、IPC のハンドラの例外を、kind のタグ付きで送る。
  * - dev は送る前にスタックを元のファイルと行へ戻す（telemetrySourceMaps.ts）。
@@ -43,10 +58,40 @@ import { remapDevFrames } from './telemetrySourceMaps'
 
 /** 初期化したか（設定画面の「次の起動から」の案内と、renderer の初期化の判断に使う） */
 let active = false
-/** 確認用にわざと起こす例外（MOVIE_ADE_SENTRY_TEST） */
+/** 確認用にわざと起こす例外（FERRET_SENTRY_TEST） */
 let testKinds: SentryTestKind[] = []
 /** 同じ例外を2つの経路（PTY の起動失敗と、それを投げた IPC）から二重に送らない */
 const reported = new WeakSet<object>()
+/** クラッシュに添付する main の直近のログ */
+const logRing = createLogRing(undefined, () => scrubContext())
+
+/** インストール ID（userData の telemetry-install-id）。無ければ作って保存する。書けなくてもこの起動の間は使う */
+function installId(): string {
+  const file = join(app.getPath('userData'), 'telemetry-install-id')
+  let saved: string | null = null
+  try {
+    saved = readFileSync(file, 'utf8')
+  } catch {
+    // 初回起動（想定内）
+  }
+  const { id, created } = resolveInstallId(saved, randomUUID)
+  if (created) {
+    try {
+      mkdirSync(app.getPath('userData'), { recursive: true })
+      writeFileSync(file, `${id}\n`, 'utf8')
+    } catch {
+      // 保存できない環境でも、この起動の間は同じ ID を使う（想定内）
+    }
+  }
+  return id
+}
+
+/** どの画面・状態で落ちたか（タグ）。mode = editor / feedback、recording = idle / recording / paused */
+export function setTelemetryContext(context: { mode?: string; recording?: string }): void {
+  if (!active) return
+  if (context.mode) Sentry.setTag('app.mode', context.mode)
+  if (context.recording) Sentry.setTag('recording', context.recording)
+}
 
 export function crashReportsActive(): boolean {
   return active
@@ -59,7 +104,10 @@ export function sentryTestKinds(): SentryTestKind[] {
 /** 設定はまだ読み込んでいない（非同期）ので、ここだけ settings.json を同期で読む */
 function readCrashReportsSetting(): boolean {
   try {
-    const raw = JSON.parse(readFileSync(join(app.getPath('userData'), 'settings.json'), 'utf8')) as { crashReports?: unknown }
+    // 設定は ~/.ferret/settings.json（src/main/settings.ts の configDir）。まだ移していなければ以前の userData/settings.json
+    const file = [join(configDir(), 'settings.json'), join(app.getPath('userData'), 'settings.json')].find((f) => existsSync(f))
+    if (!file) return true
+    const raw = JSON.parse(readFileSync(file, 'utf8')) as { crashReports?: unknown }
     return raw.crashReports !== false
   } catch {
     return true
@@ -118,6 +166,10 @@ function watchWebContents(contents: WebContents): void {
       kind: 'did-fail-load', 'load.errorCode': String(errorCode), 'contents.type': contents.getType()
     })
   })
+  // preload の読み込み中の例外（renderer の Sentry には上がってこない）。どの preload かは名前だけ
+  contents.on('preload-error', (_e, preloadPath, error) => {
+    reportMainError(error, { kind: 'preload-error', preload: preloadPath.split(/[\\/]/).pop() ?? 'unknown' })
+  })
   contents.on('unresponsive', () => {
     if (isOwnContents(contents)) reportMessage('webContents unresponsive', 'warning', { kind: 'unresponsive', 'contents.type': contents.getType() })
   })
@@ -129,15 +181,28 @@ const anomalyGate = createAnomalyGate()
  * main のイベントループが長く止まったら warning を送る（種類ごとに10分に1度）。
  * 250ms ごとのタイマーの遅れで測る。スタックは取れない（ネイティブの計測は入れていない）。
  */
-function watchEventLoop(): void {
+/** 処理中の IPC（止まったときの手がかり）。index.ts の IPC の登録が trackIpc で包む */
+const inflightIpc = createInflightTracker()
+
+/** IPC のハンドラの開始と終了を控える。長くかかったもの（1秒以上）は重い処理としても控える */
+export function trackIpc(channel: string): () => void {
+  const end = inflightIpc.begin(channel)
+  return () => {
+    const ms = end()
+    if (ms >= 1000) noteSlowOp(`ipc:${channel}`, ms)
+  }
+}
+
+function watchEventLoop(threshold: number): void {
   const INTERVAL = 250
   let expected = Date.now() + INTERVAL
   const timer = setInterval(() => {
     const now = Date.now()
     const lag = now - expected
     expected = now + INTERVAL
-    if (lag > EVENT_LOOP_BLOCK_MS && anomalyGate('event-loop')) {
-      reportAnomaly('main event loop blocked', { kind: 'perf', perf: 'event-loop-block', duration: durationBucket(lag) })
+    if (lag > threshold && anomalyGate('event-loop')) {
+      // 手がかり：まだ終わっていない IPC（長い順の上位3つ）と、直前に終わった重い処理（同期の fs・ps・which など）
+      reportPerf('event-loop-block', lag, eventLoopBlockContext(inflightIpc.snapshot(), recentSlowOps(now).slice(0, 3)))
     }
   }, INTERVAL)
   timer.unref?.()
@@ -156,12 +221,14 @@ function installProcessHooks(): void {
   })
   // ウインドウの応答なしは webContents の unresponsive で拾う（BrowserWindow 以外の view も含む）
   app.on('web-contents-created', (_e, contents) => watchWebContents(contents))
-  // console.error / warn のうち `[startup]` の失敗だけをパンくずに残す（console 全体は送らない）
-  for (const level of ['error', 'warn'] as const) {
+  // console.error / warn のうち `[startup]` の失敗だけをパンくずに残す（console 全体は送らない）。
+  // 見出し付きの行は、クラッシュに添付する直近のログ（logRing）にも残す
+  for (const level of ['log', 'error', 'warn'] as const) {
     const original = console[level].bind(console)
     console[level] = (...args: unknown[]) => {
-      if (typeof args[0] === 'string' && args[0].startsWith('[startup]')) {
-        Sentry.addBreadcrumb({ category: 'startup', level: level === 'warn' ? 'warning' : 'error', message: args.map(String).join(' ') })
+      logRing.push(level, args)
+      if (level !== 'log' && typeof args[0] === 'string' && args[0].startsWith('[startup]')) {
+        Sentry.addBreadcrumb(startupBreadcrumb(level === 'warn' ? 'warning' : 'error', args))
       }
       original(...args)
     }
@@ -173,7 +240,7 @@ export function initCrashReporting(): void {
   const dsn = resolveSentryDsn(process.env)
   const send = shouldSendCrashReports({
     e2e: process.env.ADE_E2E === '1',
-    forced: process.env.MOVIE_ADE_SENTRY_FORCE === '1',
+    forced: sentryEnv(process.env, 'FORCE') === '1',
     unitTest: Boolean(process.env.VITEST),
     enabled: readCrashReportsSetting(),
     dsn
@@ -184,14 +251,27 @@ export function initCrashReporting(): void {
     return
   }
 
-  const packaged = app.isPackaged
+  const packaged = IS_PACKAGED
   const profile = telemetryProfile(packaged)
+  const forced = sentryEnv(process.env, 'FORCE') === '1'
+  // 補助技術の切り替えの通知のような騒がしい出来事と、同じものの連続を間引く
+  const keepBreadcrumb = createBreadcrumbFilter()
+  /*
+   * 「クラッシュレポートを送る」を起動中に OFF にしたら、その瞬間から何も送らない（エラー・warning・性能の異常・
+   * セッション・添付・renderer のイベント。renderer のイベントも main の transport を通る）。settings.json を外から
+   * 書き換えた場合も、読み込み直した設定（currentSettings）で決まる。ON に戻したらそこから送り、セッションを始め直す
+   */
+  const gate = createSendGate(() => crashReportsEnabled(currentSettings()), {
+    onDisable: () => Sentry.endSession(),
+    onEnable: () => { Sentry.startSession(); Sentry.captureSession() }
+  })
+  // 何も送らないあいだも ON / OFF の切り替わりに気づけるよう、軽く見張る（セッションの始め直しのため）
+  setInterval(() => gate.sync(), 2000).unref?.()
   const limit = createEventLimiter(profile.maxEventsPerRun)
   // 握りつぶしていた失敗・性能の異常（warning）は別に数え、クラッシュの枠を食わない
   const limitWarnings = createEventLimiter(profile.maxWarningsPerRun)
   // 外へ出るもの・画面の中身を拾うものは外す
   const DROP = new Set([
-    'MainProcessSession', // 起動ごとのセッション
     'Screenshots',
     'Console', // console の出力（ターミナルの出力やパスが混ざる）
     'ElectronNet', // net の URL
@@ -209,7 +289,11 @@ export function initCrashReporting(): void {
   Sentry.init({
     dsn,
     release: packaged ? sentryRelease(version) : sentryRelease(version, { gitHash: devGitHash() }),
-    environment: profile.environment,
+    // 確認用の起動（FERRET_SENTRY_FORCE・ADE_E2E）と -verify の版は verification（production のアラートと
+    // クラッシュしなかった割合を汚さない）。src/shared/telemetry.ts の resolveEnvironment
+    environment: resolveEnvironment({ packaged, version, forced, e2e: process.env.ADE_E2E === '1' }),
+    // OFF のあいだは transport で全部止める（gate）
+    transport: (options) => gateTransport(Sentry.makeElectronOfflineTransport()(options), gate.allow),
     // 利用者の情報（IP・Cookie・ヘッダ・本文・変数）は集めない（旧 sendDefaultPii: false にあたる）
     dataCollection: {
       userInfo: false,
@@ -230,45 +314,94 @@ export function initCrashReporting(): void {
       Sentry.dedupeIntegration()
     ],
     initialScope: {
-      tags: { 'os.platform': process.platform, arch: process.arch, electron: process.versions.electron }
+      // 端末ごとのランダムな ID だけ（影響を受けた人数・クラッシュしなかった人の割合のため。利用者の情報は含まない）
+      user: { id: installId() },
+      tags: {
+        'os.platform': process.platform, arch: process.arch, electron: process.versions.electron,
+        // 配布物の種類（OS と CPU）。Sentry の dist はソースマップの照合に使うので触らず、タグで分ける
+        build: `${process.platform}-${process.arch}`,
+        'app.mode': 'editor', recording: 'idle'
+      }
     },
-    beforeBreadcrumb: (crumb) => scrubBreadcrumb(crumb, scrubContext()),
+    // どのウインドウの renderer か（main のウインドウ・録画ウインドウ）
+    getRendererName: (contents) => (contents.getURL().includes('/recorder/') ? 'recorder' : 'main-window'),
+    // main の捕まえていない例外：E2E（画面を出さない確認）ではダイアログを出さずに終わる。
+    // ふだんは Electron の既定と同じダイアログを出す（Sentry の既定の動きと同じ）
+    onFatalError: (error: Error) => {
+      if (process.env.ADE_E2E === '1') app.exit(1)
+      else dialog.showErrorBox('A JavaScript error occurred in the main process', `Uncaught Exception:\n${error.stack ?? error.message}`)
+    },
+    beforeBreadcrumb: (crumb) => (gate.allow() && keepBreadcrumb(crumb) ? scrubBreadcrumb(crumb, scrubContext()) : null),
     beforeSend: async (event, hint) => {
-      // 起動後に OFF にしたら、その時点から送らない
-      if (!crashReportsEnabled(currentSettings())) return null
+      // 起動後に OFF にしたら、その時点から送らない（transport でも止めるが、添付や記録の前にここで捨てる）
+      if (!gate.allow()) return null
       const native = (hint.attachments ?? []).some((a) => a.attachmentType === 'event.minidump')
-      if (!sampleEvent(native, Math.random, profile.sampleRate)) return null
+      // 確認用の起動（FERRET_SENTRY_FORCE=1）では間引かない
+      if (!forced && !sampleEvent(native, Math.random, profile.sampleRate)) return null
       if (!packaged) await remapDevFrames(event, { appPath: app.getAppPath(), rendererUrl: process.env.ELECTRON_RENDERER_URL }).catch(() => undefined)
+      // 配布版：SDK の登録に無いファイル（preload など）にも debug ID を付け、ソースマップで元の行に戻せるようにする
+      else attachDebugIds(event as Parameters<typeof attachDebugIds>[0], app.getAppPath())
       if (!(event.level === 'warning' ? limitWarnings : limit)(event)) return null
+      // クラッシュには main の直近のログを添付する（見出し付きの行だけ・伏せ字済み）
+      const log = logRing.snapshot()
+      if (log && isCrashEvent(event, native)) {
+        hint.attachments = [...(hint.attachments ?? []), { filename: 'main-log.txt', data: log, contentType: 'text/plain' }]
+      }
       return scrubEvent(event, scrubContext())
     }
   })
   installProcessHooks()
-  watchEventLoop()
+  watchEventLoop(eventLoopBlockThreshold(packaged))
   setReporter({
     handled: (err, tags, level) => Sentry.captureException(err instanceof Error ? err : new Error(String(err)), { level, tags }),
-    message: (message, tags, level) => Sentry.captureMessage(message, { level, tags }),
+    // 例外ではない異常（性能など）はスタックを付けずにそのまま送る（題名が文のまま出る）
+    message: (message, tags, level, fingerprint, contexts) => Sentry.captureEvent({ message, level, tags, ...(fingerprint ? { fingerprint } : {}), ...(contexts ? { contexts } : {}) }),
     breadcrumb: (message, data) => Sentry.addBreadcrumb({ category: 'flow', message, ...(data ? { data } : {}) })
   })
-  testKinds = parseSentryTestKinds(process.env.MOVIE_ADE_SENTRY_TEST)
+  testKinds = parseSentryTestKinds(sentryEnv(process.env, 'TEST'))
   active = true
+  runEarlyTests()
 }
 
 /**
- * 確認用。MOVIE_ADE_SENTRY_TEST に main が入っていれば、起動後に main で未処理の Promise の拒否を起こす。
+ * 確認用の、アプリを止める・落とすもの（名前を書いたときだけ。src/shared/telemetry.ts の SENTRY_DESTRUCTIVE_TEST_KINDS）。
+ *   hang         … 起動直後に main を 5.5 秒止める（起動が遅い・イベントループの停止の warning）
+ *   uncaught     … main で捕まえていない例外（E2E ではダイアログを出さずに終わる）
+ *   crash-main   … main のネイティブのクラッシュ（minidump は次の起動で送られる）
+ *   crash-renderer … main のウインドウの renderer を強制的に落とす
+ */
+function runEarlyTests(): void {
+  if (testKinds.includes('hang')) {
+    // main のスレッドをわざと 5.5 秒止める（ビルドで消されない形。Node の main では Atomics.wait が使える）
+    app.once('ready', () => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5500) })
+  }
+}
+
+/**
+ * 確認用。FERRET_SENTRY_TEST に main が入っていれば、起動後に main で未処理の Promise の拒否を起こす。
  * renderer / boundary / ipc は renderer 側（src/renderer/lib/telemetry.ts）が起こす。
  */
 export function maybeSendTestEvent(): void {
+  const kinds = sentryTestKinds()
+  if (kinds.includes('uncaught')) {
+    setTimeout(() => { throw new Error(`Ferret Sentry test: main uncaught exception ${homedir()}`) }, 6000)
+  }
+  if (kinds.includes('crash-renderer')) {
+    app.once('browser-window-created', (_e, win) => {
+      win.webContents.once('did-finish-load', () => setTimeout(() => { if (!win.isDestroyed()) win.webContents.forcefullyCrashRenderer() }, 4000))
+    })
+  }
+  if (kinds.includes('crash-main')) setTimeout(() => process.crash(), 8000)
   if (sentryTestKinds().includes('handled')) {
     // 握りつぶしていた失敗の経路（reportHandled）と、直前の流れのパンくず（flow）
     setTimeout(() => {
       flow('sentry test step', { step: 1 })
-      reportHandled(new Error(`MOVIE-ADE Sentry test: handled failure ${homedir()}`), { area: 'settings', op: 'sentry test' })
+      reportHandled(new Error(`Ferret Sentry test: handled failure ${homedir()}`), { area: 'settings', op: 'sentry test' })
     }, 1500)
   }
   if (!sentryTestKinds().includes('main')) return
   setTimeout(() => {
     // ホームのパスを入れて、送る前に ~ へ置き換わることも確かめる
-    void Promise.reject(new Error(`MOVIE-ADE Sentry test: main unhandled rejection (${new Date().toISOString()}) ${homedir()}`))
+    void Promise.reject(new Error(`Ferret Sentry test: main unhandled rejection (${new Date().toISOString()}) ${homedir()}`))
   }, 1000)
 }

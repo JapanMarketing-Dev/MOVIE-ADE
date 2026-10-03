@@ -19,6 +19,7 @@ import {
   MIN_REFETCH_MS,
   STALE_THRESHOLD_MS,
   applyStalePolicy,
+  failureRetryAfterMs,
   failureRetryDelayMs,
   providersToRefresh,
   withFetchingStatus
@@ -239,5 +240,39 @@ describe('Keychain の読み方（確認のダイアログを待たない）', a
     expect(calls).toHaveLength(2)
     await reader.read('svc', 'me', { retryBlocked: true })
     expect(calls).toHaveLength(4)
+  })
+})
+
+describe('失敗したあとの自動の再試行', () => {
+  const failed = (failureKind: ProviderRateLimits['failureKind'], extra: Partial<ProviderRateLimits> = {}): ProviderRateLimits =>
+    ({ provider: 'claude', session: null, weekly: null, updatedAt: 0, error: 'x', status: 'error', failureKind, ...extra })
+  it('回線・サーバー・不明の失敗は、間隔を倍々に空けて再試行する（1度の失敗が残らない）', () => {
+    expect(failureRetryAfterMs(failed('network'), 1)).toBe(30_000)
+    expect(failureRetryAfterMs(failed('server'), 2)).toBe(60_000)
+    expect(failureRetryAfterMs(failed('unknown'), 10)).toBe(15 * 60_000)
+  })
+  it('Keychain の許可・未ログイン・ログインの期限切れは、自動では取りに行かない（OS の確認を出さない）', () => {
+    expect(failureRetryAfterMs(failed('keychain-unavailable'), 1)).toBeNull()
+    expect(failureRetryAfterMs(failed('missing-credentials'), 1)).toBeNull()
+    expect(failureRetryAfterMs(failed('stale-token'), 1)).toBeNull()
+  })
+  it('取得制限は Retry-After より前に行かない', () => {
+    expect(failureRetryAfterMs(failed('rate-limited', { retryAtMs: 1000 + 120_000 }), 1, 1000)).toBe(120_000)
+    expect(failureRetryAfterMs(failed('rate-limited', { retryAtMs: 500 }), 1, 1000)).toBe(30_000)
+  })
+  it('成功していれば予約しない', () => {
+    expect(failureRetryAfterMs({ ...failed('network'), status: 'ok' }, 1)).toBeNull()
+  })
+})
+
+describe('Claude の資格情報の期限', () => {
+  it('期限切れのファイルのトークンを見分ける（macOS では Keychain の新しいトークンを先に使う）', async () => {
+    const { parseClaudeCredentials } = await import('../../src/main/usage/credentials')
+    const raw = (expiresAt?: number) => JSON.stringify({ claudeAiOauth: { accessToken: 'tok', ...(expiresAt === undefined ? {} : { expiresAt }) } })
+    expect(parseClaudeCredentials(raw(2_000), 1_000)).toEqual({ token: 'tok', expired: false })
+    expect(parseClaudeCredentials(raw(500), 1_000)).toEqual({ token: 'tok', expired: true })
+    expect(parseClaudeCredentials(raw(), 1_000)).toEqual({ token: 'tok', expired: false })
+    expect(parseClaudeCredentials('{broken', 1_000)).toBeNull()
+    expect(parseClaudeCredentials('{}', 1_000)).toBeNull()
   })
 })

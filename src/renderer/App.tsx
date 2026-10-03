@@ -21,7 +21,9 @@ import { UnsavedChangesDialog } from './components/UnsavedChangesDialog'
 import { useOpenFiles } from './editor/useOpenFiles'
 import { FeedbackToolbar, type AnnotationTool } from './components/FeedbackToolbar'
 import { ReviewTargetsPanel } from './components/ReviewTargetsPanel'
-import { readLocal, writeLocal } from './lib/localPref'
+import { readLocal } from './lib/localPref'
+import { useUrlHistory } from './lib/urlHistory'
+import { subscribeIpc } from './lib/ipcEvents'
 import { CaptureTargetPicker } from './components/CaptureTargetPicker'
 import { FindingsList } from './components/FindingsList'
 import { Sidebar, toReviewSession } from './components/Sidebar'
@@ -29,15 +31,21 @@ import { DEMO_SESSION_IDS, EMPTY_CAPTURE, demoCapture, demoFindings, demoSession
 import { Splitter } from './components/Splitter'
 import { StatusBar, type FooterCapture } from './components/StatusBar'
 import { TerminalPane } from './components/TerminalPane'
+import { onAgentLaunchRequest } from './lib/agentLaunchRequest'
 import { TitleBar } from './components/TitleBar'
 import { Gallery } from './gallery/Gallery'
 import { useViewBounds } from './hooks/useViewBounds'
 import { useProjectSession } from './hooks/useProjectSession'
+import { matchWindowSource } from '@shared/projectTargets'
+import { planNewReview } from './lib/newReview'
+import { targetFromSource } from '@shared/captureTarget'
 import { installTestHooks } from './testHooks'
 import { ErrorBoundary, ToastProvider, useToast } from './ui'
 import { sanitizeAgentPreferences } from '@shared/agentCatalog'
 import { CrashReportNotice } from './components/CrashReportNotice'
-import type { CaptureTarget, RecordingStatus, SttAvailability, SttProvider } from '@shared/types'
+import { setUiTab } from './lib/telemetry'
+import type { CaptureTarget, FeedbackTargetsPrefs, RecordingStatus, SttAvailability, SttProvider } from '@shared/types'
+import { DEFAULT_ANNOTATION_COLOR, annotationModeForTool, normalizeAnnotationColor, type AnnotationColor } from '@shared/annotation'
 import { AI_VENDORS, LLM_API_PROVIDERS, STT_PROVIDER_PRESETS, STT_REMOTE_PROVIDERS, providerLabel } from '@shared/aiProviders'
 import type { ReviewData, ReviewSummary } from '@shared/review'
 import { ReviewFindings } from './components/ReviewFindings'
@@ -49,7 +57,10 @@ import { shouldShowOnboarding, type OnboardingPatch, type OnboardingState } from
 import { OnboardingFlow } from './onboarding/OnboardingFlow'
 import { reopenPatch } from './onboarding/onboardingFlowState'
 import { onShowOnboardingRequested } from './onboarding/showOnboardingEvent'
-import { reportHandled } from '@shared/report'
+import { OnboardingStore } from './onboarding/onboardingStore'
+import { StarPromptHost } from './components/StarPrompt'
+import { reportAnomaly, reportHandled } from '@shared/report'
+import type { SttLanguageCode } from '@shared/sttLanguages'
 
 /** Monaco は重いので、ファイルを初めて開いたときに読む（起動時間 NF-5） */
 const FileEditor = lazy(() => import('./editor/FileEditor'))
@@ -79,6 +90,8 @@ export function App() {
     <ToastProvider>
       <Workspace onOnboardingSettled={settle} />
       {onboardingSettled && <CrashReportNotice />}
+      {/* GitHub の star のお願いも、セットアップを閉じるまでは出さない（main もセットアップ中・録画中は送らない） */}
+      {onboardingSettled && <StarPromptHost />}
     </ToastProvider>
   )
 }
@@ -96,6 +109,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   /** プロジェクト一覧・URL登録ダイアログ。開いている間はビューを隠す（ビューがDOMの上に重なるため） */
   const [projectMenuOpen, setProjectMenuOpen] = useState(false)
   const [urlDialogOpen, setUrlDialogOpen] = useState(false)
+  /** サイドバーの「プロジェクトを編集」 */
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false)
   /** 設定とワークスペースを読み終えたか。終わるまでターミナルは作らない（projectId=null 用の余分なシェルを残さない） */
   const [projectsLoaded, setProjectsLoaded] = useState(false)
   const [browserState, setBrowserState] = useState<BrowserState>(INITIAL_BROWSER_STATE)
@@ -125,8 +140,24 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     setTerminalsAllowed(true)
     onOnboardingSettled()
   }, [onboarding, onboardingOpen, terminalsAllowed, onOnboardingSettled])
-  const persistOnboarding = useCallback(async (patch: OnboardingPatch) => {
-    setOnboarding(await window.ade.invoke('settings:onboarding', patch))
+  /**
+   * 進み具合は画面ですぐ反映し、保存は裏で行う（onboardingStore.ts）。「始める」「閉じる」は保存の成否に関わらずすぐ閉じる。
+   * 保存の失敗はトーストで知らせて Sentry へ送るだけで、この起動中は閉じたままにする
+   */
+  const onboardingErrorRef = useRef<(err: unknown) => void>(() => undefined)
+  const onboardingStoreRef = useRef<OnboardingStore | null>(null)
+  onboardingStoreRef.current ??= new OnboardingStore(null, {
+    save: (patch) => window.ade.invoke('settings:onboarding', patch),
+    onChange: setOnboarding,
+    onError: (err) => {
+      reportHandled(err, { area: 'onboarding', op: 'save onboarding progress' })
+      // main 側にハンドラが無い（main が古いまま）ときは main からは送られないので、ここで知らせる
+      if (err instanceof Error && err.message.includes('No handler registered')) reportAnomaly('onboarding save has no handler', { kind: 'ipc', area: 'onboarding' })
+      onboardingErrorRef.current(err)
+    }
+  })
+  const persistOnboarding = useCallback((patch: OnboardingPatch) => {
+    void onboardingStoreRef.current?.apply(patch)
   }, [])
   const sidebarOpen = layout.panels.projects.visible
   const setSidebarOpen = (next: (open: boolean) => boolean) => setLayout((prev) => withPanel(prev, 'projects', { visible: next(prev.panels.projects.visible) }))
@@ -143,6 +174,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const recording = recordStatus.state !== 'idle'
   const [recordBusy, setRecordBusy] = useState(false)
   const recordLock = useRef(false)
+  /** 次の録画を足す先のレビュー（Findings の「追加で録る」）。toggleRecording が読んで空にする */
+  const appendNext = useRef<string | null>(null)
   const [review, setReview] = useState<ReviewData | null>(null)
   const [history, setHistory] = useState<ReviewSummary[]>([])
   /** 設定のページ（中央のタブ）を開いているか。focus は外から節を指定して開いたときの行き先 */
@@ -153,7 +186,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const [micDeviceId, setMicDeviceId] = useState('')
   const [keepDays, setKeepDays] = useState(7)
   const [stayFeedbackOnStop, setStayFeedbackOnStop] = useState(false)
-  const [language, setLanguage] = useState<'ja' | 'en' | 'auto'>('auto')
+  const [language, setLanguage] = useState<SttLanguageCode>('auto')
   const [captureSystemAudio, setCaptureSystemAudio] = useState(false)
   const [level, setLevel] = useState(0)
   /** フィードバック画面の帯に出す警告（トーストはビューに隠れるため） */
@@ -175,16 +208,18 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   /** ファイルエディタ（中央のファイルタブ・右のファイルツリー・⌘P） */
   const explorerOpen = layout.panels.files.visible
   const setExplorerOpen = (next: (open: boolean) => boolean) => setLayout((prev) => withPanel(prev, 'files', { visible: next(prev.panels.files.visible) }))
+  // 「Agentへ送信」で Agent を起動するときは、ターミナルの欄を隠していても出す（起動の様子と送った結果が見えるように）
+  useEffect(() => onAgentLaunchRequest(() => setLayout((prev) => (prev.panels.terminal.visible ? prev : withPanel(prev, 'terminal', { visible: true })))), [])
   const [quickOpenOpen, setQuickOpenOpen] = useState(false)
-  /** ⌘P の画面を、フィードバックの右パネルの「ファイルを足す」から開いたか */
-  const [quickOpenForTarget, setQuickOpenForTarget] = useState(false)
   /** フィードバックモードの右パネル（レビュー対象）。開閉と幅はこの端末に覚える */
+  // 正本は settings.json の feedbackTargets。以前は localStorage に置いていたので、設定に無ければ1度だけそこから移す
+  /** 内蔵ブラウザで開いた URL の履歴（右パネルの URL ツリーの元。パネルを閉じていても積む） */
+  const urlHistory = useUrlHistory(workspace.projectId ?? null, browserState.url)
   const [targetsOpen, setTargetsOpenState] = useState(() => readLocal('ade.feedback.targetsOpen') !== 'false')
   const [targetsRatio, setTargetsRatio] = useState(() => Number(readLocal('ade.feedback.targetsRatio')) || 0.78)
-  const [addedTargetFile, setAddedTargetFile] = useState<{ path: string; at: number } | null>(null)
   const setTargetsOpen = (next: (open: boolean) => boolean) => setTargetsOpenState((prev) => {
     const value = next(prev)
-    writeLocal('ade.feedback.targetsOpen', String(value))
+    void window.ade.invoke('settings:feedbackTargets', { visible: value }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
     return value
   })
   const fileError = useCallback((message: string) => toast({ tone: 'danger', message }), [toast])
@@ -208,6 +243,9 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   })
   /** 録画中に選んでいる書き込みの道具（PEN-1 / TXT-1）。中身は後続 */
   const [tool, setTool] = useState<AnnotationTool>('none')
+  /** 書き込みの「元に戻す／やり直す」ができるか（注入スクリプトが知らせてくる） */
+  const [annotationHistory, setAnnotationHistory] = useState({ canUndo: false, canRedo: false })
+  const [annotationColor, setAnnotationColor] = useState<AnnotationColor>(DEFAULT_ANNOTATION_COLOR)
   /** 録画の対象（内蔵ブラウザ／画面全体／別のウインドウ）。選んですぐ録画を始めるため ref にも持つ */
   const [captureTarget, setCaptureTarget] = useState<CaptureTarget>({ kind: 'browser' })
   const captureTargetRef = useRef<CaptureTarget>({ kind: 'browser' })
@@ -230,7 +268,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
 
   /** ビューに場所を譲ってよい条件。ひとつでも欠けたら 0 サイズにして隠す */
   const viewVisible =
-    !gallery && !onboardingOpen && !targetPickerOpen && !footerPopoverOpen && !splitDragging && !panelDrag.drag && !projectMenuOpen && !urlDialogOpen && !quickOpenOpen && !files.pendingClose && emptyReason === null && (mode === 'feedback' || centerTab === 'browser')
+    !gallery && !onboardingOpen && !targetPickerOpen && !footerPopoverOpen && !splitDragging && !panelDrag.drag && !projectMenuOpen && !urlDialogOpen && !projectDialogOpen && !quickOpenOpen && !files.pendingClose && emptyReason === null && (mode === 'feedback' || centerTab === 'browser')
 
   const layoutKey = [
     mode,
@@ -328,6 +366,9 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
 
   const refreshHistory = useCallback(async () => { setHistory(await window.ade.invoke('review:list')) }, [])
   const toggleRecording = useCallback(() => {
+    // Findings の「追加で録る」から来たときだけ、開いているレビューへ足す（1回限り）
+    const appendTo = appendNext.current
+    appendNext.current = null
     if (recordLock.current) return
     recordLock.current = true
     setRecordBusy(true)
@@ -355,11 +396,32 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         setTool('none')
         changeMode('feedback')
         try {
-          setRecordStatus(await window.ade.invoke('recording:start', { captureSystemAudio, captureMic, transcription, language, micDeviceId, captureTarget: captureTargetRef.current }))
+          setRecordStatus(await window.ade.invoke('recording:start', { captureSystemAudio, captureMic, transcription, language, micDeviceId, captureTarget: captureTargetRef.current, ...(appendTo ? { appendTo } : {}) }))
         } catch (err) { changeMode('editor'); throw err }
       }
     }).finally(() => { recordLock.current = false; setRecordBusy(false) })
   }, [recording, emptyReason, changeMode, run, refreshHistory, toast, captureMic, transcription, captureSystemAudio, language, micDeviceId, stayFeedbackOnStop])
+
+  /*
+   * サイドバーのプロジェクトごとの「新しいレビュー」。どのプロジェクトで始めるかは planNewReview が決める。
+   * 別のプロジェクトなら切り替えてから始める。切り替え直後の toggleRecording は前のプロジェクトの状態を
+   * 閉じ込めているので、新しいワークスペースが描かれるのを待ってから、最新の toggleRecording（ref）を呼ぶ。
+   */
+  const toggleRecordingRef = useRef(toggleRecording)
+  toggleRecordingRef.current = toggleRecording
+  const workspaceProjectRef = useRef<string | null>(workspace.projectId ?? null)
+  workspaceProjectRef.current = workspace.projectId ?? null
+  const startReviewIn = useCallback((projectId: string) => void run(async () => {
+    const plan = planNewReview({ projectId, activeProjectId: workspaceProjectRef.current, projectIds: projects.projects.map((p) => p.id), recording })
+    if (plan.action === 'busy') { toast({ tone: 'warning', message: t('sidebar.reviewBusy') }); return }
+    if (plan.action === 'no-project') return
+    if (plan.action === 'switch-then-start') {
+      await window.ade.invoke('project:switch', plan.projectId)
+      for (let i = 0; i < 40 && workspaceProjectRef.current !== plan.projectId; i++) await new Promise((done) => setTimeout(done, 50))
+      await new Promise((done) => requestAnimationFrame(() => done(null)))
+    }
+    toggleRecordingRef.current()
+  }), [run, projects.projects, recording, toast, t])
 
   /** 録画の対象を選んで、次回のために覚える */
   const chooseTarget = (target: CaptureTarget) => {
@@ -368,15 +430,43 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     void window.ade.invoke('capture:setTarget', target).catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
   }
 
+  /**
+   * 確認先のウインドウを録画の対象に選ぶ（デスクトップアプリ・シミュレータなど）。
+   * 画面収録の許可が無いうちは一覧を取らず、対象の選択画面（許可の案内つき）を出す。
+   * 起動コマンドを走らせた直後は、ウインドウが出るまで少し待って探し直す。
+   */
+  const selectWindowTarget = (windowMatch: string, launched: boolean) => void run(async () => {
+    if ((await window.ade.invoke('capture:screenAccess')) !== 'granted') { setTargetPickerOpen(true); return }
+    const attempts = launched ? 15 : 1
+    for (let i = 0; i < attempts; i++) {
+      if (i > 0) await new Promise((done) => setTimeout(done, 1000))
+      const found = matchWindowSource((await window.ade.invoke('capture:sources')).sources, windowMatch)
+      if (found) {
+        chooseTarget(targetFromSource(found))
+        toast({ tone: 'success', message: t('projectTargets.windowSelected', { name: found.name }) })
+        return
+      }
+    }
+    toast({ tone: 'warning', message: t('projectTargets.windowNotFound', { match: windowMatch }) })
+    setTargetPickerOpen(true)
+  })
+
   const selectTool = (next: AnnotationTool) => void run(async () => {
-    await window.ade.invoke('annotation:setMode', next === 'none' ? 'off' : next)
+    await window.ade.invoke('annotation:setMode', annotationModeForTool(next))
     setTool(next)
   })
+
+  // 先に画面の色を変え、保存と注入先への反映は裏で行う
+  const selectColor = (next: AnnotationColor) => {
+    setAnnotationColor(next)
+    void run(async () => { await window.ade.invoke('annotation:setColor', next) })
+  }
 
   useEffect(() => {
     const offs = [
       window.ade.on('recording:level', (data) => { if (data.source === 'mic') setLevel(data.rms) }),
       window.ade.on('recording:status', setRecordStatus),
+      window.ade.on('annotation:history', setAnnotationHistory),
       window.ade.on('recording:warning', (message) => { toast({ tone: 'warning', message, duration: 0 }); showNotice(message) }),
       window.ade.on('review:ready', (data) => {
         setReview(data); setSessionId(data.id); setCenterTab('findings'); setTool('none')
@@ -389,9 +479,47 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   }, [workspace.folderPath, run, refreshHistory, toast, stayFeedbackOnStop, changeMode, showNotice])
 
   /*
+   * Agent が progress.json（指摘の進み具合）を書いたら、サイドバーの「完了数/対象数」と開いている Findings を読み直す。
+   * 変更はプロジェクトの監視（files.ts の ProjectWatcher）で届く。開いているレビューは進み具合だけを差し替える（画像は読み直さない）
+   */
+  const openReviewId = review?.id ?? null
+  useEffect(() => subscribeIpc('review:progressChanged', (ids) => {
+    void refreshHistory().catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（次の更新で読み直す）
+    if (!openReviewId || !ids.includes(openReviewId)) return
+    void window.ade.invoke('review:progress', openReviewId).then((progress) => {
+      setReview((current) => current && current.id === openReviewId ? { ...current, progress } : current)
+    }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（画面は前の値のまま）
+  }, 'review'), [openReviewId, refreshHistory])
+
+  /*
    * 起動経路（NF-5）。設定・ワークスペース・ブラウザ状態を1度にまとめて取得し、
    * 最初の描画が終わった時点を「操作可能」として記録する。
    */
+  const applyFeedbackTargets = (prefs: FeedbackTargetsPrefs) => {
+    setTargetsOpenState(prefs.visible !== false)
+    if (prefs.ratio) setTargetsRatio(prefs.ratio)
+  }
+
+  // settings.json の外部の変更（Claude Code などの書き換え）はその場で反映し、壊れたときは理由と行を知らせる（取り込まない）
+  useEffect(() => {
+    const offChanged = window.ade.on('settings:changed', (settings) => {
+      setSplitRatio(settings.splitRatio)
+      setAgents(sanitizeAgentPreferences(settings.agents))
+      setAgentPrompt(settings.agentPrompt ?? '')
+      if (settings.capture) {
+        setCaptureMic(settings.capture.captureMic); setCaptureSystemAudio(settings.capture.captureSystemAudio)
+        setTranscription(settings.capture.transcription); setLanguage(settings.capture.language); setMicDeviceId(settings.capture.micDeviceId ?? '')
+        setKeepDays(settings.capture.keepDays); setStayFeedbackOnStop(settings.capture.stayFeedbackOnStop); setAnnotationColor(normalizeAnnotationColor(settings.capture.annotationColor))
+      }
+      applyFeedbackTargets(settings.feedbackTargets ?? {})
+      toast({ tone: 'info', message: t('settings.file.reloaded') })
+    })
+    const offError = window.ade.on('settingsFile:error', (error) => {
+      if (error) toast({ tone: 'warning', message: `${t('settings.file.error')} ${error.line ? t('settings.file.errorAt', { line: String(error.line), message: error.message }) : error.message}` })
+    })
+    return () => { offChanged(); offError() }
+  }, [toast, t])
+
   useEffect(() => {
     let cancelled = false
     initLayout()
@@ -406,12 +534,18 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
       // 古い形の設定（main が古いまま動いているときなど）でも描画が落ちないよう、ここでも整える
       setAgents(sanitizeAgentPreferences(settings.agents))
       setAgentPrompt(settings.agentPrompt ?? '')
-      setOnboarding(settings.onboarding ?? null)
+      onboardingStoreRef.current?.reset(settings.onboarding ?? null)
       if (settings.capture) {
         setCaptureMic(settings.capture.captureMic); setCaptureSystemAudio(settings.capture.captureSystemAudio)
         setTranscription(settings.capture.transcription); setLanguage(settings.capture.language); setMicDeviceId(settings.capture.micDeviceId ?? '')
-        setKeepDays(settings.capture.keepDays); setStayFeedbackOnStop(settings.capture.stayFeedbackOnStop)
+        setKeepDays(settings.capture.keepDays); setStayFeedbackOnStop(settings.capture.stayFeedbackOnStop); setAnnotationColor(normalizeAnnotationColor(settings.capture.annotationColor))
         if (settings.capture.captureTarget) { captureTargetRef.current = settings.capture.captureTarget; setCaptureTarget(settings.capture.captureTarget) }
+      }
+      if (settings.feedbackTargets) applyFeedbackTargets(settings.feedbackTargets)
+      else if (readLocal('ade.feedback.targetsOpen') !== null || readLocal('ade.feedback.targetsRatio') !== null) {
+        // 以前 localStorage に置いていたフィードバックの右パネルの開閉・幅を、設定へ1度だけ移す
+        void window.ade.invoke('settings:feedbackTargets', { visible: readLocal('ade.feedback.targetsOpen') !== 'false',
+          ...(Number(readLocal('ade.feedback.targetsRatio')) ? { ratio: Number(readLocal('ade.feedback.targetsRatio')) } : {}) }).catch(() => undefined)
       }
       setWorkspace(ws)
       setProjectsLoaded(true)
@@ -444,9 +578,10 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const reopenOnboarding = useCallback(() => {
     if (recording) { toast({ tone: 'warning', message: t('errors.stopRecordingBeforeChange') }); return }
     if (modeRef.current === 'feedback') changeMode('editor')
-    void persistOnboarding(reopenPatch()).catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
+    persistOnboarding(reopenPatch())
   }, [recording, toast, t, changeMode, persistOnboarding])
   useEffect(() => onShowOnboardingRequested(reopenOnboarding), [reopenOnboarding])
+  onboardingErrorRef.current = (err) => toast({ tone: 'warning', message: t('onboarding.saveFailed'), detail: errorMessage(err) })
 
   // メニュー（＝キーボードショートカット）からの指示
   useEffect(() => {
@@ -526,6 +661,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   }, [])
 
   useEffect(() => installTestHooks(), [])
+  // クラッシュのタグ：どの画面を見ていたか（src/renderer/lib/telemetry.ts）
+  useEffect(() => setUiTab(centerTab), [centerTab])
 
   const onTerminalReady = useCallback(() => {
     console.log('[startup] ターミナル利用可能')
@@ -628,12 +765,14 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                 // 別のプロジェクトの履歴から選ぶと history はまだ前のプロジェクトのもの。見本だけを除いて読む
                 if (!(showDemo && !history.length && DEMO_SESSION_IDS.includes(id))) void run(async () => { setReview(await window.ade.invoke('review:load', id)); await refreshHistory() })
               }}
-              onStartRecording={toggleRecording}
+              onNewReview={startReviewIn}
+              recording={recording}
               onHistoryChanged={(deleted) => {
                 // 開いているレビューを消したら、確認画面も閉じる
                 if (sessionId && deleted.includes(sessionId)) { setSessionId(null); setReview(null) }
                 void run(refreshHistory)
               }}
+              onOverlayChange={setProjectDialogOpen}
             />
             </ErrorBoundary>
           </div>
@@ -697,6 +836,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                     urlInputRef={urlInputRef}
                     project={projects.projects.find((p) => p.id === workspace.projectId) ?? null}
                     onOverlayChange={setUrlDialogOpen}
+                    onSelectWindow={selectWindowTarget}
                   />
                   <BrowserSlot
                     viewport={browserState.viewport}
@@ -709,7 +849,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                 </ErrorBoundary>
               ) : (
                 <ErrorBoundary name="findings">
-                {review ? <ReviewFindings terminalId={activeTerminal} review={review} onUpdate={(next) => { setReview(next); void refreshHistory() }} /> : <FindingsList findings={findings} sessionLabel={selectedSession?.label} />}
+                {review ? <ReviewFindings terminalId={activeTerminal} review={review} recording={recording || recordBusy} onRecord={(mode) => { appendNext.current = mode === 'append' ? review.id : null; toggleRecording() }} onUpdate={(next) => { setReview(next); void refreshHistory() }} /> : <FindingsList findings={findings} sessionLabel={selectedSession?.label} />}
                 </ErrorBoundary>
               )}
               </ErrorBoundary>
@@ -794,10 +934,16 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           level={level}
           captureMic={captureMic}
           onToolChange={selectTool}
+          color={annotationColor}
+          onColorChange={selectColor}
           paused={recordStatus.state === 'paused'}
           busy={recordBusy}
           onPause={() => void run(async () => setRecordStatus(await window.ade.invoke(recordStatus.state === 'paused' ? 'recording:resume' : 'recording:pause')))}
           onClear={() => void run(async () => { await window.ade.invoke('annotation:clear') })}
+          canUndo={annotationHistory.canUndo}
+          canRedo={annotationHistory.canRedo}
+          onUndo={() => void run(async () => { await window.ade.invoke('annotation:undo') })}
+          onRedo={() => void run(async () => { await window.ade.invoke('annotation:redo') })}
           onToggleRecording={toggleRecording}
           onBackToEditor={() => changeMode('editor')}
           target={captureTarget}
@@ -822,18 +968,19 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
             <Splitter
               ratio={targetsRatio}
               onChange={setTargetsRatio}
-              onCommit={(ratio) => writeLocal('ade.feedback.targetsRatio', String(ratio))}
+              onCommit={(ratio) => void window.ade.invoke('settings:feedbackTargets', { ratio }).catch(() => undefined)}
               onDragChange={setSplitDragging}
             />
             <ErrorBoundary name="review-targets">
             <ReviewTargetsPanel
               project={projects.projects.find((p) => p.id === workspace.projectId) ?? null}
-              openFiles={files.files.map((f) => f.path)}
+              root={workspace.folderPath}
               currentUrl={browserState.url}
-              addedFile={addedTargetFile}
+              history={urlHistory}
               onOpenUrl={navigate}
               onOpenEditor={(path) => { files.open(path); changeMode('editor') }}
-              onPickFile={() => { setQuickOpenForTarget(true); setQuickOpenOpen(true) }}
+              onSelectWindow={selectWindowTarget}
+              recording={recording}
               onClose={() => setTargetsOpen(() => false)}
             />
             </ErrorBoundary>
@@ -841,10 +988,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         </div>
       </div>
 
-      {quickOpenOpen && <QuickOpen
-        onOpen={(path) => (quickOpenForTarget ? setAddedTargetFile({ path, at: Date.now() }) : files.open(path))}
-        onClose={() => { setQuickOpenOpen(false); setQuickOpenForTarget(false) }}
-      />}
+      {quickOpenOpen && <QuickOpen onOpen={(path) => files.open(path)} onClose={() => setQuickOpenOpen(false)} />}
       {files.pendingClose && <UnsavedChangesDialog name={files.pendingClose.name} onChoose={files.resolveClose} />}
       {targetPickerOpen && <CaptureTargetPicker
         value={captureTarget}

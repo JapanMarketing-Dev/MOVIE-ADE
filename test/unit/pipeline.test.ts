@@ -105,9 +105,20 @@ describe('LLMへの入力', () => {
     expect(payload.transcript).toHaveLength(4)
     expect(payload.screen.map((s) => s.title)).toEqual(['トップ', '料金'])
     expect(payload.clicks[0]).toMatchObject({ text: '料金', selector: 'a.nav-pricing' })
-    expect(payload.annotations.map((a) => a.id)).toEqual(['p3', 'x1', 'p9'])
-    expect(payload.annotations.find((a) => a.id === 'x1')!.body).toBe('ここは「月額」表記に統一')
+    expect(payload.annotations.map((a) => a.id)).toEqual(['p3', 'p9'])
     expect(payload.draft.length).toBe(stage.draft.items.length)
+  })
+
+  it('動かした・元に戻した書き込みは、最後の形だけを渡す（取り消し済みの ID を見せない）', () => {
+    const events = [
+      ...material.events,
+      { t: 42_000, type: 'pen' as const, id: 'p10', replaces: 'p9', t_end: 42_300, bbox: [40, 10, 20, 20] as [number, number, number, number] },
+      { t: 43_000, type: 'erase' as const, ids: ['p3'] },
+    ]
+    const stage = buildDraftDocument({ ...material, events })
+    const payload = buildPayload(stage.organizeInput)
+    expect(payload.annotations.map((a) => a.id)).toEqual(['p10'])
+    expect(stage.draft.items.flatMap((i) => i.annotationIds)).toEqual(['p10'])
   })
 
   it('プロンプトに指示と入力JSONの両方が入る', () => {
@@ -124,5 +135,15 @@ describe('LLMへの入力', () => {
     expect(prompt).toContain('Do not change what was said.')
     expect(prompt).toContain('## Input')
     expect(prompt).toContain('このボタンの色が薄いです')
+  })
+
+  it('条文を持たない言語は英語の条文で、見出しと要望だけをその言語で書かせる', () => {
+    const stage = buildDraftDocument(material)
+    const de = buildPrompt(stage.organizeInput, 'de')
+    expect(de).toContain('Write title and request in German.')
+    expect(de).not.toContain('Write title and request in English.')
+    expect(de).toContain('Do not change what was said.')
+    expect(buildPrompt(stage.organizeInput, 'zh-TW')).toContain('in Traditional Chinese (Taiwan).')
+    expect(buildPrompt(stage.organizeInput, 'en')).toContain('Write title and request in English.')
   })
 })

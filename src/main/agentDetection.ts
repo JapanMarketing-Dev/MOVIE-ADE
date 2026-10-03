@@ -137,7 +137,8 @@ export async function listAgentOptions(prefs: AgentPreferences, refresh = false)
       args: custom?.args ?? '',
       defaultCommand: null,
       defaultArgs: null,
-      homepageUrl: null
+      homepageUrl: null,
+      ...(custom?.icon ? { icon: custom.icon } : {})
     }
   })
 }

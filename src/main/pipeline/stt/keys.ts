@@ -9,7 +9,7 @@
  *   落ちる環境は「暗号化できない」とみなし、保存せず起動中だけ持つ
  *
  * 暗号化できない環境では、これまでと同じく起動中だけ保持する。
- * 開発用の .env の OPENAI_API_KEY は、dev 起動（app.isPackaged が false）のときだけ、
+ * 開発用の .env の OPENAI_API_KEY は、dev 起動（src/main/runtime.ts の IS_PACKAGED が false）のときだけ、
  * 保存したキーが無いときの OpenAI のキーとして使う。**配布版は環境変数のキーを一切読まない**
  * （開発者のキーで利用者の文字起こしを払わない。キーが無ければ端末内の whisper を案内するだけ）。
  * **キーの値はログ・エラーメッセージ・IPC の戻り値に出さないこと。**
@@ -22,6 +22,7 @@ import { dirname } from 'node:path'
 import type { SttKeySource } from '@shared/types'
 import { AI_VENDORS, type AiVendor } from '@shared/aiProviders'
 import { t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
 import { errorKind, reportHandled } from '@shared/report'
 
 /** キーを保存する単位。提供元（vendor）ごとに1つで、文字起こしと整理で共有する */
@@ -165,7 +166,8 @@ export class SttKeyStore {
     const trimmed = key.trim()
     if (trimmed) {
       const invalid = validateSttKey(provider, trimmed)
-      if (invalid) throw new Error(invalid)
+      // 形の誤りは利用者が直すもの（不具合として報告しない）。文面にキーの値は入れない
+      if (invalid) throw new UserFacingError(invalid)
       this.keys[provider] = trimmed
     } else {
       delete this.keys[provider]

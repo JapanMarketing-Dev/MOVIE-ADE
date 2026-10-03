@@ -1,12 +1,11 @@
 import { existsSync } from 'node:fs'
 import { appendFile, writeFile, readFile } from 'node:fs/promises'
-import { pathToFileURL } from 'node:url'
 import { homedir } from 'node:os'
 import type { SessionPaths } from './sessions/paths'
 import type { IncrementalTranscriber } from './pipeline/stt/engine'
 import { loadDevDotEnv, type SttKeyStore } from './pipeline/stt/keys'
-import { BrowserWindow, app, dialog, ipcMain, nativeTheme, safeStorage, shell, protocol, net, session } from 'electron'
-import { basename, join } from 'node:path'
+import { BrowserWindow, app, dialog, ipcMain, nativeTheme, safeStorage, shell, protocol, session } from 'electron'
+import { basename, dirname, join } from 'node:path'
 import type { IpcEventChannel, IpcEvents, IpcRequests } from '@shared/ipc'
 import type { AiVendor, LlmApiProvider, SttRemoteProvider } from '@shared/aiProviders'
 import {
@@ -16,6 +15,7 @@ import {
   type AnnotationMode,
   type AppMode,
   type Project,
+  type ProjectUpdate,
   type ProjectSession,
   type ProjectsState,
   type RecordingStatus,
@@ -33,7 +33,9 @@ import { installMenu } from './menu'
 import { applyLocalePreference } from './locale'
 import { PRODUCT_NAME, getLocale, t } from '@shared/i18n'
 import { UserFacingError, toUserFacingFileError } from '@shared/errors'
-import { currentSettings, flushSettingsSync, loadSettings, updateSettings } from './settings'
+import { IS_PACKAGED } from './runtime'
+import { configDir, currentSettings, flushSettingsSync, loadSettings, readSettingsText, settingsFileInfo, updateSettings, watchSettings, writeSettingsText } from './settings'
+import { envGetter, keepKeyRefs, redactKeys, resolveApiKey, resolveConfiguredKey, resolveEndpointRefs, type KeyRef } from './settingsKeys'
 import { elapsedMs, mark, reportInteractive } from './startup'
 import { TerminalManager } from './terminal'
 import { listAgentOptions } from './agentDetection'
@@ -53,7 +55,7 @@ import { ResourceCollector } from './resources'
 import { ProjectWatcher, listDirectory, listFiles, readTextFile, searchFiles, writeTextFile } from './files'
 import { refreshPreviewIn, registerPreviewProtocol, renderPreviewSource } from './preview'
 import { PREVIEW_SCHEME } from '@shared/preview'
-import { crashReportsActive, initCrashReporting, maybeSendTestEvent, reportMainError, sentryTestKinds } from './telemetry'
+import { crashReportsActive, initCrashReporting, maybeSendTestEvent, reportMainError, sentryTestKinds, setTelemetryContext, trackIpc } from './telemetry'
 import { wrapIpcHandler } from '@shared/telemetry'
 import { flow, reportHandled } from '@shared/report'
 
@@ -66,7 +68,7 @@ protocol.registerSchemesAsPrivileged([
   { scheme: PREVIEW_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }
 ])
 /*
- * userData は製品名（MOVIE-ADE）ではなく、これまでと同じ「ade-movie」フォルダに固定する。
+ * userData は製品名（Ferret）ではなく、これまでと同じ「ade-movie」フォルダに固定する。
  * 名前で決まるままにすると、改名で既存の設定・プロジェクト・保存したキーが見えなくなる。
  * E2E などが --user-data-dir を渡したときはそちらに従う。Crashpad も userData に書くので、その前に決める。
  */
@@ -78,11 +80,11 @@ if (!app.commandLine.hasSwitch('user-data-dir')) app.setPath('userData', join(ap
  * 開発版の Cookie と safeStorage は固定の鍵になる（初回だけ、開発版の内蔵ブラウザのログインが切れる）。
  * 配布版は影響なし。本物のキーチェーンで試したいときは ADE_DEV_REAL_KEYCHAIN=1 を付けて起動する。
  */
-if (!app.isPackaged && process.platform === 'darwin' && process.env.ADE_DEV_REAL_KEYCHAIN !== '1') {
+if (!IS_PACKAGED && process.platform === 'darwin' && process.env.ADE_DEV_REAL_KEYCHAIN !== '1') {
   app.commandLine.appendSwitch('use-mock-keychain')
 }
 /*
- * 表示名は MOVIE-ADE だが、app.setName() は呼ばない。app.name（package.json の name = ade-movie）は
+ * 表示名は Ferret だが、app.setName() は呼ばない。app.name（package.json の name = ade-movie）は
  * macOS のキーチェーンの「ade-movie Safe Storage」の名前にもなっていて、変えると保存済みのキーや
  * 内蔵ブラウザの Cookie を復号できなくなる。メニュー・Dock・⌘Tab の名前は .app の CFBundleName
  * （配布版は electron-builder の productName、開発版は scripts/prepare-dev-electron.mjs）から出る。
@@ -92,7 +94,7 @@ if (!app.isPackaged && process.platform === 'darwin' && process.env.ADE_DEV_REAL
 initCrashReporting()
 
 // 開発用の .env は dev 起動のときだけ読む。配布版は読まない（pipeline/stt/keys.ts）
-loadDevDotEnv(app.isPackaged)
+loadDevDotEnv(IS_PACKAGED)
 mark('main:loaded')
 
 /**
@@ -158,6 +160,8 @@ let recording: RecordingController | null = null
  * 文字起こしへ渡す形（16kHz モノラルWAV）で、録画中に逐次書く（NF-12）。
  */
 let activePaths: SessionPaths | null = null
+/** 「このレビューに追加で録る」の録画中なら、足す先のレビューと録画の番号（activePaths は takes/<n>/ を指す） */
+let activeAppend: { review: SessionPaths; n: number } | null = null
 let transcriber: IncrementalTranscriber | null = null
 let activeOptions = { captureSystemAudio: false, transcription: 'local' as SttProvider }
 
@@ -173,10 +177,76 @@ async function sttKeyStore(): Promise<SttKeyStore> {
     const { SttKeyStore: Store, chooseKeyCipher, devKeyEnv } = await import('./pipeline/stt/keys')
     // 環境変数のキー（.env の OPENAI_API_KEY）は dev 起動のときだけ使う
     sttKeys = new Store(join(app.getPath('userData'), 'stt-keys.bin'),
-      chooseKeyCipher({ isPackaged: app.isPackaged, isE2E: IS_E2E, safeStorage }), devKeyEnv(app.isPackaged))
+      chooseKeyCipher({ isPackaged: IS_PACKAGED, isE2E: IS_E2E, safeStorage }), devKeyEnv(IS_PACKAGED))
   }
   return sttKeys
 }
+/**
+ * 送信に使うキー。settings.json の apiKey（平文）> apiKeyEnv（環境変数・プロジェクトの .env・設定フォルダの .env）> 保存したキー の順。
+ * 値はログ・エラー・IPC の戻り値に出さない（src/main/settingsKeys.ts）
+ */
+async function providerKey(ref: KeyRef | undefined, vendor: AiVendor | null): Promise<string | undefined> {
+  return resolveApiKey(ref, keyLookup(), async () => (vendor ? (await sttKeyStore()).read(vendor) : undefined))
+}
+
+function keyLookup(): import('./settingsKeys').KeyLookup {
+  return { env: process.env, projectDir: workspace.folderPath, configDir: configDir() }
+}
+
+/**
+ * 従量課金の API 呼び出しの記録（<設定フォルダ>/usage/decision-YYYY-MM.jsonl）と、判定モデルのローカル中継。
+ * 中継は判定モデルを有効にしたときだけ立てる。Agent にはキーを渡さず、中継の URL だけを渡す（src/main/decision/）
+ */
+let callLog: import('./decision/callLog').CallLog | null = null
+let decisionService: import('./decision/service').DecisionService | null = null
+let usagePushTimer: NodeJS.Timeout | null = null
+
+async function apiCallLog(): Promise<import('./decision/callLog').CallLog> {
+  if (!callLog) callLog = new (await import('./decision/callLog')).CallLog(join(configDir(), 'usage'))
+  return callLog
+}
+
+async function apiUsageSummary(): Promise<import('@shared/apiUsage').ApiUsageSummary> {
+  const { DEFAULT_DECISION_PREFERENCES, resolveDecision } = await import('@shared/decision')
+  const prefs = currentSettings().decision ?? DEFAULT_DECISION_PREFERENCES
+  const resolved = prefs.enabled ? resolveDecision(prefs, envGetter(keyLookup())) : null
+  return (await apiCallLog()).summary({ enabled: prefs.enabled, model: resolved?.model ?? null, provider: resolved?.preset ?? null })
+}
+
+/** 記録を足したらフッターへ知らせる（続けて来たら少しまとめる） */
+function recordCall(record: import('@shared/apiUsage').ApiCallRecord): void {
+  const withProject = record.projectId || !workspace.projectId ? record : { ...record, projectId: workspace.projectId }
+  void apiCallLog().then((log) => log.append(withProject)).then(() => {
+    if (usagePushTimer) clearTimeout(usagePushTimer)
+    usagePushTimer = setTimeout(() => {
+      usagePushTimer = null
+      void apiUsageSummary().then((summary) => send('usage:apiCallsChanged', summary))
+        .catch((err: unknown) => reportHandled(err, { area: 'usage', op: 'summarize api calls' }))
+    }, 300)
+  })
+}
+
+async function decision(): Promise<import('./decision/service').DecisionService> {
+  if (!decisionService) {
+    const { DecisionService } = await import('./decision/service')
+    const { DECISION_PRESETS } = await import('@shared/decision')
+    decisionService = new DecisionService({
+      prefs: () => currentSettings().decision,
+      // キーは中継に最初の依頼が来たときに初めて読む（起動時には復号しない）
+      readKey: (prefs) => providerKey(prefs as KeyRef, DECISION_PRESETS[prefs.preset].vendor),
+      getEnv: (name) => envGetter(keyLookup())(name),
+      onCall: recordCall
+    })
+  }
+  return decisionService
+}
+
+/** 判定モデルの設定が変わったら、中継を立てる・止める */
+function syncDecision(): void {
+  if (!currentSettings().decision?.enabled && !decisionService) return
+  void decision().then((d) => d.sync()).catch((err: unknown) => reportHandled(err, { area: 'settings', op: 'start decision relay' }))
+}
+
 let sttWarnings: string[] = []
 let recordingBusy = false
 
@@ -214,7 +284,7 @@ const fileWatcher = new ProjectWatcher((event) => {
   send('fs:changed', event)
   // 内蔵ブラウザで開いているプレビューは、読み直さずに中身だけ差し替える（録画中の書き込みを残す）
   refreshPreviewIn(browser?.contents ?? null, event.paths)
-})
+}, (ids) => send('review:progressChanged', ids))
 
 /** ファイルエディタの IPC が触ってよい根。未選択なら断る */
 function projectRoot(): string {
@@ -234,6 +304,20 @@ function setWorkspace(folderPath: string | null, project: Project | null = null)
     mainWindow.setTitle(workspace.folderName ? `${workspace.folderName} — ${PRODUCT_NAME}` : PRODUCT_NAME)
   }
   return workspace
+}
+
+/** 取り込んだ settings.json を、動いているアプリへ反映する（配色・言語・エージェント・プロジェクト）。renderer へは平文のキーを外して送る */
+function applyExternalSettings(settings: Settings): void {
+  nativeTheme.themeSource = settings.theme ?? 'system'
+  send('locale:changed', applyLocalePreference(settings.locale))
+  if (settings.whisperModel) process.env.ADE_WHISPER_MODEL = settings.whisperModel
+  void listAgentOptions(settings.agents).then((options) => send('agents:changed', options))
+    .catch((err: unknown) => reportHandled(err, { area: 'settings', op: 'reload agents' }))
+  send('projects:changed', projectsState())
+  // 判定モデルの中継（有効・接続先の変更）
+  syncDecision()
+  send('settings:changed', redactKeys(settings))
+  syncDecision()
 }
 
 function projectsState(): ProjectsState {
@@ -321,11 +405,17 @@ function removeProject(id: string): ProjectsState {
 }
 
 /** 名前・URLの変更。フォルダは変えられない（別フォルダは別プロジェクトとして足す） */
-function updateProject(next: Project): ProjectsState {
+function updateProject(next: ProjectUpdate): ProjectsState {
   const settings = currentSettings()
   const current = settings.projects.find((p) => p.id === next.id)
   if (!current) throw new UserFacingError(t('errors.projectNotFound'))
-  const merged: Project = { ...current, name: next.name.trim() || current.name, urls: next.urls }
+  // 送られてきた項目だけを変える（名前だけ・確認先だけの更新が、ほかの画面の変更を古い値で上書きしないように）
+  const merged: Project = {
+    ...current,
+    name: next.name?.trim() || current.name,
+    ...(next.urls ? { urls: next.urls } : {}),
+    ...(next.kind ? { kind: next.kind } : {})
+  }
   updateSettings({ projects: settings.projects.map((p) => (p.id === next.id ? merged : p)) })
   // 表示名が変わったらタイトルバーにも反映する
   if (workspace.projectId === next.id) {
@@ -362,7 +452,7 @@ function nativeThemeBackground(): string {
  */
 function windowIcon(): { icon?: string } {
   if (process.platform === 'darwin') return {}
-  const icon = app.isPackaged ? join(process.resourcesPath, 'icon.png') : join(app.getAppPath(), 'build', 'icon.png')
+  const icon = IS_PACKAGED ? join(process.resourcesPath, 'icon.png') : join(app.getAppPath(), 'build', 'icon.png')
   return existsSync(icon) ? { icon } : {}
 }
 
@@ -381,7 +471,9 @@ function createWindow(): BrowserWindow {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       // 最初の描画の前に配色を決められるよう、解決済みの配色を preload へ渡す
-      additionalArguments: [`--ade-theme=${nativeTheme.shouldUseDarkColors ? 'dark' : 'light'}`, `--ade-locale=${getLocale()}`],
+      additionalArguments: [`--ade-theme=${nativeTheme.shouldUseDarkColors ? 'dark' : 'light'}`, `--ade-locale=${getLocale()}`,
+        // 確認用（FERRET_SENTRY_TEST=preload）：preload の読み込み中の例外が Sentry へ届くか
+        ...(sentryTestKinds().includes('preload') ? ['--ade-sentry-test-preload'] : [])],
       contextIsolation: true,
       nodeIntegration: false,
       // preload は contextBridge / ipcRenderer しか使わないので、サンドボックス内で動く
@@ -447,10 +539,12 @@ async function ensureRecording(): Promise<RecordingController> {
     },
     {
       onLimit: () => stopReview().then(() => undefined),
-      onStatus: (status) => send('recording:status', status),
+      onStatus: (status) => { setTelemetryContext({ recording: status.state }); send('recording:status', status) },
       onLevel: (level) => send('recording:level', level),
       onPcm: (block) => audioWriter?.write(block),
-      onWarning: (message) => send('recording:warning', message)
+      onWarning: (message) => send('recording:warning', message),
+      onAnnotationHistory: (history) => send('annotation:history', history),
+      onAnnotationShortcut: (action) => send('annotation:shortcut', action)
     }
   )
   const contents = browser?.contents
@@ -512,6 +606,41 @@ async function createAudioWriter(audioDir: string): Promise<NonNullable<typeof a
   }
 }
 
+/**
+ * GitHub の star のお願い（src/main/starPrompt.ts）。良い場面（最初の送信・レビューの完成）で呼ぶ。
+ * 録画中とセットアップを終えるまでは出さない。star するのは利用者が押したときだけ
+ */
+let starPromptService: import('./starPrompt').StarPromptService | null = null
+async function starPrompt(): Promise<import('./starPrompt').StarPromptService> {
+  if (starPromptService) return starPromptService
+  const [{ StarPromptService }, { checkStarred, starRepo }, { STAR_REPO_URL }] = await Promise.all([import('./starPrompt'), import('./github/star'), import('@shared/starPrompt')])
+  starPromptService ??= new StarPromptService({
+    getState: () => currentSettings().starPrompt,
+    setState: (starPrompt) => updateSettings({ starPrompt }),
+    context: () => {
+      const onboarding = currentSettings().onboarding
+      return {
+        recording: Boolean(recording && recording.status.state !== 'idle'),
+        onboardingDone: Boolean(onboarding?.completedAt || onboarding?.dismissedAt)
+      }
+    },
+    checkStarred: () => checkStarred(),
+    starRepo: () => starRepo(),
+    openRepo: () => shell.openExternal(STAR_REPO_URL),
+    show: (mode) => {
+      if (!mainWindow || mainWindow.isDestroyed()) return false
+      send('star:show', mode)
+      return true
+    }
+  })
+  return starPromptService
+}
+
+/** 良い場面を知らせる。失敗しても元の操作には響かせない */
+function recordStarMoment(moment: import('@shared/starPrompt').StarPromptMoment): void {
+  void starPrompt().then((service) => service.record(moment)).catch((err: unknown) => reportHandled(err, { area: 'github', op: 'star prompt' }))
+}
+
 async function stopReview(): Promise<RecordingStatus> {
       if (!recording || recording.status.state === 'idle') return recording?.status ?? IDLE_RECORDING_STATUS
       if (recordingBusy) throw new UserFacingError(t('errors.recordingBusy'))
@@ -524,12 +653,17 @@ async function stopReview(): Promise<RecordingStatus> {
         transcriber = null
         if (stt) flow(stt.errors.length ? 'stt failed' : 'stt end', { segments: stt.segments.length, errors: stt.errors.length })
         const paths = activePaths
+        const append = activeAppend
+        activeAppend = null
         if (paths) {
-          const { finishReview } = await import('./review')
-          const review = await finishReview(paths, result, stt?.segments ?? [],
-            [...sttWarnings, ...(stt?.errors.map((e) => t('errors.transcriptionFailed', { message: e.message })) ?? [])],
-            activeOptions.captureSystemAudio)
+          const { appendReviewTake, finishReview } = await import('./review')
+          const warnings = [...sttWarnings, ...(stt?.errors.map((e) => t('errors.transcriptionFailed', { message: e.message })) ?? [])]
+          // 追記の録画は、開いていたレビューの末尾に足す（新しいレビューは作らない）
+          const review = append
+            ? await appendReviewTake(append.review, append.n, result, stt?.segments ?? [], warnings)
+            : await finishReview(paths, result, stt?.segments ?? [], warnings, activeOptions.captureSystemAudio)
           send('review:ready', review)
+          recordStarMoment('reviews')
         }
         return recording.status
       } finally { recordingBusy = false }
@@ -570,8 +704,17 @@ function flowOf(channel: string): { name: string; data?: Record<string, string> 
 function registerIpc(): void {
   const handlers: { [C in keyof IpcRequests]: (...args: Parameters<IpcRequests[C]>) => unknown } = {
     'app:ready': () => reportInteractive(),
-    'app:settings': () => ({ ...currentSettings() }),
-    'app:version': () => ({ version: appVersion(), packaged: app.isPackaged }),
+    // 平文の apiKey は renderer へ渡さない
+    'app:settings': () => redactKeys({ ...currentSettings() }),
+    'settingsFile:info': () => settingsFileInfo(),
+    'settingsFile:read': () => readSettingsText(),
+    'settingsFile:write': (text) => {
+      if (typeof text !== 'string') throw new UserFacingError(t('settingsFile.invalidText'))
+      return writeSettingsText(text)
+    },
+    'settingsFile:reveal': () => shell.showItemInFolder(settingsFileInfo().path),
+    'settings:feedbackTargets': (prefs) => updateSettings({ feedbackTargets: { ...currentSettings().feedbackTargets, ...prefs } }),
+    'app:version': () => ({ version: appVersion(), packaged: IS_PACKAGED }),
     'app:checkUpdate': async () => {
       const result = await checkForUpdate()
       // 開くURLは main が覚えておく。renderer から任意のURLを開かせない
@@ -650,6 +793,7 @@ function registerIpc(): void {
     'mode:set': (next) => {
       if (mode === next) return
       mode = next
+      setTelemetryContext({ mode: next })
       send('mode:changed', mode)
     },
 
@@ -689,14 +833,35 @@ function registerIpc(): void {
       if (info) resources.noteTerminalCreated(info.id)
       return info
     },
-    'review:send': async (id, terminalId) => {
-      const { checkedPaths, loadReviewAt, reviewInstruction } = await import('./review')
+    'review:send': async (id, rawRequest) => {
+      // 宛先（auto / Agent / タブ）と、差し替える本文。古い形（ターミナルの id だけ）も auto として読む（@shared/sendTarget）
+      const { parseSendRequest } = await import('@shared/sendTarget')
+      const request = parseSendRequest(rawRequest)
+      const { checkedPaths, loadReviewAt, markSentInProgress, refreshFeedbackMarkdown, reviewInstruction } = await import('./review')
       const paths = checkedPaths(workspace.folderPath, id)
       const data = await loadReviewAt(paths)
       if (!data.document.items.some((it) => it.include)) return { ok: false, message: t('errors.nothingToSend') }
-      const result = await terminals?.sendReview(terminalId, reviewInstruction(paths, currentSettings().agentPrompt)) ?? { ok: false, message: t('errors.openTerminal') }
+      // 判定モデルの受け入れ確認の節を今の設定に合わせる
+      await refreshFeedbackMarkdown(paths)
+      // auto: 選んでいるターミナル → 同じプロジェクトの Agent。どこにも居なければ noAgent（renderer が既定の Agent を起動して送り直す）
+      // agent: その Agent が動いているタブ。無ければ launchAgent（renderer がその Agent のタブを開いて送り直す）
+      // terminal: そのタブ。Agent が抜けていれば、覚えていた Agent を launchAgent で返す
+      const want = request.target
+      let target: string | null = null
+      if (terminals && want.kind === 'auto') target = await terminals.resolveSendTarget(request.focusedTerminalId ?? null, workspace.folderPath)
+      if (terminals && want.kind === 'agent') target = await terminals.findAgentTerminal(want.agent, workspace.folderPath)
+      if (terminals && want.kind === 'terminal' && (await terminals.agentState(want.terminalId)).kind !== 'unknown') target = want.terminalId
+      if (!target) {
+        const launchAgent = want.kind === 'agent' ? want.agent : want.kind === 'terminal' ? want.agent ?? undefined : undefined
+        return { ok: false, message: t('terminal.send.noAgent'), noAgent: true, ...(launchAgent ? { launchAgent } : {}) }
+      }
+      const result: { ok: boolean; message: string; terminalId?: string; submitted?: boolean } = { ...(await terminals!.sendReview(target, request.text ?? reviewInstruction(paths, currentSettings().agentPrompt))), terminalId: target }
       // 一覧の「送信済み」に使う。記録できなくても送信の結果は変えない
       if (result.ok) await (await import('./sessions')).updateLabel(paths, { sentAt: new Date().toISOString() }).catch((err: unknown) => reportHandled(err, { area: 'review', op: 'record sent label' }))
+      // 送った指摘を対応中にする（Agent が progress.json で done にするまで）。書けなくても送信の結果は変えない。
+      // 本文を差し替えた送信（確認への返答で1件だけ送り直す）は、その指摘だけを renderer が review:progress で戻す
+      if (result.ok && !request.text) await markSentInProgress(paths).catch((err: unknown) => reportHandled(err, { area: 'review', op: 'mark sent in progress' }))
+      if (result.ok) recordStarMoment('first-send')
       return result
     },
 
@@ -717,7 +882,7 @@ function registerIpc(): void {
     'settings:crashReports': (enabled) => updateSettings({ crashReports: enabled === true, crashReportsNoticeShown: true }),
     'telemetry:state': () => {
       const s = currentSettings()
-      return { active: crashReportsActive(), enabled: s.crashReports !== false, noticeShown: s.crashReportsNoticeShown === true, packaged: app.isPackaged, test: sentryTestKinds() }
+      return { active: crashReportsActive(), enabled: s.crashReports !== false, noticeShown: s.crashReportsNoticeShown === true, packaged: IS_PACKAGED, test: sentryTestKinds() }
     },
     'telemetry:noticeShown': () => updateSettings({ crashReportsNoticeShown: true }),
     'settings:onboarding': async (patch) => {
@@ -750,14 +915,14 @@ function registerIpc(): void {
       const r = await import('./review')
       const { LLM_PROVIDER_PRESETS, isOrganizeRunnerId } = await import('@shared/aiProviders')
       if (!isOrganizeRunnerId(runner)) throw new Error('unknown runner')
-      // API キーで直接呼ぶ場合は、保存したキーと接続先を渡す（配布版は環境変数のキーを読まない）
+      // API キーで直接呼ぶ場合は、キーと接続先を渡す（キーは settings.json の指定 > 保存したキー。名前の無い環境変数は読まない）
       const api = runner.startsWith('api:') ? (() => {
         const provider = runner.slice(4) as keyof typeof LLM_PROVIDER_PRESETS
         return { endpoint: currentSettings().organizer?.endpoints?.[provider], vendor: LLM_PROVIDER_PRESETS[provider].vendor }
       })() : undefined
       updateSettings({ organizer: { ...currentSettings().organizer, runner } })
       return r.organizeReview(r.checkedPaths(workspace.folderPath, id), runner,
-        api ? { endpoint: api.endpoint, apiKey: await (await sttKeyStore()).read(api.vendor) } : undefined)
+        api ? { endpoint: resolveEndpointRefs(api.endpoint, keyLookup()), apiKey: await providerKey(api.endpoint, api.vendor) } : undefined, currentSettings().organizer?.cliModels)
     },
     'review:frames': async (id, itemId) => {
       const r = await import('./review')
@@ -775,24 +940,45 @@ function registerIpc(): void {
       const { sanitizeEndpointConfig } = await import('./pipeline/stt/endpoint')
       const { checkSttEngine } = await import('./pipeline/stt/cloud')
       if (!isSttRemoteProvider(target?.provider)) throw new Error('unknown provider')
-      // 画面でまだ保存していない値で確かめる。キーは保存済みのもの
-      return checkSttEngine({ provider: target.provider, endpoint: sanitizeEndpointConfig(target.endpoint),
-        apiKey: await (await sttKeyStore()).read(STT_PROVIDER_PRESETS[target.provider].vendor) })
+      // 画面でまだ保存していない値で確かめる。キーは settings.json の指定か保存済みのもの
+      const endpoint = keepKeyRefs(currentSettings().capture?.sttEndpoints, { [target.provider]: sanitizeEndpointConfig(target.endpoint) })?.[target.provider]
+      return checkSttEngine({ provider: target.provider, endpoint: resolveEndpointRefs(endpoint, keyLookup()),
+        apiKey: await providerKey(endpoint, STT_PROVIDER_PRESETS[target.provider].vendor) })
     },
     'settings:stt': async (patch) => {
       const capture = currentSettings().capture ?? { captureMic: true, captureSystemAudio: false, transcription: 'local' as const, language: 'auto' as const, keepDays: 7, stayFeedbackOnStop: false }
       updateSettings({ capture: { ...capture,
-        ...(patch?.sttEndpoints !== undefined ? { sttEndpoints: patch.sttEndpoints } : {}),
+        // 画面にはキーを渡していないので、settings.json に書かれた apiKey / apiKeyEnv を引き継ぐ
+        ...(patch?.sttEndpoints !== undefined ? { sttEndpoints: keepKeyRefs(capture.sttEndpoints, patch.sttEndpoints) } : {}),
         ...(patch && 'costLimitUsd' in patch ? { costLimitUsd: patch.costLimitUsd } : {}) } })
     },
-    'settings:organizer': (prefs) => updateSettings({ organizer: { ...currentSettings().organizer, ...prefs } }),
+    'settings:organizer': (prefs) => {
+      const prev = currentSettings().organizer
+      updateSettings({ organizer: { ...prev, ...prefs, ...(prefs?.endpoints !== undefined ? { endpoints: keepKeyRefs(prev?.endpoints, prefs.endpoints) } : {}) } })
+    },
     'organize:testConnection': async (target) => {
       const { LLM_PROVIDER_PRESETS, isLlmApiProvider } = await import('@shared/aiProviders')
       const { sanitizeEndpointConfig } = await import('./pipeline/stt/endpoint')
       const { checkLlmRunner } = await import('./pipeline/organize/runners/api')
       if (!isLlmApiProvider(target?.provider)) throw new Error('unknown provider')
-      return checkLlmRunner({ provider: target.provider, endpoint: sanitizeEndpointConfig(target.endpoint),
-        apiKey: await (await sttKeyStore()).read(LLM_PROVIDER_PRESETS[target.provider].vendor) })
+      const endpoint = keepKeyRefs(currentSettings().organizer?.endpoints, { [target.provider]: sanitizeEndpointConfig(target.endpoint) })?.[target.provider]
+      return checkLlmRunner({ provider: target.provider, endpoint: resolveEndpointRefs(endpoint, keyLookup()),
+        apiKey: await providerKey(endpoint, LLM_PROVIDER_PRESETS[target.provider].vendor) })
+    },
+    'settings:decision': async (prefs) => {
+      const { sanitizeDecisionPreferences } = await import('@shared/decision')
+      // 画面にはキーを渡していないので、settings.json に書かれた apiKey / apiKeyEnv を引き継ぐ
+      const kept = keepKeyRefs({ d: currentSettings().decision as KeyRef | undefined }, { d: (prefs ?? {}) as KeyRef })?.d
+      updateSettings({ decision: sanitizeDecisionPreferences(kept) })
+      syncDecision()
+      return redactKeys(currentSettings().decision!)
+    },
+    'usage:apiCalls': () => apiUsageSummary(),
+    'usage:openApiLog': async () => {
+      const file = (await apiUsageSummary()).logFile
+      // 今月まだ呼んでいなければファイルが無いので、フォルダを開く
+      if (existsSync(file)) shell.showItemInFolder(file)
+      else void shell.openPath(dirname(file)).catch((err: unknown) => reportHandled(err, { area: 'usage', op: 'open api call log' }))
     },
     'capture:sources': async () => {
       const { listCaptureSources, screenAccess } = await import('./recording/sources')
@@ -812,6 +998,7 @@ function registerIpc(): void {
       else updateSettings({ capture: { captureMic: true, captureSystemAudio: false, transcription: 'local', language: 'auto', keepDays: 7, stayFeedbackOnStop: false, captureTarget } })
     },
     'capture:openScreenSettings': async () => (await import('./recording/sources')).openScreenSettings(),
+    'capture:screenAccess': async () => (await import('./recording/sources')).screenAccess(),
     'capture:whisperModels': async () => {
       const { nodeProbes, resolveWhisperBinary } = await import('./pipeline/environment')
       const { whisperInstallHint } = await import('./pipeline/stt/modelManager')
@@ -837,14 +1024,21 @@ function registerIpc(): void {
       const ai = await import('@shared/aiProviders')
       const keys = await sttKeyStore()
       const settings = currentSettings()
+      // settings.json で指定したキー（apiKey / apiKeyEnv）は提供元（provider）ごと。値は渡さず、出どころだけ
+      const lookup = keyLookup()
+      const sttRef = (p: SttRemoteProvider) => resolveConfiguredKey(settings.capture?.sttEndpoints?.[p], lookup)
+      const llmRef = (p: LlmApiProvider) => resolveConfiguredKey(settings.organizer?.endpoints?.[p], lookup)
+      const configured = new Map<AiVendor, SttKeySource>()
+      for (const p of ai.STT_REMOTE_PROVIDERS) { const found = sttRef(p); if (found) configured.set(ai.STT_PROVIDER_PRESETS[p].vendor, found.source) }
+      for (const p of ai.LLM_API_PROVIDERS) { const found = llmRef(p); if (found) configured.set(ai.LLM_PROVIDER_PRESETS[p].vendor, found.source) }
       return { localReady: !!resolveWhisperBinary({ modelDir: '' }, nodeProbes()) && existsSync(localModel()),
         // 復号しない（起動直後にも呼ばれるため）。dev 版は保存しないことを画面に出す
-        keyStorage: app.isPackaged ? keys.storage() : 'dev' as const,
-        keys: Object.fromEntries(ai.AI_VENDORS.map((v) => [v, keys.source(v)])) as Record<AiVendor, SttKeySource>,
+        keyStorage: IS_PACKAGED ? keys.storage() : 'dev' as const,
+        keys: Object.fromEntries(ai.AI_VENDORS.map((v) => [v, configured.get(v) ?? keys.source(v)])) as Record<AiVendor, SttKeySource>,
         stt: Object.fromEntries(ai.STT_REMOTE_PROVIDERS.map((p) => [p, ai.isEndpointReady(ai.STT_PROVIDER_PRESETS[p],
-          settings.capture?.sttEndpoints?.[p], keys.has(ai.STT_PROVIDER_PRESETS[p].vendor))])) as Record<SttRemoteProvider, boolean>,
+          settings.capture?.sttEndpoints?.[p], !!sttRef(p) || keys.has(ai.STT_PROVIDER_PRESETS[p].vendor))])) as Record<SttRemoteProvider, boolean>,
         llm: Object.fromEntries(ai.LLM_API_PROVIDERS.map((p) => [p, ai.isEndpointReady(ai.LLM_PROVIDER_PRESETS[p],
-          settings.organizer?.endpoints?.[p], keys.has(ai.LLM_PROVIDER_PRESETS[p].vendor))])) as Record<LlmApiProvider, boolean> }
+          settings.organizer?.endpoints?.[p], !!llmRef(p) || keys.has(ai.LLM_PROVIDER_PRESETS[p].vendor))])) as Record<LlmApiProvider, boolean> }
     },
     'review:list': async (folderPath) => {
       const target = historyFolder(folderPath)
@@ -878,6 +1072,15 @@ function registerIpc(): void {
       const r = await import('./review')
       return r.editReview(r.checkedPaths(workspace.folderPath, id), edit)
     },
+    'review:progress': async (id, patch) => {
+      const r = await import('./review')
+      return r.setReviewProgress(r.checkedPaths(workspace.folderPath, id), patch ?? {})
+    },
+    'review:replyPrompt': async (id, itemId, reply) => {
+      const r = await import('./review')
+      if (typeof itemId !== 'string' || typeof reply !== 'string' || !reply.trim()) throw new UserFacingError(t('review.errors.findingNotFound'))
+      return r.replyInstruction(r.checkedPaths(workspace.folderPath, id), itemId, reply)
+    },
     'review:copy': async (id) => {
       const r = await import('./review')
       return r.copyReview(r.checkedPaths(workspace.folderPath, id), currentSettings().agentPrompt)
@@ -903,8 +1106,11 @@ function registerIpc(): void {
         const { createSession } = await import('./sessions')
         const { ensureGitExclude } = await import('./sessions')
         await ensureGitExclude(workspace.folderPath)
-        const paths = await createSession(workspace.folderPath)
+        // 追記なら、開いているレビューの takes/<n>/ へ録る（レビューが無い・壊れていれば始めない）
+        const append = typeof options.appendTo === 'string' ? await (await import('./review')).prepareReviewTake(workspace.folderPath, options.appendTo) : null
+        const paths = append?.paths ?? await createSession(workspace.folderPath)
         activePaths = paths
+        activeAppend = append ? { review: append.review, n: append.n } : null
         const onSegments = async (segments: import('./pipeline/types').TranscriptSegment[]) => {
           if (segments.length) await appendFile(join(paths.dir, 'transcript.jsonl'), segments.map((s) => JSON.stringify(s)).join('\n') + '\n')
         }
@@ -922,15 +1128,15 @@ function registerIpc(): void {
             const { STT_PROVIDER_PRESETS, providerLabel } = await import('@shared/aiProviders')
             const { createSttEngine } = await import('./pipeline/stt/cloud')
             const preset = STT_PROVIDER_PRESETS[provider]
-            const apiKey = await (await sttKeyStore()).read(preset.vendor)
             const capture = currentSettings().capture
+            const apiKey = await providerKey(capture?.sttEndpoints?.[provider], preset.vendor)
             // 上限は設定の値（null は上限なし）。検証起動では実API保護のため $0.05 に固定する
             const maxCostUsd = IS_E2E ? 0.05 : capture?.costLimitUsd
             // キーが無ければ別のキーや接続先へ切り替えず、端末内の文字起こしを案内するだけにする
             if (preset.keyRequired && !apiKey) sttWarnings.push(t('stt.errors.keyMissing', { label: providerLabel(preset, t) }))
             else {
               try {
-                transcriber = new IncrementalTranscriber(createSttEngine({ provider, endpoint: capture?.sttEndpoints?.[provider], apiKey,
+                transcriber = new IncrementalTranscriber(createSttEngine({ provider, endpoint: resolveEndpointRefs(capture?.sttEndpoints?.[provider], keyLookup()), apiKey,
                   language: options.language ?? 'auto', maxCostUsd }), onSegments)
               } catch (err) {
                 // 接続先の設定の不足（UserFacingError）は送らない。それ以外の失敗だけが届く
@@ -973,10 +1179,26 @@ function registerIpc(): void {
     'recording:stop': () => stopReview(),
     'recording:status': () => recording?.status ?? IDLE_RECORDING_STATUS,
     'annotation:setMode': async (mode: AnnotationMode) => {
-      ;(await ensureRecording()).setAnnotationMode(mode)
+      // 廃止した 'text' など知らない値は OFF にする
+      ;(await ensureRecording()).setAnnotationMode(mode === 'pen' || mode === 'rect' ? mode : 'off')
+    },
+    'annotation:setColor': async (value: unknown) => {
+      const { normalizeAnnotationColor } = await import('@shared/annotation')
+      const annotationColor = normalizeAnnotationColor(value)
+      ;(await ensureRecording()).setAnnotationColor(annotationColor)
+      const capture = currentSettings().capture
+      if (capture) updateSettings({ capture: { ...capture, annotationColor } })
+      else updateSettings({ capture: { captureMic: true, captureSystemAudio: false, transcription: 'local', language: 'auto', keepDays: 7, stayFeedbackOnStop: false, annotationColor } })
     },
     'annotation:clear': async () => {
-      ;(await ensureRecording()).clearAnnotations()
+      // ツールバーの［消去］。元に戻すで画面に戻せる
+      ;(await ensureRecording()).clearAnnotations(true)
+    },
+    'annotation:undo': async () => {
+      ;(await ensureRecording()).undoAnnotation()
+    },
+    'annotation:redo': async () => {
+      ;(await ensureRecording()).redoAnnotation()
     },
 
     // ファイルエディタ（src/main/files.ts がプロジェクトの外を断る）
@@ -1002,6 +1224,11 @@ function registerIpc(): void {
       checkedPaths(workspace.folderPath, id)
       return (await import('./github')).githubPostReview(workspace.folderPath, target, body)
     },
+    'star:star': async () => (await starPrompt()).star(),
+    'star:openWeb': async () => (await starPrompt()).openWeb(),
+    'star:later': async () => (await starPrompt()).later(),
+    'star:never': async () => (await starPrompt()).never(),
+    'star:fromMenu': async () => (await starPrompt()).starFromMenu(),
     'github:repoStatus': async () => {
       const { gitRepoStatus, watchGitHead } = await import('./github/repoStatus')
       void watchGitHead(workspace.folderPath, () => send('github:headChanged'))
@@ -1023,6 +1250,8 @@ function registerIpc(): void {
     const run = wrapIpcHandler(channel, async (...args: unknown[]) => {
       // 主要な操作の区切り（パンくず）。操作名だけを残す
       if (op) flow(op.name, op.data)
+      // 処理中の IPC を控える（main が止まったときの手がかり。src/main/telemetry.ts）
+      const done = trackIpc(channel)
       try {
         return await (handler as (...a: unknown[]) => unknown)(...args)
       } catch (err) {
@@ -1030,6 +1259,8 @@ function registerIpc(): void {
         const wrapped = toUserFacingFileError(err)
         if (wrapped !== err) console.warn(`[ipc] ${channel} に失敗しました`, err)
         throw wrapped
+      } finally {
+        done()
       }
     }, reportMainError)
     ipcMain.handle(channel, async (_event, ...args: unknown[]) => {
@@ -1068,14 +1299,15 @@ async function main(): Promise<void> {
   await app.whenReady()
   mark('app:ready')
   // Windows のタスクバーで、インストーラが作るショートカット（appId）と同じアイコンにまとめる
-  if (process.platform === 'win32') app.setAppUserModelId('com.japanmarketing.movieade')
-  app.setAboutPanelOptions({ applicationName: PRODUCT_NAME })
+  if (process.platform === 'win32') app.setAppUserModelId('dev.ferretade.ferret')
+  // 開発版は名前を変えず、「について」の版の行にだけ (dev) と添える
+  app.setAboutPanelOptions({ applicationName: PRODUCT_NAME, ...(IS_PACKAGED ? {} : { applicationVersion: `${appVersion()} (dev)` }) })
 
   // E2E中はDockのアイコンを出さない（跳ねない・メニューバーを切り替えない）
   if (HIDE_WINDOW && process.platform === 'darwin') app.dock?.hide()
   // 開発起動では .app の icns が無いので、Dock のアイコンだけ build/icon.png に差し替える
   const devIcon = join(app.getAppPath(), 'build', 'icon.png')
-  if (!app.isPackaged && !HIDE_WINDOW && process.platform === 'darwin' && existsSync(devIcon)) {
+  if (!IS_PACKAGED && !HIDE_WINDOW && process.platform === 'darwin' && existsSync(devIcon)) {
     app.dock?.setIcon(devIcon)
   }
 
@@ -1095,15 +1327,19 @@ async function main(): Promise<void> {
   if (loadedSettings.whisperModel) process.env.ADE_WHISPER_MODEL = loadedSettings.whisperModel
   protocol.handle('ade-media', async (request) => {
     const url = new URL(request.url)
-    const match = /^\/(\d{8}-\d{6})\/recording\.webm$/.exec(url.pathname)
+    // 追記した録画は /<id>/takes/<n>/recording.webm
+    const match = /^\/(\d{8}-\d{6})\/(?:takes\/(\d{1,4})\/)?recording\.webm$/.exec(url.pathname)
     if (url.hostname !== 'review' || !match || !workspace.folderPath) return new Response('Not found', { status: 404 })
     const { checkedPaths } = await import('./review')
-    const file = checkedPaths(workspace.folderPath, match[1]!).recording
+    const { takePaths } = await import('./sessions/paths')
+    const file = takePaths(checkedPaths(workspace.folderPath, match[1]!), Number(match[2] ?? 1)).recording
     if (!existsSync(file)) return new Response('Not found', { status: 404 })
-    return net.fetch(pathToFileURL(file).href, { headers: request.headers })
+    // Range に答えないと video が seek できず、▷ が指摘の時刻でなく 0 秒から始まる
+    const { mediaResponse } = await import('./mediaRange')
+    return mediaResponse(file, request.headers.get('range'))
   })
 
-  // 起動時にプロジェクトフォルダ・URLを指定できる（E2Eと `ade-movie <folder>` 相当の用途）。
+  // 起動時にプロジェクトフォルダ・URLを指定できる（E2Eと `ferret <folder>` 相当の用途）。
   // 指定がなければ WS-1 のとおり前回の値を復元する。
   // 開くプロジェクトは ADE_PROJECT_DIR → 前回のプロジェクト の順に決める。
   // 指定フォルダもプロジェクトとして登録し、2回目以降は同じプロジェクト（URLプリセット込み）を開く。
@@ -1136,6 +1372,13 @@ async function main(): Promise<void> {
     (id, data) => send('terminal:data', id, data),
     (id, code) => send('terminal:exit', id, code)
   )
+  // 判定モデルを有効にしていれば、タブごとに中継の URL（合言葉付き）・モデル・画像の可否を渡す。キーは渡さない
+  terminals.launchEnv = async (meta) => currentSettings().decision?.enabled
+    ? (await decision()).launchEnv({ ...(workspace.projectId ? { projectId: workspace.projectId } : {}), ...(meta.agent ? { agent: meta.agent } : {}) })
+    : {}
+  // 文字起こし・整理の API 呼び出しも同じ記録へ（src/main/decision/callLog.ts の recordApiCall）
+  void import('./decision/callLog').then(({ setApiCallSink }) => setApiCallSink(recordCall))
+  syncDecision()
 
   mainWindow = createWindow()
   // 使用量（フッター左下）。窓が前にあるときだけ取りに行く
@@ -1144,6 +1387,8 @@ async function main(): Promise<void> {
   mainWindow.webContents.on('did-start-loading', () => resources.markRendererLoad())
   setWorkspace(loadedSettings.folderPath, startupProject)
   registerIpc()
+  // settings.json の外部の変更（利用者のエディタ・Claude Code など）をその場で反映する。壊れていれば画面に知らせるだけ
+  watchSettings(applyExternalSettings, (error) => send('settingsFile:error', error))
   installMenu({
     onOpenFolder: () => void openFolderDialog(),
     onCommand: (command) => send('menu:command', command)

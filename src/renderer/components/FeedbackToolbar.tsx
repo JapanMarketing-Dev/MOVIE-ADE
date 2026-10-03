@@ -1,7 +1,9 @@
-import { useState, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
-import { AppWindow, Eraser, Globe, MicOff, Monitor, PanelRight, PanelsTopLeft, Pause, Play, PenTool, TriangleAlert, Type } from 'lucide-react'
+import { useEffect, useState, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
+import { AppWindow, Eraser, Globe, MicOff, Monitor, MousePointer2, PanelRight, PanelsTopLeft, Pause, Play, PenTool, Redo2, Square, TriangleAlert, Undo2 } from 'lucide-react'
 import type { BrowserState, CaptureTarget } from '@shared/types'
 import { captureTargetLabel } from '@shared/captureTarget'
+import { ANNOTATION_COLORS, ANNOTATION_COLOR_IDS, DEFAULT_ANNOTATION_COLOR, annotationKeyAction, nextAnnotationColor, type AnnotationColor, type AnnotationKeyAction } from '@shared/annotation'
+import type { TranslationKey } from '@shared/i18n'
 import { formatShortcut } from '../lib/shortcut'
 import { IconButton, RecordButton, RecordDot } from '../ui'
 import { useT } from '../lib/i18n'
@@ -26,8 +28,12 @@ import { useT } from '../lib/i18n'
  * 録画中の警告（上限が近い・保存の失敗など）もトーストはビューに隠れるので、
  * 同じ枠に数秒だけ出す（notice）。ボタンの案内より優先する。
  */
-/** 録画中に使える書き込みの道具（PEN-1 / TXT-1）*/
-export type AnnotationTool = 'none' | 'pen' | 'text'
+/**
+ * 録画中に使える書き込みの道具（PEN-1）。手書きの線と、ドラッグで囲む四角の枠。
+ * none は「ブラウザを操作」（矢印の道具）で、録画を始めたときはこれが選ばれている。
+ * 依頼は声と書き込みで行うので、画面に文字を置く道具は無い
+ */
+export type AnnotationTool = 'none' | 'pen' | 'rect'
 
 type Keys = ReadonlyArray<string>
 
@@ -36,7 +42,14 @@ const KEYS = {
   record: ['Mod', 'Shift', 'R'],
   mode: ['Mod', 'Shift', 'M'],
   targets: ['Mod', 'Shift', 'K'],
-  holdPen: ['Alt']
+  holdPen: ['Alt'],
+  browse: ['V'],
+  // 録画中の書き込み（@shared/annotation の annotationKeyAction と対応させる）
+  pen: ['P'],
+  rect: ['B'],
+  color: ['C'],
+  undo: ['Mod', 'Z'],
+  redo: ['Mod', 'Shift', 'Z']
 } as const satisfies Record<string, Keys>
 
 /** キーを1つずつキーキャップにする（⌘ ⇧ R） */
@@ -87,12 +100,18 @@ export function FeedbackToolbar({
   elapsed,
   tool = 'none',
   onToolChange,
+  color = DEFAULT_ANNOTATION_COLOR,
+  onColorChange,
   onToggleRecording,
   onBackToEditor,
   paused = false,
   busy = false,
   onPause,
   onClear,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
   notice,
   target = { kind: 'browser' },
   onPickTarget,
@@ -107,12 +126,20 @@ export function FeedbackToolbar({
   /** 選択中の道具。録画中だけ選べる */
   tool?: AnnotationTool
   onToolChange?: (tool: AnnotationTool) => void
+  /** 書き込みの色。録画していないときも選べる（次の録画から使う） */
+  color?: AnnotationColor
+  onColorChange?: (color: AnnotationColor) => void
   onToggleRecording: () => void
   onBackToEditor: () => void
   paused?: boolean
   busy?: boolean
   onPause?: () => void
   onClear?: () => void
+  /** 書き込みを一つ前に戻す・やり直す（描く・動かす・消去が1手）。できないときはボタンを押せない */
+  canUndo?: boolean
+  canRedo?: boolean
+  onUndo?: () => void
+  onRedo?: () => void
   /** 帯に短く出す警告。無ければページ名・ボタンの案内を出す */
   notice?: string | null
   /** 録画の対象（内蔵ブラウザ／画面全体／別のウインドウ） */
@@ -133,21 +160,77 @@ export function FeedbackToolbar({
   const toolsOff = !recording || paused || busy
 
   /*
+   * 書き込みのショートカット（録画中だけ）。焦点がツールバー側にあるときはここで、
+   * ページ（内蔵ブラウザ）にあるときは注入スクリプトが受けて main 経由で annotation:shortcut が届く。
+   * 入力欄・ターミナル・エディタで打っているときは奪わない。
+   */
+  useEffect(() => {
+    if (toolsOff) return
+    const run = (action: AnnotationKeyAction): boolean => {
+      switch (action) {
+        case 'pen':
+        case 'rect':
+          onToolChange?.(action)
+          return true
+        case 'off':
+          if (tool === 'none') return false
+          onToolChange?.('none')
+          return true
+        case 'color':
+          onColorChange?.(nextAnnotationColor(color))
+          return true
+        case 'undo':
+          if (!canUndo) return false
+          onUndo?.()
+          return true
+        case 'redo':
+          if (!canRedo) return false
+          onRedo?.()
+          return true
+      }
+    }
+    const mac = window.ade.platform === 'darwin'
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat || event.isComposing || event.defaultPrevented) return
+      const target = event.target instanceof HTMLElement ? event.target : null
+      if (target && (target.isContentEditable || target.closest('input, textarea, select, [contenteditable], .xterm, .monaco-editor, dialog'))) return
+      const action = annotationKeyAction(event, mac)
+      if (action && run(action)) event.preventDefault()
+    }
+    const off = window.ade.on('annotation:shortcut', (action) => void run(action))
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      off()
+    }
+  }, [toolsOff, tool, color, canUndo, canRedo, onToolChange, onColorChange, onUndo, onRedo])
+
+  /*
    * 指しているボタンの案内。無ければページ名を出す。
    * 押せないボタンはイベントを受けないので、ボタンを包む枠（data-hint）で拾い、
    * ピル全体への委譲で読む（離れたときに消し損ねない）。
    */
-  const hints: Record<string, { label: string; keys?: Keys; note?: string }> = {
+  const hints: Record<string, { label: string; keys?: Keys; note?: string; hold?: Keys }> = {
     target: { label: t('feedback.target', { target: captureTargetLabel(target) }) },
     record: { label: recording ? t('feedback.stop') : t('feedback.record'), keys: KEYS.record },
     pause: { label: paused ? t('feedback.resume') : t('feedback.pause') },
-    pen: { label: t('feedback.pen'), keys: KEYS.holdPen, note: t('feedback.whileHeld') },
-    text: { label: t('feedback.text') },
+    browse: { label: t('feedback.browse'), keys: KEYS.browse, hold: ['Escape'] },
+    pen: { label: t('feedback.pen'), keys: KEYS.pen, hold: KEYS.holdPen, note: t('feedback.whileHeld') },
+    rect: { label: t('feedback.rect'), keys: KEYS.rect },
+    color: { label: `${t('feedback.color')}: ${t(`feedback.color.${color}` as TranslationKey)}`, keys: KEYS.color },
+    undo: { label: t('menu.undo'), keys: KEYS.undo },
+    redo: { label: t('menu.redo'), keys: KEYS.redo },
     clear: { label: t('feedback.clear') },
     editor: { label: t('feedback.toEditor'), keys: KEYS.mode },
     targets: { label: t('feedbackTargets.toggle'), keys: KEYS.targets }
   }
   const [hintId, setHintId] = useState<string | null>(null)
+  /** 色の候補を案内の枠に並べているか（ビューに隠れるので、浮かせたメニューにはしない） */
+  const [colorsOpen, setColorsOpen] = useState(false)
+  const chooseColor = (next: AnnotationColor) => {
+    setColorsOpen(false)
+    onColorChange?.(next)
+  }
   const hint = hintId ? hints[hintId] : undefined
   const pointHint = (event: PointerEvent | FocusEvent) => {
     const slot = (event.target as Element).closest<HTMLElement>('[data-hint]')
@@ -241,6 +324,19 @@ export function FeedbackToolbar({
         {divider}
 
         {slot(
+          'browse',
+          <IconButton
+            label={t('feedback.browse')}
+            size="sm"
+            className="fb-btn fb-btn--tool"
+            disabled={toolsOff}
+            selected={recording && tool === 'none'}
+            onClick={() => onToolChange?.('none')}
+            data-testid="feedback-browse"
+            icon={<MousePointer2 size={18} strokeWidth={1.75} />}
+          />
+        )}
+        {slot(
           'pen',
           <IconButton
             label={t('feedback.pen')}
@@ -253,15 +349,29 @@ export function FeedbackToolbar({
           />
         )}
         {slot(
-          'text',
+          'rect',
           <IconButton
-            label={t('feedback.text')}
+            label={t('feedback.rect')}
             size="sm"
             className="fb-btn fb-btn--tool"
             disabled={toolsOff}
-            selected={tool === 'text'}
-            onClick={() => pick('text')}
-            icon={<Type size={18} strokeWidth={1.75} />}
+            selected={tool === 'rect'}
+            onClick={() => pick('rect')}
+            data-testid="feedback-rect"
+            icon={<Square size={17} strokeWidth={1.9} />}
+          />
+        )}
+        {onColorChange && slot(
+          'color',
+          <IconButton
+            label={t('feedback.color')}
+            size="sm"
+            className="fb-btn"
+            disabled={busy}
+            selected={colorsOpen}
+            onClick={() => setColorsOpen((open) => !open)}
+            data-testid="feedback-color"
+            icon={<span className="fb-color-dot" style={{ background: ANNOTATION_COLORS[color] }} />}
           />
         )}
         {slot(
@@ -275,12 +385,53 @@ export function FeedbackToolbar({
             icon={<Eraser size={18} strokeWidth={1.75} />}
           />
         )}
+        {onUndo && slot(
+          'undo',
+          <IconButton
+            label={t('menu.undo')}
+            size="sm"
+            className="fb-btn"
+            disabled={toolsOff || !canUndo}
+            onClick={onUndo}
+            data-testid="feedback-undo"
+            icon={<Undo2 size={18} strokeWidth={1.75} />}
+          />
+        )}
+        {onRedo && slot(
+          'redo',
+          <IconButton
+            label={t('menu.redo')}
+            size="sm"
+            className="fb-btn"
+            disabled={toolsOff || !canRedo}
+            onClick={onRedo}
+            data-testid="feedback-redo"
+            icon={<Redo2 size={18} strokeWidth={1.75} />}
+          />
+        )}
 
         {divider}
 
         {/* ふだんはページ名だけ（パスやフォルダは出さない。MODE-2）。指したボタンの案内に差し替わる */}
-        <span className={`fb-hint${notice ? ' has-notice' : ''}`} title={notice ?? (hint ? undefined : state.url)}>
-          {notice ? (
+        <span className={`fb-hint${notice ? ' has-notice' : ''}`} title={notice ?? (hint || colorsOpen ? undefined : state.url)}>
+          {colorsOpen ? (
+            <span className="fb-colors" role="radiogroup" aria-label={t('feedback.color')}>
+              {ANNOTATION_COLOR_IDS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={id === color}
+                  aria-label={t(`feedback.color.${id}` as TranslationKey)}
+                  title={t(`feedback.color.${id}` as TranslationKey)}
+                  className="fb-colors__swatch"
+                  style={{ background: ANNOTATION_COLORS[id] }}
+                  onClick={() => chooseColor(id)}
+                  data-testid={`feedback-color-${id}`}
+                />
+              ))}
+            </span>
+          ) : notice ? (
             <span className="fb-hint__notice" role="alert" data-testid="feedback-notice" key={notice}>
               <TriangleAlert size={14} strokeWidth={2} aria-hidden="true" />
               <span className="fb-hint__notice-text">{notice}</span>
@@ -289,6 +440,7 @@ export function FeedbackToolbar({
             <span className="fb-hint__tip" key={hintId}>
               <span>{hint.label}</span>
               {hint.keys && <KeyCaps keys={hint.keys} />}
+              {hint.hold && <KeyCaps keys={hint.hold} />}
               {hint.note && <span className="fb-hint__note">{hint.note}</span>}
             </span>
           ) : (
@@ -321,20 +473,6 @@ export function FeedbackToolbar({
             data-testid="back-to-editor"
           />
         )}
-      </div>
-
-      {/* よく使うキー。文字は出さず、記号とキーキャップだけ。幅が足りないときは隠す */}
-      <div className="fb-keys" aria-hidden="true">
-        {[
-          { title: t('feedback.keyRecord'), icon: <span className="fb-keys__rec" />, keys: KEYS.record },
-          { title: t('feedback.toEditorMode'), icon: <PanelsTopLeft size={14} strokeWidth={1.75} />, keys: KEYS.mode },
-          { title: t('feedback.keyHoldPen'), icon: <PenTool size={14} strokeWidth={1.75} />, keys: KEYS.holdPen }
-        ].map(({ title, icon, keys }) => (
-          <span key={title} className="fb-keys__item" title={title}>
-            {icon}
-            <KeyCaps keys={keys} />
-          </span>
-        ))}
       </div>
     </div>
   )

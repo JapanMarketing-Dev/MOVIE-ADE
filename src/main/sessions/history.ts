@@ -2,13 +2,15 @@
  * 過去のレビュー（セッション）の一覧（要件 OUT-5）。
  * session.json が無い・壊れている場合も、フォルダの中身から分かる範囲を返す。
  */
-import { readdir, stat, writeFile } from 'node:fs/promises'
+import { stat, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import type { SessionPaths } from './paths'
-import { isSessionId, reviewsRoot, sessionPaths } from './paths'
+import { listSessionIds, sessionPaths } from './paths'
 import { readLabel } from './labels'
 import { inspect } from './recover'
 import { loadSession } from './store'
+import { readProgress } from './progress'
+import { countProgress } from '@shared/findingProgress'
 import { buildStoredSummary, joinSearchText, readFreshSummary, readNavs } from './summary'
 import { reportHandled } from '@shared/report'
 
@@ -22,6 +24,12 @@ export interface SessionSummary {
   itemCount: number
   /** 「要確認」として送信対象から外した件数 */
   needsCheckCount: number
+  /** 進み具合の対象（Agent へ送る指摘）の件数 */
+  includedCount: number
+  /** そのうち完了した件数（progress.json） */
+  doneCount: number
+  /** Agent が人間へ戻した（確認待ち）件数 */
+  needsHumanCount: number
   targetUrl?: string
   hasFeedback: boolean
   /** 動画が残っているか（保持期間を過ぎると消える。NF-8） */
@@ -34,6 +42,8 @@ export interface SessionSummary {
   name?: string
   /** 録ったページのタイトル（最初の遷移） */
   title?: string
+  /** 自動の名前（何系の修正か）。手の名前（name）があっても控える。見出しは name → autoName → title */
+  autoName?: string
   /** 一覧から隠した */
   archived?: boolean
   /** Agent へ送った時刻 */
@@ -44,13 +54,11 @@ export interface SessionSummary {
 
 /** 新しい順に返す */
 export async function listSessions(projectDir: string): Promise<SessionSummary[]> {
-  const root = reviewsRoot(projectDir)
-  // まだ録画していないプロジェクトにはフォルダが無い（想定内）
-  const names = await readdir(root).catch(() => [] as string[])
+  // .ferret/ と改名前の .ade-movie/ の両方（まだ録画していないプロジェクトにはフォルダが無い。想定内）
+  const names = await listSessionIds(projectDir)
   const out: SessionSummary[] = []
 
   for (const name of names) {
-    if (!isSessionId(name)) continue
     const paths = sessionPaths(projectDir, name)
     // 一覧のあとに消されたものは飛ばす（想定内）
     const s = await stat(paths.dir).catch(() => null)
@@ -82,6 +90,9 @@ export async function summarize(paths: SessionPaths): Promise<SessionSummary> {
         durationMs: 0,
         itemCount: 0,
         needsCheckCount: 0,
+        includedCount: 0,
+        doneCount: 0,
+        needsHumanCount: 0,
         hasFeedback,
         hasRecording,
         incomplete: true,
@@ -98,6 +109,7 @@ export async function summarize(paths: SessionPaths): Promise<SessionSummary> {
   }
 
   const searchText = joinSearchText([label.name, stored.searchText])
+  const progress = countProgress(stored.includedIds.map((id) => ({ id, include: true })), await readProgress(paths))
   return {
     id: paths.id,
     dir: paths.dir,
@@ -105,12 +117,16 @@ export async function summarize(paths: SessionPaths): Promise<SessionSummary> {
     durationMs: stored.durationMs,
     itemCount: stored.itemCount,
     needsCheckCount: stored.needsCheckCount,
+    includedCount: progress.total,
+    doneCount: progress.done,
+    needsHumanCount: progress.needsHuman,
     ...(stored.targetUrl ? { targetUrl: stored.targetUrl } : {}),
     hasFeedback,
     hasRecording,
     incomplete: false,
     ...label,
     ...(stored.title ? { title: stored.title } : {}),
+    ...(stored.autoName ? { autoName: stored.autoName } : {}),
     ...(searchText ? { searchText } : {})
   }
 }

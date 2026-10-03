@@ -208,8 +208,14 @@ export function issueFromFeedback(markdown: string): { title: string; body: stri
     try { host = new URL(target).host } catch { host = target }
   }
   const title = (host ? `${heading}: ${host}` : heading).slice(0, TITLE_MAX)
-  const images = lines.filter((l) => imageLine.test(l)).length
-  const body = lines.filter((l) => !imageLine.test(l)).join('\n').trim()
+  // 判定モデルでの受け入れ確認は Agent 向けの手順。BEFORE の絶対パス（ホームのパスを含む）と末尾の節は GitHub へ出さない
+  const beforePrefixes = [...new Set(SUPPORTED_LOCALES.map((locale) => translate(locale, 'feedbackMd.beforeImage', { path: '' })))]
+  const checkHeadings = new Set(SUPPORTED_LOCALES.map((locale) => `## ${translate(locale, 'feedbackMd.check.heading')}`))
+  const checkAt = lines.findIndex((l) => checkHeadings.has(l.trim()))
+  const kept = (checkAt >= 0 ? lines.slice(0, lines[checkAt - 1]?.trim() === '---' ? checkAt - 1 : checkAt) : lines)
+    .filter((l) => !beforePrefixes.some((prefix) => l.startsWith(prefix)))
+  const images = kept.filter((l) => imageLine.test(l)).length
+  const body = kept.filter((l) => !imageLine.test(l)).join('\n').trim()
   const note = images > 0 ? `\n\n---\n${t('github.issue.imagesNote', { count: images })}` : ''
   return { title, body: `${body}${note}\n\n<sub>${t('github.issue.sentFrom')}</sub>` }
 }

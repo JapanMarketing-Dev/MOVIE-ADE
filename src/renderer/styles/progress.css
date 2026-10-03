@@ -1,0 +1,209 @@
+/*
+ * 指摘の進み具合（FindingProgress.tsx）と、サイドバーの「完了数/対象数」。
+ * 完了は控えめに（カードを薄く）、対応中だけ色を付けて目に入るようにする。
+ */
+
+/* カードの見出しの横の切り替え */
+.rv-progress {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-bold);
+  gap: var(--space-2);
+  white-space: nowrap;
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out);
+}
+
+.rv-progress:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+.rv-progress:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.rv-progress--in_progress {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-quiet);
+  color: var(--color-accent);
+}
+
+.rv-progress--done {
+  border-color: transparent;
+  background: var(--color-success-quiet);
+  color: var(--color-success);
+}
+
+/* 完了したカードは薄くする。切り替えのボタンだけは読めるまま残す */
+.rv-card.is-done .rv-card__shot,
+.rv-card.is-done .rv-card__title,
+.rv-card.is-done .rv-card__request,
+.rv-card.is-done .rv-card__quote,
+.rv-card.is-done .rv-card__chips {
+  opacity: 0.55;
+}
+
+.rv-card.is-done .rv-card__title {
+  text-decoration: line-through;
+  text-decoration-color: var(--color-text-faint);
+}
+
+/* ヘッダーの「2 / 5 done」と細い進捗バー */
+.rv-progress-sum {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  gap: var(--space-3);
+  white-space: nowrap;
+}
+
+.rv-progress-sum.is-complete {
+  color: var(--color-success);
+}
+
+.rv-progress-sum__bar {
+  display: inline-flex;
+  overflow: hidden;
+  width: 96px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+}
+
+.rv-progress-sum__done {
+  background: var(--color-success);
+  transition: width var(--motion-fast) var(--ease-out);
+}
+
+.rv-progress-sum__doing {
+  background: var(--color-accent);
+  opacity: 0.6;
+  transition: width var(--motion-fast) var(--ease-out);
+}
+
+/* サイドバーの行。すべて完了したら緑のチェック */
+.session__count.is-complete,
+.session__count.is-complete > svg {
+  color: var(--color-success);
+}
+
+/* Agent から確認があります（needs_human）。人間が決めるまで目立たせる（琥珀色） */
+.rv-progress--needs_human {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-quiet);
+  color: var(--color-warning);
+}
+
+.rv-card.is-asking {
+  box-shadow: inset 3px 0 0 var(--color-warning);
+}
+
+.rv-ask {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-quiet);
+  gap: var(--space-3);
+}
+
+.rv-ask__title {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  color: var(--color-warning);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  gap: var(--space-2);
+}
+
+.rv-ask__note {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  white-space: pre-wrap;
+}
+
+.rv-ask__last {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.rv-ask__reply {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  resize: vertical;
+}
+
+.rv-ask__reply:focus {
+  border-color: var(--color-border-focus);
+  outline: none;
+}
+
+.rv-ask__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.rv-progress-sum__ask {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-warning);
+  font-weight: var(--font-weight-bold);
+  gap: var(--space-1);
+}
+
+.rv-progress-sum__ask-bar {
+  background: var(--color-warning);
+  transition: width var(--motion-fast) var(--ease-out);
+}
+
+/* サイドバー: 確認待ちがあれば琥珀色の印 */
+.session__ask {
+  display: inline-flex;
+  flex: none;
+  margin-right: var(--space-2);
+  margin-left: auto;
+  align-items: center;
+  color: var(--color-warning);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  gap: 2px;
+}
+
+/* 進み具合のボタンはカードの右端にある。説明は右に寄せて内側（左）へ開く（一覧は横にはみ出すと切れる。review.css の rv-card__tools と同じ） */
+.rv-card__top > .tooltip-anchor:has(> .rv-progress) .tooltip {
+  right: 0;
+  left: auto;
+  transform: translateY(4px);
+}
+
+.rv-card__top > .tooltip-anchor:has(> .rv-progress) .tooltip.is-open {
+  transform: none;
+}

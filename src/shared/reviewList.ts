@@ -17,12 +17,16 @@ export interface ReviewListEntry {
   id: string
   status: ReviewStatus
   findings: number
+  /** 進み具合（Agent へ送る指摘のうち完了した数と対象の数）。送る指摘が無ければ無い */
+  progress?: { done: number; total: number; needsHuman?: number }
   /** 対象のURL（無ければ見出し用の文） */
   target: string
   /** 収録開始（ISO8601）。無ければ並びを変えない */
   startedAt?: string
   title?: string
   name?: string
+  /** 指摘から自動で付けた名前（何系の修正か） */
+  autoName?: string
   archived?: boolean
   searchText?: string
 }
@@ -83,9 +87,10 @@ export function reviewHost(target: string): string {
   }
 }
 
-/** 一覧の見出し。付けた名前 → ページのタイトル → URLのパス → ホスト → 対象の文 の順 */
+/** 一覧の見出し。付けた名前 → 自動の名前 → ページのタイトル → URLのパス → ホスト → 対象の文 の順 */
 export function reviewHeading(entry: ReviewListEntry): string {
   if (entry.name) return entry.name
+  if (entry.autoName) return entry.autoName
   if (entry.title) return entry.title
   try {
     const url = new URL(entry.target)
@@ -105,7 +110,7 @@ export function filterReviews<T extends ReviewListEntry>(entries: readonly T[], 
     if (filter.statuses.length > 0 && !filter.statuses.includes(statusGroup(entry.status))) return false
     if (filter.host !== null && reviewHost(entry.target) !== filter.host) return false
     if (terms.length > 0) {
-      const haystack = [entry.name, entry.title, entry.target, entry.searchText].filter(Boolean).join('\n').toLowerCase()
+      const haystack = [entry.name, entry.autoName, entry.title, entry.target, entry.searchText].filter(Boolean).join('\n').toLowerCase()
       if (!terms.every((term) => haystack.includes(term))) return false
     }
     return true

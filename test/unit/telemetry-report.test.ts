@@ -100,3 +100,17 @@ describe('dev のスタックを元のファイルと行へ戻す', () => {
     expect(event.exception.values[0]!.stacktrace.frames[0]).toEqual({ filename: 'app:///out/main/missing.js', lineno: 5, colno: 1 })
   })
 })
+
+describe('dev の renderer の @fs のモジュール', () => {
+  it('SDK がアプリの場所を縮めた「/@fsapp:///…」も、元の URL で取りに行って戻す', async () => {
+    const source = ['export const x = 1', "throw new Error('fs')", ''].join('\n')
+    const built = buildWithMap(source, 'reviewTarget.ts')
+    const code = `${built.code}\n//# sourceMappingURL=data:application/json;base64,${Buffer.from(built.map).toString('base64')}`
+    const fetched: string[] = []
+    const { remapDevFrames } = await import('../../src/main/telemetrySourceMaps')
+    const event = { exception: { values: [{ stacktrace: { frames: [{ filename: 'http://localhost:5173/@fsapp:///src/shared/reviewTarget.ts?t=2', lineno: 3, colno: 1 }] } }] } }
+    await remapDevFrames(event, { appPath: '/repo', rendererUrl: 'http://localhost:5173/', fetchText: async (u) => { fetched.push(u); return code } })
+    expect(fetched).toEqual(['http://localhost:5173/@fs/repo/src/shared/reviewTarget.ts?t=2'])
+    expect(event.exception.values[0]!.stacktrace.frames[0]).toMatchObject({ filename: 'app:///src/shared/reviewTarget.ts', lineno: 2 })
+  })
+})

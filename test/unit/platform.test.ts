@@ -150,12 +150,20 @@ describe('配布の設定（electron-builder.config.cjs）', () => {
   const require = createRequire(import.meta.url)
   const config = require('../../electron-builder.config.cjs')
 
-  it('製品名とファイル名は MOVIE-ADE-<version>-<os>-<arch>（ダウンロードサイトと合意した形）', () => {
-    expect(config.productName).toBe('MOVIE-ADE')
-    expect(config.dmg.artifactName).toBe('MOVIE-ADE-${version}-mac-${arch}.${ext}')
-    expect(config.nsis.artifactName).toBe('MOVIE-ADE-${version}-win-${arch}.${ext}')
-    expect(config.appImage.artifactName).toBe('MOVIE-ADE-${version}-linux-${arch}.${ext}')
-    expect(config.deb.artifactName).toBe('MOVIE-ADE-${version}-linux-${arch}.${ext}')
+  it('製品名とファイル名は Ferret-<version>-<os>-<arch>（ダウンロードサイトと合意した形）', () => {
+    expect(config.productName).toBe('Ferret')
+    expect(config.dmg.artifactName).toBe('Ferret-${version}-mac-${arch}.${ext}')
+    expect(config.nsis.artifactName).toBe('Ferret-${version}-win-${arch}.${ext}')
+    expect(config.appImage.artifactName).toBe('Ferret-${version}-linux-${arch}.${ext}')
+    expect(config.deb.artifactName).toBe('Ferret-${version}-linux-${arch}.${ext}')
+    expect(config.linux.executableName).toBe('ferret')
+    expect(config.win.executableName).toBe('Ferret')
+  })
+
+  it('旧名 MOVIE-ADE の入った環境を置き換える（Windows はインストーラの GUID、Linux は deb の replaces）', () => {
+    // electron-builder が旧 appId（com.japanmarketing.movieade）から作った GUID
+    expect(config.nsis.guid).toBe('a380747a-7ef6-5f56-83af-53845ee2cb83')
+    expect(config.deb.fpm).toEqual(['--replaces=movie-ade', '--conflicts=movie-ade'])
   })
 
   it('3つのOSの配布物を用意している（Windows は1本に両方入らないよう既定を1つにする）', () => {
@@ -176,13 +184,14 @@ describe('配布の設定（electron-builder.config.cjs）', () => {
     expect(config.electronDist({ platformName: process.platform, arch: process.arch === 'x64' ? 'arm64' : 'x64' })).toBeNull()
   })
 
-  it('dev 版は識別子と名前だけを変え、本番版と混ざらない', () => {
+  it('dev 版は表示名は同じ Ferret のまま、識別子とファイル名で本番版と分ける', () => {
     const dev = require('../../electron-builder.dev.cjs')
-    expect(dev.appId).toBe('com.japanmarketing.movieade.dev')
-    expect(dev.productName).toBe('MOVIE-ADE Dev')
+    expect(dev.appId).toBe('dev.ferretade.ferret.dev')
+    expect(dev.productName).toBe('Ferret')
+    expect(dev.nsis.guid).toBeUndefined()
     expect(dev.directories.output).toBe('dist/dev')
     expect(dev.afterPack).toBe(config.afterPack)
-    expect(config.appId).toBe('com.japanmarketing.movieade')
+    expect(config.appId).toBe('dev.ferretade.ferret')
   })
 
   it('Linux 以外の上で Linux 版を作ろうとすると、理由を書いて止める', async () => {
@@ -193,22 +202,22 @@ describe('配布の設定（electron-builder.config.cjs）', () => {
 
 describe('開発起動の Electron.app の名前（scripts/prepare-dev-electron.mjs）', () => {
   it('メニューバー・Dock・⌘Tab に出る名前と識別子を固定の値で差し替える', () => {
-    expect(DEV_APP_NAME).toBe('MOVIE-ADE Dev')
+    expect(DEV_APP_NAME).toBe('Ferret')
     expect(devPlistPatches()).toEqual([
-      { key: 'CFBundleName', value: 'MOVIE-ADE Dev' },
-      { key: 'CFBundleDisplayName', value: 'MOVIE-ADE Dev' },
-      { key: 'CFBundleIdentifier', value: 'com.japanmarketing.movieade.dev' }
+      { key: 'CFBundleName', value: 'Ferret' },
+      { key: 'CFBundleDisplayName', value: 'Ferret' },
+      { key: 'CFBundleIdentifier', value: 'dev.ferretade.ferret.dev' }
     ])
   })
 
   it('Helper も本体と同じ名前で始める（Electron は本体の名前から Helper を探す）', () => {
-    expect(devHelperName('Electron Helper')).toBe('MOVIE-ADE Dev Helper')
-    expect(devHelperName('Electron Helper (Renderer)')).toBe('MOVIE-ADE Dev Helper (Renderer)')
+    expect(devHelperName('Electron Helper')).toBe('Ferret Helper')
+    expect(devHelperName('Electron Helper (Renderer)')).toBe('Ferret Helper (Renderer)')
   })
 
   it('Linux の .desktop は package.json の desktopName に揃える', () => {
     const require = createRequire(import.meta.url)
     expect(require('../../electron-builder.config.cjs').linux.syncDesktopName).toBe(true)
-    expect(require('../../package.json').desktopName).toBe('movie-ade.desktop')
+    expect(require('../../package.json').desktopName).toBe('ferret.desktop')
   })
 })

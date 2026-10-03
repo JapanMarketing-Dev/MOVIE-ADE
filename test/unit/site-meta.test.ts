@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { DOWNLOAD_BASE, SITE_URL } from '../../site/js/config.js'
+import { DOWNLOAD_BASE, REPO_URL, SITE_URL } from '../../site/js/config.js'
 
 /** ダウンロードサイトの静的な約束ごと（絶対 URL・言語・配信設定） */
 
@@ -27,12 +27,12 @@ describe.each([
 
   it('CSP に合わせ、インラインの script を持たない', () => {
     expect(html).not.toMatch(/<script>(?!<\/script>)/)
-    expect(html).toContain('<script src="js/theme.js"></script>')
+    expect(html).toMatch(/<script src="js\/theme\.js(\?v=[0-9a-f]{8})?"><\/script>/)
   })
 
   it('提供元と GitHub へのリンクがある', () => {
-    expect(html).toContain('Built by <a href="https://www.japan-marketing.co.jp/">Japan Marketing LLC</a>')
-    expect(html).toContain('href="https://github.com/JapanMarketing-Dev/MOVIE-ADE"')
+    expect(html).toMatch(/Built by <a href="https:\/\/www\.japan-marketing\.co\.jp\/"[^>]*>Japan Marketing LLC/)
+    expect(html).toContain(`href="${REPO_URL}"`)
   })
 })
 
@@ -42,10 +42,10 @@ describe('配信の設定', () => {
     expect(json).toMatchObject({ name: 'movie-ade', pages_build_output_dir: './site' })
   })
 
-  it('_headers の connect-src は配布元（R2）だけを許す', () => {
+  it('_headers の connect-src は配布元（R2）と Cloudflare Web Analytics だけを許す', () => {
     const headers = read('site/_headers')
-    expect(headers).toContain(`connect-src 'self' ${DOWNLOAD_BASE};`)
-    expect(headers).toContain("script-src 'self';")
+    expect(headers).toContain(`connect-src 'self' ${DOWNLOAD_BASE} https://cloudflareinsights.com;`)
+    expect(headers).toContain("script-src 'self' https://static.cloudflareinsights.com;")
   })
 
   it('GitHub Pages 向けの名残が無い', () => {

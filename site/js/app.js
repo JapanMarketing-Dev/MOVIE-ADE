@@ -1,7 +1,8 @@
 // 画面の組み立て。判別・整形は releases.js の純粋関数に任せ、ここは DOM・fetch・保存だけを扱う。
-import { DOWNLOAD_BASE } from './config.js'
+import { DOWNLOAD_BASE, REPO_URL } from './config.js?v=412f94b4'
 import {
   BUILD_DOC_URL,
+  CURRENT_PRODUCT,
   SLOTS,
   OS_LABEL,
   assetForSlot,
@@ -12,9 +13,7 @@ import {
   formatBytes,
   formatDate,
   excerptNotes,
-} from './releases.js'
-
-const THEME_KEY = 'ade-site-theme'
+} from './releases.js?v=ea4f2dbe'
 
 const $ = (sel, root = document) => root.querySelector(sel)
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)]
@@ -44,26 +43,27 @@ function icon(id, extra = '') {
 
 const previewBadge = () => el('span', { class: 'badge badge-warn', title: 'Not yet tested on real hardware', text: 'Preview' })
 
-/* ── テーマ ─────────────────────────────────────────── */
+/* ── スクロールで現れる演出 ───────────────────────── */
 
-function currentTheme() {
-  const set = document.documentElement.dataset.theme
-  if (set === 'light' || set === 'dark') return set
-  return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
-function setupTheme() {
-  for (const button of $$('[data-theme-toggle]')) {
-    button.addEventListener('click', () => {
-      const next = currentTheme() === 'dark' ? 'light' : 'dark'
-      document.documentElement.dataset.theme = next
-      try {
-        localStorage.setItem(THEME_KEY, next)
-      } catch {
-        // 保存できなくても、このページの表示は切り替わる
-      }
-    })
+/** .reveal を画面に入ったときに表示する。動きを減らす設定・IntersectionObserver が無い環境では最初から表示する */
+function setupReveal() {
+  const nodes = $$('.reveal')
+  if (!nodes.length) return
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
+    for (const n of nodes) n.classList.add('is-in')
+    return
   }
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue
+        e.target.classList.add('is-in')
+        io.unobserve(e.target)
+      }
+    },
+    { rootMargin: '0px 0px -8% 0px' },
+  )
+  for (const n of nodes) io.observe(n)
 }
 
 /* ── 端末と索引の取得 ───────────────────────────────── */
@@ -120,6 +120,13 @@ async function loadIndex() {
   }
 }
 
+/** 外部へのリンクは新しいタブで開き、そのことを読み上げにも伝える（インストーラ本体へのリンクには使わない） */
+const newTabNote = () => el('span', { class: 'sr-only', text: ' (opens in a new tab)' })
+
+function externalLink(props, ...children) {
+  return el('a', { ...props, target: '_blank', rel: 'noopener noreferrer' }, ...children, newTabNote())
+}
+
 /* ── トップ: ヒーローのボタン ───────────────────────── */
 
 function renderHero(result, platform) {
@@ -130,8 +137,11 @@ function renderHero(result, platform) {
 
   if (result.state === 'empty') {
     button.href = BUILD_DOC_URL
+    button.target = '_blank'
+    button.rel = 'noopener noreferrer'
     button.querySelector('use')?.setAttribute('href', '#i-code')
     label.textContent = 'Build from source'
+    if (!button.querySelector('.sr-only')) button.append(newTabNote())
     meta.textContent = 'Downloads are coming soon. You can build it from source on GitHub today.'
     return
   }
@@ -167,8 +177,8 @@ function showStatus(kind, platform) {
       icon('i-info'),
       el('div', {},
         el('p', {}, el('strong', { text: 'Coming soon. You can build from source on GitHub.' })),
-        el('p', {}, 'No builds have been published yet. See the ', el('a', { href: BUILD_DOC_URL, text: 'build instructions' }), ' in the README (Node.js 22 and pnpm required).'),
-        el('pre', {}, el('code', { text: 'git clone https://github.com/JapanMarketing-Dev/MOVIE-ADE.git\ncd MOVIE-ADE\npnpm install\npnpm dev' })),
+        el('p', {}, 'No builds have been published yet. See the ', externalLink({ href: BUILD_DOC_URL }, 'build instructions'), ' in the README (Node.js 22 and pnpm required).'),
+        el('pre', {}, el('code', { text: `git clone ${REPO_URL}.git\ncd ferret\npnpm install\npnpm dev` })),
       ),
     )
   } else if (kind === 'error') {
@@ -180,7 +190,7 @@ function showStatus(kind, platform) {
       ),
     )
   } else if (platform?.mobile) {
-    box.append(icon('i-info'), el('div', {}, el('p', { text: 'MOVIE-ADE is a desktop app. Download it on your computer.' })))
+    box.append(icon('i-info'), el('div', {}, el('p', { text: 'Ferret is a desktop app. Download it on your computer.' })))
   } else {
     box.hidden = true
     return
@@ -223,7 +233,7 @@ function versionBody(release) {
     el('div', {},
       el('h4', { text: 'Release notes' }),
       notes.length ? el('ul', { class: 'notes' }, notes.map((t) => el('li', { text: t }))) : el('p', { class: 'muted', text: 'No release notes.' }),
-      release.notesUrl ? el('a', { class: 'version-link', href: release.notesUrl }, 'Full release notes', icon('i-external')) : null,
+      release.notesUrl ? externalLink({ class: 'version-link', href: release.notesUrl }, 'Full release notes', icon('i-external')) : null,
     ),
     el('div', {},
       el('h4', { text: 'Files' }),
@@ -252,6 +262,8 @@ function renderVersions(all, latest) {
       const details = el('details', { class: 'version', open: isLatest },
         el('summary', {},
           el('span', { class: 'version-name', text: entry.tag }),
+          // 改名前（0.1.x）の版には旧名を添える
+          entry.product !== CURRENT_PRODUCT ? el('span', { class: 'badge', title: 'Former name', text: entry.product }) : null,
           isLatest ? el('span', { class: 'badge badge-accent', text: 'Latest' }) : null,
           entry.prerelease ? el('span', { class: 'badge badge-warn', text: 'Pre-release' }) : null,
           el('span', { class: 'version-date', text: formatDate(entry.date) }),
@@ -305,7 +317,7 @@ function renderDownloadPage(result, platform) {
 /* ── 起動 ───────────────────────────────────────────── */
 
 async function main() {
-  setupTheme()
+  setupReveal()
   for (const node of $$('[data-year]')) node.textContent = String(new Date().getFullYear())
 
   const page = document.body.dataset.page

@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CircleAlert, CircleCheck, Cloud, Copy, ExternalLink, FolderOpen, Laptop, Mic, MonitorUp, RefreshCw, Server } from 'lucide-react'
-import type { AgentOption, AgentPreferences, BuiltinAgent, Project, ProjectsState, ProjectUrl, SttAvailability, SttProvider } from '@shared/types'
+import { CircleAlert, CircleCheck, FolderOpen, Mic, MonitorUp, RefreshCw } from 'lucide-react'
+import type { AgentOption, AgentPreferences, BuiltinAgent, Project, ProjectsState, SttAvailability, SttProvider } from '@shared/types'
 import { AGENT_CATALOG, isBuiltinAgent } from '@shared/agentCatalog'
-import { isPresetableUrl } from '@shared/projectUrl'
-import { LOCALE_LABELS, LOCALE_PREFERENCES, type LocalePreference, type TranslationKey } from '@shared/i18n'
+import { type TranslationKey } from '@shared/i18n'
 import type { MediaAccessStatus, PermissionKind, PermissionsState } from '@shared/onboarding'
-import { Button, Field, IconButton, RecordButton, Segmented, ThemeSegmented, useToast } from '../ui'
-import { useLocalePreference, useT } from '../lib/i18n'
+import { Button, Field, LocaleSelect, RecordButton, ThemeSegmented, useToast } from '../ui'
+import { useT } from '../lib/i18n'
 import { SHORTCUTS, formatShortcut } from '../lib/shortcut'
 import { setAgentEnabled, toggleStartupAgent } from '../lib/agentPrefs'
+import { listAgents } from '../lib/agentListing'
 import { errorMessage } from '../lib/errors'
+import { ProjectTargetsEditor } from '../components/ProjectTargetsEditor'
 import { AgentIcon } from '../components/AgentIcon'
 import { TranscriptionSection, type SpeechLanguageValue } from '../components/TranscriptionSection'
 import { CrashReportsSetting } from '../components/CrashReportsSetting'
-import { AGENT_INSTALL_COMMANDS } from './agentInstall'
-import { voiceModeOf, type VoiceMode } from './onboardingFlowState'
+import { agentInstallCommand } from './agentInstall'
+import { AgentInstallTerminal } from './AgentInstallTerminal'
 
 /**
  * セットアップの各手順の中身。設定の保存は既存の経路（lib/theme・lib/i18n・settings:agents・project:*・
@@ -27,12 +28,6 @@ import { voiceModeOf, type VoiceMode } from './onboardingFlowState'
 
 export function AppearanceStep() {
   const t = useT()
-  const [locale, setLocale] = useLocalePreference()
-  const localeOptions = LOCALE_PREFERENCES.map((value) => ({
-    value,
-    label: value === 'system' ? t('settings.language.system') : LOCALE_LABELS[value],
-    testId: `onboarding-locale-${value}`
-  }))
   return <div className="ob-stack">
     <div className="ob-field">
       <span className="ob-field__label">{t('onboarding.appearance.theme')}</span>
@@ -40,7 +35,7 @@ export function AppearanceStep() {
     </div>
     <div className="ob-field">
       <span className="ob-field__label">{t('onboarding.appearance.language')}</span>
-      <Segmented<LocalePreference> options={localeOptions} value={locale} onChange={setLocale} ariaLabel={t('onboarding.appearance.language')} />
+      <LocaleSelect ariaLabel={t('onboarding.appearance.language')} testId="onboarding-locale-select" />
     </div>
     {/* 配色は画面全体にすぐ効く。代表的な部品だけを並べた見本 */}
     <figure className="ob-preview" aria-label={t('onboarding.appearance.preview')}>
@@ -66,7 +61,6 @@ export function AppearanceStep() {
 
 export function AgentsStep({ agents, onAgentsChange }: { agents: AgentPreferences; onAgentsChange: (next: AgentPreferences) => void }) {
   const t = useT()
-  const toast = useToast()
   const [options, setOptions] = useState<AgentOption[] | null>(null)
   const detect = useCallback((refresh: boolean) => {
     setOptions(null)
@@ -74,24 +68,30 @@ export function AgentsStep({ agents, onAgentsChange }: { agents: AgentPreference
   }, [])
   // PATH を読み直して探す（Orca も手順を開いたときに検出し直す）
   useEffect(() => detect(true), [detect])
+  /** インストールが終わったあとの検出し直し。一覧は消さずに差し替える（ほかのカードのインストールを止めない） */
+  const refreshAfterInstall = useCallback((id: BuiltinAgent) => window.ade.invoke('agents:list', true)
+    .then((next) => { setOptions(next); return next.some((o) => o.id === id && o.installed) }), [])
 
   const builtins = (options ?? []).filter((o): o is AgentOption & { id: BuiltinAgent } => !o.custom && isBuiltinAgent(o.id))
-  // 見つかったものを先に（並びはカタログの順のまま）
-  const sorted = [...builtins.filter((o) => o.installed), ...builtins.filter((o) => !o.installed)]
+  // 40種以上あるので、見つかったもの → 主要なもの を先に見せ、残りは「すべて表示」にたたむ。検索欄で全部から探せる
+  const [query, setQuery] = useState('')
+  const [showAll, setShowAll] = useState(false)
+  const { visible: sorted, hiddenCount } = listAgents(builtins, { query, showAll, selected: agents.startupAgents })
   const toggle = (id: BuiltinAgent, on: boolean) => {
     const enabled = on ? setAgentEnabled(agents, id, true) : agents
     onAgentsChange(toggleStartupAgent(enabled, id, on))
   }
-  const copy = (text: string) => void navigator.clipboard.writeText(text).then(() => toast({ tone: 'success', message: t('common.copied') }), () => {})
   const missingSelected = agents.startupAgents.some((id) => builtins.some((o) => o.id === id && !o.installed))
 
   return <div className="ob-stack">
     {options === null
       ? <p className="ob-note" role="status">{t('onboarding.agents.detecting')}</p>
-      : <div className="ob-agents" role="group" aria-label={t('onboarding.agents.title')}>
+      : <>
+      <Field type="search" className="ob-agents__search" value={query} onChange={(e) => setQuery(e.target.value)}
+        placeholder={t('agents.searchPlaceholder')} aria-label={t('agents.searchPlaceholder')} data-testid="onboarding-agent-search" />
+      <div className="ob-agents" role="group" aria-label={t('onboarding.agents.title')}>
         {sorted.map((option) => {
           const order = agents.startupAgents.indexOf(option.id)
-          const install = AGENT_INSTALL_COMMANDS[option.id]
           return <div key={option.id} className="ob-agent" data-checked={order >= 0 || undefined} data-testid={`onboarding-agent-${option.id}`}>
             <label className="ob-agent__head">
               <input type="checkbox" checked={order >= 0} onChange={(e) => toggle(option.id, e.target.checked)}
@@ -104,16 +104,20 @@ export function AgentsStep({ agents, onAgentsChange }: { agents: AgentPreference
               ? <span className="ob-agent__state is-ok"><CircleCheck size={12} aria-hidden="true" />{t('onboarding.agents.installed')}</span>
               : <div className="ob-agent__missing">
                 <span className="ob-agent__state"><CircleAlert size={12} aria-hidden="true" />{t('onboarding.agents.notFound')}</span>
-                {install && <span className="ob-agent__install">
-                  <code title={install}>{install}</code>
-                  <IconButton size="sm" label={t('common.copyCommand')} icon={<Copy size={13} />} onClick={() => copy(install)} />
-                </span>}
-                <a className="ob-link" href={AGENT_CATALOG[option.id].homepageUrl} target="_blank" rel="noreferrer">
-                  {t('onboarding.agents.installGuide')}<ExternalLink size={11} aria-hidden="true" /></a>
+                {/* 押したときだけ、カードの中のターミナルでインストールする（コピーは小さな補助のボタン） */}
+                <AgentInstallTerminal agentId={option.id} label={option.label} command={agentInstallCommand(option.id)}
+                  guideUrl={AGENT_CATALOG[option.id].homepageUrl} onRefresh={() => refreshAfterInstall(option.id)} />
               </div>}
           </div>
         })}
+      </div>
+      {query.trim() && sorted.length === 0 && <p className="ob-note" role="status">{t('agents.noMatch')}</p>}
+      {!query.trim() && (hiddenCount > 0 || showAll) && <div>
+        <Button variant="ghost" onClick={() => setShowAll((v) => !v)} data-testid="onboarding-agent-show-all">
+          {showAll ? t('agents.showLess') : t('agents.showAll', { count: hiddenCount })}</Button>
       </div>}
+      </>}
+    <p className="ob-note">{t('onboarding.agents.customHint')}</p>
     <div className="ob-row">
       <p className={`ob-note${missingSelected ? ' ob-note--warn' : ''}`}>
         {t(agents.startupAgents.length === 0 ? 'onboarding.agents.noneSelected' : missingSelected ? 'onboarding.agents.missingSelected' : 'onboarding.agents.more')}
@@ -124,13 +128,6 @@ export function AgentsStep({ agents, onAgentsChange }: { agents: AgentPreference
 }
 
 // ───────────────────────── プロジェクト ─────────────────────────
-
-/** 登録するURLの欄。ラベルは local / dev / prd に固定する（ツールバーのURLプリセットと同じ並び） */
-const URL_PRESETS = [
-  { label: 'local', placeholder: 'http://localhost:3000' },
-  { label: 'dev', placeholder: 'https://dev.example.com' },
-  { label: 'prd', placeholder: 'https://example.com' }
-] as const
 
 export function ProjectStep({ projects }: { projects: ProjectsState }) {
   const t = useT()
@@ -148,44 +145,18 @@ export function ProjectStep({ projects }: { projects: ProjectsState }) {
   </div>
 }
 
+/**
+ * 選んだプロジェクトの種類（web / mobile / desktop / other）と確認先。確認先は名前が自由で件数の上限なし
+ * （local / dev / prd は web の名前の候補）。編集と保存は ProjectTargetsEditor が行う。
+ */
 function ProjectUrls({ project }: { project: Project }) {
-  const t = useT()
-  const toast = useToast()
-  const [drafts, setDrafts] = useState<Record<string, string>>(() =>
-    Object.fromEntries(URL_PRESETS.map(({ label }) => [label, project.urls.find((u) => u.label === label)?.url ?? ''])))
-
-  /** 欄を離れたときに保存する。空なら外し、形の崩れたURLは保存しない */
-  const commit = (label: string) => {
-    const url = (drafts[label] ?? '').trim()
-    if (url && !isPresetableUrl(url)) return
-    const existing = project.urls.find((u) => u.label === label)
-    if ((existing?.url ?? '') === url) return
-    const urls: ProjectUrl[] = url
-      ? existing ? project.urls.map((u) => (u.id === existing.id ? { ...u, url } : u)) : [...project.urls, { id: crypto.randomUUID(), label, url }]
-      : project.urls.filter((u) => u.label !== label)
-    void window.ade.invoke('project:update', { ...project, urls }).catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
-  }
-
   return <div className="ob-card">
     <div className="ob-card__head">
       <FolderOpen size={14} aria-hidden="true" />
       <span className="ob-card__title">{project.name}</span>
       <code className="ob-card__path" title={project.folderPath}>{project.folderPath}</code>
     </div>
-    <span className="ob-field__label">{t('onboarding.project.urls')}</span>
-    {URL_PRESETS.map(({ label, placeholder }) => {
-      const value = drafts[label] ?? ''
-      const invalid = value.trim() !== '' && !isPresetableUrl(value.trim())
-      return <label key={label} className="ob-url">
-        <span className="ob-url__label">{label}</span>
-        <Field mono placeholder={placeholder} aria-label={`${t('onboarding.project.urls')} ${label}`} autoComplete="off" spellCheck={false}
-          value={value} aria-invalid={invalid || undefined} data-testid={`onboarding-url-${label}`}
-          onChange={(e) => setDrafts((prev) => ({ ...prev, [label]: e.target.value }))} onBlur={() => commit(label)} />
-      </label>
-    })}
-    {URL_PRESETS.some(({ label }) => (drafts[label] ?? '').trim() && !isPresetableUrl((drafts[label] ?? '').trim()))
-      ? <p className="ob-note ob-note--warn">{t('onboarding.project.urlInvalid')}</p>
-      : <p className="ob-note">{t('onboarding.project.urlsHint')}</p>}
+    <ProjectTargetsEditor project={project} />
   </div>
 }
 
@@ -202,31 +173,13 @@ export interface OnboardingVoice {
   onModelChanged: () => void
 }
 
-const VOICE_MODES: ReadonlyArray<{ mode: VoiceMode; provider: SttProvider; icon: typeof Laptop }> = [
-  { mode: 'local', provider: 'local', icon: Laptop },
-  { mode: 'cloud', provider: 'openai', icon: Cloud },
-  { mode: 'selfHosted', provider: 'compatible', icon: Server }
-]
-
 export function VoiceStep({ voice }: { voice: OnboardingVoice }) {
   const t = useT()
-  const current = voiceModeOf(voice.transcription)
   return <div className="ob-stack">
-    <div className="ob-tiles" role="radiogroup" aria-label={t('onboarding.voice.title')}>
-      {VOICE_MODES.map(({ mode, provider, icon: Icon }) => (
-        <button key={mode} type="button" role="radio" aria-checked={current === mode} className="ob-tile" data-testid={`onboarding-voice-${mode}`}
-          // 同じ使い方の中で選び直した提供元（Groq など）は、もう一度押しても戻さない
-          onClick={() => { if (current !== mode) voice.onTranscriptionChange(provider) }}>
-          <Icon size={16} aria-hidden="true" />
-          <span className="ob-tile__title">{t(`onboarding.voice.${mode}` as TranslationKey)}</span>
-          <span className="ob-tile__hint">{t(`onboarding.voice.${mode}Hint` as TranslationKey)}</span>
-        </button>
-      ))}
-    </div>
     <p className="ob-note">{t('onboarding.voice.byok')}</p>
-    {/* 言語・提供元・接続先・キー・接続の確認・モデルのダウンロードは、設定と同じ部品を使う */}
+    {/* 選ぶ場所は Engine の選択1つ（端末内の whisper・提供元・Custom）。言語は自動のまま、詳細は設定画面で */}
     <div className="ob-card">
-      <TranscriptionSection headless transcription={voice.transcription} onTranscriptionChange={voice.onTranscriptionChange}
+      <TranscriptionSection headless onboarding transcription={voice.transcription} onTranscriptionChange={voice.onTranscriptionChange}
         language={voice.language} onLanguageChange={voice.onLanguageChange} recording={false} available={voice.available}
         onAvailabilityChange={voice.onAvailabilityChange} onPickModel={voice.onPickModel} onModelChanged={voice.onModelChanged} />
     </div>

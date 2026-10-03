@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { setLocale } from '@shared/i18n'
+import { PRODUCT_NAME, setLocale } from '@shared/i18n'
 import { branchWebUrl } from '@shared/github'
 import { issueFromFeedback, mapPullRequests, parseGitStatus, parseAuthStatus, parseGitRemote, pickActiveAccount } from '../../src/main/github/parse'
 
@@ -109,7 +109,7 @@ describe('GitHub: feedback.md から Issue', () => {
     expect(title).toBe('UIフィードバック（2件）: example.com')
     expect(body).not.toContain('./01.png')
     expect(body).toContain('- 要望: 大きくする')
-    expect(body).toContain('画像 2 枚は MOVIE-ADE のローカル')
+    expect(body).toContain(`画像 2 枚は ${PRODUCT_NAME} のローカル`)
   })
 
   it('英語の feedback.md も読める（書き出した時点の画面の言語に依らない）', () => {
@@ -117,7 +117,7 @@ describe('GitHub: feedback.md から Issue', () => {
     const { title, body } = issueFromFeedback(md)
     expect(title).toBe('UI Feedback (1 item): example.com')
     expect(body).not.toContain('./01.png')
-    expect(body).toContain('1 image is stored locally in MOVIE-ADE')
+    expect(body).toContain(`1 image is stored locally in ${PRODUCT_NAME}`)
   })
 })
 

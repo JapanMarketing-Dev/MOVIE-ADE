@@ -12,13 +12,14 @@
  * 配布版は環境変数のキーを読まない（キーは呼び出し側が pipeline/stt/keys.ts から渡す）。
  * Anthropic の SDK は入れず fetch で送る（ほかの提供元と同じ形にし、Base URL・ヘッダーを利用者が変えられるようにするため）。
  */
-import { LLM_PROVIDER_PRESETS, providerLabel, resolveEndpoint, type AiEndpointConfig, type LlmApiProvider } from '@shared/aiProviders'
+import { LLM_PROVIDER_PRESETS, authHeaders, providerLabel, resolveEndpoint, type AiEndpointConfig, type LlmApiProvider } from '@shared/aiProviders'
 import { t } from '@shared/i18n'
 import { normalizeBaseUrl } from '../../stt/endpoint'
 import { redact } from '../../stt/openai'
 import type { LlmRunner, RunnerRequest, RunnerResult } from '../runner'
 import { RunnerError } from '../runner'
 import { extractJson } from '../spawn'
+import { extractUsage, recordApiCall } from '../../../decision/callLog'
 
 /** 非ストリーミングで HTTP のタイムアウトに収まる出力の上限 */
 const MAX_OUTPUT_TOKENS = 16_000
@@ -77,11 +78,13 @@ export class ApiLlmRunner implements LlmRunner {
     const key = this.opt.apiKey ?? ''
     const model = req.model || this.ep.model
     const extra = this.ep.headers
+    // 認証の形は設定（authScheme / authHeader）で変えられる。無ければ提供元の既定の形。キーが無ければ付けない
+    const auth = (fallback: Record<string, string>) => authHeaders(this.opt.endpoint, key, fallback)
     switch (this.preset.kind) {
       case 'anthropic-messages':
         return {
           url: `${base}/v1/messages`,
-          headers: { ...extra, 'x-api-key': key, 'anthropic-version': ANTHROPIC_VERSION, 'content-type': 'application/json' },
+          headers: { ...extra, ...auth({ 'x-api-key': key }), 'anthropic-version': ANTHROPIC_VERSION, 'content-type': 'application/json' },
           body: JSON.stringify({
             model,
             max_tokens: MAX_OUTPUT_TOKENS,
@@ -93,7 +96,7 @@ export class ApiLlmRunner implements LlmRunner {
         const structured = this.preset.structuredOutput
         return {
           url: `${base}/v1/chat/completions`,
-          headers: { ...extra, ...(key ? { Authorization: `Bearer ${key}` } : {}), 'content-type': 'application/json' },
+          headers: { ...extra, ...auth({ Authorization: `Bearer ${key}` }), 'content-type': 'application/json' },
           body: JSON.stringify({
             model,
             messages: structured
@@ -106,7 +109,7 @@ export class ApiLlmRunner implements LlmRunner {
       case 'gemini':
         return {
           url: `${base}/models/${encodeURIComponent(model)}:generateContent`,
-          headers: { ...extra, 'x-goog-api-key': key, 'content-type': 'application/json' },
+          headers: { ...extra, ...auth({ 'x-goog-api-key': key }), 'content-type': 'application/json' },
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: schemaInstruction(req.schema) }] },
             contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
@@ -150,24 +153,47 @@ export class ApiLlmRunner implements LlmRunner {
     const http = this.buildRequest(req)
     const commandLine = `POST ${http.url} model=${req.model || this.ep.model}`
     const started = Date.now()
+    // フッターの「API の使用量」へ数だけ載せる（本文・キーは渡さない）。失敗した送信も記録する
+    const record = (status: number, json?: unknown) => recordApiCall({ kind: 'organize', provider: this.opt.provider, model: req.model || this.ep.model,
+      status, latencyMs: Date.now() - started, requestBytes: Buffer.byteLength(http.body), ...(json === undefined ? {} : llmUsage(json)) })
     let res: Response
     try {
       res = await fetch(http.url, { method: 'POST', headers: http.headers, body: http.body,
         signal: AbortSignal.timeout(this.ep.timeoutMs ?? req.timeoutMs) })
     } catch (e) {
+      record(0)
       const name = e instanceof Error ? e.name : ''
       if (name === 'TimeoutError' || name === 'AbortError') throw new RunnerError(t('organize.api.timeout', { label: this.label }), 'timeout', commandLine)
       throw new RunnerError(t('stt.check.unreachable', { base: http.url.replace(/\/v1\/.*$|\/models\/.*$/, '') }), 'spawn', commandLine)
     }
     const elapsedMs = Date.now() - started
     if (!res.ok) {
+      record(res.status)
       // 失敗の本文は説明に使うだけ（想定内）
-    const body = redact(await res.text().catch(() => ''), this.opt.apiKey).slice(0, 500)
+      const body = redact(await res.text().catch(() => ''), this.opt.apiKey).slice(0, 500)
       throw new RunnerError(describeLlmFailure(res.status, body, this.label), 'exit', commandLine, body)
     }
-    const { text, usage } = this.parseResponse(await res.json())
+    const json: unknown = await res.json()
+    record(res.status, json)
+    const { text, usage } = this.parseResponse(json)
     return { raw: extractJson(text), elapsedMs, commandLine, ...(usage ? { usage } : {}) }
   }
+}
+
+/**
+ * 応答からトークン数と、提供元が返した費用を取り出す（使用量の記録用）。
+ * Anthropic・OpenAI 系は extractUsage、Gemini は usageMetadata、OpenRouter は usage.cost。費用は推測しない
+ */
+export function llmUsage(json: unknown): { inputTokens?: number; outputTokens?: number; costUsd?: number; costSource?: 'provider' } {
+  const r = rec(json)
+  const base = extractUsage(json)
+  const meta = rec(r.usageMetadata)
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)
+  const inputTokens = base.inputTokens ?? num(meta.promptTokenCount)
+  const outputTokens = base.outputTokens ?? num(meta.candidatesTokenCount)
+  const costUsd = base.costUsd ?? num(rec(r.usage).cost)
+  return { ...(inputTokens !== undefined ? { inputTokens } : {}), ...(outputTokens !== undefined ? { outputTokens } : {}),
+    ...(costUsd !== undefined ? { costUsd, costSource: 'provider' as const } : {}) }
 }
 
 /** HTTP の失敗を、利用者が直せる言葉にする */

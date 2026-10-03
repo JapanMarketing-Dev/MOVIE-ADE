@@ -177,7 +177,11 @@ function buildMenu(handlers: Parameters<typeof installMenu>[0]): void {
       // ヘルプ。初回起動のセットアップ（オンボーディング）を開き直す（Orca の「Setup guide」に相当）
       label: t('menu.help'),
       role: 'help',
-      submenu: [{ label: t('menu.showOnboarding'), click: () => handlers.onCommand('showOnboarding') }]
+      submenu: [
+        { label: t('menu.showOnboarding'), click: () => handlers.onCommand('showOnboarding') },
+        { type: 'separator' },
+        { label: t('menu.starOnGitHub'), click: () => handlers.onCommand('starOnGitHub') }
+      ]
     }
   ]
 

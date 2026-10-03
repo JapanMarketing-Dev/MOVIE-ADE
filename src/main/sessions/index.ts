@@ -1,5 +1,5 @@
 /**
- * セッション（`.ade-movie/reviews/<日時>/`）の読み書きと履歴（要件 5.7 / 設計 8章）。
+ * セッション（`.ferret/reviews/<日時>/`。古いものは `.ade-movie/`）の読み書きと履歴（要件 5.7 / 設計 8章）。
  * 起動を軽くするため、main からは必要になった時点で動的 import する。
  *
  * ──────────────────────────── 使い方 ────────────────────────────
@@ -44,6 +44,7 @@ export * from './edits'
 export * from './history'
 export * from './labels'
 export * from './summary'
+export * from './progress'
 export * from './retention'
 export * from './gitexclude'
 export * from './recover'

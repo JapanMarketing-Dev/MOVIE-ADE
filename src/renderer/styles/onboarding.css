@@ -416,15 +416,16 @@
 }
 
 .ob-agent__install code {
-  overflow: hidden;
   min-width: 0;
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--color-bg-app);
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* 長いインストールコマンドも省略せずに折り返して全部見せる（コピーのボタンはそのまま横に置く） */
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  user-select: text;
 }
 
 /* ── プロジェクトの URL ── */
@@ -439,53 +440,6 @@
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
-}
-
-/* ── 文字起こしの使い方 ── */
-.ob-tiles {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-.ob-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-5);
-  border: var(--size-border) solid var(--color-border-strong);
-  border-radius: var(--radius-lg);
-  background: var(--color-bg-elevated);
-  color: var(--color-text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color var(--motion-fast) var(--ease-out), background-color var(--motion-fast) var(--ease-out);
-}
-
-.ob-tile:hover {
-  background: var(--color-surface-hover);
-}
-
-.ob-tile[aria-checked='true'] {
-  border-color: var(--color-accent);
-  background: var(--color-accent-wash);
-}
-
-.ob-tile:focus-visible {
-  outline: 2px solid var(--color-border-focus);
-  outline-offset: 2px;
-}
-
-.ob-tile__title {
-  font-weight: var(--font-weight-medium);
-}
-
-.ob-tile__hint {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-normal);
 }
 
 /* ── 許可 ── */
@@ -580,18 +534,94 @@
     padding: var(--space-7) var(--space-6) var(--space-6);
   }
 
-  .ob-tiles {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .ob-perm {
     grid-template-columns: auto minmax(0, 1fr);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ob-progress__bar,
-  .ob-tile {
+  .ob-progress__bar {
     transition: none;
   }
+}
+
+/* ── Agent のインストール（AgentInstallTerminal。セットアップと設定 → Agent の両方で使う） ── */
+.agent-install {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.agent-install__command {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.agent-install__command code {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-app);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  /* 長いインストールコマンド（curl … | bash など）も省略せずに折り返して全部見せる */
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.agent-install__term {
+  position: relative;
+  height: 180px;
+  min-width: 0;
+  border: var(--size-border) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-terminal);
+  overflow: hidden;
+}
+
+.agent-install__term[hidden] {
+  display: none;
+}
+
+.agent-install__term .terminal-host {
+  inset: var(--space-3);
+}
+
+.agent-install__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.agent-install__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.agent-install__status.is-ok {
+  color: var(--color-success);
+}
+
+.agent-install__status.is-error {
+  color: var(--color-warning);
+}
+
+.agent-install-disclosure .agent-install {
+  margin-top: var(--space-4);
+}
+
+/* エージェントの検索欄（40種以上あるので、名前やコマンドで絞り込む） */
+.ob-agents__search {
+  width: 100%;
 }

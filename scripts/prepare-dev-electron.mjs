@@ -1,6 +1,8 @@
 /**
  * macOS の開発起動（pnpm dev）で、メニューバー・Dock・⌘Tab・アクティビティモニタに「Electron」と出ないよう、
- * 名前とアイコンを MOVIE-ADE Dev にした Electron.app の複製を用意する。
+ * 名前とアイコンを Ferret にした Electron.app の複製を用意する。
+ * 表示名は配布版と同じ Ferret。識別子（dev.ferretade.ferret.dev）だけを分けて、入れてある配布版の Ferret.app と
+ * macOS の許可・Launch Services・設定のフォルダが混ざらないようにする。
  *
  *   node scripts/prepare-dev-electron.mjs   → 複製の実行ファイルのパスを1行で出す（macOS 以外は何もしない）
  *
@@ -10,7 +12,7 @@
  * node_modules の Electron.app そのものは書き換えない。
  *   - pnpm はストアのファイルをハードリンクで置くので、書き換えると他のプロジェクトの Electron まで変わりうる
  *   - 動いている dev の Electron の署名が壊れ、子プロセス（Helper）の起動が止められるおそれがある
- * そこで node_modules/.cache/movie-ade-dev/ に APFS の複製（容量を取らない）を作り、Info.plist とアイコンを差し替えて
+ * そこで node_modules/.cache/ferret-dev/ に APFS の複製（容量を取らない）を作り、Info.plist とアイコンを差し替えて
  * ad-hoc で署名し直す（書き換えると元の署名が無効になり、起動できなくなるため）。
  * scripts/dev.mjs がこのパスを ELECTRON_EXEC_PATH にして electron-vite を起動する。
  *
@@ -27,11 +29,11 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, r
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const DEV_APP_NAME = 'MOVIE-ADE Dev'
-export const DEV_BUNDLE_ID = 'com.japanmarketing.movieade.dev'
+export const DEV_APP_NAME = 'Ferret'
+export const DEV_BUNDLE_ID = 'dev.ferretade.ferret.dev'
 
 /**
- * 入れ子の Helper（Renderer / GPU など）の新しい名前（Electron Helper (Renderer) → MOVIE-ADE Dev Helper (Renderer)）。
+ * 入れ子の Helper（Renderer / GPU など）の新しい名前（Electron Helper (Renderer) → Ferret Helper (Renderer)）。
  * Electron は Helper を「本体の実行ファイル名 + Helper…」で探すので、本体の実行ファイルと一緒に、
  * Helper のフォルダ・実行ファイル・CFBundleExecutable もすべて揃えて変える（electron-builder と同じやり方）。
  * これでアクティビティモニタにも Electron と出なくなる。
@@ -61,12 +63,15 @@ export function prepareDevElectron() {
   const iconHash = existsSync(icon) ? createHash('sha256').update(readFileSync(icon)).digest('hex') : ''
   const marker = JSON.stringify({ electronVersion, iconHash, patches: devPlistPatches(), layout: 3 })
 
-  const dir = join(root, 'node_modules', '.cache', 'movie-ade-dev')
+  const dir = join(root, 'node_modules', '.cache', 'ferret-dev')
   // .app のフォルダ名は、electron-vite が実行ファイルを直接起動したときの Dock の名前にもなる（署名の外）
   const app = join(dir, `${DEV_APP_NAME}.app`)
   const executable = join(app, 'Contents', 'MacOS', DEV_APP_NAME)
   const markerPath = join(dir, 'marker.json')
-  if (existsSync(executable) && existsSync(markerPath) && readFileSync(markerPath, 'utf8') === marker) return executable
+  if (existsSync(executable) && existsSync(markerPath) && readFileSync(markerPath, 'utf8') === marker) {
+    pruneStaleBundles(dir, app)
+    return executable
+  }
 
   // 別の場所で組み立ててから入れ替える。dev がこの .app から動いている最中でも、
   // 組み立て途中の半端な .app から Helper が起動されることがないようにする
@@ -79,8 +84,27 @@ export function prepareDevElectron() {
   renameSync(built, app)
   rmSync(old, { recursive: true, force: true })
   rmSync(building, { recursive: true, force: true })
+  pruneStaleBundles(dir, app)
   writeFileSync(markerPath, marker)
   return executable
+}
+
+/**
+ * 名前を変える前の古い .app（例 Ferret Dev.app）を消す。ただし、そこから動いている dev があれば残す
+ * （動いている最中に消すと、Helper を起動できなくなる）。
+ */
+function pruneStaleBundles(dir, current) {
+  let running = ''
+  try {
+    running = execFileSync('/bin/ps', ['-axo', 'command='], { encoding: 'utf8' })
+  } catch {
+    return
+  }
+  for (const entry of readdirSync(dir)) {
+    const path = join(dir, entry)
+    if (!entry.endsWith('.app') || path === current || running.includes(`${path}/`)) continue
+    rmSync(path, { recursive: true, force: true })
+  }
 }
 
 /** source（Electron.app）を app へ複製し、名前・識別子・アイコンを差し替えて ad-hoc で署名し直す */
@@ -94,7 +118,7 @@ function buildDevApp(source, app, icon) {
   const plist = join(app, 'Contents', 'Info.plist')
   const setPlist = (file, key, value) => execFileSync('/usr/bin/plutil', ['-replace', key, '-string', value, file])
   for (const { key, value } of devPlistPatches()) setPlist(plist, key, value)
-  // 本体の実行ファイル: MacOS/Electron → MacOS/MOVIE-ADE Dev
+  // 本体の実行ファイル: MacOS/Electron → MacOS/Ferret
   renameSync(join(app, 'Contents', 'MacOS', 'Electron'), join(app, 'Contents', 'MacOS', DEV_APP_NAME))
   setPlist(plist, 'CFBundleExecutable', DEV_APP_NAME)
   const frameworks = join(app, 'Contents', 'Frameworks')
@@ -122,6 +146,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     if (path) console.log(path)
   } catch (err) {
     // 用意できなくても開発は止めない（元の Electron で起動する）
-    console.warn(`[dev-electron] MOVIE-ADE Dev.app を用意できませんでした。Electron のまま起動します: ${err.message}`)
+    console.warn(`[dev-electron] Ferret.app（開発版）を用意できませんでした。Electron のまま起動します: ${err.message}`)
   }
 }

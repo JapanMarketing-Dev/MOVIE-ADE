@@ -4,6 +4,7 @@ import { MOBILE_PRESET, type BrowserState, type ViewBounds, type Viewport } from
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import { reportHandled } from '@shared/report'
+import { normalizeUrl } from '@shared/projectUrl'
 
 /**
  * 内蔵ブラウザ（設計 2章の WebContentsView = Chromium）。
@@ -61,11 +62,9 @@ export class EmbeddedBrowser {
     const view = new WebContentsView({
       webPreferences: {
         session: session.fromPartition(PARTITION),
-        // ペン・テキスト・操作ログの注入スクリプト（設計4章）。
+        // ペン・操作ログの注入スクリプト（設計4章）。
         // preload なのでページ本体のスクリプトとは別の世界で動き、遷移のたびに読み直される。
         preload: join(__dirname, '../preload/review.js'),
-        // 注入する入力欄の読み上げ名。preload に辞書を持ち込まないよう、文だけを渡す（起動時の言語）
-        additionalArguments: [`--ade-annotation-label=${encodeURIComponent(t('review.annotationInput'))}`],
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
@@ -309,19 +308,6 @@ export class EmbeddedBrowser {
     }
     this.window = null
   }
-}
-
-/**
- * URL欄の入力を正規化する。
- * スキームなしのホスト名・localhost・ポート指定は http:// を補い、
- * それ以外（空白を含む、ドットがない等）は検索ではなくそのまま扱わずエラーにしない。
- */
-export function normalizeUrl(input: string): string {
-  const value = input.trim()
-  if (value.length === 0) return 'about:blank'
-  if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return value
-  if (value.startsWith('/')) return `file://${value}`
-  return `http://${value}`
 }
 
 /** スキームを補ったあとも URL として読めるか（ホスト名に空白を含む入力などを弾く） */

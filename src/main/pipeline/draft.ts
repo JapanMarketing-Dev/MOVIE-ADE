@@ -3,10 +3,11 @@
  * 03_design.md 5章② / 02_requirements.md EXT-2・EXT-3・EXT-11
  *
  * - 発話の間隔が2秒未満なら同じまとまりにする
- * - ペン・テキストは、時刻が重なる（または前後3秒以内の）まとまりに付ける。該当がなければ単独の指摘
+ * - ペンの書き込みは、時刻が重なる（または前後3秒以内の）まとまりに付ける。該当がなければ単独の指摘
  * - 画像: 書き込みがあればその確定時刻の静止画。なければ発話開始時刻の静止画（カーソルのリングを合成）
  *   まとまりの途中でURLが変わったら変化後の静止画を追加（最大3枚）
- * - 発話もペンもテキストもない区間は捨てる
+ * - 発話もペンもない区間は捨てる
+ * - 録画中に動かした書き込みは最後の位置のもの（その静止画）を使い、元に戻した書き込みは使わない
  * - 録画の途中で対象（ページ・ファイル）を切り替えたら、そこでまとまりを分ける。
  *   書き込みも同じページのまとまりにだけ付ける（指摘がそれぞれの対象に属するように）
  *
@@ -22,7 +23,7 @@ import type {
   NavEvent,
   TranscriptSegment,
 } from './types'
-import { annotationFrameTime, isAnnotation } from './types'
+import { annotationFrameTime, isAnnotation, resolveAnnotationEdits } from './types'
 import { normalizeJa } from './text'
 import { pageKey } from '@shared/page'
 
@@ -64,9 +65,11 @@ interface Cluster {
 export function buildDraft(material: Material, options: Partial<DraftOptions> = {}): Draft {
   const opt = { ...defaultDraftOptions, ...options }
   const transcript = [...material.transcript].sort((a, b) => a.t0 - b.t0)
-  const annotations = material.events.filter(isAnnotation).sort((a, b) => a.t - b.t)
+  // 録画中に動かした書き込みは最後の位置のものだけ、元に戻した書き込みは外す
+  const events = resolveAnnotationEdits(material.events)
+  const annotations = events.filter(isAnnotation).sort((a, b) => a.t - b.t)
 
-  const pageOf = pageLookup(material.events)
+  const pageOf = pageLookup(events)
   const clusters = clusterSpeech(transcript, opt.speechGapMs, pageOf).flatMap((c) =>
     splitLongCluster(c, opt.maxClusterMs),
   )
@@ -98,7 +101,7 @@ export function buildDraft(material: Material, options: Partial<DraftOptions> = 
       tEnd: c.tEnd,
       segments: c.segments,
       annotationIds: c.annotations.map((a) => a.id),
-      frameTimes: pickFrameTimes(c, material.frames, material.events, opt.maxFrames),
+      frameTimes: pickFrameTimes(c, material.frames, events, opt.maxFrames),
       origin: c.origin,
     })
   }
@@ -216,7 +219,9 @@ function pickFrameTimes(c: Cluster, frames: FrameRef[], events: Event[], maxFram
       push(associated?.t ?? nearestFrameTime(frames, annotationFrameTime(a)))
     }
   } else {
-    push(nearestFrameTime(frames, c.t))
+    // 話しただけの指摘は、ほぼ一色の画像（読み込み途中のページなど）を避ける。中身のある画像が無ければそのまま
+    const filled = frames.filter((f) => !f.blank)
+    push(nearestFrameTime(filled.length > 0 ? filled : frames, c.t))
   }
 
   // まとまりの途中でURLが変わったら、変化後の静止画を足す

@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import type { TuiAgent } from '@shared/types'
 import { AGENT_ICON_DATA } from './agentIconData'
 
@@ -5,7 +6,7 @@ import { AGENT_ICON_DATA } from './agentIconData'
  * エージェントのアイコン。
  *
  * Orca由来: ~/bench/orca/src/renderer/src/components/status-bar/icons.tsx（ClaudeIcon, OpenAIIcon）,
- *           ~/bench/orca/src/renderer/src/lib/agent-icon-glyphs.tsx（AiderIcon, CopilotIcon, OpenCodeIcon, AgentLetterIcon）,
+ *           ~/bench/orca/src/renderer/src/lib/agent-icon-glyphs.tsx（AiderIcon, CopilotIcon, OpenCodeIcon, PiIcon, OmpIcon, KiloIcon, AgentLetterIcon）,
  *           ~/bench/orca/src/renderer/src/lib/agent-catalog.tsx（AgentIcon）（MIT, Copyright 2026 Lovecast Inc.）
  *
  * Claude はブランド色を持ち、Codex（OpenAI）などの単色のものは文字色に合わせる。どちらのテーマでも読める。
@@ -25,13 +26,17 @@ export function AgentIcon({ agent, label, size = 14 }: { agent: TuiAgent | null 
       return <CopilotIcon size={size} />
     case 'opencode':
       return <OpenCodeIcon size={size} />
-    case 'gemini':
-    case 'cursor':
-    case 'qwen-code':
-    case 'amp':
-    case 'grok':
-      return <img src={AGENT_ICON_DATA[id]} width={size} height={size} alt="" aria-hidden="true" style={{ borderRadius: 2 }} />
+    case 'pi':
+      return <PiIcon size={size} />
+    case 'omp':
+      return <OmpIcon size={size} />
+    case 'kilo':
+      // 取り込んだ favicon は透明地に黒で、暗い画面では見えない
+      return <KiloIcon size={size} />
   }
+  // Orca が同梱している PNG があればそれ。無いもの（Orca に無いエージェント・カスタム）は頭文字の印
+  const data = id && !id.startsWith('custom:') ? AGENT_ICON_DATA[id] : undefined
+  if (data) return <img src={data} width={size} height={size} alt="" aria-hidden="true" style={{ borderRadius: 2 }} />
   return <AgentLetterIcon letter={agentInitial(id, label)} size={size} />
 }
 
@@ -138,6 +143,74 @@ function AgentLetterIcon({ letter, size }: { letter: string; size: number }) {
       <text x="7" y="10.5" textAnchor="middle" fontSize="8.5" fontWeight="700" fill="currentColor" fontFamily="system-ui, -apple-system, sans-serif">
         {letter}
       </text>
+    </svg>
+  )
+}
+
+function PiIcon({ size = 14 }: { size?: number }) {
+  // SVG sourced from pi.dev/favicon.svg — the π shape rendered in currentColor.
+  // Why: className="text-current" opts out of shadcn's Select rule that forces
+  // text-muted-foreground on any <svg> that lacks a text-* class.
+  return (
+    <svg
+      height={size}
+      width={size}
+      viewBox="0 0 800 800"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        fill="currentColor"
+        fillRule="evenodd"
+        d="M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z"
+      />
+      <path fill="currentColor" d="M517.36 400 H634.72 V634.72 H517.36 Z" />
+    </svg>
+  )
+}
+
+function OmpIcon({ size = 14 }: { size?: number }) {
+  const gradientId = `${useId().replace(/:/g, '')}-omp-gradient`
+
+  // SVG sourced from omp.sh's homepage mark. Why: omp.sh/favicon.svg includes
+  // a dark square background, while the homepage mark is transparent.
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="oklch(0.7 0.24 340)" />
+          <stop offset=".5" stopColor="oklch(0.62 0.21 295)" />
+          <stop offset="1" stopColor="oklch(0.81 0.14 200)" />
+        </linearGradient>
+      </defs>
+      <path fill={`url(#${gradientId})`} d="M10 14h44v9H43v33h-9V23h-9v22h-9V23H10z" />
+    </svg>
+  )
+}
+
+function KiloIcon({ size = 14 }: { size?: number }) {
+  // SVG sourced from Kilo-Org/kilocode:packages/kilo-vscode/assets/icons/kilo-light.svg.
+  // Why: brand-colored (yellow on black) so it stays readable on light and dark themes.
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 512 512"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      style={{ borderRadius: 2 }}
+    >
+      <path d="M512 0H0V512H512V0Z" fill="black" />
+      <path
+        d="M322 377H377V421H307.857L278 391.143V322H322V377ZM421 307.857L391.143 278H322V322L377 322V377H421V307.857ZM234 278H190V322H234V278ZM91 391.143L120.857 421H234V377H135V278H91V391.143ZM371.172 189.999V120.856L341.315 90.9995H278V135H327.172V189.999H278V233.999H421V189.999H371.172ZM135 91H91V233.999H135V184.5H190V233.999H234V184.5L190 140.5H135V91ZM234 91H190V140.5H234V91Z"
+        fill="#FAF74F"
+      />
     </svg>
   )
 }

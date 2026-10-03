@@ -80,3 +80,23 @@ export function rankQuickOpenFiles(
   ranked.sort((a, b) => a.score - b.score || compareNames(a.path, b.path) || a.inputIndex - b.inputIndex)
   return ranked.slice(0, limit).map(({ path, score }) => ({ path, score }))
 }
+
+/**
+ * 問い合わせが一致した文字の位置（強調表示用）。rankQuickOpenFiles と同じ拾い方をする。
+ * 一致しなければ空配列。
+ */
+export function quickOpenMatchIndices(query: string, text: string): number[] {
+  const normalized = normalizeQuery(query)
+  if (!normalized) return []
+  const lower = text.replace(/\\/g, '/').toLowerCase()
+  const out: number[] = []
+  let last = -1
+  for (const ch of normalized) {
+    const next = last + 1
+    const at = lower[next] === ch ? next : lower.indexOf(ch, next + 1)
+    if (at === -1) return []
+    out.push(at)
+    last = at
+  }
+  return out
+}

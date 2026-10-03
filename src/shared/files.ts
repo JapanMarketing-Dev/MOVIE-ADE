@@ -108,7 +108,8 @@ export const HEAVY_DIRS: ReadonlySet<string> = new Set([
   '.pnpm-store',
   '.terraform',
   '.turbo',
-  // このアプリが録画を置く場所。巨大な動画と音声が入る
+  // このアプリが録画を置く場所（.ade-movie は改名前）。巨大な動画と音声が入る
+  '.ferret',
   '.ade-movie'
 ])
 

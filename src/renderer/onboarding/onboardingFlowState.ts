@@ -1,5 +1,4 @@
 import { ONBOARDING_STEPS, type OnboardingPatch, type OnboardingState, type OnboardingStepId } from '@shared/onboarding'
-import type { SttProvider } from '@shared/types'
 
 /**
  * セットアップの手順の進め方（画面に依存しない純粋な関数。単体テストの対象）。
@@ -71,11 +70,4 @@ export function reopenPatch(): OnboardingPatch {
 export function isContinueShortcut(event: { key: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean }, mac: boolean): boolean {
   if (event.key !== 'Enter' || event.altKey || event.shiftKey) return false
   return mac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey
-}
-
-export type VoiceMode = 'local' | 'cloud' | 'selfHosted'
-
-/** 文字起こしの提供元を3つの使い方にまとめる（細かい提供元は文字起こしの節で選ぶ） */
-export function voiceModeOf(transcription: SttProvider): VoiceMode {
-  return transcription === 'local' ? 'local' : transcription === 'compatible' ? 'selfHosted' : 'cloud'
 }

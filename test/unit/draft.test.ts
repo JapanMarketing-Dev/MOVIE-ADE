@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildDraft, defaultDraftOptions, nearestFrameTime, nearestFrameTimeAfter } from '../../src/main/pipeline/draft'
 import type { Event, FrameRef, Material, TranscriptSegment } from '../../src/main/pipeline/types'
+import { resolveAnnotationEdits } from '../../src/main/pipeline/types'
 import { frames, material, meta } from './fixtures'
 
 describe('下書き（ルール）', () => {
@@ -22,10 +23,11 @@ describe('下書き（ルール）', () => {
     expect(withPen?.segments.map((s) => s.text)).toEqual(['このボタンの色が薄いです'])
   })
 
-  it('置かれたテキストを前後3秒以内の発話に付ける', () => {
-    const { items } = buildDraft(material)
-    const withText = items.find((i) => i.annotationIds.includes('x1'))
-    expect(withText?.segments.map((s) => s.text)).toEqual(['表記がばらばらです'])
+  it('旧版のレビューに残るテキストの書き込みは、読み込んでも無視する（撮影中のテキスト入力は廃止）', () => {
+    const legacyText = { t: 25_100, type: 'text', id: 'x1', x: 300, y: 520, body: 'ここは「月額」表記に統一' } as unknown as Event
+    const { items } = buildDraft({ ...material, events: [...material.events, legacyText] })
+    expect(items.some((i) => i.annotationIds.includes('x1'))).toBe(false)
+    expect(items.map((i) => i.segments.map((s) => s.text))).toEqual(buildDraft(material).items.map((i) => i.segments.map((s) => s.text)))
   })
 
   it('近い発話が無い書き込みは単独の指摘にする', () => {
@@ -78,15 +80,15 @@ describe('下書き（ルール）', () => {
   it('書き込みは同じページのまとまりにだけ付ける', () => {
     const events: Event[] = [
       { t: 0, type: 'nav', url: 'http://localhost:3000/', title: 'トップ' },
-      { t: 9_000, type: 'text', id: 'x1', x: 10, y: 10, body: 'ここの余白' },
+      { t: 9_000, type: 'pen', id: 'p1', t_end: 9_200, bbox: [10, 10, 40, 20] },
       { t: 10_000, type: 'nav', url: 'ade-preview://project/docs/a.md', title: 'a.md' },
     ]
     const transcript: TranscriptSegment[] = [
       { t0: 10_500, t1: 12_000, speaker: 'self', text: 'この手順が分かりにくい', source: 'mic' },
     ]
     const { items } = buildDraft({ meta, transcript, events, frames })
-    // 書き込み(9000)は発話(10500)と1.5秒しか離れていないが、ページが違うので別の指摘になる
-    expect(items.map((i) => [i.annotationIds, i.segments.length])).toEqual([[['x1'], 0], [[], 1]])
+    // 書き込み(9200)は発話(10500)と1.3秒しか離れていないが、ページが違うので別の指摘になる
+    expect(items.map((i) => [i.annotationIds, i.segments.length])).toEqual([[['p1'], 0], [[], 1]])
   })
 
   it('画像は最大3枚まで', () => {
@@ -149,10 +151,47 @@ describe('下書き（ルール）', () => {
   })
 })
 
+describe('録画中に動かした・元に戻した書き込み', () => {
+  const box = (id: string, t: number, extra: Partial<Event> = {}): Event =>
+    ({ t, type: 'pen', id, t_end: t + 200, bbox: [10, 10, 50, 50], shape: 'rect', ...extra }) as Event
+
+  it('動かした書き込みは最後の位置のもの1つだけを使い、その静止画を選ぶ', () => {
+    const events: Event[] = [box('p1', 1_000), box('p2', 2_000, { replaces: 'p1', bbox: [200, 10, 50, 50] } as Partial<Event>)]
+    const frames: FrameRef[] = [{ t: 1_250, path: 'before-move', annotationId: 'p1' }, { t: 2_250, path: 'after-move', annotationId: 'p2' }]
+    const { items } = buildDraft({ meta, transcript: [], events, frames })
+    expect(items.map((i) => [i.annotationIds, i.frameTimes])).toEqual([[['p2'], [2_250]]])
+  })
+
+  it('元に戻した書き込みは指摘に付けない。やり直した書き込み（新しい ID）は付ける', () => {
+    const events: Event[] = [
+      box('p1', 1_000),
+      { t: 1_500, type: 'erase', ids: ['p1'] },
+      box('p3', 5_000),
+      { t: 5_500, type: 'erase', ids: ['p3'] },
+      box('p4', 5_600),
+    ]
+    const { items } = buildDraft({ meta, transcript: [], events, frames })
+    expect(items.flatMap((i) => i.annotationIds)).toEqual(['p4'])
+  })
+
+  it('発話に付いた書き込みを動かしても、指摘は1件のまま（ID が重ならない）', () => {
+    const transcript: TranscriptSegment[] = [{ t0: 900, t1: 3_000, speaker: 'self', text: 'この枠の中を直したい', source: 'mic' }]
+    const events: Event[] = [box('p1', 1_000), box('p2', 2_000, { replaces: 'p1' } as Partial<Event>)]
+    const { items } = buildDraft({ meta, transcript, events, frames })
+    expect(items).toHaveLength(1)
+    expect(items[0]!.annotationIds).toEqual(['p2'])
+  })
+
+  it('動かしたり戻したりしていない古い記録は、そのまま読む', () => {
+    expect(buildDraft(material)).toEqual(buildDraft({ ...material, events: resolveAnnotationEdits(material.events) }))
+    expect(resolveAnnotationEdits(material.events)).toBe(material.events)
+  })
+})
+
 describe('静止画の選択', () => {
-  it('確定前の画像が時刻で近くても、文字が描画済みの関連画像を選ぶ', () => {
-    const events: Event[] = [{ type: 'text', id: 'x1', t: 1000, x: 10, y: 20, body: 'ボタンを濃くしてください' }]
-    const frames: FrameRef[] = [{ t: 995, path: 'empty-input' }, { t: 1050, path: 'painted-text', annotationId: 'x1' }]
+  it('確定前の画像が時刻で近くても、線が描画済みの関連画像を選ぶ', () => {
+    const events: Event[] = [{ type: 'pen', id: 'p1', t: 800, t_end: 1000, bbox: [10, 20, 30, 30] }]
+    const frames: FrameRef[] = [{ t: 995, path: 'before-stroke' }, { t: 1050, path: 'painted-stroke', annotationId: 'p1' }]
     const result = buildDraft({ meta, events, frames, transcript: [] })
     expect(result.items[0]?.frameTimes).toEqual([1050])
   })

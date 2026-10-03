@@ -4,11 +4,13 @@
  *   build/icon.icns       … macOS
  *   build/icon.ico        … Windows（16〜256px の PNG を1つにまとめる）
  *   build/icons/NxN.png   … Linux（AppImage / deb の hicolor テーマ用）
+ * 16px・24px（.ico と Linux）だけは、小さいサイズ用に線を太らせた build/brand/ferret-favicon.svg があればそれを使う
+ * （大きいアイコンをそのまま縮めると図柄がつぶれるため）。macOS の icns は icon.svg だけから作る。
  * SVG→PNG は Playwright の Chromium（背景は透明のまま）、縮小と icns は macOS 標準の sips / iconutil。
  *   node scripts/build-icon.mjs
  */
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { chromium } from '@playwright/test'
@@ -16,6 +18,10 @@ import { chromium } from '@playwright/test'
 const buildDir = resolve(import.meta.dirname, '..', 'build')
 const svg = readFileSync(join(buildDir, 'icon.svg'), 'utf8')
 const png = join(buildDir, 'icon.png')
+const smallSvgPath = join(buildDir, 'brand', 'ferret-favicon.svg')
+const smallSvg = existsSync(smallSvgPath) ? readFileSync(smallSvgPath, 'utf8') : null
+const work = mkdtempSync(join(tmpdir(), 'ade-icon-'))
+const smallPng = join(work, 'small.png')
 
 const browser = await chromium.launch()
 try {
@@ -24,12 +30,17 @@ try {
     `<!doctype html><style>html,body{margin:0;background:transparent}svg{display:block}</style>${svg}`
   )
   await page.locator('svg').screenshot({ path: png, omitBackground: true })
+  if (smallSvg) {
+    await page.setContent(
+      `<!doctype html><style>html,body{margin:0;background:transparent}svg{display:block;width:256px;height:256px}</style>${smallSvg}`
+    )
+    await page.locator('svg').screenshot({ path: smallPng, omitBackground: true })
+  }
 } finally {
   await browser.close()
 }
 
 // iconset の決まった名前と寸法（@2x は倍の画素）
-const work = mkdtempSync(join(tmpdir(), 'ade-icon-'))
 const iconset = join(work, 'icon.iconset')
 execFileSync('mkdir', [iconset])
 for (const size of [16, 32, 128, 256, 512]) {
@@ -44,7 +55,8 @@ execFileSync('iconutil', ['-c', 'icns', iconset, '-o', join(buildDir, 'icon.icns
 /** png を指定の画素に縮小して中身を返す */
 function resized(px) {
   const out = join(work, `resized-${px}.png`)
-  execFileSync('sips', ['-z', String(px), String(px), png, '--out', out], { stdio: 'ignore' })
+  const source = smallSvg && px <= 24 ? smallPng : png
+  execFileSync('sips', ['-z', String(px), String(px), source, '--out', out], { stdio: 'ignore' })
   return readFileSync(out)
 }
 

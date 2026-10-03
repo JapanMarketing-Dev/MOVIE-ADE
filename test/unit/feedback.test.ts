@@ -230,7 +230,7 @@ describe('feedback.md の生成', () => {
 
   it('送信時の指示文を作れる', () => {
     expect(renderSendCommand('.ade-movie/reviews/20261002-104012')).toBe(
-      '".ade-movie/reviews/20261002-104012/feedback.md" と、同じフォルダにある各指摘の画像を読み、送信対象の指摘をすべて実装してください。受け入れ条件は、すべての指摘が実装され、指摘ごとに完了したことを確かめたことです。確かめるときは、変更した画面や動作を実際に確認してください。テストやビルドが通るだけでは完了としません。最後に、指摘ごとに「完了／未完了（理由）」と確かめた方法を一覧で報告してください。未完了の指摘が残っている間は、完了と報告しないでください。',
+      '".ade-movie/reviews/20261002-104012/feedback.md" と、同じフォルダにある各指摘の画像を読み、送信対象の指摘をすべて実装してください。受け入れ条件は、すべての指摘が実装され、指摘ごとに完了したことを確かめたことです。確かめるときは、変更した画面や動作を実際に確認してください。テストやビルドが通るだけでは完了としません。最後に、指摘ごとに「完了／未完了（理由）」と確かめた方法を一覧で報告してください。未完了の指摘が残っている間は、完了と報告しないでください。 作業しながら、feedback.md の「進み具合」の節に従って ".ade-movie/reviews/20261002-104012/progress.json" に指摘ごとの進み具合を書いてください（着手したら in_progress、終えたら done）。 未完了の指摘は、使えるならサブエージェントで並列に進めてください。前提が合わない指摘（録画が古いなど）は直さず、理由を note に書いて needs_human にしてください。',
     )
   })
 })
@@ -244,19 +244,16 @@ describe('下書きのままの feedback.md（LLM未使用）', () => {
     expect(doc.organizedByLlm).toBe(false)
     expect(md).toContain('- この一覧はルールによる自動分割のみで、要約されていない')
     expect(md).toContain('この見出しが小さいですね もう少し大きくしてください')
-    expect(md).toContain('- 要望: ここは「月額」表記に統一')
-    expect(md).toContain('書き込み「ここは「月額」表記に統一」')
     // 書き込み単独の指摘も残る
     expect(md).toContain('ペンで囲んだ箇所')
   })
 
-  it('置かれたテキストは、それ自体を見出しにする', () => {
-    const material2 = {
-      ...material,
-      transcript: [],
-    }
+  it('書き込みだけの指摘は、ペンの見出しを付ける', () => {
+    const material2 = { ...material, transcript: [] }
     const draft = buildDraft(material2)
     const doc = assembleFromDraft(material2, draft.items)
-    expect(doc.items.map((i) => i.title)).toContain('ここは「月額」表記に統一')
+    expect(doc.items.length).toBeGreaterThan(0)
+    // 囲んだ要素（表示テキスト、無ければセレクタ）を見出しに添える
+    expect(doc.items.map((i) => i.title)).toEqual(['ペンで囲んだ箇所: “申し込む”', 'ペンで囲んだ箇所: div.footer'])
   })
 })

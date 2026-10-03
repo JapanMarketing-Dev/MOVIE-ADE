@@ -13,7 +13,17 @@
  * 自前のリサンプラを持たずに済み、品質も安定する。
  */
 
+import { init as initSentry } from '@sentry/electron/renderer'
+
 export {} // このファイルをモジュールにする（declare global のため）
+
+/*
+ * 録画ウインドウの例外もクラッシュレポートに載せる（src/main/telemetry.ts）。main が Sentry を初期化した起動だけ、
+ * Sentry の preload が __SENTRY_IPC__ を置くので、それがあるときだけ初期化する。操作の記録（パンくず）は集めない
+ */
+if ((window as { __SENTRY_IPC__?: unknown }).__SENTRY_IPC__) {
+  initSentry({ integrations: (defaults) => defaults.filter((i) => i.name !== 'Breadcrumbs' && i.name !== 'HttpContext'), maxBreadcrumbs: 0 })
+}
 
 interface StartPayload {
   sourceKind: 'tab' | 'desktop'

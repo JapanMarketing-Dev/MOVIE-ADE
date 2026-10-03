@@ -180,9 +180,59 @@
   font-size: var(--font-size-sm);
 }
 
+.rv-head__primary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* 高さは隣の道具・整理と同じ1段にそろえる */
 .rv-send {
-  height: 30px;
-  padding: 0 var(--space-6);
+  padding: 0 var(--space-5);
+}
+
+/* 送信と宛先の選択（▾）を1つのボタンに見せる */
+.rv-send-split {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.rv-send-split .rv-send {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.rv-send-split__toggle {
+  width: auto;
+  padding: 0 var(--space-2);
+  border-left: 1px solid rgb(0 0 0 / 18%);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.rv-send-menu .quick-launch__item[aria-checked='true'] {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+/* 指摘の画面から追加で録る（このレビューの末尾に足す）。送信の左に置く。隣の ＋ は新しいレビュー（⌘⇧R と同じ） */
+.rv-record {
+  padding: 0 var(--space-4);
+}
+
+.rv-record-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* 見出しの下の1行の手順（確かめる → 送信。整理は任意） */
+.rv-head__hint {
+  flex-basis: 100%;
+  order: 3;
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
 }
 
 /* 選択欄の矢印。ネイティブの矢印は地の色と合わないので描き直す */
@@ -472,6 +522,17 @@ div.rv-card__shot {
   padding: 0;
 }
 
+.rv-card__transcript svg {
+  margin-right: var(--space-2);
+  vertical-align: -1px;
+}
+
+.rv-card__transcript-label {
+  margin-right: var(--space-2);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium, 500);
+}
+
 .rv-card__quote {
   display: -webkit-box;
   overflow: hidden;
@@ -499,6 +560,24 @@ div.rv-card__shot {
   font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-bold);
   gap: var(--space-2);
+}
+
+/* 追記した録画の指摘。まだ Agent へ送っていなければ色を付ける */
+.rv-added {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-hover);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-bold);
+}
+
+.rv-added.is-unsent {
+  background: var(--color-accent-quiet);
+  color: var(--color-accent);
 }
 
 .rv-card__foot {
@@ -1215,6 +1294,70 @@ div.rv-card__shot {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-3);
+}
+
+/* ── 設定: AI の提供元（提供元 → モデル → キー。ほかは「詳細」） ── */
+
+.st-endpoint,
+.st-keystep {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.st-keystep .st-key__actions {
+  align-items: center;
+}
+
+/* キーの欄は「保存済み…」の案内が切れないよう、Custom の Base URL・モデル名も URL が読めるよう広めにする */
+.st-keystep .field,
+.st-endpoint > .st-row .field {
+  width: min(100%, 360px);
+}
+
+/* モデル（一言の説明と料金つき）は、ラベルの下に幅いっぱいで出す */
+.st-row.st-row--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.st-row--stack .rv-select,
+.st-row--stack .st-select {
+  width: 100%;
+  max-width: 520px;
+}
+
+.st-advanced__chevron {
+  transition: transform var(--duration-fast, 120ms) ease;
+}
+
+.st-advanced[open] .st-advanced__chevron {
+  transform: rotate(90deg);
+}
+
+.st-link {
+  display: inline-flex;
+  align-items: center;
+  margin-right: auto;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  gap: var(--space-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.st-link:hover {
+  color: var(--color-text);
+}
+
+.st-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.st-check .st-note {
+  margin: 0;
 }
 
 /* ── 設定: Agent の起動コマンド ───────────────────────── */

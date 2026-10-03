@@ -30,17 +30,7 @@ export interface CuePen {
   selector: string;
   text?: string;
 }
-export interface CueText {
-  type: 'text';
-  at: number;
-  id: string;
-  x: number;
-  y: number;
-  body: string;
-  selector?: string;
-  elText?: string;
-}
-export type Cue = CueNav | CueClick | CueScroll | CuePen | CueText;
+export type Cue = CueNav | CueClick | CueScroll | CuePen;
 
 export interface Line {
   /** 'self' = マイク系統、'other' = PC音声系統 */

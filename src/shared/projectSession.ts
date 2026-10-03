@@ -50,7 +50,7 @@ export function withProjectSession(projects: Project[], id: string, patch: Parti
  * 前に開いていた URL → 登録 URL の先頭 → 空の画面 の順。
  */
 export function sessionUrl(project: Pick<Project, 'urls' | 'session'>): string {
-  return project.session?.url ?? project.urls[0]?.url ?? DEFAULT_URL
+  return project.session?.url ?? project.urls.find((u) => u.url)?.url ?? DEFAULT_URL
 }
 
 /** URL の記録に使ってよいか（空の画面や読み込み途中は覚えない） */

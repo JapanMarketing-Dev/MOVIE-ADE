@@ -65,3 +65,56 @@ describe('プロジェクトごとの作業の状態', () => {
     expect(decodeCenterTab(undefined, '/work/app')).toBeUndefined()
   })
 })
+
+describe('settings.json / state.json に分けて保存しても、プロジェクトの状態が戻る', async () => {
+  const { splitSettings, mergeSettings } = await import('../../src/main/settingsFile')
+
+  it('保存 → settings.json と state.json に分ける → 読み直す → 切り替えで戻す、の一巡で URL・タブ・ファイルを失わない', () => {
+    // 2つのプロジェクトで別々の URL・ファイルを開き、状態を覚えた（main の recordProjectUrl と project:saveSession と同じ関数で）
+    let running = sanitize({
+      activeProjectId: 'b',
+      projects: [
+        { id: 'a', name: 'app', folderPath: '/work/app', urls: [{ id: 'l', label: 'local', url: 'http://localhost:3000' }] },
+        { id: 'b', name: 'bid', folderPath: '/work/bid', kind: 'desktop', urls: [{ id: 'w', label: 'dev', launchCommand: 'pnpm tauri dev', windowMatch: 'Bid' }] }
+      ]
+    })
+    running = { ...running, projects: withProjectSession(running.projects, 'a', { url: 'http://localhost:3000/pricing' }) }
+    running = { ...running, projects: withProjectSession(running.projects, 'a', { centerTab: encodeCenterTab('file:/work/app/src/a.ts', '/work/app'), openFiles: ['src/a.ts', 'README.md'], reviewId: '20261003-101500' }) }
+    running = { ...running, projects: withProjectSession(running.projects, 'b', { url: 'http://localhost:1420/', centerTab: 'findings', openFiles: ['main.rs'] }) }
+
+    // 書き出す（ファイルへは JSON として書くので、往復させる）
+    const { config, state } = splitSettings(running)
+    const settingsJson = JSON.parse(JSON.stringify(config)) as Record<string, unknown>
+    const stateJson = JSON.parse(JSON.stringify(state)) as unknown
+    // 作業の状態は settings.json には入らず、state.json の sessions[projectId] に入る
+    expect((settingsJson.projects as Array<Record<string, unknown>>).some((p) => 'session' in p)).toBe(false)
+    expect(Object.keys((stateJson as { sessions: object }).sessions).sort()).toEqual(['a', 'b'])
+
+    // 再起動で読み直す
+    const restored = sanitize(mergeSettings(settingsJson, stateJson))
+    const a = restored.projects.find((p) => p.id === 'a')!
+    const b = restored.projects.find((p) => p.id === 'b')!
+    expect(restored.activeProjectId).toBe('b')
+    expect(b.kind).toBe('desktop')
+    expect(b.urls).toEqual(running.projects[1]!.urls)
+    // 切り替えで戻すもの（main は sessionUrl、renderer は decodeCenterTab と openFiles を使う）
+    expect(sessionUrl(a)).toBe('http://localhost:3000/pricing')
+    expect(decodeCenterTab(a.session?.centerTab, a.folderPath)).toBe('file:/work/app/src/a.ts')
+    expect(a.session?.openFiles).toEqual(['src/a.ts', 'README.md'])
+    expect(a.session?.reviewId).toBe('20261003-101500')
+    expect(sessionUrl(b)).toBe('http://localhost:1420/')
+    expect(decodeCenterTab(b.session?.centerTab, b.folderPath)).toBe('findings')
+    expect(b.session?.openFiles).toEqual(['main.rs'])
+  })
+
+  it('state.json が無い古い設定（session を settings.json の中に持っていた版）からも戻る', () => {
+    const legacy = { projects: [{ id: 'a', name: 'app', folderPath: '/work/app', urls: [], session: { url: 'http://old', openFiles: ['x.ts'] } }] }
+    const restored = sanitize(mergeSettings(legacy, undefined))
+    expect(restored.projects[0]!.session).toEqual({ url: 'http://old', openFiles: ['x.ts'] })
+  })
+
+  it('状態の無いプロジェクトは state.json に空の項目を作らない', () => {
+    const running = sanitize({ projects: [{ id: 'a', name: 'app', folderPath: '/work/app', urls: [] }] })
+    expect(splitSettings(running).state.sessions).toEqual({})
+  })
+})

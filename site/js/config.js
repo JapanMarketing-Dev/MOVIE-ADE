@@ -7,6 +7,6 @@ export const DOWNLOAD_BASE = 'https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.de
  * サイトの公開 URL（末尾の / なし）。og:image・og:url・canonical の絶対 URL はここから作る。
  * HTML はビルドしないので、書き換えたら `pnpm site:meta` で各ページの meta へ反映する（単体テストがずれを検出する）。
  */
-export const SITE_URL = 'https://movie-ade.pages.dev'
+export const SITE_URL = 'https://ferretade.dev'
 
-export const REPO_URL = 'https://github.com/JapanMarketing-Dev/MOVIE-ADE'
+export const REPO_URL = 'https://github.com/JapanMarketing-Dev/ferret'

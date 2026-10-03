@@ -3,6 +3,7 @@
  * URL・要素・直前の操作は操作ログから機械的に付いた値（ItemContext）をそのまま書く。
  */
 import type { FeedbackDocument, FeedbackItem, Quote, Speaker } from './types'
+import { basename, join } from 'node:path'
 import { formatDuration, formatTimecode } from './text'
 import { redactElementText, redactText, redactUrl } from './redact'
 import { renderAgentPrompt } from '@shared/agentPrompt'
@@ -23,6 +24,16 @@ export interface RenderOptions {
   captureGaps: string[]
   /** 書き出す言語。省略時は画面の言語（文字起こしの言語とは別） */
   locale: SupportedLocale
+  /**
+   * 判定モデルでの受け入れ確認（設定で有効なときだけ）。各指摘に BEFORE の画像の絶対パスを書き、末尾に手順の節を足す。
+   * dir はレビューのフォルダ（絶対パス）。キーは書かない（Agent には中継の URL が環境変数で渡る）
+   */
+  decision?: { threshold: number; dir: string } | null
+  /**
+   * 進み具合を書くファイル（progress.json の絶対パス）。Agent が作業しながら指摘のIDごとに書き、Ferret が画面に出す。
+   * 省略時は「このファイルと同じフォルダの progress.json」と書く
+   */
+  progressFile?: string
 }
 
 const speakerKey: Record<Speaker, TranslationKey> = { self: 'feedbackMd.speaker.self', other: 'feedbackMd.speaker.other' }
@@ -96,10 +107,92 @@ export function renderFeedbackMarkdown(doc: FeedbackDocument, options: Partial<R
     for (const g of gaps) lines.push(`- ${g}`)
   }
 
+  if (items.length > 0) lines.push('', ...renderProgress(opt, tr))
+  if (opt.decision) lines.push('', ...renderDecisionCheck(opt.decision.threshold, tr))
+
   return `${lines.join('\n')}\n`
 }
 
+/**
+ * 判定モデルへ送る問い（JSON）。shell の単一引用符で囲めるよう、文に ' を入れない。
+ * test/unit/decision.test.ts が JSON として読めることを確かめる
+ */
+export const DECISION_QUESTIONS_JSON = JSON.stringify({
+  done: {
+    type: 'noul',
+    instructions: 'Is the requested change visibly implemented in the AFTER image compared to BEFORE?',
+    criteria: { false: 'The AFTER screen does not show the requested change.', true: 'The AFTER screen clearly shows the requested change where the finding points.' }
+  },
+  status: {
+    type: 'choice',
+    instructions: 'How far is the finding implemented on the AFTER screen, judged against its Done when line?',
+    criteria: {
+      done: 'Fully implemented: the AFTER screen meets the Done when line.',
+      partial: 'Some of the requested change is visible, but not all of it.',
+      not_done: 'The relevant area is unchanged or still has the reported problem.',
+      cannot_tell: 'The relevant area is not visible, or the evidence is not enough.'
+    }
+  }
+})
+
+/**
+ * 依頼の本文を作る node の1行（macOS / Linux / Windows で同じ）。画像は FERRET_DECISION_IMAGES=1 のときだけ。
+ * FERRET_DECISION_IMAGE_FORMAT=data-uri なら data:image/…;base64, を付ける（Cloudflare Workers AI は data URI でないと 422）
+ */
+export const DECISION_NODE_LINE = `node -e 'const f=require("fs"),e=process.env,b={model:e.FERRET_DECISION_MODEL,state:e.STATE,questions:JSON.parse(e.Q)};if(e.FERRET_DECISION_IMAGES==="1")b.images=[e.BEFORE,e.AFTER].map(p=>{const s=f.readFileSync(p).toString("base64");return e.FERRET_DECISION_IMAGE_FORMAT==="data-uri"?"data:image/"+(/\\.png$/i.test(p)?"png":"jpeg")+";base64,"+s:s});f.writeFileSync("req.json",JSON.stringify(b))'`
+
+/** feedback.md の末尾の受け入れ確認の節。全件が同じ回で合格するまで、判定と修正を繰り返させる */
+function renderDecisionCheck(threshold: number, tr: Tr): string[] {
+  const p = { threshold: String(threshold) }
+  return [
+    '---',
+    `## ${tr('feedbackMd.check.heading')}`,
+    tr('feedbackMd.check.intro'),
+    '',
+    tr('feedbackMd.check.capture'),
+    tr('feedbackMd.check.judge'),
+    tr('feedbackMd.check.imageFormat'),
+    tr('feedbackMd.check.pass', p),
+    tr('feedbackMd.check.loop'),
+    tr('feedbackMd.check.progress'),
+    '',
+    tr('feedbackMd.check.rules'),
+    tr('feedbackMd.check.exits'),
+    tr('feedbackMd.check.report'),
+    '',
+    tr('feedbackMd.check.snippet'),
+    '```sh',
+    'STATE=\'<title> / <request> / Done when: <...>\' BEFORE=/abs/path/01.png AFTER=/abs/path/after-01.png',
+    `export STATE BEFORE AFTER Q='${DECISION_QUESTIONS_JSON}'`,
+    DECISION_NODE_LINE,
+    'curl -sS -X POST "$FERRET_DECISION_URL" -H \'content-type: application/json\' --data-binary @req.json',
+    '```',
+    tr('feedbackMd.check.windows'),
+    '',
+    tr('feedbackMd.check.imageSize')
+  ]
+}
+
 type Tr = (key: TranslationKey, params?: MessageParams) => string
+
+/**
+ * 進み具合の節。Ferret は直ったかを判定しないので、Agent に指摘のIDごとに progress.json へ書かせる。
+ * 受け入れ確認（判定モデル）が有効なら、合格してから done にさせる（受け入れ確認の節と食い違わないように）
+ */
+function renderProgress(opt: RenderOptions, tr: Tr): string[] {
+  const path = opt.progressFile ?? tr('feedbackMd.progress.sameFolder')
+  return [
+    '---',
+    `## ${tr('feedbackMd.progress.heading')}`,
+    tr('feedbackMd.progress.intro', { path }),
+    tr('feedbackMd.progress.format'),
+    tr('feedbackMd.progress.when'),
+    // 未完了の指摘はサブエージェントなどで並列に。前提が合わない指摘は直さずに人間へ戻させる（needs_human）
+    tr('feedbackMd.progress.parallel'),
+    tr('feedbackMd.progress.needsHuman'),
+    ...(opt.decision ? [tr('feedbackMd.progress.decision'), tr('feedbackMd.progress.decisionNeedsHuman')] : [])
+  ]
+}
 
 /** 対象の節の見出し。Agent がどのファイル・どの環境のURLへの指摘か分かるように書く */
 function renderSection(target: ReviewTarget, n: number, tr: Tr): string[] {
@@ -118,6 +211,8 @@ function renderSection(target: ReviewTarget, n: number, tr: Tr): string[] {
 function renderItem(it: FeedbackItem, n: number, opt: RenderOptions, tr: Tr): string[] {
   const mark = it.status === 'needs_check' ? tr('feedbackMd.needsCheckMark') : ''
   const out: string[] = [`## ${n}. [${formatTimecode(it.t)}] ${mark}${it.title}`]
+  // 進み具合（progress.json）のキー。番号は編集で振り直すので、変わらない ID を書く
+  out.push(tr('feedbackMd.findingId', { id: it.id }))
 
   if (it.request) out.push(tr('feedbackMd.request', { value: it.request }))
   // 受け入れ条件。要望から機械的に作る（要望が無ければ見出しから）。結論の出ていない指摘には付けない
@@ -126,6 +221,9 @@ function renderItem(it: FeedbackItem, n: number, opt: RenderOptions, tr: Tr): st
   }
   if (it.quotes.length > 0) out.push(tr('feedbackMd.quotes', { value: renderQuotes(it.quotes, opt.showSpeakers, tr) }))
   if (it.images.length > 0) out.push(`- ${tr('feedbackMd.label.images')}: ${it.images.join(' / ')}`)
+  // 受け入れ確認で判定モデルへ送る BEFORE（注釈付きの静止画）。Agent がどこから読んでも開けるよう絶対パスで書く
+  const before = opt.decision ? it.images.find((name) => /^\.\/\d+\.png$/.test(name)) : undefined
+  if (opt.decision && before) out.push(tr('feedbackMd.beforeImage', { path: join(opt.decision.dir, basename(before)) }))
 
   const c = it.context
   if (c.url) {

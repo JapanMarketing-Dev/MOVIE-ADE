@@ -1,9 +1,9 @@
 /*
- * MOVIE-ADE docs (site/docs/)
+ * Ferret docs (site/docs/)
  *
  * Colors, type, buttons, header, and footer come from ../style.css.
  * This file only adds the three-column docs layout (pages / content / on this page) and content styles.
- * It uses only the ../style.css tokens (--bg, --text, --border, --accent …); light / dark is handled there.
+ * It uses only the ../style.css tokens (--bg, --text, --border, --accent …). The site has one dark theme.
  */
 
 .docs-layout {
@@ -41,6 +41,14 @@
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
+}
+
+.docs-eyebrow {
+  display: inline-block;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
 }
 
 .docs-sidebar ul,
@@ -104,7 +112,8 @@
 }
 
 .docs-content h1 {
-  font-size: 32px;
+  font-size: 40px;
+  letter-spacing: -0.035em;
   margin-bottom: 12px;
 }
 
@@ -169,12 +178,13 @@
 }
 
 .docs-content pre {
-  padding: 12px 14px;
-  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
   background: var(--bg-sunken);
   border: 1px solid var(--border);
   overflow-x: auto;
-  line-height: 1.6;
+  line-height: 1.65;
+  color: var(--text);
 }
 
 kbd {
@@ -330,8 +340,8 @@ kbd {
 }
 
 .docs-pager a:hover {
-  border-color: var(--border-strong);
-  background: var(--surface-hover);
+  border-color: var(--accent-line);
+  background: var(--accent-wash);
   text-decoration: none;
 }
 
@@ -475,4 +485,25 @@ kbd + kbd {
 .docs-figure img {
   border: 0;
   border-radius: 0;
+}
+
+/* Feature clips (short looping videos next to the text) */
+.docs-clip {
+  margin: 0 0 18px;
+}
+
+.docs-clip-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius-lg);
+  background: var(--bg-sunken);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.docs-clip figcaption {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
 }

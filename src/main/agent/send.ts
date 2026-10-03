@@ -34,7 +34,8 @@ export type SendFailure =
   | 'write-failed'
 
 export type SendResult =
-  | { ok: true; bytes: number; writes: number }
+  /** submitted: Enter まで送った。false なら貼り付けただけ（利用者が Enter を押す） */
+  | { ok: true; bytes: number; writes: number; submitted: boolean }
   | { ok: false; failure: SendFailure; message: string; bodyWritten: boolean }
 
 export interface SendOptions {
@@ -47,6 +48,11 @@ export interface SendOptions {
   submitDelayMs?: number
   /** テストで差し替える */
   sleep?: (ms: number) => Promise<void>
+  /**
+   * 貼り付けのあと Enter を送るか（既定は送る）。Enter で送信されると確かめていない Agent では false にし、
+   * 貼り付けるだけにする（@shared/sendTarget の agentSubmitsPaste）
+   */
+  submit?: boolean
 }
 
 const DEFAULT_SUBMIT_DELAY_MS = 50
@@ -85,6 +91,9 @@ export async function sendToAgent(options: SendOptions): Promise<SendResult> {
     return fail('write-failed', false, e)
   }
 
+  // Enter を送らない Agent は、貼り付けたところで終える（利用者が中身を見て Enter を押す）
+  if (options.submit === false) return { ok: true, bytes: Buffer.byteLength(payload, 'utf8'), writes, submitted: false }
+
   // ③ 待つ
   await sleep(delay)
 
@@ -101,7 +110,7 @@ export async function sendToAgent(options: SendOptions): Promise<SendResult> {
     return fail('partial', true, e)
   }
 
-  return { ok: true, bytes: Buffer.byteLength(payload, 'utf8'), writes }
+  return { ok: true, bytes: Buffer.byteLength(payload, 'utf8'), writes, submitted: true }
 }
 
 /**

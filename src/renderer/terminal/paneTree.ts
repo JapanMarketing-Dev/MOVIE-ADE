@@ -98,3 +98,87 @@ export function neighborLeaf(node: PaneNode, leafId: string): string | null {
   if (index < 0) return ids[0] ?? null
   return ids[index - 1] ?? ids[index + 1] ?? null
 }
+
+/**
+ * ドラッグ＆ドロップで落とす位置。edge は対象のペインのその辺に分割して置く、center はタブとして置く。
+ *
+ * Orca由来: ~/bench/orca/src/renderer/src/lib/pane-manager/pane-manager-types.ts（DropZone）,
+ *           ~/bench/orca/src/renderer/src/lib/pane-manager/pane-tree-ops.ts（insertPaneNextTo）,
+ *           ~/bench/orca/src/renderer/src/components/tab-group/tab-drop-zone.ts（resolveDropZone）（MIT, Copyright 2026 Lovecast Inc.）
+ */
+export type PaneEdge = 'left' | 'right' | 'top' | 'bottom'
+export type PaneDropZone = PaneEdge | 'center'
+
+interface DropRect {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+/** 辺から内側へこの割合までが分割（辺）の範囲。残りの中央はタブとして置く */
+export const PANE_DROP_EDGE_FRACTION = 0.25
+/** ターミナルの領域全体の外周のこの幅に落とすと、いちばん外側で分割する（ペインが2枚以上のとき） */
+export const ROOT_DROP_BAND_PX = 18
+
+/**
+ * ペインの中のどこに落とすか。Orca のタブの落とし先（VS Code に合わせた）と同じく中央を残し、
+ * 辺の帯の中では、いちばん近い辺（大きさに対する割合で比べる。Orca の pane-drag-pointer）を選ぶ。
+ * Orca の辺の帯は 10% だが、ターミナルは小さく分けることが多いので 25% に広げた
+ */
+export function resolvePaneDropZone(rect: DropRect, point: { x: number; y: number }): PaneDropZone {
+  const relX = rect.width > 0 ? (point.x - rect.left) / rect.width : 0.5
+  const relY = rect.height > 0 ? (point.y - rect.top) / rect.height : 0.5
+  const distances: Array<[PaneEdge, number]> = [
+    ['left', relX],
+    ['right', 1 - relX],
+    ['top', relY],
+    ['bottom', 1 - relY]
+  ]
+  const [edge, distance] = distances.sort((a, b) => a[1] - b[1])[0]!
+  return distance < PANE_DROP_EDGE_FRACTION ? edge : 'center'
+}
+
+/** ターミナルの領域全体の外周の帯に入っていれば、その辺 */
+export function resolveRootEdge(rect: DropRect, point: { x: number; y: number }, band = ROOT_DROP_BAND_PX): PaneEdge | null {
+  const x = point.x - rect.left
+  const y = point.y - rect.top
+  if (x < 0 || y < 0 || x > rect.width || y > rect.height) return null
+  const distances: Array<[PaneEdge, number]> = [
+    ['left', x],
+    ['right', rect.width - x],
+    ['top', y],
+    ['bottom', rect.height - y]
+  ]
+  const [edge, distance] = distances.sort((a, b) => a[1] - b[1])[0]!
+  return distance <= band ? edge : null
+}
+
+function splitAt(target: PaneNode, edge: PaneEdge, moved: PaneNode): PaneNode {
+  const direction: PaneSplitDirection = edge === 'left' || edge === 'right' ? 'vertical' : 'horizontal'
+  const movedFirst = edge === 'left' || edge === 'top'
+  return { type: 'split', direction, first: movedFirst ? moved : target, second: movedFirst ? target : moved, ratio: 0.5 }
+}
+
+/** 対象のペインをその辺で分割し、moved（1枚でも分割の木でもよい）を置く */
+export function insertAtLeaf(node: PaneNode, targetLeafId: string, edge: PaneEdge, moved: PaneNode): PaneNode {
+  if (node.type === 'leaf') return node.leafId === targetLeafId ? splitAt(node, edge, moved) : node
+  const first = insertAtLeaf(node.first, targetLeafId, edge, moved)
+  const second = first === node.first ? insertAtLeaf(node.second, targetLeafId, edge, moved) : node.second
+  return first === node.first && second === node.second ? node : { ...node, first, second }
+}
+
+/** いちばん外側で分割して置く（領域全体の辺に落としたとき） */
+export function insertAtRoot(node: PaneNode, edge: PaneEdge, moved: PaneNode): PaneNode {
+  return splitAt(node, edge, moved)
+}
+
+/**
+ * 同じ木の中でペインを動かす（Orca の handlePaneDrop: 外してから、対象の隣に入れる）。
+ * 自分自身に落とした・対象が無いときは、そのまま返す
+ */
+export function moveLeaf(node: PaneNode, sourceLeafId: string, targetLeafId: string, edge: PaneEdge): PaneNode {
+  if (sourceLeafId === targetLeafId || !hasLeaf(node, sourceLeafId) || !hasLeaf(node, targetLeafId)) return node
+  const rest = removeLeaf(node, sourceLeafId)
+  return rest ? insertAtLeaf(rest, targetLeafId, edge, leaf(sourceLeafId)) : node
+}

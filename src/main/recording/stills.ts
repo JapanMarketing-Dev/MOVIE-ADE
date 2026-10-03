@@ -4,7 +4,7 @@ import type { NativeImage, WebContents } from 'electron'
 import type { FrameRef } from '../pipeline/types'
 import type { RecordingClock } from './clock'
 import type { RecordingOptions } from './types'
-import { frameFileName, hasChanged, targetWidth } from './frames'
+import { frameFileName, hasChanged, isNearlyBlank, targetWidth } from './frames'
 // 静止画の時刻を t と呼ぶので、文の取り出しは別名にする
 import { t as translateMessage } from '@shared/i18n'
 import { reportHandled } from '@shared/report'
@@ -51,8 +51,6 @@ export class StillCapturer {
   private busy = false
   private pendingForced = 0
   private readonly frames: FrameRef[] = []
-  /** 入力中の書き込みごとに控えた画面（prepare） */
-  private readonly prepared = new Map<string, { image: NativeImage; t: number }>()
   /** 計測用。1枚あたりの所要時間(ms) */
   readonly timings: number[] = []
 
@@ -95,58 +93,37 @@ export class StillCapturer {
   }
 
   /**
-   * いますぐ撮る。ペン・テキストの確定時とクリック時に呼ぶ。
+   * いますぐ撮る。ペンの確定時とクリック時に呼ぶ。
    * `force` のときは変化がなくても保存する（その瞬間の画像が指摘の根拠になるため）。
    */
-  async captureNow(reason: string, cursor?: { x: number; y: number; view?: { width: number; height: number } }, annotationId?: string, usePrepared = false): Promise<FrameRef | null> {
+  async captureNow(reason: string, cursor?: { x: number; y: number; view?: { width: number; height: number } }, annotationId?: string): Promise<FrameRef | null> {
     this.pendingForced++
     try {
-      // ページを離れるために確定した書き込みは、入力中に控えた画面を使う（いまの画面は次のページ）
-      const preset = usePrepared && annotationId ? this.prepared.get(annotationId) : undefined
-      if (annotationId) this.prepared.delete(annotationId)
       // 注入側のDOM更新が合成器に描画されてから撮る。
-      if (annotationId && !preset) await new Promise((done) => setTimeout(done, 40))
+      if (annotationId) await new Promise((done) => setTimeout(done, 40))
       // 定期撮影と重なっても、確定した書き込みの根拠画像は落とさない。
       while (this.busy) await new Promise((done) => setTimeout(done, 10))
-      return await this.tick(reason, true, cursor, annotationId, preset)
+      return await this.tick(reason, true, cursor, annotationId)
     } finally { this.pendingForced-- }
-  }
-
-  /**
-   * 入力中の書き込み（吹き出し）が写った画面を控える。保存はしない。
-   * SPA の遷移で書きかけのまま確定したとき、captureNow(…, usePrepared) がこれを使う。
-   */
-  async prepare(annotationId: string): Promise<void> {
-    if (this.source.gone) return
-    const t = this.clock.now()
-    // 撮れない瞬間（ページの切り替え中など）は飛ばす（想定内。撮れなかったことは onWarning で伝える箇所がある）
-    const image = await this.source.capture().catch(() => null)
-    if (!image || image.isEmpty()) return
-    this.prepared.delete(annotationId)
-    this.prepared.set(annotationId, { image, t })
-    // 確定されずに消えた吹き出しの控えを溜め込まない
-    while (this.prepared.size > 4) this.prepared.delete(this.prepared.keys().next().value!)
   }
 
   private async tick(
     reason: string,
     force = false,
     cursor?: { x: number; y: number; view?: { width: number; height: number } },
-    annotationId?: string,
-    /** 撮らずにこの画面を使う（prepare で控えたもの） */
-    preset?: { image: NativeImage; t: number }
+    annotationId?: string
   ): Promise<FrameRef | null> {
     // 前の撮影が終わっていないときは飛ばす（録画中の操作を重くしない。NF-4）
     if (this.busy) return null
-    if (this.source.gone && !preset) return null
+    if (this.source.gone) return null
     this.busy = true
-    const t = preset?.t ?? this.clock.now()
+    const t = this.clock.now()
     const startedAt = Date.now()
     try {
       // 遷移の直後は合成器がまだ準備できておらず UnknownVizError になることがある。
       // 1度だけ待って撮り直す
       // 撮れなければ1度だけ撮り直す（想定内）
-    let image = preset?.image ?? await this.source.capture().catch(() => null)
+      let image = await this.source.capture().catch(() => null)
       if (!image || image.isEmpty()) {
         await new Promise((done) => setTimeout(done, 120))
         if (this.source.gone) return null
@@ -169,7 +146,8 @@ export class StillCapturer {
       cursor ??= this.handlers.getCursor?.()
       const size = saved.getSize()
       const scaled = cursor?.view && cursor.view.width > 0 && cursor.view.height > 0 ? { x: cursor.x / cursor.view.width * size.width, y: cursor.y / cursor.view.height * size.height } : undefined
-      const frame: FrameRef = { t, path: name, size, ...(annotationId ? { annotationId } : {}), ...(scaled ? { cursor: scaled } : {}) }
+      const frame: FrameRef = { t, path: name, size, ...(annotationId ? { annotationId } : {}), ...(scaled ? { cursor: scaled } : {}),
+        ...(isNearlyBlank(signature) ? { blank: true } : {}) }
       this.frames.push(frame)
       this.handlers.onFrame(frame)
       return frame

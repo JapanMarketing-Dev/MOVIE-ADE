@@ -8,7 +8,7 @@ import { readdir, stat } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { SessionPaths } from './paths'
-import { isSessionId, reviewsRoot, sessionPaths } from './paths'
+import { listSessionIds, sessionPaths } from './paths'
 
 export interface RecoverableSession {
   paths: SessionPaths
@@ -29,12 +29,11 @@ export interface RecoverableSession {
  * `session.json` が無く、かつ素材が残っているものが対象。
  */
 export async function findIncompleteSessions(projectDir: string): Promise<RecoverableSession[]> {
-  // まだ録画していないプロジェクトにはフォルダが無い（想定内）
-  const names = await readdir(reviewsRoot(projectDir)).catch(() => [] as string[])
+  // .ferret/ と改名前の .ade-movie/ の両方（まだ録画していないプロジェクトにはフォルダが無い。想定内）
+  const names = await listSessionIds(projectDir)
   const out: RecoverableSession[] = []
 
   for (const name of names) {
-    if (!isSessionId(name)) continue
     const paths = sessionPaths(projectDir, name)
     // 一覧のあとに消されたものは飛ばす（想定内）
     const dir = await stat(paths.dir).catch(() => null)

@@ -21,7 +21,7 @@
 #   PUBLISH_NAME     作者名（既定: takumi123）
 #   PUBLISH_EMAIL    作者のメール。<id>+<login>@users.noreply.github.com の形だけを受け付ける
 #                    （既定: 7465033+takumi123@users.noreply.github.com）
-#   PUBLISH_MESSAGE  コミットのメッセージ（既定: Initial public release）
+#   PUBLISH_MESSAGE  コミットのメッセージ（既定: 元の ref の package.json の版から「Release <version>」）
 #   PUBLISH_FORBIDDEN_FILE
 #                    公開版に残っていたら止める文字列（正規表現、1行に1つ）を書いたファイル。
 #                    実名などをこのスクリプトに書くと公開されてしまうので、別のファイルに置く。
@@ -33,10 +33,11 @@ set -euo pipefail
 SOURCE_REF="${1:-develop}"
 REMOTE="${PUBLISH_REMOTE:-origin}"
 BRANCH="${PUBLISH_BRANCH:-main}"
-MESSAGE="${PUBLISH_MESSAGE:-Initial public release}"
-
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
+# 題名は版ごとにする（公開の履歴が読めるように）。版が読めなければ止める
+SOURCE_VERSION="$(git show "${SOURCE_REF}:package.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const v=JSON.parse(s).version;if(!v)process.exit(1);process.stdout.write(v)})')"
+MESSAGE="${PUBLISH_MESSAGE:-Release ${SOURCE_VERSION}}"
 FORBIDDEN_FILE="${PUBLISH_FORBIDDEN_FILE:-$ROOT/.publish-forbidden.txt}"
 
 # 公開版に含めないもの。手元の develop には残す

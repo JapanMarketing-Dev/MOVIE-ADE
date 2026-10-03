@@ -1,11 +1,12 @@
 {
   "name": "ade-movie",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "license": "MIT",
   "description": "画面を操作しながら喋って囲むだけでUIフィードバックをAgentへ渡すデスクトップADE",
-  "repository": "github:JapanMarketing-Dev/MOVIE-ADE",
-  "desktopName": "movie-ade.desktop",
+  "repository": "github:JapanMarketing-Dev/ferret",
+  "desktopName": "ferret.desktop",
+  "author": "JapanMarketing-Dev",
   "main": "out/main/index.js",
   "engines": {
     "node": ">=20"
@@ -31,7 +32,8 @@
     "lp:dev": "node tools/qa/serve-site.mjs",
     "docs:build": "node tools/docs/build-docs.mjs",
     "site:deploy": "npx --yes wrangler@4 pages deploy site --project-name movie-ade --branch main",
-    "site:meta": "node tools/qa/site-meta.mjs"
+    "site:meta": "node tools/qa/site-meta.mjs && node tools/docs/site-hash.mjs",
+    "site:hash": "node tools/docs/site-hash.mjs"
   },
   "pnpm": {
     "//": "インストール時にビルド／ダウンロードのスクリプトを走らせる必要があるものだけを許可する",

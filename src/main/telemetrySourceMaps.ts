@@ -141,7 +141,10 @@ export async function remapDevFrames(event: { exception?: { values?: Array<{ sta
     for (const frame of value.stacktrace?.frames ?? []) {
       const name = frame.filename ?? ''
       if (rendererOrigin && name.startsWith(rendererOrigin)) {
-        const loaded = await loadUrlMap(name, opts)
+        // Vite の root の外（@shared など）は /@fs/<絶対パス>。先に SDK がアプリの場所を app:/// に縮めていると
+        // 「/@fsapp:///src/...」になるので、取りに行く前に元の URL に戻す
+        const url = name.replace('/@fsapp:///', `/@fs${opts.appPath.split(sep).join('/').replace(/\/$/, '')}/`)
+        const loaded = await loadUrlMap(url, opts)
         if (loaded) apply(frame, loaded)
         continue
       }
@@ -153,4 +156,48 @@ export async function remapDevFrames(event: { exception?: { values?: Array<{ sta
       if (loaded) apply(frame, loaded)
     }
   }
+}
+
+/** 配布版の JS の末尾の `//# debugId=…`（sentry sourcemap upload が書き込む）。ファイルごとに1度だけ読む */
+const debugIdCache = new Map<string, string | null>()
+const DEBUG_ID = /\/\/# debugId=([0-9a-fA-F-]{36})\s*$/
+
+function debugIdOf(file: string): string | null {
+  if (debugIdCache.has(file)) return debugIdCache.get(file)!
+  let id: string | null = null
+  try {
+    const text = readFileSync(file, 'utf8')
+    id = DEBUG_ID.exec(text.slice(-200))?.[1] ?? null
+  } catch {
+    // 読めないファイル（asar の外・消えた）は付けない（想定内）
+  }
+  debugIdCache.set(file, id)
+  return id
+}
+
+type DebugMetaEvent = {
+  exception?: { values?: Array<{ stacktrace?: { frames?: Frame[] } }> }
+  debug_meta?: { images?: Array<Record<string, unknown>> }
+}
+
+/**
+ * 配布版：スタックの `app:///…js` のファイルに debug ID を付ける（event.debug_meta.images）。
+ * main と renderer は SDK が自分で付けるが、preload の例外（preload-error を main で受けたもの）などは付かないので、
+ * ここで補い、上げたソースマップで元の TS の行に戻せるようにする。付いているものは触らない
+ */
+export function attachDebugIds(event: DebugMetaEvent, appPath: string): void {
+  const images = event.debug_meta?.images ?? []
+  const known = new Set(images.map((i) => String(i.code_file ?? '')))
+  const added: Array<Record<string, unknown>> = []
+  for (const value of event.exception?.values ?? []) {
+    for (const frame of value.stacktrace?.frames ?? []) {
+      const name = frame.abs_path ?? frame.filename ?? ''
+      const m = /^app:\/\/\/(.+\.js)$/.exec(name)
+      if (!m || known.has(name)) continue
+      known.add(name)
+      const id = debugIdOf(join(appPath, m[1]!))
+      if (id) added.push({ type: 'sourcemap', code_file: name, debug_id: id })
+    }
+  }
+  if (added.length) event.debug_meta = { ...event.debug_meta, images: [...images, ...added] }
 }

@@ -26,7 +26,7 @@ afterEach(() => { vi.unstubAllGlobals() })
 
 const WAV = Buffer.from('RIFF....WAVEfmt fake')
 const base = (kind: CloudSttOptions['kind'], extra: Partial<CloudSttOptions> = {}): CloudSttOptions =>
-  ({ kind, label: 'X', baseUrl: STT_PROVIDER_PRESETS[kind === 'azure-openai' ? 'azure' : kind === 'chat-audio' ? 'openrouter' : kind].baseUrl || 'https://res.openai.azure.com', model: 'm', apiKey: 'key-123', ...extra })
+  ({ kind, label: 'X', baseUrl: STT_PROVIDER_PRESETS[kind === 'azure-openai' ? 'azure' : kind === 'chat-audio' ? 'openrouter' : kind === 'cloudflare-run' ? 'cloudflare' : kind === 'vercel-transcription' ? 'vercel-gateway' : kind].baseUrl || 'https://res.openai.azure.com', model: 'm', apiKey: 'key-123', ...extra })
 
 /** fetch の呼び出しを記録して、決まった応答を返す */
 function mockFetch(response: () => Response) {
@@ -339,5 +339,123 @@ describe('提供元の表示名', () => {
     expect(providerLabel(STT_PROVIDER_PRESETS.deepgram, t)).toBe('Deepgram')
     setLocale('en')
     expect(providerLabel(STT_PROVIDER_PRESETS.compatible, t)).toBe('OpenAI-compatible')
+  })
+})
+
+describe('Cloudflare Workers AI・Vercel AI Gateway の文字起こし（独自の形）', () => {
+  it('Cloudflare: .../ai/run/{model} に JSON の base64 の音声。/v1 付きの Base URL でも同じ入口', () => {
+    const opt = { kind: 'cloudflare-run' as const, label: 'CF', baseUrl: 'https://api.cloudflare.com/client/v4/accounts/abc123/ai/v1', model: '@cf/openai/whisper-large-v3-turbo', apiKey: 'cf-token', language: 'ja' as const }
+    const r = buildCloudSttRequest(opt, WAV, 'c.wav')
+    expect(r.url).toBe('https://api.cloudflare.com/client/v4/accounts/abc123/ai/run/@cf/openai/whisper-large-v3-turbo')
+    expect(r.headers.Authorization).toBe('Bearer cf-token')
+    expect(JSON.parse(r.body as string)).toEqual({ audio: WAV.toString('base64'), language: 'ja' })
+    expect(buildCloudSttRequest({ ...opt, baseUrl: 'https://api.cloudflare.com/client/v4/accounts/abc123/ai' }, WAV, 'c.wav').url).toBe(r.url)
+    expect(parseCloudSttResponse('cloudflare-run', { success: true, result: { text: 'こんにちは', segments: [{ start: 0, end: 1.2, text: 'こんにちは' }] } }))
+      .toEqual({ text: 'こんにちは', segments: [{ start: 0, end: 1.2, text: 'こんにちは' }] })
+  })
+
+  it('Vercel: /v4/ai/transcription-model に JSON、モデルと版はヘッダー', () => {
+    const r = buildCloudSttRequest({ kind: 'vercel-transcription', label: 'V', baseUrl: 'https://ai-gateway.vercel.sh', model: 'openai/gpt-4o-mini-transcribe', apiKey: 'vk' }, WAV, 'c.wav')
+    expect(r.url).toBe('https://ai-gateway.vercel.sh/v4/ai/transcription-model')
+    expect(r.headers).toMatchObject({ Authorization: 'Bearer vk', 'ai-model-id': 'openai/gpt-4o-mini-transcribe', 'ai-gateway-protocol-version': '0.0.1', 'ai-transcription-model-specification-version': '4' })
+    expect(JSON.parse(r.body as string)).toEqual({ audio: WAV.toString('base64'), mediaType: 'audio/wav' })
+    expect(parseCloudSttResponse('vercel-transcription', { text: 'hi', durationInSeconds: 2, segments: [{ text: 'hi', startSecond: 0.1, endSecond: 0.9 }] }))
+      .toEqual({ text: 'hi', durationSec: 2, segments: [{ start: 0.1, end: 0.9, text: 'hi' }] })
+  })
+})
+
+describe('認証の形の上書き（settings.json の authScheme / authHeader）', () => {
+  it('文字起こしのアダプタ: 未設定なら提供元の既定、header なら指定のヘッダー、none ならキーを送らない', () => {
+    const dg = { kind: 'deepgram' as const, label: 'D', baseUrl: 'https://api.deepgram.com/v1', model: 'nova-3', apiKey: 'k1' }
+    expect(buildCloudSttRequest(dg, WAV, 'c.wav').headers.Authorization).toBe('Token k1')
+    const viaProxy = buildCloudSttRequest({ ...dg, authScheme: 'header', authHeader: 'x-proxy-key' }, WAV, 'c.wav').headers
+    expect(viaProxy['x-proxy-key']).toBe('k1')
+    expect(viaProxy.Authorization).toBeUndefined()
+    const none = buildCloudSttRequest({ ...dg, authScheme: 'none' }, WAV, 'c.wav').headers
+    expect(Object.values(none)).not.toContain('k1')
+    expect(Object.values(none).join(' ')).not.toContain('Token')
+  })
+
+  it('整理の runner: Anthropic を Bearer にでき、OpenAI 互換は none でキーを送らない', () => {
+    const bearer = new ApiLlmRunner({ provider: 'anthropic', apiKey: 'sk-ant-k', endpoint: { authScheme: 'bearer' } }).buildRequest(req).headers
+    expect(bearer.Authorization).toBe('Bearer sk-ant-k')
+    expect(bearer['x-api-key']).toBeUndefined()
+    const none = new ApiLlmRunner({ provider: 'openrouter', apiKey: 'sk-or-k', endpoint: { authScheme: 'none' } }).buildRequest(req).headers
+    expect(JSON.stringify(none)).not.toContain('sk-or-k')
+  })
+
+  it('OpenAI 互換の文字起こし: header にすると Authorization の代わりに指定のヘッダー', async () => {
+    const calls = mockFetch(() => json({ text: 'ok' }))
+    const dir = await mkdtemp(join(tmpdir(), 'ade-auth-'))
+    try {
+      const wavPath = join(dir, 'c.wav')
+      await writeWavFile(wavPath, new Int16Array(160), 16_000)
+      await createSttEngine({ provider: 'compatible', apiKey: 'gpu-token', endpoint: { baseUrl: 'http://gpu:8000/v1', model: 'w', authScheme: 'header', authHeader: 'api-key' }, maxCostUsd: null })
+        .transcribeChunk({ wavPath, offsetMs: 0, speaker: 'self', source: 'mic', durationMs: 10 })
+      expect(calls[0]!.init.headers).toMatchObject({ 'api-key': 'gpu-token' })
+      expect((calls[0]!.init.headers as Record<string, string>).Authorization).toBeUndefined()
+    } finally { await rm(dir, { recursive: true, force: true }) }
+  })
+})
+
+describe('API の使用量の記録（数だけ。失敗も記録する）', () => {
+  let dir = ''
+  let wavPath = ''
+  const records: Array<Record<string, unknown>> = []
+  beforeEach(async () => {
+    const { setApiCallSink } = await import('../../src/main/decision/callLog')
+    records.length = 0
+    setApiCallSink((r) => { records.push(r as unknown as Record<string, unknown>) })
+    dir = await mkdtemp(join(tmpdir(), 'ade-usage-'))
+    wavPath = join(dir, 'c.wav')
+    await writeWavFile(wavPath, new Int16Array(1600), 16_000)
+  })
+  afterEach(async () => {
+    const { setApiCallSink } = await import('../../src/main/decision/callLog')
+    setApiCallSink(null)
+    await rm(dir, { recursive: true, force: true })
+  })
+  const input = () => ({ wavPath, offsetMs: 0, speaker: 'self' as const, source: 'mic' as const, durationMs: 60_000 })
+
+  it('文字起こし: 成功は単価からの見積もりを付け、失敗・つながらない送信は状態だけ', async () => {
+    mockFetch(() => json({ text: 'ok' }))
+    await createSttEngine({ provider: 'openai', apiKey: 'sk-test-abcdefghijklmnopqrstuv', maxCostUsd: null }).transcribeChunk(input())
+    expect(records[0]).toMatchObject({ kind: 'transcription', provider: 'openai', model: 'gpt-transcribe', status: 200, durationSec: 60, costSource: 'estimate' })
+    expect(records[0]!.costUsd).toBeCloseTo(0.0045)
+    expect(records[0]!.requestBytes).toBeGreaterThan(3000)
+    mockFetch(() => new Response('denied', { status: 401 }))
+    await createSttEngine({ provider: 'deepgram', apiKey: 'dg-key', maxCostUsd: null }).transcribeChunk(input()).catch(() => undefined)
+    expect(records[1]).toMatchObject({ kind: 'transcription', provider: 'deepgram', model: 'nova-3', status: 401 })
+    expect(records[1]).not.toHaveProperty('costUsd')
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('fetch failed') }))
+    await createSttEngine({ provider: 'groq', apiKey: 'gsk_abcdefghijklmnop', maxCostUsd: null }).transcribeChunk(input()).catch(() => undefined)
+    expect(records[2]).toMatchObject({ provider: 'groq', status: 0 })
+    // 単価の分からない提供元（OpenRouter）は費用を付けない
+    mockFetch(() => json({ choices: [{ message: { content: 'x' } }] }))
+    await createSttEngine({ provider: 'openrouter', apiKey: 'sk-or-k', maxCostUsd: null }).transcribeChunk(input())
+    expect(records[3]).toMatchObject({ provider: 'openrouter', status: 200 })
+    expect(records[3]).not.toHaveProperty('costUsd')
+    // 音声・本文・キーは記録に入らない
+    expect(JSON.stringify(records)).not.toMatch(/sk-test|dg-key|gsk_|sk-or-k|RIFF/)
+  })
+
+  it('整理: トークン数と、提供元が返した費用だけを付ける。失敗も記録する', async () => {
+    mockFetch(() => json({ content: [{ type: 'text', text: '{"ok":true}' }], stop_reason: 'end_turn', usage: { input_tokens: 120, output_tokens: 30 } }))
+    await new ApiLlmRunner({ provider: 'anthropic', apiKey: 'sk-ant-k' }).run(req)
+    expect(records[0]).toMatchObject({ kind: 'organize', provider: 'anthropic', model: 'claude-sonnet-5-5', status: 200, inputTokens: 120, outputTokens: 30 })
+    expect(records[0]).not.toHaveProperty('costUsd')
+    mockFetch(() => json({ choices: [{ message: { content: '{"ok":true}' } }], usage: { prompt_tokens: 10, completion_tokens: 5, cost: 0.0012 } }))
+    await new ApiLlmRunner({ provider: 'openrouter', apiKey: 'sk-or-k' }).run(req)
+    expect(records[1]).toMatchObject({ provider: 'openrouter', inputTokens: 10, outputTokens: 5, costUsd: 0.0012, costSource: 'provider' })
+    mockFetch(() => json({ candidates: [{ content: { parts: [{ text: '{"ok":true}' }] } }], usageMetadata: { promptTokenCount: 7, candidatesTokenCount: 3 } }))
+    await new ApiLlmRunner({ provider: 'gemini', apiKey: 'AIza-k' }).run(req)
+    expect(records[2]).toMatchObject({ provider: 'gemini', inputTokens: 7, outputTokens: 3 })
+    mockFetch(() => new Response('boom', { status: 500 }))
+    await new ApiLlmRunner({ provider: 'openai', apiKey: 'sk-k' }).run(req).catch(() => undefined)
+    expect(records[3]).toMatchObject({ provider: 'openai', status: 500 })
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('fetch failed') }))
+    await new ApiLlmRunner({ provider: 'ollama', endpoint: { model: 'gpt-oss:20b' } }).run(req).catch(() => undefined)
+    expect(records[4]).toMatchObject({ provider: 'ollama', status: 0 })
+    expect(JSON.stringify(records)).not.toMatch(/sk-ant-k|sk-or-k|AIza-k|PROMPT/)
   })
 })

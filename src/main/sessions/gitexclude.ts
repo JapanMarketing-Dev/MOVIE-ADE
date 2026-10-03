@@ -1,21 +1,22 @@
 /**
- * `.ade-movie/` をgit管理対象外にする（要件 NF-9）。
+ * `.ferret/`（と改名前の `.ade-movie/`）をgit管理対象外にする（要件 NF-9）。
  *
  * **`.gitignore` は変更しない**（利用者のリポジトリに差分を作らないため）。
  * 代わりに `.git/info/exclude` へ追記する。これはコミットされないローカル専用の除外設定。
  */
 import { appendFile, mkdir, readFile, stat } from 'node:fs/promises'
 import { isAbsolute, join, resolve } from 'node:path'
-import { ADE_DIR } from './paths'
+import { ADE_DIR, LEGACY_ADE_DIR } from './paths'
 
-const ENTRY = `${ADE_DIR}/`
-const HEADER = '# MOVIE-ADE が追記（録画と分解結果をgit管理対象外にする）'
+/** 除外するフォルダ。古いレビューが残る .ade-movie/ も外したままにする */
+const DIRS = [ADE_DIR, LEGACY_ADE_DIR]
+const HEADER = '# Ferret が追記（録画と分解結果をgit管理対象外にする）'
 
 export type GitExcludeResult = 'added' | 'already' | 'no-git'
 
 /**
- * `.git/info/exclude` に `.ade-movie/` を追記する。
- * 既に書かれていれば何もしない。gitリポジトリでなければ `no-git` を返す（エラーにしない）。
+ * `.git/info/exclude` に `.ferret/` と `.ade-movie/` を追記する。
+ * 両方とも書かれていれば何もしない。足りない方だけ足す。gitリポジトリでなければ `no-git` を返す（エラーにしない）。
  */
 export async function ensureGitExclude(projectDir: string): Promise<GitExcludeResult> {
   const gitDir = await resolveGitDir(projectDir)
@@ -26,19 +27,20 @@ export async function ensureGitExclude(projectDir: string): Promise<GitExcludeRe
 
   // exclude がまだ無い（想定内。作る）
   const current = await readFile(excludePath, 'utf8').catch(() => null)
-  if (current !== null && hasEntry(current)) return 'already'
+  const missing = DIRS.filter((dir) => current === null || !hasEntry(current, dir))
+  if (missing.length === 0) return 'already'
 
   await mkdir(infoDir, { recursive: true })
   const needsNewline = current !== null && current.length > 0 && !current.endsWith('\n')
-  await appendFile(excludePath, `${needsNewline ? '\n' : ''}${HEADER}\n${ENTRY}\n`, 'utf8')
+  await appendFile(excludePath, `${needsNewline ? '\n' : ''}${HEADER}\n${missing.map((dir) => `${dir}/\n`).join('')}`, 'utf8')
   return 'added'
 }
 
-function hasEntry(text: string): boolean {
+function hasEntry(text: string, dir: string): boolean {
   return text
     .split('\n')
     .map((l) => l.trim())
-    .some((l) => l === ENTRY || l === ADE_DIR || l === `/${ENTRY}` || l === `/${ADE_DIR}`)
+    .some((l) => l === `${dir}/` || l === dir || l === `/${dir}/` || l === `/${dir}`)
 }
 
 /**

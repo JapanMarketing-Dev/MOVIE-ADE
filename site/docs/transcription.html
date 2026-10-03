@@ -3,23 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Transcription and costs · MOVIE-ADE docs</title>
+  <title>Transcription and costs · Ferret docs</title>
   <meta name="description" content="Choose on-device whisper (free), your own OpenAI key, or any OpenAI-compatible endpoint such as your own GPU box. Audio goes directly from your machine to the service you pick.">
-  <meta name="color-scheme" content="light dark">
-  <link rel="canonical" href="https://movie-ade.pages.dev/docs/transcription">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#050508">
+  <link rel="canonical" href="https://ferretade.dev/docs/transcription">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="MOVIE-ADE">
-  <meta property="og:title" content="Transcription and costs · MOVIE-ADE docs">
+  <meta property="og:site_name" content="Ferret">
+  <meta property="og:title" content="Transcription and costs · Ferret docs">
   <meta property="og:description" content="Choose on-device whisper (free), your own OpenAI key, or any OpenAI-compatible endpoint such as your own GPU box. Audio goes directly from your machine to the service you pick.">
-  <meta property="og:url" content="https://movie-ade.pages.dev/docs/transcription">
-  <meta property="og:image" content="https://movie-ade.pages.dev/assets/og.png">
+  <meta property="og:url" content="https://ferretade.dev/docs/transcription">
+  <meta property="og:image" content="https://ferretade.dev/assets/og.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
-  <script src="../js/theme.js"></script>
-  <link rel="stylesheet" href="../style.css">
-  <link rel="stylesheet" href="docs.css">
-  <script src="docs.js" defer></script>
+  <script src="../js/theme.js?v=25cfd289"></script>
+  <link rel="stylesheet" href="../style.css?v=0ab30683">
+  <link rel="stylesheet" href="docs.css?v=f59e834a">
+  <script src="docs.js?v=9869221f" defer></script>
 </head>
 <!-- Generated layout: the sidebar, header, and footer are identical on every page in site/docs/. Change them on all pages together. -->
 <body data-page="docs">
@@ -27,15 +28,15 @@
   <svg class="sprite" width="0" height="0" aria-hidden="true">
     <symbol id="i-github" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
-    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
-    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-discord" viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></symbol>
   </svg>
 
   <header class="site-header">
     <div class="wrap">
-      <a class="brand" href="../index.html" aria-label="MOVIE-ADE home">
-        <img src="../favicon.svg" alt="" width="24" height="24">MOVIE-ADE
+      <a class="brand" href="../index.html" aria-label="Ferret home">
+        <img class="wordmark" src="../assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22">
       </a>
       <nav class="site-nav" aria-label="Main">
         <a href="../index.html#features">Features</a>
@@ -44,13 +45,11 @@
         <a href="../download.html#versions">Changelog</a>
       </nav>
       <div class="header-actions">
-        <button class="btn btn-sm btn-icon theme-toggle" type="button" data-theme-toggle aria-label="Toggle light and dark theme" title="Toggle theme">
-          <svg class="icon icon-moon"><use href="#i-moon"/></svg>
-          <svg class="icon icon-sun"><use href="#i-sun"/></svg>
-        </button>
-        <a class="btn btn-sm" href="https://github.com/JapanMarketing-Dev/MOVIE-ADE">
+        <a class="btn btn-sm btn-icon btn-ghost" href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-discord"/></svg><span class="sr-only">Discord</span><span class="sr-only"> (opens in a new tab)</span></a>
+        <a class="btn btn-sm btn-icon btn-ghost" href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-x"/></svg><span class="sr-only">X</span><span class="sr-only"> (opens in a new tab)</span></a>
+        <a class="btn btn-sm btn-ghost" href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">
           <svg class="icon icon-fill"><use href="#i-github"/></svg><span class="btn-label">GitHub</span>
-        </a>
+        <span class="sr-only"> (opens in a new tab)</span></a>
         <a class="btn btn-sm btn-primary" href="../download.html">
           <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">Download</span>
         </a>
@@ -74,7 +73,7 @@
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Using MOVIE-ADE</p>
+        <p class="docs-nav-heading">Using Ferret</p>
         <ul>
           <li><a href="projects.html">Projects and URLs</a></li>
           <li><a href="recording.html">Recording</a></li>
@@ -88,6 +87,7 @@
           <li><a href="transcription.html" aria-current="page">Transcription and costs</a></li>
           <li><a href="accounts.html">Accounts and usage</a></li>
           <li><a href="settings.html">Settings reference</a></li>
+          <li><a href="settings-json.html">Configure with settings.json</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
@@ -118,7 +118,7 @@
   <li>The developer (Japan Marketing LLC) does not pay for, proxy, or bill any transcription or AI usage.</li>
   <li>Requests go directly from your computer to OpenAI or your endpoint, never through a developer server.</li>
   <li>OpenAI usage is billed to your own OpenAI account.</li>
-  <li><span class="docs-ui">Organize</span> uses the Claude Code / Codex CLI you are already signed in to. It never falls back to an API key.</li>
+  <li><span class="docs-ui">Organize</span> uses the Claude Code / Codex CLI you are already signed in to, unless you explicitly pick an API runner (<code>organizer.runner: "api:&lt;provider&gt;"</code>, see <a href="settings-json.html#example">Configure with settings.json</a>). It never switches to an API key on its own.</li>
 </ul></div>
       </section>
 
@@ -138,8 +138,8 @@
 
       <section class="docs-section" aria-labelledby="whisper">
         <h2 id="whisper"><a class="docs-anchor" href="#whisper" aria-label="Link to On-device whisper (free)">#</a>On-device whisper (free)</h2>
-        <p>On-device transcription uses <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a>: the <code>whisper-cli</code> binary plus a GGML model.</p>
-<p><strong>1. Install whisper-cli</strong>. MOVIE-ADE looks for a bundled copy (<code>resources/whisper/&lt;platform&gt;-&lt;arch&gt;/</code>), then <code>PATH</code>, then common locations such as Homebrew.</p>
+        <p>On-device transcription uses <a href="https://github.com/ggml-org/whisper.cpp" target="_blank" rel="noopener noreferrer">whisper.cpp<span class="sr-only"> (opens in a new tab)</span></a>: the <code>whisper-cli</code> binary plus a GGML model.</p>
+<p><strong>1. Install whisper-cli</strong>. Ferret looks for a bundled copy (<code>resources/whisper/&lt;platform&gt;-&lt;arch&gt;/</code>), then <code>PATH</code>, then common locations such as Homebrew.</p>
 <pre><code># macOS
 brew install whisper-cpp
 
@@ -160,7 +160,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
     <tr><td><code>tiny</code></td><td>78 MB</td><td>Fastest. Not accurate enough for Japanese</td></tr>
   </tbody>
 </table>
-<p>Already have a model? Use <span class="docs-ui">Choose a file…</span> to point at any <code>ggml-*.bin</code>. Without a model, Settings shows <span class="docs-ui">No model set (pen and text still work)</span>: you can still record, audio is saved, and only pen and text findings are produced.</p>
+<p>Already have a model? Use <span class="docs-ui">Choose a file…</span> to point at any <code>ggml-*.bin</code>. Without a model, Settings says no model is set. You can still record: audio is saved, and and only pen findings are produced.</p>
 <p>whisper-cli is not bundled with the app. Install it yourself as shown above. When it can't be found, Settings shows <q>whisper.cpp (whisper-cli) was not found. Install it, then reopen the settings.</q> with the same instructions.</p>
       </section>
 
@@ -176,7 +176,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
 
       <section class="docs-section" aria-labelledby="compatible">
         <h2 id="compatible"><a class="docs-anchor" href="#compatible" aria-label="Link to OpenAI-compatible endpoints">#</a>OpenAI-compatible endpoints</h2>
-        <p>MOVIE-ADE sends <code>POST &lt;base&gt;/v1/audio/transcriptions</code> (multipart: <code>file</code>, <code>model</code>, <code>response_format=json</code>, <code>language</code>, <code>prompt</code>), so it is designed for servers that implement the OpenAI transcription route.</p>
+        <p>Ferret sends <code>POST &lt;base&gt;/v1/audio/transcriptions</code> (multipart: <code>file</code>, <code>model</code>, <code>response_format=json</code>, <code>language</code>, <code>prompt</code>), so it is designed for servers that implement the OpenAI transcription route.</p>
 <ol class="docs-steps">
   <li>Set <span class="docs-ui">Engine</span> to <span class="docs-ui">OpenAI-compatible (self-hosted GPU, Groq, etc.)</span>.</li>
   <li>Fill in <span class="docs-ui">Endpoint Base URL</span> and <span class="docs-ui">Model</span> (the endpoint's model name).</li>
@@ -186,12 +186,12 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
 <table>
   <thead><tr><th>Server</th><th>Base URL</th><th>Model (example)</th></tr></thead>
   <tbody>
-    <tr><td><a href="https://github.com/speaches-ai/speaches">speaches</a> (formerly faster-whisper-server)</td><td><code>http://localhost:8000/v1</code></td><td><code>Systran/faster-whisper-small</code></td></tr>
-    <tr><td><a href="https://docs.vllm.ai/">vLLM</a> (<code>vllm serve openai/whisper-large-v3</code>)</td><td><code>http://localhost:8000/v1</code></td><td><code>openai/whisper-large-v3</code></td></tr>
-    <tr><td><a href="https://console.groq.com/docs/speech-to-text">Groq</a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
+    <tr><td><a href="https://github.com/speaches-ai/speaches" target="_blank" rel="noopener noreferrer">speaches<span class="sr-only"> (opens in a new tab)</span></a> (formerly faster-whisper-server)</td><td><code>http://localhost:8000/v1</code></td><td><code>Systran/faster-whisper-small</code></td></tr>
+    <tr><td><a href="https://docs.vllm.ai/" target="_blank" rel="noopener noreferrer">vLLM<span class="sr-only"> (opens in a new tab)</span></a> (<code>vllm serve openai/whisper-large-v3</code>)</td><td><code>http://localhost:8000/v1</code></td><td><code>openai/whisper-large-v3</code></td></tr>
+    <tr><td><a href="https://console.groq.com/docs/speech-to-text" target="_blank" rel="noopener noreferrer">Groq<span class="sr-only"> (opens in a new tab)</span></a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
   </tbody>
 </table>
-<div class="docs-callout docs-callout-warn"><p>MOVIE-ADE is designed for OpenAI-compatible servers like these, but they have not been tested against MOVIE-ADE yet. The URLs and model names are the servers' own documented defaults.</p></div>
+<div class="docs-callout docs-callout-warn"><p>Ferret is designed for OpenAI-compatible servers like these, but they have not been tested against Ferret yet. The URLs and model names are the servers' own documented defaults.</p></div>
 <ul>
   <li>A trailing <code>/v1</code> or a pasted <code>/v1/audio/transcriptions</code> is stripped when saved, so either form works.</li>
   <li>URLs containing a username or password are rejected, so keys never end up in <code>settings.json</code>.</li>
@@ -202,12 +202,12 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
       <section class="docs-section" aria-labelledby="limit">
         <h2 id="limit"><a class="docs-anchor" href="#limit" aria-label="Link to Cost cap">#</a>Cost cap</h2>
         <p>For OpenAI and compatible endpoints, set <span class="docs-ui">Cost cap</span>: <span class="docs-ui">None</span>, or <span class="docs-ui">Up to $0.10 per review</span> through $0.50, $1 (default), $5, and $20. For your own GPU, <span class="docs-ui">None</span> makes sense. The setting is stored as <code>capture.costLimitUsd</code> (max 1000, <code>null</code> means no cap). Compatible endpoints are estimated at $0.006/min.</p>
-<p>When the next chunk would exceed the cap, MOVIE-ADE stops sending and keeps the audio. Failed API calls are not retried automatically.</p>
+<p>When the next chunk would exceed the cap, Ferret stops sending and keeps the audio. Failed API calls are not retried automatically.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="keys">
         <h2 id="keys"><a class="docs-anchor" href="#keys" aria-label="Link to Where keys are stored">#</a>Where keys are stored</h2>
-        <p>Keys are encrypted with Electron <code>safeStorage</code> and written to <code>&lt;userData&gt;/stt-keys.bin</code>. They are never written to <code>settings.json</code>.</p>
+        <p>Keys entered in <span class="docs-ui">Settings</span> are encrypted with Electron <code>safeStorage</code> and written to <code>&lt;userData&gt;/stt-keys.bin</code>. The app never writes them to <code>settings.json</code>. To point to a key from <code>settings.json</code> instead (an environment variable or <code>.env</code> entry), see <a href="settings-json.html#keys">API keys</a>.</p>
 <ul>
   <li>macOS: Keychain</li>
   <li>Windows: DPAPI</li>
@@ -220,7 +220,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
           <a class="docs-pager-prev" href="editor.html"><span>Previous</span>Editor and preview</a>
           <a class="docs-pager-next" href="accounts.html"><span>Next</span>Accounts and usage</a>
         </nav>
-        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/MOVIE-ADE/blob/main/site/docs/transcription.html">Edit this page on GitHub</a></p>
+        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/site/docs/transcription.html" target="_blank" rel="noopener noreferrer">Edit this page on GitHub<span class="sr-only"> (opens in a new tab)</span></a></p>
       </article>
     </main>
 
@@ -242,8 +242,9 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
     <div class="wrap">
       <div class="footer-grid">
         <div>
-          <a class="brand" href="../index.html"><img src="../favicon.svg" alt="" width="24" height="24">MOVIE-ADE</a>
-          <p class="provider">Built by <a href="https://www.japan-marketing.co.jp/">Japan Marketing LLC</a></p>
+          <a class="brand" href="../index.html"><img class="wordmark" src="../assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22"></a>
+          <p class="provider">Built by <a href="https://www.japan-marketing.co.jp/" target="_blank" rel="noopener noreferrer">Japan Marketing LLC<span class="sr-only"> (opens in a new tab)</span></a></p>
+          <p class="footer-tag">Show it, say it, and your coding agent gets it done.</p>
         </div>
         <div>
           <h2>Product</h2>
@@ -257,18 +258,19 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
         <div>
           <h2>Open source</h2>
           <ul>
-            <li><a href="https://github.com/JapanMarketing-Dev/MOVIE-ADE">GitHub</a></li>
-            <li><a href="https://github.com/JapanMarketing-Dev/MOVIE-ADE/issues">Issues</a></li>
-            <li><a href="https://github.com/JapanMarketing-Dev/MOVIE-ADE/blob/main/LICENSE">MIT License</a></li>
+            <li><a href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (opens in a new tab)</span></a></li>
+            <li><a href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer">Discord<span class="sr-only"> (opens in a new tab)</span></a></li>
+            <li><a href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer">X<span class="sr-only"> (opens in a new tab)</span></a></li>
+            <li><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License<span class="sr-only"> (opens in a new tab)</span></a></li>
           </ul>
         </div>
         <div>
           <h2>Privacy</h2>
-          <p>This site uses no analytics and no cookies. It only stores your light/dark choice in your browser.</p>
+          <p>Cookie-free page-view counts via Cloudflare Web Analytics. No cookies, no cross-site tracking, no personal data.</p>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> Japan Marketing LLC. MOVIE-ADE is released under the MIT License.</span>
+        <span>© <span data-year>2026</span> Japan Marketing LLC. Ferret is released under the MIT License.</span>
       </div>
     </div>
   </footer>

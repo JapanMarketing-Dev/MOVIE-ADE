@@ -8,6 +8,12 @@ import { getLocale, translate, type SupportedLocale } from './i18n'
  * 使える変数:
  *   {{path}}    … feedback.md の絶対パス（ターミナルで cd していても読める）
  *   {{relpath}} … feedback.md の相対パス（プロジェクトフォルダから）
+ *   {{decisionCheck}} … 判定モデルでの受け入れ確認の1文（設定の「判定モデル」が有効なときだけ。無効なら空）。
+ *                       書かなければ、有効なときは文末に足す
+ *   {{threshold}} … 合格のしきい値（設定の decision.passThreshold、既定 0.7）
+ *   {{progress}} … 進み具合を書く progress.json のパス（feedback.md と同じフォルダ。@shared/findingProgress）。
+ *                  既定文はこれを使って、指摘ごとに in_progress / done を書かせる。利用者の文に無くても feedback.md の「進み具合」の節で伝わる
+ * キーなどの秘密は指示文に入れない（判定モデルの URL・モデルは環境変数で Agent に渡る。src/main/decision/）
  */
 
 /**
@@ -19,15 +25,55 @@ export function defaultAgentPrompt(locale: SupportedLocale = getLocale()): strin
 }
 
 export interface AgentPromptTarget {
-  /** レビューのフォルダ（プロジェクトからの相対。例: .ade-movie/reviews/20261003-101500） */
+  /** レビューのフォルダ（プロジェクトからの相対。例: .ferret/reviews/20261003-101500） */
   relativeDir: string
   /** feedback.md の絶対パス。分からない呼び出し元では省略でき、そのときは相対パスで代える */
   feedbackMd?: string
 }
 
-export function renderAgentPrompt(target: AgentPromptTarget, template?: string | null, locale?: SupportedLocale): string {
+/** 判定モデルでの受け入れ確認（有効なときだけ渡す） */
+export interface AgentPromptDecision {
+  /** 合格のしきい値（P(done)） */
+  threshold: number
+}
+
+export function renderAgentPrompt(target: AgentPromptTarget, template?: string | null, locale?: SupportedLocale, decision?: AgentPromptDecision | null): string {
   const relpath = `${target.relativeDir.replace(/\/+$/, '')}/feedback.md`
   const path = target.feedbackMd ?? relpath
-  const body = template?.trim() ? template.trim() : defaultAgentPrompt(locale)
-  return body.replace(/\{\{path\}\}/g, path).replace(/\{\{relpath\}\}/g, relpath)
+  let body = template?.trim() ? template.trim() : defaultAgentPrompt(locale)
+  const check = decision ? translate(locale ?? getLocale(), 'agentPrompt.decisionCheck') : ''
+  if (body.includes('{{decisionCheck}}')) body = body.replace(/\{\{decisionCheck\}\}/g, check).replace(/[ \t]+$/gm, '').trim()
+  else if (check) body = `${body} ${check}`
+  const threshold = String(decision?.threshold ?? 0.7)
+  const progress = path.replace(/feedback\.md$/, 'progress.json')
+  return body.replace(/\{\{path\}\}/g, path).replace(/\{\{relpath\}\}/g, relpath).replace(/\{\{threshold\}\}/g, threshold).replace(/\{\{progress\}\}/g, progress)
+}
+
+/** 返答の長さの上限。ターミナルへ1回で書き込める長さに収める（agent/sanitize.ts の fitsSingleWrite） */
+export const REPLY_MAX = 1200
+
+/** Agent が人間へ戻した指摘（progress.json の needs_human）への返答 */
+export interface AgentReply {
+  /** 画面の通し番号（feedback.md の見出しの番号） */
+  n: number
+  /** 指摘のID（progress.json のキー） */
+  id: string
+  reply: string
+}
+
+/**
+ * 「返答を送る」で Agent へ送る1行。その指摘だけを返答つきで進めさせる。
+ * 返答の改行は空白にまとめる（貼り付けが複数行の入力にならないように）。文面は設定のテンプレートに依らず固定
+ */
+export function renderReplyPrompt(target: AgentPromptTarget, reply: AgentReply, locale?: SupportedLocale, decision?: AgentPromptDecision | null): string {
+  const lang = locale ?? getLocale()
+  const path = target.feedbackMd ?? `${target.relativeDir.replace(/\/+$/, '')}/feedback.md`
+  const body = translate(lang, 'agentPrompt.reply', {
+    n: reply.n,
+    id: reply.id,
+    reply: reply.reply.replace(/\s+/g, ' ').trim().slice(0, REPLY_MAX),
+    path,
+    progress: path.replace(/feedback\.md$/, 'progress.json')
+  })
+  return decision ? `${body}${translate(lang, 'agentPrompt.replyDecision')}` : body
 }

@@ -14,6 +14,7 @@ import type { AssembleOptions } from './assemble'
 import { organize, organizeChunked } from './organize/index'
 import type { ChunkedOptions, OrganizeOptions, OrganizeResult } from './organize/index'
 import type { Draft, FeedbackDocument, Material, OrganizeInput } from './types'
+import { resolveAnnotationEdits } from './types'
 
 export interface DecomposeOptions {
   draft?: Partial<DraftOptions>
@@ -33,7 +34,8 @@ export function buildDraftDocument(material: Material, options: DecomposeOptions
   const organizeInput: OrganizeInput = {
     meta: material.meta,
     transcript: material.transcript,
-    events: material.events,
+    // LLM にも、動かした・元に戻した書き込みを反映した後の書き込みだけを見せる（ID の重なりや取り消し済みの参照を作らない）
+    events: resolveAnnotationEdits(material.events),
     frameTimes: material.frames.map((f) => f.t),
     draft: draft.items,
   }
@@ -83,12 +85,17 @@ export async function refineWithLlmChunked(
   const issues = r.parts.flatMap((p) => p.issues)
   const commandLine = r.parts.find((p) => p.commandLine)?.commandLine ?? ''
   return {
-    document: assembleFromOrganized(material, r.output, options.assemble),
+    document: withReviewTitle(assembleFromOrganized(material, r.output, options.assemble), r.output.reviewTitle),
     organize: { ok: true, output: r.output, issues, elapsedMs: r.elapsedMs, commandLine, raw: '' },
     fellBack: false,
     chunks,
     failedChunks: r.failed,
   }
+}
+
+/** 整理が付けたレビューの名前を document に載せる（履歴の見出しの自動の名前。sessions/autoName.ts） */
+function withReviewTitle(document: FeedbackDocument, reviewTitle: string | undefined): FeedbackDocument {
+  return reviewTitle ? { ...document, reviewTitle } : document
 }
 
 function applyOrganizeResult(
@@ -101,7 +108,7 @@ function applyOrganizeResult(
     return { document: stage.document, organize: result, fellBack: true }
   }
   return {
-    document: assembleFromOrganized(material, result.output, options.assemble),
+    document: withReviewTitle(assembleFromOrganized(material, result.output, options.assemble), result.output.reviewTitle),
     organize: result,
     fellBack: false,
   }

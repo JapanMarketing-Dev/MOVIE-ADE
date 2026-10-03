@@ -75,7 +75,8 @@ describe('flow と reportAnomaly', () => {
     flow('terminal exit', { exitCode: 1, kind: 'claude' })
     reportAnomaly('main event loop blocked', { kind: 'perf', duration: '1-2s' })
     expect(r.breadcrumb).toHaveBeenCalledWith('terminal exit', { exitCode: 1, kind: 'claude' })
-    expect(r.message).toHaveBeenCalledWith('main event loop blocked', { kind: 'perf', duration: '1-2s' }, 'warning')
+    // 種類（文）ごとにまとめる fingerprint を付ける
+    expect(r.message).toHaveBeenCalledWith('main event loop blocked', { kind: 'perf', duration: '1-2s' }, 'warning', ['anomaly', 'main event loop blocked'])
   })
 })
 

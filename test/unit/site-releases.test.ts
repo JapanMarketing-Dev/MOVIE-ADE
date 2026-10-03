@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DOWNLOAD_BASE } from '../../site/js/config.js'
+import { DOWNLOAD_BASE, REPO_URL } from '../../site/js/config.js'
 import {
   BUILD_DOC_URL,
   SLOTS,
@@ -52,6 +52,13 @@ describe('classifyAsset', () => {
     ['MOVIE-ADE-0.2.0-linux-x64.tar.gz', { os: 'linux', arch: 'x64', kind: 'tar.gz' }],
     ['MOVIE-ADE-0.2.0-darwin-arm64.zip', { os: 'mac', arch: 'arm64', kind: 'zip' }],
     ['MOVIE-ADE-0.2.0-win-x64.zip', { os: 'win', arch: 'x64', kind: 'zip' }],
+    // 0.2.0 以降の改名後（Ferret）の名前
+    ['Ferret-0.2.0-mac-arm64.dmg', { os: 'mac', arch: 'arm64', kind: 'dmg' }],
+    ['Ferret-0.2.0-mac-x64.dmg', { os: 'mac', arch: 'x64', kind: 'dmg' }],
+    ['Ferret-0.2.0-win-x64.exe', { os: 'win', arch: 'x64', kind: 'exe' }],
+    ['Ferret-0.2.0-win-arm64.exe', { os: 'win', arch: 'arm64', kind: 'exe' }],
+    ['Ferret-0.2.0-linux-x86_64.AppImage', { os: 'linux', arch: 'x64', kind: 'AppImage' }],
+    ['Ferret-0.2.0-linux-amd64.deb', { os: 'linux', arch: 'x64', kind: 'deb' }],
     // electron-builder.dev.cjs（cross-platform）の artifactName の形
     ['ade-dev-macos-arm64.dmg', { os: 'mac', arch: 'arm64', kind: 'dmg' }],
     ['ade-dev-windows-arm64-setup.exe', { os: 'win', arch: 'arm64', kind: 'exe' }],
@@ -197,6 +204,28 @@ describe('normalizeIndex', () => {
   })
 })
 
+describe('改名をまたぐ版の一覧', () => {
+  it('0.1.x の MOVIE-ADE-* と 0.2.0 以降の Ferret-* を同じ枠に判別する', () => {
+    const old = normalizeManifest({ version: '0.1.1', files: [file('MOVIE-ADE-0.1.1-mac-arm64.dmg'), file('MOVIE-ADE-0.1.1-win-x64.exe', { preview: true })] }, BASE)
+    const next = normalizeManifest({ version: '0.2.0', files: [file('Ferret-0.2.0-mac-arm64.dmg'), file('Ferret-0.2.0-win-x64.exe', { preview: true })] }, BASE)
+    expect(assetForSlot(old?.assets ?? [], slot('mac-arm64'))?.name).toBe('MOVIE-ADE-0.1.1-mac-arm64.dmg')
+    expect(assetForSlot(next?.assets ?? [], slot('mac-arm64'))?.name).toBe('Ferret-0.2.0-mac-arm64.dmg')
+    expect(assetForSlot(next?.assets ?? [], slot('win-x64'))?.preview).toBe(true)
+    const { latest, all } = normalizeIndex(
+      { latest: '0.2.0', versions: [{ version: '0.1.1', date: '2026-10-05' }, { version: '0.2.0', date: '2026-10-10', product: 'Ferret' }] },
+      BASE
+    )
+    expect(all.map((v) => [v.version, v.product])).toEqual([['0.2.0', 'Ferret'], ['0.1.1', 'MOVIE-ADE']])
+    expect(latest?.version).toBe('0.2.0')
+  })
+
+  it('product が無い・空の版は MOVIE-ADE（0.1.0・0.1.1）、ある版はその名前', () => {
+    expect(normalizeManifest({ version: '0.1.0', files: [] }, BASE)?.product).toBe('MOVIE-ADE')
+    expect(normalizeManifest({ version: '0.1.1', product: ' ', files: [] }, BASE)?.product).toBe('MOVIE-ADE')
+    expect(normalizeManifest({ version: '0.2.0', product: 'Ferret', files: [] }, BASE)?.product).toBe('Ferret')
+  })
+})
+
 describe('assetForSlot', () => {
   const assets = normalizeFiles(
     [
@@ -311,5 +340,6 @@ describe('整形', () => {
 })
 
 it('ビルド手順へのリンクは英語の README の見出し「Install and run」', () => {
-  expect(BUILD_DOC_URL).toBe('https://github.com/JapanMarketing-Dev/MOVIE-ADE#install-and-run')
+  expect(REPO_URL).toBe('https://github.com/JapanMarketing-Dev/ferret')
+  expect(BUILD_DOC_URL).toBe(`${REPO_URL}#install-and-run`)
 })

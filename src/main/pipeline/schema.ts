@@ -18,8 +18,12 @@
 export const organizeOutputSchema = {
   type: 'object',
   additionalProperties: false,
-  required: ['items', 'dropped'],
+  required: ['review_title', 'items', 'dropped'],
   properties: {
+    review_title: {
+      type: 'string',
+      description: 'レビュー全体の短い名前（何系の修正か。例「ヘッダーの余白と配色」）。3〜8語。title と同じ言語で書く。',
+    },
     items: {
       type: 'array',
       description: '整理後の指摘。時系列の順に並べる。',
@@ -54,7 +58,7 @@ export const organizeOutputSchema = {
           },
           annotation_ids: {
             type: 'array',
-            description: '関係するペン・テキストのID（p1, x1 など）。無ければ空配列。',
+            description: '関係するペンの書き込みのID（p1 など）。無ければ空配列。',
             items: { type: 'string' },
           },
           target: {
@@ -95,6 +99,8 @@ export interface RawOrganizeItem {
 }
 
 export interface RawOrganizeOutput {
+  /** レビュー全体の短い名前。古い出力には無い */
+  review_title?: string
   items: RawOrganizeItem[]
   dropped: Array<{ t: number; reason: string }>
 }

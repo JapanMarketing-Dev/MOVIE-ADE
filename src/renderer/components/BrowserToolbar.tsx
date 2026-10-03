@@ -16,7 +16,8 @@ export function BrowserToolbar({
   state,
   urlInputRef,
   project = null,
-  onOverlayChange
+  onOverlayChange,
+  onSelectWindow
 }: {
   state: BrowserState
   urlInputRef: React.RefObject<HTMLInputElement | null>
@@ -24,6 +25,8 @@ export function BrowserToolbar({
   project?: Project | null
   /** URLの登録・編集ダイアログの開閉。開いている間は内蔵ブラウザのビューを隠す */
   onOverlayChange?: (open: boolean) => void
+  /** 確認先がウインドウのとき、録画の対象に選ぶ（UrlPresets から） */
+  onSelectWindow?: (windowMatch: string, launched: boolean) => void
 }) {
   const t = useT()
   const setViewport = (viewport: Viewport) => {
@@ -33,7 +36,7 @@ export function BrowserToolbar({
   return (
     <div className="browser-toolbar" data-testid="browser-toolbar">
       <NavControls state={state} urlInputRef={urlInputRef} tooltipSide="top" />
-      <UrlPresets project={project} currentUrl={state.url} onOverlayChange={onOverlayChange} />
+      <UrlPresets project={project} currentUrl={state.url} onOverlayChange={onOverlayChange} onSelectWindow={onSelectWindow} />
       <Segmented
         ariaLabel={t('browser.viewport')}
         value={state.viewport}

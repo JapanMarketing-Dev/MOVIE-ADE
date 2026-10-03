@@ -114,7 +114,7 @@ export const materialA: Material = {
       text: 'この表記ゆれが気になります',
       item: 'a12',
       cues: [
-        { type: 'text', at: 900, id: 'x1', x: 620, y: 300, body: '「月額」表記に統一（「月々」「ひと月」をやめる）', selector: 'span.plan-price-unit', elText: 'ひと月あたり' },
+        { type: 'pen', at: 900, id: 'p8', durationMs: 1200, bbox: [560, 280, 140, 40], selector: 'span.plan-price-unit', text: 'ひと月あたり' },
       ],
     },
 

@@ -24,11 +24,12 @@ import { DEFAULT_LAYOUT, FOOTER_ITEMS, FOOTER_PRIORITY, pickFooterTier, type Doc
 import { PanelGrip } from './PanelDock'
 import { GitHubStatusItem } from './GitHubStatusItem'
 import type { UpdateCheckResult } from '@shared/appVersion'
-import { Button, RecordDot, Spinner, ThemeToggle } from '../ui'
+import { Button, RecordDot, Spinner, SttLanguageSelect, ThemeToggle } from '../ui'
 import type { SpeechLanguage, Transcription } from './SettingsPage'
 import { StatusPopover as Popover } from './StatusPopover'
 import { ResourceManager } from './ResourceManager'
 import { UsageMeter } from './UsageMeter'
+import { ApiUsageMeter } from './ApiUsageMeter'
 import { useT, type TFunction } from '../lib/i18n'
 
 /**
@@ -200,9 +201,9 @@ function MicPopover({ value, onChange, recording, micDevices, available, level, 
       </select>
     </PopSelect>
     <PopSelect label={t('statusBar.language')}>
-      <select className="st-select" aria-label={t('statusBar.spokenLanguage')} value={value.language} disabled={recording} onChange={(e) => onChange({ language: e.target.value as SpeechLanguage })}>
-        <option value="auto">{t('statusBar.langAuto')}</option><option value="ja">{t('statusBar.langJa')}</option><option value="en">{t('statusBar.langEn')}</option>
-      </select>
+      <SttLanguageSelect ariaLabel={t('statusBar.spokenLanguage')} value={value.language} disabled={recording} onChange={(language) => onChange({ language })}
+        testId="statusbar-stt-language"
+        provider={value.transcription === 'local' ? undefined : { id: value.transcription, label: providerLabel(STT_PROVIDER_PRESETS[value.transcription as keyof typeof STT_PROVIDER_PRESETS], t) }} />
     </PopSelect>
     <div className="sb-pop__foot">
       <Button variant="ghost" onClick={onOpenSettings}>{t('statusBar.moreSettings')}</Button>
@@ -231,7 +232,8 @@ function UpdatePopover({ version, packaged }: { version: string; packaged: boole
     </div>}
     {result?.state === 'no-release' && <p className="st-note">{t('statusBar.noRelease')}</p>}
     {result?.state === 'no-source' && <p className="st-note st-note--warn"><CircleAlert size={12} aria-hidden="true" />{t('statusBar.noSource')}</p>}
-    {result?.state === 'error' && <p className="st-note st-note--warn"><CircleAlert size={12} aria-hidden="true" />{t('statusBar.checkFailedWith', { message: result.message })}</p>}
+    {/* 確認できなかったのは一時的なことが多い。警告の色にせず、下のボタンでもう一度試せることを伝える */}
+    {result?.state === 'error' && <p className="st-note" data-testid="statusbar-update-retry">{t('statusBar.checkRetry', { message: result.message })}</p>}
     {!packaged && <p className="st-note">{t('statusBar.devBuild')}</p>}
     <div className="sb-pop__foot">
       <Button busy={checking} icon={<RefreshCw size={14} />} onClick={check} data-testid="statusbar-check-update">{t('statusBar.checkForUpdates')}</Button>
@@ -300,7 +302,9 @@ export function StatusBar({
 
   /** 使用量表示のポップオーバー（UsageMeter が自分で開閉する）。これもビューを隠す対象に入れる */
   const [usageOpen, setUsageOpen] = useState(false)
-  useEffect(() => { onPopoverChange(open !== null || usageOpen) }, [open, usageOpen, onPopoverChange])
+  /** API の使用量のポップオーバー（ApiUsageMeter が自分で開閉する） */
+  const [apiUsageOpen, setApiUsageOpen] = useState(false)
+  useEffect(() => { onPopoverChange(open !== null || usageOpen || apiUsageOpen) }, [open, usageOpen, apiUsageOpen, onPopoverChange])
 
   const close = useCallback(() => setOpen(null), [])
   const toggle = (kind: PopoverKind) => setOpen((cur) => (cur === kind ? null : kind))
@@ -378,6 +382,8 @@ export function StatusBar({
         <UsageMeter onManageAccounts={onManageAccounts} onOpenChange={setUsageOpen} shrink={usageMayShrink} />
         {divider}
       </>, ' statusbar__slot--shrink')}
+      {/* 従量課金の API（判定モデル・文字起こし・整理）の今日の使用量。判定モデルが無効で記録も無ければ出さない */}
+      {slot('apiUsage', <ApiUsageMeter onOpenChange={setApiUsageOpen} />)}
       {slot('recording', <>
         <span className={`statusbar__rec${recording ? ' is-recording' : ''}`}>
           <RecordDot active={recording} size={6} />
@@ -523,6 +529,8 @@ export function StatusBar({
                 return <div key={id} className="sb-more__row"><span className="sb-more__name">{name}</span><ThemeToggle /></div>
               case 'github':
                 return <div key={id} className="sb-more__row"><span className="sb-more__name">{name}</span><GitHubStatusItem /></div>
+              case 'apiUsage':
+                return <div key={id} className="sb-more__row"><span className="sb-more__name">{name}</span><ApiUsageMeter onOpenChange={setApiUsageOpen} /></div>
               default:
                 return null
             }

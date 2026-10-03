@@ -1,6 +1,6 @@
 import { mkdtemp, mkdir, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { deletableSessionDir, deleteSession, readLabel, sanitizeLabel, updateLabel } from '../../src/main/sessions/labels'
 import { reviewsRoot, sessionPaths } from '../../src/main/sessions/paths'
@@ -18,7 +18,8 @@ async function project(): Promise<string> {
 
 describe('レビューを消すときのパスの検査', () => {
   it('reviews の直下の日時フォルダだけを返す', () => {
-    expect(deletableSessionDir('/proj', '20261003-101500')).toBe(join(reviewsRoot('/proj'), '20261003-101500'))
+    // 返すのは絶対パス（Windows ではドライブ名が付く）
+    expect(deletableSessionDir('/proj', '20261003-101500')).toBe(resolve(reviewsRoot('/proj'), '20261003-101500'))
   })
 
   it('日時の形でない ID・抜け出す ID は通さない', () => {

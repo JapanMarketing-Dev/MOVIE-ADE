@@ -19,8 +19,7 @@ import {
   previousStepIndex,
   reopenPatch,
   stepIdAt,
-  stepPatch,
-  voiceModeOf
+  stepPatch
 } from '../../src/renderer/onboarding/onboardingFlowState'
 
 // settings.ts は electron の app を読み込むので、保存先だけを差し替える
@@ -173,13 +172,5 @@ describe('isContinueShortcut', () => {
     expect(isContinueShortcut(key({ metaKey: true, shiftKey: true }), true)).toBe(false)
     expect(isContinueShortcut(key({ ctrlKey: true, altKey: true }), false)).toBe(false)
     expect(isContinueShortcut(key({ key: 'a', metaKey: true }), true)).toBe(false)
-  })
-})
-
-describe('voiceModeOf', () => {
-  it('提供元を3つの使い方にまとめる', () => {
-    expect(voiceModeOf('local')).toBe('local')
-    expect(voiceModeOf('compatible')).toBe('selfHosted')
-    expect(voiceModeOf('openai')).toBe('cloud')
   })
 })

@@ -17,7 +17,7 @@ const meta: SessionMeta = {
 const events: Event[] = [
   { t: 100, type: 'nav', url: 'http://localhost:3000/', title: 'トップ' },
   { t: 10_000, type: 'nav', url: 'ade-preview://project/docs/a.md', title: 'a.md' },
-  { t: 12_000, type: 'text', id: 'x1-doc', x: 10, y: 10, body: '手順を番号付きにする' },
+  { t: 11_900, type: 'pen', id: 'p1-doc', t_end: 12_000, bbox: [10, 10, 40, 20] },
   { t: 20_000, type: 'nav', url: 'http://localhost:3000/#faq', title: 'トップ' }
 ]
 const transcript: TranscriptSegment[] = [
@@ -70,7 +70,7 @@ describe('対象の区切り', () => {
 
 describe('出力の対象の検査', () => {
   it('対象が正しければそのまま通す', () => {
-    const r = run([item({}), item({ title: '手順', quote_ts: [11_000], frame_times: [12_100], annotation_ids: ['x1-doc'], target: 'T2' })])
+    const r = run([item({}), item({ title: '手順', quote_ts: [11_000], frame_times: [12_100], annotation_ids: ['p1-doc'], target: 'T2' })])
     expect(r.ok).toBe(true)
     expect(r.value!.items).toHaveLength(2)
     expect(codes(r).filter((c) => c.startsWith('target'))).toEqual([])
@@ -92,12 +92,12 @@ describe('出力の対象の検査', () => {
   })
 
   it('違う対象の発話・書き込みを1件にまとめていたら、対象ごとの指摘に分ける（画像もその対象のもの）', () => {
-    const r = run([item({ quote_ts: [2_000, 11_000, 21_000], annotation_ids: ['x1-doc'], frame_times: [1_000, 21_500] })])
+    const r = run([item({ quote_ts: [2_000, 11_000, 21_000], annotation_ids: ['p1-doc'], frame_times: [1_000, 21_500] })])
     expect(r.ok).toBe(true)
     expect(codes(r)).toContain('target-mixed')
     expect(r.value!.items.map((i) => [i.quotes.map((q) => q.t), i.annotation_ids, i.frame_times])).toEqual([
       [[2_000, 21_000], [], [1_000, 21_500]],
-      [[11_000], ['x1-doc'], [12_100]]
+      [[11_000], ['p1-doc'], [12_100]]
     ])
   })
 })

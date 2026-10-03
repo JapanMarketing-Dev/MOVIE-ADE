@@ -75,7 +75,7 @@ export function finalizeItems(
         title: it.title,
         request: it.request,
         status: it.status,
-        quotes: [...it.quotes, ...events.flatMap((e) => e.type === 'text' && it.annotationIds.includes(e.id) && !it.quotes.some((q) => q.source === 'text' && q.text === e.body) ? [{ speaker: 'self' as const, t: e.t, text: e.body, source: 'text' as const }] : [])],
+        quotes: it.quotes,
         images: it.frameTimes.map((ft) => namer.nameFor(ft)),
         frameTimes: it.frameTimes,
         contextTime: ctxTime,
@@ -130,9 +130,9 @@ export function assembleFromDraft(
   const pending: PendingItem[] = draft.map((d) => ({
     id: `i-${d.id}`,
     t: d.t,
-    // 見出し・要望は作れないので、発話原文（または置かれたテキスト）をそのまま使う
-    title: draftTitle(d, material.events),
-    request: material.events.flatMap((e) => e.type === 'text' && d.annotationIds.includes(e.id) ? [e.body] : []).join(' / '),
+    // 見出し・要望は作れないので、発話原文をそのまま使う（要望が空だと何を直すのか分からないので、話した全文を入れる）
+    title: draftTitle(d),
+    request: spokenText(d),
     status: 'decided' as const,
     quotes: d.segments.map((s) => ({ speaker: s.speaker, t: s.t0, text: s.text })),
     frameTimes: d.frameTimes,
@@ -143,7 +143,13 @@ export function assembleFromDraft(
 
   return {
     meta: material.meta,
-    items: finalizeItems(pending, material.events, opt),
+    // 話していないペンだけの指摘は、囲んだ要素を見出しにする（どこを囲んだかが一目で分かる）
+    items: finalizeItems(pending, material.events, opt).map((item) => {
+      const element = item.context.element
+      if (item.quotes.length > 0 || !element) return item
+      const text = !element.sensitive ? element.text?.replace(/\s+/g, ' ').trim() : ''
+      return { ...item, title: t('review.penTitleAt', { target: text ? `“${truncate(text, 40)}”` : element.selector }) }
+    }),
     dropped: [],
     organizedByLlm: false
   }
@@ -165,17 +171,17 @@ export function toPending(item: FeedbackItem): PendingItem {
   }
 }
 
-function draftTitle(d: DraftItem, events: Event[]): string {
-  const spoken = d.segments
+function spokenText(d: DraftItem): string {
+  return d.segments
     .map((s) => s.text.trim())
     .join(' ')
     .trim()
+}
+
+function draftTitle(d: DraftItem): string {
+  const spoken = spokenText(d)
   if (spoken) return truncate(spoken, 60)
-  // 書き込み単独。置かれたテキストがあればそれを見出しにする
-  for (const id of d.annotationIds) {
-    const e = events.find((x) => (x.type === 'text' || x.type === 'pen') && x.id === id)
-    if (e?.type === 'text') return truncate(e.body, 60)
-  }
+  // ペンだけの指摘
   return t('review.penFallbackTitle')
 }
 
@@ -234,7 +240,7 @@ export function imagePlan(
       if (f) byName.set(name, f)
     }
   }
-  // ペン・テキストが無い指摘の画像にはカーソルのリングを合成する（EXT-3）
+  // ペンの書き込みが無い指摘の画像にはカーソルのリングを合成する（EXT-3）
   const ringTimes = new Set(
     doc.items.filter((it) => it.include && !it.context.element).flatMap((it) => it.frameTimes)
   )

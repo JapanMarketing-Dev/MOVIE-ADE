@@ -36,6 +36,8 @@ function recorderPagePlugin(): Plugin {
         build: {
           outDir: recorderOut,
           emptyOutDir: true,
+          // 録画ウインドウのスタックも Sentry で元の行に戻せるように（.map は配布物に入らない）
+          sourcemap,
           lib: {
             entry: resolve(recorderSrc, 'recorder.ts'),
             formats: ['iife'],

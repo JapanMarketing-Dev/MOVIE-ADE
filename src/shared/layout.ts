@@ -18,6 +18,7 @@ export const DOCKS: readonly Dock[] = ['left', 'right', 'top', 'bottom']
 /** フッターの項目。並びはフッターでの左からの順 */
 export const FOOTER_ITEMS = [
   'usage',
+  'apiUsage',
   'recording',
   'mic',
   'transcription',
@@ -247,6 +248,8 @@ export const FOOTER_PRIORITY: Record<FooterItemId, 0 | 1 | 2 | 3> = {
   recording: 0,
   usage: 0,
   settings: 0,
+  // 従量課金の API（判定モデルなど）の使用量。Agent の使用量のすぐ下の優先順位
+  apiUsage: 1,
   mic: 1,
   transcription: 1,
   github: 1,

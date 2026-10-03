@@ -26,6 +26,8 @@ import type { Speaker, TranscriptSegment } from '../types'
 import { SttHttpError, type SttEngine, type TranscribeChunkInput, type TranscribeResult } from './engine'
 import { encodeWav, wavDurationMs } from './wav'
 import { DEFAULT_COST_LIMIT_USD, exceedsCostLimit, normalizeBaseUrl } from './endpoint'
+import { authHeaders } from '@shared/aiProviders'
+import { recordedSttFetch } from './usage'
 import type { SttLanguage } from './whisper'
 import { cleanText } from './whisper'
 import { t } from '@shared/i18n'
@@ -91,6 +93,11 @@ export interface OpenAiSttOptions {
   headers?: Record<string, string>
   /** 概算の単価($/分)。省略時はモデル名の表から、null は分からない（多めの概算） */
   pricePerMinuteUsd?: number | null
+  /** 提供元の id（使用量の記録に使う。groq / mistral / compatible など） */
+  provider?: string
+  /** 認証の形の上書き（settings.json の authScheme / authHeader）。省略時は Bearer */
+  authScheme?: 'bearer' | 'header' | 'none'
+  authHeader?: string
   /** file・model・language だけを送る（response_format などを受け付けない API。Mistral など） */
   minimalForm?: boolean
 }
@@ -104,7 +111,12 @@ export const UNKNOWN_PRICE_PER_MINUTE_USD = 0.006
 
 /** 表にあるモデルは公開価格、ないモデルは多めの概算 */
 export function sttPricePerMinuteUsd(model: string): number {
-  return (openAiSttPricePerMinuteUsd as Record<string, number>)[model] ?? UNKNOWN_PRICE_PER_MINUTE_USD
+  return knownSttPricePerMinuteUsd(model) ?? UNKNOWN_PRICE_PER_MINUTE_USD
+}
+
+/** 表にあるモデルの公開価格。無ければ undefined（推測しない） */
+export function knownSttPricePerMinuteUsd(model: string): number | undefined {
+  return (openAiSttPricePerMinuteUsd as Record<string, number>)[model]
 }
 const DEFAULT_BASE_URL = 'https://api.openai.com'
 
@@ -215,7 +227,9 @@ export class OpenAiSttEngine implements SttEngine {
       )
     }
     const durationMs = input.durationMs ?? (await wavDurationMs(input.wavPath))
-    const cost = durationMs / 60_000 * (this.opt.pricePerMinuteUsd ?? (this.opt.pricePerMinuteUsd === null ? UNKNOWN_PRICE_PER_MINUTE_USD : sttPricePerMinuteUsd(this.opt.model)))
+    // 単価が分かるか（使用量の記録に見積もりを付けるかどうか）。分からなければ上限の判定だけ多めの概算で行う
+    const knownPrice = this.opt.pricePerMinuteUsd ?? (this.opt.pricePerMinuteUsd === null ? undefined : knownSttPricePerMinuteUsd(this.opt.model))
+    const cost = durationMs / 60_000 * (knownPrice ?? UNKNOWN_PRICE_PER_MINUTE_USD)
     if (exceedsCostLimit(this.reservedCostUsd, cost, this.opt.maxCostUsd)) {
       throw new UserFacingError(t('stt.errors.costLimit', { label: this.label }))
     }
@@ -223,13 +237,14 @@ export class OpenAiSttEngine implements SttEngine {
     const form = this.buildForm(bytes, basename(input.wavPath))
 
     const started = Date.now()
-    const res = await fetch(`${this.baseUrl}${ENDPOINT}`, {
+    const res = await recordedSttFetch(`${this.baseUrl}${ENDPOINT}`, {
       method: 'POST',
       // Authorization ヘッダの値はどこにも出力しない。キーなしの自前サーバーには付けない
-      headers: { ...this.opt.headers, ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}) },
+      headers: { ...this.opt.headers, ...authHeaders(this.opt, this.apiKey, { Authorization: `Bearer ${this.apiKey}` }) },
       body: form,
       signal: AbortSignal.timeout(this.opt.timeoutMs ?? 600_000),
-    })
+    }, { provider: this.opt.provider, model: this.opt.model, durationSec: durationMs / 1000, requestBytes: bytes.byteLength,
+      ...(knownPrice !== undefined ? { estimateUsd: cost } : {}) })
     const elapsedMs = Date.now() - started
 
     if (!res.ok) {

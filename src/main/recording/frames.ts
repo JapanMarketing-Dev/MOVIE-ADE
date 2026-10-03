@@ -41,6 +41,32 @@ export function hasChanged(
   return differing / pixels >= sameRatio
 }
 
+/**
+ * 縮小画像（BGRA）がほぼ一色か。読み込み途中の白いページや、上の帯しか描かれていない画面を見分ける。
+ * いちばん多い色から外れた画素が `minInkRatio` 未満なら一色とみなす。
+ */
+export function isNearlyBlank(bitmap: Uint8Array, options: { minInkRatio?: number; pixelDelta?: number } = {}): boolean {
+  const pixels = Math.floor(bitmap.length / 4)
+  if (pixels === 0) return true
+  const minInkRatio = options.minInkRatio ?? 0.03
+  const pixelDelta = options.pixelDelta ?? DEFAULT_PIXEL_DELTA
+  // 地の色: 量子化した色の最頻値
+  const counts = new Map<number, number>()
+  for (let i = 0; i < pixels * 4; i += 4) {
+    const key = ((bitmap[i]! >> 4) << 8) | ((bitmap[i + 1]! >> 4) << 4) | (bitmap[i + 2]! >> 4)
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  let base = 0
+  let best = -1
+  for (const [key, n] of counts) if (n > best) { best = n; base = key }
+  const [b0, g0, r0] = [((base >> 8) & 15) * 16 + 8, ((base >> 4) & 15) * 16 + 8, (base & 15) * 16 + 8]
+  let ink = 0
+  for (let i = 0; i < pixels * 4; i += 4) {
+    if (Math.abs(bitmap[i]! - b0) + Math.abs(bitmap[i + 1]! - g0) + Math.abs(bitmap[i + 2]! - r0) > pixelDelta) ink++
+  }
+  return ink / pixels < minInkRatio
+}
+
 /** 連番のファイル名。時刻順に並ぶように0埋めする */
 export function frameFileName(sequence: number, format: 'jpeg' | 'png'): string {
   return `${String(sequence).padStart(5, '0')}.${format}`

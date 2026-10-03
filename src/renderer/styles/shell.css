@@ -121,62 +121,10 @@
   overflow: hidden;
   width: var(--size-sidebar);
   height: 100%;
-  grid-template-rows: auto minmax(0, 1fr);
+  /* 「新しいレビュー」はプロジェクトの中へ移したので、一覧だけの1段 */
+  grid-template-rows: minmax(0, 1fr);
   background: var(--color-bg-sidebar);
   box-shadow: inset -1px 0 0 var(--color-border);
-}
-
-.sidebar__top {
-  padding: var(--space-4) var(--space-4) var(--space-2);
-}
-
-/*
- * 「新しいレビュー」。サイドバーで一番強い要素。
- * 面は控えめにして、先頭の録画色の丸で「押すと録る」を伝える
- * （タイトルバーの録画ボタン本体とは競合させない）。
- */
-.sidebar__new {
-  display: flex;
-  width: 100%;
-  height: 32px;
-  align-items: center;
-  padding: 0 var(--space-4) 0 var(--space-3);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-elevated);
-  color: var(--color-text);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  gap: var(--space-4);
-  transition:
-    background var(--motion-fast) var(--ease-out),
-    border-color var(--motion-fast) var(--ease-out),
-    box-shadow var(--motion-fast) var(--ease-out),
-    transform var(--motion-instant) var(--ease-out);
-}
-
-.sidebar__new:hover {
-  border-color: var(--color-border-strong);
-  background: var(--color-surface-hover);
-}
-
-.sidebar__new:active {
-  transform: scale(0.98);
-}
-
-.sidebar__new > svg {
-  width: var(--size-icon);
-  height: var(--size-icon);
-  flex: none;
-  color: var(--color-text-muted);
-}
-
-.sidebar__new-key {
-  margin-left: auto;
-  color: var(--color-text-faint);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-2xs);
 }
 
 /* 日付のまとまり。既存のADEの Pinned / In progress と同じ役目 */
@@ -1147,6 +1095,84 @@ body[data-resizing='row'] * {
   right: 0;
   bottom: var(--space-3);
   left: var(--space-5);
+}
+
+/*
+ * 分割中のペインを動かすつまみ（Orca の .pane-drag-handle）。上端の細い帯で、ペインが1枚なら出さない。
+ * 乗ったときだけ見せる（ターミナルの1行目を隠さない）
+ */
+.terminal-leaf__handle {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: none;
+  height: 10px;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  opacity: 0;
+  background: var(--color-accent-quiet);
+  transition: opacity var(--motion-fast) var(--ease-out);
+}
+
+.terminal-leaf__handle::after {
+  color: var(--color-text-faint);
+  content: '···';
+  font-size: 10px;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.terminal-leaf[data-split] .terminal-leaf__handle {
+  display: flex;
+}
+
+.terminal-leaf__handle:hover,
+.terminal-leaf__handle:focus-visible {
+  opacity: 1;
+}
+
+.terminal-leaf__handle:active {
+  cursor: grabbing;
+}
+
+/* ドラッグ中のペインは薄くする（Orca の .pane.is-drag-source） */
+.terminal-leaf[data-drag-source] {
+  opacity: 0.4 !important;
+}
+
+/* ドラッグ中、落とすとどうなるかの案内（Orca の .pane-drop-overlay）。マウスは下のペインに通す */
+.terminal-drop-overlay {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  pointer-events: none;
+  transition:
+    left var(--motion-fast) var(--ease-out),
+    top var(--motion-fast) var(--ease-out),
+    width var(--motion-fast) var(--ease-out),
+    height var(--motion-fast) var(--ease-out);
+}
+
+/* いちばん外側で分割するときは、点線で区別する */
+.terminal-drop-overlay[data-kind='root'] {
+  border-style: dashed;
+}
+
+.terminal-drop-overlay__label {
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
 }
 
 /* 掴める幅は広く、見える線は ::after で細く描く（交差する区切り線がつながるよう、線を少し延ばす） */
@@ -2398,4 +2424,150 @@ button.sb-more__row:hover {
   color: var(--color-text-faint);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── プロジェクトの種類と確認先（ProjectTargetsEditor）──────── */
+
+.pt-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.pt-editor__kind {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.pt-editor__caption {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.pt-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-3);
+  list-style: none;
+}
+
+/* 1件。欄を左に、並べ替えと削除を右上に置く */
+.pt-item {
+  display: grid;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+}
+
+.pt-item__actions {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.pt-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.pt-field {
+  display: grid;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  gap: var(--space-2);
+}
+
+.pt-dialog {
+  display: grid;
+  width: min(100%, 560px);
+  gap: var(--space-4);
+}
+
+.pt-dialog__head {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pt-dialog__head h2 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.pt-dialog__path {
+  overflow: hidden;
+  margin: calc(var(--space-3) * -1) 0 0;
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pt-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ウインドウを録るボタンは、印を名前の前に置く */
+.url-chip__main > svg {
+  margin-right: var(--space-2);
+  vertical-align: -1px;
+}
+
+/*
+ * プロジェクトの中の「＋ 新しいレビュー」。どのプロジェクトで録るかが分かるよう、履歴の一番上に置く。
+ * 開いているプロジェクトにだけ ⌘⇧R を出す（ショートカットは開いているプロジェクトで始まる）。
+ */
+.sb-new-review {
+  display: flex;
+  width: 100%;
+  height: 28px;
+  align-items: center;
+  margin: var(--space-1) 0 var(--space-2);
+  padding: 0 var(--space-4);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+  text-align: left;
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
+}
+
+.sb-new-review:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.sb-new-review:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.sb-new-review > svg {
+  flex: none;
+}
+
+.sb-new-review__key {
+  margin-left: auto;
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+.sb-project__action:disabled {
+  cursor: default;
+  opacity: 0.4;
 }

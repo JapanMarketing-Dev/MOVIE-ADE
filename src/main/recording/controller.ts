@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path'
 import { captureTargetGap, captureTargetLabel, resolveCaptureTarget } from '@shared/captureTarget'
 import { RecordingClock } from './clock'
 import { isPageChange } from '@shared/page'
+import { DEFAULT_ANNOTATION_COLOR, type AnnotationColor } from '@shared/annotation'
 import { RecorderWindow, type VideoSource } from './recorderWindow'
 import { listCaptureSources, screenAccess } from './sources'
 import { StillCapturer, webContentsStillSource, type StillSource } from './stills'
@@ -43,10 +44,15 @@ import { reportHandled } from '@shared/report'
 const REVIEW_CHANNELS = {
   event: 'ade-review:event',
   command: 'ade-review:command',
-  ready: 'ade-review:ready'
+  ready: 'ade-review:ready',
+  /** 注入側の書き込みの「元に戻す／やり直す」ができるか（ツールバーのボタンの有効・無効） */
+  history: 'ade-review:history',
+  /** ページに焦点があるときに押された、書き込みの道具の切り替えキー（ツールバーへ渡す） */
+  shortcut: 'ade-review:shortcut'
 } as const
 
-export type AnnotationMode = 'off' | 'pen' | 'text'
+/** 書き込みの道具。依頼は声とペンで行うので、ペンだけ（画面に文字を置く道具は廃止した） */
+export type AnnotationMode = 'off' | 'pen' | 'rect'
 
 /** 画面収録の許可が無いときの案内。選択画面の案内（CaptureTargetPicker）と同じ手順を書く */
 export function screenAccessMessage(): string {
@@ -78,6 +84,8 @@ export class RecordingController {
   private readonly warnings: string[] = []
   private readonly samples: Record<'mic' | 'system', number> = { mic: 0, system: 0 }
   private annotationMode: AnnotationMode = 'off'
+  /** 書き込みの色。録画をまたいで引き継ぐ（設定の capture.annotationColor） */
+  private annotationColor: AnnotationColor = DEFAULT_ANNOTATION_COLOR
   private limitWarningTimer: NodeJS.Timeout | null = null
   private maxDurationTimer: NodeJS.Timeout | null = null
   private boundReview = false
@@ -175,15 +183,21 @@ export class RecordingController {
       if (event.sender === this.source) this.pushMode()
     })
 
+    ipcMain.on(REVIEW_CHANNELS.history, (event, history: unknown) => {
+      if (event.sender !== this.source) return
+      const value = history as { canUndo?: unknown; canRedo?: unknown } | null
+      this.handlers.onAnnotationHistory?.({ canUndo: value?.canUndo === true, canRedo: value?.canRedo === true })
+    })
+
+    ipcMain.on(REVIEW_CHANNELS.shortcut, (event, action: unknown) => {
+      if (event.sender !== this.source || this.state !== 'recording') return
+      if (action === 'pen' || action === 'rect' || action === 'off' || action === 'color') this.handlers.onAnnotationShortcut?.(action)
+    })
+
     ipcMain.on(REVIEW_CHANNELS.event, (event, raw: RawReviewEvent) => {
       if (event.sender !== this.source) return
       // ページ移動に伴う確定が済んだ返事（onInPageNavigate）
       if (raw?.type === 'left') return void this.finishLeave()
-      // 入力中の吹き出しが写った画面を控える（SPA で書きかけのままページが変わったとき用）
-      if (raw?.type === 'draft') {
-        if (this.state === 'recording' && typeof raw.id === 'string') void this.stills?.prepare(raw.id)
-        return
-      }
       this.recordInjected(raw)
     })
   }
@@ -198,7 +212,8 @@ export class RecordingController {
     if (!wc) return
     wc.send(REVIEW_CHANNELS.command, {
       type: 'config',
-      maxHoldMs: this.options?.annotationMaxHoldMs ?? 30_000
+      maxHoldMs: this.options?.annotationMaxHoldMs ?? 30_000,
+      color: this.annotationColor
     })
     wc.send(REVIEW_CHANNELS.command, {
       type: this.state === 'recording' ? 'enable' : 'disable'
@@ -208,14 +223,20 @@ export class RecordingController {
     }
   }
 
-  /** ペン／テキスト／OFF の切り替え（PEN-2 / TXT-1） */
+  /** ペン／四角の枠／OFF の切り替え（PEN-2） */
   setAnnotationMode(mode: AnnotationMode): void {
     this.annotationMode = mode
     this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'mode', mode })
   }
 
+  /** 書き込みの色。描いてあるものはそのままで、次に描くものから変わる */
+  setAnnotationColor(color: AnnotationColor): void {
+    this.annotationColor = color
+    this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'color', color })
+  }
+
   /**
-   * 線とテキストを消す（PEN-3）。
+   * 書き込み（線・四角の枠）を消す（PEN-3）。
    *
    * 呼び出し元は2つ:
    * - 手動の［消去］ボタン
@@ -226,8 +247,18 @@ export class RecordingController {
    * （SPA）と、ドキュメントの読み直し（通常の遷移）で行う。
    * 指示が来ないまま残り続けないよう、注入側に上限（既定30秒）の保険がある。
    */
-  clearAnnotations(): void {
-    this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'clear' })
+  clearAnnotations(manual = false): void {
+    // 手動の［消去］だけは「元に戻す」で画面に戻せる。発話の区切りでの消去は戻す手順も片付ける
+    this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'clear', ...(manual ? { manual: true } : {}) })
+  }
+
+  /** 書き込みを一つ前に戻す・やり直す（描く・動かす・消去が1手） */
+  undoAnnotation(): void {
+    this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'undo' })
+  }
+
+  redoAnnotation(): void {
+    this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'redo' })
   }
 
   get status(): RecordingStatus {
@@ -499,21 +530,21 @@ export class RecordingController {
     if (!this.recordsBrowser) {
       // 画面・ウインドウを録っているときは、書き込み（指摘そのもの）だけ残す。
       // 要素情報は内蔵ブラウザの中のもので、録っている画面と食い違いうるので外す
-      if (event.type !== 'pen' && event.type !== 'text') return
+      if (event.type === 'erase') return void this.push(event)
+      if (event.type !== 'pen') return
       const { el: _el, ...rest } = event
       event = rest
       this.push(event)
-      void this.stills?.captureNow(event.type, undefined, event.id, raw.leaving === true)
+      void this.stills?.captureNow(event.type, undefined, event.id)
       return
     }
     if (raw.view?.width && this.lastViewWidth !== raw.view.width) this.recordViewport(raw.view.width, event.t)
     this.push(event)
 
     if (!shouldCaptureStill(event)) return
-    // ペン・テキストの確定時とクリック時は、間隔を待たずにその場で撮る（設計4章）
-    const cursor =
-      event.type === 'click' || event.type === 'text' ? { x: event.x, y: event.y, view: raw.view } : undefined
-    void this.stills?.captureNow(event.type, cursor, event.type === 'text' || event.type === 'pen' ? event.id : undefined, raw.leaving === true)
+    // ペンの確定時とクリック時は、間隔を待たずにその場で撮る（設計4章）
+    const cursor = event.type === 'click' ? { x: event.x, y: event.y, view: raw.view } : undefined
+    void this.stills?.captureNow(event.type, cursor, event.type === 'pen' ? event.id : undefined)
   }
 
 }

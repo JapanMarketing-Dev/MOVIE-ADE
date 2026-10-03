@@ -25,6 +25,7 @@ import type { SessionRecord } from '../../src/main/sessions/store'
 import type { ItemEdit } from '../../src/main/sessions/edits'
 import { assembleFromOrganized } from '../../src/main/pipeline/assemble'
 import { renderFeedbackMarkdown } from '../../src/main/pipeline/feedback'
+import { buildDraft } from '../../src/main/pipeline/draft'
 import { material } from './fixtures'
 
 // 期待値は日本語の文言。画面の言語を日本語に固定する（既定は英語）
@@ -76,14 +77,16 @@ describe('セッションID とフォルダ構成（設計8章）', () => {
 
   it('設計どおりのパスを組み立てる', () => {
     const p = sessionPaths('/proj', '20261002-104012')
-    expect(p.dir).toBe('/proj/.ade-movie/reviews/20261002-104012')
-    expect(p.relativeDir).toBe('.ade-movie/reviews/20261002-104012')
-    expect(p.feedbackMd.endsWith('/feedback.md')).toBe(true)
-    expect(p.sessionJson.endsWith('/session.json')).toBe(true)
-    expect(p.eventsJsonl.endsWith('/events.jsonl')).toBe(true)
-    expect(p.recording.endsWith('/recording.webm')).toBe(true)
-    expect(p.audioDir.endsWith('/work/audio')).toBe(true)
-    expect(p.framesDir.endsWith('/work/frames')).toBe(true)
+    // 実際のパスは OS の区切り（Windows は \\）。Agent へ渡す相対パス（relativeDir）だけは常に /
+    const dir = join('/proj', '.ferret', 'reviews', '20261002-104012')
+    expect(p.dir).toBe(dir)
+    expect(p.relativeDir).toBe('.ferret/reviews/20261002-104012')
+    expect(p.feedbackMd).toBe(join(dir, 'feedback.md'))
+    expect(p.sessionJson).toBe(join(dir, 'session.json'))
+    expect(p.eventsJsonl).toBe(join(dir, 'events.jsonl'))
+    expect(p.recording).toBe(join(dir, 'recording.webm'))
+    expect(p.audioDir).toBe(join(dir, 'work', 'audio'))
+    expect(p.framesDir).toBe(join(dir, 'work', 'frames'))
   })
 
   it('録画開始でフォルダを作る', async () => {
@@ -147,6 +150,27 @@ describe('session.json', () => {
     const p = await createSession(project)
     await writeFile(p.sessionJson, JSON.stringify({ version: 99 }), 'utf8')
     expect(await loadSession(p)).toBeNull()
+  })
+
+  it('廃止した「置いたテキスト」を含む古いレビューも、落ちずに読み込んで書き込みとして表示する', async () => {
+    const p = await createSession(project)
+    // 旧版が書いた events.jsonl（text の行）と session.json（source: 'text' の引用）をそのまま置く
+    const legacyText = { t: 25_100, type: 'text', id: 'x1', x: 300, y: 520, body: 'ここは「月額」表記に統一' }
+    await writeFile(p.eventsJsonl, `${JSON.stringify({ t: 0, type: 'nav', url: 'http://x/', title: 'トップ' })}\n${JSON.stringify(legacyText)}\n`, 'utf8')
+    const legacy = record()
+    const item = legacy.document.items[1]!
+    // 共有の organized を書き換えないよう、引用は新しい配列にする
+    legacy.document.items[1] = { ...item, quotes: [{ source: 'text', speaker: 'self', t: 25_100, text: 'ここは「月額」表記に統一' }, ...item.quotes] }
+    await writeFile(p.sessionJson, JSON.stringify(legacy), 'utf8')
+
+    const back = await loadSession(p)
+    expect(back?.document.items).toHaveLength(3)
+    expect(renderFeedbackMarkdown(back!.document)).toContain('書き込み「ここは「月額」表記に統一」')
+    // 操作ログの text 行は読めるが、下書きでは書き込みとして扱わない
+    const events = await readEvents(p)
+    expect(events).toHaveLength(2)
+    const draft = buildDraft({ ...material, events })
+    expect(draft.items.some((i) => i.annotationIds.includes('x1'))).toBe(false)
   })
 
   it('分解後に中間ファイルを片付ける', async () => {

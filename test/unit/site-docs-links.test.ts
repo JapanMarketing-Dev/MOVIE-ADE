@@ -22,7 +22,8 @@ describe('site/docs', () => {
   it('pnpm docs:build の出力と一致する', () => {
     const docs = renderDocs()
     expect(pages.sort()).toEqual(Object.keys(docs).sort())
-    for (const [file, html] of Object.entries(docs)) expect(readFileSync(join(DOCS_DIR, file), 'utf8'), file).toBe(html)
+    // .gitattributes で LF に揃えているが、手元の設定で CRLF になっていても改行の違いでは落とさない
+    for (const [file, html] of Object.entries(docs)) expect(readFileSync(join(DOCS_DIR, file), 'utf8').replace(/\r\n/g, '\n'), file).toBe(html)
   })
 
   for (const page of pages) {
@@ -32,7 +33,8 @@ describe('site/docs', () => {
       const broken: string[] = []
       for (const [, raw] of html.matchAll(/\s(?:href|src|content="0; url)="?([^"]*)"/g)) {
         if (/^(?:[a-z]+:|\/\/)/i.test(raw)) continue // 外部（https:, mailto: など）は見ない
-        const [path, hash] = raw.split('#')
+        const [withQuery, hash] = raw.split('#')
+        const path = withQuery.split('?')[0] // ?v=<版>（CSS / JS のキャッシュ破り）は外して見る
         const target = path ? targetFile(file, path) : file
         if (!target.startsWith(SITE) || !existsSync(target)) {
           broken.push(raw)

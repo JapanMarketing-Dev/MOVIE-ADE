@@ -15,7 +15,7 @@ import type { TuiAgent } from '@shared/types'
 
 export type QuickLaunchEntry =
   | { kind: 'shell' }
-  | { kind: 'agent'; agent: TuiAgent; label: string }
+  | { kind: 'agent'; agent: TuiAgent; label: string; icon?: string }
   | { kind: 'settings' }
   | { kind: 'tab'; tabKey: string; title: string }
   | { kind: 'url'; url: string; label: string; project: string }
@@ -25,7 +25,7 @@ export type QuickLaunchEntry =
 
 export interface QuickLaunchSources {
   /** メニューに出すエージェント（インストール済みか登録したもので、無効にしていないもの） */
-  agents: ReadonlyArray<{ id: TuiAgent; label: string }>
+  agents: ReadonlyArray<{ id: TuiAgent; label: string; icon?: string }>
   /** 「Agent設定…」を出すか */
   settings: boolean
   tabs: ReadonlyArray<{ key: string; title: string }>
@@ -131,7 +131,7 @@ export function buildQuickLaunchEntries(query: string, sources: QuickLaunchSourc
   const q = query.trim()
   const actions: QuickLaunchEntry[] = [
     { kind: 'shell' },
-    ...sources.agents.map((agent): QuickLaunchEntry => ({ kind: 'agent', agent: agent.id, label: agent.label })),
+    ...sources.agents.map((agent): QuickLaunchEntry => ({ kind: 'agent', agent: agent.id, label: agent.label, ...(agent.icon ? { icon: agent.icon } : {}) })),
     ...(sources.settings ? [{ kind: 'settings' } as const] : [])
   ]
   if (!q) return actions

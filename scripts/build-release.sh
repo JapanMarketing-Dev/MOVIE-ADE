@@ -22,7 +22,7 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="$(node -p "require('${REPO}/package.json').version")"
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/movie-ade-release.XXXXXX")"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/ferret-release.XXXXXX")"
 SRC="${WORK}/src"
 OUT="${REPO}/dist/release"
 export CSC_IDENTITY_AUTO_DISCOVERY=false
@@ -34,7 +34,7 @@ if [[ "$(uname)" != "Darwin" ]]; then
   exit 1
 fi
 
-echo "== MOVIE-ADE ${VERSION} を作ります（作業場所: ${WORK}）"
+echo "== Ferret ${VERSION} を作ります（作業場所: ${WORK}）"
 mkdir -p "${SRC}"
 cd "${REPO}"
 for entry in $(ls -A); do
@@ -60,7 +60,7 @@ mkdir -p "${OUT}"
 cd "${REPO}"
 npx electron-builder --config electron-builder.config.cjs --win nsis --x64 --prepackaged "${SRC}/dist/release/win-unpacked"
 npx electron-builder --config electron-builder.config.cjs --win nsis --arm64 --prepackaged "${SRC}/dist/release/win-arm64-unpacked"
-cp -c "${SRC}"/dist/release/MOVIE-ADE-"${VERSION}"-mac-*.dmg "${OUT}/"
+cp -c "${SRC}"/dist/release/Ferret-"${VERSION}"-mac-*.dmg "${OUT}/"
 
 if [[ "${SKIP_LINUX:-}" == "1" ]]; then
   echo "== Linux は飛ばしました（SKIP_LINUX=1）"
@@ -91,10 +91,10 @@ cd /work
 corepack enable && corepack prepare pnpm@10 --activate
 pnpm install --frozen-lockfile
 npx electron-builder --config electron-builder.config.cjs --linux AppImage deb --x64
-cp dist/release/MOVIE-ADE-*.AppImage dist/release/MOVIE-ADE-*.deb /out/
+cp dist/release/Ferret-*.AppImage dist/release/Ferret-*.deb /out/
 # パッケージに入った node-pty で PTY を1つ開いて閉じる
 cd dist/release/linux-unpacked
-ELECTRON_RUN_AS_NODE=1 ./movie-ade -e "const p=require('./resources/app.asar/node_modules/node-pty');const t=p.spawn('/bin/bash',['-c','echo PTY_OK'],{});t.onData(d=>process.stdout.write(d));t.onExit(e=>process.exit(e.exitCode))"
+ELECTRON_RUN_AS_NODE=1 ./ferret -e "const p=require('./resources/app.asar/node_modules/node-pty');const t=p.spawn('/bin/bash',['-c','echo PTY_OK'],{});t.onData(d=>process.stdout.write(d));t.onExit(e=>process.exit(e.exitCode))"
 LINUX
   mkdir -p "${WORK}/linux/out"
   "${CLI}" run --rm --platform linux/amd64 -m 7g \
@@ -106,5 +106,5 @@ fi
 
 rm -rf "${WORK}"
 echo "== できたもの（${OUT}）"
-ls -la "${OUT}"/MOVIE-ADE-"${VERSION}"-*
+ls -la "${OUT}"/Ferret-"${VERSION}"-*
 echo "次: pnpm release:r2 stage --preview win,linux  →  確認  →  pnpm release:r2 promote --version ${VERSION}"

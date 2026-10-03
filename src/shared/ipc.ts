@@ -1,5 +1,9 @@
 import type { AiEndpointConfig, AiVendor, LlmApiProvider, OrganizeRunnerId, SttRemoteProvider } from './aiProviders'
+import type { AnnotationColor } from './annotation'
+import type { SendRequest } from './sendTarget'
 import type {
+  AnnotationHistory,
+  AnnotationShortcut,
   AnnotationMode,
   AppMode,
   AgentPreferences,
@@ -11,8 +15,8 @@ import type {
   WhisperModelList,
   WhisperModelName,
   WhisperModelProgress,
-  Project,
   ProjectSession,
+  ProjectUpdate,
   ProjectsState,
   TerminalCreateOptions,
   AudioLevel,
@@ -21,6 +25,9 @@ import type {
   PlatformName,
   RecordingStatus,
   Settings,
+  SettingsFileError,
+  SettingsFileInfo,
+  FeedbackTargetsPrefs,
   StartRecordingOptions,
   StartupTiming,
   TerminalSize,
@@ -32,9 +39,13 @@ import type {
   TerminalSessionInfo,
   ViewBounds,
   Viewport,
-  WorkspaceState
+  WorkspaceState,
+  TuiAgent
 } from './types'
-import type { ReviewData, ReviewEdit, ReviewLabelPatch, ReviewSummary, ReviewFrame } from './review'
+import type { DecisionPreferences } from './decision'
+import type { ApiUsageSummary } from './apiUsage'
+import type { ReviewData, ReviewEdit, ReviewLabelPatch, ReviewProgressPatch, ReviewSummary, ReviewFrame } from './review'
+import type { ProgressMap } from './findingProgress'
 import type { AccountLoginRequest, AgentAccountAddResult, AgentAccountsState } from './accounts'
 import type { AccountUsage, UsageState } from './usage'
 import type { UpdateCheckResult } from './appVersion'
@@ -45,6 +56,7 @@ import type { ResolvedTheme } from './theme'
 import type { LocalePreference, SupportedLocale } from './i18n'
 import type { ResourceKillTarget, ResourceSnapshot } from './resources'
 import type { FsChangedEvent, FsEntry, FsFileList, FsReadResult, FsSearchMode, FsSearchResult, FsWriteResult } from './files'
+import type { StarActionResult, StarPromptMode } from './starPrompt'
 import type { GitHubPostResult, GitHubRepoResult, GitRepoStatus, GitHubReviewDraft, GitHubReviewTarget, GitHubStatus } from './github'
 
 /**
@@ -58,6 +70,16 @@ import type { GitHubPostResult, GitHubRepoResult, GitRepoStatus, GitHubReviewDra
 export interface IpcRequests {
   'app:ready': () => StartupTiming
   'app:settings': () => Settings
+  /** settings.json の場所と、壊れているか（~/.ferret/settings.json。src/main/settingsFile.ts） */
+  'settingsFile:info': () => SettingsFileInfo
+  /** 生の settings.json（設定のページのエディタで開く） */
+  'settingsFile:read': () => string
+  /** エディタからの保存。壊れていれば書かずにエラーを返す。保存できたら null（取り込みは settings:changed で届く） */
+  'settingsFile:write': (text: string) => SettingsFileError | null
+  /** settings.json をファイルマネージャで見せる */
+  'settingsFile:reveal': () => void
+  /** フィードバックモードの右パネルの開閉と幅 */
+  'settings:feedbackTargets': (prefs: FeedbackTargetsPrefs) => void
   /** package.json の version と、配布用にパッケージされた起動か（dev 起動なら false） */
   'app:version': () => { version: string; packaged: boolean }
   /** GitHub Releases の最新と比べるだけ。自動更新はしない */
@@ -80,7 +102,8 @@ export interface IpcRequests {
   'project:add': () => ProjectsState | null
   'project:switch': (id: string) => WorkspaceState
   /** 名前・URLの変更。id で既存を置き換える */
-  'project:update': (project: Project) => ProjectsState
+  /** 名前・種類・確認先の変更。送った項目だけが変わる（Project をそのまま渡してもよい） */
+  'project:update': (project: ProjectUpdate) => ProjectsState
   /** 登録を外すだけ。フォルダは消さない */
   'project:remove': (id: string) => ProjectsState
   /** 中央のタブ・開いているファイル・表示中のレビューを覚える（URL は main が自分で覚える）。通知は送らない */
@@ -126,14 +149,19 @@ export interface IpcRequests {
   'terminal:resize': (id: string, size: TerminalSize) => void
   'terminal:close': (id: string) => void
   'terminal:screen': (id: string, text: string) => void
-  'terminal:agentState': (id: string) => { kind: string; state: string }
+  'terminal:agentState': (id: string) => { kind: string; state: string; agent?: TuiAgent | null }
   /** シェルの今のカレント（分割したペインに引き継ぐ）。終了済みなら null */
   'terminal:cwd': (id: string) => string | null
   /** 開いているターミナルの一覧（画面を読み込み直したあと、つなぎ直す先を探す） */
   'terminal:list': () => TerminalSessionInfo[]
   /** 生きているターミナルにつなぎ直す（新しくは作らない）。終了していれば null */
   'terminal:attach': (id: string) => TerminalAttachInfo | null
-  'review:send': (sessionId: string, terminalId: string) => { ok: boolean; message: string }
+  /**
+   * 指摘を Agent へ送る。request は宛先と差し替える本文（@shared/sendTarget の SendRequest。古い形のターミナルの id も受ける）。
+   * noAgent: 宛先に Agent が居ない（launchAgent があればそれを、無ければ既定の Agent を renderer が起動して送り直す）。
+   * terminalId: 実際に送ったターミナル。submitted: false なら貼り付けただけ（Enter は利用者が押す）
+   */
+  'review:send': (sessionId: string, request: SendRequest | string | null) => { ok: boolean; message: string; noAgent?: boolean; launchAgent?: TuiAgent; terminalId?: string; submitted?: boolean }
 
   'settings:splitRatio': (ratio: number) => void
   /** パネルの置き場所と表示、フッターの項目 */
@@ -144,7 +172,7 @@ export interface IpcRequests {
   'settings:locale': (locale: LocalePreference) => SupportedLocale
   /** クラッシュレポートを送るか。OFF はすぐ効く。ON は次の起動から（初期化は起動時だけ） */
   'settings:crashReports': (enabled: boolean) => void
-  /** active = この起動で Sentry を初期化したか（設定が ON で E2E でないとき。dev も含む）。packaged = 配布版か。test = 確認用にわざと起こす例外（MOVIE_ADE_SENTRY_TEST）。noticeShown = 初回の案内を出し終えたか */
+  /** active = この起動で Sentry を初期化したか（設定が ON で E2E でないとき。dev も含む）。packaged = 配布版か。test = 確認用にわざと起こす例外（FERRET_SENTRY_TEST）。noticeShown = 初回の案内を出し終えたか */
   'telemetry:state': () => { active: boolean; enabled: boolean; noticeShown: boolean; packaged: boolean; test: SentryTestKind[] }
   /** 初回の案内を閉じた */
   'telemetry:noticeShown': () => void
@@ -162,15 +190,24 @@ export interface IpcRequests {
   'recording:stop': () => RecordingStatus
   'recording:status': () => RecordingStatus
   'annotation:setMode': (mode: AnnotationMode) => void
+  /** 書き込みの色を変え、settings.json（capture.annotationColor）にも残す */
+  'annotation:setColor': (color: AnnotationColor) => void
   'annotation:clear': () => void
+  /** 書き込みを一つ前に戻す・やり直す（描く・動かす・消去が1手。録画中だけ） */
+  'annotation:undo': () => void
+  'annotation:redo': () => void
   /** 省略時は開いているフォルダ。指定できるのは登録済みプロジェクトのフォルダだけ（サイドバーの入れ子表示用） */
   'review:list': (folderPath?: string) => ReviewSummary[]
   /** レビューの名前・アーカイブを変える（folderPath は登録済みプロジェクトに限る。省略時は開いているプロジェクト） */
   'review:label': (id: string, patch: ReviewLabelPatch, folderPath?: string) => void
-  /** レビューを消す（.ade-movie/reviews/<日時>/ ごと）。消せた ID を返す */
+  /** レビューを消す（.ferret/reviews/<日時>/ ごと。古いものは .ade-movie/）。消せた ID を返す */
   'review:delete': (ids: string[], folderPath?: string) => string[]
   'review:load': (id: string) => ReviewData
   'review:edit': (sessionId: string, edit: ReviewEdit) => ReviewData
+  /** 指摘の進み具合（progress.json）を変えて、今の値を返す。patch を省くと読むだけ（Agent が書いたあとの読み直し） */
+  'review:progress': (sessionId: string, patch?: ReviewProgressPatch) => ProgressMap
+  /** 「Agent から確認があります」への返答を送る1行を作る。renderer が review:send の text（差し替えの本文）として送る */
+  'review:replyPrompt': (sessionId: string, itemId: string, reply: string) => string
   'review:copy': (id: string) => void
   'review:folder': (id: string) => void
   'review:restore': (id: string, t: number) => ReviewData
@@ -189,6 +226,12 @@ export interface IpcRequests {
   'settings:organizer': (prefs: OrganizerPreferences) => void
   /** 整理の API の「接続を確認」。短い質問を1回送る */
   'organize:testConnection': (target: { provider: LlmApiProvider; endpoint?: AiEndpointConfig }) => { ok: boolean; message: string }
+  /** 判定モデルの設定を保存し、整えた値を返す（キーは capture:apiKey で提供元ごとに保存） */
+  'settings:decision': (prefs: DecisionPreferences) => DecisionPreferences
+  /** 従量課金の API 呼び出しの集計（今日・今月・プロジェクト・モデル・種類ごと、直近 50 件）。フッター左下 */
+  'usage:apiCalls': () => ApiUsageSummary
+  /** 記録の JSONL を Finder / エクスプローラーで示す */
+  'usage:openApiLog': () => void
   'capture:model': () => boolean
   'capture:availability': () => SttAvailability
   /** 端末内の文字起こしのモデルの一覧と、whisper-cli の有無 */
@@ -198,6 +241,8 @@ export interface IpcRequests {
   'capture:cancelModelDownload': () => void
   /** 録画の対象の候補（画面・ウインドウ。サムネイル付き）と、画面収録の許可 */
   'capture:sources': () => CaptureSourceList
+  /** 画面収録の許可だけを調べる（一覧は取らない。macOS で許可の確認ダイアログを出さないため） */
+  'capture:screenAccess': () => CaptureSourceList['screenAccess']
   /** 録画の対象を覚える（次回の既定） */
   'capture:setTarget': (target: CaptureTarget) => void
   /** macOS のシステム設定（画面収録）を開く */
@@ -228,6 +273,17 @@ export interface IpcRequests {
   'github:open': (url: string) => void
   /** フッター用：今のプロジェクトのリポジトリ・ブランチ・変更の数。呼ぶと .git/HEAD の見張りも始める */
   'github:repoStatus': () => GitRepoStatus
+
+  // GitHub の star のお願い（src/main/starPrompt.ts）。star するのは利用者が押したときだけ
+  /** トーストの「Star」。gh で star できたら true（できなければ画面はブラウザの案内に切り替える） */
+  'star:star': () => boolean
+  /** リポジトリをブラウザで開く */
+  'star:openWeb': () => void
+  'star:later': () => void
+  /** 「今後表示しない」 */
+  'star:never': () => void
+  /** 設定・ヘルプのいつでも押せる入口。gh で star、できなければブラウザで開く */
+  'star:fromMenu': () => StarActionResult
 }
 
 export interface IpcEvents {
@@ -244,8 +300,16 @@ export interface IpcEvents {
   'recording:level': (level: AudioLevel) => void
   /** 録画は続いているが、何かが取れなかった（マイク無しなど）ことを知らせる */
   'recording:warning': (message: string) => void
+  /** 書き込みの「元に戻す／やり直す」ができるかが変わった */
+  'annotation:history': (history: AnnotationHistory) => void
+  /** ページに焦点があるときに押された、書き込みの道具の切り替えキー（ツールバーで処理する） */
+  'annotation:shortcut': (action: AnnotationShortcut) => void
   'capture:modelProgress': (progress: WhisperModelProgress) => void
+  /** API の呼び出しを記録したあとの集計（フッターの使用量を更新する） */
+  'usage:apiCallsChanged': (summary: ApiUsageSummary) => void
   'review:ready': (review: ReviewData) => void
+  /** 開いているプロジェクトのレビューの progress.json（指摘の進み具合）が変わった。Agent の書き込みを画面へ反映する */
+  'review:progressChanged': (ids: string[]) => void
   /** 使用量が変わった（取得中・成功・失敗） */
   'usage:changed': (state: UsageState) => void
   /** プロジェクトの中のファイルが外部（Agent など）で変わった */
@@ -256,6 +320,12 @@ export interface IpcEvents {
   'locale:changed': (locale: SupportedLocale) => void
   /** 開いているプロジェクトの .git/HEAD・index が変わった（ブランチの切り替え・コミット） */
   'github:headChanged': () => void
+  /** star のお願いを出す（良い場面で、条件を満たしたときだけ） */
+  'star:show': (mode: StarPromptMode) => void
+  /** settings.json が外部（利用者のエディタ・Claude Code など）で書き換えられ、取り込んだ。平文のキーは外してある */
+  'settings:changed': (settings: Settings) => void
+  /** settings.json が壊れた（JSON・スキーマの誤り）。null は直った。壊れている間は取り込まず、ファイルも上書きしない */
+  'settingsFile:error': (error: SettingsFileError | null) => void
 }
 
 export type IpcRequestChannel = keyof IpcRequests
@@ -287,6 +357,7 @@ export const ADE_API_KEY = 'ade' as const
 export const IPC_REQUEST_CHANNELS = [
   'app:ready',
   'app:settings',
+  'settingsFile:info', 'settingsFile:read', 'settingsFile:write', 'settingsFile:reveal', 'settings:feedbackTargets',
   'app:version',
   'app:checkUpdate',
   'app:openUpdate',
@@ -338,11 +409,15 @@ export const IPC_REQUEST_CHANNELS = [
   'recording:stop',
   'recording:status',
   'annotation:setMode',
+  'annotation:setColor',
   'annotation:clear',
-  'review:list', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
-  'capture:sources', 'capture:setTarget', 'capture:openScreenSettings',
+  'annotation:undo',
+  'annotation:redo',
+  'review:list', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:replyPrompt', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
+  'capture:screenAccess', 'capture:sources', 'capture:setTarget', 'capture:openScreenSettings',
   'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'editor:unsaved', 'preview:render',
-  'github:status', 'github:repo', 'github:reviewDraft', 'github:postReview', 'github:open', 'github:repoStatus'
+  'github:status', 'github:repo', 'github:reviewDraft', 'github:postReview', 'github:open', 'github:repoStatus',
+  'star:star', 'star:openWeb', 'star:later', 'star:never', 'star:fromMenu'
 ] as const satisfies readonly IpcRequestChannel[]
 
 export const IPC_EVENT_CHANNELS = [
@@ -356,10 +431,12 @@ export const IPC_EVENT_CHANNELS = [
   'agents:changed',
   'recording:status',
   'recording:level',
-  'recording:warning', 'capture:modelProgress', 'review:ready',
+  'recording:warning', 'annotation:history', 'annotation:shortcut', 'capture:modelProgress', 'usage:apiCallsChanged', 'review:ready', 'review:progressChanged',
   'fs:changed',
   'theme:changed',
   'locale:changed',
   'usage:changed',
-  'github:headChanged'
+  'github:headChanged',
+  'star:show',
+  'settings:changed', 'settingsFile:error'
 ] as const satisfies readonly IpcEventChannel[]

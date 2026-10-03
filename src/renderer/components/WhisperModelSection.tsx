@@ -3,6 +3,7 @@ import { CircleAlert, CircleCheck, Download } from 'lucide-react'
 import type { WhisperModelList, WhisperModelName, WhisperModelProgress } from '@shared/types'
 import { Button } from '../ui'
 import { useT } from '../lib/i18n'
+import { errorMessage } from '../lib/errors'
 
 /** 1.6 GB / 465 MB の形にする（単位は言語によらず同じ） */
 function formatSize(bytes: number): string {
@@ -40,7 +41,7 @@ export function WhisperModelSection({ disabled, onPickModel, onChanged }: { disa
     setProgress(null)
     void window.ade.invoke('capture:downloadModel', choice)
       .then((r) => setStatus(r.ok ? { kind: 'done' } : r.reason === 'aborted' ? { kind: 'aborted' } : { kind: 'failed', message: r.message }))
-      .catch((e: unknown) => setStatus({ kind: 'failed', message: e instanceof Error ? e.message : String(e) }))
+      .catch((e: unknown) => setStatus({ kind: 'failed', message: errorMessage(e) }))
       .finally(() => { void reload(); onChanged() })
   }
 

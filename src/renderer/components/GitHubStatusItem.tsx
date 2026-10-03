@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, ExternalLink, GitBranch } from 'lucide-react'
 import { branchWebUrl, type GitRepoStatus } from '@shared/github'
 import { useT } from '../lib/i18n'
+import { subscribeIpc } from '../lib/ipcEvents'
 import { StatusPopover } from './StatusPopover'
 import '../styles/github.css'
 
 /**
- * フッターの「どの GitHub の、どのブランチか」。例: [GitHub] JapanMarketing-Dev/MOVIE-ADE · develop •3 ↑1
+ * フッターの「どの GitHub の、どのブランチか」。例: [GitHub] JapanMarketing-Dev/ferret · develop •3 ↑1
  *
  * 読み直すのは、プロジェクトの切り替え・ウインドウを前に出したとき・30 秒ごと・.git/HEAD と index の変化（main が知らせる）。
  * git でないフォルダでは何も出さない（後ろの区切り線も含めて。線だけが残らないよう、区切り線はこの部品が出す）。GitHub 以外の remote のときはブランチだけを出す。
@@ -47,8 +48,8 @@ export function GitHubStatusItem() {
     const reload = () => void load()
     const timer = window.setInterval(() => { if (document.visibilityState === 'visible') reload() }, POLL_MS)
     window.addEventListener('focus', reload)
-    const offWorkspace = window.ade.on('workspace:changed', reload)
-    const offHead = window.ade.on('github:headChanged', reload)
+    const offWorkspace = subscribeIpc('workspace:changed', reload, 'github')
+    const offHead = subscribeIpc('github:headChanged', reload, 'github')
     return () => {
       window.clearInterval(timer)
       window.removeEventListener('focus', reload)

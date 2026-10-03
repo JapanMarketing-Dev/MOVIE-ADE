@@ -5,7 +5,7 @@
 #      staging から releases/<version>/ へ移して versions.json / latest.json を更新する（promote）。
 #      手元から `node scripts/release-r2.mjs promote --version <version>` でも同じ。
 #
-# 【費用】このワークフローは公開リポジトリ（JapanMarketing-Dev/MOVIE-ADE）で動かす前提。
+# 【費用】このワークフローは公開リポジトリ（JapanMarketing-Dev/ferret）で動かす前提。
 #   公開リポジトリなら標準のランナーは無料。非公開のリポジトリで動かすと、実行時間（とくに macOS）が開発者側の費用になる。
 #   R2 は保存が月 10GB まで無料・転送料は無料。scripts/release-r2.mjs が最新10版だけを残す。
 #
@@ -16,6 +16,9 @@
 #   CLOUDFLARE_API_TOKEN   … R2 の movie-ade-releases に書き込める API トークン
 #   CLOUDFLARE_ACCOUNT_ID  … Cloudflare のアカウント ID
 #   SENTRY_AUTH_TOKEN      … ソースマップを Sentry へ上げるトークン（scripts/sentry-sourcemaps.mjs。任意。無ければ警告だけ）
+# 実行環境: actions は Node 24 で動く版（checkout v7 / setup-node v7 / upload-artifact v7 / download-artifact v8 / pnpm/action-setup v6）。
+# Linux は ubuntu-latest ではなく ubuntu-24.04 に固定する。ubuntu-latest は 2026-10-19 から Ubuntu 26 に変わり、
+# そこでビルドした node-pty（AppImage / deb に入る）は新しい glibc を要求して、古い Ubuntu で起動できなくなるため。
 name: Release
 
 on:
@@ -53,7 +56,7 @@ jobs:
           - os: win
             runner: windows-latest
           - os: linux
-            runner: ubuntu-latest
+            runner: ubuntu-24.04 # 固定（先頭の注記）
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       NODE_OPTIONS: --max-old-space-size=4096
@@ -61,15 +64,15 @@ jobs:
       # secret が未登録のうちは警告だけ出して続ける。登録したら SENTRY_SOURCEMAPS: required に戻して、上げ損ねを止められる
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -94,14 +97,14 @@ jobs:
       - name: Build installers
         run: pnpm dist:${{ matrix.os }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: installers-${{ matrix.os }}
           path: |
-            dist/release/MOVIE-ADE-*.dmg
-            dist/release/MOVIE-ADE-*.exe
-            dist/release/MOVIE-ADE-*.AppImage
-            dist/release/MOVIE-ADE-*.deb
+            dist/release/Ferret-*.dmg
+            dist/release/Ferret-*.exe
+            dist/release/Ferret-*.AppImage
+            dist/release/Ferret-*.deb
           if-no-files-found: error
           retention-days: 3
 
@@ -109,20 +112,20 @@ jobs:
     name: upload to R2 staging and draft the release notes
     needs: build
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: write # リリースの下書きを作るため
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: installers-*
           path: artifacts
@@ -131,12 +134,12 @@ jobs:
       - name: Write release notes
         shell: bash
         env:
-          # ダウンロードサイトの URL（リポジトリの変数 DOWNLOAD_URL。未設定なら README）
-          DOWNLOAD_URL: ${{ vars.DOWNLOAD_URL || 'https://github.com/JapanMarketing-Dev/MOVIE-ADE#install-and-run' }}
+          # ダウンロードサイトの URL（リポジトリの変数 DOWNLOAD_URL。未設定なら ferretade.dev）
+          DOWNLOAD_URL: ${{ vars.DOWNLOAD_URL || 'https://ferretade.dev/' }}
         run: |
           version="${GITHUB_REF_NAME#v}"
           cat > release-notes.md <<EOF
-          ## MOVIE-ADE ${version}
+          ## Ferret ${version}
 
           Download: ${DOWNLOAD_URL}
 
@@ -164,19 +167,21 @@ jobs:
       - name: Draft the GitHub release (notes only, no files)
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft --title "MOVIE-ADE ${GITHUB_REF_NAME#v}" --notes-file release-notes.md
+        run: gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft --title "Ferret ${GITHUB_REF_NAME#v}" --notes-file release-notes.md
 
   promote:
     name: promote ${{ inputs.version }} from staging to releases
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
+          # promote の最後に scripts/sentry-release.mjs が前のタグからのコミットを Sentry へ付けるので、履歴とタグを全部取る
+          fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -184,7 +189,12 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # 任意。無ければ Sentry のリリース情報（コミット・finalize・deploy）を付けずに公開だけ行う
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           VERSION: ${{ inputs.version }}
-          REPLACE: ${{ inputs.replace && '--replace' || '' }}
+          REPLACE: ${{ inputs.replace }}
         # 手動で起動したこと自体を確認とみなす（消す対象はログに出る）
-        run: node scripts/release-r2.mjs promote --version "$VERSION" $REPLACE --yes
+        run: |
+          args=(promote --version "$VERSION" --yes)
+          if [ "$REPLACE" = "true" ]; then args+=(--replace); fi
+          node scripts/release-r2.mjs "${args[@]}"

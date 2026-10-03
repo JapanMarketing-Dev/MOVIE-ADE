@@ -115,27 +115,16 @@ function cueToEvents(cue: Cue, t: number): Event[] {
         bbox: cue.bbox,
         el: { selector: cue.selector, ...(cue.text ? { text: cue.text } : {}) },
       }];
-    case 'text':
-      return [{
-        t,
-        type: 'text',
-        id: cue.id,
-        x: cue.x,
-        y: cue.y,
-        body: cue.body,
-        ...(cue.selector ? { el: { selector: cue.selector, ...(cue.elText ? { text: cue.elText } : {}) } } : {}),
-      }];
   }
 }
 
-/** 画面が変化した時刻（nav・click・scroll・ペン確定・テキスト設置）＋基準間隔 */
+/** 画面が変化した時刻（nav・click・scroll・ペン確定）＋基準間隔 */
 function buildFrames(events: Event[], totalMs: number): FrameRef[] {
   const times = new Set<number>([0]);
   for (let t = FRAME_BASE_INTERVAL; t < totalMs; t += FRAME_BASE_INTERVAL) times.add(t);
   for (const e of events) {
     if (e.type === 'nav' || e.type === 'click' || e.type === 'scroll') times.add(e.t + 200);
     if (e.type === 'pen') times.add(e.t_end + 100);
-    if (e.type === 'text') times.add(e.t + 300);
   }
   const sorted = [...times].filter((t) => t >= 0 && t <= totalMs).sort((a, b) => a - b);
   // カーソル位置は直前のクリック座標を使う（EXT-3 のリング合成用）

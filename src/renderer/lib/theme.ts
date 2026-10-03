@@ -63,6 +63,11 @@ export function initTheme(): void {
   applyTheme(window.ade.initialTheme)
   // 設定の変更と、system のときの OS 側の切り替えの両方でここに来る
   window.ade.on('theme:changed', applyTheme)
+  // settings.json の外部の変更。配色そのものは main が themeSource を変えて 'theme:changed' で届く
+  window.ade.on('settings:changed', (settings) => {
+    preference = normalizeThemePreference(settings.theme)
+    emit()
+  })
   void window.ade
     .invoke('app:settings')
     .then((settings) => {

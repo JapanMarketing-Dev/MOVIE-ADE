@@ -1,4 +1,7 @@
+import type { AnnotationColor } from './annotation'
 import type { LayoutPrefs } from './layout'
+import type { DecisionPreferences } from './decision'
+import type { StarPromptState } from './starPrompt'
 import type { AiEndpointConfig, AiVendor, LlmApiProvider, OrganizeRunnerId, SttRemoteProvider } from './aiProviders'
 /**
  * メイン / preload / renderer が共有する型。
@@ -6,6 +9,7 @@ import type { AiEndpointConfig, AiVendor, LlmApiProvider, OrganizeRunnerId, SttR
  */
 
 import type { LocalePreference } from './i18n'
+import type { SttLanguageCode } from './sttLanguages'
 import type { OnboardingState } from './onboarding'
 import type { AccountLoginRequest, AgentAccountsSettings } from './accounts'
 export type { AccountLoginRequest, AgentAccountsSettings } from './accounts'
@@ -73,19 +77,46 @@ export interface WorkspaceState {
 
 // ───────────────────────── プロジェクト・Agent起動（Orca準拠）─────────────────────────
 
-/** プロジェクトごとに登録するURL（localhost / dev / prd など） */
+/**
+ * プロジェクトの種類。確認先（ターゲット）に何を持つかが変わる（src/shared/projectTargets.ts）。
+ *   web     … URL を内蔵ブラウザで開く
+ *   mobile  … モバイル Web の URL か、シミュレータ／エミュレータ（起動コマンドとウインドウ）
+ *   desktop … 起動コマンドと、録画するウインドウ（Electron / Tauri の開発サーバーなら URL も）
+ *   other   … 起動コマンド・ウインドウ・URL を自由に
+ */
+export type ProjectKind = 'web' | 'mobile' | 'desktop' | 'other'
+
+/**
+ * プロジェクトごとに登録する確認先（ターゲット）。名前は自由で、件数の上限は無い。
+ * 名前の ProjectUrl は、URL だけを持っていた頃の名残（設定ファイルの互換のため変えない）。
+ * url・launchCommand・windowMatch のどれか1つは持つ。
+ */
 export interface ProjectUrl {
   id: string
-  /** 表示名（例: local, dev, prd） */
+  /** 表示名（例: local, dev, prd, staging, iOS sim） */
   label: string
-  url: string
+  /** 内蔵ブラウザで開く URL */
+  url?: string
+  /** 押したときにプロジェクトのフォルダのターミナルで走らせるコマンド（例: pnpm tauri dev） */
+  launchCommand?: string
+  /** 録画するウインドウを選ぶための名前（アプリ名やウインドウ名の一部。例: Simulator） */
+  windowMatch?: string
 }
+
+/** 確認先。ProjectUrl と同じもの（新しいコードはこちらの名前を使う） */
+export type ProjectTarget = ProjectUrl
+
+/** project:update で送るもの。id のほかは変えたい項目だけでよい */
+export type ProjectUpdate = Pick<Project, 'id'> & Partial<Pick<Project, 'name' | 'kind' | 'urls'>>
 
 /** 事前に登録したフォルダ。ターミナルは常にここをカレントにして起動する（worktreeは使わない） */
 export interface Project {
   id: string
   name: string
   folderPath: string
+  /** 種類。未設定は web（URL だけを登録していた頃の設定） */
+  kind?: ProjectKind
+  /** 確認先（並びは利用者が決めた順）。互換のため名前は urls のまま */
   urls: ProjectUrl[]
   /** 前に開いていたときの作業の状態。切り替えて戻ったときと再起動したときに元へ戻す（src/shared/projectSession.ts） */
   session?: ProjectSession
@@ -116,13 +147,50 @@ export type BuiltinAgent =
   | 'claude'
   | 'codex'
   | 'gemini'
-  | 'opencode'
   | 'cursor'
   | 'copilot'
-  | 'aider'
-  | 'grok'
-  | 'qwen-code'
+  | 'devin'
+  | 'opencode'
   | 'amp'
+  | 'droid'
+  | 'kiro'
+  | 'aider'
+  | 'ante'
+  | 'antigravity'
+  | 'aug'
+  | 'autohand'
+  | 'blackbox'
+  | 'cline'
+  | 'codebuddy'
+  | 'codebuff'
+  | 'command-code'
+  | 'continue'
+  | 'crush'
+  | 'dsh'
+  | 'forge'
+  | 'freebuff'
+  | 'goose'
+  | 'grok'
+  | 'hermes'
+  | 'junie'
+  | 'kilo'
+  | 'kimi'
+  | 'letta'
+  | 'mimo-code'
+  | 'mistral-vibe'
+  | 'muse'
+  | 'omp'
+  | 'openclaude'
+  | 'openclaw'
+  | 'openhands'
+  | 'pi'
+  | 'prime-agent'
+  | 'qoder'
+  | 'qwen-code'
+  | 'roo'
+  | 'rovo'
+  | 'trae'
+  | 'zcode'
 
 /** 利用者が登録したエージェントの id（`custom:<名前から作った語>`） */
 export type CustomAgentId = `custom:${string}`
@@ -144,6 +212,8 @@ export interface CustomAgent extends AgentLaunchConfig {
   name: string
   /** 「Agentへ送信」で同定に使う前面プロセス名。省略時は command の先頭語 */
   processName?: string
+  /** アイコンに出す1〜2文字。省略時は名前の頭文字 */
+  icon?: string
 }
 
 export interface AgentPreferences {
@@ -171,6 +241,8 @@ export interface AgentOption {
   defaultCommand: string | null
   defaultArgs: string | null
   homepageUrl: string | null
+  /** カスタムのアイコンの文字（設定したときだけ） */
+  icon?: string
 }
 
 export { DEFAULT_AGENT_PREFERENCES, TUI_AGENT_LABEL } from './agentCatalog'
@@ -185,6 +257,8 @@ export interface TerminalCreateOptions {
   accountLogin?: AccountLoginRequest | null
   /** 指定するとシェル起動後にこの1行を実行する（設定の GitHub 節の `gh auth login` など） */
   command?: string | null
+  /** command が終わったらその終了コードでシェルも閉じる（Agent のインストール。結果は terminal:exit の終了コードで受け取る） */
+  exitWhenDone?: boolean
   /** タブ名。省略時は Agent 名やシェル名 */
   title?: string | null
 }
@@ -214,12 +288,46 @@ export interface Settings {
   agentPrompt?: string
   /** 「指摘を整理」の実行方法と、API の接続先 */
   organizer?: OrganizerPreferences
+  /** 判定モデル（「フィードバックどおりにできたか」の判定）の接続先。キーは入れない（src/shared/decision.ts） */
+  decision?: DecisionPreferences
   /** クラッシュレポートを Sentry へ送るか。未設定は ON（src/shared/telemetry.ts） */
   crashReports?: boolean
   /** 初回起動の「クラッシュレポートを送ります」の案内を出し終えたか */
   crashReportsNoticeShown?: boolean
   /** 初回起動のセットアップの進み具合（src/shared/onboarding.ts）。未設定なら出す */
   onboarding?: OnboardingState
+  /** GitHub の star のお願いの状態（state.json に置く。src/shared/starPrompt.ts）。省略時はまだ一度も出していない */
+  starPrompt?: StarPromptState
+  /** フィードバックモードの右パネル（レビュー対象）の開閉と幅。省略時は開いていて 0.78 */
+  feedbackTargets?: FeedbackTargetsPrefs
+}
+
+export interface FeedbackTargetsPrefs {
+  visible?: boolean
+  /** ページ側の幅の割合（残りがパネル） */
+  ratio?: number
+}
+
+/** settings.json を読めない理由（JSON の誤り・スキーマの違反）。直るまで取り込まず、ファイルも上書きしない */
+export interface SettingsFileError {
+  kind: 'parse' | 'schema'
+  message: string
+  /** 1 始まり */
+  line?: number
+  column?: number
+  /** スキーマの違反の場所（/capture/keepDays） */
+  path?: string
+}
+
+/** 設定のページに出す settings.json の情報 */
+export interface SettingsFileInfo {
+  path: string
+  dir: string
+  schemaPath: string
+  statePath: string
+  error: SettingsFileError | null
+  /** 平文の apiKey が書かれている場所（警告用。値は渡さない） */
+  plaintextKeys: string[]
 }
 
 /** 開いているターミナルの一覧の1件（main の TerminalManager.list()。読み取り専用） */
@@ -295,6 +403,8 @@ export type MenuCommand =
   | 'toggleSettings'
   /** ヘルプ → セットアップをもう一度（オンボーディングを開き直す） */
   | 'showOnboarding'
+  /** ヘルプ → GitHub で star（src/shared/starPrompt.ts） */
+  | 'starOnGitHub'
 
 // ───────────────────────── 録画（要件 5.3・5.4）─────────────────────────
 
@@ -303,8 +413,17 @@ export type RecordingState = 'idle' | 'recording' | 'paused' | 'stopping'
 /** 音声の取得系統。pipeline の AudioSource と同じ値 */
 export type AudioSourceKind = 'mic' | 'system'
 
-/** ペン／テキスト／どちらでもない（PEN-2 / TXT-1） */
-export type AnnotationMode = 'off' | 'pen' | 'text'
+/** ペン／四角の枠／どれでもない（PEN-2）。依頼は声と書き込みで行うので、画面に文字を置く道具（旧 TXT-1）は無い */
+export type AnnotationMode = 'off' | 'pen' | 'rect'
+
+/** 書き込みの「元に戻す／やり直す」ができるか（ツールバーのボタンの有効・無効） */
+export interface AnnotationHistory {
+  canUndo: boolean
+  canRedo: boolean
+}
+
+/** ページに焦点があるときに押された、書き込みの道具の切り替えキー（P / B・R / V・Esc / C） */
+export type AnnotationShortcut = 'pen' | 'rect' | 'off' | 'color'
 
 /** 画面に出す録画の状態（REC-5） */
 export interface RecordingStatus {
@@ -325,7 +444,7 @@ export interface AudioLevel {
 
 /** 録画を始めるときの指定 */
 export interface StartRecordingOptions {
-  language?: 'ja' | 'en' | 'auto'
+  language?: SttLanguageCode
   /** 相手の声も録る（AUD-1） */
   captureSystemAudio: boolean
   micDeviceId?: string
@@ -333,6 +452,8 @@ export interface StartRecordingOptions {
   transcription?: SttProvider
   /** 録る対象。省略時は内蔵ブラウザ */
   captureTarget?: CaptureTarget
+  /** このレビュー（ID）に追記する（Findings の「このレビューに追加で録る」）。省略時は新しいレビュー */
+  appendTo?: string
 }
 
 /**
@@ -381,8 +502,8 @@ export const MAX_SPLIT_RATIO = 0.85
  */
 export type SttProvider = 'local' | SttRemoteProvider
 
-/** 文字起こしのキーの出どころ。値そのものは renderer へ渡さない */
-export type SttKeySource = 'saved' | 'session' | 'env' | null
+/** 文字起こしのキーの出どころ。値そのものは renderer へ渡さない。config は settings.json の平文の apiKey、configEnv は apiKeyEnv */
+export type SttKeySource = 'saved' | 'session' | 'env' | 'config' | 'configEnv' | null
 
 /** capture:availability の戻り値 */
 /** 端末内の文字起こしのモデル（whisper.cpp の ggml）。設定の「モデルをダウンロード」に出す */
@@ -433,9 +554,11 @@ export interface SttAvailability {
   llm: Record<LlmApiProvider, boolean>
 }
 
-export interface CapturePreferences { captureMic: boolean; captureSystemAudio: boolean; transcription: SttProvider; language: 'ja' | 'en' | 'auto'; micDeviceId?: string; keepDays: number; stayFeedbackOnStop: boolean
+export interface CapturePreferences { captureMic: boolean; captureSystemAudio: boolean; transcription: SttProvider; language: SttLanguageCode; micDeviceId?: string; keepDays: number; stayFeedbackOnStop: boolean
   /** 前回選んだ録画の対象。省略時は内蔵ブラウザ */
   captureTarget?: CaptureTarget
+  /** 録画中の書き込み（ペン・四角の枠）の色。省略時はローズ */
+  annotationColor?: AnnotationColor
   /** 以前の compatible の接続先。読み込むときに sttEndpoints.compatible へ移し、以後は書かない */
   baseUrl?: string
   model?: string
@@ -450,4 +573,6 @@ export interface OrganizerPreferences {
   runner?: OrganizeRunnerId
   /** API の提供元ごとの上書き。省略時はプリセット（src/shared/aiProviders.ts） */
   endpoints?: Partial<Record<LlmApiProvider, AiEndpointConfig>>
+  /** CLI の runner に渡すモデル名。省略時は各 CLI の既定 */
+  cliModels?: Partial<Record<'codex' | 'claude-code', string>>
 }

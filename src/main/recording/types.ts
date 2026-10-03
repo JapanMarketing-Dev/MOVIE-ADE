@@ -5,7 +5,7 @@
  * 同じ時計で、録画側はそちらの型に合わせて出力する。
  */
 
-import type { CaptureTarget } from '@shared/types'
+import type { AnnotationHistory, AnnotationShortcut, CaptureTarget } from '@shared/types'
 import type { Event, FrameRef } from '../pipeline/types'
 
 export type RecordingState = 'idle' | 'recording' | 'paused' | 'stopping'
@@ -149,4 +149,8 @@ export interface RecordingHandlers {
   /** 静止画1枚 */
   onFrame?(frame: FrameRef): void
   onWarning?(message: string): void
+  /** 書き込みの「元に戻す／やり直す」ができるかが変わった */
+  onAnnotationHistory?(history: AnnotationHistory): void
+  /** ページに焦点があるときに押された、書き込みの道具の切り替えキー */
+  onAnnotationShortcut?(action: AnnotationShortcut): void
 }

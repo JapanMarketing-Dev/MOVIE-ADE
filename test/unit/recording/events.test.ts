@@ -46,23 +46,18 @@ describe('注入スクリプトの操作ログを pipeline の形へ直す（設
     })
   })
 
-  it('置いたテキストは前後の空白を落として記録する', () => {
-    const raw: RawReviewEvent = {
-      at: 25_100,
-      type: 'text',
-      id: 'x1',
-      x: 300,
-      y: 520,
-      body: '  ここは「月額」表記に統一  '
-    }
-    expect(toLogEvent(raw, toClock)).toEqual({
-      t: 15_100,
-      type: 'text',
-      id: 'x1',
-      x: 300,
-      y: 520,
-      body: 'ここは「月額」表記に統一'
-    })
+  it('旧版の注入スクリプトが送るテキストは記録しない（撮影中のテキスト入力は廃止）', () => {
+    const legacy = { at: 25_100, type: 'text', id: 'x1', x: 300, y: 520, body: 'ここは「月額」表記に統一' }
+    expect(toLogEvent(legacy as unknown as RawReviewEvent, toClock)).toBeNull()
+  })
+
+  it('動かした・元に戻した書き込みは、前の ID（replaces）と取り消し（erase）として追記する', () => {
+    const moved = toLogEvent({ at: 21_000, atStart: 20_500, type: 'pen', id: 'p2', replaces: 'p1', shape: 'rect', bbox: [10, 20, 30, 40] }, toClock)
+    expect(moved).toEqual({ t: 10_500, type: 'pen', id: 'p2', t_end: 11_000, bbox: [10, 20, 30, 40], shape: 'rect', replaces: 'p1' })
+    expect(toLogEvent({ at: 22_000, type: 'erase', ids: ['p2', 3, ''] } as unknown as RawReviewEvent, toClock)).toEqual({ t: 12_000, type: 'erase', ids: ['p2'] })
+    // 壊れた値: ID の無い取り消し、自分自身を置き換える pen
+    expect(toLogEvent({ at: 22_000, type: 'erase', ids: [] }, toClock)).toBeNull()
+    expect(toLogEvent({ at: 22_000, type: 'pen', id: 'p3', replaces: 'p3', bbox: [0, 0, 1, 1] }, toClock)).not.toHaveProperty('replaces')
   })
 
   it('スクロールは位置だけを記録する', () => {
@@ -81,7 +76,6 @@ describe('注入スクリプトの操作ログを pipeline の形へ直す（設
   it('壊れた値は捨てる（レビュー対象は任意のページなので何が来るか分からない）', () => {
     expect(toLogEvent({ at: Number.NaN, type: 'click' }, toClock)).toBeNull()
     expect(toLogEvent({ at: 11_000, type: 'pen', id: 'p1' }, toClock)).toBeNull()
-    expect(toLogEvent({ at: 11_000, type: 'text', id: 'x1', body: '   ' }, toClock)).toBeNull()
     expect(toLogEvent({ at: 11_000, type: 'unknown' } as unknown as RawReviewEvent, toClock)).toBeNull()
   })
 
@@ -107,10 +101,14 @@ describe('書き出しと撮影の判定', () => {
     expect(JSON.parse(line)).toEqual({ t: 1, type: 'scroll', y: 2 })
   })
 
-  it('ペン・テキスト・クリックはその場で静止画を撮る', () => {
+  it('ペン・クリックはその場で静止画を撮る', () => {
     expect(shouldCaptureStill({ t: 0, type: 'click', x: 0, y: 0 })).toBe(true)
     expect(shouldCaptureStill({ t: 0, type: 'pen', id: 'p1', t_end: 1, bbox: [0, 0, 1, 1] })).toBe(true)
-    expect(shouldCaptureStill({ t: 0, type: 'text', id: 'x1', x: 0, y: 0, body: 'a' })).toBe(true)
+  })
+
+  it('動かした書き込みはその場で撮り直し、取り消しは撮らない', () => {
+    expect(shouldCaptureStill({ t: 0, type: 'pen', id: 'p2', replaces: 'p1', t_end: 1, bbox: [0, 0, 1, 1] })).toBe(true)
+    expect(shouldCaptureStill({ t: 0, type: 'erase', ids: ['p1'] })).toBe(false)
   })
 
   it('スクロールと遷移は定期撮影に任せる', () => {

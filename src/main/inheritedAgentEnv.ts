@@ -5,7 +5,7 @@
  * 起動したペインの子エージェントではない」）, ~/bench/orca/src/main/pty/terminal-color-env.ts
  * （親だけの選択を端末に持ち込まない）（MIT, Copyright 2026 Lovecast Inc.）
  *
- * dev 版を Claude Code の中から起動すると、CLAUDECODE や CLAUDE_CODE_SESSION_ID などが MOVIE-ADE に受け継がれ、
+ * dev 版を Claude Code の中から起動すると、CLAUDECODE や CLAUDE_CODE_SESSION_ID などが Ferret に受け継がれ、
  * そのまま内蔵ターミナルや「指摘の整理」の CLI に渡る。すると子の Claude Code は自分を親のセッションの
  * 子だと見なし、「Transcript saving is off — inherited CLAUDE…」のように振る舞いを変える。
  *

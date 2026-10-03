@@ -1,11 +1,14 @@
 # 3つのOS（macOS / Windows / Linux）で、型検査・単体テスト・展開済みアプリのビルドを行う。
 #
-# 【費用】リポジトリ（JapanMarketing-Dev/MOVIE-ADE）は公開なので、標準のランナーは無料。そのため push / PR で自動で走らせる。
+# 【費用】リポジトリ（JapanMarketing-Dev/ferret）は公開なので、標準のランナーは無料。そのため push / PR で自動で走らせる。
 #   非公開に戻すときは、実行時間（とくに macOS）が開発者側の費用になるので、on を workflow_dispatch だけにすること。
 #   macOS のランナーは重いので、macOS は1ジョブだけにしている。
 #
 # 署名・公証・公開リリースはしない。E2E は流さない（テスト方針: 単体テスト中心）。
 # Linux 版は node-pty の Linux 用バイナリが同梱されていないため、ubuntu の上でだけ作れる。
+# 実行環境: actions は Node 24 で動く版（checkout v7 / setup-node v7 / upload-artifact v7 / download-artifact v8 / pnpm/action-setup v6）。
+# Linux は ubuntu-latest ではなく ubuntu-24.04 に固定する。ubuntu-latest は 2026-10-19 から Ubuntu 26 に変わり、
+# そこでビルドした node-pty（AppImage / deb に入る）は新しい glibc を要求して、古い Ubuntu で起動できなくなるため。
 name: Cross-platform
 
 on:
@@ -35,7 +38,7 @@ jobs:
           - os: win
             runner: windows-latest
           - os: linux
-            runner: ubuntu-latest
+            runner: ubuntu-24.04 # 固定（先頭の注記）
     env:
       # 署名の証明書を探しに行かない（dev ビルドは署名しない）
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
@@ -43,17 +46,17 @@ jobs:
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -76,7 +79,7 @@ jobs:
         run: pnpm build:${{ matrix.os }}:dev --publish never
 
       - name: Upload unpacked app
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ade-dev-${{ matrix.os }}-unpacked
           path: |

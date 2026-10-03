@@ -13,6 +13,7 @@ import type { OrganizedItem, OrganizeInput, OrganizeOutput, Quote, TranscriptSeg
 import { organizeOutputSchema } from '../schema'
 import type { RawOrganizeOutput } from '../schema'
 import { buildTargetIndex, type TargetIndex } from './targets'
+import { cleanReviewTitle } from '../../sessions/autoName'
 
 export interface ValidationIssue {
   /** 致命的（この指摘／出力は使えない）か、警告（直して使える）か */
@@ -47,8 +48,10 @@ const ajv = new Ajv({ allErrors: true, strict: false })
  * runner には target を必須で求める（organizeOutputSchema）。ただし検証では欠けを許し、
  * 欠けていれば根拠の時刻から対象を決め直す（古い出力・対象を書き忘れた出力も捨てずに使う）。
  */
-const lenientSchema = JSON.parse(JSON.stringify(organizeOutputSchema)) as { properties: { items: { items: { required: string[] } } } }
+const lenientSchema = JSON.parse(JSON.stringify(organizeOutputSchema)) as { required: string[]; properties: { items: { items: { required: string[] } } } }
 lenientSchema.properties.items.items.required = lenientSchema.properties.items.items.required.filter((key) => key !== 'target')
+// レビューの名前（review_title）も、欠けていればルールの名前を使うので必須にしない
+lenientSchema.required = lenientSchema.required.filter((key) => key !== 'review_title')
 const validateSchema = ajv.compile(lenientSchema)
 
 export function validateOrganizeOutput(
@@ -70,11 +73,11 @@ export function validateOrganizeOutput(
     return { ok: false, issues }
   }
 
-  const rawOut = raw as RawOrganizeOutput
+  const rawOut = raw as unknown as RawOrganizeOutput
   const duration = input.meta.durationMs
   const frameTimes = new Set(input.frameTimes)
   const annotationIds = new Set(
-    input.events.filter((e) => e.type === 'pen' || e.type === 'text').map((e) => (e as { id: string }).id),
+    input.events.filter((e) => e.type === 'pen').map((e) => e.id),
   )
 
   if (rawOut.items.length === 0) {
@@ -87,7 +90,7 @@ export function validateOrganizeOutput(
   const items: OrganizedItem[][] = []
   const targets = buildTargetIndex(input.events, input.meta)
   const annotationTimes = new Map(
-    input.events.filter((e) => e.type === 'pen' || e.type === 'text').map((e) => [(e as { id: string }).id, e.t]),
+    input.events.filter((e) => e.type === 'pen').map((e) => [e.id, e.t]),
   )
 
   rawOut.items.forEach((item, i) => {
@@ -105,7 +108,7 @@ export function validateOrganizeOutput(
     // 引用: 時刻から文字起こしの区間を引く。本文と話者は文字起こし側が正しい。
     const quotes: Quote[] = []
     if (item.quote_ts.length === 0) {
-      // ペン・テキストだけの指摘（発話を伴わない書き込み）は正当なので、ここでは警告に留める。
+      // ペンだけの指摘（発話を伴わない書き込み）は正当なので、ここでは警告に留める。
       // 引用も書き込みも無い場合だけ下の no-valid-quotes で捨てる。
       warn('no-quotes', '引用が無い（書き込みだけの指摘か、根拠の取り違え）')
     }
@@ -128,7 +131,7 @@ export function validateOrganizeOutput(
     if (validAnnotations.length < item.annotation_ids.length) {
       warn(
         'annotation-not-found',
-        `存在しないペン・テキストIDを参照していた（${item.annotation_ids.length - validAnnotations.length}件）`,
+        `存在しないペンのIDを参照していた（${item.annotation_ids.length - validAnnotations.length}件）`,
       )
     }
 
@@ -176,7 +179,10 @@ export function validateOrganizeOutput(
     return { ok: false, issues }
   }
 
-  return { ok: true, issues, value: { items: kept, dropped } }
+  // レビューの名前は、使えなければ捨てる（履歴の見出しはルールの名前になる）
+  const reviewTitle = cleanReviewTitle(rawOut.review_title)
+  if (rawOut.review_title !== undefined && !reviewTitle) issues.push({ level: 'warning', code: 'review-title-empty', message: 'review_title が空か意味のない文' })
+  return { ok: true, issues, value: { items: kept, dropped, ...(reviewTitle ? { reviewTitle } : {}) } }
 }
 
 /**

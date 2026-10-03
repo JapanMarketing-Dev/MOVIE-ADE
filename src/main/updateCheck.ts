@@ -3,7 +3,7 @@ import { compareAppVersions, isValidAppVersion, pickAppVersion, type UpdateCheck
 // package.json はビルド時に埋め込む（dev 起動では app.getAppPath() がプロジェクト直下を指さないことがある）
 import { version } from '../../package.json'
 import { t } from '@shared/i18n'
-import { errorKind, reportHandled } from '@shared/report'
+import { reportHandled } from '@shared/report'
 
 /**
  * 更新の確認（フッターの「更新を確認」）。
@@ -20,7 +20,7 @@ import { errorKind, reportHandled } from '@shared/report'
 export const RELEASE_BASE_URL = 'https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev/'
 const MANIFEST_URL = new URL('latest.json', RELEASE_BASE_URL).toString()
 /** ダウンロードサイト（Workers の静的配信）。空にすると R2 上の自分の OS・CPU 向けファイルを直接開く */
-export const DOWNLOAD_PAGE_URL = 'https://movie-ade.pages.dev/download'
+export const DOWNLOAD_PAGE_URL = 'https://ferretade.dev/download'
 
 const TIMEOUT_MS = 8000
 
@@ -109,20 +109,38 @@ export function judgeManifest(
   return { state: 'available', current, latest, url }
 }
 
-export async function checkForUpdate(): Promise<UpdateCheckResult> {
+/**
+ * 確認できなかったことを Sentry へ warning（area: update）で知らせる。理由の種類だけを付ける（URL・本文は付けない）。
+ * 確認は利用者が押したときだけなので、件数は少ない。オフライン（network / timeout）も、配信元の不調に気づけるよう送る。
+ */
+function reportCheckFailure(reason: 'http' | 'bad-manifest' | 'bad-version' | 'network' | 'timeout', err?: unknown): void {
+  // net の失敗の文（net::ERR_…）は手がかりになるので残す。URL は送る前の除去で落ちる
+  reportHandled(err instanceof Error ? err : new Error(`update check failed: ${reason}`), { area: 'update', op: `check update: ${reason}` })
+}
+
+export async function checkForUpdate(fetcher: typeof net.fetch = net.fetch): Promise<UpdateCheckResult> {
   const current = appVersion()
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const res = await net.fetch(MANIFEST_URL, { headers: { Accept: 'application/json' }, signal: controller.signal })
+    const res = await fetcher(MANIFEST_URL, { headers: { Accept: 'application/json' }, signal: controller.signal })
     // まだ latest.json を置いていない。失敗ではなく案内として出す
     if (res.status === 404 || res.status === 403) return { state: 'no-release', current }
-    if (!res.ok) return { state: 'error', current, message: t('update.errors.http', { status: res.status }) }
-    const manifest = parseManifest(await res.json().catch((err: unknown) => { reportHandled(errorKind(err), { area: 'update', op: 'parse manifest' }); return null }))
-    if (!manifest) return { state: 'error', current, message: t('update.errors.badManifest') }
-    return judgeManifest(current, manifest)
+    if (!res.ok) {
+      reportCheckFailure('http', new Error(`update check failed: HTTP ${res.status}`))
+      return { state: 'error', current, message: t('update.errors.http', { status: res.status }) }
+    }
+    const manifest = parseManifest(await res.json().catch(() => null))
+    if (!manifest) {
+      reportCheckFailure('bad-manifest')
+      return { state: 'error', current, message: t('update.errors.badManifest') }
+    }
+    const result = judgeManifest(current, manifest)
+    if (result.state === 'error') reportCheckFailure('bad-version')
+    return result
   } catch (err) {
-    const aborted = err instanceof Error && err.name === 'AbortError'
+    const aborted = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')
+    reportCheckFailure(aborted ? 'timeout' : 'network', err)
     return { state: 'error', current, message: aborted ? t('update.errors.timeout') : t('update.errors.network') }
   } finally {
     clearTimeout(timer)

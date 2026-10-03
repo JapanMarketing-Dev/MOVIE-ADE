@@ -19,3 +19,6 @@ coverage/
 .*-out/
 .design-overflow.mjs
 out-*/
+
+# Windows の区切り（\）で組み立てたパスを macOS / Linux で作ってしまった一時ファイル（path.win32 で試したときなど）
+/\\*

@@ -30,7 +30,11 @@ const api: AdeApi = {
 
   on: <C extends IpcEventChannel>(channel: C, listener: IpcEvents[C]): (() => void) => {
     if (!eventChannels.has(channel)) {
-      throw new Error(`未宣言のIPCイベントです: ${channel}`)
+      // 宣言の無いチャネルは購読しない。ただし投げると、dev の HMR で画面だけ新しくなったとき
+      // （preload は入れ替わらない）に useEffect ごと画面が落ちる（Sentry MOVIE-ADE-N / FERRET-S / FERRET-T）。
+      // 何もしない購読解除を返し、警告だけ残す
+      console.warn(`[preload] 未宣言のIPCイベントです（購読しません）: ${channel}`)
+      return () => {}
     }
     const wrapped = (_event: unknown, ...args: unknown[]): void => {
       ;(listener as (...a: unknown[]) => void)(...args)
@@ -53,3 +57,6 @@ const api: AdeApi = {
 }
 
 contextBridge.exposeInMainWorld(ADE_API_KEY, api)
+
+// 確認用（FERRET_SENTRY_TEST=preload）：読み込みの最後でわざと投げ、main の preload-error から Sentry へ届くかを見る
+if (process.argv.includes('--ade-sentry-test-preload')) throw new Error('Ferret Sentry test: preload error')

@@ -63,6 +63,8 @@ export function matchPresetUrl(urls: ProjectUrl[], current: string): ProjectUrl 
   if (!now) return null
   let best: { preset: ProjectUrl; length: number } | null = null
   for (const preset of urls) {
+    // URL を持たない確認先（デスクトップアプリのウインドウなど）は対象外
+    if (!preset.url) continue
     const p = parse(preset.url)
     if (!p || p.origin !== now.origin) continue
     const base = trimSlash(p.pathname)
@@ -78,9 +80,9 @@ export function matchPresetUrl(urls: ProjectUrl[], current: string): ProjectUrl 
  * 別のプリセット（例: local）の下を見ているなら、同じパスのまま押した環境（例: dev）へ切り替える。
  * 押したプリセット自身を見ているとき・どれにも当たらないときは、登録したURLそのものを開く。
  */
-export function presetTarget(urls: ProjectUrl[], current: string, target: ProjectUrl): string {
+export function presetTarget(urls: ProjectUrl[], current: string, target: ProjectUrl & { url: string }): string {
   const from = matchPresetUrl(urls, current)
-  if (!from || from.id === target.id) return target.url
+  if (!from?.url || from.id === target.id) return target.url
   const now = parse(current)
   const fromUrl = parse(from.url)
   const to = parse(target.url)
@@ -91,4 +93,20 @@ export function presetTarget(urls: ProjectUrl[], current: string, target: Projec
   to.search = now.search
   to.hash = now.hash
   return to.toString()
+}
+
+/**
+ * URL欄の入力を正規化する。
+ * スキームなしのホスト名・localhost・ポート指定は http:// を補い、
+ * それ以外（空白を含む、ドットがない等）は検索ではなくそのまま扱い、エラーにしない。
+ * 「localhost:3000/pricing」の「localhost:」はスキームの形にも読めるので、
+ * コロンの後ろがポート番号（数字）ならホストとポートとみなす。
+ */
+export function normalizeUrl(input: string): string {
+  const value = input.trim()
+  if (value.length === 0) return 'about:blank'
+  if (/^[^\s/:]+:\d+(?:[/?#]|$)/.test(value)) return `http://${value}`
+  if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return value
+  if (value.startsWith('/')) return `file://${value}`
+  return `http://${value}`
 }

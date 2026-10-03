@@ -32,14 +32,14 @@ describe('DSN', () => {
     expect(resolveSentryDsn({})).toBe(DEFAULT_SENTRY_DSN)
   })
   it('環境変数で上書きできる（フォークした人の Sentry）', () => {
-    expect(resolveSentryDsn({ MOVIE_ADE_SENTRY_DSN: ' https://abc@example.ingest.sentry.io/1 ' })).toBe('https://abc@example.ingest.sentry.io/1')
+    expect(resolveSentryDsn({ FERRET_SENTRY_DSN: ' https://abc@example.ingest.sentry.io/1 ' })).toBe('https://abc@example.ingest.sentry.io/1')
   })
   it('空にすれば送らない', () => {
-    expect(resolveSentryDsn({ MOVIE_ADE_SENTRY_DSN: '' })).toBeNull()
+    expect(resolveSentryDsn({ FERRET_SENTRY_DSN: '' })).toBeNull()
     expect(resolveSentryDsn({ MOVIE_ADE_SENTRY_DSN: '   ' })).toBeNull()
   })
-  it('release は movie-ade@<version>', () => {
-    expect(sentryRelease('0.2.0')).toBe('movie-ade@0.2.0')
+  it('release は ferret@<version>', () => {
+    expect(sentryRelease('0.2.0')).toBe('ferret@0.2.0')
   })
 })
 
@@ -51,7 +51,7 @@ describe('送る条件', () => {
   it('E2E では送らない', () => {
     expect(shouldSendCrashReports({ ...base, e2e: true })).toBe(false)
   })
-  it('確認用の MOVIE_ADE_SENTRY_FORCE なら E2E の起動でも送る（単体テスト・設定 OFF には勝たない）', () => {
+  it('確認用の FERRET_SENTRY_FORCE なら E2E の起動でも送る（単体テスト・設定 OFF には勝たない）', () => {
     expect(shouldSendCrashReports({ ...base, e2e: true, forced: true })).toBe(true)
     expect(shouldSendCrashReports({ ...base, unitTest: true, forced: true })).toBe(false)
     expect(shouldSendCrashReports({ ...base, enabled: false, e2e: true, forced: true })).toBe(false)
@@ -88,12 +88,12 @@ describe('環境ごとの送り方', () => {
     expect(rest.filter(Boolean)).toHaveLength(49)
   })
   it('dev の release は git の短いハッシュ付き。取れなければ +dev', () => {
-    expect(sentryRelease('0.1.0', { gitHash: 'fd78b14' })).toBe('movie-ade@0.1.0+fd78b14')
-    expect(sentryRelease('0.1.0', { gitHash: null })).toBe('movie-ade@0.1.0+dev')
-    expect(sentryRelease('0.1.0', { gitHash: 'fatal: not a git repository' })).toBe('movie-ade@0.1.0+dev')
-    expect(sentryRelease('0.1.0')).toBe('movie-ade@0.1.0')
+    expect(sentryRelease('0.1.0', { gitHash: 'fd78b14' })).toBe('ferret@0.1.0+fd78b14')
+    expect(sentryRelease('0.1.0', { gitHash: null })).toBe('ferret@0.1.0+dev')
+    expect(sentryRelease('0.1.0', { gitHash: 'fatal: not a git repository' })).toBe('ferret@0.1.0+dev')
+    expect(sentryRelease('0.1.0')).toBe('ferret@0.1.0')
   })
-  it('確認用の MOVIE_ADE_SENTRY_TEST を読む', () => {
+  it('確認用の FERRET_SENTRY_TEST を読む', () => {
     expect(parseSentryTestKinds(undefined)).toEqual([])
     expect(parseSentryTestKinds('0')).toEqual([])
     expect(parseSentryTestKinds('1')).toEqual(['main', 'renderer', 'boundary', 'ipc', 'handled'])

@@ -430,3 +430,15 @@ describe('キーチェーンの確認を出さない（起動時・dev 版）', 
     await expect(stat(`${file}.index.json`)).rejects.toThrow()
   })
 })
+
+describe('whisper.cpp に渡す言語', () => {
+  it('ジャワ語は whisper.cpp の呼び方（jw）にし、ほかと auto はそのまま', async () => {
+    const { buildWhisperArgs } = await import('../../src/main/pipeline/stt/whisper')
+    const lang = (language: string) => { const a = buildWhisperArgs({ binary: 'w', model: 'm', language } as never, 'a.wav', 'o'); return a[a.indexOf('-l') + 1] }
+    expect(lang('jv')).toBe('jw')
+    expect(lang('ja')).toBe('ja')
+    expect(lang('yue')).toBe('yue')
+    expect(lang('auto')).toBe('auto')
+    expect(lang('')).toBe('auto')
+  })
+})

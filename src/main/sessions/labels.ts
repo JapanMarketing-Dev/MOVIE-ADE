@@ -5,9 +5,9 @@
  * レビューにも名前を付けたり、アーカイブしたりできるようにするため。
  */
 import { readFile, rm, stat, writeFile } from 'node:fs/promises'
-import { relative, resolve, sep } from 'node:path'
+import { dirname, relative, resolve, sep } from 'node:path'
 import type { ReviewLabelPatch } from '@shared/review'
-import { isSessionId, reviewsRoot, sessionPaths, type SessionPaths } from './paths'
+import { isSessionId, reviewsRoots, sessionPaths, type SessionPaths } from './paths'
 
 export interface SessionLabel {
   name?: string
@@ -56,13 +56,14 @@ export async function updateLabel(paths: SessionPaths, patch: ReviewLabelPatch &
 /**
  * 消してよいレビューのフォルダを返す。だめなら理由を投げる。
  *
- * renderer から来た ID で rm -r するので、必ず `<project>/.ade-movie/reviews/<日時>` の形で、
+ * renderer から来た ID で rm -r するので、必ず `<project>/.ferret/reviews/<日時>`（古いものは `.ade-movie/reviews/<日時>`）の形で、
  * reviews の直下に収まることを確かめる（`..` や絶対パス、区切り文字を混ぜた ID を通さない）。
  */
 export function deletableSessionDir(projectDir: string, id: string): string {
   if (!isSessionId(id)) throw new Error(`invalid review id: ${id}`)
-  const root = resolve(reviewsRoot(projectDir))
   const dir = resolve(sessionPaths(projectDir, id).dir)
+  const root = reviewsRoots(projectDir).map((r) => resolve(r)).find((r) => r === dirname(dir))
+  if (!root) throw new Error(`review is outside the project: ${id}`)
   const rel = relative(root, dir)
   if (!rel || rel.startsWith('..') || rel.includes(sep) || rel !== id) throw new Error(`review is outside the project: ${id}`)
   return dir

@@ -9,27 +9,40 @@
  * OS・CPU・Electron の版だけ。画面の中身（URL・ターミナル・文字起こし・指摘）は送らない。
  */
 import { isUserFacingError } from './errors'
+import { readBrandEnv } from './brandEnv'
 
 /**
  * 送り先。公開してよい値（OSS のアプリに埋め込む前提）。
- * フォークした人は MOVIE_ADE_SENTRY_DSN で自分の Sentry に向けられ、空にすれば送らない。
+ * フォークした人は FERRET_SENTRY_DSN（以前の MOVIE_ADE_SENTRY_DSN も可）で自分の Sentry に向けられ、空にすれば送らない。
  */
 export const DEFAULT_SENTRY_DSN =
   'https://716da12f9b6378ca3e3fd1cf8206846a@o4511317909569536.ingest.us.sentry.io/4512189930602496'
 
 /**
- * release の名前。配布版は `movie-ade@<version>`（`sentry` CLI でソースマップを上げるときも同じ名前）。
- * dev 起動は `movie-ade@<version>+<git の短いハッシュ>`（取れなければ `+dev`）。どのコミットで出たかを分ける。
+ * release の名前。配布版は `ferret@<version>`（`sentry` CLI でソースマップを上げるときも同じ名前）。
+ * dev 起動は `ferret@<version>+<git の短いハッシュ>`（取れなければ `+dev`）。どのコミットで出たかを分ける。
+ * 0.1.x までは MOVIE-ADE の名前で `movie-ade@<version>` だった（Sentry に残っているリリースはその名前）。
  */
+/** Sentry のリリース名の前置き（scripts/sentry-sourcemaps.mjs・sentry-release.mjs と同じ） */
+export const RELEASE_PREFIX = 'ferret'
+
 export function sentryRelease(version: string, dev?: { gitHash?: string | null }): string {
-  if (!dev) return `movie-ade@${version}`
+  if (!dev) return `${RELEASE_PREFIX}@${version}`
   const hash = dev.gitHash && /^[0-9a-f]{4,40}$/i.test(dev.gitHash.trim()) ? dev.gitHash.trim() : 'dev'
-  return `movie-ade@${version}+${hash}`
+  return `${RELEASE_PREFIX}@${version}+${hash}`
+}
+
+/**
+ * Sentry 系の環境変数。新しい名前（FERRET_SENTRY_*）を先に、無ければ以前の名前（MOVIE_ADE_SENTRY_*）を読む（src/shared/brandEnv.ts）。
+ * 空文字も「設定あり」として扱う（DSN を空にすると送らない、の意味を保つ）
+ */
+export function sentryEnv(env: Record<string, string | undefined>, name: 'DSN' | 'FORCE' | 'TEST'): string | undefined {
+  return readBrandEnv(env, `SENTRY_${name}`)
 }
 
 /** 環境変数があればそれを使う（空文字＝送らない）。無ければ既定の DSN */
 export function resolveSentryDsn(env: Record<string, string | undefined>): string | null {
-  const raw = env.MOVIE_ADE_SENTRY_DSN
+  const raw = sentryEnv(env, 'DSN')
   if (raw === undefined) return DEFAULT_SENTRY_DSN
   const v = raw.trim()
   return v ? v : null
@@ -44,7 +57,7 @@ export interface CrashReportConditions {
   /** E2E（ADE_E2E=1） */
   e2e: boolean
   /**
-   * 送信の確認用（MOVIE_ADE_SENTRY_FORCE=1）。E2E の起動（ウインドウを出さず、OS の許可のダイアログも出さない）でも送る。
+   * 送信の確認用（FERRET_SENTRY_FORCE=1。以前の MOVIE_ADE_SENTRY_FORCE も可）。E2E の起動（ウインドウを出さず、OS の許可のダイアログも出さない）でも送る。
    * 単体テストと設定 OFF には勝たない
    */
   forced?: boolean
@@ -203,9 +216,10 @@ function pick(obj: Record<string, unknown>, keys: string[]): Record<string, unkn
 }
 
 /** 残してよい contexts（OS・端末・アプリ・実行環境の版）。それ以外は落とす */
-const ALLOWED_CONTEXTS = new Set(['os', 'device', 'app', 'runtime', 'electron', 'chrome', 'node', 'gpu', 'culture', 'trace', 'react'])
+const ALLOWED_CONTEXTS = new Set(['os', 'device', 'app', 'runtime', 'electron', 'chrome', 'node', 'gpu', 'culture', 'trace', 'react', 'block'])
 
 type EventLike = {
+  user?: unknown
   breadcrumbs?: Breadcrumb[]
   contexts?: object
   exception?: unknown
@@ -218,7 +232,11 @@ type EventLike = {
  */
 export function scrubEvent<T extends EventLike>(event: T, ctx: ScrubContext = {}): T {
   const copy = { ...event } as EventLike & Record<string, unknown>
+  // 利用者は、端末ごとに作ったランダムな ID（インストール ID）だけを残す（「影響を受けた人数」を数えるため）。
+  // 名前・メール・IP は持たない
+  const userId = (copy.user as { id?: unknown } | undefined)?.id
   delete copy.user
+  if (isInstallId(userId)) copy.user = { id: userId }
   delete copy.request
   delete copy.extra
   delete copy.server_name
@@ -310,15 +328,21 @@ export function shouldReportProcessGone(reason: string): boolean {
   return reason !== 'clean-exit' && reason !== 'killed'
 }
 
-/** 確認用（MOVIE_ADE_SENTRY_TEST）。`1`/`all` は全部、`main,renderer` のように選べる */
+/** 確認用（FERRET_SENTRY_TEST。以前の MOVIE_ADE_SENTRY_TEST も可）。`1`/`all` は全部、`main,renderer` のように選べる */
 export const SENTRY_TEST_KINDS = ['main', 'renderer', 'boundary', 'ipc', 'handled'] as const
-export type SentryTestKind = (typeof SENTRY_TEST_KINDS)[number]
+/**
+ * アプリを落とす・止める確認（ネイティブのクラッシュ、main の未処理の例外、長い停止）。
+ * `1` / `all` には含めず、名前を書いたときだけ起こす（うっかり落とさない）
+ */
+export const SENTRY_DESTRUCTIVE_TEST_KINDS = ['crash-main', 'crash-renderer', 'uncaught', 'hang', 'preload'] as const
+export type SentryTestKind = (typeof SENTRY_TEST_KINDS)[number] | (typeof SENTRY_DESTRUCTIVE_TEST_KINDS)[number]
 
 export function parseSentryTestKinds(raw: string | undefined): SentryTestKind[] {
   const v = (raw ?? '').trim().toLowerCase()
   if (!v || v === '0') return []
   if (v === '1' || v === 'all') return [...SENTRY_TEST_KINDS]
-  return SENTRY_TEST_KINDS.filter((k) => v.split(/[\s,]+/).includes(k))
+  const words = v.split(/[\s,]+/)
+  return [...SENTRY_TEST_KINDS, ...SENTRY_DESTRUCTIVE_TEST_KINDS].filter((k) => words.includes(k))
 }
 
 /**
@@ -344,6 +368,15 @@ export function wrapIpcHandler<A extends unknown[], R>(
 /** 性能の異常の閾値。起動して操作できるまで（目標 2s）と、main のイベントループの停止 */
 export const SLOW_STARTUP_MS = 5000
 export const EVENT_LOOP_BLOCK_MS = 1000
+/**
+ * 開発版の閾値。dev の Mac は E2E・ビルド・HMR で重いことが多く、1秒程度の停止は日常的に起きるので、3秒を超えたものだけ送る。
+ * 配布版は EVENT_LOOP_BLOCK_MS のまま
+ */
+export const DEV_EVENT_LOOP_BLOCK_MS = 3000
+
+export function eventLoopBlockThreshold(packaged: boolean): number {
+  return packaged ? EVENT_LOOP_BLOCK_MS : DEV_EVENT_LOOP_BLOCK_MS
+}
 /** 同じ種類の性能の異常を続けて送らない間隔 */
 export const ANOMALY_COOLDOWN_MS = 10 * 60 * 1000
 
@@ -365,4 +398,179 @@ export function durationBucket(ms: number): string {
   if (ms < 5000) return '2-5s'
   if (ms < 10000) return '5-10s'
   return '10s+'
+}
+
+/**
+ * インストール ID：端末（userData）ごとに1度だけ作るランダムな UUID。利用者の情報は何も含まない。
+ * 「影響を受けた人数」と、リリースごとのクラッシュしなかった人の割合を数えるためだけに使う
+ */
+const INSTALL_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+
+export function isInstallId(value: unknown): value is string {
+  return typeof value === 'string' && INSTALL_ID.test(value)
+}
+
+/** 保存してあった ID が使えればそれを、無い・壊れていれば新しく作る（作ったかどうかも返す） */
+export function resolveInstallId(saved: string | null | undefined, create: () => string): { id: string; created: boolean } {
+  const v = saved?.trim()
+  if (isInstallId(v)) return { id: v, created: false }
+  return { id: create(), created: true }
+}
+
+/**
+ * クラッシュのイベントか。ネイティブのクラッシュ（minidump）、fatal、捕まえていない例外。
+ * これにだけ main の直前のログを添付する
+ */
+export function isCrashEvent(event: { level?: unknown; exception?: unknown }, isNativeCrash: boolean): boolean {
+  if (isNativeCrash || event.level === 'fatal') return true
+  const values = (event.exception as { values?: Array<{ mechanism?: { handled?: unknown } }> } | undefined)?.values ?? []
+  return values.some((v) => v.mechanism?.handled === false)
+}
+
+/** 添付する main のログの行数と、1行の長さの上限 */
+export const LOG_RING_LINES = 50
+export const LOG_LINE_MAX = 160
+
+/**
+ * main のログの直近の行（クラッシュに添付する）。
+ * `[startup]` `[recording]` のようにアプリが付けた見出しで始まる行だけを残す（ターミナルの出力・文字起こし・
+ * 指摘の本文が混ざらないように）。1行は短く切り、パス・URL・メール・キーは送る前の除去と同じ規則で伏せる
+ */
+export function createLogRing(max = LOG_RING_LINES, ctx: () => ScrubContext = () => ({})) {
+  const lines: string[] = []
+  return {
+    push(level: string, args: unknown[]): void {
+      const first = args[0]
+      if (typeof first !== 'string' || !/^\[[\w:.-]{1,24}\]/.test(first)) return
+      const text = args.map((a) => (typeof a === 'string' ? a : a instanceof Error ? `${a.name}: ${a.message}` : '')).filter(Boolean).join(' ')
+      lines.push(`${new Date().toISOString()} ${level} ${scrubString(text, ctx(), LOG_LINE_MAX)}`)
+      if (lines.length > max) lines.shift()
+    },
+    snapshot(): string {
+      return lines.join('\n')
+    }
+  }
+}
+
+/** 中央のタブ（どの画面を見ていたか）をタグの値にする。ファイルのタブはパスを持つので 'file' にまとめる */
+export function uiTabTag(tab: string): string {
+  return /^(browser|findings|settings|reviews|gallery)$/.test(tab) ? tab : tab.startsWith('file') ? 'file' : 'other'
+}
+
+/**
+ * 送る environment。確認用の起動（FERRET_SENTRY_FORCE・ADE_E2E）と、版に -verify が付いたビルドは verification
+ * （production のアラートとクラッシュしなかった割合を汚さない）。それ以外は配布版が production、dev が development
+ */
+export function resolveEnvironment(c: { packaged: boolean; version: string; forced: boolean; e2e: boolean }): 'production' | 'development' | 'verification' {
+  if (c.forced || c.e2e || /-verify\b/i.test(c.version)) return 'verification'
+  return c.packaged ? 'production' : 'development'
+}
+
+export type PerfAnomaly = 'slow-startup' | 'event-loop-block'
+const PERF_TITLE: Record<PerfAnomaly, string> = { 'slow-startup': 'Slow startup', 'event-loop-block': 'Main event loop blocked' }
+
+/**
+ * 性能の異常のイベントの形。題名は「Slow startup (7.4s)」のように種類と長さだけ、まとめ方（fingerprint）は種類ごとに固定。
+ * スタックは付けない（送る処理の中のフレームが題名や culprit にならないように）
+ */
+export function perfAnomalyEvent(perf: PerfAnomaly, ms: number): {
+  message: string
+  level: 'warning'
+  fingerprint: string[]
+  tags: Record<string, string>
+} {
+  return {
+    message: `${PERF_TITLE[perf]} (${(ms / 1000).toFixed(1)}s)`,
+    level: 'warning',
+    fingerprint: ['anomaly', perf],
+    tags: { kind: 'perf', perf, duration: durationBucket(ms) }
+  }
+}
+
+/** 起動の失敗のパンくず：console の文そのものは入れず、操作名と数（ms）だけにする */
+export function startupBreadcrumb(level: 'error' | 'warning', args: unknown[]): { category: 'startup'; level: 'error' | 'warning'; message: string; data?: { ms: number } } {
+  const text = typeof args[0] === 'string' ? args[0] : ''
+  const ms = /(\d+)\s*ms/.exec(text)?.[1]
+  return { category: 'startup', level, message: level === 'error' ? 'startup failed' : 'startup slow', ...(ms ? { data: { ms: Number(ms) } } : {}) }
+}
+
+/**
+ * 「クラッシュレポートを送る」を起動中に切り替えたときの扱い。allow() は送る直前に毎回呼び、そのときの設定で決める
+ * （OFF にした瞬間から、エラー・warning・セッション・添付・renderer のイベントまで全部止まる）。
+ * ON / OFF が変わったら onDisable / onEnable を1度だけ呼ぶ（セッションを閉じる・始め直す）
+ */
+export function createSendGate(isEnabled: () => boolean, hooks: { onDisable?: () => void; onEnable?: () => void } = {}) {
+  let last = isEnabled()
+  const sync = (): boolean => {
+    const now = isEnabled()
+    if (now !== last) {
+      last = now
+      if (now) hooks.onEnable?.()
+      else hooks.onDisable?.()
+    }
+    return now
+  }
+  return { allow: sync, sync }
+}
+
+/** Sentry の transport を包み、allow() が false のあいだは何も送らない（セッション・minidump・renderer のイベントも含む） */
+export function gateTransport<T extends { send: (envelope: never) => PromiseLike<unknown>; flush: (timeout?: number) => PromiseLike<boolean> }>(base: T, allow: () => boolean): T {
+  return {
+    ...base,
+    send: (envelope: never) => (allow() ? base.send(envelope) : Promise.resolve({})),
+    flush: (timeout?: number) => base.flush(timeout)
+  }
+}
+
+/**
+ * 処理中の IPC（main の停止の手がかり）。begin で始め、返した関数で終える。snapshot は長い順の上位3つ
+ */
+export function createInflightTracker(now: () => number = Date.now) {
+  const running = new Map<number, { name: string; at: number }>()
+  let seq = 0
+  return {
+    begin(name: string): () => number {
+      const id = ++seq
+      const at = now()
+      running.set(id, { name, at })
+      return () => {
+        running.delete(id)
+        return now() - at
+      }
+    },
+    snapshot(limit = 3): Array<{ name: string; ms: number }> {
+      const t = now()
+      return [...running.values()].map((r) => ({ name: r.name, ms: t - r.at })).sort((a, b) => b.ms - a.ms).slice(0, limit)
+    }
+  }
+}
+
+/** 止まったときのイベントに付ける手がかり（タグと contexts.block）。中身は処理の名前と時間だけ */
+export function eventLoopBlockContext(
+  inflight: Array<{ name: string; ms: number }>,
+  slow: Array<{ op: string; ms: number }>
+): { tags: Record<string, string>; context: Record<string, string> } {
+  const fmt = (list: Array<{ label: string; ms: number }>) => list.map((x) => `${x.label} ${Math.round(x.ms)}ms`).join(', ') || 'none'
+  return {
+    tags: { 'block.ipc': inflight[0]?.name ?? 'none', 'block.slowop': slow[0]?.op ?? 'none' },
+    context: {
+      inflight_ipc: fmt(inflight.map((x) => ({ label: x.name, ms: x.ms }))),
+      recent_slow_ops: fmt(slow.map((x) => ({ label: x.op, ms: x.ms })))
+    }
+  }
+}
+
+/** 意味の無い Electron の出来事（補助技術の切り替えの通知など）。同じものが続けて来るので捨てる */
+const NOISY_BREADCRUMBS = new Set(['app.accessibility-support-changed'])
+
+/** パンくずを間引く。騒がしい出来事は捨て、直前と同じもの（種類と文が同じ）が続くときは1つにする */
+export function createBreadcrumbFilter() {
+  let last = ''
+  return (crumb: { category?: string; message?: string }): boolean => {
+    if (crumb.category === 'electron' && crumb.message && NOISY_BREADCRUMBS.has(crumb.message)) return false
+    const key = `${crumb.category ?? ''}\u0000${crumb.message ?? ''}`
+    if (key === last) return false
+    last = key
+    return true
+  }
 }

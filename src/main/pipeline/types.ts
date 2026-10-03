@@ -87,22 +87,23 @@ export interface PenEvent {
   t_end: number;
   /** [x, y, w, h] */
   bbox: [number, number, number, number]
+  /** 四角の枠で囲んだとき 'rect'。手書きの線は省略 */
+  shape?: 'rect'
+  /**
+   * 録画中に動かした・元に戻した書き込みは、新しい ID の pen として追記し、ここに前の ID を入れる
+   * （操作ログは追記のみ）。前の ID の書き込みは、これに置き換わったものとして扱う（resolveAnnotationEdits）
+   */
+  replaces?: string
   /** この時点のビューの大きさ */
   view?: ViewSize
   el?: ElementRef
 }
 
-/** 画面に置かれたテキスト（TXT-1）。それ自体が1つの指摘になりうる */
-export interface TextEvent {
+/** 録画中に「元に戻す」で取り消した書き込み。その ID の書き込みは無かったものとして扱う */
+export interface EraseEvent {
   t: number
-  type: 'text'
-  id: string
-  x: number
-  y: number
-  body: string
-  /** この時点のビューの大きさ */
-  view?: ViewSize
-  el?: ElementRef
+  type: 'erase'
+  ids: string[]
 }
 
 /** 表示幅の切替（WS-3）。nav をまたいで保持される */
@@ -112,24 +113,51 @@ export interface ViewportEvent {
   width: number
 }
 
-export type Event = NavEvent | ClickEvent | ScrollEvent | PenEvent | TextEvent | ViewportEvent;
+/**
+ * 操作ログの1件。
+ * 録画中に画面へ文字を置く機能（旧 TXT-1）は廃止した（依頼は声とペンで行う）。古いレビューの events.jsonl には
+ * type: 'text' の行が残っていることがあるが、どの処理も知らない種類として読み飛ばす（ファイルは移さない）。
+ */
+export type Event = NavEvent | ClickEvent | ScrollEvent | PenEvent | EraseEvent | ViewportEvent;
 
-/** ペン・テキストをまとめて「書き込み（annotation）」と呼ぶ */
-export type Annotation = PenEvent | TextEvent
+/** 書き込み（annotation）。いまはペンだけ */
+export type Annotation = PenEvent
 
 export function isAnnotation(e: Event): e is Annotation {
-  return e.type === 'pen' || e.type === 'text'
+  return e.type === 'pen'
+}
+
+/**
+ * 動かした・元に戻した書き込みを反映した操作ログ。
+ * - replaces を持つ pen が来たら、置き換えられた（前の位置の）pen を外す。最後の位置の pen だけが残る
+ * - erase が来たら、その ID の pen を外す（erase 自体も外す）
+ * 古い記録（replaces・erase が無い）はそのまま返る。何度かけても同じ結果になる
+ */
+export function resolveAnnotationEdits(events: Event[]): Event[] {
+  const removed = new Set<string>()
+  let edited = false
+  for (const e of events) {
+    if (e.type === 'erase') {
+      edited = true
+      for (const id of e.ids) removed.add(id)
+    } else if (e.type === 'pen' && e.replaces) {
+      edited = true
+      removed.add(e.replaces)
+    }
+  }
+  if (!edited) return events
+  return events.filter((e) => e.type !== 'erase' && !(e.type === 'pen' && removed.has(e.id)))
 }
 
 /** 書き込みが画像として確定する時刻 */
 export function annotationFrameTime(a: Annotation): number {
-  return a.type === 'pen' ? a.t_end : a.t
+  return a.t_end
 }
 
 // ───────────────────────── 静止画 ─────────────────────────
 
 export interface FrameRef {
-  /** この画像に描画済みのペン・テキストのID（直前の未確定画像を選ばないため） */
+  /** この画像に描画済みのペンのID（直前の未確定画像を選ばないため） */
   annotationId?: string
   /** 撮影時刻 */
   t: number;
@@ -139,6 +167,8 @@ export interface FrameRef {
   cursor?: { x: number; y: number }
   /** この静止画の大きさ（ピクセル）。座標をこの画像に重ねるときに使う */
   size?: ViewSize
+  /** ほぼ一色（読み込み途中の白いページなど）。話しただけの指摘の画像には選ばない */
+  blank?: boolean
 }
 
 // ───────────────────────── 録画セッション ─────────────────────────
@@ -180,7 +210,7 @@ export interface DraftItem {
   tEnd: number;
   /** この指摘に属する発話（原文のまま） */
   segments: TranscriptSegment[];
-  /** 紐づいたペン・テキストのID */
+  /** 紐づいたペンのID */
   annotationIds: string[];
   /** 画像にする静止画の時刻（最大3枚） */
   frameTimes: number[];
@@ -207,6 +237,10 @@ export interface OrganizeInput {
 export type ItemStatus = 'decided' | 'needs_check'
 
 export interface Quote {
+  /**
+   * 'text' は廃止した「画面に置いたテキスト」から来た引用。古いレビューの session.json にだけ残っていて、
+   * 表示（確認画面・feedback.md）ではそのまま「書き込み」として出す。新しくは作らない
+   */
   source?: 'text'
   speaker: Speaker
   t: number
@@ -232,6 +266,8 @@ export interface DroppedUtterance {
 export interface OrganizeOutput {
   items: OrganizedItem[]
   dropped: DroppedUtterance[]
+  /** レビュー全体の短い名前（履歴の見出しに使う。review_title）。古い出力には無い */
+  reviewTitle?: string
 }
 
 // ───────────────────────── ④出力 ─────────────────────────
@@ -268,7 +304,7 @@ export interface FeedbackItem {
   context: ItemContext;
   /** 由来の下書きID（トレース用） */
   draftIds: string[];
-  /** 紐づくペン・テキストのID。画像を差し替えたときに文脈を引き直すのに使う */
+  /** 紐づくペンのID。画像を差し替えたときに文脈を引き直すのに使う */
   annotationIds: string[]
   /** 送信対象に含めるか（REV-2。要確認を外せる） */
   include: boolean
@@ -282,6 +318,11 @@ export interface FeedbackDocument {
   note?: string;
   /** 整理に LLM を使えたか。false ならルール下書きのまま（EXT-11） */
   organizedByLlm: boolean
+  /**
+   * 整理（LLM）が付けたレビューの短い名前。履歴の見出しの自動の名前に使う（sessions/autoName.ts）。
+   * 整理していない・指摘を足した後は無い（ルールで作った名前を使う）
+   */
+  reviewTitle?: string
 }
 
 /** ピクセル座標を 0〜1 の相対座標に直す（表示幅を切り替えても解釈できる形。NF-14 の隣の課題） */

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ONBOARDING_STEPS, type OnboardingPatch, type OnboardingState, type OnboardingStepId } from '@shared/onboarding'
 import type { AgentPreferences, ProjectsState } from '@shared/types'
-import type { TranslationKey } from '@shared/i18n'
+import { PRODUCT_NAME, type TranslationKey } from '@shared/i18n'
 import { Logo, Modal } from '../ui'
 import { useT } from '../lib/i18n'
 import { AgentsStep, AppearanceStep, FinishStep, PermissionsStep, ProjectStep, VoiceStep, type OnboardingVoice } from './OnboardingSteps'
@@ -35,8 +35,11 @@ import '../styles/onboarding.css'
  */
 export function OnboardingFlow({ onboarding, onPersist, agents, onAgentsChange, projects, voice }: {
   onboarding: OnboardingState | null
-  /** 進み具合を保存する。完了・閉じるの保存が済むと、呼び出し側がこの画面を外す */
-  onPersist: (patch: OnboardingPatch) => Promise<void>
+  /**
+   * 進み具合を反映する。呼び出し側（App）が画面の状態をすぐ変えて保存は裏で行うので、
+   * 完了・閉じるはこの呼び出しだけで閉じる（保存の成否を待たない。待つと保存の失敗で閉じなくなる）
+   */
+  onPersist: (patch: OnboardingPatch) => void
   agents: AgentPreferences
   onAgentsChange: (next: AgentPreferences) => void
   projects: ProjectsState
@@ -45,8 +48,6 @@ export function OnboardingFlow({ onboarding, onPersist, agents, onAgentsChange, 
   const t = useT()
   const [stepIndex, setStepIndex] = useState(() => initialStepIndex(onboarding))
   const [skipConfirmOpen, setSkipConfirmOpen] = useState(false)
-  /** 閉じるのは1回だけ（Orca の closeWith の閉じた印と同じ。連打で二重に保存しない） */
-  const closingRef = useRef(false)
   const stepId = stepIdAt(stepIndex)
   const last = stepIndex === LAST_STEP_INDEX
   const mac = window.ade.platform === 'darwin'
@@ -54,14 +55,11 @@ export function OnboardingFlow({ onboarding, onPersist, agents, onAgentsChange, 
   const goTo = useCallback((index: number) => {
     const next = clampStepIndex(index)
     setStepIndex(next)
-    void onPersist(stepPatch(next)).catch(() => undefined)
+    onPersist(stepPatch(next))
   }, [onPersist])
 
-  const close = useCallback((patch: OnboardingPatch) => {
-    if (closingRef.current) return
-    closingRef.current = true
-    void onPersist(patch).catch(() => { closingRef.current = false })
-  }, [onPersist])
+  // 待たずに閉じる。同じ値を2回送っても結果は変わらない（⌘↩ の連打など）ので、押せなくなる印は持たない
+  const close = useCallback((patch: OnboardingPatch) => onPersist(patch), [onPersist])
 
   const next = useCallback(() => {
     const index = nextStepIndex(stepIndex)
@@ -80,7 +78,7 @@ export function OnboardingFlow({ onboarding, onPersist, agents, onAgentsChange, 
 
   // 初めて開いたときの手順も再開位置として書いておく（どこまで見たかを残す）
   useEffect(() => {
-    if (!onboarding?.lastStep) void onPersist(stepPatch(stepIndex)).catch(() => undefined)
+    if (!onboarding?.lastStep) onPersist(stepPatch(stepIndex))
     // 開いたときに1度だけ
   }, [])
 
@@ -107,7 +105,7 @@ export function OnboardingFlow({ onboarding, onPersist, agents, onAgentsChange, 
     <Modal className="ob-overlay" label={t('onboarding.dialogLabel')} onClose={() => setSkipConfirmOpen(true)}>
       <section className="ob-panel" data-testid="onboarding" data-step={stepId}>
         <div className="ob-drag" aria-hidden="true" />
-        <header className="ob-brand"><Logo size={22} /><span>MOVIE-ADE</span></header>
+        <header className="ob-brand"><Logo size={22} /><span>{PRODUCT_NAME}</span></header>
 
         <div className="ob-progress">
           {ONBOARDING_STEPS.map((id, index) => (

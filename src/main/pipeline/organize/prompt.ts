@@ -20,7 +20,7 @@ export interface PromptPayload {
   transcript: Array<{ t: number; t1: number; sp: string; text: string; tg?: string }>
   screen: Array<{ t: number; url: string; title: string; w?: number; tg?: string }>
   clicks: Array<{ t: number; text?: string; selector: string }>
-  annotations: Array<{ id: string; type: string; t: number; t_end: number; el?: string; body?: string; tg?: string }>
+  annotations: Array<{ id: string; type: string; t: number; t_end: number; el?: string; tg?: string }>
   frame_times: number[]
   draft: Array<{ id: string; t: number; t_end: number; quote_ts: number[]; annotation_ids: string[]; tg?: string }>
 }
@@ -49,23 +49,10 @@ export function buildPayload(input: OrganizeInput): PromptPayload {
         const c = e as Extract<typeof e, { type: 'click' }>
         return { t: c.t, ...(redactElementText(c.el?.text, c.el) ? { text: redactElementText(c.el?.text, c.el) } : {}), selector: c.el?.selector ?? '' }
       }),
+    // 書き込みは手書きの線と四角の枠（shape: 'rect'）。録画中に文字を置く機能は廃止した（古いログの text の行は渡さない）
     annotations: input.events
-      .filter((e) => e.type === 'pen' || e.type === 'text')
-      .map((e) => {
-        if (e.type === 'pen') {
-          return { id: e.id, type: 'pen', t: e.t, t_end: e.t_end, ...(redactElementText(e.el?.text, e.el) ? { el: redactElementText(e.el?.text, e.el) } : {}), ...tg(e.t) }
-        }
-        const x = e as Extract<typeof e, { type: 'text' }>
-        return {
-          id: x.id,
-          type: 'text',
-          t: x.t,
-          t_end: x.t,
-          body: x.body,
-          ...(redactElementText(x.el?.text, x.el) ? { el: redactElementText(x.el?.text, x.el) } : {}),
-          ...tg(x.t),
-        }
-      }),
+      .filter((e) => e.type === 'pen')
+      .map((e) => ({ id: e.id, type: 'pen', ...(e.shape === 'rect' ? { shape: 'rect' } : {}), t: e.t, t_end: e.t_end, ...(redactElementText(e.el?.text, e.el) ? { el: redactElementText(e.el?.text, e.el) } : {}), ...tg(e.t) })),
     frame_times: [...input.frameTimes].sort((a, b) => a - b),
     draft: input.draft.map((d) => ({
       id: d.id,
@@ -90,16 +77,17 @@ const organizeInstructionsJa = `あなたはUIレビューの録画から、コ�
 
 ## やること
 
-1. **誤変換の補正**: 音声認識の誤りを、screen の title / url、clicks の text、annotations の el / body、および文脈から補正する。補正は title と request の中でだけ行う。意味が通らない語があれば、同じ読みの別の語を疑う（例: 「ランの枠」→「欄の枠」、「バジ」→「バッジ」、「規定」→「既定」）。
+1. **誤変換の補正**: 音声認識の誤りを、screen の title / url、clicks の text、annotations の el、および文脈から補正する。補正は title と request の中でだけ行う。意味が通らない語があれば、同じ読みの別の語を疑う（例: 「ランの枠」→「欄の枠」、「バジ」→「バッジ」、「規定」→「既定」）。
 2. **指摘でない発話の除外**: つなぎ言葉（「えーっと」「次は」）、独り言、操作の実況（「スクロールします」）、挨拶、雑談は指摘にしない。除外したものは dropped にその発話の t と理由を入れる。
 3. **分割と結合**: 意味のまとまりで指摘を分ける。1つの話題が複数の発話にまたがるなら1件に結合する。**1つの発話に2つの別の指摘が入っていれば2件に分け、両方の指摘の quote_ts に同じ t を入れてよい。** 下書き（draft）は発話の間隔だけで切った目安なので、従う義務はない。
 4. **見出しと要望**: 各指摘に title（20文字程度）と request（何をどうして欲しいか）を書く。
 5. **要確認（status）**: 「この指摘だけを読んだコーディングAgentが、今すぐ修正に着手できるか」で決める。**勝手に結論を作らない。**
    - decided: 何をどう直すかが具体的に決まっている。必要な文言・素材を後で受け取る約束がある場合も decided（やることは決まっているため）。
    - needs_check: どう直すか決まっていない／まず調査や社内確認が必要／「保留」「このままにする」「次回決める」「今回はやらない」で終わった話題。
-6. **画像の時刻**: frame_times にある値の中から、その指摘の内容が画面に写っている時刻を1〜3個選んで frame_times に入れる。ペン・テキストがある指摘では、その書き込みが写る時刻（annotations の t_end 以上で最も近い値）を選ぶ。**frame_times に無い値は絶対に使わない。**
-7. **annotation_ids**: その指摘に関係するペン・テキストのIDを入れる。関係が無ければ空配列。入力の annotations に無いIDは使わない。
+6. **画像の時刻**: frame_times にある値の中から、その指摘の内容が画面に写っている時刻を1〜3個選んで frame_times に入れる。ペンの書き込みがある指摘では、その書き込みが写る時刻（annotations の t_end 以上で最も近い値）を選ぶ。**frame_times に無い値は絶対に使わない。**
+7. **annotation_ids**: その指摘に関係するペンの書き込みのIDを入れる。関係が無ければ空配列。入力の annotations に無いIDは使わない。
 8. **対象（target）**: 入力に targets があるとき、レビュアーは録画の途中で対象（URL・ファイル）を切り替えている。各指摘の target に、その指摘の対象の id（targets の id。transcript・annotations・draft の tg と同じ値）を必ず入れる。targets が無ければ target は空文字。
+9. **レビューの名前（review_title）**: 指摘全体が「何系の修正か」分かる短い名前を1つ書く（3〜8語程度、日本語。例「ヘッダーの余白と配色」「ログインフォームの検証」「料金ページの文言」）。ページのタイトルやサイト名をそのまま使わない。
 
 ## 守ること
 
@@ -108,7 +96,6 @@ const organizeInstructionsJa = `あなたはUIレビューの録画から、コ�
 - two_speakers が true のときは、やり取りを話題ごとにまとめ、関係する両者の発話の t を quote_ts に入れる。
 - 指摘は時刻の順に並べる。
 - **指摘になりうる発話を落とさない。** transcript の各区間は、どれかの指摘の quote_ts か dropped のどちらかに入るのが基本。迷ったら needs_check の指摘として残す（除外より残す方を選ぶ）。
-- 画面に置かれたテキスト（annotations の type=text の body）は、レビュアーが正確に伝えたい文言なので必ず指摘に含める。
 - **違う対象（tg が違う）の発話・書き込みを1件にまとめない。** 同じ話題に聞こえても、対象が変われば別の指摘にする。1件の quote_ts・annotation_ids・frame_times は、すべてその指摘の target の tg を持つものだけにする。
 
 出力はJSONのみ。説明文やコードフェンスを付けない。`;
@@ -119,16 +106,17 @@ All times are milliseconds from the start of the recording.
 
 ## What to do
 
-1. **Fix recognition errors**: Correct speech-recognition mistakes using screen title / url, clicks text, annotations el / body, and context. Make corrections only inside title and request. If a word makes no sense, suspect a different word that sounds the same.
+1. **Fix recognition errors**: Correct speech-recognition mistakes using screen title / url, clicks text, annotations el, and context. Make corrections only inside title and request. If a word makes no sense, suspect a different word that sounds the same.
 2. **Drop non-findings**: Fillers ("um", "next"), talking to oneself, narrating actions ("scrolling down"), greetings and small talk are not findings. Put each dropped utterance's t and the reason in dropped.
 3. **Split and merge**: Group findings by meaning. If one topic spans several utterances, merge them into one finding. **If one utterance contains two separate findings, split it into two; both findings may list the same t in quote_ts.** The draft is only a guide cut by pauses in speech; you do not have to follow it.
 4. **Heading and request**: For each finding write a title (about 40 characters) and a request (what should change, and how). Write title and request in English.
 5. **Needs check (status)**: Decide by asking "Could a coding agent that reads only this finding start fixing it right now?" **Do not invent conclusions.**
    - decided: What to fix and how is concrete. Also decided when the needed copy or assets are promised later (the work itself is settled).
    - needs_check: How to fix is not decided / investigation or internal confirmation comes first / the topic ended with "on hold", "leave it as is", "decide next time" or "not this time".
-6. **Image times**: From the values in frame_times, pick 1–3 times where the finding is visible on screen and put them in frame_times. For findings with a pen mark or text, pick the time where the mark is visible (the closest value at or after the annotation's t_end). **Never use a value that is not in frame_times.**
-7. **annotation_ids**: List the IDs of pen marks and text related to the finding. Use an empty array if none. Do not use IDs that are not in the input annotations.
+6. **Image times**: From the values in frame_times, pick 1–3 times where the finding is visible on screen and put them in frame_times. For findings with a pen mark, pick the time where the mark is visible (the closest value at or after the annotation's t_end). **Never use a value that is not in frame_times.**
+7. **annotation_ids**: List the IDs of pen marks related to the finding. Use an empty array if none. Do not use IDs that are not in the input annotations.
 8. **Target**: When the input has targets, the reviewer switched between targets (URLs and files) during the recording. Always set each finding's target to the id of the target it is about (an id from targets; the same value as tg in transcript, annotations and draft). If there are no targets, set target to an empty string.
+9. **Review title (review_title)**: Write one short name that tells what kind of fixes the whole review is about (3–8 words, e.g. "Header spacing and colors", "Login form validation", "Pricing page copy"). Do not just copy the page title or site name. Write review_title in the same language as title and request.
 
 ## Rules
 
@@ -137,7 +125,6 @@ All times are milliseconds from the start of the recording.
 - When two_speakers is true, group the exchange by topic and put the t of both speakers' related utterances in quote_ts.
 - Order findings by time.
 - **Do not lose utterances that could be findings.** Each transcript segment should normally appear either in some finding's quote_ts or in dropped. When unsure, keep it as a needs_check finding (prefer keeping over dropping).
-- Text placed on screen (body of annotations with type=text) is wording the reviewer wants to convey exactly, so always include it in a finding.
 - **Never merge utterances or marks from different targets (different tg) into one finding.** Even if it sounds like the same topic, a different target means a separate finding. A finding's quote_ts, annotation_ids and frame_times must all come from its own target's tg.
 
 Output JSON only. No explanations or code fences.`
@@ -147,8 +134,19 @@ const ORGANIZE_INSTRUCTIONS: Partial<Record<SupportedLocale, { instructions: str
   ja: { instructions: organizeInstructionsJa, inputHeading: '## 入力' }
 }
 
+/** 条文を持たない言語では英語の条文を使い、見出しと要望だけをその言語で書かせる（LOCALE_LABELS の英語名） */
+const OUTPUT_LANGUAGE: Record<SupportedLocale, string> = {
+  en: 'English', ja: 'Japanese', 'zh-CN': 'Simplified Chinese', 'zh-TW': 'Traditional Chinese (Taiwan)', ko: 'Korean',
+  es: 'Spanish', fr: 'French', de: 'German', 'pt-BR': 'Brazilian Portuguese', it: 'Italian', ru: 'Russian',
+  vi: 'Vietnamese', id: 'Indonesian', hi: 'Hindi'
+}
+
 function instructionsFor(locale: SupportedLocale): { instructions: string; inputHeading: string } {
-  return ORGANIZE_INSTRUCTIONS[locale] ?? ORGANIZE_INSTRUCTIONS.en!
+  const own = ORGANIZE_INSTRUCTIONS[locale]
+  if (own) return own
+  const en = ORGANIZE_INSTRUCTIONS.en!
+  const language = OUTPUT_LANGUAGE[locale] ?? 'English'
+  return { ...en, instructions: en.instructions.replace('Write title and request in English.', `Write title and request in ${language}.`) }
 }
 
 /** 指示文だけ（FINDINGS.md への転記や確認用） */

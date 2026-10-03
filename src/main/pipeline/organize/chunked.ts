@@ -154,7 +154,10 @@ export async function organizeChunked(
   }
   dropped.sort((a, b) => a.t - b.t)
 
-  return { ok: true, output: { items, dropped }, parts, elapsedMs, failed }
+  // 区間ごとに名前が付くので、指摘の最も多い区間の名前を全体の名前にする
+  const reviewTitle = [...okParts].sort((a, b) => b.output.items.length - a.output.items.length).find((p) => p.output.reviewTitle)?.output.reviewTitle
+
+  return { ok: true, output: { items, dropped, ...(reviewTitle ? { reviewTitle } : {}) }, parts, elapsedMs, failed }
 }
 
 function firstTime(item: OrganizeOutput['items'][number]): number {

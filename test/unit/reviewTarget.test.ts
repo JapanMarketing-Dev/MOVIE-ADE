@@ -110,3 +110,25 @@ describe('切り替えの判定と操作', () => {
     expect(pushRecentUrl(Array.from({ length: 10 }, (_, i) => `https://s${i}.test/`), 'https://new.test/', 8)).toHaveLength(8)
   })
 })
+
+describe('URL の無い確認先（ウインドウ・起動コマンド）', () => {
+  const targets: ProjectUrl[] = [
+    { id: 'w', label: 'iOS sim', launchCommand: 'open -a Simulator', windowMatch: 'Simulator' },
+    { id: 'm', label: 'mobile web', url: 'http://localhost:8081/', windowMatch: 'Expo' },
+    { id: 'c', label: 'build only', launchCommand: 'pnpm build' }
+  ]
+
+  it('モバイルなどの種類では、ウインドウの確認先も並べる（押すと targetAction に従う）', () => {
+    const entries = buildTargetEntries({ presets: targets, projectKind: 'mobile', files: [], recent: [] })
+    expect(entries.map((e) => [e.kind, e.title, e.windowMatch ?? null, e.launchCommand ?? null, e.url ?? null])).toEqual([
+      ['window', 'iOS sim', 'Simulator', 'open -a Simulator', null],
+      ['window', 'mobile web', 'Expo', null, 'http://localhost:8081/'],
+      ['window', 'build only', null, 'pnpm build', null]
+    ])
+  })
+
+  it('Web のプロジェクトでは起動コマンド・ウインドウを使わないので、URL の無い確認先は出さない', () => {
+    const entries = buildTargetEntries({ presets: targets, files: [], recent: [] })
+    expect(entries.map((e) => [e.kind, e.title])).toEqual([['url', 'mobile web']])
+  })
+})

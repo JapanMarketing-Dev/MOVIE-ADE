@@ -30,6 +30,11 @@ export function initLocale(): void {
     document.documentElement.lang = locale
   })
   window.ade.on('locale:changed', setLocale)
+  // settings.json の外部の変更。解決済みの言語は 'locale:changed' で届くので、選択肢の表示だけ合わせる
+  window.ade.on('settings:changed', (settings) => {
+    preference = normalizeLocalePreference(settings.locale)
+    for (const listener of preferenceListeners) listener()
+  })
   void window.ade
     .invoke('app:settings')
     .then((settings) => {

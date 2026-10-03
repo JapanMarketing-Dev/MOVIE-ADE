@@ -13,6 +13,7 @@ import type { WhisperModelId } from './stt/models'
 import { whisperModels } from './stt/models'
 import { commonBinaryDirs } from '../platform/binaryDirs'
 import { pickWindowsWhereResult } from '../platform/windowsSpawn'
+import { timedSync } from '@shared/report'
 
 /** 呼び出し側（main）が渡すパス */
 export interface EnvironmentPaths {
@@ -193,6 +194,10 @@ function joinPath(parts: string[]): string {
     .join(sep)
 }
 
+/** which の結果を覚える時間（PATH の変化は30秒で拾い直す） */
+const WHICH_CACHE_MS = 30_000
+const whichCache = new Map<string, { value: string | null; at: number }>()
+
 /** 既定の probes（main から使う）。Electron には依存しない */
 export function nodeProbes(): EnvironmentProbes {
   return {
@@ -201,21 +206,31 @@ export function nodeProbes(): EnvironmentProbes {
     home: homedir(),
     exists: (p) => existsSync(p),
     which: (command) => {
+      /*
+       * which / where を同期で起動するので main が止まる（重い Mac では数百 ms〜秒）。capture:availability などで
+       * 何度も呼ばれるので、結果を30秒覚える（見つからないことも覚える）。時間は重い処理として控える
+       */
+      const hit = whichCache.get(command)
+      if (hit && Date.now() - hit.at < WHICH_CACHE_MS) return hit.value
       const finder = process.platform === 'win32' ? 'where' : 'which'
-      try {
-        const out = execFileSync(finder, [command], {
-          encoding: 'utf8',
-          windowsHide: true,
-          stdio: ['ignore', 'pipe', 'ignore']
-        })
-        // Windows の where は npm の拡張子なしのスクリプトを先に出すことがある。起動できるものを選ぶ
-        if (process.platform === 'win32') return pickWindowsWhereResult(out, process.env)
-        const first = out.split(/\r?\n/).find((l) => l.trim().length > 0)
-        return first ? first.trim() : null
-      } catch {
-        // コマンドが見つからない（想定内）
-        return null
-      }
+      const value = timedSync(`which:${command}`.slice(0, 40), () => {
+        try {
+          const out = execFileSync(finder, [command], {
+            encoding: 'utf8',
+            windowsHide: true,
+            stdio: ['ignore', 'pipe', 'ignore']
+          })
+          // Windows の where は npm の拡張子なしのスクリプトを先に出すことがある。起動できるものを選ぶ
+          if (process.platform === 'win32') return pickWindowsWhereResult(out, process.env)
+          const first = out.split(/\r?\n/).find((l) => l.trim().length > 0)
+          return first ? first.trim() : null
+        } catch {
+          // コマンドが見つからない（想定内）
+          return null
+        }
+      })
+      whichCache.set(command, { value, at: Date.now() })
+      return value
     },
     run: async (command, args) =>
       new Promise((resolve) => {

@@ -7,6 +7,10 @@
  * - elevenlabs:   {base}/speech-to-text（multipart の file と model_id）、ヘッダー xi-api-key
  * - gemini:       {base}/models/{model}:generateContent（音声を base64 で inline_data に入れる）、ヘッダー x-goog-api-key
  * - chat-audio:   {base}/chat/completions（input_audio。OpenRouter の音声入力に対応したモデル）、Authorization: Bearer
+ * - cloudflare-run: {https://api.cloudflare.com/client/v4/accounts/<id>/ai}/run/{model}。本文は JSON の audio（base64）、Authorization: Bearer <API トークン>
+ *   （Workers AI の OpenAI 互換の入口は chat・embeddings・responses だけで、文字起こしは無い）
+ * - vercel-transcription: {https://ai-gateway.vercel.sh}/v4/ai/transcription-model。本文は JSON の audio（base64）と mediaType、
+ *   モデルは ai-model-id ヘッダー（OpenAI 互換ではない。2026-10 時点でベータ）
  *
  * どれも利用者の端末から、利用者のキーで直接送る。キーは要求のヘッダーにだけ入れ、ログ・エラーに出さない。
  * OpenAI 互換（OpenAI / Groq / Mistral / 互換サーバー）は openai.ts の OpenAiSttEngine を使う。
@@ -17,6 +21,7 @@ import { basename, join } from 'node:path'
 import {
   DEFAULT_AZURE_API_VERSION,
   STT_PROVIDER_PRESETS,
+  authHeaders,
   providerLabel,
   resolveEndpoint,
   type AiEndpointConfig,
@@ -28,6 +33,7 @@ import { UserFacingError } from '@shared/errors'
 import type { TranscriptSegment } from '../types'
 import { SttHttpError, type SttEngine, type TranscribeChunkInput, type TranscribeResult } from './engine'
 import { exceedsCostLimit, normalizeBaseUrl } from './endpoint'
+import { recordedSttFetch } from './usage'
 import { OPENAI_MAX_BYTES, OpenAiSttEngine, UNKNOWN_PRICE_PER_MINUTE_USD, describeHttpFailure, redact } from './openai'
 import { wavDurationMs, writeWavFile } from './wav'
 import type { SttLanguage } from './whisper'
@@ -47,6 +53,11 @@ export interface CloudSttOptions {
   apiKey?: string
   headers?: Record<string, string>
   apiVersion?: string
+  /** 提供元の id（使用量の記録に使う） */
+  provider?: string
+  /** 認証の形の上書き（settings.json の authScheme / authHeader） */
+  authScheme?: AiEndpointConfig['authScheme']
+  authHeader?: string
   language?: SttLanguage
   /** 概算の単価($/分)。null は分からない（多めの概算で判定） */
   pricePerMinuteUsd?: number | null
@@ -75,6 +86,8 @@ export function buildCloudSttRequest(opt: CloudSttOptions, wav: Buffer, fileName
   // /v1 の有無にかかわらず同じ入口にする（Deepgram・ElevenLabs・OpenRouter）。Gemini は v1beta なので落とさない
   const v1 = `${normalizeBaseUrl(opt.baseUrl) ?? base}/v1`
   const key = opt.apiKey ?? ''
+  // 認証の形は設定（authScheme / authHeader）で変えられる。無ければ提供元の既定の形。キーが無ければ付けない
+  const auth = (fallback: Record<string, string>) => authHeaders(opt, key, fallback)
   const lang = opt.language && opt.language !== 'auto' ? opt.language : undefined
   const extra = opt.headers ?? {}
   switch (opt.kind) {
@@ -85,26 +98,26 @@ export function buildCloudSttRequest(opt: CloudSttOptions, wav: Buffer, fileName
       if (lang) form.append('language', lang)
       const version = encodeURIComponent(opt.apiVersion || DEFAULT_AZURE_API_VERSION)
       return { url: `${base}/openai/deployments/${encodeURIComponent(opt.model)}/audio/transcriptions?api-version=${version}`,
-        headers: { ...extra, 'api-key': key }, body: form }
+        headers: { ...extra, ...auth({ 'api-key': key }) }, body: form }
     }
     case 'deepgram': {
       const q = new URLSearchParams({ model: opt.model, smart_format: 'true', utterances: 'true' })
       if (lang) q.set('language', lang)
       else q.set('detect_language', 'true')
-      return { url: `${v1}/listen?${q.toString()}`, headers: { ...extra, Authorization: `Token ${key}`, 'Content-Type': 'audio/wav' }, body: new Blob([new Uint8Array(wav)], { type: 'audio/wav' }) }
+      return { url: `${v1}/listen?${q.toString()}`, headers: { ...extra, ...auth({ Authorization: `Token ${key}` }), 'Content-Type': 'audio/wav' }, body: new Blob([new Uint8Array(wav)], { type: 'audio/wav' }) }
     }
     case 'elevenlabs': {
       const form = new FormData()
       form.append('file', new Blob([new Uint8Array(wav)], { type: 'audio/wav' }), fileName)
       form.append('model_id', opt.model)
       if (lang) form.append('language_code', lang)
-      return { url: `${v1}/speech-to-text`, headers: { ...extra, 'xi-api-key': key }, body: form }
+      return { url: `${v1}/speech-to-text`, headers: { ...extra, ...auth({ 'xi-api-key': key }) }, body: form }
     }
     case 'gemini': {
       const body = { contents: [{ role: 'user', parts: [{ text: TRANSCRIBE_INSTRUCTION + (lang ? ` The language is ${lang}.` : '') },
         { inline_data: { mime_type: 'audio/wav', data: wav.toString('base64') } }] }] }
       return { url: `${base}/models/${encodeURIComponent(opt.model)}:generateContent`,
-        headers: { ...extra, 'x-goog-api-key': key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        headers: { ...extra, ...auth({ 'x-goog-api-key': key }), 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
     }
     case 'chat-audio': {
       const body = { model: opt.model, messages: [{ role: 'user', content: [
@@ -112,7 +125,22 @@ export function buildCloudSttRequest(opt: CloudSttOptions, wav: Buffer, fileName
         { type: 'input_audio', input_audio: { data: wav.toString('base64'), format: 'wav' } },
       ] }] }
       return { url: `${v1}/chat/completions`,
-        headers: { ...extra, ...(key ? { Authorization: `Bearer ${key}` } : {}), 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        headers: { ...extra, ...auth({ Authorization: `Bearer ${key}` }), 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+    }
+    case 'cloudflare-run': {
+      // 整理（chat）と同じ .../ai/v1 を入れられても動くように、末尾の /v1 は落とす
+      const ai = base.replace(/\/v1$/, '')
+      // モデル名の @cf/… は資料どおりそのまま（@ はエンコードしない）
+      return { url: `${ai}/run/${opt.model.split('/').map((p) => encodeURIComponent(p).replace(/^%40/, '@')).join('/')}`,
+        headers: { ...extra, ...auth({ Authorization: `Bearer ${key}` }), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audio: wav.toString('base64'), ...(lang ? { language: lang } : {}) }) }
+    }
+    case 'vercel-transcription': {
+      const origin = base.replace(/\/v\d+$/, '')
+      return { url: `${origin}/v4/ai/transcription-model`,
+        headers: { ...extra, ...auth({ Authorization: `Bearer ${key}` }), 'Content-Type': 'application/json', 'ai-model-id': opt.model,
+          'ai-gateway-protocol-version': '0.0.1', 'ai-transcription-model-specification-version': '4' },
+        body: JSON.stringify({ audio: wav.toString('base64'), mediaType: 'audio/wav' }) }
     }
   }
 }
@@ -149,6 +177,18 @@ export function parseCloudSttResponse(kind: CloudSttOptions['kind'], json: unkno
       // content は文字列か、{type:'text', text} の配列
       return { text: typeof content === 'string' ? content : arr(content).map((c) => str(rec(c).text)).join('') }
     }
+    case 'cloudflare-run': {
+      // { result: { text, segments: [{ start, end, text }] }, success }
+      const result = rec(r.result)
+      const segments = arr(result.segments).map(rec)
+      return { text: str(result.text), ...(segments.length ? { segments: segments.map((g) => ({ start: num(g.start) ?? 0, end: num(g.end) ?? num(g.start) ?? 0, text: str(g.text) })) } : {}) }
+    }
+    case 'vercel-transcription': {
+      // AI SDK の文字起こしの結果の形（text・segments の startSecond / endSecond・durationInSeconds）
+      const segments = arr(r.segments).map(rec)
+      return { text: str(r.text), durationSec: num(r.durationInSeconds),
+        ...(segments.length ? { segments: segments.map((g) => ({ start: num(g.startSecond) ?? 0, end: num(g.endSecond) ?? num(g.startSecond) ?? 0, text: str(g.text) })) } : {}) }
+    }
   }
 }
 
@@ -174,12 +214,14 @@ export class CloudSttEngine implements SttEngine {
     const durationMs = input.durationMs ?? (await wavDurationMs(input.wavPath))
     const price = this.opt.pricePerMinuteUsd ?? UNKNOWN_PRICE_PER_MINUTE_USD
     const cost = durationMs / 60_000 * price
+    const knownPrice = typeof this.opt.pricePerMinuteUsd === 'number'
     if (exceedsCostLimit(this.reservedCostUsd, cost, this.opt.maxCostUsd)) throw new UserFacingError(t('stt.errors.costLimit', { label: this.opt.label }))
     this.reservedCostUsd += cost
 
     const req = buildCloudSttRequest(this.opt, bytes, basename(input.wavPath))
     const started = Date.now()
-    const res = await fetch(req.url, { method: 'POST', headers: req.headers, body: req.body, signal: AbortSignal.timeout(this.opt.timeoutMs ?? 120_000) })
+    const res = await recordedSttFetch(req.url, { method: 'POST', headers: req.headers, body: req.body, signal: AbortSignal.timeout(this.opt.timeoutMs ?? 120_000) },
+      { provider: this.opt.provider, model: this.opt.model, durationSec: durationMs / 1000, requestBytes: bytes.byteLength, ...(knownPrice ? { estimateUsd: cost } : {}) })
     const elapsedMs = Date.now() - started
     if (!res.ok) {
       // 失敗の本文は説明に使うだけ（想定内）
@@ -225,7 +267,8 @@ export function createSttEngine(spec: SttEngineSpec): SttEngine {
   const ep = resolveEndpoint(preset, spec.endpoint)
   if (preset.keyRequired && !spec.apiKey) throw new UserFacingError(t('stt.errors.keyMissing', { label: providerLabel(preset, t) }))
   if (!ep.model) throw new UserFacingError(t('stt.check.noModel'))
-  const common = { language: spec.language, maxCostUsd: spec.maxCostUsd, headers: ep.headers, pricePerMinuteUsd: preset.pricePerMinuteUsd }
+  const common = { language: spec.language, maxCostUsd: spec.maxCostUsd, headers: ep.headers, pricePerMinuteUsd: preset.pricePerMinuteUsd,
+    authScheme: spec.endpoint?.authScheme, authHeader: spec.endpoint?.authHeader, provider: spec.provider }
   if (preset.kind === 'openai-transcriptions') {
     return new OpenAiSttEngine({ ...common, model: ep.model, baseUrl: ep.baseUrl, apiKey: spec.apiKey, keyOptional: !preset.keyRequired,
       label: providerLabel(preset, t), timeoutMs: ep.timeoutMs ?? (spec.provider === 'openai' ? 30_000 : 120_000),

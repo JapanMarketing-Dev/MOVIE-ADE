@@ -76,8 +76,9 @@ export function detectState(kind: AgentKind, input: DetectInput): AgentState {
   if (kind === 'codex' && /^\s*›\s+(?:Ask Codex to do anything|Find and fix|Implement|Explain|Write tests|Improve)/m.test(tail)) return 'idle'
 
   // ほかのエージェントは待機中の見え方がそれぞれ違う。タイトルが付いているだけで待機と決めると誤るので、
-  // 処理中のスピナー以外は「不明」にする（送信側は出力が落ち着いたかで判断する。Orca の quiet-render と同じ）
-  if (kind === 'generic') return input.title && hasSpinner(input.title) ? 'working' : 'unknown'
+  // Orca がタイトルから状態を読む手がかり（下の detectGenericTitleState）に当たるときだけ決め、
+  // それ以外は「不明」にする（送信側は出力が落ち着いたかで判断する。Orca の quiet-render と同じ）
+  if (kind === 'generic') return detectGenericTitleState(input.title)
 
   const title = input.title
   if (title !== undefined && title.trim().length > 0) {
@@ -89,6 +90,28 @@ export function detectState(kind: AgentKind, input: DetectInput): AgentState {
   }
 
   if (VISIBLE_IDLE_PATTERNS.some((re) => re.test(tail))) return 'idle'
+  return 'unknown'
+}
+
+/**
+ * Claude Code / Codex 以外のエージェントの、OSC タイトルからの状態。
+ *
+ * Orca由来: ~/bench/orca/src/shared/agent-title-core.ts（GEMINI_* の記号、STRONG_IDLE/WORKING_KEYWORDS_RE、
+ *           BRAILLE_SPINNER_RE、QUARTER_CIRCLE_SPINNER_RE）（MIT, Copyright 2026 Lovecast Inc.）
+ * Gemini 系の記号（✋ 確認待ち・✦ ⏲ 処理中・◇ 待機）、点字・四分円のスピナー、
+ * 単独の語（working / thinking / running、ready / idle / done）だけを見る。パスの中の語（~/codex/ready など）は数えない
+ */
+const TITLE_PERMISSION = '\u270b'
+const TITLE_WORKING_GLYPHS = /[\u2726\u23f2\u2800-\u28ff\u25d0-\u25d3]/
+const TITLE_IDLE_GLYPH = '\u25c7'
+const TITLE_WORKING_WORD = /(?<![\w./\\-])(working|thinking|running)(?![\w-])/i
+const TITLE_IDLE_WORD = /(?<![\w./\\-])(ready|idle|done)(?![\w-])/i
+
+export function detectGenericTitleState(title: string | undefined): AgentState {
+  if (!title || !title.trim()) return 'unknown'
+  if (title.includes(TITLE_PERMISSION)) return 'blocked'
+  if (TITLE_WORKING_GLYPHS.test(title) || hasSpinner(title) || TITLE_WORKING_WORD.test(title)) return 'working'
+  if (title.includes(TITLE_IDLE_GLYPH) || TITLE_IDLE_WORD.test(title)) return 'idle'
   return 'unknown'
 }
 

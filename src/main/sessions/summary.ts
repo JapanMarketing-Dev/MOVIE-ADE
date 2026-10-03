@@ -7,13 +7,16 @@
  * summary.json が無い古いレビューは、一覧を読むときに1度だけ作る（history.ts）。
  *
  * 名前・アーカイブ・送った時刻は label.json にあり、一覧のたびに読む（小さいので控えない）。
+ * 進み具合（progress.json）も Agent が書き換えるので控えず、一覧のたびに読んで includedIds と突き合わせる。
  */
 import { readFile, stat, writeFile } from 'node:fs/promises'
 import type { SessionPaths } from './paths'
 import type { SessionRecord } from './store'
+import { getLocale, type SupportedLocale } from '@shared/i18n'
+import { AUTO_NAME_MAX, buildAutoName, cleanReviewTitle } from './autoName'
 
 /** 中身の形を変えたら上げる。古い版の summary.json は作り直す */
-export const SUMMARY_VERSION = 1
+export const SUMMARY_VERSION = 3
 
 /** 検索用の本文の上限。一覧のたびに全レビュー分を renderer へ送るので抑える */
 export const SEARCH_TEXT_MAX = 4000
@@ -24,9 +27,13 @@ export interface StoredSummary {
   durationMs: number
   itemCount: number
   needsCheckCount: number
+  /** Agent へ送る指摘（include=true）のID。進み具合の「完了数/対象数」に使う（版 2 から） */
+  includedIds: string[]
   targetUrl?: string
   /** 録ったページのタイトル（最初の遷移のもの） */
   title?: string
+  /** 自動の名前（何系の修正か。sessions/autoName.ts）。版 3 から */
+  autoName?: string
   /** 検索用の本文（ページのタイトル・URL・指摘の見出しと要望と発話） */
   searchText?: string
 }
@@ -42,11 +49,26 @@ export function joinSearchText(parts: Array<string | undefined>): string | undef
   return text || undefined
 }
 
-/** session.json と遷移から、一覧用の要約を作る（純粋。単体テストから使う） */
-export function buildStoredSummary(record: SessionRecord, navs: NavRef[]): StoredSummary {
+/** 指摘の中身を変える編集。整理が付けた名前は、これらの後には指摘と合わなくなるので使わない */
+const CONTENT_EDITS = new Set(['text', 'delete', 'merge'])
+
+/**
+ * 自動の名前。整理（LLM）が付けた名前があり、その後に指摘の中身を変えていなければそれを使う。
+ * 無ければ指摘からルールで作る（LLM は呼ばない）。編集を取り消せば整理の名前に戻る
+ */
+export function autoNameFor(record: SessionRecord, locale: SupportedLocale = getLocale()): string | undefined {
+  const fromLlm = cleanReviewTitle(record.document.reviewTitle)
+  if (fromLlm && !record.edits.some((e) => CONTENT_EDITS.has(e.kind))) return fromLlm
+  return buildAutoName(record.document.items, locale)
+}
+
+/** session.json と遷移から、一覧用の要約を作る（純粋。単体テストから使う）。locale は自動の名前の言語の既定 */
+export function buildStoredSummary(record: SessionRecord, navs: NavRef[], locale: SupportedLocale = getLocale()): StoredSummary {
   const items = record.document.items
   const title = navs.find((n) => n.title)?.title
+  const autoName = autoNameFor(record, locale)
   const searchText = joinSearchText([
+    autoName,
     ...navs.flatMap((n) => [n.title, n.url]),
     ...items.flatMap((i) => [i.title, i.request, ...i.quotes.map((q) => q.text)])
   ])
@@ -56,8 +78,10 @@ export function buildStoredSummary(record: SessionRecord, navs: NavRef[]): Store
     durationMs: record.meta.durationMs,
     itemCount: items.length,
     needsCheckCount: items.filter((i) => !i.include && i.status === 'needs_check').length,
+    includedIds: items.filter((i) => i.include).map((i) => i.id),
     ...(record.meta.targetUrl ? { targetUrl: record.meta.targetUrl } : {}),
     ...(title ? { title } : {}),
+    ...(autoName ? { autoName } : {}),
     ...(searchText ? { searchText } : {})
   }
 }
@@ -68,9 +92,11 @@ export function parseStoredSummary(raw: unknown): StoredSummary | null {
   const r = raw as Partial<Record<keyof StoredSummary, unknown>>
   const num = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0
   if (r.version !== SUMMARY_VERSION || typeof r.startedAt !== 'string' || !num(r.durationMs) || !num(r.itemCount) || !num(r.needsCheckCount)) return null
+  if (!Array.isArray(r.includedIds) || !r.includedIds.every((id) => typeof id === 'string')) return null
   const str = (v: unknown) => (typeof v === 'string' && v.length > 0 ? v : undefined)
   const targetUrl = str(r.targetUrl)
   const title = str(r.title)
+  const autoName = str(r.autoName)
   const searchText = str(r.searchText)
   return {
     version: SUMMARY_VERSION,
@@ -78,8 +104,10 @@ export function parseStoredSummary(raw: unknown): StoredSummary | null {
     durationMs: r.durationMs as number,
     itemCount: r.itemCount as number,
     needsCheckCount: r.needsCheckCount as number,
+    includedIds: r.includedIds as string[],
     ...(targetUrl ? { targetUrl } : {}),
     ...(title ? { title } : {}),
+    ...(autoName ? { autoName: autoName.slice(0, AUTO_NAME_MAX) } : {}),
     ...(searchText ? { searchText: searchText.slice(0, SEARCH_TEXT_MAX) } : {})
   }
 }

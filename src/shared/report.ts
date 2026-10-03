@@ -1,4 +1,5 @@
 import { isUserFacingError } from './errors'
+import { perfAnomalyEvent, type PerfAnomaly } from './telemetry'
 
 /**
  * 黙って失敗している箇所（catch して既定値で続ける・console.warn だけ）を Sentry へ知らせる入口。
@@ -15,7 +16,7 @@ import { isUserFacingError } from './errors'
 export type ReportArea =
   | 'terminal' | 'pty' | 'agent-launch' | 'recording' | 'stt' | 'organize' | 'review' | 'files' | 'editor'
   | 'browser' | 'github' | 'usage' | 'accounts' | 'update' | 'settings' | 'layout' | 'resources' | 'sessions'
-  | 'preview' | 'startup' | 'ui'
+  | 'preview' | 'startup' | 'ui' | 'onboarding'
 
 export interface ReportWhere {
   area: ReportArea
@@ -25,7 +26,7 @@ export interface ReportWhere {
 
 export interface Reporter {
   handled(err: unknown, tags: Record<string, string>, level: 'warning' | 'error'): void
-  message(message: string, tags: Record<string, string>, level: 'warning' | 'error'): void
+  message(message: string, tags: Record<string, string>, level: 'warning' | 'error', fingerprint?: string[], contexts?: Record<string, Record<string, string>>): void
   breadcrumb(message: string, data?: Record<string, string | number>): void
 }
 
@@ -59,7 +60,14 @@ export function reportHandled(err: unknown, where: ReportWhere, level: 'warning'
 
 /** 例外ではない異常（性能・異常終了など）を送る */
 export function reportAnomaly(message: string, tags: Record<string, string>, level: 'warning' | 'error' = 'warning'): void {
-  reporter?.message(message, tags, level)
+  // 種類（文）ごとにまとめる。スタックは付けない
+  reporter?.message(message, tags, level, ['anomaly', message])
+}
+
+/** 性能の異常（起動が遅い・main の停止）。題名は「Slow startup (7.4s)」、まとめ方は種類ごと（src/shared/telemetry.ts） */
+export function reportPerf(perf: PerfAnomaly, ms: number, extra?: { tags: Record<string, string>; context: Record<string, string> }): void {
+  const e = perfAnomalyEvent(perf, ms)
+  reporter?.message(e.message, { ...e.tags, ...extra?.tags }, e.level, e.fingerprint, extra ? { block: extra.context } : undefined)
 }
 
 /**
@@ -80,4 +88,37 @@ export function errorKind(err: unknown): Error {
   const out = new Error(typeof code === 'string' ? `${name} ${code}` : name)
   out.name = name
   return out
+}
+
+/** これより長い同期の処理・IPC を「重い処理」として控える（main の停止の手がかり） */
+export const SLOW_OP_MS = 100
+const SLOW_OP_KEEP = 8
+const slowOps: Array<{ op: string; ms: number; at: number }> = []
+
+/** 重かった処理を控え、パンくずにも残す（操作名と時間だけ） */
+export function noteSlowOp(op: string, ms: number, now: number = Date.now()): void {
+  if (ms < SLOW_OP_MS) return
+  slowOps.push({ op, ms: Math.round(ms), at: now })
+  if (slowOps.length > SLOW_OP_KEEP) slowOps.shift()
+  reporter?.breadcrumb('slow op', { op, ms: Math.round(ms) })
+}
+
+/** 同期の処理を時間を測って動かす（重ければ noteSlowOp） */
+export function timedSync<T>(op: string, fn: () => T): T {
+  const start = Date.now()
+  try {
+    return fn()
+  } finally {
+    noteSlowOp(op, Date.now() - start)
+  }
+}
+
+/** 直近（既定10秒）に終わった重い処理。長い順 */
+export function recentSlowOps(now: number = Date.now(), windowMs = 10_000): Array<{ op: string; ms: number }> {
+  return slowOps.filter((x) => now - x.at <= windowMs).map(({ op, ms }) => ({ op, ms })).sort((a, b) => b.ms - a.ms)
+}
+
+/** テスト用 */
+export function clearSlowOps(): void {
+  slowOps.length = 0
 }

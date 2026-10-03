@@ -1,4 +1,4 @@
-import type { ClickEvent, ElementRef, Event, PenEvent, ScrollEvent, TextEvent } from '../pipeline/types'
+import type { ClickEvent, ElementRef, EraseEvent, Event, PenEvent, ScrollEvent } from '../pipeline/types'
 
 /**
  * 注入スクリプトから届いた生のデータを、pipeline の操作ログ（`Event`）へ直す。
@@ -15,16 +15,20 @@ export interface RawReviewEvent {
   /** ペンの書き始め（書き終わりは `at`） */
   atStart?: number
   /**
-   * left はページ移動に伴う確定が済んだ返事、draft は入力中の画面を控える合図（どちらも操作ログには残さない）
+   * left はページ移動に伴う確定が済んだ返事（操作ログには残さない）。
+   * 画面に文字を置く機能（旧 text）は廃止した。古い注入スクリプトから届いても捨てる
    */
-  type: 'click' | 'scroll' | 'pen' | 'text' | 'pointer' | 'left' | 'draft'
-  /** ページを離れるために確定した書き込み（静止画は入力中に控えた画面を使う） */
-  leaving?: boolean
+  type: 'click' | 'scroll' | 'pen' | 'erase' | 'pointer' | 'left'
   x?: number
   y?: number
   id?: string
   bbox?: [number, number, number, number]
-  body?: string
+  /** 四角の枠のとき 'rect' */
+  shape?: unknown
+  /** 動かした・元に戻した書き込みのとき、置き換える前の ID */
+  replaces?: unknown
+  /** erase のとき、元に戻した書き込みの ID */
+  ids?: unknown
   el?: ElementRef
 }
 
@@ -69,22 +73,17 @@ export function toLogEvent(raw: RawReviewEvent, toClock: (epochMs: number) => nu
         type: 'pen',
         id: raw.id,
         t_end: t,
-        bbox: [number(raw.bbox[0]), number(raw.bbox[1]), number(raw.bbox[2]), number(raw.bbox[3])]
+        bbox: [number(raw.bbox[0]), number(raw.bbox[1]), number(raw.bbox[2]), number(raw.bbox[3])],
+        ...(raw.shape === 'rect' ? { shape: 'rect' as const } : {}),
+        ...(typeof raw.replaces === 'string' && raw.replaces.length > 0 && raw.replaces !== raw.id ? { replaces: raw.replaces } : {})
       }
       return el ? { ...event, el } : event
     }
-    case 'text': {
-      const body = typeof raw.body === 'string' ? raw.body.trim() : ''
-      if (typeof raw.id !== 'string' || body.length === 0) return null
-      const event: TextEvent = {
-        t,
-        type: 'text',
-        id: raw.id,
-        x: number(raw.x),
-        y: number(raw.y),
-        body
-      }
-      return el ? { ...event, el } : event
+    case 'erase': {
+      const ids = Array.isArray(raw.ids) ? raw.ids.filter((id): id is string => typeof id === 'string' && id.length > 0) : []
+      if (ids.length === 0) return null
+      const event: EraseEvent = { t, type: 'erase', ids }
+      return event
     }
     default:
       return null
@@ -97,9 +96,9 @@ export function toJsonLine(event: Event): string {
 }
 
 /**
- * 画像を撮り直すべきイベントか（設計4章「ペン・テキスト確定時＋クリック時」）。
+ * 画像を撮り直すべきイベントか（設計4章「ペンの確定時＋クリック時」）。
  * スクロールと遷移は定期撮影に任せる。
  */
 export function shouldCaptureStill(event: Event): boolean {
-  return event.type === 'click' || event.type === 'pen' || event.type === 'text'
+  return event.type === 'click' || event.type === 'pen'
 }

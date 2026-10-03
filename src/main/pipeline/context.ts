@@ -29,7 +29,7 @@ export const defaultContextOptions: ContextOptions = {
 
 /**
  * @param t 指摘の代表時刻
- * @param annotationIds 指摘に紐づくペン・テキストのID（要素の特定に優先して使う）
+ * @param annotationIds 指摘に紐づくペンのID（要素の特定に優先して使う）
  */
 export function buildItemContext(
   events: Event[],
@@ -60,7 +60,7 @@ export function buildItemContext(
   return ctx
 }
 
-/** ペン・テキストが指した要素を優先。無ければ直前のクリック先 */
+/** ペンが指した要素を優先。無ければ直前のクリック先 */
 function elementFor(
   sorted: Event[],
   t: number,

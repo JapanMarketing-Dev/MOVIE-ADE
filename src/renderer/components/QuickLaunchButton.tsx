@@ -30,6 +30,8 @@ import { useT, type TFunction } from '../lib/i18n'
 export interface QuickLaunchAgent {
   id: TuiAgent
   label: string
+  /** カスタムのアイコンの文字 */
+  icon?: string
 }
 
 const MENU_WIDTH = 220
@@ -307,7 +309,7 @@ function entryView(
       }
     case 'agent':
       return {
-        icon: <AgentIcon agent={entry.agent} label={entry.label} size={14} />,
+        icon: <AgentIcon agent={entry.agent} label={entry.icon ?? entry.label} size={14} />,
         label: entry.label,
         testSuffix: entry.agent.replace(':', '-')
       }

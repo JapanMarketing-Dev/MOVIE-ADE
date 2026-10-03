@@ -52,11 +52,11 @@ describe('Claude Code の設定', () => {
 
   it('読む設定ファイルは CLAUDE_CONFIG_DIR（アカウント切り替え）を優先し、古い .config.json があればそれ', () => {
     const none = () => false
-    expect(resolveClaudeGlobalConfigFile({ env: {}, homeDir: '/h', exists: none })).toBe('/h/.claude.json')
-    expect(resolveClaudeGlobalConfigFile({ env: { CLAUDE_CONFIG_DIR: '/acc' }, homeDir: '/h', exists: none })).toBe('/acc/.claude.json')
-    expect(resolveClaudeGlobalConfigFile({ env: {}, homeDir: '/h', exists: (p) => p === '/h/.claude/.config.json' })).toBe(
-      '/h/.claude/.config.json'
-    )
+    // パスは OS の区切り（Windows は \\）で組み立てられるので、期待値も join で作る
+    expect(resolveClaudeGlobalConfigFile({ env: {}, homeDir: '/h', exists: none })).toBe(join('/h', '.claude.json'))
+    expect(resolveClaudeGlobalConfigFile({ env: { CLAUDE_CONFIG_DIR: '/acc' }, homeDir: '/h', exists: none })).toBe(join('/acc', '.claude.json'))
+    const legacy = join('/h', '.claude', '.config.json')
+    expect(resolveClaudeGlobalConfigFile({ env: {}, homeDir: '/h', exists: (p) => p === legacy })).toBe(legacy)
   })
 
   it('ファイルを読み込んで項目を足し、権限を保ったまま置き換える。ファイルが無ければ作らない', async () => {
@@ -71,7 +71,8 @@ describe('Claude Code の設定', () => {
     expect(saved.userID).toBe('u')
     expect(saved.projects['/other']).toEqual({ x: 1 })
     expect(saved.projects[project]).toEqual({ hasTrustDialogAccepted: true })
-    expect(statSync(file).mode & 0o777).toBe(0o600)
+    // Windows には POSIX の権限が無い（常に 0o666 と返る）ので、権限の確認は macOS / Linux だけ
+    if (process.platform !== 'win32') expect(statSync(file).mode & 0o777).toBe(0o600)
     expect(await grantClaudeFolderTrust(file, [project])).toBe('unchanged')
   })
 

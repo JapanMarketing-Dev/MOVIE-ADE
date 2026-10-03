@@ -1,3 +1,4 @@
+import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_PREFERENCES, type ProjectUrl, type Settings } from '@shared/types'
 import { defaultUrlLabel, isLocalDevUrl, matchPresetUrl, presetTarget } from '@shared/projectUrl'
@@ -23,8 +24,8 @@ describe('設定の読み込み: プロジェクト', () => {
       activeProjectId: 'b'
     })
     expect(s.projects).toEqual([
-      { id: 'a', name: 'App', folderPath: '/work/app', urls: [{ id: 'u1', label: 'local', url: 'http://localhost:3000' }, { id: 'u2', label: 'https://dev.example.com', url: 'https://dev.example.com' }] },
-      { id: 'b', name: 'site', folderPath: '/work/site', urls: [] }
+      { id: 'a', name: 'App', folderPath: '/work/app', kind: 'web', urls: [{ id: 'u1', label: 'local', url: 'http://localhost:3000' }, { id: 'u2', label: 'https://dev.example.com', url: 'https://dev.example.com' }] },
+      { id: 'b', name: 'site', folderPath: '/work/site', kind: 'web', urls: [] }
     ])
     expect(s.activeProjectId).toBe('b')
   })
@@ -62,7 +63,8 @@ describe('設定の読み込み: Agent', () => {
 describe('旧設定からの移行', () => {
   it('folderPath だけを覚えていた設定は、そのフォルダを最初のプロジェクトにして開く', () => {
     const migrated = migrateLegacySettings(base({ folderPath: '/work/legacy-app' }), 'p1')
-    expect(migrated.projects).toEqual([{ id: 'p1', name: 'legacy-app', folderPath: '/work/legacy-app', urls: [] }])
+    // folderPath は絶対パスに正規化される（Windows ではドライブ名と \\ になる）
+    expect(migrated.projects).toEqual([{ id: 'p1', name: 'legacy-app', folderPath: resolve('/work/legacy-app'), urls: [] }])
     expect(migrated.activeProjectId).toBe('p1')
   })
 
@@ -89,7 +91,7 @@ describe('プロジェクトの登録', () => {
     const result = upsertProjectFolder(projects, '/work/site', 'b')
     expect(result.alreadyPresent).toBe(false)
     expect(result.projects.map((p) => p.id)).toEqual(['a', 'b'])
-    expect(result.project).toEqual({ id: 'b', name: 'site', folderPath: '/work/site', urls: [] })
+    expect(result.project).toEqual({ id: 'b', name: 'site', folderPath: resolve('/work/site'), urls: [] })
   })
 })
 
@@ -122,7 +124,8 @@ describe('URLプリセット', () => {
   })
 
   it('別の環境のチップを押すと、同じパスのまま切り替える', () => {
-    const [local, dev, prd] = urls as [ProjectUrl, ProjectUrl, ProjectUrl]
+    type WithUrl = ProjectUrl & { url: string }
+    const [local, dev, prd] = urls as [WithUrl, WithUrl, WithUrl]
     expect(presetTarget(urls, 'http://localhost:3000/users/1?tab=a#top', dev)).toBe('https://dev.example.com/users/1?tab=a#top')
     expect(presetTarget(urls, 'https://dev.example.com/users', prd)).toBe('https://example.com/app/users')
     expect(presetTarget(urls, 'https://example.com/app/users', local)).toBe('http://localhost:3000/users')

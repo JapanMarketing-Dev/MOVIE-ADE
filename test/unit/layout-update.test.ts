@@ -86,9 +86,11 @@ describe('pickAppVersion', () => {
   it('dev 起動でも、最新リリースと比べるのはアプリの版', () => {
     const current = pickAppVersion(pkg.version, '44.5.1')
     expect(current).toBe(pkg.version)
-    // Electron の版で比べると、新しい版があっても「最新」と誤判定してしまう
-    expect(compareAppVersions('0.2.0', current)).toBeGreaterThan(0)
-    expect(compareAppVersions('0.2.0', '44.5.1')).toBeLessThan(0)
+    // Electron の版で比べると、新しい版があっても「最新」と誤判定してしまう（アプリの版を上げても成り立つよう、次の minor で比べる）
+    const [major, minor] = current.split('.').map(Number)
+    const next = `${major}.${minor! + 1}.0`
+    expect(compareAppVersions(next, current)).toBeGreaterThan(0)
+    expect(compareAppVersions(next, '44.5.1')).toBeLessThan(0)
   })
   it('package.json の repository は配布元として読める', () => {
     expect(githubRepoOf(pkg.repository)).toMatch(/^[\w.-]+\/[\w.-]+$/)

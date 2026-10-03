@@ -8,17 +8,20 @@ export interface Slot { id: string; os: Os; arch: 'arm64' | 'x64'; kinds: string
 export interface Release {
   version: string
   tag: string
+  product: string
   date: string
   prerelease: boolean
   notes: string
   notesUrl: string
   assets: Download[]
 }
-export interface IndexEntry { version: string; tag: string; date: string; prerelease: boolean; manifestUrl: string }
+export interface IndexEntry { version: string; tag: string; product: string; date: string; prerelease: boolean; manifestUrl: string }
 export interface Platform { os: Os | null; arch: 'arm64' | 'x64' | null; mobile: boolean }
 export interface PlatformEnv { userAgent?: string; platform?: string; uaPlatform?: string; uaArch?: string; uaBitness?: string }
 
 export const BUILD_DOC_URL: string
+export const CURRENT_PRODUCT: string
+export const LEGACY_PRODUCT: string
 export const SLOTS: Slot[]
 export const VERIFIED_OS: Os[]
 export const OS_LABEL: Record<Os, string>

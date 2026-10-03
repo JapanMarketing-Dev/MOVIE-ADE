@@ -12,6 +12,7 @@ import './styles/shell.css'
 import './styles/review.css'
 import './styles/feedback.css'
 import './styles/reviews.css'
+import './styles/progress.css'
 import '@xterm/xterm/css/xterm.css'
 
 // OS差のある見た目（macOS の信号機ボタン分の余白）はクラスで切り替え、

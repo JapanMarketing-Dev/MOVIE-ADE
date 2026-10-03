@@ -1,7 +1,8 @@
 # Cloudflare Pages: response headers.
 # Downloads come from R2 (see js/config.js), so connect-src allows that origin.
+# Cloudflare Web Analytics (auto-injected by the zone; cookie-free page views) needs static.cloudflareinsights.com / cloudflareinsights.com.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev https://cloudflareinsights.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()

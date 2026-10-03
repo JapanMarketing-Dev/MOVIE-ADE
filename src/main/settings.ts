@@ -1,7 +1,7 @@
 import { app } from 'electron'
-import { mkdirSync, writeFileSync } from 'node:fs'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { IS_PACKAGED } from './runtime'
+import { sanitizeStarPrompt } from '@shared/starPrompt'
 import {
   DEFAULT_AGENT_PREFERENCES,
   DEFAULT_SPLIT_RATIO,
@@ -14,20 +14,29 @@ import {
 } from '@shared/types'
 import { sanitizeAgentPreferences } from '@shared/agentCatalog'
 import { sanitizeCaptureTarget } from '@shared/captureTarget'
+import { isAnnotationColor } from '@shared/annotation'
 import { normalizeThemePreference } from '@shared/theme'
 import { DEFAULT_LAYOUT, sanitizeLayout } from '@shared/layout'
 import { normalizeLocalePreference } from '@shared/i18n'
+import { normalizeSttLanguage } from '@shared/sttLanguages'
 import { migrateLegacySettings } from './projects'
 import { sanitizeProjectSession } from '@shared/projectSession'
+import { sanitizeProjectKind, sanitizeProjectTargets } from '@shared/projectTargets'
 import { sanitizeAgentAccounts } from './accounts/sanitize'
 import { normalizeBaseUrl, sanitizeCostLimit, sanitizeEndpointMap } from './pipeline/stt/endpoint'
 import { isLlmApiProvider, isOrganizeRunnerId, isSttRemoteProvider } from '@shared/aiProviders'
 import { migrateOnboarding, sanitizeOnboarding } from '@shared/onboarding'
-import { errorKind, reportHandled } from '@shared/report'
+import { sanitizeDecisionPreferences } from '@shared/decision'
+import { errorKind, reportHandled, timedSync } from '@shared/report'
+import type { SettingsFileError, SettingsFileInfo } from '@shared/types'
+import { SettingsFileStore, configDirOverride, legacyConfigDir, mergeSettings, migrateLegacyConfigDir, plaintextKeyPaths, relocateMisplacedDevConfig, resolveConfigDir, splitSettings } from './settingsFile'
 
 /**
- * WS-1 前回のフォルダ・URL・分割幅を復元する。
- * 設計 8章のとおり、OSのユーザー設定フォルダ（app.getPath('userData')）へ保存する。
+ * 設定の読み書き。
+ * 利用者の設定は ~/.ferret/settings.json（どの OS でも同じ。FERRET_CONFIG_DIR で上書き）、
+ * 再起動で戻す作業の状態（開いていたフォルダ・URL・タブ）は同じフォルダの state.json に分けて置く（settingsFile.ts）。
+ * settings.json は利用者の Claude Code などが直接書き換える前提で、外部の変更はその場で取り込む（watchSettings）。
+ * 以前の置き場所（userData/settings.json）は初回だけ読んで移し、ファイルは消さずに残す。
  * 依存を増やさないため electron-store は使わず、小さなJSONを自前で読み書きする。
  */
 
@@ -35,7 +44,8 @@ import { errorKind, reportHandled } from '@shared/report'
  * E2E（ADE_E2E=1）ではAgentタブを自動で開かない。CLI の有無に左右されず、
  * 最初のタブがいつも素のシェルになるようにする（ターミナルのE2Eはプロンプトを待つ）
  */
-const SKIP_STARTUP_AGENTS = process.env.ADE_E2E === '1'
+// 通し確認（tools/qa/flow-check.mjs）は偽の claude / codex で起動時のタブを確かめるので ADE_E2E_STARTUP_AGENTS=1 で残す
+const SKIP_STARTUP_AGENTS = process.env.ADE_E2E === '1' && process.env.ADE_E2E_STARTUP_AGENTS !== '1'
 
 /**
  * E2E では初回起動のセットアップを出さない（全面を覆って既存の操作が通らなくなる）。
@@ -66,10 +76,11 @@ function sanitizeProjects(raw: unknown): Project[] {
     const r = p as Partial<Project>
     if (!str(r.id) || !str(r.folderPath) || seen.has(r.id)) return []
     seen.add(r.id)
-    const urls = Array.isArray(r.urls) ? r.urls.flatMap((u) =>
-      u && str(u.id) && str(u.url) ? [{ id: u.id, label: str(u.label) ? u.label : u.url, url: u.url }] : []) : []
+    // 確認先は名前が自由で件数の上限なし。URL だけの頃の {id, label, url} もそのまま通る（src/shared/projectTargets.ts）
+    const urls = sanitizeProjectTargets(r.urls)
+    const kind = sanitizeProjectKind(r.kind)
     const session = sanitizeProjectSession(r.session)
-    return [{ id: r.id, name: str(r.name) ? r.name : r.folderPath.split(/[\\/]/).pop() ?? r.folderPath, folderPath: r.folderPath, urls, ...(session ? { session } : {}) }]
+    return [{ id: r.id, name: str(r.name) ? r.name : r.folderPath.split(/[\\/]/).pop() ?? r.folderPath, folderPath: r.folderPath, kind, urls, ...(session ? { session } : {}) }]
   })
 }
 
@@ -78,16 +89,34 @@ function sanitizeAgents(raw: unknown): AgentPreferences {
   return SKIP_STARTUP_AGENTS ? { ...agents, startupAgents: [] } : agents
 }
 
-function filePath(): string {
-  return join(app.getPath('userData'), 'settings.json')
-}
-
 let cache: Settings | null = null
 let writeTimer: NodeJS.Timeout | null = null
 
 function clampRatio(value: unknown): number {
   const n = typeof value === 'number' && Number.isFinite(value) ? value : DEFAULT_SPLIT_RATIO
   return Math.min(MAX_SPLIT_RATIO, Math.max(MIN_SPLIT_RATIO, n))
+}
+
+/** CLI の runner（codex / claude-code）に渡すモデル名。空は既定 */
+function sanitizeCliModels(raw: unknown): NonNullable<Settings['organizer']>['cliModels'] {
+  if (!raw || typeof raw !== 'object') return undefined
+  const r = raw as Record<string, unknown>
+  const out: Partial<Record<'codex' | 'claude-code', string>> = {}
+  for (const id of ['codex', 'claude-code'] as const) {
+    const v = r[id]
+    if (typeof v === 'string' && /^[\w.:/@\[\]-]{1,200}$/.test(v.trim())) out[id] = v.trim()
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
+/** フィードバックモードの右パネルの開閉と幅。既定（開いていて 0.78）なら書かない */
+function sanitizeFeedbackTargets(raw: unknown): Settings['feedbackTargets'] {
+  if (!raw || typeof raw !== 'object') return undefined
+  const r = raw as Record<string, unknown>
+  const out: NonNullable<Settings['feedbackTargets']> = {}
+  if (r.visible === false) out.visible = false
+  if (typeof r.ratio === 'number' && Number.isFinite(r.ratio)) out.ratio = Math.min(0.95, Math.max(0.3, r.ratio))
+  return Object.keys(out).length ? out : undefined
 }
 
 /** 読み込んだJSONを型どおりに直す。壊れた値は既定値へ戻す（単体テストから使うため export） */
@@ -99,11 +128,13 @@ export function sanitize(raw: unknown): Settings {
     ...(r.capture ? { capture: {
       captureMic: r.capture.captureMic !== false, captureSystemAudio: r.capture.captureSystemAudio === true,
       transcription: isSttRemoteProvider(r.capture.transcription) ? r.capture.transcription : 'local' as const,
-      language: r.capture.language === 'ja' || r.capture.language === 'en' ? r.capture.language : 'auto' as const,
+      // auto か whisper の対応言語のコード（src/shared/sttLanguages.ts）。知らない値は auto
+      language: normalizeSttLanguage(r.capture.language),
       micDeviceId: typeof r.capture.micDeviceId === 'string' ? r.capture.micDeviceId : undefined,
       keepDays: Number.isFinite(r.capture.keepDays) ? Math.min(3650, Math.max(0, Math.round(r.capture.keepDays))) : 7,
       stayFeedbackOnStop: r.capture.stayFeedbackOnStop === true,
       captureTarget: sanitizeCaptureTarget(r.capture.captureTarget),
+      ...(isAnnotationColor(r.capture.annotationColor) ? { annotationColor: r.capture.annotationColor } : {}),
       // 文字起こしの接続先。キー本体は settings.json に入れない（pipeline/stt/keys.ts）
       ...(() => {
         // 以前の baseUrl / model（OpenAI 互換だけ）は sttEndpoints.compatible へ移す
@@ -139,29 +170,150 @@ export function sanitize(raw: unknown): Settings {
     ...(r.agentAccounts ? { agentAccounts: sanitizeAgentAccounts(r.agentAccounts) } : {}),
     // 空・空白だけは「未設定」（既定文を使う）。長すぎる値は切り詰める
     ...(typeof r.agentPrompt === 'string' && r.agentPrompt.trim() ? { agentPrompt: r.agentPrompt.trim().slice(0, 2000) } : {}),
+    // 判定モデルの接続先。未設定は書かない（既定は Ollama + clef-flash、無効）。キー本体は入れない
+    ...(r.decision && typeof r.decision === 'object' ? { decision: sanitizeDecisionPreferences(r.decision) } : {}),
     // 「指摘を整理」の実行方法と API の接続先。キー本体は入れない（pipeline/stt/keys.ts）
     ...(r.organizer && typeof r.organizer === 'object' ? (() => {
       const endpoints = sanitizeEndpointMap(r.organizer.endpoints, isLlmApiProvider)
       const runner = isOrganizeRunnerId(r.organizer.runner) ? r.organizer.runner : undefined
-      return runner || endpoints ? { organizer: { ...(runner ? { runner } : {}), ...(endpoints ? { endpoints } : {}) } } : {}
-    })() : {})
+      const cliModels = sanitizeCliModels(r.organizer.cliModels)
+      return runner || endpoints || cliModels ? { organizer: { ...(runner ? { runner } : {}), ...(cliModels ? { cliModels } : {}), ...(endpoints ? { endpoints } : {}) } } : {}
+    })() : {}),
+    ...(() => {
+      const starPrompt = sanitizeStarPrompt(r.starPrompt)
+      return starPrompt ? { starPrompt } : {}
+    })(),
+    ...(() => {
+      const feedbackTargets = sanitizeFeedbackTargets(r.feedbackTargets)
+      return feedbackTargets ? { feedbackTargets } : {}
+    })()
   }
 }
 
-/** 起動経路で1度だけ読む。失敗（初回起動・破損）は既定値で続行する */
+/**
+ * 設定フォルダ。E2E・--user-data-dir の起動は userData の下にして、本物の ~/.ferret に触れない。
+ * dev 起動は ~/.ferret/dev（配布版の設定を開発中の変更で書き換えない）。
+ * 最初に呼ばれたときに、改名前の ~/.movie-ade からの引っ越しを1度だけ行う（読む人より先に）。
+ */
+export function configDir(): string {
+  const dir = resolveConfigDir({ env: process.env, isPackaged: packagedBuild(), isolatedUserData: isolatedUserData() })
+  if (!configDirPrepared) {
+    configDirPrepared = true
+    migrateFromLegacyConfigDirOnce(dir)
+  }
+  return dir
+}
+
+let configDirPrepared = false
+
+/** 改名前の ~/.movie-ade（dev は ~/.movie-ade/dev）を写す。上書きの指定・E2E のときはしない。旧フォルダは残す */
+function migrateFromLegacyConfigDirOnce(dir: string): void {
+  if (isolatedUserData() || configDirOverride(process.env)) return
+  const legacy = legacyConfigDir({ isPackaged: packagedBuild() })
+  if (!packagedBuild()) relocateDevConfigOnce(legacy)
+  try {
+    const moved = migrateLegacyConfigDir({ from: legacy, to: dir })
+    if (moved) console.info(`[settings] 以前の設定（${legacy}）を ${moved} へ写しました（以前のフォルダは残しています）`)
+  } catch (err) {
+    reportHandled(errorKind(err), { area: 'settings', op: 'migrate legacy config dir' })
+  }
+}
+
+/** 配布版か（src/main/runtime.ts） */
+function packagedBuild(): boolean {
+  return IS_PACKAGED
+}
+
+function isolatedUserData(): string | null {
+  return process.env.ADE_E2E === '1' || app.commandLine?.hasSwitch?.('user-data-dir') ? app.getPath('userData') : null
+}
+
+/** bd1d49b の dev 起動が ~/.movie-ade 直下に書いた設定を、1度だけ dev/ へ移す（改名の引っ越しの前。上書きの指定・E2E のときはしない） */
+function relocateDevConfigOnce(dir: string): void {
+  if (packagedBuild() || isolatedUserData() || configDirOverride(process.env)) return
+  try {
+    const moved = relocateMisplacedDevConfig({ root: dirname(dir), devDir: dir })
+    if (moved) console.info(`[settings] 開発版の設定を ${moved} へ移しました（写しを ${dirname(dir)}/backup-dev-relocate-* に残しています）`)
+  } catch (err) {
+    reportHandled(errorKind(err), { area: 'settings', op: 'relocate dev settings' })
+  }
+}
+
+let store: SettingsFileStore | null = null
+let externalListener: ((settings: Settings) => void) | null = null
+let errorListener: ((error: SettingsFileError | null) => void) | null = null
+
+/** 読み込んだ直後の後処理（旧設定の folderPath → プロジェクト、セットアップを出すか） */
+function finishLoad(settings: Settings): Settings {
+  return migrateOnboarding(migrateLegacySettings(settings), { skip: SKIP_ONBOARDING })
+}
+
+/** 取り込んだ settings.json に、今の作業の状態（開いているフォルダ・タブ）を重ねる */
+function applyConfig(config: Record<string, unknown>): Settings {
+  const { state } = splitSettings(currentSettings())
+  cache = migrateOnboarding(sanitize(mergeSettings(config, state)), { skip: SKIP_ONBOARDING })
+  return cache
+}
+
+function fileStore(): SettingsFileStore {
+  if (!store) {
+    const dir = configDir()
+    store = new SettingsFileStore({
+      dir,
+      writtenBy: packagedBuild() ? 'packaged' : 'dev',
+      legacyFile: join(app.getPath('userData'), 'settings.json'),
+      sanitize,
+      onExternalChange: (config) => externalListener?.(applyConfig(config)),
+      // 利用者の書き間違いはクラッシュではないので Sentry へは送らない（画面に行つきで出す）
+      onErrorChange: (error) => errorListener?.(error)
+    })
+  }
+  return store
+}
+
+/** 起動経路で1度だけ読む。失敗（権限など）は既定値で続行する */
 export async function loadSettings(): Promise<Settings> {
   if (cache) return cache
   try {
-    // 旧設定（folderPath だけ）はここで1度だけプロジェクトへ移す
-    cache = migrateLegacySettings(sanitize(JSON.parse(await readFile(filePath(), 'utf8'))))
+    const result = fileStore().load()
+    cache = finishLoad(result.settings)
+    if (result.migrated) console.info(`[settings] 以前の設定を ${fileStore().settingsPath} へ移しました（以前のファイルは残しています）`)
   } catch (err) {
-    // 初回起動（ファイルが無い）は想定内。壊れた settings.json だけを種類だけで送る（中身にパスを含む）
-    if ((err as NodeJS.ErrnoException | null)?.code !== 'ENOENT') reportHandled(errorKind(err), { area: 'settings', op: 'read settings' })
-    cache = { ...DEFAULTS }
+    // 中身にパスを含むので種類だけを送る
+    reportHandled(errorKind(err), { area: 'settings', op: 'read settings' })
+    cache = finishLoad({ ...DEFAULTS })
   }
-  // プロジェクトを登録済みの人（セットアップを足す前から使っている人）には初回のセットアップを出さない
-  cache = migrateOnboarding(cache, { skip: SKIP_ONBOARDING })
   return cache
+}
+
+/**
+ * settings.json の外部の変更（利用者のエディタ・Claude Code など）を取り込み始める。
+ * onChange は取り込んだあとの設定、onError は壊れた（null は直った）ときに呼ぶ。
+ */
+export function watchSettings(onChange: (settings: Settings) => void, onError: (error: SettingsFileError | null) => void): void {
+  externalListener = onChange
+  errorListener = onError
+  fileStore().watch()
+}
+
+/** 設定のページに出す settings.json の場所と状態 */
+export function settingsFileInfo(): SettingsFileInfo {
+  const s = fileStore()
+  return { path: s.settingsPath, dir: s.dir, schemaPath: s.schemaPath, statePath: s.statePath, error: s.error,
+    plaintextKeys: plaintextKeyPaths(splitSettings(currentSettings()).config) }
+}
+
+/** アプリ内のエディタで開く生の settings.json */
+export function readSettingsText(): string {
+  return fileStore().readText()
+}
+
+/** アプリ内のエディタからの保存。壊れていれば書かずにエラーを返す。保存できたら外部の変更と同じく取り込む */
+export function writeSettingsText(text: string): SettingsFileError | null {
+  const result = fileStore().writeText(text)
+  if (!result.ok) return result.error
+  externalListener?.(applyConfig(result.config))
+  return null
 }
 
 export function currentSettings(): Settings {
@@ -180,10 +332,9 @@ export function updateSettings(patch: Partial<Settings>): void {
 }
 
 export async function persist(): Promise<void> {
-  const target = filePath()
   try {
-    await mkdir(dirname(target), { recursive: true })
-    await writeFile(target, `${JSON.stringify(currentSettings(), null, 2)}\n`, 'utf8')
+    // 一時ファイル＋rename で書く。settings.json が壊れている間は state.json だけ（利用者のファイルを上書きしない）
+    timedSync('settings:save', () => fileStore().saveSync(currentSettings()))
   } catch (err) {
     console.warn('[settings] 保存に失敗しました', err)
     reportHandled(err, { area: 'settings', op: 'save settings' })
@@ -199,12 +350,11 @@ export function flushSettingsSync(): void {
     clearTimeout(writeTimer)
     writeTimer = null
   }
-  const target = filePath()
   try {
-    mkdirSync(dirname(target), { recursive: true })
-    writeFileSync(target, `${JSON.stringify(currentSettings(), null, 2)}\n`, 'utf8')
+    fileStore().saveSync(currentSettings())
   } catch (err) {
     console.warn('[settings] 保存に失敗しました', err)
     reportHandled(err, { area: 'settings', op: 'save settings on quit' })
   }
+  store?.close()
 }
