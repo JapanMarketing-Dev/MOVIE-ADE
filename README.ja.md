@@ -157,11 +157,11 @@ Zoom・Meet・Teams のオンライン会議でも、対面で1つの画面を�
 
 ## ダウンロード
 
-| macOS | Windows（Preview） | Linux（Preview） |
+| macOS | Windows | Linux |
 |---|---|---|
 | Apple silicon / Intel · `.dmg` | x64 / Arm64 · インストーラ `.exe` | x64 · AppImage / `.deb` |
 
-最新版も過去の版も **[ferretade.dev/download](https://ferretade.dev/download)** から入手できます。macOS 版は Developer ID で署名し、Apple の公証を受けているので（0.2.0 build 3 から）、そのまま開けます。Windows 版と Linux 版はまだ署名していないので、初回起動の手順は [Install](https://ferretade.dev/docs/install.html) を見てください。Windows と Linux は Preview で、実機で人が操作した確認はまだです。
+最新版も過去の版も **[ferretade.dev/download](https://ferretade.dev/download)** から入手できます。macOS 版は Developer ID で署名し、Apple の公証を受けているので（0.2.0 build 3 から）、そのまま開けます。Windows 版と Linux 版はまだ署名していないので、初回起動の手順は [Install](https://ferretade.dev/docs/install.html) を見てください。
 
 ## クイックスタート
 
@@ -198,9 +198,9 @@ pnpm test:unit
 
 ## このビルドについて
 
-- **できること**: 内蔵ブラウザで開いた画面の録画と書き込み、声とペンの書き込みからの指摘づくり、指摘の編集・結合・削除、内蔵ターミナルで動く Agent（Codex / Claude Code）への送信
+- **できること**: 内蔵ブラウザで開いた画面の録画と書き込み、声とペンの書き込みからの指摘づくり、指摘の編集・結合・削除、内蔵ターミナルで動く Agent（Codex / Claude Code）への送信、GitHub / GitLab の Issue・PR・MR への送信。プロジェクトは、この PC のフォルダ、GitHub・GitLab からの clone、SSH の先から開けます。サービスの CLI（gh・glab・wrangler・Vercel・AWS など）はターミナルから入れてログインでき、プロジェクトの画像・動画・音声・PDF は内蔵のビューアで開けます
 - **費用は各自持ち**: 作業に使う開発者側のサーバーやAPIキーはありません。例外は近く入るアプリ内の匿名のフィードバックで、送ったときだけ、その内容が小さな中継（`workers/feedback-relay`）を通って公開の GitHub Issue になります。中継は IP を保存しません。文字起こしは端末内（whisper.cpp、無料）、自分の OpenAI の API キー、自前の GPU などで動かす OpenAI 互換サーバーから選びます。Agent は各自が契約している CLI を使います
-- **対応OS**: macOS（Apple Silicon / Intel）、Windows（x64 / arm64。Preview）、Linux（x64。Preview）。実際の操作を確かめているのは macOS（Apple Silicon）です。0.1.0 では、Windows のインストーラを Mac の上で作りました。Linux の AppImage / deb は x64 の Linux コンテナで作り、そこで単体テストが通ること、同梱のターミナルがシェルを開けることを確かめました。Intel Mac 版のターミナルは Rosetta で確かめました。Windows / Linux の上で人が操作した確認はまだです。macOS 版は Developer ID で署名・公証済みで、Windows 版と Linux 版はまだ署名していません
+- **対応OS**: macOS（Apple Silicon / Intel）、Windows（x64 / arm64）、Linux（x64）。普段使っているのは macOS（Apple Silicon）です。リリースのたびに Mac の上で確かめます。`tools/qa/linux-smoke.sh` が Linux のコンテナで Linux 版を作り、xvfb の上で `e2e/platform-smoke.spec.ts`（起動・内蔵ブラウザ・ターミナルでシェルが開くこと・設定）を流します。`scripts/check-win-unpacked.mjs` と `scripts/check-nsis-archive.mjs` が、Windows 版のアプリとインストーラに CPU ごとの正しい部品が入っていることを確かめます。Intel Mac 版のターミナルは Rosetta で確かめました。macOS 版は Developer ID で署名・公証済みで、Windows 版と Linux 版はまだ署名していません
 
 ## インストール・起動
 
@@ -249,7 +249,7 @@ pnpm dev
 - 自分のAPIキーでの文字起こし・「指摘を整理」（選んだ提供元・接続先）
 - Whisperモデルのダウンロード（Hugging Face）
 - フッターの利用量の表示（各提供元のAPI。自分のClaude / Codexのログインを使う）
-- 「GitHubへ送信」（自分の`gh` CLI経由）
+- 「GitHub / GitLab へ送信」（自分の`gh`・`glab` CLI経由）
 - 「更新を確認」を押したときだけ（Cloudflare R2の配布サーバー）
 - **アプリからのフィードバック**（近く入ります。送ったときだけ）: 本文・種類（不具合か要望）・アプリの版・含めたときだけ OS の版・添付した静止画（3枚まで）が、開発者の中継を通って `JapanMarketing-Dev/ferret` の公開の Issue になります。鍵やトークン・メール・ホームのパスは伏せ字にし、中継は IP を保存しません。詳しくは [Data and privacy](https://ferretade.dev/docs/privacy.html#feedback)
 - **クラッシュレポート（Sentry）**: クラッシュと未処理のエラーを送ります。既定はONで、設定の「プライバシー」か初回起動時の案内からOFFにできます。送るのはスタックトレースとOS・CPU・アプリの版です。パス、URL、ターミナルの出力、文字起こし、指摘、メールアドレス、APIキー、IPアドレスは除くか集めません。開発起動（`pnpm dev`）も`development`として送ります。E2Eと単体テストでは送りません。フォークした人は`FERRET_SENTRY_DSN`（以前の`MOVIE_ADE_SENTRY_DSN`も可）で自分のDSNに向けるか、空にして止められます。詳しくは[Data and privacy](https://ferretade.dev/docs/privacy.html#crash-reports)。
@@ -269,7 +269,7 @@ pnpm lp:dev
 
 ### 配布
 
-macOS のインストーラは Developer ID で署名し、公証を受けています。Windows と Linux のインストーラはまだ署名していません。置き場所は Cloudflare R2（バケット `movie-ade-releases`）で、GitHub には置きません。`pnpm dist:mac` / `pnpm dist:win` / `pnpm dist:linux`（Linux の上で）で `Ferret-<version>-<os>-<arch>.<ext>` を作ります。Mac での手順は `pnpm release:build`（型検査と単体テストのあと、6本を `dist/release` に作る。Linux は x64 の podman / docker コンテナで作る）→ `pnpm release:r2 stage --preview win,linux` → 確認 → `pnpm release:r2 promote --version <version>` です。公開は2段階です。まず `node scripts/release-r2.mjs stage --dir dist/release --preview win,linux` で、公開前の置き場 `staging/<version>/` に上げます。ここでは索引を変えないので、サイトにも更新確認にも出ません。確認が済んだら `node scripts/release-r2.mjs promote --version <version>` で `releases/<version>/` へ移し、`versions.json`・`latest.json` を更新します。同じ版は上げ直しません。最新10版を超えた古い版は、表示してから消します。`v*` のタグを push すると、`.github/workflows/release.yml` が staging までを行い、インストーラを添付しないリリースノートの下書きを作ります。下書きには R2 とは別の答え合わせとして `SHA256SUMS`（manifest の sha256 と同じ値）だけを添付します（インストーラーは GitHub に付けません）。公開は、同じワークフローを Actions の画面から手動で起動して行います（promote は R2 の manifest がその `SHA256SUMS` と一致しなければ止まります。`--replace` で作り直したときは、先に `gh release upload v<version> SHA256SUMS --clobber` で差し替えてください）。手元から公開するときは、stage のあとに `node scripts/release-github.mjs create --version <version>` で SHA256SUMS だけの下書きを作り、`gh release download v<version> --pattern SHA256SUMS` で取った分を `promote --expect-sums` に渡し、最後に `node scripts/release-github.mjs publish --version <version>` で下書きを公開します（どちらも `--dry-run` で gh を動かさずにコマンドだけを確かめられます）。wrangler は devDependencies で版を固定したものを shell を通さずに起動し、R2 から読んだ manifest は形を確かめてから使います。必要な secrets（`CLOUDFLARE_API_TOKEN`：Account → Workers R2 Storage → Edit だけを許可したカスタムトークン、`CLOUDFLARE_ACCOUNT_ID`、`SENTRY_AUTH_TOKEN`：ソースマップを Sentry へ上げる組織トークン）の作り方は英語の README を見てください。`SENTRY_AUTH_TOKEN` を GitHub の secrets に登録すると、CI でソースマップが上がります（未登録の間は警告だけで続けます。登録したら `release.yml` の env に `SENTRY_SOURCEMAPS: required` を戻せます）。手元では、devDependencies で版を固定した `sentry` CLI（`pnpm exec sentry auth login` でログイン）でソースマップを上げます。PATH の CLI や npx で取ってきた CLI は使いません。公開リポジトリなので標準のランナーは無料で、`cross-platform.yml` は push / PR のたびに3つのOSで動きます（macOS は1ジョブ）。非公開に戻すときは、実行時間（とくに macOS）の費用が持ち主にかかるので、手動だけにしてください。
+macOS のインストーラは Developer ID で署名し、公証を受けています。Windows と Linux のインストーラはまだ署名していません。置き場所は Cloudflare R2（バケット `movie-ade-releases`）で、GitHub には置きません。`pnpm dist:mac` / `pnpm dist:win` / `pnpm dist:linux`（Linux の上で）で `Ferret-<version>-<os>-<arch>.<ext>` を作ります。Mac での手順は `pnpm release:build`（型検査と単体テストのあと、6本を `dist/release` に作る。Linux は x64 の podman / docker コンテナで作る）→ `pnpm release:r2 stage` → 確認 → `pnpm release:r2 promote --version <version>` です。公開は2段階です。まず `node scripts/release-r2.mjs stage --dir dist/release` で、公開前の置き場 `staging/<version>/` に上げます。ここでは索引を変えないので、サイトにも更新確認にも出ません。確認が済んだら `node scripts/release-r2.mjs promote --version <version>` で `releases/<version>/` へ移し、`versions.json`・`latest.json` を更新します。同じ版は上げ直しません。最新10版を超えた古い版は、表示してから消します。`v*` のタグを push すると、`.github/workflows/release.yml` が staging までを行い、インストーラを添付しないリリースノートの下書きを作ります。下書きには R2 とは別の答え合わせとして `SHA256SUMS`（manifest の sha256 と同じ値）だけを添付します（インストーラーは GitHub に付けません）。公開は、同じワークフローを Actions の画面から手動で起動して行います（promote は R2 の manifest がその `SHA256SUMS` と一致しなければ止まります。`--replace` で作り直したときは、先に `gh release upload v<version> SHA256SUMS --clobber` で差し替えてください）。手元から公開するときは、stage のあとに `node scripts/release-github.mjs create --version <version>` で SHA256SUMS だけの下書きを作り、`gh release download v<version> --pattern SHA256SUMS` で取った分を `promote --expect-sums` に渡し、最後に `node scripts/release-github.mjs publish --version <version>` で下書きを公開します（どちらも `--dry-run` で gh を動かさずにコマンドだけを確かめられます）。wrangler は devDependencies で版を固定したものを shell を通さずに起動し、R2 から読んだ manifest は形を確かめてから使います。必要な secrets（`CLOUDFLARE_API_TOKEN`：Account → Workers R2 Storage → Edit だけを許可したカスタムトークン、`CLOUDFLARE_ACCOUNT_ID`、`SENTRY_AUTH_TOKEN`：ソースマップを Sentry へ上げる組織トークン）の作り方は英語の README を見てください。`SENTRY_AUTH_TOKEN` を GitHub の secrets に登録すると、CI でソースマップが上がります（未登録の間は警告だけで続けます。登録したら `release.yml` の env に `SENTRY_SOURCEMAPS: required` を戻せます）。手元では、devDependencies で版を固定した `sentry` CLI（`pnpm exec sentry auth login` でログイン）でソースマップを上げます。PATH の CLI や npx で取ってきた CLI は使いません。公開リポジトリなので標準のランナーは無料で、`cross-platform.yml` は push / PR のたびに3つのOSで動きます（macOS は1ジョブ）。非公開に戻すときは、実行時間（とくに macOS）の費用が持ち主にかかるので、手動だけにしてください。
 
 要件・設計は[docs/02_requirements.md](docs/02_requirements.md)、[docs/03_design.md](docs/03_design.md)。main はリリース用です。develop で開発し、PR は develop へ出してください。
 

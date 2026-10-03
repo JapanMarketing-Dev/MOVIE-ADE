@@ -35,6 +35,7 @@ import { onAgentLaunchRequest } from './lib/agentLaunchRequest'
 import { TitleBar } from './components/TitleBar'
 import { Gallery } from './gallery/Gallery'
 import { useViewBounds } from './hooks/useViewBounds'
+import { useAnyModalOpen } from './lib/openModals'
 import { useProjectSession } from './hooks/useProjectSession'
 import { matchWindowSource } from '@shared/projectTargets'
 import { planNewReview } from './lib/newReview'
@@ -277,9 +278,11 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           ? 'load-failed'
           : null
 
+  // モーダル（フィードバック・画面の確認・送る前の確認など）を開いている間も隠す。ビューがダイアログの上に重なるため
+  const anyModalOpen = useAnyModalOpen()
   /** ビューに場所を譲ってよい条件。ひとつでも欠けたら 0 サイズにして隠す */
   const viewVisible =
-    !gallery && !onboardingOpen && !targetPickerOpen && !footerPopoverOpen && !splitDragging && !panelDrag.drag && !projectMenuOpen && !urlDialogOpen && !projectDialogOpen && !quickOpenOpen && !files.pendingClose && emptyReason === null && (mode === 'feedback' || centerTab === 'browser')
+    !anyModalOpen && !gallery && !onboardingOpen && !targetPickerOpen && !footerPopoverOpen && !splitDragging && !panelDrag.drag && !projectMenuOpen && !urlDialogOpen && !projectDialogOpen && !quickOpenOpen && !files.pendingClose && emptyReason === null && (mode === 'feedback' || centerTab === 'browser')
 
   const layoutKey = [
     mode,

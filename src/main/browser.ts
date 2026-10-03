@@ -108,6 +108,17 @@ export class EmbeddedBrowser {
     return this.webContents
   }
 
+  /**
+   * フィードバックに添える Ferret の静止画に重ねるため、見えているビューの位置（ウインドウの中の DIP）と中身。
+   * 隠れている（0 サイズ）・破棄済みなら null
+   */
+  visibleSnapshotTarget(): { contents: WebContents; bounds: { x: number; y: number; width: number; height: number } } | null {
+    const wc = this.webContents
+    const bounds = this.view?.getBounds()
+    if (!wc || !bounds || bounds.width <= 0 || bounds.height <= 0) return null
+    return { contents: wc, bounds }
+  }
+
   /** ページが描く前に見える地の色。配色の切り替えに合わせる */
   setBackgroundColor(color: string): void {
     this.view?.setBackgroundColor(color)

@@ -8,7 +8,7 @@
 import type { Env, LimiterState } from './env'
 
 export type Window = { windowMs: number; max: number }
-export type LimiterOp = 'hit' | 'peek' | 'record'
+export type LimiterOp = 'hit' | 'peek' | 'record' | 'release'
 export type LimiterResult = { allowed: boolean; retryAfterSec: number }
 
 /** 記録を残す最長の期間（これより古い時刻は消す） */
@@ -16,10 +16,17 @@ export const KEEP_MS = 24 * 60 * 60 * 1000
 
 /**
  * 時刻の並びに対して、上限を超えるかを決める（純粋関数）。
- * hit: 超えなければ数える / peek: 数えずに確かめる / record: 確かめずに数える
+ * hit: 超えなければ数える（確かめると数えるが1回の呼び出しの中で起きるので、同時の要求でも枠を超えない。予約に使う）
+ * peek: 数えずに確かめる / record: 確かめずに数える / release: hit で数えた1件（同じ now）を取り消す
  */
 export function decide(times: number[], op: LimiterOp, windows: readonly Window[], now: number): { times: number[]; result: LimiterResult } {
-  const recent = times.filter((t) => t > now - KEEP_MS && t <= now)
+  // now より後の時刻も残して数える。Worker の各インスタンスの時計はそろわず、同時の要求は時刻の順に届くとは限らない。
+  // 後の時刻を落とすと、遅れて届いた要求に先の記録が見えず、同じ内容や上限を素通りする（security-3 [7]）
+  const recent = times.filter((t) => t > now - KEEP_MS)
+  if (op === 'release') {
+    const at = recent.lastIndexOf(now)
+    return { times: at < 0 ? recent : [...recent.slice(0, at), ...recent.slice(at + 1)], result: { allowed: true, retryAfterSec: 0 } }
+  }
   let retryAfterMs = 0
   if (op !== 'record') {
     for (const w of windows) {

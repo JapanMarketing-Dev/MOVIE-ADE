@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BadgeCheck } from 'lucide-react'
 import {
   DECISION_PRESETS,
@@ -16,8 +16,9 @@ import { AskAgent, CheckButton, GuideLinks, KeyField } from '../components/AiPro
 import { RECOMMENDED_DECISION_PRESET, decisionReady } from './onboardingFlowState'
 
 /**
- * セットアップの「判定モデル」の手順。おすすめの Cloudflare Workers AI（clef-flash）を選んだ状態で出し、
- * Account ID と API トークン（自分のキー。OS の鍵で保存する KeyField）だけを入れてもらう。
+ * セットアップの「判定モデル」の手順。おすすめの Ollama（端末内・キー不要。モデルは PC のメモリと GPU から clef / clef-flash を選ぶ）を
+ * 選んだ状態で出す。Ollama が入っていなければ「Agent に設定を頼む」で Agent が入れてモデルまで落とす。
+ * Cloudflare などを選んだときは Account ID と API トークン（自分のキー。OS の鍵で保存する KeyField）を入れてもらう。
  * 保存は設定の Decision model の節と同じ settings:decision。入力欄・プリセットの扱いも同じ（@shared/decision）。
  * 接続先とキーが揃ったときだけ有効にする（揃わないまま有効にすると、Agent への指示に判定が入るのに呼べない）。
  * 詳しい設定（ヘッダー・しきい値・料金など）は設定の画面に任せ、ここには出さない。
@@ -37,17 +38,17 @@ export function DecisionStep() {
   const [available, setAvailable] = useState<SttAvailability | null>(null)
   const saveTimer = useRef<number | undefined>(undefined)
 
-  const reload = useCallback(() => window.ade.invoke('capture:availability').then(setAvailable).catch(() => undefined), []) // 失敗は main の IPC が Sentry へ送る
 
   useEffect(() => {
-    void window.ade.invoke('app:settings').then((s) => {
+    // 推奨のモデル（availability の localModels）を使うので、設定と一緒に読む
+    void Promise.all([window.ade.invoke('app:settings'), window.ade.invoke('capture:availability').catch(() => null)]).then(([s, a]) => {
+      if (a) setAvailable(a)
       const saved = s.decision ?? DEFAULT_DECISION_PREFERENCES
-      // まだ使っていなければ、おすすめ（Cloudflare）を選んだ状態で出す。有効にしてある人の設定は変えない
-      setPrefs(saved.enabled ? saved : withSavedKey(applyDecisionPreset(saved, RECOMMENDED_DECISION_PRESET)))
+      // まだ使っていなければ、おすすめ（Ollama）を選んだ状態で出す。有効にしてある人の設定は変えない
+      setPrefs(saved.enabled ? saved : withSavedKey(applyDecisionPreset(saved, RECOMMENDED_DECISION_PRESET, a?.localModels?.decision)))
     }).catch(() => setPrefs(withSavedKey(applyDecisionPreset(DEFAULT_DECISION_PREFERENCES, RECOMMENDED_DECISION_PRESET))))
-    void reload()
     return () => window.clearTimeout(saveTimer.current)
-  }, [reload])
+  }, [])
 
   if (!prefs) return null
   const def = DECISION_PRESETS[prefs.preset]
@@ -62,7 +63,8 @@ export function DecisionStep() {
       void window.ade.invoke('settings:decision', withEnabled).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
     }, delay)
   }
-  const choose = (preset: DecisionPreset) => save(withSavedKey(applyDecisionPreset(prefs, preset)), !!(DECISION_PRESETS[preset].vendor && available?.keys[DECISION_PRESETS[preset].vendor!]), 0)
+  const localModel = available?.localModels?.decision
+  const choose = (preset: DecisionPreset) => save(withSavedKey(applyDecisionPreset(prefs, preset, localModel)), !!(DECISION_PRESETS[preset].vendor && available?.keys[DECISION_PRESETS[preset].vendor!]), 0)
   const label = (id: DecisionPreset) => (id === 'custom' ? t('decision.backend.custom') : DECISION_PRESETS[id].label)
   const endpoint = prefs.endpoint ?? def.endpoint
   const ready = decisionReady(prefs, keyPresent)
@@ -86,9 +88,9 @@ export function DecisionStep() {
       </label>
       {/* 提供元の案内（キーを作る・Account ID はここ・ドキュメント）と「Agent に設定を頼む」。設定の Decision の節と同じ部品 */}
       <div className="ob-row ob-row--start">
-        <GuideLinks guide={decisionSetupGuide(prefs, label(prefs.preset))} kinds={['install', 'key', 'id', 'docs']} />
-        <AskAgent guide={decisionSetupGuide(prefs, label(prefs.preset))} disabled={false}
-          target={{ purpose: t('decision.setup.purpose'), endpointPath: 'decision', select: { path: 'decision.preset', value: prefs.preset } }} />
+        <GuideLinks guide={decisionSetupGuide(prefs, label(prefs.preset), localModel)} kinds={['install', 'key', 'id', 'docs']} />
+        <AskAgent guide={decisionSetupGuide(prefs, label(prefs.preset), localModel)} disabled={false}
+          target={{ purpose: t('decision.setup.purpose'), endpointPath: 'decision', select: { path: 'decision.preset', value: prefs.preset }, enablePath: 'decision.enabled' }} />
       </div>
       {endpoint.includes('{account_id}') && <label className="ob-url ob-url--wide">
         <span className="ob-url__label">{t('decision.settings.accountId')}</span>

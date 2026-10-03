@@ -1,0 +1,3 @@
+# Ferret のリリースの署名の公開鍵（SHA256SUMS.sig を確かめる。security-3 [2]）。秘密鍵はリポジトリと R2 に置かない
+# 確かめ方: ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig < SHA256SUMS
+release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9

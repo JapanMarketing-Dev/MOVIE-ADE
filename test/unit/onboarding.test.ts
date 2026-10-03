@@ -247,8 +247,12 @@ describe('判定モデルの手順', async () => {
   const { applyDecisionPreset, DEFAULT_DECISION_PREFERENCES } = await import('@shared/decision')
   const cloudflare = applyDecisionPreset(DEFAULT_DECISION_PREFERENCES, 'cloudflare')
 
-  it('おすすめは Cloudflare Workers AI（clef-flash）で、判定モデルの手順は飛ばせる', () => {
-    expect(RECOMMENDED_DECISION_PRESET).toBe('cloudflare')
+  it('おすすめは端末内の Ollama（モデルは PC に合わせて渡したもの）で、判定モデルの手順は飛ばせる', () => {
+    expect(RECOMMENDED_DECISION_PRESET).toBe('ollama')
+    expect(applyDecisionPreset(DEFAULT_DECISION_PREFERENCES, RECOMMENDED_DECISION_PRESET, 'clef').model).toBe('clef')
+    expect(applyDecisionPreset(DEFAULT_DECISION_PREFERENCES, RECOMMENDED_DECISION_PRESET).model).toBe('clef-flash')
+    // ほかの提供元には PC のモデルを持ち込まない
+    expect(applyDecisionPreset(DEFAULT_DECISION_PREFERENCES, 'cloudflare', 'clef').model).toBe('clef-flash')
     expect(cloudflare.model).toBe('clef-flash')
     expect(isSkippableStep(ONBOARDING_STEPS.indexOf('decision'))).toBe(true)
   })

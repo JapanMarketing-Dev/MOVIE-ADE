@@ -1,0 +1,73 @@
+/**
+ * 起動の遅さの内訳（FERRET-K）。遅れが JS より前（プロセスの生成からモジュールの読み込みまで：
+ * ダウンロード直後の初回起動での Gatekeeper の検査・dyld・Electron 本体の読み込み）か、後（アプリの JS）かを分ける。
+ * 中身は節目の名前と時間だけ（パス・URL・文は入れない）。
+ */
+
+/** JS より前の時間が全体のこの割合を超えたら pre-js とみなす */
+export const PRE_JS_SHARE = 0.5
+/** 内訳に載せる節目の数の上限 */
+export const MAX_STARTUP_MARKS = 20
+
+const MARK_NAME = /^[A-Za-z0-9_.:-]{1,40}$/
+
+export type StartupPhase = 'pre-js' | 'js' | 'unknown'
+
+export interface StartupTiming {
+  /** プロセスの生成（取れなければモジュールの読み込み）から操作可能までの ms */
+  totalMs: number
+  /** 基準の時刻（epoch ms） */
+  origin: number
+  /** src/main/startup.ts が読み込まれた時刻（epoch ms） */
+  moduleLoadedAt: number
+  /** 基準がプロセスの生成時刻か（process.getCreationTime() が取れたか） */
+  originSource: 'process' | 'module'
+  /** 節目の名前と、基準からの ms */
+  marks: Record<string, number>
+}
+
+export interface StartupBreakdown {
+  /** プロセスの生成からモジュールの読み込みまで。生成時刻が取れないときは分からない（null） */
+  preJsMs: number | null
+  /** モジュールの読み込みから操作可能まで */
+  jsMs: number
+  phase: StartupPhase
+  tags: Record<string, string>
+  context: Record<string, string>
+}
+
+export function startupBreakdown(t: StartupTiming): StartupBreakdown {
+  const totalMs = Math.max(0, Math.round(t.totalMs))
+  const preJsMs = t.originSource === 'process' ? Math.min(totalMs, Math.max(0, Math.round(t.moduleLoadedAt - t.origin))) : null
+  const jsMs = totalMs - (preJsMs ?? 0)
+  const phase: StartupPhase = preJsMs === null ? 'unknown' : preJsMs > totalMs * PRE_JS_SHARE ? 'pre-js' : 'js'
+  const marks = Object.entries(t.marks)
+    .filter(([name, ms]) => MARK_NAME.test(name) && Number.isFinite(ms))
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, MAX_STARTUP_MARKS)
+    .map(([name, ms]) => `${name}=${Math.round(ms)}ms`)
+    .join(' ')
+  return {
+    preJsMs,
+    jsMs,
+    phase,
+    tags: { 'startup.phase': phase, 'startup.origin': t.originSource },
+    context: {
+      total: `${totalMs}ms`,
+      pre_js: preJsMs === null ? 'unknown' : `${preJsMs}ms`,
+      js: `${jsMs}ms`,
+      marks: marks || 'none'
+    }
+  }
+}
+
+/**
+ * どの名前で報告するか。JS より後の遅れが閾値を超えたときだけ slow-startup として数える。
+ * 全体は超えたが JS より後は超えていない（JS より前の遅れで超えた）ときは slow-pre-js として別に数える
+ */
+export function slowStartupReport(b: StartupBreakdown, thresholdMs: number): { perf: 'slow-startup' | 'slow-pre-js'; ms: number } | null {
+  const totalMs = b.jsMs + (b.preJsMs ?? 0)
+  if (b.jsMs > thresholdMs) return { perf: 'slow-startup', ms: b.jsMs }
+  if (totalMs > thresholdMs) return { perf: 'slow-pre-js', ms: totalMs }
+  return null
+}

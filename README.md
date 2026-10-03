@@ -157,11 +157,11 @@ Ferret launches CLI agents in its built-in terminals, on the subscriptions you a
 
 ## Download
 
-| macOS | Windows (preview) | Linux (preview) |
+| macOS | Windows | Linux |
 |---|---|---|
 | Apple silicon / Intel · `.dmg` | x64 / Arm64 · installer `.exe` | x64 · AppImage / `.deb` |
 
-Get the latest build, or any earlier version, from **[ferretade.dev/download](https://ferretade.dev/download)**. The macOS build is signed with a Developer ID and notarized by Apple (since 0.2.0 build 3), so it opens like any other app. Windows and Linux builds are not code-signed yet; see [Install](https://ferretade.dev/docs/install.html) for their first-launch step. Windows and Linux builds are previews that have not been tested by hand on real hardware yet.
+Get the latest build, or any earlier version, from **[ferretade.dev/download](https://ferretade.dev/download)**. The macOS build is signed with a Developer ID and notarized by Apple (since 0.2.0 build 3), so it opens like any other app. Windows and Linux builds are not code-signed yet; see [Install](https://ferretade.dev/docs/install.html) for their first-launch step.
 
 ## Quick start
 
@@ -198,9 +198,9 @@ pnpm test:unit
 
 ## About this build
 
-- **What it does**: records and annotates a page opened in the built-in browser, turns your voice and pen marks into findings, lets you edit, merge and delete findings, and sends them to an agent (Codex / Claude Code) running in the built-in terminal.
+- **What it does**: records and annotates a page opened in the built-in browser, turns your voice and pen marks into findings, lets you edit, merge and delete findings, and sends them to an agent (Codex / Claude Code) running in the built-in terminal, or to a GitHub / GitLab issue or pull / merge request. Projects can be local folders, clones from GitHub or GitLab, or opened over SSH; service CLIs (gh, glab, wrangler, Vercel, AWS and more) can be installed and signed in to from the terminal, and images, video, audio and PDF in the project open in a built-in viewer.
 - **You bring your own resources**: there is no server or API key on the developer's side for your work. The one exception, coming soon, is the optional in-app feedback form, whose small relay turns what you send into a public GitHub issue and does not store your IP address (`workers/feedback-relay`). Transcription runs on your machine (whisper.cpp, free), with your own OpenAI API key, or on an OpenAI-compatible server you host (for example on your own GPU). Agents run through the CLI subscriptions you already have.
-- **Platforms**: macOS (Apple Silicon / Intel), Windows (x64 / arm64, preview) and Linux (x64, preview). Day-to-day use is verified on macOS (Apple Silicon). For 0.1.0, the Windows installers were built on a Mac, and the Linux AppImage / deb were built in an x64 Linux container where the unit tests pass and the bundled terminal opens a shell; the Intel macOS build's terminal was checked under Rosetta. Nobody has used the apps by hand on Windows or Linux yet. The macOS build is signed with a Developer ID and notarized; Windows and Linux builds are not code-signed yet.
+- **Platforms**: macOS (Apple Silicon / Intel), Windows (x64 / arm64) and Linux (x64). Day-to-day use is on macOS (Apple Silicon). Every release is checked on a Mac: `tools/qa/linux-smoke.sh` packages the Linux app in a Linux container and runs `e2e/platform-smoke.spec.ts` against it under xvfb (launch, built-in browser, a shell in the terminal, settings), and `scripts/check-win-unpacked.mjs` and `scripts/check-nsis-archive.mjs` check that the Windows apps and installers carry the right binaries for each CPU. The Intel macOS build's terminal was checked under Rosetta. The macOS build is signed with a Developer ID and notarized; Windows and Linux builds are not code-signed yet.
 
 ## Install and run
 
@@ -249,7 +249,7 @@ Ferret connects to outside services only for:
 - transcription and "Organize" with your own API key (the provider or endpoint you choose)
 - Whisper model downloads (Hugging Face)
 - agent usage in the footer (each provider's API, with your own Claude / Codex login)
-- "Send to GitHub" (through your own `gh` CLI)
+- "Send to GitHub / GitLab" (through your own `gh` or `glab` CLI)
 - "Check for Updates", only when you click it (the download server on Cloudflare R2)
 - **feedback from the app** (coming soon), only when you send it: your text, bug or idea, app version, OS version if you include it, and up to 3 screenshots go through the developer's relay and become a public issue in `JapanMarketing-Dev/ferret`. Keys, tokens, email addresses and home-folder paths are masked, and the relay does not store your IP address. See [Data and privacy](https://ferretade.dev/docs/privacy.html#feedback).
 - **crash reports (Sentry)**: the app sends crashes and unhandled errors. It is on by default; turn it off in Settings → Privacy or from the notice at first launch. Reports contain the stack trace and OS / CPU / app versions. Paths, URLs, terminal output, transcripts, findings, email addresses, API keys and IP addresses are removed or not collected. Development builds (`pnpm dev`) also send, tagged `development`; E2E runs and unit tests never send. Forks can set `FERRET_SENTRY_DSN` (the old `MOVIE_ADE_SENTRY_DSN` still works) to their own DSN, or to an empty string to disable it. See [Data and privacy](https://ferretade.dev/docs/privacy.html#crash-reports).
@@ -274,7 +274,7 @@ The macOS installers are signed with a Developer ID and notarized; the Windows a
 pnpm dist:mac    # Ferret-<version>-mac-arm64.dmg / -mac-x64.dmg
 pnpm dist:win    # Ferret-<version>-win-x64.exe / -win-arm64.exe (NSIS)
 pnpm dist:linux  # Ferret-<version>-linux-x86_64.AppImage / -linux-amd64.deb (on Linux)
-node scripts/release-r2.mjs stage --dir dist/release --preview win,linux [--notes notes.md] [--dry-run]
+node scripts/release-r2.mjs stage --dir dist/release [--notes notes.md] [--dry-run]
 node scripts/release-github.mjs create --version <version> [--target <commit>] [--dry-run]   # draft GitHub release with SHA256SUMS only
 gh release download v<version> --repo JapanMarketing-Dev/ferret --pattern SHA256SUMS --dir <dir>
 node scripts/release-r2.mjs promote --version <version> --expect-sums <dir>/SHA256SUMS [--dry-run]
@@ -282,7 +282,7 @@ node scripts/release-github.mjs publish --version <version> [--dry-run]         
 node scripts/release-r2.mjs discard --version <version> [--dry-run]   # drop a staged version you won't publish
 ```
 
-On a Mac, the whole local release is `pnpm release:build` (type checks, unit tests, then all six installers into `dist/release`; Linux is built in an x64 podman or docker container) → `pnpm release:r2 stage --preview win,linux` → check → `pnpm release:r2 promote --version <version>`.
+On a Mac, the whole local release is `pnpm release:build` (type checks, unit tests, then all six installers into `dist/release`; Linux is built in an x64 podman or docker container) → `pnpm release:r2 stage` → check → `pnpm release:r2 promote --version <version>`.
 
 Publishing has two steps. `stage` uploads the files and `manifest.json` (file name, OS, CPU, size, sha256, date) to `staging/<version>/` without touching the indexes, so neither the site nor the app's update check sees them yet. After checking them, `promote` verifies each file's sha256, moves it to `releases/<version>/`, updates `versions.json` and `latest.json`, and removes the staging copy. Release files are cached for a year (they never change), manifests for an hour, the indexes for five minutes. Both steps refuse a version that is already released. Only the latest 10 versions are kept: `promote` prints and deletes older ones. Uploads use `wrangler r2 object put --remote` (300 MiB per file). wrangler is a pinned devDependency (version and integrity in `pnpm-lock.yaml`) started with `node` directly, without a shell; log in with `node scripts/release-tools.mjs wrangler login` first. Manifests and indexes read back from R2 are schema-checked before use, and `--expect-sums` stops if the manifest does not match the `SHA256SUMS` file from the GitHub release (the workflow always passes it). `scripts/release-github.mjs create` builds that file from the staged manifest (`--from releases` for a version that is already promoted, `--manifest <file>` for a local copy).
 
@@ -292,7 +292,7 @@ Pushing a `v*` tag that matches `package.json` runs `.github/workflows/release.y
 2. `CLOUDFLARE_ACCOUNT_ID`: shown on the R2 overview page.
 3. `SENTRY_AUTH_TOKEN`: uploads source maps so crash reports show readable stack traces (`scripts/sentry-sourcemaps.mjs`, run by `pnpm build:release`). In Sentry, go to Settings → Developer Settings → Organization Tokens → Create New Token (organization tokens can only upload source maps and manage releases). Until it is registered, the workflow only warns and skips the upload; once it is registered, you can add `SENTRY_SOURCEMAPS: required` to the build job's env in `release.yml` so a failed upload stops the release. Locally, the pinned `sentry` CLI from devDependencies is used instead (log in once with `pnpm exec sentry auth login`); the scripts never fetch a CLI with npx or use one from `PATH`, and stop if the pinned one is not installed, and the step is skipped with a warning if neither is available. Override the target with `SENTRY_ORG` / `SENTRY_PROJECT` (default `workspacepm` / `movie-ade`).
 
-Add them under GitHub → Settings → Secrets and variables → Actions. Optional repository variables: `PREVIEW_OS` (default `win,linux`) and `DOWNLOAD_URL` (the link in the release notes). The workflows run on free runners because the repository is public; in a private repository the minutes, especially on macOS, are billed to the owner. `.github/workflows/cross-platform.yml` runs type checks, unit tests and unpacked builds on all three OSes (one macOS job) on every push and pull request; switch it to manual-only if the repository ever becomes private.
+Add them under GitHub → Settings → Secrets and variables → Actions. Optional repository variables: `PREVIEW_OS` (OSes to mark as Preview, such as `win,linux`; empty by default) and `DOWNLOAD_URL` (the link in the release notes). The workflows run on free runners because the repository is public; in a private repository the minutes, especially on macOS, are billed to the owner. `.github/workflows/cross-platform.yml` runs type checks, unit tests and unpacked builds on all three OSes (one macOS job) on every push and pull request; switch it to manual-only if the repository ever becomes private.
 
 Requirements and design documents (in Japanese) are in [docs/02_requirements.md](docs/02_requirements.md) and [docs/03_design.md](docs/03_design.md). `main` is for releases. Development happens on `develop`; open pull requests against `develop`.
 

@@ -115,8 +115,8 @@ export function agentsStepGate(options: ReadonlyArray<{ installed: boolean; cust
 
 // ───────────────────────── 判定モデルの手順 ─────────────────────────
 
-/** おすすめの提供元（設定の Decision model の節と同じ印を付ける） */
-export const RECOMMENDED_DECISION_PRESET: DecisionPreset = 'cloudflare'
+/** おすすめの提供元（設定の Decision model の節と同じ印を付ける）。端末内の Ollama（キー・料金なし。モデルは PC に合わせて選ぶ） */
+export const RECOMMENDED_DECISION_PRESET: DecisionPreset = 'ollama'
 
 /**
  * 判定モデルを有効にしてよいか（接続先が組み立てられ、キーが要るならキーがある）。

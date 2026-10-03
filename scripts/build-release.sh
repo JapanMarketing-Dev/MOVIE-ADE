@@ -4,7 +4,7 @@
 #   pnpm release:build            # package.json の version で作る
 #   SKIP_LINUX=1 pnpm release:build   # Linux を飛ばす（コンテナが使えないとき）
 #
-# 続けて: pnpm release:r2 stage --preview win,linux → 確認 → pnpm release:r2 promote --version <version>
+# 続けて: pnpm release:r2 stage → 確認 → pnpm release:r2 promote --version <version>
 #
 # 手順:
 #   1. 作業ツリーを一時フォルダへ複製する（APFS の複製なので速く、場所も取らない）。
@@ -64,6 +64,9 @@ pnpm exec electron-builder --config electron-builder.config.cjs --mac dmg --arm6
 echo "== Windows（x64 / arm64）"
 pnpm exec electron-builder --config electron-builder.config.cjs --win --dir --x64
 pnpm exec electron-builder --config electron-builder.config.cjs --win --dir --arm64
+# 展開済みの中身（Ferret.exe・ffmpeg.dll・node-pty の部品が CPU ごとに正しいか）を確かめる。実機の無いところでの検査
+node scripts/check-win-unpacked.mjs dist/release/win-unpacked x64
+node scripts/check-win-unpacked.mjs dist/release/win-arm64-unpacked arm64
 rm -rf "${OUT}"
 mkdir -p "${OUT}"
 # Mac の makensis は、electron-builder のテンプレート（node_modules の下）のパスが長いと、アンインストーラを
@@ -120,7 +123,12 @@ cd dist/release/linux-unpacked
 ELECTRON_RUN_AS_NODE=1 ./ferret -e "const p=require('./resources/app.asar/node_modules/node-pty');const t=p.spawn('/bin/bash',['-c','echo PTY_OK'],{});t.onData(d=>process.stdout.write(d));t.onExit(e=>process.exit(e.exitCode))"
 LINUX
   mkdir -p "${WORK}/linux/out"
-  "${CLI}" run --rm --platform linux/amd64 -m 7g \
+  # 公開のイメージ（docker.io の node）を取るだけなので、利用者の Docker の認証設定を読ませない。
+  # ~/.docker/config.json の credHelpers（gcloud など）が期限切れだと、対話できずに取得が止まる（2026-10-04 の 0.4.0 の build）
+  mkdir -p "${WORK}/registry"
+  echo '{}' > "${WORK}/registry/config.json"
+  echo '{"auths":{}}' > "${WORK}/registry/auth.json"
+  DOCKER_CONFIG="${WORK}/registry" REGISTRY_AUTH_FILE="${WORK}/registry/auth.json" "${CLI}" run --rm --platform linux/amd64 -m 7g \
     -v "${SRC}:/src:ro" -v "${WORK}/linux:/s:ro" -v "${WORK}/linux/out:/out" \
     docker.io/library/node:22-bookworm bash /s/run.sh
   cp "${WORK}"/linux/out/* "${OUT}/"
@@ -130,4 +138,4 @@ fi
 rm -rf "${WORK}"
 echo "== できたもの（${OUT}）"
 ls -la "${OUT}"/Ferret-"${VERSION}"-*
-echo "次: pnpm release:r2 stage --preview win,linux  →  確認  →  pnpm release:r2 promote --version ${VERSION}"
+echo "次: pnpm release:r2 stage  →  確認  →  pnpm release:r2 promote --version ${VERSION}"

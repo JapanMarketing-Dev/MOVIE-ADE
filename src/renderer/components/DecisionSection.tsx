@@ -9,6 +9,7 @@ import {
   decisionModelSupportsImages,
   decisionSetupGuide,
   decisionTerminalEnvChanged,
+  withLocalDecisionModel,
   type DecisionAuthScheme,
   type DecisionImageFormat,
   type DecisionPreferences,
@@ -75,12 +76,14 @@ export function DecisionSection({ recording = false }: { recording?: boolean }) 
   const patch = (p: Partial<DecisionPreferences>, delay?: number) => save({ ...prefs, ...p }, delay)
 
   const def = DECISION_PRESETS[prefs.preset]
+  /** Ollama の推奨のモデル（この PC のメモリと GPU から main が選んだ clef / clef-flash。@shared/localModels） */
+  const localModel = available?.localModels?.decision
   const endpoint = prefs.endpoint ?? def.endpoint
-  const model = prefs.model ?? def.model
+  const model = withLocalDecisionModel(prefs, localModel).model ?? def.model
   const images = prefs.images ?? def.images
   const imageFormat = prefs.imageFormat ?? def.imageFormat
   const authScheme = prefs.authScheme ?? def.authScheme
-  const guide = decisionSetupGuide(prefs, prefs.preset === 'custom' ? t('decision.backend.custom') : def.label)
+  const guide = decisionSetupGuide(prefs, prefs.preset === 'custom' ? t('decision.backend.custom') : def.label, localModel)
   const presetLabel = (id: DecisionPreset) => (id === 'custom' ? t('decision.backend.custom') : DECISION_PRESETS[id].label)
   const listId = 'decision-models'
   const num = (v: string) => (v.trim() === '' ? undefined : Number(v))
@@ -98,18 +101,18 @@ export function DecisionSection({ recording = false }: { recording?: boolean }) 
     <label className="st-row"><span className="st-row__label">{t('decision.settings.preset')}</span><span className="rv-select">
       <select className="st-select" aria-label={t('decision.settings.preset')} value={prefs.preset} disabled={recording} data-testid="decision-preset"
         onChange={(e) => {
-          const next = applyDecisionPreset(prefs, e.target.value as DecisionPreset)
+          const next = applyDecisionPreset(prefs, e.target.value as DecisionPreset, localModel)
           setHeaderText('')
           save(next, 0)
         }}>
-        {/* おすすめ（Cloudflare Workers AI）には、初回セットアップと同じ印を付ける */}
+        {/* おすすめ（端末内の Ollama）には、初回セットアップと同じ印を付ける */}
         {DECISION_PRESET_IDS.map((id) => <option key={id} value={id}>
           {id === RECOMMENDED_DECISION_PRESET ? t('onboarding.decision.recommendedOption', { label: presetLabel(id) }) : presetLabel(id)}</option>)}
       </select></span></label>
     <p className="st-note">{t('decision.settings.presetNote')}</p>
     {/* 「キーを作る ↗」「Account ID はここ ↗」などのリンク（外部ブラウザ）と、Agent に設定を頼む指示文（値は入らない）。@shared/setupGuide */}
     <GuideLinks guide={guide} kinds={['install', 'key', 'id', 'docs']} />
-    <AskAgent guide={guide} target={{ purpose: t('decision.setup.purpose'), endpointPath: 'decision', select: { path: 'decision.preset', value: prefs.preset } }} disabled={recording} />
+    <AskAgent guide={guide} target={{ purpose: t('decision.setup.purpose'), endpointPath: 'decision', select: { path: 'decision.preset', value: prefs.preset }, enablePath: 'decision.enabled' }} disabled={recording} />
 
     <label className="st-row"><span className="st-row__label">{t('decision.settings.endpoint')}</span>
       <Field mono aria-label={t('decision.settings.endpoint')} placeholder={def.endpoint || 'https://…/v1/systemone'} autoComplete="off" spellCheck={false}
@@ -130,6 +133,7 @@ export function DecisionSection({ recording = false }: { recording?: boolean }) 
       {def.models.map((m) => <button key={m.id} type="button" role="listitem" className="st-decision__model" aria-pressed={model === m.id} disabled={recording}
         onClick={() => patch({ model: m.id, images: m.images }, 0)}>
         <code>{m.id}</code>
+        {prefs.preset === 'ollama' && m.id === localModel && <span className="st-decision__cap is-images">{t('onboarding.decision.recommended')}</span>}
         <span className={`st-decision__cap${m.images ? ' is-images' : ''}`}>{m.images ? <ImageIcon size={11} aria-hidden="true" /> : <Type size={11} aria-hidden="true" />}
           {t(m.images ? 'decision.settings.imagesBadge' : 'decision.settings.textBadge')}</span>
       </button>)}

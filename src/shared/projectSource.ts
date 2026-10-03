@@ -1,4 +1,5 @@
 import { checkSshTarget, type SshTarget } from './sshCommand'
+import { isSafeHost } from './forge'
 
 /**
  * プロジェクトをどこから開いたか（自分の PC / GitHub から取得 / SSH）と、その周りの純粋な関数。
@@ -57,18 +58,29 @@ export type CloneUrlCheck = { ok: true; url: string } | { ok: false }
 /**
  * 入力を git clone できる URL にする。
  *   owner/repo（GitHub の短い形）→ https://github.com/owner/repo.git
- *   https:// / ssh:// / git@host:owner/repo / file://（手元の bare リポジトリ）はそのまま
- * トークン入りの URL（https://user:token@…）は受け付けない（保存や表示に漏れるため。gh auth setup-git を使ってもらう）。
+ *   https:// / ssh:// / git@host:group/sub/repo / file://（手元の bare リポジトリ）は形を確かめてそのまま
+ * トークン入りの URL（https://user:token@…）は受け付けない（保存や表示に漏れるため。gh auth setup-git などを使ってもらう）。
+ * git の引数に入るので厳密に見る: 制御文字・空白・- で始まる値・ホスト名でないホスト・?や#・.. の区切りは断る。
  */
 export function normalizeCloneUrl(input: string): CloneUrlCheck {
   const value = input.trim()
-  if (!value || /\s/.test(value) || value.startsWith('-')) return { ok: false }
+  // eslint-disable-next-line no-control-regex
+  if (!value || value.length > 2000 || /[\s\u0000-\u001f\u007f]/.test(value) || value.startsWith('-')) return { ok: false }
   if (stripUrlCredentials(value) !== value) return { ok: false }
-  if (/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value) && !value.startsWith('.')) {
+  if (/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value) && !value.startsWith('.') && !value.includes('..')) {
     return { ok: true, url: `https://github.com/${value.replace(/\.git$/, '')}.git` }
   }
-  if (/^(https?|ssh|git|file):\/\/\S+$/i.test(value)) return { ok: true, url: value }
-  if (/^[A-Za-z0-9_.-]+@[A-Za-z0-9.-]+:[^\s]+$/.test(value)) return { ok: true, url: value }
+  if (/^(https?|ssh|git|file):\/\//i.test(value)) {
+    let url: URL
+    try { url = new URL(value) } catch { return { ok: false } }
+    if (url.search || url.hash || value.includes('?') || value.includes('#')) return { ok: false }
+    if (url.protocol === 'file:') return url.host === '' && url.pathname.length > 1 ? { ok: true, url: value } : { ok: false }
+    if (!isSafeHost(url.host) || url.pathname.replace(/\/+$/, '') === '') return { ok: false }
+    if (/(^|\/)\.\.?(\/|$)/.test(value.slice(value.indexOf('//') + 2))) return { ok: false }
+    return { ok: true, url: value }
+  }
+  const scp = value.match(/^([A-Za-z0-9_][A-Za-z0-9_.-]*)@([^:/@]+):([A-Za-z0-9_~][A-Za-z0-9_.~/-]*)$/)
+  if (scp && isSafeHost(scp[2]!) && !/(^|\/)\.\.?(\/|$)/.test(scp[3]!) && !scp[3]!.includes('//')) return { ok: true, url: value }
   return { ok: false }
 }
 
@@ -158,16 +170,20 @@ export function parseSshConfigHosts(content: string): SshConfigHost[] {
   return hosts
 }
 
-/** 「GitHub から取得」の一覧の1件（gh repo list の項目） */
+/** 「GitHub / GitLab から取得」の一覧の1件（gh repo list・GitLab の projects API の項目） */
 export interface GitHubRepoItem {
+  /** GitLab ではサブグループを含む（group/sub/project） */
   nameWithOwner: string
   url: string
   sshUrl?: string
   isPrivate: boolean
   updatedAt?: string
+  /** GitLab のとき、どのホストのプロジェクトか（gitlab.com・セルフホスト） */
+  host?: string
 }
 
 export interface GitHubRepoList {
+  /** CLI（GitHub は gh、GitLab は glab）が見つかったか */
   ghInstalled: boolean
   loggedIn: boolean
   repos: GitHubRepoItem[]

@@ -34,10 +34,10 @@ export type StartupCommandTokens = { ok: true; tokens: string[] } | { ok: false;
  * Orca の tokenizeCustomCommandTemplate（backslash: 'escape'）から、
  * 位置情報（spans）を除いて抜き出した。
  *
- * Windows でもこの1種類で分ける。Orca は cmd / PowerShell 用の分かち書きも持つが、
- * 本システムでは設定欄の書き方をOSで変えないことを優先した（クォートし直しはシェルごと）。
+ * クォートの書き方は OS で変えない。ただし Windows のシェル（cmd / PowerShell）では、バックスラッシュを
+ * パスの区切りとしてそのまま残す（backslash: 'literal'）。エスケープにすると `C:\Users\me\x.toml` が `C:Usersmex.toml` になる
  */
-export function tokenizeStartupCommand(value: string): StartupCommandTokens {
+export function tokenizeStartupCommand(value: string, backslash: 'escape' | 'literal' = 'escape'): StartupCommandTokens {
   const tokens: string[] = []
   let current = ''
   let inToken = false
@@ -48,7 +48,7 @@ export function tokenizeStartupCommand(value: string): StartupCommandTokens {
     const ch = value[i]!
     if (quote) {
       // ダブルクォートの中だけ、バックスラッシュで次の1文字を取り込む
-      if (ch === '\\' && quote === '"' && i + 1 < value.length) {
+      if (backslash === 'escape' && ch === '\\' && quote === '"' && i + 1 < value.length) {
         current += value[i + 1]
         i += 2
         continue
@@ -70,7 +70,7 @@ export function tokenizeStartupCommand(value: string): StartupCommandTokens {
       i++
       continue
     }
-    if (ch === '\\' && i + 1 < value.length) {
+    if (backslash === 'escape' && ch === '\\' && i + 1 < value.length) {
       current += value[i + 1]
       inToken = true
       i += 2
@@ -140,8 +140,22 @@ const POSIX_SAFE_ARG = /^[A-Za-z0-9_@+,./:-][A-Za-z0-9_@+,./:=-]*$/
 
 export function quoteStartupArg(value: string, shell: AgentStartupShell): string {
   if (shell === 'powershell') return quotePowerShellLiteral(value)
-  if (shell === 'cmd') return `"${value.replace(/([\^&|<>()%!"])/g, '^$1')}"`
+  if (shell === 'cmd') return quoteCmdArg(value)
   return POSIX_SAFE_ARG.test(value) ? value : quotePortableUnixArg(value)
+}
+
+/**
+ * cmd.exe の1引数。ダブルクォートの中では `^` は普通の文字なので、`& | < > ( )` は囲むだけで文字どおりになる。
+ * - `"` は `""`（cmd のクォートの状態がずれず、受け取る側の CRT は1つの `"` に読む）
+ * - `"` の直前と末尾のバックスラッシュは二重にする（CRT は `\"` をエスケープと読むため）
+ * - `%` はクォートの中でも変数として展開されるので、いったんクォートを閉じて `^%` にする
+ */
+function quoteCmdArg(value: string): string {
+  const escaped = value
+    .replace(/(\\*)("|$)/g, (_match, slashes: string, end: string) => slashes + slashes + end)
+    .replace(/"/g, '""')
+    .replace(/%/g, '"^%"')
+  return `"${escaped}"`
 }
 
 export type AgentLaunchCommand = { ok: true; command: string } | { ok: false; error: string }
@@ -160,7 +174,7 @@ export function buildAgentLaunchCommand(
   if (!command) return { ok: false, error: t('agentLaunch.errors.noCommand') }
   const args = config?.args.trim() ?? ''
   if (!args) return { ok: true, command }
-  const tokenized = tokenizeStartupCommand(args)
+  const tokenized = tokenizeStartupCommand(args, shell === 'posix' ? 'escape' : 'literal')
   if (!tokenized.ok) return { ok: false, error: t('agentLaunch.errors.badArgs', { error: tokenized.error }) }
   const suffix = tokenized.tokens.map((token) => quoteStartupArg(token, shell)).join(' ')
   return { ok: true, command: suffix ? `${command} ${suffix}` : command }

@@ -147,6 +147,10 @@
 
 .rv-ask__reply {
   box-sizing: border-box;
+  min-height: calc(3lh + var(--space-2) * 2);
+  max-height: calc(16lh + var(--space-2) * 2);
+  field-sizing: content;
+  line-height: var(--line-height-normal);
   width: 100%;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
@@ -254,6 +258,10 @@
 
 .rv-verdict__input {
   box-sizing: border-box;
+  min-height: calc(3lh + var(--space-2) * 2);
+  max-height: calc(16lh + var(--space-2) * 2);
+  field-sizing: content;
+  line-height: var(--line-height-normal);
   width: 100%;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
@@ -397,4 +405,117 @@
   .rv-review-actions {
     min-width: 0;
   }
+}
+
+/*
+ * 一覧の上の「進み具合で絞り込む」（StatusFilterBar）。押すとその進み具合の表示と非表示が切り替わる。
+ * 隠しているものは点線で薄く、横の漏斗でそれだけを出す
+ */
+.rv-status-filter {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: var(--space-5);
+  gap: var(--space-2) var(--space-3);
+}
+
+.rv-status-filter__item {
+  display: inline-flex;
+  flex: none;
+  align-items: stretch;
+}
+
+.rv-status-filter__chip,
+.rv-status-filter__only,
+.rv-status-filter__reset {
+  display: inline-flex;
+  height: 26px;
+  box-sizing: border-box;
+  align-items: center;
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
+}
+
+.rv-status-filter__chip {
+  padding: 0 var(--space-3) 0 var(--space-4);
+  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+  gap: var(--space-2);
+}
+
+.rv-status-filter__only {
+  justify-content: center;
+  padding: 0 var(--space-2) 0 var(--space-2);
+  border-left: 0;
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+  color: var(--color-text-faint);
+}
+
+.rv-status-filter__chip:hover,
+.rv-status-filter__only:hover,
+.rv-status-filter__reset:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.rv-status-filter__chip:focus-visible,
+.rv-status-filter__only:focus-visible,
+.rv-status-filter__reset:focus-visible {
+  position: relative;
+  outline: 1px solid var(--color-border-focus);
+  outline-offset: 1px;
+}
+
+.rv-status-filter__chip[aria-pressed='true'] {
+  color: var(--color-text);
+}
+
+.rv-status-filter__item--in_progress .rv-status-filter__chip[aria-pressed='true'] > svg,
+.rv-status-filter__item--human_review .rv-status-filter__chip[aria-pressed='true'] > svg {
+  color: var(--color-accent);
+}
+
+.rv-status-filter__item--done .rv-status-filter__chip[aria-pressed='true'] > svg {
+  color: var(--color-success);
+}
+
+.rv-status-filter__item--needs_human .rv-status-filter__chip[aria-pressed='true'] > svg {
+  color: var(--color-warning);
+}
+
+/* 隠している進み具合 */
+.rv-status-filter__chip[aria-pressed='false'] {
+  border-style: dashed;
+  color: var(--color-text-faint);
+}
+
+/* 取り消し線は名前にだけ引く（件数は読めるまま残す） */
+.rv-status-filter__chip[aria-pressed='false'] .rv-status-filter__label {
+  text-decoration: line-through;
+}
+
+.rv-status-filter__item:has(.rv-status-filter__chip[aria-pressed='false']) .rv-status-filter__only {
+  border-style: dashed;
+}
+
+.rv-status-filter__count {
+  flex: none;
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+.rv-status-filter__reset {
+  padding: 0 var(--space-4);
+  border-color: transparent;
+  border-radius: var(--radius-pill);
+  color: var(--color-accent);
 }

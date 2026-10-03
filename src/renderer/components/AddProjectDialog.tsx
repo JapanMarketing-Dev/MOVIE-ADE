@@ -6,10 +6,12 @@ import { checkSshTarget } from '@shared/sshCommand'
 import type { TranslationKey } from '@shared/i18n'
 import { errorMessage } from '../lib/errors'
 import { useT } from '../lib/i18n'
-import { Button, Field, IconButton, Modal, Progress, useToast } from '../ui'
+import { Button, Field, IconButton, Modal, Progress, Segmented, useToast } from '../ui'
+import { GITLAB_COM, type Forge } from '@shared/forge'
 
 /**
- * 「プロジェクトを追加」。自分の PC で開く / GitHub から取得 / SSH で開く の3つから選ぶ。
+ * 「プロジェクトを追加」。自分の PC で開く / GitHub・GitLab から取得 / SSH で開く の3つから選ぶ。
+ * 取得の一覧は GitHub（gh）と GitLab（glab。gitlab.com とセルフホスト）を切り替えて選べる。URL の欄はどちらでも受け付ける。
  *
  * Orca由来（MIT）: ~/bench/orca/src/renderer/src/components/sidebar/AddRepoDialog.tsx の
  *   「最初に開き方を選び、選んだ手順だけを出し、戻れる」流れと、
@@ -76,6 +78,8 @@ function GitHubStep({ onDone }: { onDone: (state: ProjectsState) => void }) {
   const [parent, setParent] = useState(loadParent)
   const [home, setHome] = useState('')
   const [repos, setRepos] = useState<GitHubRepoList | null>(null)
+  const [forge, setForge] = useState<Forge>('github')
+  const [gitlabRepos, setGitlabRepos] = useState<GitHubRepoList | null>(null)
   const [filter, setFilter] = useState('')
   const [progress, setProgress] = useState<{ phase: string; percent: number } | null>(null)
   const [cloning, setCloning] = useState(false)
@@ -93,10 +97,20 @@ function GitHubStep({ onDone }: { onDone: (state: ProjectsState) => void }) {
   const checked = normalizeCloneUrl(url)
   const name = checked.ok ? cloneRepoName(checked.url) : null
   const destination = name && parent ? `${parent.replace(/[\\/]+$/, '')}/${name}` : null
+  // GitLab の一覧は、切り替えたときに初めて読む（glab を毎回起こさない）
+  useEffect(() => {
+    if (forge !== 'gitlab' || gitlabRepos) return
+    let cancelled = false
+    void window.ade.invoke('project:gitlabRepos').then((list) => { if (!cancelled) setGitlabRepos(list) })
+      .catch(() => { if (!cancelled) setGitlabRepos({ ghInstalled: true, loggedIn: false, repos: [] }) })
+    return () => { cancelled = true }
+  }, [forge, gitlabRepos])
+
+  const list = forge === 'gitlab' ? gitlabRepos : repos
   const shown = useMemo(() => {
     const q = filter.trim().toLowerCase()
-    return (repos?.repos ?? []).filter((r) => !q || r.nameWithOwner.toLowerCase().includes(q)).slice(0, 50)
-  }, [repos, filter])
+    return (list?.repos ?? []).filter((r) => !q || r.nameWithOwner.toLowerCase().includes(q)).slice(0, 50)
+  }, [list, filter])
 
   const clone = () => {
     if (!checked.ok || !parent) return
@@ -118,17 +132,24 @@ function GitHubStep({ onDone }: { onDone: (state: ProjectsState) => void }) {
     {url.trim() !== '' && !checked.ok && <p className="st-note st-note--warn">{t('projectSource.github.urlInvalid')}</p>}
 
     <div className="apd__repos">
-      <span className="pt-editor__caption">{t('projectSource.github.yourRepos')}</span>
-      {repos === null ? <p className="st-note">{t('projectSource.github.loading')}</p>
-        : !repos.ghInstalled ? <p className="st-note">{t('projectSource.github.noGh')}</p>
-          : !repos.loggedIn ? <p className="st-note">{t('projectSource.github.notLoggedIn')}</p>
-            : repos.error ? <p className="st-note st-note--warn">{repos.error}</p>
+      <span className="apd__repos-head">
+        <span className="pt-editor__caption">{t('projectSource.github.yourRepos')}</span>
+        <Segmented<Forge> ariaLabel={t('projectSource.github.yourRepos')} value={forge} onChange={(next) => { setForge(next); setFilter('') }} options={[
+          { value: 'github', label: 'GitHub', testId: 'clone-forge-github' },
+          { value: 'gitlab', label: 'GitLab', testId: 'clone-forge-gitlab' }
+        ]} />
+      </span>
+      {list === null ? <p className="st-note">{t('projectSource.github.loading')}</p>
+        : !list.ghInstalled ? <p className="st-note">{t(forge === 'gitlab' ? 'projectSource.gitlab.noGlab' : 'projectSource.github.noGh')}</p>
+          : !list.loggedIn ? <p className="st-note">{t(forge === 'gitlab' ? 'projectSource.gitlab.notLoggedIn' : 'projectSource.github.notLoggedIn')}</p>
+            : list.error ? <p className="st-note st-note--warn">{list.error}</p>
               : <>
                 <Field placeholder={t('projectSource.github.filter')} aria-label={t('projectSource.github.filter')} value={filter} onChange={(e) => setFilter(e.target.value)} disabled={cloning} />
                 <ul className="apd__repo-list" data-testid="clone-repo-list">
-                  {shown.map((repo) => <li key={repo.nameWithOwner}>
+                  {shown.map((repo) => <li key={`${repo.host ?? ''}/${repo.nameWithOwner}`}>
                     <button type="button" className={`apd__repo${url === repo.url ? ' is-selected' : ''}`} disabled={cloning} onClick={() => { setUrl(repo.url); setFailure(null) }}>
                       <span className="apd__repo-name">{repo.nameWithOwner}</span>
+                      {repo.host && repo.host !== GITLAB_COM && <span className="apd__repo-host">{repo.host}</span>}
                       {repo.isPrivate && <span className="apd__repo-private"><Lock size={10} aria-hidden="true" />{t('projectSource.github.private')}</span>}
                     </button>
                   </li>)}

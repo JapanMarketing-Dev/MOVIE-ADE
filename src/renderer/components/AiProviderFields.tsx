@@ -20,6 +20,8 @@ import type { SttAvailability } from '@shared/types'
 import type { TranslationKey } from '@shared/i18n'
 import { Button, Field } from '../ui'
 import { buildAgentSetupPrompt, setupLinks, type SetupGuide, type SetupLinkKind, type SetupPromptTarget } from '@shared/setupGuide'
+import { setupCliTool } from '@shared/cliSetup'
+import { CliAssist } from './CliAssist'
 import { useT } from '../lib/i18n'
 import { errorMessage } from '../lib/errors'
 import { useToast } from '../ui'
@@ -188,7 +190,9 @@ const LINK_LABEL: Record<SetupLinkKind, TranslationKey> = { key: 'ai.setup.link.
 export function GuideLinks({ guide, kinds }: { guide: SetupGuide; kinds: readonly SetupLinkKind[] }) {
   const t = useT()
   const toast = useToast()
-  const links = setupLinks(guide).filter((l) => kinds.includes(l.kind))
+  // 入れ方が CLI で済むもの（Ollama）は、ダウンロードのページへのリンクを出さない（AskAgent の上の行でターミナルから入れる）
+  const cliInstall = setupCliTool(guide) !== null
+  const links = setupLinks(guide).filter((l) => kinds.includes(l.kind) && !(l.kind === 'install' && cliInstall))
   if (!links.length) return null
   return <span className="st-links">
     {links.map((l) => <button key={l.kind} type="button" className="st-link" data-testid={`ai-link-${l.kind}`} title={l.url}
@@ -199,7 +203,7 @@ export function GuideLinks({ guide, kinds }: { guide: SetupGuide; kinds: readonl
 }
 
 /**
- * 「Agent に設定を頼む」。Account ID を調べる・キーの作り方を案内する・settings.json と .env に書く、を頼む指示文を
+ * 「Agent に設定を頼む」。CLI を入れる・Account ID を調べる・キーを用意する・settings.json と .env に書く・確かめる、を Agent に全部頼む指示文を
  * コピーするか、Agent のターミナルへ送る。指示文にキーや ID の値は入らない（src/shared/setupGuide.ts）。
  * 判定モデルの欄からも使えるよう export する
  */
@@ -211,13 +215,15 @@ export function AskAgent({ guide, target, disabled }: { guide: SetupGuide; targe
   const prompt = async () => {
     const info = await window.ade.invoke('settingsFile:info')
     const sep = info.dir.includes('\\') ? '\\' : '/'
-    return buildAgentSetupPrompt(guide, { ...target, settingsPath: info.path, envPath: `${info.dir}${sep}.env` }, t)
+    return buildAgentSetupPrompt(guide, { ...target, settingsPath: info.path, schemaPath: info.schemaPath, envPath: `${info.dir}${sep}.env` }, t)
   }
   const run = (action: () => Promise<void>) => {
     setBusy(true)
     void action().catch((e: unknown) => toast({ tone: 'danger', message: errorMessage(e) })).finally(() => setBusy(false))
   }
-  return <details className="st-key st-advanced" data-testid="ai-ask-agent">
+  // 設定に役立つ CLI（Cloudflare は wrangler、Ollama は本体）を、その場でターミナルから入れる・ログインする行
+  const cliTool = setupCliTool(guide)
+  return <>{cliTool && <CliAssist tool={cliTool} />}<details className="st-key st-advanced" data-testid="ai-ask-agent">
     <summary><Bot size={13} aria-hidden="true" /><span>{t('ai.setup.askAgent')}</span></summary>
     <div className="st-key__body">
       <p className="st-note">{t('ai.setup.note')}</p>
@@ -232,7 +238,7 @@ export function AskAgent({ guide, target, disabled }: { guide: SetupGuide; targe
         })}>{t('ai.setup.send')}</Button>
       </div>
     </div>
-  </details>
+  </details></>
 }
 
 /** 「確認」。押したときだけ送り、✓ か ✗（と理由）を小さく出す */

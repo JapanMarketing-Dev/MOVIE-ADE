@@ -195,6 +195,42 @@ body {
   max-width: 100%;
 }
 
+/* 読み込んでいない外部の画像（行き先のホストを見せる印）と、読み込むかを選ぶ帯 */
+.markdown-body .remote-image {
+  display: inline-block;
+  padding: 0 0.4em;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 0.85em;
+}
+
+.remote-images-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 800px;
+  margin: 12px auto 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--pre-bg);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.remote-images-banner button {
+  font: inherit;
+  color: var(--link);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
 /* ── Mermaid ───────────────────────────────────────── */
 
 .markdown-body pre.mermaid {

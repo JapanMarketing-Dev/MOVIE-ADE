@@ -23,7 +23,9 @@ import { errorKind, reportHandled } from '@shared/report'
  * - 一時ファイルに書いて名前を変える（原子的に置き換える）。元の権限を保つ
  * - 待つのは短い時間だけ。間に合わなければそのまま起動する（そのときはエージェントが確認を出す）
  *
- * 書くのは Ferret に登録したプロジェクトのフォルダだけ（登録＝信頼したとみなす）。ホームなどには書かない。
+ * 書くのは、利用者が設定で確認して「権限確認を省く」を許したプロジェクトのフォルダだけ（agents.bypassProjects）。
+ * 登録しただけ（clone しただけ）のプロジェクトには書かない。そのときはエージェント自身が「信頼しますか」を聞く（security-3 [1]）。
+ * ホームなどには書かない。
  */
 
 export type TrustOutcome = 'granted' | 'unchanged' | 'missing-config' | 'locked' | 'unreadable' | 'skipped'
@@ -292,6 +294,12 @@ function canonical(path: string): string {
 export function isRegisteredProjectFolder(cwd: string, projectFolders: readonly string[]): boolean {
   const target = canonical(cwd)
   return projectFolders.some((folder) => canonical(folder) === target)
+}
+
+/** cwd がフォルダそのものである登録済みプロジェクトの id。無ければ null（サブフォルダやホームは含めない） */
+export function registeredProjectIdFor(cwd: string, projects: ReadonlyArray<{ id: string; folderPath: string }>): string | null {
+  const target = canonical(cwd)
+  return projects.find((project) => canonical(project.folderPath) === target)?.id ?? null
 }
 
 /**

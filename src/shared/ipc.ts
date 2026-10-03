@@ -1,3 +1,4 @@
+import type { CliToolStatus } from './cliTools'
 import type { AiEndpointConfig, AiVendor, LlmApiProvider, OrganizeRunnerId, SttRemoteProvider } from './aiProviders'
 import type { AnnotationColor } from './annotation'
 import type { SendRequest } from './sendTarget'
@@ -59,9 +60,11 @@ import type { ResolvedTheme } from './theme'
 import type { LocalePreference, SupportedLocale } from './i18n'
 import type { ResourceKillTarget, ResourceSnapshot } from './resources'
 import type { FsChangedEvent, FsEntry, FsFileList, FsReadResult, FsSearchMode, FsSearchResult, FsWriteResult } from './files'
+import type { FsFileInfo } from './fileViewer'
 import type { StarActionResult, StarPromptMode } from './starPrompt'
 import type { FeedbackEnvironment, FeedbackSubmitInput, FeedbackSubmitResult } from './feedback'
 import type { GitHubPostResult, GitHubRepoResult, GitRepoStatus, GitHubReviewDraft, GitHubReviewTarget, GitHubStatus } from './github'
+import type { GitLabStatus } from './forge'
 
 /**
  * IPC の全チャネルを1か所で宣言する。
@@ -119,6 +122,8 @@ export interface IpcRequests {
   /** 「プロジェクトを追加」の GitHub / SSH（src/main/projectSources.ts） */
   'project:sshHosts': () => SshConfigHost[]
   'project:githubRepos': () => GitHubRepoList
+  /** 「GitLab から取得」の一覧（glab にログイン済みのホストごと。gitlab.com とセルフホスト） */
+  'project:gitlabRepos': () => GitHubRepoList
   /** clone の保存先の親フォルダの既定 */
   'project:cloneDefaults': () => { parent: string; home: string }
   /** clone の保存先の親フォルダを選ぶ。キャンセルなら null */
@@ -132,6 +137,8 @@ export interface IpcRequests {
   'settings:agents': (preferences: AgentPreferences) => void
   /** エージェントの一覧（設定とインストール済みかの検出を合わせたもの）。refresh で検出し直す */
   'agents:list': (refresh?: boolean) => AgentOption[]
+  /** よく使うサービスの CLI（gh・wrangler・Ollama など）の検出（入っているか・版）。refresh で検出し直す */
+  'cliTools:list': (refresh?: boolean) => CliToolStatus[]
   /** その CLI のスキル・スラッシュコマンド・MCP サーバー（読むだけ。MCP は名前・種類・コマンド名か host だけ） */
   'agents:resources': (agent: TuiAgent) => AgentResourceList
   /** 空文字で既定文に戻す */
@@ -285,6 +292,12 @@ export interface IpcRequests {
   /** クイックオープン（⌘P）用の全ファイル一覧。.gitignore に従う */
   'fs:files': () => FsFileList
   'fs:search': (query: string, mode: FsSearchMode) => FsSearchResult
+  /** 文字として開けないファイルの大きさと先頭のバイト（画像・動画・バイナリの表示） */
+  'fs:inspect': (relPath: string) => FsFileInfo
+  /** Finder（エクスプローラ）でファイルを選んで見せる */
+  'fs:reveal': (relPath: string) => void
+  /** OS の既定のアプリで開く。実行されうる種類は断る（@shared/fileViewer の isRiskyToOpenExternally） */
+  'fs:openExternal': (relPath: string) => void
   /** エディタで未保存のファイル（パス）。ウィンドウを閉じるときの確認に使う */
   'editor:unsaved': (paths: string[]) => void
   /** 編集中（未保存）の内容をプレビューの中身（HTML）にする。横に並べたプレビューを打鍵に追従させる */
@@ -303,6 +316,8 @@ export interface IpcRequests {
   'github:open': (url: string) => void
   /** フッター用：今のプロジェクトのリポジトリ・ブランチ・変更の数。呼ぶと .git/HEAD の見張りも始める */
   'github:repoStatus': () => GitRepoStatus
+  /** `glab auth status` の読み取り（GitLab。認証は glab CLI に任せる）。glab が無ければ glabInstalled: false */
+  'gitlab:status': () => GitLabStatus
 
   // GitHub の star のお願い（src/main/starPrompt.ts）。star するのは利用者が押したときだけ
   /** トーストの「Star」。gh で star できたら true（できなければ画面はブラウザの案内に切り替える） */
@@ -382,6 +397,8 @@ export interface AdeApi {
   invoke<C extends IpcRequestChannel>(channel: C, ...args: IpcArgs<C>): Promise<IpcResult<C>>
   on<C extends IpcEventChannel>(channel: C, listener: IpcEvents[C]): () => void
   platform: PlatformName
+  /** OS の版（process.getSystemVersion()。Windows は 10.0.22631 の形で、ターミナルが ConPTY のビルド番号に使う） */
+  systemVersion?: string
   /**
    * 見本データを出してよいか（E2Eの撮影用）。
    * 通常起動では false で、実データが無ければ空状態を出す。
@@ -417,6 +434,7 @@ export const IPC_REQUEST_CHANNELS = [
   'project:saveSession',
   'project:sshHosts',
   'project:githubRepos',
+  'project:gitlabRepos',
   'project:cloneDefaults',
   'project:pickParent',
   'project:clone',
@@ -424,6 +442,7 @@ export const IPC_REQUEST_CHANNELS = [
   'project:addSsh',
   'settings:agents',
   'agents:list',
+  'cliTools:list',
   'agents:resources',
   'settings:agentPrompt',
   'accounts:list',
@@ -466,8 +485,8 @@ export const IPC_REQUEST_CHANNELS = [
   'annotation:redo',
   'review:list', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:replyPrompt', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
   'capture:screenAccess', 'capture:sources', 'capture:setTarget', 'capture:openScreenSettings',
-  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'editor:unsaved', 'preview:render',
-  'github:status', 'github:repo', 'github:reviewDraft', 'github:postReview', 'github:open', 'github:repoStatus',
+  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'preview:render',
+  'github:status', 'github:repo', 'github:reviewDraft', 'github:postReview', 'github:open', 'github:repoStatus', 'gitlab:status',
   'star:star', 'star:openWeb', 'star:later', 'star:never', 'star:fromMenu',
   'feedback:environment', 'feedback:account', 'feedback:submit', 'feedback:captureWindow'
 ] as const satisfies readonly IpcRequestChannel[]

@@ -121,18 +121,19 @@
   <li><span class="docs-ui">Watch Recording</span> (seeks to that time) and <span class="docs-ui">Replace Image</span> (pick another frame)</li>
   <li><span class="docs-ui">Confirm</span> / <span class="docs-ui">Mark as Needs Review</span>, <span class="docs-ui">Merge with Next</span>, <span class="docs-ui">Delete</span></li>
 </ul>
-<p>The header has <span class="docs-ui">Undo</span>, <span class="docs-ui">Open Folder</span>, <span class="docs-ui">Copy for Agent</span>, <span class="docs-ui">Send to GitHub</span>, <span class="docs-ui">Organize</span>, and <span class="docs-ui">Send to Agent</span>. Speech that didn't become a finding is listed under <span class="docs-ui">Excluded speech</span>, where <span class="docs-ui">Restore as Finding</span> brings it back. <span class="docs-ui">Overall Note</span> adds a note for the whole review.</p>
+<p><span class="docs-ui">Filter by progress</span> shows or hides findings by status (for example <span class="docs-ui">Only</span> the ones waiting for your review); <span class="docs-ui">Show all</span> clears it.</p>
+<p>The header has <span class="docs-ui">Undo</span>, <span class="docs-ui">Open Folder</span>, <span class="docs-ui">Copy for Agent</span>, <span class="docs-ui">Send to GitHub / GitLab</span>, <span class="docs-ui">Organize</span>, and <span class="docs-ui">Send to Agent</span>. Speech that didn't become a finding is listed under <span class="docs-ui">Excluded speech</span>, where <span class="docs-ui">Restore as Finding</span> brings it back. <span class="docs-ui">Overall Note</span> adds a note for the whole review.</p>
 <figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="The Findings tab (screenshot coming soon)"><span>Screenshot coming soon</span></div><figcaption>The Findings tab</figcaption></figure>
       </section>
 
       <section class="docs-section" aria-labelledby="terminal">
         <h2 id="terminal"><a class="docs-anchor" href="#terminal" aria-label="Link to Run agents in the built-in terminal">#</a>Run agents in the built-in terminal</h2>
-        <p>When a project opens, Ferret starts one terminal tab per enabled agent in the project folder. The defaults are:</p>
-<pre><code>claude --dangerously-skip-permissions
-codex --dangerously-bypass-approvals-and-sandbox</code></pre>
-<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">About the default flags</p><p>These flags let the agent edit files and run commands without asking. If you want approval prompts, clear the arguments in <span class="docs-ui">Settings → Agent</span> (<span class="docs-ui">Claude Code arguments</span> / <span class="docs-ui">Codex arguments</span>). <span class="docs-ui">Reset Commands</span> restores the defaults.</p></div>
+        <p>When a project opens, Ferret starts one terminal tab per enabled agent in the project folder, in the agent's normal mode:</p>
+<pre><code>claude
+codex</code></pre>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Permission prompts stay on</p><p>Registering or cloning a project does not make Ferret trust it. Claude Code and Codex ask whether you trust the folder the first time, and keep asking before they edit files or run commands. To let agents skip permission prompts, approvals and the sandbox in one project you trust, turn it on for that project under <span class="docs-ui">Settings → Agent → Skip permission prompts</span> and confirm. It then applies only to agents you open yourself in that project folder; agents started when the project opens always keep their prompts. Skip-permission flags typed into the arguments are ignored.</p></div>
 <p>If neither agent is enabled, a plain shell opens. The <span class="docs-ui">+</span> menu opens <span class="docs-ui">New Terminal</span>, launches Claude Code or Codex in a new tab, or jumps to <span class="docs-ui">Agent settings…</span>. Its search box also finds tabs, saved URLs, and files.</p>
-<p>Tabs show the agent state: <span class="docs-ui">Running</span>, <span class="docs-ui">Waiting for input</span>, <span class="docs-ui">Done (unread)</span>, <span class="docs-ui">Idle</span>.</p>
+<p>Tabs show the agent state: <span class="docs-ui">Running</span>, <span class="docs-ui">Waiting for input</span>, <span class="docs-ui">Done (unread)</span>, <span class="docs-ui">Idle</span>. In the sidebar, a project where an agent is running is marked, so you can see it without switching projects.</p>
 <figure class="docs-clip" data-clip="terminals">
   <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="assets/clips/terminals.webp" data-src="assets/clips/terminals.mp4" data-src-webm="assets/clips/terminals.webm" aria-label="Dragging terminal tabs and panes to split, move, and turn them back into tabs."></video>
   <figcaption>Dragging terminal tabs and panes to split, move, and turn them back into tabs.</figcaption>
@@ -226,7 +227,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
       </section>
 
       <section class="docs-section" aria-labelledby="github">
-        <h2 id="github"><a class="docs-anchor" href="#github" aria-label="Link to Send to GitHub (Issue / PR comment)">#</a>Send to GitHub (Issue / PR comment)</h2>
+        <h2 id="github"><a class="docs-anchor" href="#github" aria-label="Link to Send to GitHub or GitLab (Issue / PR or MR comment)">#</a>Send to GitHub or GitLab (Issue / PR or MR comment)</h2>
         <p><span class="docs-ui">Send to GitHub</span> posts the review as a new issue or as a comment on one of your open pull requests. Authentication is delegated to the <a href="https://cli.github.com/" target="_blank" rel="noopener noreferrer">GitHub CLI<span class="sr-only"> (opens in a new tab)</span></a>. Ferret never reads or stores a token.</p>
 <ol class="docs-steps">
   <li>Install <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), or see <a href="https://github.com/cli/cli#installation" target="_blank" rel="noopener noreferrer">cli/cli<span class="sr-only"> (opens in a new tab)</span></a>.</li>
@@ -242,7 +243,20 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   <li>PR candidates are your own open PRs (up to 30).</li>
 </ul>
 <p>If <code>GH_TOKEN</code> or <code>GITHUB_TOKEN</code> is set, <code>gh</code> uses it first, and the settings panel warns about it.</p>
+<p><strong>GitLab.</strong> When <code>origin</code> is a GitLab project (gitlab.com or a self-managed GitLab), the same button sends to GitLab through the <a href="https://gitlab.com/gitlab-org/cli" target="_blank" rel="noopener noreferrer">GitLab CLI<span class="sr-only"> (opens in a new tab)</span></a> (<code>glab</code>): a new issue, or a comment on one of your open merge requests. Sign in with <span class="docs-ui">Settings → GitHub / GitLab</span>, which runs <code>glab auth login</code> (with <code>--hostname</code> for a self-managed GitLab) in the built-in terminal. Ferret never reads or stores the token, and warns when <code>GITLAB_TOKEN</code> is set.</p>
 <p><strong>Star prompt.</strong> After your first <span class="docs-ui">Send to Agent</span>, and when you reach 3, 10, and 30 finished reviews, Ferret may ask you to star it on GitHub. It asks at most 3 times, at least 3 days apart, and never while recording. <span class="docs-ui">Star on GitHub</span> stars it through your own <code>gh</code> login (or opens GitHub if <code>gh</code> isn't available), and <span class="docs-ui">Don't Ask Again</span> stops the prompts. You can also star from <span class="docs-ui">Help → Star Ferret on GitHub</span>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="cli-tools">
+        <h2 id="cli-tools"><a class="docs-anchor" href="#cli-tools" aria-label="Link to Install and sign in to CLI tools">#</a>Install and sign in to CLI tools</h2>
+        <p><span class="docs-ui">Settings → CLI tools</span> lists command-line tools your agents often need, shows which are installed and their version, and runs the official install or sign-in command for your OS in a new terminal tab:</p>
+<ul>
+  <li>Git hosting: <code>gh</code>, <code>glab</code></li>
+  <li>AI and models: Ollama, Cloudflare <code>wrangler</code></li>
+  <li>Deploy: Vercel, Netlify, Fly.io, Railway, Heroku</li>
+  <li>Cloud and services: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+</ul>
+<p>Where a tool has no one-line official installer for your OS, <span class="docs-ui">Docs</span> opens its install page instead. The list checks again on its own once an install finishes.</p>
       </section>
 
         <nav class="docs-pager" aria-label="Previous and next page">
@@ -262,7 +276,8 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
         <li><a href="#verify">Acceptance check with a decision model</a></li>
         <li><a href="#api-usage">API usage in the footer</a></li>
         <li><a href="#prompt">Customize the instruction</a></li>
-        <li><a href="#github">Send to GitHub (Issue / PR comment)</a></li>
+        <li><a href="#github">Send to GitHub or GitLab (Issue / PR or MR comment)</a></li>
+        <li><a href="#cli-tools">Install and sign in to CLI tools</a></li>
       </ul>
     </aside>
   </div>

@@ -337,14 +337,15 @@ const REF_RE = /^[A-Za-z0-9][\w./-]*$/
 /**
  * SHA256SUMS だけを付けた GitHub Release の下書きを作る gh の引数。値は manifest と同じもの（formatSha256Sums）を出す。
  * shell は通さずに gh へ渡す前提だが、repo・target・版の形もここで確かめる（- で始まる値をオプションと取り違えさせない）。
- * @param {{ version: string, repo: string, sumsFile: string, notes: string, target?: string, prerelease?: boolean, product?: string }} input
+ * sigFile（SHA256SUMS.sig。scripts/release-signing.mjs）を渡すと、それも並べて付ける（security-3 [2]）。
+ * @param {{ version: string, repo: string, sumsFile: string, sigFile?: string, notes: string, target?: string, prerelease?: boolean, product?: string }} input
  */
 export function ghReleaseCreateArgs(input) {
   assertValidVersion(input.version)
   if (!REPO_RE.test(input.repo ?? '')) throw new Error(`リポジトリの形が正しくありません: ${JSON.stringify(input.repo)}（owner/name）`)
   if (input.target !== undefined && !REF_RE.test(input.target)) throw new Error(`target の形が正しくありません: ${JSON.stringify(input.target)}`)
   return [
-    'release', 'create', `v${input.version}`, input.sumsFile,
+    'release', 'create', `v${input.version}`, input.sumsFile, ...(input.sigFile ? [input.sigFile] : []),
     '--repo', input.repo,
     '--draft',
     '--title', `${input.product ?? 'Ferret'} ${input.version}`,
@@ -372,7 +373,13 @@ export function ghReleaseNotes(version, downloadUrl = 'https://ferretade.dev/dow
     'The installers are served only from the download server (Cloudflare R2), not from GitHub.',
     `\`SHA256SUMS\` lists the SHA-256 of each installer, the same values as \`releases/${version}/manifest.json\` on the download server. It is kept here, apart from the download server, so you can check a download against a second source.`,
     '',
-    '**These builds are not code-signed.** A matching hash shows the file is the one that was published, not who built it.',
+    '`SHA256SUMS.sig` is a signature of `SHA256SUMS` by the Ferret release key, which is kept apart from the download server. The public key is in the repository (`build/release-signing/allowed_signers`, also in SECURITY.md). Check it with:',
+    '',
+    '```',
+    'ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig < SHA256SUMS',
+    '```',
+    '',
+    'The macOS app is signed with a Developer ID and notarized by Apple. **The Windows and Linux installers are not code-signed yet.** A matching hash in a correctly signed `SHA256SUMS` shows the file is the one the Ferret release key published.',
     ''
   ].join('\n')
 }

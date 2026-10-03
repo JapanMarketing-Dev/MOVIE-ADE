@@ -144,18 +144,18 @@ export function notesLink(_base, url) {
   return null
 }
 
-/** ダウンロードページに並べる最新版の枠。Windows・Linux は実機で未確認なので Preview */
+/** ダウンロードページに並べる最新版の枠。Preview の印は manifest の preview（0.3.0 までの Windows・Linux）だけで付ける */
 export const SLOTS = [
   { id: 'mac-arm64', os: 'mac', arch: 'arm64', kinds: ['dmg', 'zip'], label: 'macOS', detail: 'Apple silicon', preview: false },
   { id: 'mac-x64', os: 'mac', arch: 'x64', kinds: ['dmg', 'zip'], label: 'macOS', detail: 'Intel', preview: false },
-  { id: 'win-x64', os: 'win', arch: 'x64', kinds: ['exe', 'msi', 'zip'], label: 'Windows', detail: 'x64', preview: true },
-  { id: 'win-arm64', os: 'win', arch: 'arm64', kinds: ['exe', 'msi', 'zip'], label: 'Windows', detail: 'Arm64', preview: true },
-  { id: 'linux-appimage', os: 'linux', arch: 'x64', kinds: ['AppImage'], label: 'Linux', detail: 'AppImage (x64)', preview: true },
-  { id: 'linux-deb', os: 'linux', arch: 'x64', kinds: ['deb'], label: 'Linux', detail: '.deb (x64)', preview: true },
+  { id: 'win-x64', os: 'win', arch: 'x64', kinds: ['exe', 'msi', 'zip'], label: 'Windows', detail: 'x64', preview: false },
+  { id: 'win-arm64', os: 'win', arch: 'arm64', kinds: ['exe', 'msi', 'zip'], label: 'Windows', detail: 'Arm64', preview: false },
+  { id: 'linux-appimage', os: 'linux', arch: 'x64', kinds: ['AppImage'], label: 'Linux', detail: 'AppImage (x64)', preview: false },
+  { id: 'linux-deb', os: 'linux', arch: 'x64', kinds: ['deb'], label: 'Linux', detail: '.deb (x64)', preview: false },
 ]
 
-/** 実機で動作を確かめた OS。それ以外は Preview と表示する */
-export const VERIFIED_OS = ['mac']
+/** 正式に対応している OS。manifest に preview が無いとき、これ以外を Preview と表示する */
+export const VERIFIED_OS = ['mac', 'win', 'linux']
 
 /**
  * manifest の files を、判別つきのダウンロードに直す。判別できない・URL にできないものは落とす。
@@ -176,7 +176,7 @@ export function normalizeFiles(files, base) {
     }
     const url = joinUrl(base, f.path ?? f.name)
     if (!url) continue
-    // manifest の preview を優先し、無ければ実機で確かめていない OS を Preview にする
+    // manifest の preview を優先し、無ければ正式対応でない OS を Preview にする
     const preview = typeof f.preview === 'boolean' ? f.preview : !VERIFIED_OS.includes(info.os)
     out.push({ name: f.name, url, size: Number.isFinite(f.size) ? f.size : 0, sha256: typeof f.sha256 === 'string' ? f.sha256 : '', preview, info })
   }

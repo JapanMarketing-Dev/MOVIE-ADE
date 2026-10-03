@@ -1,9 +1,11 @@
+import { windowsPtyOption } from './windowsPty'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import type { TerminalSize } from '@shared/types'
 import { THEME_CHANGE_EVENT } from '../lib/theme'
 import { t } from '@shared/i18n'
 import { reportAnomaly, reportHandled } from '@shared/report'
+import { ImeInputGuard } from './imeInputGuard'
 
 /**
  * renderer 側のターミナル実体（xterm.js）を管理する。
@@ -73,6 +75,8 @@ export class TerminalHandle {
       scrollback: 10000,
       // 大量出力時のちらつきを抑える（PTY側でまとめているので描画も1回で足りる）
       smoothScrollDuration: 0,
+      // Windows の ConPTY の折り返しの扱いを合わせる（幅を変えたときの崩れを防ぐ）
+      windowsPty: windowsPtyOption(window.ade.platform, window.ade.systemVersion),
       theme: theme()
     })
     this.term.loadAddon(this.fitAddon)
@@ -84,8 +88,24 @@ export class TerminalHandle {
     }
     window.addEventListener(THEME_CHANGE_EVENT, onTheme)
     this.disposers.push(() => window.removeEventListener(THEME_CHANGE_EVENT, onTheme))
+    // IME の確定文字が xterm の2つの経路から重ねて送られるのを、送る直前で1回にする（imeInputGuard.ts）。
+    // 器の capture で受けるので、xterm の textarea の処理より先に変換の始まり・終わりが分かる
+    const imeGuard = new ImeInputGuard()
+    const onCompositionStart = () => imeGuard.compositionStart()
+    const onCompositionEnd = () => imeGuard.compositionEnd(performance.now())
+    const onKeyDown = (event: KeyboardEvent) => imeGuard.keyDown(event)
+    this.host.addEventListener('compositionstart', onCompositionStart, true)
+    this.host.addEventListener('compositionend', onCompositionEnd, true)
+    this.host.addEventListener('keydown', onKeyDown, true)
+    this.disposers.push(() => {
+      this.host.removeEventListener('compositionstart', onCompositionStart, true)
+      this.host.removeEventListener('compositionend', onCompositionEnd, true)
+      this.host.removeEventListener('keydown', onKeyDown, true)
+    })
     // 入力は開く前から受けられるようにしておく（PTYができる前の打鍵は pending にためる）
-    const onData = this.term.onData((data) => {
+    const onData = this.term.onData((raw) => {
+      const data = imeGuard.filter(raw, performance.now())
+      if (data.length === 0) return
       if (this.ptyId) void window.ade.invoke('terminal:write', this.ptyId, data)
       else this.pending.push(data)
     })

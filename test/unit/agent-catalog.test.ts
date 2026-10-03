@@ -92,7 +92,8 @@ describe('カタログ（Orca の既定値）', () => {
   })
 
   it('既定の起動コマンドはカタログから作る', () => {
-    expect(DEFAULT_AGENT_PREFERENCES.launch['qwen-code']).toEqual({ command: 'qwen', args: '--yolo' })
+    // 権限確認を省く引数は既定に入れない（security-3 [1]）
+    expect(DEFAULT_AGENT_PREFERENCES.launch['qwen-code']).toEqual({ command: 'qwen', args: '' })
     expect(DEFAULT_AGENT_PREFERENCES.startupAgents).toEqual(['claude', 'codex'])
   })
 })
@@ -105,7 +106,7 @@ describe('sanitizeAgentPreferences', () => {
     })
     expect(prefs.launch.claude).toEqual({ command: 'claude', args: '' })
     expect(prefs.launch.codex).toEqual({ command: '/opt/codex', args: '--foo' })
-    expect(prefs.launch.gemini).toEqual({ command: 'gemini', args: '--approval-mode=yolo' })
+    expect(prefs.launch.gemini).toEqual({ command: 'gemini', args: '' })
     expect(prefs.customAgents).toEqual([])
     expect(prefs.disabledAgents).toEqual([])
     expect(prefs.startupAgents).toEqual(['codex'])
@@ -140,7 +141,7 @@ describe('sanitizeAgentPreferences', () => {
     })
     expect(prefs.launch['future-agent' as never]).toEqual({ command: 'future', args: '--x' })
     expect(prefs.launch['Bad Id!' as never]).toBeUndefined()
-    expect(prefs.launch.gemini).toEqual({ command: 'gemini', args: '--approval-mode=yolo' })
+    expect(prefs.launch.gemini).toEqual({ command: 'gemini', args: '' })
     expect(prefs.startupAgents).toEqual(['codex'])
     expect(prefs.disabledAgents).toEqual(['future-agent'])
   })
@@ -176,21 +177,17 @@ describe('起動コマンド', () => {
       command: 'gemini --yolo'
     })
     expect(buildAgentLaunchCommand('custom:x', { command: ' ', args: '' }, 'posix').ok).toBe(false)
-    expect(buildAgentLaunchCommand('kiro', DEFAULT_AGENT_PREFERENCES.launch.kiro, 'posix')).toEqual({ ok: true, command: 'kiro-cli chat --trust-all-tools' })
+    expect(buildAgentLaunchCommand('kiro', DEFAULT_AGENT_PREFERENCES.launch.kiro, 'posix')).toEqual({ ok: true, command: 'kiro-cli chat' })
     expect(buildAgentLaunchCommand('custom:x', { command: 'npx -y foo', args: '--a b' }, 'posix')).toEqual({
       ok: true,
       command: 'npx -y foo --a b'
     })
   })
 
-  it('権限確認を省く引数は、設定されているときだけ付ける', () => {
-    // 確かめられず空にしたもの（amp）はコマンドだけ
+  it('権限確認を省く引数は、既定では付けない（付けるのは main の起動の決まりだけ。security-3 [1]）', () => {
     expect(DEFAULT_AGENT_PREFERENCES.launch.amp).toEqual({ command: 'amp', args: '' })
     expect(buildAgentLaunchCommand('amp', DEFAULT_AGENT_PREFERENCES.launch.amp, 'posix')).toEqual({ ok: true, command: 'amp' })
-    expect(buildAgentLaunchCommand('devin', DEFAULT_AGENT_PREFERENCES.launch.devin, 'posix')).toEqual({
-      ok: true,
-      command: 'devin --permission-mode bypass --respect-workspace-trust false'
-    })
+    expect(buildAgentLaunchCommand('devin', DEFAULT_AGENT_PREFERENCES.launch.devin, 'posix')).toEqual({ ok: true, command: 'devin' })
     // 利用者が空にしたら付けない
     expect(buildAgentLaunchCommand('devin', { command: 'devin', args: '  ' }, 'posix')).toEqual({ ok: true, command: 'devin' })
   })
@@ -271,7 +268,7 @@ describe('インストールの検出', () => {
     try {
       const options = await listAgentOptions({ ...prefsWithCustom, disabledAgents: ['gemini'] }, true)
       const gemini = options.find((o) => o.id === 'gemini')
-      expect(gemini).toMatchObject({ installed: true, enabled: false, custom: false, defaultArgs: '--approval-mode=yolo' })
+      expect(gemini).toMatchObject({ installed: true, enabled: false, custom: false, defaultArgs: '' })
       expect(options.find((o) => o.id === 'custom:my-agent')).toMatchObject({ installed: true, enabled: true, custom: true, label: 'My Agent' })
       expect(options.map((o) => o.id).slice(0, 2)).toEqual(['claude', 'codex'])
       expect(options[options.length - 1]?.id).toBe('custom:my-agent')

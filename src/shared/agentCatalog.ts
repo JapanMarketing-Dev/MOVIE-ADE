@@ -44,6 +44,8 @@ export interface AgentCatalogEntry {
    * 無いときに install が POSIX のシェルでしか動かないもの（curl … | bash など）は、Windows では公式ページへのリンクだけを出す
    */
   installWindows?: string
+  /** Linux の公式の入れ方（install が macOS の Homebrew だけのもの）。無ければ install をそのまま使う */
+  installLinux?: string
   /** 公式の入れ方・始め方のページ */
   homepageUrl: string
   /** 2026-10 に公式の資料で、実行ファイル名・入れ方・引数を確かめられた */
@@ -191,6 +193,8 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
     detectCmd: 'droid',
     yoloArgs: '',
     install: 'curl -fsSL https://app.factory.ai/cli | sh',
+    // 公式の Windows（PowerShell）の手順（docs.factory.com/cli/getting-started/quickstart、2026-10 確認）
+    installWindows: 'powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://app.factory.ai/cli/windows | iex"',
     homepageUrl: 'https://docs.factory.com/cli/getting-started/quickstart',
     verified: true,
     popular: true
@@ -201,6 +205,8 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
     launchCmd: 'kiro-cli chat',
     yoloArgs: '--trust-all-tools',
     install: 'curl -fsSL https://cli.kiro.dev/install | bash',
+    // 公式の Windows の手順（kiro.dev/docs/cli/installation、2026-10 確認）
+    installWindows: 'powershell -NoProfile -ExecutionPolicy Bypass -Command "irm \'https://cli.kiro.dev/install.ps1\' | iex"',
     homepageUrl: 'https://kiro.dev/docs/cli/',
     verified: true,
     popular: true
@@ -302,6 +308,9 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
     detectCmd: 'crush',
     yoloArgs: '--yolo',
     install: 'brew install charmbracelet/tap/crush',
+    // Linux は npm、Windows は winget（github.com/charmbracelet/crush、2026-10 確認）
+    installLinux: 'npm install -g @charmland/crush',
+    installWindows: 'winget install charmbracelet.crush',
     homepageUrl: 'https://github.com/charmbracelet/crush',
     verified: true
   },
@@ -347,6 +356,8 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
     detectCmd: 'grok',
     yoloArgs: '--permission-mode bypassPermissions',
     install: 'curl -fsSL https://x.ai/cli/install.sh | bash',
+    // 公式の Windows（PowerShell）のスクリプト（x.ai/cli/install.ps1、2026-10 確認）
+    installWindows: 'powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://x.ai/cli/install.ps1 | iex"',
     homepageUrl: 'https://github.com/xai-org/grok-build',
     verified: true
   },
@@ -364,6 +375,8 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
     detectCmd: 'junie',
     yoloArgs: '--brave',
     install: 'curl -fsSL https://junie.jetbrains.com/install.sh | bash',
+    // 公式の Windows の手順（junie.jetbrains.com/docs/junie-cli.html、2026-10 確認）
+    installWindows: 'powershell -NoProfile -ExecutionPolicy Bypass -Command "iex (irm \'https://junie.jetbrains.com/install.ps1\')"',
     homepageUrl: 'https://junie.jetbrains.com/docs/junie-cli.html',
     verified: true
   },
@@ -380,6 +393,8 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
     detectCmd: 'kimi',
     yoloArgs: '--yolo',
     install: 'curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash',
+    // 公式の Windows（PowerShell）の手順（2026-10 確認）
+    installWindows: 'powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://code.kimi.com/kimi-code/install.ps1 | iex"',
     homepageUrl: 'https://www.kimi.com/code/docs/en/kimi-code-cli/guides/getting-started',
     verified: true
   },
@@ -472,6 +487,8 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
     aliases: ['qodercli'],
     yoloArgs: '--yolo',
     install: 'curl -fsSL https://qoder.com/install | bash',
+    // 公式の Windows CMD の手順（qoder.com/cli、2026-10 確認）
+    installWindows: 'curl -fsSL https://qoder.com/install.cmd -o install.cmd && install.cmd && del install.cmd',
     homepageUrl: 'https://docs.qoder.com/cli/installation',
     verified: true
   },
@@ -538,12 +555,16 @@ export const TUI_AGENT_LABEL: Record<BuiltinAgent, string> = Object.fromEntries(
   BUILTIN_AGENTS.map((agent) => [agent, AGENT_CATALOG[agent].label])
 ) as Record<BuiltinAgent, string>
 
+/**
+ * 既定の起動。権限確認・承認・サンドボックスを外す引数（yoloArgs）は付けない（security-3 [1]）。
+ * Orca は付けるが、登録しただけの（clone した他人の）プロジェクトで、確認なしに Agent が動いてしまう
+ */
 export function defaultLaunchConfig(agent: BuiltinAgent): AgentLaunchConfig {
   const entry = AGENT_CATALOG[agent]
-  return { command: entry.launchCmd ?? entry.detectCmd, args: entry.yoloArgs }
+  return { command: entry.launchCmd ?? entry.detectCmd, args: '' }
 }
 
-/** 既定の設定。起動コマンドと引数は Orca と同じ（権限確認を省くフラグ付き） */
+/** 既定の設定。権限確認を省くプロジェクトは無い（利用者がプロジェクトごとに確認して許す） */
 export const DEFAULT_AGENT_PREFERENCES: AgentPreferences = {
   launch: Object.fromEntries(BUILTIN_AGENTS.map((agent) => [agent, defaultLaunchConfig(agent)])) as Record<
     BuiltinAgent,
@@ -551,7 +572,90 @@ export const DEFAULT_AGENT_PREFERENCES: AgentPreferences = {
   >,
   customAgents: [],
   disabledAgents: [],
-  startupAgents: ['claude', 'codex']
+  startupAgents: ['claude', 'codex'],
+  bypassProjects: []
+}
+
+// ───────────────────────── 権限確認を省く引数（security-3 [1]） ─────────────────────────
+
+/**
+ * yoloArgs のほかに、同じ意味になる既知の書き方（Claude Code / Codex の公式の資料、2026-10 確認）。
+ * 1要素が1つの単位（フラグと、その値）。`--flag=value` の形も同じとみなす
+ */
+const EXTRA_BYPASS_UNITS: Partial<Record<BuiltinAgent, readonly string[]>> = {
+  claude: ['--dangerously-skip-permissions', '--allow-dangerously-skip-permissions', '--permission-mode bypassPermissions'],
+  codex: ['--dangerously-bypass-approvals-and-sandbox', '--yolo', '--sandbox danger-full-access', '-s danger-full-access',
+    '--ask-for-approval never', '-a never', '-c sandbox_mode=danger-full-access', '-c approval_policy=never']
+}
+
+/** 引数の並びを単位に分ける（フラグと、そのあとに続くフラグでない値） */
+function argUnits(args: string): string[][] {
+  const units: string[][] = []
+  for (const token of args.trim().split(/\s+/).filter(Boolean)) {
+    const last = units[units.length - 1]
+    if (token.startsWith('-') || !last) units.push([token])
+    else last.push(token)
+  }
+  return units
+}
+
+/** その Agent の、権限確認を省く引数の単位（小文字にそろえない。フラグは大文字小文字を区別する） */
+export function bypassArgUnits(agent: BuiltinAgent): string[][] {
+  return [...argUnits(AGENT_CATALOG[agent].yoloArgs), ...(EXTRA_BYPASS_UNITS[agent] ?? []).flatMap(argUnits)]
+}
+
+/**
+ * 引数から、権限確認・承認・サンドボックスを外すものを除く。`--flag value` と `--flag=value` の両方。
+ * 何も除かなければ元の文字列のまま返す（引用符の中の空白を変えない）
+ */
+export function stripBypassArgs(agent: BuiltinAgent, args: string): string {
+  const units = bypassArgUnits(agent)
+  const tokens = args.trim().split(/\s+/).filter(Boolean)
+  const out: string[] = []
+  let removed = false
+  for (let i = 0; i < tokens.length; ) {
+    const token = tokens[i]!
+    const match = units.find((unit) => {
+      if (unit.every((part, k) => tokens[i + k] === part)) return true
+      // --flag=value（値が1つの単位だけ）
+      return unit.length === 2 && token === `${unit[0]}=${unit[1]}`
+    })
+    if (match) {
+      removed = true
+      i += token.includes('=') && match.length === 2 && token === `${match[0]}=${match[1]}` ? 1 : match.length
+      continue
+    }
+    out.push(token)
+    i++
+  }
+  return removed ? out.join(' ') : args.trim()
+}
+
+/** 権限確認を省く引数を足す（既に付いていれば足さない） */
+export function withBypassArgs(agent: BuiltinAgent, args: string): string {
+  const base = stripBypassArgs(agent, args)
+  return [AGENT_CATALOG[agent].yoloArgs, base].filter(Boolean).join(' ')
+}
+
+/**
+ * Agent を起動するときの決まり（main の terminal.ts が使う。renderer の既定に頼らない）。
+ *   - 権限確認を省く引数は、設定に書かれていても外す
+ *   - 利用者が確認して許したプロジェクト（bypassProjects）のフォルダそのものでだけ、フォルダの信頼を先に書く
+ *   - そのうえ手で開いたときだけ、権限確認を省く引数を付ける。プロジェクトを開いたときの自動起動では付けない
+ * カスタムの Agent は利用者が書いたコマンドそのままなので触らない（builtin だけ）
+ */
+export function resolveAgentLaunchPolicy(input: {
+  agent: BuiltinAgent
+  args: string
+  /** cwd が登録済みのプロジェクトのフォルダそのものならその id。それ以外（サブフォルダ・ホーム）は null */
+  projectId: string | null
+  bypassProjects: readonly string[]
+  autoStart: boolean
+}): { args: string; bypass: boolean; trustFolder: boolean } {
+  const allowed = input.projectId !== null && input.bypassProjects.includes(input.projectId)
+  const bypass = allowed && !input.autoStart
+  const args = bypass ? withBypassArgs(input.agent, input.args) : stripBypassArgs(input.agent, input.args)
+  return { args, bypass, trustFolder: allowed }
 }
 
 export function isBuiltinAgent(value: unknown): value is BuiltinAgent {
@@ -625,6 +729,8 @@ const WRAPPER_PROCESSES = new Set(['node', 'bun', 'deno', 'python', 'python3'])
  */
 const PACKAGE_PATH_IDENTITIES: ReadonlyArray<{ pattern: RegExp; agent: BuiltinAgent }> = [
   { pattern: /node_modules\/@openai\/codex\//, agent: 'codex' },
+  // npm 版の Claude Code。macOS / Linux は process.title で claude に見えるが、Windows のコマンド行は node.exe …\cli.js のまま
+  { pattern: /node_modules\/@anthropic-ai\/claude-code\//, agent: 'claude' },
   { pattern: /node_modules\/@google\/gemini-cli\//, agent: 'gemini' },
   { pattern: /(?:^|\/)cursor-agent\/versions\/[^/]+\/index\.js$/, agent: 'cursor' },
   // 公式インストーラの Claude Code は ~/.local/share/claude/versions/<版> の実体を claude のリンクから動かす
@@ -727,8 +833,8 @@ export function sanitizeAgentPreferences(raw: unknown): AgentPreferences {
   }
   for (const agent of BUILTIN_AGENTS) {
     const c = rawLaunch[agent] as Partial<AgentLaunchConfig> | undefined
-    // 空白だけのコマンドも未設定とみなして既定に戻す
-    if (c && text(c.command)) launch[agent] = { command: text(c.command), args: text(c.args) }
+    // 空白だけのコマンドも未設定とみなして既定に戻す。権限確認を省く引数は持たない（以前の既定に入っていたものも外す。security-3 [1]）
+    if (c && text(c.command)) launch[agent] = { command: text(c.command), args: stripBypassArgs(agent, text(c.args)) }
   }
 
   const customAgents: CustomAgent[] = []
@@ -763,6 +869,10 @@ export function sanitizeAgentPreferences(raw: unknown): AgentPreferences {
     launch,
     customAgents,
     disabledAgents,
-    startupAgents: list(r.startupAgents, DEFAULT_AGENT_PREFERENCES.startupAgents).filter(launchable)
+    startupAgents: list(r.startupAgents, DEFAULT_AGENT_PREFERENCES.startupAgents).filter(launchable),
+    // プロジェクトの id（空でない文字列）だけ。消したプロジェクトの id が残っても、そのフォルダには当たらない
+    bypassProjects: Array.isArray(r.bypassProjects)
+      ? [...new Set(r.bypassProjects.filter((id): id is string => typeof id === 'string' && id.trim().length > 0 && id.length <= 200))]
+      : []
   }
 }

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
@@ -32,7 +32,8 @@ describe('AFTER のパス', () => {
     await writeFile(join(review, 'after', 'empty.png'), Buffer.alloc(0))
     await writeFile(join(root, 'outside.png'), Buffer.from('secret'))
     await symlink(join(root, 'outside.png'), join(review, 'after', 'link.png'))
-    expect(await resolveAfterFile(review, 'after/i1.png')).toMatch(/after\/i1\.png$/)
+    // 実体のパス（この OS の区切り。macOS の一時フォルダは /private の下に解決される）
+    expect(await resolveAfterFile(review, 'after/i1.png')).toBe(join(await realpath(review), 'after', 'i1.png'))
     expect(await resolveAfterFile(review, 'after/link.png')).toBeNull()
     // フォルダの中を指すリンクでも、末端がリンクなら読まない
     await symlink(join(review, 'after', 'i1.png'), join(review, 'after', 'inner-link.png'))
@@ -44,7 +45,7 @@ describe('AFTER のパス', () => {
     await mkdir(join(review, 'real'), { recursive: true })
     await writeFile(join(review, 'real', 'i9.png'), Buffer.from('png'))
     await symlink(join(review, 'real'), join(review, 'linked'))
-    expect(await resolveAfterFile(review, 'real/i9.png')).toMatch(/real\/i9\.png$/)
+    expect(await resolveAfterFile(review, 'real/i9.png')).toBe(join(await realpath(review), 'real', 'i9.png'))
     expect(await resolveAfterFile(review, 'linked/i9.png')).toBeNull()
   })
 })
@@ -94,7 +95,9 @@ describe('feedback.md の AFTER', () => {
       items: [item(1, 'https://dev.acme.test/app/pricing', 390), item(2, 'ade-preview://file/docs/a.md')], dropped: [], organizedByLlm: true }
     const dir = '/p/acme-shop/.ferret/reviews/20261003-101500'
     const md = renderFeedbackMarkdown(doc, { locale: 'en', reviewDir: dir, progressFile: `${dir}/progress.json` })
-    expect(md).toContain(`- AFTER: after fixing, capture http://localhost:3000/pricing at 390×800 and save it to \`${dir}/after/i1.png\``)
+    // 保存先はこの OS のパスで書く（Windows では区切りが \）
+    const after = join(dir, 'after', 'i1.png')
+    expect(md).toContain(`- AFTER: after fixing, capture http://localhost:3000/pricing at 390×800 and save it to \`${after}\``)
     expect(md.match(/^- AFTER:/gm)).toHaveLength(1)
     expect(md).toContain('## AFTER screenshots (for the reviewer)')
     expect(md).toContain('fix it → capture AFTER on localhost')
@@ -102,7 +105,7 @@ describe('feedback.md の AFTER', () => {
     expect(md).toContain('Never set `done` yourself')
     expect(md).toContain('Start the dev server once and share it')
     expect(md).toContain('AFTER files are named by finding ID')
-    expect(md).toContain(`npx --yes playwright screenshot --viewport-size=1280,800 "http://localhost:3000/pricing" "${dir}/after/i1.png"`)
+    expect(md).toContain(`npx --yes playwright screenshot --viewport-size=1280,800 "http://localhost:3000/pricing" "${after}"`)
     expect(md).toContain('set `needs_human`')
     expect(md).not.toContain('{{')
   })

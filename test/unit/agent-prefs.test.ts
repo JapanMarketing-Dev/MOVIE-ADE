@@ -41,7 +41,7 @@ describe('設定ページの Agents 節の変更', () => {
   })
 
   it('コマンドと引数は1件ずつ変えられ、既定に戻せる', () => {
-    const changed = setLaunchConfig(base(), 'gemini', { args: '' })
+    const changed = setLaunchConfig(base(), 'gemini', { args: '--model x' })
     expect(isDefaultLaunch(changed, 'gemini')).toBe(false)
     expect(changed.launch.claude).toEqual(DEFAULT_AGENT_PREFERENCES.launch.claude)
     expect(isDefaultLaunch(resetLaunchConfig(changed, 'gemini'), 'gemini')).toBe(true)

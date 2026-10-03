@@ -10,7 +10,7 @@ import type { Material, TranscriptSegment } from './pipeline/types'
 import { buildDraftDocument, refineWithLlm } from './pipeline/decompose'
 import { CodexRunner, ClaudeCodeRunner } from './pipeline/organize'
 import { ApiLlmRunner } from './pipeline/organize/runners/api'
-import { LLM_PROVIDER_PRESETS, providerLabel, type AiEndpointConfig, type LlmApiProvider, type OrganizeRunnerId } from '@shared/aiProviders'
+import { LLM_PROVIDER_PRESETS, providerLabel, resolveEndpoint, type AiEndpointConfig, type LlmApiProvider, type OrganizeRunnerId } from '@shared/aiProviders'
 import { resolveAgentEnv } from './accounts'
 import { renderFeedbackMarkdown } from './pipeline/feedback'
 import { nearestFrameTime } from './pipeline/draft'
@@ -433,6 +433,13 @@ export async function organizeReview(paths: SessionPaths, runnerId: OrganizeRunn
         : new ClaudeCodeRunner({ accountEnv: () => resolveAgentEnv('claude'), ...(cliModels?.['claude-code'] ? { model: cliModels['claude-code'] } : {}) })
     const name = apiProvider ? providerLabel(LLM_PROVIDER_PRESETS[apiProvider], t) : runnerId === 'codex' ? 'Codex' : 'Claude Code'
     if (!await runner.available()) throw new Error(apiProvider ? t('organize.api.keyMissing', { label: name }) : t('review.errors.runnerUnavailable', { name }))
+    // 端末内のサーバー（おすすめの Ollama など）は、動いていない・モデルが無いときに先に理由と次の一手を出す
+    if (apiProvider && LLM_PROVIDER_PRESETS[apiProvider].local) {
+      const ep = resolveEndpoint(LLM_PROVIDER_PRESETS[apiProvider], api?.endpoint)
+      const state = await (await import('./localModels')).checkLocalServer(ep.baseUrl, ep.model)
+      if (state === 'down') throw new UserFacingError(t('review.errors.localServerDown', { name }))
+      if (state === 'noModel') throw new UserFacingError(t('review.errors.localModelMissing', { name, model: ep.model }))
+    }
     const material: Material = { meta: record.meta, transcript: record.transcript, events: await readEvents(paths), frames: record.frames }
     // API は CLI より待つ（大きなモデルは1分を超えることがある。接続先ごとの timeoutMs があればそれを使う）
     const result = await refineWithLlm(material, buildDraftDocument(material), { runner, cwd: paths.dir, timeoutMs: apiProvider ? 180_000 : 60_000 })

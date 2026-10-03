@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { createServer, type IncomingMessage, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
@@ -17,7 +18,7 @@ import {
   sanitizeDecisionPreferences,
   type DecisionPreferences
 } from '@shared/decision'
-import { defaultAgentPrompt, renderAgentPrompt } from '@shared/agentPrompt'
+import { defaultAgentPrompt, renderAgentPrompt, renderReplyPrompt } from '@shared/agentPrompt'
 import { formatHeaderLines, parseHeaderLines } from '@shared/aiProviders'
 import type { FeedbackDocument, FeedbackItem } from '../../src/main/pipeline/types'
 import { DECISION_NODE_LINE, DECISION_QUESTIONS_JSON, renderFeedbackMarkdown } from '../../src/main/pipeline/feedback'
@@ -27,6 +28,12 @@ import { DecisionService } from '../../src/main/decision/service'
 import { CallLog, aggregateCalls, callLogFile, estimateCost, extractUsage, sanitizeCallRecord } from '../../src/main/decision/callLog'
 import { issueFromFeedback } from '../../src/main/github/parse'
 import { projectLabel, type ApiCallRecord } from '@shared/apiUsage'
+
+/**
+ * feedback.md の受け入れ確認の手順は POSIX の sh で書いてある。Windows では Agent（Claude Code）と同じく Git for Windows の bash で流す
+ * （PATH の bash は WSL の起動役（System32\bash.exe）のことがあるので、場所を決め打ちにする。無ければその1件だけ流さない）
+ */
+const POSIX_SHELL = process.platform === 'win32' ? join(process.env.ProgramFiles ?? 'C:\\Program Files', 'Git', 'bin', 'bash.exe') : '/bin/sh'
 
 // settings.ts は保存先を決めるためだけに electron の app を読む。単体テストでは呼ばれない
 vi.mock('electron', () => ({ app: { getPath: () => '/tmp/ade-unit' } }))
@@ -113,6 +120,25 @@ describe('Agent への指示文', () => {
     expect(renderAgentPrompt(target, null, 'ja', { threshold: 0.7 })).toContain('受け入れ確認')
   })
 
+  it('人が明示的に承認した指摘は判定に送らなくてよい（Agent が決める）。判定 API に届かなければ Agent が Ollama を入れる', () => {
+    const on = renderAgentPrompt(target, null, 'en', { threshold: 0.7 })
+    expect(on).toContain('explicitly approved')
+    expect(on).toContain('you decide')
+    expect(on).toContain('install and start it and pull the model yourself')
+    expect(renderAgentPrompt(target, null, 'ja', { threshold: 0.7 })).toContain('判定モデルに送らなくてかまいません')
+    const reply = renderReplyPrompt(target, { n: 1, id: 'i1', reply: 'OK' }, 'en', { threshold: 0.7 })
+    expect(reply).toContain('you do not have to send it to the decision model')
+    // 無効なら付けない
+    expect(renderAgentPrompt(target, null, 'en', null)).not.toContain('explicitly approved')
+  })
+
+  it('AFTER を撮る道具が無ければ、人に頼まず Agent が入れる（全言語）', async () => {
+    const { SUPPORTED_LOCALES, translate } = await import('@shared/i18n')
+    for (const locale of SUPPORTED_LOCALES) {
+      expect(translate(locale, 'feedbackMd.after.howto', { dir: 'd', command: 'c' }), locale).toContain('npx playwright install chromium')
+    }
+  })
+
   it('利用者の文に {{decisionCheck}} があればそこへ入れ、無効なら空にする', () => {
     expect(renderAgentPrompt(target, 'Fix {{relpath}}. {{decisionCheck}}', 'en', { threshold: 0.7 })).toMatch(/^Fix \.ade-movie\/reviews\/20261003-101500\/feedback\.md\. The acceptance check/)
     expect(renderAgentPrompt(target, 'Fix {{relpath}}. {{decisionCheck}}', 'en', null)).toBe('Fix .ade-movie/reviews/20261003-101500/feedback.md.')
@@ -157,6 +183,13 @@ describe('feedback.md の受け入れ確認の節', () => {
     expect(md).toContain('"score"')
     expect(md).toContain('`answers.done.noul` ≥ 0.75')
     expect(md).toContain('(a) the decision API is unreachable')
+    // 判定 API に届かなければ、止まる前に Agent が Ollama を入れて起動しモデルを落とす
+    expect(md).toContain('fix it yourself before stopping')
+    expect(md).toContain('ollama pull "$FERRET_DECISION_MODEL"')
+    expect(md).toContain('brew install ollama')
+    // 判定に送るかは Agent が決める。人が明示的に承認した指摘は送らなくてよい
+    expect(md).toContain('You decide whether to send a finding to the decision model')
+    expect(md).toContain('explicitly approved')
     expect(md).toContain('(b) a finding is out of scope or impossible')
     expect(md).toContain('(c) the same finding has failed for 3 rounds')
     expect(md).toContain('Never edit the BEFORE images, the state text, the questions or the threshold')
@@ -203,7 +236,7 @@ describe('feedback.md の受け入れ確認の節', () => {
     expect((await run('1', 'data-uri')).images).toEqual([`data:image/png;base64,${Buffer.from('BEFORE').toString('base64')}`, `data:image/png;base64,${Buffer.from('AFTER').toString('base64')}`])
   })
 
-  it('指摘の文に引用符や $(...) があっても、手順のとおりならシェルのコマンドにならない', async () => {
+  it.skipIf(!existsSync(POSIX_SHELL))('指摘の文に引用符や $(...) があっても、手順のとおりならシェルのコマンドにならない', async () => {
     const dir = await tempDir()
     await writeFile(join(dir, 'b.png'), Buffer.from('B'))
     await writeFile(join(dir, 'a.png'), Buffer.from('A'))
@@ -214,7 +247,7 @@ describe('feedback.md の受け入れ確認の節', () => {
       .map((line) => line.replace('/abs/path/01.png', join(dir, 'b.png')).replace('/abs/path/after/i1.png', join(dir, 'a.png')))
       .filter((line) => !line.startsWith('curl '))
       .join('\n')
-    execFileSync('/bin/sh', ['-c', script], { cwd: dir, env: { ...process.env, FERRET_DECISION_MODEL: 'clef-flash', FERRET_DECISION_IMAGES: '0' } })
+    execFileSync(POSIX_SHELL, ['-c', script], { cwd: dir, env: { ...process.env, FERRET_DECISION_MODEL: 'clef-flash', FERRET_DECISION_IMAGES: '0' } })
     const req = JSON.parse(await readFile(join(dir, 'req.json'), 'utf8')) as { state: string }
     expect(req.state).toBe(evil)
     for (const name of ['pwned1', 'pwned2', 'pwned3']) await expect(readFile(join(dir, name))).rejects.toThrow()
@@ -492,7 +525,8 @@ describe('判定モデルの設定の案内', () => {
     expect(prompt).toContain('CLOUDFLARE_API_TOKEN=<key>')
     expect(prompt).toContain('"apiKeyEnv": "CLOUDFLARE_API_TOKEN"')
     expect(prompt).toContain('/cfg/.env')
-    expect(prompt).toContain('I will create the key myself')
+    expect(prompt).toContain('Create the API key yourself')
+    expect(prompt).toContain('npx wrangler whoami')
     expect(prompt).toContain('Never print any key, token or ID value')
     expect(prompt).toContain('Workers AI')
     expect(prompt).not.toContain(SECRET)

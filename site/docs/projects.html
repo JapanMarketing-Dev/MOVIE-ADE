@@ -116,7 +116,13 @@
         <h2 id="add-project"><a class="docs-anchor" href="#add-project" aria-label="Link to Add a project">#</a>Add a project</h2>
         <ol class="docs-steps">
   <li><span class="docs-ui">File → Open Project Folder…</span> (<kbd>⌘</kbd><kbd>O</kbd> / <kbd>Ctrl</kbd><kbd>O</kbd>), <span class="docs-ui">Add Project</span> in the sidebar, or <span class="docs-ui">Add Project…</span> in the title bar project menu.</li>
-  <li>Pick the folder and click <span class="docs-ui">Open</span>.</li>
+  <li>Choose where the project comes from:
+    <ul>
+      <li><span class="docs-ui">On this computer</span>: pick a folder.</li>
+      <li><span class="docs-ui">Clone from GitHub / GitLab</span>: pick one of your repositories (listed through your <code>gh</code> or <code>glab</code> login) or paste a URL, choose the parent folder, and Ferret clones it and opens it.</li>
+      <li><span class="docs-ui">Open over SSH</span>: pick a host from <code>~/.ssh/config</code>. The terminal and agents run on the remote machine; reviews stay on this computer.</li>
+    </ul>
+  </li>
 </ol>
 <p>The name defaults to the folder name. Adding a folder that is already registered opens it instead (paths are compared case-insensitively on macOS and Windows). From the sidebar menu you can <span class="docs-ui">Rename</span> a project or <span class="docs-ui">Remove from List</span>. Removing never deletes the folder.</p>
 <p>Terminals open in the project folder, and reviews are saved under <code>&lt;project&gt;/.ferret/</code>.</p>

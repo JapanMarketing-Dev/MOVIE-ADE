@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { LLM_API_PROVIDERS, LLM_PROVIDER_PRESETS, STT_PROVIDER_PRESETS, STT_REMOTE_PROVIDERS, providerLabel } from '@shared/aiProviders'
 import { DECISION_PRESETS } from '@shared/decision'
-import { translate, type SupportedLocale } from '@shared/i18n'
+import { SUPPORTED_LOCALES, translate, type SupportedLocale } from '@shared/i18n'
 import { buildAgentSetupPrompt, isSafeExternalUrl, setupLinks, type SetupGuide } from '@shared/setupGuide'
 
 const PRESETS = [...STT_REMOTE_PROVIDERS.map((p) => ({ kind: 'stt' as const, preset: STT_PROVIDER_PRESETS[p] })),
@@ -93,21 +93,49 @@ describe('Agent に設定を頼む指示文', () => {
     expect(text).toContain('CLOUDFLARE_API_TOKEN=<key>')
     expect(text).toContain('"accountId" under "organizer.endpoints.cloudflare"')
     expect(text).toContain('"organizer.runner" to "api:cloudflare"')
-    expect(text).toContain('do not sign in, create keys or grant permissions on my behalf')
+    // Agent が自分で行う（CLI でログイン・ID の取得、ブラウザでキーの作成）。人に頼むのはログインと承認だけ
+    expect(text).toContain('npx wrangler login')
+    expect(text).toContain('Create the API key yourself')
+    expect(text).toContain('Ask me only for what only I can do')
+    // 設定ファイルと JSON Schema の場所を教える
+    expect(text).toContain('/Users/me/.ferret/settings.schema.json')
     // 番号付きの手順
     expect(text).toMatch(/\n1\. .+\n2\. /)
   })
 
-  it('Ollama（キーが要らない）: インストールのページと起動の確かめ方だけで、キーの手順は無い', () => {
+  it('Ollama（キーが要らない）: Agent が入れて起動し、モデルまで落とす。キーの手順は無い', () => {
     const text = buildAgentSetupPrompt(guideOf(LLM_PROVIDER_PRESETS.ollama), { ...TARGET, endpointPath: 'organizer.endpoints.ollama' }, tOf('ja'))
     expect(text).toContain('https://ollama.com/download')
     expect(text).toContain('curl http://localhost:11434/v1/models')
+    expect(text).toContain('brew install ollama')
+    expect(text).toContain('winget install --id Ollama.Ollama -e')
+    expect(text).toContain('ollama pull gpt-oss:20b')
     expect(text).not.toContain('apiKeyEnv')
+  })
+
+  it('LM Studio（Ollama 以外の端末内）: Ollama のコマンドは出さず、入れて起動しモデルを落とす', () => {
+    const text = buildAgentSetupPrompt(guideOf(LLM_PROVIDER_PRESETS.lmstudio), { ...TARGET, endpointPath: 'organizer.endpoints.lmstudio' }, tOf('en'))
+    expect(text).toContain('https://lmstudio.ai/download')
+    expect(text).not.toContain('ollama')
+  })
+
+  it('有効にする項目を渡すと、最後の手順の前に true にさせる', () => {
+    const text = buildAgentSetupPrompt(guideOf(LLM_PROVIDER_PRESETS.ollama), { ...TARGET, enablePath: 'decision.enabled' }, tOf('en'))
+    expect(text).toMatch(/"decision\.enabled" to true[^\n]*\n\d+\. Finally/)
+  })
+
+  it('全言語に指示文の文言がある（英語の置き換えで済ませない）', () => {
+    for (const locale of SUPPORTED_LOCALES) {
+      for (const key of ['ai.setup.prompt.intro', 'ai.setup.prompt.settings', 'ai.setup.prompt.ollama', 'ai.setup.prompt.enable', 'ai.setup.prompt.key'] as const) {
+        if (locale !== 'en') expect(translate(locale, key), `${locale} ${key}`).not.toBe(translate('en', key))
+      }
+    }
   })
 
   it('Custom: Base URL とモデル名を聞き、キーは要る場合だけ', () => {
     const text = buildAgentSetupPrompt(guideOf(STT_PROVIDER_PRESETS.compatible), TARGET, tOf('en'))
     expect(text).toContain('"baseUrl" and "model"')
-    expect(text).toContain('If my server needs a key')
+    expect(text).toContain('Only if my server needs a key')
+    expect(text).toContain('Ask me only if you cannot find them')
   })
 })

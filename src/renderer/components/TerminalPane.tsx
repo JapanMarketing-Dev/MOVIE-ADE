@@ -4,6 +4,7 @@ import { TUI_AGENT_LABEL, type AccountLoginRequest, type AgentOption, type Proje
 import { SHORTCUTS, formatShortcut } from '../lib/shortcut'
 import { Button, EmptyState, IconTile } from '../ui'
 import { acquireTerminal, getTerminal, releaseTerminal } from '../terminal/terminalClient'
+import { publishAgentActivity } from '../terminal/agentActivity'
 import { onAccountLoginRequest } from '../lib/accountLogin'
 import { onTerminalCommandRequest } from '../lib/terminalCommand'
 import { onAgentLaunchRequest } from '../lib/agentLaunchRequest'
@@ -102,6 +103,8 @@ interface Pane {
   command?: string | null
   /** 依頼元が決めたタブ名 */
   customTitle?: string | null
+  /** プロジェクトを開いたときの自動起動。main は権限確認を省く引数を付けない（security-3 [1]） */
+  autoStart?: boolean
 }
 
 interface Tab {
@@ -151,13 +154,14 @@ interface PaneSpec {
   accountLogin?: AccountLoginRequest | null
   command?: string | null
   title?: string | null
+  autoStart?: boolean
 }
 
-function newPane({ launch = null, cwd, accountLogin = null, command = null, title = null }: PaneSpec): Pane {
+function newPane({ launch = null, cwd, accountLogin = null, command = null, title = null, autoStart = false }: PaneSpec): Pane {
   const label =
     title ||
     (accountLogin ? tNow('terminal.loginTitle', { agent: TUI_AGENT_LABEL[accountLogin.agent] }) : launch ? agentLabel(launch) : tNow('terminal.shell'))
-  return { key: `pane${++paneSeq}`, title: label, state: 'unknown', launch, cwd, accountLogin, command, customTitle: title }
+  return { key: `pane${++paneSeq}`, title: label, state: 'unknown', launch, cwd, accountLogin, command, customTitle: title, autoStart }
 }
 
 /** 読み込み直しの前に書いた記録（同じウインドウの読み込み直しでは残る sessionStorage）。読めなければ null */
@@ -520,9 +524,10 @@ export function TerminalPane({
     const disabled = new Set(agentOptionsRef.current.filter((o) => !o.enabled).map((o) => o.id))
     const enabledStartup = startupAgents.filter((agent) => !disabled.has(agent))
     // プロジェクトを開いていないとき（ホームなど）はエージェントを自動で起動しない。素のシェルを1つだけ開く。
-    // 登録したプロジェクト＝信頼したフォルダなので、そこでだけ起動する（フォルダの信頼もそこにだけ書く）
+    // 登録したプロジェクトでだけ起動する。自動起動は普通の（権限確認のある）起動で、フォルダの信頼は
+    // 利用者が設定で許したプロジェクトにだけ main が書く（security-3 [1]。登録＝信頼とはみなさない）
     const launches: Array<TuiAgent | null> = projectId && enabledStartup.length > 0 ? enabledStartup : [null]
-    const created = launches.map((launch) => newPane({ launch, cwd }))
+    const created = launches.map((launch) => newPane({ launch, cwd, autoStart: launch !== null }))
     const createdTabs: Tab[] = created.map((pane) => ({
       key: `tab${++tabSeq}`,
       projectId,
@@ -626,7 +631,8 @@ export function TerminalPane({
           agent: pane.launch,
           accountLogin: pane.accountLogin ?? null,
           command: pane.command ?? null,
-          title: pane.customTitle ?? null
+          title: pane.customTitle ?? null,
+          autoStart: pane.autoStart === true
         })
         .then((info) => {
           // 作っている間にペインを閉じたら、できたPTYもすぐ閉じる
@@ -686,6 +692,12 @@ export function TerminalPane({
     const timer = setInterval(() => void update(), 1000)
     return () => { stopped = true; clearInterval(timer) }
   }, [paneKeys])
+
+  // サイドバーの「実行中」の印のため、どのプロジェクトで Agent が動いているかを知らせる（裏のプロジェクトのタブも含む）
+  useEffect(() => {
+    publishAgentActivity(tabs.flatMap((tab) => leafIds(tab.layout).map((key) => ({ projectId: tab.projectId, state: panes[key]?.state ?? 'unknown' }))))
+  }, [tabs, panes])
+  useEffect(() => () => publishAgentActivity([]), [])
 
   // 表示中のタブに寸法を合わせ、フォーカス中のペインへ焦点を移す
   useEffect(() => {

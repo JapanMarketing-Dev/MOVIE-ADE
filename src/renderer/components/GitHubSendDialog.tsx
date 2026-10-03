@@ -7,7 +7,7 @@ import { useT } from '../lib/i18n'
 import '../styles/github.css'
 
 /**
- * レビュー結果（feedback.md）を GitHub へ送る確認ダイアログ。
+ * レビュー結果（feedback.md）を GitHub / GitLab へ送る確認ダイアログ（送り先は origin のホストで main が決める）。
  *
  * 送り先（新しい Issue か、自分の開いている PR へのコメントか）と本文を先に見せ、
  * 利用者が確かめて押したときだけ書き込む。本文はここで直せる。画像は送らない（本文に断り書きが入る）。
@@ -38,6 +38,8 @@ export function GitHubSendDialog({ reviewId, onClose }: { reviewId: string; onCl
   useEffect(() => setChecked(false), [target, title, body])
 
   const repoName = draft ? `${draft.repo.owner}/${draft.repo.repo}` : ''
+  // GitLab では PR は MR（!12）、送り先の名前も変える
+  const gl = draft?.repo.forge === 'gitlab'
   const pr = typeof target === 'number' ? draft?.pullRequests.find((p) => p.number === target) : undefined
   const ready = Boolean(draft) && body.trim() !== '' && (target !== 'issue' || title.trim() !== '')
 
@@ -47,20 +49,21 @@ export function GitHubSendDialog({ reviewId, onClose }: { reviewId: string; onCl
     setPosting(true)
     try {
       const result = await window.ade.invoke('github:postReview', reviewId, spec, body)
-      toast({ tone: 'success', message: target === 'issue' ? t('github.send.issueCreated') : t('github.send.commented'), detail: result.url })
+      toast({ tone: 'success', message: target === 'issue' ? t('github.send.issueCreated') : t(gl ? 'gitlab.send.commented' : 'github.send.commented'), detail: result.url })
       void window.ade.invoke('github:open', result.url).catch(() => {}) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
       onClose()
     } catch (err) {
-      toast({ tone: 'danger', message: t('github.send.failed'), detail: errorMessage(err) })
+      toast({ tone: 'danger', message: t(gl ? 'gitlab.send.failed' : 'github.send.failed'), detail: errorMessage(err) })
     } finally {
       setPosting(false)
     }
   }
 
-  return <Modal className="rv-modal" label={t('github.send.title')} onClose={() => !posting && onClose()}>
+  const heading = t(gl ? 'gitlab.send.title' : 'github.send.title')
+  return <Modal className="rv-modal" label={heading} onClose={() => !posting && onClose()}>
     <div className="gh-send" data-testid="github-send">
       <header className="gh-send__head">
-        <h2><Send size={15} aria-hidden="true" />{t('github.send.title')}</h2>
+        <h2><Send size={15} aria-hidden="true" />{heading}</h2>
         <IconButton label={t('common.close')} icon={<X size={16} />} autoFocus disabled={posting} onClick={onClose} />
       </header>
 
@@ -77,9 +80,9 @@ export function GitHubSendDialog({ reviewId, onClose }: { reviewId: string; onCl
             </label>
             {draft.pullRequests.map((p) => <label key={p.number} className="gh-send__target">
               <input type="radio" name="gh-target" checked={target === p.number} disabled={posting} onChange={() => setTarget(p.number)} />
-              <GitPullRequest size={13} aria-hidden="true" />{t('github.send.prComment', { number: p.number, title: p.title })}
+              <GitPullRequest size={13} aria-hidden="true" />{t(gl ? 'gitlab.send.mrComment' : 'github.send.prComment', { number: p.number, title: p.title })}
             </label>)}
-            {draft.pullRequests.length === 0 && <p className="st-note">{t('github.send.noPrs')}</p>}
+            {draft.pullRequests.length === 0 && <p className="st-note">{t(gl ? 'gitlab.send.noMrs' : 'github.send.noPrs')}</p>}
           </div>
         </div>
 
@@ -96,8 +99,8 @@ export function GitHubSendDialog({ reviewId, onClose }: { reviewId: string; onCl
         <label className="gh-send__confirm">
           <input type="checkbox" checked={checked} disabled={posting || !ready} onChange={(e) => setChecked(e.target.checked)} />
           <span>{target === 'issue'
-            ? t('github.send.confirmIssue', { repo: repoName })
-            : t('github.send.confirmPr', { repo: repoName, number: target, title: pr?.title ?? '' })}</span>
+            ? t(gl ? 'gitlab.send.confirmIssue' : 'github.send.confirmIssue', { repo: repoName })
+            : t(gl ? 'gitlab.send.confirmMr' : 'github.send.confirmPr', { repo: repoName, number: target, title: pr?.title ?? '' })}</span>
         </label>
 
         <footer className="gh-send__foot">

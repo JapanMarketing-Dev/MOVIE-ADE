@@ -24,6 +24,7 @@
   },
   "include": [
     "test/unit/**/*",
+    "src/preload/api.d.ts",
     "tools/pipeline/**/*",
     "src/shared/**/*",
     "workers/*/src/**/*"

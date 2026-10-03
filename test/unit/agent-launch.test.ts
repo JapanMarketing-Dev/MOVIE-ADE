@@ -60,8 +60,20 @@ describe('quoteStartupArg', () => {
     expect(quoteStartupArg(`it's`, 'powershell')).toBe(`'it''s'`)
   })
 
-  it('cmd は記号に ^ を付ける', () => {
-    expect(quoteStartupArg('a&b', 'cmd')).toBe(`"a^&b"`)
+  it('cmd はダブルクォートで囲む（中の ^ は普通の文字なので付けない）', () => {
+    expect(quoteStartupArg('a&b', 'cmd')).toBe(`"a&b"`)
+    expect(quoteStartupArg('C:\\Program Files (x86)\\x', 'cmd')).toBe(`"C:\\Program Files (x86)\\x"`)
+    expect(quoteStartupArg('say "hi"', 'cmd')).toBe(`"say ""hi"""`)
+    expect(quoteStartupArg('C:\\dir\\', 'cmd')).toBe(`"C:\\dir\\\\"`)
+    expect(quoteStartupArg('100%', 'cmd')).toBe(`"100"^%""`)
+  })
+
+  it('Windows のシェルではバックスラッシュをパスとして残す', () => {
+    expect(buildAgentLaunchCommand('claude', { command: 'claude', args: '--config C:\\Users\\dev\\x.toml' }, 'cmd'))
+      .toEqual({ ok: true, command: 'claude "--config" "C:\\Users\\dev\\x.toml"' })
+    expect(buildAgentLaunchCommand('claude', { command: 'claude', args: '--config "C:\\Program Files\\x.toml"' }, 'powershell'))
+      .toEqual({ ok: true, command: `claude '--config' 'C:\\Program Files\\x.toml'` })
+    expect(buildAgentLaunchCommand('claude', { command: 'claude', args: 'a\\ b' }, 'posix')).toEqual({ ok: true, command: `claude 'a b'` })
   })
 })
 
@@ -75,15 +87,9 @@ describe('startupShellForPath', () => {
 })
 
 describe('buildAgentLaunchCommand', () => {
-  it('既定の設定は Orca の YOLO 引数で起動する', () => {
-    expect(buildAgentLaunchCommand('claude', DEFAULT_AGENT_PREFERENCES.launch.claude, 'posix')).toEqual({
-      ok: true,
-      command: 'claude --dangerously-skip-permissions'
-    })
-    expect(buildAgentLaunchCommand('codex', DEFAULT_AGENT_PREFERENCES.launch.codex, 'posix')).toEqual({
-      ok: true,
-      command: 'codex --dangerously-bypass-approvals-and-sandbox'
-    })
+  it('既定の設定は権限確認を省く引数なしで起動する（security-3 [1]。Orca と違う）', () => {
+    expect(buildAgentLaunchCommand('claude', DEFAULT_AGENT_PREFERENCES.launch.claude, 'posix')).toEqual({ ok: true, command: 'claude' })
+    expect(buildAgentLaunchCommand('codex', DEFAULT_AGENT_PREFERENCES.launch.codex, 'posix')).toEqual({ ok: true, command: 'codex' })
   })
 
   it('コマンド本体は書いたまま使い、引数だけクォートし直す', () => {

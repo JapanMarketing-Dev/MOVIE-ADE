@@ -255,7 +255,12 @@ export const SETTINGS_SCHEMA: JsonSchema = {
           }
         },
         disabledAgents: { type: 'array', description: 'Agents hidden from menus.', items: agentId },
-        startupAgents: { type: 'array', description: 'Agent tabs opened automatically when a project opens, in order. Empty means one plain shell.', items: agentId }
+        startupAgents: { type: 'array', description: 'Agent tabs opened automatically when a project opens, in order. Empty means one plain shell. They always start in the agent\'s normal mode (permission prompts on).', items: agentId },
+        bypassProjects: {
+          type: 'array',
+          description: 'DANGEROUS. Ids of projects (see projects[].id) where you confirmed that agents may skip permission prompts, approvals and the sandbox. Only in these project folders does Ferret pre-trust the folder for Claude Code / Codex and add each agent\'s skip-permissions flag, and only to agents you open yourself (never to agents started when the project opens). Skip-permissions flags typed into launch args are ignored. Empty by default: registering or cloning a project does not trust it.',
+          items: { type: 'string', description: 'A project id.' }
+        }
       }
     },
     agentAccounts: {

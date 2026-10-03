@@ -1,5 +1,6 @@
 import type { GitHubAccount, GitHubPullRequest, GitHubRepoRef } from '@shared/github'
 import { SUPPORTED_LOCALES, t, translate, type MessageKey } from '@shared/i18n'
+import { forgeForHost, isSafeGitLabPath, isSafeHost } from '@shared/forge'
 
 /**
  * gh・git の出力を読む純粋な関数。electron も子プロセスも使わないので、単体テストから直接呼べる。
@@ -19,35 +20,61 @@ function hostFromUrl(url: URL): string {
   return protocol === 'http:' || protocol === 'https:' ? url.host : url.hostname
 }
 
-function ownerRepoFromPath(path: string): { owner: string; repo: string } | null {
-  const parts = path.replace(/^\/+/, '').replace(/\/+$/, '').split('/')
-  if (parts.length !== 2) return null
-  const [owner, withSuffix] = parts as [string, string]
-  const repo = withSuffix.replace(/\.git$/i, '')
-  return owner && repo ? { owner, repo } : null
-}
-
 /**
- * `git remote get-url origin` の値から host / owner / repo を求める。
- * https・ssh://・scp 形式（git@host:owner/repo）と、末尾の .git の有無に対応する。
+ * `git remote get-url origin` の値から、ホストとリポジトリのパス（先頭・末尾の / と .git を外したもの）を求める。
+ * https・ssh://・scp 形式（git@host:path）に対応する。
  *
  * Orca由来: ~/bench/orca/src/main/github/github-remote-identity-parsing.ts の parseGitHubRemoteIdentity（MIT）
  */
-export function parseGitRemote(remoteUrl: string): GitHubRepoRef | null {
+export function parseRemoteLocation(remoteUrl: string): { host: string; path: string } | null {
   const trimmed = remoteUrl.trim()
-  const scp = trimmed.match(/^(?:[^@/\s]+@)?([^:/\s]+):([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/i)
+  const scp = trimmed.match(/^(?:[^@/\s]+@)?([^:/\s]+):([^\s]+)$/i)
   // scp 形式は「://」を含まない。C:\ のような Windows のパスも弾く
   if (scp && !trimmed.includes('://') && scp[1]!.length > 1) {
-    return toRef(normalizeHost(scp[1]!), scp[2]!, scp[3]!)
+    return { host: normalizeHost(scp[1]!), path: cleanPath(scp[2]!) }
   }
   try {
     const url = new URL(trimmed)
     if (!['git:', 'git+ssh:', 'http:', 'https:', 'ssh:'].includes(url.protocol.toLowerCase())) return null
-    const path = ownerRepoFromPath(url.pathname)
-    return path ? toRef(normalizeHost(hostFromUrl(url)), path.owner, path.repo) : null
+    return { host: normalizeHost(hostFromUrl(url)), path: cleanPath(decodeURIComponent(url.pathname)) }
   } catch {
     return null
   }
+}
+
+function cleanPath(path: string): string {
+  return path.replace(/^\/+/, '').replace(/\/+$/, '').replace(/\.git$/i, '')
+}
+
+/** GitHub の owner/repo（ちょうど2つの区切り）として読む */
+export function parseGitRemote(remoteUrl: string): GitHubRepoRef | null {
+  const loc = parseRemoteLocation(remoteUrl)
+  if (!loc) return null
+  const parts = loc.path.split('/')
+  if (parts.length !== 2 || !parts[0] || !parts[1] || /\s/.test(loc.path)) return null
+  return toRef(loc.host, parts[0], parts[1])
+}
+
+/**
+ * GitHub か GitLab かを決めて読む。GitLab はサブグループ（group/sub/project）を許し、owner に group/sub を入れる。
+ * gitlabHosts は glab にログイン済みのホスト（セルフホストの GitLab を見分けるため）
+ */
+export function parseForgeRemote(remoteUrl: string, gitlabHosts: readonly string[] = []): GitHubRepoRef | null {
+  const loc = parseRemoteLocation(remoteUrl)
+  if (!loc || !isSafeHost(loc.host)) return null
+  if (forgeForHost(loc.host, gitlabHosts) === 'github') return parseGitRemote(remoteUrl)
+  if (!isSafeGitLabPath(loc.path)) return null
+  const at = loc.path.lastIndexOf('/')
+  return { ...toRef(loc.host, loc.path.slice(0, at), loc.path.slice(at + 1)), forge: 'gitlab' }
+}
+
+/** ホストに使っている CLI で判定が要るか（github.com / gitlab.com などで決まらないホスト） */
+export function needsHostLookup(remoteUrl: string): string | null {
+  const loc = parseRemoteLocation(remoteUrl)
+  if (!loc) return null
+  const h = loc.host.toLowerCase()
+  if (forgeForHost(h) === 'gitlab' || h === 'github.com' || h.endsWith('.github.com') || h.endsWith('.ghe.com')) return null
+  return loc.host
 }
 
 function toRef(host: string, owner: string, repo: string): GitHubRepoRef {
@@ -208,12 +235,18 @@ export function issueFromFeedback(markdown: string): { title: string; body: stri
     try { host = new URL(target).host } catch { host = target }
   }
   const title = (host ? `${heading}: ${host}` : heading).slice(0, TITLE_MAX)
-  // 判定モデルでの受け入れ確認は Agent 向けの手順。BEFORE の絶対パス（ホームのパスを含む）と末尾の節は GitHub へ出さない
-  const beforePrefixes = [...new Set(SUPPORTED_LOCALES.map((locale) => translate(locale, 'feedbackMd.beforeImage', { path: '' })))]
-  const checkHeadings = new Set(SUPPORTED_LOCALES.map((locale) => `## ${translate(locale, 'feedbackMd.check.heading')}`))
-  const checkAt = lines.findIndex((l) => checkHeadings.has(l.trim()))
-  const kept = (checkAt >= 0 ? lines.slice(0, lines[checkAt - 1]?.trim() === '---' ? checkAt - 1 : checkAt) : lines)
-    .filter((l) => !beforePrefixes.some((prefix) => l.startsWith(prefix)))
+  // 末尾の Agent 向けの節（進み具合・AFTER の撮り方・受け入れ確認・ほかの指摘）は GitHub / GitLab へ出さない。
+  // progress.json や after/ の絶対パス（ホームのパスを含む）が書かれているため。指摘ごとの BEFORE / AFTER の行も外す
+  const agentHeadings = new Set(SUPPORTED_LOCALES.flatMap((locale) => (['feedbackMd.progress.heading', 'feedbackMd.after.heading', 'feedbackMd.check.heading', 'feedbackMd.others.heading'] as const)
+    .map((key) => `## ${translate(locale, key)}`)))
+  const cutAt = lines.findIndex((l) => agentHeadings.has(l.trim()))
+  const agentLinePrefixes = [...new Set(SUPPORTED_LOCALES.flatMap((locale) => [
+    translate(locale, 'feedbackMd.beforeImage', { path: '\0' }),
+    translate(locale, 'feedbackMd.afterLine', { url: '\0', width: '\0', height: '\0', path: '\0' }),
+    translate(locale, 'feedbackMd.afterLineLocal', { url: '\0', width: '\0', height: '\0', path: '\0' })
+  ].map((line) => line.split('\0')[0]!)))].filter((prefix) => prefix.length > 2)
+  const kept = (cutAt >= 0 ? lines.slice(0, lines[cutAt - 1]?.trim() === '---' ? cutAt - 1 : cutAt) : lines)
+    .filter((l) => !agentLinePrefixes.some((prefix) => l.startsWith(prefix)))
   const images = kept.filter((l) => imageLine.test(l)).length
   const body = kept.filter((l) => !imageLine.test(l)).join('\n').trim()
   const note = images > 0 ? `\n\n---\n${t('github.issue.imagesNote', { count: images })}` : ''

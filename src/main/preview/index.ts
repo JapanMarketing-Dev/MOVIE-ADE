@@ -8,7 +8,7 @@ import pageStyle from './page.css?raw'
 import { PREVIEW_ASSET_HOST, PREVIEW_PROJECT_HOST, PREVIEW_SCHEME, previewKind, previewPathFromUrl } from '@shared/preview'
 import { readTextFile } from '../files'
 import { previewImageType, readPreviewImage } from './image'
-import { renderPreviewBody, renderPreviewMessage, renderPreviewPage } from './render'
+import { previewCsp, REMOTE_IMAGES_PARAM, renderPreviewBody, renderPreviewMessage, renderPreviewPage } from './render'
 import { t } from '@shared/i18n'
 import { reportHandled } from '@shared/report'
 
@@ -28,23 +28,10 @@ const ASSETS: Record<string, { load: () => Promise<string | Buffer>; type: strin
   'preview.css': { load: async () => pageStyle, type: 'text/css; charset=utf-8' }
 }
 
-/**
- * ページのスクリプトは同梱の2本だけ。Mermaid の SVG は style 属性を使うので style は inline を許す。
- * 外部の画像（README のバッジなど）は https で読ませる。
- */
-const CSP = [
-  "default-src 'none'",
-  `script-src ${PREVIEW_SCHEME}:`,
-  `style-src ${PREVIEW_SCHEME}: 'unsafe-inline'`,
-  `img-src ${PREVIEW_SCHEME}: data: https:`,
-  `font-src ${PREVIEW_SCHEME}: data:`,
-  `connect-src ${PREVIEW_SCHEME}:`
-].join('; ')
-
-function respond(body: string | Buffer, type: string, status = 200): Response {
+function respond(body: string | Buffer, type: string, status = 200, remoteImages = false): Response {
   return new Response(typeof body === 'string' ? body : new Uint8Array(body), {
     status,
-    headers: { 'Content-Type': type, 'Content-Security-Policy': CSP, 'Cache-Control': 'no-store' }
+    headers: { 'Content-Type': type, 'Content-Security-Policy': previewCsp(remoteImages), 'Cache-Control': 'no-store' }
   })
 }
 
@@ -83,7 +70,8 @@ async function handle(request: Request, getRoot: () => string | null): Promise<R
   }
   // ?fragment=1 は保存のたびに page.js が取り直す中身だけ
   if (url.searchParams.get('fragment') === '1') return respond(body, HTML)
-  return respond(renderPreviewPage({ path, kind, body }), HTML)
+  const remoteImages = url.searchParams.get(REMOTE_IMAGES_PARAM) === '1'
+  return respond(renderPreviewPage({ path, kind, body, remoteImages }), HTML, 200, remoteImages)
 }
 
 /**

@@ -140,7 +140,7 @@ describe('normalizeFiles / normalizeManifest', () => {
     expect(files[0].url).toBe(`${BASE}/releases/0.2.0/MOVIE-ADE-0.2.0-mac-arm64.dmg`)
   })
 
-  it('Preview は manifest の preview を優先し、無ければ実機で未確認の OS（Windows・Linux）', () => {
+  it('Preview は manifest の preview を優先し、無ければ付けない（Windows・Linux も正式対応）', () => {
     const files = normalizeFiles(
       [
         file('MOVIE-ADE-0.1.0-mac-arm64.dmg'),
@@ -150,7 +150,7 @@ describe('normalizeFiles / normalizeManifest', () => {
       ],
       BASE
     )
-    expect(files.map((f) => f.preview)).toEqual([false, true, true, false])
+    expect(files.map((f) => f.preview)).toEqual([false, true, false, false])
   })
 
   it('自動更新用のファイル・危ない URL・壊れた項目は落とす', () => {
@@ -311,8 +311,8 @@ describe('assetForSlot', () => {
     expect(assetForSlot(universal, slot('mac-x64'))?.name).toBe('MOVIE-ADE-0.2.0-mac-universal.dmg')
   })
 
-  it('Windows・Linux の枠は Preview、mac は違う', () => {
-    expect(SLOTS.filter((s) => s.preview).map((s) => s.os)).toEqual(['win', 'win', 'linux', 'linux'])
+  it('どの枠も Preview ではない（Windows・Linux も正式対応）', () => {
+    expect(SLOTS.filter((s) => s.preview)).toEqual([])
   })
 })
 

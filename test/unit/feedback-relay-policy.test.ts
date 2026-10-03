@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { readFileSync, statSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import * as shared from '../../src/shared/feedbackRelay'
@@ -16,6 +16,31 @@ import { ALLOWED_FIELDS, ERROR_STATUS } from '../../workers/feedback-relay/src/l
 const root = resolve(__dirname, '../..')
 const relay = 'workers/feedback-relay'
 const read = (p: string) => readFileSync(join(root, p), 'utf8')
+
+/**
+ * 調べるファイルの一覧。git の作業ツリーなら追跡中と未追加（.gitignore の対象外）のファイル。
+ * リリースの build は .git を写さない複製の中で単体テストを流すので、そのときはフォルダをたどる（生成物と依存は除く）
+ */
+function repoFiles(): string[] {
+  try {
+    return execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+      .split('\u0000')
+      .filter(Boolean)
+  } catch {
+    const skip = new Set(['.git', 'node_modules', 'out', 'dist', 'e2e-artifacts', 'test-results', 'playwright-report'])
+    const found: string[] = []
+    const walk = (rel: string): void => {
+      for (const entry of readdirSync(join(root, rel), { withFileTypes: true })) {
+        const path = rel ? `${rel}/${entry.name}` : entry.name
+        if (entry.isDirectory()) {
+          if (!skip.has(entry.name)) walk(path)
+        } else if (entry.isFile()) found.push(path)
+      }
+    }
+    walk('')
+    return found
+  }
+}
 
 describe('feedback-relay のポリシー', () => {
   it('受け付けるフィールドは仕様の9つだけ（増やすときは github-integration と仕様を合わせ、このテストも直す）', () => {
@@ -42,9 +67,7 @@ describe('feedback-relay のポリシー', () => {
   })
 
   it('リポジトリ（追跡中と、まだ追加していないファイル）に GitHub のトークンの形が無い', () => {
-    const files = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { cwd: root, encoding: 'utf8' })
-      .split('\u0000')
-      .filter(Boolean)
+    const files = repoFiles()
     const TOKEN = /\b(gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{70,})\b/g
     // テストの見るからに偽物の値（ABCDEF… の並び・同じ文字の繰り返し）は除く。本物のトークンはこの形にならない
     const obviouslyFake = (t: string) => /ABCDEFGHIJ|abcdefghij|0123456789/.test(t) || /(.{1,10})\1{3,}/.test(t.replace(/^[a-z]+_/, ''))

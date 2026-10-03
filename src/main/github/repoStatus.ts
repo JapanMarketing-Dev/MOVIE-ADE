@@ -1,10 +1,11 @@
 import { watch, type FSWatcher } from 'node:fs'
 import type { GitRepoStatus } from '@shared/github'
 import { run } from './gh'
-import { parseGitRemote, parseGitStatus } from './parse'
+import { parseGitStatus } from './parse'
+import { resolveRemote } from './index'
 
 /**
- * フッターの「どの GitHub の、どのブランチか」。
+ * フッターの「どの GitHub / GitLab の、どのブランチか」。
  *
  * git を2回だけ呼ぶ（remote get-url と status --porcelain=v2 --branch）。status は optional locks を切って
  * 走らせるので、ターミナルで動いている git と index.lock を取り合わない。
@@ -20,7 +21,7 @@ export async function gitRepoStatus(folderPath: string | null): Promise<GitRepoS
   if (status.failed) return empty
   return {
     isGit: true,
-    repo: remote.failed ? null : parseGitRemote(remote.stdout),
+    repo: remote.failed ? null : await resolveRemote(remote.stdout),
     ...parseGitStatus(status.stdout)
   }
 }

@@ -1,0 +1,55 @@
+/* ── 設定の「CLI」の一覧と、判定モデルの欄の CLI の行（CliToolsSection.tsx） ── */
+
+.cli-tool {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-2);
+}
+
+.cli-tool--compact {
+  padding: var(--space-2) 0;
+  border-bottom: 0;
+}
+
+.cli-tool__head {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cli-tool__name {
+  font-weight: var(--font-weight-medium);
+}
+
+.cli-tool__cmd,
+.cli-tool__command code {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cli-tool__actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  gap: var(--space-2);
+}
+
+.cli-tool__command {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-panel);
+  gap: var(--space-3);
+}

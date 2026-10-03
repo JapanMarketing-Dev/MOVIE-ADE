@@ -35,7 +35,11 @@ describe('左の一覧の並び', () => {
   it('一番上にセットアップのチェックリスト、その下に一般 → Agent → 判定モデル', () => {
     expect(SETTINGS_SECTIONS.slice(0, 4)).toEqual(['setup', 'general', 'agents', 'verify'])
     expect(SETTINGS_SECTIONS).toEqual(['setup', 'general', 'agents', 'verify', 'recording', 'transcription', 'organize', 'accounts',
-      'appearance', 'language', 'layout', 'github', 'about'])
+      'appearance', 'language', 'layout', 'github', 'cli', 'about'])
+  })
+
+  it('CLI の節は wrangler・ollama・インストールで引ける', () => {
+    for (const word of ['wrangler', 'ollama', 'インストール', 'aws']) expect(filterSettingsSections(word, (id) => id)).toContain('cli')
   })
 
   it('チェックリストは「setup」「チェックリスト」で引ける', () => {

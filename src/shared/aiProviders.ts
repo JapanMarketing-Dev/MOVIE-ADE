@@ -178,7 +178,7 @@ export const STT_PROVIDER_PRESETS: Record<SttRemoteProvider, SttProviderPreset> 
 
 export const STT_REMOTE_PROVIDERS = Object.keys(STT_PROVIDER_PRESETS) as SttRemoteProvider[]
 
-/** 整理を API キーで直接呼ぶ提供元。並びは設定の選択欄の順（Custom は最後） */
+/** 整理を API キーで直接呼ぶ提供元。並びは設定の選択欄の順（おすすめの Ollama が先頭、Custom は最後） */
 export type LlmApiProvider = 'anthropic' | 'openai' | 'gemini' | 'openrouter' | 'vercel-gateway' | 'cloudflare' | 'ollama' | 'lmstudio' | 'compatible'
 export type LlmApiKind = 'anthropic-messages' | 'openai-chat' | 'gemini'
 
@@ -202,6 +202,17 @@ export interface LlmProviderPreset extends PresetSetup {
  * - Claude Haiku 4.5 は 2026-10-15 以降に提供終了の予定
  */
 export const LLM_PROVIDER_PRESETS: Record<LlmApiProvider, LlmProviderPreset> = {
+  // 先頭＝おすすめ。端末内で動き、キーも料金も要らない（モデルは PC に合わせて選ぶ）
+  ollama: { id: 'ollama', docsUrl: 'https://docs.ollama.com/api/openai-compatibility', installUrl: 'https://ollama.com/download',
+    label: 'Ollama', vendor: 'ollama', kind: 'openai-chat', baseUrl: 'http://localhost:11434/v1', model: 'gpt-oss:20b',
+    keyRequired: false, keyPlaceholder: '', structuredOutput: false, local: true,
+    models: [
+      // 推奨は PC のメモリと GPU で変わる（@shared/localModels。画面と main が付け替える）。ここの印はそれが分からないときの既定
+      { id: 'gpt-oss:20b', hint: 'local', recommended: true },
+      { id: 'gpt-oss:120b', hint: 'best' },
+      { id: 'qwen3:8b', hint: 'fast' },
+      { id: 'llama3.2', hint: 'cheap' },
+    ] },
   anthropic: { id: 'anthropic', docsUrl: 'https://platform.claude.com/docs/en/build-with-claude/structured-outputs', envVar: 'ANTHROPIC_API_KEY',
     label: 'Anthropic', vendor: 'anthropic', kind: 'anthropic-messages', baseUrl: 'https://api.anthropic.com', model: 'claude-sonnet-5-5',
     keyRequired: true, keyPlaceholder: 'sk-ant-…', structuredOutput: true, keyUrl: 'https://platform.claude.com/settings/keys',
@@ -252,14 +263,6 @@ export const LLM_PROVIDER_PRESETS: Record<LlmApiProvider, LlmProviderPreset> = {
       { id: '@cf/openai/gpt-oss-20b', hint: 'fast' },
       { id: '@cf/meta/llama-4-scout-17b-16e-instruct', hint: 'cheap' },
     ] },
-  ollama: { id: 'ollama', docsUrl: 'https://docs.ollama.com/api/openai-compatibility', installUrl: 'https://ollama.com/download',
-    label: 'Ollama', vendor: 'ollama', kind: 'openai-chat', baseUrl: 'http://localhost:11434/v1', model: 'gpt-oss:20b',
-    keyRequired: false, keyPlaceholder: '', structuredOutput: false, local: true,
-    models: [
-      { id: 'gpt-oss:20b', hint: 'local', recommended: true },
-      { id: 'qwen3:8b', hint: 'fast' },
-      { id: 'llama3.2', hint: 'cheap' },
-    ] },
   // LM Studio は読み込んだモデルの名前を使うので、モデルは自由入力
   lmstudio: { id: 'lmstudio', docsUrl: 'https://lmstudio.ai/docs/developer/openai-compat', installUrl: 'https://lmstudio.ai/download',
     label: 'LM Studio', vendor: 'lmstudio', kind: 'openai-chat', baseUrl: 'http://localhost:1234/v1', model: '',
@@ -269,6 +272,9 @@ export const LLM_PROVIDER_PRESETS: Record<LlmApiProvider, LlmProviderPreset> = {
 }
 
 export const LLM_API_PROVIDERS = Object.keys(LLM_PROVIDER_PRESETS) as LlmApiProvider[]
+
+/** 整理のおすすめ（設定の選択欄の先頭・指摘の画面の「整理」の既定）。端末内で動き、キーも料金も要らない */
+export const RECOMMENDED_ORGANIZE_PROVIDER: LlmApiProvider = 'ollama'
 
 /** 「指摘を整理」の実行方法。CLI（各自の契約）か、API キーで直接 */
 export type OrganizeRunnerId = 'codex' | 'claude-code' | `api:${LlmApiProvider}`

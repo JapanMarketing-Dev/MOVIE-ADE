@@ -89,6 +89,56 @@
     })
   }
 
+  /**
+   * 外部の画像（render.ts が span.remote-image にしたもの）。既定は読まず、行き先のホストと「読み込む」ボタンを出す。
+   * 押すと ?remote-images=1 を付けて読み直し、main がそのページだけ CSP で https を許す（security-3 [5]）。
+   * 許されたページでは https の画像だけを <img> に戻す（http やほかのスキームは印のまま）。
+   */
+  function applyRemoteImages() {
+    var nodes = Array.prototype.slice.call(root.querySelectorAll('span.remote-image'))
+    var banner = document.getElementById('ade-preview-remote-images')
+    if (root.dataset.remoteImages === 'allow') {
+      nodes.forEach(function (node) {
+        var src = node.dataset.remoteSrc || ''
+        if (!/^https:\/\//i.test(src)) return
+        var img = document.createElement('img')
+        img.src = src
+        img.alt = node.dataset.remoteAlt || ''
+        img.referrerPolicy = 'no-referrer'
+        node.replaceWith(img)
+      })
+      return
+    }
+    if (nodes.length === 0) {
+      if (banner) banner.remove()
+      return
+    }
+    var hosts = []
+    nodes.forEach(function (node) {
+      var host = node.dataset.remoteHost || ''
+      if (host && hosts.indexOf(host) < 0) hosts.push(host)
+    })
+    if (!banner) {
+      banner = document.createElement('div')
+      banner.id = 'ade-preview-remote-images'
+      banner.className = 'remote-images-banner'
+      var text = document.createElement('span')
+      var button = document.createElement('button')
+      button.type = 'button'
+      button.textContent = root.dataset.msgRemoteLoad || 'Load remote images'
+      button.addEventListener('click', function () {
+        var url = new URL(window.location.href)
+        url.searchParams.set('remote-images', '1')
+        window.location.replace(url.href)
+      })
+      banner.appendChild(text)
+      banner.appendChild(button)
+      root.parentNode.insertBefore(banner, root)
+    }
+    var template = root.dataset.msgRemoteBlocked || 'Remote images are not loaded: {{hosts}}'
+    banner.firstChild.textContent = template.replace('{{hosts}}', hosts.join(', '))
+  }
+
   function enqueue(task) {
     queue = queue.then(task, task)
     return queue
@@ -115,6 +165,7 @@
       node.innerHTML = drawn[source]
       node.setAttribute('data-processed', 'true')
     })
+    applyRemoteImages()
     window.scrollTo(x, y)
     return renderMermaid(false).then(function () {
       root.style.minHeight = ''
@@ -172,6 +223,7 @@
   })
 
   // 最初の描画
+  applyRemoteImages()
   enqueue(function () {
     return renderMermaid(false)
   })

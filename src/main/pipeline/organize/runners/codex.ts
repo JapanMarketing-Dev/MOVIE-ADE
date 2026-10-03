@@ -64,6 +64,12 @@ export const CODEX_DISABLED_FEATURES = [
   'apps', 'plugins', 'remote_plugin', 'skill_search', 'skill_mcp_dependency_install', 'tool_suggest',
   'hooks', 'code_mode_host', 'multi_agent', 'in_app_local_automation', 'workspace_dependencies', 'memories',
   'goals', 'sleep_tool', 'worktrees',
+  // 2026-10-03 に codex-cli 0.160.0 を ChatGPT のログインで実際に動かして確かめた（--json の出来事を記録。注入の文で
+  // 「シェルで書け」「apply_patch で作れ」「サブエージェントに実行させろ」と頼んだ）: シェルは出ず、ファイルも作られなかった。
+  // ただしモデルからは functions.exec（コードモード）と collaboration.spawn_agent など（multi_agent_v2）が見えていた。
+  // exec は code_mode_host を切っているので「fail closed」で失敗し、spawn は --ephemeral のため起動に失敗した
+  // （起動できても子は同じ設定を引き継ぐ）。下の3つを切ってもこの版では見え方は変わらなかったが、切れる版のために残す
+  'code_mode', 'code_mode_only', 'multi_agent_v2',
 ] as const
 
 export class CodexRunner implements LlmRunner {

@@ -11,8 +11,10 @@ import { starFromMenu } from './StarPrompt'
 import { useLocale, useT } from '../lib/i18n'
 import { AccountsSection } from './AccountsSection'
 import { AgentIcon } from './AgentIcon'
+import { AgentBypassProjects } from './AgentBypassProjects'
 import { AgentResourcesSection } from './AgentResourcesSection'
 import { GitHubSection } from './GitHubSection'
+import { CliToolsSection } from './CliToolsSection'
 import { LayoutSettings } from './LayoutSettings'
 import { TranscriptionSection } from './TranscriptionSection'
 import { OrganizeSection } from './OrganizeSection'
@@ -70,7 +72,7 @@ const PREVIEW_TARGET = { relativeDir: '.ferret/reviews/20261003-101500', feedbac
  *   - カスタムエージェント: 追加・削除・名前・コマンド・引数・プロセス名
  *   - プロジェクトを開いたら起動するもの（startupAgents）: 有効なものから選んだ順
  *   - 「Agentへ送信」の指示文
- * 既定の引数は Orca の YOLO_TUI_AGENT_ARGS と同じ（src/shared/agentCatalog.ts）。
+ * 既定の引数は空。権限確認を省く引数はプロジェクトごとに許したときだけ main が付ける（security-3 [1]、src/shared/agentCatalog.ts）。
  * インストール済みかは main の検出（agents:list / agents:changed）で知る。
  */
 function AgentSection({ value, onChange, prompt, onPromptChange }: {
@@ -178,8 +180,8 @@ function AgentSection({ value, onChange, prompt, onPromptChange }: {
           <AgentIcon agent={agent} label={TUI_AGENT_LABEL[agent]} size={14} />
           <span className="st-agent-row__name">{TUI_AGENT_LABEL[agent]}</span>
           {found === true && <span className="st-agent-row__state">{t('settings.agents.installed')}</span>}
-          {found === false && <span className="st-agent-row__state is-missing">{t('settings.agents.notFound')}
-            {AGENT_CATALOG[agent].homepageUrl && <> · <a href={AGENT_CATALOG[agent].homepageUrl} target="_blank" rel="noreferrer">{t('settings.agents.install')}</a></>}</span>}
+          {/* 入れ方のページへは飛ばさない。下のたためる欄で、公式のコマンドを行の中のターミナルで走らせる */}
+          {found === false && <span className="st-agent-row__state is-missing">{t('settings.agents.notFound')}</span>}
           <input type="checkbox" role="switch" className="st-switch" aria-label={t('settings.agents.enabled', { agent: TUI_AGENT_LABEL[agent] })}
             checked={enabled(agent)} onChange={(e) => setEnabled(agent, e.target.checked)} data-testid={`agent-enabled-${agent}`} />
         </div>
@@ -206,9 +208,12 @@ function AgentSection({ value, onChange, prompt, onPromptChange }: {
         {showAll ? t('agents.showLess') : t('agents.showAll', { count: listing.hiddenCount })}</Button>
     </div>}
 
+    {/* プロジェクトごとの「権限確認を省く」。既定は切、入れるときはパスを見せて確認する（security-3 [1]） */}
+    <AgentBypassProjects value={value} onChange={onChange} />
+
     <label className="st-prompt">
       <span className="st-row__label">{t('settings.agents.prompt')}</span>
-      <textarea className="st-textarea" rows={3} aria-label={t('settings.agents.prompt')} placeholder={defaultAgentPrompt(locale)} spellCheck={false}
+      <textarea className="st-textarea st-textarea--prompt" rows={8} aria-label={t('settings.agents.prompt')} placeholder={defaultAgentPrompt(locale)} spellCheck={false}
         value={prompt} onChange={(e) => onPromptChange(e.target.value)} data-testid="agent-prompt" />
     </label>
     <p className="st-note">{(() => {
@@ -386,6 +391,10 @@ export function SettingsPage({
     github: <PageSection key="github" id="github" title={titleOf('github')} bare>
       {/* 読み込み・保存も GitHub 欄が自分で行う */}
       <GitHubSection />
+    </PageSection>,
+    cli: <PageSection key="cli" id="cli" title={titleOf('cli')}>
+      {/* よく使うサービスの CLI。ボタンで公式のコマンドを内蔵ターミナルの新しいタブで走らせる（src/renderer/components/CliToolsSection.tsx） */}
+      <CliToolsSection />
     </PageSection>,
     about: <PageSection key="about" id="about" title={titleOf('about')}>
       <AboutSection />

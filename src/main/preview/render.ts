@@ -1,5 +1,5 @@
 import { Marked } from 'marked'
-import { isMermaidFence, type PreviewKind } from '@shared/preview'
+import { isMermaidFence, PREVIEW_SCHEME, type PreviewKind } from '@shared/preview'
 
 /** ページの種類。md / Mermaid 以外のテキストは、読み取り専用のコードとして出す（レビューの対象にするため） */
 export type PreviewPageKind = PreviewKind | 'code'
@@ -15,6 +15,24 @@ import { getLocale, t } from '@shared/i18n'
  * 生の HTML は文字として出す（Agent が書いたファイルのスクリプトをレビュー対象のページで動かさない）。
  */
 
+/** ページで「外部の画像を読み込む」を押したときだけ付くクエリ（その文書・その表示の間だけ。保存しない） */
+export const REMOTE_IMAGES_PARAM = 'remote-images'
+
+/**
+ * ページのスクリプトは同梱の2本だけ。Mermaid の SVG は style 属性を使うので style は inline を許す。
+ * 外部の画像（README のバッジなど）は既定で読まない（security-3 [5]）。利用者が押したページだけ https を許す。
+ */
+export function previewCsp(remoteImages = false): string {
+  return [
+    "default-src 'none'",
+    `script-src ${PREVIEW_SCHEME}:`,
+    `style-src ${PREVIEW_SCHEME}: 'unsafe-inline'`,
+    `img-src ${PREVIEW_SCHEME}: data:${remoteImages ? ' https:' : ''}`,
+    `font-src ${PREVIEW_SCHEME}: data:`,
+    `connect-src ${PREVIEW_SCHEME}:`
+  ].join('; ')
+}
+
 export function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
@@ -23,11 +41,43 @@ function mermaidBlock(source: string): string {
   return `<pre class="mermaid">${escapeHtml(source)}</pre>\n`
 }
 
+/**
+ * 外の画像（http(s)・// で始まる・ほかのスキーム）か。プロジェクトの中の相対パスと data: は false。
+ * プロジェクトの Markdown が書いた URL を黙って読みに行くと、利用者の IP・時刻が相手に渡る（security-3 [5]）
+ */
+export function isRemoteImageSource(href: string): boolean {
+  const src = href.trim()
+  if (src.startsWith('//')) return true
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(src)?.[1]?.toLowerCase()
+  return scheme !== undefined && scheme !== 'data' && scheme !== PREVIEW_SCHEME
+}
+
+function remoteImageHost(href: string): string {
+  try {
+    return new URL(href.trim().startsWith('//') ? `https:${href.trim()}` : href.trim()).host || href
+  } catch {
+    return href
+  }
+}
+
+/**
+ * 外の画像は読み込まない印にする（行き先のホストを見せる）。利用者がページの「外部の画像を読み込む」を押したときだけ、
+ * page.js が https の画像に置き換える（そのときだけ main が CSP で https を許す。index.ts）
+ */
+export function remoteImagePlaceholder(href: string, alt: string): string {
+  const host = remoteImageHost(href)
+  const label = alt.trim() ? `${alt.trim()} · ${host}` : host
+  return `<span class="remote-image" data-remote-src="${escapeHtml(href.trim())}" data-remote-alt="${escapeHtml(alt)}" data-remote-host="${escapeHtml(host)}" title="${escapeHtml(href.trim())}">${escapeHtml(label)}</span>`
+}
+
 const marked = new Marked({
   gfm: true,
   renderer: {
     html({ text }) {
       return escapeHtml(text)
+    },
+    image({ href, text }) {
+      return isRemoteImageSource(href) ? remoteImagePlaceholder(href, text) : false
     },
     code({ text, lang }) {
       // false を返すと marked の既定の描き方（<pre><code>）になる
@@ -69,10 +119,12 @@ export function renderPreviewMessage(message: string): string {
  * プレビューのページ全体。スタイルとスクリプトは同梱のもの（ade-preview://assets/…）だけを読む。
  * Mermaid（5MB 強）は図があるときだけ page.js が読み込む。
  */
-export function renderPreviewPage({ path, kind, body }: { path: string; kind: PreviewPageKind; body: string }): string {
+export function renderPreviewPage({ path, kind, body, remoteImages = false }: { path: string; kind: PreviewPageKind; body: string; remoteImages?: boolean }): string {
   const name = path.slice(path.lastIndexOf('/') + 1)
   // page.js は辞書を読めないので、ページで出す文は data 属性で渡す（言語はページを返した時点のもの）
-  const messages = `data-msg-mermaid-load="${escapeHtml(t('preview.mermaidLoadFailed'))}" data-msg-diagram-failed="${escapeHtml(t('preview.diagramFailed', { error: '{{error}}' }))}"`
+  const messages = `data-msg-mermaid-load="${escapeHtml(t('preview.mermaidLoadFailed'))}" data-msg-diagram-failed="${escapeHtml(t('preview.diagramFailed', { error: '{{error}}' }))}"` +
+    ` data-msg-remote-blocked="${escapeHtml(t('preview.remoteImagesBlocked', { hosts: '{{hosts}}' }))}" data-msg-remote-load="${escapeHtml(t('preview.remoteImagesLoad'))}"` +
+    ` data-remote-images="${remoteImages ? 'allow' : 'block'}"`
   return `<!doctype html>
 <html lang="${getLocale()}">
 <head>
