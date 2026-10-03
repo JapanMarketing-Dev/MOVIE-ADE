@@ -22,6 +22,7 @@ import { normalizeSttLanguage } from '@shared/sttLanguages'
 import { migrateLegacySettings } from './projects'
 import { sanitizeProjectSession } from '@shared/projectSession'
 import { sanitizeProjectKind, sanitizeProjectTargets } from '@shared/projectTargets'
+import { sanitizeProjectSource } from '@shared/projectSource'
 import { sanitizeAgentAccounts } from './accounts/sanitize'
 import { normalizeBaseUrl, sanitizeCostLimit, sanitizeEndpointMap } from './pipeline/stt/endpoint'
 import { isLlmApiProvider, isOrganizeRunnerId, isSttRemoteProvider } from '@shared/aiProviders'
@@ -79,8 +80,10 @@ function sanitizeProjects(raw: unknown): Project[] {
     // 確認先は名前が自由で件数の上限なし。URL だけの頃の {id, label, url} もそのまま通る（src/shared/projectTargets.ts）
     const urls = sanitizeProjectTargets(r.urls)
     const kind = sanitizeProjectKind(r.kind)
+    // どこから開いたか（今のものは local）。ssh は接続先を確かめ、github の URL は資格情報を落とす
+    const origin = sanitizeProjectSource(r)
     const session = sanitizeProjectSession(r.session)
-    return [{ id: r.id, name: str(r.name) ? r.name : r.folderPath.split(/[\\/]/).pop() ?? r.folderPath, folderPath: r.folderPath, kind, urls, ...(session ? { session } : {}) }]
+    return [{ id: r.id, name: str(r.name) ? r.name : r.folderPath.split(/[\\/]/).pop() ?? r.folderPath, folderPath: r.folderPath, kind, ...origin, urls, ...(session ? { session } : {}) }]
   })
 }
 
@@ -133,6 +136,9 @@ export function sanitize(raw: unknown): Settings {
       micDeviceId: typeof r.capture.micDeviceId === 'string' ? r.capture.micDeviceId : undefined,
       keepDays: Number.isFinite(r.capture.keepDays) ? Math.min(3650, Math.max(0, Math.round(r.capture.keepDays))) : 7,
       stayFeedbackOnStop: r.capture.stayFeedbackOnStop === true,
+      // 何もない時間を削る（既定は削る）。書かれていなければ書き足さない
+      ...(typeof r.capture.trimIdle === 'boolean' ? { trimIdle: r.capture.trimIdle } : {}),
+      ...(Number.isFinite(r.capture.trimIdleSeconds) ? { trimIdleSeconds: Math.min(60, Math.max(1, Math.round(r.capture.trimIdleSeconds!))) } : {}),
       captureTarget: sanitizeCaptureTarget(r.capture.captureTarget),
       ...(isAnnotationColor(r.capture.annotationColor) ? { annotationColor: r.capture.annotationColor } : {}),
       // 文字起こしの接続先。キー本体は settings.json に入れない（pipeline/stt/keys.ts）

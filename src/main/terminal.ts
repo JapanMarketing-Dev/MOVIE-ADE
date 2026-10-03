@@ -1,3 +1,4 @@
+import { sshShellSpec, type SshTarget } from '@shared/sshCommand'
 import { execFile, execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { promisify } from 'node:util'
@@ -23,7 +24,7 @@ import { agentInProcessTree, isShellProcess, parseProcessRows, type ProcessRow }
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import { reportMainError } from './telemetry'
-import { flow, reportHandled, timedSync } from '@shared/report'
+import { flow, reportHandled, timedSync, errorKind } from '@shared/report'
 import { exitWhenDoneCommand } from '@shared/agentInstall'
 import { DECISION_ENV_PREFIXES } from '@shared/decision'
 
@@ -156,6 +157,8 @@ export class TerminalManager {
   private exitWaiters = new Set<() => void>()
   private seq = 0
   private cwd: string = homedir()
+  /** SSH のプロジェクトを開いているときの接続先。タブは ssh -t でリモートのシェルとして開く（src/shared/sshCommand.ts） */
+  private remote: SshTarget | null = null
 
   constructor(
     private readonly onData: (id: string, data: string) => void,
@@ -166,7 +169,13 @@ export class TerminalManager {
    * タブを開くたびに足す環境変数（判定モデルの中継の URL など。src/main/decision/service.ts）。
    * キーのような秘密はここで渡さないこと
    */
-  launchEnv: ((meta: { agent: string | null }) => Promise<Record<string, string>>) | null = null
+  launchEnv: ((meta: { agent: string | null; sessionId: string }) => Promise<Record<string, string>>) | null = null
+
+  /**
+   * タブ（PTY）が終わったら呼ぶ。launchEnv で渡した合言葉など、そのタブに結び付けたものを無効にする。
+   * 起動に失敗したときも呼ぶ
+   */
+  onSessionClosed: ((sessionId: string) => void) | null = null
 
   /**
    * 後始末が残っているPTYの数。
@@ -181,6 +190,11 @@ export class TerminalManager {
     this.cwd = dir ?? homedir()
   }
 
+  /** SSH のプロジェクトのときだけ渡す。null ならローカルのシェル */
+  setRemote(target: SshTarget | null): void {
+    this.remote = target
+  }
+
   /**
    * タブを1つ開く。cwd を省略すると開いているプロジェクトのフォルダ。
    * agent を指定すると、ログインシェルが立ち上がった最初のプロンプトでそのAgentを起動する
@@ -191,6 +205,8 @@ export class TerminalManager {
     const nodePty = await loadNodePty()
     const cwd = options.cwd && existsSync(options.cwd) ? options.cwd : this.cwd
     let shell = resolveShell()
+    // SSH のプロジェクト：ssh -t -- <host> 'cd <path> && exec "$SHELL" -l'。Agent の起動はリモートの最初のプロンプトで打ち込む
+    if (this.remote) shell = sshShellSpec(this.remote)
     let extraEnv: Record<string, string> = {}
     let pendingWrite: string | null = null
     let loginTitle: string | null = null
@@ -228,12 +244,12 @@ export class TerminalManager {
     } else if (options.command?.trim()) {
       deliver(options.exitWhenDone ? exitWhenDoneCommand(oneShotCommand(options.command), shell.file) : options.command.trim(), {})
     }
-    // 判定モデルの中継の URL など。用意できなくてもタブは開く（指示文の受け入れ確認が使えないだけ）
-    const launchEnv = this.launchEnv ? await this.launchEnv({ agent: agent ? agentLabel(agent, currentSettings().agents) : null }).catch((err: unknown) => {
+    const id = `t${++this.seq}`
+    // 判定モデルの中継の URL など（このタブに結び付ける）。用意できなくてもタブは開く（指示文の受け入れ確認が使えないだけ）
+    const launchEnv = this.launchEnv ? await this.launchEnv({ agent: agent ? agentLabel(agent, currentSettings().agents) : null, sessionId: id }).catch((err: unknown) => {
       reportHandled(err, { area: 'terminal', op: 'prepare decision env' })
       return {}
     }) : {}
-    const id = `t${++this.seq}`
     let pty: ReturnType<typeof nodePty.spawn>
     try {
       pty = nodePty.spawn(shell.file, shell.args, {
@@ -246,6 +262,7 @@ export class TerminalManager {
     } catch (err) {
       // シェルの名前だけを付ける（パスは送る前に落とす。src/main/telemetry.ts）
       reportMainError(err, { kind: 'pty-spawn', shell: shellLabel(shell.file) })
+      this.onSessionClosed?.(id)
       throw err
     }
     const title =
@@ -270,6 +287,7 @@ export class TerminalManager {
       this.flush(session)
       this.sessions.delete(id)
       this.awaitingExit.delete(id)
+      this.onSessionClosed?.(id)
       this.onExit(id, exitCode)
       this.notifyExitWaiters()
     })
@@ -465,6 +483,8 @@ export class TerminalManager {
     if (!session) return
     this.flush(session)
     this.sessions.delete(id)
+    // 閉じた時点で、このタブに渡した合言葉などを無効にする（SIGHUP を無視するシェルや残った子プロセスに使わせない）
+    this.onSessionClosed?.(id)
     // kill してから onExit が届くまでを「後始末中」として数える。
     // 子孫PIDは、シェルが死んで辿れなくなる前のものを控えておく。
     const descendants = killPtyTree(session.pty, 'SIGHUP')
@@ -555,7 +575,8 @@ function descendantPids(root: number): number[] {
     listing = timedSync('ps', () => execFileSync('ps', ['-Ao', 'pid=,ppid='], { encoding: 'utf8', timeout: 1000 }))
   } catch (err) {
     // 子プロセスを数えられないだけで、終了処理は pty.kill で続ける
-    reportHandled(err, { area: 'terminal', op: 'list child processes' })
+    // 失敗の文は ps の stderr を含むので、種類だけを送る
+    reportHandled(errorKind(err), { area: 'terminal', op: 'list child processes' })
     return []
   }
 

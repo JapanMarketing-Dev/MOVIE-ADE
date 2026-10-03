@@ -32,17 +32,34 @@ export interface RawReviewEvent {
   el?: ElementRef
 }
 
+/*
+ * ページから届く値の大きさの上限。クラス名や表示テキストはページが自由に決められるので、
+ * 長いまま操作ログ・feedback.md・LLM の入力へ流さない（注入側でも切っている）。
+ */
+export const MAX_SELECTOR_LENGTH = 300
+export const MAX_ELEMENT_TEXT_LENGTH = 200
+export const MAX_ANNOTATION_ID_LENGTH = 80
+/** erase 1件で取り消せる書き込みの数 */
+export const MAX_ERASE_IDS = 50
+/** 座標・大きさの絶対値の上限(px)。画面の外の極端な値で bbox を壊さない */
+const MAX_COORDINATE = 100_000
+
 function sanitizeElement(el: unknown): ElementRef | undefined {
   if (typeof el !== 'object' || el === null) return undefined
   const value = el as Partial<ElementRef>
   if (typeof value.selector !== 'string' || value.selector.length === 0) return undefined
-  if (value.sensitive) return { selector: value.selector, sensitive: true }
-  const text = typeof value.text === 'string' && value.text.length > 0 ? value.text : undefined
-  return text ? { selector: value.selector, text } : { selector: value.selector }
+  const selector = value.selector.slice(0, MAX_SELECTOR_LENGTH)
+  if (value.sensitive) return { selector, sensitive: true }
+  const text = typeof value.text === 'string' && value.text.length > 0 ? value.text.slice(0, MAX_ELEMENT_TEXT_LENGTH) : undefined
+  return text ? { selector, text } : { selector }
 }
 
 function number(value: unknown, fallback = 0): number {
-  return typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback
+  return typeof value === 'number' && Number.isFinite(value) ? Math.round(Math.max(-MAX_COORDINATE, Math.min(MAX_COORDINATE, value))) : fallback
+}
+
+function annotationId(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_ANNOTATION_ID_LENGTH ? value : undefined
 }
 
 /**
@@ -66,21 +83,23 @@ export function toLogEvent(raw: RawReviewEvent, toClock: (epochMs: number) => nu
       return event
     }
     case 'pen': {
-      if (typeof raw.id !== 'string' || !Array.isArray(raw.bbox) || raw.bbox.length !== 4) return null
+      const id = annotationId(raw.id)
+      if (!id || !Array.isArray(raw.bbox) || raw.bbox.length !== 4) return null
+      const replaces = annotationId(raw.replaces)
       const event: PenEvent = {
         // 線は「書き始め」が指摘の時刻、「書き終わり」が画像にする時刻（EXT-3）
-        t: toClock(typeof raw.atStart === 'number' ? raw.atStart : raw.at),
+        t: toClock(typeof raw.atStart === 'number' && Number.isFinite(raw.atStart) ? Math.min(raw.atStart, raw.at) : raw.at),
         type: 'pen',
-        id: raw.id,
+        id,
         t_end: t,
         bbox: [number(raw.bbox[0]), number(raw.bbox[1]), number(raw.bbox[2]), number(raw.bbox[3])],
         ...(raw.shape === 'rect' ? { shape: 'rect' as const } : {}),
-        ...(typeof raw.replaces === 'string' && raw.replaces.length > 0 && raw.replaces !== raw.id ? { replaces: raw.replaces } : {})
+        ...(replaces && replaces !== id ? { replaces } : {})
       }
       return el ? { ...event, el } : event
     }
     case 'erase': {
-      const ids = Array.isArray(raw.ids) ? raw.ids.filter((id): id is string => typeof id === 'string' && id.length > 0) : []
+      const ids = Array.isArray(raw.ids) ? raw.ids.slice(0, MAX_ERASE_IDS).map(annotationId).filter((id): id is string => id !== undefined) : []
       if (ids.length === 0) return null
       const event: EraseEvent = { t, type: 'erase', ids }
       return event

@@ -2,7 +2,8 @@
  * 過去のレビュー（セッション）の一覧（要件 OUT-5）。
  * session.json が無い・壊れている場合も、フォルダの中身から分かる範囲を返す。
  */
-import { stat, writeFile } from 'node:fs/promises'
+import { stat } from 'node:fs/promises'
+import { writeFileNoFollow } from './containment'
 import { existsSync } from 'node:fs'
 import type { SessionPaths } from './paths'
 import { listSessionIds, sessionPaths } from './paths'
@@ -30,6 +31,8 @@ export interface SessionSummary {
   doneCount: number
   /** Agent が人間へ戻した（確認待ち）件数 */
   needsHumanCount: number
+  /** Agent が直して人の確認を待っている（human_review）件数 */
+  humanReviewCount: number
   targetUrl?: string
   hasFeedback: boolean
   /** 動画が残っているか（保持期間を過ぎると消える。NF-8） */
@@ -93,6 +96,7 @@ export async function summarize(paths: SessionPaths): Promise<SessionSummary> {
         includedCount: 0,
         doneCount: 0,
         needsHumanCount: 0,
+        humanReviewCount: 0,
         hasFeedback,
         hasRecording,
         incomplete: true,
@@ -105,7 +109,7 @@ export async function summarize(paths: SessionPaths): Promise<SessionSummary> {
     // summary.json が無い古いレビュー。1度だけ作って控える
     stored = buildStoredSummary(record, await readNavs(paths))
     // 書けなくても次に一覧を読むときに作り直す。書けないこと自体は想定外なので知らせる
-    await writeFile(paths.summaryJson, `${JSON.stringify(stored)}\n`, 'utf8').catch((err: unknown) => reportHandled(err, { area: 'sessions', op: 'write summary cache' }))
+    await writeFileNoFollow(paths.summaryJson, `${JSON.stringify(stored)}\n`).catch((err: unknown) => reportHandled(err, { area: 'sessions', op: 'write summary cache' }))
   }
 
   const searchText = joinSearchText([label.name, stored.searchText])
@@ -120,6 +124,7 @@ export async function summarize(paths: SessionPaths): Promise<SessionSummary> {
     includedCount: progress.total,
     doneCount: progress.done,
     needsHumanCount: progress.needsHuman,
+    humanReviewCount: progress.humanReview,
     ...(stored.targetUrl ? { targetUrl: stored.targetUrl } : {}),
     hasFeedback,
     hasRecording,

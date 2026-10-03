@@ -137,12 +137,14 @@ describe('描画（静的な HTML）', () => {
       onCheck: async () => ({ ok: true, message: '' }), disabled: false, ...props }))
   }
 
-  it('設定画面: モデルは推奨を選んだ一覧、キーの欄と「キーを取得」、詳細は閉じている', async () => {
+  it('設定画面: モデルは推奨を選んだ一覧、キーの欄と「キーを作る ↗」、詳細は閉じている', async () => {
     const html = await render({ preset: STT_PROVIDER_PRESETS.openai })
     expect(html).toContain('data-testid="ai-model"')
     expect(html).toMatch(/<option value="gpt-transcribe" selected="">gpt-transcribe — balanced speed and quality · \$0\.0045\/min · Recommended<\/option>/)
     expect(html).toContain('data-testid="ai-key"')
-    expect(html).toContain('href="https://platform.openai.com/api-keys"')
+    // キーを作るページは外部のブラウザで開くボタン（app:openExternal）。リンクの先は title に出す
+    expect(html).toMatch(/data-testid="ai-link-key" title="https:\/\/platform\.openai\.com\/api-keys"/)
+    expect(html).not.toContain('target="_blank"')
     expect(html).toMatch(/<details class="st-key st-advanced" data-testid="ai-advanced">/)
     expect(html).not.toMatch(/<details[^>]*\sopen/)
     // Base URL とモデル名の自由入力は、詳細の外には無い

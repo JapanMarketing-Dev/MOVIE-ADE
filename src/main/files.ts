@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
-import { existsSync, watch, type FSWatcher } from 'node:fs'
-import { open, readdir, realpath, stat, writeFile } from 'node:fs/promises'
+import { FileTooLargeError, NotRegularFileError, readFileBounded } from './boundedFile'
+import { constants, existsSync, watch, type FSWatcher } from 'node:fs'
+import { readdir, realpath, stat, writeFile } from 'node:fs/promises'
 import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import {
   MAX_LISTED_FILES,
@@ -139,21 +140,32 @@ export async function readTextFile(root: string, relPath: string): Promise<FsRea
       reason: t('files.errors.tooLarge', { size: (info.size / 1024 / 1024).toFixed(1), limit: MAX_TEXT_FILE_SIZE / 1024 / 1024 })
     }
   }
-  const handle = await open(file, 'r')
+  // 普通のファイルだけを、上限までしか読まない（パイプを開いて止まらない・読んでいる間に伸びても止まる。boundedFile.ts）
+  let buffer: Buffer
   try {
-    const buffer = await handle.readFile()
-    if (isBinaryBuffer(buffer)) return { kind: 'binary', path, reason: t('files.errors.binary') }
-    return { kind: 'text', path, content: buffer.toString('utf8'), mtimeMs: info.mtimeMs }
-  } finally {
-    await handle.close()
+    buffer = await readFileBounded(file, MAX_TEXT_FILE_SIZE)
+  } catch (err) {
+    if (err instanceof FileTooLargeError) {
+      return { kind: 'tooLarge', path, size: err.sizeBytes ?? info.size, reason: t('files.errors.tooLarge', { size: ((err.sizeBytes ?? info.size) / 1024 / 1024).toFixed(1), limit: MAX_TEXT_FILE_SIZE / 1024 / 1024 }) }
+    }
+    // パイプ・ソケット・デバイスは開かない。理由はエディタのタブにそのまま出る
+    if (err instanceof NotRegularFileError) throw new UserFacingError(t('files.errors.notRegular'))
+    throw err
   }
+  if (isBinaryBuffer(buffer)) return { kind: 'binary', path, reason: t('files.errors.binary') }
+  return { kind: 'text', path, content: buffer.toString('utf8'), mtimeMs: info.mtimeMs }
 }
 
 export async function writeTextFile(root: string, relPath: string, content: string): Promise<FsWriteResult> {
   if (typeof content !== 'string') throw new UserFacingError(t('files.errors.badContent'))
   const file = await resolveInside(root, relPath, { allowMissing: true })
-  // 上書きで中身を差し替える（rename で置き換えるとリンクや権限が変わり、監視も途切れる）
-  await writeFile(file, content, 'utf8')
+  // 既にあるパスが普通のファイルでなければ書かない（名前付きパイプへ書くと main が止まる）。新しいファイルは作る
+  const existing = await stat(file).catch((err: NodeJS.ErrnoException) => { if (err.code === 'ENOENT') return null; throw err })
+  if (existing?.isDirectory()) throw new UserFacingError(t('files.errors.folder'))
+  if (existing && !existing.isFile()) throw new UserFacingError(t('files.errors.notRegular'))
+  // 上書きで中身を差し替える（rename で置き換えるとリンクや権限が変わり、監視も途切れる）。
+  // O_NONBLOCK: 確かめたあとにパイプへ差し替えられても、開くところで止まらない
+  await writeFile(file, content, { encoding: 'utf8', flag: constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | ((constants as { O_NONBLOCK?: number }).O_NONBLOCK ?? 0) })
   return { mtimeMs: (await stat(file)).mtimeMs }
 }
 

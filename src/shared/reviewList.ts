@@ -18,7 +18,7 @@ export interface ReviewListEntry {
   status: ReviewStatus
   findings: number
   /** 進み具合（Agent へ送る指摘のうち完了した数と対象の数）。送る指摘が無ければ無い */
-  progress?: { done: number; total: number; needsHuman?: number }
+  progress?: { done: number; total: number; needsHuman?: number; humanReview?: number }
   /** 対象のURL（無ければ見出し用の文） */
   target: string
   /** 収録開始（ISO8601）。無ければ並びを変えない */

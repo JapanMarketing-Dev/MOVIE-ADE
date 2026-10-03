@@ -1,0 +1,23 @@
+{
+  // アプリから匿名で送られたフィードバックを GitHub の Issue にする中継（README.md に手順）。
+  // 公開: node scripts/release-tools.mjs wrangler deploy --config workers/feedback-relay/wrangler.jsonc
+  // 秘密（GITHUB_TOKEN・RATE_LIMIT_SALT）は wrangler secret put で入れる。このファイルにもリポジトリにも書かない。
+  "name": "ferret-feedback-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  // feedback.ferretade.dev だけで受ける（*.workers.dev では受けない）
+  "workers_dev": false,
+  "routes": [{ "pattern": "feedback.ferretade.dev", "custom_domain": true }],
+  "vars": {
+    "GITHUB_REPO": "JapanMarketing-Dev/ferret",
+    "PUBLIC_BASE": "https://feedback.ferretade.dev"
+  },
+  // 画像の置き場。配布物（movie-ade-releases）とは別の、公開しないバケット。画像は Worker の /v1/media/ から返す
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "ferret-feedback-media" }],
+  // 頻度の上限と連投の検出（無料のプランで使える SQLite の Durable Object）
+  "durable_objects": { "bindings": [{ "name": "LIMITER", "class_name": "FeedbackLimiter" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["FeedbackLimiter"] }],
+  // 要求の記録（invocation logs。URL・ヘッダー・IP を含みうる）は残さない。残すのは console.error のエラーの種類だけ
+  "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": false } },
+  "logpush": false
+}

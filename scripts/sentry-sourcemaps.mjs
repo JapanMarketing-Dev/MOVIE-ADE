@@ -12,15 +12,16 @@
  *
  * 認証:
  *   - CI … 環境変数 SENTRY_AUTH_TOKEN（GitHub Actions の secrets から渡す。トークンはコードに書かない）
- *   - 手元 … ログイン済みの `sentry` CLI（`sentry auth login`）
+ *   - 手元 … devDependencies の `sentry` CLI にログインしておく（`pnpm exec sentry auth login`）
  * どちらも無いとき・FERRET_SENTRY_DSN（以前の MOVIE_ADE_SENTRY_DSN）を空にしてクラッシュレポートを止めているときは、
  * 警告だけ出して成功で終える（フォークした人のビルドを止めない）。
  * SENTRY_SOURCEMAPS=required のときだけ、上げられなければ失敗にする（公式の配布の CI 用）。
  *
  * 送り先は SENTRY_ORG / SENTRY_PROJECT で変えられる（既定 workspacepm / ferret）。
- * CLI は PATH の `sentry`、無ければ `npx sentry@<SENTRY_CLI_VERSION>` を使う。
+ * CLI は devDependencies で版を固定した sentry と @sentry/cli を、node で直接起動する（PATH の CLI や npx では取らない。
+ * 入っていなければ止める。shell は通さない。scripts/release-tools.mjs）。
  */
-import { spawnSync } from 'node:child_process'
+import { runTool, sentryCliInvocation, sentryInvocation } from './release-tools.mjs'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
@@ -37,7 +38,6 @@ const dryRun = flag('--dry-run')
 const required = process.env.SENTRY_SOURCEMAPS === 'required'
 const org = process.env.SENTRY_ORG || 'workspacepm'
 const project = process.env.SENTRY_PROJECT || 'ferret'
-const CLI_VERSION = process.env.SENTRY_CLI_VERSION || '0.44.1'
 const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const release = `ferret@${version}`
 
@@ -70,16 +70,9 @@ if (maps === 0) {
   process.exit(1)
 }
 
-/** PATH に sentry があればそれ、無ければ npx で取ってくる */
-function cli() {
-  const probe = spawnSync('sentry', ['--version'], { encoding: 'utf8', shell: process.platform === 'win32' })
-  if (probe.status === 0) return ['sentry']
-  return ['npx', '--yes', `sentry@${CLI_VERSION}`]
-}
-const [cmd, ...pre] = cli()
 const env = { ...process.env, SENTRY_ORG: org, SENTRY_PROJECT: project }
-const run = (rest, opts = {}) =>
-  spawnSync(cmd, [...pre, ...rest], { cwd: root, env, stdio: 'inherit', shell: process.platform === 'win32', ...opts })
+// 固定した sentry CLI（devDependencies）。入っていなければここで止まり、取りに行かない
+const run = (rest, opts = {}) => runTool(sentryInvocation(rest), { cwd: root, env, stdio: 'inherit', ...opts })
 
 if (!process.env.SENTRY_AUTH_TOKEN?.trim()) {
   const status = run(['auth', 'status'], { stdio: 'ignore' })
@@ -110,9 +103,9 @@ if (upload.status !== 0) {
 const nativeDirs = ['node_modules/node-pty/build', 'node_modules/node-pty/prebuilds'].map((d) => join(root, d)).filter((d) => existsSync(d))
 if (nativeDirs.length > 0) {
   // トークンは表示しない（CI は SENTRY_AUTH_TOKEN、手元はログイン済みの sentry CLI から子プロセスへ渡すだけ）
-  const token = process.env.SENTRY_AUTH_TOKEN?.trim() || spawnSync(cmd, [...pre, 'auth', 'token'], { encoding: 'utf8', shell: process.platform === 'win32' }).stdout?.trim()
-  const dif = spawnSync('npx', ['--yes', '@sentry/cli@2', 'debug-files', 'upload', '--org', org, '--project', project, ...nativeDirs], {
-    cwd: root, stdio: ['ignore', 'ignore', 'inherit'], shell: process.platform === 'win32', env: { ...process.env, SENTRY_AUTH_TOKEN: token ?? '' }
+  const token = process.env.SENTRY_AUTH_TOKEN?.trim() || runTool(sentryInvocation(['auth', 'token']), { encoding: 'utf8' }).stdout?.trim()
+  const dif = runTool(sentryCliInvocation(['debug-files', 'upload', '--org', org, '--project', project, ...nativeDirs]), {
+    cwd: root, stdio: ['ignore', 'ignore', 'inherit'], env: { ...process.env, SENTRY_AUTH_TOKEN: token ?? '' }
   })
   console.log(dif.status === 0 ? '[sentry-sourcemaps] node-pty の記号を上げました' : '[sentry-sourcemaps] node-pty の記号を上げられませんでした（ビルドは続けます）')
 }

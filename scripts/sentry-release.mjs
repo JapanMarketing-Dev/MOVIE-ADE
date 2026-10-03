@@ -19,11 +19,13 @@ import { spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { assertValidVersion } from './release-r2-lib.mjs'
+import { runTool, sentryInvocation } from './release-tools.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const org = process.env.SENTRY_ORG || 'workspacepm'
 const project = process.env.SENTRY_PROJECT || 'ferret'
-const CLI_VERSION = process.env.SENTRY_CLI_VERSION || '0.44.1'
 const repoName = process.env.SENTRY_REPO || 'JapanMarketing-Dev/ferret'
 
 /** git log の1件分（--name-status 付き）を Sentry のコミットにする（単体テストから使うため export） */
@@ -53,6 +55,7 @@ function parseArgs(argv) {
     else if (a === '--dry-run') args.dryRun = true
   }
   if (!args.version) args.version = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
+  assertValidVersion(args.version)
   return args
 }
 
@@ -61,17 +64,13 @@ const git = (...a) => {
   return r.status === 0 ? r.stdout.trim() : null
 }
 
-function cli() {
-  const probe = spawnSync('sentry', ['--version'], { encoding: 'utf8', shell: process.platform === 'win32' })
-  return probe.status === 0 ? ['sentry'] : ['npx', '--yes', `sentry@${CLI_VERSION}`]
-}
 
 function main() {
   const args = parseArgs(process.argv.slice(2))
   const release = `ferret@${args.version}`
   const required = process.env.SENTRY_RELEASE_REQUIRED === '1'
-  const [cmd, ...pre] = cli()
-  const run = (rest, opts = {}) => spawnSync(cmd, [...pre, ...rest], { cwd: root, stdio: 'inherit', shell: process.platform === 'win32', ...opts })
+  // devDependencies で版を固定した sentry CLI を node で直接起動する（PATH の CLI や npx では取らない。shell は通さない）
+  const run = (rest, opts = {}) => runTool(sentryInvocation(rest), { cwd: root, stdio: 'inherit', ...opts })
   const skip = (reason) => {
     console[required ? 'error' : 'warn'](`[sentry-release] ${reason}${required ? '' : '。Sentry のリリースの情報は付けずに続けます'}`)
     process.exit(required ? 1 : 0)
@@ -116,4 +115,4 @@ function main() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main()
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()

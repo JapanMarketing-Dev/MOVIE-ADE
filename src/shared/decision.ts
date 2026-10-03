@@ -1,4 +1,4 @@
-import { authHeaders, fillAccountId, resolveHeaderValues, sanitizeHeaders, type AiVendor, type AuthScheme, type HeaderValue } from './aiProviders'
+import { authHeaders, fillAccountId, resolveHeaderValues, sanitizeHeaders, type AiKeyPermission, type AiVendor, type AuthScheme, type HeaderValue } from './aiProviders'
 
 /**
  * 判定モデル（System One 互換の decision API）の設定とプリセット。main と renderer の両方が読む。
@@ -48,20 +48,39 @@ export interface DecisionPresetDef {
   models: readonly DecisionModelOption[]
   /** 料金（公開されているものだけ。分からなければ入れない＝推測しない） */
   pricing?: DecisionPricing
+  // ── 設定の案内（文字起こし・整理のプリセットと同じ項目。@shared/aiProviders。2026-10-03 に URL が開けることを確認）──
+  /** キーを作るページ */
+  keyUrl?: string
+  /** 使い方の公式ドキュメント */
+  docsUrl?: string
+  /** ID（Cloudflare の Account ID）の場所を説明するページ */
+  idUrl?: string
+  /** 端末内のサーバーのダウンロードのページ */
+  installUrl?: string
+  /** キーを入れておく環境変数の名前（apiKeyEnv と同じ。共通の案内の部品が読む名前） */
+  envVar?: string
+  /** ID を入れておく環境変数の名前（Cloudflare） */
+  idEnvVar?: string
+  /** キーに要る権限 */
+  permission?: AiKeyPermission
 }
 
 const CLOUDFLARE_ENDPOINT = 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}'
 
 export const DECISION_PRESETS: Record<DecisionPreset, DecisionPresetDef> = {
-  ollama: { id: 'ollama', label: 'Ollama', vendor: null, endpoint: 'http://localhost:11434/v1/systemone', model: 'clef-flash', images: true, imageFormat: 'base64', authScheme: 'none',
+  ollama: { id: 'ollama', label: 'Ollama', vendor: null, docsUrl: 'https://docs.ollama.com/capabilities/decision', installUrl: 'https://ollama.com/download', endpoint: 'http://localhost:11434/v1/systemone', model: 'clef-flash', images: true, imageFormat: 'base64', authScheme: 'none',
     models: [{ id: 'clef-flash', images: true }, { id: 'clef', images: true }, { id: 'nimble', images: false }, { id: 'tev1', images: false }] },
   // 実機で確認（2026-10-03）: 画像は data URI でないと 422（"image must be an embedded base64 data URI"）。応答は { result, success } で包まれる
   cloudflare: { id: 'cloudflare', label: 'Cloudflare Workers AI', vendor: 'cloudflare', endpoint: CLOUDFLARE_ENDPOINT, model: 'clef-flash', images: true, imageFormat: 'data-uri', authScheme: 'bearer', apiKeyEnv: 'CLOUDFLARE_API_TOKEN',
+    envVar: 'CLOUDFLARE_API_TOKEN', idEnvVar: 'CLOUDFLARE_ACCOUNT_ID', permission: 'cloudflareWorkersAi', keyUrl: 'https://dash.cloudflare.com/profile/api-tokens',
+    docsUrl: 'https://developers.cloudflare.com/workers-ai/models/clef-flash/', idUrl: 'https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/',
     models: [{ id: 'clef-flash', images: true }, { id: 'clef', images: true }] },
   // AI Gateway の System One はモデル一覧に画像対応の記載が無いので、文だけとして始める（利用者が変えられる）
   vercel: { id: 'vercel', label: 'Vercel AI Gateway', vendor: 'vercel-gateway', endpoint: 'https://ai-gateway.vercel.sh/typesafe/v1/systemone', model: 'typesafe-ai/jev', images: false, imageFormat: 'base64', authScheme: 'bearer', apiKeyEnv: 'AI_GATEWAY_API_KEY',
+    envVar: 'AI_GATEWAY_API_KEY', keyUrl: 'https://vercel.com/docs/ai-gateway/authentication-and-byok', docsUrl: 'https://vercel.com/ai-gateway/models',
     models: [{ id: 'typesafe-ai/jev', images: false }, { id: 'convaiinnovations/laya', images: false }] },
   typesafe: { id: 'typesafe', label: 'TypeSafe', vendor: 'typesafe', endpoint: 'https://api.typesafe.ai/v1/systemone', model: 'jev-latest', images: false, imageFormat: 'base64', authScheme: 'bearer', apiKeyEnv: 'TYPESAFE_API_KEY',
+    envVar: 'TYPESAFE_API_KEY', keyUrl: 'https://console.typesafe.ai', docsUrl: 'https://docs.typesafe.ai',
     models: [{ id: 'jev-latest', images: false }, { id: 'jev-preview', images: false }] },
   custom: { id: 'custom', label: 'Custom', vendor: 'decision-custom', endpoint: '', model: '', images: false, imageFormat: 'base64', authScheme: 'bearer', models: [] }
 }
@@ -250,4 +269,30 @@ export function decisionTerminalEnvChanged(prev: DecisionPreferences, next: Deci
     return `${p.enabled}|${r.model}|${r.images}|${r.imageFormat}`
   }
   return view(prev) !== view(next)
+}
+
+/**
+ * 設定の案内（「キーを作る ↗」などのリンクと「Agent に設定を頼む」指示文。@shared/setupGuide）に渡す形。
+ * 判定モデルのプリセットから写して作る。Ollama の確かめ方は OpenAI 互換の /v1/models を使う（/v1/systemone は GET できない）
+ */
+export function decisionSetupGuide(prefs: Pick<DecisionPreferences, 'preset' | 'endpoint' | 'model' | 'apiKeyEnv' | 'authScheme'>, label: string): import('./setupGuide').SetupGuide {
+  const def = DECISION_PRESETS[prefs.preset]
+  const endpoint = prefs.endpoint || def.endpoint
+  const local = prefs.preset === 'ollama'
+  return {
+    label,
+    keyRequired: (prefs.authScheme ?? def.authScheme) !== 'none' && prefs.preset !== 'custom',
+    local,
+    needsAccountId: endpoint.includes('{account_id}'),
+    needsBaseUrl: prefs.preset === 'custom' && !endpoint,
+    baseUrl: local ? endpoint.replace(/\/v1\/systemone\/?$/, '/v1') : endpoint,
+    model: prefs.model || def.model,
+    ...(def.keyUrl ? { keyUrl: def.keyUrl } : {}),
+    ...(def.idUrl ? { idUrl: def.idUrl } : {}),
+    ...(def.docsUrl ? { docsUrl: def.docsUrl } : {}),
+    ...(def.installUrl ? { installUrl: def.installUrl } : {}),
+    ...(prefs.apiKeyEnv || def.envVar ? { envVar: prefs.apiKeyEnv || def.envVar } : {}),
+    ...(def.idEnvVar ? { idEnvVar: def.idEnvVar } : {}),
+    ...(def.permission ? { permission: def.permission } : {})
+  }
 }

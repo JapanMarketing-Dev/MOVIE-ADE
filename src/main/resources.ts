@@ -5,7 +5,7 @@ import type { Project } from '@shared/types'
 import type { ResourceProject, ResourceSnapshot, ResourceTerminal } from '@shared/resources'
 import { WindowsProcessCollector } from './resourcesWindows'
 import { t } from '@shared/i18n'
-import { reportHandled } from '@shared/report'
+import { reportHandled, errorKind } from '@shared/report'
 
 /**
  * Resource Manager の集計。アプリ本体・内蔵ブラウザのページ・各ターミナルのプロセスツリーの
@@ -112,7 +112,8 @@ async function enumerateWithPs(): Promise<ProcRow[]> {
     return parsePsOutput(stdout)
   } catch (err) {
     console.warn('[resources] ps の実行に失敗しました', err)
-    reportHandled(err, { area: 'resources', op: 'sample processes with ps' })
+    // 失敗の文は ps の stderr を含むので、種類だけを送る
+    reportHandled(errorKind(err), { area: 'resources', op: 'sample processes with ps' })
     return []
   }
 }

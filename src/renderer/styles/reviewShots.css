@@ -1,0 +1,133 @@
+/* ── Findings のカード: BEFORE / AFTER（ReviewShots） ─────────────── */
+
+.rv-shots {
+  display: grid;
+  min-width: 0;
+  align-self: start;
+  gap: var(--space-3);
+}
+
+/* 2枚を並べた1つのボタン。押すと大きく比べる */
+.rv-shots__pair {
+  display: grid;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: zoom-in;
+  gap: var(--space-2);
+  grid-template-columns: 1fr 1fr;
+}
+
+.rv-shots__frame {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  aspect-ratio: 16 / 10;
+  background: var(--color-bg-elevated);
+  place-items: center;
+}
+
+.rv-shots__frame--after {
+  border-color: color-mix(in srgb, var(--color-success) 45%, transparent);
+}
+
+.rv-shots__frame img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  inset: 0;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.rv-shots__pair:hover .rv-shots__frame {
+  border-color: var(--color-border-strong);
+}
+
+.rv-shots__pair:focus-visible {
+  border-radius: var(--radius-lg);
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.rv-shots__tag {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-scrim);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: 0.04em;
+  line-height: 18px;
+}
+
+.rv-shots__tag--after {
+  background: color-mix(in srgb, var(--color-success) 55%, black);
+  color: var(--color-on-accent);
+}
+
+/* 番号は BEFORE の左下に寄せ、AFTER の札と重ならないようにする */
+.rv-shots__frame .rv-card__n {
+  top: auto;
+  bottom: var(--space-2);
+}
+
+.rv-shots__missing,
+.rv-shots__score {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-2xs);
+  gap: var(--space-2);
+}
+
+.rv-shots__score {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 大きく比べる（拡大のモーダル） */
+.rv-shots__big {
+  display: grid;
+  max-width: min(1600px, calc(100vw - 48px));
+  gap: var(--space-5);
+  grid-template-columns: 1fr 1fr;
+}
+
+.rv-shots__big figure {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  gap: var(--space-3);
+  justify-items: center;
+}
+
+.rv-shots__modal .rv-shots__big img {
+  max-width: 100%;
+  max-height: calc(100vh - 160px);
+}
+
+.rv-shots__big figcaption {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.04em;
+}
+
+.rv-shots__big .rv-shots__caption--after {
+  color: var(--color-success);
+}
+
+@media (max-width: 720px) {
+  .rv-shots__big {
+    grid-template-columns: 1fr;
+  }
+}

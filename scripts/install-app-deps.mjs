@@ -6,12 +6,13 @@
  *   Visual Studio の C++ ビルドツールが要り、無い環境ではインストールごと失敗するので、作り直さない。
  *   どうしても作り直すときは ADE_FORCE_NATIVE_REBUILD=1 を付ける。
  */
-import { spawnSync } from 'node:child_process'
+import { localBinInvocation, runTool } from './release-tools.mjs'
 
 if (process.platform === 'win32' && process.env.ADE_FORCE_NATIVE_REBUILD !== '1') {
   console.log('[native] Windows は node-pty の同梱バイナリを使います（作り直しはしません）')
   process.exit(0)
 }
 
-const result = spawnSync('electron-builder', ['install-app-deps'], { stdio: 'inherit', shell: process.platform === 'win32' })
+// .bin の .cmd を経由せず、electron-builder の JS を node で直接動かす（shell を使わない）
+const result = runTool(localBinInvocation('electron-builder', 'electron-builder', ['install-app-deps']), { stdio: 'inherit' })
 process.exit(result.status ?? 1)

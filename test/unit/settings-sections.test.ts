@@ -27,7 +27,20 @@ describe('設定の検索', () => {
   })
 
   it('同じ言葉が複数の節にあれば、どれも一覧の順で出す', () => {
-    expect(filterSettingsSections('言語', titleOf)).toEqual(['language', 'transcription'])
+    expect(filterSettingsSections('言語', titleOf)).toEqual(['transcription', 'language'])
+  })
+})
+
+describe('左の一覧の並び', () => {
+  it('一番上にセットアップのチェックリスト、その下に一般 → Agent → 判定モデル', () => {
+    expect(SETTINGS_SECTIONS.slice(0, 4)).toEqual(['setup', 'general', 'agents', 'verify'])
+    expect(SETTINGS_SECTIONS).toEqual(['setup', 'general', 'agents', 'verify', 'recording', 'transcription', 'organize', 'accounts',
+      'appearance', 'language', 'layout', 'github', 'about'])
+  })
+
+  it('チェックリストは「setup」「チェックリスト」で引ける', () => {
+    expect(filterSettingsSections('checklist', (id) => id)).toEqual(['setup'])
+    expect(filterSettingsSections('チェックリスト', (id) => id)).toEqual(['setup'])
   })
 })
 

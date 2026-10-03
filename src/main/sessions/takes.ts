@@ -15,6 +15,8 @@ import type { DraftItem, Event, FeedbackDocument, FrameRef, Material, Transcript
 import type { ReviewTake } from '@shared/review'
 import { applyEdits } from './edits'
 import type { SessionRecord, TakeRecord } from './store'
+import { readTrim, type TrimRecord } from './trim'
+import { maxOf } from './limits'
 
 /**
  * 録画と録画のあいだに空ける時間（ms）。境目の静止画・操作が隣の録画のものと取り違えられないように。
@@ -47,7 +49,8 @@ export interface AppendTakeResult {
 
 /** 次に追記する録画の番号 */
 export function nextTakeNumber(record: Pick<SessionRecord, 'takes'>): number {
-  return Math.max(1, ...(record.takes ?? []).map((take) => take.n)) + 1
+  // 可変長引数を使わない（takes の件数が多くても投げない）
+  return maxOf((Array.isArray(record.takes) ? record.takes : []).map((take) => take?.n), 1) + 1
 }
 
 /**
@@ -130,19 +133,19 @@ export function appendTake(record: SessionRecord, existingEvents: Event[], take:
  * 録画の一覧（最初の録画も含む）。追記していなければ1本だけ。
  * 壊れた takes（数でない・重なる）は飛ばし、開始の順に並べる
  */
-export function listTakes(record: Pick<SessionRecord, 'meta' | 'takes'>): Array<Omit<ReviewTake, 'videoUrl'>> {
+export function listTakes(record: Pick<SessionRecord, 'meta' | 'takes' | 'trim'>): Array<Omit<ReviewTake, 'videoUrl' | 'cuts'> & { trim: TrimRecord | null }> {
   const extra = (Array.isArray(record.takes) ? record.takes : [])
     .filter((take) => Number.isInteger(take?.n) && take.n >= 2 && Number.isFinite(take.offsetMs) && Number.isFinite(take.durationMs))
     .sort((a, b) => a.offsetMs - b.offsetMs)
   const firstEnd = extra[0] ? Math.max(0, extra[0].offsetMs - TAKE_GAP_MS) : record.meta.durationMs
   return [
-    { n: 1, offsetMs: 0, durationMs: Math.min(record.meta.durationMs, firstEnd) },
-    ...extra.map((take) => ({ n: take.n, offsetMs: take.offsetMs, durationMs: take.durationMs, ...(typeof take.addedAt === 'string' ? { addedAt: take.addedAt } : {}) }))
+    { n: 1, offsetMs: 0, durationMs: Math.min(record.meta.durationMs, firstEnd), trim: readTrim(record.trim) },
+    ...extra.map((take) => ({ n: take.n, offsetMs: take.offsetMs, durationMs: take.durationMs, ...(typeof take.addedAt === 'string' ? { addedAt: take.addedAt } : {}), trim: readTrim(take.trim) }))
   ]
 }
 
 /** 時刻 t と同じ録画の静止画だけを返す（画像の差し替えで、別の録画の画面を候補に出さない） */
-export function framesOfTake(record: Pick<SessionRecord, 'meta' | 'takes' | 'frames'>, t: number): FrameRef[] {
+export function framesOfTake(record: Pick<SessionRecord, 'meta' | 'takes' | 'frames' | 'trim'>, t: number): FrameRef[] {
   const takes = listTakes(record)
   if (takes.length < 2) return record.frames
   const index = takes.reduce((found, take, i) => (take.offsetMs <= t ? i : found), 0)

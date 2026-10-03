@@ -207,3 +207,194 @@
 .rv-card__top > .tooltip-anchor:has(> .rv-progress) .tooltip.is-open {
   transform: none;
 }
+
+/* Agent が直して人の確認を待っている（human_review）。Agent からの確認（琥珀色）と分けて青 */
+.rv-progress--human_review {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-wash, var(--color-accent-quiet));
+  color: var(--color-accent);
+}
+
+.rv-card.is-reviewing {
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.rv-card.is-current {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.rv-verdict {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+  border: 1px solid var(--color-accent-line);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-quiet);
+  gap: var(--space-3);
+}
+
+.rv-verdict__title {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  color: var(--color-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  gap: var(--space-2);
+}
+
+.rv-verdict__note,
+.rv-verdict__last {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  white-space: pre-wrap;
+}
+
+.rv-verdict__input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  resize: vertical;
+}
+
+.rv-verdict__input:focus {
+  border-color: var(--color-border-focus);
+  outline: none;
+}
+
+.rv-verdict__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.rv-verdict__ok {
+  color: var(--color-success);
+}
+
+.rv-verdict__ng {
+  color: var(--color-danger);
+}
+
+/* NG を付けて、まだ送っていない */
+.rv-queued {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger-quiet);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-quiet);
+  gap: var(--space-3);
+}
+
+.rv-queued__label {
+  color: var(--color-danger);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+.rv-queued__text {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.rv-progress-sum__review {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-accent);
+  font-weight: var(--font-weight-bold);
+  gap: var(--space-1);
+}
+
+.rv-progress-sum__review-bar {
+  background: var(--color-accent);
+}
+
+/* ヘッダーの「確認する」「NG をまとめて送る」 */
+.rv-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.session__review {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-right: var(--space-2);
+  margin-left: auto;
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  gap: 2px;
+}
+
+.session__review + .session__ask {
+  margin-left: 0;
+}
+
+/*
+ * 送信ボタンの名前は件数つき（「4 件を Agent へ送信」）で長くなる。窓が狭いときは名前を省略して縮め、
+ * ヘッダーが中央の列からはみ出さないようにする（ボタンの文字は .btn__label が … で切る）
+ */
+.rv-head__actions,
+.rv-head__primary {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.rv-send-split,
+.rv-send-split > .tooltip-anchor,
+.rv-send-split .rv-send {
+  min-width: 0;
+}
+
+/*
+ * 狭い列（中央の列が 300px ほど）では、ヘッダーの行を折り返して列の幅に収める。
+ * .rv は container（inline-size）なので、列の幅で切り替える
+ */
+.rv-progress-sum {
+  flex-wrap: wrap;
+  row-gap: var(--space-1);
+}
+
+@container (max-width: 480px) {
+  .rv-head__meta {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  /* 録る・送るの組も、入らなければ中で折り返す */
+  .rv-head__primary {
+    flex-wrap: wrap;
+  }
+
+  /* 見出しを1行に使い、進み具合・旗の印は次の行へ */
+  .rv-card__top {
+    flex-wrap: wrap;
+  }
+
+  .rv-card__top > .rv-card__title {
+    flex-basis: 100%;
+  }
+
+  .rv-verdict__actions,
+  .rv-ask__actions,
+  .rv-review-actions {
+    min-width: 0;
+  }
+}

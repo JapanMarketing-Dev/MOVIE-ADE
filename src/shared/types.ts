@@ -12,6 +12,8 @@ import type { LocalePreference } from './i18n'
 import type { SttLanguageCode } from './sttLanguages'
 import type { OnboardingState } from './onboarding'
 import type { AccountLoginRequest, AgentAccountsSettings } from './accounts'
+import type { ProjectSource } from './projectSource'
+import type { SshTarget } from './sshCommand'
 export type { AccountLoginRequest, AgentAccountsSettings } from './accounts'
 
 /**
@@ -116,6 +118,12 @@ export interface Project {
   folderPath: string
   /** 種類。未設定は web（URL だけを登録していた頃の設定） */
   kind?: ProjectKind
+  /** どこから開いたか（自分の PC / GitHub から取得 / SSH）。未設定は local（src/shared/projectSource.ts） */
+  source?: ProjectSource
+  /** github のとき、clone 元の URL（資格情報は落としてある） */
+  remoteUrl?: string
+  /** ssh のとき、接続先とリモートのフォルダ。folderPath はローカルのレビューの置き場 */
+  ssh?: SshTarget
   /** 確認先（並びは利用者が決めた順）。互換のため名前は urls のまま */
   urls: ProjectUrl[]
   /** 前に開いていたときの作業の状態。切り替えて戻ったときと再起動したときに元へ戻す（src/shared/projectSession.ts） */
@@ -382,6 +390,9 @@ export type MenuCommand =
   | 'splitTerminalDown'
   | 'focusUrl'
   | 'reloadPage'
+  /** ⌘[ / ⌘]（Windows・Linux は Alt+← / Alt+→）内蔵ブラウザの戻る・進む。フィードバックモードのときだけ効く */
+  | 'browserBack'
+  | 'browserForward'
   | 'toggleViewport'
   /** 左サイドバー（レビュー一覧）の開閉 */
   | 'toggleSidebar'
@@ -395,8 +406,6 @@ export type MenuCommand =
   | 'toggleExplorer'
   /** フィードバックモードの右パネル（レビュー対象の一覧）の開閉 */
   | 'toggleTargets'
-  /** ⌘J ターミナルの表示・非表示（Orca・VS Code のパネルの開閉と同じ） */
-  | 'toggleTerminalPanel'
   /** フッターの表示・非表示 */
   | 'toggleFooter'
   /** ⌘, 設定のページ（中央のタブ）の開閉 */
@@ -405,6 +414,8 @@ export type MenuCommand =
   | 'showOnboarding'
   /** ヘルプ → GitHub で star（src/shared/starPrompt.ts） */
   | 'starOnGitHub'
+  /** ヘルプ → 問題を報告・フィードバックを送る（src/renderer/components/FeedbackDialog.tsx） */
+  | 'sendFeedback'
 
 // ───────────────────────── 録画（要件 5.3・5.4）─────────────────────────
 
@@ -559,6 +570,10 @@ export interface CapturePreferences { captureMic: boolean; captureSystemAudio: b
   captureTarget?: CaptureTarget
   /** 録画中の書き込み（ペン・四角の枠）の色。省略時はローズ */
   annotationColor?: AnnotationColor
+  /** 録画を止めたあと、何も起きていない時間を削った版の動画を作る（省略時は作る。元の動画は残す） */
+  trimIdle?: boolean
+  /** 何も起きていない時間がこの秒数以上続いたら削る（省略時 3 秒） */
+  trimIdleSeconds?: number
   /** 以前の compatible の接続先。読み込むときに sttEndpoints.compatible へ移し、以後は書かない */
   baseUrl?: string
   model?: string

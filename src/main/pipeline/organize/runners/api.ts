@@ -20,6 +20,7 @@ import type { LlmRunner, RunnerRequest, RunnerResult } from '../runner'
 import { RunnerError } from '../runner'
 import { extractJson } from '../spawn'
 import { extractUsage, recordApiCall } from '../../../decision/callLog'
+import { ResponseTooLargeError, readBoundedJson, readErrorText } from '../../../boundedResponse'
 
 /** 非ストリーミングで HTTP のタイムアウトに収まる出力の上限 */
 const MAX_OUTPUT_TOKENS = 16_000
@@ -170,10 +171,26 @@ export class ApiLlmRunner implements LlmRunner {
     if (!res.ok) {
       record(res.status)
       // 失敗の本文は説明に使うだけ（想定内）
-      const body = redact(await res.text().catch(() => ''), this.opt.apiKey).slice(0, 500)
+      const body = redact(await readErrorText(res), this.opt.apiKey).slice(0, 500)
       throw new RunnerError(describeLlmFailure(res.status, body, this.label), 'exit', commandLine, body)
     }
-    const json: unknown = await res.json()
+    let json: unknown
+    try {
+      json = await readBoundedJson(res)
+    } catch (e) {
+      // 大きすぎる応答は読むのをやめた（接続先の都合）。整理の失敗として知らせる
+      if (e instanceof ResponseTooLargeError) {
+        record(res.status)
+        throw new RunnerError(e.message, 'exit', commandLine)
+      }
+      // JSON でない応答（プロキシの HTML・途中で切れた本文）。SyntaxError の文は本文の断片を含むので、
+      // そのまま投げず（Sentry に送られる）、整理の失敗として知らせる
+      if (e instanceof SyntaxError) {
+        record(res.status)
+        throw new RunnerError(t('organize.api.badResponse', { label: this.label }), 'exit', commandLine)
+      }
+      throw e
+    }
     record(res.status, json)
     const { text, usage } = this.parseResponse(json)
     return { raw: extractJson(text), elapsedMs, commandLine, ...(usage ? { usage } : {}) }

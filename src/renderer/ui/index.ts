@@ -29,7 +29,7 @@ export { Segmented, type SegmentedOption } from './Segmented'
 export { StepsArt } from './StepsArt'
 export { SttLanguageSelect } from './SttLanguageSelect'
 export { ThemeSegmented, ThemeToggle } from './ThemeToggle'
-export { ToastProvider, useToast, type ToastOptions, type ToastTone } from './Toast'
+export { ToastProvider, setToastNoticeFallback, useToast, type ToastOptions, type ToastTone } from './Toast'
 export { Tooltip } from './Tooltip'
 
 export { Modal } from './Modal'

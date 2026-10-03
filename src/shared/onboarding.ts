@@ -8,7 +8,7 @@
  */
 
 /** 手順の並び。順番を変えるときは途中から再開する利用者がいることに気をつける（知らない id は先頭へ戻る） */
-export const ONBOARDING_STEPS = ['appearance', 'agents', 'project', 'voice', 'permissions', 'finish'] as const
+export const ONBOARDING_STEPS = ['appearance', 'agents', 'decision', 'project', 'voice', 'permissions', 'finish'] as const
 export type OnboardingStepId = (typeof ONBOARDING_STEPS)[number]
 
 export interface OnboardingState {

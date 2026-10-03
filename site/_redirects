@@ -3,3 +3,6 @@
 /downloads /download 301
 /changelog /download#versions 301
 /releases /download#versions 301
+# /docs/ renders a page and then meta-refreshes, which flashes. Redirect before anything is drawn.
+/docs /docs/quick-start 301
+/docs/ /docs/quick-start 301

@@ -69,7 +69,7 @@ Works with TypeSafe Jev, Cloudflare Clef / Clef Flash (via Ollama or Workers AI)
 | | |
 |---|---|
 | **Works with every agent.** Claude Code, Codex, Gemini CLI, Cursor, GitHub Copilot, Devin and more start in built-in terminals; Ferret hands them the findings. [Docs](https://ferretade.dev/docs/agents.html) | **Web, mobile and desktop targets.** Review a dev server URL, a mobile width or simulator window, or any desktop app window. Save each as a project target. [Docs](https://ferretade.dev/docs/projects.html) |
-| **Configured by your agent.** Every setting lives in `~/.ferret/settings.json` with a JSON Schema, so your coding agent can set Ferret up for you. [Docs](https://ferretade.dev/docs/settings-json.html) | **Private by design.** There is no Ferret server. Bring your own keys, kept in your OS keystore. Videos are never sent to agents. [Docs](https://ferretade.dev/docs/privacy.html) |
+| **Configured by your agent.** Every setting lives in `~/.ferret/settings.json` with a JSON Schema, so your coding agent can set Ferret up for you. [Docs](https://ferretade.dev/docs/settings-json.html) | **Private by design.** There is no Ferret server for your work (the only exception, coming soon, is anonymous feedback you choose to send, which becomes a public GitHub issue). Bring your own keys, kept in your OS keystore. Videos are never sent to agents. [Docs](https://ferretade.dev/docs/privacy.html) |
 
 <table>
   <tr>
@@ -161,7 +161,7 @@ Ferret launches CLI agents in its built-in terminals, on the subscriptions you a
 |---|---|---|
 | Apple silicon / Intel · `.dmg` | x64 / Arm64 · installer `.exe` | x64 · AppImage / `.deb` |
 
-Get the latest build, or any earlier version, from **[ferretade.dev/download](https://ferretade.dev/download)**. Builds are not code-signed yet; see [Install](https://ferretade.dev/docs/install.html) for the first-launch step. Windows and Linux builds are previews that have not been tested by hand on real hardware yet.
+Get the latest build, or any earlier version, from **[ferretade.dev/download](https://ferretade.dev/download)**. The macOS build is signed with a Developer ID and notarized by Apple (since 0.2.0 build 3), so it opens like any other app. Windows and Linux builds are not code-signed yet; see [Install](https://ferretade.dev/docs/install.html) for their first-launch step. Windows and Linux builds are previews that have not been tested by hand on real hardware yet.
 
 ## Quick start
 
@@ -199,8 +199,8 @@ pnpm test:unit
 ## About this build
 
 - **What it does**: records and annotates a page opened in the built-in browser, turns your voice and pen marks into findings, lets you edit, merge and delete findings, and sends them to an agent (Codex / Claude Code) running in the built-in terminal.
-- **You bring your own resources**: there is no server or API key on the developer's side. Transcription runs on your machine (whisper.cpp, free), with your own OpenAI API key, or on an OpenAI-compatible server you host (for example on your own GPU). Agents run through the CLI subscriptions you already have.
-- **Platforms**: macOS (Apple Silicon / Intel), Windows (x64 / arm64, preview) and Linux (x64, preview). Day-to-day use is verified on macOS (Apple Silicon). For 0.1.0, the Windows installers were built on a Mac, and the Linux AppImage / deb were built in an x64 Linux container where the unit tests pass and the bundled terminal opens a shell; the Intel macOS build's terminal was checked under Rosetta. Nobody has used the apps by hand on Windows or Linux yet. Builds are not code-signed yet.
+- **You bring your own resources**: there is no server or API key on the developer's side for your work. The one exception, coming soon, is the optional in-app feedback form, whose small relay turns what you send into a public GitHub issue and does not store your IP address (`workers/feedback-relay`). Transcription runs on your machine (whisper.cpp, free), with your own OpenAI API key, or on an OpenAI-compatible server you host (for example on your own GPU). Agents run through the CLI subscriptions you already have.
+- **Platforms**: macOS (Apple Silicon / Intel), Windows (x64 / arm64, preview) and Linux (x64, preview). Day-to-day use is verified on macOS (Apple Silicon). For 0.1.0, the Windows installers were built on a Mac, and the Linux AppImage / deb were built in an x64 Linux container where the unit tests pass and the bundled terminal opens a shell; the Intel macOS build's terminal was checked under Rosetta. Nobody has used the apps by hand on Windows or Linux yet. The macOS build is signed with a Developer ID and notarized; Windows and Linux builds are not code-signed yet.
 
 ## Install and run
 
@@ -251,6 +251,7 @@ Ferret connects to outside services only for:
 - agent usage in the footer (each provider's API, with your own Claude / Codex login)
 - "Send to GitHub" (through your own `gh` CLI)
 - "Check for Updates", only when you click it (the download server on Cloudflare R2)
+- **feedback from the app** (coming soon), only when you send it: your text, bug or idea, app version, OS version if you include it, and up to 3 screenshots go through the developer's relay and become a public issue in `JapanMarketing-Dev/ferret`. Keys, tokens, email addresses and home-folder paths are masked, and the relay does not store your IP address. See [Data and privacy](https://ferretade.dev/docs/privacy.html#feedback).
 - **crash reports (Sentry)**: the app sends crashes and unhandled errors. It is on by default; turn it off in Settings → Privacy or from the notice at first launch. Reports contain the stack trace and OS / CPU / app versions. Paths, URLs, terminal output, transcripts, findings, email addresses, API keys and IP addresses are removed or not collected. Development builds (`pnpm dev`) also send, tagged `development`; E2E runs and unit tests never send. Forks can set `FERRET_SENTRY_DSN` (the old `MOVIE_ADE_SENTRY_DSN` still works) to their own DSN, or to an empty string to disable it. See [Data and privacy](https://ferretade.dev/docs/privacy.html#crash-reports).
 
 ## Development
@@ -263,30 +264,33 @@ pnpm build:win:dev    # dist/dev/win-unpacked/Ferret-Dev.exe
 pnpm build:linux:dev  # dist/dev/linux-unpacked/ferret-dev (build on Linux only)
 ```
 
-These build unsigned, unpacked dev apps for a quick check (`electron-builder.dev.cjs`, a separate app ID so they do not mix with release builds). Release settings are in `electron-builder.config.cjs`. Windows builds can also be made on a Mac. Linux builds must be made on Linux (or in a Linux container) because node-pty has no prebuilt Linux binary. The app never bundles `.env`. User data stays in the `ade-movie` folder even though the product is named Ferret.
+These build unsigned, unpacked dev apps for a quick check (`electron-builder.dev.cjs`, a separate app ID so they do not mix with release builds). Release settings are in `electron-builder.config.cjs`. `scripts/build-release.sh` signs and notarizes the macOS build with a Developer ID when `~/.ferret-signing/env` exists (the values never go into the repository); without it, macOS builds are only ad-hoc signed. Windows builds can also be made on a Mac. Linux builds must be made on Linux (or in a Linux container) because node-pty has no prebuilt Linux binary. The app never bundles `.env`. User data stays in the `ade-movie` folder even though the product is named Ferret.
 
 ### Releases
 
-Installers are not code-signed yet. They are hosted on Cloudflare R2 (bucket `movie-ade-releases`), not on GitHub.
+The macOS installers are signed with a Developer ID and notarized; the Windows and Linux installers are not code-signed yet. They are hosted on Cloudflare R2 (bucket `movie-ade-releases`), not on GitHub. So that a second source exists outside R2, each version also gets a GitHub release with only a `SHA256SUMS` file attached (the same values as its `manifest.json`); the installers themselves are never attached to GitHub.
 
 ```sh
 pnpm dist:mac    # Ferret-<version>-mac-arm64.dmg / -mac-x64.dmg
 pnpm dist:win    # Ferret-<version>-win-x64.exe / -win-arm64.exe (NSIS)
 pnpm dist:linux  # Ferret-<version>-linux-x86_64.AppImage / -linux-amd64.deb (on Linux)
 node scripts/release-r2.mjs stage --dir dist/release --preview win,linux [--notes notes.md] [--dry-run]
-node scripts/release-r2.mjs promote --version <version> [--dry-run]
+node scripts/release-github.mjs create --version <version> [--target <commit>] [--dry-run]   # draft GitHub release with SHA256SUMS only
+gh release download v<version> --repo JapanMarketing-Dev/ferret --pattern SHA256SUMS --dir <dir>
+node scripts/release-r2.mjs promote --version <version> --expect-sums <dir>/SHA256SUMS [--dry-run]
+node scripts/release-github.mjs publish --version <version> [--dry-run]                     # make the draft public
 node scripts/release-r2.mjs discard --version <version> [--dry-run]   # drop a staged version you won't publish
 ```
 
 On a Mac, the whole local release is `pnpm release:build` (type checks, unit tests, then all six installers into `dist/release`; Linux is built in an x64 podman or docker container) → `pnpm release:r2 stage --preview win,linux` → check → `pnpm release:r2 promote --version <version>`.
 
-Publishing has two steps. `stage` uploads the files and `manifest.json` (file name, OS, CPU, size, sha256, date) to `staging/<version>/` without touching the indexes, so neither the site nor the app's update check sees them yet. After checking them, `promote` verifies each file's sha256, moves it to `releases/<version>/`, updates `versions.json` and `latest.json`, and removes the staging copy. Release files are cached for a year (they never change), manifests for an hour, the indexes for five minutes. Both steps refuse a version that is already released. Only the latest 10 versions are kept: `promote` prints and deletes older ones. Uploads use `npx wrangler@latest r2 object put --remote` (300 MiB per file), so log in with `npx wrangler login` first.
+Publishing has two steps. `stage` uploads the files and `manifest.json` (file name, OS, CPU, size, sha256, date) to `staging/<version>/` without touching the indexes, so neither the site nor the app's update check sees them yet. After checking them, `promote` verifies each file's sha256, moves it to `releases/<version>/`, updates `versions.json` and `latest.json`, and removes the staging copy. Release files are cached for a year (they never change), manifests for an hour, the indexes for five minutes. Both steps refuse a version that is already released. Only the latest 10 versions are kept: `promote` prints and deletes older ones. Uploads use `wrangler r2 object put --remote` (300 MiB per file). wrangler is a pinned devDependency (version and integrity in `pnpm-lock.yaml`) started with `node` directly, without a shell; log in with `node scripts/release-tools.mjs wrangler login` first. Manifests and indexes read back from R2 are schema-checked before use, and `--expect-sums` stops if the manifest does not match the `SHA256SUMS` file from the GitHub release (the workflow always passes it). `scripts/release-github.mjs create` builds that file from the staged manifest (`--from releases` for a version that is already promoted, `--manifest <file>` for a local copy).
 
-Pushing a `v*` tag that matches `package.json` runs `.github/workflows/release.yml`: it builds on macOS, Windows and Linux, stages the files on R2 and creates a draft GitHub release with notes only (no files). To publish, run the same workflow by hand from the Actions tab with the version (or run `promote` locally). It needs two repository secrets, plus an optional third:
+Pushing a `v*` tag that matches `package.json` runs `.github/workflows/release.yml`: it builds on macOS, Windows and Linux, writes `SHA256SUMS`, creates a draft GitHub release with the notes and `SHA256SUMS` (no installers), and stages the files on R2. Jobs that hold the R2 token cannot write to the repository and vice versa; actions are pinned to commit SHAs. To publish, run the same workflow by hand from the Actions tab with the version (or run `promote` locally). Promotion checks the staged manifest against that release's `SHA256SUMS`; after a `--replace` rebuild, upload the new file first (`gh release upload v<version> SHA256SUMS --clobber`). It needs two repository secrets, plus an optional third:
 
 1. `CLOUDFLARE_API_TOKEN`: in the Cloudflare dashboard, go to My Profile → API Tokens → Create Token → Create Custom Token. Grant **Account → Workers R2 Storage → Edit** for this account only, and set a short expiry if you can. Copy the token once.
 2. `CLOUDFLARE_ACCOUNT_ID`: shown on the R2 overview page.
-3. `SENTRY_AUTH_TOKEN`: uploads source maps so crash reports show readable stack traces (`scripts/sentry-sourcemaps.mjs`, run by `pnpm build:release`). In Sentry, go to Settings → Developer Settings → Organization Tokens → Create New Token (organization tokens can only upload source maps and manage releases). Until it is registered, the workflow only warns and skips the upload; once it is registered, you can add `SENTRY_SOURCEMAPS: required` to the build job's env in `release.yml` so a failed upload stops the release. Locally, a logged-in `sentry` CLI (`sentry auth login`) is used instead, and the step is skipped with a warning if neither is available. Override the target with `SENTRY_ORG` / `SENTRY_PROJECT` (default `workspacepm` / `movie-ade`).
+3. `SENTRY_AUTH_TOKEN`: uploads source maps so crash reports show readable stack traces (`scripts/sentry-sourcemaps.mjs`, run by `pnpm build:release`). In Sentry, go to Settings → Developer Settings → Organization Tokens → Create New Token (organization tokens can only upload source maps and manage releases). Until it is registered, the workflow only warns and skips the upload; once it is registered, you can add `SENTRY_SOURCEMAPS: required` to the build job's env in `release.yml` so a failed upload stops the release. Locally, the pinned `sentry` CLI from devDependencies is used instead (log in once with `pnpm exec sentry auth login`); the scripts never fetch a CLI with npx or use one from `PATH`, and stop if the pinned one is not installed, and the step is skipped with a warning if neither is available. Override the target with `SENTRY_ORG` / `SENTRY_PROJECT` (default `workspacepm` / `movie-ade`).
 
 Add them under GitHub → Settings → Secrets and variables → Actions. Optional repository variables: `PREVIEW_OS` (default `win,linux`) and `DOWNLOAD_URL` (the link in the release notes). The workflows run on free runners because the repository is public; in a private repository the minutes, especially on macOS, are billed to the owner. `.github/workflows/cross-platform.yml` runs type checks, unit tests and unpacked builds on all three OSes (one macOS job) on every push and pull request; switch it to manual-only if the repository ever becomes private.
 
@@ -294,7 +298,7 @@ Requirements and design documents (in Japanese) are in [docs/02_requirements.md]
 
 ## Download site
 
-`site/` is a static site with no build step (no external CDN), published on Cloudflare Pages at https://ferretade.dev (custom domain of the Pages project `movie-ade`; https://movie-ade.pages.dev keeps working because released apps link to it). `wrangler.jsonc` points Pages at `site/`; `site/_headers` sets security and cache headers, `site/_redirects` holds short aliases, and `site/404.html` is the not-found page. Preview it locally with `pnpm lp:dev` (`http://127.0.0.1:4173/`).
+`site/` is a static site with no build step (no external CDN), published on Cloudflare Pages at https://ferretade.dev (custom domain of the Pages project `movie-ade`; the old https://movie-ade.pages.dev is retired and sends visitors to the same page on ferretade.dev via `site/js/theme.js`, and `site/_headers` keeps it out of search). `wrangler.jsonc` points Pages at `site/`; `site/_headers` sets security and cache headers, `site/_redirects` holds short aliases, and `site/404.html` is the not-found page. Preview it locally with `pnpm lp:dev` (`http://127.0.0.1:4173/`).
 
 Release files are hosted on Cloudflare R2 (the 10 most recent versions), not in the repository. The site reads `versions.json`, `latest.json` and `releases/<version>/manifest.json` from the R2 URL set in `site/js/config.js` (`DOWNLOAD_BASE`, the only place to change for a custom domain). Until a release is published, the site shows build-from-source instructions.
 

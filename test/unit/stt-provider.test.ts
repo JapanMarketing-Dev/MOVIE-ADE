@@ -442,3 +442,23 @@ describe('whisper.cpp に渡す言語', () => {
     expect(lang('')).toBe('auto')
   })
 })
+
+describe('録音の WAV の書き込み（排他）', () => {
+  it('新しい名前には書け、同じ名前・先回りのリンクには書かない（リンク先を書き換えない）', async () => {
+    const { writeWavFile } = await import('../../src/main/pipeline/stt/wav')
+    const { symlink, readFile: rf, writeFile: wf } = await import('node:fs/promises')
+    const dir = await mkdtemp(join(tmpdir(), 'ade-wav-wx-'))
+    try {
+      const wav = join(dir, 'mic-00001-0.wav')
+      await writeWavFile(wav, new Int16Array(16), 16_000)
+      await expect(writeWavFile(wav, new Int16Array(16), 16_000)).rejects.toMatchObject({ code: 'EEXIST' })
+      if (process.platform !== 'win32') {
+        const outside = join(dir, 'outside.txt')
+        await wf(outside, 'keep')
+        await symlink(outside, join(dir, 'mic-00002-1000.wav'))
+        await expect(writeWavFile(join(dir, 'mic-00002-1000.wav'), new Int16Array(16), 16_000)).rejects.toMatchObject({ code: 'EEXIST' })
+        expect(await rf(outside, 'utf8')).toBe('keep')
+      }
+    } finally { await rm(dir, { recursive: true, force: true }) }
+  })
+})

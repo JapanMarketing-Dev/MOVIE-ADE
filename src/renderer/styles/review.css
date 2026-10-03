@@ -10,6 +10,8 @@
 .rv {
   display: grid;
   min-height: 0;
+  /* 列の幅は中身の最小幅で広げない（狭い窓でカードやヘッダーが右のターミナルの下へはみ出さないように） */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   background: var(--color-bg-panel);
   container-type: inline-size;
@@ -120,6 +122,9 @@
 /* 整理（アイコン＋Agentの選択）を1つの部品に見せる */
 .rv-organize {
   display: inline-flex;
+  /* 狭い列では整理の runner の選択を縮める（列の外へはみ出さない） */
+  min-width: 0;
+  max-width: 100%;
   height: var(--size-control);
   align-items: stretch;
   border: 1px solid var(--color-border-strong);
@@ -129,6 +134,22 @@
 
 .rv-organize .tooltip-anchor {
   display: flex;
+  min-width: 0;
+}
+
+.rv-organize .rv-select,
+.rv-organize__runner {
+  min-width: 0;
+}
+
+/* 「整理」のボタンは縮めない（縮めるのは runner の選択だけ） */
+.rv-organize > .tooltip-anchor:first-child {
+  flex: none;
+}
+
+.rv-organize__runner {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rv-organize__run {
@@ -647,7 +668,9 @@ div.rv-card__shot {
 
 .rv-card__tools {
   display: inline-flex;
-  flex: none;
+  min-width: 0;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1);
 }
@@ -1333,6 +1356,26 @@ div.rv-card__shot {
 
 .st-advanced[open] .st-advanced__chevron {
   transform: rotate(90deg);
+}
+
+.st-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  margin-right: auto;
+  gap: var(--space-4);
+}
+
+/* リンクは外部のブラウザで開く（app:openExternal）ので button。見た目はリンクにそろえる */
+button.st-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.st-links .st-link {
+  margin-right: 0;
 }
 
 .st-link {

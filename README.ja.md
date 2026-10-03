@@ -69,7 +69,7 @@ Zoom・Meet・Teams のオンライン会議でも、対面で1つの画面を�
 | | |
 |---|---|
 | **どの Agent でも**: Claude Code、Codex、Gemini CLI、Cursor、GitHub Copilot、Devin などを内蔵ターミナルで起動し、指摘を渡します。[Docs](https://ferretade.dev/docs/agents.html) | **Web・モバイル・デスクトップ**: 開発サーバーの URL、モバイル幅やシミュレータのウィンドウ、任意のデスクトップアプリのウィンドウを対象にでき、プロジェクトごとに保存できます。[Docs](https://ferretade.dev/docs/projects.html) |
-| **Agent に設定を任せられる**: 設定はすべて `~/.ferret/settings.json`（JSON Schema 付き）にあり、コーディング Agent に設定してもらえます。[Docs](https://ferretade.dev/docs/settings-json.html) | **プライバシー**: Ferret のサーバーはありません。キーは各自持ちで OS の鍵の仕組みに保存し、動画は Agent に送りません。[Docs](https://ferretade.dev/docs/privacy.html) |
+| **Agent に設定を任せられる**: 設定はすべて `~/.ferret/settings.json`（JSON Schema 付き）にあり、コーディング Agent に設定してもらえます。[Docs](https://ferretade.dev/docs/settings-json.html) | **プライバシー**: 作業の中身を受け取る Ferret のサーバーはありません（例外は、近く入る、自分で送る匿名のフィードバックで、公開の GitHub Issue になります）。キーは各自持ちで OS の鍵の仕組みに保存し、動画は Agent に送りません。[Docs](https://ferretade.dev/docs/privacy.html) |
 
 <table>
   <tr>
@@ -161,7 +161,7 @@ Zoom・Meet・Teams のオンライン会議でも、対面で1つの画面を�
 |---|---|---|
 | Apple silicon / Intel · `.dmg` | x64 / Arm64 · インストーラ `.exe` | x64 · AppImage / `.deb` |
 
-最新版も過去の版も **[ferretade.dev/download](https://ferretade.dev/download)** から入手できます。配布物はまだ署名していないので、初回起動の手順は [Install](https://ferretade.dev/docs/install.html) を見てください。Windows と Linux は Preview で、実機で人が操作した確認はまだです。
+最新版も過去の版も **[ferretade.dev/download](https://ferretade.dev/download)** から入手できます。macOS 版は Developer ID で署名し、Apple の公証を受けているので（0.2.0 build 3 から）、そのまま開けます。Windows 版と Linux 版はまだ署名していないので、初回起動の手順は [Install](https://ferretade.dev/docs/install.html) を見てください。Windows と Linux は Preview で、実機で人が操作した確認はまだです。
 
 ## クイックスタート
 
@@ -199,8 +199,8 @@ pnpm test:unit
 ## このビルドについて
 
 - **できること**: 内蔵ブラウザで開いた画面の録画と書き込み、声とペンの書き込みからの指摘づくり、指摘の編集・結合・削除、内蔵ターミナルで動く Agent（Codex / Claude Code）への送信
-- **費用は各自持ち**: 開発者側のサーバーやAPIキーはありません。文字起こしは端末内（whisper.cpp、無料）、自分の OpenAI の API キー、自前の GPU などで動かす OpenAI 互換サーバーから選びます。Agent は各自が契約している CLI を使います
-- **対応OS**: macOS（Apple Silicon / Intel）、Windows（x64 / arm64。Preview）、Linux（x64。Preview）。実際の操作を確かめているのは macOS（Apple Silicon）です。0.1.0 では、Windows のインストーラを Mac の上で作りました。Linux の AppImage / deb は x64 の Linux コンテナで作り、そこで単体テストが通ること、同梱のターミナルがシェルを開けることを確かめました。Intel Mac 版のターミナルは Rosetta で確かめました。Windows / Linux の上で人が操作した確認はまだです。配布物はまだ署名していません
+- **費用は各自持ち**: 作業に使う開発者側のサーバーやAPIキーはありません。例外は近く入るアプリ内の匿名のフィードバックで、送ったときだけ、その内容が小さな中継（`workers/feedback-relay`）を通って公開の GitHub Issue になります。中継は IP を保存しません。文字起こしは端末内（whisper.cpp、無料）、自分の OpenAI の API キー、自前の GPU などで動かす OpenAI 互換サーバーから選びます。Agent は各自が契約している CLI を使います
+- **対応OS**: macOS（Apple Silicon / Intel）、Windows（x64 / arm64。Preview）、Linux（x64。Preview）。実際の操作を確かめているのは macOS（Apple Silicon）です。0.1.0 では、Windows のインストーラを Mac の上で作りました。Linux の AppImage / deb は x64 の Linux コンテナで作り、そこで単体テストが通ること、同梱のターミナルがシェルを開けることを確かめました。Intel Mac 版のターミナルは Rosetta で確かめました。Windows / Linux の上で人が操作した確認はまだです。macOS 版は Developer ID で署名・公証済みで、Windows 版と Linux 版はまだ署名していません
 
 ## インストール・起動
 
@@ -251,6 +251,7 @@ pnpm dev
 - フッターの利用量の表示（各提供元のAPI。自分のClaude / Codexのログインを使う）
 - 「GitHubへ送信」（自分の`gh` CLI経由）
 - 「更新を確認」を押したときだけ（Cloudflare R2の配布サーバー）
+- **アプリからのフィードバック**（近く入ります。送ったときだけ）: 本文・種類（不具合か要望）・アプリの版・含めたときだけ OS の版・添付した静止画（3枚まで）が、開発者の中継を通って `JapanMarketing-Dev/ferret` の公開の Issue になります。鍵やトークン・メール・ホームのパスは伏せ字にし、中継は IP を保存しません。詳しくは [Data and privacy](https://ferretade.dev/docs/privacy.html#feedback)
 - **クラッシュレポート（Sentry）**: クラッシュと未処理のエラーを送ります。既定はONで、設定の「プライバシー」か初回起動時の案内からOFFにできます。送るのはスタックトレースとOS・CPU・アプリの版です。パス、URL、ターミナルの出力、文字起こし、指摘、メールアドレス、APIキー、IPアドレスは除くか集めません。開発起動（`pnpm dev`）も`development`として送ります。E2Eと単体テストでは送りません。フォークした人は`FERRET_SENTRY_DSN`（以前の`MOVIE_ADE_SENTRY_DSN`も可）で自分のDSNに向けるか、空にして止められます。詳しくは[Data and privacy](https://ferretade.dev/docs/privacy.html#crash-reports)。
 
 ## 開発・検証
@@ -264,14 +265,14 @@ pnpm build:linux:dev  # dist/dev/linux-unpacked/ferret-dev（Linux の上でだ�
 pnpm lp:dev
 ```
 
-`build:*:dev` は、署名なし・展開済みの dev アプリを作ります（確認用）。設定は`electron-builder.dev.cjs`で、本番版と混ざらないよう識別子を分けています。本番の配布用の設定は`electron-builder.config.cjs`です。Windows 版は Mac でも作れます。Linux 版は、node-pty のビルド済みバイナリが Linux 用には無いため、Linux（またはコンテナ）の上で作ります。LPは`http://127.0.0.1:4173/`です。アプリに`.env`は含めません。製品名は Ferret ですが、利用者のデータはこれまでどおり `ade-movie` フォルダに置きます。
+`build:*:dev` は、署名なし・展開済みの dev アプリを作ります（確認用）。設定は`electron-builder.dev.cjs`で、本番版と混ざらないよう識別子を分けています。本番の配布用の設定は`electron-builder.config.cjs`です。`scripts/build-release.sh` は、`~/.ferret-signing/env` があれば macOS 版を Developer ID で署名・公証します（値はリポジトリに入れません。無いときは ad-hoc 署名だけです）。Windows 版は Mac でも作れます。Linux 版は、node-pty のビルド済みバイナリが Linux 用には無いため、Linux（またはコンテナ）の上で作ります。LPは`http://127.0.0.1:4173/`です。アプリに`.env`は含めません。製品名は Ferret ですが、利用者のデータはこれまでどおり `ade-movie` フォルダに置きます。
 
 ### 配布
 
-インストーラはまだ署名していません。置き場所は Cloudflare R2（バケット `movie-ade-releases`）で、GitHub には置きません。`pnpm dist:mac` / `pnpm dist:win` / `pnpm dist:linux`（Linux の上で）で `Ferret-<version>-<os>-<arch>.<ext>` を作ります。Mac での手順は `pnpm release:build`（型検査と単体テストのあと、6本を `dist/release` に作る。Linux は x64 の podman / docker コンテナで作る）→ `pnpm release:r2 stage --preview win,linux` → 確認 → `pnpm release:r2 promote --version <version>` です。公開は2段階です。まず `node scripts/release-r2.mjs stage --dir dist/release --preview win,linux` で、公開前の置き場 `staging/<version>/` に上げます。ここでは索引を変えないので、サイトにも更新確認にも出ません。確認が済んだら `node scripts/release-r2.mjs promote --version <version>` で `releases/<version>/` へ移し、`versions.json`・`latest.json` を更新します。同じ版は上げ直しません。最新10版を超えた古い版は、表示してから消します。`v*` のタグを push すると、`.github/workflows/release.yml` が staging までを行い、ファイルを添付しないリリースノートの下書きを作ります。公開は、同じワークフローを Actions の画面から手動で起動して行います。必要な secrets（`CLOUDFLARE_API_TOKEN`：Account → Workers R2 Storage → Edit だけを許可したカスタムトークン、`CLOUDFLARE_ACCOUNT_ID`、`SENTRY_AUTH_TOKEN`：ソースマップを Sentry へ上げる組織トークン）の作り方は英語の README を見てください。`SENTRY_AUTH_TOKEN` を GitHub の secrets に登録すると、CI でソースマップが上がります（未登録の間は警告だけで続けます。登録したら `release.yml` の env に `SENTRY_SOURCEMAPS: required` を戻せます）。手元では、ログイン済みの `sentry` CLI でソースマップを上げます。公開リポジトリなので標準のランナーは無料で、`cross-platform.yml` は push / PR のたびに3つのOSで動きます（macOS は1ジョブ）。非公開に戻すときは、実行時間（とくに macOS）の費用が持ち主にかかるので、手動だけにしてください。
+macOS のインストーラは Developer ID で署名し、公証を受けています。Windows と Linux のインストーラはまだ署名していません。置き場所は Cloudflare R2（バケット `movie-ade-releases`）で、GitHub には置きません。`pnpm dist:mac` / `pnpm dist:win` / `pnpm dist:linux`（Linux の上で）で `Ferret-<version>-<os>-<arch>.<ext>` を作ります。Mac での手順は `pnpm release:build`（型検査と単体テストのあと、6本を `dist/release` に作る。Linux は x64 の podman / docker コンテナで作る）→ `pnpm release:r2 stage --preview win,linux` → 確認 → `pnpm release:r2 promote --version <version>` です。公開は2段階です。まず `node scripts/release-r2.mjs stage --dir dist/release --preview win,linux` で、公開前の置き場 `staging/<version>/` に上げます。ここでは索引を変えないので、サイトにも更新確認にも出ません。確認が済んだら `node scripts/release-r2.mjs promote --version <version>` で `releases/<version>/` へ移し、`versions.json`・`latest.json` を更新します。同じ版は上げ直しません。最新10版を超えた古い版は、表示してから消します。`v*` のタグを push すると、`.github/workflows/release.yml` が staging までを行い、インストーラを添付しないリリースノートの下書きを作ります。下書きには R2 とは別の答え合わせとして `SHA256SUMS`（manifest の sha256 と同じ値）だけを添付します（インストーラーは GitHub に付けません）。公開は、同じワークフローを Actions の画面から手動で起動して行います（promote は R2 の manifest がその `SHA256SUMS` と一致しなければ止まります。`--replace` で作り直したときは、先に `gh release upload v<version> SHA256SUMS --clobber` で差し替えてください）。手元から公開するときは、stage のあとに `node scripts/release-github.mjs create --version <version>` で SHA256SUMS だけの下書きを作り、`gh release download v<version> --pattern SHA256SUMS` で取った分を `promote --expect-sums` に渡し、最後に `node scripts/release-github.mjs publish --version <version>` で下書きを公開します（どちらも `--dry-run` で gh を動かさずにコマンドだけを確かめられます）。wrangler は devDependencies で版を固定したものを shell を通さずに起動し、R2 から読んだ manifest は形を確かめてから使います。必要な secrets（`CLOUDFLARE_API_TOKEN`：Account → Workers R2 Storage → Edit だけを許可したカスタムトークン、`CLOUDFLARE_ACCOUNT_ID`、`SENTRY_AUTH_TOKEN`：ソースマップを Sentry へ上げる組織トークン）の作り方は英語の README を見てください。`SENTRY_AUTH_TOKEN` を GitHub の secrets に登録すると、CI でソースマップが上がります（未登録の間は警告だけで続けます。登録したら `release.yml` の env に `SENTRY_SOURCEMAPS: required` を戻せます）。手元では、devDependencies で版を固定した `sentry` CLI（`pnpm exec sentry auth login` でログイン）でソースマップを上げます。PATH の CLI や npx で取ってきた CLI は使いません。公開リポジトリなので標準のランナーは無料で、`cross-platform.yml` は push / PR のたびに3つのOSで動きます（macOS は1ジョブ）。非公開に戻すときは、実行時間（とくに macOS）の費用が持ち主にかかるので、手動だけにしてください。
 
 要件・設計は[docs/02_requirements.md](docs/02_requirements.md)、[docs/03_design.md](docs/03_design.md)。main はリリース用です。develop で開発し、PR は develop へ出してください。
 
 ## ダウンロードサイトの公開
 
-`site/` はビルド不要の静的サイトで、Cloudflare Pages（https://ferretade.dev。Pages のプロジェクト movie-ade の独自ドメイン。公開済みのアプリがリンクしているので https://movie-ade.pages.dev も残します）で公開します。ヘッダーは `site/_headers`、短縮 URL は `site/_redirects`、404 は `site/404.html` です。`pnpm lp:dev` で `http://127.0.0.1:4173/` に表示します。公開は `pnpm site:deploy`（Pages のプロジェクト movie-ade へ `site/` を上げる。`wrangler login` が必要）か、ダッシュボードで movie-ade を GitHub に接続し、ビルドコマンドは空、出力は `site` にします。配布ファイルは Cloudflare R2 に置き、サイトは `site/js/config.js` の `DOWNLOAD_BASE` から `versions.json`・`latest.json`・`releases/<version>/manifest.json` を読みます。
+`site/` はビルド不要の静的サイトで、Cloudflare Pages（https://ferretade.dev。Pages のプロジェクト movie-ade の独自ドメイン。古い https://movie-ade.pages.dev は使わず、開くと ferretade.dev の同じページへ移ります。`site/js/theme.js` が移し、`site/_headers` で検索にも出しません）で公開します。ヘッダーは `site/_headers`、短縮 URL は `site/_redirects`、404 は `site/404.html` です。`pnpm lp:dev` で `http://127.0.0.1:4173/` に表示します。公開は `pnpm site:deploy`（Pages のプロジェクト movie-ade へ `site/` を上げる。版を固定した wrangler（devDependencies）を使う。`node scripts/release-tools.mjs wrangler login` でログインしておく）か、ダッシュボードで movie-ade を GitHub に接続し、ビルドコマンドは空、出力は `site` にします。配布ファイルは Cloudflare R2 に置き、サイトは `site/js/config.js` の `DOWNLOAD_BASE` から `versions.json`・`latest.json`・`releases/<version>/manifest.json` を読みます。

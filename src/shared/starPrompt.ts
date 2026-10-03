@@ -33,6 +33,8 @@ export interface StarPromptState {
   sends: number
   /** 完成したレビューの数 */
   reviews: number
+  /** 「使いづらいところはありましたか？」を一度出した（フィードバックの声かけ。一度だけ） */
+  feedbackAsked?: boolean
 }
 
 export const DEFAULT_STAR_PROMPT: StarPromptState = { done: false, count: 0, lastShownAt: null, sends: 0, reviews: 0 }
@@ -47,7 +49,8 @@ export function sanitizeStarPrompt(raw: unknown): StarPromptState | undefined {
     count: count(r.count),
     lastShownAt: typeof r.lastShownAt === 'number' && Number.isFinite(r.lastShownAt) ? r.lastShownAt : null,
     sends: count(r.sends),
-    reviews: count(r.reviews)
+    reviews: count(r.reviews),
+    ...(r.feedbackAsked === true ? { feedbackAsked: true } : {})
   }
 }
 
@@ -81,6 +84,14 @@ export function blockedReason(state: StarPromptState, ctx: StarPromptContext): '
 /** 出来事を数える */
 export function countEvent(state: StarPromptState, moment: StarPromptMoment): StarPromptState {
   return moment === 'first-send' ? { ...state, sends: state.sends + 1 } : { ...state, reviews: state.reviews + 1 }
+}
+
+/** Agent への送信がこの回数に達したら、一度だけフィードバックを聞く（star のお願いの最初の場面＝1回目とは重ねない） */
+export const FEEDBACK_ASK_AFTER_SENDS = 3
+
+/** フィードバックの声かけを出してよいか。録画中・セットアップ中は出さない。一度出したら二度と出さない */
+export function shouldAskFeedback(state: StarPromptState, ctx: Omit<StarPromptContext, 'now'>): boolean {
+  return !state.feedbackAsked && state.sends >= FEEDBACK_ASK_AFTER_SENDS && !ctx.recording && ctx.onboardingDone
 }
 
 /** トーストの出し方。gh で直接 star できるか、ブラウザで開くか */

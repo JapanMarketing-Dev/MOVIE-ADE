@@ -17,6 +17,7 @@ import type { AddressInfo } from 'node:net'
 import type { DecisionPricing } from '@shared/decision'
 import type { ApiCallRecord } from '@shared/apiUsage'
 import { estimateCost, extractUsage } from './callLog'
+import { AI_RESPONSE_MAX_BYTES, ResponseTooLargeError, readBoundedBytes } from '../boundedResponse'
 
 /** 画像を2枚含むので大きめ */
 export const RELAY_MAX_BODY_BYTES = 32 * 1024 * 1024
@@ -38,6 +39,18 @@ export interface RelayUpstream {
 export interface RelayTokenMeta {
   projectId?: string
   agent?: string
+  /** 合言葉を渡したターミナルの ID。ターミナルが閉じたら revokeSession で無効にする */
+  sessionId?: string
+}
+
+/** 1つの合言葉で同時に送れる依頼の数 */
+export const RELAY_MAX_CONCURRENT_PER_TOKEN = 4
+/** 出してからこの時間で無効にする（長い作業でも、ターミナルを開き直せば新しい合言葉になる） */
+export const RELAY_TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000
+
+interface IssuedToken {
+  meta: RelayTokenMeta
+  issuedAt: number
 }
 
 /** 接続先を決められない（URL・アカウント ID・キーが無いなど）。Agent へは 400 と理由を返す */
@@ -48,6 +61,9 @@ export interface DecisionRelayOptions {
   upstream: () => Promise<RelayUpstream>
   onCall?: (record: ApiCallRecord) => void
   maxBodyBytes?: number
+  /** 接続先の応答の上限。超えたら読むのをやめ、Agent へは 502 を返す */
+  maxResponseBytes?: number
+  tokenMaxAgeMs?: number
   fetch?: typeof fetch
   now?: () => Date
 }
@@ -74,12 +90,16 @@ function countImages(body: Buffer): number | undefined {
 
 export class DecisionRelay {
   private server: Server | null = null
-  private readonly tokens = new Map<string, RelayTokenMeta>()
+  private readonly tokens = new Map<string, IssuedToken>()
+  /** 合言葉ごとの、送っている途中の依頼の数 */
+  private readonly inflight = new Map<string, number>()
   private readonly maxBody: number
+  private readonly maxResponse: number
   private readonly doFetch: typeof fetch
 
   constructor(private readonly opt: DecisionRelayOptions) {
     this.maxBody = opt.maxBodyBytes ?? RELAY_MAX_BODY_BYTES
+    this.maxResponse = opt.maxResponseBytes ?? AI_RESPONSE_MAX_BYTES
     this.doFetch = opt.fetch ?? fetch
   }
 
@@ -117,15 +137,46 @@ export class DecisionRelay {
     await new Promise<void>((resolve) => server.close(() => resolve()))
   }
 
-  /** Agent の起動ごとに合言葉を1つ出す。どの Agent の呼び出しかを記録に使う */
+  private nowMs(): number {
+    return (this.opt.now?.() ?? new Date()).getTime()
+  }
+
+  /**
+   * Agent の起動ごとに合言葉を1つ出す。どの Agent の呼び出しかを記録に使う。
+   * 合言葉はターミナル（sessionId）に結び付け、閉じたら・判定を無効にしたら無効にする（提供元・キー・モデルの変更では切らない）。
+   * 出してから RELAY_TOKEN_MAX_AGE_MS で切れる
+   */
   issue(meta: RelayTokenMeta = {}): string {
     const token = randomBytes(18).toString('base64url')
-    this.tokens.set(token, meta)
+    const now = this.nowMs()
+    this.tokens.set(token, { meta, issuedAt: now })
     return token
   }
 
   revoke(token: string): void {
     this.tokens.delete(token)
+  }
+
+  /** そのターミナルに渡した合言葉をすべて無効にする（ターミナルが閉じたとき） */
+  revokeSession(sessionId: string): void {
+    for (const [token, issued] of this.tokens) if (issued.meta.sessionId === sessionId) this.tokens.delete(token)
+  }
+
+  /** 出した合言葉をすべて無効にする（判定を無効にしたとき） */
+  revokeAll(): void {
+    this.tokens.clear()
+  }
+
+  /** 有効な合言葉なら、その情報を返す。切れていれば消して undefined */
+  private accept(token: string): RelayTokenMeta | undefined {
+    const issued = this.tokens.get(token)
+    if (!issued) return undefined
+    const now = this.nowMs()
+    if (now - issued.issuedAt > (this.opt.tokenMaxAgeMs ?? RELAY_TOKEN_MAX_AGE_MS)) {
+      this.tokens.delete(token)
+      return undefined
+    }
+    return issued.meta
   }
 
   /** Agent に渡す URL（合言葉付き） */
@@ -140,11 +191,28 @@ export class DecisionRelay {
     if (req.method !== 'POST') return sendJson(res, 405, relayError('Use POST.', 'relay_method'))
     const header = req.headers[RELAY_TOKEN_HEADER] ?? req.headers[LEGACY_RELAY_TOKEN_HEADER]
     const token = url.searchParams.get('t') ?? (typeof header === 'string' ? header : '')
-    const meta = token ? this.tokens.get(token) : undefined
+    const meta = token ? this.accept(token) : undefined
     if (!meta) {
       req.resume()
       return sendJson(res, 401, relayError('Missing or invalid Ferret relay token. Use $FERRET_DECISION_URL exactly as given.', 'relay_unauthorized'))
     }
+    // 1つの合言葉で同時に送れる数を絞る（写し取った合言葉で並べて呼び、費用やメモリを膨らませない）
+    const inflight = this.inflight.get(token) ?? 0
+    if (inflight >= RELAY_MAX_CONCURRENT_PER_TOKEN) {
+      req.resume()
+      return sendJson(res, 429, relayError(`Too many decision requests at once (max ${RELAY_MAX_CONCURRENT_PER_TOKEN}). Wait for the previous ones to finish.`, 'relay_too_many'))
+    }
+    this.inflight.set(token, inflight + 1)
+    try {
+      await this.forward(req, res, meta)
+    } finally {
+      const left = (this.inflight.get(token) ?? 1) - 1
+      if (left > 0) this.inflight.set(token, left)
+      else this.inflight.delete(token)
+    }
+  }
+
+  private async forward(req: IncomingMessage, res: ServerResponse, meta: RelayTokenMeta): Promise<void> {
     const body = await this.readBody(req, res)
     if (!body) return
     const started = Date.now()
@@ -177,8 +245,18 @@ export class DecisionRelay {
         ? relayError(`The decision API did not answer within ${Math.round(upstream.timeoutMs / 1000)}s.`, 'relay_upstream_timeout')
         : relayError('Ferret relay could not reach the decision API. Check that it is running and that the URL in Ferret settings is right.', 'relay_upstream_unreachable'))
     }
-    // 本文を読み切れなかった（途中で切れた）ときは、読めた分だけ返す（想定内）
-    const out = Buffer.from(await upstreamRes.arrayBuffer().catch(() => new ArrayBuffer(0)))
+    let out: Buffer
+    try {
+      out = await readBoundedBytes(upstreamRes, this.maxResponse)
+    } catch (err) {
+      if (err instanceof ResponseTooLargeError) {
+        // 大きすぎる応答は溜めずに切る（設定した接続先が巨大な本文を返してもメモリを使い切らない）
+        record(upstreamRes.status)
+        return sendJson(res, 502, relayError(`The decision API response was larger than ${Math.round(this.maxResponse / 1024 / 1024)}MB, so Ferret stopped reading it.`, 'relay_upstream_too_large'))
+      }
+      // 本文を読み切れなかった（途中で切れた）ときは、空で返す（想定内）
+      out = Buffer.alloc(0)
+    }
     const headers: Record<string, string> = { 'content-length': String(out.length) }
     const contentType = upstreamRes.headers.get('content-type')
     if (contentType) headers['content-type'] = contentType

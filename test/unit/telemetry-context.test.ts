@@ -152,13 +152,14 @@ describe('「クラッシュレポートを送る」を起動中に切り替え�
     const sent: string[] = []
     const events: string[] = []
     const gate = createSendGate(() => enabled, { onDisable: () => events.push('end session'), onEnable: () => events.push('start session') })
-    const transport = gateTransport({ send: async (e: never) => { sent.push(String(e)) ; return {} }, flush: async () => true }, gate.allow)
-    await transport.send('error-1' as never)
+    const envelope = (name: string, type = 'event') => [{ event_id: name }, [[{ type }, { name }]]]
+    const transport = gateTransport({ send: async (e: never) => { sent.push((e as unknown as [{ event_id: string }])[0].event_id); return {} }, flush: async () => true }, gate.allow)
+    await transport.send(envelope('error-1') as never)
     enabled = false // 設定の画面で OFF、または settings.json を外から書き換えた
-    await transport.send('session-update' as never)
-    await transport.send('error-2' as never)
+    await transport.send(envelope('session-update', 'session') as never)
+    await transport.send(envelope('error-2') as never)
     enabled = true
-    await transport.send('error-3' as never)
+    await transport.send(envelope('error-3') as never)
     expect(sent).toEqual(['error-1', 'error-3'])
     expect(events).toEqual(['end session', 'start session'])
   })

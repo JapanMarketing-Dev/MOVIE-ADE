@@ -14,6 +14,7 @@ import { organizeOutputSchema } from '../schema'
 import type { RawOrganizeOutput } from '../schema'
 import { buildTargetIndex, type TargetIndex } from './targets'
 import { cleanReviewTitle } from '../../sessions/autoName'
+import { buildGrounding, checkGrounding, findLocalLeak, inputTextOf } from './grounding'
 
 export interface ValidationIssue {
   /** 致命的（この指摘／出力は使えない）か、警告（直して使える）か */
@@ -80,6 +81,16 @@ export function validateOrganizeOutput(
     input.events.filter((e) => e.type === 'pen').map((e) => e.id),
   )
 
+  // ローカルのファイルの中身らしきもの（秘密の形・入力に無いローカルのパス）が1つでもあれば、出力ごと捨てる
+  // （注入で CLI がファイルを読んだしるし。下書きへ戻る。security-2 [3]）
+  const inputText = inputTextOf(input)
+  const leak = [rawOut.review_title ?? '', ...rawOut.items.flatMap((it) => [it.title, it.request]), ...rawOut.dropped.map((d) => d.reason)]
+    .map((text) => findLocalLeak(text, inputText)).find(Boolean)
+  if (leak) {
+    issues.push({ level: 'error', code: 'local-leak', message: `出力にローカルのファイルの中身らしきもの（${leak}）がある。注入でファイルを読まれた恐れがあるので使わない` })
+    return { ok: false, issues }
+  }
+
   if (rawOut.items.length === 0) {
     issues.push({ level: 'error', code: 'empty', message: '指摘が1件も返っていない' })
     return { ok: false, issues }
@@ -92,6 +103,8 @@ export function validateOrganizeOutput(
   const annotationTimes = new Map(
     input.events.filter((e) => e.type === 'pen').map((e) => [e.id, e.t]),
   )
+  // 見出し・要望が利用者の発話に根拠を持つか（ページの文字からの注入を通さない。grounding.ts）
+  const grounding = buildGrounding(input)
 
   rawOut.items.forEach((item, i) => {
     const fail = (code: string, message: string) => {
@@ -153,10 +166,31 @@ export function validateOrganizeOutput(
       if (near !== undefined) frames = [near]
     }
 
+    // 利用者が言っていない命令（ページの文字から来たもの）は書き写さない。見出しは発話から作り直し、要望は空にして
+    // 「要確認」にする（指摘そのものは発話に根拠があるので残す）。ページの文字の書き写しは、要確認にして送る対象から外す
+    let title = item.title.trim()
+    let request = item.request.trim()
+    let status = item.status
+    const titleIssue = checkGrounding(title, grounding)
+    const requestIssue = checkGrounding(request, grounding)
+    for (const [field, issue] of [['title', titleIssue], ['request', requestIssue]] as const) {
+      if (!issue) continue
+      warn(issue.kind === 'instruction' ? 'ungrounded-instruction' : 'page-text-copied',
+        issue.kind === 'instruction'
+          ? `${field} に、発話に無い命令らしい文がある（「${issue.excerpt}」）。ページの文字からの注入とみなして外した`
+          : `${field} に、発話に無いページの文字がそのまま入っている（「${issue.excerpt}」）。要確認にした`)
+      status = 'needs_check'
+    }
+    if (titleIssue?.kind === 'instruction') {
+      title = quotes[0]?.text.trim().slice(0, 60) ?? ''
+      if (!title) fail('title-empty', 'title が空（命令らしい文を外したら残らなかった）')
+    }
+    if (requestIssue?.kind === 'instruction') request = ''
+
     items.push(enforceTarget({
-      title: item.title.trim(),
-      request: item.request.trim(),
-      status: item.status,
+      title,
+      request,
+      status,
       quotes,
       frame_times: frames,
       annotation_ids: validAnnotations,
@@ -180,8 +214,13 @@ export function validateOrganizeOutput(
   }
 
   // レビューの名前は、使えなければ捨てる（履歴の見出しはルールの名前になる）
-  const reviewTitle = cleanReviewTitle(rawOut.review_title)
+  let reviewTitle = cleanReviewTitle(rawOut.review_title)
   if (rawOut.review_title !== undefined && !reviewTitle) issues.push({ level: 'warning', code: 'review-title-empty', message: 'review_title が空か意味のない文' })
+  // レビューの名前も、ページの文字からの注入や書き写しなら使わない（ルールの名前になる）
+  if (reviewTitle && checkGrounding(reviewTitle, grounding)) {
+    issues.push({ level: 'warning', code: 'review-title-ungrounded', message: 'review_title が発話に根拠を持たない（ページの文字）ので使わない' })
+    reviewTitle = undefined
+  }
   return { ok: true, issues, value: { items: kept, dropped, ...(reviewTitle ? { reviewTitle } : {}) } }
 }
 

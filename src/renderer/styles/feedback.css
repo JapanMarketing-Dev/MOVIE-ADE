@@ -33,6 +33,8 @@
 .fb-pill {
   position: relative;
   display: flex;
+  /* 狭いウインドウ（1024px など）でも帯からはみ出さない。縮むのは案内の枠だけ */
+  min-width: 0;
   max-width: 100%;
   height: 42px;
   align-items: center;
@@ -259,6 +261,11 @@
 }
 
 /* ── 案内の枠（ふだんはページ名、指したボタンの名前とキー）──── */
+
+/* ボタンは縮めない（狭いときは案内の枠が縮む） */
+.fb-pill > :not(.fb-hint) {
+  flex-shrink: 0;
+}
 
 /* 中身が変わってもピルの幅が揺れないよう、幅を決めておく */
 .fb-hint {

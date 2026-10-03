@@ -6,7 +6,7 @@
  * `process.resourcesPath`）は引数で受け取るので、単体テストできる。
  */
 import { execFile, execFileSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { accessSync, constants as fsConstants, existsSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import type { PlatformName } from '@shared/types'
 import type { WhisperModelId } from './stt/models'
@@ -199,6 +199,33 @@ const WHICH_CACHE_MS = 30_000
 const whichCache = new Map<string, { value: string | null; at: number }>()
 
 /** 既定の probes（main から使う）。Electron には依存しない */
+/** Windows の where を待つ上限 */
+const WHERE_TIMEOUT_MS = 2000
+
+/**
+ * which と同じ探し方（macOS / Linux）。PATH のフォルダを前から見て、実行できるファイルの最初のものを返す。
+ * コマンドに区切りが入っていれば探さない（PATH の外のパスは扱わない）
+ */
+export function findOnPath(command: string, pathValue: string, isExecutable: (path: string) => boolean): string | null {
+  if (!command || command.includes('/')) return null
+  for (const dir of pathValue.split(':')) {
+    if (!dir) continue
+    const candidate = `${dir.replace(/\/+$/, '')}/${command}`
+    if (isExecutable(candidate)) return candidate
+  }
+  return null
+}
+
+function isExecutableFile(path: string): boolean {
+  try {
+    if (!statSync(path).isFile()) return false
+    accessSync(path, fsConstants.X_OK)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function nodeProbes(): EnvironmentProbes {
   return {
     platform: process.platform as PlatformName,
@@ -207,23 +234,23 @@ export function nodeProbes(): EnvironmentProbes {
     exists: (p) => existsSync(p),
     which: (command) => {
       /*
-       * which / where を同期で起動するので main が止まる（重い Mac では数百 ms〜秒）。capture:availability などで
-       * 何度も呼ばれるので、結果を30秒覚える（見つからないことも覚える）。時間は重い処理として控える
+       * capture:availability（指摘の画面を開くたび）などで何度も呼ばれるので、結果を30秒覚える（見つからないことも覚える）。
+       * macOS / Linux は which を起動せず、PATH のフォルダを順に見る（プロセスを起動して main を止めない。FERRET-M）。
+       * Windows の where は PATHEXT と npm のスクリプトの扱いがあるのでそのまま使い、止まる上限を付ける。時間は重い処理として控える
        */
       const hit = whichCache.get(command)
       if (hit && Date.now() - hit.at < WHICH_CACHE_MS) return hit.value
-      const finder = process.platform === 'win32' ? 'where' : 'which'
       const value = timedSync(`which:${command}`.slice(0, 40), () => {
+        if (process.platform !== 'win32') return findOnPath(command, process.env.PATH ?? '', isExecutableFile)
         try {
-          const out = execFileSync(finder, [command], {
+          const out = execFileSync('where', [command], {
             encoding: 'utf8',
             windowsHide: true,
+            timeout: WHERE_TIMEOUT_MS,
             stdio: ['ignore', 'pipe', 'ignore']
           })
           // Windows の where は npm の拡張子なしのスクリプトを先に出すことがある。起動できるものを選ぶ
-          if (process.platform === 'win32') return pickWindowsWhereResult(out, process.env)
-          const first = out.split(/\r?\n/).find((l) => l.trim().length > 0)
-          return first ? first.trim() : null
+          return pickWindowsWhereResult(out, process.env)
         } catch {
           // コマンドが見つからない（想定内）
           return null

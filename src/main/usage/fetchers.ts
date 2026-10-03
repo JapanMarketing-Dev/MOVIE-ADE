@@ -3,6 +3,7 @@ import type { AccountAgent } from '@shared/types'
 import { readClaudeAccessToken, readCodexAccessToken } from './credentials'
 import { t } from '@shared/i18n'
 import { errorKind, reportHandled } from '@shared/report'
+import { SMALL_JSON_MAX_BYTES, readBoundedJson } from '../boundedResponse'
 
 /**
  * Claude / Codex の使用量を、それぞれの公式のエンドポイントから読む。
@@ -147,7 +148,7 @@ export async function fetchClaudeUsage(request: UsageRequest, configDir?: string
   }
   if (!response.ok) return httpFailure('claude', response)
   try {
-    return mapClaudeUsageResponse((await response.json()) as ClaudeUsageResponse)
+    return mapClaudeUsageResponse((await readBoundedJson(response, SMALL_JSON_MAX_BYTES)) as ClaudeUsageResponse)
   } catch (err) {
     // 応答の形が変わった（API の変更）。中身は送らない
     reportHandled(errorKind(err), { area: 'usage', op: 'parse claude usage' })
@@ -220,7 +221,7 @@ export async function fetchCodexUsage(request: UsageRequest, codexHome: string):
   }
   if (!response.ok) return httpFailure('codex', response)
   try {
-    return mapCodexUsageResponse((await response.json()) as CodexUsageResponse) ?? failure('codex', 'unknown', t('usage.errors.badFormat', { name: 'Codex' }))
+    return mapCodexUsageResponse((await readBoundedJson(response, SMALL_JSON_MAX_BYTES)) as CodexUsageResponse) ?? failure('codex', 'unknown', t('usage.errors.badFormat', { name: 'Codex' }))
   } catch (err) {
     reportHandled(errorKind(err), { area: 'usage', op: 'parse codex usage' })
     return failure('codex', 'unknown', t('usage.errors.badFormat', { name: 'Codex' }))

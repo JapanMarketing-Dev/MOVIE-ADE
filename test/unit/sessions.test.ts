@@ -419,12 +419,24 @@ describe('.git/info/exclude への追記（NF-9）', () => {
     expect(await ensureGitExclude(project)).toBe('no-git')
   })
 
-  it('worktree（.git がファイル）でも実体を辿る', async () => {
+  it('worktree（.git がファイル）でも、git が確かめた元のリポジトリの除外ファイルへ書く', async () => {
+    const { execFileSync } = await import('node:child_process')
+    const main = join(project, 'main')
+    const wt = join(project, 'wt')
+    execFileSync('git', ['init', '-q', main])
+    execFileSync('git', ['-C', main, '-c', 'user.email=t@example.com', '-c', 'user.name=t', 'commit', '-q', '--allow-empty', '-m', 'init'])
+    execFileSync('git', ['-C', main, 'worktree', 'add', '-q', wt])
+    expect(await ensureGitExclude(wt)).toBe('added')
+    // worktree の除外は元のリポジトリの info/exclude が効く
+    expect(await readFile(join(main, '.git', 'info', 'exclude'), 'utf8')).toContain('.ferret/')
+  })
+
+  it('偽の gitdir:（任意のフォルダを指す）には書かない', async () => {
     const real = join(project, 'realgit')
     await mkdir(real, { recursive: true })
     await writeFile(join(project, '.git'), `gitdir: ${real}\n`, 'utf8')
-    expect(await ensureGitExclude(project)).toBe('added')
-    expect(existsSync(join(real, 'info', 'exclude'))).toBe(true)
+    expect(await ensureGitExclude(project)).toBe('no-git')
+    expect(existsSync(join(real, 'info', 'exclude'))).toBe(false)
   })
 })
 

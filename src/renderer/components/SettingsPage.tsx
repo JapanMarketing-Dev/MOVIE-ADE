@@ -11,6 +11,7 @@ import { starFromMenu } from './StarPrompt'
 import { useLocale, useT } from '../lib/i18n'
 import { AccountsSection } from './AccountsSection'
 import { AgentIcon } from './AgentIcon'
+import { AgentResourcesSection } from './AgentResourcesSection'
 import { GitHubSection } from './GitHubSection'
 import { LayoutSettings } from './LayoutSettings'
 import { TranscriptionSection } from './TranscriptionSection'
@@ -22,6 +23,7 @@ import { useSettingsRevision } from '../lib/settingsFile'
 import { PRODUCT_NAME } from '@shared/i18n'
 import { SETTINGS_SECTIONS, activeSectionAt, filterSettingsSections, type SettingsSectionId } from '../lib/settingsSections'
 import { requestShowOnboarding } from '../onboarding/showOnboardingEvent'
+import { SetupChecklist } from '../onboarding/SetupChecklist'
 import { AgentInstallDisclosure } from '../onboarding/AgentInstallTerminal'
 import { agentInstallCommand } from '../onboarding/agentInstall'
 import '../styles/settings.css'
@@ -218,6 +220,8 @@ function AgentSection({ value, onChange, prompt, onPromptChange }: {
     <div className="st-agent__reset">
       <Button variant="ghost" disabled={!prompt.trim()} onClick={() => onPromptChange('')}>{t('settings.agents.resetPrompt')}</Button>
     </div>
+    {/* 有効でインストール済みの CLI ごとのスキル・コマンド・MCP（読むだけ） */}
+    <AgentResourcesSection agents={options.filter((o) => o.installed && enabled(o.id)).map((o) => ({ id: o.id, label: label(o.id) }))} />
   </div>
 }
 
@@ -320,6 +324,10 @@ export function SettingsPage({
   }
 
   const sections: Record<SettingsSectionId, ReactNode> = {
+    setup: <PageSection key="setup" id="setup" title={titleOf('setup')}>
+      {/* 済んだかは実際の状態から自動で決める（onboarding/setupChecklist.ts） */}
+      <SetupChecklist />
+    </PageSection>,
     general: <PageSection key="general" id="general" title={titleOf('general')}>
         <SelectRow label={t('settings.storage.keep')}>
           <select className="st-select" aria-label={t('settings.storage.keepLabel')} value={v.keepDays} disabled={recording} onChange={(e) => onChange({ keepDays: Number(e.target.value) })}>

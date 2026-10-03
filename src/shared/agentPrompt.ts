@@ -77,3 +77,29 @@ export function renderReplyPrompt(target: AgentPromptTarget, reply: AgentReply, 
   })
   return decision ? `${body}${translate(lang, 'agentPrompt.replyDecision')}` : body
 }
+
+/** まとめて送るときのコメントの合計の上限（文面の残りの分を空けて、送信の上限 20,000 字に収める） */
+export const NG_TOTAL_MAX = 15_000
+
+/** 人が NG を付けた指摘（Findings の確認で、コメントが必須） */
+export interface AgentNg {
+  n: number
+  id: string
+  comment: string
+}
+
+/**
+ * 「NG をまとめて送る」（と1件だけ送る操作）で Agent へ送る1行。NG の指摘の番号・ID・コメントだけを載せ、
+ * それぞれを直して AFTER を撮り直し、human_review に戻させる（並列で進めてよい）。
+ * コメントの改行は空白にまとめ、1件ごとに REPLY_MAX で切る（ターミナルへ1回で書き込める長さに収める）
+ */
+export function renderNgPrompt(target: AgentPromptTarget, items: readonly AgentNg[], locale?: SupportedLocale, decision?: AgentPromptDecision | null): string {
+  const lang = locale ?? getLocale()
+  const path = target.feedbackMd ?? `${target.relativeDir.replace(/\/+$/, '')}/feedback.md`
+  // 件数が多くても送信の上限（@shared/sendTarget の MAX_SEND_TEXT）に収まるよう、1件の長さを割り当てる
+  const cap = Math.min(REPLY_MAX, Math.floor(NG_TOTAL_MAX / Math.max(1, items.length)))
+  const list = items.map((it) => translate(lang, 'agentPrompt.ngItem', { n: it.n, id: it.id, comment: it.comment.replace(/\s+/g, ' ').trim().slice(0, cap) }))
+    .join(translate(lang, 'agentPrompt.ngSeparator'))
+  const body = translate(lang, 'agentPrompt.ngBatch', { count: items.length, items: list, path, progress: path.replace(/feedback\.md$/, 'progress.json') })
+  return decision ? `${body}${translate(lang, 'agentPrompt.ngDecision')}` : body
+}

@@ -11,10 +11,16 @@
  * - `--setting-sources ""` でユーザー・プロジェクト・ローカルの設定とCLAUDE.mdを読ませない
  *   （レビュー対象リポジトリの CLAUDE.md が指示に混ざるのを防ぐ）。
  * - `--bare` は使わない。OAuth（サブスク）を読まず ANTHROPIC_API_KEY を要求するため。
+ * - cwd は実行ごとに作る空の一時フォルダ（セッションフォルダもプロジェクトも見せない。security-2 [3]）。
+ *   プロンプトにはページの作者が書ける文字が入るので、ツールを切った上での念押し
+ * - `--no-session-persistence` で会話（文字起こし）をディスクに残さない
  */
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { LlmRunner, RunnerRequest, RunnerResult } from '../runner'
 import { RunnerError } from '../runner'
-import { extractJson, spawnText } from '../spawn'
+import { extractJson, spawnText, type SpawnTextOptions, type SpawnTextResult } from '../spawn'
 import { isInheritedAgentSessionEnv } from '../../../inheritedAgentEnv'
 
 export interface ClaudeCodeRunnerOptions {
@@ -26,6 +32,8 @@ export interface ClaudeCodeRunnerOptions {
   effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max'
   /** 選択中のアカウントの環境変数（CLAUDE_CONFIG_DIR など）。実行のたびに読む。src/main/accounts の resolveAgentEnv を渡す */
   accountEnv?: () => Record<string, string>
+  /** 子プロセスの起動（単体テストで偽物に差し替える） */
+  spawn?: (opt: SpawnTextOptions) => Promise<SpawnTextResult>
 }
 
 interface ClaudeResultEnvelope {
@@ -78,9 +86,11 @@ export class ClaudeCodeRunner implements LlmRunner {
   private readonly defaultModel: string
   private readonly effort: string
   private readonly accountEnv: () => Record<string, string>
+  private readonly spawn: (opt: SpawnTextOptions) => Promise<SpawnTextResult>
 
   constructor(options: ClaudeCodeRunnerOptions = {}) {
     this.accountEnv = options.accountEnv ?? (() => ({}))
+    this.spawn = options.spawn ?? spawnText
     this.binary = options.binary ?? 'claude'
     this.defaultModel = options.model ?? 'haiku'
     this.effort = options.effort ?? 'low'
@@ -88,7 +98,7 @@ export class ClaudeCodeRunner implements LlmRunner {
 
   async available(): Promise<boolean> {
     try {
-      const r = await spawnText({
+      const r = await this.spawn({
         binary: this.binary,
         args: ['--version'],
         cwd: process.cwd(),
@@ -114,19 +124,28 @@ export class ClaudeCodeRunner implements LlmRunner {
       '--permission-prompts', 'none',
       '--disable-slash-commands',
       '--setting-sources', '',
+      '--no-session-persistence',
     ]
   }
 
   async run(req: RunnerRequest): Promise<RunnerResult> {
     const args = this.buildArgs(req)
-    const r = await spawnText({
-      binary: this.binary,
-      args,
-      cwd: req.cwd,
-      timeoutMs: req.timeoutMs,
-      stdin: req.prompt,
-      env: { ...childEnv(), ...this.accountEnv() },
-    })
+    // 作業フォルダは空の一時フォルダ（req.cwd のセッションフォルダは使わない）
+    const workDir = await mkdtemp(join(tmpdir(), 'ade-claude-work-'))
+    let r: SpawnTextResult
+    try {
+      r = await this.spawn({
+        binary: this.binary,
+        args,
+        cwd: workDir,
+        timeoutMs: req.timeoutMs,
+        stdin: req.prompt,
+        env: { ...childEnv(), ...this.accountEnv() },
+      })
+    } finally {
+      // 一時フォルダの片付け（OS が後で消す。想定内）
+      await rm(workDir, { recursive: true, force: true }).catch(() => undefined)
+    }
 
     if (r.code !== 0) {
       throw new RunnerError(

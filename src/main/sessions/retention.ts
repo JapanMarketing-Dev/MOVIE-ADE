@@ -3,7 +3,8 @@
  * 既定7日で `recording.webm` を自動削除する。**`feedback.md` と画像は残す。**
  * 中間ファイル（work/）も一緒に片付ける。
  */
-import { rm, stat } from 'node:fs/promises'
+import { lstat } from 'node:fs/promises'
+import { removeContained, UnsafeStoragePathError } from './containment'
 import { listSessionIds, sessionPaths, takePaths } from './paths'
 import { loadSession } from './store'
 
@@ -44,28 +45,40 @@ export async function pruneRecordings(
   // .ferret/ と改名前の .ade-movie/ の両方（まだ録画していないプロジェクトにはフォルダが無い。想定内）
   const names = await listSessionIds(projectDir)
   for (const name of names) {
-    const review = sessionPaths(projectDir, name)
-    const record = await loadSession(review)
-    if (!record) continue // 未処理の素材は、復元するまで削除しない
-
-    // 追記した録画（takes/<n>/）も同じ期間で片付ける。足し終えていない録画は残す
-    for (const paths of [review, ...(record.takes ?? []).filter((take) => Number.isInteger(take?.n) && take.n >= 2).map((take) => takePaths(review, take.n))]) {
-      // 録画の無い・消し済みのレビュー（想定内）
-      const video = await stat(paths.recording).catch(() => null)
-      if (video?.isFile() && video.mtimeMs < cutoff) {
-        result.removedRecordings.push(paths.recording)
-        result.freedBytes += video.size
-        if (!options.dryRun) await rm(paths.recording, { force: true })
-      }
-
-      // 中間ファイルは分解が終われば不要。期間を過ぎたものは消す
-      // 中間ファイルの無いレビュー（想定内）
-      const work = await stat(paths.workDir).catch(() => null)
-      if (work?.isDirectory() && work.mtimeMs < cutoff) {
-        result.removedWork.push(paths.workDir)
-        if (!options.dryRun) await rm(paths.workDir, { recursive: true, force: true })
-      }
-    }
+    // リンクで外へ向くレビュー・録画のフォルダ（containment.ts が断る）は掃除しない。ほかのレビューの掃除は続ける
+    try { await pruneSession(projectDir, name, cutoff, options, result) } catch (err) { if (!(err instanceof UnsafeStoragePathError)) throw err }
   }
   return result
+}
+
+async function pruneSession(projectDir: string, name: string, cutoff: number, options: PruneOptions, result: PruneResult): Promise<void> {
+  const review = sessionPaths(projectDir, name)
+  const record = await loadSession(review)
+  if (!record) return // 未処理の素材は、復元するまで削除しない
+
+  // 追記した録画（takes/<n>/）も同じ期間で片付ける。足し終えていない録画は残す
+  for (const paths of [review, ...(record.takes ?? []).filter((take) => Number.isInteger(take?.n) && take.n >= 2).map((take) => takePaths(review, take.n))]) {
+    // 録画の無い・消し済みのレビュー（想定内）
+    const video = await lstat(paths.recording).catch(() => null)
+    if (video?.isFile() && video.mtimeMs < cutoff) {
+      result.removedRecordings.push(paths.recording)
+      result.freedBytes += video.size
+      if (!options.dryRun) await removeContained(projectDir, paths.recording)
+    }
+    // 削った版も同じ期間で消す（元の動画より新しいので、元と一緒に判定する）
+    const trimmed = await lstat(paths.trimmedRecording).catch(() => null)
+    if (trimmed?.isFile() && video && video.mtimeMs < cutoff) {
+      result.removedRecordings.push(paths.trimmedRecording)
+      result.freedBytes += trimmed.size
+      if (!options.dryRun) await removeContained(projectDir, paths.trimmedRecording)
+    }
+
+    // 中間ファイルは分解が終われば不要。期間を過ぎたものは消す
+    // 中間ファイルの無いレビュー（想定内）
+    const work = await lstat(paths.workDir).catch(() => null)
+    if (work?.isDirectory() && work.mtimeMs < cutoff) {
+      result.removedWork.push(paths.workDir)
+      if (!options.dryRun) await removeContained(projectDir, paths.workDir, { recursive: true })
+    }
+  }
 }

@@ -17,11 +17,22 @@ import { reportHandled } from '@shared/report'
  */
 
 const QUERY_TIMEOUT_MS = 5000
+/*
+ * PowerShell の起動は、x64 版を Windows の ARM64 でエミュレーション（Prism）して動かすと、
+ * 冷えた状態から数秒〜十数秒かかる（FERRET-Y: ferret@0.2.0、ARM64 の VM の x64 版で CIM の取得が失敗した）。
+ * CIM だけ時間切れを長めにする
+ */
+const CIM_TIMEOUT_MS = 15_000
+/** CIM が続けて失敗したら、再試行の間を倍にしていき、この回数でやめる（以後は typeperf だけ） */
+const CIM_MAX_FAILURES = 4
+/** typeperf も続けて失敗したら、この回数で取得をやめる（Resource Manager はアプリの行だけになる） */
+const TYPEPERF_MAX_FAILURES = 3
 const QUERY_MAX_BUFFER = 10 * 1024 * 1024
 const CPU_MIN_SAMPLE_MS = 250
 const CPU_STALE_AFTER_MS = 10_000
 const HUNDRED_NS_TICKS_PER_MS = 10_000
 const CIM_RETRY_AFTER_MS = 30_000
+const CIM_RETRY_MAX_MS = 10 * 60_000
 const MAX_LINE_CHARS = 1024 * 1024
 
 export const TYPEPERF_COUNTERS = [
@@ -151,21 +162,67 @@ export function parseTypeperfProcessOutput(stdout: string): ProcRow[] {
 }
 
 /** 実行関数（コマンドと引数を受けて標準出力を返す）。単体テストでは差し替える */
-export type ExecText = (file: string, args: string[]) => Promise<string>
+export type ExecText = (file: string, args: string[], options?: { timeoutMs?: number }) => Promise<string>
 
-const defaultExec: ExecText = async (file, args) => {
-  const { stdout } = await promisify(execFile)(file, args, { timeout: QUERY_TIMEOUT_MS, maxBuffer: QUERY_MAX_BUFFER, windowsHide: true })
+const defaultExec: ExecText = async (file, args, options) => {
+  const { stdout } = await promisify(execFile)(file, args, {
+    timeout: options?.timeoutMs ?? QUERY_TIMEOUT_MS,
+    maxBuffer: QUERY_MAX_BUFFER,
+    windowsHide: true
+  })
   return stdout
 }
 
 /**
+ * 子プロセスの失敗を、コマンドの全文や出力を含まない種類にまとめる（Sentry の題名・まとめ方に使う）。
+ * execFile の失敗の message には「Command failed: <コマンドの全文>」と stderr が入るので、そのまま送らない。
+ */
+export function execFailureKind(err: unknown): 'timeout' | 'not-found' | 'output-too-large' | 'killed' | 'exit' | 'empty' | 'other' {
+  const e = (err ?? {}) as { code?: unknown; killed?: unknown; signal?: unknown }
+  if (e.code === 'ENOENT') return 'not-found'
+  if (e.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') return 'output-too-large'
+  // execFile の timeout で止めたときは killed が true になり、signal は SIGTERM
+  if (e.killed === true) return e.signal === 'SIGTERM' ? 'timeout' : 'killed'
+  if (typeof e.code === 'number') return 'exit'
+  if (e.code === 'EMPTY') return 'empty'
+  return 'other'
+}
+
+/** 取得の失敗を Sentry へ送る形。題名は種類だけ（コマンドも出力も入れない） */
+export class ResourceProbeError extends Error {
+  constructor(readonly backend: 'powershell' | 'typeperf', readonly kind: ReturnType<typeof execFailureKind>) {
+    super(`${backend} process sampling failed: ${kind}`)
+    this.name = 'ResourceProbeError'
+  }
+}
+
+/** 1回の起動で、同じ取得方法・同じ種類の失敗は1度だけ送る（環境による失敗が、監視のたびに積み上がらないように） */
+const reportedFailures = new Set<string>()
+
+function reportProbeFailure(error: ResourceProbeError): void {
+  const key = `${error.backend}:${error.kind}`
+  if (reportedFailures.has(key)) return
+  reportedFailures.add(key)
+  reportHandled(error, { area: 'resources', op: `sample processes with ${error.backend}` })
+}
+
+/** 単体テスト用：送った記録を消す */
+export function resetReportedProbeFailuresForTest(): void {
+  reportedFailures.clear()
+}
+
+/**
  * Windows のプロセス一覧を取る係。CPU% は前回との累積CPU時間の差から出すので、前回の値を持つ。
- * CIM が失敗したら typeperf（メモリだけ）に切り替え、30秒後にまた CIM を試す。
+ * CIM が失敗したら typeperf（メモリだけ）に切り替え、30秒後にまた CIM を試す。続けて失敗するたびに間を倍にし
+ * （最長10分）、CIM_MAX_FAILURES 回でやめる。typeperf も TYPEPERF_MAX_FAILURES 回続けて失敗したら取得をやめる。
+ * 失敗は種類だけを、1回の起動で1度だけ送る（reportProbeFailure）。
  */
 export class WindowsProcessCollector {
   private backend: 'cim' | 'typeperf' = 'cim'
   private previous: (WindowsProcessSample & { sampledAtMs: number }) | null = null
   private retryCimAtMs = 0
+  private cimFailures = 0
+  private typeperfFailures = 0
 
   constructor(
     private readonly exec: ExecText = defaultExec,
@@ -175,36 +232,55 @@ export class WindowsProcessCollector {
 
   async enumerate(): Promise<ProcRow[]> {
     if (this.backend === 'typeperf') {
-      if (this.now() < this.retryCimAtMs) return this.viaTypeperf()
+      // CIM をやめた後、または再試行の時刻の前は typeperf だけ
+      if (this.cimFailures >= CIM_MAX_FAILURES || this.now() < this.retryCimAtMs) return this.viaTypeperf()
       this.backend = 'cim'
     }
     const sample = await this.viaCim()
-    if (sample) return this.applyCpu(sample)
-    // CIM が詰まっているときに、毎回の取得でタイムアウトを待たない
+    if (sample) {
+      this.cimFailures = 0
+      return this.applyCpu(sample)
+    }
+    // CIM が詰まっているときに、毎回の取得でタイムアウトを待たない。続けて失敗するほど間を空ける
+    this.cimFailures += 1
     this.backend = 'typeperf'
-    this.retryCimAtMs = this.now() + CIM_RETRY_AFTER_MS
+    this.retryCimAtMs = this.now() + Math.min(CIM_RETRY_MAX_MS, CIM_RETRY_AFTER_MS * 2 ** (this.cimFailures - 1))
     this.previous = null
     return this.viaTypeperf()
   }
 
+  /** 取得をすべてやめたか（CIM も typeperf も続けて失敗した） */
+  get stopped(): boolean {
+    return this.cimFailures >= CIM_MAX_FAILURES && this.typeperfFailures >= TYPEPERF_MAX_FAILURES
+  }
+
   private async viaCim(): Promise<(WindowsProcessSample & { sampledAtMs: number }) | null> {
     try {
-      const stdout = await this.exec('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', CIM_COMMAND])
+      const stdout = await this.exec('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', CIM_COMMAND], { timeoutMs: CIM_TIMEOUT_MS })
       const parsed = parseWindowsProcessSample(stdout)
-      return parsed.rows.length > 0 ? { ...parsed, sampledAtMs: this.now() } : null
+      if (parsed.rows.length > 0) return { ...parsed, sampledAtMs: this.now() }
+      reportProbeFailure(new ResourceProbeError('powershell', 'empty'))
+      return null
     } catch (err) {
-      console.warn('[resources] PowerShell でプロセスを取れませんでした。typeperf に切り替えます', err)
-      reportHandled(err, { area: 'resources', op: 'sample processes with powershell' })
+      const kind = execFailureKind(err)
+      // コマンドの全文と出力はログにも出さない（種類だけ）
+      console.warn(`[resources] PowerShell でプロセスを取れませんでした（${kind}）。typeperf に切り替えます`)
+      reportProbeFailure(new ResourceProbeError('powershell', kind))
       return null
     }
   }
 
   private async viaTypeperf(): Promise<ProcRow[]> {
+    if (this.typeperfFailures >= TYPEPERF_MAX_FAILURES) return []
     try {
-      return parseTypeperfProcessOutput(await this.exec('typeperf.exe', [...TYPEPERF_COUNTERS, '-sc', '1', '-si', '0']))
+      const rows = parseTypeperfProcessOutput(await this.exec('typeperf.exe', [...TYPEPERF_COUNTERS, '-sc', '1', '-si', '0']))
+      this.typeperfFailures = 0
+      return rows
     } catch (err) {
-      console.warn('[resources] typeperf でプロセスを取れませんでした', err)
-      reportHandled(err, { area: 'resources', op: 'sample processes with typeperf' })
+      const kind = execFailureKind(err)
+      this.typeperfFailures += 1
+      console.warn(`[resources] typeperf でプロセスを取れませんでした（${kind}）`)
+      reportProbeFailure(new ResourceProbeError('typeperf', kind))
       return []
     }
   }

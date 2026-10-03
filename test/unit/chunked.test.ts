@@ -45,8 +45,9 @@ describe('整理の時間帯分割', () => {
       run: async (req: { prompt: string }) => {
         call += 1
         if (failFirst && call === 1) throw new Error('この区間だけ失敗')
-        const json = /```json\n([\s\S]*?)\n```/.exec(req.prompt)![1]!
-        const payload = JSON.parse(json) as {
+        // 入力（発話・下書き）と画面の証拠（書き込みなど）は別の囲みにある。両方を1つにまとめて読む
+        const blocks = [...req.prompt.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => JSON.parse(m[1]!) as object)
+        const payload = Object.assign({}, ...blocks) as {
           transcript: Array<{ t: number }>
           annotations: Array<{ id: string }>
           frame_times: number[]

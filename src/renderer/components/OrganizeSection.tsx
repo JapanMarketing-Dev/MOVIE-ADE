@@ -60,6 +60,8 @@ export function OrganizeSection({ recording = false, headless = false }: { recor
           saveEndpoints(copy)
         }}
         onCheck={() => window.ade.invoke('organize:testConnection', { provider, ...(endpoint ? { endpoint } : {}) })}
+        // Agent に設定を頼む指示文の宛先（settings.json の中の場所。src/shared/settingsSchema.ts）
+        setupTarget={{ purpose: t('ai.setup.purpose.organize'), endpointPath: `organizer.endpoints.${provider}`, select: { path: 'organizer.runner', value: `api:${provider}` } }}
         advancedExtra={<p className="st-note">{t(preset.structuredOutput ? 'ai.organize.structured' : 'ai.organize.unstructured')}</p>} />}
   </>
   // 設定ページの見出し付きの枠（PageSection）に入れるときは中身だけを出す

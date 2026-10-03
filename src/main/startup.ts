@@ -35,6 +35,13 @@ export function elapsedMs(): number {
 
 let reported = false
 
+/** 性能の報告に付けるタグ（エミュレーションで動いているかなど）。main が起動の早いうちに渡す */
+let startupTags: Record<string, string> = {}
+
+export function setStartupTags(tags: Record<string, string>): void {
+  startupTags = { ...tags }
+}
+
 /**
  * renderer から「操作可能になった」通知を受けた時点で1度だけログへ出す。
  * 目標未達のときは警告にして、原因の切り分けに内訳を併記する。
@@ -51,7 +58,7 @@ export function reportInteractive(): { totalMs: number; marks: Record<string, nu
     if (totalMs > 2000) console.warn(`${line} ← 目標未達`)
     else console.log(line)
     // 目標を大きく超えたら Sentry へ warning を1件（1回の起動で1度だけ。内訳の名前と時間だけを付ける）
-    if (totalMs > SLOW_STARTUP_MS) reportPerf('slow-startup', totalMs)
+    if (totalMs > SLOW_STARTUP_MS) reportPerf('slow-startup', totalMs, { tags: startupTags, context: {} })
   }
   return { totalMs, marks: marksSnapshot() }
 }

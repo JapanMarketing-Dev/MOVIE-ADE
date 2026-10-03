@@ -39,6 +39,11 @@ export interface AgentCatalogEntry {
   yoloArgs: string
   /** 公式の入れ方（1つ）。公式が手順を出していないものは空 */
   install: string
+  /**
+   * Windows の公式の入れ方（1行。インストール用のターミナルは cmd.exe なので、PowerShell の手順は powershell -Command で包む）。
+   * 無いときに install が POSIX のシェルでしか動かないもの（curl … | bash など）は、Windows では公式ページへのリンクだけを出す
+   */
+  installWindows?: string
   /** 公式の入れ方・始め方のページ */
   homepageUrl: string
   /** 2026-10 に公式の資料で、実行ファイル名・入れ方・引数を確かめられた */
@@ -104,6 +109,8 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
     detectCmd: 'claude',
     yoloArgs: '--dangerously-skip-permissions',
     install: 'curl -fsSL https://claude.ai/install.sh | bash',
+    // 公式の Windows CMD の手順（code.claude.com/docs/en/setup、2026-10 確認）
+    installWindows: 'curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd',
     homepageUrl: 'https://code.claude.com/docs/en/setup',
     verified: true,
     popular: true
@@ -132,6 +139,8 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
     aliases: ['cursor-agent'],
     yoloArgs: '--force',
     install: 'curl https://cursor.com/install -fsS | bash',
+    // 公式の Windows（native, PowerShell）の手順（cursor.com/docs/cli/installation、2026-10 確認）
+    installWindows: 'powershell -NoProfile -Command "irm \'https://cursor.com/install?win32=true\' | iex"',
     homepageUrl: 'https://cursor.com/docs/cli/installation',
     verified: true,
     popular: true
@@ -150,6 +159,8 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
     detectCmd: 'devin',
     yoloArgs: '--permission-mode bypass --respect-workspace-trust false',
     install: 'curl -fsSL https://cli.devin.ai/install.sh | bash',
+    // 公式の Windows（PowerShell）の手順（docs.devin.ai/cli、2026-10 確認）
+    installWindows: 'powershell -NoProfile -Command "irm https://static.devin.ai/cli/setup.ps1 | iex"',
     homepageUrl: 'https://docs.devin.ai/work-with-devin/devin-cli',
     verified: true,
     popular: true
@@ -160,6 +171,8 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
     aliases: ['opencode2'],
     yoloArgs: '--auto',
     install: 'curl -fsSL https://opencode.ai/install | bash',
+    // 公式の Windows の手順のうち npm（opencode.ai/docs、2026-10 確認）
+    installWindows: 'npm install -g opencode-ai',
     homepageUrl: 'https://opencode.ai/docs/',
     verified: true,
     popular: true

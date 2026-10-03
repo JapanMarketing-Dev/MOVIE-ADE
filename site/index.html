@@ -19,11 +19,13 @@
   <link rel="icon" href="favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="apple-touch-icon.png?v=5434b34e">
-  <link rel="preload" href="assets/hero-poster.webp" as="image" type="image/webp">
-  <script src="js/theme.js?v=25cfd289"></script>
-  <link rel="stylesheet" href="style.css?v=4f7f95d3">
-  <script type="module" src="js/app.js?v=7e5a6054"></script>
+  <link rel="preload" href="assets/hero-poster.webp?v=1f015646" as="image" type="image/webp">
+  <script src="js/theme.js?v=28aec166"></script>
+  <link rel="stylesheet" href="style.css?v=a8bc0e67">
+  <script type="module" src="js/app.js?v=c5c74b59"></script>
   <script type="module" src="js/hero.js?v=7c5eaf24"></script>
+  <script type="module" src="js/scenes.js?v=b987e51b"></script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Ferret","alternateName":"Ferret ADE","description":"An Agentic Development Environment (ADE) for feedback by voice and screen. Point at the real screen, say what’s wrong, and hand your coding agent dozens of precise findings at once.","url":"https://ferretade.dev/","downloadUrl":"https://ferretade.dev/download","image":"https://ferretade.dev/assets/og.png","applicationCategory":"DeveloperApplication","operatingSystem":"macOS, Windows, Linux","license":"https://opensource.org/licenses/MIT","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"publisher":{"@type":"Organization","name":"Japan Marketing LLC","url":"https://www.japan-marketing.co.jp/"}}</script>
 </head>
 <body data-page="home">
   <svg class="sprite" width="0" height="0" aria-hidden="true">
@@ -56,12 +58,12 @@
   <header class="site-header">
     <div class="wrap">
       <a class="brand" href="./" aria-label="Ferret home">
-        <img class="wordmark" src="assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22">
+        <img class="wordmark" src="assets/ferret-wordmark.svg?v=4d097fe4" alt="Ferret" width="67" height="22">
       </a>
       <nav class="site-nav" aria-label="Main">
         <a href="#features">Features</a>
         <a href="download.html">Download</a>
-        <a class="nav-keep" href="docs/">Docs</a>
+        <a class="nav-keep" href="docs/quick-start">Docs</a>
         <a href="download.html#versions">Changelog</a>
       </nav>
       <div class="header-actions">
@@ -100,271 +102,161 @@
         </div>
         <div class="hero-stage" data-hero-stage>
           <!-- Hero animation created with Claude Opus 5.5 (js/hero.js). The poster shows without JS and with reduced motion. -->
-          <img class="hero-poster" src="assets/hero-poster.webp" width="1000" height="640" alt="Instead of a typed prompt: a pen circles the Sign up button and the plans on a real page while you talk; when you stop, your words become text and pair with the marks as two findings, and a terminal running claude reports Done 2/2, verified against your screenshots.">
+          <img class="hero-poster" src="assets/hero-poster.webp?v=1f015646" width="1000" height="640" alt="Instead of a typed prompt: a pen circles the Sign up button and the plans on a real page while you talk; when you stop, your words become text and pair with the marks as two findings, and a terminal running claude reports Done 2/2, verified against your screenshots.">
           <canvas class="hero-canvas" data-hero-canvas aria-hidden="true"></canvas>
         </div>
       </div>
     </section>
 
 
-    <div class="wrap shot-block reveal">
-      <figure class="frame frame-hero"><img src="assets/shots/findings@1x.webp" srcset="assets/shots/findings@1x.webp 1200w, assets/shots/findings.webp 2400w" sizes="(max-width: 1280px) 100vw, 1200px" width="1200" height="750" loading="lazy" decoding="async" alt="Ferret’s Findings screen: three findings made with pen and voice, each with an annotated still and the words that were said, a 3 / 3 done progress bar, and the review named “Button fixes” in the sidebar with a check and 3/3."><figcaption>Findings with stills, your words, and progress per finding. A real screenshot of Ferret.</figcaption></figure>
-    </div>
 
-    <!-- Pillar 1 -->
-    <section class="section pillar" id="feedback">
-      <div class="wrap pillar-row">
-        <div class="pillar-text reveal">
-          <p class="kicker">Text prompts vs. the screen</p>
+    <section class="demo-sec" id="demo" aria-label="Product demo">
+      <div class="wrap" data-app-demo>
+        <div class="demo-tabs" role="tablist" aria-label="What Ferret does">
+          <button type="button" role="tab" id="tab-record" aria-controls="demo-panel" aria-selected="true" tabindex="0" data-tab="record" data-poster="assets/demo/record.webp?v=808382a3" data-caption="Point and talk on the real screen. No typing." data-alt="The app model: recording a pricing page; a pen circles Sign up, a box goes around Start trial, and you say “Make Sign up solid.”">Record by voice &amp; pen</button>
+          <button type="button" role="tab" id="tab-findings" aria-controls="demo-panel" aria-selected="false" tabindex="-1" data-tab="findings" data-poster="assets/demo/findings.webp?v=ea443e02" data-caption="Every mark and sentence becomes a finding." data-alt="The app model: four findings appear, each with a marked still, the words said and a Done when line.">Findings</button>
+          <button type="button" role="tab" id="tab-meeting" aria-controls="demo-panel" aria-selected="false" tabindex="-1" data-tab="meeting" data-poster="assets/demo/meeting.webp?v=783c9dbc" data-caption="Bring it to the meeting. Every voice becomes a finding." data-alt="The app model: recording the shared screen in a meeting; three people talk and each remark becomes a finding.">Live in meetings</button>
+          <button type="button" role="tab" id="tab-send" aria-controls="demo-panel" aria-selected="false" tabindex="-1" data-tab="send" data-poster="assets/demo/send.webp?v=a9048a02" data-caption="Ferret starts your agent and hands it the findings." data-alt="The app model: Send to Agent starts Claude Code and pastes the instructions to read the findings.">Send to any agent</button>
+          <button type="button" role="tab" id="tab-verify" aria-controls="demo-panel" aria-selected="false" tabindex="-1" data-tab="verify" data-poster="assets/demo/verify.webp?v=4f73231a" data-caption="Define done. Your agent checks each fix with your model; Ferret never judges." data-alt="The app model: the agent checks each finding with your decision model and all four turn Done, 4/4.">Verify with your model</button>
+        </div>
+        <div class="demo-stage" id="demo-panel" role="tabpanel" data-scene-stage>
+          <img class="demo-poster" src="assets/demo/record.webp?v=808382a3" width="1200" height="700" alt="The app model: recording a pricing page; a pen circles Sign up, a box goes around Start trial, and you say “Make Sign up solid.”">
+          <canvas class="demo-canvas" data-app aria-hidden="true"></canvas>
+        </div>
+        <p class="demo-caption" aria-live="polite">Point and talk on the real screen. No typing.</p>
+        <p class="demo-note">An animated model of the app, not a recording.</p>
+      </div>
+    </section>
+
+    <section class="works" aria-label="Works with">
+      <div class="wrap works-row">
+        <span>Works with</span>
+        <img src="assets/agents/claude.svg?v=1e01b19e" alt="Claude Code" title="Claude Code" width="22" height="22" loading="lazy"><img src="assets/agents/codex.svg?v=109d013d" alt="Codex" title="Codex" width="22" height="22" loading="lazy"><img src="assets/agents/gemini.png?v=69ddb188" alt="Gemini CLI" title="Gemini CLI" width="22" height="22" loading="lazy"><img src="assets/agents/cursor.png?v=1910c1c7" alt="Cursor" title="Cursor" width="22" height="22" loading="lazy"><img src="assets/agents/copilot.png?v=1a81fbfb" alt="GitHub Copilot" title="GitHub Copilot" width="22" height="22" loading="lazy"><img src="assets/agents/devin.png?v=e3baeba9" alt="Devin" title="Devin" width="22" height="22" loading="lazy"><img src="assets/agents/opencode.png?v=c76c2913" alt="OpenCode" title="OpenCode" width="22" height="22" loading="lazy"><img src="assets/agents/amp.png?v=198387c8" alt="Amp" title="Amp" width="22" height="22" loading="lazy"><img src="assets/agents/goose.png?v=a3abfdd2" alt="Goose" title="Goose" width="22" height="22" loading="lazy"><img src="assets/agents/kiro.png?v=357403d2" alt="Kiro" title="Kiro" width="22" height="22" loading="lazy">
+      </div>
+    </section>
+
+    <section class="section scene-sec" id="feedback">
+      <div class="wrap">
+        <div class="scene-head reveal">
           <h2>Don’t describe the screen. Point at it.</h2>
-          <p>A typed prompt spends most of its words explaining where things are. On the real screen you just circle the spot and say what’s wrong. Every mark and sentence becomes a precise finding, with a still, your exact words, the URL and a “Done when”, so you can give dozens of them in one pass. On-device whisper transcribes it for free.</p>
-          <ul class="ticks">
-            <li><svg class="icon"><use href="#i-check"/></svg>Just your pen, a box and your voice</li>
-            <li><svg class="icon"><use href="#i-check"/></svg>Desktop and mobile widths</li>
-            <li><svg class="icon"><use href="#i-check"/></svg>Edit, merge or drop findings before sending</li>
-          </ul>
+          <p>Circle, box and talk. It all becomes text your agent can use.</p>
         </div>
-        <div class="pillar-visual reveal">
-          <div class="versus">
-            <figure class="versus-text">
-              <figcaption><span>Typing it</span>a text prompt</figcaption>
-              <p class="prompt">On the pricing page, the Sign up button in the top-right corner of the header is too pale and doesn’t look clickable. Make it a solid fill like the Start trial button in the middle plan card. Also add a Monthly / Yearly toggle centered just under the subtitle, above the three plan cards…<span class="caret" aria-hidden="true"></span></p>
-            </figure>
-            <figure class="versus-screen">
-              <figcaption><span>Showing it</span>pen, box and voice on the real screen</figcaption>
-              <figure class="frame"><img src="assets/shots/record@1x.webp" srcset="assets/shots/record@1x.webp 1200w, assets/shots/record.webp 2400w" sizes="(max-width: 1080px) 100vw, 720px" width="1200" height="750" loading="lazy" decoding="async" alt="Recording in Ferret: a pink pen circle around the Sign up button and a box around Start trial, with the mic level moving in the recording toolbar."></figure>
-              <p class="versus-said">“Make this solid, like this one.” · “Add a yearly toggle here.”</p>
-            </figure>
-          </div>
+        <div class="scene-stage reveal" data-scene-stage>
+          <img class="scene-poster" src="assets/scenes/text.webp?v=7b22240f" width="1000" height="560" loading="lazy" decoding="async" alt="A long typed prompt is replaced by a pen circle around Sign up, a box around Start trial, and a spoken “Make this solid.”">
+          <canvas class="scene-canvas" data-scene="text" aria-hidden="true"></canvas>
         </div>
       </div>
     </section>
 
-    <!-- Pillar 2: meetings (the strength) -->
-    <section class="section pillar" id="meetings">
-      <div class="wrap pillar-row pillar-row-flip">
-        <div class="pillar-text reveal">
-          <p class="kicker">Live in meetings</p>
-          <h2>Run it in the meeting. Hand your agent everything that was said.</h2>
-          <p>Online on Zoom, Meet or Teams, or around one screen in a room: everyone points and talks while you record the built-in browser, any window or the whole screen. Instead of a few lines of meeting notes, your agent gets every remark as text, tied to the exact spot on the screen.</p>
-        </div>
-        <div class="pillar-visual reveal">
-          <div class="meet" role="img" aria-label="A meeting: three people talk over a shared screen being recorded. Their comments become three findings: Sign up is easy to miss, Add a yearly toggle, Button cut off on mobile.">
-            <div class="meet-screen">
-              <div class="meet-bar"><span class="meet-rec">● REC 12:48</span><span>Sharing screen</span></div>
-              <svg class="mini-page" viewBox="0 0 240 150" aria-hidden="true"><defs><linearGradient id="g-brand" x1="0" x2="1"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#ff4fa3"/></linearGradient></defs><rect width="240" height="150" fill="#f6f6f9"/><rect width="240" height="44" fill="#fff"/><rect y="44" width="240" height="1" fill="#e6e6ee"/><text x="14" y="32" font-size="11" font-weight="800" fill="#14141c">acme.</text><rect x="86" y="27" width="20" height="4" rx="2" fill="#d9d9e3"/><rect x="112" y="27" width="20" height="4" rx="2" fill="#d9d9e3"/><rect x="138" y="27" width="20" height="4" rx="2" fill="#d9d9e3"/><rect x="178" y="22" width="44" height="14" rx="4" fill="#ecebff"/><text x="200" y="32" font-size="7" font-weight="700" fill="#7a72d9" text-anchor="middle">Sign up</text><text x="120" y="63" font-size="11" font-weight="800" fill="#14141c" text-anchor="middle">Pricing that grows with you</text><rect x="70" y="73" width="100" height="5" rx="2.5" fill="#d9d9e3"/><rect x="34" y="90" width="52" height="52" rx="5" fill="#fff" stroke="#e6e6ee"/><rect x="40" y="98" width="20" height="4" rx="2" fill="#d9d9e3"/><text x="40" y="116" font-size="10" font-weight="800" fill="#14141c">$0</text><rect x="40" y="128" width="40" height="8" rx="3" fill="#eceef3"/><rect x="94" y="90" width="52" height="52" rx="5" fill="#fff" stroke="#7c5cff"/><rect x="100" y="98" width="20" height="4" rx="2" fill="#d9d9e3"/><text x="100" y="116" font-size="10" font-weight="800" fill="#14141c">$19</text><rect x="100" y="128" width="40" height="8" rx="3" fill="#7c5cff"/><rect x="154" y="90" width="52" height="52" rx="5" fill="#fff" stroke="#e6e6ee"/><rect x="160" y="98" width="20" height="4" rx="2" fill="#d9d9e3"/><text x="160" y="116" font-size="10" font-weight="800" fill="#14141c">$49</text><rect x="160" y="128" width="40" height="8" rx="3" fill="#eceef3"/><ellipse cx="200" cy="29" rx="31" ry="13" fill="none" stroke="#ff3d8b" stroke-width="2.2"/></svg>
-              <div class="meet-people">
-                <div class="person p1"><span>AK</span><em>Design</em></div>
-                <div class="person p2"><span>RM</span><em>Product</em></div>
-                <div class="person p3"><span>JS</span><em>Eng</em></div>
-              </div>
-              <p class="bubble b1">“The CTA gets lost up there.”</p>
-              <p class="bubble b2">“We need a yearly option.”</p>
-              <p class="bubble b3">“On mobile the button is cut off.”</p>
-            </div>
-            <div class="meet-findings">
-              <p class="mf-title">Findings</p>
-              <ol>
-                <li class="f1"><span>1</span>Sign up is easy to miss</li>
-                <li class="f2"><span>2</span>Add a yearly toggle</li>
-                <li class="f3"><span>3</span>Button cut off on mobile</li>
-              </ol>
-              <p class="mf-send"><svg class="icon"><use href="#i-send"/></svg>Send to agent</p>
-            </div>
-          </div>
-          <figure class="proof proof-wide">
-            <img src="assets/shots/capture-target-dialog.webp" width="650" height="200" loading="lazy" decoding="async" alt="Ferret’s Recording Target dialog with Built-in Browser, Entire Screen and Window options.">
-            <figcaption>Pick the built-in browser, the entire screen, or any window, e.g. the one you are sharing on Zoom. A real screenshot.</figcaption>
-          </figure>
-        </div>
-      </div>
-    </section>
-
-    <!-- Pillar 3: decision-model check (the point) -->
-    <section class="section pillar" id="verify">
-      <div class="wrap pillar-row">
-        <div class="pillar-text reveal">
-          <p class="kicker">Checked by a decision model</p>
-          <h2>Define what “done” means. A decision model checks it.</h2>
-          <p>Every finding carries a “Done when”. After implementing it, your agent sends a fresh screenshot and that condition to the decision model you choose, and keeps going until every finding passes, with a score for each. That is how you know the agent did what you expected.</p>
-          <p class="pillar-punch">No more “I think it’s fixed.”</p>
-          <p class="works-with"><span>Decision models</span>TypeSafe Jev · Cloudflare Clef / Clef Flash (Ollama or Workers AI) · Vercel AI Gateway · any compatible API</p>
-          <p class="fine">Ferret itself never judges: your agent calls your decision model with your own key, and you pay your provider directly. Ferret never charges.</p>
-        </div>
-        <div class="pillar-visual reveal">
-          <div class="verify-panel" role="img" aria-label="The agent’s verification report: your annotated screenshot next to the page after the fix, score 0.94. Findings 1 and 2 are Done; finding 3 is retried until it is Done. Result: Done 3/3.">
-            <div class="vp-head"><span class="vp-dot" aria-hidden="true"></span><span class="vp-agent">1: claude</span> · verifying 3 findings<span class="vp-model">your decision model</span></div>
-            <div class="vp-compare">
-              <figure>
-                <svg class="mini-page" viewBox="0 0 240 150" aria-hidden="true"><defs><linearGradient id="g-brand" x1="0" x2="1"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#ff4fa3"/></linearGradient></defs><rect width="240" height="150" fill="#f6f6f9"/><rect width="240" height="44" fill="#fff"/><rect y="44" width="240" height="1" fill="#e6e6ee"/><text x="14" y="32" font-size="11" font-weight="800" fill="#14141c">acme.</text><rect x="86" y="27" width="20" height="4" rx="2" fill="#d9d9e3"/><rect x="112" y="27" width="20" height="4" rx="2" fill="#d9d9e3"/><rect x="138" y="27" width="20" height="4" rx="2" fill="#d9d9e3"/><rect x="178" y="22" width="44" height="14" rx="4" fill="#ecebff"/><text x="200" y="32" font-size="7" font-weight="700" fill="#7a72d9" text-anchor="middle">Sign up</text><text x="120" y="63" font-size="11" font-weight="800" fill="#14141c" text-anchor="middle">Pricing that grows with you</text><rect x="70" y="73" width="100" height="5" rx="2.5" fill="#d9d9e3"/><rect x="34" y="90" width="52" height="52" rx="5" fill="#fff" stroke="#e6e6ee"/><rect x="40" y="98" width="20" height="4" rx="2" fill="#d9d9e3"/><text x="40" y="116" font-size="10" font-weight="800" fill="#14141c">$0</text><rect x="40" y="128" width="40" height="8" rx="3" fill="#eceef3"/><rect x="94" y="90" width="52" height="52" rx="5" fill="#fff" stroke="#7c5cff"/><rect x="100" y="98" width="20" height="4" rx="2" fill="#d9d9e3"/><text x="100" y="116" font-size="10" font-weight="800" fill="#14141c">$19</text><rect x="100" y="128" width="40" height="8" rx="3" fill="#7c5cff"/><rect x="154" y="90" width="52" height="52" rx="5" fill="#fff" stroke="#e6e6ee"/><rect x="160" y="98" width="20" height="4" rx="2" fill="#d9d9e3"/><text x="160" y="116" font-size="10" font-weight="800" fill="#14141c">$49</text><rect x="160" y="128" width="40" height="8" rx="3" fill="#eceef3"/><ellipse cx="200" cy="29" rx="31" ry="13" fill="none" stroke="#ff3d8b" stroke-width="2.2"/></svg>
-                <figcaption>Your screenshot</figcaption>
-              </figure>
-              <div class="vp-score"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="27" class="vp-track"/><circle cx="32" cy="32" r="27" class="vp-fill"/></svg><b>0.94</b><span>match</span></div>
-              <figure>
-                <svg class="mini-page" viewBox="0 0 240 150" aria-hidden="true"><defs><linearGradient id="g-brand" x1="0" x2="1"><stop offset="0" stop-color="#7c5cff"/><stop offset="1" stop-color="#ff4fa3"/></linearGradient></defs><rect width="240" height="150" fill="#f6f6f9"/><rect width="240" height="44" fill="#fff"/><rect y="44" width="240" height="1" fill="#e6e6ee"/><text x="14" y="32" font-size="11" font-weight="800" fill="#14141c">acme.</text><rect x="86" y="27" width="20" height="4" rx="2" fill="#d9d9e3"/><rect x="112" y="27" width="20" height="4" rx="2" fill="#d9d9e3"/><rect x="138" y="27" width="20" height="4" rx="2" fill="#d9d9e3"/><rect x="178" y="22" width="44" height="14" rx="4" fill="#14141c"/><text x="200" y="32" font-size="7" font-weight="700" fill="#fff" text-anchor="middle">Sign up</text><text x="120" y="63" font-size="11" font-weight="800" fill="#14141c" text-anchor="middle">Pricing that grows with you</text><rect x="86" y="70" width="68" height="12" rx="6" fill="#fff" stroke="#e6e6ee"/><rect x="121" y="72" width="31" height="8" rx="4" fill="#7c5cff"/><rect x="34" y="90" width="52" height="52" rx="5" fill="#fff" stroke="#e6e6ee"/><rect x="40" y="98" width="20" height="4" rx="2" fill="#d9d9e3"/><text x="40" y="116" font-size="10" font-weight="800" fill="#14141c">$0</text><rect x="40" y="128" width="40" height="8" rx="3" fill="#eceef3"/><rect x="94" y="90" width="52" height="52" rx="5" fill="#fff" stroke="#7c5cff"/><rect x="100" y="98" width="20" height="4" rx="2" fill="#d9d9e3"/><text x="100" y="116" font-size="10" font-weight="800" fill="#14141c">$19</text><rect x="100" y="128" width="40" height="8" rx="3" fill="#7c5cff"/><rect x="154" y="90" width="52" height="52" rx="5" fill="#fff" stroke="#e6e6ee"/><rect x="160" y="98" width="20" height="4" rx="2" fill="#d9d9e3"/><text x="160" y="116" font-size="10" font-weight="800" fill="#14141c">$49</text><rect x="160" y="128" width="40" height="8" rx="3" fill="#eceef3"/></svg>
-                <figcaption>After the fix</figcaption>
-              </figure>
-            </div>
-            <ol class="vp-list">
-              <li><span class="vp-n">1</span><span class="vp-t">Sign up is easy to miss</span><span class="vp-bar"><i style="width:94%"></i></span><span class="vp-s ok">Done 0.94</span></li>
-              <li><span class="vp-n">2</span><span class="vp-t">Add a yearly toggle</span><span class="vp-bar"><i style="width:91%"></i></span><span class="vp-s ok">Done 0.91</span></li>
-              <li class="vp-retry"><span class="vp-n">3</span><span class="vp-t">Button cut off on mobile</span><span class="vp-bar"><i></i></span><span class="vp-s"><span class="vp-no">Not done 0.42 · retrying</span><span class="vp-yes ok">Done 0.89</span></span></li>
-            </ol>
-            <div class="vp-foot"><span class="ok">✓ Done 3/3</span> verified against your screenshots</div>
-          </div>
-          <figure class="proof">
-            <img src="assets/shots/verify-terminal.webp" width="345" height="160" loading="lazy" decoding="async" alt="A terminal: round 1 passed 0/1, finding 1 scored 0.10 not_done; fixing and re-judging; round 2 passed 1/1, 0.92 done; all findings passed in round 2, Done.">
-            <figcaption>Real decision-model calls (Cloudflare Workers AI Clef Flash, 2 calls). AFTER images prepared for the demo.</figcaption>
-          </figure>
-        </div>
-      </div>
-    </section>
-
-
-    <section class="section" id="features">
+    <section class="section scene-sec" id="many">
       <div class="wrap">
-        <div class="section-head reveal">
-          <p class="kicker">Features</p>
-          <h2>Everything in Ferret, at a glance.</h2>
+        <div class="scene-head reveal">
+          <h2>Dozens of findings from one take.</h2>
+          <p>Every mark and sentence becomes its own finding.</p>
         </div>
-        <ul class="feat-grid reveal">
-          <li class="feat">
-            <img src="assets/features/record@1x.webp" srcset="assets/features/record@1x.webp 400w, assets/features/record.webp 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="Recording toolbar with pen, box and color tools, a pen circle around Sign up and a box around Start trial.">
-            <h3>Pen, box and voice</h3>
-            <p>Circle or box the spot in one of six colors, and just talk.</p>
-          </li>
-          <li class="feat">
-            <img src="assets/features/said@1x.webp" srcset="assets/features/said@1x.webp 400w, assets/features/said.webp 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="A finding showing the words that were said under its annotated still.">
-            <h3>Your voice becomes text</h3>
-            <p>Each finding keeps your exact words. On-device whisper is free.</p>
-          </li>
-          <li class="feat">
-            <img src="assets/features/meeting@1x.webp" srcset="assets/features/meeting@1x.webp 400w, assets/features/meeting.webp 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="The Recording Target dialog: Built-in Browser, Entire Screen, Window.">
-            <h3>Record the meeting</h3>
-            <p>Capture the whole screen or a window while you share it.</p>
-          </li>
-          <li class="feat">
-            <img src="assets/features/send@1x.webp" srcset="assets/features/send@1x.webp 400w, assets/features/send.webp 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="Toasts: no agent was running so Claude Code is starting; instructions sent to the agent.">
-            <h3>Send to Agent</h3>
-            <p>Pick any enabled agent. Ferret starts it if it isn’t running.</p>
-          </li>
-          <li class="feat">
-            <img src="assets/features/verify@1x.webp" srcset="assets/features/verify@1x.webp 400w, assets/features/verify.webp 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="A terminal: round 1 scored 0.10 not done, round 2 scored 0.92 done, all findings passed.">
-            <h3>Checked by a decision model</h3>
-            <p>Your agent checks each fix against “Done when”. Ferret never judges.</p>
-          </li>
-          <li class="feat">
-            <div class="feat-art feat-needs" role="img" aria-label="A finding marked Needs you with a question from the agent."><div><span class="needs-tag">Needs you</span><p class="needs-q">“The yearly price isn’t in the plan data. Add it, or hide the toggle?”</p><p class="needs-from">from claude · finding 2</p></div></div>
-            <h3>Your agent can ask you</h3>
-            <p>When a premise looks wrong, the agent hands the question back to you.</p>
-          </li>
-          <li class="feat">
-            <img src="assets/features/progress@1x.webp" srcset="assets/features/progress@1x.webp 400w, assets/features/progress.webp 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="The sidebar shows Button fixes with 3/3 done and the findings header shows a 3 / 3 done progress bar.">
-            <h3>Progress per finding</h3>
-            <p>Not started, in progress, done, with a count in the sidebar.</p>
-          </li>
-          <li class="feat">
-            <img src="assets/features/record-more@1x.webp" srcset="assets/features/record-more@1x.webp 400w, assets/features/record-more.webp 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="The Record more and Send to Agent buttons above the findings.">
-            <h3>Record more</h3>
-            <p>Add another take to the review you have open.</p>
-          </li>
-          <li class="feat">
-            <img src="assets/features/targets@1x.webp" srcset="assets/features/targets@1x.webp 400w, assets/features/targets.webp 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="Review targets: saved URLs with nested pages and an Open URL row.">
-            <h3>Review targets</h3>
-            <p>Saved URLs, recent pages and files, one key away.</p>
-          </li>
-          <li class="feat">
-            <img src="assets/features/agents@1x.webp" srcset="assets/features/agents@1x.webp 400w, assets/features/agents.webp 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="The new-terminal menu with New Terminal, Claude Code, Codex and OpenCode.">
-            <h3>Split terminals, 47 agents</h3>
-            <p>Launch any agent from one menu and drag tabs to split.</p>
-          </li>
-          <li class="feat">
-            <img src="assets/features/settings@1x.webp" srcset="assets/features/settings@1x.webp 400w, assets/features/settings.webp 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="settings.json open in Ferret’s built-in editor.">
-            <h3>Everything in settings.json</h3>
-            <p>One file holds every setting, so your agent can edit it.</p>
-          </li>
-          <li class="feat">
-            <div class="feat-art feat-byok" role="img" aria-label="Your own keys for on-device whisper, OpenAI, Groq and Cloudflare Workers AI."><ul><li><span>whisper.cpp</span><em>on device · free</em></li><li><span>OpenAI</span><em>your key</em></li><li><span>Groq</span><em>your key</em></li><li><span>Workers AI</span><em>your key</em></li></ul></div>
-            <h3>Bring your own keys</h3>
-            <p>You pay your provider directly. Ferret never charges.</p>
-          </li>
-        </ul>
-      </div>
-    </section>
-
-    <section class="section" id="how">
-      <div class="wrap">
-        <div class="section-head reveal">
-          <p class="kicker">How it works</p>
-          <h2>Record. Review. Verify.</h2>
+        <div class="scene-stage reveal" data-scene-stage>
+          <img class="scene-poster" src="assets/scenes/many.webp?v=2f35979d" width="1000" height="560" loading="lazy" decoding="async" alt="A recording timer and twelve finding cards, each with a marked still, under the count “12 findings from one recording”.">
+          <canvas class="scene-canvas" data-scene="many" aria-hidden="true"></canvas>
         </div>
-        <ol class="steps reveal">
-          <li>
-            <img class="step-shot" src="assets/shots/targets@1x.webp" srcset="assets/shots/targets@1x.webp 1200w, assets/shots/targets.webp 2400w" sizes="(max-width: 900px) 100vw, 400px" width="1200" height="750" loading="lazy" decoding="async" alt="Review targets in Ferret: saved URLs (local with blog, docs, pricing; dev) and recent pages.">
-            <span class="step-no">01</span>
-            <h3><svg class="icon"><use href="#i-pen"/></svg>Record</h3>
-            <p>Use your app, circle and talk. In a meeting, everyone can chime in.</p>
-          </li>
-          <li>
-            <img class="step-shot" src="assets/shots/findings@1x.webp" srcset="assets/shots/findings@1x.webp 1200w, assets/shots/findings.webp 2400w" sizes="(max-width: 900px) 100vw, 400px" width="1200" height="750" loading="lazy" decoding="async" alt="The findings list after recording.">
-            <span class="step-no">02</span>
-            <h3><svg class="icon"><use href="#i-layers"/></svg>Findings</h3>
-            <p>Stop recording. Each moment is a finding with a still, your words, the URL and “Done when”.</p>
-          </li>
-          <li>
-            <img class="step-shot" src="assets/shots/send@1x.webp" srcset="assets/shots/send@1x.webp 1200w, assets/shots/send.webp 2400w" sizes="(max-width: 900px) 100vw, 400px" width="1200" height="750" loading="lazy" decoding="async" alt="Send to Agent: Ferret starts a Claude Code tab and pastes the instructions to read the findings.">
-            <span class="step-no">03</span>
-            <h3><svg class="icon"><use href="#i-check"/></svg>Implement and verify</h3>
-            <p>Send to your agent. It implements each finding and checks it against your screenshot until it passes.</p>
-            <p class="step-note">Terminal output in this screenshot is a stand-in for the demo.</p>
-          </li>
-        </ol>
       </div>
     </section>
 
     <section class="section" id="agents">
       <div class="wrap">
-        <div class="section-head reveal">
-          <p class="kicker">Works with your agents</p>
-          <h2>Your agent, launched for you.</h2>
-          <p>Ferret starts CLI agents in its built-in terminals and hands them the findings. They run on the subscriptions you already have.</p>
+        <div class="scene-head reveal">
+          <h2>Bring your own agent.</h2>
+          <p>Ferret launches 47 CLI agents on your subscriptions and keys. It never charges you.</p>
         </div>
-        <ul class="agent-grid reveal">
-          <li><a href="https://code.claude.com/docs/en/setup" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/claude.svg" alt="" width="28" height="28"></span>Claude Code<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://github.com/openai/codex" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/codex.svg" alt="" width="28" height="28"></span>Codex<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://github.com/google-gemini/gemini-cli" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/gemini.png" alt="" width="28" height="28"></span>Gemini CLI<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://cursor.com/docs/cli/installation" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/cursor.png" alt="" width="28" height="28"></span>Cursor<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/copilot.png" alt="" width="28" height="28"></span>GitHub Copilot<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://docs.devin.ai/work-with-devin/devin-cli" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/devin.png" alt="" width="28" height="28"></span>Devin<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://opencode.ai/docs/" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/opencode.png" alt="" width="28" height="28"></span>OpenCode<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://ampcode.com/docs/cli" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/amp.png" alt="" width="28" height="28"></span>Amp<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://goose-docs.ai/docs/getting-started/installation/" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/goose.png" alt="" width="28" height="28"></span>Goose<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://kiro.dev/docs/cli/" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/kiro.png" alt="" width="28" height="28"></span>Kiro<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://docs.factory.com/cli/getting-started/quickstart" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/droid.svg" alt="" width="28" height="28"></span>Droid<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://docs.cline.bot/cline-cli/overview" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/cline.png" alt="" width="28" height="28"></span>Cline<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://github.com/xai-org/grok-build" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/grok.png" alt="" width="28" height="28"></span>Grok<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://antigravity.google/docs/cli/install" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/antigravity.png" alt="" width="28" height="28"></span>Antigravity<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://github.com/QwenLM/qwen-code" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/qwen-code.png" alt="" width="28" height="28"></span>Qwen Code<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a href="https://www.kimi.com/code/docs/en/kimi-code-cli/guides/getting-started" target="_blank" rel="noopener noreferrer"><span class="agent-logo"><img src="assets/agents/kimi.png" alt="" width="28" height="28"></span>Kimi<span class="sr-only"> (opens in a new tab)</span></a></li>
-          <li><a class="agent-more" href="docs/agents.html">…and 31 more</a></li>
+        <ul class="pills reveal">
+          <li><a href="https://code.claude.com/docs/en/setup" target="_blank" rel="noopener noreferrer"><img src="assets/agents/claude.svg?v=1e01b19e" alt="" width="18" height="18" loading="lazy">Claude Code<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://github.com/openai/codex" target="_blank" rel="noopener noreferrer"><img src="assets/agents/codex.svg?v=109d013d" alt="" width="18" height="18" loading="lazy">Codex<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://github.com/xai-org/grok-build" target="_blank" rel="noopener noreferrer"><img src="assets/agents/grok.png?v=1828c605" alt="" width="18" height="18" loading="lazy">Grok<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://cursor.com/docs/cli/installation" target="_blank" rel="noopener noreferrer"><img src="assets/agents/cursor.png?v=1910c1c7" alt="" width="18" height="18" loading="lazy">Cursor<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli" target="_blank" rel="noopener noreferrer"><img src="assets/agents/copilot.png?v=1a81fbfb" alt="" width="18" height="18" loading="lazy">GitHub Copilot<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://dev.meta.ai/docs/muse-code" target="_blank" rel="noopener noreferrer"><img src="assets/agents/muse.png?v=02f05811" alt="" width="18" height="18" loading="lazy">Muse<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://deepseek-harness.github.io/deepseek-harness/" target="_blank" rel="noopener noreferrer"><img src="assets/agents/dsh.png?v=8b56b0e4" alt="" width="18" height="18" loading="lazy">DeepSeek Harness<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://zcode.z.ai/en/docs" target="_blank" rel="noopener noreferrer"><img src="assets/agents/zcode.png?v=c8106add" alt="" width="18" height="18" loading="lazy">ZCode<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://opencode.ai/docs/" target="_blank" rel="noopener noreferrer"><img src="assets/agents/opencode.png?v=c76c2913" alt="" width="18" height="18" loading="lazy">OpenCode<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://mimo.xiaomi.com/coder" target="_blank" rel="noopener noreferrer"><img src="assets/agents/mimo-code.png?v=f707e4d1" alt="" width="18" height="18" loading="lazy">MiMo Code<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://ampcode.com/docs/cli" target="_blank" rel="noopener noreferrer"><img src="assets/agents/amp.png?v=198387c8" alt="" width="18" height="18" loading="lazy">Amp<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://openclaude.gitlawb.com/" target="_blank" rel="noopener noreferrer"><img src="assets/agents/openclaude.png?v=59bfe9bc" alt="" width="18" height="18" loading="lazy">OpenClaude<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://antigravity.google/docs/cli/install" target="_blank" rel="noopener noreferrer"><img src="assets/agents/antigravity.png?v=837e7b11" alt="" width="18" height="18" loading="lazy">Antigravity<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://pi.dev" target="_blank" rel="noopener noreferrer"><img src="assets/agents/pi.svg?v=9fdc3f17" alt="" width="18" height="18" loading="lazy">Pi<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://omp.sh/docs" target="_blank" rel="noopener noreferrer"><img src="assets/agents/omp.svg?v=3eabb775" alt="" width="18" height="18" loading="lazy">oh-my-pi<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://hermes-agent.nousresearch.com/docs/" target="_blank" rel="noopener noreferrer"><img src="assets/agents/hermes.png?v=e98359f8" alt="" width="18" height="18" loading="lazy">Hermes Agent<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://docs.devin.ai/work-with-devin/devin-cli" target="_blank" rel="noopener noreferrer"><img src="assets/agents/devin.png?v=e3baeba9" alt="" width="18" height="18" loading="lazy">Devin<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://goose-docs.ai/docs/getting-started/installation/" target="_blank" rel="noopener noreferrer"><img src="assets/agents/goose.png?v=a3abfdd2" alt="" width="18" height="18" loading="lazy">Goose<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://docs.augmentcode.com/cli/overview" target="_blank" rel="noopener noreferrer"><img src="assets/agents/aug.png?v=50651aae" alt="" width="18" height="18" loading="lazy">Auggie<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://github.com/autohandai/code-cli" target="_blank" rel="noopener noreferrer"><img src="assets/agents/autohand.png?v=8102fa72" alt="" width="18" height="18" loading="lazy">Autohand Code<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://github.com/charmbracelet/crush" target="_blank" rel="noopener noreferrer"><img src="assets/agents/crush.png?v=d5e18d2b" alt="" width="18" height="18" loading="lazy">Charm (Crush)<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://docs.cline.bot/cline-cli/overview" target="_blank" rel="noopener noreferrer"><img src="assets/agents/cline.png?v=6b336ccf" alt="" width="18" height="18" loading="lazy">Cline<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://www.codebuddy.ai/docs/cli/installation" target="_blank" rel="noopener noreferrer"><img src="assets/agents/codebuddy.png?v=9ed5b74c" alt="" width="18" height="18" loading="lazy">CodeBuddy<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://www.codebuff.com/docs/help/quick-start" target="_blank" rel="noopener noreferrer"><img src="assets/agents/codebuff.png?v=422e4f37" alt="" width="18" height="18" loading="lazy">Codebuff<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://freebuff.com/cli" target="_blank" rel="noopener noreferrer"><img src="assets/agents/freebuff.png?v=43530e9c" alt="" width="18" height="18" loading="lazy">Freebuff<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://commandcode.ai/docs/quickstart" target="_blank" rel="noopener noreferrer"><img src="assets/agents/command-code.png?v=5ff6cf16" alt="" width="18" height="18" loading="lazy">Command Code<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://docs.continue.dev/cli/quickstart" target="_blank" rel="noopener noreferrer"><img src="assets/agents/continue.png?v=deb002a8" alt="" width="18" height="18" loading="lazy">Continue<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://docs.factory.com/cli/getting-started/quickstart" target="_blank" rel="noopener noreferrer"><img src="assets/agents/droid.svg?v=f78b3af3" alt="" width="18" height="18" loading="lazy">Droid<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://kilo.ai/docs/code-with-ai/platforms/cli" target="_blank" rel="noopener noreferrer"><img src="assets/agents/kilo.svg?v=4046ec8f" alt="" width="18" height="18" loading="lazy">Kilocode<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://www.kimi.com/code/docs/en/kimi-code-cli/guides/getting-started" target="_blank" rel="noopener noreferrer"><img src="assets/agents/kimi.png?v=179d5d50" alt="" width="18" height="18" loading="lazy">Kimi<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://kiro.dev/docs/cli/" target="_blank" rel="noopener noreferrer"><img src="assets/agents/kiro.png?v=357403d2" alt="" width="18" height="18" loading="lazy">Kiro<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://github.com/mistralai/mistral-vibe" target="_blank" rel="noopener noreferrer"><img src="assets/agents/mistral-vibe.png?v=62930179" alt="" width="18" height="18" loading="lazy">Mistral Vibe<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://github.com/QwenLM/qwen-code" target="_blank" rel="noopener noreferrer"><img src="assets/agents/qwen-code.png?v=f9a49592" alt="" width="18" height="18" loading="lazy">Qwen Code<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://support.atlassian.com/rovo/docs/install-and-run-rovo-dev-cli-on-your-device/" target="_blank" rel="noopener noreferrer"><img src="assets/agents/rovo.png?v=9f049b38" alt="" width="18" height="18" loading="lazy">Rovo Dev<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://github.com/google-gemini/gemini-cli" target="_blank" rel="noopener noreferrer"><img src="assets/agents/gemini.png?v=69ddb188" alt="" width="18" height="18" loading="lazy">Gemini CLI<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://aider.chat/docs/install.html" target="_blank" rel="noopener noreferrer"><img src="assets/agents/aider.svg?v=e04253ec" alt="" width="18" height="18" loading="lazy">Aider<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://ante.run/start/quickstart/" target="_blank" rel="noopener noreferrer"><img src="assets/agents/ante.png?v=058144d9" alt="" width="18" height="18" loading="lazy">Ante<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://docs.blackbox.ai/features/blackbox-cli/getting-started" target="_blank" rel="noopener noreferrer"><img src="assets/agents/generic.svg?v=cbba2994" alt="" width="18" height="18" loading="lazy">BLACKBOX CLI<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://forgecode.dev/docs/" target="_blank" rel="noopener noreferrer"><img src="assets/agents/generic.svg?v=cbba2994" alt="" width="18" height="18" loading="lazy">ForgeCode<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://junie.jetbrains.com/docs/junie-cli.html" target="_blank" rel="noopener noreferrer"><img src="assets/agents/generic.svg?v=cbba2994" alt="" width="18" height="18" loading="lazy">Junie CLI<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://github.com/letta-ai/letta-code" target="_blank" rel="noopener noreferrer"><img src="assets/agents/generic.svg?v=cbba2994" alt="" width="18" height="18" loading="lazy">Letta Code<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener noreferrer"><img src="assets/agents/openclaw.png?v=cedce9c7" alt="" width="18" height="18" loading="lazy">OpenClaw<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://docs.openhands.dev/openhands/usage/cli/installation" target="_blank" rel="noopener noreferrer"><img src="assets/agents/generic.svg?v=cbba2994" alt="" width="18" height="18" loading="lazy">OpenHands CLI<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://github.com/PrimeIntellect-ai/prime-agent" target="_blank" rel="noopener noreferrer"><img src="assets/agents/prime-agent.png?v=cec153d9" alt="" width="18" height="18" loading="lazy">Prime Agent<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://docs.qoder.com/cli/installation" target="_blank" rel="noopener noreferrer"><img src="assets/agents/qoder.png?v=c905d80b" alt="" width="18" height="18" loading="lazy">Qoder CLI<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://github.com/RooCodeInc/Roo-Code/tree/main/apps/cli" target="_blank" rel="noopener noreferrer"><img src="assets/agents/generic.svg?v=cbba2994" alt="" width="18" height="18" loading="lazy">Roo Code CLI<span class="sr-only"> (opens in a new tab)</span></a></li>
+          <li><a href="https://docs.trae.cn/cli_get-started-with-trae-code-cli-2" target="_blank" rel="noopener noreferrer"><img src="assets/agents/trae.png?v=cc5ebb57" alt="" width="18" height="18" loading="lazy">Trae CLI<span class="sr-only"> (opens in a new tab)</span></a></li>
         </ul>
       </div>
     </section>
 
-    <section class="section" id="byok">
+    <section class="section" id="features">
       <div class="wrap">
-        <div class="byok reveal">
-          <div class="byok-copy">
-            <p class="kicker">Private by design · Open source</p>
-            <h2>Your keys. Your machine. <span class="grad-text">Your repo.</span></h2>
-            <p>No Ferret account, no backend. Transcription and organizing run on your device or go to the provider you choose; the agent’s decision-model calls go to your key through a local relay. The code is MIT-licensed on GitHub.</p>
-          </div>
-          <ul class="byok-list">
-            <li><svg class="icon"><use href="#i-key"/></svg><span><strong>Keys stay in your OS keystore.</strong> Keychain, DPAPI or libsecret, stored apart from settings.</span></li>
-            <li><svg class="icon"><use href="#i-shield"/></svg><span><strong>Videos are never sent to agents.</strong> Findings and stills are saved in <code>.ferret/</code> in your project.</span></li>
-            <li><svg class="icon"><use href="#i-code"/></svg><span><strong>Free and open source.</strong> MIT licensed. Read it, fork it, run it.</span></li>
-          </ul>
+        <div class="section-head reveal">
+          <p class="kicker">Features</p>
+          <h2>And the details.</h2>
         </div>
+        <ul class="feat-grid reveal">
+          <li class="feat">
+            <img src="assets/features/said@1x.webp" srcset="assets/features/said@1x.webp 400w, assets/features/said.webp?v=6c5bd78e 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="A finding showing the words that were said under its annotated still.">
+            <h3>Your voice becomes text</h3>
+            <p>Exact words. Local whisper is free.</p>
+          </li>
+          <li class="feat">
+            <div class="feat-art feat-needs" role="img" aria-label="A finding marked Needs you with a question from the agent."><div><span class="needs-tag">Needs you</span><p class="needs-q">“The yearly price isn’t in the plan data. Add it, or hide the toggle?”</p><p class="needs-from">from claude · finding 2</p></div></div>
+            <h3>Your agent can ask you</h3>
+            <p>Wrong premise? It asks you.</p>
+          </li>
+          <li class="feat">
+            <img src="assets/features/progress@1x.webp" srcset="assets/features/progress@1x.webp 400w, assets/features/progress.webp?v=cd0689fa 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="The sidebar shows Button fixes with 3/3 done and the findings header shows a 3 / 3 done progress bar.">
+            <h3>Progress per finding</h3>
+            <p>Not started, in progress, done.</p>
+          </li>
+          <li class="feat">
+            <img src="assets/features/record-more@1x.webp" srcset="assets/features/record-more@1x.webp 400w, assets/features/record-more.webp?v=8ef8020f 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="The Record more and Send to Agent buttons above the findings.">
+            <h3>Record more</h3>
+            <p>Add a take to this review.</p>
+          </li>
+          <li class="feat">
+            <img src="assets/features/targets@1x.webp" srcset="assets/features/targets@1x.webp 400w, assets/features/targets.webp?v=f4f15853 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="Review targets: saved URLs with nested pages and an Open URL row.">
+            <h3>Review targets</h3>
+            <p>Saved URLs, recent pages, files.</p>
+          </li>
+          <li class="feat">
+            <img src="assets/features/settings@1x.webp" srcset="assets/features/settings@1x.webp 400w, assets/features/settings.webp?v=a61f5cb2 800w" sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 380px" width="400" height="250" loading="lazy" decoding="async" alt="settings.json open in Ferret’s built-in editor.">
+            <h3>Everything in settings.json</h3>
+            <p>One file your agent can edit.</p>
+          </li>
+        </ul>
       </div>
     </section>
 
@@ -373,7 +265,7 @@
         <div class="cta reveal">
           <div class="cta-copy">
             <h2>Your next review, by voice and screen.</h2>
-            <p>Free to use, on your own keys.</p>
+            <p>Free and open source.</p>
             <div class="hero-actions">
               <a class="btn btn-lg btn-primary" href="download.html"><svg class="icon"><use href="#i-download"/></svg>Download</a>
               <a class="btn btn-lg btn-ghost" href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill"><use href="#i-github"/></svg>GitHub<span class="sr-only"> (opens in a new tab)</span></a>
@@ -405,7 +297,7 @@
     <div class="wrap">
       <div class="footer-grid">
         <div class="footer-brand">
-          <a class="brand" href="./"><img class="wordmark" src="assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22"></a>
+          <a class="brand" href="./"><img class="wordmark" src="assets/ferret-wordmark.svg?v=4d097fe4" alt="Ferret" width="67" height="22"></a>
           <p class="footer-tag">The ADE for feedback by voice and screen.</p>
           <p class="provider">Built by <a href="https://www.japan-marketing.co.jp/" target="_blank" rel="noopener noreferrer">Japan Marketing LLC<span class="sr-only"> (opens in a new tab)</span></a></p>
         </div>
@@ -414,7 +306,7 @@
           <ul>
             <li><a href="download.html">Download</a></li>
             <li><a href="download.html#versions">Changelog</a></li>
-            <li><a href="docs/">Docs</a></li>
+            <li><a href="docs/quick-start">Docs</a></li>
             <li><a href="docs/privacy.html">Privacy</a></li>
           </ul>
         </div>

@@ -1,7 +1,8 @@
 import { useEffect, useState, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
-import { AppWindow, Eraser, Globe, MicOff, Monitor, MousePointer2, PanelRight, PanelsTopLeft, Pause, Play, PenTool, Redo2, Square, TriangleAlert, Undo2 } from 'lucide-react'
+import { AppWindow, ArrowLeft, ArrowRight, Eraser, Globe, MicOff, Monitor, MousePointer2, PanelRight, PanelsTopLeft, Pause, Play, PenTool, Redo2, Square, TriangleAlert, Undo2 } from 'lucide-react'
 import type { BrowserState, CaptureTarget } from '@shared/types'
 import { captureTargetLabel } from '@shared/captureTarget'
+import { browserNavKeys, canBrowserNav, showsBrowserNav } from '@shared/browserNav'
 import { ANNOTATION_COLORS, ANNOTATION_COLOR_IDS, DEFAULT_ANNOTATION_COLOR, annotationKeyAction, nextAnnotationColor, type AnnotationColor, type AnnotationKeyAction } from '@shared/annotation'
 import type { TranslationKey } from '@shared/i18n'
 import { formatShortcut } from '../lib/shortcut'
@@ -211,6 +212,8 @@ export function FeedbackToolbar({
    * ピル全体への委譲で読む（離れたときに消し損ねない）。
    */
   const hints: Record<string, { label: string; keys?: Keys; note?: string; hold?: Keys }> = {
+    back: { label: t('browser.back'), keys: browserNavKeys('back', window.ade.platform) },
+    forward: { label: t('browser.forward'), keys: browserNavKeys('forward', window.ade.platform) },
     target: { label: t('feedback.target', { target: captureTargetLabel(target) }) },
     record: { label: recording ? t('feedback.stop') : t('feedback.record'), keys: KEYS.record },
     pause: { label: paused ? t('feedback.resume') : t('feedback.pause') },
@@ -287,6 +290,31 @@ export function FeedbackToolbar({
 
         {divider}
 
+        {/* 内蔵ブラウザの戻る・進む。録画中も押せる（ページが変わると書き込みを確定して消す流れは controller.ts） */}
+        {showsBrowserNav(target) && slot(
+          'back',
+          <IconButton
+            label={t('browser.back')}
+            size="sm"
+            className="fb-btn"
+            disabled={busy || !canBrowserNav('back', state, target)}
+            onClick={() => void window.ade.invoke('browser:back')}
+            data-testid="feedback-back"
+            icon={<ArrowLeft size={18} strokeWidth={1.75} />}
+          />
+        )}
+        {showsBrowserNav(target) && slot(
+          'forward',
+          <IconButton
+            label={t('browser.forward')}
+            size="sm"
+            className="fb-btn"
+            disabled={busy || !canBrowserNav('forward', state, target)}
+            onClick={() => void window.ade.invoke('browser:forward')}
+            data-testid="feedback-forward"
+            icon={<ArrowRight size={18} strokeWidth={1.75} />}
+          />
+        )}
         {onPickTarget && slot(
           'target',
           <IconButton

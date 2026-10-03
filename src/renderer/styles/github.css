@@ -58,7 +58,7 @@
   padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: var(--color-bg-canvas);
+  background: var(--color-bg-panel);
   gap: var(--space-3);
 }
 
@@ -343,4 +343,201 @@
   align-items: center;
   margin-top: var(--space-3);
   gap: var(--space-2);
+}
+
+/* フィードバック → GitHub の Issue */
+
+.feedback-link {
+  display: flex;
+  align-items: center;
+  margin: 0 var(--space-4) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+  text-align: left;
+}
+
+.feedback-link:hover,
+.feedback-link:focus-visible {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  outline: none;
+}
+
+.feedback__text {
+  min-height: 52px;
+  resize: vertical;
+}
+
+.feedback__env {
+  display: flex;
+  align-items: flex-start;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+}
+
+.feedback__env input {
+  margin: 3px 0 0;
+}
+
+.feedback__env small {
+  display: block;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+}
+
+.feedback__preview {
+  max-height: 200px;
+  margin: 0;
+  padding: var(--space-3);
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-panel);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.feedback__done {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.feedback__url {
+  overflow-wrap: anywhere;
+}
+
+.feedback__images {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.feedback__images .st-note {
+  margin: 0;
+}
+
+.feedback__thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.feedback__thumb {
+  position: relative;
+  width: 120px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.feedback__thumb img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.feedback__thumb > .feedback__thumb-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--color-bg-elevated);
+}
+
+.feedback__public {
+  margin: 0;
+}
+
+/* エラーのトーストの「報告する」（ui/Toast.tsx） */
+.toast__report {
+  justify-self: start;
+  margin-top: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-decoration: underline;
+}
+
+.toast__report:hover,
+.toast__report:focus-visible {
+  color: var(--color-text);
+  outline: none;
+}
+
+.feedback__summary {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.feedback__more > summary {
+  width: max-content;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+
+.feedback__more > summary:hover,
+.feedback__more > summary:focus-visible {
+  color: var(--color-text);
+  outline: none;
+}
+
+.feedback__more[open] {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.feedback__checks {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.feedback__foot {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.feedback__other {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.feedback__thumb-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.screenshot-editor {
+  width: min(960px, calc(100vw - 48px));
+}
+
+.screenshot-editor__canvas {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: crosshair;
+  touch-action: none;
 }

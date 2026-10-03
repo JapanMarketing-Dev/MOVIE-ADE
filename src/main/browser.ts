@@ -1,10 +1,21 @@
-import { WebContentsView, session, shell, type BaseWindow, type WebContents } from 'electron'
+import { WebContentsView, dialog, session, shell, type BaseWindow, type Session, type WebContents } from 'electron'
 import { join } from 'node:path'
 import { MOBILE_PRESET, type BrowserState, type ViewBounds, type Viewport } from '@shared/types'
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import { reportHandled } from '@shared/report'
 import { normalizeUrl } from '@shared/projectUrl'
+import {
+  createExternalOpener,
+  displayOrigin,
+  installPermissionPolicy,
+  isAllowedExternalUrl,
+  isPageNavigationAllowed,
+  isTabCaptureRequest,
+  isTypedNavigationAllowed,
+  windowOpenAction,
+  type PermissionSessionLike
+} from './webPolicy'
 
 /**
  * 内蔵ブラウザ（設計 2章の WebContentsView = Chromium）。
@@ -15,6 +26,53 @@ import { normalizeUrl } from '@shared/projectUrl'
 
 /** WS-2 ログイン状態（Cookie）を保持する永続パーティション */
 export const PARTITION = 'persist:ade-browser'
+
+/**
+ * 内蔵ブラウザで許す権限。レビューするページは信用しないので、既定ですべて断る。
+ * 録画は別の録画ウインドウ（既定のセッション）がタブを録るので、ページにマイク・カメラ・画面共有は要らない。
+ * 許すのは、ページの「コピー」ボタンが動くための書き込み専用・整形済みのクリップボードと、
+ * 録画ウインドウからのタブ録画の問い合わせ（isTabCaptureRequest）だけ
+ */
+const BROWSER_ALLOWED_PERMISSIONS = new Set(['clipboard-sanitized-write'])
+
+let browserSessionReady = false
+
+/**
+ * 内蔵ブラウザの session。権限の決まり（既定で拒否）と外部アプリの確認を、読み込みの前に必ず入れてから返す。
+ * 内蔵ブラウザの session は必ずここから取ること
+ */
+export function browserSession(confirmWindow?: () => BaseWindow | null): Session {
+  const ses = session.fromPartition(PARTITION)
+  if (!browserSessionReady) {
+    browserSessionReady = true
+    installPermissionPolicy(ses as unknown as PermissionSessionLike,
+      (query) => BROWSER_ALLOWED_PERMISSIONS.has(query.permission) || isTabCaptureRequest(query),
+      (url, origin) => void openExternalFromPage(url, origin))
+  }
+  if (confirmWindow) confirmWindowOf = confirmWindow
+  return ses
+}
+
+let confirmWindowOf: () => BaseWindow | null = () => null
+
+/** 表示中のページが別のアプリ（mailto など）を開こうとした。許可リストのものだけ、確認してから渡す */
+const openExternalFromPage = createExternalOpener({
+  confirm: async ({ url, origin }) => {
+    const options = {
+      type: 'question' as const,
+      buttons: [t('browser.external.open'), t('common.cancel')],
+      defaultId: 1,
+      cancelId: 1,
+      message: t('browser.external.message'),
+      detail: t('browser.external.detail', { origin: displayOrigin(origin) || '-', url: url.slice(0, 300) })
+    }
+    const parent = confirmWindowOf()
+    const { response } = parent && !parent.isDestroyed() ? await dialog.showMessageBox(parent, options) : await dialog.showMessageBox(options)
+    return response === 0
+  },
+  open: (url) => shell.openExternal(url),
+  onError: (err) => reportHandled(err, { area: 'browser', op: 'open external link' })
+})
 
 export class EmbeddedBrowser {
   private view: WebContentsView | null = null
@@ -61,7 +119,8 @@ export class EmbeddedBrowser {
 
     const view = new WebContentsView({
       webPreferences: {
-        session: session.fromPartition(PARTITION),
+        // 権限の決まり（既定で拒否）を入れた session。ビューを作る＝読み込む前に入れる
+        session: browserSession(() => this.window),
         // ペン・操作ログの注入スクリプト（設計4章）。
         // preload なのでページ本体のスクリプトとは別の世界で動き、遷移のたびに読み直される。
         preload: join(__dirname, '../preload/review.js'),
@@ -81,14 +140,25 @@ export class EmbeddedBrowser {
 
     const wc = view.webContents
 
-    // 新規ウィンドウは開かず、同じビューで遷移させる。外部スキームはOSに任せる。
+    // 新規ウィンドウは開かず、同じビューで遷移させる。別のアプリへは mailto だけを、確認してから渡す。
+    // file: data: javascript: や独自スキームは何もしない（ページから OS の URL ハンドラを呼ばせない）
     wc.setWindowOpenHandler(({ url }) => {
-      if (/^https?:/i.test(url)) {
-        void wc.loadURL(url)
-      } else {
-        void shell.openExternal(url).catch((err: unknown) => reportHandled(err, { area: 'browser', op: 'open external link' }))
-      }
+      const action = windowOpenAction(url)
+      if (action === 'in-app') void wc.loadURL(url).catch(() => undefined)
+      else if (action === 'external') void openExternalFromPage(url, wc.getURL())
       return { action: 'deny' }
+    })
+    // ページが始めた遷移（リンク・location の書き換え）。行けない先は止め、mailto は確認へ回す
+    wc.on('will-navigate', (event) => {
+      if (isPageNavigationAllowed(event.url, wc.getURL())) return
+      event.preventDefault()
+      if (isAllowedExternalUrl(event.url)) void openExternalFromPage(event.url, wc.getURL())
+    })
+    // サーバーの転送（リダイレクト）にも同じ決まりを当てる。独自スキームへの転送は、外部アプリの起動の権限（確認付き）へ回る
+    wc.on('will-redirect', (event) => {
+      if (isPageNavigationAllowed(event.url, wc.getURL())) return
+      event.preventDefault()
+      if (isAllowedExternalUrl(event.url)) void openExternalFromPage(event.url, wc.getURL())
     })
 
     const emit = (): void => this.emitState()
@@ -122,7 +192,8 @@ export class EmbeddedBrowser {
       console.warn(`[browser] レンダラが終了しました: ${details.reason}`)
     })
 
-    void this.navigate(initialUrl)
+    // 前回の URL が開けない（形式が違う・許さないスキーム）なら空のまま。URL 欄から直せる
+    void this.navigate(initialUrl).catch(() => undefined)
   }
 
   /** 破棄済みの webContents を触らない。すべての操作はこれを通す */
@@ -261,7 +332,8 @@ export class EmbeddedBrowser {
     const wc = this.webContents
     if (!wc) return
     const url = normalizeUrl(input)
-    if (!isNavigableUrl(url)) throw new UserFacingError(t('browser.errors.invalidUrl'))
+    // javascript: data: や独自スキーム（OS のアプリを起動する）は開かない
+    if (!isNavigableUrl(url) || !isTypedNavigationAllowed(url)) throw new UserFacingError(t('browser.errors.invalidUrl'))
     try {
       await wc.loadURL(url)
     } catch (err) {

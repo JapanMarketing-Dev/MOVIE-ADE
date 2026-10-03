@@ -25,6 +25,7 @@
   "include": [
     "test/unit/**/*",
     "tools/pipeline/**/*",
-    "src/shared/**/*"
+    "src/shared/**/*",
+    "workers/*/src/**/*"
   ]
 }

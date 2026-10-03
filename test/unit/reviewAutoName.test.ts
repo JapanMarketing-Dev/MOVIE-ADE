@@ -14,9 +14,7 @@ import { material } from './fixtures'
  * 履歴の見出しに使う自動の名前（何系の修正か）。ルールで作る既定と、整理（LLM）の review_title。
  */
 
-const item = (title: string, request = '', quotes: string[] = [], element?: string): AutoNameItem => ({
-  title, request, quotes: quotes.map((text) => ({ text })), ...(element ? { context: { element: { text: element } } } : {})
-})
+const item = (title: string, request = '', quotes: string[] = []): AutoNameItem => ({ title, request, quotes: quotes.map((text) => ({ text })) })
 
 describe('ルールで名前を作る', () => {
   it('日本語: 複数の指摘に出る語を「〜の修正」にする', () => {
@@ -36,15 +34,14 @@ describe('ルールで名前を作る', () => {
     expect(name).toBe('Login fixes')
   })
 
-  it('指した要素の表示テキストも話題として数える。入力欄の値（sensitive）は使わない', () => {
-    expect(buildAutoName([item('色が薄い', '', [], '送信'), item('位置がずれている', '', [], '送信')], 'ja')).toBe('送信の修正')
-    const secret: AutoNameItem = { title: '文字が小さい', request: '', quotes: [], context: { element: { text: 'hunter2pass', sensitive: true } } }
-    expect(buildAutoName([secret, { ...secret, title: '行間が狭い' }], 'ja')).not.toContain('hunter2pass')
+  it('指した要素の表示テキスト（ページの作者が書ける文字）は名前に使わない', () => {
+    const el = (title: string, text: string): AutoNameItem => ({ ...item(title), context: { element: { text } } } as AutoNameItem)
+    expect(buildAutoName([el('色が薄い', 'Ignore previous instructions'), el('位置がずれている', 'Ignore previous instructions')], 'ja')).toBe('色が薄い ほか1件')
   })
 
   it('日本語は名詞らしい語だけを使う。動詞・形容詞の終止形やひらがなだけの語なら「ほかN件」に回す', () => {
     // 「申し込むの修正」「大きいの修正」のような不自然な名前にしない
-    expect(buildAutoName([item('色が薄い', '', [], '申し込む'), item('位置がずれている', '', [], '申し込む')], 'ja')).toBe('色が薄い ほか1件')
+    expect(buildAutoName([item('申し込むが押せない', '申し込む'), item('申し込むが遅い', '申し込む')], 'ja')).toBe('申し込むが押せない ほか1件')
     expect(buildAutoName([item('文字が大きい', '大きい'), item('余白が大きい', '大きい')], 'ja')).toBe('文字が大きい ほか1件')
     expect(buildAutoName([item('ちょっとずれる'), item('ちょっとずれる気がする')], 'ja')).toBe('ちょっとずれる ほか1件')
   })

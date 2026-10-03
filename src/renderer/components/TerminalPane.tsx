@@ -27,7 +27,6 @@ import {
   type PaneSplitDirection
 } from '../terminal/paneTree'
 import { AgentIcon } from './AgentIcon'
-import { PanelCloseButton } from './LayoutToggles'
 import { useT } from '../lib/i18n'
 import { t as tNow, type TranslationKey } from '@shared/i18n'
 import { QuickLaunchButton, type QuickLaunchAgent, type QuickLaunchSearch } from './QuickLaunchButton'
@@ -1037,8 +1036,6 @@ export function TerminalPane({
             onNewTerminal={() => splitPane('horizontal')}
             onLaunchAgent={(agent) => splitPane('horizontal', agent)}
           />
-          {/* ターミナルのパネルを閉じる（大きさを 0 にするだけで、PTY と Agent は止まらない。⌘J で開き直す） */}
-          <PanelCloseButton panel="terminal" />
         </div>
       </div>
 

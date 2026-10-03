@@ -27,7 +27,9 @@ export const VERIFIED_OS: Os[]
 export const OS_LABEL: Record<Os, string>
 
 export function classifyAsset(name: string): AssetInfo | null
-export function joinUrl(base: string, path: unknown): string | null
+export const TRUSTED_DOWNLOAD_ORIGINS: string[]
+export function joinUrl(base: string, path: unknown, origins?: string[]): string | null
+export function notesLink(base: string, url: unknown): string | null
 export function normalizeFiles(files: unknown, base: string): Download[]
 export function normalizeManifest(manifest: unknown, base: string): Release | null
 export function normalizeIndex(index: unknown, base: string): { latest: IndexEntry | null; all: IndexEntry[] }

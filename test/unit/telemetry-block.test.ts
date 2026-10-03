@@ -7,6 +7,8 @@ import {
   EVENT_LOOP_BLOCK_MS,
   eventLoopBlockContext,
   eventLoopBlockThreshold,
+  gcKindName,
+  memoryBucket,
   scrubEvent
 } from '../../src/shared/telemetry'
 
@@ -92,5 +94,26 @@ describe('パンくずの間引き', () => {
     expect(keep(a11y)).toBe(false)
     expect(keep({ category: 'flow', message: 'settings save' })).toBe(true)
     expect(keep({ category: 'electron', message: 'app.browser-window-focus' })).toBe(true)
+  })
+})
+
+describe('止まったときの main の様子（FERRET-M: スタックもパンくずも無い止まりの手がかり）', () => {
+  it('メモリの量・補助技術の状態をタグと contexts.block に付ける（値は大きさと時間だけ）', () => {
+    const ctx = eventLoopBlockContext([], [{ op: 'gc:major', ms: 1900 }], { heapUsedMb: 1170.4, rssMb: 1530.6, axEnabled: true, axChangedMsAgo: 1250 })
+    expect(ctx.tags).toEqual({ 'block.ipc': 'none', 'block.slowop': 'gc:major', 'block.heap': '1-2GB', 'block.ax': 'on' })
+    expect(ctx.context).toMatchObject({ heap_used: '1170MB', rss: '1531MB', ax_changed: '1250ms ago', recent_slow_ops: 'gc:major 1900ms' })
+    expect(eventLoopBlockContext([], [], { heapUsedMb: 80, rssMb: 200, axEnabled: false, axChangedMsAgo: null }).context.ax_changed).toBe('never')
+  })
+
+  it('伏せ字を通しても手がかりが残る', () => {
+    const ctx = eventLoopBlockContext([], [{ op: 'gc:major', ms: 1900 }], { heapUsedMb: 1170, rssMb: 1530, axEnabled: true, axChangedMsAgo: 1250 })
+    const out = scrubEvent({ tags: ctx.tags, contexts: { block: ctx.context } }) as { tags: Record<string, string>; contexts: { block: Record<string, string> } }
+    expect(out.tags['block.heap']).toBe('1-2GB')
+    expect(out.contexts.block.ax_changed).toBe('1250ms ago')
+  })
+
+  it('メモリの区分と GC の種類の名前', () => {
+    expect([100, 300, 700, 1500, 4096].map(memoryBucket)).toEqual(['<256MB', '256-512MB', '512MB-1GB', '1-2GB', '2GB+'])
+    expect([1, 4, 8, 16, 99, undefined].map(gcKindName)).toEqual(['minor', 'major', 'incremental', 'weakcb', 'other', 'other'])
   })
 })

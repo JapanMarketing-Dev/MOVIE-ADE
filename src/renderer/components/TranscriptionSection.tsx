@@ -98,6 +98,8 @@ export function TranscriptionSection({ transcription, onTranscriptionChange, lan
             saveEndpoints(copy)
           }}
           onCheck={() => window.ade.invoke('capture:testConnection', { provider: remote.id, ...(endpoint ? { endpoint } : {}) })}
+          // Agent に設定を頼む指示文の宛先（settings.json の中の場所。src/shared/settingsSchema.ts）
+          setupTarget={{ purpose: t('ai.setup.purpose.transcription'), endpointPath: `capture.sttEndpoints.${remote.id}`, select: { path: 'capture.transcription', value: remote.id } }}
           advancedExtra={<>
             <label className="st-row"><span className="st-row__label">{t('settings.capture.costLimit')}</span><span className="rv-select">
               <select className="st-select" aria-label={t('settings.capture.costLimitLabel')} value={costLimitUsd === null ? 'none' : String(costLimitUsd)} disabled={recording}

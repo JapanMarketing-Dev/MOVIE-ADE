@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ViewBounds } from '@shared/types'
+import { setViewBoundsForToasts } from '../lib/toastPlacement'
 
 /**
  * 内蔵ブラウザ（WebContentsView）を置く領域を実測して main へ渡す。
@@ -30,6 +31,7 @@ export function useViewBounds(
     if (!visible) {
       if (lastRef.current === 'hidden') return
       lastRef.current = 'hidden'
+      setViewBoundsForToasts(null)
       void window.ade.invoke('browser:setBounds', null)
       return
     }
@@ -46,6 +48,8 @@ export function useViewBounds(
       const key = `${bounds.x},${bounds.y},${bounds.width},${bounds.height}`
       if (key === lastRef.current) return
       lastRef.current = key
+      // トーストはビューに隠れない場所へ置く（toastPlacement.ts）ので、位置を知らせる
+      setViewBoundsForToasts(bounds)
       void window.ade.invoke('browser:setBounds', bounds)
     })
   }, [node, visible])

@@ -30,6 +30,7 @@ import {
 } from '@shared/aiProviders'
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
+import { readBoundedJson, readErrorText } from '../../boundedResponse'
 import type { TranscriptSegment } from '../types'
 import { SttHttpError, type SttEngine, type TranscribeChunkInput, type TranscribeResult } from './engine'
 import { exceedsCostLimit, normalizeBaseUrl } from './endpoint'
@@ -225,10 +226,10 @@ export class CloudSttEngine implements SttEngine {
     const elapsedMs = Date.now() - started
     if (!res.ok) {
       // 失敗の本文は説明に使うだけ（想定内）
-      const body = redact(await res.text().catch(() => ''), this.opt.apiKey).slice(0, 500)
+      const body = redact(await readErrorText(res), this.opt.apiKey).slice(0, 500)
       throw new SttHttpError(t('stt.errors.failed', { label: this.opt.label, status: res.status, body }), res.status, body)
     }
-    const parsed = parseCloudSttResponse(this.opt.kind, await res.json())
+    const parsed = parseCloudSttResponse(this.opt.kind, await readBoundedJson(res))
     return {
       segments: toSegments(parsed, input, durationMs),
       elapsedMs,

@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { appendFile, writeFile, readFile } from 'node:fs/promises'
+import { mkdir, readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import type { SessionPaths } from './sessions/paths'
 import type { IncrementalTranscriber } from './pipeline/stt/engine'
@@ -26,17 +26,21 @@ import {
 } from '@shared/types'
 import { isRecordableUrl, sessionUrl, withProjectSession } from '@shared/projectSession'
 import { THEME_BACKGROUND } from '@shared/theme'
-import { findProjectByFolder, upsertProjectFolder } from './projects'
-import { EmbeddedBrowser, PARTITION } from './browser'
+import { findProjectByFolder, newProject, upsertProjectFolder } from './projects'
+import { checkSshTarget, remoteWorkspaceDirName, sshDefaultName, type SshTarget } from '@shared/sshCommand'
+import { EmbeddedBrowser, browserSession } from './browser'
+import { APP_ALLOWED_PERMISSIONS, installPermissionPolicy, isAllowedExternalUrl, isAppPageUrl, type PermissionSessionLike } from './webPolicy'
+import { pathToFileURL } from 'node:url'
 import type { PcmBlock, RecordingController } from './recording'
 import { installMenu } from './menu'
 import { applyLocalePreference } from './locale'
 import { PRODUCT_NAME, getLocale, t } from '@shared/i18n'
-import { UserFacingError, toUserFacingFileError } from '@shared/errors'
+import { UserFacingError, isStaleChunkError, toUserFacingFileError } from '@shared/errors'
 import { IS_PACKAGED } from './runtime'
 import { configDir, currentSettings, flushSettingsSync, loadSettings, readSettingsText, settingsFileInfo, updateSettings, watchSettings, writeSettingsText } from './settings'
 import { envGetter, keepKeyRefs, redactKeys, resolveApiKey, resolveConfiguredKey, resolveEndpointRefs, type KeyRef } from './settingsKeys'
-import { elapsedMs, mark, reportInteractive } from './startup'
+import { elapsedMs, mark, reportInteractive, setStartupTags } from './startup'
+import { emulationKind } from './emulation'
 import { TerminalManager } from './terminal'
 import { listAgentOptions } from './agentDetection'
 import {
@@ -49,13 +53,14 @@ import {
   selectAgentAccount
 } from './accounts'
 import { attachUsageWindow, getAccountUsage, getUsageState, refreshUsage } from './usage/service'
+import { listAgentResources } from './agentResources'
 import { appVersion, checkForUpdate } from './updateCheck'
 import { sanitizeLayout } from '@shared/layout'
 import { ResourceCollector } from './resources'
 import { ProjectWatcher, listDirectory, listFiles, readTextFile, searchFiles, writeTextFile } from './files'
 import { refreshPreviewIn, registerPreviewProtocol, renderPreviewSource } from './preview'
 import { PREVIEW_SCHEME } from '@shared/preview'
-import { crashReportsActive, initCrashReporting, maybeSendTestEvent, reportMainError, sentryTestKinds, setTelemetryContext, trackIpc } from './telemetry'
+import { crashReportsActive, initCrashReporting, maybeSendTestEvent, reportMainError, sentryTestKinds, setTelemetryContext, telemetryInstallId, trackIpc } from './telemetry'
 import { wrapIpcHandler } from '@shared/telemetry'
 import { flow, reportHandled } from '@shared/report'
 
@@ -163,7 +168,7 @@ let activePaths: SessionPaths | null = null
 /** 「このレビューに追加で録る」の録画中なら、足す先のレビューと録画の番号（activePaths は takes/<n>/ を指す） */
 let activeAppend: { review: SessionPaths; n: number } | null = null
 let transcriber: IncrementalTranscriber | null = null
-let activeOptions = { captureSystemAudio: false, transcription: 'local' as SttProvider }
+let activeOptions = { captureSystemAudio: false, captureMic: true, transcription: 'local' as SttProvider }
 
 /**
  * 文字起こし・整理のAPIキー（pipeline/stt/keys.ts）。配布版は OS の鍵で暗号化して userData/stt-keys.bin に保存する。
@@ -300,6 +305,7 @@ function setWorkspace(folderPath: string | null, project: Project | null = null)
     projectId: project?.id ?? null
   }
   terminals?.setCwd(folderPath)
+  terminals?.setRemote(project?.source === 'ssh' && project.ssh ? project.ssh : null)
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.setTitle(workspace.folderName ? `${workspace.folderName} — ${PRODUCT_NAME}` : PRODUCT_NAME)
   }
@@ -318,6 +324,11 @@ function applyExternalSettings(settings: Settings): void {
   syncDecision()
   send('settings:changed', redactKeys(settings))
   syncDecision()
+}
+
+/** 開いているのが SSH のプロジェクトか（Agent はリモートで動くので、feedback.md は中身を貼って送る） */
+function isRemoteWorkspace(): boolean {
+  return currentSettings().projects.find((p) => p.id === workspace.projectId)?.source === 'ssh'
 }
 
 function projectsState(): ProjectsState {
@@ -363,6 +374,36 @@ function openFolderAsProject(folderPath: string): WorkspaceState {
   const { projects, project, alreadyPresent } = upsertProjectFolder(currentSettings().projects, folderPath)
   if (!alreadyPresent) updateSettings({ projects })
   return openProject(project)
+}
+
+/** clone したフォルダを「GitHub から取得」したプロジェクトとして開く（同じフォルダが登録済みならそれに印を付ける） */
+function openClonedProject(folderPath: string, remoteUrl: string): WorkspaceState {
+  const { projects, project } = upsertProjectFolder(currentSettings().projects, folderPath)
+  const marked = projects.map((p) => (p.id === project.id ? { ...p, source: 'github' as const, remoteUrl } : p))
+  updateSettings({ projects: marked })
+  return openProject(marked.find((p) => p.id === project.id) ?? project)
+}
+
+/**
+ * SSH の接続先とリモートのフォルダを登録して開く。ターミナルと Agent のタブはリモートで動き（setWorkspace → terminals.setRemote）、
+ * レビューはローカルの置き場（設定フォルダの remote/<host>-<名前>-<ハッシュ>）に保存する。鍵やパスワードは扱わない。
+ */
+async function addSshProject(target: SshTarget, name?: string): Promise<ProjectsState> {
+  const checked = checkSshTarget(target ?? { host: '', path: '' })
+  if (!checked.ok) throw new UserFacingError(t(checked.reason === 'host' ? 'projectSource.errors.host' : 'projectSource.errors.path'))
+  assertNotRecording()
+  const { projects } = currentSettings()
+  const existing = projects.find((p) => p.source === 'ssh' && p.ssh?.host === checked.target.host && p.ssh?.path === checked.target.path)
+  if (existing) {
+    openProject(existing)
+    return projectsState()
+  }
+  const folder = join(configDir(), 'remote', remoteWorkspaceDirName(checked.target))
+  await mkdir(folder, { recursive: true })
+  const project: Project = { ...newProject(folder), name: name?.trim() || sshDefaultName(checked.target), source: 'ssh', ssh: checked.target }
+  updateSettings({ projects: [...projects, project] })
+  openProject(currentSettings().projects.find((p) => p.id === project.id) ?? project)
+  return projectsState()
 }
 
 async function pickFolder(): Promise<string | null> {
@@ -456,6 +497,13 @@ function windowIcon(): { icon?: string } {
   return existsSync(icon) ? { icon } : {}
 }
 
+/** アプリ自身の画面の置き場所（file: のアプリのフォルダと、開発サーバー） */
+function appPageRoots(): string[] {
+  const roots = [pathToFileURL(app.getAppPath()).href]
+  if (process.env.ELECTRON_RENDERER_URL) roots.push(process.env.ELECTRON_RENDERER_URL)
+  return roots
+}
+
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
     width: 1440,
@@ -497,9 +545,15 @@ function createWindow(): BrowserWindow {
     else window.show()
   })
 
+  // リンクはブラウザで開く。http / https / mailto だけ（プレビューの iframe の中身はプロジェクトのもので信用しない。
+  // file: や独自スキームを OS の URL ハンドラへ渡さない）
   window.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url).catch((err: unknown) => reportHandled(err, { area: 'browser', op: 'open external link' }))
+    if (isAllowedExternalUrl(url)) void shell.openExternal(url).catch((err: unknown) => reportHandled(err, { area: 'browser', op: 'open external link' }))
     return { action: 'deny' }
+  })
+  // アプリの画面からほかのページへ移らない（ファイルを落としたときの既定の遷移も含む。preload の IPC を外のページに渡さない）
+  window.webContents.on('will-navigate', (event) => {
+    if (!isAppPageUrl(event.url, appPageRoots())) event.preventDefault()
   })
 
   // 単一ウィンドウのアプリなので、ウィンドウを閉じる＝アプリの終了とする（3つのOSで同じ）。
@@ -631,6 +685,12 @@ async function starPrompt(): Promise<import('./starPrompt').StarPromptService> {
       if (!mainWindow || mainWindow.isDestroyed()) return false
       send('star:show', mode)
       return true
+    },
+    // フィードバックの声かけ（送信 3 回で一度だけ。src/renderer/components/FeedbackDialog.tsx の FeedbackAskToast）
+    askFeedback: () => {
+      if (!mainWindow || mainWindow.isDestroyed()) return false
+      send('feedback:ask')
+      return true
     }
   })
   return starPromptService
@@ -639,6 +699,22 @@ async function starPrompt(): Promise<import('./starPrompt').StarPromptService> {
 /** 良い場面を知らせる。失敗しても元の操作には響かせない */
 function recordStarMoment(moment: import('@shared/starPrompt').StarPromptMoment): void {
   void starPrompt().then((service) => service.record(moment)).catch((err: unknown) => reportHandled(err, { area: 'github', op: 'star prompt' }))
+}
+
+/**
+ * 録画 n の何も起きていない時間を削った版を作る（設定の capture.trimIdle が false なら作らない）。
+ * speechKnown が false（文字起こしが動かなかった・失敗した）なら、話していた時間を削らないよう作らない
+ */
+function scheduleTrim(review: SessionPaths, n: number, result: import('./recording/types').RecordingResult, transcript: import('./pipeline/types').TranscriptSegment[], speechKnown: boolean): void {
+  const capture = currentSettings().capture
+  if (capture?.trimIdle === false) return
+  void (async () => {
+    const { planTrim } = await import('./sessions/trim')
+    const cuts = planTrim({ durationMs: result.durationMs, transcript, events: result.events, frames: result.frames, speechKnown },
+      { minIdleMs: (capture?.trimIdleSeconds ?? 3) * 1000 })
+    if (!cuts) return
+    await (await import('./review')).trimReviewTake(review, n, cuts, result.durationMs)
+  })().catch((err: unknown) => reportHandled(err, { area: 'review', op: 'trim recording' }))
 }
 
 async function stopReview(): Promise<RecordingStatus> {
@@ -664,6 +740,9 @@ async function stopReview(): Promise<RecordingStatus> {
             : await finishReview(paths, result, stt?.segments ?? [], warnings, activeOptions.captureSystemAudio)
           send('review:ready', review)
           recordStarMoment('reviews')
+          // 何も起きていない時間を削った版は、指摘を出したあとに裏で作る（失敗しても元の動画のまま使える）
+          scheduleTrim(append?.review ?? paths, append?.n ?? 1, result, stt?.segments ?? [],
+            activeOptions.captureMic === false || (!!stt && stt.errors.length === 0))
         }
         return recording.status
       } finally { recordingBusy = false }
@@ -736,6 +815,20 @@ function registerIpc(): void {
       for (const id of ids) terminals?.close(id)
       return ids.length
     },
+    'app:openExternal': async (url) => {
+      const { isSafeExternalUrl } = await import('@shared/setupGuide')
+      // renderer から任意の URL を開かせない（file: や javascript: などは断る）
+      if (!isSafeExternalUrl(url)) throw new UserFacingError(t('errors.unsafeLink'))
+      await shell.openExternal(url)
+    },
+    'agent:sendText': async (text) => {
+      if (typeof text !== 'string' || !text.trim() || text.length > 8000) throw new UserFacingError(t('errors.emptyText'))
+      // 宛先は「Agent へ送信」の auto と同じ（選んでいるターミナル → 同じプロジェクトの Agent）
+      const target = terminals ? await terminals.resolveSendTarget(null, workspace.folderPath) : null
+      if (!target) return { ok: false, message: t('terminal.send.noAgent'), noAgent: true }
+      const { ok, message } = await terminals!.sendReview(target, text)
+      return { ok, message }
+    },
     'app:openUpdate': () => {
       if (latestReleaseUrl) void shell.openExternal(latestReleaseUrl).catch((err: unknown) => reportHandled(err, { area: 'update', op: 'open release page' }))
     },
@@ -760,6 +853,30 @@ function registerIpc(): void {
     },
     'project:update': (project) => updateProject(project),
     'project:remove': (id) => removeProject(id),
+    'project:sshHosts': async () => (await import('./projectSources')).listSshHosts(),
+    'project:githubRepos': async () => (await import('./projectSources')).listGitHubRepos(),
+    'project:cloneDefaults': async () => ({ parent: (await import('./projectSources')).defaultCloneParent(), home: homedir() }),
+    'project:pickParent': async (current) => {
+      const window = mainWindow
+      if (!window || window.isDestroyed()) return null
+      const result = await dialog.showOpenDialog(window, {
+        title: t('projectSource.pickParent'),
+        properties: ['openDirectory', 'createDirectory'],
+        ...(typeof current === 'string' && current ? { defaultPath: current } : {})
+      })
+      return result.canceled ? null : result.filePaths[0] ?? null
+    },
+    'project:clone': async (url, parent) => {
+      assertNotRecording()
+      if (typeof url !== 'string' || typeof parent !== 'string') return { ok: false as const, kind: 'failed' as const, detail: 'invalid input' }
+      const { cloneRepository } = await import('./projectSources')
+      const outcome = await cloneRepository({ url, parent }, (progress) => send('project:cloneProgress', progress))
+      if (!outcome.ok) return outcome
+      openClonedProject(outcome.path, outcome.url)
+      return { ok: true as const, state: projectsState() }
+    },
+    'project:cloneCancel': async () => (await import('./projectSources')).cancelClone(),
+    'project:addSsh': (target, name) => addSshProject(target, typeof name === 'string' ? name : undefined),
     'project:saveSession': (id, session) => {
       const { projects } = currentSettings()
       if (!projects.some((p) => p.id === id) || !session || typeof session !== 'object') return
@@ -777,6 +894,7 @@ function registerIpc(): void {
       void listAgentOptions(currentSettings().agents).then((options) => send('agents:changed', options))
     },
     'agents:list': (refresh) => listAgentOptions(currentSettings().agents, refresh === true),
+    'agents:resources': (agent) => listAgentResources(String(agent) as Parameters<typeof listAgentResources>[0], workspace.folderPath ?? null),
     'settings:agentPrompt': (template) => updateSettings({ agentPrompt: typeof template === 'string' ? template : undefined }),
 
     // Claude Code / Codex のアカウント（src/main/accounts）。renderer からの値は種類を確かめてから使う
@@ -837,12 +955,15 @@ function registerIpc(): void {
       // 宛先（auto / Agent / タブ）と、差し替える本文。古い形（ターミナルの id だけ）も auto として読む（@shared/sendTarget）
       const { parseSendRequest } = await import('@shared/sendTarget')
       const request = parseSendRequest(rawRequest)
-      const { checkedPaths, loadReviewAt, markSentInProgress, refreshFeedbackMarkdown, reviewInstruction } = await import('./review')
+      const { checkedPaths, loadReviewAt, markSentInProgress, prepareSendFeedback, refreshFeedbackMarkdown, remoteReviewInstruction, reviewInstruction } = await import('./review')
       const paths = checkedPaths(workspace.folderPath, id)
       const data = await loadReviewAt(paths)
       if (!data.document.items.some((it) => it.include)) return { ok: false, message: t('errors.nothingToSend') }
-      // 判定モデルの受け入れ確認の節を今の設定に合わせる
-      await refreshFeedbackMarkdown(paths)
+      // 判定モデルの受け入れ確認の節を今の設定に合わせる。
+      // 既定の送信は未対応の指摘だけを送る（done・in_progress・needs_human は送らない）。feedback.md もその指摘だけを詳しく書く。
+      // 本文を差し替えた送信（確認への返答）は1件だけを指すので、全件の feedback.md のまま
+      if (request.text) await refreshFeedbackMarkdown(paths)
+      else if (!(await prepareSendFeedback(paths)).length) return { ok: false, message: t('review.nothingPending') }
       // auto: 選んでいるターミナル → 同じプロジェクトの Agent。どこにも居なければ noAgent（renderer が既定の Agent を起動して送り直す）
       // agent: その Agent が動いているタブ。無ければ launchAgent（renderer がその Agent のタブを開いて送り直す）
       // terminal: そのタブ。Agent が抜けていれば、覚えていた Agent を launchAgent で返す
@@ -855,7 +976,7 @@ function registerIpc(): void {
         const launchAgent = want.kind === 'agent' ? want.agent : want.kind === 'terminal' ? want.agent ?? undefined : undefined
         return { ok: false, message: t('terminal.send.noAgent'), noAgent: true, ...(launchAgent ? { launchAgent } : {}) }
       }
-      const result: { ok: boolean; message: string; terminalId?: string; submitted?: boolean } = { ...(await terminals!.sendReview(target, request.text ?? reviewInstruction(paths, currentSettings().agentPrompt))), terminalId: target }
+      const result: { ok: boolean; message: string; terminalId?: string; submitted?: boolean } = { ...(await terminals!.sendReview(target, request.text ?? (isRemoteWorkspace() ? await remoteReviewInstruction(paths) : reviewInstruction(paths, currentSettings().agentPrompt)))), terminalId: target }
       // 一覧の「送信済み」に使う。記録できなくても送信の結果は変えない
       if (result.ok) await (await import('./sessions')).updateLabel(paths, { sentAt: new Date().toISOString() }).catch((err: unknown) => reportHandled(err, { area: 'review', op: 'record sent label' }))
       // 送った指摘を対応中にする（Agent が progress.json で done にするまで）。書けなくても送信の結果は変えない。
@@ -973,6 +1094,12 @@ function registerIpc(): void {
       syncDecision()
       return redactKeys(currentSettings().decision!)
     },
+    'decision:testConnection': async (raw) => {
+      const { sanitizeDecisionPreferences } = await import('@shared/decision')
+      // 画面にはキーを渡していないので、settings.json に書かれた apiKey / apiKeyEnv を引き継ぐ。E2E は本物を呼ばない
+      const prefs = sanitizeDecisionPreferences(keepKeyRefs({ d: currentSettings().decision as KeyRef | undefined }, { d: (raw ?? {}) as KeyRef })?.d)
+      return (await decision()).testConnection(prefs, { fake: IS_E2E })
+    },
     'usage:apiCalls': () => apiUsageSummary(),
     'usage:openApiLog': async () => {
       const file = (await apiUsageSummary()).logFile
@@ -1081,9 +1208,22 @@ function registerIpc(): void {
       if (typeof itemId !== 'string' || typeof reply !== 'string' || !reply.trim()) throw new UserFacingError(t('review.errors.findingNotFound'))
       return r.replyInstruction(r.checkedPaths(workspace.folderPath, id), itemId, reply)
     },
+    'review:verdict': async (id, itemId, verdict, text) => {
+      const r = await import('./review')
+      if (typeof itemId !== 'string' || (verdict !== 'ok' && verdict !== 'ng' && verdict !== 'comment')) throw new UserFacingError(t('review.errors.findingNotFound'))
+      return r.recordReviewVerdict(r.checkedPaths(workspace.folderPath, id), itemId, verdict, typeof text === 'string' ? text : undefined)
+    },
+    'review:ngPrompt': async (id, itemIds) => {
+      const r = await import('./review')
+      return r.ngResendInstruction(r.checkedPaths(workspace.folderPath, id), Array.isArray(itemIds) ? itemIds.filter((x): x is string => typeof x === 'string') : undefined)
+    },
+    'review:resent': async (id, itemIds) => {
+      const r = await import('./review')
+      return r.markResent(r.checkedPaths(workspace.folderPath, id), Array.isArray(itemIds) ? itemIds.filter((x): x is string => typeof x === 'string') : [])
+    },
     'review:copy': async (id) => {
       const r = await import('./review')
-      return r.copyReview(r.checkedPaths(workspace.folderPath, id), currentSettings().agentPrompt)
+      return r.copyReview(r.checkedPaths(workspace.folderPath, id), currentSettings().agentPrompt, isRemoteWorkspace())
     },
     'review:folder': async (id) => {
       const r = await import('./review')
@@ -1112,12 +1252,13 @@ function registerIpc(): void {
         activePaths = paths
         activeAppend = append ? { review: append.review, n: append.n } : null
         const onSegments = async (segments: import('./pipeline/types').TranscriptSegment[]) => {
-          if (segments.length) await appendFile(join(paths.dir, 'transcript.jsonl'), segments.map((s) => JSON.stringify(s)).join('\n') + '\n')
+          // 末端のリンクはたどらない（sessions/containment.ts）
+          if (segments.length) await (await import('./sessions/containment')).appendFileNoFollow(join(paths.dir, 'transcript.jsonl'), segments.map((s) => JSON.stringify(s)).join('\n') + '\n')
         }
-        await writeFile(join(paths.dir, 'capture.json'), JSON.stringify({ startedAt: new Date().toISOString(), twoSpeakers: options.captureSystemAudio, captureTarget,
+        await (await import('./sessions/containment')).writeFileNoFollow(join(paths.dir, 'capture.json'), JSON.stringify({ startedAt: new Date().toISOString(), twoSpeakers: options.captureSystemAudio, captureTarget,
           // 指摘の URL に local / dev / prd のラベルを付けるため、録画を始めた時点の登録URLを控える
           urlPresets: currentSettings().projects.find((p) => p.id === workspace.projectId)?.urls ?? [] }))
-        activeOptions = { captureSystemAudio: options.captureSystemAudio,
+        activeOptions = { captureSystemAudio: options.captureSystemAudio, captureMic: options.captureMic !== false,
           transcription: options.transcription ?? 'local' }
         sttWarnings = []
         transcriber = null
@@ -1229,6 +1370,37 @@ function registerIpc(): void {
     'star:later': async () => (await starPrompt()).later(),
     'star:never': async () => (await starPrompt()).never(),
     'star:fromMenu': async () => (await starPrompt()).starFromMenu(),
+    'feedback:environment': async () => {
+      const [{ collectEnvironment }, { sanitizeEnvironment }, os] = await Promise.all([import('./feedback'), import('@shared/feedback'), import('node:os')])
+      const raw = collectEnvironment({
+        appVersion: app.getVersion(), packaged: IS_PACKAGED, platform: process.platform, systemVersion: process.getSystemVersion(),
+        arch: process.arch, cpuModel: os.cpus()[0]?.model, locale: getLocale()
+      })
+      // 元の値は OS の版や CPU の名前だけ。念のため、利用者名・端末名・登録したプロジェクトの名前が紛れていれば伏せる
+      const user = (() => { try { return os.userInfo().username } catch { return '' } })()
+      return sanitizeEnvironment(raw, [user, os.hostname(), ...currentSettings().projects.map((p) => p.name)])
+    },
+    'feedback:account': async () => (await (await import('./github')).githubStatus()).account?.user ?? null,
+    'feedback:submit': async (input) => {
+      const [{ submitFeedback }, { sendToRelay }, { gh }, { githubStatus }, { clipboard, net }, os] = await Promise.all([
+        import('./feedback'), import('./feedbackRelay'), import('./github/gh'), import('./github'), import('electron'), import('node:os')])
+      return submitFeedback(input, {
+        // 確認・テストの起動（ADE_E2E）からは本物の中継へ送らない（Sentry と同じ扱い）。送れない扱いにしてブラウザへ回す
+        relay: (submission) => process.env.ADE_E2E === '1'
+          ? Promise.resolve({ ok: false as const, code: 'disabled' as const, retryable: false })
+          : sendToRelay(submission, { fetch: (url, init) => net.fetch(url, init), userAgent: `${PRODUCT_NAME}/${app.getVersion()}` }),
+        appMeta: () => ({ appVersion: app.getVersion(), platform: process.platform, arch: process.arch, osRelease: os.release(), installId: telemetryInstallId() }),
+        gh: (args, options) => gh(args, options),
+        signedIn: async () => Boolean((await githubStatus()).account),
+        openExternal: (url) => shell.openExternal(url),
+        copyText: (text) => clipboard.writeText(text)
+      })
+    },
+    'feedback:captureWindow': async () => {
+      if (!mainWindow || mainWindow.isDestroyed()) throw new UserFacingError(t('feedback.errors.captureFailed'))
+      const { fitScreenshot } = await import('./feedbackCapture')
+      return fitScreenshot(await mainWindow.webContents.capturePage())
+    },
     'github:repoStatus': async () => {
       const { gitRepoStatus, watchGitHead } = await import('./github/repoStatus')
       void watchGitHead(workspace.folderPath, () => send('github:headChanged'))
@@ -1255,6 +1427,7 @@ function registerIpc(): void {
       try {
         return await (handler as (...a: unknown[]) => unknown)(...args)
       } catch (err) {
+        if (isStaleChunkError(err)) noteAppFilesReplaced(channel, err)
         // ファイル操作の英語のエラー（EACCES など）とパスを、そのまま画面へ出さない（想定内なので Sentry にも送らない）
         const wrapped = toUserFacingFileError(err)
         if (wrapped !== err) console.warn(`[ipc] ${channel} に失敗しました`, err)
@@ -1271,6 +1444,20 @@ function registerIpc(): void {
       return result === undefined ? null : result
     })
   }
+}
+
+/**
+ * 起動中にアプリのファイルが入れ替わり、遅延 import の分割ファイルが無くなった（Sentry FERRET-X）。
+ * 落とさずに「再起動してください」と1回だけ知らせる（消えない通知。録画の警告と同じ出し方を使い、preload に新しいチャネルを足さない）。
+ * Sentry へは元のエラーを送り、telemetry.ts の beforeSend が dev なら捨て、配布版なら kind: stale-build で分ける
+ */
+let appFilesReplacedNoticed = false
+function noteAppFilesReplaced(channel: string, err: unknown): void {
+  console.warn(`[ipc] ${channel}: アプリのファイルが入れ替わりました（再起動が必要）`)
+  reportMainError(err, { kind: 'stale-build', 'ipc.channel': channel })
+  if (appFilesReplacedNoticed) return
+  appFilesReplacedNoticed = true
+  send('recording:warning', t('errors.appFilesReplaced'))
 }
 
 let loadedSettings: Settings = {
@@ -1298,6 +1485,12 @@ async function main(): Promise<void> {
 
   await app.whenReady()
   mark('app:ready')
+  // エミュレーション（Rosetta / Prism）で動いているかを、性能の報告のタグに付ける
+  setStartupTags({ emulation: emulationKind(process.platform, app.runningUnderARM64Translation) })
+  // 既定のセッション（アプリの画面・録画ウインドウ・プレビューの iframe）の権限。アプリ自身の画面の本体だけに、
+  // 要るものだけを許す。プレビュー（プロジェクトの HTML）や外のページには何も許さない。読み込みの前に入れる
+  installPermissionPolicy(session.defaultSession as unknown as PermissionSessionLike, ({ permission, origin, isMainFrame }) =>
+    APP_ALLOWED_PERMISSIONS.has(permission) && isMainFrame !== false && isAppPageUrl(origin, appPageRoots()))
   // Windows のタスクバーで、インストーラが作るショートカット（appId）と同じアイコンにまとめる
   if (process.platform === 'win32') app.setAppUserModelId('dev.ferretade.ferret')
   // 開発版は名前を変えず、「について」の版の行にだけ (dev) と添える
@@ -1327,13 +1520,37 @@ async function main(): Promise<void> {
   if (loadedSettings.whisperModel) process.env.ADE_WHISPER_MODEL = loadedSettings.whisperModel
   protocol.handle('ade-media', async (request) => {
     const url = new URL(request.url)
-    // 追記した録画は /<id>/takes/<n>/recording.webm
-    const match = /^\/(\d{8}-\d{6})\/(?:takes\/(\d{1,4})\/)?recording\.webm$/.exec(url.pathname)
+    // Agent が撮った AFTER のスクリーンショット: /<id>/file/<レビューのフォルダからの相対パス>（src/main/afterShots.ts が中を確かめる）
+    const shot = /^\/(\d{8}-\d{6})\/file\/(.+)$/.exec(url.pathname)
+    if (url.hostname === 'review' && shot && workspace.folderPath) {
+      const { checkedPaths } = await import('./review')
+      const { afterContentType, resolveAfterFile } = await import('./afterShots')
+      let rel: string
+      try { rel = decodeURIComponent(shot[2]!) } catch { return new Response('Not found', { status: 404 }) } // 壊れた URL（想定内）
+      const file = await resolveAfterFile(checkedPaths(workspace.folderPath, shot[1]!).dir, rel)
+      if (!file) return new Response('Not found', { status: 404 })
+      // 確かめたあとに差し替えられても、末端のリンクはたどらずに読む
+      const { readFileNoFollow } = await import('./sessions/containment')
+      const bytes = await readFileNoFollow(file, null).catch(() => null)
+      if (!bytes) return new Response('Not found', { status: 404 })
+      return new Response(new Uint8Array(bytes), { headers: { 'content-type': afterContentType(file), 'cache-control': 'no-store' } })
+    }
+    // 削った版を作る非表示ウィンドウのページ（動画と同じ出どころに置く。trimVideo.ts）
+    if (url.hostname === 'review' && url.pathname === '/trim-host') {
+      const { TRIM_HOST_HTML } = await import('./trimVideo')
+      return new Response(TRIM_HOST_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+    }
+    // 追記した録画は /<id>/takes/<n>/recording.webm。何もない時間を削った版は recording.trimmed.webm
+    const match = /^\/(\d{8}-\d{6})\/(?:takes\/(\d{1,4})\/)?recording(\.trimmed)?\.webm$/.exec(url.pathname)
     if (url.hostname !== 'review' || !match || !workspace.folderPath) return new Response('Not found', { status: 404 })
     const { checkedPaths } = await import('./review')
     const { takePaths } = await import('./sessions/paths')
-    const file = takePaths(checkedPaths(workspace.folderPath, match[1]!), Number(match[2] ?? 1)).recording
-    if (!existsSync(file)) return new Response('Not found', { status: 404 })
+    const files = takePaths(checkedPaths(workspace.folderPath, match[1]!), Number(match[2] ?? 1))
+    const file = match[3] ? files.trimmedRecording : files.recording
+    // 末端がリンクの動画は返さない（外のファイルを読ませない）
+    const { lstat } = await import('node:fs/promises')
+    const leaf = await lstat(file).catch(() => null)
+    if (!leaf?.isFile()) return new Response('Not found', { status: 404 })
     // Range に答えないと video が seek できず、▷ が指摘の時刻でなく 0 秒から始まる
     const { mediaResponse } = await import('./mediaRange')
     return mediaResponse(file, request.headers.get('range'))
@@ -1374,8 +1591,10 @@ async function main(): Promise<void> {
   )
   // 判定モデルを有効にしていれば、タブごとに中継の URL（合言葉付き）・モデル・画像の可否を渡す。キーは渡さない
   terminals.launchEnv = async (meta) => currentSettings().decision?.enabled
-    ? (await decision()).launchEnv({ ...(workspace.projectId ? { projectId: workspace.projectId } : {}), ...(meta.agent ? { agent: meta.agent } : {}) })
+    ? (await decision()).launchEnv({ ...(workspace.projectId ? { projectId: workspace.projectId } : {}), ...(meta.agent ? { agent: meta.agent } : {}), sessionId: meta.sessionId })
     : {}
+  // タブが閉じたら、そのタブに渡した中継の合言葉を無効にする（残った子プロセスが使い続けられないように）
+  terminals.onSessionClosed = (sessionId) => decisionService?.revokeSession(sessionId)
   // 文字起こし・整理の API 呼び出しも同じ記録へ（src/main/decision/callLog.ts の recordApiCall）
   void import('./decision/callLog').then(({ setApiCallSink }) => setApiCallSink(recordCall))
   syncDecision()
@@ -1396,7 +1615,7 @@ async function main(): Promise<void> {
 
   // プレビュー（ade-preview://）は内蔵ブラウザと、エディタの横並びの iframe（既定のセッション）の両方で開く。
   // 前回のURLがプレビューでも開けるよう、内蔵ブラウザを作る前に登録する
-  registerPreviewProtocol([session.defaultSession, session.fromPartition(PARTITION)], () => workspace.folderPath)
+  registerPreviewProtocol([session.defaultSession, browserSession()], () => workspace.folderPath)
 
   // 内蔵ブラウザと renderer は並行して起動する（設計 1.3）
   browser = new EmbeddedBrowser()

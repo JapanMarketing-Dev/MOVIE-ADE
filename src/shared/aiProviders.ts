@@ -32,6 +32,9 @@ export type SttApiKind = 'openai-transcriptions' | 'azure-openai' | 'deepgram' |
  */
 export const AI_PRESETS_VERIFIED_AT = '2026-10-03'
 
+/** キーに要る権限の種類 */
+export type AiKeyPermission = 'cloudflareWorkersAi'
+
 /** モデルの一言の説明（画面では ai.hint.* の文言にする） */
 export type AiModelHint = 'balanced' | 'fast' | 'cheap' | 'accurate' | 'best' | 'speakers' | 'timestamps' | 'local' | 'pinned' | 'retiring'
 
@@ -59,6 +62,19 @@ interface PresetSetup {
   needsAccountId?: boolean
   /** 端末内のサーバー（Ollama・LM Studio）。キーの欄を出さない */
   local?: boolean
+  // ── 設定の案内（「キーを作る ↗」などのリンクと、Agent に設定を頼む指示文。2026-10-03 に URL が開けることを確認）──
+  /** 使い方の公式ドキュメント */
+  docsUrl?: string
+  /** ID（Cloudflare の Account ID）の場所を説明する公式のページ */
+  idUrl?: string
+  /** 端末内のサーバーのダウンロードのページ */
+  installUrl?: string
+  /** キーを入れておく環境変数の名前（settings.json の apiKeyEnv に書く名前。同じ提供元なら文字起こしと整理で同じ） */
+  envVar?: string
+  /** ID を入れておく環境変数の名前（Cloudflare。accountId が無いとき main が探す） */
+  idEnvVar?: string
+  /** キーに要る権限（画面では ai.permission.* の文言） */
+  permission?: AiKeyPermission
 }
 
 /** 端末の外へ送る文字起こしの提供元。並びは設定の選択欄の順（Custom は最後） */
@@ -89,7 +105,8 @@ export interface SttProviderPreset extends PresetSetup {
  * - Cloudflare・Vercel AI Gateway は OpenAI 互換ではない独自の形（cloud.ts のアダプタ）
  */
 export const STT_PROVIDER_PRESETS: Record<SttRemoteProvider, SttProviderPreset> = {
-  openai: { id: 'openai', label: 'OpenAI', vendor: 'openai', kind: 'openai-transcriptions', baseUrl: 'https://api.openai.com/v1', model: 'gpt-transcribe',
+  openai: { id: 'openai', docsUrl: 'https://developers.openai.com/api/docs/guides/speech-to-text', envVar: 'OPENAI_API_KEY',
+    label: 'OpenAI', vendor: 'openai', kind: 'openai-transcriptions', baseUrl: 'https://api.openai.com/v1', model: 'gpt-transcribe',
     keyRequired: true, keyPlaceholder: 'sk-…', pricePerMinuteUsd: 0.0045, keyUrl: 'https://platform.openai.com/api-keys',
     models: [
       { id: 'gpt-transcribe', hint: 'balanced', price: '$0.0045/min', recommended: true },
@@ -97,34 +114,40 @@ export const STT_PROVIDER_PRESETS: Record<SttRemoteProvider, SttProviderPreset> 
       { id: 'gpt-4o-transcribe', hint: 'accurate', price: '$0.006/min' },
       { id: 'whisper-1', hint: 'timestamps', price: '$0.006/min' },
     ] },
-  groq: { id: 'groq', label: 'Groq', vendor: 'groq', kind: 'openai-transcriptions', baseUrl: 'https://api.groq.com/openai/v1', model: 'whisper-large-v3-turbo',
+  groq: { id: 'groq', docsUrl: 'https://console.groq.com/docs/speech-to-text', envVar: 'GROQ_API_KEY',
+    label: 'Groq', vendor: 'groq', kind: 'openai-transcriptions', baseUrl: 'https://api.groq.com/openai/v1', model: 'whisper-large-v3-turbo',
     keyRequired: true, keyPlaceholder: 'gsk_…', pricePerMinuteUsd: 0.0007, keyUrl: 'https://console.groq.com/keys',
     models: [
       { id: 'whisper-large-v3-turbo', hint: 'fast', price: '$0.04/h', recommended: true },
       { id: 'whisper-large-v3', hint: 'accurate', price: '$0.111/h' },
     ] },
-  deepgram: { id: 'deepgram', label: 'Deepgram', vendor: 'deepgram', kind: 'deepgram', baseUrl: 'https://api.deepgram.com/v1', model: 'nova-3',
+  deepgram: { id: 'deepgram', docsUrl: 'https://developers.deepgram.com/docs/pre-recorded-audio', envVar: 'DEEPGRAM_API_KEY',
+    label: 'Deepgram', vendor: 'deepgram', kind: 'deepgram', baseUrl: 'https://api.deepgram.com/v1', model: 'nova-3',
     keyRequired: true, keyPlaceholder: '', pricePerMinuteUsd: 0.0043, keyUrl: 'https://console.deepgram.com/',
     models: [
       { id: 'nova-3', hint: 'balanced', price: '$0.0043/min', recommended: true },
       { id: 'whisper-large', hint: 'accurate', price: '$0.0048/min' },
     ] },
-  elevenlabs: { id: 'elevenlabs', label: 'ElevenLabs Scribe', vendor: 'elevenlabs', kind: 'elevenlabs', baseUrl: 'https://api.elevenlabs.io/v1', model: 'scribe_v2',
-    keyRequired: true, keyPlaceholder: 'sk_…', pricePerMinuteUsd: 0.0037, keyUrl: 'https://elevenlabs.io/app/settings/api-keys',
+  elevenlabs: { id: 'elevenlabs', docsUrl: 'https://elevenlabs.io/docs/api-reference/speech-to-text/convert', envVar: 'ELEVENLABS_API_KEY',
+    label: 'ElevenLabs Scribe', vendor: 'elevenlabs', kind: 'elevenlabs', baseUrl: 'https://api.elevenlabs.io/v1', model: 'scribe_v2',
+    keyRequired: true, keyPlaceholder: 'sk_…', pricePerMinuteUsd: 0.0037, keyUrl: 'https://elevenlabs.io/app/developers/api-keys',
     models: [{ id: 'scribe_v2', hint: 'accurate', price: '$0.22/h', recommended: true }] },
-  gemini: { id: 'gemini', label: 'Google Gemini', vendor: 'google', kind: 'gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-3.8-flash',
+  gemini: { id: 'gemini', docsUrl: 'https://ai.google.dev/gemini-api/docs/audio', envVar: 'GEMINI_API_KEY',
+    label: 'Google Gemini', vendor: 'google', kind: 'gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-3.8-flash',
     keyRequired: true, keyPlaceholder: 'AIza…', pricePerMinuteUsd: 0.003, keyUrl: 'https://aistudio.google.com/apikey',
     models: [
       { id: 'gemini-3.8-flash', hint: 'balanced', recommended: true },
       { id: 'gemini-3.5-flash-lite', hint: 'cheap' },
     ] },
-  mistral: { id: 'mistral', label: 'Mistral Voxtral', vendor: 'mistral', kind: 'openai-transcriptions', baseUrl: 'https://api.mistral.ai/v1', model: 'voxtral-mini-latest',
+  mistral: { id: 'mistral', docsUrl: 'https://docs.mistral.ai/api/endpoint/audio/transcriptions', envVar: 'MISTRAL_API_KEY',
+    label: 'Mistral Voxtral', vendor: 'mistral', kind: 'openai-transcriptions', baseUrl: 'https://api.mistral.ai/v1', model: 'voxtral-mini-latest',
     keyRequired: true, keyPlaceholder: '', pricePerMinuteUsd: 0.003, keyUrl: 'https://console.mistral.ai/api-keys',
     models: [
       { id: 'voxtral-mini-latest', hint: 'balanced', price: '$0.003/min', recommended: true },
       { id: 'voxtral-mini-2602', hint: 'pinned', price: '$0.003/min' },
     ] },
-  openrouter: { id: 'openrouter', label: 'OpenRouter', vendor: 'openrouter', kind: 'chat-audio', baseUrl: 'https://openrouter.ai/api/v1', model: 'google/gemini-3.8-flash',
+  openrouter: { id: 'openrouter', docsUrl: 'https://openrouter.ai/docs/guides/overview/multimodal/audio', envVar: 'OPENROUTER_API_KEY',
+    label: 'OpenRouter', vendor: 'openrouter', kind: 'chat-audio', baseUrl: 'https://openrouter.ai/api/v1', model: 'google/gemini-3.8-flash',
     keyRequired: true, keyPlaceholder: 'sk-or-…', pricePerMinuteUsd: null, keyUrl: 'https://openrouter.ai/keys',
     models: [
       { id: 'google/gemini-3.8-flash', hint: 'balanced', recommended: true },
@@ -133,18 +156,21 @@ export const STT_PROVIDER_PRESETS: Record<SttRemoteProvider, SttProviderPreset> 
       { id: 'openai/gpt-audio-mini', hint: 'fast' },
     ] },
   // {account_id} は送る前に main が accountId（無ければ CLOUDFLARE_ACCOUNT_ID）で置き換える。文字起こしは .../ai/run/{model}（末尾の /v1 はアダプタが落とす）
-  cloudflare: { id: 'cloudflare', label: 'Cloudflare Workers AI', vendor: 'cloudflare', kind: 'cloudflare-run', baseUrl: 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1', model: '@cf/openai/whisper-large-v3-turbo',
+  cloudflare: { id: 'cloudflare', docsUrl: 'https://developers.cloudflare.com/workers-ai/models/whisper-large-v3-turbo/', idUrl: 'https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/', envVar: 'CLOUDFLARE_API_TOKEN', idEnvVar: 'CLOUDFLARE_ACCOUNT_ID', permission: 'cloudflareWorkersAi',
+    label: 'Cloudflare Workers AI', vendor: 'cloudflare', kind: 'cloudflare-run', baseUrl: 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1', model: '@cf/openai/whisper-large-v3-turbo',
     keyRequired: true, keyPlaceholder: '', pricePerMinuteUsd: 0.0005, keyUrl: 'https://dash.cloudflare.com/profile/api-tokens', needsAccountId: true,
     models: [{ id: '@cf/openai/whisper-large-v3-turbo', hint: 'cheap', price: '$0.0005/min', recommended: true }] },
-  'vercel-gateway': { id: 'vercel-gateway', label: 'Vercel AI Gateway', vendor: 'vercel-gateway', kind: 'vercel-transcription', baseUrl: 'https://ai-gateway.vercel.sh', model: 'openai/gpt-4o-mini-transcribe',
-    keyRequired: true, keyPlaceholder: '', pricePerMinuteUsd: null, keyUrl: 'https://vercel.com/dashboard',
+  'vercel-gateway': { id: 'vercel-gateway', docsUrl: 'https://vercel.com/docs/ai-gateway/modalities/speech-to-text', envVar: 'AI_GATEWAY_API_KEY',
+    label: 'Vercel AI Gateway', vendor: 'vercel-gateway', kind: 'vercel-transcription', baseUrl: 'https://ai-gateway.vercel.sh', model: 'openai/gpt-4o-mini-transcribe',
+    keyRequired: true, keyPlaceholder: '', pricePerMinuteUsd: null, keyUrl: 'https://vercel.com/docs/ai-gateway/authentication-and-byok',
     models: [
       { id: 'openai/gpt-4o-mini-transcribe', hint: 'cheap', recommended: true },
       { id: 'openai/gpt-4o-transcribe', hint: 'accurate' },
       { id: 'google/gemini-3.5-transcribe', hint: 'speakers' },
       { id: 'openai/whisper-1', hint: 'timestamps' },
     ] },
-  azure: { id: 'azure', label: 'Azure OpenAI', vendor: 'azure', kind: 'azure-openai', baseUrl: '', model: '', keyRequired: true, keyPlaceholder: '', pricePerMinuteUsd: 0.006,
+  azure: { id: 'azure', docsUrl: 'https://learn.microsoft.com/en-us/azure/foundry/openai/whisper-quickstart', envVar: 'AZURE_OPENAI_API_KEY',
+    label: 'Azure OpenAI', vendor: 'azure', kind: 'azure-openai', baseUrl: '', model: '', keyRequired: true, keyPlaceholder: '', pricePerMinuteUsd: 0.006,
     keyUrl: 'https://portal.azure.com/', needsBaseUrl: true, baseUrlPlaceholder: 'https://<resource>.openai.azure.com', models: [] },
   compatible: { id: 'compatible', label: 'OpenAI compatible', vendor: 'compatible', kind: 'openai-transcriptions', baseUrl: '', model: '', keyRequired: false, keyPlaceholder: '', pricePerMinuteUsd: null,
     needsBaseUrl: true, baseUrlPlaceholder: 'http://localhost:8000/v1', models: [] },
@@ -176,29 +202,33 @@ export interface LlmProviderPreset extends PresetSetup {
  * - Claude Haiku 4.5 は 2026-10-15 以降に提供終了の予定
  */
 export const LLM_PROVIDER_PRESETS: Record<LlmApiProvider, LlmProviderPreset> = {
-  anthropic: { id: 'anthropic', label: 'Anthropic', vendor: 'anthropic', kind: 'anthropic-messages', baseUrl: 'https://api.anthropic.com', model: 'claude-sonnet-5-5',
-    keyRequired: true, keyPlaceholder: 'sk-ant-…', structuredOutput: true, keyUrl: 'https://console.anthropic.com/settings/keys',
+  anthropic: { id: 'anthropic', docsUrl: 'https://platform.claude.com/docs/en/build-with-claude/structured-outputs', envVar: 'ANTHROPIC_API_KEY',
+    label: 'Anthropic', vendor: 'anthropic', kind: 'anthropic-messages', baseUrl: 'https://api.anthropic.com', model: 'claude-sonnet-5-5',
+    keyRequired: true, keyPlaceholder: 'sk-ant-…', structuredOutput: true, keyUrl: 'https://platform.claude.com/settings/keys',
     models: [
       // 既定は費用と性能の釣り合いで Sonnet。より強いのは Opus、安く速いのは Haiku
       { id: 'claude-sonnet-5-5', hint: 'balanced', price: '$2/$10 per 1M', recommended: true },
       { id: 'claude-opus-5-5', hint: 'best', price: '$4/$20 per 1M' },
       { id: 'claude-haiku-4-5-20251001', hint: 'retiring', price: '$1/$5 per 1M' },
     ] },
-  openai: { id: 'openai', label: 'OpenAI', vendor: 'openai', kind: 'openai-chat', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1-sol',
+  openai: { id: 'openai', docsUrl: 'https://developers.openai.com/api/docs/guides/structured-outputs', envVar: 'OPENAI_API_KEY',
+    label: 'OpenAI', vendor: 'openai', kind: 'openai-chat', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1-sol',
     keyRequired: true, keyPlaceholder: 'sk-…', structuredOutput: true, keyUrl: 'https://platform.openai.com/api-keys',
     models: [
       { id: 'gpt-6.1-sol', hint: 'balanced', price: '$2/$10 per 1M', recommended: true },
       { id: 'gpt-6-luna', hint: 'cheap', price: '$0.10/$0.50 per 1M' },
       { id: 'gpt-6-astra', hint: 'best', price: '$10/$50 per 1M' },
     ] },
-  gemini: { id: 'gemini', label: 'Google Gemini', vendor: 'google', kind: 'gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-3.8-flash',
+  gemini: { id: 'gemini', docsUrl: 'https://ai.google.dev/gemini-api/docs/text-generation', envVar: 'GEMINI_API_KEY',
+    label: 'Google Gemini', vendor: 'google', kind: 'gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-3.8-flash',
     keyRequired: true, keyPlaceholder: 'AIza…', structuredOutput: false, keyUrl: 'https://aistudio.google.com/apikey',
     models: [
       { id: 'gemini-3.8-flash', hint: 'balanced', recommended: true },
       { id: 'gemini-3.5-flash-lite', hint: 'cheap' },
       { id: 'gemini-3.1-pro-preview', hint: 'best', price: '$2/$12 per 1M' },
     ] },
-  openrouter: { id: 'openrouter', label: 'OpenRouter', vendor: 'openrouter', kind: 'openai-chat', baseUrl: 'https://openrouter.ai/api/v1', model: 'anthropic/claude-sonnet-5.5',
+  openrouter: { id: 'openrouter', docsUrl: 'https://openrouter.ai/docs/quickstart', envVar: 'OPENROUTER_API_KEY',
+    label: 'OpenRouter', vendor: 'openrouter', kind: 'openai-chat', baseUrl: 'https://openrouter.ai/api/v1', model: 'anthropic/claude-sonnet-5.5',
     keyRequired: true, keyPlaceholder: 'sk-or-…', structuredOutput: false, keyUrl: 'https://openrouter.ai/keys',
     models: [
       { id: 'anthropic/claude-sonnet-5.5', hint: 'balanced', recommended: true },
@@ -206,21 +236,24 @@ export const LLM_PROVIDER_PRESETS: Record<LlmApiProvider, LlmProviderPreset> = {
       { id: 'openai/gpt-6.1-sol', hint: 'balanced' },
       { id: 'google/gemini-3.8-flash', hint: 'fast' },
     ] },
-  'vercel-gateway': { id: 'vercel-gateway', label: 'Vercel AI Gateway', vendor: 'vercel-gateway', kind: 'openai-chat', baseUrl: 'https://ai-gateway.vercel.sh/v1', model: 'anthropic/claude-sonnet-5.5',
-    keyRequired: true, keyPlaceholder: '', structuredOutput: false, keyUrl: 'https://vercel.com/dashboard',
+  'vercel-gateway': { id: 'vercel-gateway', docsUrl: 'https://vercel.com/docs/ai-gateway/sdks-and-apis/openai-chat-completions', envVar: 'AI_GATEWAY_API_KEY',
+    label: 'Vercel AI Gateway', vendor: 'vercel-gateway', kind: 'openai-chat', baseUrl: 'https://ai-gateway.vercel.sh/v1', model: 'anthropic/claude-sonnet-5.5',
+    keyRequired: true, keyPlaceholder: '', structuredOutput: false, keyUrl: 'https://vercel.com/docs/ai-gateway/authentication-and-byok',
     models: [
       { id: 'anthropic/claude-sonnet-5.5', hint: 'balanced', recommended: true },
       { id: 'openai/gpt-6.1-sol', hint: 'balanced' },
       { id: 'google/gemini-3.8-flash', hint: 'fast' },
     ] },
-  cloudflare: { id: 'cloudflare', label: 'Cloudflare Workers AI', vendor: 'cloudflare', kind: 'openai-chat', baseUrl: 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1', model: '@cf/openai/gpt-oss-120b',
+  cloudflare: { id: 'cloudflare', docsUrl: 'https://developers.cloudflare.com/workers-ai/configuration/open-ai-compatibility/', idUrl: 'https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/', envVar: 'CLOUDFLARE_API_TOKEN', idEnvVar: 'CLOUDFLARE_ACCOUNT_ID', permission: 'cloudflareWorkersAi',
+    label: 'Cloudflare Workers AI', vendor: 'cloudflare', kind: 'openai-chat', baseUrl: 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1', model: '@cf/openai/gpt-oss-120b',
     keyRequired: true, keyPlaceholder: '', structuredOutput: false, keyUrl: 'https://dash.cloudflare.com/profile/api-tokens', needsAccountId: true,
     models: [
       { id: '@cf/openai/gpt-oss-120b', hint: 'balanced', recommended: true },
       { id: '@cf/openai/gpt-oss-20b', hint: 'fast' },
       { id: '@cf/meta/llama-4-scout-17b-16e-instruct', hint: 'cheap' },
     ] },
-  ollama: { id: 'ollama', label: 'Ollama', vendor: 'ollama', kind: 'openai-chat', baseUrl: 'http://localhost:11434/v1', model: 'gpt-oss:20b',
+  ollama: { id: 'ollama', docsUrl: 'https://docs.ollama.com/api/openai-compatibility', installUrl: 'https://ollama.com/download',
+    label: 'Ollama', vendor: 'ollama', kind: 'openai-chat', baseUrl: 'http://localhost:11434/v1', model: 'gpt-oss:20b',
     keyRequired: false, keyPlaceholder: '', structuredOutput: false, local: true,
     models: [
       { id: 'gpt-oss:20b', hint: 'local', recommended: true },
@@ -228,7 +261,8 @@ export const LLM_PROVIDER_PRESETS: Record<LlmApiProvider, LlmProviderPreset> = {
       { id: 'llama3.2', hint: 'cheap' },
     ] },
   // LM Studio は読み込んだモデルの名前を使うので、モデルは自由入力
-  lmstudio: { id: 'lmstudio', label: 'LM Studio', vendor: 'lmstudio', kind: 'openai-chat', baseUrl: 'http://localhost:1234/v1', model: '',
+  lmstudio: { id: 'lmstudio', docsUrl: 'https://lmstudio.ai/docs/developer/openai-compat', installUrl: 'https://lmstudio.ai/download',
+    label: 'LM Studio', vendor: 'lmstudio', kind: 'openai-chat', baseUrl: 'http://localhost:1234/v1', model: '',
     keyRequired: false, keyPlaceholder: '', structuredOutput: false, local: true, models: [] },
   compatible: { id: 'compatible', label: 'OpenAI compatible', vendor: 'llm-compatible', kind: 'openai-chat', baseUrl: '', model: '', keyRequired: false, keyPlaceholder: '', structuredOutput: false,
     needsBaseUrl: true, baseUrlPlaceholder: 'http://localhost:8000/v1', models: [] },

@@ -18,7 +18,13 @@ import { Button, EmptyState, Field, IconButton, useToast } from '../ui'
 import { filterReviews, isEmptyDraft, reviewHosts, type ReviewFilter } from '@shared/reviewList'
 import { PanelCloseButton } from './LayoutToggles'
 import { ProjectEditDialog } from './ProjectTargetsEditor'
+import { AddProjectDialog, ProjectSourceIcon } from './AddProjectDialog'
+import type { ProjectSource } from '@shared/projectSource'
+import { sshTargetLabel } from '@shared/sshCommand'
+import type { TranslationKey } from '@shared/i18n'
 import { ReviewFilterBar, ReviewList, loadReviewFilter, saveReviewFilter, toReviewSession, type ReviewSession } from './ReviewList'
+import { SetupProgressLink } from '../onboarding/SetupChecklist'
+import { FeedbackLink } from './FeedbackDialog'
 
 export { toReviewSession, type ReviewSession }
 
@@ -207,12 +213,17 @@ export function Sidebar({
   }
 
   // 足したら、種類と確認先を決めてもらうため「プロジェクトを編集」を開く
-  const addProject = () => run(async () => {
-    const before = new Set(projects.projects.map((p) => p.id))
-    const state = await window.ade.invoke('project:add')
-    const added = state?.projects.find((p) => !before.has(p.id))
-    if (added) openEdit(added.id)
-  })
+  // 「プロジェクトを追加」は、自分の PC / GitHub から取得 / SSH を選ぶダイアログ（AddProjectDialog）
+  const [adding, setAdding] = useState(false)
+  const addProject = () => {
+    setAdding(true)
+    onOverlayChange?.(true)
+  }
+  // 足したら、種類と確認先を決めてもらうため「プロジェクトを編集」を開く（SSH はリモートの開発サーバーが分からないので開かない）
+  const onAdded = (before: ReadonlySet<string>) => (state: ProjectsState, source: ProjectSource) => {
+    const added = state.projects.find((p) => !before.has(p.id))
+    if (added && source !== 'ssh') openEdit(added.id)
+  }
 
   const switchTo = (project: Project) => run(async () => {
     await window.ade.invoke('project:switch', project.id)
@@ -307,7 +318,7 @@ export function Sidebar({
                       aria-selected={active}
                       aria-expanded={expanded}
                       className="sb-project__row"
-                      title={project.folderPath}
+                      title={project.source === 'ssh' && project.ssh ? sshTargetLabel(project.ssh) : project.folderPath}
                       onClick={() => (active ? setProjectOpen(project.id, !expanded) : switchTo(project))}
                       onKeyDown={(e) => {
                         if (e.target !== e.currentTarget) return
@@ -325,8 +336,10 @@ export function Sidebar({
                       }}
                       data-testid={`sidebar-project-${project.id}`}
                     >
-                      <span className="sb-project__icon" aria-hidden="true">
-                        {active ? <FolderOpen size={14} strokeWidth={1.5} /> : <Folder size={14} strokeWidth={1.5} />}
+                      <span className="sb-project__icon" aria-hidden="true" title={t(`projectSource.source.${project.source ?? 'local'}` as TranslationKey)}>
+                        {project.source && project.source !== 'local'
+                          ? <ProjectSourceIcon project={project} />
+                          : active ? <FolderOpen size={14} strokeWidth={1.5} /> : <Folder size={14} strokeWidth={1.5} />}
                       </span>
                       <span className="sb-project__name" title={project.name}>{project.name}</span>
                       {items && items.length > 0 && (() => {
@@ -443,7 +456,14 @@ export function Sidebar({
           </button>
         </div>
       )}
+      {/* セットアップが全部済むまで、下に小さな進み具合（Setup n/7）を出す。済んだら消える */}
+      <SetupProgressLink />
+      <FeedbackLink />
       {editingProject && <ProjectEditDialog project={editingProject} onClose={() => openEdit(null)} />}
+      {adding && <AddProjectDialog
+        onClose={() => { setAdding(false); onOverlayChange?.(false) }}
+        onAdded={onAdded(new Set(projects.projects.map((p) => p.id)))}
+      />}
     </aside>
   )
 }

@@ -1,5 +1,6 @@
 import { Menu, type MenuItemConstructorOptions } from 'electron'
 import type { MenuCommand } from '@shared/types'
+import { browserNavAccelerator } from '@shared/browserNav'
 import { PRODUCT_NAME, onLocaleChange, t } from '@shared/i18n'
 
 /**
@@ -103,11 +104,6 @@ function buildMenu(handlers: Parameters<typeof installMenu>[0]): void {
           accelerator: 'CmdOrCtrl+Shift+K',
           click: () => handlers.onCommand('toggleTargets')
         },
-        {
-          label: t('menu.toggleTerminalPanel'),
-          accelerator: 'CmdOrCtrl+J',
-          click: () => handlers.onCommand('toggleTerminalPanel')
-        },
         { label: t('menu.toggleFooter'), click: () => handlers.onCommand('toggleFooter') },
         {
           label: t('menu.toggleViewport'),
@@ -124,6 +120,17 @@ function buildMenu(handlers: Parameters<typeof installMenu>[0]): void {
           label: t('menu.reloadPage'),
           accelerator: 'CmdOrCtrl+R',
           click: () => handlers.onCommand('reloadPage')
+        },
+        // 内蔵ブラウザの戻る・進む（フィードバックモードのツールバーのボタンと同じ。録画中も使える）
+        {
+          label: t('browser.back'),
+          accelerator: browserNavAccelerator('back', process.platform),
+          click: () => handlers.onCommand('browserBack')
+        },
+        {
+          label: t('browser.forward'),
+          accelerator: browserNavAccelerator('forward', process.platform),
+          click: () => handlers.onCommand('browserForward')
         },
         { type: 'separator' },
         { role: 'togglefullscreen', label: t('menu.fullscreen') },
@@ -180,6 +187,7 @@ function buildMenu(handlers: Parameters<typeof installMenu>[0]): void {
       submenu: [
         { label: t('menu.showOnboarding'), click: () => handlers.onCommand('showOnboarding') },
         { type: 'separator' },
+        { label: t('feedback.menu'), click: () => handlers.onCommand('sendFeedback') },
         { label: t('menu.starOnGitHub'), click: () => handlers.onCommand('starOnGitHub') }
       ]
     }

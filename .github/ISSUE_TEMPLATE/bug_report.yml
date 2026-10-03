@@ -1,0 +1,61 @@
+# Adapted from Orca's .github/ISSUE_TEMPLATE/bug_report.yml (MIT, Copyright 2026 Lovecast Inc.).
+# The headings match the issue body that Ferret's in-app "Send Feedback" dialog builds (src/shared/feedback.ts).
+name: Bug report
+description: Report a problem with Ferret
+title: '[Bug]: '
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! You can also send this from Ferret: **Help > Report an Issue / Send Feedback**.
+        Please do not include API keys, tokens, private URLs or file paths. Screenshots can be pasted into any field below.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: A line is enough.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What did you do?
+      description: Optional. Steps to reproduce the problem.
+      placeholder: |
+        1. Open a project
+        2. Start recording
+        3. ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: false
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened?
+      description: Optional. Include error messages if any.
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Ferret version, OS and version, CPU, language. You can find the version in Settings > About.
+      placeholder: |
+        - Ferret: 0.1.1 (release)
+        - OS: macOS 26.0 (arm64)
+        - CPU: Apple M3 Pro
+        - Language: en
+    validations:
+      required: false

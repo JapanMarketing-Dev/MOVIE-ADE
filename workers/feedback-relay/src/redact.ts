@@ -1,0 +1,55 @@
+/**
+ * 公開の Issue になる前に、本文と題名から秘密や個人を特定しうるものを伏せ字にする。
+ * 送る人が気づかずに貼った鍵・トークン・メール・ホームのパス（ユーザー名を含む）を対象にする。
+ * 完全ではないので、アプリの側でも送る前に本文を見せて確かめてもらう。
+ */
+
+type Rule = { name: string; pattern: RegExp; replace: string | ((match: string, ...groups: string[]) => string) }
+
+const RULES: Rule[] = [
+  // 秘密鍵のブロック（PEM）
+  { name: 'private-key', pattern: /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z0-9 ]*PRIVATE KEY-----|$)/g, replace: '[REDACTED private key]' },
+  // 各サービスのトークンの形
+  { name: 'github', pattern: /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/g, replace: '[REDACTED token]' },
+  { name: 'anthropic-openai', pattern: /\bsk-(?:ant-|proj-|svcacct-|admin-)?[A-Za-z0-9_-]{16,}/g, replace: '[REDACTED token]' },
+  { name: 'stripe', pattern: /\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{16,}\b/g, replace: '[REDACTED token]' },
+  { name: 'aws-key-id', pattern: /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g, replace: '[REDACTED token]' },
+  { name: 'google', pattern: /\bAIza[A-Za-z0-9_-]{35}\b/g, replace: '[REDACTED token]' },
+  { name: 'slack', pattern: /\bxox[abposr]-[A-Za-z0-9-]{10,}/g, replace: '[REDACTED token]' },
+  { name: 'jwt', pattern: /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, replace: '[REDACTED token]' },
+  { name: 'bearer', pattern: /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{12,}/gi, replace: (_m, kind) => `${kind} [REDACTED]` },
+  // URL に入った資格情報（https://user:pass@host、Sentry の DSN など）
+  { name: 'url-credentials', pattern: /\b([a-z][a-z0-9+.-]*:\/\/)[^\s/@:]+(?::[^\s/@]*)?@/gi, replace: (_m, scheme) => `${scheme}[REDACTED]@` },
+  // key=value の形（api_key=..., "token": "...", password: ...）
+  {
+    name: 'assignment',
+    pattern: /\b((?:api[_-]?key|access[_-]?key|secret(?:[_-]?key)?|client[_-]?secret|token|auth[_-]?token|access[_-]?token|refresh[_-]?token|password|passwd|pwd)["']?\s*[:=]\s*["']?)([^\s"',;]{6,})/gi,
+    replace: (_m, prefix) => `${prefix}[REDACTED]`
+  },
+  // メール
+  { name: 'email', pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}\b/g, replace: '[REDACTED email]' },
+  // ホームのパスのユーザー名（/Users/name、/home/name、C:\Users\name、~name は残さない）
+  { name: 'home-mac', pattern: /\/Users\/(?!Shared\b)[^/\s"'`]+/g, replace: '/Users/<user>' },
+  { name: 'home-linux', pattern: /\/home\/[^/\s"'`]+/g, replace: '/home/<user>' },
+  { name: 'home-windows', pattern: /\b([A-Za-z]:[\\/]+Users[\\/]+)(?!Public\b)[^\\/\s"'`]+/gi, replace: (_m, prefix) => `${prefix}<user>` }
+]
+
+/** 伏せ字にした文字列と、当たった規則の名前（ログには名前の数だけを出す。中身は出さない） */
+export function redact(text: string): { text: string; hits: string[] } {
+  let out = text
+  const hits: string[] = []
+  for (const rule of RULES) {
+    const next = out.replace(rule.pattern, rule.replace as never)
+    if (next !== out) hits.push(rule.name)
+    out = next
+  }
+  return { text: out, hits }
+}
+
+/**
+ * GitHub で通知や参照を起こさないようにする。@name のメンションと、#123 の参照を崩す（見た目はほぼ同じ）。
+ * 公開の Issue に、匿名の送り主が人を呼び出したり、ほかの Issue に印を付けたりできないようにするため。
+ */
+export function neutralizeMentions(text: string): string {
+  return text.replace(/(^|[^\w`])@(?=[A-Za-z0-9])/g, '$1@\u200b').replace(/(^|[^\w&/])#(?=\d)/g, '$1#\u200b')
+}

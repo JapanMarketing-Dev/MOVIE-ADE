@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain, nativeImage, type NativeImage, type WebContents } from 'electron'
-import { createWriteStream, type WriteStream } from 'node:fs'
+import { constants, createWriteStream, type WriteStream } from 'node:fs'
+import { open } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { AudioLevel, PcmBlock, RecordingOptions } from './types'
 import { t } from '@shared/i18n'
@@ -164,7 +165,16 @@ export class RecorderWindow {
     const window = this.window
     if (!window || window.isDestroyed()) throw new UserFacingError(t('recording.errors.noRecorderWindow'))
 
-    this.videoStream = createWriteStream(options.paths.videoPath)
+    // 録画のフォルダは作ったばかり。既にある名前・シンボリックリンクには書かない（O_EXCL と O_NOFOLLOW で開く）
+    const nofollow = (constants as { O_NOFOLLOW?: number }).O_NOFOLLOW ?? 0
+    const handle = await open(options.paths.videoPath, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | nofollow, 0o644)
+    const stream = createWriteStream('', { fd: handle })
+    // 書けなくなった（ディスクがいっぱいなど）ときに main を落とさない。録画は止めずに知らせる
+    stream.on('error', (err) => {
+      reportHandled(err, { area: 'recording', op: 'write video' })
+      this.handlers.onError(String(err))
+    })
+    this.videoStream = stream
     this.bytesWritten = 0
 
     // tab は自アプリ内の webContents を指す「タブ録画」のID。OSの画面収録権限は要らない

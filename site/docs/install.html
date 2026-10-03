@@ -4,23 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Install · Ferret docs</title>
-  <meta name="description" content="Ferret is a desktop app for macOS, Windows, and Linux. Builds are not code-signed yet, so each OS asks you to confirm the first launch.">
+  <meta name="description" content="Ferret is a desktop app for macOS, Windows, and Linux. The macOS build is signed with a Developer ID and notarized by Apple. The Windows and Linux builds are not code-signed yet, so those OSes ask you to confirm the first launch.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
   <link rel="canonical" href="https://ferretade.dev/docs/install">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
   <meta property="og:title" content="Install · Ferret docs">
-  <meta property="og:description" content="Ferret is a desktop app for macOS, Windows, and Linux. Builds are not code-signed yet, so each OS asks you to confirm the first launch.">
+  <meta property="og:description" content="Ferret is a desktop app for macOS, Windows, and Linux. The macOS build is signed with a Developer ID and notarized by Apple. The Windows and Linux builds are not code-signed yet, so those OSes ask you to confirm the first launch.">
   <meta property="og:url" content="https://ferretade.dev/docs/install">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
-  <script src="../js/theme.js?v=25cfd289"></script>
-  <link rel="stylesheet" href="../style.css?v=4f7f95d3">
-  <link rel="stylesheet" href="docs.css?v=f59e834a">
-  <script src="docs.js?v=9869221f" defer></script>
+  <script src="../js/theme.js?v=28aec166"></script>
+  <link rel="stylesheet" href="../style.css?v=a8bc0e67">
+  <link rel="stylesheet" href="docs.css?v=66eae917">
+  <script src="docs.js?v=d2096aca" defer></script>
 </head>
 <!-- Generated layout: the sidebar, header, and footer are identical on every page in site/docs/. Change them on all pages together. -->
 <body data-page="docs">
@@ -110,7 +110,7 @@
       <article class="docs-content">
         <p class="docs-eyebrow">Start here</p>
         <h1>Install</h1>
-        <p class="docs-lead">Ferret is a desktop app for macOS, Windows, and Linux. Builds are not code-signed yet, so each OS asks you to confirm the first launch.</p>
+        <p class="docs-lead">Ferret is a desktop app for macOS, Windows, and Linux. The macOS build is signed with a Developer ID and notarized by Apple. The Windows and Linux builds are not code-signed yet, so those OSes ask you to confirm the first launch.</p>
 
       <section class="docs-section" aria-labelledby="download">
         <h2 id="download"><a class="docs-anchor" href="#download" aria-label="Link to Download">#</a>Download</h2>
@@ -143,18 +143,20 @@ shasum -a 256 Ferret-&lt;version&gt;-mac-arm64.dmg
 sha256sum Ferret-&lt;version&gt;-linux-x86_64.AppImage</code></pre>
 <pre><code># Windows (PowerShell)
 Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
-<p>Compare the output with the manifest. A match only proves the file is what was uploaded. The builds are not code-signed.</p>
+<p>Compare the output with the manifest. A match only proves the file is what was uploaded. On macOS, the Developer ID signature and Apple's notarization are checked by Gatekeeper when you open the app. The Windows and Linux builds are not code-signed.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="macos">
         <h2 id="macos"><a class="docs-anchor" href="#macos" aria-label="Link to macOS">#</a>macOS</h2>
         <ol class="docs-steps">
   <li>Open the <code>.dmg</code> and drag <code>Ferret.app</code> to <code>/Applications</code>.</li>
-  <li>Launch it. macOS says the developer cannot be verified. Close the dialog.</li>
-  <li>Open <span class="docs-ui">System Settings → Privacy &amp; Security</span>, scroll down, and click <span class="docs-ui">Open Anyway</span> next to the Ferret message.</li>
-  <li>Confirm with <span class="docs-ui">Open</span>. Later launches work normally.</li>
+  <li>Launch it. The app is signed with a Developer ID and notarized by Apple (the ticket is stapled), so it opens without a warning.</li>
 </ol>
-<p>If macOS says the app "is damaged", remove the quarantine attribute:</p>
+<p>To check the signature yourself:</p>
+<pre><code>spctl -a -vv /Applications/Ferret.app
+# accepted
+# source=Notarized Developer ID</code></pre>
+<p><strong>Older versions only (0.2.0 build 2 and earlier)</strong> were not signed. For those, macOS says the developer cannot be verified: close the dialog, open <span class="docs-ui">System Settings → Privacy &amp; Security</span>, click <span class="docs-ui">Open Anyway</span> next to the Ferret message, and confirm with <span class="docs-ui">Open</span>. If it says the app "is damaged", remove the quarantine attribute:</p>
 <pre><code>xattr -dr com.apple.quarantine /Applications/Ferret.app</code></pre>
       </section>
 

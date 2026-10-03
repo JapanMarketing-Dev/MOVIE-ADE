@@ -1,6 +1,8 @@
 import type { AiEndpointConfig, AiVendor, LlmApiProvider, OrganizeRunnerId, SttRemoteProvider } from './aiProviders'
 import type { AnnotationColor } from './annotation'
 import type { SendRequest } from './sendTarget'
+import type { CloneFailureKind, CloneProgress, GitHubRepoList, SshConfigHost } from './projectSource'
+import type { SshTarget } from './sshCommand'
 import type {
   AnnotationHistory,
   AnnotationShortcut,
@@ -45,8 +47,9 @@ import type {
 import type { DecisionPreferences } from './decision'
 import type { ApiUsageSummary } from './apiUsage'
 import type { ReviewData, ReviewEdit, ReviewLabelPatch, ReviewProgressPatch, ReviewSummary, ReviewFrame } from './review'
-import type { ProgressMap } from './findingProgress'
+import type { ProgressMap, ReviewVerdict } from './findingProgress'
 import type { AccountLoginRequest, AgentAccountAddResult, AgentAccountsState } from './accounts'
+import type { AgentResourceList } from './agentResources'
 import type { AccountUsage, UsageState } from './usage'
 import type { UpdateCheckResult } from './appVersion'
 import type { SentryTestKind } from './telemetry'
@@ -57,6 +60,7 @@ import type { LocalePreference, SupportedLocale } from './i18n'
 import type { ResourceKillTarget, ResourceSnapshot } from './resources'
 import type { FsChangedEvent, FsEntry, FsFileList, FsReadResult, FsSearchMode, FsSearchResult, FsWriteResult } from './files'
 import type { StarActionResult, StarPromptMode } from './starPrompt'
+import type { FeedbackEnvironment, FeedbackSubmitInput, FeedbackSubmitResult } from './feedback'
 import type { GitHubPostResult, GitHubRepoResult, GitRepoStatus, GitHubReviewDraft, GitHubReviewTarget, GitHubStatus } from './github'
 
 /**
@@ -86,6 +90,10 @@ export interface IpcRequests {
   'app:checkUpdate': () => UpdateCheckResult
   /** 直前の確認で見つかった新しい版のページを既定のブラウザで開く */
   'app:openUpdate': () => void
+  /** 設定の案内のリンク（キーを作るページなど）を外部のブラウザで開く。https だけ（src/shared/setupGuide.ts） */
+  'app:openExternal': (url: string) => void
+  /** 文を Agent のターミナルへ送る（Agent に設定を頼む指示文）。宛先は「Agent へ送信」と同じ選び方 */
+  'agent:sendText': (text: string) => { ok: boolean; message: string; noAgent?: boolean }
   /** Resource Manager。アプリ・内蔵ブラウザ・ターミナルの CPU と RSS */
   'resources:snapshot': () => ResourceSnapshot
   /** ターミナルを止める／内蔵ブラウザのページを閉じる（about:blank にする） */
@@ -108,10 +116,24 @@ export interface IpcRequests {
   'project:remove': (id: string) => ProjectsState
   /** 中央のタブ・開いているファイル・表示中のレビューを覚える（URL は main が自分で覚える）。通知は送らない */
   'project:saveSession': (id: string, session: Pick<ProjectSession, 'centerTab' | 'openFiles'> & { reviewId?: string | null }) => void
+  /** 「プロジェクトを追加」の GitHub / SSH（src/main/projectSources.ts） */
+  'project:sshHosts': () => SshConfigHost[]
+  'project:githubRepos': () => GitHubRepoList
+  /** clone の保存先の親フォルダの既定 */
+  'project:cloneDefaults': () => { parent: string; home: string }
+  /** clone の保存先の親フォルダを選ぶ。キャンセルなら null */
+  'project:pickParent': (current?: string) => string | null
+  /** clone して、そのフォルダをプロジェクトとして開く。進み具合は project:cloneProgress */
+  'project:clone': (url: string, parent: string) => { ok: true; state: ProjectsState } | { ok: false; kind: CloneFailureKind; detail: string }
+  'project:cloneCancel': () => void
+  /** SSH の接続先とリモートのフォルダを登録して開く（鍵やパスワードは扱わない） */
+  'project:addSsh': (target: SshTarget, name?: string) => ProjectsState
 
   'settings:agents': (preferences: AgentPreferences) => void
   /** エージェントの一覧（設定とインストール済みかの検出を合わせたもの）。refresh で検出し直す */
   'agents:list': (refresh?: boolean) => AgentOption[]
+  /** その CLI のスキル・スラッシュコマンド・MCP サーバー（読むだけ。MCP は名前・種類・コマンド名か host だけ） */
+  'agents:resources': (agent: TuiAgent) => AgentResourceList
   /** 空文字で既定文に戻す */
   'settings:agentPrompt': (template: string) => void
 
@@ -208,6 +230,12 @@ export interface IpcRequests {
   'review:progress': (sessionId: string, patch?: ReviewProgressPatch) => ProgressMap
   /** 「Agent から確認があります」への返答を送る1行を作る。renderer が review:send の text（差し替えの本文）として送る */
   'review:replyPrompt': (sessionId: string, itemId: string, reply: string) => string
+  /** 人の判断（OK / NG / Comment）を記録して、今の進み具合を返す。NG と Comment は本文が必須 */
+  'review:verdict': (sessionId: string, itemId: string, verdict: ReviewVerdict, text?: string) => ProgressMap
+  /** NG の指摘をコメントつきで送り直す1行を作る（itemIds を省くと送り直し待ちすべて）。renderer が review:send の text として送る */
+  'review:ngPrompt': (sessionId: string, itemIds?: string[]) => { text: string; ids: string[] }
+  /** NG を送り直したあと。送り直し待ちを外して対応中にする */
+  'review:resent': (sessionId: string, itemIds: string[]) => ProgressMap
   'review:copy': (id: string) => void
   'review:folder': (id: string) => void
   'review:restore': (id: string, t: number) => ReviewData
@@ -229,6 +257,8 @@ export interface IpcRequests {
   /** 判定モデルの設定を保存し、整えた値を返す（キーは capture:apiKey で提供元ごとに保存） */
   'settings:decision': (prefs: DecisionPreferences) => DecisionPreferences
   /** 従量課金の API 呼び出しの集計（今日・今月・プロジェクト・モデル・種類ごと、直近 50 件）。フッター左下 */
+  /** 判定モデルの「接続を確かめる」（押したときだけ。画面でまだ保存していない値で1回送る。記録に数える）。合否の判定はしない */
+  'decision:testConnection': (prefs: DecisionPreferences) => { ok: boolean; message: string; model?: string; latencyMs?: number }
   'usage:apiCalls': () => ApiUsageSummary
   /** 記録の JSONL を Finder / エクスプローラーで示す */
   'usage:openApiLog': () => void
@@ -284,6 +314,16 @@ export interface IpcRequests {
   'star:never': () => void
   /** 設定・ヘルプのいつでも押せる入口。gh で star、できなければブラウザで開く */
   'star:fromMenu': () => StarActionResult
+
+  // フィードバック → GitHub の Issue（src/main/feedback.ts）。サーバーは使わない
+  /** 環境情報（版・OS・CPU・言語）。パス・利用者名・プロジェクト名・URL・キーは伏せてある */
+  'feedback:environment': () => FeedbackEnvironment
+  /** gh でログイン中のアカウント名。未ログイン・gh 無しは null（ブラウザで開く案内にする） */
+  'feedback:account': () => string | null
+  /** 確認画面で見せた題名と本文のまま送る。gh で作るか、ブラウザで「新しい Issue」を開く */
+  'feedback:submit': (input: FeedbackSubmitInput) => FeedbackSubmitResult
+  /** Ferret の今の画面の静止画（PNG、2MB 以下に縮める）。フィードバックに添付する */
+  'feedback:captureWindow': () => { type: 'image/png' | 'image/jpeg'; base64: string; width: number; height: number }
 }
 
 export interface IpcEvents {
@@ -294,6 +334,7 @@ export interface IpcEvents {
   'menu:command': (command: MenuCommand) => void
   'workspace:changed': (state: WorkspaceState) => void
   'projects:changed': (state: ProjectsState) => void
+  'project:cloneProgress': (progress: CloneProgress) => void
   /** エージェントの設定が変わった（settings:agents の保存後） */
   'agents:changed': (options: AgentOption[]) => void
   'recording:status': (status: RecordingStatus) => void
@@ -322,6 +363,8 @@ export interface IpcEvents {
   'github:headChanged': () => void
   /** star のお願いを出す（良い場面で、条件を満たしたときだけ） */
   'star:show': (mode: StarPromptMode) => void
+  /** 使い始めてしばらくしたら一度だけ「使いづらいところはありましたか？」と聞く */
+  'feedback:ask': () => void
   /** settings.json が外部（利用者のエディタ・Claude Code など）で書き換えられ、取り込んだ。平文のキーは外してある */
   'settings:changed': (settings: Settings) => void
   /** settings.json が壊れた（JSON・スキーマの誤り）。null は直った。壊れている間は取り込まず、ファイルも上書きしない */
@@ -360,7 +403,7 @@ export const IPC_REQUEST_CHANNELS = [
   'settingsFile:info', 'settingsFile:read', 'settingsFile:write', 'settingsFile:reveal', 'settings:feedbackTargets',
   'app:version',
   'app:checkUpdate',
-  'app:openUpdate',
+  'app:openUpdate', 'app:openExternal', 'agent:sendText',
   'resources:snapshot',
   'resources:kill',
   'resources:cleanup',
@@ -372,8 +415,16 @@ export const IPC_REQUEST_CHANNELS = [
   'project:update',
   'project:remove',
   'project:saveSession',
+  'project:sshHosts',
+  'project:githubRepos',
+  'project:cloneDefaults',
+  'project:pickParent',
+  'project:clone',
+  'project:cloneCancel',
+  'project:addSsh',
   'settings:agents',
   'agents:list',
+  'agents:resources',
   'settings:agentPrompt',
   'accounts:list',
   'accounts:add',
@@ -413,11 +464,12 @@ export const IPC_REQUEST_CHANNELS = [
   'annotation:clear',
   'annotation:undo',
   'annotation:redo',
-  'review:list', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:replyPrompt', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
+  'review:list', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:replyPrompt', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
   'capture:screenAccess', 'capture:sources', 'capture:setTarget', 'capture:openScreenSettings',
   'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'editor:unsaved', 'preview:render',
   'github:status', 'github:repo', 'github:reviewDraft', 'github:postReview', 'github:open', 'github:repoStatus',
-  'star:star', 'star:openWeb', 'star:later', 'star:never', 'star:fromMenu'
+  'star:star', 'star:openWeb', 'star:later', 'star:never', 'star:fromMenu',
+  'feedback:environment', 'feedback:account', 'feedback:submit', 'feedback:captureWindow'
 ] as const satisfies readonly IpcRequestChannel[]
 
 export const IPC_EVENT_CHANNELS = [
@@ -428,6 +480,7 @@ export const IPC_EVENT_CHANNELS = [
   'menu:command',
   'workspace:changed',
   'projects:changed',
+  'project:cloneProgress',
   'agents:changed',
   'recording:status',
   'recording:level',
@@ -438,5 +491,6 @@ export const IPC_EVENT_CHANNELS = [
   'usage:changed',
   'github:headChanged',
   'star:show',
+  'feedback:ask',
   'settings:changed', 'settingsFile:error'
 ] as const satisfies readonly IpcEventChannel[]

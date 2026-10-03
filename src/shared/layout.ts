@@ -13,6 +13,8 @@ export type Dock = 'left' | 'right' | 'top' | 'bottom'
 export type FooterDock = 'top' | 'bottom'
 
 export const PANEL_IDS: readonly PanelId[] = ['projects', 'terminal', 'files']
+/** 開閉できるパネル。ターミナルは常に表示する（ユーザーの指示：閉じる・隠す手段を持たない） */
+export const CLOSABLE_PANELS: readonly PanelId[] = ['projects', 'files']
 export const DOCKS: readonly Dock[] = ['left', 'right', 'top', 'bottom']
 
 /** フッターの項目。並びはフッターでの左からの順 */
@@ -72,7 +74,8 @@ export function sanitizeLayout(raw: unknown, legacyTerminalDock?: unknown): Layo
   for (const id of PANEL_IDS) {
     const p = (r.panels?.[id] && typeof r.panels[id] === 'object' ? r.panels[id] : {}) as Partial<PanelPlacement>
     const fallback = id === 'terminal' && !r.panels && isDock(legacyTerminalDock) ? legacyTerminalDock : DEFAULT_LAYOUT.panels[id].dock
-    panels[id] = { dock: isDock(p.dock) ? p.dock : fallback, visible: p.visible !== false }
+    // ターミナルは常に表示する（ユーザーの指示：閉じる手段を持たない）。古い設定で閉じたままにしない
+    panels[id] = { dock: isDock(p.dock) ? p.dock : fallback, visible: id === 'terminal' || p.visible !== false }
   }
   const f = (r.footer ?? {}) as { dock?: unknown; visible?: unknown; items?: Record<string, unknown> }
   const items = {} as Record<FooterItemId, boolean>
@@ -95,6 +98,39 @@ export interface GridTemplate {
 }
 
 /** 横に置いたときの幅・縦に置いたときの高さ。CSS の変数で持つ */
+/**
+ * 狭い窓での最小の大きさ（px）。足りないときは、左右のパネルが先に縮み、中央の列は CENTER_MIN_WIDTH を守る。
+ * 窓の最小幅（main の minWidth: 900）で、左右のパネルを両方開き、ターミナルを左右に置いても収まる値にする
+ * （SIDE_MIN_WIDTH×2 ＋ 境界 ＋ TERMINAL_MIN_WIDTH ＋ CENTER_MIN_WIDTH ≦ 900）。
+ * 値を変えるときは test/unit/layout.test.ts と e2e/layout.spec.ts（900×650 で中央 360px・ターミナル 240px 以上）も一緒に直す。
+ */
+export const CENTER_MIN_WIDTH = 360
+export const TERMINAL_MIN_WIDTH = 240
+export const TERMINAL_MIN_HEIGHT = 160
+export const SIDE_MIN_WIDTH = 140
+export const SPLITTER_SIZE = 6
+/** 窓の最小幅（src/main/index.ts の BrowserWindow の minWidth と同じ値） */
+export const WINDOW_MIN_WIDTH = 900
+
+/**
+ * 配置ごとの最小の横幅（px）。左右に開いたパネルの最小 ＋ 本体の最小（中央の列 ＋ ターミナルを左右に置くなら境界とターミナル）。
+ * 窓がこれより狭くならなければ、中央の列は CENTER_MIN_WIDTH を下回らない（単体テストで確かめる）。
+ */
+export function layoutMinWidth(layout: LayoutPrefs): number {
+  const sides = (['projects', 'files'] as const).filter((id) => {
+    const p = layout.panels[id]
+    return p.visible && (p.dock === 'left' || p.dock === 'right')
+  }).length
+  return sides * SIDE_MIN_WIDTH + mainMinWidth(layout.panels.terminal.dock)
+}
+
+/** 本体（中央の列とターミナル）の最小の横幅（px） */
+export function mainMinWidth(terminalDock: Dock): number {
+  return terminalDock === 'left' || terminalDock === 'right'
+    ? CENTER_MIN_WIDTH + SPLITTER_SIZE + TERMINAL_MIN_WIDTH
+    : CENTER_MIN_WIDTH
+}
+
 const SIDE_SIZE: Record<'projects' | 'files', { width: string; height: string }> = {
   projects: { width: 'var(--sidebar-width)', height: 'var(--size-panel-strip)' },
   files: { width: 'var(--size-sidebar)', height: 'var(--size-panel-strip)' }
@@ -113,11 +149,14 @@ export function workspaceGrid(layout: LayoutPrefs): GridTemplate {
   const top = on('top')
   const bottom = on('bottom')
   const size = (id: 'projects' | 'files', axis: 'width' | 'height') => (layout.panels[id].visible ? SIDE_SIZE[id][axis] : '0px')
+  // 左右のパネルは、足りなければ SIDE_MIN_WIDTH まで縮む（本体の最小幅を先に取り、残りを左右へ配る。CSS グリッドの minmax の動き）
+  const sideColumn = (id: 'projects' | 'files') => (layout.panels[id].visible ? `minmax(${SIDE_MIN_WIDTH}px, ${SIDE_SIZE[id].width})` : '0px')
+  const mainColumn = `minmax(${mainMinWidth(layout.panels.terminal.dock)}px, 1fr)`
 
   const middle = [...left, 'main', ...right]
   const row = (names: string[]) => `"${names.join(' ')}"`
   return {
-    columns: [...left.map((id) => size(id, 'width')), 'minmax(0, 1fr)', ...right.map((id) => size(id, 'width'))].join(' '),
+    columns: [...left.map(sideColumn), mainColumn, ...right.map(sideColumn)].join(' '),
     rows: [...top.map((id) => size(id, 'height')), 'minmax(0, 1fr)', ...bottom.map((id) => size(id, 'height'))].join(' '),
     areas: [
       ...top.map((id) => row(middle.map(() => id))),
@@ -129,14 +168,20 @@ export function workspaceGrid(layout: LayoutPrefs): GridTemplate {
 
 /**
  * 本体（中央のタブ群とターミナル）のグリッド。中央の大きさは --split-left（splitRatio）で決める。
- * ターミナルが左・上なら並びを逆にする。隠したときは境界とターミナルを 0 にする。
+ * ターミナルが左・上なら並びを逆にする。
+ * ターミナルは常に表示する（閉じる手段を持たない）。境界をドラッグしても実質隠れないよう、
+ * 中央の大きさを「全体 − 境界 − ターミナルの最小（左右 240px・上下 160px）」で頭打ちにする。
+ * 横に並べるときは、中央の列も CENTER_MIN_WIDTH（360px）を下回らない（ワークスペース側で本体にその分の幅を先に取る）。
  */
-export function mainSplitGrid(dock: Dock, visible: boolean): GridTemplate & { orientation: 'vertical' | 'horizontal'; reverse: boolean } {
+export function mainSplitGrid(dock: Dock): GridTemplate & { orientation: 'vertical' | 'horizontal'; reverse: boolean } {
   const horizontal = dock === 'left' || dock === 'right'
   const reverse = dock === 'left' || dock === 'top'
-  const center = visible ? 'var(--split-left)' : 'minmax(0, 1fr)'
-  const split = visible ? 'var(--size-splitter)' : '0px'
-  const term = visible ? 'minmax(0, 1fr)' : '0px'
+  const min = `${horizontal ? TERMINAL_MIN_WIDTH : TERMINAL_MIN_HEIGHT}px`
+  // 上限：ターミナルの最小を残す。下限：横に並べるときは中央の列の最小（ドラッグで寄せても下回らない）
+  const capped = `min(var(--split-left), calc(100% - var(--size-splitter) - ${min}))`
+  const center = horizontal ? `max(${CENTER_MIN_WIDTH}px, ${capped})` : capped
+  const split = 'var(--size-splitter)'
+  const term = 'minmax(0, 1fr)'
   const tracks = reverse ? [term, split, center] : [center, split, term]
   const names = reverse ? ['term', 'split', 'center'] : ['center', 'split', 'term']
   return horizontal
@@ -224,7 +269,7 @@ export function dropPanel(layout: LayoutPrefs, panel: DragPanel, dock: Dock): La
   return withPanel(layout, panel, { dock, visible: true })
 }
 
-/** パネルの開閉（タイトルバーのボタン・見出しの閉じるボタン・⌘B / ⌘J / ⌘⇧E で共通）。open を渡すとその状態にする */
+/** パネルの開閉（タイトルバーのボタン・見出しの閉じるボタン・⌘B / ⌘⇧E で共通）。open を渡すとその状態にする。ターミナルは閉じない（sanitizeLayout が表示に戻す） */
 export function togglePanel(layout: LayoutPrefs, id: PanelId, open?: boolean): LayoutPrefs {
   return withPanel(layout, id, { visible: open ?? !layout.panels[id].visible })
 }
@@ -232,7 +277,7 @@ export function togglePanel(layout: LayoutPrefs, id: PanelId, open?: boolean): L
 /** タイトルバーの開閉ボタンの並び。画面の左にあるものから順に（VS Code と同じく、置き場所が見た目の順になる） */
 export function panelToggleOrder(layout: LayoutPrefs): PanelId[] {
   const rank: Record<Dock, number> = { left: 0, top: 1, bottom: 2, right: 3 }
-  return [...PANEL_IDS].sort((a, b) => rank[layout.panels[a].dock] - rank[layout.panels[b].dock])
+  return [...CLOSABLE_PANELS].sort((a, b) => rank[layout.panels[a].dock] - rank[layout.panels[b].dock])
 }
 
 /**

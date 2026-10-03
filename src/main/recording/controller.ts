@@ -1,5 +1,6 @@
 import { ipcMain, type WebContents } from 'electron'
-import { appendFile, mkdir } from 'node:fs/promises'
+import { mkdir } from 'node:fs/promises'
+import { appendFileNoFollow } from '../sessions/containment'
 import { redactUrl } from '../pipeline/redact'
 import { dirname, join } from 'node:path'
 import { captureTargetGap, captureTargetLabel, resolveCaptureTarget } from '@shared/captureTarget'
@@ -22,6 +23,7 @@ import {
 import type { Event } from '../pipeline/types'
 import type { CaptureTarget } from '@shared/types'
 import { shouldCaptureStill, toJsonLine, toLogEvent, type RawReviewEvent } from './events'
+import { ReviewEventBudget, type Admission, type ReviewInputKind } from './eventBudget'
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import { reportHandled } from '@shared/report'
@@ -65,6 +67,11 @@ export function screenAccessMessage(): string {
  */
 const LEAVE_TIMEOUT_MS = 600
 
+/** events.jsonl への書き込みの待ち行列の上限。ディスクが詰まっても、書けない操作ログをメモリに積み続けない */
+const MAX_PENDING_EVENT_WRITES = 1000
+/** 停止のとき、events.jsonl の書き込みを待つ上限(ms) */
+const EVENT_WRITES_STOP_TIMEOUT_MS = 5_000
+
 export interface RecordingAssets {
   recorderHtml: string
   recorderPreload: string
@@ -92,6 +99,11 @@ export class RecordingController {
   private statusTimer: NodeJS.Timeout | null = null
   private lastStatus: RecordingStatus | null = null
   private eventWrites: Promise<void> = Promise.resolve()
+  private pendingEventWrites = 0
+  /** 注入スクリプトから届く入力の頻度と総量の上限（録画ごとに作り直す） */
+  private budget = new ReviewEventBudget()
+  /** 上限で捨てたことを知らせたか（録画ごとに1度だけ出す） */
+  private readonly limitWarned = new Set<Admission>()
   /** 書き込みが属するページのURL（ハッシュ違いは同じページ。page.ts） */
   private pageUrl = ''
   /** ページが変わり、書き込みを片付けている途中の行き先URL */
@@ -184,13 +196,13 @@ export class RecordingController {
     })
 
     ipcMain.on(REVIEW_CHANNELS.history, (event, history: unknown) => {
-      if (event.sender !== this.source) return
+      if (event.sender !== this.source || !this.admit('history')) return
       const value = history as { canUndo?: unknown; canRedo?: unknown } | null
       this.handlers.onAnnotationHistory?.({ canUndo: value?.canUndo === true, canRedo: value?.canRedo === true })
     })
 
     ipcMain.on(REVIEW_CHANNELS.shortcut, (event, action: unknown) => {
-      if (event.sender !== this.source || this.state !== 'recording') return
+      if (event.sender !== this.source || this.state !== 'recording' || !this.admit('shortcut')) return
       if (action === 'pen' || action === 'rect' || action === 'off' || action === 'color') this.handlers.onAnnotationShortcut?.(action)
     })
 
@@ -277,6 +289,8 @@ export class RecordingController {
     const options: RecordingOptions = { ...defaultRecordingOptions, ...partial }
     const video = await this.resolveVideo(options, source)
     this.events.length = 0
+    this.budget = new ReviewEventBudget()
+    this.limitWarned.clear()
     this.lastViewWidth = 0
     this.lastCursor = undefined
     this.warnings.length = 0
@@ -323,7 +337,7 @@ export class RecordingController {
       // カーソルの座標は内蔵ブラウザの中のものなので、画面・ウインドウの画像には重ねない
       getCursor: () => (video.kind === 'tab' ? this.lastCursor : undefined),
       onFrame: (frame) => {
-        this.eventWrites = this.eventWrites.then(() => appendFile(join(dirname(options.paths.eventsPath), 'frames.jsonl'), JSON.stringify(frame) + '\n')).catch((err) => { reportHandled(err, { area: 'recording', op: 'save frame times' }); this.warn(t('recording.errors.frameTimesSaveFailed', { error: String(err) })) })
+        this.eventWrites = this.eventWrites.then(() => appendFileNoFollow(join(dirname(options.paths.eventsPath), 'frames.jsonl'), JSON.stringify(frame) + '\n')).catch((err) => { reportHandled(err, { area: 'recording', op: 'save frame times' }); this.warn(t('recording.errors.frameTimesSaveFailed', { error: String(err) })) })
         this.handlers.onFrame?.(frame)
       },
       onWarning: (message) => this.warn(message)
@@ -433,7 +447,8 @@ export class RecordingController {
     const options = this.options
     const videoBytes = this.recorder?.videoBytes ?? 0
     const frames = this.stills?.captured ?? []
-    await this.eventWrites
+    // 書き込みの待ち行列は MAX_PENDING_EVENT_WRITES 件までだが、ディスクが詰まっても停止を待たせ続けない
+    await Promise.race([this.eventWrites, new Promise((done) => setTimeout(done, EVENT_WRITES_STOP_TIMEOUT_MS).unref?.())])
     this.lastStatus = { state: 'idle', elapsedMs: durationMs, videoBytes,
       frameCount: frames.length, eventCount: this.events.length }
 
@@ -490,17 +505,39 @@ export class RecordingController {
 
   /** 操作ログを1件足す。追記のみでファイルへも書く */
   private push(event: Event): void {
+    const path = this.options?.paths.eventsPath
+    if (path && this.pendingEventWrites >= MAX_PENDING_EVENT_WRITES) return void this.warnLimit('total')
     this.events.push(event)
     this.handlers.onEvent?.(event)
-    const path = this.options?.paths.eventsPath
-    if (path) this.eventWrites = this.eventWrites.then(() => appendFile(path, toJsonLine(event)))
+    if (!path) return
+    this.pendingEventWrites++
+    // 末端がリンク・ハードリンクなら書かない（events.jsonl はプロジェクトのフォルダの中にある）
+    this.eventWrites = this.eventWrites.then(() => appendFileNoFollow(path, toJsonLine(event)))
       .catch((err) => { reportHandled(err, { area: 'recording', op: 'save events' }); this.warn(t('recording.errors.eventsSaveFailed', { error: String(err) })) })
+      .finally(() => { this.pendingEventWrites-- })
+  }
+
+  /** 注入スクリプトから届いた入力を、頻度と総量の上限の内で受け付けるか。超えたら捨てて1度だけ知らせる */
+  private admit(kind: ReviewInputKind): boolean {
+    const admission = this.budget.admit(kind)
+    if (admission === 'ok') return true
+    // 記録しない入力（カーソル位置・キー・戻せるかの知らせ）は、黙って間引く
+    if (kind !== 'pointer' && kind !== 'shortcut' && kind !== 'history') this.warnLimit(admission)
+    return false
+  }
+
+  private warnLimit(admission: Admission): void {
+    if (this.limitWarned.has(admission)) return
+    this.limitWarned.add(admission)
+    this.warn(t(admission === 'total' ? 'recording.errors.eventsLimitReached' : 'recording.errors.eventsThrottled'))
   }
 
   private recordNav(url: string): void {
     if (this.state !== 'recording' || !this.clock || !url || url === 'about:blank') return
     // 画面・ウインドウを録っているときの内蔵ブラウザのURLは、録っている画面のURLとは限らない
     if (!this.recordsBrowser) return
+    // ページのスクリプトが pushState やハッシュの変更を繰り返しても、操作ログと撮影を積み続けない
+    if (!this.admit('nav')) return
     const wc = this.reviewContents
     this.push({
       t: this.clock.now(),
@@ -521,12 +558,15 @@ export class RecordingController {
 
   private recordInjected(raw: RawReviewEvent): void {
     const clock = this.clock
-    if (this.state !== 'recording' || !clock) return
+    if (this.state !== 'recording' || !clock || typeof raw !== 'object' || raw === null) return
 
-    if (Number.isFinite(raw.x) && Number.isFinite(raw.y) && raw.view) this.lastCursor = { x: raw.x!, y: raw.y!, view: raw.view }
+    if (raw.type === 'pointer' && !this.admit('pointer')) return
+    const view = sanitizeView(raw.view)
+    if (Number.isFinite(raw.x) && Number.isFinite(raw.y) && view) this.lastCursor = { x: raw.x!, y: raw.y!, view }
     if (raw.type === 'pointer') return
     let event = toLogEvent(raw, (epochMs) => clock.fromEpoch(epochMs))
-    if (!event) return
+    if (!event || event.type === 'nav' || event.type === 'viewport') return
+    if (!this.admit(event.type)) return
     if (!this.recordsBrowser) {
       // 画面・ウインドウを録っているときは、書き込み（指摘そのもの）だけ残す。
       // 要素情報は内蔵ブラウザの中のもので、録っている画面と食い違いうるので外す
@@ -538,15 +578,22 @@ export class RecordingController {
       void this.stills?.captureNow(event.type, undefined, event.id)
       return
     }
-    if (raw.view?.width && this.lastViewWidth !== raw.view.width) this.recordViewport(raw.view.width, event.t)
+    if (view && this.lastViewWidth !== view.width) this.recordViewport(view.width, event.t)
     this.push(event)
 
     if (!shouldCaptureStill(event)) return
     // ペンの確定時とクリック時は、間隔を待たずにその場で撮る（設計4章）
-    const cursor = event.type === 'click' ? { x: event.x, y: event.y, view: raw.view } : undefined
+    const cursor = event.type === 'click' ? { x: event.x, y: event.y, view } : undefined
     void this.stills?.captureNow(event.type, cursor, event.type === 'pen' ? event.id : undefined)
   }
 
+}
+
+/** 注入スクリプトが添えるビューの大きさ。数でない・極端な値は使わない */
+function sanitizeView(view: unknown): { width: number; height: number } | undefined {
+  const value = view as { width?: unknown; height?: unknown } | null | undefined
+  const ok = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0 && n <= 100_000
+  return value && ok(value.width) && ok(value.height) ? { width: Math.round(value.width), height: Math.round(value.height) } : undefined
 }
 
 /** 上限時間の表示。1分未満（検証用の短縮時）でも「0分」と出さない */

@@ -777,6 +777,7 @@
 /*
  * 内蔵ブラウザ（WebContentsView）はDOMの上に重なるので、
  * ビューの領域ではなくツールバー寄りの右上に出す。
+ * 左右・幅・帯に重ねる位置は、ビューの位置から Toast.tsx が style で上書きする（lib/toastPlacement.ts）。
  */
 .toast-host {
   position: fixed;
@@ -798,6 +799,20 @@
   border: 0;
   background: transparent;
   overflow: visible;
+}
+
+/* ビューの上の帯に重ねるとき。帯に入るのは1件なので、最新だけを出す */
+.toast-host--band {
+  overflow: hidden;
+}
+
+.toast-host--band > .toast:not(:last-child) {
+  display: none;
+}
+
+/* 置き場所が無いとき（案内の枠へ回している）。ビューの裏に隠れたものを出さない */
+.toast-host--notice {
+  visibility: hidden;
 }
 
 .toast {

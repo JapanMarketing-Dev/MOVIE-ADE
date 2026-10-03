@@ -400,7 +400,8 @@ kbd {
   .docs-nav-list {
     padding: 0 8px 12px;
   }
-  .docs-sidebar.is-collapsed .docs-nav-list {
+  .docs-sidebar.is-collapsed .docs-nav-list,
+  .js .docs-sidebar:not(.is-open) .docs-nav-list {
     display: none;
   }
   .docs-content h1 {

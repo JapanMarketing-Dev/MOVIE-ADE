@@ -4,6 +4,7 @@ import { compareAppVersions, isValidAppVersion, pickAppVersion, type UpdateCheck
 import { version } from '../../package.json'
 import { t } from '@shared/i18n'
 import { reportHandled } from '@shared/report'
+import { SMALL_JSON_MAX_BYTES, readBoundedJson } from './boundedResponse'
 
 /**
  * 更新の確認（フッターの「更新を確認」）。
@@ -130,7 +131,7 @@ export async function checkForUpdate(fetcher: typeof net.fetch = net.fetch): Pro
       reportCheckFailure('http', new Error(`update check failed: HTTP ${res.status}`))
       return { state: 'error', current, message: t('update.errors.http', { status: res.status }) }
     }
-    const manifest = parseManifest(await res.json().catch(() => null))
+    const manifest = parseManifest(await readBoundedJson(res, SMALL_JSON_MAX_BYTES).catch(() => null))
     if (!manifest) {
       reportCheckFailure('bad-manifest')
       return { state: 'error', current, message: t('update.errors.badManifest') }

@@ -34,7 +34,8 @@ export function LayoutSettings() {
   return <>
       <p className="st-note">{t('settings.layout.intro')}</p>
       {PANEL_IDS.map((id) => <div key={id} className="st-layout__panel">
-        {toggle(t('settings.layout.show', { panel: panelName(id) }), layout.panels[id].visible,
+        {/* ターミナルは常に表示する（閉じる手段を持たない）ので、表示の切り替えは出さない。置き場所だけ選べる */}
+        {id !== 'terminal' && toggle(t('settings.layout.show', { panel: panelName(id) }), layout.panels[id].visible,
           (visible) => setLayout((prev) => withPanel(prev, id, { visible })), `layout-${id}-visible`)}
         {dockSelect(t('settings.layout.position', { panel: panelName(id) }), layout.panels[id].dock, DOCKS,
           (dock) => setLayout((prev) => withPanel(prev, id, { dock: dock as Dock })), `layout-${id}-dock`)}

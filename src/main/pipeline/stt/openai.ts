@@ -32,6 +32,7 @@ import type { SttLanguage } from './whisper'
 import { cleanText } from './whisper'
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
+import { readBoundedJson, readErrorText } from '../../boundedResponse'
 
 export type OpenAiSttModel =
   | 'gpt-transcribe'
@@ -249,12 +250,12 @@ export class OpenAiSttEngine implements SttEngine {
 
     if (!res.ok) {
       // 失敗の本文は説明に使うだけ。読めなければ空で続ける（想定内）
-      const body = await res.text().catch(() => '')
+      const body = await readErrorText(res)
       const safeBody = redact(body, this.apiKey).slice(0, 500)
       throw new SttHttpError(sentence(t('stt.errors.failed', { label: this.label, status: res.status, body: safeBody })), res.status, safeBody)
     }
 
-    const json = (await res.json()) as TranscriptionResponse
+    const json = (await readBoundedJson(res)) as TranscriptionResponse
     return {
       segments: this.toSegments(json, input, durationMs),
       elapsedMs,
@@ -372,7 +373,7 @@ export async function checkSttConnection(opt: {
   }
   if (res.ok) return { ok: true, message: sentence(t('stt.check.ok', { label, model: opt.model.trim() })) }
   // 失敗の本文は説明に使うだけ（想定内）
-  const body = (await res.text().catch(() => '')).slice(0, 2000)
+  const body = (await readErrorText(res)).slice(0, 2000)
   return { ok: false, message: describeHttpFailure(res.status, body, label) }
 }
 

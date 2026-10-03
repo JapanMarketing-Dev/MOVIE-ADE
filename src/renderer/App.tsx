@@ -38,14 +38,16 @@ import { useViewBounds } from './hooks/useViewBounds'
 import { useProjectSession } from './hooks/useProjectSession'
 import { matchWindowSource } from '@shared/projectTargets'
 import { planNewReview } from './lib/newReview'
+import { RemoteFilesNotice } from './components/AddProjectDialog'
 import { targetFromSource } from '@shared/captureTarget'
 import { installTestHooks } from './testHooks'
-import { ErrorBoundary, ToastProvider, useToast } from './ui'
+import { ErrorBoundary, ToastProvider, setToastNoticeFallback, useToast } from './ui'
 import { sanitizeAgentPreferences } from '@shared/agentCatalog'
 import { CrashReportNotice } from './components/CrashReportNotice'
 import { setUiTab } from './lib/telemetry'
 import type { CaptureTarget, FeedbackTargetsPrefs, RecordingStatus, SttAvailability, SttProvider } from '@shared/types'
 import { DEFAULT_ANNOTATION_COLOR, annotationModeForTool, normalizeAnnotationColor, type AnnotationColor } from '@shared/annotation'
+import { showsBrowserNav } from '@shared/browserNav'
 import { AI_VENDORS, LLM_API_PROVIDERS, STT_PROVIDER_PRESETS, STT_REMOTE_PROVIDERS, providerLabel } from '@shared/aiProviders'
 import type { ReviewData, ReviewSummary } from '@shared/review'
 import { ReviewFindings } from './components/ReviewFindings'
@@ -53,12 +55,14 @@ import { errorMessage } from './lib/errors'
 import { useT } from './lib/i18n'
 import { SettingsPage, type CaptureSettings } from './components/SettingsPage'
 import { SETTINGS_SECTIONS, type SettingsSectionId } from './lib/settingsSections'
-import { shouldShowOnboarding, type OnboardingPatch, type OnboardingState } from '@shared/onboarding'
+import { shouldShowOnboarding, type OnboardingPatch, type OnboardingState, type OnboardingStepId } from '@shared/onboarding'
 import { OnboardingFlow } from './onboarding/OnboardingFlow'
 import { reopenPatch } from './onboarding/onboardingFlowState'
 import { onShowOnboardingRequested } from './onboarding/showOnboardingEvent'
+import { notifySetupChanged } from './onboarding/useSetupChecklist'
 import { OnboardingStore } from './onboarding/onboardingStore'
 import { StarPromptHost } from './components/StarPrompt'
+import { FeedbackDialogHost } from './components/FeedbackDialog'
 import { reportAnomaly, reportHandled } from '@shared/report'
 import type { SttLanguageCode } from '@shared/sttLanguages'
 
@@ -92,6 +96,8 @@ export function App() {
       {onboardingSettled && <CrashReportNotice />}
       {/* GitHub の star のお願いも、セットアップを閉じるまでは出さない（main もセットアップ中・録画中は送らない） */}
       {onboardingSettled && <StarPromptHost />}
+      {/* フィードバック → GitHub の Issue（ヘルプのメニューとサイドバーの入口から開く） */}
+      <FeedbackDialogHost />
     </ToastProvider>
   )
 }
@@ -197,6 +203,11 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     window.clearTimeout(noticeTimer.current)
     noticeTimer.current = window.setTimeout(() => setNotice(null), 6000)
   }, [])
+  // ビューの外にトーストを置く場所が無いとき（フィードバックモードで右パネルを閉じたとき）は、帯の案内の枠に出す
+  useEffect(() => {
+    setToastNoticeFallback(showNotice)
+    return () => setToastNoticeFallback(null)
+  }, [showNotice])
   const [captureMic, setCaptureMic] = useState(true)
   /** 文字起こし・整理の提供元ごとの準備状況（キーと接続先は設定の節がその場で保存する） */
   const [available, setAvailable] = useState<SttAvailability>({ localReady: false, keyStorage: 'session',
@@ -289,6 +300,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     setMode(next)
     void window.ade.invoke('mode:set', next)
   }, [])
+
 
   /** 録音の設定を変える。設定ダイアログとフッターで同じ state を使う（二重管理しない） */
   const patchCapture = (patch: Partial<CaptureSettings>) => {
@@ -575,11 +587,14 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   }, [])
 
   /** ヘルプ → セットアップをもう一度・設定の「セットアップをもう一度」。録画中は全面を覆わない */
-  const reopenOnboarding = useCallback(() => {
+  const reopenOnboarding = useCallback((step?: OnboardingStepId) => {
     if (recording) { toast({ tone: 'warning', message: t('errors.stopRecordingBeforeChange') }); return }
     if (modeRef.current === 'feedback') changeMode('editor')
-    persistOnboarding(reopenPatch())
+    // チェックリストの「設定する」からは、その手順から開く
+    persistOnboarding(step ? { ...reopenPatch(), lastStep: step } : reopenPatch())
   }, [recording, toast, t, changeMode, persistOnboarding])
+  // セットアップを閉じたら、チェックリスト（サイドバーの Setup n/7）に読み直してもらう
+  useEffect(() => { if (onboarding !== undefined && !onboardingOpen) notifySetupChanged() }, [onboardingOpen])
   useEffect(() => onShowOnboardingRequested(reopenOnboarding), [reopenOnboarding])
   onboardingErrorRef.current = (err) => toast({ tone: 'warning', message: t('onboarding.saveFailed'), detail: errorMessage(err) })
 
@@ -607,6 +622,13 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         case 'reloadPage':
           void window.ade.invoke('browser:reload')
           break
+        case 'browserBack':
+        case 'browserForward':
+          // フィードバックモードのツールバーの戻る・進むと同じ。画面全体・ウインドウを録るときは内蔵ブラウザを動かさない
+          if (modeRef.current === 'feedback' && showsBrowserNav(captureTargetRef.current)) {
+            void window.ade.invoke(command === 'browserBack' ? 'browser:back' : 'browser:forward')
+          }
+          break
         case 'newTerminal':
           terminalCommand.current?.add()
           break
@@ -629,9 +651,6 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         case 'toggleTargets':
           setTargetsOpen((open) => !open)
           break
-        case 'toggleTerminalPanel':
-          setLayout((prev) => withPanel(prev, 'terminal', { visible: !prev.panels.terminal.visible }))
-          break
         case 'toggleFooter':
           setLayout((prev) => ({ ...prev, footer: { ...prev.footer, visible: !prev.footer.visible } }))
           break
@@ -641,7 +660,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           else openSettings()
           break
         case 'showOnboarding':
-          reopenOnboarding()
+          reopenOnboarding(undefined)
           break
         case 'toggleGallery':
           setGallery((open) => {
@@ -711,7 +730,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const selectedSession = sessions.find((s) => s.id === sessionId)
 
   const wsGrid = workspaceGrid(layout)
-  const splitGrid = mainSplitGrid(terminalDock, layout.panels.terminal.visible)
+  const splitGrid = mainSplitGrid(terminalDock)
   const footer = layout.footer
 
   return (
@@ -778,7 +797,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           </div>
 
           <div
-            className={`main-split main-split--${terminalDock}${layout.panels.terminal.visible ? '' : ' main-split--no-terminal'}`}
+            className={`main-split main-split--${terminalDock}`}
             style={{
               '--split-left': `${(splitRatio * 100).toFixed(3)}%`,
               gridArea: 'main',
@@ -855,14 +874,14 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
               </ErrorBoundary>
             </section>
 
-            {layout.panels.terminal.visible && <Splitter
+            <Splitter
               ratio={splitRatio}
               onChange={setSplitRatio}
               onCommit={commitSplit}
               orientation={splitGrid.orientation}
               reverse={splitGrid.reverse}
               onDragChange={setSplitDragging}
-            />}
+            />
 
             {projectsLoaded && terminalsAllowed ? (
               <ErrorBoundary name="terminal" as="section" className="terminal-pane">
@@ -881,19 +900,20 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
             ) : (
               <section className="terminal-pane" aria-label={t('app.terminal')} />
             )}
-            <PanelGrip panel="terminal" area="term" hidden={!layout.panels.terminal.visible} onStart={panelDrag.start} />
+            <PanelGrip panel="terminal" area="term" onStart={panelDrag.start} />
           </div>
 
           {/* 右のファイルツリー。閉じたら列の幅を 0 にして隠す（.sidebar-slot と同じ） */}
           <div className="explorer-slot" aria-hidden={!explorerOpen} style={{ gridArea: 'files' }} data-dock={layout.panels.files.dock}>
             <ErrorBoundary name="file-tree">
-            <FileExplorer
+            {/* SSH のプロジェクトは、ローカルにはレビューの置き場しか無いので、ファイルツリーの代わりに案内を出す */}
+            {(() => { const remote = projects.projects.find((p) => p.id === workspace.projectId && p.source === 'ssh'); return remote ? <RemoteFilesNotice project={remote} /> : null })() ?? <FileExplorer
               root={workspace.folderPath}
               activePath={files.activeFile?.path ?? null}
               dirtyPaths={files.dirtyPaths}
               onOpen={files.open}
               onQuickOpen={() => setQuickOpenOpen(true)}
-            />
+            />}
             </ErrorBoundary>
           </div>
 
@@ -906,6 +926,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         {footer.visible && <ErrorBoundary name="footer"><StatusBar
           items={footer.items}
           onStartDrag={panelDrag.start}
+
           state={browserState}
           capture={capture}
           recording={recording}

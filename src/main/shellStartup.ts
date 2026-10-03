@@ -1,5 +1,5 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
-import { tmpdir, userInfo } from 'node:os'
+import { closeSync, constants, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ShellSpec } from './terminal'
 import { reportHandled } from '@shared/report'
@@ -129,21 +129,83 @@ export function fishStartupInitCommand(): string {
 end`
 }
 
+/**
+ * 起動ファイルの置き場所（security-2 [7]）。
+ *
+ * 以前は決まった名前の共有の一時フォルダ（<tmpdir>/ade-shell-<user>）に置いていた。
+ * そのため、同じマシンのほかの利用者が先にフォルダやリンクを作っておくと、起動ファイルを差し替えられた
+ * （シェルはそれを rc として実行する）。今は次のようにして防ぐ。
+ * - プロセスごとに mkdtemp で、推測できない名前のフォルダを排他で作る（POSIX では 0700）
+ * - ファイルは O_CREAT | O_EXCL | O_NOFOLLOW で作る（既にあるもの・リンクは使わない）
+ * - 使うたびに、フォルダとファイルがリンクでなく、自分の持ち物で、ほかの人が書けず、中身が書いたとおりかを確かめる。
+ *   崩れていれば作り直す
+ * Windows では O_NOFOLLOW と持ち主の確認が無い。%TEMP% は利用者ごとなので、mkdtemp と O_EXCL だけで足りる。
+ */
 let wrapperRoot: string | null = null
 
-/** 起動ファイルを一時フォルダへ書き出す（プロセスごとに1回。利用者だけが読める権限） */
-function ensureWrapperRoot(): string {
-  if (wrapperRoot) return wrapperRoot
-  let user = 'user'
+const WRAPPER_FILES = (root: string): Array<[path: string, content: string]> => [
+  [join(root, 'zsh', '.zshenv'), zshStartupWrapper()],
+  [join(root, 'bashrc'), bashStartupRcfile()]
+]
+
+/** 排他で作り、リンクをたどらない（既にあれば EEXIST で失敗する） */
+function writeExclusive(path: string, content: string): void {
+  const noFollow = process.platform === 'win32' ? 0 : constants.O_NOFOLLOW
+  const fd = openSync(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | noFollow, 0o600)
   try {
-    user = userInfo().username.replace(/[^\w.-]/g, '_') || user
-  } catch {
-    /* 取れなければ固定名で続ける */
+    writeSync(fd, content)
+  } finally {
+    closeSync(fd)
   }
-  const root = join(tmpdir(), `ade-shell-${user}`)
-  mkdirSync(join(root, 'zsh'), { recursive: true, mode: 0o700 })
-  writeFileSync(join(root, 'zsh', '.zshenv'), zshStartupWrapper(), { mode: 0o600 })
-  writeFileSync(join(root, 'bashrc'), bashStartupRcfile(), { mode: 0o600 })
+}
+
+/** リンクでなく、自分の持ち物で、ほかの人が書けない（POSIX）。Windows は種類だけ見る */
+function isPrivate(path: string, kind: 'dir' | 'file'): boolean {
+  const st = lstatSync(path)
+  if (st.isSymbolicLink() || (kind === 'dir' ? !st.isDirectory() : !st.isFile())) return false
+  if (process.platform === 'win32') return true
+  if (typeof process.getuid === 'function' && st.uid !== process.getuid()) return false
+  return (st.mode & 0o077) === 0
+}
+
+/** 置き場所がそのまま使えるか（持ち主・権限・リンク・中身）。少しでも崩れていれば false */
+export function verifyWrapperRoot(root: string): boolean {
+  try {
+    if (!isPrivate(root, 'dir') || !isPrivate(join(root, 'zsh'), 'dir')) return false
+    return WRAPPER_FILES(root).every(([path, content]) => isPrivate(path, 'file') && readFileSync(path, 'utf8') === content)
+  } catch {
+    return false
+  }
+}
+
+/** 新しい置き場所を base の下に作る（テストでは base を一時フォルダにする） */
+export function createWrapperRoot(base: string = tmpdir()): string {
+  const root = mkdtempSync(join(base, 'ade-shell-'))
+  try {
+    mkdirSync(join(root, 'zsh'), { mode: 0o700 })
+    for (const [path, content] of WRAPPER_FILES(root)) writeExclusive(path, content)
+    if (!verifyWrapperRoot(root)) throw new Error('shell startup directory is not private')
+    return root
+  } catch (err) {
+    rmSync(root, { recursive: true, force: true })
+    throw err
+  }
+}
+
+/** 起動ファイルの置き場所（プロセスで1つ。使うたびに確かめ、崩れていれば作り直す） */
+function ensureWrapperRoot(): string {
+  if (wrapperRoot && verifyWrapperRoot(wrapperRoot)) return wrapperRoot
+  if (wrapperRoot) {
+    console.warn('[terminal] 起動ファイルの置き場所が書き換えられていたので、作り直します', wrapperRoot)
+    reportHandled(new Error('shell startup directory was tampered'), { area: 'terminal', op: 'verify shell startup file' })
+  }
+  const root = createWrapperRoot()
+  if (!wrapperRoot) {
+    // 終了時に片付ける（残っても中身は固定の起動ファイルだけ）
+    process.once('exit', () => {
+      if (wrapperRoot) rmSync(wrapperRoot, { recursive: true, force: true })
+    })
+  }
   wrapperRoot = root
   return root
 }

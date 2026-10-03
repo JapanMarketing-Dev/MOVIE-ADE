@@ -103,3 +103,37 @@ describe('ヘッダーの行（画面）', () => {
     expect(formatHeaderLines(headers)).toBe('HTTP-Referer: https://example.com\nAuthorization: ${MY_TOKEN}')
   })
 })
+
+describe('プロジェクトの .env を安全に読む（名前付きパイプ・リンク・巨大なファイルで止まらない）', () => {
+  it('普通の .env は読み、パイプ・リンク・上限を超えるファイルは「無い」扱いにする', async () => {
+    const { mkdirSync, mkdtempSync, rmSync, writeFileSync, symlinkSync } = await import('node:fs')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { execFileSync } = await import('node:child_process')
+    const base = mkdtempSync(join(tmpdir(), 'ade-dotenv-'))
+    try {
+      const dir = (name: string) => { const d = join(base, name); mkdirSync(d); return d }
+      const ok = dir('ok')
+      writeFileSync(join(ok, '.env'), 'MY_KEY=from-file\n')
+      const env = {} as NodeJS.ProcessEnv
+      expect(resolveConfiguredKey({ apiKeyEnv: 'MY_KEY' }, { env, projectDir: ok })?.key).toBe('from-file')
+
+      const big = dir('big')
+      writeFileSync(join(big, '.env'), `MY_KEY=x\n${'#'.repeat(300 * 1024)}\n`)
+      expect(resolveConfiguredKey({ apiKeyEnv: 'MY_KEY' }, { env, projectDir: big })).toBeNull()
+
+      if (process.platform !== 'win32') {
+        const linked = dir('link')
+        symlinkSync(join(ok, '.env'), join(linked, '.env'))
+        expect(resolveConfiguredKey({ apiKeyEnv: 'MY_KEY' }, { env, projectDir: linked })).toBeNull()
+
+        const fifo = dir('fifo')
+        execFileSync('mkfifo', [join(fifo, '.env')])
+        // 止まらずにすぐ返る（読み手がいないパイプを開くと、同期の読み込みは永遠に待つ）
+        expect(resolveConfiguredKey({ apiKeyEnv: 'MY_KEY' }, { env, projectDir: fifo })).toBeNull()
+      }
+    } finally {
+      rmSync(base, { recursive: true, force: true })
+    }
+  })
+})

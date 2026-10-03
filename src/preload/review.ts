@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { isPageChange } from '../shared/page'
+import { acceptClick, isSameOriginNavigation, type LastClick } from '../shared/reviewInput'
 import { ANNOTATION_COLORS, DEFAULT_ANNOTATION_COLOR, annotationKeyAction, normalizeAnnotationColor, rectFromDrag, type AnnotationColor } from '../shared/annotation'
 import {
   addShape,
@@ -94,6 +95,9 @@ function penCursor(): string {
  */
 const DEFAULT_MAX_HOLD_MS = 30_000
 
+/** 要素のセレクタの長さの上限（main の events.ts と同じ値） */
+const MAX_SELECTOR_LENGTH = 300
+
 let enabled = false
 let mode: PenMode = 'off'
 let color: AnnotationColor = DEFAULT_ANNOTATION_COLOR
@@ -159,7 +163,8 @@ function selectorFor(element: Element): string {
     current = parent
     depth++
   }
-  return parts.join(' > ')
+  // クラス名や id はページが自由に決めるので、長いまま送らない（main でも切る）
+  return parts.join(' > ').slice(0, MAX_SELECTOR_LENGTH)
 }
 
 function describe(x: number, y: number): { selector: string; text?: string; sensitive?: boolean } | undefined {
@@ -361,7 +366,8 @@ let rectEndY = 0
 let strokeStart = 0
 
 function onPointerDown(event: PointerEvent): void {
-  if (!enabled || mode === 'off' || !ctx) return
+  // 重ねた層はページの DOM の中にあるので、ページのスクリプトが合成の pointer イベントを送れる。人の操作だけで描く
+  if (!enabled || mode === 'off' || !ctx || !event.isTrusted) return
   event.preventDefault()
   event.stopPropagation()
   if (autoClearTimer !== null) {
@@ -388,6 +394,7 @@ function onPointerDown(event: PointerEvent): void {
 }
 
 function onPointerMove(event: PointerEvent): void {
+  if (!event.isTrusted) return
   const x = event.clientX
   const y = event.clientY
   if (grab) {
@@ -413,7 +420,7 @@ function onPointerMove(event: PointerEvent): void {
 }
 
 function onPointerUp(event: PointerEvent): void {
-  if (!draft && !grab) return
+  if (!event.isTrusted || (!draft && !grab)) return
   if (layer?.hasPointerCapture(event.pointerId)) layer.releasePointerCapture(event.pointerId)
   finishPointer()
   updateCursor(event.clientX, event.clientY)
@@ -508,18 +515,24 @@ function install(): void {
   let lastPointer = 0
   document.addEventListener('pointermove', (event) => {
     const now = Date.now()
-    if (!enabled || now - lastPointer < 100) return
+    if (!enabled || !event.isTrusted || now - lastPointer < 100) return
     lastPointer = now
     send({ at: now, type: 'pointer', x: event.clientX, y: event.clientY })
   }, { passive: true })
 
   // ページ側の操作は捕捉のみ（止めない）
+  let lastClick: LastClick | null = null
   document.addEventListener(
     'click',
     (event) => {
       if (!enabled || mode !== 'off') return
+      // 合成のクリック（element.click()・dispatchEvent）は記録しない。ダブルクリック・連打は1件にまとめる
+      const now = Date.now()
+      const accepted = acceptClick(event, lastClick, now)
+      if (!accepted) return
+      lastClick = accepted
       send({
-        at: Date.now(),
+        at: now,
         type: 'click',
         x: Math.round(event.clientX),
         y: Math.round(event.clientY),
@@ -531,8 +544,9 @@ function install(): void {
 
   window.addEventListener(
     'scroll',
-    () => {
-      if (!enabled) return
+    (event) => {
+      // 合成の scroll イベントで書き込みを消したり、操作ログを積んだりさせない（本物のスクロールは isTrusted）
+      if (!enabled || !event.isTrusted) return
       // スクロールで線は消える（設計4章）
       clearAll()
       const now = Date.now()
@@ -655,12 +669,13 @@ try {
 
 window.addEventListener(BEFORE_NAVIGATE, (event) => {
   const next = (event as CustomEvent<unknown>).detail
-  if (typeof next === 'string') beforeLeave(next)
+  // ページのスクリプトも同じ名前のイベントを送れるので、pushState が受け付ける同じオリジンの URL だけを使う
+  if (typeof next === 'string' && isSameOriginNavigation(next, window.location.href)) beforeLeave(next)
 })
 // 戻る・進む・ハッシュの変化は URL が変わった直後、ページ側の描き変え（ルーターの処理）より前に届く。
 // この preload はページのスクリプトより先に登録するので、ルーターより先に呼ばれる
-window.addEventListener('popstate', () => beforeLeave(window.location.href))
-window.addEventListener('hashchange', (event) => beforeLeave(event.newURL))
+window.addEventListener('popstate', (event) => { if (event.isTrusted) beforeLeave(window.location.href) })
+window.addEventListener('hashchange', (event) => { if (event.isTrusted) beforeLeave(event.newURL) })
 
 const MAC = process.platform === 'darwin'
 
@@ -670,7 +685,8 @@ const MAC = process.platform === 'darwin'
  * ページの入力欄で打っているときは奪わない。書き込みなしのときの Esc・V と、戻すものが無いときの ⌘Z はページに任せる。
  */
 window.addEventListener('keydown', (event) => {
-  if (!enabled || event.repeat || event.isComposing) return
+  // ページのスクリプトが合成のキーで道具を切り替えたり、書き込みを戻したりできないようにする
+  if (!enabled || !event.isTrusted || event.repeat || event.isComposing) return
   const target = event.target
   if (target instanceof Element && target.closest('input,textarea,select,[contenteditable]')) return
   const action = annotationKeyAction(event, MAC)
@@ -694,7 +710,7 @@ let heldMode: PenMode | null = null
 window.addEventListener('keydown', (event) => {
   const target = event.target
   const editing = target instanceof Element && target.closest('input,textarea,[contenteditable]')
-  if (!enabled || event.key !== 'Alt' || event.repeat || editing) return
+  if (!enabled || !event.isTrusted || event.key !== 'Alt' || event.repeat || editing) return
   heldMode = mode
   mode = 'pen'
   applyMode()
@@ -708,5 +724,5 @@ function releaseHeldPen(): void {
   commitPending()
   applyMode()
 }
-window.addEventListener('keyup', (event) => { if (event.key === 'Alt') releaseHeldPen() }, true)
+window.addEventListener('keyup', (event) => { if (event.isTrusted && event.key === 'Alt') releaseHeldPen() }, true)
 window.addEventListener('blur', releaseHeldPen)

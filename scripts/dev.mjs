@@ -5,6 +5,7 @@
  */
 import { spawn } from 'node:child_process'
 import { prepareDevElectron } from './prepare-dev-electron.mjs'
+import { localBinInvocation } from './release-tools.mjs'
 
 const env = { ...process.env }
 if (!env.ELECTRON_EXEC_PATH) {
@@ -16,7 +17,9 @@ if (!env.ELECTRON_EXEC_PATH) {
   }
 }
 
-const child = spawn('electron-vite', ['dev', ...process.argv.slice(2)], { stdio: 'inherit', env, shell: process.platform === 'win32' })
+// .bin の .cmd を経由せず、electron-vite の JS を node で直接動かす（shell を使わないので、引数もそのまま渡る）
+const vite = localBinInvocation('electron-vite', 'electron-vite', ['dev', ...process.argv.slice(2)])
+const child = spawn(vite.command, vite.args, { stdio: 'inherit', env, shell: false })
 child.on('exit', (code, signal) => {
   if (signal) process.kill(process.pid, signal)
   else process.exit(code ?? 1)

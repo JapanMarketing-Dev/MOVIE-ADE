@@ -7,7 +7,7 @@
  *      → staging/<version>/<ファイル名> と staging/<version>/manifest.json
  *
  *   2. 確認が済んだら公開する
- *      node scripts/release-r2.mjs promote --version 0.1.0 [--replace] [--yes] [--dry-run]
+ *      node scripts/release-r2.mjs promote --version 0.1.0 [--expect-sums SHA256SUMS] [--replace] [--yes] [--dry-run]
  *
  *   公開しないことにした staging の版を片付ける
  *      node scripts/release-r2.mjs discard --version 0.1.2 [--yes] [--dry-run]
@@ -22,8 +22,16 @@
  *     版のファイルは1年の immutable で返すので、同じ URL を上書きすると、ブラウザや将来の CDN が古いものを返しうるため
  *   - promote は、消す古いファイルを表示して確認を求めてから、manifest と索引を作り直し、古いファイルを消す
  *     （確認なしで進めるときは --yes。CI 用）
+ * --expect-sums は、R2 とは別の場所（GitHub Release）に置いた SHA256SUMS。渡すと、manifest の各ファイルの sha256 が
+ * それと過不足なく一致しなければ止める（R2 だけを書き換えられても公開しない）。CI の stage / promote は必ず渡す。
+ * 手元から公開するときは、stage のあとに scripts/release-github.mjs create で SHA256SUMS だけの GitHub Release の下書きを作り、
+ * それを gh release download で取ってきて promote に渡す（手順は release-github.mjs の先頭）。
+ *
  * 書き込みは `wrangler r2 object put --remote`（1ファイル 300 MiB まで）。手元ではログイン済みの wrangler、
  * CI では環境変数 CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID を使う（README の「Releases」を参照）。
+ * wrangler は devDependencies で版を固定したもの（pnpm-lock.yaml の integrity 付き）を、node で直接起動する（shell を通さない）。
+ * R2 から読んだ manifest・索引は validateManifest / validateIndex で形を確かめてから使い、
+ * ローカルの一時ファイルの名前には manifest の値を使わない（file-0 のように、こちらで付ける）。
  * 形式は scripts/release-r2-lib.mjs（download-site と合意）。
  */
 import { spawnSync } from 'node:child_process'
@@ -31,27 +39,33 @@ import { createHash } from 'node:crypto'
 import { createReadStream, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { createInterface } from 'node:readline/promises'
+import * as nodePath from 'node:path'
 import { join, resolve } from 'node:path'
 import {
   CONTENT_TYPES,
   IMMUTABLE_CACHE,
   INDEX_CACHE,
   MANIFEST_CACHE,
+  PUT_LIMIT_BYTES,
   STAGING_CACHE,
   addVersionToIndex,
+  assertManifestMatchesSums,
+  assertValidVersion,
   buildManifest,
   emptyIndex,
   obsoleteFiles,
   parseArtifactName,
+  parseSha256Sums,
   replaceVersionInIndex,
-  stagingKey
+  stagingKey,
+  validateIndex,
+  validateManifest,
+  workPath
 } from './release-r2-lib.mjs'
+import { runTool, wranglerInvocation } from './release-tools.mjs'
 
 const BUCKET = process.env.R2_BUCKET ?? 'movie-ade-releases'
 const PUBLIC_BASE = process.env.R2_PUBLIC_BASE ?? 'https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev'
-const WRANGLER = process.env.WRANGLER ?? 'wrangler@latest'
-/** wrangler r2 object put が1回で上げられる大きさの上限（300 MiB） */
-const PUT_LIMIT_BYTES = 300 * 1024 * 1024
 
 const root = resolve(import.meta.dirname, '..')
 
@@ -71,25 +85,25 @@ function parseArgs(argv) {
     else if (key === '--dry-run') args.dryRun = true
     else if (key === '--replace') args.replace = true
     else if (key === '--yes') args.yes = true
+    else if (key === '--expect-sums') args.expectSums = value()
     else throw new Error(`知らない引数です: ${key}`)
   }
   args.version ??= JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
+  // 版は R2 のキーとローカルのパスに入るので、形を確かめてから使う
+  assertValidVersion(args.version)
   return args
 }
 
+/** 固定した wrangler を shell なしで動かす（引数は外から来た値でも、そのまま1つずつ渡る） */
 function wrangler(args) {
-  const result = spawnSync('npx', ['--yes', WRANGLER, ...args], {
-    cwd: root,
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-    shell: process.platform === 'win32'
-  })
+  const result = runTool(wranglerInvocation(args), { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+  if (result.error) throw result.error
   return { ok: result.status === 0, stdout: result.stdout ?? '', stderr: result.stderr ?? '' }
 }
 
 const isMissing = (r) => /not found|does not exist|NoSuchKey|10007/i.test(r.stderr + r.stdout)
 
-/** R2 の JSON を読む。無ければ null（キャッシュを通さないよう、公開 URL ではなく API で読む） */
+/** R2 の JSON を読む。無ければ null（キャッシュを通さないよう、公開 URL ではなく API で読む）。形は呼ぶ側で確かめる */
 function getJson(key) {
   const r = wrangler(['r2', 'object', 'get', `${BUCKET}/${key}`, '--remote', '--pipe'])
   if (!r.ok) {
@@ -111,9 +125,34 @@ function put(key, file, contentType, cacheControl, dryRun) {
   if (!r.ok) throw new Error(`${key} を上げられませんでした:\n${r.stderr || r.stdout}`)
 }
 
+let tempCount = 0
+/** 作業フォルダの中に、こちらで名前を付けた一時ファイルのパスを作る（manifest の値は使わない） */
+function tempFile(work, ext) {
+  return workPath(work, `file-${tempCount++}.${ext}`, nodePath)
+}
+
+/** R2 の manifest を読んで形を確かめる。無ければ null */
+function getManifest(key, version) {
+  const m = getJson(key)
+  return m === null ? null : validateManifest(m, version)
+}
+
+/** R2 の versions.json を読んで形を確かめる。無ければ空の索引 */
+function getIndex() {
+  const x = getJson('versions.json')
+  return x === null ? emptyIndex() : validateIndex(x)
+}
+
+/** --expect-sums の SHA256SUMS と manifest を突き合わせる（渡されていなければ何もしない） */
+function checkExpectedSums(manifest, args) {
+  if (!args.expectSums) return
+  assertManifestMatchesSums(manifest, parseSha256Sums(readFileSync(resolve(root, args.expectSums), 'utf8')))
+  console.log(`SHA256SUMS（${args.expectSums}）と manifest の ${manifest.files.length} 件が一致しました`)
+}
+
 function putJson(key, value, cacheControl, dryRun, work) {
-  const file = join(work, key.replace(/\//g, '__'))
-  writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`)
+  const file = tempFile(work, 'json')
+  writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' })
   put(key, file, 'application/json; charset=utf-8', cacheControl, dryRun)
 }
 
@@ -145,7 +184,7 @@ const mib = (n) => `${(n / 1024 / 1024).toFixed(1)} MiB`
 
 /** releases/ にすでにある版は、stage も promote もしない */
 function assertNotReleased(version, index) {
-  if (index.versions.some((v) => v.version === version) || getJson(`releases/${version}/manifest.json`)) {
+  if (index.versions.some((v) => v.version === version) || getJson(`releases/${version}/manifest.json`) !== null) {
     throw new Error(`${version} はすでに releases/ にあります。同じ版を上げ直すことはしません（版を上げてください）`)
   }
 }
@@ -171,14 +210,14 @@ async function stage(args, work) {
   }
   let build = 1
   if (args.replace) {
-    const released = getJson(`releases/${args.version}/manifest.json`)
+    const released = getManifest(`releases/${args.version}/manifest.json`, args.version)
     if (!released) throw new Error(`${args.version} は公開されていないので、--replace は要りません`)
     build = (released.build ?? 1) + 1
     console.log(`公開済みの ${args.version} を差し替えるための分です（build ${build}。promote --replace で入れ替える）`)
   } else {
-    assertNotReleased(args.version, getJson('versions.json') ?? emptyIndex())
+    assertNotReleased(args.version, getIndex())
   }
-  const previous = getJson(`staging/${args.version}/manifest.json`)
+  const previous = getManifest(`staging/${args.version}/manifest.json`, args.version)
   if (previous) {
     console.log(`staging/${args.version}/ にある前回の分を置き換えます`)
     // 前回の分で、今回と path が違うもの（build が変わったときなど）は残さない
@@ -196,6 +235,7 @@ async function stage(args, work) {
     product,
     build
   })
+  checkExpectedSums(manifest, args)
 
   console.log(args.dryRun ? '\n（--dry-run: 実際には書き込みません）' : '\n公開前の置き場（staging）へ上げます:')
   for (const f of manifest.files) {
@@ -209,7 +249,7 @@ async function stage(args, work) {
 }
 
 async function discard(args) {
-  const manifest = getJson(`staging/${args.version}/manifest.json`)
+  const manifest = getManifest(`staging/${args.version}/manifest.json`, args.version)
   if (!manifest) throw new Error(`staging/${args.version}/manifest.json がありません（片付けるものがない）`)
   const keys = [...manifest.files.map((f) => stagingKey(f.path)), `staging/${args.version}/manifest.json`]
   console.log(`公開しない ${args.version} を staging から消します:`)
@@ -220,14 +260,15 @@ async function discard(args) {
 }
 
 async function promote(args, work) {
-  const manifest = getJson(`staging/${args.version}/manifest.json`)
+  const manifest = getManifest(`staging/${args.version}/manifest.json`, args.version)
   if (!manifest) throw new Error(`staging/${args.version}/manifest.json がありません（先に stage する）`)
-  const index = getJson('versions.json') ?? emptyIndex()
+  checkExpectedSums(manifest, args)
+  const index = getIndex()
   let nextIndex
   let removed = []
   let obsolete = []
   if (args.replace) {
-    const old = getJson(`releases/${args.version}/manifest.json`)
+    const old = getManifest(`releases/${args.version}/manifest.json`, args.version)
     if (!old) throw new Error(`${args.version} は公開されていないので、--replace は要りません`)
     if ((manifest.build ?? 1) <= (old.build ?? 1)) throw new Error('staging の分は差し替え用ではありません。stage --replace で上げ直してください')
     nextIndex = replaceVersionInIndex(index, manifest)
@@ -245,9 +286,14 @@ async function promote(args, work) {
     }
   }
 
+  // latest.json に入れる manifest は、書き込みを始める前に読んで確かめておく（途中で止まって索引だけが古いまま残らないように）
+  const latest = nextIndex.latest === args.version ? manifest : nextIndex.latest ? getManifest(`releases/${nextIndex.latest}/manifest.json`, nextIndex.latest) : null
+
   console.log(args.dryRun ? '（--dry-run: 実際には書き込みません）' : `${args.version} を公開します:`)
   for (const f of manifest.files) {
-    const local = join(work, f.name)
+    // 一時ファイルの名前はこちらで付ける（manifest の name は使わない）。まだ無いことを確かめ、作ったものだけを消す
+    const local = tempFile(work, 'bin')
+    if (existsSync(local)) throw new Error(`一時ファイルがすでにあります: ${local}`)
     if (!args.dryRun) {
       download(stagingKey(f.path), local)
       // staging の中身が manifest と同じかを確かめてから公開する
@@ -259,9 +305,16 @@ async function promote(args, work) {
   putJson(`releases/${args.version}/manifest.json`, manifest, MANIFEST_CACHE, args.dryRun, work)
 
   // 古い版を消すときに使うので、外れる版の manifest を先に読んでおく
-  const removedManifests = removed.map((v) => ({ version: v.version, key: v.manifest, manifest: getJson(v.manifest) }))
+  // 形の正しくない manifest の版は、ファイルを消さずに警告だけ出す（R2 の別の場所を消さない）
+  const removedManifests = removed.map((v) => {
+    try {
+      return { version: v.version, key: v.manifest, manifest: getManifest(v.manifest, v.version) }
+    } catch (e) {
+      console.warn(`  ${v.version} の manifest を確かめられないので、その版のファイルは消しません（あとで手で確かめてください）: ${e.message}`)
+      return { version: v.version, key: v.manifest, manifest: null }
+    }
+  })
   putJson('versions.json', nextIndex, INDEX_CACHE, args.dryRun, work)
-  const latest = nextIndex.latest === args.version ? manifest : nextIndex.latest ? getJson(`releases/${nextIndex.latest}/manifest.json`) : null
   if (latest) putJson('latest.json', latest, INDEX_CACHE, args.dryRun, work)
 
   if (obsolete.length > 0) {

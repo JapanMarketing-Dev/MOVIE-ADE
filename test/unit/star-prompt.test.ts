@@ -144,6 +144,29 @@ describe('star のお願い: サービス', () => {
   })
 })
 
+describe('フィードバックの声かけ（送信 3 回で一度だけ）', () => {
+  it('3 回目の送信で一度だけ出し、出した時点で記録する。4 回目以降は出さない', async () => {
+    const askFeedback = vi.fn(() => true)
+    const h = harness({ sends: 2, done: true }, { askFeedback })
+    await h.service.record('first-send')
+    expect(askFeedback).toHaveBeenCalledTimes(1)
+    expect(h.state()).toMatchObject({ sends: 3, feedbackAsked: true })
+    await h.service.record('first-send')
+    expect(askFeedback).toHaveBeenCalledTimes(1)
+  })
+
+  it('録画中は出さず、次の送信まで待つ', async () => {
+    const askFeedback = vi.fn(() => true)
+    const h = harness({ sends: 2, done: true }, { askFeedback })
+    h.setContext({ recording: true })
+    await h.service.record('first-send')
+    expect(askFeedback).not.toHaveBeenCalled()
+    h.setContext({ recording: false })
+    await h.service.record('first-send')
+    expect(askFeedback).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('star のお願い: gh の呼び方（gh はモック）', () => {
   const result = (patch: Partial<ExecResult>): ExecResult => ({ stdout: '', stderr: '', failed: false, missing: false, timedOut: false, ...patch })
 

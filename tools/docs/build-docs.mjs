@@ -74,7 +74,7 @@ ${clip('quick-start', 'Open a page, record, circle and talk, stop, and send the 
   <li>A microphone. Feedback is your voice plus the pen. Without a mic, pen circles still become findings, but they have no words.</li>
 </ul>`],
     ['install', '1. Install', `
-<p>Download the build for your OS from the <a href="../download.html">download page</a> and open it. Builds are unsigned, so the first launch needs one extra step. See <a href="install.html">Install</a> for macOS Gatekeeper, Windows SmartScreen, Linux, and building from source.</p>`],
+<p>Download the build for your OS from the <a href="../download.html">download page</a> and open it. The macOS build is signed with a Developer ID and notarized by Apple, so it opens like any other app. The Windows and Linux builds are not code-signed yet, so their first launch needs one extra step. See <a href="install.html">Install</a> for Windows SmartScreen, Linux, and building from source.</p>`],
     ['open', '2. Open a project and a URL', `
 <ol class="docs-steps">
   <li>${ui('File → Open Project Folder…')} (${k('⌘', 'O')} / ${k('Ctrl', 'O')}) and pick your repository root.</li>
@@ -120,7 +120,7 @@ const dlRows = `
     <tr><td>Linux (x64)</td><td><code>Ferret-&lt;version&gt;-linux-x86_64.AppImage</code>, <code>Ferret-&lt;version&gt;-linux-amd64.deb</code></td></tr>`
 
 page('install.html', 'Start here', 'Install',
-  `${APP} is a desktop app for macOS, Windows, and Linux. Builds are not code-signed yet, so each OS asks you to confirm the first launch.`,
+  `${APP} is a desktop app for macOS, Windows, and Linux. The macOS build is signed with a Developer ID and notarized by Apple. The Windows and Linux builds are not code-signed yet, so those OSes ask you to confirm the first launch.`,
   [
     ['download', 'Download', `
 <p>Get the file for your OS and CPU from the <a href="../download.html">Download page</a>. Files are served from Cloudflare R2, not GitHub Releases, and only the 10 most recent versions are kept.</p>
@@ -146,15 +146,17 @@ shasum -a 256 Ferret-&lt;version&gt;-mac-arm64.dmg
 sha256sum Ferret-&lt;version&gt;-linux-x86_64.AppImage`)}
 ${code(`# Windows (PowerShell)
 Get-FileHash .\\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256`)}
-<p>Compare the output with the manifest. A match only proves the file is what was uploaded. The builds are not code-signed.</p>`],
+<p>Compare the output with the manifest. A match only proves the file is what was uploaded. On macOS, the Developer ID signature and Apple's notarization are checked by Gatekeeper when you open the app. The Windows and Linux builds are not code-signed.</p>`],
     ['macos', 'macOS', `
 <ol class="docs-steps">
   <li>Open the <code>.dmg</code> and drag <code>Ferret.app</code> to <code>/Applications</code>.</li>
-  <li>Launch it. macOS says the developer cannot be verified. Close the dialog.</li>
-  <li>Open ${ui('System Settings → Privacy &amp; Security')}, scroll down, and click ${ui('Open Anyway')} next to the Ferret message.</li>
-  <li>Confirm with ${ui('Open')}. Later launches work normally.</li>
+  <li>Launch it. The app is signed with a Developer ID and notarized by Apple (the ticket is stapled), so it opens without a warning.</li>
 </ol>
-<p>If macOS says the app "is damaged", remove the quarantine attribute:</p>
+<p>To check the signature yourself:</p>
+${code(`spctl -a -vv /Applications/Ferret.app
+# accepted
+# source=Notarized Developer ID`)}
+<p><strong>Older versions only (0.2.0 build 2 and earlier)</strong> were not signed. For those, macOS says the developer cannot be verified: close the dialog, open ${ui('System Settings → Privacy &amp; Security')}, click ${ui('Open Anyway')} next to the Ferret message, and confirm with ${ui('Open')}. If it says the app "is damaged", remove the quarantine attribute:</p>
 ${code('xattr -dr com.apple.quarantine /Applications/Ferret.app')}`],
     ['windows', 'Windows (Preview)', `
 <ol class="docs-steps">
@@ -225,7 +227,7 @@ ${code(`# UI feedback (N)
 <p>The headings and labels in <code>feedback.md</code> follow the interface language (Settings → Language).</p>
 <p>Agents read this with the tools they already have (file read, image view), so no plugin or MCP server is needed.</p>`],
     ['local-first', 'Local first', `
-<p>Recordings, images, and notes stay in your project folder. Transcription runs on-device by default. Anything that leaves your machine goes straight from your computer to the service you chose (OpenAI, your endpoint, GitHub). The only exception is crash reporting to Sentry (errors, one session per launch, and freeze warnings; on by default, off in Settings). The developer runs no servers and pays for nothing on your behalf. See <a href="privacy.html">Data and privacy</a>.</p>`],
+<p>Recordings, images, and notes stay in your project folder. Transcription runs on-device by default. Anything that leaves your machine goes straight from your computer to the service you chose (OpenAI, your endpoint, GitHub). There are two exceptions: crash reporting to Sentry (errors, one session per launch, and freeze warnings; on by default, off in Settings), and in-app feedback you choose to send (coming soon), which goes through the developer's small relay and becomes a public GitHub issue. The relay does not store your IP address. Apart from that relay, the developer runs no servers and pays for nothing on your behalf. See <a href="privacy.html">Data and privacy</a>.</p>`],
   ])
 
 page('keyboard.html', 'Start here', 'Keyboard shortcuts',
@@ -806,7 +808,7 @@ qwen3:14b for Organize findings and add a prd URL for the shop project"&gt;`)}
 /* ───────────── Reference ───────────── */
 
 page('privacy.html', 'Reference', 'Data and privacy',
-  'Reviews live in your project folder. Settings live in <code>~/.ferret/</code>, and keys and accounts in the OS user-data folder. Only crash reports reach the developer, through Sentry, and you can turn them off.',
+  'Reviews live in your project folder. Settings live in <code>~/.ferret/</code>, and keys and accounts in the OS user-data folder. Only crash reports reach the developer, through Sentry, and you can turn them off. Feedback you choose to send from the app becomes a public GitHub issue.',
   [
     ['reviews', 'Inside .ferret/reviews/', `
 ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
@@ -834,6 +836,7 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
     <tr><td>Footer usage</td><td>Anthropic, ChatGPT</td><td>usage request with your own login</td></tr>
     <tr><td>GitHub star prompt</td><td>GitHub via your <code>gh</code></td><td>checks whether you starred the repo, and stars it only if you click ${ui('Star on GitHub')}</td></tr>
     <tr><td>${ui('Check for Updates')} (manual)</td><td>download server (Cloudflare R2)</td><td>request for <code>latest.json</code></td></tr>
+    <tr><td>Sending feedback from the app (only when you send it; coming soon)</td><td>the developer's feedback relay (a Cloudflare Worker), which opens a public issue in <code>JapanMarketing-Dev/ferret</code></td><td>your text, bug or idea, app / OS version and CPU, and up to 3 screenshots you attach. Keys, tokens, email addresses, and home-folder paths are masked. The relay does not store your IP address (see <a href="#feedback">Feedback from the app</a>)</td></tr>
     <tr><td>A crash or error (${ui('Send crash reports')} on)</td><td>Sentry</td><td>stack trace and OS / CPU / app versions (see <a href="#crash-reports">Crash reports</a>)</td></tr>
   </tbody>
 </table>
@@ -842,6 +845,17 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
   <li>Secret-looking values in URLs (tokens, keys) are redacted before they are written to <code>feedback.md</code>.</li>
   <li>Text captured from the page is marked as data in <code>feedback.md</code>, so the agent is told not to follow instructions found in it.</li>
   <li>This website (not the app) counts page views with Cloudflare Web Analytics: cookie-free, with no cross-site tracking and no personal data.</li>
+</ul>`],
+    ['feedback', 'Feedback from the app', `
+${soon(`<p>The in-app feedback form and its relay are not released yet. This section describes how they will work.</p>`)}
+<p>You will be able to send a bug report or an idea from inside ${APP} without a GitHub account. It is sent only when you send it, and it becomes a <strong>public</strong> issue in <a href="${REPO}/issues">${REPO.replace('https://github.com/', '')}</a>, labeled <code>from-app</code>. Do not include anything you would not post in public.</p>
+<ul>
+  <li>The app sends it from your computer to a small relay (a Cloudflare Worker run by the developer), which opens the issue with its own GitHub token. This relay is the only server of the developer's that receives anything you write.</li>
+  <li>Sent: your title and text, whether it is a bug or an idea, the app version, and up to 3 PNG or JPEG screenshots you attach. The OS name and version, CPU architecture, and the random install ID are sent only if you leave them included. Not sent: your name, email, GitHub account, project files, recordings, or findings.</li>
+  <li>Before the issue is created, the relay masks text that looks like keys or tokens, email addresses, and the user name in home-folder paths, and stops <code>@mentions</code> from notifying anyone. It also removes location and other metadata from screenshots. Check your text anyway: masking cannot catch everything.</li>
+  <li>The relay does not store your IP address. To limit how often one sender can post (5 per hour, 20 per day), it counts a keyed hash of the IP address (and of the install ID, if sent) for up to 24 hours, then deletes it. Neither appears in the issue.</li>
+  <li>Screenshots are kept by the relay in Cloudflare R2 under unguessable names and shown in the issue. To have an issue or its screenshots removed, comment on the issue or open a new one.</li>
+  <li>The relay's code is in <code>workers/feedback-relay</code> in the repository.</li>
 </ul>`],
     ['crash-reports', 'Crash reports', `
 <p>When the app crashes or hits an unhandled error, ${APP} sends a crash report to <a href="https://sentry.io/">Sentry</a> so the bug can be fixed. It is on by default. Turn it off in ${ui('Settings → Privacy → Send crash reports')}, or with ${ui('Turn off')} on the notice shown at first launch. Turning it off takes effect at once. Turning it back on takes effect at the next launch. Development builds (<code>pnpm dev</code>) also send, tagged <code>development</code>, so the developers can fix crashes they hit while working. E2E runs and unit tests never send.</p>
@@ -852,14 +866,14 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
       <ul>
         <li>Error type and message, with home-folder paths shown as <code>~</code></li>
         <li>Stack trace (where in ${APP}'s code it happened)</li>
-        <li>For native crashes: the minidump (thread stacks of the crashed process)</li>
+        <li>For native crashes: only which process crashed, why it exited (for example <q>crashed</q> or <q>oom</q>), and the app version</li>
         <li>OS name and version, CPU architecture, Electron / Chrome / Node versions, app version, screen size, memory size</li>
         <li>App lifecycle events right before the error (for example <q>app.ready</q>), and startup failures</li>
         <li>Which part of the app failed: a screen area that could not render (and its React component names), an IPC call, a terminal that could not start, a crashed or hung process, or a page of the app that failed to load</li>
         <li>Where you were in the app: editor or feedback mode, the open tab (Browser, Findings, Settings, or just <q>file</q>), and whether a recording was running</li>
         <li>One session per launch (started, ended normally, or crashed), so the crash-free rate of each version can be measured</li>
         <li>A random install ID (created on first launch and kept in the app's settings folder), so the number of affected installs can be counted. It is not linked to your name, email, or device</li>
-        <li>For crashes only: the last 50 of ${APP}'s own log lines (such as <q>[startup]</q> and <q>[recording]</q>), shortened and with paths, URLs, emails, and keys removed</li>
+        <li>For JavaScript crashes only: the last 50 of ${APP}'s own log lines (such as <q>[startup]</q> and <q>[recording]</q>), shortened and with paths, URLs, emails, and keys removed</li>
       </ul>
     </td><td>
       <ul>
@@ -868,6 +882,7 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
         <li>Terminal output, transcripts, findings, page text, screenshots</li>
         <li>Email addresses and API keys or tokens (replaced)</li>
         <li>Your name, device name, IP address (not stored), cookies, local variables</li>
+        <li>Memory dumps of native crashes (minidumps). They can hold anything that was in memory, so they stay on your computer</li>
         <li>Clicks, network requests, and any log line that isn't one of ${APP}'s own</li>
       </ul>
     </td></tr>

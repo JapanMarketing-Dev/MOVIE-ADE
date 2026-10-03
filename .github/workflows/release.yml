@@ -3,20 +3,34 @@
 #      GitHub Release の下書き（draft）をリリースノートだけで作る。サイトとアプリの更新確認にはまだ出ない。
 #   2. 確認が済んだら、Actions の画面からこのワークフローを手動で起動し（version を入れる）、
 #      staging から releases/<version>/ へ移して versions.json / latest.json を更新する（promote）。
-#      手元から `node scripts/release-r2.mjs promote --version <version>` でも同じ。
+#      手元から `node scripts/release-r2.mjs promote --version <version> --expect-sums SHA256SUMS` でも同じ。
+#
+# 【R2 とは別の答え合わせ】配布物は署名していないので、R2 を書き換えられたときに気づける場所を R2 の外に置く。
+#   - checksums ジョブが、ビルドした配布物の SHA256SUMS（manifest の sha256 と同じ値）を GitHub Release（下書き）に添付する。
+#     GitHub Release に付けるのは SHA256SUMS だけで、インストーラーは付けない。
+#     手元から公開するときは scripts/release-github.mjs が同じことをする。
+#   - stage と promote は、その SHA256SUMS と R2 の manifest が一致しなければ止める（--expect-sums）。
+#     --replace で作り直した版を promote するときは、先に Release の SHA256SUMS を新しい分に差し替えておく
+#     （gh release upload v<version> SHA256SUMS --clobber）。
+#
+# 【供給網】actions はコミットの SHA に固定し、コメントに版を書く（タグは付け替えられるため）。
+#   wrangler は devDependencies で版を固定する（pnpm-lock.yaml の integrity。stage / promote は --ignore-scripts で入れる）。
+#   secrets は使うステップの env にだけ渡し、R2 のトークンを持つジョブ（stage / promote）と
+#   リポジトリへ書けるジョブ（checksums / promote-sums）を分ける。test/unit/release-policy.test.ts が確かめる。
 #
 # 【費用】このワークフローは公開リポジトリ（JapanMarketing-Dev/ferret）で動かす前提。
 #   公開リポジトリなら標準のランナーは無料。非公開のリポジトリで動かすと、実行時間（とくに macOS）が開発者側の費用になる。
 #   R2 は保存が月 10GB まで無料・転送料は無料。scripts/release-r2.mjs が最新10版だけを残す。
 #
-# 配布物は R2 にだけ置き、GitHub Release には添付しない（ダウンロードはサイトへのリンク）。
-# 当面は署名・公証をしない。リリースノートの雛形にそのことを書く。
+# 配布物は R2 にだけ置き、GitHub Release には添付しない（ダウンロードはサイトへのリンク。添付するのは SHA256SUMS だけ）。
+# 当面は署名・公証をしない。リリースノートの雛形にそのことと、回避の前に確かめる手順を書く。
 #
 # 必要な secrets（作り方は README の「配布」）:
 #   CLOUDFLARE_API_TOKEN   … R2 の movie-ade-releases に書き込める API トークン
 #   CLOUDFLARE_ACCOUNT_ID  … Cloudflare のアカウント ID
 #   SENTRY_AUTH_TOKEN      … ソースマップを Sentry へ上げるトークン（scripts/sentry-sourcemaps.mjs。任意。無ければ警告だけ）
-# 実行環境: actions は Node 24 で動く版（checkout v7 / setup-node v7 / upload-artifact v7 / download-artifact v8 / pnpm/action-setup v6）。
+# 実行環境: actions は Node 24 で動く版（checkout v7.0.1 / setup-node v7.0.0 / upload-artifact v7.0.1 / download-artifact v8.0.1 /
+#   pnpm/action-setup v6.1.0）。SHA は gh api で実在を確かめたもの。
 # Linux は ubuntu-latest ではなく ubuntu-24.04 に固定する。ubuntu-latest は 2026-10-19 から Ubuntu 26 に変わり、
 # そこでビルドした node-pty（AppImage / deb に入る）は新しい glibc を要求して、古い Ubuntu で起動できなくなるため。
 name: Release
@@ -60,19 +74,16 @@ jobs:
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       NODE_OPTIONS: --max-old-space-size=4096
-      # dist:* の build:release がソースマップを Sentry へ上げる。OS ごとにビルドするので、各ジョブで上げる
-      # secret が未登録のうちは警告だけ出して続ける。登録したら SENTRY_SOURCEMAPS: required に戻して、上げ損ねを止められる
-      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
-          version: 10
+          version: 10.31.0
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: pnpm
@@ -95,9 +106,14 @@ jobs:
       - run: pnpm test:unit
 
       - name: Build installers
+        env:
+          # dist:* の build:release がソースマップを Sentry へ上げる。OS ごとにビルドするので、各ジョブで上げる。
+          # 依存の install やテストには渡さない（このステップだけ）
+          # secret が未登録のうちは警告だけ出して続ける。登録したら SENTRY_SOURCEMAPS: required に戻して、上げ損ねを止められる
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: pnpm dist:${{ matrix.os }}
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: installers-${{ matrix.os }}
           path: |
@@ -108,28 +124,24 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  publish:
-    name: upload to R2 staging and draft the release notes
+  checksums:
+    name: SHA256SUMS and the draft release (no R2 credentials)
     needs: build
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
     permissions:
-      contents: write # リリースの下書きを作るため
+      contents: write # リリースの下書きを作り、SHA256SUMS を添付するため
     steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: installers-*
           path: artifacts
           merge-multiple: true
+
+      - name: Write SHA256SUMS
+        working-directory: artifacts
+        run: sha256sum Ferret-* > ../SHA256SUMS && cat ../SHA256SUMS
 
       - name: Write release notes
         shell: bash
@@ -143,7 +155,9 @@ jobs:
 
           Download: ${DOWNLOAD_URL}
 
-          **These builds are not code-signed yet.**
+          The installers are served only from the download server, not from GitHub. \`SHA256SUMS\` attached here lists the SHA-256 of each installer (the same values as releases/${version}/manifest.json on the download server), kept apart from the download server.
+
+          **These builds are not code-signed yet.** Before you bypass the OS warning, compare the SHA-256 of the file you downloaded with \`SHA256SUMS\`. A match shows the file is the one that was published, not who built it.
           - macOS: Gatekeeper says the developer cannot be verified. Right-click the app and choose Open, or allow it in System Settings > Privacy & Security.
           - Windows: SmartScreen may block the installer. Choose "More info" > "Run anyway".
           - Windows and Linux builds are a preview.
@@ -152,38 +166,127 @@ jobs:
           -
           EOF
 
+      - name: Draft the GitHub release (notes and SHA256SUMS, no installers)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" SHA256SUMS --repo "${GITHUB_REPOSITORY}" --draft --title "Ferret ${GITHUB_REF_NAME#v}" --notes-file release-notes.md
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-meta
+          path: |
+            SHA256SUMS
+            release-notes.md
+          if-no-files-found: error
+          retention-days: 3
+
+  stage:
+    name: upload to R2 staging
+    needs: checksums
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10.31.0
+
+      # 版を固定した wrangler（devDependencies）を lockfile のとおりに入れる。Electron の取得や node-pty のビルドは要らないので、スクリプトは走らせない
+      - name: Install the pinned wrangler
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: installers-*
+          path: artifacts
+          merge-multiple: true
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-meta
+          path: release-meta
+
       - name: Upload to R2 staging
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PREVIEW_OS: ${{ vars.PREVIEW_OS || 'win,linux' }}
         run: >-
           node scripts/release-r2.mjs stage
           --version "${GITHUB_REF_NAME#v}"
           --dir artifacts
-          --notes release-notes.md
+          --notes release-meta/release-notes.md
           --notes-url "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
-          --preview "${{ vars.PREVIEW_OS || 'win,linux' }}"
+          --preview "$PREVIEW_OS"
+          --expect-sums release-meta/SHA256SUMS
 
-      - name: Draft the GitHub release (notes only, no files)
+  promote-sums:
+    name: fetch SHA256SUMS of ${{ inputs.version }} from the GitHub release (no R2 credentials)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write # 下書きのリリースは書き込める権限でないと読めない
+    steps:
+      - name: Download SHA256SUMS
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft --title "Ferret ${GITHUB_REF_NAME#v}" --notes-file release-notes.md
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$ ]]; then
+            echo "版の形が正しくありません: $VERSION" >&2
+            exit 1
+          fi
+          gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --dir release-meta
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: promote-sums
+          path: release-meta/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 1
 
   promote:
     name: promote ${{ inputs.version }} from staging to releases
+    needs: promote-sums
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           # promote の最後に scripts/sentry-release.mjs が前のタグからのコミットを Sentry へ付けるので、履歴とタグを全部取る
           fetch-depth: 0
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 10.31.0
+
+      # 版を固定した wrangler（devDependencies）を lockfile のとおりに入れる。Electron の取得や node-pty のビルドは要らないので、スクリプトは走らせない
+      - name: Install the pinned wrangler
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: promote-sums
+          path: release-meta
 
       - name: Promote
         env:
@@ -193,8 +296,8 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           VERSION: ${{ inputs.version }}
           REPLACE: ${{ inputs.replace }}
-        # 手動で起動したこと自体を確認とみなす（消す対象はログに出る）
+        # 手動で起動したこと自体を確認とみなす（消す対象はログに出る）。GitHub Release の SHA256SUMS と合わなければ止まる
         run: |
-          args=(promote --version "$VERSION" --yes)
+          args=(promote --version "$VERSION" --expect-sums release-meta/SHA256SUMS --yes)
           if [ "$REPLACE" = "true" ]; then args+=(--replace); fi
           node scripts/release-r2.mjs "${args[@]}"

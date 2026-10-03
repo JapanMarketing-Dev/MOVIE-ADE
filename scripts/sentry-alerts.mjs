@@ -12,10 +12,10 @@
  * （Settings → Account → Personal Tokens → Create New Token、scopes: alerts:read, alerts:write, project:read, org:read）を
  * SENTRY_AUTH_TOKEN で渡す。トークンは表示しない。
  */
-import { spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { runTool, sentryInvocation } from './release-tools.mjs'
 
 const org = process.env.SENTRY_ORG || 'workspacepm'
 const project = process.env.SENTRY_PROJECT || 'ferret'
@@ -36,7 +36,8 @@ function api(path, { method = 'GET', body } = {}) {
     console.log(`[dry-run] ${method} ${path}`)
     return null
   }
-  const r = spawnSync('sentry', args, { encoding: 'utf8' })
+  // devDependencies で版を固定した sentry CLI（PATH の CLI は使わない）
+  const r = runTool(sentryInvocation(args), { encoding: 'utf8' })
   const text = r.stdout?.trim() ?? ''
   const data = text ? JSON.parse(text) : null
   if (r.status !== 0 || (data && typeof data === 'object' && 'detail' in data && Object.keys(data).length === 1)) {

@@ -14,9 +14,9 @@ describe('sanitize の layout（以前の terminalDock からの引き継ぎ）'
     expect('terminalDock' in s).toBe(false)
   })
 
-  it('layout があれば terminalDock より優先する', () => {
+  it('layout があれば terminalDock より優先する。閉じた状態は残さず表示にする（ターミナルは常に表示）', () => {
     expect(sanitize({ terminalDock: 'bottom', layout: { panels: { terminal: { dock: 'left', visible: false } } } }).layout?.panels.terminal)
-      .toEqual({ dock: 'left', visible: false })
+      .toEqual({ dock: 'left', visible: true })
   })
 
   it('未指定・壊れた値は既定（右・表示）', () => {

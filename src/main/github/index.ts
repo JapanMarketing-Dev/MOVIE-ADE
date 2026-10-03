@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFileNoFollow } from '../sessions/containment'
 import type {
   GitHubPostResult,
   GitHubPullRequest,
@@ -9,7 +9,7 @@ import type {
   GitHubStatus
 } from '@shared/github'
 import type { SessionPaths } from '../sessions/paths'
-import { gh, ghErrorMessage, run } from './gh'
+import { gh, ghError, ghErrorMessage, run } from './gh'
 import { issueFromFeedback, mapPullRequests, parseAuthStatus, parseGitRemote, pickActiveAccount } from './parse'
 import { formatNumber, t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
@@ -85,7 +85,8 @@ async function myOpenPullRequests(repo: GitHubRepoRef, folderPath: string | null
 
 async function requireRepo(folderPath: string | null): Promise<GitHubRepoRef> {
   const { repo, reason } = await githubRepo(folderPath)
-  if (!repo) throw new Error(reason ?? t('github.errors.repoUnknown'))
+  // 理由は決まった文（git の出力は入らない）。開いているフォルダの状態なので Sentry には送らない
+  if (!repo) throw new UserFacingError(reason ?? t('github.errors.repoUnknown'))
   return repo
 }
 
@@ -94,7 +95,8 @@ export async function githubReviewDraft(paths: SessionPaths, folderPath: string 
   const repo = await requireRepo(folderPath)
   let markdown: string
   try {
-    markdown = await readFile(paths.feedbackMd, 'utf8')
+    // リンク（~/.ssh などの外のファイル）と大きすぎるファイルは読まない。中身が Issue の本文として GitHub へ出るため
+    markdown = await readFileNoFollow(paths.feedbackMd, 'utf8', { maxBytes: 1024 * 1024 })
   } catch {
     throw new UserFacingError(t('github.errors.feedbackMissing'))
   }
@@ -122,7 +124,8 @@ export async function githubPostReview(folderPath: string | null, target: GitHub
     throw new UserFacingError(t('github.errors.badTarget'))
   }
   const result = await gh(args, { cwd: folderPath ?? undefined, input: text, timeoutMs: 30_000 })
-  if (result.failed) throw new Error(ghErrorMessage(result))
+  // gh の出力を含みうるので、UserFacingError として画面にだけ出す（Sentry へは送らない）
+  if (result.failed) throw ghError(result)
   const url = result.stdout.match(/https?:\/\/\S+/)?.[0] ?? repo.webUrl
   return { url }
 }

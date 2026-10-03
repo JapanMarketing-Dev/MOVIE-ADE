@@ -10,12 +10,14 @@
  * ├── summary.json         一覧用の要約（session.json を保存したときに書く）
  * ├── progress.json        指摘ごとの進み具合（Agent と利用者が書く。@shared/findingProgress）
  * ├── recording.webm       動画（既定7日で自動削除）
+ * ├── recording.trimmed.webm  何もない時間を削った版（▷ で使う。同じく7日で削除）
  * ├── work/                静止画・音声の中間ファイル（分解完了後に削除）
  * └── takes/2/ …           あとから追記した録画（sessions/takes.ts）。中は上と同じ形
  *                          （recording.webm・events.jsonl・transcript.jsonl・capture.json・work/）
  */
 import { existsSync } from 'node:fs'
-import { readdir } from 'node:fs/promises'
+import { lstat, readdir } from 'node:fs/promises'
+import { assertContained } from './containment'
 import { basename, join } from 'node:path'
 
 export const ADE_DIR = '.ferret'
@@ -43,6 +45,8 @@ export interface SessionPaths {
   /** 指摘ごとの進み具合。Agent が作業しながら書く（progress.ts） */
   progressJson: string
   recording: string
+  /** 何もない時間を削った版（trim.ts）。元の recording.webm と同じく保存期間で消える */
+  trimmedRecording: string
   workDir: string
   /** 音声チャンクの置き場所（work/audio） */
   audioDir: string
@@ -73,11 +77,19 @@ export function reviewsRoots(projectDir: string): string[] {
   return [reviewsRoot(projectDir, ADE_DIR), reviewsRoot(projectDir, LEGACY_ADE_DIR)]
 }
 
-/** 両方のフォルダにあるセッションID（重複は1つ）。まだ録画していないプロジェクトにはフォルダが無い（想定内） */
+/**
+ * 両方のフォルダにあるセッションID（重複は1つ）。まだ録画していないプロジェクトにはフォルダが無い（想定内）。
+ * リンク・ジャンクション（.ferret・reviews・レビューのフォルダ）をたどる先のものは一覧に出さない（containment.ts）
+ */
 export async function listSessionIds(projectDir: string): Promise<string[]> {
   const ids = new Set<string>()
   for (const root of reviewsRoots(projectDir)) {
-    for (const name of await readdir(root).catch(() => [] as string[])) if (isSessionId(name)) ids.add(name)
+    try { assertContained(projectDir, root) } catch { continue }
+    for (const name of await readdir(root).catch(() => [] as string[])) {
+      if (!isSessionId(name)) continue
+      const st = await lstat(join(root, name)).catch(() => null)
+      if (st?.isDirectory()) ids.add(name)
+    }
   }
   return [...ids]
 }
@@ -89,6 +101,8 @@ export async function listSessionIds(projectDir: string): Promise<string[]> {
 export function sessionPaths(projectDir: string, id: string, base?: string): SessionPaths {
   const folder = base ?? (!existsSync(join(reviewsRoot(projectDir, ADE_DIR), id)) && existsSync(join(reviewsRoot(projectDir, LEGACY_ADE_DIR), id)) ? LEGACY_ADE_DIR : ADE_DIR)
   const dir = join(reviewsRoot(projectDir, folder), id)
+  // 名前の上で中にあっても、途中のリンクで外へ向いていれば使わない（書き込み・rm -r が外へ届くため）
+  assertContained(projectDir, dir)
   const workDir = join(dir, 'work')
   return {
     id,
@@ -101,6 +115,7 @@ export function sessionPaths(projectDir: string, id: string, base?: string): Ses
     summaryJson: join(dir, 'summary.json'),
     progressJson: join(dir, 'progress.json'),
     recording: join(dir, 'recording.webm'),
+    trimmedRecording: join(dir, 'recording.trimmed.webm'),
     workDir,
     audioDir: join(workDir, 'audio'),
     framesDir: join(workDir, 'frames')
@@ -121,6 +136,7 @@ export const TAKES_DIR = 'takes'
 export function takePaths(paths: SessionPaths, n: number): SessionPaths {
   if (n <= 1) return paths
   const dir = join(paths.dir, TAKES_DIR, String(n))
+  assertContained(paths.dir, dir)
   const workDir = join(dir, 'work')
   return {
     ...paths,
@@ -130,6 +146,7 @@ export function takePaths(paths: SessionPaths, n: number): SessionPaths {
     labelJson: join(dir, 'label.json'),
     summaryJson: join(dir, 'summary.json'),
     recording: join(dir, 'recording.webm'),
+    trimmedRecording: join(dir, 'recording.trimmed.webm'),
     workDir,
     audioDir: join(workDir, 'audio'),
     framesDir: join(workDir, 'frames')

@@ -1,0 +1,52 @@
+# Adapted from Orca's .github/ISSUE_TEMPLATE/feature_request.yml (MIT, Copyright 2026 Lovecast Inc.).
+# The headings match the issue body that Ferret's in-app "Send Feedback" dialog builds (src/shared/feedback.ts).
+name: Feature request
+description: Suggest an improvement for Ferret
+title: '[Feature]: '
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! You can also send this from Ferret: **Help > Report an Issue / Send Feedback**.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What would you like?
+      description: A line is enough.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: Problem or use case
+      description: Optional. What are you trying to do, and what is missing today?
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Proposed solution
+      description: Describe the change you want to see.
+    validations:
+      required: false
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Alternatives or additional context
+      description: Workarounds, related tools, mockups, or anything else that helps.
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Optional. Ferret version, OS, CPU, language.
+    validations:
+      required: false

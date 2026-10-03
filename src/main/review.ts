@@ -1,9 +1,9 @@
 import { clipboard, nativeImage, shell } from 'electron'
-import { renderAgentPrompt, renderReplyPrompt } from '@shared/agentPrompt'
+import { renderAgentPrompt, renderNgPrompt, renderReplyPrompt } from '@shared/agentPrompt'
 import { groupByTarget } from '@shared/reviewTarget'
+import { buildRemoteFeedbackPrompt } from '@shared/projectSource'
 import { cursorRing } from './pipeline/cursor-ring'
-import { copyFile, readFile, writeFile } from 'node:fs/promises'
-import { basename, join } from 'node:path'
+import { basename, join, sep } from 'node:path'
 import type { ReviewData, ReviewEdit } from '@shared/review'
 import type { RecordingResult } from './recording/types'
 import type { Material, TranscriptSegment } from './pipeline/types'
@@ -21,16 +21,22 @@ import { t, t as translateMessage } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import { DEFAULT_PASS_THRESHOLD } from '@shared/decision'
 import { currentSettings } from './settings'
-import { appendEvents, applyEdits, frameFilePath, isSessionId, loadSession, readEvents, readLabel, readProgress, saveSession, sessionPaths, takePaths, updateProgress,
+import { appendEvents, applyEdits, frameFilePath, isSessionId, loadSession, readEvents, readLabel, readProgress, saveSession, sessionPaths, takePaths, updateProgress, updateProgressWith,
   writeFeedbackMarkdown, type SessionPaths, type SessionRecord } from './sessions'
-import { sentPatch, type ProgressMap } from '@shared/findingProgress'
+import { listTakes } from './sessions/takes'
+import { hasTrimFailure, videoDuration as videoDurationOf, withTrim, withTrimFailure } from './sessions/trim'
+import { keptSpans, type TrimCut } from '@shared/trim'
+import { reportHandled } from '@shared/report'
+import { randomBytes } from 'node:crypto'
+import { assertContained, readFileNoFollow, writeFileNoFollow } from './sessions/containment'
+import { applyProgress, applyVerdict, pendingIds, queuedIds, recentComments, sentPatch, type ProgressMap, type ProgressPatchValue, type ReviewVerdict } from '@shared/findingProgress'
 import type { ReviewProgressPatch } from '@shared/review'
 
 export async function finishReview(paths: SessionPaths, result: RecordingResult,
   transcript: TranscriptSegment[], warnings: string[], twoSpeakers: boolean): Promise<ReviewData> {
   // 録画を始めた時点の登録URL（index.ts が capture.json に控える）。環境のラベルに使う
   // 古い録画には capture.json が無い（想定内）
-  const capture = JSON.parse(await readFile(join(paths.dir, 'capture.json'), 'utf8').catch(() => '{}')) as { urlPresets?: unknown }
+  const capture = parseSmallJson(await readFileNoFollow(join(paths.dir, 'capture.json'), 'utf8', { maxBytes: 1024 * 1024 }).catch(() => '{}'))
   const urlPresets = Array.isArray(capture.urlPresets)
     ? capture.urlPresets.filter((p): p is { id: string; label: string; url: string } =>
       !!p && typeof p.id === 'string' && typeof p.label === 'string' && typeof p.url === 'string')
@@ -62,25 +68,87 @@ export async function loadReviewAt(paths: SessionPaths): Promise<ReviewData> {
   if (!record) return recoverReview(paths)
   const { existsSync } = await import('node:fs')
   const images: Record<string, string> = {}
-  for (const name of record.document.items.flatMap((item) => item.images)) {
+  // 画面に渡す画像は、枚数・1枚の大きさ・合計に上限を置く（細工した巨大な PNG を全部 base64 にしない。limits.ts）。
+  // 超えた分は出さない（画像の無い指摘として表示される）
+  const { SESSION_LIMITS } = await import('./sessions/limits')
+  let total = 0
+  for (const name of new Set(record.document.items.flatMap((item) => item.images))) {
     if (!/^\.\/\d+\.png$/.test(name)) continue
-    // 消された画像は出さないだけ（想定内）
-    const bytes = await readFile(join(paths.dir, basename(name))).catch(() => null)
-    if (bytes) images[name] = `data:image/png;base64,${bytes.toString('base64')}`
+    if (Object.keys(images).length >= SESSION_LIMITS.images || total >= SESSION_LIMITS.imagesTotalBytes) break
+    // 消された画像・大きすぎる画像は出さないだけ（想定内）。末端がリンクの画像は読まない（外のファイルを画面へ渡さない）
+    const bytes = await readFileNoFollow(join(paths.dir, basename(name)), null, { maxBytes: Math.min(SESSION_LIMITS.imageBytes, SESSION_LIMITS.imagesTotalBytes - total) }).catch(() => null)
+    if (!bytes) continue
+    total += bytes.length
+    images[name] = `data:image/png;base64,${bytes.toString('base64')}`
   }
   const progress = await readProgress(paths, record.document.items.map((it) => it.id))
   // 追記した録画があれば、録画ごとの動画と時刻の範囲を渡す（▷ で正しい録画の正しい時刻を開く）
-  const { listTakes } = await import('./sessions/takes')
   const takes = listTakes(record)
   const { sentAt } = await readLabel(paths)
   return { id: paths.id, document: record.document, images, progress, canUndo: record.edits.length > 0 && !!record.originalDocument, canOrganize: record.edits.length === 0 && record.document.items.length > 0 && !record.document.organizedByLlm, ...(existsSync(paths.recording) ? { videoUrl: `ade-media://review/${paths.id}/recording.webm` } : {}), warnings: record.captureGaps ?? [],
-    ...(takes.length > 1 ? { takes: takes.map((take) => ({ ...take, ...(existsSync(takePaths(paths, take.n).recording) ? { videoUrl: takeVideoUrl(paths.id, take.n) } : {}) })) } : {}),
-    ...(sentAt ? { sentAt } : {}) }
+    // 何もない時間を削った版ができていれば、▷ はそちらを開く（削った区間で再生位置を読み替える）。無ければ元の動画
+    ...(takes.length > 1 || takes.some((take) => take.trim) ? { takes: takes.map(({ trim, ...take }) => {
+      const files = takePaths(paths, take.n)
+      if (trim && existsSync(files.trimmedRecording)) return { ...take, videoUrl: takeVideoUrl(paths.id, take.n, true), cuts: trim.cuts }
+      return { ...take, ...(existsSync(files.recording) ? { videoUrl: takeVideoUrl(paths.id, take.n) } : {}) }
+    }) } : {}),
+    ...(sentAt ? { sentAt } : {}),
+    ...(hasTrimFailure(record) ? { trimSkipped: true } : {}) }
 }
 
 /** 録画の動画の URL（index.ts の ade-media が返す）。1 本目はレビュー直下の recording.webm */
-function takeVideoUrl(id: string, n: number): string {
-  return n <= 1 ? `ade-media://review/${id}/recording.webm` : `ade-media://review/${id}/takes/${n}/recording.webm`
+function takeVideoUrl(id: string, n: number, trimmed = false): string {
+  const name = trimmed ? 'recording.trimmed.webm' : 'recording.webm'
+  return n <= 1 ? `ade-media://review/${id}/${name}` : `ade-media://review/${id}/takes/${n}/${name}`
+}
+
+/** 削る処理は1本ずつ（非表示ウィンドウで実時間かかるので、同時に何本も動かさない） */
+let trimQueue: Promise<unknown> = Promise.resolve()
+
+/**
+ * 録画 n（1 が最初の録画）の何もない時間を削った版を、裏で作る（指摘はもう出ている）。
+ * 失敗しても元の動画のまま使えるので、知らせずに記録だけ残す。できたら session.json に削った区間を書く
+ */
+export function trimReviewTake(review: SessionPaths, n: number, cuts: TrimCut[], sourceDurationMs: number): Promise<boolean> {
+  const run = trimQueue.catch(() => {}).then(async () => {
+    const files = takePaths(review, n)
+    const { renderTrimmedVideo } = await import('./trimVideo')
+    const { rename, rm } = await import('node:fs/promises')
+    // 途中のファイルは毎回別の名前にし、排他で作る（trimVideo.ts）。先回りのリンクへ書かない
+    const part = `${files.trimmedRecording}.${randomBytes(4).toString('hex')}.part`
+    try {
+      await renderTrimmedVideo(takeVideoUrl(review.id, n), part, keptSpans(sourceDurationMs, cuts))
+      await rename(part, files.trimmedRecording)
+    } catch (err) {
+      await rm(part, { force: true })
+      reportHandled(err, { area: 'review', op: 'trim recording' })
+      // 元の動画のまま使う（▷ は元の位置を開く）。削らなかったことは session.json に残し、画面に一度だけ知らせる
+      await inReviewQueue(review, async () => {
+        const record = await loadSession(review)
+        if (record) await saveSession(review, withTrimFailure(record, n, err))
+      }).catch((e: unknown) => reportHandled(e, { area: 'review', op: 'record trim failure' }))
+      return false
+    }
+    // 編集・整理と同じ順番待ちに並んで、削った区間を session.json に書く
+    return inReviewQueue(review, async () => {
+      const record = await loadSession(review)
+      if (!record) return false
+      const next = withTrim(record, n, cuts, sourceDurationMs)
+      await saveSession(review, next)
+      await writeFeedbackMarkdown(review, renderFeedbackMarkdown(next.document, feedbackOptions(review, next)))
+      return true
+    })
+  })
+  trimQueue = run
+  return run
+}
+
+/** 編集・整理と同じ順番待ちに並べて動かす（同じ session.json を書き換えるもの） */
+async function inReviewQueue<T>(review: SessionPaths, fn: () => Promise<T>): Promise<T> {
+  // 前の処理の失敗はその呼び出し側へ返し済み（順番待ちに使うだけ。想定内）
+  const write = (queues.get(review.dir) ?? Promise.resolve()).catch(() => {}).then(fn)
+  queues.set(review.dir, write)
+  try { return await write } finally { if (queues.get(review.dir) === write) queues.delete(review.dir) }
 }
 
 /**
@@ -98,8 +166,13 @@ export async function prepareReviewTake(projectDir: string, id: string): Promise
   let n = nextTakeNumber(record)
   while (existsSync(takePaths(review, n).dir)) n++
   const paths = takePaths(review, n)
+  // takes/ は確かめてから作り、録画のフォルダ（takes/<n>）は排他で作る（先回りのリンクの中へ録らない）
+  await mkdir(join(review.dir, 'takes'), { recursive: true })
+  assertContained(review.dir, join(review.dir, 'takes'))
+  await mkdir(paths.dir)
   await mkdir(paths.audioDir, { recursive: true })
   await mkdir(paths.framesDir, { recursive: true })
+  assertContained(review.dir, paths.framesDir)
   return { review, n, paths }
 }
 
@@ -138,7 +211,7 @@ async function persist(paths: SessionPaths, record: SessionRecord): Promise<void
       frame = nativeImage.createFromBitmap(cursorRing(frame.toBitmap(), size.width, size.height, plan.frame.cursor.x, plan.frame.cursor.y), size)
     }
     const width = Math.min(frame.getSize().width, 1568)
-    await writeFile(join(paths.dir, basename(plan.name)), frame.resize({ width }).toPNG())
+    await writeFileNoFollow(join(paths.dir, basename(plan.name)), frame.resize({ width }).toPNG())
   }
   await saveSession(paths, record)
   await writeFeedbackMarkdown(paths, renderFeedbackMarkdown(record.document, feedbackOptions(paths, record)))
@@ -146,7 +219,12 @@ async function persist(paths: SessionPaths, record: SessionRecord): Promise<void
 
 /** feedback.md の書き出しの設定（受け入れ確認の節・進み具合のファイル） */
 function feedbackOptions(paths: SessionPaths, record: SessionRecord) {
-  return { captureGaps: record.captureGaps ?? [], decision: feedbackDecisionOptions(paths), progressFile: paths.progressJson }
+  // 動画の長さは、削った版があれば削ったあとの長さ（元の長さも併記する）。録画と録画のすき間は数えない
+  const videoDuration = videoDurationOf(record, listTakes(record)[0]!.durationMs)
+  // AFTER を撮る localhost の URL は、録画時の確認先に加えて今のプロジェクトの確認先からも探す（あとから local を登録した場合）
+  const project = currentSettings().projects.find((p) => paths.dir.startsWith(`${p.folderPath}${sep}`))
+  const urlPresets = [...(record.document.meta.urlPresets ?? []), ...(project?.urls ?? [])]
+  return { captureGaps: record.captureGaps ?? [], decision: feedbackDecisionOptions(paths), progressFile: paths.progressJson, reviewDir: paths.dir, urlPresets, videoDuration }
 }
 
 /**
@@ -157,8 +235,59 @@ export async function setReviewProgress(paths: SessionPaths, patch: ReviewProgre
   const record = await loadSession(paths)
   if (!record) throw new UserFacingError(t('review.errors.notFound'))
   const ids = record.document.items.map((it) => it.id)
-  const known = Object.fromEntries(Object.entries(patch && typeof patch === 'object' ? patch : {}).filter(([id]) => ids.includes(id)))
-  if (Object.keys(known).length) await updateProgress(paths, known)
+  const known = Object.entries(patch && typeof patch === 'object' ? patch : {}).filter(([id]) => ids.includes(id))
+  // 画面から done にするのは人の OK と同じ（done にできるのは人だけ。記録が無い done は確認待ちとして読まれる）
+  const isDone = (v: ProgressPatchValue) => (typeof v === 'object' && v ? v.status : v) === 'done'
+  if (known.length) {
+    await updateProgressWith(paths, (current) => {
+      const at = new Date().toISOString()
+      const next = applyProgress(current, Object.fromEntries(known.filter(([, v]) => !isDone(v))))
+      for (const [id] of known.filter(([, v]) => isDone(v))) next[id] = applyVerdict(next[id], 'ok', undefined, at)
+      return next
+    })
+  }
+  return readProgress(paths, ids)
+}
+
+/**
+ * 人の判断（OK / NG / Comment）を記録する。OK で完了、NG で対応中に戻して送り直し待ち（queued）、Comment は状態を変えない。
+ * NG はコメントが必須（Agent に何を直すか伝えるため）
+ */
+export async function recordReviewVerdict(paths: SessionPaths, itemId: string, verdict: ReviewVerdict, body?: string): Promise<ProgressMap> {
+  const record = await loadSession(paths)
+  if (!record) throw new UserFacingError(t('review.errors.notFound'))
+  const ids = record.document.items.map((it) => it.id)
+  if (!ids.includes(itemId)) throw new UserFacingError(t('review.errors.findingNotFound'))
+  if (verdict !== 'ok' && !body?.trim()) throw new UserFacingError(t('review.verdict.commentRequired'))
+  await updateProgressWith(paths, (current) => ({ ...current, [itemId]: applyVerdict(current[itemId], verdict, body, new Date().toISOString()) }))
+  return readProgress(paths, ids)
+}
+
+/**
+ * NG を付けた指摘を、コメントつきで Agent へ送り直す1行（「NG をまとめて送る」と、1件だけ送る操作）。
+ * itemIds を省くと queued の指摘すべて。番号は feedback.md の見出しと同じ数え方。送る指摘が無ければ投げる
+ */
+export async function ngResendInstruction(paths: SessionPaths, itemIds?: string[]): Promise<{ text: string; ids: string[] }> {
+  const record = await loadSession(paths)
+  if (!record) throw new UserFacingError(t('review.errors.notFound'))
+  const progress = await readProgress(paths)
+  const included = record.document.items.filter((it) => it.include)
+  const ordered = groupByTarget(included, (it) => it.context.url, record.document.meta.urlPresets ?? []).flatMap((g) => g.items)
+  const wanted = new Set(itemIds ?? queuedIds(ordered, progress))
+  const items = ordered.flatMap((it, i) => {
+    const comment = recentComments(progress[it.id], 1)[0]?.text
+    return wanted.has(it.id) && comment ? [{ n: i + 1, id: it.id, comment }] : []
+  })
+  if (!items.length) throw new UserFacingError(t('review.verdict.nothingToResend'))
+  await refreshFeedbackMarkdown(paths)
+  return { text: renderNgPrompt({ relativeDir: paths.relativeDir, feedbackMd: paths.feedbackMd }, items, undefined, decisionPromptOptions()), ids: items.map((it) => it.id) }
+}
+
+/** NG を送り直したあと。送り直し待ち（queued）を外して対応中にする（前の AFTER・スコア・記録は残す） */
+export async function markResent(paths: SessionPaths, itemIds: string[]): Promise<ProgressMap> {
+  const record = await loadSession(paths)
+  const ids = record?.document.items.map((it) => it.id) ?? []
+  await updateProgress(paths, Object.fromEntries(itemIds.filter((id) => ids.includes(id)).map((id) => [id, 'in_progress' as const])))
   return readProgress(paths, ids)
 }
 
@@ -217,12 +346,36 @@ function feedbackDecisionOptions(paths: SessionPaths): { threshold: number; dir:
  */
 export async function refreshFeedbackMarkdown(paths: SessionPaths): Promise<void> {
   const record = await loadSession(paths)
-  if (record) await writeFeedbackMarkdown(paths, renderFeedbackMarkdown(record.document, feedbackOptions(paths, record)))
+  // 人のコメント（NG・Comment）も各指摘に載せる
+  if (record) await writeFeedbackMarkdown(paths, renderFeedbackMarkdown(record.document, { ...feedbackOptions(paths, record), progress: await readProgress(paths) }))
 }
 
-export async function copyReview(paths: SessionPaths, template?: string | null): Promise<void> {
+/**
+ * 「Agentへ送信」の直前。送るのは未対応（todo）で送る対象の指摘だけ（done・in_progress・needs_human は送らない）。
+ * feedback.md をその指摘だけを詳しく書いた形で書き直し、残りは「今回の依頼に含まない（やり直さない）」の節に載せる。
+ * 送る指摘のIDを返す。0件なら feedback.md は書き換えない（呼び出し側が送らずに理由を返す）
+ */
+export async function prepareSendFeedback(paths: SessionPaths): Promise<string[]> {
+  const record = await loadSession(paths)
+  if (!record) return []
+  const progress = await readProgress(paths)
+  const ids = pendingIds(record.document.items, progress)
+  if (ids.length) await writeFeedbackMarkdown(paths, renderFeedbackMarkdown(record.document, { ...feedbackOptions(paths, record), focusIds: ids, progress }))
+  return ids
+}
+
+export async function copyReview(paths: SessionPaths, template?: string | null, remote = false): Promise<void> {
   await refreshFeedbackMarkdown(paths)
-  clipboard.writeText(reviewInstruction(paths, template))
+  clipboard.writeText(remote ? await remoteReviewInstruction(paths) : reviewInstruction(paths, template))
+}
+
+/**
+ * SSH のプロジェクトで送る本文。リモートの Agent はローカルの feedback.md を読めないので、中身をそのまま貼る
+ * （src/shared/projectSource.ts の buildRemoteFeedbackPrompt）。画像は開けない旨も前置きに書く。
+ */
+export async function remoteReviewInstruction(paths: SessionPaths): Promise<string> {
+  const markdown = await readFileNoFollow(paths.feedbackMd, 'utf8')
+  return buildRemoteFeedbackPrompt(t('review.remote.intro'), markdown, t('review.remote.truncated'))
 }
 export async function revealReview(paths: SessionPaths): Promise<void> {
   shell.showItemInFolder(paths.feedbackMd)
@@ -305,20 +458,25 @@ async function recoverReview(paths: SessionPaths): Promise<ReviewData> {
   const { existsSync } = await import('node:fs')
   const broken = existsSync(paths.sessionJson)
   if (!info.worthRecovering) throw new Error(broken ? t('review.errors.broken') : t('review.errors.nothingRecoverable'))
-  // 壊れた session.json は上書きで失わないよう、別名で残してから作り直す
-  if (broken) await copyFile(paths.sessionJson, `${paths.sessionJson}.broken`)
-  // 記録の各ファイルは無いことがあり、途中で切れた行は飛ばす（中断した録画の復元。想定内）
-  const lines = async <T>(name: string): Promise<T[]> => (await readFile(join(paths.dir, name), 'utf8').catch(() => '')).split('\n').flatMap((line) => {
-    try { return line.trim() ? [JSON.parse(line) as T] : [] } catch { return [] }
-  })
+  // 壊れた session.json は上書きで失わないよう、別名へ移してから作り直す（読み込まずに移す。巨大なものもある）
+  if (broken) {
+    const { rename } = await import('node:fs/promises')
+    await rename(paths.sessionJson, `${paths.sessionJson}.broken`)
+  }
+  // 記録の各ファイルは無いことがあり、途中で切れた行は飛ばす（中断した録画の復元。想定内）。
+  // 行数・1行の長さ・大きさの上限付きで読み、形の合わない行は捨てる（limits.ts）
+  const { readJsonLines, maxOf } = await import('./sessions/limits')
   const events = await readEvents(paths)
-  const frames = await lines<import('./pipeline/types').FrameRef>('frames.jsonl')
-  const transcript = await lines<TranscriptSegment>('transcript.jsonl')
-  const meta = JSON.parse(await readFile(join(paths.dir, 'capture.json'), 'utf8').catch(() => '{}')) as { startedAt?: string; twoSpeakers?: boolean }
-  const durationMs = Math.max(0, ...events.map((e) => e.t), ...frames.map((f) => f.t), ...transcript.map((s) => s.t1))
-  return finishReview(paths, { startedAt: meta.startedAt ?? startedAtFromId(paths.id), durationMs, videoPath: paths.recording,
+  const frames = (await readJsonLines<import('./pipeline/types').FrameRef>(join(paths.dir, 'frames.jsonl')))
+    .filter((f) => !!f && Number.isFinite(f.t) && typeof f.path === 'string')
+  const transcript = (await readJsonLines<TranscriptSegment>(join(paths.dir, 'transcript.jsonl')))
+    .filter((s) => !!s && Number.isFinite(s.t0) && Number.isFinite(s.t1) && typeof s.text === 'string')
+  const meta = parseSmallJson(await readFileNoFollow(join(paths.dir, 'capture.json'), 'utf8', { maxBytes: 1024 * 1024 }).catch(() => '{}'))
+  // 可変長引数（Math.max(...xs)）は、件数が引数の上限を超えると投げる。ループで求める
+  const durationMs = maxOf([...events.map((e) => e.t), ...frames.map((f) => f.t), ...transcript.map((s) => s.t1)], 0)
+  return finishReview(paths, { startedAt: typeof meta.startedAt === 'string' ? meta.startedAt : startedAtFromId(paths.id), durationMs, videoPath: paths.recording,
     videoBytes: 0, frames, events, audioSamples: { mic: 0, system: 0 }, warnings: [] }, transcript,
-    [t('review.recoveredWarning')], meta.twoSpeakers ?? false)
+    [t('review.recoveredWarning')], meta.twoSpeakers === true)
 }
 
 export async function restoreDropped(paths: SessionPaths, t: number): Promise<ReviewData> {
@@ -342,4 +500,14 @@ export async function restoreDropped(paths: SessionPaths, t: number): Promise<Re
   })
   queues.set(paths.dir, work)
   try { return await work } finally { if (queues.get(paths.dir) === work) queues.delete(paths.dir) }
+}
+
+/** 小さな JSON（capture.json）を読む。壊れていれば空（想定内。古い録画には無い） */
+function parseSmallJson(text: string): Record<string, unknown> {
+  try {
+    const value: unknown = JSON.parse(text)
+    return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+  } catch {
+    return {}
+  }
 }

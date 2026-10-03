@@ -45,7 +45,7 @@ describe('OnboardingStore（「始める」が保存の成否に関わらず閉�
       ? new Promise<unknown>((resolve) => { releaseFirst = () => resolve({ lastStep: 'finish' }) })
       : Promise.resolve(null))
     const h = harness(save)
-    const first = h.store.apply(stepPatch(5))
+    const first = h.store.apply(stepPatch(6))
     const second = h.store.apply(completePatch(NOW))
     expect(h.open()).toBe(false)
     // 1件目の保存が始まるのを待ってから返す
@@ -54,7 +54,7 @@ describe('OnboardingStore（「始める」が保存の成否に関わらず閉�
     await Promise.all([first, second])
     expect(h.open()).toBe(false)
     // 保存は送った順に行う
-    expect(save.mock.calls.map(([p]) => p)).toEqual([stepPatch(5), completePatch(NOW)])
+    expect(save.mock.calls.map(([p]) => p)).toEqual([stepPatch(6), completePatch(NOW)])
   })
 
   it('もう一度セットアップ → 始める を2回続けても、そのたびに開いて閉じる', async () => {
@@ -62,7 +62,7 @@ describe('OnboardingStore（「始める」が保存の成否に関わらず閉�
     for (let i = 0; i < 2; i++) {
       await h.store.apply(reopenPatch())
       expect(h.open()).toBe(true)
-      await h.store.apply(stepPatch(5))
+      await h.store.apply(stepPatch(6))
       expect(h.open()).toBe(true)
       await h.store.apply(completePatch(NOW))
       expect(h.open()).toBe(false)

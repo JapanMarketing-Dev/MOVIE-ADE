@@ -7,7 +7,8 @@ import {
   type StarPromptContext,
   type StarPromptMode,
   type StarPromptMoment,
-  type StarPromptState
+  type StarPromptState,
+  shouldAskFeedback
 } from '@shared/starPrompt'
 
 /**
@@ -32,6 +33,8 @@ export interface StarPromptDeps {
   openRepo: () => Promise<void>
   /** 画面にトーストを出す。届けられなければ false */
   show: (mode: StarPromptMode) => boolean
+  /** 「使いづらいところはありましたか？」を出す。届けられなければ false */
+  askFeedback?: () => boolean
 }
 
 export class StarPromptService {
@@ -53,6 +56,7 @@ export class StarPromptService {
   async record(moment: StarPromptMoment): Promise<boolean> {
     const counted = countEvent(this.state, moment)
     this.deps.setState(counted)
+    if (moment === 'first-send') this.maybeAskFeedback()
     if (!isMoment(counted, moment) || this.visible || this.evaluating) return false
     if (blockedReason(counted, { ...this.deps.context(), now: this.now() })) return false
     this.evaluating = true
@@ -115,6 +119,17 @@ export class StarPromptService {
     } catch {
       return 'failed'
     }
+  }
+
+  /**
+   * フィードバックの声かけ（送信が 3 回に達したら一度だけ）。star のお願いが出ている間は待ち、次の送信で出す。
+   * 出した時点で記録し、断られても答えられなくても二度と出さない
+   */
+  private maybeAskFeedback(): void {
+    if (!this.deps.askFeedback || this.visible || this.evaluating) return
+    const state = this.state
+    if (!shouldAskFeedback(state, this.deps.context())) return
+    if (this.deps.askFeedback()) this.deps.setState({ ...state, feedbackAsked: true })
   }
 
   private markDone(): void {

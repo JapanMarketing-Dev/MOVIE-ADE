@@ -17,10 +17,39 @@
  *
  * userData は製品名ではなく ade-movie に固定している（src/main/index.ts）。製品名を変えても既存のデータは残る。
  */
-const { chmodSync, existsSync, readdirSync } = require('node:fs')
+const { chmodSync, existsSync, readdirSync, rmSync } = require('node:fs')
+const { execFileSync } = require('node:child_process')
+
+const MAC_IDENTITY = process.env.FERRET_MAC_IDENTITY || null
+const MAC_NOTARIZE = Boolean(
+  MAC_IDENTITY && process.env.APPLE_API_KEY && process.env.APPLE_API_KEY_ID && process.env.APPLE_API_ISSUER
+)
 const { join } = require('node:path')
 
 const localElectronDist = join(__dirname, 'node_modules', 'electron', 'dist')
+
+/*
+ * Windows のインストーラ（NSIS）の中のアーカイブで、ARM64 の分岐フィルタ（7z のメソッド 0A）を使わせない。
+ * electron-builder が使う 7-Zip 24 は、ARM64 の exe / dll に自動でこのフィルタを掛ける。インストーラが展開に使う
+ * nsis7z.dll はこれを読めず、エラーも出さずにそのファイルを飛ばす（win-arm64 版で Ferret.exe や ffmpeg.dll が
+ * 入らなかった。vm-qa が Windows 11 ARM64 で確かめた）。フィルタを BCJ（x86 用。nsis7z が読める）に固定する。
+ * ARM64 のファイルには効かないので圧縮率が少し落ちるだけで、中身は変わらない。
+ * electron-builder は 7z を呼ぶたびにこの環境変数を読む（app-builder-lib/out/targets/archive.js）。
+ * scripts/check-nsis-archive.mjs が、作ったインストーラにこのフィルタが残っていないかを確かめる。
+ */
+process.env.ELECTRON_BUILDER_7Z_FILTER = 'BCJ'
+
+/**
+ * node-pty から、このアプリの OS・CPU で使わないものを外す（配布物を小さくし、別の CPU 用の exe を入れない）。
+ *   - prebuilds/ は <os>-<cpu> の1つだけを残す（Linux は prebuilds を使わず build/Release を使う）
+ *   - third_party/（conpty のソース側の写し）は使わない。Windows の conpty.dll は prebuilds/<os>-<cpu>/conpty/ から読む
+ */
+function pruneNodePty(ptyDir, platform, arch) {
+  for (const dir of listDirs(join(ptyDir, 'prebuilds'))) {
+    if (!dir.endsWith(`${platform}-${arch}`)) rmSync(dir, { recursive: true, force: true })
+  }
+  rmSync(join(ptyDir, 'third_party'), { recursive: true, force: true })
+}
 
 /** electron-builder の Arch の番号（ia32=0, x64=1, armv7l=2, arm64=3, universal=4） */
 const ARCH_NAME = { 0: 'ia32', 1: 'x64', 2: 'armv7l', 3: 'arm64', 4: 'universal' }
@@ -105,22 +134,41 @@ module.exports = {
    * Orca由来: ~/bench/orca/config/electron-builder.config.cjs の afterPack（実行権限を揃える処理）（MIT）
    */
   afterPack: async (context) => {
-    if (context.electronPlatformName === 'win32') return
     const resources =
       context.electronPlatformName === 'darwin'
         ? join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`, 'Contents', 'Resources')
         : join(context.appOutDir, 'resources')
     const ptyDir = join(resources, 'app.asar.unpacked', 'node_modules', 'node-pty')
+    // macOS の ad-hoc 署名より前に外す（署名のあとでファイルを消すと、署名が壊れる）
+    pruneNodePty(ptyDir, context.electronPlatformName, ARCH_NAME[context.arch])
+    if (context.electronPlatformName === 'win32') return
     for (const dir of [join(ptyDir, 'build', 'Release'), ...listDirs(join(ptyDir, 'prebuilds'))]) {
       const helper = join(dir, 'spawn-helper')
       if (existsSync(helper)) chmodSync(helper, 0o755)
     }
+    /*
+     * macOS: 未署名（identity: null）のままだと、Electron 本体のリンカ署名だけが残り、アプリ全体の署名が壊れる
+     * （codesign --verify で「code has no resources but signature indicates they must be present」）。
+     * ダウンロードした（quarantine の付いた）アプリを Apple silicon で開くと「壊れているため開けません」になり、
+     * 「このまま開く」の道も出ない。ad-hoc 署名（費用なし）をアプリ全体に付け直して、ほかの未署名アプリと同じ
+     * 「開発元を確認できません」の扱い（システム設定から開ける）にする。Developer ID で署名するときは electron-builder が署名する。
+     */
+    if (context.electronPlatformName === 'darwin' && !MAC_IDENTITY) {
+      const app = join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`)
+      execFileSync('codesign', ['--force', '--deep', '--sign', '-', app], { stdio: 'inherit' })
+      execFileSync('codesign', ['--verify', '--deep', '--strict', app], { stdio: 'inherit' })
+    }
   },
   mac: {
     icon: 'build/icon.icns',
-    identity: null,
-    hardenedRuntime: false,
-    notarize: false,
+    // Developer ID の署名と公証は、FERRET_MAC_IDENTITY と APPLE_API_KEY / APPLE_API_KEY_ID / APPLE_API_ISSUER が
+    // あるときだけ（scripts/build-release.sh が ~/.ferret-signing/env から読む。値はリポジトリに入れない）。
+    // 無ければ未署名のまま作り、afterPack で ad-hoc 署名を付ける
+    identity: MAC_IDENTITY,
+    hardenedRuntime: Boolean(MAC_IDENTITY),
+    entitlements: 'build/entitlements.mac.plist',
+    entitlementsInherit: 'build/entitlements.mac.plist',
+    notarize: MAC_NOTARIZE,
     category: 'public.app-category.developer-tools',
     extendInfo: {
       NSMicrophoneUsageDescription: 'Ferret records your voice during a review and saves it with the findings on screen.'

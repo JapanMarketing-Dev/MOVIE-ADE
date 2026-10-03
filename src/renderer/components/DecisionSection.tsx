@@ -7,6 +7,7 @@ import {
   DEFAULT_PASS_THRESHOLD,
   applyDecisionPreset,
   decisionModelSupportsImages,
+  decisionSetupGuide,
   decisionTerminalEnvChanged,
   type DecisionAuthScheme,
   type DecisionImageFormat,
@@ -17,7 +18,8 @@ import { formatHeaderLines, parseHeaderLines } from '@shared/aiProviders'
 import type { SttAvailability } from '@shared/types'
 import { Field, useToast } from '../ui'
 import { useT } from '../lib/i18n'
-import { KeyField } from './AiProviderFields'
+import { AskAgent, CheckButton, GuideLinks, KeyField } from './AiProviderFields'
+import { RECOMMENDED_DECISION_PRESET } from '../onboarding/onboardingFlowState'
 import '../styles/decision.css'
 
 /** Agent が実行する依頼（設定の画面に見せる例。実際の手順は feedback.md の受け入れ確認の節） */
@@ -29,7 +31,7 @@ const CURL_PREVIEW = `curl -sS -X POST "$FERRET_DECISION_URL" \\
 
 /**
  * 設定の「判定モデル」の節。利用者が自分の System One 互換 API を入れる。
- * Ferret はここから API を呼ばない（接続の確認も無い）。有効にすると:
+ * Ferret が自分から API を呼ぶのは「接続を確かめる」を押したときの1回だけ（合否の判定はしない）。有効にすると:
  *   - Agent のターミナルにローカル中継の URL・モデル・画像の可否を環境変数で渡す（キーは渡さない）
  *   - feedback.md と指示文に「全件が合格するまで判定を繰り返す」手順を足す
  * プリセットは欄を埋めるだけで、どの値も書き換えられる。保存は自分で IPC へ送る（OrganizeSection と同じ）。
@@ -78,6 +80,7 @@ export function DecisionSection({ recording = false }: { recording?: boolean }) 
   const images = prefs.images ?? def.images
   const imageFormat = prefs.imageFormat ?? def.imageFormat
   const authScheme = prefs.authScheme ?? def.authScheme
+  const guide = decisionSetupGuide(prefs, prefs.preset === 'custom' ? t('decision.backend.custom') : def.label)
   const presetLabel = (id: DecisionPreset) => (id === 'custom' ? t('decision.backend.custom') : DECISION_PRESETS[id].label)
   const listId = 'decision-models'
   const num = (v: string) => (v.trim() === '' ? undefined : Number(v))
@@ -99,9 +102,14 @@ export function DecisionSection({ recording = false }: { recording?: boolean }) 
           setHeaderText('')
           save(next, 0)
         }}>
-        {DECISION_PRESET_IDS.map((id) => <option key={id} value={id}>{presetLabel(id)}</option>)}
+        {/* おすすめ（Cloudflare Workers AI）には、初回セットアップと同じ印を付ける */}
+        {DECISION_PRESET_IDS.map((id) => <option key={id} value={id}>
+          {id === RECOMMENDED_DECISION_PRESET ? t('onboarding.decision.recommendedOption', { label: presetLabel(id) }) : presetLabel(id)}</option>)}
       </select></span></label>
     <p className="st-note">{t('decision.settings.presetNote')}</p>
+    {/* 「キーを作る ↗」「Account ID はここ ↗」などのリンク（外部ブラウザ）と、Agent に設定を頼む指示文（値は入らない）。@shared/setupGuide */}
+    <GuideLinks guide={guide} kinds={['install', 'key', 'id', 'docs']} />
+    <AskAgent guide={guide} target={{ purpose: t('decision.setup.purpose'), endpointPath: 'decision', select: { path: 'decision.preset', value: prefs.preset } }} disabled={recording} />
 
     <label className="st-row"><span className="st-row__label">{t('decision.settings.endpoint')}</span>
       <Field mono aria-label={t('decision.settings.endpoint')} placeholder={def.endpoint || 'https://…/v1/systemone'} autoComplete="off" spellCheck={false}
@@ -158,7 +166,7 @@ export function DecisionSection({ recording = false }: { recording?: boolean }) 
         <Field mono aria-label={t('decision.settings.apiKeyEnv')} placeholder={def.apiKeyEnv ?? 'MY_API_KEY'} autoComplete="off" spellCheck={false}
           value={prefs.apiKeyEnv ?? ''} disabled={recording} onChange={(e) => patch({ apiKeyEnv: e.target.value || undefined })} /></label>
       <p className="st-note">{t('decision.settings.apiKeyEnvHint')}</p>
-      {available && def.vendor && <KeyField key={`key-${def.vendor}`} vendor={def.vendor} label={presetLabel(prefs.preset)} optional
+      {available && def.vendor && <KeyField key={`key-${def.vendor}`} vendor={def.vendor} label={presetLabel(prefs.preset)} envVar={prefs.apiKeyEnv} optional
         placeholder="" available={available} disabled={recording} onChanged={() => void reload()} />}
     </>}
 
@@ -184,6 +192,9 @@ export function DecisionSection({ recording = false }: { recording?: boolean }) 
         <p className="st-note">{t('decision.settings.pricingHint')}</p>
       </div>
     </details>
+
+    {/* 押したときだけ1回送る（中継と同じ接続先・キー・ヘッダー）。合否の判定はしない */}
+    <CheckButton disabled={recording} note={t('decision.test.note')} onCheck={() => window.ade.invoke('decision:testConnection', prefs)} />
 
     <h3 className="st-page__subheading">{t('decision.settings.curlTitle')}</h3>
     <pre className="st-decision__cmd" data-testid="decision-curl"><code>{CURL_PREVIEW}</code></pre>

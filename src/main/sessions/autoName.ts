@@ -18,6 +18,7 @@
  */
 import { translate, type SupportedLocale } from '@shared/i18n'
 import { isSilencePhrase, stripSoundTags } from '../pipeline/stt/hallucination'
+import { oneLine } from '../pipeline/mdSafe'
 
 /** 自動の名前の長さの上限。一覧の見出しなので短く */
 export const AUTO_NAME_MAX = 60
@@ -29,12 +30,12 @@ export interface AutoNameItem {
   title: string
   request: string
   quotes: Array<{ text: string }>
-  context?: { element?: { text?: string; sensitive?: boolean } }
 }
 
 /** 意味のある本文だけを返す。効果音のタグ・無音への決まり文句だけなら空文字 */
 export function meaningfulText(text: string | undefined): string {
-  const stripped = stripSoundTags(text ?? '')
+  // 制御文字・改行も除く（一覧の見出しと検索の本文に入る）
+  const stripped = stripSoundTags(oneLine(text))
   if (!stripped || isSilencePhrase(stripped)) return ''
   return stripped
 }
@@ -156,11 +157,10 @@ export function buildAutoName(items: readonly AutoNameItem[], uiLocale: Supporte
   const shortMax = isCjk(locale) ? SHORT_CJK : SHORT_LATIN
   if (usable.length === 1) return shorten(usable[0]!.text, shortMax)
 
-  // 語ごとに、いくつの指摘に出るか（見出し・要望と、指した要素の表示テキスト）
+  // 語ごとに、いくつの指摘に出るか（見出しと要望）。指した要素の表示テキストはページの作者が書ける文字なので使わない
   const counts = new Map<string, { word: string; count: number; first: number }>()
   usable.forEach(({ item }, index) => {
-    const element = item.context?.element
-    const text = [meaningfulText(item.title), meaningfulText(item.request), element && !element.sensitive ? element.text ?? '' : ''].join('\n')
+    const text = [meaningfulText(item.title), meaningfulText(item.request)].join('\n')
     for (const word of topicWords(text, locale)) {
       const key = word.toLowerCase()
       const entry = counts.get(key)

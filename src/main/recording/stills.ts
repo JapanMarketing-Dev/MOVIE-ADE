@@ -38,6 +38,35 @@ export function webContentsStillSource(contents: WebContents): StillSource {
   }
 }
 
+/**
+ * 1回の録画の静止画の上限（CWE-400 への備え）。超えたら保存をやめて1度だけ知らせる（声と動画は続ける）。
+ * 0.5秒ごとの撮影は画面が変わったときだけ保存するので、ふつうの録画ではまず届かない。
+ */
+export interface StillLimits {
+  maxCount: number
+  maxBytes: number
+  /** 撮る予定の強制撮影（クリック・ペン・遷移）の数の上限。超えた分は撮らない */
+  maxPendingForced: number
+  /** クリックでの強制撮影の最短の間隔(ms)。連打では最初の1枚と定期撮影に任せる */
+  minClickIntervalMs: number
+}
+
+export const DEFAULT_STILL_LIMITS: StillLimits = {
+  maxCount: 20_000,
+  maxBytes: 2 * 1024 * 1024 * 1024,
+  maxPendingForced: 4,
+  minClickIntervalMs: 250
+}
+
+/**
+ * 撮りかけの静止画を待つ上限(ms)。capturePage が返ってこなくても、停止やページ遷移を待たせ続けない
+ * （撮る予定は maxPendingForced 件までなので、ふつうはすぐ終わる）
+ */
+export const SETTLE_TIMEOUT_MS = 5_000
+
+/** 計測用の所要時間を残す数（録画が長くても増え続けないように） */
+const MAX_TIMINGS = 1000
+
 export interface StillCaptureHandlers {
   getCursor?(): { x: number; y: number; view?: { width: number; height: number } } | undefined
   onFrame(frame: FrameRef): void
@@ -50,6 +79,11 @@ export class StillCapturer {
   private seq = 0
   private busy = false
   private pendingForced = 0
+  private lastClickForcedAt = -Infinity
+  private savedBytes = 0
+  private limitReached = false
+  /** 停止を始めたら、新しい強制撮影は受け付けない */
+  private stopping = false
   private readonly frames: FrameRef[] = []
   /** 計測用。1枚あたりの所要時間(ms) */
   readonly timings: number[] = []
@@ -58,7 +92,9 @@ export class StillCapturer {
     private readonly source: StillSource,
     private readonly clock: RecordingClock,
     private readonly options: RecordingOptions,
-    private readonly handlers: StillCaptureHandlers
+    private readonly handlers: StillCaptureHandlers,
+    private readonly limits: StillLimits = DEFAULT_STILL_LIMITS,
+    private readonly now: () => number = Date.now
   ) {}
 
   start(): void {
@@ -79,13 +115,15 @@ export class StillCapturer {
   }
 
   async stop(): Promise<void> {
+    this.stopping = true
     this.pause()
     await this.settle()
   }
 
-  /** 撮りかけ・撮る予定の静止画が書き終わるまで待つ（定期撮影は止めない） */
-  async settle(): Promise<void> {
-    while (this.busy || this.pendingForced) await new Promise((done) => setTimeout(done, 10))
+  /** 撮りかけ・撮る予定の静止画が書き終わるまで待つ（定期撮影は止めない）。待つのは timeoutMs まで */
+  async settle(timeoutMs = SETTLE_TIMEOUT_MS): Promise<void> {
+    const deadline = this.now() + timeoutMs
+    while ((this.busy || this.pendingForced) && this.now() < deadline) await new Promise((done) => setTimeout(done, 10))
   }
 
   get captured(): FrameRef[] {
@@ -97,6 +135,13 @@ export class StillCapturer {
    * `force` のときは変化がなくても保存する（その瞬間の画像が指摘の根拠になるため）。
    */
   async captureNow(reason: string, cursor?: { x: number; y: number; view?: { width: number; height: number } }, annotationId?: string): Promise<FrameRef | null> {
+    // 撮る予定が詰まっているとき・上限に達したときは撮らない（ページが合成のクリックを大量に起こしても積み上げない）
+    if (this.stopping || this.limitReached || this.pendingForced >= this.limits.maxPendingForced) return null
+    if (reason === 'click') {
+      const now = this.now()
+      if (now - this.lastClickForcedAt < this.limits.minClickIntervalMs) return null
+      this.lastClickForcedAt = now
+    }
     this.pendingForced++
     try {
       // 注入側のDOM更新が合成器に描画されてから撮る。
@@ -115,7 +160,7 @@ export class StillCapturer {
   ): Promise<FrameRef | null> {
     // 前の撮影が終わっていないときは飛ばす（録画中の操作を重くしない。NF-4）
     if (this.busy) return null
-    if (this.source.gone) return null
+    if (this.source.gone || this.limitReached) return null
     this.busy = true
     const t = this.clock.now()
     const startedAt = Date.now()
@@ -141,7 +186,14 @@ export class StillCapturer {
       const saved = width === null ? image : image.resize({ width, quality: 'better' })
       const data =
         this.options.stillFormat === 'jpeg' ? saved.toJPEG(this.options.stillQuality) : saved.toPNG()
-      await writeFile(path, data)
+      if (this.frames.length >= this.limits.maxCount || this.savedBytes + data.length > this.limits.maxBytes) {
+        this.limitReached = true
+        this.handlers.onWarning(translateMessage('recording.errors.stillsLimitReached'))
+        return null
+      }
+      // 既にある名前・リンクには書かない（録画のフォルダは作ったばかりで、名前は通し番号）
+      await writeFile(path, data, { flag: 'wx' })
+      this.savedBytes += data.length
 
       cursor ??= this.handlers.getCursor?.()
       const size = saved.getSize()
@@ -157,6 +209,7 @@ export class StillCapturer {
       return null
     } finally {
       this.timings.push(Date.now() - startedAt)
+      if (this.timings.length > MAX_TIMINGS) this.timings.splice(0, this.timings.length - MAX_TIMINGS)
       this.busy = false
     }
   }

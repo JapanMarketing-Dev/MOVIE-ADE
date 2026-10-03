@@ -9,7 +9,8 @@
  * 名前・アーカイブ・送った時刻は label.json にあり、一覧のたびに読む（小さいので控えない）。
  * 進み具合（progress.json）も Agent が書き換えるので控えず、一覧のたびに読んで includedIds と突き合わせる。
  */
-import { readFile, stat, writeFile } from 'node:fs/promises'
+import { stat } from 'node:fs/promises'
+import { readFileNoFollow, writeFileNoFollow } from './containment'
 import type { SessionPaths } from './paths'
 import type { SessionRecord } from './store'
 import { getLocale, type SupportedLocale } from '@shared/i18n'
@@ -115,10 +116,12 @@ export function parseStoredSummary(raw: unknown): StoredSummary | null {
 /** 操作ログの遷移（タイトルとURL）。nav の行だけを読む */
 export async function readNavs(paths: SessionPaths): Promise<NavRef[]> {
   // 内蔵ブラウザ以外の録画には操作ログが無い（想定内）
-  const text = await readFile(paths.eventsJsonl, 'utf8').catch(() => '')
+  const text = await readFileNoFollow(paths.eventsJsonl).catch(() => '')
   const out: NavRef[] = []
   for (const line of text.split('\n')) {
-    if (!line.includes('"nav"')) continue
+    // 行数・1行の長さに上限を置く（細工した操作ログで一覧が止まらないように。limits.ts）
+    if (out.length >= 10_000) break
+    if (line.length > 64 * 1024 || !line.includes('"nav"')) continue
     try {
       const event = JSON.parse(line) as { type?: unknown; url?: unknown; title?: unknown }
       if (event.type === 'nav' && typeof event.url === 'string') out.push({ url: event.url, title: typeof event.title === 'string' ? event.title.trim() : '' })
@@ -132,7 +135,7 @@ export async function readNavs(paths: SessionPaths): Promise<NavRef[]> {
 /** session.json を保存したあとに呼ぶ。events.jsonl を1度だけ読んで控える */
 export async function writeSummary(paths: SessionPaths, record: SessionRecord): Promise<StoredSummary> {
   const summary = buildStoredSummary(record, await readNavs(paths))
-  await writeFile(paths.summaryJson, `${JSON.stringify(summary)}\n`, 'utf8')
+  await writeFileNoFollow(paths.summaryJson, `${JSON.stringify(summary)}\n`)
   return summary
 }
 
@@ -148,7 +151,7 @@ export async function readFreshSummary(paths: SessionPaths): Promise<StoredSumma
   ])
   if (!summaryStat || !sessionStat || summaryStat.mtimeMs < sessionStat.mtimeMs) return null
   try {
-    return parseStoredSummary(JSON.parse(await readFile(paths.summaryJson, 'utf8')))
+    return parseStoredSummary(JSON.parse(await readFileNoFollow(paths.summaryJson, 'utf8', { maxBytes: 1024 * 1024 })))
   } catch {
     // 読めない要約は session.json から作り直す（想定内）
     return null

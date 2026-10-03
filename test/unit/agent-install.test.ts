@@ -222,3 +222,54 @@ describe('agentInstallCommand', () => {
     expect(agentInstallCommand('zcode')).toBeUndefined()
   })
 })
+
+describe('agentInstallCommand の OS ごとの出し分け', () => {
+  it('Windows では公式の Windows の手順を出す（Claude Code は CMD、Cursor・Devin は PowerShell）', () => {
+    expect(agentInstallCommand('claude', 'win32')).toBe('curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd')
+    expect(agentInstallCommand('cursor', 'win32')).toMatch(/^powershell -NoProfile -Command "irm 'https:\/\/cursor\.com\/install\?win32=true' \| iex"$/)
+    expect(agentInstallCommand('devin', 'win32')).toBe('powershell -NoProfile -Command "irm https://static.devin.ai/cli/setup.ps1 | iex"')
+    expect(agentInstallCommand('opencode', 'win32')).toBe('npm install -g opencode-ai')
+  })
+
+  it('Windows の手順が分からず、POSIX のシェル向けしか無いものはリンクだけ（undefined）', () => {
+    expect(agentInstallCommand('amp', 'win32')).toBeUndefined()
+    expect(agentInstallCommand('grok', 'win32')).toBeUndefined()
+    // Homebrew（Windows に無い）と sh -c "$(curl …)" も同じ扱い
+    expect(agentInstallCommand('crush', 'win32')).toBeUndefined()
+    expect(agentInstallCommand('crush', 'darwin')).toBe('brew install charmbracelet/tap/crush')
+    expect(agentInstallCommand('trae', 'win32')).toBeUndefined()
+  })
+
+  it('Windows でも npm などの OS に関係ないコマンドはそのまま出す', () => {
+    expect(agentInstallCommand('codex', 'win32')).toMatch(/^npm (i|install) -g /)
+  })
+
+  it('macOS・Linux は curl … | bash の公式の手順のまま', () => {
+    for (const platform of ['darwin', 'linux'] as const) {
+      expect(agentInstallCommand('claude', platform)).toBe('curl -fsSL https://claude.ai/install.sh | bash')
+      expect(agentInstallCommand('devin', platform)).toBe('curl -fsSL https://cli.devin.ai/install.sh | bash')
+    }
+  })
+
+  it('OS を渡さなければ、画面の OS（window.ade.platform）で選ぶ', () => {
+    const g = globalThis as { window?: unknown }
+    const before = g.window
+    try {
+      g.window = { ade: { platform: 'win32' } }
+      expect(agentInstallCommand('claude')).toMatch(/install\.cmd/)
+      g.window = { ade: { platform: 'linux' } }
+      expect(agentInstallCommand('claude')).toMatch(/install\.sh \| bash$/)
+    } finally {
+      g.window = before
+    }
+  })
+
+  it('Windows では、カタログのどの Agent にも POSIX のシェル向けの手順を出さない', async () => {
+    const { BUILTIN_AGENTS } = await import('@shared/agentCatalog')
+    const { isPosixOnlyInstall } = await import('../../src/renderer/onboarding/agentInstall')
+    for (const agent of BUILTIN_AGENTS) {
+      const command = agentInstallCommand(agent, 'win32')
+      if (command) expect(isPosixOnlyInstall(command), agent).toBe(false)
+    }
+  })
+})

@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import { ChevronRight, CircleAlert, CircleCheck, ExternalLink, KeyRound } from 'lucide-react'
+import { keyEnvHint } from '../lib/keyEnvHint'
+import { Bot, ChevronRight, CircleAlert, CircleCheck, Copy, ExternalLink, KeyRound, Send } from 'lucide-react'
 import {
   AI_PRESETS_VERIFIED_AT,
   currentModel,
@@ -18,6 +19,7 @@ import {
 import type { SttAvailability } from '@shared/types'
 import type { TranslationKey } from '@shared/i18n'
 import { Button, Field } from '../ui'
+import { buildAgentSetupPrompt, setupLinks, type SetupGuide, type SetupLinkKind, type SetupPromptTarget } from '@shared/setupGuide'
 import { useT } from '../lib/i18n'
 import { errorMessage } from '../lib/errors'
 import { useToast } from '../ui'
@@ -62,7 +64,7 @@ type Preset = (SttProviderPreset | LlmProviderPreset)
  * ほかの項目（タイムアウト・ヘッダー・認証・費用の上限・プリセットに戻す）は「詳細」に畳む（オンボーディングでは描かない）。
  * 値は settings.json と同じ AiEndpointConfig を読み書きする（画面の簡単な経路と JSON の完全な設定は同じデータ）。
  */
-export function ProviderSetup({ preset, value, onChange, available, onAvailabilityChange, onCheck, disabled, onboarding = false, advancedExtra, testId }: {
+export function ProviderSetup({ preset, value, onChange, available, onAvailabilityChange, onCheck, disabled, onboarding = false, advancedExtra, setupTarget, testId }: {
   preset: Preset
   value: AiEndpointConfig | undefined
   onChange: (next: AiEndpointConfig | undefined) => void
@@ -74,11 +76,15 @@ export function ProviderSetup({ preset, value, onChange, available, onAvailabili
   onboarding?: boolean
   /** 詳細に足す行（文字起こしの費用の上限など） */
   advancedExtra?: ReactNode
+  /** 「Agent に設定を頼む」の指示文の宛先（settings.json の中の場所など）。無ければ出さない */
+  setupTarget?: Omit<SetupPromptTarget, 'settingsPath' | 'envPath'>
   testId?: string
 }) {
   const t = useT()
   const layout = setupLayout(preset, { onboarding })
   const label = providerLabel(preset, t)
+  // リンクと指示文の元（プリセットにある案内の情報）
+  const guide: SetupGuide = { ...preset, label }
   const azure = 'kind' in preset && preset.kind === 'azure-openai'
   const patch = (p: Partial<AiEndpointConfig>) => onChange(compactEndpoint({ ...value, ...p }))
   return <div className="st-endpoint" data-testid={testId}>
@@ -88,11 +94,13 @@ export function ProviderSetup({ preset, value, onChange, available, onAvailabili
     {layout.accountIdField && <label className="st-row"><span className="st-row__label">{t('ai.endpoint.accountId')}</span>
       <Field mono aria-label={t('ai.endpoint.accountId')} placeholder="CLOUDFLARE_ACCOUNT_ID" autoComplete="off" spellCheck={false}
         value={value?.accountId ?? ''} disabled={disabled} onChange={(e) => patch({ accountId: e.target.value.trim() || undefined })} data-testid="ai-account-id" /></label>}
+    {layout.accountIdField && <div className="st-key__actions"><GuideLinks guide={guide} kinds={['id']} /></div>}
     <ModelStep preset={preset} value={value} onChange={onChange} disabled={disabled} label={t(azure ? 'ai.endpoint.deployment' : 'ai.endpoint.model')} />
-    {layout.keyField && <KeyStep vendor={preset.vendor} label={label} optional={!preset.keyRequired} placeholder={preset.keyPlaceholder} keyUrl={preset.keyUrl}
-      available={available} disabled={disabled} onChanged={onAvailabilityChange} onCheck={onCheck} />}
-    {/* 端末内のサーバーにはキーが無いので、確認だけを出す */}
-    {!layout.keyField && <CheckMark onCheck={onCheck} disabled={disabled} />}
+    {layout.keyField && <KeyStep vendor={preset.vendor} label={label} optional={!preset.keyRequired} placeholder={preset.keyPlaceholder}
+      links={<GuideLinks guide={guide} kinds={['key', 'docs']} />} available={available} disabled={disabled} onChanged={onAvailabilityChange} onCheck={onCheck} />}
+    {/* 端末内のサーバーにはキーが無いので、インストールのページと確認だけを出す */}
+    {!layout.keyField && <div className="st-key__actions"><GuideLinks guide={guide} kinds={['install', 'docs']} /><CheckMark onCheck={onCheck} disabled={disabled} /></div>}
+    {setupTarget && <AskAgent guide={guide} target={setupTarget} disabled={disabled} />}
     {layout.advanced
       ? <AdvancedFields preset={preset} value={value} onChange={onChange} disabled={disabled} azure={azure} showBaseUrl={!layout.baseUrlField}
           available={available} onAvailabilityChange={onAvailabilityChange} extra={advancedExtra} />
@@ -131,12 +139,13 @@ export function ModelStep({ preset, value, onChange, disabled, label }: {
  * ③ API キー。欄1つ・「キーを取得」のリンク・「確認」だけ。
  * 欄から離れたときに保存する（形の誤りはその場で出す）。確認は押したときだけ送り、✓ か ✗ を小さく出す。
  */
-export function KeyStep({ vendor, label, optional, placeholder, keyUrl, available, disabled, onChanged, onCheck }: {
+export function KeyStep({ vendor, label, optional, placeholder, links, available, disabled, onChanged, onCheck }: {
   vendor: AiVendor
   label: string
   optional: boolean
   placeholder: string
-  keyUrl?: string
+  /** 「キーを作る ↗」「ドキュメント ↗」のリンク */
+  links?: ReactNode
   available: SttAvailability
   disabled: boolean
   onChanged: () => void
@@ -164,10 +173,66 @@ export function KeyStep({ vendor, label, optional, placeholder, keyUrl, availabl
         onChange={(e) => { setKey(e.target.value); setError(null) }} onBlur={save} onKeyDown={(e) => { if (e.key === 'Enter') save() }} /></label>
     {error && <p className="st-note st-note--warn" role="alert"><CircleAlert size={12} aria-hidden="true" />{error}</p>}
     <div className="st-key__actions">
-      {keyUrl && <a className="st-link" href={keyUrl} target="_blank" rel="noreferrer" data-testid="ai-get-key"><ExternalLink size={12} aria-hidden="true" />{t('ai.key.getKey')}</a>}
+      {links}
       <CheckMark onCheck={onCheck} disabled={disabled} />
     </div>
   </div>
+}
+
+const LINK_LABEL: Record<SetupLinkKind, TranslationKey> = { key: 'ai.setup.link.key', id: 'ai.setup.link.id', docs: 'ai.setup.link.docs', install: 'ai.setup.link.install' }
+
+/**
+ * 「キーを作る ↗」「ID はここ ↗」などのリンク。外部のブラウザで開く（main の app:openExternal が https だけを開く）。
+ * 判定モデルの欄からも使えるよう export する
+ */
+export function GuideLinks({ guide, kinds }: { guide: SetupGuide; kinds: readonly SetupLinkKind[] }) {
+  const t = useT()
+  const toast = useToast()
+  const links = setupLinks(guide).filter((l) => kinds.includes(l.kind))
+  if (!links.length) return null
+  return <span className="st-links">
+    {links.map((l) => <button key={l.kind} type="button" className="st-link" data-testid={`ai-link-${l.kind}`} title={l.url}
+      onClick={() => void window.ade.invoke('app:openExternal', l.url).catch((e: unknown) => toast({ tone: 'danger', message: errorMessage(e) }))}>
+      <ExternalLink size={12} aria-hidden="true" />{t(LINK_LABEL[l.kind])}
+    </button>)}
+  </span>
+}
+
+/**
+ * 「Agent に設定を頼む」。Account ID を調べる・キーの作り方を案内する・settings.json と .env に書く、を頼む指示文を
+ * コピーするか、Agent のターミナルへ送る。指示文にキーや ID の値は入らない（src/shared/setupGuide.ts）。
+ * 判定モデルの欄からも使えるよう export する
+ */
+export function AskAgent({ guide, target, disabled }: { guide: SetupGuide; target: Omit<SetupPromptTarget, 'settingsPath' | 'envPath'>; disabled: boolean }) {
+  const t = useT()
+  const toast = useToast()
+  const [busy, setBusy] = useState(false)
+  /** settings.json の場所は、開くたびに main から読む（dev・FERRET_CONFIG_DIR で変わるため） */
+  const prompt = async () => {
+    const info = await window.ade.invoke('settingsFile:info')
+    const sep = info.dir.includes('\\') ? '\\' : '/'
+    return buildAgentSetupPrompt(guide, { ...target, settingsPath: info.path, envPath: `${info.dir}${sep}.env` }, t)
+  }
+  const run = (action: () => Promise<void>) => {
+    setBusy(true)
+    void action().catch((e: unknown) => toast({ tone: 'danger', message: errorMessage(e) })).finally(() => setBusy(false))
+  }
+  return <details className="st-key st-advanced" data-testid="ai-ask-agent">
+    <summary><Bot size={13} aria-hidden="true" /><span>{t('ai.setup.askAgent')}</span></summary>
+    <div className="st-key__body">
+      <p className="st-note">{t('ai.setup.note')}</p>
+      <div className="st-key__actions">
+        <Button variant="ghost" icon={<Copy size={13} />} disabled={disabled || busy} data-testid="ai-ask-copy" onClick={() => run(async () => {
+          await navigator.clipboard.writeText(await prompt())
+          toast({ tone: 'success', message: t('ai.setup.copied') })
+        })}>{t('ai.setup.copy')}</Button>
+        <Button icon={<Send size={13} />} busy={busy} disabled={disabled} data-testid="ai-ask-send" onClick={() => run(async () => {
+          const r = await window.ade.invoke('agent:sendText', await prompt())
+          toast(r.ok ? { tone: 'success', message: t('ai.setup.sent') } : { tone: 'danger', message: r.message })
+        })}>{t('ai.setup.send')}</Button>
+      </div>
+    </div>
+  </details>
 }
 
 /** 「確認」。押したときだけ送り、✓ か ✗（と理由）を小さく出す */
@@ -248,7 +313,9 @@ export function AdvancedFields({ preset, value, onChange, disabled, azure, showB
         <Field mono aria-label={t('ai.advanced.authHeaderName')} placeholder="x-api-key" autoComplete="off" spellCheck={false} disabled={disabled}
           value={v.authHeader ?? ''} onChange={(e) => patch({ authHeader: e.target.value.trim() || undefined })} /></label>}
       {extra}
-      <p className="st-note">{t(keyStateKey(source, available.keyStorage))} · {t(available.keyStorage === 'encrypted' ? 'settings.capture.keyEncryptedNote' : available.keyStorage === 'dev' ? 'settings.capture.keyDevNote' : 'settings.capture.keyPlainNote')}</p>
+      <p className="st-note">{t(keyStateKey(source, available.keyStorage))} · {t(available.keyStorage === 'encrypted' ? 'settings.capture.keyEncryptedNote' : available.keyStorage === 'dev' ? 'settings.capture.keyDevNote' : 'settings.capture.keyPlainNote')}
+        {/* 実際に読まれる環境変数の名前だけを案内する（提供元ごと。lib/keyEnvHint.ts） */}
+        {(() => { const env = keyEnvHint(preset.vendor, v.apiKeyEnv, available.keyStorage); return env ? ` ${t('ai.key.envHint', { env })}` : '' })()}</p>
       <div className="st-key__actions">
         <Button variant="ghost" disabled={disabled || (source !== 'saved' && source !== 'session')}
           onClick={() => void window.ade.invoke('capture:apiKey', '', preset.vendor).finally(onAvailabilityChange)}>{t('settings.capture.keyDelete')}</Button>
@@ -270,7 +337,7 @@ export function keyStateKey(source: SttAvailability['keys'][AiVendor], storage: 
 }
 
 /** 提供元（vendor）ごとのキー。保存・削除はその場で IPC へ送り、使える状態を読み直してもらう */
-export function KeyField({ vendor, label, optional, placeholder, available, disabled, onChanged }: {
+export function KeyField({ vendor, label, optional, placeholder, available, disabled, onChanged, envVar }: {
   vendor: AiVendor
   label: string
   optional: boolean
@@ -278,6 +345,8 @@ export function KeyField({ vendor, label, optional, placeholder, available, disa
   available: SttAvailability
   disabled: boolean
   onChanged: () => void
+  /** 設定の apiKeyEnv（書いてあれば、その名前を「この環境変数も使えます」として出す） */
+  envVar?: string
 }) {
   const t = useT()
   const toast = useToast()
@@ -302,7 +371,8 @@ export function KeyField({ vendor, label, optional, placeholder, available, disa
         <Button variant="ghost" disabled={disabled || busy || (source !== 'saved' && source !== 'session')} onClick={() => run('')}>{t('settings.capture.keyDelete')}</Button>
         <Button busy={busy} disabled={disabled || !key.trim()} onClick={() => run(key.trim())}>{t(available.keyStorage === 'encrypted' ? 'settings.capture.keySave' : 'settings.capture.keySetSession')}</Button>
       </div>
-      <p className="st-note">{t(available.keyStorage === 'encrypted' ? 'settings.capture.keyEncryptedNote' : available.keyStorage === 'dev' ? 'settings.capture.keyDevNote' : 'settings.capture.keyPlainNote')}</p>
+      <p className="st-note">{t(available.keyStorage === 'encrypted' ? 'settings.capture.keyEncryptedNote' : available.keyStorage === 'dev' ? 'settings.capture.keyDevNote' : 'settings.capture.keyPlainNote')}
+        {(() => { const env = keyEnvHint(vendor, envVar, available.keyStorage); return env ? ` ${t('ai.key.envHint', { env })}` : '' })()}</p>
     </div>
   </details>
 }

@@ -74,7 +74,6 @@ export const SHORTCUTS = {
   toggleMode: () => formatShortcut('Mod', 'Shift', 'M'),
   toggleSidebar: () => formatShortcut('Mod', 'B'),
   toggleExplorer: () => formatShortcut('Mod', 'Shift', 'E'),
-  toggleTerminalPanel: () => formatShortcut('Mod', 'J'),
   quickOpen: () => formatShortcut('Mod', 'P'),
   saveFile: () => formatShortcut('Mod', 'S'),
   toggleViewport: () => formatShortcut('Mod', 'Shift', 'V'),

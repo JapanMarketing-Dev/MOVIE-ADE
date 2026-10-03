@@ -20,7 +20,10 @@ const FULL = {
   splitRatio: 0.5,
   layout: DEFAULT_LAYOUT,
   feedbackTargets: { visible: false, ratio: 0.7 },
-  projects: [{ id: 'p1', name: 'app', folderPath: '/work/app', urls: [{ id: 'u1', label: 'local', url: 'http://localhost:3000' }] }],
+  projects: [{ id: 'p1', name: 'app', folderPath: '/work/app', urls: [{ id: 'u1', label: 'local', url: 'http://localhost:3000' }] },
+    { id: 'p2', name: 'remote', folderPath: '/work/remote', source: 'ssh', ssh: { host: 'me@gpu-box', path: '~/src/app' }, urls: [] },
+    { id: 'p3', name: 'gh', folderPath: '/work/gh', source: 'github', remoteUrl: 'https://user:tok@github.com/o/r.git', urls: [] },
+    { id: 'p4', name: 'broken', folderPath: '/work/b', source: 'ssh', urls: [] }],
   agents: { ...DEFAULT_AGENT_PREFERENCES, customAgents: [{ id: 'custom:mine', name: 'Mine', command: 'mine', args: '' }] },
   agentAccounts: { claude: { accounts: [], activeAccountId: null }, codex: { accounts: [], activeAccountId: null } },
   agentPrompt: 'Read {{path}}',
@@ -92,5 +95,9 @@ describe('settings.json のスキーマ', () => {
     expect(validateAgainstSchema({ capture: { sttEndpoints: { nope: {} } } }, SETTINGS_SCHEMA)[0]?.path).toBe('/capture/sttEndpoints/nope')
     // 知らない上の階層の項目は許す（そのまま残す）
     expect(validateAgainstSchema({ myNote: 1 }, SETTINGS_SCHEMA)).toEqual([])
+    // プロジェクトの取得元（local / github / ssh）
+    expect(validateAgainstSchema({ projects: [{ id: 'r', folderPath: '/tmp/r', source: 'ssh', ssh: { host: 'gpu-box', path: '~/src/app' } },
+      { id: 'g', folderPath: '/tmp/g', source: 'github', remoteUrl: 'https://github.com/o/r.git' }] }, SETTINGS_SCHEMA)).toEqual([])
+    expect(validateAgainstSchema({ projects: [{ id: 'r', folderPath: '/tmp/r', source: 'ssh', ssh: { host: 'gpu-box' } }] }, SETTINGS_SCHEMA)[0]?.path).toBe('/projects/0/ssh')
   })
 })

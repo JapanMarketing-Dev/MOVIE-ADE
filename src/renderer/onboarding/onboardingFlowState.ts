@@ -1,4 +1,7 @@
 import { ONBOARDING_STEPS, type OnboardingPatch, type OnboardingState, type OnboardingStepId } from '@shared/onboarding'
+import type { BuiltinAgent } from '@shared/types'
+import { BUILTIN_AGENTS } from '@shared/agentCatalog'
+import { resolveDecision, type DecisionPreferences, type DecisionPreset } from '@shared/decision'
 
 /**
  * セットアップの手順の進め方（画面に依存しない純粋な関数。単体テストの対象）。
@@ -10,7 +13,7 @@ import { ONBOARDING_STEPS, type OnboardingPatch, type OnboardingState, type Onbo
  */
 
 /** 何も設定しなくても先へ進めてよい手順（フッターに「この手順を飛ばす」を出す） */
-export const SKIPPABLE_STEPS: ReadonlySet<OnboardingStepId> = new Set<OnboardingStepId>(['project', 'voice'])
+export const SKIPPABLE_STEPS: ReadonlySet<OnboardingStepId> = new Set<OnboardingStepId>(['decision', 'project', 'voice'])
 
 export const LAST_STEP_INDEX = ONBOARDING_STEPS.length - 1
 
@@ -82,3 +85,54 @@ export const ONBOARDING_CONCEPT_KEYS = ['onboarding.concept.feedback', 'onboardi
 
 export const FINISH_STEP_KEYS = ['onboarding.finish.step1', 'onboarding.finish.step2', 'onboarding.finish.meetings',
   'onboarding.finish.step3', 'onboarding.finish.step4', 'onboarding.finish.decision'] as const
+
+// ───────────────────────── Agent の手順：どれか1つを選ぶ ─────────────────────────
+
+/**
+ * 最初から選んでおくおすすめの Agent。まだ何も選んでいないときだけ、インストール済みのうち
+ * カタログの順（Claude Code → Codex → …）で最初のものを返す。無ければ null
+ */
+export function recommendedAgent(options: ReadonlyArray<{ id: string; installed: boolean; custom?: boolean }> | null, startupAgents: readonly string[]): BuiltinAgent | null {
+  if (!options || startupAgents.length > 0) return null
+  const installed = new Set(options.filter((o) => o.installed && !o.custom).map((o) => o.id))
+  return BUILTIN_AGENTS.find((id) => installed.has(id)) ?? null
+}
+
+/**
+ * 「次へ」を押したときの Agent の手順の判定。
+ *   ok            … 1つ以上選んでいる
+ *   needSelection … インストール済みがあるのに1つも選んでいない（進ませずに「少なくとも1つ選んで」と出す）
+ *   noneInstalled … インストール済みが1つも無い（インストールの案内を出したうえで進ませる。行き止まりにしない）
+ *   detecting     … 探している途中（待たせずに進ませる）
+ */
+export type AgentsGate = 'ok' | 'needSelection' | 'noneInstalled' | 'detecting'
+
+export function agentsStepGate(options: ReadonlyArray<{ installed: boolean; custom?: boolean }> | null, startupAgents: readonly string[]): AgentsGate {
+  if (startupAgents.length > 0) return 'ok'
+  if (!options) return 'detecting'
+  return options.some((o) => o.installed && !o.custom) ? 'needSelection' : 'noneInstalled'
+}
+
+// ───────────────────────── 判定モデルの手順 ─────────────────────────
+
+/** おすすめの提供元（設定の Decision model の節と同じ印を付ける） */
+export const RECOMMENDED_DECISION_PRESET: DecisionPreset = 'cloudflare'
+
+/**
+ * 判定モデルを有効にしてよいか（接続先が組み立てられ、キーが要るならキーがある）。
+ * 足りないまま有効にすると、Agent への指示に「判定する」が入るのに呼べないので、揃ったときだけ有効にする
+ */
+export function decisionReady(prefs: DecisionPreferences, keyPresent: boolean): boolean {
+  const resolved = resolveDecision(prefs)
+  if (resolved.missing.length > 0) return false
+  return resolved.authScheme === 'none' || keyPresent
+}
+
+/**
+ * 手順の見出しの下の説明のキー。許可の手順の説明（「macOS では最初に1回だけ…」）は macOS だけのものなので、
+ * Windows・Linux では「前もって求められない」の文にする
+ */
+export function stepSubtitleKey(stepId: OnboardingStepId, platform: string): string {
+  if (stepId === 'permissions' && platform !== 'darwin') return 'onboarding.permissions.subtitleOther'
+  return `onboarding.${stepId}.subtitle`
+}

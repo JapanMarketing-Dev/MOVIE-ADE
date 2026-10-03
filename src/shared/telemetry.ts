@@ -8,7 +8,7 @@
  * 送るのは「アプリが落ちた・例外が出た」という事実と、その場所（スタック）と、
  * OS・CPU・Electron の版だけ。画面の中身（URL・ターミナル・文字起こし・指摘）は送らない。
  */
-import { isUserFacingError } from './errors'
+import { STALE_CHUNK_MESSAGE, isUserFacingError } from './errors'
 import { readBrandEnv } from './brandEnv'
 
 /**
@@ -209,6 +209,11 @@ function flowData(obj: Record<string, unknown>): Record<string, unknown> | undef
   return Object.keys(out).length ? out : undefined
 }
 
+function electronContext(v: Record<string, unknown>): Record<string, unknown> {
+  const details = v.details && typeof v.details === 'object' ? pick(v.details as Record<string, unknown>, ['reason', 'exitCode', 'type', 'name']) : undefined
+  return details ? { details } : {}
+}
+
 function pick(obj: Record<string, unknown>, keys: string[]): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const k of keys) if (k in obj) out[k] = obj[k]
@@ -246,7 +251,8 @@ export function scrubEvent<T extends EventLike>(event: T, ctx: ScrubContext = {}
       if (!ALLOWED_CONTEXTS.has(k) || !v || typeof v !== 'object') continue
       // 端末名・機種の ID・起動した時刻など、端末の識別につながる項目は落とす
       const { name: _n, model_id: _m, boot_time: _b, ...rest } = v as Record<string, unknown>
-      contexts[k] = k === 'device' ? rest : v
+      // electron には crashpad の注釈・クラッシュした画面の URL が入るので、終了の情報だけを残す
+      contexts[k] = k === 'device' ? rest : k === 'electron' ? electronContext(v as Record<string, unknown>) : v
     }
     copy.contexts = contexts
   }
@@ -427,6 +433,18 @@ export function isCrashEvent(event: { level?: unknown; exception?: unknown }, is
   return values.some((v) => v.mechanism?.handled === false)
 }
 
+/**
+ * 起動中にアプリのファイルが入れ替わって分割ファイルが無くなった失敗（FERRET-X）を分ける。
+ * dev（作業ツリーの out/ の build し直し）は不具合ではないので送らない（null）。
+ * 配布版は入れ替えの経路（更新の途中など）を知るために送るが、kind: stale-build を付けて1件にまとめる
+ */
+export function classifyStaleBuild<E extends { exception?: unknown; tags?: Record<string, unknown>; fingerprint?: string[] }>(event: E, packaged: boolean): E | null {
+  const values = (event.exception as { values?: Array<{ value?: unknown }> } | undefined)?.values ?? []
+  if (!values.some((v) => STALE_CHUNK_MESSAGE.test(String(v.value ?? '')))) return event
+  if (!packaged) return null
+  return { ...event, tags: { ...event.tags, kind: 'stale-build' }, fingerprint: ['stale-build'] }
+}
+
 /** 添付する main のログの行数と、1行の長さの上限 */
 export const LOG_RING_LINES = 50
 export const LOG_LINE_MAX = 160
@@ -513,13 +531,121 @@ export function createSendGate(isEnabled: () => boolean, hooks: { onDisable?: ()
   return { allow: sync, sync }
 }
 
-/** Sentry の transport を包み、allow() が false のあいだは何も送らない（セッション・minidump・renderer のイベントも含む） */
+/**
+ * 送ってよい添付。main の直近のログ（見出し付きの行だけ・行ごとに伏せ字済み。createLogRing）だけ。
+ * minidump（ネイティブのクラッシュのメモリの写し）は、キー・パス・画面の文などが入りうるのに伏せ字を通せないので送らない（security-2 [13]）
+ */
+export const ALLOWED_ATTACHMENTS: ReadonlySet<string> = new Set(['main-log.txt'])
+
+type AttachmentLike = { filename?: unknown; attachmentType?: unknown }
+
+export function isAllowedAttachment(attachment: AttachmentLike): boolean {
+  return typeof attachment.filename === 'string' && ALLOWED_ATTACHMENTS.has(attachment.filename) &&
+    (attachment.attachmentType === undefined || attachment.attachmentType === 'event.attachment')
+}
+
+/**
+ * 送ってよい envelope の項目。beforeSend（伏せ字）を通ったイベント、セッション（数だけ）、送れなかった数、許した添付だけ。
+ * renderer から直接届く span・profile・feedback・replay などは beforeSend を通らないので送らない
+ */
+const ALLOWED_ENVELOPE_ITEMS = new Set(['event', 'session', 'sessions', 'client_report', 'attachment'])
+
+/** envelope から送ってよくない項目を落とす。何も残らない・形が違うときは null（送らない） */
+export function filterEnvelope<E>(envelope: E): E | null {
+  if (!Array.isArray(envelope) || envelope.length !== 2 || !Array.isArray(envelope[1])) return null
+  const items = (envelope[1] as unknown[]).filter((item) => {
+    const header = (Array.isArray(item) ? item[0] : undefined) as { type?: unknown; filename?: unknown; attachment_type?: unknown } | undefined
+    if (!header || typeof header.type !== 'string' || !ALLOWED_ENVELOPE_ITEMS.has(header.type)) return false
+    return header.type !== 'attachment' || isAllowedAttachment({ filename: header.filename, attachmentType: header.attachment_type })
+  })
+  return items.length > 0 ? ([envelope[0], items] as E) : null
+}
+
+/**
+ * 送る直前の transport を包み、filterEnvelope を通す。オフラインの置き場から後で送るもの（前の版がためたものも含む）も、
+ * ここを通ってから送られる
+ */
+export function filterTransport<T extends { send: (envelope: never) => PromiseLike<unknown> }>(base: T): T {
+  return {
+    ...base,
+    send: (envelope: never) => {
+      const filtered = filterEnvelope(envelope)
+      return filtered ? base.send(filtered) : Promise.resolve({})
+    }
+  }
+}
+
+/**
+ * Sentry の transport を包む。allow() が false のあいだは何も送らない（セッション・renderer のイベントも含む）。
+ * 送るときも filterEnvelope を通し、伏せ字を通らない項目（minidump・span など）を最後にもう一度落とす
+ */
 export function gateTransport<T extends { send: (envelope: never) => PromiseLike<unknown>; flush: (timeout?: number) => PromiseLike<boolean> }>(base: T, allow: () => boolean): T {
   return {
     ...base,
-    send: (envelope: never) => (allow() ? base.send(envelope) : Promise.resolve({})),
+    send: (envelope: never) => {
+      const filtered = allow() ? filterEnvelope(envelope) : null
+      return filtered ? base.send(filtered) : Promise.resolve({})
+    },
     flush: (timeout?: number) => base.flush(timeout)
   }
+}
+
+type NativeCrashLike = {
+  platform?: unknown
+  tags?: Record<string, unknown>
+  contexts?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+/** ネイティブのクラッシュ（minidump から作られたイベント）か */
+export function isNativeCrashEvent(event: { platform?: unknown; tags?: object }, hasMinidump: boolean): boolean {
+  return hasMinidump || event.platform === 'native' || (event.tags as Record<string, unknown> | undefined)?.['event.environment'] === 'native'
+}
+
+const CRASH_VALUE = /^[A-Za-z0-9_.-]{1,40}$/
+const crashValue = (v: unknown): string | undefined => (typeof v === 'string' && CRASH_VALUE.test(v) ? v : undefined)
+/** ネイティブのクラッシュに残すタグ（どのプロセスが・なぜ・どの版と環境で） */
+const NATIVE_CRASH_TAGS = ['os.platform', 'arch', 'electron', 'build', 'app.mode']
+
+/**
+ * ネイティブのクラッシュは「起きたこと」だけを送る：プロセスの種類・終了の理由・版（security-2 [13]）。
+ * crashpad の注釈・クラッシュした画面の URL・前の起動のパンくず・スタックは持たない
+ */
+export function minimizeNativeCrash<E extends { tags?: object; contexts?: object }>(input: E): E {
+  const event = input as unknown as NativeCrashLike
+  const proc = crashValue(event.tags?.['event.process']) ?? 'unknown'
+  const electron = event.contexts?.electron as { details?: Record<string, unknown> } | undefined
+  const reason = crashValue(event.tags?.['exit.reason']) ?? crashValue(electron?.details?.reason)
+  const exitCode = electron?.details?.exitCode
+  const tags: Record<string, string> = { 'event.environment': 'native', 'event.process': proc }
+  if (reason) tags['exit.reason'] = reason
+  for (const k of NATIVE_CRASH_TAGS) {
+    const v = crashValue(event.tags?.[k])
+    if (v) tags[k] = v
+  }
+  const app = event.contexts?.app as Record<string, unknown> | undefined
+  const os = event.contexts?.os as Record<string, unknown> | undefined
+  const contexts: Record<string, unknown> = {
+    electron: { details: { reason: reason ?? 'unknown', ...(typeof exitCode === 'number' ? { exitCode } : {}) } }
+  }
+  if (app) contexts.app = { app_version: app.app_version, app_arch: app.app_arch }
+  if (os) contexts.os = { name: os.name, version: os.version }
+  const out: NativeCrashLike = {
+    event_id: event.event_id,
+    timestamp: event.timestamp,
+    level: 'fatal',
+    platform: 'native',
+    release: event.release,
+    environment: event.environment,
+    user: event.user,
+    sdk: event.sdk,
+    message: `Native crash (${proc}${reason ? `, ${reason}` : ''})`,
+    fingerprint: ['native-crash', proc, reason ?? 'unknown'],
+    tags,
+    contexts
+  }
+  for (const k of Object.keys(out)) if (out[k] === undefined) delete out[k]
+  return out as unknown as E
 }
 
 /**
@@ -545,19 +671,58 @@ export function createInflightTracker(now: () => number = Date.now) {
   }
 }
 
-/** 止まったときのイベントに付ける手がかり（タグと contexts.block）。中身は処理の名前と時間だけ */
+/**
+ * 止まったときの main の様子（JS のスタックに出ない原因の手がかり）。
+ *   heapUsedMb / rssMb … 大きいと GC（ゴミ集め）で止まりやすい
+ *   axEnabled / axChangedMsAgo … 補助技術（画面の読み上げ・他のアプリの操作）が有効になると、Chromium が画面の木を作り直して main が止まることがある
+ */
+export interface BlockEnvironment {
+  heapUsedMb: number
+  rssMb: number
+  axEnabled: boolean
+  axChangedMsAgo: number | null
+}
+
+/** メモリの量のおおまかな区分（タグにする） */
+export function memoryBucket(mb: number): string {
+  if (mb < 256) return '<256MB'
+  if (mb < 512) return '256-512MB'
+  if (mb < 1024) return '512MB-1GB'
+  if (mb < 2048) return '1-2GB'
+  return '2GB+'
+}
+
+/** GC の種類の名前（node:perf_hooks の entry.detail.kind。NODE_PERFORMANCE_GC_*） */
+export function gcKindName(kind: unknown): string {
+  switch (kind) {
+    case 1: return 'minor'
+    case 4: return 'major'
+    case 8: return 'incremental'
+    case 16: return 'weakcb'
+    default: return 'other'
+  }
+}
+
+/** 止まったときのイベントに付ける手がかり（タグと contexts.block）。中身は処理の名前と時間、メモリの量だけ */
 export function eventLoopBlockContext(
   inflight: Array<{ name: string; ms: number }>,
-  slow: Array<{ op: string; ms: number }>
+  slow: Array<{ op: string; ms: number }>,
+  env?: BlockEnvironment
 ): { tags: Record<string, string>; context: Record<string, string> } {
   const fmt = (list: Array<{ label: string; ms: number }>) => list.map((x) => `${x.label} ${Math.round(x.ms)}ms`).join(', ') || 'none'
-  return {
-    tags: { 'block.ipc': inflight[0]?.name ?? 'none', 'block.slowop': slow[0]?.op ?? 'none' },
-    context: {
-      inflight_ipc: fmt(inflight.map((x) => ({ label: x.name, ms: x.ms }))),
-      recent_slow_ops: fmt(slow.map((x) => ({ label: x.op, ms: x.ms })))
-    }
+  const tags: Record<string, string> = { 'block.ipc': inflight[0]?.name ?? 'none', 'block.slowop': slow[0]?.op ?? 'none' }
+  const context: Record<string, string> = {
+    inflight_ipc: fmt(inflight.map((x) => ({ label: x.name, ms: x.ms }))),
+    recent_slow_ops: fmt(slow.map((x) => ({ label: x.op, ms: x.ms })))
   }
+  if (env) {
+    tags['block.heap'] = memoryBucket(env.heapUsedMb)
+    tags['block.ax'] = env.axEnabled ? 'on' : 'off'
+    context.heap_used = `${Math.round(env.heapUsedMb)}MB`
+    context.rss = `${Math.round(env.rssMb)}MB`
+    context.ax_changed = env.axChangedMsAgo === null ? 'never' : `${Math.round(env.axChangedMsAgo)}ms ago`
+  }
+  return { tags, context }
 }
 
 /** 意味の無い Electron の出来事（補助技術の切り替えの通知など）。同じものが続けて来るので捨てる */

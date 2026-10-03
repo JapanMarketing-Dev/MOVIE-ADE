@@ -28,8 +28,22 @@ export function isUserFacingError(err: unknown): boolean {
  * それ以外（EIO など想定外のコード、コードの無い例外）はそのまま返す（今までどおり送る）。
  */
 export function toUserFacingFileError(err: unknown): unknown {
+  if (isStaleChunkError(err)) return new UserFacingError(t('errors.appFilesReplaced'), { cause: err })
   const message = fileErrorMessage((err as { code?: unknown } | null)?.code)
   return message ? new UserFacingError(message, { cause: err }) : err
+}
+
+/** ビルドの分割ファイル（out/main/chunks/〜.js など）が見つからないときの文。CJS の require と ESM の import の両方 */
+export const STALE_CHUNK_MESSAGE = /Cannot find (?:module|package) ['"][^'"]*chunks[\\/][^'"]+\.[cm]?js['"]/
+
+/**
+ * 起動中にアプリのファイル（out/ や配布版の中身）が入れ替わり、遅延 import の分割ファイルが無くなったか（Sentry FERRET-X）。
+ * dev で誰かが作業ツリーの out/ に build し直すと、chunk の名前（ハッシュ）が変わって起きる。不具合ではなく再起動で直る
+ */
+export function isStaleChunkError(err: unknown): boolean {
+  const e = err as { code?: unknown; message?: unknown } | null
+  if (e?.code !== 'MODULE_NOT_FOUND' && e?.code !== 'ERR_MODULE_NOT_FOUND') return false
+  return STALE_CHUNK_MESSAGE.test(String(e.message ?? ''))
 }
 
 function fileErrorMessage(code: unknown): string | undefined {

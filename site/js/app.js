@@ -13,7 +13,7 @@ import {
   formatBytes,
   formatDate,
   excerptNotes,
-} from './releases.js?v=ea4f2dbe'
+} from './releases.js?v=92f7848e'
 
 const $ = (sel, root = document) => root.querySelector(sel)
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)]
@@ -314,6 +314,30 @@ function renderDownloadPage(result, platform) {
   }
 }
 
+/* ── ヘッダーの現在地 ───────────────────────────────── */
+
+/**
+ * ダウンロードのページでは、ヘッダーの「Download」と「Changelog」のどちらか一方だけを現在地にする。
+ * 版の一覧（#versions）が画面の上半分に入ったら Changelog、それより上なら Download。
+ */
+function setupNavCurrent() {
+  const download = $('.site-nav a[href="download.html"]')
+  const changelog = $('.site-nav a[href="download.html#versions"]')
+  const versions = document.getElementById('versions')
+  if (!download || !changelog || !versions) return
+  const update = () => {
+    const inChangelog = versions.getBoundingClientRect().top < window.innerHeight / 2
+    for (const [link, on] of [[download, !inChangelog], [changelog, inChangelog]]) {
+      if (on) link.setAttribute('aria-current', 'page')
+      else link.removeAttribute('aria-current')
+    }
+  }
+  update()
+  window.addEventListener('scroll', update, { passive: true })
+  window.addEventListener('hashchange', update)
+  window.addEventListener('resize', update)
+}
+
 /* ── 起動 ───────────────────────────────────────────── */
 
 async function main() {
@@ -322,6 +346,7 @@ async function main() {
 
   const page = document.body.dataset.page
   if (page === 'download') {
+    setupNavCurrent()
     renderSlots(undefined, null) // 取得までの枠
     const [platform, result] = await Promise.all([readPlatform(), loadIndex()])
     renderDownloadPage(result, platform)

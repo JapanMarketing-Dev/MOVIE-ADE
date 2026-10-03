@@ -65,10 +65,9 @@ export async function inspect(paths: SessionPaths): Promise<RecoverableSession> 
 }
 
 async function countLines(path: string): Promise<number> {
-  const { readFile } = await import('node:fs/promises')
-  // 無いファイルは0行（想定内）
-  const text = await readFile(path, 'utf8').catch(() => '')
-  return text.split('\n').filter((l) => l.trim().length > 0).length
+  // 無いファイルは0行（想定内）。大きさ・行数の上限付きで数え、リンクはたどらない（limits.ts）
+  const { countJsonLines } = await import('./limits')
+  return countJsonLines(path)
 }
 
 async function listFiles(dir: string): Promise<string[]> {

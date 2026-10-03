@@ -31,7 +31,6 @@ export const CONTENT_TYPES = {
   deb: 'application/vnd.debian.binary-package'
 }
 
-/**
 /** 製品名。0.2.0 から Ferret（それまでは MOVIE-ADE）。ファイル名の先頭でもある */
 export const PRODUCTS = ['Ferret', 'MOVIE-ADE']
 
@@ -165,4 +164,215 @@ export function replaceVersionInIndex(index, manifest) {
 export function obsoleteFiles(oldManifest, newManifest) {
   const keep = new Set(newManifest.files.map((f) => f.path))
   return (oldManifest?.files ?? []).map((f) => f.path).filter((p) => !keep.has(p))
+}
+
+/* ── 外から来た値（R2 の JSON・引数）の検証 ─────────────────────────
+ * R2 の中身は、トークンが漏れれば書き換えられる。promote / discard は manifest と索引を R2 から読むので、
+ * 形を厳しく確かめてから使う（キーにもローカルのパスにも、確かめていない値を使わない）。 */
+
+/** wrangler で1回に上げられる大きさの上限（300 MiB）。manifest の size もこれを超えない */
+export const PUT_LIMIT_BYTES = 300 * 1024 * 1024
+/** 1つの版に置くファイルの数の上限（今は6件。余裕を見て） */
+const MAX_FILES = 32
+const VERSION_RE = /^\d{1,4}\.\d{1,4}\.\d{1,4}(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/
+const SHA256_RE = /^[0-9a-f]{64}$/
+
+/** 版の文字列として正しいか（1.2.3 / 1.2.3-beta.1）。R2 のキーとローカルのパスに使うので、記号や区切りを通さない */
+export function isValidVersion(version) {
+  return typeof version === 'string' && VERSION_RE.test(version)
+}
+
+/** 版が正しくなければ例外 */
+export function assertValidVersion(version) {
+  if (!isValidVersion(version)) throw new Error(`版の形が正しくありません: ${JSON.stringify(version)}（例 0.2.0 / 0.2.0-beta.1）`)
+  return version
+}
+
+/** 版のファイルを置くフォルダ（buildManifest と同じ規則） */
+export function releaseDir(version, build = 1) {
+  return build > 1 ? `releases/${version}/b${build}` : `releases/${version}`
+}
+
+/**
+ * R2 から読んだ manifest.json を確かめる。形が少しでも違えば例外（fail-closed）。
+ * name は配布物の名前の規則どおりの basename、path は releases/<version>[/b<build>]/<name> に限る。
+ * @param {unknown} manifest
+ * @param {string} version 期待する版
+ * @returns {import('./release-r2-lib.d.mts').ReleaseManifest}
+ */
+export function validateManifest(manifest, version) {
+  assertValidVersion(version)
+  const fail = (why) => {
+    throw new Error(`manifest（${version}）の形が正しくありません: ${why}`)
+  }
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) fail('オブジェクトではない')
+  const m = /** @type {Record<string, unknown>} */ (manifest)
+  if (m.schema !== SCHEMA) fail('schema が 1 ではない')
+  if (m.version !== version) fail(`version が ${JSON.stringify(m.version)}`)
+  if (m.product !== undefined && !PRODUCTS.includes(/** @type {string} */ (m.product))) fail('product が知らない名前')
+  if (m.build !== undefined && !(Number.isInteger(m.build) && /** @type {number} */ (m.build) >= 1 && /** @type {number} */ (m.build) <= 999)) fail('build が正の整数ではない')
+  if (typeof m.date !== 'string' || !/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(m.date)) fail('date が ISO 8601 ではない')
+  if (typeof m.prerelease !== 'boolean') fail('prerelease が真偽値ではない')
+  if (typeof m.notes !== 'string') fail('notes が文字列ではない')
+  if (m.notesUrl !== undefined && (typeof m.notesUrl !== 'string' || !/^https:\/\/[^\s]+$/.test(m.notesUrl))) fail('notesUrl が https の URL ではない')
+  if (!Array.isArray(m.files) || m.files.length === 0 || m.files.length > MAX_FILES) fail('files が空か多すぎる')
+  const dir = releaseDir(version, /** @type {number|undefined} */ (m.build) ?? 1)
+  const names = new Set()
+  for (const f of /** @type {unknown[]} */ (m.files)) {
+    if (!f || typeof f !== 'object') fail('files の要素がオブジェクトではない')
+    const file = /** @type {Record<string, unknown>} */ (f)
+    const parsed = typeof file.name === 'string' ? parseArtifactName(file.name, version) : null
+    if (!parsed) fail(`ファイル名が配布物の規則に合わない: ${JSON.stringify(file.name)}`)
+    if (names.has(parsed.name)) fail(`ファイル名が重なっている: ${parsed.name}`)
+    names.add(parsed.name)
+    if (m.product !== undefined && parsed.product !== m.product) fail(`${parsed.name} の製品名が manifest と違う`)
+    if (file.path !== `${dir}/${parsed.name}`) fail(`${parsed.name} の path が ${dir}/ の下ではない: ${JSON.stringify(file.path)}`)
+    if (file.os !== parsed.os || file.arch !== parsed.arch || file.kind !== parsed.kind) fail(`${parsed.name} の os / arch / kind が名前と合わない`)
+    if (!Number.isInteger(file.size) || /** @type {number} */ (file.size) <= 0 || /** @type {number} */ (file.size) > PUT_LIMIT_BYTES) fail(`${parsed.name} の size が正しくない`)
+    if (typeof file.sha256 !== 'string' || !SHA256_RE.test(file.sha256)) fail(`${parsed.name} の sha256 が 64 桁の16進ではない`)
+    if (file.preview !== undefined && file.preview !== true) fail(`${parsed.name} の preview が true ではない`)
+  }
+  return /** @type {any} */ (manifest)
+}
+
+/**
+ * R2 から読んだ versions.json を確かめる。各版の manifest は releases/<version>/manifest.json に限る。
+ * @param {unknown} index
+ * @returns {import('./release-r2-lib.d.mts').VersionsIndex}
+ */
+export function validateIndex(index) {
+  const fail = (why) => {
+    throw new Error(`versions.json の形が正しくありません: ${why}`)
+  }
+  if (!index || typeof index !== 'object' || Array.isArray(index)) fail('オブジェクトではない')
+  const x = /** @type {Record<string, unknown>} */ (index)
+  if (x.schema !== SCHEMA) fail('schema が 1 ではない')
+  if (x.latest !== null && !isValidVersion(x.latest)) fail('latest が版の形ではない')
+  if (!Array.isArray(x.versions)) fail('versions が配列ではない')
+  const seen = new Set()
+  for (const v of /** @type {unknown[]} */ (x.versions)) {
+    const e = /** @type {Record<string, unknown>} */ (v ?? {})
+    if (!isValidVersion(e.version)) fail(`版の形ではない: ${JSON.stringify(e.version)}`)
+    if (seen.has(e.version)) fail(`版が重なっている: ${e.version}`)
+    seen.add(e.version)
+    if (e.manifest !== `releases/${e.version}/manifest.json`) fail(`${e.version} の manifest の場所が違う: ${JSON.stringify(e.manifest)}`)
+  }
+  return /** @type {any} */ (index)
+}
+
+/**
+ * SHA256SUMS（`sha256sum` の出力。「<64桁>  <名前>」または「<64桁> *<名前>」）を読む。
+ * GitHub Release に置く、R2 とは別の場所の答え合わせに使う。
+ * @param {string} text
+ * @returns {Map<string, string>} 名前 → sha256
+ */
+export function parseSha256Sums(text) {
+  const sums = new Map()
+  for (const raw of String(text).split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line) continue
+    const m = /^([0-9a-fA-F]{64}) [ *]([^\s/\\]+)$/.exec(line)
+    if (!m) throw new Error(`SHA256SUMS の行が読めません: ${JSON.stringify(line)}`)
+    if (sums.has(m[2])) throw new Error(`SHA256SUMS に同じ名前が2回あります: ${m[2]}`)
+    sums.set(m[2], m[1].toLowerCase())
+  }
+  if (sums.size === 0) throw new Error('SHA256SUMS が空です')
+  return sums
+}
+
+/** SHA256SUMS の形で書く（`sha256sum` と同じ。名前の順） */
+export function formatSha256Sums(files) {
+  return [...files].sort((a, b) => a.name.localeCompare(b.name)).map((f) => `${f.sha256}  ${f.name}\n`).join('')
+}
+
+/**
+ * manifest のファイルと SHA256SUMS が過不足なく一致するかを確かめる。違えば例外。
+ * @param {{ files: Array<{ name: string, sha256: string }> }} manifest
+ * @param {Map<string, string>} sums
+ */
+export function assertManifestMatchesSums(manifest, sums) {
+  const names = new Set(manifest.files.map((f) => f.name))
+  for (const f of manifest.files) {
+    const expected = sums.get(f.name)
+    if (!expected) throw new Error(`${f.name} が SHA256SUMS にありません`)
+    if (expected !== f.sha256) throw new Error(`${f.name} の sha256 が SHA256SUMS と違います（R2 の manifest が書き換えられた可能性があります）`)
+  }
+  for (const name of sums.keys()) {
+    if (!names.has(name)) throw new Error(`SHA256SUMS にある ${name} が manifest にありません`)
+  }
+}
+
+/**
+ * 作業フォルダの中のパスを作る。名前は呼び出し側が作ったもの（manifest の値は使わない）に限るが、
+ * 念のため区切り・.. を含むもの、フォルダの外に出るものは例外にする。
+ * @param {string} work mkdtemp で作ったフォルダ
+ * @param {string} name
+ * @param {{ resolve: (...p: string[]) => string, relative: (a: string, b: string) => string, isAbsolute: (p: string) => boolean, sep: string }} path node:path（テストで win32 を渡せるように）
+ */
+export function workPath(work, name, path) {
+  if (typeof name !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name) || name.includes('..')) {
+    throw new Error(`作業フォルダのファイル名にできない名前です: ${JSON.stringify(name)}`)
+  }
+  const full = path.resolve(work, name)
+  const rel = path.relative(path.resolve(work), full)
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel) || rel.includes(path.sep)) {
+    throw new Error(`作業フォルダの外を指しています: ${JSON.stringify(name)}`)
+  }
+  return full
+}
+
+/**
+ * npm のパッケージ指定が版を固定しているか（wrangler@4.1.2 など）。@latest・^・~・範囲・タグは通さない。
+ * @param {string} spec
+ */
+export function isExactPackageSpec(spec) {
+  return typeof spec === 'string' && /^(@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*@\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(spec)
+}
+
+/* ── GitHub Release（SHA256SUMS だけを置く。インストーラーは R2 だけ） ───────────────── */
+
+const REPO_RE = /^[A-Za-z0-9][\w.-]*\/[A-Za-z0-9][\w.-]*$/
+const REF_RE = /^[A-Za-z0-9][\w./-]*$/
+
+/**
+ * SHA256SUMS だけを付けた GitHub Release の下書きを作る gh の引数。値は manifest と同じもの（formatSha256Sums）を出す。
+ * shell は通さずに gh へ渡す前提だが、repo・target・版の形もここで確かめる（- で始まる値をオプションと取り違えさせない）。
+ * @param {{ version: string, repo: string, sumsFile: string, notes: string, target?: string, prerelease?: boolean, product?: string }} input
+ */
+export function ghReleaseCreateArgs(input) {
+  assertValidVersion(input.version)
+  if (!REPO_RE.test(input.repo ?? '')) throw new Error(`リポジトリの形が正しくありません: ${JSON.stringify(input.repo)}（owner/name）`)
+  if (input.target !== undefined && !REF_RE.test(input.target)) throw new Error(`target の形が正しくありません: ${JSON.stringify(input.target)}`)
+  return [
+    'release', 'create', `v${input.version}`, input.sumsFile,
+    '--repo', input.repo,
+    '--draft',
+    '--title', `${input.product ?? 'Ferret'} ${input.version}`,
+    '--notes', input.notes,
+    ...(input.target ? ['--target', input.target] : []),
+    ...(input.prerelease ? ['--prerelease'] : [])
+  ]
+}
+
+/** 下書きを公開する gh の引数（promote が済んでから） */
+export function ghReleasePublishArgs(input) {
+  assertValidVersion(input.version)
+  if (!REPO_RE.test(input.repo ?? '')) throw new Error(`リポジトリの形が正しくありません: ${JSON.stringify(input.repo)}（owner/name）`)
+  return ['release', 'edit', `v${input.version}`, '--repo', input.repo, '--draft=false']
+}
+
+/** GitHub Release の本文。SHA256SUMS が何で、何を保証しないかを書く */
+export function ghReleaseNotes(version, downloadUrl = 'https://ferretade.dev/download') {
+  assertValidVersion(version)
+  return [
+    `Ferret ${version}`,
+    '',
+    `Download: ${downloadUrl}`,
+    '',
+    'The installers are served only from the download server (Cloudflare R2), not from GitHub.',
+    `\`SHA256SUMS\` lists the SHA-256 of each installer, the same values as \`releases/${version}/manifest.json\` on the download server. It is kept here, apart from the download server, so you can check a download against a second source.`,
+    '',
+    '**These builds are not code-signed.** A matching hash shows the file is the one that was published, not who built it.',
+    ''
+  ].join('\n')
 }

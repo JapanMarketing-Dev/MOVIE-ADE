@@ -68,7 +68,7 @@ describe('sha256 の検証', () => {
   it('一致すれば所定の名前へ置き、照合の開始を知らせる', async () => {
     const dest = join(dir, 'ggml-small.bin')
     let verifying = false
-    await downloadWhisperModel('small', dest, { fetchImpl: fetchOf('MODEL'), sha256: sha('MODEL'), onVerifying: () => { verifying = true } })
+    await downloadWhisperModel('small', dest, { fetchImpl: fetchOf('MODEL'), sha256: sha('MODEL'), expectedBytes: 5, onVerifying: () => { verifying = true } })
     expect(existsSync(dest)).toBe(true)
     expect(verifying).toBe(true)
     expect(await sha256File(dest)).toBe(sha('MODEL'))
@@ -76,8 +76,8 @@ describe('sha256 の検証', () => {
 
   it('一致しなければ途中ファイルも捨て、使わない（再開もしない）', async () => {
     const dest = join(dir, 'ggml-small.bin')
-    // 既定の値（本物の small の sha256）とは合わない
-    const err = await downloadWhisperModel('small', dest, { fetchImpl: fetchOf('TAMPERED') }).catch((e: unknown) => e)
+    // 既定の値（本物の small の sha256）とは合わない（大きさは合わせて、照合まで進める）
+    const err = await downloadWhisperModel('small', dest, { fetchImpl: fetchOf('TAMPERED'), expectedBytes: 8 }).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(ModelDownloadError)
     expect(err).toMatchObject({ kind: 'checksum', resumable: false })
     expect(existsSync(dest)).toBe(false)
@@ -98,7 +98,7 @@ describe('中止', () => {
         })
       },
     }), { status: 200, headers: { 'content-length': '10' } })) as unknown as typeof fetch
-    const running = downloadWhisperModel('small', dest, { fetchImpl: impl, signal: controller.signal, sha256: sha('0123456789') })
+    const running = downloadWhisperModel('small', dest, { fetchImpl: impl, signal: controller.signal, sha256: sha('0123456789'), expectedBytes: 10 })
     // 進み具合の通知は 100ms に1回なので、時間で中止する（最初の塊が書かれた後）
     setTimeout(() => controller.abort(), 200)
     await expect(running).rejects.toMatchObject({ kind: 'aborted', resumable: true })

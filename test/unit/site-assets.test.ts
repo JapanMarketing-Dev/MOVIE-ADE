@@ -37,6 +37,18 @@ describe.each(pages)('%s', (page) => {
   })
 })
 
+describe.each(pages.filter((p) => !p.startsWith('docs/')))('%s の画像', (page) => {
+  it('site/assets の画像の参照（src・srcset・data-poster）も今の版を持つ（版が無いと、描き直した静止画を Cloudflare が1日古いまま返す）', () => {
+    const html = readFileSync(join(SITE_DIR, page), 'utf8')
+    const refs = [...html.matchAll(/(?<=["\s,])\/?assets\/[\w/.-]+\.(?:webp|png|jpg|svg|gif)(?:\?v=[0-9a-f]+)?(?=[\s",])/g)].map((m) => m[0])
+    const wrong = refs.filter((ref) => {
+      const [path, query] = ref.split('?')
+      return query !== `v=${assetVersion(path!.replace(/^\//, ''))}`
+    })
+    expect(wrong).toEqual([])
+  })
+})
+
 describe('JS モジュールの import', () => {
   it.each(MODULE_IMPORTS)('%s の import が今の版を持つ', (file, deps) => {
     const src = readFileSync(join(SITE_DIR, file), 'utf8')

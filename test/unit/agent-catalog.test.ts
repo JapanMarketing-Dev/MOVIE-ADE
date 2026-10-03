@@ -57,6 +57,11 @@ describe('カタログ（Orca の既定値）', () => {
       expect(entry.homepageUrl, id).toMatch(/^https:\/\//)
       // ソースから入れるしかないもの（zcode）以外は1行の入れ方がある
       if (id !== 'zcode') expect(entry.install.trim(), id).not.toBe('')
+      // Windows の入れ方は、あるなら空でなく、POSIX のシェル向け（curl … | bash / sh）や Homebrew を含まない
+      if (entry.installWindows !== undefined) {
+        expect(entry.installWindows.trim(), id).not.toBe('')
+        expect(entry.installWindows, id).not.toMatch(/\|\s*(?:ba|z)?sh\b|^\s*sh\s+-c\b|^\s*brew\s/)
+      }
       expect(typeof entry.yoloArgs).toBe('string')
     }
     // 主要なものは先頭にまとまっている

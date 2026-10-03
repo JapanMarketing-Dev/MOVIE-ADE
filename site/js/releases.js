@@ -15,7 +15,7 @@
  * manifest の os・arch・kind を優先し、無い・不正な時だけ名前から判別する。
  */
 
-import { REPO_URL } from './config.js?v=412f94b4'
+import { DOWNLOAD_BASE, REPO_URL, SITE_URL } from './config.js?v=412f94b4'
 
 // 英語の README の見出し「Install and run」
 export const BUILD_DOC_URL = `${REPO_URL}#install-and-run`
@@ -82,15 +82,66 @@ export function classifyAsset(name) {
 }
 
 /**
- * ベース URL と相対パスをつなぐ。http(s) の絶対 URL はそのまま通し、それ以外のスキーム（javascript: など）は捨てる。
+ * 配布物と manifest を置いてよい配信元（R2 の公開 URL と、サイト自身）。
+ * 索引や manifest は R2 にあり、R2 を書き換えられると任意の URL を指せてしまうので、ここに無い配信元へのリンクは作らない。
+ */
+export const TRUSTED_DOWNLOAD_ORIGINS = [new URL(DOWNLOAD_BASE).origin, new URL(SITE_URL).origin]
+
+const originOf = (url) => {
+  try {
+    return new URL(url).origin
+  } catch {
+    return null
+  }
+}
+
+/**
+ * ベース URL と相対パスをつなぐ。絶対 URL は https で、配信元がベースか TRUSTED_DOWNLOAD_ORIGINS のものだけを通す。
+ * それ以外の配信元・http・ほかのスキーム（javascript: など）・. や .. の区切りは null。
  * @param {string} base
  * @param {string} path
+ * @param {string[]} [origins] ベースのほかに許す配信元
  */
-export function joinUrl(base, path) {
+export function joinUrl(base, path, origins = TRUSTED_DOWNLOAD_ORIGINS) {
   if (typeof path !== 'string' || !path) return null
-  if (/^https?:\/\//i.test(path)) return path
-  if (/^[a-z][a-z0-9+.-]*:/i.test(path) || path.startsWith('//')) return null
-  return `${String(base).replace(/\/+$/, '')}/${path.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/')}`
+  if (/^[a-z][a-z0-9+.-]*:/i.test(path) || path.startsWith('//') || path.includes('\\')) {
+    if (!/^https:\/\//i.test(path)) return null
+    let url
+    try {
+      url = new URL(path)
+    } catch {
+      return null
+    }
+    if (url.username || url.password) return null
+    const allowed = [originOf(base), ...origins].filter(Boolean)
+    return allowed.includes(url.origin) ? url.href : null
+  }
+  const parts = path.replace(/^\/+/, '').split('/')
+  if (parts.some((p) => p === '.' || p === '..')) return null
+  return `${String(base).replace(/\/+$/, '')}/${parts.map(encodeURIComponent).join('/')}`
+}
+
+/** リリースノートの全文を置いてよい場所。GitHub の組織の下（ferret と改名前のリポジトリ）と、サイト自身 */
+const NOTES_GITHUB_PREFIX = `${new URL(REPO_URL).origin}${new URL(REPO_URL).pathname.split('/').slice(0, 2).join('/')}/`
+
+/**
+ * リリースノートの全文へのリンク。https で、GitHub の JapanMarketing-Dev の下か、サイト（SITE_URL）のものだけを通す。
+ * パスの先頭まで見るので、github.com/JapanMarketing-Dev.evil/… や github.com.evil.example は通らない。
+ * @param {string} _base 使わない（ほかの normalize と呼び方をそろえるため）
+ * @param {unknown} url
+ */
+export function notesLink(_base, url) {
+  if (typeof url !== 'string' || !url) return null
+  let parsed
+  try {
+    parsed = new URL(url)
+  } catch {
+    return null
+  }
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return null
+  if (parsed.href.startsWith(NOTES_GITHUB_PREFIX)) return parsed.href
+  if (parsed.origin === new URL(SITE_URL).origin) return parsed.href
+  return null
 }
 
 /** ダウンロードページに並べる最新版の枠。Windows・Linux は実機で未確認なので Preview */
@@ -147,7 +198,7 @@ export function normalizeManifest(manifest, base) {
     date: typeof manifest.date === 'string' ? manifest.date : '',
     prerelease: Boolean(manifest.prerelease),
     notes: typeof manifest.notes === 'string' ? manifest.notes : '',
-    notesUrl: joinUrl(base, manifest.notesUrl) ?? '',
+    notesUrl: notesLink(base, manifest.notesUrl) ?? '',
     assets: normalizeFiles(manifest.files, base),
   }
 }

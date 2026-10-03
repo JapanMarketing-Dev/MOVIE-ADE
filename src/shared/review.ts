@@ -1,5 +1,6 @@
 import type { FeedbackDocument } from '../main/pipeline/types'
 import type { ProgressMap, ProgressPatchValue } from './findingProgress'
+import { toTrimmedTime, type TrimCut } from './trim'
 
 export interface ReviewSummary {
   id: string
@@ -12,6 +13,8 @@ export interface ReviewSummary {
   doneCount?: number
   /** Agent が人間へ戻した（確認待ち。needs_human）件数 */
   needsHumanCount?: number
+  /** Agent が直して人の確認を待っている（human_review）件数 */
+  humanReviewCount?: number
   targetUrl?: string
   incomplete: boolean
   /** 記録が壊れていて開けない */
@@ -52,6 +55,8 @@ export interface ReviewData {
   takes?: ReviewTake[]
   /** Agent へ最後に送った時刻（ISO8601）。追記した録画のうちまだ送っていない分を見分けるのに使う */
   sentAt?: string
+  /** 何もない時間を削れなかった録画がある（元の動画のまま再生する）。画面に一度だけ控えめに知らせる */
+  trimSkipped?: boolean
 }
 
 /** レビューに入っている録画1本（main/sessions/takes.ts） */
@@ -65,6 +70,11 @@ export interface ReviewTake {
   videoUrl?: string
   /** このレビューに足した時刻（ISO8601）。最初の録画には無い */
   addedAt?: string
+  /**
+   * videoUrl が何もない時間を削った版なら、削った区間（この録画の中の時間）。
+   * 再生位置は toTrimmedTime(cuts, t - offsetMs) で削った版の時間へ読み替える（shared/trim.ts）
+   */
+  cuts?: TrimCut[]
 }
 
 /** 時刻 t（レビューの時間軸）がどの録画のものか。録画の一覧が無ければ null */
@@ -73,6 +83,18 @@ export function takeAt(takes: ReviewTake[] | undefined, t: number): ReviewTake |
   let found: ReviewTake | null = null
   for (const take of [...takes].sort((a, b) => a.offsetMs - b.offsetMs)) if (take.offsetMs <= t) found = take
   return found ?? takes[0] ?? null
+}
+
+/**
+ * ▷ で開く動画と位置。t はレビューの時間軸の時刻。
+ * 録画（take）の中の時刻へ戻し、削った版なら削った区間ぶん詰めた位置にする。label は元の録画の中の時刻（字幕に出す）
+ */
+export function playbackAt(takes: ReviewTake[] | undefined, videoUrl: string | undefined, t: number): { url: string; t: number; label: number; take: number | null } | null {
+  const take = takeAt(takes, t)
+  if (!take) return videoUrl ? { url: videoUrl, t, label: t, take: null } : null
+  if (!take.videoUrl) return null
+  const local = Math.max(0, t - take.offsetMs)
+  return { url: take.videoUrl, t: toTrimmedTime(take.cuts, local), label: local, take: (takes?.length ?? 0) > 1 ? take.n : null }
 }
 
 /** まだ Agent へ送っていない追記の録画か（送ったあとに足したもの。一度も送っていなければ追記はすべて未送信） */

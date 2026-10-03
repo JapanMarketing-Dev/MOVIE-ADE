@@ -12,6 +12,8 @@ import {
   formatDate,
   joinUrl,
   normalizeFiles,
+  notesLink,
+  TRUSTED_DOWNLOAD_ORIGINS,
   normalizeIndex,
   normalizeManifest,
   recommendedSlot
@@ -94,8 +96,19 @@ describe('joinUrl', () => {
     expect(joinUrl(BASE, 'latest.json')).toBe(`${BASE}/latest.json`)
   })
 
-  it('http(s) の絶対 URL は通し、それ以外のスキームや空は null', () => {
-    expect(joinUrl(BASE, 'https://github.com/x')).toBe('https://github.com/x')
+  it('絶対 URL は https で、ベースか許した配信元（R2 の公開 URL・ferretade.dev）のものだけ通す', () => {
+    expect(TRUSTED_DOWNLOAD_ORIGINS).toEqual([new URL(DOWNLOAD_BASE).origin, 'https://ferretade.dev'])
+    expect(joinUrl(BASE, `${BASE}/releases/0.2.0/x.dmg`)).toBe(`${BASE}/releases/0.2.0/x.dmg`)
+    expect(joinUrl(BASE, `${DOWNLOAD_BASE}/releases/0.2.0/x.dmg`)).toBe(`${DOWNLOAD_BASE}/releases/0.2.0/x.dmg`)
+    expect(joinUrl(BASE, 'https://ferretade.dev/releases/0.2.0/x.dmg')).toBe('https://ferretade.dev/releases/0.2.0/x.dmg')
+    // R2 の manifest が書き換えられても、ほかの配信元のインストーラへのリンクは作らない
+    expect(joinUrl(BASE, 'https://github.com/x')).toBeNull()
+    expect(joinUrl(BASE, 'https://evil.example/Ferret-0.2.0-mac-arm64.dmg')).toBeNull()
+    expect(joinUrl(BASE, 'https://ferretade.dev.evil.example/x.dmg')).toBeNull()
+    expect(joinUrl(BASE, `https://user@${new URL(BASE).host}/x.dmg`)).toBeNull()
+    expect(joinUrl(BASE, `http://${new URL(BASE).host}/x.dmg`)).toBeNull()
+    expect(joinUrl(BASE, 'releases/../../x.dmg')).toBeNull()
+    expect(joinUrl(BASE, 'releases\\x.dmg')).toBeNull()
     expect(joinUrl(BASE, 'javascript:alert(1)')).toBeNull()
     expect(joinUrl(BASE, '//evil.example/x')).toBeNull()
     expect(joinUrl(BASE, '')).toBeNull()
@@ -151,15 +164,57 @@ describe('normalizeFiles / normalizeManifest', () => {
 
   it('manifest を表示用の版に直す。版が無ければ null', () => {
     const release = normalizeManifest(
-      { schema: 1, version: 'v0.2.0', date: '2026-10-20T00:00:00Z', notes: '- Fix', notesUrl: 'https://github.com/x/releases/tag/v0.2.0', files: [file('MOVIE-ADE-0.2.0-mac-arm64.dmg')] },
+      { schema: 1, version: 'v0.2.0', date: '2026-10-20T00:00:00Z', notes: '- Fix', notesUrl: `${REPO_URL}/releases/tag/v0.2.0`, files: [file('MOVIE-ADE-0.2.0-mac-arm64.dmg')] },
       BASE
     )
-    expect(release).toMatchObject({ version: '0.2.0', tag: 'v0.2.0', prerelease: false, notes: '- Fix', notesUrl: 'https://github.com/x/releases/tag/v0.2.0' })
+    expect(release).toMatchObject({ version: '0.2.0', tag: 'v0.2.0', prerelease: false, notes: '- Fix', notesUrl: `${REPO_URL}/releases/tag/v0.2.0` })
     expect(release?.assets).toHaveLength(1)
     expect(normalizeManifest(null, BASE)).toBeNull()
     expect(normalizeManifest({ files: [] }, BASE)).toBeNull()
     // R2 の 404 ページ（HTML）を JSON として読めなかった時も、呼び出し側が null を渡すだけで済む
     expect(normalizeManifest('<!doctype html>', BASE)).toBeNull()
+  })
+})
+
+describe('notesLink: リリースノートのリンク', () => {
+  it('GitHub の JapanMarketing-Dev の下（改名前のリポジトリも）と ferretade.dev の https だけを通す', () => {
+    expect(notesLink(BASE, `${REPO_URL}/releases/tag/v0.2.0`)).toBe(`${REPO_URL}/releases/tag/v0.2.0`)
+    expect(notesLink(BASE, 'https://github.com/JapanMarketing-Dev/MOVIE-ADE/releases/tag/v0.1.0')).toBe('https://github.com/JapanMarketing-Dev/MOVIE-ADE/releases/tag/v0.1.0')
+    expect(notesLink(BASE, 'https://github.com/JapanMarketing-Dev/ADE-movie/releases/tag/v0.1.0')).toBe('https://github.com/JapanMarketing-Dev/ADE-movie/releases/tag/v0.1.0')
+    expect(notesLink(BASE, 'https://ferretade.dev/changelog')).toBe('https://ferretade.dev/changelog')
+  })
+
+  it('偽物・ほかの配信元・http・相対パス・ほかのスキームは落とす', () => {
+    for (const url of [
+      'https://github.com/JapanMarketing-Dev.evil/ferret/releases',
+      'https://github.com.evil.example/JapanMarketing-Dev/ferret',
+      'https://github.com/someone-else/ferret/releases',
+      'https://github.com/JapanMarketing-Dev',
+      'https://user@github.com/JapanMarketing-Dev/ferret',
+      'http://github.com/JapanMarketing-Dev/ferret',
+      'https://ferretade.dev.evil.example/notes',
+      `${BASE}/notes.md`,
+      'notes/0.2.0.md',
+      'javascript:alert(1)',
+      undefined
+    ]) {
+      expect(notesLink(BASE, url), String(url)).toBeNull()
+    }
+  })
+})
+
+describe('R2 の索引・manifest が別の配信元を指しても、リンクにしない', () => {
+  it('ファイルの path がほかの配信元ならそのファイルを落とす', () => {
+    const files = normalizeFiles([file('Ferret-0.2.0-mac-arm64.dmg', { path: 'https://evil.example/Ferret-0.2.0-mac-arm64.dmg' }), file('Ferret-0.2.0-mac-x64.dmg')], BASE)
+    expect(files.map((f) => f.name)).toEqual(['Ferret-0.2.0-mac-x64.dmg'])
+  })
+
+  it('versions.json の manifest がほかの配信元ならその版を落とす（入れ子の manifest も同じ規則）', () => {
+    const { all } = normalizeIndex(
+      { schema: 1, latest: '0.2.0', versions: [{ version: '0.2.0', date: '2026-10-20', manifest: 'https://evil.example/manifest.json' }, { version: '0.1.0', date: '2026-10-01' }] },
+      BASE
+    )
+    expect(all.map((v) => v.version)).toEqual(['0.1.0'])
   })
 })
 

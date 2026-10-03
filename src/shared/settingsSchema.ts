@@ -7,6 +7,7 @@ import { DEFAULT_LAYOUT, DOCKS, FOOTER_ITEMS, PANEL_IDS } from './layout'
 import { ONBOARDING_STEPS } from './onboarding'
 import { STT_LANGUAGE_CODES } from './sttLanguages'
 import { DEFAULT_PROJECT_KIND, PROJECT_KINDS } from './projectTargets'
+import { PROJECT_SOURCES } from './projectSource'
 import { DEFAULT_SPLIT_RATIO, MAX_SPLIT_RATIO, MIN_SPLIT_RATIO } from './types'
 
 /**
@@ -190,6 +191,17 @@ export const SETTINGS_SCHEMA: JsonSchema = {
           name: str('Display name. Defaults to the folder name.'),
           folderPath: str('Absolute path of the project folder.'),
           kind: { type: 'string', description: 'Kind of app. Decides which target fields the UI shows; all fields are kept either way.', enum: PROJECT_KINDS, default: DEFAULT_PROJECT_KIND },
+          source: { type: 'string', description: 'Where the project lives: "local" (a folder on this machine), "github" (cloned from remoteUrl) or "ssh" (a folder on a remote host, see ssh). Separate from kind.', enum: PROJECT_SOURCES, default: 'local' },
+          remoteUrl: str('For source "github": the URL it was cloned from. Never include a token or user:password in the URL; credentials are dropped.', { pattern: '^(https?://|git@|ssh://)' }),
+          ssh: {
+            type: 'object',
+            description: 'For source "ssh" (required there): the remote host and folder. folderPath then points to the local folder where reviews for it are kept.',
+            required: ['host', 'path'],
+            properties: {
+              host: str('A Host from ~/.ssh/config, or user@host.'),
+              path: str('Absolute remote path, or a path starting with ~.', { pattern: '^(/|~)' })
+            }
+          },
           urls: {
             type: 'array',
             description: 'Review targets (named freely, no limit): a URL for the built-in browser, a command to launch the app, and/or a window to record. The first one opens by default.',
@@ -264,6 +276,8 @@ export const SETTINGS_SCHEMA: JsonSchema = {
         language: { type: 'string', description: 'Spoken language: "auto" or an ISO 639-1 code supported by Whisper (e.g. "en", "ja", "de"; "haw" and "yue" are the only 3-letter codes). Separate from the UI language.', enum: ['auto', ...STT_LANGUAGE_CODES], default: 'auto' },
         keepDays: { type: 'integer', description: 'Days to keep recordings. 0 keeps them forever.', minimum: 0, maximum: 3650, default: 7 },
         stayFeedbackOnStop: bool('Stay in feedback mode after stopping a recording.', { default: false }),
+        trimIdle: bool('After a recording stops, make a copy with idle parts removed (no voice, drawing, clicks, scrolling, navigation or screen change) and play that one. The original recording is kept.', { default: true }),
+        trimIdleSeconds: { type: 'integer', description: 'Idle time (seconds) that gets trimmed. 0.5 s is kept on each side of a cut.', minimum: 1, maximum: 60, default: 3 },
         annotationColor: { type: 'string', description: 'Color of pen strokes and boxes drawn while recording. Usually set from the recording toolbar.', enum: ANNOTATION_COLOR_IDS, default: DEFAULT_ANNOTATION_COLOR },
         captureTarget: {
           type: 'object',

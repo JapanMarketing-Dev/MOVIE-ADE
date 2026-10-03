@@ -4,7 +4,8 @@
  * 名前などは session.json ではなく label.json に置く。session.json が無い（分解の途中で落ちた）
  * レビューにも名前を付けたり、アーカイブしたりできるようにするため。
  */
-import { readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { lstat } from 'node:fs/promises'
+import { readFileNoFollow, removeContained, writeFileNoFollow } from './containment'
 import { dirname, relative, resolve, sep } from 'node:path'
 import type { ReviewLabelPatch } from '@shared/review'
 import { isSessionId, reviewsRoots, sessionPaths, type SessionPaths } from './paths'
@@ -21,7 +22,7 @@ const NAME_MAX = 120
 /** 読めなければ空（＝名前なし・アーカイブなし・未送信） */
 export async function readLabel(paths: SessionPaths): Promise<SessionLabel> {
   try {
-    return sanitizeLabel(JSON.parse(await readFile(paths.labelJson, 'utf8')))
+    return sanitizeLabel(JSON.parse(await readFileNoFollow(paths.labelJson, 'utf8', { maxBytes: 64 * 1024 })))
   } catch {
     // 名前を付けていないレビューには label.json が無い（想定内）
     return {}
@@ -49,7 +50,7 @@ export async function updateLabel(paths: SessionPaths, patch: ReviewLabelPatch &
     ...(patch.archived !== undefined ? { archived: patch.archived } : {}),
     ...(patch.sentAt !== undefined ? { sentAt: patch.sentAt } : {})
   })
-  await writeFile(paths.labelJson, `${JSON.stringify(next, null, 2)}\n`, 'utf8')
+  await writeFileNoFollow(paths.labelJson, `${JSON.stringify(next, null, 2)}\n`)
   return next
 }
 
@@ -73,8 +74,9 @@ export function deletableSessionDir(projectDir: string, id: string): string {
 export async function deleteSession(projectDir: string, id: string): Promise<void> {
   const dir = deletableSessionDir(projectDir, id)
   // 消し済み（想定内）
-  const s = await stat(dir).catch(() => null)
+  const s = await lstat(dir).catch(() => null)
   if (!s) return
+  // リンク・ジャンクションのレビューは消さない（たどった先を rm -r しない。containment.ts）
   if (!s.isDirectory()) throw new Error(`not a review folder: ${id}`)
-  await rm(dir, { recursive: true, force: true })
+  await removeContained(projectDir, dir, { recursive: true })
 }

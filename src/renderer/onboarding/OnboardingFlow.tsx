@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BadgeCheck, PenLine, Users } from 'lucide-react'
 import { ONBOARDING_STEPS, type OnboardingPatch, type OnboardingState, type OnboardingStepId } from '@shared/onboarding'
-import type { AgentPreferences, ProjectsState } from '@shared/types'
+import type { AgentOption, AgentPreferences, ProjectsState } from '@shared/types'
 import { PRODUCT_NAME, type TranslationKey } from '@shared/i18n'
 import { Logo, Modal } from '../ui'
 import { useT } from '../lib/i18n'
 import { AgentsStep, AppearanceStep, FinishStep, PermissionsStep, ProjectStep, VoiceStep, type OnboardingVoice } from './OnboardingSteps'
 import { OnboardingFooter } from './OnboardingFooter'
+import { DecisionStep } from './DecisionStep'
 import { OnboardingSkipConfirmationDialog } from './OnboardingSkipConfirmationDialog'
 import {
   LAST_STEP_INDEX,
+  agentsStepGate,
+  stepSubtitleKey,
   ONBOARDING_CONCEPT_KEYS,
   clampStepIndex,
   completePatch,
@@ -57,11 +60,21 @@ export function OnboardingFlow({ onboarding, onPersist, agents, onAgentsChange, 
   const last = stepIndex === LAST_STEP_INDEX
   const mac = window.ade.platform === 'darwin'
 
+  /** Agent の手順で探し終えた一覧と、「少なくとも1つ選んで」を出しているか */
+  const [agentOptions, setAgentOptions] = useState<AgentOption[] | null>(null)
+  const [agentsWarn, setAgentsWarn] = useState(false)
+
   const goTo = useCallback((index: number) => {
     const next = clampStepIndex(index)
+    // Agent の手順から先へ進むときは、インストール済みがあるなら1つ以上選んでもらう（無い人は案内したうえで進める）
+    if (stepId === 'agents' && next > stepIndex && agentsStepGate(agentOptions, agents.startupAgents) === 'needSelection') {
+      setAgentsWarn(true)
+      return
+    }
+    setAgentsWarn(false)
     setStepIndex(next)
     onPersist(stepPatch(next))
-  }, [onPersist])
+  }, [onPersist, stepId, stepIndex, agentOptions, agents.startupAgents])
 
   // 待たずに閉じる。同じ値を2回送っても結果は変わらない（⌘↩ の連打など）ので、押せなくなる印は持たない
   const close = useCallback((patch: OnboardingPatch) => onPersist(patch), [onPersist])
@@ -133,19 +146,21 @@ export function OnboardingFlow({ onboarding, onPersist, agents, onAgentsChange, 
             })}
           </ul>}
           <h1 ref={headingRef} tabIndex={-1} className="ob-title">{t(`onboarding.${stepId}.title` as TranslationKey)}</h1>
-          <p className="ob-subtitle">{t(`onboarding.${stepId}.subtitle` as TranslationKey)}</p>
+          <p className="ob-subtitle">{t(stepSubtitleKey(stepId, window.ade.platform) as TranslationKey)}</p>
         </div>
 
         <div className="ob-body">
           {stepId === 'appearance' && <AppearanceStep />}
-          {stepId === 'agents' && <AgentsStep agents={agents} onAgentsChange={onAgentsChange} />}
+          {stepId === 'agents' && <AgentsStep agents={agents} onAgentsChange={onAgentsChange} onDetected={setAgentOptions} warn={agentsWarn} />}
+          {stepId === 'decision' && <DecisionStep />}
           {stepId === 'project' && <ProjectStep projects={projects} />}
           {stepId === 'voice' && <VoiceStep voice={voice} />}
           {stepId === 'permissions' && <PermissionsStep />}
           {stepId === 'finish' && <FinishStep />}
         </div>
 
-        <OnboardingFooter stepIndex={stepIndex} last={last} skippable={isSkippableStep(stepIndex)} shortcutLabel={mac ? '⌘' : 'Ctrl'}
+        <OnboardingFooter stepIndex={stepIndex} last={last} skippable={isSkippableStep(stepIndex)}
+          skipLabel={stepId === 'decision' ? t('onboarding.decision.later') : undefined} shortcutLabel={mac ? '⌘' : 'Ctrl'}
           onSkipSetup={() => setSkipConfirmOpen(true)} onBack={back} onSkipStep={next} onNext={next} />
       </section>
     </Modal>

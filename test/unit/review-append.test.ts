@@ -137,7 +137,7 @@ describe('開いているレビューに録画を追記する', () => {
 
 describe('録画の一覧と、時刻から録画への対応', () => {
   it('追記の無い古いレビューは録画1本だけ', () => {
-    expect(listTakes(baseRecord())).toEqual([{ n: 1, offsetMs: 0, durationMs: meta.durationMs }])
+    expect(listTakes(baseRecord())).toEqual([{ n: 1, offsetMs: 0, durationMs: meta.durationMs, trim: null }])
     expect(nextTakeNumber(baseRecord())).toBe(2)
   })
 

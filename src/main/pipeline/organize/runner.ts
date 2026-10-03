@@ -8,7 +8,10 @@ export interface RunnerRequest {
   prompt: string;
   /** 出力の JSON Schema */
   schema: unknown;
-  /** 子プロセスの作業フォルダ。セッションフォルダに限定する */
+  /**
+   * セッションフォルダ（記録用）。CLI の runner はここを作業フォルダにせず、実行ごとの空の一時フォルダで動かす
+   * （プロンプトにページの文字が入るため、ファイルを見せない。security-2 [3]）
+   */
   cwd: string;
   /** タイムアウト(ms) */
   timeoutMs: number;

@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseEnv } from 'node:util'
+import { readTextBoundedSync } from './boundedFile'
 import { fillAccountId, resolveHeaderValues, type AiEndpointConfig } from '@shared/aiProviders'
 
 /**
@@ -41,9 +41,13 @@ function readDotEnv(dir: string | null | undefined, name: string, read: (path: s
   }
 }
 
+/** .env として読む大きさの上限 */
+const DOTENV_MAX_BYTES = 256 * 1024
+
 /** 環境変数を 環境 → プロジェクトの .env → 設定フォルダの .env の順に探す */
 export function lookupEnv(name: string, lookup: KeyLookup): string | undefined {
-  const read = lookup.readText ?? ((path: string) => readFileSync(path, 'utf8'))
+  // .env はプロジェクト側が用意するファイル。名前付きパイプ・巨大なファイル・リンク先で main が止まらないよう、大きさを決めて辿らずに読む
+  const read = lookup.readText ?? ((path: string) => readTextBoundedSync(path, DOTENV_MAX_BYTES, { noFollow: true }))
   return lookup.env[name]?.trim() || readDotEnv(lookup.projectDir, name, read) || readDotEnv(lookup.configDir, name, read)
 }
 

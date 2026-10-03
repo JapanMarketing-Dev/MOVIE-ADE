@@ -6,7 +6,8 @@ import mermaidScript from 'mermaid/dist/mermaid.min.js?asset'
 import pageScript from './page.js?raw'
 import pageStyle from './page.css?raw'
 import { PREVIEW_ASSET_HOST, PREVIEW_PROJECT_HOST, PREVIEW_SCHEME, previewKind, previewPathFromUrl } from '@shared/preview'
-import { readTextFile, resolveInside } from '../files'
+import { readTextFile } from '../files'
+import { previewImageType, readPreviewImage } from './image'
 import { renderPreviewBody, renderPreviewMessage, renderPreviewPage } from './render'
 import { t } from '@shared/i18n'
 import { reportHandled } from '@shared/report'
@@ -25,17 +26,6 @@ const ASSETS: Record<string, { load: () => Promise<string | Buffer>; type: strin
   'mermaid.js': { load: () => readFile(mermaidScript), type: 'text/javascript; charset=utf-8' },
   'preview.js': { load: async () => pageScript, type: 'text/javascript; charset=utf-8' },
   'preview.css': { load: async () => pageStyle, type: 'text/css; charset=utf-8' }
-}
-
-/** markdown から参照される画像だけは、プロジェクトの中から生のまま返す */
-const IMAGE_TYPES: Record<string, string> = {
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.webp': 'image/webp',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon'
 }
 
 /**
@@ -74,15 +64,12 @@ async function handle(request: Request, getRoot: () => string | null): Promise<R
   if (url.hostname !== PREVIEW_PROJECT_HOST || !root || !path) return respond('Not found', 'text/plain', 404)
 
   // 画像は生のまま返す（markdown から参照される）。md / Mermaid 以外のテキストは読み取り専用のコードのページ
-  const dot = path.lastIndexOf('.')
-  const imageType = dot === -1 ? undefined : IMAGE_TYPES[path.slice(dot).toLowerCase()]
+  const imageType = previewImageType(path)
   if (imageType) {
-    try {
-      return respond(await readFile(await resolveInside(root, path)), imageType)
-    } catch {
-      // 無い画像・プロジェクトの外を指す画像（想定内）
-      return respond('Not found', 'text/plain', 404)
-    }
+    // 大きさの上限・普通のファイルだけ（image.ts）
+    const image = await readPreviewImage(root, path)
+    if (image.status === 200) return respond(image.body, imageType)
+    return image.status === 413 ? respond('Too large', 'text/plain', 413) : respond('Not found', 'text/plain', 404)
   }
   const kind = previewKind(path) ?? 'code'
 

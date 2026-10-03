@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { PerformanceObserver } from 'node:perf_hooks'
 import * as Sentry from '@sentry/electron/main'
 import { IS_PACKAGED } from './runtime'
 import {
@@ -33,7 +34,12 @@ import {
   eventLoopBlockContext,
   eventLoopBlockThreshold,
   type ScrubContext,
-  type SentryTestKind
+  type SentryTestKind,
+  classifyStaleBuild,
+  gcKindName,
+  isNativeCrashEvent,
+  minimizeNativeCrash,
+  filterTransport
 } from '@shared/telemetry'
 import { flow, noteSlowOp, recentSlowOps, reportHandled, reportPerf, setReporter } from '@shared/report'
 import { version } from '../../package.json'
@@ -84,6 +90,11 @@ function installId(): string {
     }
   }
   return id
+}
+
+/** 匿名フィードバックの中継に添えるインストール ID（Sentry と同じもの。頻度の上限に使うだけ。src/main/feedback.ts） */
+export function telemetryInstallId(): string {
+  return installId()
 }
 
 /** どの画面・状態で落ちたか（タグ）。mode = editor / feedback、recording = idle / recording / paused */
@@ -196,13 +207,34 @@ export function trackIpc(channel: string): () => void {
 function watchEventLoop(threshold: number): void {
   const INTERVAL = 250
   let expected = Date.now() + INTERVAL
+  // 補助技術の切り替え（FERRET-M では 25 秒ごとに来ていた）。パンくずには残さないので、最後の時刻だけ覚える
+  let axChangedAt: number | null = null
+  app.on('accessibility-support-changed', () => { axChangedAt = Date.now() })
+  // 長い GC（ゴミ集め）も重い処理として控える。JS のスタックに出ない止まりの手がかり
+  try {
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        noteSlowOp(`gc:${gcKindName((entry as { detail?: { kind?: unknown } }).detail?.kind)}`, entry.duration)
+      }
+    }).observe({ entryTypes: ['gc'] })
+  } catch {
+    // GC を観測できない環境では手がかりが減るだけ
+  }
   const timer = setInterval(() => {
     const now = Date.now()
     const lag = now - expected
     expected = now + INTERVAL
     if (lag > threshold && anomalyGate('event-loop')) {
-      // 手がかり：まだ終わっていない IPC（長い順の上位3つ）と、直前に終わった重い処理（同期の fs・ps・which など）
-      reportPerf('event-loop-block', lag, eventLoopBlockContext(inflightIpc.snapshot(), recentSlowOps(now).slice(0, 3)))
+      // 手がかり：まだ終わっていない IPC（長い順の上位3つ）、直前に終わった重い処理（同期の fs・ps・which・GC など）、メモリの量、補助技術
+      const inflight = inflightIpc.snapshot()
+      const memory = process.memoryUsage()
+      const ax = { axEnabled: app.accessibilitySupportEnabled, axChangedMsAgo: axChangedAt === null ? null : now - axChangedAt }
+      // GC の記録は少し遅れて届くので、待ってから重い処理を集める
+      setTimeout(() => {
+        reportPerf('event-loop-block', lag, eventLoopBlockContext(inflight, recentSlowOps(Date.now()).slice(0, 3), {
+          heapUsedMb: memory.heapUsed / 2 ** 20, rssMb: memory.rss / 2 ** 20, ...ax
+        }))
+      }, 100).unref?.()
     }
   }, INTERVAL)
   timer.unref?.()
@@ -293,7 +325,8 @@ export function initCrashReporting(): void {
     // クラッシュしなかった割合を汚さない）。src/shared/telemetry.ts の resolveEnvironment
     environment: resolveEnvironment({ packaged, version, forced, e2e: process.env.ADE_E2E === '1' }),
     // OFF のあいだは transport で全部止める（gate）
-    transport: (options) => gateTransport(Sentry.makeElectronOfflineTransport()(options), gate.allow),
+    // OFF のあいだはためもしない（外側）。ネットへ送る直前にも送ってよい項目だけに絞る（内側。前の版がためた minidump も送らない）
+    transport: (options) => gateTransport(Sentry.makeElectronOfflineTransport((o) => filterTransport(Sentry.makeElectronTransport(o)))(options), gate.allow),
     // 利用者の情報（IP・Cookie・ヘッダ・本文・変数）は集めない（旧 sendDefaultPii: false にあたる）
     dataCollection: {
       userInfo: false,
@@ -335,7 +368,16 @@ export function initCrashReporting(): void {
     beforeSend: async (event, hint) => {
       // 起動後に OFF にしたら、その時点から送らない（transport でも止めるが、添付や記録の前にここで捨てる）
       if (!gate.allow()) return null
-      const native = (hint.attachments ?? []).some((a) => a.attachmentType === 'event.minidump')
+      // 起動中に out/ が入れ替わった失敗（FERRET-X）: dev は送らない。配布版は kind: stale-build で1件にまとめる
+      const classified = classifyStaleBuild(event, packaged)
+      if (!classified) return null
+      event = classified
+      const native = isNativeCrashEvent(event, (hint.attachments ?? []).some((a) => a.attachmentType === 'event.minidump'))
+      // 届いた添付は全部捨てる（minidump のメモリの写し・renderer や scope からの添付は伏せ字を通せない。security-2 [13]）。
+      // 送る添付は、このあと付ける伏せ字済みの main のログだけ（transport の filterEnvelope でも名前で絞る）
+      hint.attachments = []
+      // ネイティブのクラッシュは、プロセスの種類・終了の理由・版だけにする
+      if (native) event = minimizeNativeCrash(event)
       // 確認用の起動（FERRET_SENTRY_FORCE=1）では間引かない
       if (!forced && !sampleEvent(native, Math.random, profile.sampleRate)) return null
       if (!packaged) await remapDevFrames(event, { appPath: app.getAppPath(), rendererUrl: process.env.ELECTRON_RENDERER_URL }).catch(() => undefined)
@@ -344,7 +386,7 @@ export function initCrashReporting(): void {
       if (!(event.level === 'warning' ? limitWarnings : limit)(event)) return null
       // クラッシュには main の直近のログを添付する（見出し付きの行だけ・伏せ字済み）
       const log = logRing.snapshot()
-      if (log && isCrashEvent(event, native)) {
+      if (log && !native && isCrashEvent(event, false)) {
         hint.attachments = [...(hint.attachments ?? []), { filename: 'main-log.txt', data: log, contentType: 'text/plain' }]
       }
       return scrubEvent(event, scrubContext())

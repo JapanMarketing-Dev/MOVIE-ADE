@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CircleAlert, CircleCheck, FolderOpen, Mic, MonitorUp, RefreshCw } from 'lucide-react'
 import type { AgentOption, AgentPreferences, BuiltinAgent, Project, ProjectsState, SttAvailability, SttProvider } from '@shared/types'
 import { AGENT_CATALOG, isBuiltinAgent } from '@shared/agentCatalog'
@@ -15,7 +15,7 @@ import { AgentIcon } from '../components/AgentIcon'
 import { TranscriptionSection, type SpeechLanguageValue } from '../components/TranscriptionSection'
 import { CrashReportsSetting } from '../components/CrashReportsSetting'
 import { agentInstallCommand } from './agentInstall'
-import { FINISH_STEP_KEYS } from './onboardingFlowState'
+import { FINISH_STEP_KEYS, recommendedAgent } from './onboardingFlowState'
 import { AgentInstallTerminal } from './AgentInstallTerminal'
 
 /**
@@ -60,7 +60,14 @@ export function AppearanceStep() {
 
 // ───────────────────────── Agent ─────────────────────────
 
-export function AgentsStep({ agents, onAgentsChange }: { agents: AgentPreferences; onAgentsChange: (next: AgentPreferences) => void }) {
+export function AgentsStep({ agents, onAgentsChange, onDetected, warn = false }: {
+  agents: AgentPreferences
+  onAgentsChange: (next: AgentPreferences) => void
+  /** 探し終えた一覧（「次へ」で、どれか1つを選んだかを見るため） */
+  onDetected?: (options: AgentOption[]) => void
+  /** 1つも選ばずに進もうとした */
+  warn?: boolean
+}) {
   const t = useT()
   const [options, setOptions] = useState<AgentOption[] | null>(null)
   const detect = useCallback((refresh: boolean) => {
@@ -83,6 +90,17 @@ export function AgentsStep({ agents, onAgentsChange }: { agents: AgentPreference
     onAgentsChange(toggleStartupAgent(enabled, id, on))
   }
   const missingSelected = agents.startupAgents.some((id) => builtins.some((o) => o.id === id && !o.installed))
+  const noneInstalled = options !== null && !builtins.some((o) => o.installed)
+  // 探し終えたら知らせ、何も選んでいなければおすすめ（インストール済みの Claude Code → Codex → …）を1つ選んでおく（開いたときに1度だけ）
+  const autoPickedRef = useRef(false)
+  useEffect(() => {
+    if (!options) return
+    onDetected?.(options)
+    if (autoPickedRef.current) return
+    autoPickedRef.current = true
+    const pick = recommendedAgent(options, agents.startupAgents)
+    if (pick) onAgentsChange(toggleStartupAgent(setAgentEnabled(agents, pick, true), pick, true))
+  }, [options])
 
   return <div className="ob-stack">
     {options === null
@@ -118,6 +136,10 @@ export function AgentsStep({ agents, onAgentsChange }: { agents: AgentPreference
           {showAll ? t('agents.showLess') : t('agents.showAll', { count: hiddenCount })}</Button>
       </div>}
       </>}
+    {warn && agents.startupAgents.length === 0 && <p className="ob-note ob-note--warn" role="alert" data-testid="onboarding-agents-pick-one">
+      <CircleAlert size={12} aria-hidden="true" />{t('onboarding.agents.pickOne')}</p>}
+    {noneInstalled && <p className="ob-note ob-note--warn" data-testid="onboarding-agents-none-installed">
+      <CircleAlert size={12} aria-hidden="true" />{t('onboarding.agents.noneInstalled')}</p>}
     <p className="ob-note">{t('onboarding.agents.customHint')}</p>
     <div className="ob-row">
       <p className={`ob-note${missingSelected ? ' ob-note--warn' : ''}`}>

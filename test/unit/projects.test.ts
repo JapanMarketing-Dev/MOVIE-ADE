@@ -24,8 +24,8 @@ describe('設定の読み込み: プロジェクト', () => {
       activeProjectId: 'b'
     })
     expect(s.projects).toEqual([
-      { id: 'a', name: 'App', folderPath: '/work/app', kind: 'web', urls: [{ id: 'u1', label: 'local', url: 'http://localhost:3000' }, { id: 'u2', label: 'https://dev.example.com', url: 'https://dev.example.com' }] },
-      { id: 'b', name: 'site', folderPath: '/work/site', kind: 'web', urls: [] }
+      { id: 'a', name: 'App', folderPath: '/work/app', kind: 'web', source: 'local', urls: [{ id: 'u1', label: 'local', url: 'http://localhost:3000' }, { id: 'u2', label: 'https://dev.example.com', url: 'https://dev.example.com' }] },
+      { id: 'b', name: 'site', folderPath: '/work/site', kind: 'web', source: 'local', urls: [] }
     ])
     expect(s.activeProjectId).toBe('b')
   })

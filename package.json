@@ -1,6 +1,6 @@
 {
   "name": "ade-movie",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "license": "MIT",
   "description": "画面を操作しながら喋って囲むだけでUIフィードバックをAgentへ渡すデスクトップADE",
@@ -31,9 +31,10 @@
     "release:r2": "node scripts/release-r2.mjs",
     "lp:dev": "node tools/qa/serve-site.mjs",
     "docs:build": "node tools/docs/build-docs.mjs",
-    "site:deploy": "npx --yes wrangler@4 pages deploy site --project-name movie-ade --branch main",
+    "site:deploy": "node scripts/release-tools.mjs wrangler pages deploy site --project-name movie-ade --branch main",
     "site:meta": "node tools/qa/site-meta.mjs && node tools/docs/site-hash.mjs",
-    "site:hash": "node tools/docs/site-hash.mjs"
+    "site:hash": "node tools/docs/site-hash.mjs",
+    "site:indexnow": "node tools/qa/indexnow.mjs"
   },
   "pnpm": {
     "//": "インストール時にビルド／ダウンロードのスクリプトを走らせる必要があるものだけを許可する",
@@ -53,6 +54,7 @@
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@monaco-editor/react": "^4.7.0",
     "@playwright/test": "^1.63.0",
+    "@sentry/cli": "2.58.6",
     "@types/node": "^22.20.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -70,8 +72,10 @@
     "monaco-editor": "^0.57.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "sentry": "0.44.1",
     "typescript": "~5.9.3",
     "vite": "^7.3.6",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "wrangler": "4.147.0"
   }
 }

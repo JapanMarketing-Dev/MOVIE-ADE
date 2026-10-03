@@ -1,0 +1,6 @@
+# Adapted from Orca's .github/ISSUE_TEMPLATE/config.yml (MIT, Copyright 2026 Lovecast Inc.).
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and discussion (Discord)
+    url: https://discord.gg/A5zAuwg866
+    about: Ask questions, share tips and talk with other Ferret users.

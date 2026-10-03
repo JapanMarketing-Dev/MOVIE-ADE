@@ -106,8 +106,8 @@ describe('sanitize（settings.json）の onboarding', () => {
 })
 
 describe('手順の進め方', () => {
-  it('手順は6つで、最後は finish', () => {
-    expect(ONBOARDING_STEPS).toEqual(['appearance', 'agents', 'project', 'voice', 'permissions', 'finish'])
+  it('手順は7つで、最後は finish', () => {
+    expect(ONBOARDING_STEPS).toEqual(['appearance', 'agents', 'decision', 'project', 'voice', 'permissions', 'finish'])
     expect(stepIdAt(LAST_STEP_INDEX)).toBe('finish')
   })
 
@@ -123,21 +123,21 @@ describe('手順の進め方', () => {
   })
 
   it('飛ばせるのはプロジェクトと文字起こしだけ', () => {
-    expect(ONBOARDING_STEPS.filter((_, i) => isSkippableStep(i))).toEqual(['project', 'voice'])
+    expect(ONBOARDING_STEPS.filter((_, i) => isSkippableStep(i))).toEqual(['decision', 'project', 'voice'])
   })
 
   it('再開: 最後に見ていた手順から始め、無い・知らない手順なら先頭', () => {
     expect(initialStepIndex(undefined)).toBe(0)
     expect(initialStepIndex(null)).toBe(0)
-    expect(initialStepIndex({ lastStep: 'voice' })).toBe(3)
+    expect(initialStepIndex({ lastStep: 'voice' })).toBe(4)
     expect(initialStepIndex({ lastStep: 'gone' as never })).toBe(0)
   })
 
   it('移るたびの保存値で再開位置が決まる（途中終了 → 再起動）', () => {
-    const saved = applyOnboardingPatch(undefined, stepPatch(4))
+    const saved = applyOnboardingPatch(undefined, stepPatch(5))
     expect(saved).toEqual({ lastStep: 'permissions' })
     expect(shouldShowOnboarding(saved)).toBe(true)
-    expect(initialStepIndex(saved)).toBe(4)
+    expect(initialStepIndex(saved)).toBe(5)
   })
 
   it('完了は completedAt を書いて再開位置を消す', () => {
@@ -179,9 +179,10 @@ describe('製品の考え方の文言（最初の画面・最後の手順・指�
   const { LOCALES } = await import('@shared/i18n')
   const { FINISH_STEP_KEYS, ONBOARDING_CONCEPT_KEYS } = await import('../../src/renderer/onboarding/onboardingFlowState')
 
-  it('最初の画面は3段（印と声 → 会議 → 判定モデル）で、手順は増やさない', () => {
+  it('最初の画面は3段（印と声 → 会議 → 判定モデル）で、手順は7つ（判定モデルは Agent の次）', () => {
     expect(ONBOARDING_CONCEPT_KEYS).toEqual(['onboarding.concept.feedback', 'onboarding.concept.meetings', 'onboarding.concept.decision'])
-    expect(ONBOARDING_STEPS).toHaveLength(6)
+    expect(ONBOARDING_STEPS).toHaveLength(7)
+    expect(ONBOARDING_STEPS.indexOf('decision')).toBe(ONBOARDING_STEPS.indexOf('agents') + 1)
   })
 
   it('最後の手順の流れに、会議での使い方と判定モデルが入っている', () => {
@@ -200,5 +201,87 @@ describe('製品の考え方の文言（最初の画面・最後の手順・指�
     const { en } = LOCALES
     expect(en['review.emptyDescription']).not.toMatch(/write/i)
     expect(en['review.emptyDescription']).toMatch(/box/)
+  })
+})
+
+describe('Agent の手順：どれか1つを選ぶ', async () => {
+  const { agentsStepGate, recommendedAgent } = await import('../../src/renderer/onboarding/onboardingFlowState')
+  const opt = (id: string, installed: boolean, custom = false) => ({ id, installed, custom })
+
+  it('おすすめは、インストール済みのうち Claude Code → Codex → … の順で最初のもの', () => {
+    expect(recommendedAgent([opt('codex', true), opt('claude', true)], [])).toBe('claude')
+    expect(recommendedAgent([opt('claude', false), opt('codex', true)], [])).toBe('codex')
+    expect(recommendedAgent([opt('claude', false), opt('gemini', true)], [])).toBe('gemini')
+  })
+
+  it('もう選んでいる・何も入っていない・探している途中なら、勝手に選ばない', () => {
+    expect(recommendedAgent([opt('claude', true)], ['codex'])).toBeNull()
+    expect(recommendedAgent([opt('claude', false), opt('codex', false)], [])).toBeNull()
+    expect(recommendedAgent(null, [])).toBeNull()
+    // 自作の Agent はおすすめにしない
+    expect(recommendedAgent([opt('custom:x', true, true)], [])).toBeNull()
+  })
+
+  it('1つ以上選んでいれば進める', () => {
+    expect(agentsStepGate([opt('claude', true)], ['claude'])).toBe('ok')
+    expect(agentsStepGate(null, ['claude'])).toBe('ok')
+  })
+
+  it('インストール済みがあるのに0件なら止める', () => {
+    expect(agentsStepGate([opt('claude', true), opt('codex', false)], [])).toBe('needSelection')
+  })
+
+  it('インストール済みが1つも無ければ、0件でも進める（行き止まりにしない）', () => {
+    expect(agentsStepGate([opt('claude', false), opt('codex', false)], [])).toBe('noneInstalled')
+    expect(agentsStepGate([opt('custom:x', true, true)], [])).toBe('noneInstalled')
+    expect(agentsStepGate([], [])).toBe('noneInstalled')
+  })
+
+  it('探している途中は待たせない', () => {
+    expect(agentsStepGate(null, [])).toBe('detecting')
+  })
+})
+
+describe('判定モデルの手順', async () => {
+  const { RECOMMENDED_DECISION_PRESET, decisionReady } = await import('../../src/renderer/onboarding/onboardingFlowState')
+  const { applyDecisionPreset, DEFAULT_DECISION_PREFERENCES } = await import('@shared/decision')
+  const cloudflare = applyDecisionPreset(DEFAULT_DECISION_PREFERENCES, 'cloudflare')
+
+  it('おすすめは Cloudflare Workers AI（clef-flash）で、判定モデルの手順は飛ばせる', () => {
+    expect(RECOMMENDED_DECISION_PRESET).toBe('cloudflare')
+    expect(cloudflare.model).toBe('clef-flash')
+    expect(isSkippableStep(ONBOARDING_STEPS.indexOf('decision'))).toBe(true)
+  })
+
+  it('Cloudflare は Account ID とキーが揃ったときだけ有効にしてよい', () => {
+    expect(decisionReady(cloudflare, false)).toBe(false)
+    expect(decisionReady({ ...cloudflare, accountId: 'abc123' }, false)).toBe(false)
+    expect(decisionReady(cloudflare, true)).toBe(false)
+    expect(decisionReady({ ...cloudflare, accountId: 'abc123' }, true)).toBe(true)
+  })
+
+  it('キーの要らない端末内の Ollama は、キーが無くても有効にしてよい', () => {
+    expect(decisionReady(applyDecisionPreset(DEFAULT_DECISION_PREFERENCES, 'ollama'), false)).toBe(true)
+  })
+
+  it('Custom は URL が無ければ有効にしない', () => {
+    expect(decisionReady(applyDecisionPreset(DEFAULT_DECISION_PREFERENCES, 'custom'), true)).toBe(false)
+  })
+})
+
+describe('許可の手順の説明は OS ごと', async () => {
+  const { stepSubtitleKey } = await import('../../src/renderer/onboarding/onboardingFlowState')
+  const { en } = await import('@shared/i18n/en')
+
+  it('macOS だけ「macOS では最初に1回だけ」の文、Windows・Linux は別の文', () => {
+    expect(stepSubtitleKey('permissions', 'darwin')).toBe('onboarding.permissions.subtitle')
+    expect(stepSubtitleKey('permissions', 'win32')).toBe('onboarding.permissions.subtitleOther')
+    expect(stepSubtitleKey('permissions', 'linux')).toBe('onboarding.permissions.subtitleOther')
+    expect((en as Record<string, string>)['onboarding.permissions.subtitleOther']).not.toMatch(/macOS/)
+  })
+
+  it('ほかの手順はどの OS でも同じキー', () => {
+    expect(stepSubtitleKey('agents', 'win32')).toBe('onboarding.agents.subtitle')
+    expect(stepSubtitleKey('finish', 'linux')).toBe('onboarding.finish.subtitle')
   })
 })

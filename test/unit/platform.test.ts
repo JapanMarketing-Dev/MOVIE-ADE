@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
 import {
@@ -219,5 +221,48 @@ describe('開発起動の Electron.app の名前（scripts/prepare-dev-electron.
     const require = createRequire(import.meta.url)
     expect(require('../../electron-builder.config.cjs').linux.syncDesktopName).toBe(true)
     expect(require('../../package.json').desktopName).toBe('ferret.desktop')
+  })
+})
+
+describe('Windows のインストーラの中のアーカイブ（NSIS / nsis7z）', () => {
+  it('配布の設定を読むと、7z のフィルタを BCJ に固定する（ARM64 の分岐フィルタ 0A を使わせない）', () => {
+    const require = createRequire(import.meta.url)
+    require('../../electron-builder.config.cjs')
+    expect(process.env.ELECTRON_BUILDER_7Z_FILTER).toBe('BCJ')
+  })
+
+  it('古い 7-Zip の検査結果から、読めないファイルと許していないメソッドを拾う', async () => {
+    const { findArchiveProblems } = await import('../../scripts/check-nsis-archive.mjs')
+    const test = ['Testing     Ferret.exe', 'ERROR: Unsupported Method : Ferret.exe', 'ERROR: Unsupported Method : ffmpeg.dll'].join('\n')
+    const list = [
+      'Path = app-arm64.7z', 'Method = 0A LZMA2:20', // アーカイブ全体のまとめ（数えない）
+      '----------',
+      'Path = Ferret.exe', 'Method = 0A LZMA2:20',
+      'Path = resources/app.asar', 'Method = BCJ LZMA2:20',
+      'Path = resources', 'Method = '
+    ].join('\n')
+    expect(findArchiveProblems(test, list)).toEqual({
+      unsupported: ['Ferret.exe', 'ffmpeg.dll'],
+      badMethods: [{ path: 'Ferret.exe', method: '0A' }]
+    })
+    expect(findArchiveProblems('Everything is Ok', ['----------', 'Path = Ferret.exe', 'Method = BCJ LZMA2:20'].join('\n'))).toEqual({ unsupported: [], badMethods: [] })
+  })
+})
+
+describe('Mac で NSIS を作るときのパスの長さ（scripts/check-nsis-paths.mjs）', () => {
+  it('テンプレートの一番長いパスが 260 文字を超えたら止める（228 文字は通り、344 文字で makensis が落ちた）', async () => {
+    const { nsisPathProblem, NSIS_PATH_LIMIT } = await import('../../scripts/check-nsis-paths.mjs')
+    expect(NSIS_PATH_LIMIT).toBe(260)
+    expect(nsisPathProblem('x'.repeat(228))).toBeNull()
+    expect(nsisPathProblem('x'.repeat(344))).toMatch(/344 文字/)
+  })
+
+  it('build-release.sh は NSIS を /tmp の下の短いフォルダから作り、作る前にパスを確かめる', () => {
+    const script = readFileSync(join(__dirname, '../../scripts/build-release.sh'), 'utf8')
+    const nsisLines = script.split('\n').filter((line) => line.includes('--win nsis'))
+    expect(nsisLines.length).toBe(2)
+    for (const line of nsisLines) expect(line).toContain('-c.directories.output="${NSIS_DIR}/out"')
+    expect(script).toContain('NSIS_DIR="$(mktemp -d /tmp/fnsis.XXXXXX)"')
+    expect(script.indexOf('check-nsis-paths.mjs')).toBeLessThan(script.indexOf('--win nsis'))
   })
 })

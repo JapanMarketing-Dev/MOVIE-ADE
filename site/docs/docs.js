@@ -11,6 +11,7 @@
     toggle.setAttribute('aria-expanded', 'false')
     toggle.addEventListener('click', () => {
       const open = sidebar.classList.toggle('is-collapsed') === false
+      sidebar.classList.toggle('is-open', open)
       toggle.setAttribute('aria-expanded', String(open))
     })
   }
@@ -73,7 +74,7 @@
       for (const e of entries) e.isIntersecting ? visible.add(e.target.id) : visible.delete(e.target.id)
       update()
     },
-    { rootMargin: '-64px 0px -60% 0px' },
+    { rootMargin: '-76px 0px -60% 0px' },
   )
   for (const id of links.keys()) {
     const h = document.getElementById(id)

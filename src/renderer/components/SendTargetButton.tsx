@@ -11,11 +11,15 @@ import { loadSendTargets, rememberSendTarget, rememberedSendTarget, resolveRemem
  * 宛先は 自動 / 動いている Agent のタブ / 有効でインストール済みの Agent（動いていなければ送るときに起動）。
  * 最後に選んだ宛先はプロジェクトごとに覚え、次はボタン1つで同じ宛先へ送る。
  */
-export function SendTargetButton({ projectKey, disabled, onSend }: {
+export function SendTargetButton({ projectKey, disabled, onSend, count, disabledReason }: {
   /** 宛先を覚える単位（プロジェクトの id。無ければ共通） */
   projectKey: string
   disabled: boolean
   onSend: (target: SendTarget) => void
+  /** 送る指摘の件数（未対応の指摘だけを送る。@shared/findingProgress の pendingIds）。1件以上ならボタンの名前に出す */
+  count?: number
+  /** 押せない理由（未対応の指摘が無いなど）。押せないときの説明に出す。理由があるときも ▾（宛先の選択）は使える */
+  disabledReason?: string
 }) {
   const t = useT()
   const menuId = useId()
@@ -74,7 +78,9 @@ export function SendTargetButton({ projectKey, disabled, onSend }: {
 
   const selectedKey = sendTargetKey(target)
   const selected = options.find((o) => o.key === selectedKey) ?? (target.kind === 'auto' ? null : { agent: target.agent, tab: undefined })
-  const label = target.kind === 'auto' ? t('review.sendToAgent') : t('review.sendTo', { agent: sendTargetLabel(selected) })
+  const label = count
+    ? target.kind === 'auto' ? t('review.sendNToAgent', { count }) : t('review.sendNTo', { count, agent: sendTargetLabel(selected) })
+    : target.kind === 'auto' ? t('review.sendToAgent') : t('review.sendTo', { agent: sendTargetLabel(selected) })
   const item = (key: string, next: SendTarget, icon: React.ReactNode, text: string, detail: string | null, testId: string) =>
     <button key={key} type="button" role="menuitemradio" aria-checked={key === selectedKey} className="quick-launch__item"
       onClick={() => choose(next)} data-testid={testId}>
@@ -84,12 +90,13 @@ export function SendTargetButton({ projectKey, disabled, onSend }: {
       {key === selectedKey && <Check size={13} aria-hidden="true" />}
     </button>
 
-  return <span className="rv-send-split">
+  // 無効のボタンにはホバーが届かないので、押せない理由は外側の title で出す
+  return <span className="rv-send-split" title={disabled && disabledReason ? disabledReason : undefined}>
     <Tooltip side="bottom" label={t('review.sendToAgentTip')}>
       <Button variant="primary" className="rv-send" icon={<Send size={14} />} disabled={disabled} onClick={() => onSend(target)} data-testid="send-to-agent">{label}</Button>
     </Tooltip>
     <button ref={toggleRef} type="button" className="btn btn--primary rv-send-split__toggle" popoverTarget={menuId} aria-haspopup="menu" aria-expanded="false"
-      aria-label={t('review.sendTargetMenu')} title={t('review.sendTargetMenu')} disabled={disabled} data-testid="send-target-toggle">
+      aria-label={t('review.sendTargetMenu')} title={t('review.sendTargetMenu')} disabled={disabled && !disabledReason} data-testid="send-target-toggle">
       <ChevronDown size={14} aria-hidden="true" />
     </button>
     <div ref={menuRef} id={menuId} popover="auto" role="menu" aria-label={t('review.sendTargetMenu')} className="quick-launch rv-send-menu" style={{ width: 280 }}

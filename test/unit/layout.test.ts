@@ -10,6 +10,12 @@ import {
   dropPanel,
   dropPreviewRect,
   layoutSignature,
+  layoutMinWidth,
+  mainMinWidth,
+  CENTER_MIN_WIDTH,
+  SIDE_MIN_WIDTH,
+  TERMINAL_MIN_WIDTH,
+  WINDOW_MIN_WIDTH,
   panelToggleOrder,
   togglePanel,
   mainSplitGrid,
@@ -50,20 +56,20 @@ describe('sanitizeLayout', () => {
 describe('workspaceGrid', () => {
   it('既定はプロジェクト一覧が左、ファイルツリーが右', () => {
     expect(workspaceGrid(DEFAULT_LAYOUT)).toEqual({
-      columns: 'var(--sidebar-width) minmax(0, 1fr) var(--size-sidebar)',
+      columns: 'minmax(140px, var(--sidebar-width)) minmax(606px, 1fr) minmax(140px, var(--size-sidebar))',
       rows: 'minmax(0, 1fr)',
       areas: '"projects main files"'
     })
   })
   it('隠したパネルは列を残して幅 0 にする', () => {
     const g = workspaceGrid(withPanel(DEFAULT_LAYOUT, 'projects', { visible: false }))
-    expect(g.columns).toBe('0px minmax(0, 1fr) var(--size-sidebar)')
+    expect(g.columns).toBe('0px minmax(606px, 1fr) minmax(140px, var(--size-sidebar))')
     expect(g.areas).toBe('"projects main files"')
   })
   it('上下に置いたパネルは横幅いっぱいの行になる', () => {
     const l = withPanel(withPanel(DEFAULT_LAYOUT, 'projects', { dock: 'top' }), 'files', { dock: 'bottom' })
     expect(workspaceGrid(l)).toEqual({
-      columns: 'minmax(0, 1fr)',
+      columns: 'minmax(606px, 1fr)',
       rows: 'var(--size-panel-strip) minmax(0, 1fr) var(--size-panel-strip)',
       areas: '"projects" "main" "files"'
     })
@@ -77,28 +83,75 @@ describe('workspaceGrid', () => {
 })
 
 describe('mainSplitGrid', () => {
+  const capW = 'min(var(--split-left), calc(100% - var(--size-splitter) - 240px))'
+  const capH = 'min(var(--split-left), calc(100% - var(--size-splitter) - 160px))'
+  const centerW = `max(360px, ${capW})`
   it('右は 中央 | 境界 | ターミナル の列', () => {
-    expect(mainSplitGrid('right', true)).toMatchObject({
-      columns: 'var(--split-left) var(--size-splitter) minmax(0, 1fr)',
+    expect(mainSplitGrid('right')).toMatchObject({
+      columns: `${centerW} var(--size-splitter) minmax(0, 1fr)`,
       areas: '"center split term"',
       orientation: 'vertical',
       reverse: false
     })
   })
   it('左・上は並びを逆にし、比率の領域が後ろ側になる', () => {
-    expect(mainSplitGrid('left', true)).toMatchObject({ areas: '"term split center"', reverse: true, orientation: 'vertical' })
-    expect(mainSplitGrid('top', true)).toMatchObject({
-      rows: 'minmax(0, 1fr) var(--size-splitter) var(--split-left)',
+    expect(mainSplitGrid('left')).toMatchObject({ columns: `minmax(0, 1fr) var(--size-splitter) ${centerW}`, areas: '"term split center"', reverse: true, orientation: 'vertical' })
+    expect(mainSplitGrid('top')).toMatchObject({
+      rows: `minmax(0, 1fr) var(--size-splitter) ${capH}`,
       areas: '"term" "split" "center"',
       orientation: 'horizontal',
       reverse: true
     })
   })
   it('下は行で分ける', () => {
-    expect(mainSplitGrid('bottom', true)).toMatchObject({ columns: 'minmax(0, 1fr)', areas: '"center" "split" "term"', orientation: 'horizontal' })
+    expect(mainSplitGrid('bottom')).toMatchObject({ columns: 'minmax(0, 1fr)', rows: `${capH} var(--size-splitter) minmax(0, 1fr)`, areas: '"center" "split" "term"', orientation: 'horizontal' })
   })
-  it('隠すと中央だけが広がり、ターミナルは大きさ 0 で残る', () => {
-    expect(mainSplitGrid('right', false).columns).toBe('minmax(0, 1fr) 0px 0px')
+  it('ターミナルの最小（左右 240px・上下 160px）を残し、横に並べるときは中央の列も 360px を下回らない', () => {
+    for (const dock of ['left', 'right', 'top', 'bottom'] as const) {
+      const g = mainSplitGrid(dock)
+      // 0px の列（隠れた状態）を作らない
+      expect(`${g.columns} ${g.rows}`).not.toContain('0px ')
+    }
+    expect(mainSplitGrid('right').columns).toContain('max(360px,')
+  })
+})
+
+describe('狭い窓での最小幅（中央の列を守る）', () => {
+  const combos = (['left', 'right', 'top', 'bottom'] as const).flatMap((t) =>
+    (['left', 'right', 'top', 'bottom'] as const).flatMap((p) =>
+      (['left', 'right', 'top', 'bottom'] as const).map((f) =>
+        withPanel(withPanel(withPanel(DEFAULT_LAYOUT, 'terminal', { dock: t }), 'projects', { dock: p }), 'files', { dock: f }))))
+  it('窓の最小幅（900px）なら、どの配置でも中央の列 360px・ターミナル・左右のパネルの最小が収まる', () => {
+    for (const l of combos) expect(layoutMinWidth(l)).toBeLessThanOrEqual(WINDOW_MIN_WIDTH)
+  })
+  it('既定の配置（ターミナル右・ファイル右・プロジェクト左）の最小は 140 + 140 + 360 + 6 + 240 = 886px', () => {
+    expect(layoutMinWidth(DEFAULT_LAYOUT)).toBe(SIDE_MIN_WIDTH * 2 + CENTER_MIN_WIDTH + 6 + TERMINAL_MIN_WIDTH)
+    expect(layoutMinWidth(DEFAULT_LAYOUT)).toBe(886)
+  })
+  it('本体の列の最小は、ターミナルを左右に置くと 中央＋境界＋ターミナル、上下なら中央だけ', () => {
+    expect(mainMinWidth('right')).toBe(606)
+    expect(mainMinWidth('bottom')).toBe(CENTER_MIN_WIDTH)
+    expect(workspaceGrid(withPanel(DEFAULT_LAYOUT, 'terminal', { dock: 'bottom' })).columns).toContain('minmax(360px, 1fr)')
+  })
+  it('閉じたパネル・上下に置いたパネルは横の最小に数えない', () => {
+    expect(layoutMinWidth(withPanel(DEFAULT_LAYOUT, 'files', { visible: false }))).toBe(SIDE_MIN_WIDTH + 606)
+    expect(layoutMinWidth(withPanel(DEFAULT_LAYOUT, 'projects', { dock: 'top' }))).toBe(SIDE_MIN_WIDTH + 606)
+  })
+})
+
+describe('ターミナルは常に表示（閉じる手段を持たない）', () => {
+  it('古い設定でターミナルを閉じていても、読み込むと表示になる', () => {
+    expect(sanitizeLayout({ panels: { terminal: { dock: 'bottom', visible: false } } }).panels.terminal).toEqual({ dock: 'bottom', visible: true })
+  })
+  it('ほかのパネルは閉じたまま残る', () => {
+    expect(sanitizeLayout({ panels: { files: { dock: 'right', visible: false }, projects: { dock: 'left', visible: false } } }).panels)
+      .toMatchObject({ files: { visible: false }, projects: { visible: false } })
+  })
+  it('開閉ボタンの並びにターミナルは入らない', () => {
+    expect(panelToggleOrder(DEFAULT_LAYOUT)).toEqual(['projects', 'files'])
+  })
+  it('閉じようとしても、保存し直す（sanitize）と表示に戻る', () => {
+    expect(sanitizeLayout(togglePanel(DEFAULT_LAYOUT, 'terminal')).panels.terminal.visible).toBe(true)
   })
 })
 
@@ -186,9 +239,9 @@ describe('togglePanel / panelToggleOrder（タイトルバーの開閉ボタン�
     expect(togglePanel(l, 'terminal').panels.terminal.dock).toBe('top')
   })
   it('ボタンの並びは置き場所の順（左 → 上 → 下 → 右）', () => {
-    expect(panelToggleOrder(DEFAULT_LAYOUT)).toEqual(['projects', 'terminal', 'files'])
-    const l = withPanel(withPanel(DEFAULT_LAYOUT, 'terminal', { dock: 'bottom' }), 'projects', { dock: 'right' })
-    expect(panelToggleOrder(l)).toEqual(['terminal', 'projects', 'files'])
+    expect(panelToggleOrder(DEFAULT_LAYOUT)).toEqual(['projects', 'files'])
+    const l = withPanel(withPanel(DEFAULT_LAYOUT, 'files', { dock: 'bottom' }), 'projects', { dock: 'right' })
+    expect(panelToggleOrder(l)).toEqual(['files', 'projects'])
   })
 })
 

@@ -4,6 +4,7 @@ import { homedir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { commonBinaryDirs } from '../platform/binaryDirs'
 import { t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
 
 /**
  * gh・git を子プロセスで呼ぶ窓口。
@@ -21,6 +22,14 @@ const EXTRA_DIRS = process.platform === 'win32'
 function searchPath(): string {
   const dirs = [...(process.env.PATH ?? '').split(delimiter), ...EXTRA_DIRS].filter((d) => d.length > 0)
   return [...new Set(dirs)].join(delimiter)
+}
+
+/**
+ * gh・git の子プロセスに渡す環境変数。PATH によくある置き場を足し、対話の問い合わせ・更新の通知・色を切る。
+ * git clone のように spawn で長く走らせる呼び出し（src/main/projectSources.ts）も、これを使う
+ */
+export function toolEnv(): NodeJS.ProcessEnv {
+  return { ...process.env, PATH: searchPath(), GH_PROMPT_DISABLED: '1', GH_NO_UPDATE_NOTIFIER: '1', NO_COLOR: '1', GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0' }
 }
 
 let ghPath: string | null | undefined
@@ -49,7 +58,7 @@ export function run(file: string, args: string[], options: { cwd?: string; input
       timeout: options.timeoutMs ?? 15_000,
       maxBuffer: 8 * 1024 * 1024,
       windowsHide: true,
-      env: { ...process.env, PATH: searchPath(), GH_PROMPT_DISABLED: '1', GH_NO_UPDATE_NOTIFIER: '1', NO_COLOR: '1', GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0' }
+      env: toolEnv()
     }, (err, stdout, stderr) => {
       const error = err as (NodeJS.ErrnoException & { killed?: boolean }) | null
       resolve({
@@ -74,15 +83,47 @@ export async function gh(args: string[], options: { cwd?: string; input?: string
   return result
 }
 
-/** gh のエラー出力を、画面に出せる短い日本語にする。トークンらしき文字列は伏せる */
-export function ghErrorMessage(result: ExecResult): string {
-  if (result.missing) return t('github.errors.ghMissing')
-  if (result.timedOut) return t('github.errors.timeout')
-  const text = `${result.stderr}\n${result.stdout}`.replace(/\b(gh[opsur]_|github_pat_)[A-Za-z0-9_]+/g, '$1***')
-  if (/gh auth login|not logged in|authentication/i.test(text)) return t('github.errors.notLoggedIn')
-  if (/rate limit/i.test(text)) return t('github.errors.rateLimited')
-  if (/could not resolve to a repository|not found/i.test(text)) return t('github.errors.repoNotFound')
-  if (/network|dial tcp|timeout|could not connect/i.test(text)) return t('github.errors.network')
+export type GhErrorKind = 'missing' | 'timeout' | 'not-logged-in' | 'rate-limited' | 'repo-not-found' | 'network' | 'failed'
+
+/**
+ * gh の失敗。利用者に見せる想定内のもので、**クラッシュレポート（Sentry）には送らない**（UserFacingError）。
+ * gh の出力はリポジトリ名・パス・URL・メール・トークンを含みうるので、送ってよい情報として扱わない。
+ * 種類（kind）は決まった値だけ。出力の1行目は画面に出す文にだけ入れる（端末の外へは出さない）
+ */
+export class GhCommandError extends UserFacingError {
+  constructor(message: string, readonly kind: GhErrorKind) {
+    super(message)
+  }
+}
+
+/** 画面に出す前に伏せるもの：gh・GitHub のトークン、Bearer の値、URL の認証情報 */
+export function redactGhOutput(text: string): string {
+  return text
+    .replace(/\b(gh[opsur]_|github_pat_)[A-Za-z0-9_]+/g, '$1***')
+    .replace(/\b(bearer|token)\s+[A-Za-z0-9._~+/=-]{8,}/gi, '$1 ***')
+    .replace(/(\w+:\/\/)[^\s/@:]+:[^\s/@]+@/g, '$1***@')
+}
+
+/** gh の失敗を、決まった種類と画面に出せる短い文にする */
+export function classifyGhError(result: ExecResult): { kind: GhErrorKind; message: string } {
+  if (result.missing) return { kind: 'missing', message: t('github.errors.ghMissing') }
+  if (result.timedOut) return { kind: 'timeout', message: t('github.errors.timeout') }
+  const text = redactGhOutput(`${result.stderr}\n${result.stdout}`)
+  if (/gh auth login|not logged in|authentication/i.test(text)) return { kind: 'not-logged-in', message: t('github.errors.notLoggedIn') }
+  if (/rate limit/i.test(text)) return { kind: 'rate-limited', message: t('github.errors.rateLimited') }
+  if (/could not resolve to a repository|not found/i.test(text)) return { kind: 'repo-not-found', message: t('github.errors.repoNotFound') }
+  if (/network|dial tcp|timeout|could not connect/i.test(text)) return { kind: 'network', message: t('github.errors.network') }
   const first = text.split('\n').map((l) => l.trim()).find(Boolean)
-  return first ? t('github.errors.failedWith', { detail: first.slice(0, 200) }) : t('github.errors.failed')
+  return { kind: 'failed', message: first ? t('github.errors.failedWith', { detail: first.slice(0, 200) }) : t('github.errors.failed') }
+}
+
+/** gh のエラー出力を、画面に出せる短い文にする。トークンらしき文字列は伏せる */
+export function ghErrorMessage(result: ExecResult): string {
+  return classifyGhError(result).message
+}
+
+/** gh の失敗を投げる形にする（UserFacingError なので Sentry には送られない） */
+export function ghError(result: ExecResult): GhCommandError {
+  const { kind, message } = classifyGhError(result)
+  return new GhCommandError(message, kind)
 }

@@ -195,6 +195,16 @@ button {
   grid-area: split;
 }
 
+/*
+ * 狭い窓では、左右のパネルが 140px まで縮む（workspaceGrid の minmax）。中身は縮んだ幅に合わせ、
+ * 閉じる途中（幅 0 へ向かう間）は 140px のまま切り取る（中身が詰まり直さずに滑り出る）。
+ * 中央の列 360px・ターミナル 240px の最小は src/shared/layout.ts が持つ
+ */
+.sidebar-slot > .sidebar,
+.explorer-slot > .explorer {
+  width: max(140px, 100%);
+}
+
 /* 寸法を合わせ直す前の一瞬や、隠したとき（大きさ 0）に、はみ出さないよう切る */
 .main-split > .terminal-pane {
   overflow: hidden;

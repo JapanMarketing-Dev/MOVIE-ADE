@@ -539,6 +539,27 @@
   font-size: var(--font-size-sm);
 }
 
+/* ── 判定モデルの手順 ── */
+.ob-badge {
+  padding: 0 var(--space-3);
+  border: var(--size-border) solid var(--color-accent-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-wash);
+  color: var(--color-accent);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+  line-height: 18px;
+}
+
+.ob-url--wide {
+  grid-template-columns: 140px minmax(0, 1fr);
+}
+
+.ob-url--wide .rv-select,
+.ob-url--wide .st-select {
+  width: 100%;
+}
+
 /* ── 「閉じますか？」 ── */
 .ob-skip {
   width: min(100%, 380px);
@@ -659,4 +680,98 @@
 /* エージェントの検索欄（40種以上あるので、名前やコマンドで絞り込む） */
 .ob-agents__search {
   width: 100%;
+}
+
+/* ── セットアップのチェックリスト（設定の Setup の節・サイドバーの Setup n/7） ── */
+.setup-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.setup-list__items {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: var(--size-border) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  list-style: none;
+}
+
+.setup-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6);
+}
+
+.setup-item + .setup-item {
+  border-top: var(--size-border) solid var(--color-border);
+}
+
+.setup-item__icon {
+  color: var(--color-text-faint);
+}
+
+.setup-item__icon.is-done {
+  color: var(--color-success);
+}
+
+.setup-item__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.setup-item__title {
+  font-size: var(--font-size-md);
+}
+
+/* 済んだ項目は控えめに（取り消し線は付けない） */
+.setup-item[data-done] .setup-item__title {
+  color: var(--color-text-muted);
+}
+
+.setup-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  margin: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: var(--size-border) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.setup-link:hover {
+  background: var(--color-surface-hover);
+}
+
+.setup-link:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.setup-link__bar {
+  flex: 1 0 100%;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-active);
+  overflow: hidden;
+}
+
+.setup-link__bar span {
+  display: block;
+  height: 100%;
+  background: var(--color-success);
+  transform-origin: left;
 }

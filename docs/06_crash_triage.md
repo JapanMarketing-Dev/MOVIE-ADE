@@ -30,10 +30,11 @@ Ferret のクラッシュと未処理のエラーは Sentry（組織 `workspacep
 
 ## 4. ネイティブのクラッシュ（minidump）
 
-- main・renderer・GPU などのネイティブのクラッシュは minidump で届く（main のものは次の起動で送られる）
-- Electron 本体のフレームは、Sentry の組み込みの記号の置き場（Electron）から引かれる。プロジェクトの設定で有効
-- node-pty のフレームは、`scripts/sentry-sourcemaps.mjs` が上げる記号（macOS は手元の build、Windows は同梱の .pdb）で読める。Linux の node-pty はまだ上げていない
-- 「renderer が落ちた」だけの issue（題名が Minidump）は、どの画面かを tags の `event.process`（main-window / recorder）で見る
+- main・renderer・GPU などのネイティブのクラッシュは、`Native crash (<プロセス>, <理由>)` という題名のイベントで届く（main のものは次の起動で送られる）
+- **minidump（メモリの写し）は送らない**（security-2 [13]）。キー・パス・画面の文などが入りうるのに伏せ字を通せないため。届くのはプロセスの種類（tags の `event.process`。main-window / recorder など）・終了の理由（`exit.reason`）・版だけで、スタックは無い
+  - 送らないことは `src/main/telemetry.ts` の beforeSend（届いた添付を全部捨てる・`minimizeNativeCrash`）と、transport の `filterEnvelope`（送ってよい項目と添付の名前だけを通す）の2か所で守る
+  - 原因を調べるには、再現した手元の minidump（Electron の crashDumps のフォルダ）を開発者が自分で読む
+- node-pty の記号（`scripts/sentry-sourcemaps.mjs` が上げる）は、minidump を送らないので今は使われない
 
 ## 5. 落ちたときの状況
 
@@ -59,7 +60,7 @@ FERRET_SENTRY_TEST=hang          # 起動が遅い・main の停止（warning）
 FERRET_SENTRY_TEST=preload       # preload の読み込み中の例外
 FERRET_SENTRY_TEST=uncaught      # main の捕まえていない例外（アプリは終わる）
 FERRET_SENTRY_TEST=crash-renderer
-FERRET_SENTRY_TEST=crash-main    # 次の起動で minidump が送られる
+FERRET_SENTRY_TEST=crash-main    # 次の起動で Native crash (browser, …) が送られる（minidump は送らない）
 ```
 
 確かめたテストの issue は resolve しておく。
