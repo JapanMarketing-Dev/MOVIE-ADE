@@ -123,7 +123,12 @@ cd dist/release/linux-unpacked
 ELECTRON_RUN_AS_NODE=1 ./ferret -e "const p=require('./resources/app.asar/node_modules/node-pty');const t=p.spawn('/bin/bash',['-c','echo PTY_OK'],{});t.onData(d=>process.stdout.write(d));t.onExit(e=>process.exit(e.exitCode))"
 LINUX
   mkdir -p "${WORK}/linux/out"
-  "${CLI}" run --rm --platform linux/amd64 -m 7g \
+  # 公開のイメージ（docker.io の node）を取るだけなので、利用者の Docker の認証設定を読ませない。
+  # ~/.docker/config.json の credHelpers（gcloud など）が期限切れだと、対話できずに取得が止まる（2026-10-04 の 0.4.0 の build）
+  mkdir -p "${WORK}/registry"
+  echo '{}' > "${WORK}/registry/config.json"
+  echo '{"auths":{}}' > "${WORK}/registry/auth.json"
+  DOCKER_CONFIG="${WORK}/registry" REGISTRY_AUTH_FILE="${WORK}/registry/auth.json" "${CLI}" run --rm --platform linux/amd64 -m 7g \
     -v "${SRC}:/src:ro" -v "${WORK}/linux:/s:ro" -v "${WORK}/linux/out:/out" \
     docker.io/library/node:22-bookworm bash /s/run.sh
   cp "${WORK}"/linux/out/* "${OUT}/"

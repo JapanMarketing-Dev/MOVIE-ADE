@@ -20,7 +20,7 @@ export const zhTW: LocaleMessages = {
   'setup.item.transcription.title': '讓轉錄可以使用',
   'setup.item.transcription.hint': '下載本機 whisper 模型（免費），或為你自己的供應商加入金鑰。',
   'setup.item.decision.title': '設定判定模型',
-  'setup.item.decision.hint': '推薦：使用你自己金鑰的 Cloudflare Workers AI。',
+  'setup.item.decision.hint': '推薦：這台電腦上的 Ollama（免費、不需金鑰）。你的程式碼代理可以幫你安裝。',
   'setup.item.permissions.title': '允許使用麥克風',
   'setup.item.permissions.hint': 'macOS 只會詢問一次。錄下你的語音需要此權限。',
   'setup.item.firstRecording.title': '錄製第一則意見',

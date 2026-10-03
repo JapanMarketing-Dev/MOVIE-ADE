@@ -20,7 +20,7 @@ export const zhCN: LocaleMessages = {
   'setup.item.transcription.title': '让转写可用',
   'setup.item.transcription.hint': '下载本地 whisper 模型（免费），或为你自己的提供商添加密钥。',
   'setup.item.decision.title': '设置判定模型',
-  'setup.item.decision.hint': '推荐：使用你自己密钥的 Cloudflare Workers AI。',
+  'setup.item.decision.hint': '推荐：这台电脑上的 Ollama（免费、无需密钥）。你的编程代理可以替你安装。',
   'setup.item.permissions.title': '允许使用麦克风',
   'setup.item.permissions.hint': 'macOS 只会询问一次。录制你的语音需要此权限。',
   'setup.item.firstRecording.title': '录制第一条反馈',

@@ -20,7 +20,7 @@ export const vi: LocaleMessages = {
   'setup.item.transcription.title': 'Chuẩn bị chuyển văn bản',
   'setup.item.transcription.hint': 'Tải một model whisper cục bộ (miễn phí), hoặc thêm key cho nhà cung cấp của riêng bạn.',
   'setup.item.decision.title': 'Thiết lập model quyết định',
-  'setup.item.decision.hint': 'Khuyên dùng: Cloudflare Workers AI với key của riêng bạn.',
+  'setup.item.decision.hint': 'Khuyên dùng: Ollama trên máy này (miễn phí, không cần key). Agent lập trình có thể cài giúp bạn.',
   'setup.item.permissions.title': 'Cho phép micro',
   'setup.item.permissions.hint': 'macOS chỉ hỏi một lần. Cần để ghi giọng nói của bạn.',
   'setup.item.firstRecording.title': 'Ghi góp ý đầu tiên',

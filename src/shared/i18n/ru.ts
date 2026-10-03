@@ -20,7 +20,7 @@ export const ru: LocaleMessages = {
   'setup.item.transcription.title': 'Включите распознавание',
   'setup.item.transcription.hint': 'Скачайте локальную модель whisper (бесплатно) или добавьте ключ своего провайдера.',
   'setup.item.decision.title': 'Настройте модель решений',
-  'setup.item.decision.hint': 'Рекомендуется: Cloudflare Workers AI с вашим ключом.',
+  'setup.item.decision.hint': 'Рекомендуется: Ollama на этом компьютере (бесплатно, без ключа). Ваш агент для кода может установить его за вас.',
   'setup.item.permissions.title': 'Разрешите микрофон',
   'setup.item.permissions.hint': 'macOS спросит один раз. Нужно для записи голоса.',
   'setup.item.firstRecording.title': 'Запишите первый отзыв',

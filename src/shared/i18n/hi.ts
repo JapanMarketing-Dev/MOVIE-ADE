@@ -20,7 +20,7 @@ export const hi: LocaleMessages = {
   'setup.item.transcription.title': 'ट्रांसक्रिप्शन चालू करें',
   'setup.item.transcription.hint': 'लोकल whisper model डाउनलोड करें (मुफ़्त), या अपने provider की key जोड़ें।',
   'setup.item.decision.title': 'Decision model सेट करें',
-  'setup.item.decision.hint': 'अनुशंसित: अपनी key के साथ Cloudflare Workers AI।',
+  'setup.item.decision.hint': 'अनुशंसित: इसी PC पर Ollama (मुफ़्त, key की ज़रूरत नहीं)। आपका कोडिंग एजेंट इसे आपके लिए इंस्टॉल कर सकता है।',
   'setup.item.permissions.title': 'माइक्रोफ़ोन की अनुमति दें',
   'setup.item.permissions.hint': 'macOS एक बार पूछता है। आपकी आवाज़ रिकॉर्ड करने के लिए ज़रूरी है।',
   'setup.item.firstRecording.title': 'अपना पहला feedback रिकॉर्ड करें',

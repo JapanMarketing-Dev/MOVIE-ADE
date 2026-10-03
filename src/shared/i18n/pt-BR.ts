@@ -20,7 +20,7 @@ export const ptBR: LocaleMessages = {
   'setup.item.transcription.title': 'Deixe a transcrição pronta para uso',
   'setup.item.transcription.hint': 'Baixe um modelo whisper local (grátis) ou adicione uma chave do seu próprio provedor.',
   'setup.item.decision.title': 'Configure um modelo de decisão',
-  'setup.item.decision.hint': 'Recomendado: Cloudflare Workers AI com a sua própria chave.',
+  'setup.item.decision.hint': 'Recomendado: Ollama neste PC (gratuito, sem chave). Seu agente de código pode instalá-lo para você.',
   'setup.item.permissions.title': 'Permita o microfone',
   'setup.item.permissions.hint': 'O macOS pergunta uma vez. Necessário para gravar sua voz.',
   'setup.item.firstRecording.title': 'Grave seu primeiro feedback',

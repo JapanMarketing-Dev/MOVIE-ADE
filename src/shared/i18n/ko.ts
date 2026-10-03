@@ -20,7 +20,7 @@ export const ko: LocaleMessages = {
   'setup.item.transcription.title': '음성 인식 사용 준비',
   'setup.item.transcription.hint': '로컬 whisper 모델을 다운로드(무료)하거나 내 제공업체의 키를 추가하세요.',
   'setup.item.decision.title': '판정 모델 설정',
-  'setup.item.decision.hint': '추천: 내 키로 사용하는 Cloudflare Workers AI.',
+  'setup.item.decision.hint': '추천: 이 PC의 Ollama(무료, 키 불필요). 코딩 에이전트가 대신 설치할 수 있습니다.',
   'setup.item.permissions.title': '마이크 허용',
   'setup.item.permissions.hint': 'macOS에서 한 번만 묻습니다. 음성을 녹음하는 데 필요합니다.',
   'setup.item.firstRecording.title': '첫 피드백 녹화',

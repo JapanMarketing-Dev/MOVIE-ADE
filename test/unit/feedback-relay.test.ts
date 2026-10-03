@@ -618,6 +618,13 @@ describe('security-3 [3][4][7] 中継の上限は、重い処理・副作用・�
     expect(media.size).toBe(1)
   })
 
+  it('security-3 [7] decide: 先に記録された後の時刻も数える（時計のそろわない同時の要求）', () => {
+    const now = 1_800_000_000_000
+    const dup = [{ windowMs: 24 * 60 * 60 * 1000, max: 1 }]
+    expect(decide([now + 3], 'hit', dup, now).result.allowed).toBe(false)
+    expect(decide([now + 3], 'hit', dup, now).times).toEqual([now + 3])
+  })
+
   it('security-3 [7] Issue を作れなかったら内容の鍵を戻し、同じ内容を送り直せる', async () => {
     const { env } = fakeEnv()
     const t0 = 1_800_000_000_000

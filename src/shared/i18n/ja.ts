@@ -20,7 +20,7 @@ export const ja: Messages = {
   'setup.item.transcription.title': '文字起こしを使えるようにする',
   'setup.item.transcription.hint': '端末内の whisper のモデルをダウンロードする（無料）か、自分の提供元のキーを入れます。',
   'setup.item.decision.title': '判定モデルを設定する',
-  'setup.item.decision.hint': 'おすすめは Cloudflare Workers AI です（自分のキーで使います）。',
+  'setup.item.decision.hint': 'おすすめはこの PC の Ollama です（無料・キー不要）。コーディングエージェントに入れてもらえます。',
   'setup.item.permissions.title': 'マイクを許可する',
   'setup.item.permissions.hint': 'macOS で最初に1回だけ要ります。声を録るのに使います。',
   'setup.item.firstRecording.title': '最初のフィードバックを録る',

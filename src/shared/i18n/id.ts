@@ -20,7 +20,7 @@ export const id: LocaleMessages = {
   'setup.item.transcription.title': 'Siapkan transkripsi',
   'setup.item.transcription.hint': 'Unduh model whisper lokal (gratis), atau tambahkan key untuk penyedia Anda sendiri.',
   'setup.item.decision.title': 'Siapkan model keputusan',
-  'setup.item.decision.hint': 'Disarankan: Cloudflare Workers AI dengan key Anda sendiri.',
+  'setup.item.decision.hint': 'Disarankan: Ollama di PC ini (gratis, tanpa key). Agent coding Anda bisa memasangnya untuk Anda.',
   'setup.item.permissions.title': 'Izinkan mikrofon',
   'setup.item.permissions.hint': 'macOS menanyakannya sekali. Diperlukan untuk merekam suara Anda.',
   'setup.item.firstRecording.title': 'Rekam feedback pertama Anda',

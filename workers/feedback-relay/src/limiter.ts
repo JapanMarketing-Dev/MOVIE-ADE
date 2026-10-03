@@ -20,7 +20,9 @@ export const KEEP_MS = 24 * 60 * 60 * 1000
  * peek: 数えずに確かめる / record: 確かめずに数える / release: hit で数えた1件（同じ now）を取り消す
  */
 export function decide(times: number[], op: LimiterOp, windows: readonly Window[], now: number): { times: number[]; result: LimiterResult } {
-  const recent = times.filter((t) => t > now - KEEP_MS && t <= now)
+  // now より後の時刻も残して数える。Worker の各インスタンスの時計はそろわず、同時の要求は時刻の順に届くとは限らない。
+  // 後の時刻を落とすと、遅れて届いた要求に先の記録が見えず、同じ内容や上限を素通りする（security-3 [7]）
+  const recent = times.filter((t) => t > now - KEEP_MS)
   if (op === 'release') {
     const at = recent.lastIndexOf(now)
     return { times: at < 0 ? recent : [...recent.slice(0, at), ...recent.slice(at + 1)], result: { allowed: true, retryAfterSec: 0 } }

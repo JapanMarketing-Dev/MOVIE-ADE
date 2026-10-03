@@ -25,7 +25,7 @@ export const en = {
   'setup.item.transcription.title': 'Make transcription usable',
   'setup.item.transcription.hint': 'Download a local whisper model (free), or add a key for your own provider.',
   'setup.item.decision.title': 'Set up a decision model',
-  'setup.item.decision.hint': 'Recommended: Cloudflare Workers AI with your own key.',
+  'setup.item.decision.hint': 'Recommended: Ollama on this PC (free, no key). Your coding agent can install it for you.',
   'setup.item.permissions.title': 'Allow the microphone',
   'setup.item.permissions.hint': 'macOS asks once. Needed to record your voice.',
   'setup.item.firstRecording.title': 'Record your first feedback',
