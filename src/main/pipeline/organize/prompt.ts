@@ -6,29 +6,42 @@
 import { redactUrl, redactText, redactElementText } from '../redact'
 import type { OrganizeInput } from '../types';
 import { getLocale, type SupportedLocale } from '@shared/i18n'
+import { buildTargetIndex } from './targets'
 
 /** LLM に渡す圧縮した入力。キーを短くしてトークンを節約する */
 export interface PromptPayload {
   duration_ms: number
   two_speakers: boolean
-  transcript: Array<{ t: number; t1: number; sp: string; text: string }>
-  screen: Array<{ t: number; url: string; title: string; w?: number }>
+  /**
+   * 録画の途中で切り替えた対象（URL・ファイル）。2つ以上のときだけ入れる。
+   * 各発話・書き込み・下書きの tg がこの id を指す（organize/targets.ts）
+   */
+  targets?: Array<{ id: string; label: string; kind: 'url' | 'file' }>
+  transcript: Array<{ t: number; t1: number; sp: string; text: string; tg?: string }>
+  screen: Array<{ t: number; url: string; title: string; w?: number; tg?: string }>
   clicks: Array<{ t: number; text?: string; selector: string }>
-  annotations: Array<{ id: string; type: string; t: number; t_end: number; el?: string; body?: string }>
+  annotations: Array<{ id: string; type: string; t: number; t_end: number; el?: string; body?: string; tg?: string }>
   frame_times: number[]
-  draft: Array<{ id: string; t: number; t_end: number; quote_ts: number[]; annotation_ids: string[] }>
+  draft: Array<{ id: string; t: number; t_end: number; quote_ts: number[]; annotation_ids: string[]; tg?: string }>
 }
 
 export function buildPayload(input: OrganizeInput): PromptPayload {
+  const index = buildTargetIndex(input.events, input.meta)
+  // 対象が1つなら区切りを付けない（プロンプトを変えない）
+  const tg = (t: number): { tg?: string } => {
+    const id = index.at(t)
+    return id ? { tg: id } : {}
+  }
   return {
     duration_ms: input.meta.durationMs,
     two_speakers: input.meta.twoSpeakers,
-    transcript: input.transcript.map((s) => ({ t: s.t0, t1: s.t1, sp: s.speaker, text: s.text })),
+    ...(index.spans.length > 0 ? { targets: index.spans.map((s) => ({ id: s.id, label: redactUrl(s.label), kind: s.kind })) } : {}),
+    transcript: input.transcript.map((s) => ({ t: s.t0, t1: s.t1, sp: s.speaker, text: s.text, ...tg(s.t0) })),
     screen: input.events
       .filter((e) => e.type === 'nav')
       .map((e) => {
         const n = e as Extract<typeof e, { type: 'nav' }>
-        return { t: n.t, url: redactUrl(n.url), title: redactText(n.title), ...(n.viewport ? { w: n.viewport } : {}) }
+        return { t: n.t, url: redactUrl(n.url), title: redactText(n.title), ...(n.viewport ? { w: n.viewport } : {}), ...tg(n.t) }
       }),
     clicks: input.events
       .filter((e) => e.type === 'click')
@@ -40,7 +53,7 @@ export function buildPayload(input: OrganizeInput): PromptPayload {
       .filter((e) => e.type === 'pen' || e.type === 'text')
       .map((e) => {
         if (e.type === 'pen') {
-          return { id: e.id, type: 'pen', t: e.t, t_end: e.t_end, ...(redactElementText(e.el?.text, e.el) ? { el: redactElementText(e.el?.text, e.el) } : {}) }
+          return { id: e.id, type: 'pen', t: e.t, t_end: e.t_end, ...(redactElementText(e.el?.text, e.el) ? { el: redactElementText(e.el?.text, e.el) } : {}), ...tg(e.t) }
         }
         const x = e as Extract<typeof e, { type: 'text' }>
         return {
@@ -50,6 +63,7 @@ export function buildPayload(input: OrganizeInput): PromptPayload {
           t_end: x.t,
           body: x.body,
           ...(redactElementText(x.el?.text, x.el) ? { el: redactElementText(x.el?.text, x.el) } : {}),
+          ...tg(x.t),
         }
       }),
     frame_times: [...input.frameTimes].sort((a, b) => a - b),
@@ -59,6 +73,7 @@ export function buildPayload(input: OrganizeInput): PromptPayload {
       t_end: d.tEnd,
       quote_ts: d.segments.map((s) => s.t0),
       annotation_ids: d.annotationIds,
+      ...tg(d.t),
     })),
   }
 }
@@ -84,6 +99,7 @@ const organizeInstructionsJa = `あなたはUIレビューの録画から、コ�
    - needs_check: どう直すか決まっていない／まず調査や社内確認が必要／「保留」「このままにする」「次回決める」「今回はやらない」で終わった話題。
 6. **画像の時刻**: frame_times にある値の中から、その指摘の内容が画面に写っている時刻を1〜3個選んで frame_times に入れる。ペン・テキストがある指摘では、その書き込みが写る時刻（annotations の t_end 以上で最も近い値）を選ぶ。**frame_times に無い値は絶対に使わない。**
 7. **annotation_ids**: その指摘に関係するペン・テキストのIDを入れる。関係が無ければ空配列。入力の annotations に無いIDは使わない。
+8. **対象（target）**: 入力に targets があるとき、レビュアーは録画の途中で対象（URL・ファイル）を切り替えている。各指摘の target に、その指摘の対象の id（targets の id。transcript・annotations・draft の tg と同じ値）を必ず入れる。targets が無ければ target は空文字。
 
 ## 守ること
 
@@ -93,6 +109,7 @@ const organizeInstructionsJa = `あなたはUIレビューの録画から、コ�
 - 指摘は時刻の順に並べる。
 - **指摘になりうる発話を落とさない。** transcript の各区間は、どれかの指摘の quote_ts か dropped のどちらかに入るのが基本。迷ったら needs_check の指摘として残す（除外より残す方を選ぶ）。
 - 画面に置かれたテキスト（annotations の type=text の body）は、レビュアーが正確に伝えたい文言なので必ず指摘に含める。
+- **違う対象（tg が違う）の発話・書き込みを1件にまとめない。** 同じ話題に聞こえても、対象が変われば別の指摘にする。1件の quote_ts・annotation_ids・frame_times は、すべてその指摘の target の tg を持つものだけにする。
 
 出力はJSONのみ。説明文やコードフェンスを付けない。`;
 
@@ -111,6 +128,7 @@ All times are milliseconds from the start of the recording.
    - needs_check: How to fix is not decided / investigation or internal confirmation comes first / the topic ended with "on hold", "leave it as is", "decide next time" or "not this time".
 6. **Image times**: From the values in frame_times, pick 1–3 times where the finding is visible on screen and put them in frame_times. For findings with a pen mark or text, pick the time where the mark is visible (the closest value at or after the annotation's t_end). **Never use a value that is not in frame_times.**
 7. **annotation_ids**: List the IDs of pen marks and text related to the finding. Use an empty array if none. Do not use IDs that are not in the input annotations.
+8. **Target**: When the input has targets, the reviewer switched between targets (URLs and files) during the recording. Always set each finding's target to the id of the target it is about (an id from targets; the same value as tg in transcript, annotations and draft). If there are no targets, set target to an empty string.
 
 ## Rules
 
@@ -120,6 +138,7 @@ All times are milliseconds from the start of the recording.
 - Order findings by time.
 - **Do not lose utterances that could be findings.** Each transcript segment should normally appear either in some finding's quote_ts or in dropped. When unsure, keep it as a needs_check finding (prefer keeping over dropping).
 - Text placed on screen (body of annotations with type=text) is wording the reviewer wants to convey exactly, so always include it in a finding.
+- **Never merge utterances or marks from different targets (different tg) into one finding.** Even if it sounds like the same topic, a different target means a separate finding. A finding's quote_ts, annotation_ids and frame_times must all come from its own target's tg.
 
 Output JSON only. No explanations or code fences.`
 

@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { promisify } from 'node:util'
 import { homedir } from 'node:os'
 import type { IPty } from 'node-pty'
-import { type TerminalCreateOptions, type TerminalSize, type TerminalTabInfo, type TuiAgent } from '@shared/types'
+import { type TerminalAttachInfo, type TerminalCreateOptions, type TerminalSessionInfo, type TerminalSize, type TerminalTabInfo } from '@shared/types'
 import { buildAgentLaunchCommand, startupShellForPath } from '@shared/agentLaunch'
 import { agentForProcess, agentLabel, findCustomAgent, isBuiltinAgent } from '@shared/agentCatalog'
 import { currentSettings } from './settings'
@@ -11,11 +11,16 @@ import { planStartupDelivery } from './shellStartup'
 import { buildAccountLoginLaunch, resolveAgentEnv } from './accounts'
 import { resolveProcessCwd } from './processCwd'
 import { isInheritedAgentSessionEnv } from './inheritedAgentEnv'
+import { TerminalHistory } from './terminalHistory'
+import { applyAgentWorkspaceTrust } from './agentWorkspaceTrust'
 import { detectState, parseTitle, stripAnsi } from './agent/state'
 import type { AgentKind } from './agent/protocol'
 import { ComposerReadiness } from './agent/readiness'
 import { sendToAgent } from './agent/send'
 import { t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
+import { reportMainError } from './telemetry'
+import { flow, reportHandled } from '@shared/report'
 
 /**
  * 内蔵ターミナル（WS-4）。node-pty のPTYをメインプロセスで持ち、
@@ -103,17 +108,11 @@ interface Session {
   sending: boolean
   /** 開いたときの情報（Resource Manager などの一覧用） */
   info: TerminalSessionInfo
+  /** 直近の出力。画面を読み込み直したあと、つなぎ直したタブに流し直す */
+  history: TerminalHistory
 }
 
-/** 開いているターミナルの一覧の1件（読み取り専用） */
-export interface TerminalSessionInfo {
-  id: string
-  pid: number
-  cwd: string
-  /** タブ名（Agentなら 'Claude Code' など、シェルなら「1: zsh」） */
-  title: string
-  agent: TuiAgent | null
-}
+export type { TerminalSessionInfo } from '@shared/types'
 
 export class TerminalManager {
   private sessions = new Map<string, Session>()
@@ -174,28 +173,46 @@ export class TerminalManager {
       const prefs = currentSettings().agents
       // 組み込みは launch の設定、カスタムは登録した command / args
       const config = isBuiltinAgent(agent) ? prefs.launch[agent] : findCustomAgent(prefs, agent)
-      if (!config) throw new Error(t('terminal.errors.unknownAgent', { agent: agentLabel(agent, prefs) }))
+      if (!config) throw new UserFacingError(t('terminal.errors.unknownAgent', { agent: agentLabel(agent, prefs) }))
       const launch = buildAgentLaunchCommand(agent, config, startupShellForPath(shell.file))
-      if (!launch.ok) throw new Error(t('terminal.errors.launch', { agent: agentLabel(agent, prefs), error: launch.error }))
-      deliver(launch.command, resolveAgentEnv(agent))
+      if (!launch.ok) throw new UserFacingError(t('terminal.errors.launch', { agent: agentLabel(agent, prefs), error: launch.error }))
+      // パンくず：自作の Agent は名前を出さない（利用者が付けた名前を送らない）
+      flow('agent launch', { agent: isBuiltinAgent(agent) ? agent : 'custom' })
+      const accountEnv = resolveAgentEnv(agent)
+      // 登録済みのプロジェクトなら、Claude Code / Codex の「このフォルダを信頼しますか」を出さないよう先に書いておく
+      // （Orca と同じ。書く先はアカウント切り替えの CLAUDE_CONFIG_DIR / CODEX_HOME を含む、起動する環境のもの）
+      await applyAgentWorkspaceTrust({
+        agent,
+        cwd,
+        projectFolders: currentSettings().projects.map((project) => project.folderPath),
+        env: ptyEnv(accountEnv)
+      })
+      deliver(launch.command, accountEnv)
     } else if (options.command?.trim()) {
       deliver(options.command.trim(), {})
     }
     const id = `t${++this.seq}`
-    const pty = nodePty.spawn(shell.file, shell.args, {
-      name: 'xterm-256color',
-      cols: Math.max(2, size.cols),
-      rows: Math.max(1, size.rows),
-      cwd,
-      env: ptyEnv(extraEnv)
-    })
+    let pty: ReturnType<typeof nodePty.spawn>
+    try {
+      pty = nodePty.spawn(shell.file, shell.args, {
+        name: 'xterm-256color',
+        cols: Math.max(2, size.cols),
+        rows: Math.max(1, size.rows),
+        cwd,
+        env: ptyEnv(extraEnv)
+      })
+    } catch (err) {
+      // シェルの名前だけを付ける（パスは送る前に落とす。src/main/telemetry.ts）
+      reportMainError(err, { kind: 'pty-spawn', shell: shellLabel(shell.file) })
+      throw err
+    }
     const title =
       loginTitle ??
       (options.title?.trim() || (agent ? agentLabel(agent, currentSettings().agents) : `${this.seq}: ${shellLabel(shell.file)}`))
     const launched = options.accountLogin?.agent ?? agent ?? null
     const session: Session = { id, pty, buffer: [], bufferBytes: 0, timer: null,
       tail: '', readiness: new ComposerReadiness(), sending: false,
-      info: { id, pid: pty.pid, cwd, title, agent: launched } }
+      info: { id, pid: pty.pid, cwd, title, agent: launched }, history: new TerminalHistory() }
     this.sessions.set(id, session)
 
     const stopStartupWrite = pendingWrite ? this.scheduleStartupWrite(session, pendingWrite) : null
@@ -203,7 +220,10 @@ export class TerminalManager {
       stopStartupWrite?.touch()
       this.enqueue(session, data)
     })
+    flow('terminal create', { kind: launched ? 'agent' : 'shell' })
     pty.onExit(({ exitCode }) => {
+      // パンくず：Agent の異常終了（exit code≠0）が、このあとの失敗の手がかりになる
+      flow('terminal exit', { exitCode, kind: launched ? (isBuiltinAgent(launched) ? launched : 'custom') : 'shell' })
       stopStartupWrite?.cancel()
       this.flush(session)
       this.sessions.delete(id)
@@ -228,6 +248,17 @@ export class TerminalManager {
   /** 開いているターミナルの一覧（読み取り専用。CPU・メモリの集計は呼び出し側が pid で行う） */
   list(): TerminalSessionInfo[] {
     return [...this.sessions.values()].map((session) => ({ ...session.info }))
+  }
+
+  /**
+   * 画面を読み込み直したあと、生きているターミナルにつなぎ直す。新しくは作らず、直近の出力を返す。
+   * 送りかけの出力は先に流して、履歴と画面への転送が重ならないようにする。終了していれば null
+   */
+  attach(id: string): TerminalAttachInfo | null {
+    const session = this.sessions.get(id)
+    if (!session) return null
+    this.flush(session)
+    return { ...session.info, history: session.history.snapshot(), size: { cols: session.pty.cols, rows: session.pty.rows } }
   }
 
   /**
@@ -260,6 +291,7 @@ export class TerminalManager {
   }
 
   private enqueue(session: Session, data: string): void {
+    session.history.push(data)
     session.tail = (session.tail + stripAnsi(data)).slice(-8000)
     session.title = parseTitle(data) ?? session.title
     session.readiness.push(data)
@@ -347,7 +379,7 @@ export class TerminalManager {
     session.sending = true
     try {
       const result = await sendToAgent({ text,
-        terminal: { write: (data) => { if (!this.sessions.has(id)) throw new Error(t('terminal.send.exited')); session.pty.write(data) }, onData: () => () => {} },
+        terminal: { write: (data) => { if (!this.sessions.has(id)) throw new UserFacingError(t('terminal.send.exited')); session.pty.write(data) }, onData: () => () => {} },
         getState: async () => {
           const state = (await this.agentState(id)).state
           if (state === 'blocked' || state === 'idle' || state === 'working') return state
@@ -460,7 +492,9 @@ function descendantPids(root: number): number[] {
   let listing: string
   try {
     listing = execFileSync('ps', ['-Ao', 'pid=,ppid='], { encoding: 'utf8', timeout: 1000 })
-  } catch {
+  } catch (err) {
+    // 子プロセスを数えられないだけで、終了処理は pty.kill で続ける
+    reportHandled(err, { area: 'terminal', op: 'list child processes' })
     return []
   }
 

@@ -482,6 +482,7 @@ div.rv-card__shot {
   font-size: var(--font-size-xs);
   line-height: var(--line-height-normal);
   line-break: strict;
+  overflow-wrap: anywhere;
   word-break: auto-phrase;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;

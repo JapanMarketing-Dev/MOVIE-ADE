@@ -3,6 +3,7 @@ import { homedir } from 'node:os'
 import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type { AccountAgent } from '@shared/types'
 import { t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
 
 /**
  * アカウントごとの設定フォルダの置き場所と、本システムの物であることの確認。
@@ -34,7 +35,7 @@ export function accountsRootFor(userDataDir: string, agent: AccountAgent): strin
 
 /** <userData>/accounts/<agent>/<id>。これがそのまま CODEX_HOME / CLAUDE_CONFIG_DIR になる */
 export function managedAccountDir(userDataDir: string, agent: AccountAgent, accountId: string): string {
-  if (!isValidAccountId(accountId)) throw new Error(t('accounts.errors.invalidId'))
+  if (!isValidAccountId(accountId)) throw new UserFacingError(t('accounts.errors.invalidId'))
   return join(accountsRootFor(userDataDir, agent), accountId)
 }
 
@@ -53,6 +54,7 @@ function realpathIfPresent(path: string): string {
   try {
     return realpathSync(path)
   } catch {
+    // まだ無いパス（想定内）
     return resolve(path)
   }
 }

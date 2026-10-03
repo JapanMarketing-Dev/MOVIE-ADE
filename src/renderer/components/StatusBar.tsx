@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import {
   AudioLines,
   ChevronUp,
@@ -7,8 +7,10 @@ import {
   Download,
   Globe,
   Lock,
+  MemoryStick,
   Mic,
   MicOff,
+  MoreHorizontal,
   PanelBottom,
   PanelRight,
   RefreshCw,
@@ -18,8 +20,9 @@ import {
 } from 'lucide-react'
 import type { BrowserState, SttAvailability } from '@shared/types'
 import { STT_PROVIDER_PRESETS, STT_REMOTE_PROVIDERS, providerLabel } from '@shared/aiProviders'
-import { DEFAULT_LAYOUT, type Dock, type DragPanel, type FooterItemId } from '@shared/layout'
+import { DEFAULT_LAYOUT, FOOTER_ITEMS, FOOTER_PRIORITY, pickFooterTier, type Dock, type DragPanel, type FooterItemId } from '@shared/layout'
 import { PanelGrip } from './PanelDock'
+import { GitHubStatusItem } from './GitHubStatusItem'
 import type { UpdateCheckResult } from '@shared/appVersion'
 import { Button, RecordDot, Spinner, ThemeToggle } from '../ui'
 import type { SpeechLanguage, Transcription } from './SettingsPage'
@@ -70,6 +73,7 @@ function pageLabel(state: BrowserState): string {
   try {
     return new URL(state.url).host || state.url
   } catch {
+    // about:blank など（想定内）
     return state.url
   }
 }
@@ -96,7 +100,7 @@ export interface FooterCapture {
   language: SpeechLanguage
 }
 
-type PopoverKind = 'mic' | 'update' | 'resources'
+type PopoverKind = 'mic' | 'update' | 'resources' | 'more'
 
 function PopSwitch({ label, hint, checked, disabled, onChange }: { label: string; hint?: ReactNode; checked: boolean; disabled?: boolean; onChange: (next: boolean) => void }) {
   return <label className="st-row st-row--switch" data-disabled={disabled || undefined}>
@@ -138,6 +142,7 @@ function useMicLevel(active: boolean, deviceId: string): { level: number; error:
         frame = requestAnimationFrame(tick)
       }
       tick()
+    // マイクの許可が無い・機器が無い（想定内。画面に出す）
     }).catch(() => { if (!stopped) setError(true) })
     return () => {
       stopped = true
@@ -289,6 +294,7 @@ export function StatusBar({
   const updateRef = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => {
+    // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
     void window.ade.invoke('app:version').then(setVersion).catch(() => undefined)
   }, [])
 
@@ -300,23 +306,87 @@ export function StatusBar({
   const toggle = (kind: PopoverKind) => setOpen((cur) => (cur === kind ? null : kind))
   const openSettings = () => { setOpen(null); onOpenSettings() }
 
+  // ── 幅が足りないときに隠す（優先順位の低いものから。src/shared/layout.ts の FOOTER_PRIORITY）──
+  const footerRef = useRef<HTMLElement | null>(null)
+  const moreRef = useRef<HTMLButtonElement | null>(null)
+  /** 出す項目の優先順位の上限。これより大きい項目は「…」へ */
+  const [tier, setTier] = useState(3)
+  /** 項目ごとの「全部出したときの幅」。隠したあとも覚えておき、広がったときに戻せるか判断する */
+  const widths = useRef<Partial<Record<FooterItemId, number>>>({})
+  const fits = (id: FooterItemId) => FOOTER_PRIORITY[id] <= tier
+  const overflowed = FOOTER_ITEMS.filter((id) => items[id] && !fits(id))
+  /** 使用量より優先順位の低い項目がまだ出ているあいだは、使用量を縮めない（先にそちらを隠す） */
+  const usageMayShrink = !FOOTER_ITEMS.some((id) => items[id] && FOOTER_PRIORITY[id] > FOOTER_PRIORITY.usage && fits(id) && (widths.current[id] ?? 0) > 0)
+
+  const evaluate = useCallback(() => {
+    const footer = footerRef.current
+    if (!footer) return
+    for (const el of footer.querySelectorAll<HTMLElement>(':scope > [data-fitem]')) {
+      if (el.hidden) continue
+      const id = el.dataset.fitem as FooterItemId
+      // 使用量は自分で段階的に縮むので、縮む前（全部出したとき）の幅で数える。縮むのはほかを隠したあと
+      const full = Number(el.querySelector<HTMLElement>('[data-full-width]')?.dataset.fullWidth)
+      widths.current[id] = Number.isFinite(full) && full > 0 ? full : el.scrollWidth
+    }
+    const style = getComputedStyle(footer)
+    const gap = Number.parseFloat(style.columnGap) || 0
+    // 項目以外（つまみ・伸びる余白の最小幅・「…」ボタン）の幅
+    let fixed = 0
+    let fixedCount = 0
+    for (const el of footer.querySelectorAll<HTMLElement>(':scope > :not([data-fitem])')) {
+      if (el === moreRef.current) continue
+      fixed += el.classList.contains('statusbar__spacer') ? Number.parseFloat(getComputedStyle(el).minWidth) || 0 : el.getBoundingClientRect().width
+      fixedCount += 1
+    }
+    const moreWidth = 22 + gap
+    const available = footer.clientWidth - (Number.parseFloat(style.paddingLeft) || 0) - (Number.parseFloat(style.paddingRight) || 0) - fixed - gap * fixedCount
+    // 幅 0（git でないフォルダの GitHub など、何も出していない項目）は隙間も数えない
+    const slots = FOOTER_ITEMS.filter((id) => items[id] && (widths.current[id] ?? 0) > 0).map((id) => ({ priority: FOOTER_PRIORITY[id], width: widths.current[id] ?? 0 }))
+    // 全部出せるなら「…」は要らない。隠すときは「…」の分も空ける
+    const next = pickFooterTier(slots, available, gap) === 3 ? 3 : pickFooterTier(slots, available - moreWidth, gap)
+    setTier((cur) => (cur === next ? cur : next))
+  }, [items])
+
+  useLayoutEffect(() => { evaluate() })
+  useEffect(() => {
+    const footer = footerRef.current
+    if (!footer) return
+    let frame = 0
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(evaluate)
+    })
+    observer.observe(footer)
+    // 項目の中身が変わって幅が変わったとき（使用量の読み込み・ページ名の変化など）も測り直す
+    for (const el of footer.querySelectorAll(':scope > [data-fitem]')) observer.observe(el)
+    return () => { observer.disconnect(); cancelAnimationFrame(frame) }
+  }, [evaluate, items])
+
+  /** 項目の入れ物。隠すときも外さない（ポップオーバーや中の状態を保つ） */
+  const slot = (id: FooterItemId, children: ReactNode, extra = '') => items[id] && (
+    <span className={`statusbar__slot${extra}`} data-fitem={id} hidden={!fits(id)}>{children}</span>
+  )
+  const divider = <span className="statusbar__divider" aria-hidden="true" />
+  const itemName = (id: FooterItemId) => t(`settings.layout.item.${id}`)
+  const openFromMore = (kind: PopoverKind) => setOpen(kind)
+
   return (
-    <footer className="statusbar" data-testid="statusbar">
+    <footer ref={footerRef} className="statusbar" data-testid="statusbar" data-tier={tier}>
       {onStartDrag && <PanelGrip panel="footer" onStart={onStartDrag} />}
       {/* Agent の使用量とアカウント切り替え（Orca の左下と同じ位置） */}
-      {items.usage && <>
-        <UsageMeter onManageAccounts={onManageAccounts} onOpenChange={setUsageOpen} />
-        <span className="statusbar__divider" aria-hidden="true" />
-      </>}
-      {items.recording && <>
+      {slot('usage', <>
+        <UsageMeter onManageAccounts={onManageAccounts} onOpenChange={setUsageOpen} shrink={usageMayShrink} />
+        {divider}
+      </>, ' statusbar__slot--shrink')}
+      {slot('recording', <>
         <span className={`statusbar__rec${recording ? ' is-recording' : ''}`}>
           <RecordDot active={recording} size={6} />
           <span className="statusbar__elapsed">{elapsed}</span>
         </span>
-        <span className="statusbar__divider" aria-hidden="true" />
-      </>}
+        {divider}
+      </>)}
 
-      {items.mic && <span className="statusbar__group">
+      {slot('mic', <span className="statusbar__group">
         <button
           type="button"
           className={`statusbar__btn statusbar__item--${settings.captureMic ? 'ok' : 'off'}`}
@@ -342,41 +412,45 @@ export function StatusBar({
           <span className="statusbar__value">{mic}</span>
           <ChevronUp size={11} strokeWidth={2} aria-hidden="true" />
         </button>
-      </span>}
-      {items.transcription && <Item
+      </span>)}
+      {slot('transcription', <Item
         icon={AudioLines}
         label={t('statusBar.transcription')}
         value={capture.transcription ?? t('capture.summary.notSet')}
         tone={toneOf(capture.transcription, t)}
-      />}
-      {items.organizer && <Item
+      />)}
+      {slot('organizer', <Item
         icon={Sparkles}
         label={t('statusBar.organizer')}
         value={capture.organizer ?? t('capture.summary.notSet')}
         tone={toneOf(capture.organizer, t)}
-      />}
+      />)}
 
       <span className="statusbar__spacer" />
 
-      {items.resources && <><ResourceManager
+      {slot('resources', <><ResourceManager
         open={open === 'resources'}
         onToggle={() => toggle('resources')}
         onClose={close}
         onOpenTerminal={onOpenTerminal}
         onOpenPage={onOpenPage}
+        fallbackAnchor={moreRef.current}
       />
-      <span className="statusbar__divider" aria-hidden="true" /></>}
+      {divider}</>)}
 
-      {items.page && <><span
+      {/* GitHub のリポジトリとブランチ。区切り線も部品の中で出す（git でないフォルダでは何も出さない。中身は GitHub 連携担当） */}
+      {slot('github', <GitHubStatusItem />)}
+
+      {slot('page', <><span
         className={`statusbar__item statusbar__item--url${page ? '' : ' is-empty'}`}
         title={state.url || undefined}
       >
         <Globe size={12} strokeWidth={2} aria-hidden="true" />
         <span className="statusbar__value">{page || t('statusBar.notConnected')}</span>
       </span>
-      <span className="statusbar__divider" aria-hidden="true" /></>}
+      {divider}</>)}
       {/* ターミナルを右↔下へ素早く切り替える。左・上を含む細かい配置は設定の「レイアウト」で選ぶ */}
-      {items.layout && <button
+      {slot('layout', <button
         type="button"
         className="statusbar__btn statusbar__btn--icon"
         aria-label={terminalDock === 'right' ? t('statusBar.dockBottom') : t('statusBar.dockRight')}
@@ -386,8 +460,8 @@ export function StatusBar({
         data-dock={terminalDock}
       >
         {terminalDock === 'right' ? <PanelRight size={13} strokeWidth={2} aria-hidden="true" /> : <PanelBottom size={13} strokeWidth={2} aria-hidden="true" />}
-      </button>}
-      {items.version && <button
+      </button>)}
+      {slot('version', <button
         ref={updateRef}
         type="button"
         className="statusbar__btn statusbar__version"
@@ -398,9 +472,9 @@ export function StatusBar({
         data-testid="statusbar-version"
       >
         {checkingLabel(version.version)}
-      </button>}
-      {items.theme && <ThemeToggle />}
-      {items.settings && <button
+      </button>)}
+      {slot('theme', <ThemeToggle />)}
+      {slot('settings', <button
         type="button"
         className="statusbar__btn statusbar__btn--icon"
         aria-label={t('statusBar.openSettings')}
@@ -409,13 +483,57 @@ export function StatusBar({
         data-testid="statusbar-settings"
       >
         <Settings size={13} strokeWidth={2} aria-hidden="true" />
-      </button>}
+      </button>)}
+      {/* 幅が足りず隠れた項目をまとめて開く（VS Code / Orca と同じく右端） */}
+      <button
+        ref={moreRef}
+        type="button"
+        className="statusbar__btn statusbar__btn--icon"
+        hidden={overflowed.length === 0}
+        aria-haspopup="dialog"
+        aria-expanded={open === 'more'}
+        aria-label={t('statusBar.more')}
+        title={t('statusBar.more')}
+        onClick={() => toggle('more')}
+        data-testid="statusbar-more"
+      >
+        <MoreHorizontal size={13} strokeWidth={2} aria-hidden="true" />
+      </button>
 
-      {open === 'mic' && <Popover anchor={micRef.current} label={t('statusBar.micAndTranscription')} onClose={close}>
+      {open === 'more' && <Popover anchor={moreRef.current} label={t('statusBar.more')} onClose={close}>
+        <div className="sb-pop__body sb-more" data-testid="statusbar-more-menu">
+          {overflowed.map((id) => {
+            const name = itemName(id)
+            switch (id) {
+              case 'mic':
+                return <button key={id} type="button" className="sb-more__row" onClick={() => openFromMore('mic')}><Mic size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{mic}</span></button>
+              case 'transcription':
+                return <button key={id} type="button" className="sb-more__row" onClick={() => openFromMore('mic')}><AudioLines size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{capture.transcription ?? t('capture.summary.notSet')}</span></button>
+              case 'organizer':
+                return <div key={id} className="sb-more__row"><Sparkles size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{capture.organizer ?? t('capture.summary.notSet')}</span></div>
+              case 'resources':
+                return <button key={id} type="button" className="sb-more__row" onClick={() => openFromMore('resources')}><MemoryStick size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span></button>
+              case 'version':
+                return <button key={id} type="button" className="sb-more__row" onClick={() => openFromMore('update')}><RefreshCw size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{version.version ? `v${version.version}` : ''}</span></button>
+              case 'page':
+                return <div key={id} className="sb-more__row" title={state.url || undefined}><Globe size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{page || t('statusBar.notConnected')}</span></div>
+              case 'layout':
+                return <button key={id} type="button" className="sb-more__row" onClick={() => onTerminalDockChange(terminalDock === 'right' ? 'bottom' : 'right')}>{terminalDock === 'right' ? <PanelRight size={13} aria-hidden="true" /> : <PanelBottom size={13} aria-hidden="true" />}<span className="sb-more__name">{terminalDock === 'right' ? t('statusBar.dockBottom') : t('statusBar.dockRight')}</span></button>
+              case 'theme':
+                return <div key={id} className="sb-more__row"><span className="sb-more__name">{name}</span><ThemeToggle /></div>
+              case 'github':
+                return <div key={id} className="sb-more__row"><span className="sb-more__name">{name}</span><GitHubStatusItem /></div>
+              default:
+                return null
+            }
+          })}
+        </div>
+      </Popover>}
+      {open === 'mic' && <Popover anchor={micRef.current} fallback={moreRef.current} label={t('statusBar.micAndTranscription')} onClose={close}>
         <MicPopover value={settings} onChange={onCaptureChange} recording={recording} micDevices={micDevices}
           available={available} level={level} onOpenSettings={openSettings} />
       </Popover>}
-      {open === 'update' && <Popover anchor={updateRef.current} label={t('statusBar.update')} onClose={close}>
+      {open === 'update' && <Popover anchor={updateRef.current} fallback={moreRef.current} label={t('statusBar.update')} onClose={close}>
         <UpdatePopover version={version.version} packaged={version.packaged} />
       </Popover>}
     </footer>

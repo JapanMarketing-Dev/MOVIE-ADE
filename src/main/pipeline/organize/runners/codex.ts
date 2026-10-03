@@ -60,6 +60,7 @@ export class CodexRunner implements LlmRunner {
       })
       return r.code === 0
     } catch {
+      // CLI が入っていない（想定内）
       return false
     }
   }
@@ -111,7 +112,8 @@ export class CodexRunner implements LlmRunner {
         )
       }
 
-      const text = await readFile(outPath, 'utf8').catch(() => '')
+      // 出力ファイルが無ければ標準出力を使う（想定内）
+  const text = await readFile(outPath, 'utf8').catch(() => '')
       const body = text.trim() || r.stdout
       return {
         raw: extractJson(body),
@@ -120,7 +122,8 @@ export class CodexRunner implements LlmRunner {
         stderrTail: r.stderr.slice(-500) || undefined,
       }
     } finally {
-      await rm(dir, { recursive: true, force: true }).catch(() => undefined)
+      // 一時フォルダの片付け（OS が後で消す。想定内）
+    await rm(dir, { recursive: true, force: true }).catch(() => undefined)
     }
   }
 }

@@ -142,7 +142,7 @@
     <tr><td><span class="docs-ui">Send to GitHub</span></td><td>GitHub via <code>gh</code></td><td>body text only (no images)</td></tr>
     <tr><td>Footer usage</td><td>Anthropic, ChatGPT</td><td>usage request with your own login</td></tr>
     <tr><td><span class="docs-ui">Check for Updates</span> (manual)</td><td>download server (Cloudflare R2)</td><td>request for <code>latest.json</code></td></tr>
-    <tr><td>A crash or error (installed app, <span class="docs-ui">Send crash reports</span> on)</td><td>Sentry</td><td>stack trace and OS / CPU / app versions (see <a href="#crash-reports">Crash reports</a>)</td></tr>
+    <tr><td>A crash or error (<span class="docs-ui">Send crash reports</span> on)</td><td>Sentry</td><td>stack trace and OS / CPU / app versions (see <a href="#crash-reports">Crash reports</a>)</td></tr>
   </tbody>
 </table>
 <ul>
@@ -154,7 +154,7 @@
 
       <section class="docs-section" aria-labelledby="crash-reports">
         <h2 id="crash-reports"><a class="docs-anchor" href="#crash-reports" aria-label="Link to Crash reports">#</a>Crash reports</h2>
-        <p>When the installed app crashes or hits an unhandled error, MOVIE-ADE sends a crash report to <a href="https://sentry.io/">Sentry</a> so the bug can be fixed. It is on by default. Turn it off in <span class="docs-ui">Settings → Privacy → Send crash reports</span>, or with <span class="docs-ui">Turn off</span> on the notice shown at first launch. Turning it off takes effect at once. Turning it back on takes effect at the next launch. Development builds (<code>pnpm dev</code>) and E2E runs never send.</p>
+        <p>When the app crashes or hits an unhandled error, MOVIE-ADE sends a crash report to <a href="https://sentry.io/">Sentry</a> so the bug can be fixed. It is on by default. Turn it off in <span class="docs-ui">Settings → Privacy → Send crash reports</span>, or with <span class="docs-ui">Turn off</span> on the notice shown at first launch. Turning it off takes effect at once. Turning it back on takes effect at the next launch. Development builds (<code>pnpm dev</code>) also send, tagged <code>development</code>, so the developers can fix crashes they hit while working. E2E runs and unit tests never send.</p>
 <table>
   <thead><tr><th>Sent</th><th>Not sent</th></tr></thead>
   <tbody>
@@ -164,7 +164,8 @@
         <li>Stack trace (where in MOVIE-ADE's code it happened)</li>
         <li>For native crashes: the minidump (thread stacks of the crashed process)</li>
         <li>OS name and version, CPU architecture, Electron / Chrome / Node versions, app version, screen size, memory size</li>
-        <li>App lifecycle events right before the error (for example <q>app.ready</q>)</li>
+        <li>App lifecycle events right before the error (for example <q>app.ready</q>), and startup failures</li>
+        <li>Which part of the app failed: a screen area that could not render (and its React component names), an IPC call, a terminal that could not start, a crashed or hung process, or a page of the app that failed to load</li>
       </ul>
     </td><td>
       <ul>
@@ -178,7 +179,7 @@
     </td></tr>
   </tbody>
 </table>
-<p>At most 10 reports are sent per launch, the same error only once, and only half of JavaScript errors (native crashes are always sent). No performance tracing or session replay is used. The app uses Sentry's free plan. If it fills up, extra reports are dropped and nobody is charged.</p>
+<p>The installed app sends at most 10 reports per launch and only half of JavaScript errors (native crashes are always sent). Development builds send every error, up to 50 per launch. The same error is sent only once per launch. No performance tracing or session replay is used. The app uses Sentry's free plan. If it fills up, extra reports are dropped and nobody is charged.</p>
 <p>Building MOVIE-ADE yourself? Set <code>MOVIE_ADE_SENTRY_DSN</code> to your own Sentry DSN, or to an empty string to send nothing. The code is in <code>src/main/telemetry.ts</code> and <code>src/shared/telemetry.ts</code>.</p>
       </section>
 

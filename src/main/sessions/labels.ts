@@ -23,6 +23,7 @@ export async function readLabel(paths: SessionPaths): Promise<SessionLabel> {
   try {
     return sanitizeLabel(JSON.parse(await readFile(paths.labelJson, 'utf8')))
   } catch {
+    // 名前を付けていないレビューには label.json が無い（想定内）
     return {}
   }
 }
@@ -70,6 +71,7 @@ export function deletableSessionDir(projectDir: string, id: string): string {
 /** レビューを1件消す（フォルダごと）。無ければ何もしない */
 export async function deleteSession(projectDir: string, id: string): Promise<void> {
   const dir = deletableSessionDir(projectDir, id)
+  // 消し済み（想定内）
   const s = await stat(dir).catch(() => null)
   if (!s) return
   if (!s.isDirectory()) throw new Error(`not a review folder: ${id}`)

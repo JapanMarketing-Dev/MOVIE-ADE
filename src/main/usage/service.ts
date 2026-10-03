@@ -7,7 +7,6 @@ import { systemConfigDir, verifyManagedAccountDir } from '../accounts/paths'
 import { fetchClaudeUsage, fetchCodexUsage, type UsageRequest } from './fetchers'
 import {
   DEFAULT_POLL_MS,
-  DEFERRED_STARTUP_REFRESH_MS,
   INACTIVE_FETCH_DEBOUNCE_MS,
   MAX_ACTIVE_FAILURE_STREAK,
   applyStalePolicy,
@@ -73,7 +72,7 @@ function demoUsage(agent: AccountAgent): ProviderRateLimits {
     : { provider: 'codex', session: null, weekly: window(1, 10080, 10020), planType: 'plus', updatedAt: now, error: null, status: 'ok' }
 }
 
-function fetchFor(agent: AccountAgent, target: Target | null): Promise<ProviderRateLimits> {
+function fetchFor(agent: AccountAgent, target: Target | null, force = false): Promise<ProviderRateLimits> {
   if (process.env.ADE_DEMO === '1') return Promise.resolve(demoUsage(agent))
   if (!target) {
     return Promise.resolve({
@@ -86,7 +85,7 @@ function fetchFor(agent: AccountAgent, target: Target | null): Promise<ProviderR
       failureKind: 'missing-credentials'
     })
   }
-  return agent === 'claude' ? fetchClaudeUsage(request, target.dir) : fetchCodexUsage(request, target.dir!)
+  return agent === 'claude' ? fetchClaudeUsage(request, target.dir, { retryKeychain: force }) : fetchCodexUsage(request, target.dir!)
 }
 
 const AGENTS: readonly AccountAgent[] = ['claude', 'codex']
@@ -103,13 +102,15 @@ const inactiveCache = new Map<string, ProviderRateLimits>()
 let mainWindow: BrowserWindow | null = null
 let broadcast: (state: UsageState) => void = () => {}
 let timer: NodeJS.Timeout | null = null
+/** フッターが使用量を表示して、初めて取りに来たか。それまでは定期取得もしない */
+let started = false
 
 function setState(agent: AccountAgent, next: ProviderRateLimits | null): void {
   state = { ...state, [agent]: next }
   broadcast(state)
 }
 
-async function fetchProvider(agent: AccountAgent): Promise<void> {
+async function fetchProvider(agent: AccountAgent, force = false): Promise<void> {
   const running = inFlight[agent]
   if (running) return running
   const work = (async () => {
@@ -122,7 +123,7 @@ async function fetchProvider(agent: AccountAgent): Promise<void> {
       state = { ...state, [agent]: null }
     }
     setState(agent, withFetchingStatus(state[agent], agent))
-    const fresh = await fetchFor(agent, target)
+    const fresh = await fetchFor(agent, target, force)
     if (stateKey[agent] !== key) return
     if (fresh.status === 'error') {
       failureStreak[agent] = Math.min(failureStreak[agent] + 1, MAX_ACTIVE_FAILURE_STREAK)
@@ -151,7 +152,7 @@ function windowActive(): boolean {
 async function refreshStale(): Promise<void> {
   const switched = AGENTS.filter((agent) => stateKey[agent] !== null && stateKey[agent] !== (targetFor(agent, activeAccountId(agent))?.key ?? null))
   const due = providersToRefresh({ state, lastFailureRetryAt, failureStreak })
-  await Promise.all([...new Set([...switched, ...due])].map(fetchProvider))
+  await Promise.all([...new Set([...switched, ...due])].map((agent) => fetchProvider(agent)))
 }
 
 export function getUsageState(): UsageState {
@@ -163,7 +164,8 @@ export function getUsageState(): UsageState {
  * force でなければ、古いもの・アカウントが替わったものだけ。
  */
 export async function refreshUsage(force: boolean): Promise<UsageState> {
-  if (force) await Promise.all(AGENTS.filter((agent) => !isRetryAfterActive(state[agent])).map(fetchProvider))
+  started = true
+  if (force) await Promise.all(AGENTS.filter((agent) => !isRetryAfterActive(state[agent])).map((agent) => fetchProvider(agent, true)))
   else await refreshStale()
   return state
 }
@@ -187,7 +189,7 @@ export async function getAccountUsage(agent: AccountAgent, force = false): Promi
         const cached = inactiveCache.get(cacheKey) ?? null
         if (cached && !force && Date.now() - cached.updatedAt < INACTIVE_FETCH_DEBOUNCE_MS) rateLimits = cached
         else {
-          rateLimits = applyStalePolicy(await fetchFor(agent, target), cached)
+          rateLimits = applyStalePolicy(await fetchFor(agent, target, force), cached)
           if (rateLimits.status === 'ok') inactiveCache.set(cacheKey, rateLimits)
         }
       }
@@ -200,7 +202,9 @@ export async function getAccountUsage(agent: AccountAgent, force = false): Promi
 export function attachUsageWindow(window: BrowserWindow, send: (state: UsageState) => void): void {
   mainWindow = window
   broadcast = send
-  const onFocus = (): void => void refreshStale()
+  const onFocus = (): void => {
+    if (started) void refreshStale()
+  }
   window.on('focus', onFocus)
   window.on('show', onFocus)
   window.on('restore', onFocus)
@@ -209,11 +213,11 @@ export function attachUsageWindow(window: BrowserWindow, send: (state: UsageStat
   })
   if (timer) clearInterval(timer)
   timer = setInterval(() => {
-    if (windowActive()) void refreshStale()
+    if (started && windowActive()) void refreshStale()
   }, DEFAULT_POLL_MS)
   timer.unref?.()
-  // 起動直後は窓が整ってから1度だけ取りに行く（前にあるかは問わない。最初の表示のため）
-  setTimeout(() => void refreshStale(), DEFERRED_STARTUP_REFRESH_MS).unref?.()
+  // 起動直後には読まない。フッターに使用量が出たとき（renderer の usage:refresh）に初めて読む
+  // （Claude の認証情報は Keychain にあり、使わないなら触れないため）
 }
 
 export function stopUsagePolling(): void {

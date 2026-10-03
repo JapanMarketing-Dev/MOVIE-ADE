@@ -48,7 +48,7 @@ export function GitHubSendDialog({ reviewId, onClose }: { reviewId: string; onCl
     try {
       const result = await window.ade.invoke('github:postReview', reviewId, spec, body)
       toast({ tone: 'success', message: target === 'issue' ? t('github.send.issueCreated') : t('github.send.commented'), detail: result.url })
-      void window.ade.invoke('github:open', result.url).catch(() => {})
+      void window.ade.invoke('github:open', result.url).catch(() => {}) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
       onClose()
     } catch (err) {
       toast({ tone: 'danger', message: t('github.send.failed'), detail: errorMessage(err) })

@@ -16,20 +16,26 @@
  *
  * Electron に依存させない（単体テストで暗号化の可否を差し替えるため）。safeStorage は呼び出し側で渡す。
  */
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { readFile, rm, writeFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { SttKeySource } from '@shared/types'
 import { AI_VENDORS, type AiVendor } from '@shared/aiProviders'
 import { t } from '@shared/i18n'
+import { errorKind, reportHandled } from '@shared/report'
 
 /** キーを保存する単位。提供元（vendor）ごとに1つで、文字起こしと整理で共有する */
 export type SttKeyProvider = AiVendor
 
 /** safeStorage の必要な部分だけ */
 export interface KeyCipher {
-  /** 安全に暗号化できるか（Linux の basic_text は false にすること） */
+  /** 安全に暗号化できるか（Linux の basic_text は false にすること）。macOS では Keychain に触れることがある */
   available(): boolean
+  /**
+   * OS の鍵の仕組みに触れずに分かる範囲の「たぶん使える」。起動時の表示（保存方式）に使う。
+   * 省略時は available() を使う
+   */
+  likelyAvailable?(): boolean
   encrypt(text: string): Buffer
   decrypt(data: Buffer): string
 }
@@ -52,6 +58,8 @@ export class SttKeyStore {
   /** 暗号化して保存できているキー */
   private readonly persisted = new Set<SttKeyProvider>()
   private loaded = false
+  /** 保存した提供元の名前（暗号化しない別のファイル）。起動時はこれだけを読み、復号しない */
+  private index: Set<SttKeyProvider> | null = null
 
   constructor(
     private readonly file: string,
@@ -60,9 +68,44 @@ export class SttKeyStore {
     private readonly env: NodeJS.ProcessEnv = {},
   ) {}
 
-  /** 保存方式。画面に「保存しません」を出すかどうかに使う */
+  /** 保存方式。画面に「保存しません」を出すかどうかに使う。OS の鍵の仕組みには触れない */
   storage(): 'encrypted' | 'session' {
-    return this.cipher.available() ? 'encrypted' : 'session'
+    return (this.cipher.likelyAvailable ?? this.cipher.available)() ? 'encrypted' : 'session'
+  }
+
+  /** 保存した提供元の名前の一覧のファイル。値は入れない */
+  private get indexFile(): string {
+    return `${this.file}.index.json`
+  }
+
+  private savedVendors(): Set<SttKeyProvider> {
+    if (!this.index) {
+      try {
+        const raw = JSON.parse(readFileSync(this.indexFile, 'utf8')) as { vendors?: unknown }
+        this.index = new Set(Array.isArray(raw.vendors) ? raw.vendors.filter((v): v is SttKeyProvider => PROVIDERS.includes(v as SttKeyProvider)) : [])
+      } catch {
+        // まだキーを保存していない（索引が無い）のは想定内
+        this.index = new Set()
+      }
+    }
+    return this.index
+  }
+
+  /**
+   * キーがあるか（送れる状態の判定用）。**復号しない**ので、起動時・画面の表示から呼んでよい。
+   * まだ読んでいなければ、保存した提供元の名前の一覧で判断する。
+   */
+  has(provider: SttKeyProvider): boolean {
+    return !!this.get(provider) || (!this.loaded && this.savedVendors().has(provider))
+  }
+
+  /**
+   * 送信に使うキー。保存してあれば、ここで初めて復号する（macOS の Keychain に触れる）。
+   * 実際に送る直前・接続の確認のときだけ呼ぶ。保存していない提供元では OS の鍵の仕組みに触れない。
+   */
+  async read(provider: SttKeyProvider): Promise<string | undefined> {
+    if (!this.keys[provider] && !this.loaded && this.savedVendors().has(provider)) await this.load()
+    return this.get(provider)
   }
 
   /**
@@ -73,7 +116,12 @@ export class SttKeyStore {
     if (this.loaded) return
     this.loaded = true
     if (!this.cipher.available()) return
+    try { await this.decryptFile() } finally { this.syncIndexAfterLoad() }
+  }
+
+  private async decryptFile(): Promise<void> {
     let data: Buffer
+    // 保存したキーが無い（想定内）
     try { data = await readFile(this.file) } catch { return }
     try {
       const parsed = JSON.parse(this.cipher.decrypt(data)) as Record<string, unknown>
@@ -85,9 +133,16 @@ export class SttKeyStore {
           this.persisted.add(p)
         }
       }
-    } catch {
+    } catch (err) {
       console.warn('[stt] 保存済みのAPIキーを復号できませんでした。もう一度入力してください。')
+      // キーそのものは送らない（種類だけ）
+      reportHandled(errorKind(err), { area: 'stt', op: 'decrypt saved keys' })
     }
+  }
+
+  /** 読み終えたら、一覧は実際に読めたキーに合わせる（復号できなかったものを「保存済み」と出さない） */
+  private syncIndexAfterLoad(): void {
+    this.index = new Set(this.persisted)
   }
 
   /** 送信に使うキー。OpenAI は保存したキーが無ければ .env の OPENAI_API_KEY */
@@ -97,6 +152,7 @@ export class SttKeyStore {
 
   source(provider: SttKeyProvider): SttKeySource {
     if (this.keys[provider]) return this.persisted.has(provider) ? 'saved' : 'session'
+    if (!this.loaded && this.savedVendors().has(provider)) return 'saved'
     return provider === 'openai' && this.env.OPENAI_API_KEY ? 'env' : null
   }
 
@@ -118,8 +174,9 @@ export class SttKeyStore {
     if (!this.cipher.available()) return { persisted: false }
     try {
       await this.write()
-    } catch {
+    } catch (err) {
       console.warn('[stt] APIキーを保存できませんでした。この起動中だけ使います。')
+      reportHandled(errorKind(err), { area: 'stt', op: 'save api key' })
       return { persisted: false }
     }
     if (trimmed) this.persisted.add(provider)
@@ -131,12 +188,17 @@ export class SttKeyStore {
     const entries = PROVIDERS.flatMap((p) => (this.keys[p] ? [[p, this.keys[p]] as const] : []))
     if (entries.length === 0) {
       await rm(this.file, { force: true })
+      await rm(this.indexFile, { force: true })
+      this.index = new Set()
       return
     }
     await mkdir(dirname(this.file), { recursive: true })
     // 中身は暗号化済みだが、念のため本人だけが読める権限にする（Windows では無視される）
     await writeFile(this.file, this.cipher.encrypt(JSON.stringify(Object.fromEntries(entries))), { mode: 0o600 })
     for (const [p] of entries) this.persisted.add(p)
+    // 起動時に復号せずに「保存済み」と分かるよう、提供元の名前だけを別に書く
+    await writeFile(this.indexFile, `${JSON.stringify({ vendors: entries.map(([p]) => p) })}\n`, { mode: 0o600 })
+    this.index = new Set(entries.map(([p]) => p))
   }
 }
 
@@ -166,6 +228,8 @@ export function safeStorageCipher(safeStorage: {
   getSelectedStorageBackend?(): string
 }, platform: NodeJS.Platform = process.platform): KeyCipher {
   return {
+    // macOS / Windows は OS の鍵の仕組みが常にある。触れずに「使える」とみなす（触れると Keychain の確認が出ることがある）
+    likelyAvailable: () => platform !== 'linux' || (safeStorage.isEncryptionAvailable() && !['basic_text', 'unknown'].includes(safeStorage.getSelectedStorageBackend?.() ?? 'unknown')),
     available: () => {
       if (!safeStorage.isEncryptionAvailable()) return false
       if (platform !== 'linux') return true
@@ -175,4 +239,17 @@ export function safeStorageCipher(safeStorage: {
     encrypt: (text) => safeStorage.encryptString(text),
     decrypt: (data) => safeStorage.decryptString(data),
   }
+}
+
+/** 暗号化しない（保存しない）。dev 起動・E2E で使う */
+export const NO_CIPHER: KeyCipher = { available: () => false, likelyAvailable: () => false, encrypt: () => Buffer.alloc(0), decrypt: () => '' }
+
+/**
+ * 使う暗号化を選ぶ。**配布版だけ** safeStorage を使う。
+ * dev 起動では使わない（Electron.app の名前・署名が変わると Keychain の許可が合わず、起動のたびに確認が出るため）。
+ * E2E も使わない（確認で止まらないように）。どちらもキーはその起動中だけ持つ。
+ * safeStorage はここでは呼ばない（渡すだけ）。
+ */
+export function chooseKeyCipher(opt: { isPackaged: boolean; isE2E: boolean; safeStorage: Parameters<typeof safeStorageCipher>[0]; platform?: NodeJS.Platform }): KeyCipher {
+  return opt.isPackaged && !opt.isE2E ? safeStorageCipher(opt.safeStorage, opt.platform) : NO_CIPHER
 }

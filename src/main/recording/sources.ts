@@ -1,6 +1,7 @@
 import { BrowserWindow, desktopCapturer, screen, shell, systemPreferences } from 'electron'
 import type { CaptureSourceInfo, CaptureSourceList } from '@shared/types'
 import { t } from '@shared/i18n'
+import { reportHandled } from '@shared/report'
 
 /**
  * 画面全体・別のウインドウの録画対象（REC-2 の拡張 / 設計9章）。
@@ -19,7 +20,8 @@ export function screenAccess(): CaptureSourceList['screenAccess'] {
   if (process.platform !== 'darwin') return 'granted'
   try {
     return systemPreferences.getMediaAccessStatus('screen')
-  } catch {
+  } catch (err) {
+    reportHandled(err, { area: 'recording', op: 'read screen access' })
     return 'unknown'
   }
 }

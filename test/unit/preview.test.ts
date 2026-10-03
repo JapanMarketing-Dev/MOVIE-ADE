@@ -79,12 +79,14 @@ describe('プレビューのパス検査', () => {
 describe('Mermaid のブロックの抽出', () => {
   it('```mermaid は <pre class="mermaid"> になり、中身は文字として残る', () => {
     const html = renderPreviewBody('markdown', '# 図\n\n```mermaid\ngraph TD\n  A-->B["<b>x</b>"]\n```\n\n本文\n')
-    expect(html).toContain('<pre class="mermaid">graph TD\n  A--&gt;B[&quot;&lt;b&gt;x&lt;/b&gt;&quot;]</pre>')
-    expect(html).toContain('<h1>図</h1>')
+    expect(html).toContain('<pre data-line="3" class="mermaid">graph TD\n  A--&gt;B[&quot;&lt;b&gt;x&lt;/b&gt;&quot;]</pre>')
+    expect(html).toContain('<h1 data-line="1">図</h1>')
+    // 塊ごとに元の行が付く（プレビューからエディタの該当行へ飛ぶ）
+    expect(html).toContain('<p data-line="8">本文</p>')
   })
 
   it('~~~ のフェンスと mmd の名前も Mermaid として扱う', () => {
-    expect(renderPreviewBody('markdown', '~~~mmd\nsequenceDiagram\n~~~\n')).toContain('<pre class="mermaid">sequenceDiagram</pre>')
+    expect(renderPreviewBody('markdown', '~~~mmd\nsequenceDiagram\n~~~\n')).toContain('<pre data-line="1" class="mermaid">sequenceDiagram</pre>')
   })
 
   it('ほかの言語のコードはふつうのコードブロック', () => {
@@ -94,7 +96,16 @@ describe('Mermaid のブロックの抽出', () => {
   })
 
   it('.mmd のファイルは全体を1つの図にする', () => {
-    expect(renderPreviewBody('mermaid', 'graph LR\nA-->B')).toBe('<pre class="mermaid">graph LR\nA--&gt;B</pre>\n')
+    expect(renderPreviewBody('mermaid', 'graph LR\nA-->B')).toBe('<pre data-line="1" class="mermaid">graph LR\nA--&gt;B</pre>\n')
+  })
+
+  it('参照リンクの定義は塊ごとに描いても効く', () => {
+    const html = renderPreviewBody('markdown', 'see [doc][d]\n\n[d]: https://example.com/\n')
+    expect(html).toContain('<a href="https://example.com/">doc</a>')
+  })
+
+  it('md / Mermaid 以外のテキストは読み取り専用のコードとして出す', () => {
+    expect(renderPreviewBody('code', 'const a = "<b>"\n')).toBe('<pre class="code-view" data-line="1"><code>const a = &quot;&lt;b&gt;&quot;\n</code></pre>\n')
   })
 
   it('フェンスの言語名の判定', () => {

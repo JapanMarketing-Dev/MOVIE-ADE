@@ -10,6 +10,7 @@ import type { LlmRunner } from './runner'
 import { RunnerError } from './runner'
 import type { ValidationIssue } from './validate'
 import { validateOrganizeOutput } from './validate'
+import { reportHandled } from '@shared/report'
 
 export interface OrganizeOptions {
   runner: LlmRunner;
@@ -66,6 +67,8 @@ export async function organize(input: OrganizeInput, options: OrganizeOptions): 
     usage = r.usage
   } catch (e) {
     const err = e instanceof RunnerError ? e : undefined
+    // CLI・API の失敗（RunnerError）は画面に出す想定内のもの。それ以外は不具合として知らせる
+    if (!err) reportHandled(e, { area: 'organize', op: 'run organizer' })
     return {
       ok: false,
       reason: e instanceof Error ? e.message : String(e),

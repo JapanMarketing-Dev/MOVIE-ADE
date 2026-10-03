@@ -353,3 +353,80 @@ describe('接続の確認の文（英語の画面）', () => {
     }
   })
 })
+
+/** safeStorage の呼び出しを数える偽物（macOS で呼ぶと Keychain の確認が出うるもの） */
+function spySafeStorage() {
+  const calls = { isEncryptionAvailable: 0, encryptString: 0, decryptString: 0, getSelectedStorageBackend: 0 }
+  return {
+    calls,
+    isEncryptionAvailable: () => { calls.isEncryptionAvailable++; return true },
+    encryptString: (t: string) => { calls.encryptString++; return Buffer.from(t, 'utf8').map((b) => 255 - b) as Buffer },
+    decryptString: (d: Buffer) => { calls.decryptString++; return Buffer.from(d.map((b) => 255 - b)).toString('utf8') },
+    getSelectedStorageBackend: () => { calls.getSelectedStorageBackend++; return 'keychain' },
+  }
+}
+const untouched = (c: ReturnType<typeof spySafeStorage>['calls']) => Object.values(c).every((n) => n === 0)
+
+describe('キーチェーンの確認を出さない（起動時・dev 版）', () => {
+  let dir = ''
+  afterEach(async () => { if (dir) await rm(dir, { recursive: true, force: true }) })
+
+  it('dev 起動・E2E では safeStorage を使わない（呼びもしない）。配布版だけ使う', async () => {
+    const { chooseKeyCipher, NO_CIPHER } = await import('../../src/main/pipeline/stt/keys')
+    const ss = spySafeStorage()
+    expect(chooseKeyCipher({ isPackaged: false, isE2E: false, safeStorage: ss })).toBe(NO_CIPHER)
+    expect(chooseKeyCipher({ isPackaged: true, isE2E: true, safeStorage: ss })).toBe(NO_CIPHER)
+    dir = await mkdtemp(join(tmpdir(), 'ade-dev-keys-'))
+    const dev = new SttKeyStore(join(dir, 'k.bin'), chooseKeyCipher({ isPackaged: false, isE2E: false, safeStorage: ss }), devKeyEnv(false, { OPENAI_API_KEY: 'sk-dotenv-0000000000000000' }))
+    expect(dev.storage()).toBe('session')
+    expect(await dev.set('anthropic', 'sk-ant-dev-key')).toEqual({ persisted: false })
+    expect(await dev.read('anthropic')).toBe('sk-ant-dev-key')
+    // .env のキーはこれまでどおり使える
+    expect(await dev.read('openai')).toBe('sk-dotenv-0000000000000000')
+    expect(untouched(ss.calls)).toBe(true)
+    await expect(stat(join(dir, 'k.bin'))).rejects.toThrow()
+    expect(chooseKeyCipher({ isPackaged: true, isE2E: false, safeStorage: ss, platform: 'darwin' })).not.toBe(NO_CIPHER)
+  })
+
+  it('配布版でも、起動時の表示（保存方式・キーの有無）では safeStorage に触れない。復号は実際に使うときだけ', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'ade-lazy-keys-'))
+    const file = join(dir, 'stt-keys.bin')
+    // 前回の起動で Deepgram のキーを保存した状態を作る
+    const first = spySafeStorage()
+    await new SttKeyStore(file, safeStorageCipher(first, 'darwin'), {}).set('deepgram', 'dg-secret-key')
+
+    // 次の起動
+    const ss = spySafeStorage()
+    const store = new SttKeyStore(file, safeStorageCipher(ss, 'darwin'), {})
+    expect(store.storage()).toBe('encrypted')
+    expect(store.has('deepgram')).toBe(true)
+    expect(store.source('deepgram')).toBe('saved')
+    expect(store.has('openai')).toBe(false)
+    // 保存していない提供元を読んでも、OS の鍵の仕組みには触れない
+    expect(await store.read('openai')).toBeUndefined()
+    expect(untouched(ss.calls)).toBe(true)
+    // 実際に使うときに初めて復号する（1回だけ）
+    expect(await store.read('deepgram')).toBe('dg-secret-key')
+    expect(await store.read('deepgram')).toBe('dg-secret-key')
+    expect(ss.calls.decryptString).toBe(1)
+    // 一覧のファイルにキーの値は入らない
+    const { readFile: rf } = await import('node:fs/promises')
+    expect(await rf(`${file}.index.json`, 'utf8')).not.toContain('dg-secret-key')
+  })
+
+  it('復号できなければ、以後は「保存済み」と出さない。全部消したら一覧のファイルも消す', async () => {
+    dir = await mkdtemp(join(tmpdir(), 'ade-lazy-keys-'))
+    const file = join(dir, 'stt-keys.bin')
+    await new SttKeyStore(file, safeStorageCipher(spySafeStorage(), 'darwin'), {}).set('google', 'AIza-key')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const broken = new SttKeyStore(file, { available: () => true, likelyAvailable: () => true, encrypt: (t) => Buffer.from(t), decrypt: () => { throw new Error('denied') } }, {})
+    expect(broken.source('google')).toBe('saved')
+    expect(await broken.read('google')).toBeUndefined()
+    expect(broken.source('google')).toBeNull()
+    expect(broken.has('google')).toBe(false)
+    warn.mockRestore()
+    const store = new SttKeyStore(file, safeStorageCipher(spySafeStorage(), 'darwin'), {})
+    await store.set('google', '')
+    await expect(stat(`${file}.index.json`)).rejects.toThrow()
+  })
+})

@@ -187,12 +187,11 @@ describe('フッターが狭いときの段階', async () => {
   const { pickUsageDensityLevel, segmentDetail } = await import('../../src/renderer/lib/usageDensity')
 
   it('広い順に「used」→ 副次の枠 → ラベル → バーを省く', () => {
-    expect(segmentDetail('verbose', 0)).toEqual({ used: true, secondary: true, labels: true, bar: true, allSections: true })
-    expect(segmentDetail('verbose', 1)).toMatchObject({ used: false, secondary: true })
-    expect(segmentDetail('verbose', 2)).toMatchObject({ used: false, secondary: false, labels: true })
-    expect(segmentDetail('verbose', 3)).toEqual({ used: false, secondary: false, labels: false, bar: true, allSections: false })
-    expect(segmentDetail('verbose', 4).bar).toBe(false)
-    expect(segmentDetail('compact', 0)).toMatchObject({ used: true, allSections: false, bar: false })
+    expect(segmentDetail(0)).toEqual({ used: true, secondary: true, labels: true, bar: true, allSections: true })
+    expect(segmentDetail(1)).toMatchObject({ used: false, secondary: true })
+    expect(segmentDetail(2)).toMatchObject({ used: false, secondary: false, labels: true })
+    expect(segmentDetail(3)).toEqual({ used: false, secondary: false, labels: false, bar: true, allSections: false })
+    expect(segmentDetail(4).bar).toBe(false)
   })
 
   it('収まるいちばん広い段階を選び、測っていない段階はいったん試す', () => {
@@ -201,5 +200,44 @@ describe('フッターが狭いときの段階', async () => {
     expect(pickUsageDensityLevel([500, 400, 280], 300)).toBe(2)
     expect(pickUsageDensityLevel([500, 400, 350, 320, 200], 100)).toBe(4)
     expect(pickUsageDensityLevel([300.5], 300)).toBe(0)
+  })
+})
+
+describe('Keychain の読み方（確認のダイアログを待たない）', async () => {
+  const { createKeychainReader } = await import('../../src/main/usage/credentials')
+  type Result = { ok: true; stdout: string } | { ok: false; code: unknown }
+
+  function fakeExec(results: Record<'exists' | 'read', Result>) {
+    const calls: string[][] = []
+    const exec = async (args: string[]): Promise<Result> => {
+      calls.push(args)
+      return args.includes('-w') ? results.read : results.exists
+    }
+    return { exec, calls }
+  }
+
+  it('項目があれば -w で中身を読む', async () => {
+    const { exec, calls } = fakeExec({ exists: { ok: true, stdout: '' }, read: { ok: true, stdout: '{"x":1}\n' } })
+    expect(await createKeychainReader(exec).read('svc', 'me')).toBe('{"x":1}')
+    expect(calls).toEqual([
+      ['find-generic-password', '-s', 'svc', '-a', 'me'],
+      ['find-generic-password', '-s', 'svc', '-a', 'me', '-w']
+    ])
+  })
+
+  it('項目が無ければ中身は読みに行かない（許可を求める操作をしない）', async () => {
+    const { exec, calls } = fakeExec({ exists: { ok: false, code: 44 }, read: { ok: true, stdout: 'x' } })
+    expect(await createKeychainReader(exec).read('svc', 'me')).toBeNull()
+    expect(calls).toHaveLength(1)
+  })
+
+  it('拒否・タイムアウトなら諦め、以後は手動の再読み込みまで読みに行かない', async () => {
+    const { exec, calls } = fakeExec({ exists: { ok: true, stdout: '' }, read: { ok: false, code: 'ETIMEDOUT' } })
+    const reader = createKeychainReader(exec)
+    expect(await reader.read('svc', 'me')).toBe('unavailable')
+    expect(await reader.read('svc', 'me')).toBe('unavailable')
+    expect(calls).toHaveLength(2)
+    await reader.read('svc', 'me', { retryBlocked: true })
+    expect(calls).toHaveLength(4)
   })
 })

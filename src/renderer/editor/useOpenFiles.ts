@@ -267,6 +267,7 @@ export function useOpenFiles({
   // ウィンドウを閉じるときの確認のため、未保存のファイルを main へ知らせる（別のプロジェクトのタブも含める）
   const unsavedKey = allFiles.filter((f) => f.dirty).map((f) => f.id).join('\n')
   useEffect(() => {
+    // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
     void window.ade.invoke('editor:unsaved', unsavedKey ? unsavedKey.split('\n') : []).catch(() => undefined)
   }, [unsavedKey])
 

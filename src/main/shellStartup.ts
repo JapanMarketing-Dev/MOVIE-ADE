@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir, userInfo } from 'node:os'
 import { join } from 'node:path'
 import type { ShellSpec } from './terminal'
+import { reportHandled } from '@shared/report'
 
 /**
  * Agentタブの起動。ログインシェルを普段どおり立ち上げ、最初のプロンプトが出た時点で
@@ -187,6 +188,7 @@ export function planStartupDelivery(
     }
   } catch (err) {
     console.warn('[terminal] 起動ファイルを書き出せません。入力で起動します', err)
+    reportHandled(err, { area: 'terminal', op: 'write shell startup file' })
   }
   return { kind: 'write', shell, env: {} }
 }

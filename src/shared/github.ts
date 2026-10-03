@@ -70,3 +70,24 @@ export interface GitHubPostResult {
   /** 作った Issue・コメントのURL */
   url: string
 }
+
+/** フッターに出す、今のプロジェクトのリポジトリとブランチ */
+export interface GitRepoStatus {
+  /** git のリポジトリか。false なら項目を隠す */
+  isGit: boolean
+  /** origin が GitHub のとき。それ以外の remote・remote なしは null */
+  repo: GitHubRepoRef | null
+  /** ブランチ名。detached HEAD のときは null で、shortOid を出す */
+  branch: string | null
+  shortOid: string | null
+  /** 未コミットの変更（追跡外を含む）のファイル数 */
+  changes: number
+  ahead: number
+  behind: number
+  hasUpstream: boolean
+}
+
+/** GitHub のブランチのページ。ブランチ名の「/」は区切りのまま残す */
+export function branchWebUrl(repo: GitHubRepoRef, branch: string): string {
+  return `${repo.webUrl}/tree/${branch.split('/').map(encodeURIComponent).join('/')}`
+}

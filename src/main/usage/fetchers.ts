@@ -2,6 +2,7 @@ import type { ProviderRateLimits, RateLimitWindow, UsageFailureKind } from '@sha
 import type { AccountAgent } from '@shared/types'
 import { readClaudeAccessToken, readCodexAccessToken } from './credentials'
 import { t } from '@shared/i18n'
+import { errorKind, reportHandled } from '@shared/report'
 
 /**
  * Claude / Codex の使用量を、それぞれの公式のエンドポイントから読む。
@@ -127,8 +128,9 @@ export function mapClaudeUsageResponse(data: ClaudeUsageResponse): ProviderRateL
 }
 
 /** configDir を省略するとシステムの既定アカウント */
-export async function fetchClaudeUsage(request: UsageRequest, configDir?: string): Promise<ProviderRateLimits> {
-  const credential = await readClaudeAccessToken(configDir)
+/** retryKeychain は手動の再読み込みのときだけ true（一度読めなかった Keychain の項目をもう一度試す） */
+export async function fetchClaudeUsage(request: UsageRequest, configDir?: string, options: { retryKeychain?: boolean } = {}): Promise<ProviderRateLimits> {
+  const credential = await readClaudeAccessToken(configDir, { retryBlocked: options.retryKeychain })
   if (credential.token === null) {
     return credential.reason === 'keychain-unavailable'
       ? failure('claude', 'keychain-unavailable', t('usage.errors.keychain'))
@@ -146,7 +148,9 @@ export async function fetchClaudeUsage(request: UsageRequest, configDir?: string
   if (!response.ok) return httpFailure('claude', response)
   try {
     return mapClaudeUsageResponse((await response.json()) as ClaudeUsageResponse)
-  } catch {
+  } catch (err) {
+    // 応答の形が変わった（API の変更）。中身は送らない
+    reportHandled(errorKind(err), { area: 'usage', op: 'parse claude usage' })
     return failure('claude', 'unknown', t('usage.errors.badFormat', { name: 'Claude' }))
   }
 }
@@ -217,7 +221,8 @@ export async function fetchCodexUsage(request: UsageRequest, codexHome: string):
   if (!response.ok) return httpFailure('codex', response)
   try {
     return mapCodexUsageResponse((await response.json()) as CodexUsageResponse) ?? failure('codex', 'unknown', t('usage.errors.badFormat', { name: 'Codex' }))
-  } catch {
+  } catch (err) {
+    reportHandled(errorKind(err), { area: 'usage', op: 'parse codex usage' })
     return failure('codex', 'unknown', t('usage.errors.badFormat', { name: 'Codex' }))
   }
 }

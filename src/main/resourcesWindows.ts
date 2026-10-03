@@ -3,6 +3,7 @@ import { cpus } from 'node:os'
 import { performance } from 'node:perf_hooks'
 import { promisify } from 'node:util'
 import type { ProcRow } from './resources'
+import { reportHandled } from '@shared/report'
 
 /**
  * Windows のプロセス一覧（pid・ppid・CPU・RSS）。Windows には ps が無いので、
@@ -51,6 +52,7 @@ function parseUnsignedBigInt(value: string | undefined): bigint | null {
   try {
     return BigInt(value)
   } catch {
+    // 数として読めない値は捨てる（想定内）
     return null
   }
 }
@@ -192,6 +194,7 @@ export class WindowsProcessCollector {
       return parsed.rows.length > 0 ? { ...parsed, sampledAtMs: this.now() } : null
     } catch (err) {
       console.warn('[resources] PowerShell でプロセスを取れませんでした。typeperf に切り替えます', err)
+      reportHandled(err, { area: 'resources', op: 'sample processes with powershell' })
       return null
     }
   }
@@ -201,6 +204,7 @@ export class WindowsProcessCollector {
       return parseTypeperfProcessOutput(await this.exec('typeperf.exe', [...TYPEPERF_COUNTERS, '-sc', '1', '-si', '0']))
     } catch (err) {
       console.warn('[resources] typeperf でプロセスを取れませんでした', err)
+      reportHandled(err, { area: 'resources', op: 'sample processes with typeperf' })
       return []
     }
   }

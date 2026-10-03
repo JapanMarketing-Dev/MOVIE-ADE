@@ -21,6 +21,7 @@ import { claudeKeychainService, readClaudeIdentity, readClaudeSystemIdentity, re
 import { createManagedAccountDir, isValidAccountId, removeManagedAccountDir, systemConfigDir, verifyManagedAccountDir } from './paths'
 import { normalizeAccountLabel } from './sanitize'
 import { t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
 
 /**
  * アカウントの一覧・追加・名前の変更・削除・選択（IPC の受け口）。
@@ -52,7 +53,7 @@ function saveList(agent: AccountAgent, next: AgentAccountsSettings[AccountAgent]
 
 function requireAccount(agent: AccountAgent, accountId: string): AgentAccount {
   const account = accountsSettings()[agent].accounts.find((a) => a.id === accountId)
-  if (!account) throw new Error(t('accounts.errors.gone'))
+  if (!account) throw new UserFacingError(t('accounts.errors.gone'))
   return account
 }
 
@@ -60,6 +61,7 @@ function requireAccount(agent: AccountAgent, accountId: string): AgentAccount {
 let mutationQueue: Promise<unknown> = Promise.resolve()
 function serialize<T>(fn: () => Promise<T>): Promise<T> {
   const next = mutationQueue.then(fn, fn)
+  // 失敗は next の呼び出し側へ返す。ここは順番待ちに使うだけ（想定内）
   mutationQueue = next.catch(() => undefined)
   return next
 }
@@ -203,7 +205,7 @@ export async function selectAgentAccount(agent: AccountAgent, accountId: string 
       const verdict = verifyManagedAccountDir({ userDataDir: userDataDir(), agent, accountId })
       if (verdict.kind !== 'owned') throw new Error(verdict.reason)
       if (!(await readIdentity(agent, verdict.dir)).signedIn) {
-        throw new Error(t('accounts.errors.notSignedIn'))
+        throw new UserFacingError(t('accounts.errors.notSignedIn'))
       }
     }
     saveList(agent, { ...list, activeAccountId: accountId })
@@ -242,7 +244,7 @@ export function buildAccountLoginLaunch(
   _shell: AgentStartupShell
 ): { command: string; env: Record<string, string>; title: string } {
   const { agent, accountId } = req
-  if (!isValidAccountId(accountId)) throw new Error(t('accounts.errors.invalidId'))
+  if (!isValidAccountId(accountId)) throw new UserFacingError(t('accounts.errors.invalidId'))
   requireAccount(agent, accountId)
   const env = resolveAgentEnvFrom({ agent, accounts: accountsSettings(), userDataDir: userDataDir(), accountId })
   const command = currentSettings().agents.launch[agent]?.command.trim() || DEFAULT_AGENT_PREFERENCES.launch[agent].command

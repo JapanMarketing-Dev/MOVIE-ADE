@@ -3,6 +3,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import type { TerminalSize } from '@shared/types'
 import { THEME_CHANGE_EVENT } from '../lib/theme'
 import { t } from '@shared/i18n'
+import { reportAnomaly, reportHandled } from '@shared/report'
 
 /**
  * renderer 側のターミナル実体（xterm.js）を管理する。
@@ -83,26 +84,42 @@ export class TerminalHandle {
     }
     window.addEventListener(THEME_CHANGE_EVENT, onTheme)
     this.disposers.push(() => window.removeEventListener(THEME_CHANGE_EVENT, onTheme))
-  }
-
-  /** node の中に表示する。別の node へ移されたら器ごと移す（xterm は作り直さない） */
-  open(node: HTMLElement): void {
-    if (this.host.parentElement !== node) node.appendChild(this.host)
-    if (this.opened) return
-    this.term.open(this.host)
-    this.opened = true
-    // 器の大きさが変わるたびに（分割・ドラッグ・ウィンドウ・ターミナルの配置の変更・表示の切り替え）合わせ直す。
-    // 描画の切り替えやフォントの読み込みで文字の寸法が変わったときも同じ
-    const observer = new ResizeObserver(() => this.scheduleFit())
-    observer.observe(this.host)
-    this.disposers.push(() => observer.disconnect())
-    void this.loadRenderer().then(() => this.scheduleFit())
-    void document.fonts?.ready.then(() => this.scheduleFit())
+    // 入力は開く前から受けられるようにしておく（PTYができる前の打鍵は pending にためる）
     const onData = this.term.onData((data) => {
       if (this.ptyId) void window.ade.invoke('terminal:write', this.ptyId, data)
       else this.pending.push(data)
     })
     this.disposers.push(() => onData.dispose())
+    // 器の大きさが変わるたびに（分割・ドラッグ・ウィンドウ・ターミナルの配置の変更・表示の切り替え）、
+    // まだ開いていなければ開き、開いていれば寸法を合わせ直す
+    const observer = new ResizeObserver(() => {
+      this.tryOpen()
+      this.scheduleFit()
+    })
+    observer.observe(this.host)
+    this.disposers.push(() => observer.disconnect())
+  }
+
+  /**
+   * node の中に表示する。別の node へ移されたら器ごと移す（xterm は作り直さない）。
+   *
+   * xterm を実際に開く（term.open）のは、器に大きさが付いてから。非表示のタブや、閉じた（0px の）ターミナルの
+   * 中で開くと、xterm が文字の寸法を 0 と測ったままになり、表示しても真っ黒のまま描かれない。
+   * 開く前に届いた出力は xterm のバッファに入っているので、開いた時点でそのまま描かれる
+   */
+  open(node: HTMLElement): void {
+    if (this.host.parentElement !== node) node.appendChild(this.host)
+    this.tryOpen()
+  }
+
+  private tryOpen(): void {
+    if (this.opened || this.host.clientWidth === 0 || this.host.clientHeight === 0) return
+    this.term.open(this.host)
+    this.opened = true
+    // 描画の切り替えやフォントの読み込みで文字の寸法が変わったときも合わせ直す
+    void this.loadRenderer().then(() => this.scheduleFit())
+    void document.fonts?.ready.then(() => this.scheduleFit())
+    this.scheduleFit()
   }
 
   /** WebGL → Canvas → DOM の順に試す。読み込みは遅延させて起動を軽くする */
@@ -111,6 +128,8 @@ export class TerminalHandle {
       const { WebglAddon } = await import('@xterm/addon-webgl')
       const addon = new WebglAddon()
       addon.onContextLoss(() => {
+        // GPU のリセットなどで WebGL の描画が失われた。Canvas へ切り替えて続ける
+        reportAnomaly('xterm webgl context lost', { kind: 'render', area: 'terminal' })
         addon.dispose()
         void this.loadCanvas()
       })
@@ -119,6 +138,7 @@ export class TerminalHandle {
       return
     } catch (err) {
       console.warn('[terminal] WebGL描画を使えません。Canvasへ切り替えます', err)
+      reportHandled(err, { area: 'terminal', op: 'load webgl renderer' })
     }
     await this.loadCanvas()
   }
@@ -130,6 +150,7 @@ export class TerminalHandle {
       this.renderer = 'canvas'
     } catch (err) {
       console.warn('[terminal] Canvas描画も使えません。DOM描画で続けます', err)
+      reportHandled(err, { area: 'terminal', op: 'load canvas renderer' })
       this.renderer = 'dom'
     }
   }
@@ -138,12 +159,17 @@ export class TerminalHandle {
   scheduleFit(): void {
     cancelAnimationFrame(this.fitFrame)
     this.fitFrame = requestAnimationFrame(() => {
-      if (this.host.clientWidth === 0 || this.host.clientHeight === 0) return
+      if (!this.opened || this.host.clientWidth === 0 || this.host.clientHeight === 0) return
       const before = this.size()
       const size = this.fit()
       if (!size || !this.ptyId) return
-      if (size.cols !== before.cols || size.rows !== before.rows || !this.ptySized) {
+      if (size.cols !== before.cols || size.rows !== before.rows || !this.ptySized || this.redrawPending) {
         this.ptySized = true
+        if (this.redrawPending && size.rows > 1) {
+          // 大きさを一度だけ揺らして、全画面の TUI（Claude Code / Codex など）に描き直してもらう
+          void window.ade.invoke('terminal:resize', this.ptyId, { cols: size.cols, rows: size.rows - 1 })
+        }
+        this.redrawPending = false
         void window.ade.invoke('terminal:resize', this.ptyId, size)
       }
     })
@@ -151,6 +177,21 @@ export class TerminalHandle {
 
   /** PTYへ今の寸法を一度でも伝えたか。80x24 の仮の大きさで作ったPTYを、表示時に必ず合わせ直す */
   private ptySized = false
+  /** 次に寸法を伝えるとき、大きさを一度揺らして描き直してもらう（読み込み直しのあと、つなぎ直したとき） */
+  private redrawPending = false
+
+  /**
+   * 画面を読み込み直したあと、生きている PTY につなぎ直す。直近の出力を流し直し、
+   * 表示したときに TUI へ描き直しを頼む（流し直した出力は途中から始まることがあるため）
+   */
+  reattach(ptyId: string, history: string, size?: TerminalSize): void {
+    // 出力は PTY の今の幅で折り返されているので、同じ大きさにしてから流し直す（違う幅だと崩れる）
+    if (size && size.cols >= 2 && size.rows >= 1) this.term.resize(size.cols, size.rows)
+    if (history) this.term.write(history)
+    this.bindPty(ptyId)
+    this.redrawPending = true
+    this.scheduleFit()
+  }
 
   bindPty(ptyId: string): void {
     this.ptyId = ptyId
@@ -186,6 +227,7 @@ export class TerminalHandle {
     try {
       this.fitAddon.fit()
     } catch {
+      // 寸法が決まる前（非表示・破棄中）は測れない（想定内。次の fit で測り直す）
       return null
     }
     const size = this.size()
@@ -221,6 +263,7 @@ export class TerminalHandle {
     } catch (err) {
       // 描画アドオンの破棄でまれに例外が出ても、タブは閉じられるようにする
       console.warn('[terminal] 破棄中にエラーが出ました', err)
+      reportHandled(err, { area: 'terminal', op: 'dispose xterm' })
     }
   }
 }

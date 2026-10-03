@@ -60,7 +60,7 @@ MOVIE-ADE connects to outside services only for:
 - agent usage in the footer (each provider's API, with your own Claude / Codex login)
 - "Send to GitHub" (through your own `gh` CLI)
 - "Check for Updates", only when you click it (the download server on Cloudflare R2)
-- **crash reports (Sentry)**: the installed app sends crashes and unhandled errors. It is on by default; turn it off in Settings → Privacy or from the notice at first launch. Reports contain the stack trace and OS / CPU / app versions. Paths, URLs, terminal output, transcripts, findings, email addresses, API keys and IP addresses are removed or not collected. Development builds and E2E runs never send. Forks can set `MOVIE_ADE_SENTRY_DSN` to their own DSN, or to an empty string to disable it. See [Data and privacy](https://movie-ade.pages.dev/docs/privacy.html#crash-reports).
+- **crash reports (Sentry)**: the app sends crashes and unhandled errors. It is on by default; turn it off in Settings → Privacy or from the notice at first launch. Reports contain the stack trace and OS / CPU / app versions. Paths, URLs, terminal output, transcripts, findings, email addresses, API keys and IP addresses are removed or not collected. Development builds (`pnpm dev`) also send, tagged `development`; E2E runs and unit tests never send. Forks can set `MOVIE_ADE_SENTRY_DSN` to their own DSN, or to an empty string to disable it. See [Data and privacy](https://movie-ade.pages.dev/docs/privacy.html#crash-reports).
 
 ## Development
 

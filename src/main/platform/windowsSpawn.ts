@@ -19,6 +19,7 @@
 import { readFileSync, statSync } from 'node:fs'
 import { win32 } from 'node:path'
 import { t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
 
 /** テストで差し替えるファイルの読み取り */
 export interface WindowsFs {
@@ -33,6 +34,7 @@ const nodeFs: WindowsFs = {
       const stats = statSync(path)
       return stats.isFile() ? stats.size : null
     } catch {
+      // 無いファイル（PATH の候補を順に調べている。想定内）
       return null
     }
   },
@@ -40,6 +42,7 @@ const nodeFs: WindowsFs = {
     try {
       return readFileSync(path, 'utf8')
     } catch {
+      // 読めない候補は飛ばす（想定内）
       return null
     }
   }
@@ -145,7 +148,7 @@ export function quoteWindowsCmdArgument(value: string): string {
 export function buildWindowsCmdShimCommandLine(program: string, args: readonly string[]): string {
   for (const value of [program, ...args]) {
     // cmd は囲みの中でも改行でコマンドを終える
-    if (/[\r\n]/.test(value)) throw new Error(t('platform.errors.cmdNewline'))
+    if (/[\r\n]/.test(value)) throw new UserFacingError(t('platform.errors.cmdNewline'))
   }
   return `/d /v:off /s /c "${[program, ...args].map(quoteWindowsCmdArgument).join(' ')}"`
 }

@@ -51,17 +51,42 @@ describe('下書き（ルール）', () => {
     expect(noAnnotation.frameTimes).toEqual([3_000]); // 発話開始 2000 に最も近い
   })
 
-  it('まとまりの途中でURLが変わったら、変化後の静止画を足す', () => {
+  it('対象（ページ）を切り替えたら、間隔が短くても別のまとまりにする', () => {
     const transcript: TranscriptSegment[] = [
       { t0: 11_000, t1: 12_500, speaker: 'self', text: '料金を見ます', source: 'mic' },
       { t0: 13_500, t1: 15_000, speaker: 'self', text: 'この表が読みにくい', source: 'mic' },
     ]
     const framesWithStart: FrameRef[] = [{ t: 11_100, path: 'work/start.png' }, ...frames]
     const { items } = buildDraft({ meta, transcript, events: material.events, frames: framesWithStart })
-    const item = items[0]!
-    expect(item.segments).toHaveLength(2); // 間隔1秒なので1まとまり
+    // 間隔は1秒だが、13000 に トップ → 料金 の遷移があるので2つに分かれる
+    // （素材の書き込みは別の時刻なので、発話のまとまりだけを見る）
+    const spoken = items.filter((i) => i.segments.length > 0)
+    expect(spoken.map((i) => i.segments.map((s) => s.text))).toEqual([['料金を見ます'], ['この表が読みにくい']])
+    expect(spoken[0]!.frameTimes).toEqual([11_100])
+  })
+
+  it('1つの発話の途中でURLが変わったら、変化後の静止画を足す', () => {
+    const transcript: TranscriptSegment[] = [
+      { t0: 11_000, t1: 15_000, speaker: 'self', text: '料金を開いて、この表が読みにくい', source: 'mic' },
+    ]
+    const framesWithStart: FrameRef[] = [{ t: 11_100, path: 'work/start.png' }, ...frames]
+    const { items } = buildDraft({ meta, transcript, events: material.events, frames: framesWithStart })
     // 発話開始(11000)に近い静止画 ＋ nav(13000) 以降の静止画
-    expect(item.frameTimes).toEqual([11_100, 13_200])
+    expect(items[0]!.frameTimes).toEqual([11_100, 13_200])
+  })
+
+  it('書き込みは同じページのまとまりにだけ付ける', () => {
+    const events: Event[] = [
+      { t: 0, type: 'nav', url: 'http://localhost:3000/', title: 'トップ' },
+      { t: 9_000, type: 'text', id: 'x1', x: 10, y: 10, body: 'ここの余白' },
+      { t: 10_000, type: 'nav', url: 'ade-preview://project/docs/a.md', title: 'a.md' },
+    ]
+    const transcript: TranscriptSegment[] = [
+      { t0: 10_500, t1: 12_000, speaker: 'self', text: 'この手順が分かりにくい', source: 'mic' },
+    ]
+    const { items } = buildDraft({ meta, transcript, events, frames })
+    // 書き込み(9000)は発話(10500)と1.5秒しか離れていないが、ページが違うので別の指摘になる
+    expect(items.map((i) => [i.annotationIds, i.segments.length])).toEqual([[['x1'], 0], [[], 1]])
   })
 
   it('画像は最大3枚まで', () => {

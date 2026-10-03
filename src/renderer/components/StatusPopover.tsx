@@ -6,8 +6,10 @@ import { createPortal } from 'react-dom'
  * ステータスバーは overflow を切っているので、body へ出して固定位置で置く。
  * ⚠ 内蔵ブラウザのビューはDOMの上に重なるため、開いている間は App 側でビューを隠す（onOpenChange）。
  */
-export function StatusPopover({ anchor, label, onClose, className, children }: {
+export function StatusPopover({ anchor: preferred, fallback = null, label, onClose, className, children }: {
   anchor: HTMLElement | null
+  /** anchor が見えていない（幅が足りずフッターの「…」に隠れた）ときに代わりに使う。ふつうは「…」ボタン */
+  fallback?: HTMLElement | null
   /** 幅などを足すときのクラス（.sb-pop--wide） */
   className?: string
   label: string
@@ -15,6 +17,8 @@ export function StatusPopover({ anchor, label, onClose, className, children }: {
   children: ReactNode
 }) {
   const ref = useRef<HTMLDivElement | null>(null)
+  // 隠れた項目（display: none）は大きさを持たないので、代わりの anchor の上に開く
+  const anchor = preferred && preferred.getClientRects().length > 0 ? preferred : fallback ?? preferred
   const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null)
 
   useLayoutEffect(() => {

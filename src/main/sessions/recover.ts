@@ -29,12 +29,14 @@ export interface RecoverableSession {
  * `session.json` が無く、かつ素材が残っているものが対象。
  */
 export async function findIncompleteSessions(projectDir: string): Promise<RecoverableSession[]> {
+  // まだ録画していないプロジェクトにはフォルダが無い（想定内）
   const names = await readdir(reviewsRoot(projectDir)).catch(() => [] as string[])
   const out: RecoverableSession[] = []
 
   for (const name of names) {
     if (!isSessionId(name)) continue
     const paths = sessionPaths(projectDir, name)
+    // 一覧のあとに消されたものは飛ばす（想定内）
     const dir = await stat(paths.dir).catch(() => null)
     if (!dir?.isDirectory()) continue
     // 分解が終わっているものは対象外
@@ -65,10 +67,12 @@ export async function inspect(paths: SessionPaths): Promise<RecoverableSession> 
 
 async function countLines(path: string): Promise<number> {
   const { readFile } = await import('node:fs/promises')
+  // 無いファイルは0行（想定内）
   const text = await readFile(path, 'utf8').catch(() => '')
   return text.split('\n').filter((l) => l.trim().length > 0).length
 }
 
 async function listFiles(dir: string): Promise<string[]> {
+  // 無いフォルダは空（想定内）
   return readdir(dir).catch(() => [] as string[])
 }

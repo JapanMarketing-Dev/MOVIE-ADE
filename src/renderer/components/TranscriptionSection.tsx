@@ -39,7 +39,7 @@ export function TranscriptionSection({ transcription, onTranscriptionChange, lan
     void window.ade.invoke('app:settings').then((s) => {
       setEndpoints(s.capture?.sttEndpoints ?? {})
       setCostLimitUsd(s.capture?.costLimitUsd === undefined ? 1 : s.capture.costLimitUsd)
-    }).catch(() => undefined)
+    }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
     return () => window.clearTimeout(saveTimer.current)
   }, [])
 
@@ -48,7 +48,7 @@ export function TranscriptionSection({ transcription, onTranscriptionChange, lan
     setEndpoints(next)
     window.clearTimeout(saveTimer.current)
     saveTimer.current = window.setTimeout(() => {
-      void window.ade.invoke('settings:stt', { sttEndpoints: next }).then(onAvailabilityChange).catch(() => undefined)
+      void window.ade.invoke('settings:stt', { sttEndpoints: next }).then(onAvailabilityChange).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
     }, 400)
   }
   const saveCostLimit = (next: number | null) => {

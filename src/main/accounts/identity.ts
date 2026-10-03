@@ -40,6 +40,7 @@ function readJsonFile(path: string): Record<string, unknown> | null {
   try {
     return asRecord(JSON.parse(readFileSync(path, 'utf8')))
   } catch {
+    // 未ログイン（ファイルが無い）・壊れた資格情報は「分からない」として扱う（想定内）
     return null
   }
 }
@@ -53,6 +54,7 @@ function parseJwtPayload(token: string): Record<string, unknown> | null {
   try {
     return asRecord(JSON.parse(Buffer.from(part.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')))
   } catch {
+    // JWT でないトークン（想定内）
     return null
   }
 }
@@ -119,6 +121,7 @@ function claudeKeychainUser(): string {
     const user = process.env.USER || process.env.USERNAME || userInfo().username
     return /^[a-zA-Z0-9._-]+$/.test(user) ? user : 'claude-code-user'
   } catch {
+    // 利用者名が取れない環境は Claude Code と同じ既定値（想定内）
     return 'claude-code-user'
   }
 }
@@ -135,6 +138,7 @@ async function keychainItemExists(service: string): Promise<boolean> {
     await execFileAsync('security', ['find-generic-password', '-s', service, '-a', claudeKeychainUser()], { timeout: 5000 })
     return true
   } catch {
+    // 見つからない（終了コード 44）は想定内
     return false
   }
 }

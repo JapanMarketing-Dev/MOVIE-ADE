@@ -24,6 +24,7 @@ export async function ensureGitExclude(projectDir: string): Promise<GitExcludeRe
   const infoDir = join(gitDir, 'info')
   const excludePath = join(infoDir, 'exclude')
 
+  // exclude がまだ無い（想定内。作る）
   const current = await readFile(excludePath, 'utf8').catch(() => null)
   if (current !== null && hasEntry(current)) return 'already'
 
@@ -46,11 +47,13 @@ function hasEntry(text: string): boolean {
  */
 export async function resolveGitDir(projectDir: string): Promise<string | null> {
   const dotGit = join(projectDir, '.git')
+  // Git で管理していないフォルダ（想定内）
   const s = await stat(dotGit).catch(() => null)
   if (!s) return null
   if (s.isDirectory()) return dotGit
   if (!s.isFile()) return null
 
+  // 読めない .git ファイルは Git の外として扱う（想定内）
   const text = await readFile(dotGit, 'utf8').catch(() => '')
   const m = /^gitdir:\s*(.+)$/m.exec(text)
   if (!m) return null

@@ -142,6 +142,50 @@ export function mapPullRequests(json: unknown): GitHubPullRequest[] {
   })
 }
 
+// ─── git status --porcelain=v2 --branch ─────────────────
+
+export interface GitStatusSummary {
+  branch: string | null
+  shortOid: string | null
+  changes: number
+  ahead: number
+  behind: number
+  hasUpstream: boolean
+}
+
+/**
+ * `git status --porcelain=v2 --branch` を読む。見出し行（# branch.*）からブランチと ahead/behind、
+ * 残りの行から変更のあるファイル数を数える。
+ *
+ * Orca由来: ~/bench/orca/src/shared/git-status-porcelain-parser.ts の branch.oid / branch.head / branch.ab の読み方（MIT）
+ */
+export function parseGitStatus(text: string): GitStatusSummary {
+  const summary: GitStatusSummary = { branch: null, shortOid: null, changes: 0, ahead: 0, behind: 0, hasUpstream: false }
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.replace(/\r$/, '')
+    if (line.startsWith('# branch.oid ')) {
+      const oid = line.slice('# branch.oid '.length).trim()
+      // コミットが1つも無いリポジトリは (initial)
+      summary.shortOid = /^[0-9a-f]{7,}$/i.test(oid) ? oid.slice(0, 7) : null
+    } else if (line.startsWith('# branch.head ')) {
+      const head = line.slice('# branch.head '.length).trim()
+      summary.branch = head && head !== '(detached)' ? head : null
+    } else if (line.startsWith('# branch.upstream ')) {
+      summary.hasUpstream = true
+    } else if (line.startsWith('# branch.ab ')) {
+      const match = line.match(/^# branch\.ab \+(\d+) -(\d+)$/)
+      if (match) {
+        summary.ahead = Number(match[1])
+        summary.behind = Number(match[2])
+      }
+    } else if (/^[12u?] /.test(line)) {
+      // 1: 変更 2: 名前の変更・コピー u: 競合 ?: 追跡外
+      summary.changes++
+    }
+  }
+  return summary
+}
+
 // ─── feedback.md → Issue ─────────────────────────────
 
 /** Issue のタイトルの上限（GitHub は 256 文字） */

@@ -18,9 +18,12 @@ import { normalizeThemePreference } from '@shared/theme'
 import { DEFAULT_LAYOUT, sanitizeLayout } from '@shared/layout'
 import { normalizeLocalePreference } from '@shared/i18n'
 import { migrateLegacySettings } from './projects'
+import { sanitizeProjectSession } from '@shared/projectSession'
 import { sanitizeAgentAccounts } from './accounts/sanitize'
 import { normalizeBaseUrl, sanitizeCostLimit, sanitizeEndpointMap } from './pipeline/stt/endpoint'
 import { isLlmApiProvider, isOrganizeRunnerId, isSttRemoteProvider } from '@shared/aiProviders'
+import { migrateOnboarding, sanitizeOnboarding } from '@shared/onboarding'
+import { errorKind, reportHandled } from '@shared/report'
 
 /**
  * WS-1 前回のフォルダ・URL・分割幅を復元する。
@@ -33,6 +36,12 @@ import { isLlmApiProvider, isOrganizeRunnerId, isSttRemoteProvider } from '@shar
  * 最初のタブがいつも素のシェルになるようにする（ターミナルのE2Eはプロンプトを待つ）
  */
 const SKIP_STARTUP_AGENTS = process.env.ADE_E2E === '1'
+
+/**
+ * E2E では初回起動のセットアップを出さない（全面を覆って既存の操作が通らなくなる）。
+ * セットアップ自体を撮るときだけ ADE_E2E_ONBOARDING=1 で出す
+ */
+const SKIP_ONBOARDING = process.env.ADE_E2E === '1' && process.env.ADE_E2E_ONBOARDING !== '1'
 
 const DEFAULTS: Settings = {
   folderPath: null,
@@ -59,7 +68,8 @@ function sanitizeProjects(raw: unknown): Project[] {
     seen.add(r.id)
     const urls = Array.isArray(r.urls) ? r.urls.flatMap((u) =>
       u && str(u.id) && str(u.url) ? [{ id: u.id, label: str(u.label) ? u.label : u.url, url: u.url }] : []) : []
-    return [{ id: r.id, name: str(r.name) ? r.name : r.folderPath.split(/[\\/]/).pop() ?? r.folderPath, folderPath: r.folderPath, urls }]
+    const session = sanitizeProjectSession(r.session)
+    return [{ id: r.id, name: str(r.name) ? r.name : r.folderPath.split(/[\\/]/).pop() ?? r.folderPath, folderPath: r.folderPath, urls, ...(session ? { session } : {}) }]
   })
 }
 
@@ -122,6 +132,10 @@ export function sanitize(raw: unknown): Settings {
     // 未設定は ON のまま書かない。明示の OFF だけを残す
     ...(r.crashReports === false ? { crashReports: false } : {}),
     ...(r.crashReportsNoticeShown === true ? { crashReportsNoticeShown: true } : {}),
+    ...(() => {
+      const onboarding = sanitizeOnboarding(r.onboarding)
+      return onboarding ? { onboarding } : {}
+    })(),
     ...(r.agentAccounts ? { agentAccounts: sanitizeAgentAccounts(r.agentAccounts) } : {}),
     // 空・空白だけは「未設定」（既定文を使う）。長すぎる値は切り詰める
     ...(typeof r.agentPrompt === 'string' && r.agentPrompt.trim() ? { agentPrompt: r.agentPrompt.trim().slice(0, 2000) } : {}),
@@ -140,9 +154,13 @@ export async function loadSettings(): Promise<Settings> {
   try {
     // 旧設定（folderPath だけ）はここで1度だけプロジェクトへ移す
     cache = migrateLegacySettings(sanitize(JSON.parse(await readFile(filePath(), 'utf8'))))
-  } catch {
+  } catch (err) {
+    // 初回起動（ファイルが無い）は想定内。壊れた settings.json だけを種類だけで送る（中身にパスを含む）
+    if ((err as NodeJS.ErrnoException | null)?.code !== 'ENOENT') reportHandled(errorKind(err), { area: 'settings', op: 'read settings' })
     cache = { ...DEFAULTS }
   }
+  // プロジェクトを登録済みの人（セットアップを足す前から使っている人）には初回のセットアップを出さない
+  cache = migrateOnboarding(cache, { skip: SKIP_ONBOARDING })
   return cache
 }
 
@@ -168,6 +186,7 @@ export async function persist(): Promise<void> {
     await writeFile(target, `${JSON.stringify(currentSettings(), null, 2)}\n`, 'utf8')
   } catch (err) {
     console.warn('[settings] 保存に失敗しました', err)
+    reportHandled(err, { area: 'settings', op: 'save settings' })
   }
 }
 
@@ -186,5 +205,6 @@ export function flushSettingsSync(): void {
     writeFileSync(target, `${JSON.stringify(currentSettings(), null, 2)}\n`, 'utf8')
   } catch (err) {
     console.warn('[settings] 保存に失敗しました', err)
+    reportHandled(err, { area: 'settings', op: 'save settings on quit' })
   }
 }

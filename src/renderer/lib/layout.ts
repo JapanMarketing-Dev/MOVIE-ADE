@@ -25,7 +25,7 @@ export function initLayout(): void {
       current = sanitizeLayout(settings.layout, settings.terminalDock)
       emit()
     })
-    .catch(() => undefined)
+    .catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
 }
 
 export function currentLayout(): LayoutPrefs {
@@ -36,7 +36,7 @@ export function currentLayout(): LayoutPrefs {
 export function setLayout(next: LayoutPrefs | ((prev: LayoutPrefs) => LayoutPrefs)): void {
   current = sanitizeLayout(typeof next === 'function' ? next(current) : next)
   emit()
-  void window.ade.invoke('settings:layout', current).catch(() => undefined)
+  void window.ade.invoke('settings:layout', current).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
 }
 
 function subscribe(listener: () => void): () => void {

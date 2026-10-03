@@ -12,6 +12,8 @@ import type { SessionPaths } from '../sessions/paths'
 import { gh, ghErrorMessage, run } from './gh'
 import { issueFromFeedback, mapPullRequests, parseAuthStatus, parseGitRemote, pickActiveAccount } from './parse'
 import { formatNumber, t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
+import { errorKind, reportHandled } from '@shared/report'
 
 /**
  * GitHub 連携（設定の「GitHub」欄と、レビュー結果の送り先）。
@@ -74,7 +76,9 @@ async function myOpenPullRequests(repo: GitHubRepoRef, folderPath: string | null
   if (result.failed) return []
   try {
     return mapPullRequests(JSON.parse(result.stdout))
-  } catch {
+  } catch (err) {
+    // gh の出力の形が変わった。PR の題名を含むので種類だけ
+    reportHandled(errorKind(err), { area: 'github', op: 'parse pull requests' })
     return []
   }
 }
@@ -92,7 +96,7 @@ export async function githubReviewDraft(paths: SessionPaths, folderPath: string 
   try {
     markdown = await readFile(paths.feedbackMd, 'utf8')
   } catch {
-    throw new Error(t('github.errors.feedbackMissing'))
+    throw new UserFacingError(t('github.errors.feedbackMissing'))
   }
   const { title, body } = issueFromFeedback(markdown)
   return { repo, title, body, pullRequests: await myOpenPullRequests(repo, folderPath) }
@@ -105,17 +109,17 @@ export async function githubReviewDraft(paths: SessionPaths, folderPath: string 
 export async function githubPostReview(folderPath: string | null, target: GitHubReviewTarget, body: string): Promise<GitHubPostResult> {
   const repo = await requireRepo(folderPath)
   const text = String(body ?? '').trim()
-  if (!text) throw new Error(t('github.errors.bodyEmpty'))
-  if (text.length > BODY_MAX) throw new Error(t('github.errors.bodyTooLong', { max: formatNumber(BODY_MAX) }))
+  if (!text) throw new UserFacingError(t('github.errors.bodyEmpty'))
+  if (text.length > BODY_MAX) throw new UserFacingError(t('github.errors.bodyTooLong', { max: formatNumber(BODY_MAX) }))
   let args: string[]
   if (target?.kind === 'issue') {
     const title = String(target.title ?? '').trim().slice(0, 256)
-    if (!title) throw new Error(t('github.errors.titleRequired'))
+    if (!title) throw new UserFacingError(t('github.errors.titleRequired'))
     args = ['issue', 'create', '--repo', repoArg(repo), '--title', title, '--body-file', '-']
   } else if (target?.kind === 'pr-comment' && Number.isInteger(target.number) && target.number > 0) {
     args = ['pr', 'comment', String(target.number), '--repo', repoArg(repo), '--body-file', '-']
   } else {
-    throw new Error(t('github.errors.badTarget'))
+    throw new UserFacingError(t('github.errors.badTarget'))
   }
   const result = await gh(args, { cwd: folderPath ?? undefined, input: text, timeoutMs: 30_000 })
   if (result.failed) throw new Error(ghErrorMessage(result))

@@ -42,12 +42,14 @@ export async function pruneRecordings(
   const now = (options.now ?? new Date()).getTime()
   const cutoff = now - keepDays * 24 * 60 * 60 * 1000
 
+  // まだ録画していないプロジェクトにはフォルダが無い（想定内）
   const names = await readdir(reviewsRoot(projectDir)).catch(() => [] as string[])
   for (const name of names) {
     if (!isSessionId(name)) continue
     const paths = sessionPaths(projectDir, name)
     if (!await loadSession(paths)) continue // 未処理の素材は、復元するまで削除しない
 
+    // 録画の無い・消し済みのレビュー（想定内）
     const video = await stat(paths.recording).catch(() => null)
     if (video?.isFile() && video.mtimeMs < cutoff) {
       result.removedRecordings.push(paths.recording)
@@ -56,6 +58,7 @@ export async function pruneRecordings(
     }
 
     // 中間ファイルは分解が終われば不要。期間を過ぎたものは消す
+    // 中間ファイルの無いレビュー（想定内）
     const work = await stat(paths.workDir).catch(() => null)
     if (work?.isDirectory() && work.mtimeMs < cutoff) {
       result.removedWork.push(paths.workDir)

@@ -20,11 +20,9 @@ import {
   REVIEW_STATUS_FILTERS,
   filterReviews,
   formatReviewDuration,
-  isEmptyDraft,
   isFilterActive,
   reviewHeading,
   reviewHost,
-  reviewHosts,
   sanitizeReviewFilter,
   sortReviews,
   type ReviewFilter,
@@ -40,9 +38,9 @@ import { Button, Field, IconButton, useToast } from '../ui'
  *
  * 試しの録画（指摘0件の下書き）が並ぶと、時刻とホストだけでは見分けが付かない。そこで:
  * - 見出しは ページのタイトル（付けた名前があればそれ。無ければURLのパス）。時刻・長さ・件数・状態は2行目
- * - 一覧の上に小さなフィルタ（検索・状態・指摘0件を隠す・アーカイブ・対象のホスト）。
- *   選んだ状態はプロジェクトごとにこの端末に覚える（localStorage。読めなくても既定で動く）
- * - 行の右クリック／… から 名前の変更・アーカイブ・削除。指摘0件の下書きはまとめて削除できる
+ * - 絞り込み（検索・状態・指摘0件を隠す・アーカイブ・対象のホスト）は ReviewFilterBar。
+ *   「Projects」の見出しの下に1つだけ置き、全プロジェクトの履歴に同じ条件で効く
+ * - 行の右クリック／… から 名前の変更・アーカイブ・削除。指摘0件の下書きは ReviewFilterBar からまとめて削除できる
  */
 
 export interface ReviewSession extends ReviewListEntry {
@@ -107,19 +105,18 @@ function monogram(host: string): ReactNode {
 
 // ───────────────────────── フィルタの保存 ─────────────────────────
 
-const FILTER_KEY = 'ade.sidebar.reviewFilter'
-function loadFilter(projectId: string): ReviewFilter {
+/** 全プロジェクト共通で1つ。この端末だけの好みなので localStorage に置く（読めなくても既定で動く） */
+const FILTER_KEY = 'ade.sidebar.reviewFilter.all'
+export function loadReviewFilter(): ReviewFilter {
   try {
-    const all = JSON.parse(localStorage.getItem(FILTER_KEY) ?? '{}') as Record<string, unknown>
-    return sanitizeReviewFilter(all?.[projectId])
-  } catch {
+    return sanitizeReviewFilter(JSON.parse(localStorage.getItem(FILTER_KEY) ?? 'null'))
+  } catch { // ストレージが使えない・壊れた値（想定内。既定で続ける）
     return { ...DEFAULT_REVIEW_FILTER }
   }
 }
-function saveFilter(projectId: string, filter: ReviewFilter): void {
+export function saveReviewFilter(filter: ReviewFilter): void {
   try {
-    const all = JSON.parse(localStorage.getItem(FILTER_KEY) ?? '{}') as Record<string, unknown>
-    localStorage.setItem(FILTER_KEY, JSON.stringify({ ...(all && typeof all === 'object' ? all : {}), [projectId]: filter }))
+    localStorage.setItem(FILTER_KEY, JSON.stringify(filter))
   } catch {
     // 保存できなくても、この起動の間は効く
   }
@@ -198,26 +195,146 @@ function SessionCard({
   )
 }
 
+// ───────────────────────── 共通のフィルタ ─────────────────────────
+
+/**
+ * サイドバーの「Projects」の見出しのすぐ下に1つだけ置く絞り込み。すべてのプロジェクトの履歴に効く。
+ * パネルはサイドバーの幅の中に収める（はみ出すとネイティブのビューに隠れ、見た目も崩れる）。
+ */
+export function ReviewFilterBar({
+  filter,
+  onChange,
+  open,
+  onOpenChange,
+  hosts,
+  emptyDraftCount,
+  onDeleteEmpty
+}: {
+  filter: ReviewFilter
+  onChange: (next: ReviewFilter) => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** 全プロジェクトから集めた対象のホスト */
+  hosts: Array<{ host: string; count: number }>
+  /** 読み込んだ全プロジェクトの、指摘0件の下書きの数 */
+  emptyDraftCount: number
+  onDeleteEmpty: () => void
+}) {
+  const t = useT()
+  const [confirming, setConfirming] = useState(false)
+  const update = (patch: Partial<ReviewFilter>) => onChange({ ...filter, ...patch })
+  const filtering = isFilterActive(filter)
+  return (
+    <div className="rv-filter-wrap">
+      <div className="rv-filter">
+        <Field
+          className="rv-filter__search"
+          icon={<Search size={12} strokeWidth={2} />}
+          type="search"
+          value={filter.query}
+          placeholder={t('sidebar.filter.search')}
+          aria-label={t('sidebar.filter.search')}
+          onChange={(e) => update({ query: e.target.value })}
+          data-testid="review-filter-search"
+        />
+        <IconButton
+          size="sm"
+          label={t('sidebar.filter.open')}
+          title={t('sidebar.filter.open')}
+          className={`rv-filter__toggle${filtering ? ' is-active' : ''}`}
+          selected={open}
+          icon={<ListFilter size={14} strokeWidth={1.75} />}
+          onClick={() => onOpenChange(!open)}
+          data-testid="review-filter-toggle"
+        />
+      </div>
+
+      {open && (
+        <div className="rv-filter__panel" data-testid="review-filter-panel">
+          <div className="rv-filter__label">{t('sidebar.filter.status')}</div>
+          <div className="rv-filter__chips" role="group" aria-label={t('sidebar.filter.status')}>
+            {REVIEW_STATUS_FILTERS.map((status) => {
+              const on = filter.statuses.includes(status)
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  className="rv-filter__chip"
+                  aria-pressed={on}
+                  onClick={() => update({ statuses: on ? filter.statuses.filter((s) => s !== status) : [...filter.statuses, status] })}
+                >
+                  {t(STATUS[status].label)}
+                </button>
+              )
+            })}
+          </div>
+          <label className="rv-filter__check">
+            <input type="checkbox" checked={filter.hideEmpty} onChange={(e) => update({ hideEmpty: e.target.checked })} />
+            <span>{t('sidebar.filter.hideEmpty')}</span>
+          </label>
+          <label className="rv-filter__check">
+            <input type="checkbox" checked={filter.showArchived} onChange={(e) => update({ showArchived: e.target.checked })} />
+            <span>{t('sidebar.filter.showArchived')}</span>
+          </label>
+          <div className="rv-filter__label">{t('sidebar.filter.target')}</div>
+          <select
+            className="rv-filter__select"
+            aria-label={t('sidebar.filter.target')}
+            value={filter.host ?? ''}
+            onChange={(e) => update({ host: e.target.value || null })}
+          >
+            <option value="">{t('sidebar.filter.allTargets')}</option>
+            {hosts.map(({ host, count }) => <option key={host} value={host}>{`${host} (${count})`}</option>)}
+            {filter.host && !hosts.some((h) => h.host === filter.host) && <option value={filter.host}>{filter.host}</option>}
+          </select>
+          {confirming ? (
+            <div className="sb-confirm rv-filter__confirm">
+              <span>{t('sidebar.deleteEmptyConfirm', { count: emptyDraftCount })}</span>
+              <span className="sb-confirm__actions">
+                <Button variant="ghost" onClick={() => setConfirming(false)}>{t('common.cancel')}</Button>
+                <Button variant="danger" onClick={() => { setConfirming(false); onDeleteEmpty() }} data-testid="review-delete-confirm">
+                  {t('common.delete')}
+                </Button>
+              </span>
+            </div>
+          ) : (
+            <div className="rv-filter__actions">
+              <Button variant="ghost" disabled={!filtering && !filter.query} onClick={() => onChange({ ...DEFAULT_REVIEW_FILTER })}>
+                {t('sidebar.filter.reset')}
+              </Button>
+              <Button variant="ghost" className="rv-filter__danger" icon={<Trash2 size={13} />} disabled={emptyDraftCount === 0}
+                onClick={() => setConfirming(true)} data-testid="review-delete-empty">
+                {t('sidebar.deleteEmpty')}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ───────────────────────── 一覧 ─────────────────────────
 
 /** 右クリック／… のメニューの幅。サイドバーの中に収める（はみ出すとネイティブのビューに隠れる） */
 const MENU_WIDTH = 176
 
 export function ReviewList({
-  projectId,
   folderPath,
   active,
   items,
+  filter,
   selectedId,
   emptyText,
   onSelect,
   onChanged
 }: {
-  projectId: string
   /** 開いていないプロジェクトのフォルダ。開いているプロジェクトなら undefined */
   folderPath?: string
   active: boolean
   items: ReviewSession[]
+  /** 全プロジェクト共通の絞り込み（ReviewFilterBar） */
+  filter: ReviewFilter
   selectedId: string | null
   emptyText: string
   onSelect: (id: string) => void
@@ -227,19 +344,9 @@ export function ReviewList({
   const t = useT()
   const toast = useToast()
   const rootRef = useRef<HTMLDivElement | null>(null)
-  const [filter, setFilter] = useState<ReviewFilter>(() => loadFilter(projectId))
-  const [panelOpen, setPanelOpen] = useState(false)
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null)
-  const [confirm, setConfirm] = useState<{ kind: 'delete'; id: string } | { kind: 'deleteEmpty' } | null>(null)
-
-  const update = (patch: Partial<ReviewFilter>) => {
-    setFilter((prev) => {
-      const next = { ...prev, ...patch }
-      saveFilter(projectId, next)
-      return next
-    })
-  }
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   // メニューは外側のクリックと Esc で閉じる
   useEffect(() => {
@@ -290,102 +397,22 @@ export function ReviewList({
 
   if (items.length === 0) return <p className="sb-project__empty">{emptyText}</p>
 
-  const sorted = sortReviews(items)
-  const shown = filterReviews(sorted, filter)
-  const emptyDrafts = items.filter(isEmptyDraft)
-  const hosts = reviewHosts(items)
-  const filtering = isFilterActive(filter)
+  const shown = filterReviews(sortReviews(items), filter)
   const menuSession = menu ? items.find((s) => s.id === menu.id) : undefined
-  const confirmSession = confirm?.kind === 'delete' ? items.find((s) => s.id === confirm.id) : undefined
+  const confirmSession = confirmId ? items.find((s) => s.id === confirmId) : undefined
 
   return (
-    <div className="rv-list" ref={rootRef}>
-      <div className="rv-filter">
-        <Field
-          className="rv-filter__search"
-          icon={<Search size={12} strokeWidth={2} />}
-          type="search"
-          value={filter.query}
-          placeholder={t('sidebar.filter.search')}
-          aria-label={t('sidebar.filter.search')}
-          onChange={(e) => update({ query: e.target.value })}
-          data-testid="review-filter-search"
-        />
-        <IconButton
-          size="sm"
-          label={t('sidebar.filter.open')}
-          title={t('sidebar.filter.open')}
-          className={`rv-filter__toggle${filtering ? ' is-active' : ''}`}
-          selected={panelOpen}
-          icon={<ListFilter size={14} strokeWidth={1.75} />}
-          onClick={() => setPanelOpen((v) => !v)}
-          data-testid="review-filter-toggle"
-        />
-      </div>
-
-      {panelOpen && (
-        <div className="rv-filter__panel" data-testid="review-filter-panel">
-          <div className="rv-filter__row" role="group" aria-label={t('sidebar.filter.status')}>
-            {REVIEW_STATUS_FILTERS.map((status) => {
-              const on = filter.statuses.includes(status)
-              return (
-                <button
-                  key={status}
-                  type="button"
-                  className="rv-chip"
-                  aria-pressed={on}
-                  onClick={() => update({ statuses: on ? filter.statuses.filter((s) => s !== status) : [...filter.statuses, status] })}
-                >
-                  {t(STATUS[status].label)}
-                </button>
-              )
-            })}
-          </div>
-          <label className="rv-filter__check">
-            <input type="checkbox" checked={filter.hideEmpty} onChange={(e) => update({ hideEmpty: e.target.checked })} />
-            {t('sidebar.filter.hideEmpty')}
-          </label>
-          <label className="rv-filter__check">
-            <input type="checkbox" checked={filter.showArchived} onChange={(e) => update({ showArchived: e.target.checked })} />
-            {t('sidebar.filter.showArchived')}
-          </label>
-          <select
-            className="rv-filter__select"
-            aria-label={t('sidebar.filter.target')}
-            value={filter.host ?? ''}
-            onChange={(e) => update({ host: e.target.value || null })}
-          >
-            <option value="">{t('sidebar.filter.allTargets')}</option>
-            {hosts.map(({ host, count }) => <option key={host} value={host}>{`${host} (${count})`}</option>)}
-            {filter.host && !hosts.some((h) => h.host === filter.host) && <option value={filter.host}>{filter.host}</option>}
-          </select>
-          <div className="rv-filter__actions">
-            <Button variant="ghost" disabled={!filtering && !filter.query} onClick={() => update({ ...DEFAULT_REVIEW_FILTER })}>
-              {t('sidebar.filter.reset')}
-            </Button>
-            <Button variant="ghost" className="rv-filter__danger" icon={<Trash2 size={13} />} disabled={emptyDrafts.length === 0}
-              onClick={() => setConfirm({ kind: 'deleteEmpty' })} data-testid="review-delete-empty">
-              {t('sidebar.deleteEmpty')}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {confirm && (
+    <div className="sb-reviews" ref={rootRef}>
+      {confirmSession && (
         <div className="sb-confirm">
-          <span>
-            {confirm.kind === 'deleteEmpty'
-              ? t('sidebar.deleteEmptyConfirm', { count: emptyDrafts.length })
-              : t('sidebar.deleteReviewConfirm', { name: confirmSession ? reviewHeading(confirmSession) : '' })}
-          </span>
+          <span>{t('sidebar.deleteReviewConfirm', { name: reviewHeading(confirmSession) })}</span>
           <span className="sb-confirm__actions">
-            <Button variant="ghost" onClick={() => setConfirm(null)}>{t('common.cancel')}</Button>
+            <Button variant="ghost" onClick={() => setConfirmId(null)}>{t('common.cancel')}</Button>
             <Button
               variant="danger"
               onClick={() => {
-                const ids = confirm.kind === 'deleteEmpty' ? emptyDrafts.map((s) => s.id) : [confirm.id]
-                setConfirm(null)
-                remove(ids)
+                setConfirmId(null)
+                remove([confirmSession.id])
               }}
               data-testid="review-delete-confirm"
             >
@@ -393,10 +420,6 @@ export function ReviewList({
             </Button>
           </span>
         </div>
-      )}
-
-      {shown.length < items.length && (
-        <div className="rv-filter__count">{t('sidebar.filter.shown', { shown: shown.length, total: items.length })}</div>
       )}
 
       {shown.length === 0 ? (
@@ -445,7 +468,7 @@ export function ReviewList({
             {menuSession.archived ? t('sidebar.unarchive') : t('sidebar.archive')}
           </button>
           <div className="sb-menu__sep" role="separator" />
-          <button type="button" role="menuitem" className="is-danger" onClick={() => { setMenu(null); setConfirm({ kind: 'delete', id: menuSession.id }) }}>
+          <button type="button" role="menuitem" className="is-danger" onClick={() => { setMenu(null); setConfirmId(menuSession.id) }}>
             <Trash2 size={13} strokeWidth={1.75} />{t('common.delete')}
           </button>
         </div>

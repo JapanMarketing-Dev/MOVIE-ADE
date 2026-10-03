@@ -19,26 +19,77 @@ function keychainUser(): string {
     const user = process.env.USER || process.env.USERNAME || userInfo().username
     return /^[a-zA-Z0-9._-]+$/.test(user) ? user : 'claude-code-user'
   } catch {
+    // 利用者名が取れない環境は Claude Code と同じ既定値（想定内）
     return 'claude-code-user'
   }
 }
 
-/** Keychain の項目の中身を読む。無ければ null、読めなければ 'unavailable' */
-function readKeychainPassword(service: string): Promise<string | null | 'unavailable'> {
-  return new Promise((resolve) => {
-    execFile('security', ['find-generic-password', '-s', service, '-a', keychainUser(), '-w'], { timeout: 5000 }, (error, stdout) => {
-      if (!error) return resolve(stdout.trim() || null)
-      // 44 は「項目が無い」。それ以外（ロック中・拒否）は読めなかったとして扱う
-      resolve((error as { code?: unknown }).code === 44 ? null : 'unavailable')
-    })
+/**
+ * macOS の Keychain を `security` コマンド経由で読む（Orca の generic-password.ts と同じ方式）。
+ * Electron から Keychain の API を直接呼ばない。Claude Code 自身も `security` で読み書きするため、
+ * Claude Code が作った項目は、ふつう確認のダイアログなしで読める。
+ *
+ * それでも許可を求められる環境では、待たずに諦める：
+ * - 入力は閉じ（stdin を使わない）、3秒で強制終了する（ダイアログの応答を待ち続けない）
+ * - 一度読めなかった項目は、このセッションの間は自動では読みに行かない（手動の再読み込みでだけ試す）
+ * - 中身を読む前に、項目が「あるか」だけを属性の読み取り（-w なし。許可は要らない）で確かめる
+ */
+export const KEYCHAIN_COMMAND_TIMEOUT_MS = 3000
+
+export type SecurityExec = (args: string[]) => Promise<{ ok: true; stdout: string } | { ok: false; code: unknown }>
+
+const execSecurity: SecurityExec = (args) =>
+  new Promise((resolve) => {
+    let settled = false
+    const done = (result: Awaited<ReturnType<SecurityExec>>): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve(result)
+    }
+    const child = execFile('security', args, { timeout: KEYCHAIN_COMMAND_TIMEOUT_MS, killSignal: 'SIGKILL' }, (error, stdout) =>
+      done(error ? { ok: false, code: (error as { code?: unknown }).code } : { ok: true, stdout: String(stdout) })
+    )
+    child.stdin?.end()
+    // execFile の timeout が効かなかったときの保険（コールバックが来ないまま残さない）
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL')
+      done({ ok: false, code: 'ETIMEDOUT' })
+    }, KEYCHAIN_COMMAND_TIMEOUT_MS + 500)
   })
+
+/** 項目が無い（44）。それ以外の失敗は「読めなかった」（拒否・タイムアウト・ロック中） */
+const NOT_FOUND = 44
+
+export function createKeychainReader(exec: SecurityExec = execSecurity) {
+  /** 読めなかった項目。手動の再読み込み（retryBlocked）まで自動では読まない */
+  const blocked = new Set<string>()
+  return {
+    async read(service: string, account: string, options: { retryBlocked?: boolean } = {}): Promise<string | null | 'unavailable'> {
+      const key = `${service}\u0000${account}`
+      if (blocked.has(key) && !options.retryBlocked) return 'unavailable'
+      const exists = await exec(['find-generic-password', '-s', service, '-a', account])
+      if (!exists.ok) return exists.code === NOT_FOUND ? null : 'unavailable'
+      const result = await exec(['find-generic-password', '-s', service, '-a', account, '-w'])
+      if (result.ok) {
+        blocked.delete(key)
+        return result.stdout.trim() || null
+      }
+      if (result.code === NOT_FOUND) return null
+      blocked.add(key)
+      return 'unavailable'
+    }
+  }
 }
+
+const keychain = createKeychainReader()
 
 function parseClaudeAccessToken(raw: string): string | null {
   try {
     const oauth = (JSON.parse(raw) as { claudeAiOauth?: { accessToken?: unknown } }).claudeAiOauth
     return typeof oauth?.accessToken === 'string' && oauth.accessToken ? oauth.accessToken : null
   } catch {
+    // 資格情報の形でない（未ログイン扱い。想定内。トークンを含むので送らない）
     return null
   }
 }
@@ -48,23 +99,19 @@ function parseClaudeAccessToken(raw: string): string | null {
  * configDir を渡すと、その CLAUDE_CONFIG_DIR 用の Keychain の項目と .credentials.json を見る。
  * 省略するとシステムの既定アカウント（無印の項目と ~/.claude/.credentials.json）。
  */
-export async function readClaudeAccessToken(configDir?: string): Promise<CredentialRead> {
-  let keychainUnavailable = false
-  if (process.platform === 'darwin') {
-    const raw = await readKeychainPassword(claudeKeychainService(configDir))
-    if (raw === 'unavailable') keychainUnavailable = true
-    else if (raw) {
-      const token = parseClaudeAccessToken(raw)
-      if (token) return { token }
-    }
-  }
+export async function readClaudeAccessToken(configDir?: string, options: { retryBlocked?: boolean } = {}): Promise<CredentialRead> {
+  // ファイル（Linux・Windows、または macOS でファイルに置いている場合）を先に見る。Keychain に触れずに済む
   try {
     const token = parseClaudeAccessToken(await readFile(join(configDir ?? join(homedir(), '.claude'), '.credentials.json'), 'utf8'))
     if (token) return { token }
   } catch {
-    // ファイルが無ければ Keychain の結果で決める
+    // 無ければ Keychain を見る
   }
-  return { token: null, reason: keychainUnavailable ? 'keychain-unavailable' : 'missing' }
+  if (process.platform !== 'darwin') return { token: null, reason: 'missing' }
+  const raw = await keychain.read(claudeKeychainService(configDir), keychainUser(), options)
+  if (raw === 'unavailable') return { token: null, reason: 'keychain-unavailable' }
+  const token = raw ? parseClaudeAccessToken(raw) : null
+  return token ? { token } : { token: null, reason: 'missing' }
 }
 
 /** Codex の auth.json のアクセストークンと ChatGPT のアカウント id */

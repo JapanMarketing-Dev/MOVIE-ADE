@@ -18,6 +18,7 @@ import type { ItemEdit } from './edits'
 import type { SessionPaths } from './paths'
 import { sessionId, sessionPaths } from './paths'
 import { writeSummary } from './summary'
+import { errorKind, reportHandled } from '@shared/report'
 
 /** session.json の中身 */
 export interface SessionRecord {
@@ -76,6 +77,7 @@ export async function appendEvents(paths: SessionPaths, events: Event[]): Promis
 
 /** 操作ログを読む。壊れた行は捨てる（異常終了で書きかけの行が残りうる） */
 export async function readEvents(paths: SessionPaths): Promise<Event[]> {
+  // 内蔵ブラウザ以外の録画には操作ログが無い（想定内）
   const text = await readFile(paths.eventsJsonl, 'utf8').catch(() => '')
   const out: Event[] = []
   for (const line of text.split('\n')) {
@@ -100,17 +102,20 @@ export async function saveSession(paths: SessionPaths, record: SessionRecord): P
   const { rename } = await import('node:fs/promises')
   await rename(tmp, paths.sessionJson)
   // 一覧用の要約も書き直す（分解の完了・編集のたび）。書けなくても一覧を読むときに作り直す
-  await writeSummary(paths, record).catch(() => undefined)
+  await writeSummary(paths, record).catch((err: unknown) => reportHandled(err, { area: 'sessions', op: 'write summary' }))
 }
 
 export async function loadSession(paths: SessionPaths): Promise<SessionRecord | null> {
+  // まだ分解していない録画には session.json が無い（想定内）
   const text = await readFile(paths.sessionJson, 'utf8').catch(() => null)
   if (text === null) return null
   try {
     const parsed = JSON.parse(text) as SessionRecord
     if (parsed.version !== SESSION_VERSION) return null
     return parsed
-  } catch {
+  } catch (err) {
+    // 壊れた session.json。文字起こしや指摘を含むので、例外の種類だけを送る
+    reportHandled(errorKind(err), { area: 'sessions', op: 'parse session' })
     return null
   }
 }

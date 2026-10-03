@@ -125,7 +125,7 @@ export function usageSections(p: ProviderRateLimits): UsageSection[] {
   return sections
 }
 
-/** いちばん使っている枠（Compact 表示とバーの色に使う） */
+/** いちばん使っている枠（フッターが狭いときの表示とバーの色に使う） */
 export function tightestUsageSection(p: ProviderRateLimits): UsageSection | null {
   const sections = usageSections(p)
   if (sections.length === 0) return null

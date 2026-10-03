@@ -18,7 +18,7 @@ export function OrganizeSection({ recording = false, headless = false }: { recor
   const [available, setAvailable] = useState<SttAvailability | null>(null)
   const saveTimer = useRef<number | undefined>(undefined)
 
-  const reload = useCallback(() => window.ade.invoke('capture:availability').then(setAvailable).catch(() => undefined), [])
+  const reload = useCallback(() => window.ade.invoke('capture:availability').then(setAvailable).catch(() => undefined), []) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
 
   useEffect(() => {
     void window.ade.invoke('app:settings').then((s) => {
@@ -26,7 +26,7 @@ export function OrganizeSection({ recording = false, headless = false }: { recor
       // 前回 API で整理していたら、その提供元を開いておく
       const runner = s.organizer?.runner
       if (runner?.startsWith('api:')) setProvider(runner.slice(4) as LlmApiProvider)
-    }).catch(() => undefined)
+    }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
     void reload()
     return () => window.clearTimeout(saveTimer.current)
   }, [reload])
@@ -35,7 +35,7 @@ export function OrganizeSection({ recording = false, headless = false }: { recor
     setEndpoints(next)
     window.clearTimeout(saveTimer.current)
     saveTimer.current = window.setTimeout(() => {
-      void window.ade.invoke('settings:organizer', { endpoints: next }).then(reload).catch(() => undefined)
+      void window.ade.invoke('settings:organizer', { endpoints: next }).then(reload).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
     }, 400)
   }
 

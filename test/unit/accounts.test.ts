@@ -18,7 +18,7 @@ import {
 } from '../../src/main/accounts/paths'
 import { sanitizeAgentAccounts } from '../../src/main/accounts/sanitize'
 import { resolveAgentEnvFrom } from '../../src/main/accounts/env'
-import { applyCodexDaemonSocketGuard, CODEX_DAEMON_OVERRIDE_MARKER, pickClaudeGlobalConfig, seedManagedAccountDir } from '../../src/main/accounts/agentConfig'
+import { applyCodexDaemonSocketGuard, carryClaudeSettings, CODEX_DAEMON_OVERRIDE_MARKER, migrateManagedClaudeDir, pickClaudeGlobalConfig, seedManagedAccountDir } from '../../src/main/accounts/agentConfig'
 import { claudeKeychainService, hasCodexCredential, readCodexIdentity } from '../../src/main/accounts/identity'
 import type { AgentAccountsSettings } from '../../src/shared/accounts'
 import { setLocale } from '@shared/i18n'
@@ -150,7 +150,8 @@ describe('resolveAgentEnv', () => {
       agent: 'claude',
       accounts: accountsWith('claude', ID),
       userDataDir: userData,
-      baseEnv: { ANTHROPIC_API_KEY: 'sk-test', CLAUDE_CODE_OAUTH_TOKEN: '', PATH: '/bin' }
+      baseEnv: { ANTHROPIC_API_KEY: 'sk-test', CLAUDE_CODE_OAUTH_TOKEN: '', PATH: '/bin' },
+      systemDir
     })
     expect(env).toEqual({ CLAUDE_CONFIG_DIR: dir, ANTHROPIC_API_KEY: '' })
   })
@@ -236,6 +237,55 @@ describe('Claude の管理アカウントへの持ち込み', () => {
     expect(realpathSync(join(dir, 'plugins'))).toBe(realpathSync(join(claudeHome, 'plugins')))
     expect(existsSync(join(dir, 'settings.json'))).toBe(true)
     expect(existsSync(join(dir, '.credentials.json'))).toBe(false)
+  })
+})
+
+describe('権限確認を省くモードの同意の引き継ぎ', () => {
+  const claudeHome = () => {
+    const dir = join(userData, '..', 'home', '.claude')
+    mkdirSync(dir, { recursive: true })
+    return dir
+  }
+
+  it('既定アカウントで同意済みなら、追加したアカウントの settings.json に足す（ほかの値は残す）', () => {
+    const home = claudeHome()
+    writeFileSync(join(home, 'settings.json'), JSON.stringify({ skipDangerousModePermissionPrompt: true, model: 'opus' }))
+    const dir = createManagedAccountDir(userData, 'claude', ID)
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ theme: 'dark' }))
+    expect(carryClaudeSettings(dir, home)).toBe(true)
+    expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8'))).toEqual({ theme: 'dark', skipDangerousModePermissionPrompt: true })
+  })
+
+  it('追加したアカウント側の値は上書きしない・既定で未同意なら何もしない', () => {
+    const home = claudeHome()
+    const dir = createManagedAccountDir(userData, 'claude', ID)
+    writeFileSync(join(home, 'settings.json'), JSON.stringify({ skipDangerousModePermissionPrompt: true }))
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ skipDangerousModePermissionPrompt: false }))
+    expect(carryClaudeSettings(dir, home)).toBe(false)
+    writeFileSync(join(home, 'settings.json'), JSON.stringify({}))
+    rmSync(join(dir, 'settings.json'))
+    expect(carryClaudeSettings(dir, home)).toBe(false)
+    expect(existsSync(join(dir, 'settings.json'))).toBe(false)
+  })
+
+  it('既存のアカウントには起動前に1回だけ足す（2回目以降は触らない）', () => {
+    const home = claudeHome()
+    writeFileSync(join(home, 'settings.json'), JSON.stringify({ skipDangerousModePermissionPrompt: true }))
+    const dir = createManagedAccountDir(userData, 'claude', ID)
+    migrateManagedClaudeDir(dir, home)
+    expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).skipDangerousModePermissionPrompt).toBe(true)
+    // 利用者がこのアカウントで同意を外しても、次の起動で戻さない
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({}))
+    migrateManagedClaudeDir(dir, home)
+    expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8'))).toEqual({})
+  })
+
+  it('Agent を起動するときの環境変数の解決で、手直しが行われる', () => {
+    const home = claudeHome()
+    writeFileSync(join(home, 'settings.json'), JSON.stringify({ skipDangerousModePermissionPrompt: true }))
+    const dir = createManagedAccountDir(userData, 'claude', ID)
+    resolveAgentEnvFrom({ agent: 'claude', accounts: accountsWith('claude', ID), userDataDir: userData, baseEnv: {}, systemDir: home })
+    expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).skipDangerousModePermissionPrompt).toBe(true)
   })
 })
 

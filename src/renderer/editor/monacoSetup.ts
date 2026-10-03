@@ -6,6 +6,7 @@ import jsonWorker from 'monaco-editor/language/json/json.worker?worker'
 import cssWorker from 'monaco-editor/language/css/css.worker?worker'
 import htmlWorker from 'monaco-editor/language/html/html.worker?worker'
 import tsWorker from 'monaco-editor/language/typescript/ts.worker?worker'
+import { reportHandled } from '@shared/report'
 
 /**
  * Monaco を同梱の版で動かす準備（CDN からは読まない。オフラインでも動く）。
@@ -18,24 +19,32 @@ import tsWorker from 'monaco-editor/language/typescript/ts.worker?worker'
  * worker の指定は Orca（0.55）の `monaco-editor/esm/vs/...` ではなく `monaco-editor/...` にする。
  */
 
+/** worker の中の例外は renderer の window には上がってこないので、ここで Sentry へ知らせる */
+function watched(worker: Worker, label: string): Worker {
+  worker.addEventListener('error', (event) => {
+    reportHandled(new Error(`monaco ${label} worker: ${event.message}`), { area: 'editor', op: 'monaco worker' })
+  })
+  return worker
+}
+
 globalThis.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
     switch (label) {
       case 'json':
-        return new jsonWorker()
+        return watched(new jsonWorker(), 'json')
       case 'css':
       case 'scss':
       case 'less':
-        return new cssWorker()
+        return watched(new cssWorker(), 'css')
       case 'html':
       case 'handlebars':
       case 'razor':
-        return new htmlWorker()
+        return watched(new htmlWorker(), 'html')
       case 'typescript':
       case 'javascript':
-        return new tsWorker()
+        return watched(new tsWorker(), 'typescript')
       default:
-        return new editorWorker()
+        return watched(new editorWorker(), 'editor')
     }
   }
 }

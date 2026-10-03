@@ -14,7 +14,9 @@ import { formatShortcut } from '../lib/shortcut'
 import { errorMessage } from '../lib/errors'
 import { useT } from '../lib/i18n'
 import { Button, EmptyState, Field, IconButton, useToast } from '../ui'
-import { ReviewList, toReviewSession, type ReviewSession } from './ReviewList'
+import { filterReviews, isEmptyDraft, reviewHosts, type ReviewFilter } from '@shared/reviewList'
+import { PanelCloseButton } from './LayoutToggles'
+import { ReviewFilterBar, ReviewList, loadReviewFilter, saveReviewFilter, toReviewSession, type ReviewSession } from './ReviewList'
 
 export { toReviewSession, type ReviewSession }
 
@@ -40,6 +42,7 @@ function loadOpen(): Record<string, boolean> {
     const raw = JSON.parse(localStorage.getItem(OPEN_KEY) ?? '{}') as unknown
     return raw && typeof raw === 'object' ? (raw as Record<string, boolean>) : {}
   } catch {
+    // ストレージが使えない・壊れた値（想定内。既定で続ける）
     return {}
   }
 }
@@ -103,6 +106,18 @@ export function Sidebar({
       return updated
     })
   }
+  // 切り替えたら、前のプロジェクトの履歴は畳み、今のプロジェクトを開く（どれが今のプロジェクトか分かるように）
+  const previousActive = useRef(activeProjectId)
+  useEffect(() => {
+    const prev = previousActive.current
+    previousActive.current = activeProjectId
+    if (prev === activeProjectId || !activeProjectId) return
+    setOpen((state) => {
+      const updated = { ...state, [activeProjectId]: true, ...(prev ? { [prev]: false } : {}) }
+      saveOpen(updated)
+      return updated
+    })
+  }, [activeProjectId])
 
   /** 開いていないプロジェクトの履歴を読み直す（名前の変更・削除のあと） */
   const reloadOther = (project: Project) => run(async () => {
@@ -110,8 +125,35 @@ export function Sidebar({
     setOthers((prev) => ({ ...prev, [project.id]: list.map(toReviewSession) }))
   })
 
-  // 展開している「開いていないプロジェクト」の履歴を読む。一覧が変わったら読み直す
-  const openIds = projects.projects.filter((p) => p.id !== activeProjectId && isOpen(p.id)).map((p) => p.id).join(',')
+  /** 全プロジェクト共通の絞り込み（「Projects」の見出しの下）。保存も全体で1つ */
+  const [filter, setFilterState] = useState<ReviewFilter>(loadReviewFilter)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const setFilter = (next: ReviewFilter) => {
+    setFilterState(next)
+    saveReviewFilter(next)
+  }
+  /** 読み込んだ履歴（まだ読んでいないプロジェクトは undefined） */
+  const historyOf = (project: Project) => (project.id === activeProjectId ? sessions : others[project.id])
+  const loaded = projects.projects.flatMap((p) => historyOf(p) ?? [])
+
+  /** 指摘0件の下書きを、読み込んだ全プロジェクトからまとめて消す */
+  const deleteEmptyDrafts = () => run(async () => {
+    let total = 0
+    for (const project of projects.projects) {
+      const ids = (historyOf(project) ?? []).filter(isEmptyDraft).map((s) => s.id)
+      if (ids.length === 0) continue
+      const active = project.id === activeProjectId
+      const deleted = await window.ade.invoke('review:delete', ids, active ? undefined : project.folderPath)
+      total += deleted.length
+      if (active) onHistoryChanged?.(deleted)
+      else reloadOther(project)
+    }
+    if (total > 0) toast({ tone: 'success', message: t('sidebar.deleted', { count: total }) })
+  })
+
+  // 展開している「開いていないプロジェクト」の履歴を読む。一覧が変わったら読み直す。
+  // 絞り込みのパネルを開いたときは、対象の候補と件数を全プロジェクトから集めるため全部読む
+  const openIds = projects.projects.filter((p) => p.id !== activeProjectId && (isOpen(p.id) || filterOpen)).map((p) => p.id).join(',')
   useEffect(() => {
     if (!openIds) return
     let cancelled = false
@@ -120,6 +162,7 @@ export function Sidebar({
       if (!folder) continue
       void window.ade.invoke('review:list', folder).then((list) => {
         if (!cancelled) setOthers((prev) => ({ ...prev, [id]: list.map(toReviewSession) }))
+      // 失敗は main の IPC が Sentry へ送る
       }).catch(() => undefined)
     }
     return () => { cancelled = true }
@@ -202,7 +245,21 @@ export function Sidebar({
             onClick={addProject}
             data-testid="sidebar-add-project"
           />
+          {/* プロジェクト一覧を閉じる（開き直すのはタイトルバー右の開閉ボタン・⌘B・設定ページ） */}
+          <PanelCloseButton panel="projects" />
         </div>
+
+        {projects.projects.length > 0 && (
+          <ReviewFilterBar
+            filter={filter}
+            onChange={setFilter}
+            open={filterOpen}
+            onOpenChange={setFilterOpen}
+            hosts={reviewHosts(loaded)}
+            emptyDraftCount={loaded.filter(isEmptyDraft).length}
+            onDeleteEmpty={deleteEmptyDrafts}
+          />
+        )}
 
         {projects.projects.length === 0 ? (
           <EmptyState
@@ -263,8 +320,16 @@ export function Sidebar({
                       <span className="sb-project__icon" aria-hidden="true">
                         {active ? <FolderOpen size={14} strokeWidth={1.5} /> : <Folder size={14} strokeWidth={1.5} />}
                       </span>
-                      <span className="sb-project__name">{project.name}</span>
-                      {items && items.length > 0 && <span className="sidebar__section-count sb-project__count">{items.length}</span>}
+                      <span className="sb-project__name" title={project.name}>{project.name}</span>
+                      {items && items.length > 0 && (() => {
+                        // 絞り込みで隠れている分があれば「表示中/全体」
+                        const shown = filterReviews(items, filter).length
+                        return (
+                          <span className="sidebar__section-count sb-project__count" title={t('sidebar.filter.shown', { shown, total: items.length })}>
+                            {shown < items.length ? `${shown}/${items.length}` : items.length}
+                          </span>
+                        )
+                      })()}
                       <span className="sb-project__actions" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
@@ -313,7 +378,7 @@ export function Sidebar({
                     <div className="sb-project__children" role="group">
                       {items !== undefined && (
                         <ReviewList
-                          projectId={project.id}
+                          filter={filter}
                           {...(active ? {} : { folderPath: project.folderPath })}
                           active={active}
                           items={items}

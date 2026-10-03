@@ -4,12 +4,15 @@
  *   - 時刻が録画範囲内か
  *   - 引用の時刻が文字起こしに実在するか（本文は文字起こしから引くので捏造しえない）
  *   - 存在しない静止画時刻・ペンID を参照していないか
+ *   - 対象（URL・ファイル）をまたいで指摘をまとめていないか。target が欠けている・知らない・根拠と食い違う・
+ *     根拠が複数の対象にまたがる場合は、根拠の時刻から引いた元の区切りに戻す（organize/targets.ts）
  * 不合格なら理由を返し、呼び出し側は②の下書きへフォールバックする。
  */
 import Ajv from 'ajv'
-import type { OrganizeInput, OrganizeOutput, Quote, TranscriptSegment } from '../types'
+import type { OrganizedItem, OrganizeInput, OrganizeOutput, Quote, TranscriptSegment } from '../types'
 import { organizeOutputSchema } from '../schema'
 import type { RawOrganizeOutput } from '../schema'
+import { buildTargetIndex, type TargetIndex } from './targets'
 
 export interface ValidationIssue {
   /** 致命的（この指摘／出力は使えない）か、警告（直して使える）か */
@@ -40,7 +43,13 @@ export const defaultValidateOptions: ValidateOptions = {
 }
 
 const ajv = new Ajv({ allErrors: true, strict: false })
-const validateSchema = ajv.compile(organizeOutputSchema)
+/*
+ * runner には target を必須で求める（organizeOutputSchema）。ただし検証では欠けを許し、
+ * 欠けていれば根拠の時刻から対象を決め直す（古い出力・対象を書き忘れた出力も捨てずに使う）。
+ */
+const lenientSchema = JSON.parse(JSON.stringify(organizeOutputSchema)) as { properties: { items: { items: { required: string[] } } } }
+lenientSchema.properties.items.items.required = lenientSchema.properties.items.items.required.filter((key) => key !== 'target')
+const validateSchema = ajv.compile(lenientSchema)
 
 export function validateOrganizeOutput(
   raw: unknown,
@@ -74,7 +83,12 @@ export function validateOrganizeOutput(
   }
 
   const badIndexes = new Set<number>()
-  const items: OrganizeOutput['items'] = []
+  /** 生の指摘1件ごとの結果。対象をまたいでいたら複数に分かれる */
+  const items: OrganizedItem[][] = []
+  const targets = buildTargetIndex(input.events, input.meta)
+  const annotationTimes = new Map(
+    input.events.filter((e) => e.type === 'pen' || e.type === 'text').map((e) => [(e as { id: string }).id, e.t]),
+  )
 
   rawOut.items.forEach((item, i) => {
     const fail = (code: string, message: string) => {
@@ -127,7 +141,8 @@ export function validateOrganizeOutput(
     if (frames.length < item.frame_times.length) {
       warn('frame-not-found', `存在しない静止画時刻を参照していた（${item.frame_times.length - frames.length}件）`)
     }
-    frames = [...new Set(frames)].sort((a, b) => a - b).slice(0, opt.maxFrames)
+    // 枚数の上限は、対象で絞ったあと（enforceTarget）で切る
+    frames = [...new Set(frames)].sort((a, b) => a - b)
     if (frames.length === 0) {
       warn('frame-empty', '画像の時刻が選ばれていない（引用時刻に最も近い静止画で補う）')
       const t = quotes[0]?.t
@@ -135,14 +150,14 @@ export function validateOrganizeOutput(
       if (near !== undefined) frames = [near]
     }
 
-    items.push({
+    items.push(enforceTarget({
       title: item.title.trim(),
       request: item.request.trim(),
       status: item.status,
       quotes,
       frame_times: frames,
       annotation_ids: validAnnotations,
-    })
+    }, item.target, { targets, annotationTimes, frameTimes: input.frameTimes, maxFrames: opt.maxFrames }, warn))
   });
 
   // 除外された発話も、時刻から本文を引く（実在しないものは捨てる）
@@ -155,13 +170,75 @@ export function validateOrganizeOutput(
     dropped.push({ t: seg.t0, text: seg.text, reason: d.reason })
   }
 
-  const kept = items.filter((_, i) => !badIndexes.has(i))
+  const kept = items.filter((_, i) => !badIndexes.has(i)).flat()
   if (kept.length === 0) {
     issues.push({ level: 'error', code: 'all-items-invalid', message: '使える指摘が残らなかった' })
     return { ok: false, issues }
   }
 
   return { ok: true, issues, value: { items: kept, dropped } }
+}
+
+/**
+ * 指摘の対象を、根拠（引用の時刻・書き込みの時刻）から引き直す。
+ * - 対象が1つ以下の録画なら何もしない
+ * - 根拠が1つの対象にあれば、その対象。target が欠けている・知らない・食い違うときは警告して直す
+ * - 根拠が複数の対象にまたがれば、対象ごとの指摘に分ける（違う対象の指摘はまとめない）
+ * 画像の時刻も、その対象を開いていた時刻のものだけにする（無ければ、その対象の中で根拠に最も近い静止画）。
+ */
+export function enforceTarget(
+  item: OrganizedItem,
+  declared: string | undefined,
+  ctx: { targets: TargetIndex; annotationTimes: Map<string, number>; frameTimes: number[]; maxFrames: number },
+  warn: (code: string, message: string) => void,
+): OrganizedItem[] {
+  const { targets } = ctx
+  const capped = (frames: number[]) => frames.slice(0, ctx.maxFrames)
+  if (targets.spans.length === 0) return [{ ...item, frame_times: capped(item.frame_times) }]
+
+  type Group = { quotes: Quote[]; annotation_ids: string[]; first: number; mark?: number }
+  const groups = new Map<string, Group>()
+  const add = (id: string | null, t: number, put: (g: Group) => void) => {
+    if (!id) return
+    const group = groups.get(id) ?? { quotes: [], annotation_ids: [], first: t }
+    group.first = Math.min(group.first, t)
+    put(group)
+    groups.set(id, group)
+  }
+  for (const q of item.quotes) add(targets.at(q.t), q.t, (g) => g.quotes.push(q))
+  for (const id of item.annotation_ids) {
+    const t = ctx.annotationTimes.get(id)
+    // 書き込みのある指摘は、書き込みが写る時刻の画像を選ぶ
+    if (t !== undefined) add(targets.at(t), t, (g) => { g.annotation_ids.push(id); g.mark ??= t })
+  }
+  if (groups.size === 0) return [{ ...item, frame_times: capped(item.frame_times) }]
+
+  const framesFor = (id: string, near: number): number[] => {
+    const own = item.frame_times.filter((t) => targets.at(t) === id)
+    if (own.length > 0) return capped(own)
+    const candidates = ctx.frameTimes.filter((t) => targets.at(t) === id)
+    const best = nearest(candidates, near) ?? nearest(ctx.frameTimes, near)
+    return best === undefined ? [] : [best]
+  }
+  const known = new Set(targets.spans.map((s) => s.id))
+
+  if (groups.size === 1) {
+    const [id, group] = [...groups][0]!
+    if (!declared) warn('target-missing', `target が無い（根拠の時刻から ${id} とした）`)
+    else if (!known.has(declared)) warn('target-unknown', `知らない target「${declared}」（根拠の時刻から ${id} とした）`)
+    else if (declared !== id) warn('target-mismatch', `target「${declared}」が根拠の対象 ${id} と食い違う（${id} とした）`)
+    return [{ ...item, frame_times: framesFor(id, group.mark ?? group.first) }]
+  }
+
+  warn('target-mixed', `違う対象（${[...groups.keys()].join(', ')}）の発話・書き込みを1件にまとめていたので、対象ごとに分けた`)
+  return [...groups]
+    .sort((a, b) => a[1].first - b[1].first)
+    .map(([id, group]) => ({
+      ...item,
+      quotes: group.quotes,
+      annotation_ids: group.annotation_ids,
+      frame_times: framesFor(id, group.mark ?? group.first),
+    }))
 }
 
 /** 指定時刻に対応する文字起こしの区間。完全一致を優先し、無ければ許容幅内で最も近いもの */

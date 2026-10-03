@@ -23,8 +23,6 @@ export const STALE_THRESHOLD_MS = 30 * 60 * 1000
 export const RATE_LIMITED_STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000
 /** アカウント別の内訳を開いたときの取り直しの間隔（60秒） */
 export const INACTIVE_FETCH_DEBOUNCE_MS = 60 * 1000
-/** 起動直後、窓が整ってから最初に取りに行くまで */
-export const DEFERRED_STARTUP_REFRESH_MS = 1000
 
 export function isRetryAfterActive(limits: ProviderRateLimits | null, now: number = Date.now()): boolean {
   return Boolean(limits?.retryAtMs && limits.retryAtMs > now)

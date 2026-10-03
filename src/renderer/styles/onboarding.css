@@ -1,0 +1,597 @@
+/*
+ * 初回起動のセットアップ（src/renderer/onboarding/）。
+ * Orca由来: ~/bench/orca/src/renderer/src/components/onboarding/OnboardingFlow.tsx の枠の寸法
+ *           （最大 1100×960、上に手順の目盛り、下に帯）（MIT）。色・線・角丸は tokens.css だけを使う。
+ */
+
+.ob-overlay {
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  max-height: none;
+  box-sizing: border-box;
+  margin: 0;
+  padding: var(--space-6);
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+}
+
+.ob-overlay[open] {
+  display: grid;
+  place-items: center;
+}
+
+.ob-overlay::backdrop {
+  background: var(--color-scrim);
+}
+
+.ob-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 1100px);
+  height: min(100%, 960px);
+  min-height: 0;
+  box-sizing: border-box;
+  padding: var(--space-8) var(--space-8) var(--space-7);
+  border: var(--size-border) solid var(--color-border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--color-bg-panel);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+/* ウインドウを掴んで動かせる帯（タイトルバーの代わり） */
+.ob-drag {
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--space-7);
+  -webkit-app-region: drag;
+}
+
+.ob-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+/* ── 手順の目盛り ── */
+.ob-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-8);
+}
+
+.ob-progress__bar {
+  position: relative;
+  width: 24px;
+  height: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-active);
+  cursor: pointer;
+  transition: width var(--motion-normal) var(--ease-out), background-color var(--motion-fast) var(--ease-out);
+}
+
+/* 見た目は4pxのまま、押せる範囲だけ広げる（Orca と同じ） */
+.ob-progress__bar::before {
+  content: '';
+  position: absolute;
+  inset: -8px -2px;
+}
+
+.ob-progress__bar[data-state='done'] {
+  background: var(--color-text-muted);
+}
+
+.ob-progress__bar[data-state='active'] {
+  width: 40px;
+  background: var(--color-text);
+}
+
+.ob-progress__bar:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 4px;
+}
+
+.ob-progress__count {
+  margin-left: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ── 見出し ── */
+.ob-heading {
+  flex: none;
+  margin-top: var(--space-7);
+}
+
+.ob-eyebrow {
+  margin-bottom: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ob-title {
+  margin: 0;
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+}
+
+.ob-title:focus {
+  outline: none;
+}
+
+.ob-subtitle {
+  max-width: 720px;
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-relaxed);
+}
+
+.ob-body {
+  flex: 1;
+  min-height: 0;
+  margin-top: var(--space-7);
+  padding-right: var(--space-2);
+  overflow-y: auto;
+}
+
+/* ── 下の帯 ── */
+.ob-footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: var(--size-border) solid var(--color-border);
+}
+
+.ob-footer__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.ob-footer__kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: var(--space-3);
+  padding: 0 var(--space-2);
+  border: var(--size-border) solid currentcolor;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--font-size-2xs);
+  opacity: 0.6;
+}
+
+/* ── 手順の中身の共通部品 ── */
+.ob-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 860px;
+}
+
+.ob-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.ob-field__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ob-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.ob-row--start {
+  justify-content: flex-start;
+}
+
+.ob-note {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.ob-note .lucide {
+  flex: none;
+  margin-top: 2px;
+}
+
+.ob-note--warn {
+  color: var(--color-warning);
+}
+
+.ob-note--ok {
+  color: var(--color-success);
+}
+
+.ob-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-accent);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.ob-link:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
+.ob-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: var(--size-border) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+}
+
+.ob-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.ob-card__title {
+  font-weight: var(--font-weight-medium);
+}
+
+.ob-card__path {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 見た目の見本 ── */
+.ob-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.ob-preview__window {
+  width: min(100%, 520px);
+  border: var(--size-border) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-app);
+  overflow: hidden;
+}
+
+.ob-preview__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--size-toolbar);
+  padding: 0 var(--space-5);
+  border-bottom: var(--size-border) solid var(--color-border);
+  background: var(--color-bg-chrome);
+}
+
+.ob-preview__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-active);
+}
+
+.ob-preview__url {
+  flex: 1;
+  margin-left: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.ob-preview__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-6);
+}
+
+.ob-preview__page p {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+}
+
+.ob-preview__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* ── Agent ── */
+.ob-agents {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+
+.ob-agent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-5);
+  border: var(--size-border) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+}
+
+.ob-agent[data-checked] {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-wash);
+}
+
+.ob-agent__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  cursor: pointer;
+}
+
+.ob-agent__name {
+  flex: 1;
+  font-weight: var(--font-weight-medium);
+}
+
+.ob-agent__order {
+  min-width: 16px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: var(--font-size-2xs);
+  text-align: center;
+}
+
+.ob-agent__state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.ob-agent__state.is-ok {
+  color: var(--color-success);
+}
+
+.ob-agent__missing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.ob-agent__install {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+}
+
+.ob-agent__install code {
+  overflow: hidden;
+  min-width: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-app);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── プロジェクトの URL ── */
+.ob-url {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.ob-url__label {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+
+/* ── 文字起こしの使い方 ── */
+.ob-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.ob-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: var(--size-border) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--ease-out), background-color var(--motion-fast) var(--ease-out);
+}
+
+.ob-tile:hover {
+  background: var(--color-surface-hover);
+}
+
+.ob-tile[aria-checked='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-wash);
+}
+
+.ob-tile:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.ob-tile__title {
+  font-weight: var(--font-weight-medium);
+}
+
+.ob-tile__hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+/* ── 許可 ── */
+.ob-perm {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6);
+  border: var(--size-border) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+}
+
+.ob-perm__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ob-perm__title {
+  font-weight: var(--font-weight-medium);
+}
+
+.ob-perm__state {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.ob-perm__state.is-ok {
+  color: var(--color-success);
+}
+
+/* ── 完了 ── */
+.ob-howto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ob-howto li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-5);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-normal);
+}
+
+.ob-howto__n {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: var(--size-border) solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ── 「閉じますか？」 ── */
+.ob-skip {
+  width: min(100%, 380px);
+}
+
+.ob-skip__title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.ob-skip__text {
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+}
+
+.ob-skip__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+@media (max-width: 760px) {
+  .ob-panel {
+    padding: var(--space-7) var(--space-6) var(--space-6);
+  }
+
+  .ob-tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ob-perm {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-progress__bar,
+  .ob-tile {
+    transition: none;
+  }
+}

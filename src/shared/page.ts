@@ -6,7 +6,8 @@
  * ハッシュがルートの形（`#/users`・`#!/users`）なら、ハッシュルーターの画面遷移なので、それも別のページ。
  * それ以外のハッシュ（`#section` などページ内のアンカー）だけの変化は、同じページとして残す。
  *
- * Electron に依存しない純粋な処理だけを置く。呼び出しは controller.ts と注入スクリプト（preload/review.ts）。
+ * Electron に依存しない純粋な処理だけを置く。呼び出しは録画（controller.ts）、注入スクリプト（preload/review.ts）、
+ * 分解（pipeline/draft.ts の区切り）、レビュー対象の一覧（reviewTarget.ts）。
  */
 
 /** ハッシュルーターのルートか（`#/…` か `#!/…`） */

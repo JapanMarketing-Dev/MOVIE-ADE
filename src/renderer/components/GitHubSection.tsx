@@ -23,7 +23,7 @@ const LOGIN_COMMAND = 'gh auth login --web -h github.com'
 const logoutCommand = (host: string) => `gh auth logout -h ${host}`
 
 function openOnGitHub(url: string) {
-  void window.ade.invoke('github:open', url).catch(() => {})
+  void window.ade.invoke('github:open', url).catch(() => {}) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
 }
 
 export function GitHubSection() {

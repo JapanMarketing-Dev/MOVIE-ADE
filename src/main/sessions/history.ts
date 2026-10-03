@@ -10,6 +10,7 @@ import { readLabel } from './labels'
 import { inspect } from './recover'
 import { loadSession } from './store'
 import { buildStoredSummary, joinSearchText, readFreshSummary, readNavs } from './summary'
+import { reportHandled } from '@shared/report'
 
 export interface SessionSummary {
   id: string
@@ -44,12 +45,14 @@ export interface SessionSummary {
 /** 新しい順に返す */
 export async function listSessions(projectDir: string): Promise<SessionSummary[]> {
   const root = reviewsRoot(projectDir)
+  // まだ録画していないプロジェクトにはフォルダが無い（想定内）
   const names = await readdir(root).catch(() => [] as string[])
   const out: SessionSummary[] = []
 
   for (const name of names) {
     if (!isSessionId(name)) continue
     const paths = sessionPaths(projectDir, name)
+    // 一覧のあとに消されたものは飛ばす（想定内）
     const s = await stat(paths.dir).catch(() => null)
     if (!s?.isDirectory()) continue
     out.push(await summarize(paths))
@@ -90,7 +93,8 @@ export async function summarize(paths: SessionPaths): Promise<SessionSummary> {
     }
     // summary.json が無い古いレビュー。1度だけ作って控える
     stored = buildStoredSummary(record, await readNavs(paths))
-    await writeFile(paths.summaryJson, `${JSON.stringify(stored)}\n`, 'utf8').catch(() => undefined)
+    // 書けなくても次に一覧を読むときに作り直す。書けないこと自体は想定外なので知らせる
+    await writeFile(paths.summaryJson, `${JSON.stringify(stored)}\n`, 'utf8').catch((err: unknown) => reportHandled(err, { area: 'sessions', op: 'write summary cache' }))
   }
 
   const searchText = joinSearchText([label.name, stored.searchText])

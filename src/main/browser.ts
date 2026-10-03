@@ -2,6 +2,8 @@ import { WebContentsView, session, shell, type BaseWindow, type WebContents } fr
 import { join } from 'node:path'
 import { MOBILE_PRESET, type BrowserState, type ViewBounds, type Viewport } from '@shared/types'
 import { t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
+import { reportHandled } from '@shared/report'
 
 /**
  * 内蔵ブラウザ（設計 2章の WebContentsView = Chromium）。
@@ -85,7 +87,7 @@ export class EmbeddedBrowser {
       if (/^https?:/i.test(url)) {
         void wc.loadURL(url)
       } else {
-        void shell.openExternal(url).catch(() => undefined)
+        void shell.openExternal(url).catch((err: unknown) => reportHandled(err, { area: 'browser', op: 'open external link' }))
       }
       return { action: 'deny' }
     })
@@ -117,6 +119,7 @@ export class EmbeddedBrowser {
       // レンダラが居なくなったら、できるまで emulation 系のAPIを呼ばない
       this.rendererReady = false
       this.emulating = false
+      // 利用者のページのレンダラの終了。アプリの不具合ではないので送らない（アプリ自身の画面は telemetry.ts が拾う）
       console.warn(`[browser] レンダラが終了しました: ${details.reason}`)
     })
 
@@ -251,6 +254,7 @@ export class EmbeddedBrowser {
       }
     } catch (err) {
       console.warn('[browser] 表示幅の切り替えに失敗しました', err)
+      reportHandled(err, { area: 'browser', op: 'switch viewport' })
     }
   }
 
@@ -258,10 +262,11 @@ export class EmbeddedBrowser {
     const wc = this.webContents
     if (!wc) return
     const url = normalizeUrl(input)
-    if (!isNavigableUrl(url)) throw new Error(t('browser.errors.invalidUrl'))
+    if (!isNavigableUrl(url)) throw new UserFacingError(t('browser.errors.invalidUrl'))
     try {
       await wc.loadURL(url)
     } catch (err) {
+      // 利用者のページへの遷移の失敗（相手のサーバー・回線）。画面に理由を出すので送らない
       const code = (err as { errno?: number }).errno
       if (code !== -3) console.warn(`[browser] 遷移できませんでした: ${url}`, err)
     }
@@ -300,6 +305,7 @@ export class EmbeddedBrowser {
       if (!view.webContents.isDestroyed()) view.webContents.close()
     } catch (err) {
       console.warn('[browser] ビューの破棄中にエラーが出ました', err)
+      reportHandled(err, { area: 'browser', op: 'destroy view' })
     }
     this.window = null
   }
@@ -324,6 +330,7 @@ export function isNavigableUrl(url: string): boolean {
     new URL(url)
     return true
   } catch {
+    // 入力の検証。読めない URL は想定内
     return false
   }
 }

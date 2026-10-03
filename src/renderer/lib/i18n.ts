@@ -44,7 +44,7 @@ export function initLocale(): void {
 export function setLocalePreference(next: LocalePreference): void {
   preference = next
   for (const listener of preferenceListeners) listener()
-  void window.ade.invoke('settings:locale', next).then(setLocale).catch(() => {})
+  void window.ade.invoke('settings:locale', next).then(setLocale).catch(() => {}) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
 }
 
 /** 言語が変わると再描画する。t は言語ごとに作り直すので、依存配列に入れれば追従する */

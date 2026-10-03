@@ -60,7 +60,7 @@ pnpm dev
 - フッターの利用量の表示（各提供元のAPI。自分のClaude / Codexのログインを使う）
 - 「GitHubへ送信」（自分の`gh` CLI経由）
 - 「更新を確認」を押したときだけ（Cloudflare R2の配布サーバー）
-- **クラッシュレポート（Sentry）**: 配布版が、クラッシュと未処理のエラーを送ります。既定はONで、設定の「プライバシー」か初回起動時の案内からOFFにできます。送るのはスタックトレースとOS・CPU・アプリの版です。パス、URL、ターミナルの出力、文字起こし、指摘、メールアドレス、APIキー、IPアドレスは除くか集めません。開発起動とE2Eでは送りません。フォークした人は`MOVIE_ADE_SENTRY_DSN`で自分のDSNに向けるか、空にして止められます。詳しくは[Data and privacy](https://movie-ade.pages.dev/docs/privacy.html#crash-reports)。
+- **クラッシュレポート（Sentry）**: クラッシュと未処理のエラーを送ります。既定はONで、設定の「プライバシー」か初回起動時の案内からOFFにできます。送るのはスタックトレースとOS・CPU・アプリの版です。パス、URL、ターミナルの出力、文字起こし、指摘、メールアドレス、APIキー、IPアドレスは除くか集めません。開発起動（`pnpm dev`）も`development`として送ります。E2Eと単体テストでは送りません。フォークした人は`MOVIE_ADE_SENTRY_DSN`で自分のDSNに向けるか、空にして止められます。詳しくは[Data and privacy](https://movie-ade.pages.dev/docs/privacy.html#crash-reports)。
 
 ## 開発・検証
 

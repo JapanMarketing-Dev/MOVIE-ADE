@@ -6,6 +6,7 @@ import type { AiEndpointConfig, AiVendor, LlmApiProvider, OrganizeRunnerId, SttR
  */
 
 import type { LocalePreference } from './i18n'
+import type { OnboardingState } from './onboarding'
 import type { AccountLoginRequest, AgentAccountsSettings } from './accounts'
 export type { AccountLoginRequest, AgentAccountsSettings } from './accounts'
 
@@ -86,6 +87,20 @@ export interface Project {
   name: string
   folderPath: string
   urls: ProjectUrl[]
+  /** 前に開いていたときの作業の状態。切り替えて戻ったときと再起動したときに元へ戻す（src/shared/projectSession.ts） */
+  session?: ProjectSession
+}
+
+/** プロジェクトごとに覚える作業の状態。パスと URL だけで、中身や履歴は持たない */
+export interface ProjectSession {
+  /** 内蔵ブラウザで開いていた URL */
+  url?: string
+  /** 中央のタブの選択。ファイルは `file:<相対パス>`（根を外して覚える） */
+  centerTab?: string
+  /** 開いていたファイル（プロジェクトからの相対パス、開いた順） */
+  openFiles?: string[]
+  /** 表示していたレビュー */
+  reviewId?: string
 }
 
 export interface ProjectsState {
@@ -203,6 +218,26 @@ export interface Settings {
   crashReports?: boolean
   /** 初回起動の「クラッシュレポートを送ります」の案内を出し終えたか */
   crashReportsNoticeShown?: boolean
+  /** 初回起動のセットアップの進み具合（src/shared/onboarding.ts）。未設定なら出す */
+  onboarding?: OnboardingState
+}
+
+/** 開いているターミナルの一覧の1件（main の TerminalManager.list()。読み取り専用） */
+export interface TerminalSessionInfo {
+  id: string
+  pid: number
+  cwd: string
+  /** タブ名（Agentなら 'Claude Code' など、シェルなら「1: zsh」） */
+  title: string
+  agent: TuiAgent | null
+}
+
+/** 画面の読み込み直しのあと、生きているターミナルにつなぎ直したときに返すもの */
+export interface TerminalAttachInfo extends TerminalSessionInfo {
+  /** 直近の出力（スクロールバック）。xterm に流し直す */
+  history: string
+  /** 今の PTY の大きさ。流し直す前に xterm をこの大きさにする（出力はこの幅で折り返されている） */
+  size: TerminalSize
 }
 
 export interface TerminalTabInfo {
@@ -250,12 +285,16 @@ export type MenuCommand =
   | 'saveFile'
   /** 右のファイルツリー（エクスプローラ）の開閉 */
   | 'toggleExplorer'
+  /** フィードバックモードの右パネル（レビュー対象の一覧）の開閉 */
+  | 'toggleTargets'
   /** ⌘J ターミナルの表示・非表示（Orca・VS Code のパネルの開閉と同じ） */
   | 'toggleTerminalPanel'
   /** フッターの表示・非表示 */
   | 'toggleFooter'
   /** ⌘, 設定のページ（中央のタブ）の開閉 */
   | 'toggleSettings'
+  /** ヘルプ → セットアップをもう一度（オンボーディングを開き直す） */
+  | 'showOnboarding'
 
 // ───────────────────────── 録画（要件 5.3・5.4）─────────────────────────
 
@@ -381,8 +420,11 @@ export interface WhisperModelProgress {
 
 export interface SttAvailability {
   localReady: boolean
-  /** encrypted は OS の鍵で暗号化して保存、session は起動中だけ保持（Linux で鍵束が無い場合など） */
-  keyStorage: 'encrypted' | 'session'
+  /**
+   * encrypted は OS の鍵で暗号化して保存、session は起動中だけ保持（Linux で鍵束が無い場合など）、
+   * dev は開発版なので保存しない（起動中だけ保持。Keychain の確認を出さないため）
+   */
+  keyStorage: 'encrypted' | 'session' | 'dev'
   /** 提供元（vendor）ごとのキーの出どころ。値そのものは渡さない */
   keys: Record<AiVendor, SttKeySource>
   /** 文字起こしの提供元ごとに、送れる状態か（キーと接続先が揃っている） */

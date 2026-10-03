@@ -23,6 +23,7 @@ export const FOOTER_ITEMS = [
   'transcription',
   'organizer',
   'resources',
+  'github',
   'page',
   'layout',
   'version',
@@ -220,4 +221,53 @@ export function dropPanel(layout: LayoutPrefs, panel: DragPanel, dock: Dock): La
     return dock === 'top' || dock === 'bottom' ? { ...layout, footer: { ...layout.footer, dock, visible: true } } : layout
   }
   return withPanel(layout, panel, { dock, visible: true })
+}
+
+/** パネルの開閉（タイトルバーのボタン・見出しの閉じるボタン・⌘B / ⌘J / ⌘⇧E で共通）。open を渡すとその状態にする */
+export function togglePanel(layout: LayoutPrefs, id: PanelId, open?: boolean): LayoutPrefs {
+  return withPanel(layout, id, { visible: open ?? !layout.panels[id].visible })
+}
+
+/** タイトルバーの開閉ボタンの並び。画面の左にあるものから順に（VS Code と同じく、置き場所が見た目の順になる） */
+export function panelToggleOrder(layout: LayoutPrefs): PanelId[] {
+  const rank: Record<Dock, number> = { left: 0, top: 1, bottom: 2, right: 3 }
+  return [...PANEL_IDS].sort((a, b) => rank[layout.panels[a].dock] - rank[layout.panels[b].dock])
+}
+
+/**
+ * フッターの項目の優先順位（Orca の useStatusBarDensity / VS Code のステータスバーと同じ考え方）。
+ * 幅が足りないときは数の大きいものから隠し、隠したものは右端の「…」メニューにまとめる。
+ *   0 … 常に出す（録画時間・使用量・設定）
+ *   1 … マイク・文字起こし・GitHub のブランチ
+ *   2 … Resource Manager・バージョン・配色
+ *   3 … 最初に隠す（ページ名・整理の方式・ターミナルの配置）
+ * 使用量の段階的な短縮（UsageMeter）は、ここで隠せるものを隠したあとに効く。
+ */
+export const FOOTER_PRIORITY: Record<FooterItemId, 0 | 1 | 2 | 3> = {
+  recording: 0,
+  usage: 0,
+  settings: 0,
+  mic: 1,
+  transcription: 1,
+  github: 1,
+  resources: 2,
+  version: 2,
+  theme: 2,
+  page: 3,
+  organizer: 3,
+  layout: 3
+}
+
+/**
+ * 空きの幅に収まる、いちばん多く出せる段（出す項目の優先順位の上限）を選ぶ。
+ * slots は出す設定になっている項目とその「全部出したときの幅」。優先順位 0 は収まらなくても出す。
+ * 項目のあいだには gap ずつ隙間が入る。
+ */
+export function pickFooterTier(slots: ReadonlyArray<{ priority: number; width: number }>, available: number, gap: number): number {
+  for (let tier = 3; tier > 0; tier -= 1) {
+    const shown = slots.filter((s) => s.priority <= tier)
+    const total = shown.reduce((sum, s) => sum + s.width, 0) + gap * Math.max(0, shown.length - 1)
+    if (total <= available) return tier
+  }
+  return 0
 }

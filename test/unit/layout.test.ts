@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_LAYOUT,
   FOOTER_ITEMS,
+  FOOTER_PRIORITY,
+  pickFooterTier,
   allowedDocks,
   applyOrder,
   dockFromPoint,
   dropPanel,
   dropPreviewRect,
   layoutSignature,
+  panelToggleOrder,
+  togglePanel,
   mainSplitGrid,
   moveItem,
   sanitizeLayout,
@@ -167,5 +171,48 @@ describe('dropPanel', () => {
   it('フッターは上か下だけ', () => {
     expect(dropPanel(DEFAULT_LAYOUT, 'footer', 'top').footer.dock).toBe('top')
     expect(dropPanel(DEFAULT_LAYOUT, 'footer', 'left')).toBe(DEFAULT_LAYOUT)
+  })
+})
+
+describe('togglePanel / panelToggleOrder（タイトルバーの開閉ボタン）', () => {
+  it('開閉を切り替え、open を渡すとその状態にする', () => {
+    expect(togglePanel(DEFAULT_LAYOUT, 'terminal').panels.terminal.visible).toBe(false)
+    expect(togglePanel(togglePanel(DEFAULT_LAYOUT, 'terminal'), 'terminal').panels.terminal.visible).toBe(true)
+    expect(togglePanel(DEFAULT_LAYOUT, 'files', false).panels.files.visible).toBe(false)
+    expect(togglePanel(DEFAULT_LAYOUT, 'files', true).panels.files).toEqual(DEFAULT_LAYOUT.panels.files)
+  })
+  it('置き場所は変えない', () => {
+    const l = withPanel(DEFAULT_LAYOUT, 'terminal', { dock: 'top' })
+    expect(togglePanel(l, 'terminal').panels.terminal.dock).toBe('top')
+  })
+  it('ボタンの並びは置き場所の順（左 → 上 → 下 → 右）', () => {
+    expect(panelToggleOrder(DEFAULT_LAYOUT)).toEqual(['projects', 'terminal', 'files'])
+    const l = withPanel(withPanel(DEFAULT_LAYOUT, 'terminal', { dock: 'bottom' }), 'projects', { dock: 'right' })
+    expect(panelToggleOrder(l)).toEqual(['terminal', 'projects', 'files'])
+  })
+})
+
+describe('pickFooterTier（フッターが狭いときに隠す順）', () => {
+  const slots = [
+    { priority: 0, width: 100 },
+    { priority: 1, width: 100 },
+    { priority: 2, width: 100 },
+    { priority: 3, width: 100 }
+  ]
+  it('全部収まれば全部出す', () => {
+    expect(pickFooterTier(slots, 430, 10)).toBe(3)
+  })
+  it('足りなければ優先順位の低いものから隠す', () => {
+    expect(pickFooterTier(slots, 429, 10)).toBe(2)
+    expect(pickFooterTier(slots, 320, 10)).toBe(2)
+    expect(pickFooterTier(slots, 319, 10)).toBe(1)
+    expect(pickFooterTier(slots, 210, 10)).toBe(1)
+  })
+  it('優先順位 0 は収まらなくても出す（段は 0）', () => {
+    expect(pickFooterTier(slots, 50, 10)).toBe(0)
+  })
+  it('常に出すのは録画時間・使用量・設定、最初に隠すのはページ名・整理・ターミナルの配置', () => {
+    expect(FOOTER_ITEMS.filter((id) => FOOTER_PRIORITY[id] === 0)).toEqual(['usage', 'recording', 'settings'])
+    expect(FOOTER_ITEMS.filter((id) => FOOTER_PRIORITY[id] === 3)).toEqual(['organizer', 'page', 'layout'])
   })
 })

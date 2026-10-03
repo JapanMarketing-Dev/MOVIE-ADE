@@ -26,7 +26,7 @@ export const organizeOutputSchema = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['title', 'request', 'status', 'quote_ts', 'frame_times', 'annotation_ids'],
+        required: ['title', 'request', 'status', 'quote_ts', 'frame_times', 'annotation_ids', 'target'],
         properties: {
           title: {
             type: 'string',
@@ -57,6 +57,10 @@ export const organizeOutputSchema = {
             description: '関係するペン・テキストのID（p1, x1 など）。無ければ空配列。',
             items: { type: 'string' },
           },
+          target: {
+            type: 'string',
+            description: '指摘の対象の id（入力の targets の id。T1 など）。入力に targets が無ければ空文字。',
+          },
         },
       },
     },
@@ -86,6 +90,8 @@ export interface RawOrganizeItem {
   quote_ts: number[]
   frame_times: number[]
   annotation_ids: string[]
+  /** 対象の id（T1 など）。古い出力や対象の無い録画では無い／空 */
+  target?: string
 }
 
 export interface RawOrganizeOutput {

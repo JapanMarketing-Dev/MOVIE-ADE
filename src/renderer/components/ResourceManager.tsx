@@ -29,7 +29,7 @@ const CLOSED_POLL_MS = 5000
 function useResourceSnapshot(open: boolean): { snapshot: ResourceSnapshot | null; refresh: () => void } {
   const [snapshot, setSnapshot] = useState<ResourceSnapshot | null>(null)
   const refresh = useCallback(() => {
-    void window.ade.invoke('resources:snapshot').then(setSnapshot).catch(() => undefined)
+    void window.ade.invoke('resources:snapshot').then(setSnapshot).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
   }, [])
   useEffect(() => {
     refresh()
@@ -71,7 +71,8 @@ export function ResourceManager({
   onToggle,
   onClose,
   onOpenTerminal,
-  onOpenPage
+  onOpenPage,
+  fallbackAnchor = null
 }: {
   open: boolean
   onToggle: () => void
@@ -80,6 +81,8 @@ export function ResourceManager({
   onOpenTerminal: (projectId: string | null, terminalId: string) => void
   /** 行から内蔵ブラウザのページへ移る */
   onOpenPage: (projectId: string | null) => void
+  /** フッターの「…」に隠れているとき、ポップオーバーを開く位置（「…」ボタン） */
+  fallbackAnchor?: HTMLElement | null
 }) {
   const t = useT()
   const { snapshot, refresh } = useResourceSnapshot(open)
@@ -95,7 +98,7 @@ export function ResourceManager({
     const job = confirm.target === 'cleanup'
       ? window.ade.invoke('resources:cleanup').then(() => undefined)
       : window.ade.invoke('resources:kill', confirm.target)
-    void job.catch(() => undefined).finally(() => {
+    void job.catch(() => undefined).finally(() => { // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
       setBusy(false)
       setConfirm(null)
       // 止めたプロセスが消えるまで少しかかるので、すぐと少し後の2回取り直す
@@ -113,7 +116,7 @@ export function ResourceManager({
   const section = (project: ResourceProject) => (
     <div className="rm-section" key={project.id ?? '__other__'} data-testid="resource-section">
       <div className="rm-row rm-row--section">
-        <span className="rm-name rm-name--section">{project.name}</span>
+        <span className="rm-name rm-name--section" title={project.name}>{project.name}</span>
         <Sparkline samples={project.cpuHistory} />
         <Metrics cpu={project.cpu} memory={project.memory} />
         <span className="rm-gutter" />
@@ -123,7 +126,7 @@ export function ResourceManager({
           <button type="button" className="rm-open" title={t('resources.open', { name: term.title })} onClick={() => openRow(() => onOpenTerminal(project.id, term.id))}>
             <span className={`rm-dot${term.running ? ' is-running' : ''}`} aria-label={term.running ? t('resources.running') : t('resources.idle')} />
             <SquareTerminal size={12} aria-hidden="true" />
-            <span className="rm-name">{term.title}</span>
+            <span className="rm-name" title={term.title}>{term.title}</span>
             {term.orphan && <span className="rm-badge" title={t('resources.orphanHint')}>{t('resources.orphan')}</span>}
           </button>
           <Metrics cpu={term.cpu} memory={term.memory} />
@@ -138,7 +141,7 @@ export function ResourceManager({
           <button type="button" className="rm-open" title={project.page.url} onClick={() => openRow(() => onOpenPage(project.id))}>
             <span className="rm-dot rm-dot--none" />
             <Globe size={12} aria-hidden="true" />
-            <span className="rm-name">{project.page.title || project.page.url || t('resources.emptyPage')}</span>
+            <span className="rm-name" title={project.page.url || undefined}>{project.page.title || project.page.url || t('resources.emptyPage')}</span>
           </button>
           <Metrics cpu={project.page.cpu} memory={project.page.memory} />
           <button type="button" className="rm-kill" aria-label={t('resources.closePage')} title={t('resources.closePage')}
@@ -169,7 +172,7 @@ export function ResourceManager({
       <span className="statusbar__num">{count}{orphans > 0 && <span className="statusbar__orphans">({orphans})</span>}</span>
     </button>
 
-    {open && <StatusPopover anchor={triggerRef.current} label="Resource Manager" onClose={onClose} className="sb-pop--wide">
+    {open && <StatusPopover anchor={triggerRef.current} fallback={fallbackAnchor} label="Resource Manager" onClose={onClose} className="sb-pop--wide">
       <div className="rm" data-testid="resource-manager">
         <header className="rm-head">
           <span className="rm-head__title"><MemoryStick size={12} aria-hidden="true" />Resource Manager</span>

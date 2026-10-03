@@ -4,6 +4,8 @@
  * 基準はプロセス生成時刻。Electron の `process.getCreationTime()` は
  * 3つのOSで利用できるが、取得できない場合はモジュール読み込み時刻へ退避する。
  */
+import { reportAnomaly } from '@shared/report'
+import { SLOW_STARTUP_MS, durationBucket } from '@shared/telemetry'
 
 const moduleLoadedAt = Date.now()
 
@@ -48,6 +50,8 @@ export function reportInteractive(): { totalMs: number; marks: Record<string, nu
     const line = `[startup] 操作可能まで ${totalMs}ms (目標 2000ms) | ${breakdown}`
     if (totalMs > 2000) console.warn(`${line} ← 目標未達`)
     else console.log(line)
+    // 目標を大きく超えたら Sentry へ warning を1件（1回の起動で1度だけ。内訳の名前と時間だけを付ける）
+    if (totalMs > SLOW_STARTUP_MS) reportAnomaly('slow startup', { kind: 'perf', perf: 'slow-startup', duration: durationBucket(totalMs) })
   }
   return { totalMs, marks: marksSnapshot() }
 }

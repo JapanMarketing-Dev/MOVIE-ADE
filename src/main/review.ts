@@ -17,14 +17,22 @@ import { finalizeItems, toPending } from './pipeline/assemble'
 import { imagePlan } from './pipeline/assemble'
 // restoreDropped は発話の時刻を t と呼ぶので、そこだけ別名（translateMessage）で引く
 import { t, t as translateMessage } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
 import { applyEdits, isSessionId, loadSession, readEvents, saveSession, sessionPaths,
   writeFeedbackMarkdown, type SessionPaths, type SessionRecord } from './sessions'
 
 export async function finishReview(paths: SessionPaths, result: RecordingResult,
   transcript: TranscriptSegment[], warnings: string[], twoSpeakers: boolean): Promise<ReviewData> {
+  // 録画を始めた時点の登録URL（index.ts が capture.json に控える）。環境のラベルに使う
+  // 古い録画には capture.json が無い（想定内）
+  const capture = JSON.parse(await readFile(join(paths.dir, 'capture.json'), 'utf8').catch(() => '{}')) as { urlPresets?: unknown }
+  const urlPresets = Array.isArray(capture.urlPresets)
+    ? capture.urlPresets.filter((p): p is { id: string; label: string; url: string } =>
+      !!p && typeof p.id === 'string' && typeof p.label === 'string' && typeof p.url === 'string')
+    : []
   const material: Material = {
     meta: { id: paths.id, startedAt: result.startedAt, durationMs: result.durationMs,
-      targetUrl: result.events.find((e) => e.type === 'nav')?.url, twoSpeakers },
+      targetUrl: result.events.find((e) => e.type === 'nav')?.url, twoSpeakers, ...(urlPresets.length ? { urlPresets } : {}) },
     transcript, events: result.events, frames: result.frames
   }
   const { mergeTranscripts } = await import('./pipeline/merge')
@@ -39,8 +47,8 @@ export async function finishReview(paths: SessionPaths, result: RecordingResult,
 }
 
 export function checkedPaths(projectDir: string | null, id: string): SessionPaths {
-  if (!projectDir) throw new Error(t('errors.openProjectFolder'))
-  if (!isSessionId(id)) throw new Error(t('review.errors.invalidId'))
+  if (!projectDir) throw new UserFacingError(t('errors.openProjectFolder'))
+  if (!isSessionId(id)) throw new UserFacingError(t('review.errors.invalidId'))
   return sessionPaths(projectDir, id)
 }
 
@@ -51,6 +59,7 @@ export async function loadReviewAt(paths: SessionPaths): Promise<ReviewData> {
   const images: Record<string, string> = {}
   for (const name of record.document.items.flatMap((item) => item.images)) {
     if (!/^\.\/\d+\.png$/.test(name)) continue
+    // 消された画像は出さないだけ（想定内）
     const bytes = await readFile(join(paths.dir, basename(name))).catch(() => null)
     if (bytes) images[name] = `data:image/png;base64,${bytes.toString('base64')}`
   }
@@ -75,15 +84,16 @@ async function persist(paths: SessionPaths, record: SessionRecord): Promise<void
 
 const queues = new Map<string, Promise<unknown>>()
 export async function editReview(paths: SessionPaths, edit: ReviewEdit): Promise<ReviewData> {
+  // 前の処理の失敗はその呼び出し側へ返し済み。ここでは順番待ちに使うだけ（想定内）
   const next = (queues.get(paths.dir) ?? Promise.resolve()).catch(() => {}).then(() => editReviewNow(paths, edit))
   queues.set(paths.dir, next)
   try { return await next } finally { if (queues.get(paths.dir) === next) queues.delete(paths.dir) }
 }
 async function editReviewNow(paths: SessionPaths, edit: ReviewEdit): Promise<ReviewData> {
   const record = await loadSession(paths)
-  if (!record) throw new Error(t('review.errors.notFound'))
+  if (!record) throw new UserFacingError(t('review.errors.notFound'))
   if (edit.kind === 'undo') {
-    if (!record.originalDocument || !record.edits.length) throw new Error(t('review.errors.nothingToRestore'))
+    if (!record.originalDocument || !record.edits.length) throw new UserFacingError(t('review.errors.nothingToRestore'))
     const edits = record.edits.slice(0, -1)
     const applied = applyEdits({ document: record.originalDocument, edits, events: await readEvents(paths), frames: record.frames })
     await persist(paths, { ...record, document: applied.document, edits })
@@ -92,7 +102,7 @@ async function editReviewNow(paths: SessionPaths, edit: ReviewEdit): Promise<Rev
   if (edit.kind === 'merge') {
     const positions = edit.ids.map((id) => record.document.items.findIndex((it) => it.id === id))
     if (positions.length !== 2 || positions[0]! < 0 || positions[1] !== positions[0]! + 1)
-      throw new Error(t('review.errors.selectAdjacent'))
+      throw new UserFacingError(t('review.errors.selectAdjacent'))
   }
   const applied = applyEdits({ document: record.document, edits: [edit],
     events: await readEvents(paths), frames: record.frames })
@@ -115,7 +125,7 @@ export function reviewInstruction(paths: SessionPaths, template?: string | null)
 export async function previewFrames(paths: SessionPaths, itemId: string): Promise<import('@shared/review').ReviewFrame[]> {
   const record = await loadSession(paths)
   const item = record?.document.items.find((it) => it.id === itemId)
-  if (!record || !item) throw new Error(t('review.errors.findingNotFound'))
+  if (!record || !item) throw new UserFacingError(t('review.errors.findingNotFound'))
   const { frameCandidates } = await import('./sessions/edits')
   return frameCandidates(record.frames, item.contextTime, 7).flatMap((frame) => {
     const image = nativeImage.createFromPath(join(paths.framesDir, basename(frame.path)))
@@ -128,9 +138,10 @@ export async function previewFrames(paths: SessionPaths, itemId: string): Promis
  * api には保存したキーと接続先を渡す（キーは pipeline/stt/keys.ts。配布版は環境変数のキーを読まない）
  */
 export async function organizeReview(paths: SessionPaths, runnerId: OrganizeRunnerId, api?: { apiKey?: string; endpoint?: AiEndpointConfig }): Promise<ReviewData> {
+  // 前の処理の失敗はその呼び出し側へ返し済み（順番待ちに使うだけ。想定内）
   const work = (queues.get(paths.dir) ?? Promise.resolve()).catch(() => {}).then(async () => {
     const record = await loadSession(paths)
-    if (!record || record.edits.length) throw new Error(t('review.errors.editedNoOverwrite'))
+    if (!record || record.edits.length) throw new UserFacingError(t('review.errors.editedNoOverwrite'))
     // 選択中のアカウント（フッターで切り替えたもの）で CLI を動かす
     const apiProvider = runnerId.startsWith('api:') ? runnerId.slice(4) as LlmApiProvider : null
     const runner = apiProvider
@@ -148,7 +159,7 @@ export async function organizeReview(paths: SessionPaths, runnerId: OrganizeRunn
     if (result.fellBack) {
       await persist(paths, record)
       // 理由は session.json の llm.reason に残す。画面には次の一手だけを出す
-      throw new Error(t('review.errors.organizeFailed', { name }))
+      throw new UserFacingError(t('review.errors.organizeFailed', { name }))
     }
     record.originalDocument = result.document
     record.document = result.document
@@ -167,6 +178,7 @@ async function recoverReview(paths: SessionPaths): Promise<ReviewData> {
   if (!info.worthRecovering) throw new Error(broken ? t('review.errors.broken') : t('review.errors.nothingRecoverable'))
   // 壊れた session.json は上書きで失わないよう、別名で残してから作り直す
   if (broken) await copyFile(paths.sessionJson, `${paths.sessionJson}.broken`)
+  // 記録の各ファイルは無いことがあり、途中で切れた行は飛ばす（中断した録画の復元。想定内）
   const lines = async <T>(name: string): Promise<T[]> => (await readFile(join(paths.dir, name), 'utf8').catch(() => '')).split('\n').flatMap((line) => {
     try { return line.trim() ? [JSON.parse(line) as T] : [] } catch { return [] }
   })
@@ -181,6 +193,7 @@ async function recoverReview(paths: SessionPaths): Promise<ReviewData> {
 }
 
 export async function restoreDropped(paths: SessionPaths, t: number): Promise<ReviewData> {
+  // 前の処理の失敗はその呼び出し側へ返し済み（順番待ちに使うだけ。想定内）
   const work = (queues.get(paths.dir) ?? Promise.resolve()).catch(() => {}).then(async () => {
     const record = await loadSession(paths)
     const base = record?.originalDocument ?? record?.document

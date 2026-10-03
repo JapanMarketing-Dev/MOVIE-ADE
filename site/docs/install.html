@@ -131,7 +131,7 @@
         <p>There is no <code>SHA256SUMS</code> file. Each release has <code>releases/&lt;version&gt;/manifest.json</code> on the download server, and its <code>files[].sha256</code> field holds the expected hash of every file. <code>versions.json</code> lists the available versions.</p>
 <pre><code># the download server (currently the R2 public URL; it may move to a custom domain)
 BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
-VERSION=0.1.0
+VERSION=0.1.1
 
 # expected hashes
 curl -s $BASE/releases/$VERSION/manifest.json | jq -r '.files[] | "\(.sha256)  \(.name)"'

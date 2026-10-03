@@ -10,8 +10,15 @@ import {
   scrubEvent,
   scrubString,
   sentryRelease,
-  shouldSendCrashReports
+  shouldSendCrashReports,
+  telemetryProfile,
+  parseSentryTestKinds,
+  shouldReportLoadFailure,
+  shouldReportProcessGone,
+  renderErrorCapture,
+  wrapIpcHandler
 } from '../../src/shared/telemetry'
+import { UserFacingError, isUserFacingError, toUserFacingFileError } from '../../src/shared/errors'
 
 vi.mock('electron', () => ({ app: { getPath: () => '/tmp/ade-unit' } }))
 
@@ -37,16 +44,20 @@ describe('DSN', () => {
 })
 
 describe('送る条件', () => {
-  const base = { packaged: true, forced: false, e2e: false, enabled: true, dsn: DEFAULT_SENTRY_DSN }
-  it('配布版で設定 ON なら送る', () => {
+  const base = { e2e: false, unitTest: false, enabled: true, dsn: DEFAULT_SENTRY_DSN }
+  it('設定 ON なら送る（配布版も dev 起動も）', () => {
     expect(shouldSendCrashReports(base)).toBe(true)
   })
-  it('dev 起動では送らない', () => {
-    expect(shouldSendCrashReports({ ...base, packaged: false })).toBe(false)
-  })
-  it('E2E では送らない（配布版・確認用の指定があっても）', () => {
+  it('E2E では送らない', () => {
     expect(shouldSendCrashReports({ ...base, e2e: true })).toBe(false)
-    expect(shouldSendCrashReports({ ...base, packaged: false, forced: true, e2e: true })).toBe(false)
+  })
+  it('確認用の MOVIE_ADE_SENTRY_FORCE なら E2E の起動でも送る（単体テスト・設定 OFF には勝たない）', () => {
+    expect(shouldSendCrashReports({ ...base, e2e: true, forced: true })).toBe(true)
+    expect(shouldSendCrashReports({ ...base, unitTest: true, forced: true })).toBe(false)
+    expect(shouldSendCrashReports({ ...base, enabled: false, e2e: true, forced: true })).toBe(false)
+  })
+  it('単体テストでは送らない', () => {
+    expect(shouldSendCrashReports({ ...base, unitTest: true })).toBe(false)
   })
   it('設定 OFF なら送らない', () => {
     expect(shouldSendCrashReports({ ...base, enabled: false })).toBe(false)
@@ -54,13 +65,146 @@ describe('送る条件', () => {
   it('DSN が空なら送らない', () => {
     expect(shouldSendCrashReports({ ...base, dsn: null })).toBe(false)
   })
-  it('確認用の指定（MOVIE_ADE_SENTRY_FORCE）なら dev 起動でも送る', () => {
-    expect(shouldSendCrashReports({ ...base, packaged: false, forced: true })).toBe(true)
-  })
   it('設定は未設定なら ON、明示の false だけ OFF', () => {
     expect(crashReportsEnabled({})).toBe(true)
     expect(crashReportsEnabled({ crashReports: true })).toBe(true)
     expect(crashReportsEnabled({ crashReports: false })).toBe(false)
+  })
+})
+
+describe('環境ごとの送り方', () => {
+  it('配布版は production・JS の例外は半分・1回の起動で10件まで', () => {
+    expect(telemetryProfile(true)).toEqual({ environment: 'production', sampleRate: 0.5, maxEventsPerRun: 10, maxWarningsPerRun: 5 })
+  })
+  it('dev は development・全部・50件まで', () => {
+    expect(telemetryProfile(false)).toEqual({ environment: 'development', sampleRate: 1, maxEventsPerRun: 50, maxWarningsPerRun: 30 })
+  })
+  it('dev の上限は50件で、重複の抑止は同じ', () => {
+    const allow = createEventLimiter(telemetryProfile(false).maxEventsPerRun)
+    const ev = (v: string) => ({ exception: { values: [{ type: 'Error', value: v }] } })
+    expect(allow(ev('x'))).toBe(true)
+    expect(allow(ev('x'))).toBe(false)
+    const rest = Array.from({ length: 60 }, (_, i) => allow(ev(`e${i}`)))
+    expect(rest.filter(Boolean)).toHaveLength(49)
+  })
+  it('dev の release は git の短いハッシュ付き。取れなければ +dev', () => {
+    expect(sentryRelease('0.1.0', { gitHash: 'fd78b14' })).toBe('movie-ade@0.1.0+fd78b14')
+    expect(sentryRelease('0.1.0', { gitHash: null })).toBe('movie-ade@0.1.0+dev')
+    expect(sentryRelease('0.1.0', { gitHash: 'fatal: not a git repository' })).toBe('movie-ade@0.1.0+dev')
+    expect(sentryRelease('0.1.0')).toBe('movie-ade@0.1.0')
+  })
+  it('確認用の MOVIE_ADE_SENTRY_TEST を読む', () => {
+    expect(parseSentryTestKinds(undefined)).toEqual([])
+    expect(parseSentryTestKinds('0')).toEqual([])
+    expect(parseSentryTestKinds('1')).toEqual(['main', 'renderer', 'boundary', 'ipc', 'handled'])
+    expect(parseSentryTestKinds('all')).toHaveLength(5)
+    expect(parseSentryTestKinds('ipc, main x')).toEqual(['main', 'ipc'])
+  })
+})
+
+describe('集める異常', () => {
+  it('アプリ自身の画面の読み込み失敗は送る。止めただけ（-3）とサブフレームは送らない', () => {
+    expect(shouldReportLoadFailure({ ownPage: true, errorCode: -6, isMainFrame: true })).toBe(true)
+    expect(shouldReportLoadFailure({ ownPage: true, errorCode: -3, isMainFrame: true })).toBe(false)
+    expect(shouldReportLoadFailure({ ownPage: true, errorCode: -6, isMainFrame: false })).toBe(false)
+  })
+  it('内蔵ブラウザのページ（別のセッション）の読み込み失敗は送らない', () => {
+    expect(shouldReportLoadFailure({ ownPage: false, errorCode: -102, isMainFrame: true })).toBe(false) // CONNECTION_REFUSED
+    expect(shouldReportLoadFailure({ ownPage: false, errorCode: -300, isMainFrame: true })).toBe(false) // INVALID_URL
+  })
+  it('プロセスの終了は、正常終了と利用者が止めたもの以外を送る', () => {
+    expect(shouldReportProcessGone('crashed')).toBe(true)
+    expect(shouldReportProcessGone('oom')).toBe(true)
+    expect(shouldReportProcessGone('launch-failed')).toBe(true)
+    expect(shouldReportProcessGone('clean-exit')).toBe(false)
+    expect(shouldReportProcessGone('killed')).toBe(false)
+  })
+  it('ErrorBoundary のエラーには境界の名前と componentStack を付ける', () => {
+    expect(renderErrorCapture('terminal', '\n    at Bomb\n    at ErrorBoundary')).toEqual({
+      tags: { kind: 'render-error', 'error.boundary': 'terminal' },
+      contexts: { react: { componentStack: 'at Bomb\n    at ErrorBoundary' } }
+    })
+  })
+  it('componentStack は長めに残し、パスは伏せる', () => {
+    const stack = `at Foo (/Users/taro/app/src/a.tsx)\n${'    at Bar\n'.repeat(60)}`
+    const out = scrubEvent({ contexts: renderErrorCapture('x', stack).contexts }, { homeDir: '/Users/taro' }) as { contexts: { react: { componentStack: string } } }
+    expect(out.contexts.react.componentStack.length).toBeGreaterThan(300)
+    expect(out.contexts.react.componentStack).toContain('~/app/src/a.tsx')
+  })
+  it('起動の失敗（startup）のパンくずは残す', () => {
+    expect(scrubBreadcrumb({ category: 'startup', message: '[startup] failed at /Users/taro/x' }, { homeDir: '/Users/taro' }))
+      .toEqual({ category: 'startup', message: '[startup] failed at ~/x' })
+  })
+})
+
+describe('UserFacingError', () => {
+  it('Error の一種で、renderer が本文を取り出せる形（name は Error）のまま', () => {
+    const err = new UserFacingError('録画中は切り替えできません')
+    expect(err).toBeInstanceOf(Error)
+    expect(err.message).toBe('録画中は切り替えできません')
+    expect(String(err)).toBe('Error: 録画中は切り替えできません')
+  })
+  it('印で見分ける。ふつうの Error・文字列・null は想定外として扱う', () => {
+    expect(isUserFacingError(new UserFacingError('x'))).toBe(true)
+    expect(isUserFacingError(Object.assign(new Error('x'), { userFacing: true }))).toBe(true)
+    expect(isUserFacingError(new Error('x'))).toBe(false)
+    expect(isUserFacingError('x')).toBe(false)
+    expect(isUserFacingError(null)).toBe(false)
+  })
+  it('main の利用者向けの文は UserFacingError で投げる（throw new Error(t( が残っていない）', async () => {
+    const { execFileSync } = await import('node:child_process')
+    const hits = (() => {
+      try { return execFileSync('grep', ['-rln', 'throw new Error(t(', 'src'], { encoding: 'utf8' }).trim() } catch { return '' }
+    })()
+    expect(hits).toBe('')
+  })
+})
+
+describe('IPC の包み方', () => {
+  it('例外を kind: ipc とチャネル名のタグ付きで報告し、そのまま投げ直す', async () => {
+    const report = vi.fn()
+    const err = new Error('boom')
+    const wrapped = wrapIpcHandler('project:switch', () => { throw err }, report)
+    await expect(wrapped()).rejects.toBe(err)
+    expect(report).toHaveBeenCalledWith(err, { kind: 'ipc', 'ipc.channel': 'project:switch' })
+  })
+  it('利用者に見せる想定内のエラー（UserFacingError）は送らずに投げ直す', async () => {
+    const report = vi.fn()
+    const err = new UserFacingError('Project not found.')
+    const wrapped = wrapIpcHandler('project:switch', () => { throw err }, report)
+    await expect(wrapped()).rejects.toBe(err)
+    expect(report).not.toHaveBeenCalled()
+  })
+  it('ファイル操作の想定内の OS エラーは利用者向けの文にして送らない。想定外のコードは送る', async () => {
+    const osError = (code: string) => Object.assign(new Error(`${code}: open '/Users/taro/x'`), { code })
+    const report = vi.fn()
+    // main と同じ順：ハンドラの中で包み直してから wrapIpcHandler が見る
+    const handlerFailing = (err: Error) => wrapIpcHandler('fs:write', async () => {
+      try { throw err } catch (e) { throw toUserFacingFileError(e) }
+    }, report)
+    for (const code of ['EACCES', 'EPERM', 'EROFS', 'ENOSPC', 'ENOENT', 'ENOTDIR']) {
+      const original = osError(code)
+      const thrown = await handlerFailing(original)().catch((e: unknown) => e) as Error & { cause?: unknown }
+      expect(isUserFacingError(thrown)).toBe(true)
+      expect(thrown.cause).toBe(original)
+      expect(thrown.message).not.toContain('/Users/taro')
+    }
+    expect(report).not.toHaveBeenCalled()
+    const eio = osError('EIO')
+    await expect(handlerFailing(eio)()).rejects.toBe(eio)
+    expect(report).toHaveBeenCalledWith(eio, { kind: 'ipc', 'ipc.channel': 'fs:write' })
+  })
+  it('コードの無い例外・文字列はそのまま返す（包み直さない）', () => {
+    const err = new Error('boom')
+    expect(toUserFacingFileError(err)).toBe(err)
+    expect(toUserFacingFileError('x')).toBe('x')
+    expect(toUserFacingFileError(null)).toBe(null)
+  })
+  it('成功したときは報告せず、引数と戻り値をそのまま通す', async () => {
+    const report = vi.fn()
+    const wrapped = wrapIpcHandler('x', async (a: number, b: number) => a + b, report)
+    await expect(wrapped(1, 2)).resolves.toBe(3)
+    expect(report).not.toHaveBeenCalled()
   })
 })
 

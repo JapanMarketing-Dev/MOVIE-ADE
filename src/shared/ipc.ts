@@ -12,6 +12,7 @@ import type {
   WhisperModelName,
   WhisperModelProgress,
   Project,
+  ProjectSession,
   ProjectsState,
   TerminalCreateOptions,
   AudioLevel,
@@ -27,6 +28,8 @@ import type {
   TerminalTabInfo,
   AccountAgent,
   AgentOption,
+  TerminalAttachInfo,
+  TerminalSessionInfo,
   ViewBounds,
   Viewport,
   WorkspaceState
@@ -35,12 +38,14 @@ import type { ReviewData, ReviewEdit, ReviewLabelPatch, ReviewSummary, ReviewFra
 import type { AccountLoginRequest, AgentAccountAddResult, AgentAccountsState } from './accounts'
 import type { AccountUsage, UsageState } from './usage'
 import type { UpdateCheckResult } from './appVersion'
+import type { SentryTestKind } from './telemetry'
 import type { LayoutPrefs } from './layout'
+import type { OnboardingPatch, OnboardingState, PermissionKind, PermissionsState } from './onboarding'
 import type { ResolvedTheme } from './theme'
 import type { LocalePreference, SupportedLocale } from './i18n'
 import type { ResourceKillTarget, ResourceSnapshot } from './resources'
 import type { FsChangedEvent, FsEntry, FsFileList, FsReadResult, FsSearchMode, FsSearchResult, FsWriteResult } from './files'
-import type { GitHubPostResult, GitHubRepoResult, GitHubReviewDraft, GitHubReviewTarget, GitHubStatus } from './github'
+import type { GitHubPostResult, GitHubRepoResult, GitRepoStatus, GitHubReviewDraft, GitHubReviewTarget, GitHubStatus } from './github'
 
 /**
  * IPC の全チャネルを1か所で宣言する。
@@ -78,6 +83,8 @@ export interface IpcRequests {
   'project:update': (project: Project) => ProjectsState
   /** 登録を外すだけ。フォルダは消さない */
   'project:remove': (id: string) => ProjectsState
+  /** 中央のタブ・開いているファイル・表示中のレビューを覚える（URL は main が自分で覚える）。通知は送らない */
+  'project:saveSession': (id: string, session: Pick<ProjectSession, 'centerTab' | 'openFiles'> & { reviewId?: string | null }) => void
 
   'settings:agents': (preferences: AgentPreferences) => void
   /** エージェントの一覧（設定とインストール済みかの検出を合わせたもの）。refresh で検出し直す */
@@ -122,6 +129,10 @@ export interface IpcRequests {
   'terminal:agentState': (id: string) => { kind: string; state: string }
   /** シェルの今のカレント（分割したペインに引き継ぐ）。終了済みなら null */
   'terminal:cwd': (id: string) => string | null
+  /** 開いているターミナルの一覧（画面を読み込み直したあと、つなぎ直す先を探す） */
+  'terminal:list': () => TerminalSessionInfo[]
+  /** 生きているターミナルにつなぎ直す（新しくは作らない）。終了していれば null */
+  'terminal:attach': (id: string) => TerminalAttachInfo | null
   'review:send': (sessionId: string, terminalId: string) => { ok: boolean; message: string }
 
   'settings:splitRatio': (ratio: number) => void
@@ -133,10 +144,16 @@ export interface IpcRequests {
   'settings:locale': (locale: LocalePreference) => SupportedLocale
   /** クラッシュレポートを送るか。OFF はすぐ効く。ON は次の起動から（初期化は起動時だけ） */
   'settings:crashReports': (enabled: boolean) => void
-  /** active = この起動で Sentry を初期化したか（配布版で ON のとき）。noticeShown = 初回の案内を出し終えたか */
-  'telemetry:state': () => { active: boolean; enabled: boolean; noticeShown: boolean }
+  /** active = この起動で Sentry を初期化したか（設定が ON で E2E でないとき。dev も含む）。packaged = 配布版か。test = 確認用にわざと起こす例外（MOVIE_ADE_SENTRY_TEST）。noticeShown = 初回の案内を出し終えたか */
+  'telemetry:state': () => { active: boolean; enabled: boolean; noticeShown: boolean; packaged: boolean; test: SentryTestKind[] }
   /** 初回の案内を閉じた */
   'telemetry:noticeShown': () => void
+  /** 初回起動のセットアップの進み具合を保存する（null で項目を消す）。保存後の値を返す */
+  'settings:onboarding': (patch: OnboardingPatch) => OnboardingState | null
+  /** マイク・画面収録の OS の許可の状態（読むだけで確認のダイアログは出さない） */
+  'permissions:status': () => PermissionsState
+  /** 押したときだけ許可を求める。マイクは OS の確認、画面収録はシステム設定を開く（macOS だけ） */
+  'permissions:request': (kind: PermissionKind) => PermissionsState
 
   // 録画（要件 5.3・5.4）
   'recording:start': (options: StartRecordingOptions) => RecordingStatus
@@ -195,6 +212,8 @@ export interface IpcRequests {
   'fs:search': (query: string, mode: FsSearchMode) => FsSearchResult
   /** エディタで未保存のファイル（パス）。ウィンドウを閉じるときの確認に使う */
   'editor:unsaved': (paths: string[]) => void
+  /** 編集中（未保存）の内容をプレビューの中身（HTML）にする。横に並べたプレビューを打鍵に追従させる */
+  'preview:render': (path: string, source: string) => string
 
   // GitHub 連携（認証は gh CLI に任せる。トークンは扱わない）
   /** `gh auth status` の読み取り。gh が無ければ ghInstalled: false */
@@ -207,6 +226,8 @@ export interface IpcRequests {
   'github:postReview': (sessionId: string, target: GitHubReviewTarget, body: string) => GitHubPostResult
   /** リポジトリ・作った Issue などのページを既定のブラウザで開く（GitHub のURLだけ） */
   'github:open': (url: string) => void
+  /** フッター用：今のプロジェクトのリポジトリ・ブランチ・変更の数。呼ぶと .git/HEAD の見張りも始める */
+  'github:repoStatus': () => GitRepoStatus
 }
 
 export interface IpcEvents {
@@ -233,6 +254,8 @@ export interface IpcEvents {
   'theme:changed': (theme: ResolvedTheme) => void
   /** 解決済みの画面の言語が変わった */
   'locale:changed': (locale: SupportedLocale) => void
+  /** 開いているプロジェクトの .git/HEAD・index が変わった（ブランチの切り替え・コミット） */
+  'github:headChanged': () => void
 }
 
 export type IpcRequestChannel = keyof IpcRequests
@@ -277,6 +300,7 @@ export const IPC_REQUEST_CHANNELS = [
   'project:switch',
   'project:update',
   'project:remove',
+  'project:saveSession',
   'settings:agents',
   'agents:list',
   'settings:agentPrompt',
@@ -301,12 +325,13 @@ export const IPC_REQUEST_CHANNELS = [
   'terminal:write',
   'terminal:resize',
   'terminal:close',
-  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'review:send',
+  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'review:send',
   'settings:splitRatio',
   'settings:layout',
   'settings:theme',
   'settings:locale',
   'settings:crashReports', 'telemetry:state', 'telemetry:noticeShown',
+  'settings:onboarding', 'permissions:status', 'permissions:request',
   'recording:start',
   'recording:pause',
   'recording:resume',
@@ -316,8 +341,8 @@ export const IPC_REQUEST_CHANNELS = [
   'annotation:clear',
   'review:list', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
   'capture:sources', 'capture:setTarget', 'capture:openScreenSettings',
-  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'editor:unsaved',
-  'github:status', 'github:repo', 'github:reviewDraft', 'github:postReview', 'github:open'
+  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'editor:unsaved', 'preview:render',
+  'github:status', 'github:repo', 'github:reviewDraft', 'github:postReview', 'github:open', 'github:repoStatus'
 ] as const satisfies readonly IpcRequestChannel[]
 
 export const IPC_EVENT_CHANNELS = [
@@ -335,5 +360,6 @@ export const IPC_EVENT_CHANNELS = [
   'fs:changed',
   'theme:changed',
   'locale:changed',
-  'usage:changed'
+  'usage:changed',
+  'github:headChanged'
 ] as const satisfies readonly IpcEventChannel[]

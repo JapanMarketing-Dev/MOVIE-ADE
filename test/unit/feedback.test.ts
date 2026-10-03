@@ -48,18 +48,46 @@ describe('feedback.md の生成', () => {
     const md = renderFeedbackMarkdown(doc)
 
     expect(md).toContain('# UIフィードバック（2件）'); // needs_check は既定で外れる
-    expect(md).toContain('- 対象: http://localhost:3000/')
+    // 2件はトップと料金の別のページの指摘なので、対象ごとの節に分かれる
+    expect(md).toContain('- 対象: 2件（指摘は、どのファイル・URLへのものかで下の節に分けた）')
     expect(md).toContain('- 収録: 2026-10-02 10:40 / 1分0秒')
     expect(md).toContain('- 画像内の赤い線はレビュアーのペン書き込み、赤いリングはカーソル位置。')
     expect(md).toContain('- 発話は音声認識によるため、誤変換の可能性がある。')
 
-    expect(md).toContain('## 1. [00:02] 見出しが小さい')
-    expect(md).toContain('## 2. [00:18] 申し込みボタンの色が薄い')
+    expect(md).toContain('## 対象 1: localhost:3000\n- URL: http://localhost:3000/')
+    expect(md).toContain('### 1. [00:02] 見出しが小さい')
+    expect(md).toContain('## 対象 2: localhost:3000/pricing\n- URL: http://localhost:3000/pricing')
+    expect(md).toContain('### 2. [00:18] 申し込みボタンの色が薄い')
     expect(md).toContain('- 要望: 「申し込む」ボタンの色を濃くし、押せることが分かるようにする')
     expect(md).toContain('- 発話（原文）: 「このボタンの色が薄いです」')
     expect(md).toContain('- URL: http://localhost:3000/pricing （表示幅 1280px）')
     expect(md).toContain('- 要素: `button.plan-cta`（テキスト「申し込む」）')
     expect(md).toContain('- 直前の操作: トップ →「料金」をクリック → 料金')
+  })
+
+  it('対象が1つなら節に分けず、冒頭に対象を書く', () => {
+    const doc = assembleFromOrganized(material, organized)
+    const single = { ...doc, items: doc.items.map((it) => ({ ...it, context: { ...it.context, url: 'http://localhost:3000/pricing' } })) }
+    const md = renderFeedbackMarkdown(single)
+    expect(md).toContain('- 対象: http://localhost:3000/')
+    expect(md).toContain('## 1. [00:02] 見出しが小さい')
+    expect(md).not.toContain('## 対象 1')
+  })
+
+  it('対象の節には、ファイルなら相対パス、URLなら環境のラベルを書く', () => {
+    const doc = assembleFromOrganized(material, organized)
+    const urls = ['ade-preview://project/docs/a.md', 'https://dev.example.com/pricing?token=a8F3kQ9zX2vB'] // gitleaks:allow（伏せ字の確認用の偽の値）
+    const mixed = {
+      ...doc,
+      meta: { ...doc.meta, urlPresets: [{ id: 'd', label: 'dev', url: 'https://dev.example.com/' }] },
+      items: doc.items.map((it, i) => ({ ...it, context: { ...it.context, url: urls[i % 2] } }))
+    }
+    const md = renderFeedbackMarkdown(mixed)
+    expect(md).toContain('## 対象 1: docs/a.md\n- ファイル: docs/a.md（プロジェクト内のこのファイルを直す）')
+    expect(md).toContain('## 対象 2: dev · dev.example.com/pricing')
+    expect(md).toContain('- 環境: dev')
+    expect(md).not.toContain('a8F3kQ9zX2vB')
+    expect(renderFeedbackMarkdown(mixed, { locale: 'en' })).toContain('## Target 1: docs/a.md\n- File: docs/a.md')
   })
 
   it('各指摘に「完了の条件」（受け入れ条件）を要望から付け、冒頭で受け入れ条件として扱うよう書く', () => {

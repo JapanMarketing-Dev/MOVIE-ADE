@@ -1,6 +1,7 @@
 import { copyFileSync, existsSync, lstatSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { AccountAgent } from '@shared/types'
+import { errorKind, reportHandled } from '@shared/report'
 
 /**
  * 管理アカウントの設定フォルダへ、システムの既定アカウントの設定を持ち込む。
@@ -37,6 +38,8 @@ const SHARED_ENTRIES: Record<AccountAgent, string[]> = {
  */
 export const CLAUDE_GLOBAL_CONFIG_KEYS = [
   'mcpServers',
+  // 古い Claude Code が権限確認を省くモードの同意を全体設定に置いていた項目名
+  'bypassPermissionsModeAccepted',
   'hasCompletedOnboarding',
   'lastOnboardingVersion',
   'lastReleaseNotesSeen',
@@ -91,6 +94,65 @@ function seedClaudeGlobalConfig(managedDir: string, sourcePath: string): void {
   } catch (err) {
     // 中身（MCP の鍵など）を含みうるので、エラーの種類だけを出す
     console.warn('[accounts] Claude の全体設定を写せませんでした', err instanceof Error ? err.name : typeof err)
+    reportHandled(errorKind(err), { area: 'accounts', op: 'copy claude global config' })
+  }
+}
+
+/**
+ * Claude の settings.json から、追加したアカウントへ引き継ぐ項目。
+ * skipDangerousModePermissionPrompt は「権限確認を省くモードを使いますか」に同意済みの印
+ * （起動引数の --dangerously-skip-permissions のたびに確認が出ないようにする）。
+ */
+export const CLAUDE_SETTINGS_CARRY_KEYS = ['skipDangerousModePermissionPrompt'] as const
+
+function readJsonObject(path: string): Record<string, unknown> | null {
+  try {
+    const value = JSON.parse(readFileSync(path, 'utf8')) as unknown
+    return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null
+  } catch {
+    // 無い・壊れている設定は「無い」として扱う（想定内。呼び出し側が既定で続ける）
+    return null
+  }
+}
+
+/**
+ * 既定アカウントの settings.json の引き継ぐ項目を、管理フォルダの settings.json に無ければ足す。
+ * 管理フォルダ側にすでに値があれば変えない（利用者がそのアカウントで変えた値を尊重する）。足したら true。
+ */
+export function carryClaudeSettings(managedDir: string, systemDir: string): boolean {
+  const target = join(managedDir, 'settings.json')
+  // 共有のつもりでリンクにされていたら、リンク先（既定アカウント側）へは書かない
+  if (lstatExists(target) && lstatSync(target).isSymbolicLink()) return false
+  const source = readJsonObject(join(systemDir, 'settings.json'))
+  if (!source) return false
+  const current = existsSync(target) ? readJsonObject(target) : {}
+  if (!current) return false
+  const additions = CLAUDE_SETTINGS_CARRY_KEYS.filter((key) => key in source && !(key in current))
+  if (additions.length === 0) return false
+  const next = { ...current }
+  for (const key of additions) next[key] = source[key]
+  writeFileSync(target, `${JSON.stringify(next, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 })
+  return true
+}
+
+/** 一度だけ行う手直しの記録（管理フォルダの中に置く） */
+const MIGRATION_MARKER = '.ade-migrations'
+const CLAUDE_CARRY_MIGRATION = 'claude-settings-carry-v1'
+
+/**
+ * 以前に追加したアカウントへ、あとから引き継ぐことにした項目を1回だけ足す（Agent を起動する前に呼ぶ）。
+ * 失敗しても起動は止めない。
+ */
+export function migrateManagedClaudeDir(managedDir: string, systemDir: string): void {
+  const markerPath = join(managedDir, MIGRATION_MARKER)
+  try {
+    const done = existsSync(markerPath) ? readFileSync(markerPath, 'utf8').split('\n').map((l) => l.trim()) : []
+    if (done.includes(CLAUDE_CARRY_MIGRATION)) return
+    carryClaudeSettings(managedDir, systemDir)
+    writeFileSync(markerPath, `${[...done.filter(Boolean), CLAUDE_CARRY_MIGRATION].join('\n')}\n`, { encoding: 'utf8', mode: 0o600 })
+  } catch (err) {
+    console.warn('[accounts] 追加アカウントの設定を手直しできませんでした', err instanceof Error ? err.name : typeof err)
+    reportHandled(errorKind(err), { area: 'accounts', op: 'migrate account settings' })
   }
 }
 
@@ -104,6 +166,7 @@ export function seedManagedAccountDir(agent: AccountAgent, managedDir: string, s
       if (existsSync(source) && !existsSync(target)) copyFileSync(source, target)
     } catch (err) {
       console.warn(`[accounts] ${name} を写せませんでした`, err)
+      reportHandled(err, { area: 'accounts', op: 'copy account file' })
     }
   }
   for (const name of SHARED_ENTRIES[agent]) {
@@ -114,7 +177,18 @@ export function seedManagedAccountDir(agent: AccountAgent, managedDir: string, s
       symlinkSync(realpathSync(source), target)
     } catch (err) {
       console.warn(`[accounts] ${name} を共有できませんでした`, err)
+      reportHandled(err, { area: 'accounts', op: 'link account file' })
     }
+  }
+  if (agent === 'claude') {
+    // settings.json を写せなかった（既にあった）ときも、同意の印だけは引き継ぐ。以後の手直しは不要と記録する
+    try {
+      carryClaudeSettings(managedDir, systemDir)
+    } catch (err) {
+      console.warn('[accounts] Claude の設定を引き継げませんでした', err instanceof Error ? err.name : typeof err)
+      reportHandled(errorKind(err), { area: 'accounts', op: 'carry claude settings' })
+    }
+    migrateManagedClaudeDir(managedDir, systemDir)
   }
   if (agent === 'codex') ensureCodexDaemonSocketGuard(managedDir)
 }
@@ -124,6 +198,7 @@ function lstatExists(path: string): boolean {
     lstatSync(path)
     return true
   } catch {
+    // 無いことを調べている（想定内）
     return false
   }
 }
@@ -176,5 +251,7 @@ export function ensureCodexDaemonSocketGuard(homePath: string): void {
     if (next !== current) writeFileSync(configPath, next, { encoding: 'utf8', mode: 0o600 })
   } catch (err) {
     console.warn('[accounts] Codex のデーモン自動起動を切れませんでした', err)
+    // config.toml の中身を含みうるので種類だけ
+    reportHandled(errorKind(err), { area: 'accounts', op: 'guard codex daemon socket' })
   }
 }

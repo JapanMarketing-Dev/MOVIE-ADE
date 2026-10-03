@@ -20,6 +20,8 @@ import { QuickOpen } from './components/QuickOpen'
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog'
 import { useOpenFiles } from './editor/useOpenFiles'
 import { FeedbackToolbar, type AnnotationTool } from './components/FeedbackToolbar'
+import { ReviewTargetsPanel } from './components/ReviewTargetsPanel'
+import { readLocal, writeLocal } from './lib/localPref'
 import { CaptureTargetPicker } from './components/CaptureTargetPicker'
 import { FindingsList } from './components/FindingsList'
 import { Sidebar, toReviewSession } from './components/Sidebar'
@@ -30,6 +32,7 @@ import { TerminalPane } from './components/TerminalPane'
 import { TitleBar } from './components/TitleBar'
 import { Gallery } from './gallery/Gallery'
 import { useViewBounds } from './hooks/useViewBounds'
+import { useProjectSession } from './hooks/useProjectSession'
 import { installTestHooks } from './testHooks'
 import { ErrorBoundary, ToastProvider, useToast } from './ui'
 import { sanitizeAgentPreferences } from '@shared/agentCatalog'
@@ -42,6 +45,11 @@ import { errorMessage } from './lib/errors'
 import { useT } from './lib/i18n'
 import { SettingsPage, type CaptureSettings } from './components/SettingsPage'
 import { SETTINGS_SECTIONS, type SettingsSectionId } from './lib/settingsSections'
+import { shouldShowOnboarding, type OnboardingPatch, type OnboardingState } from '@shared/onboarding'
+import { OnboardingFlow } from './onboarding/OnboardingFlow'
+import { reopenPatch } from './onboarding/onboardingFlowState'
+import { onShowOnboardingRequested } from './onboarding/showOnboardingEvent'
+import { reportHandled } from '@shared/report'
 
 /** Monaco は重いので、ファイルを初めて開いたときに読む（起動時間 NF-5） */
 const FileEditor = lazy(() => import('./editor/FileEditor'))
@@ -64,15 +72,18 @@ function galleryRequested(): boolean {
 }
 
 export function App() {
+  // 初回のセットアップを閉じるまで、クラッシュレポートの案内は出さない（セットアップの最後で同じことを選べる）
+  const [onboardingSettled, setOnboardingSettled] = useState(false)
+  const settle = useCallback(() => setOnboardingSettled(true), [])
   return (
     <ToastProvider>
-      <Workspace />
-      <CrashReportNotice />
+      <Workspace onOnboardingSettled={settle} />
+      {onboardingSettled && <CrashReportNotice />}
     </ToastProvider>
   )
 }
 
-function Workspace() {
+function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void }) {
   const [mode, setMode] = useState<AppMode>('editor')
   const [workspace, setWorkspace] = useState<WorkspaceState>({
     folderPath: null,
@@ -102,6 +113,21 @@ function Workspace() {
   /** 境界をドラッグ中。ビューの上でポインターが途切れないよう、その間はビューを隠す */
   const [splitDragging, setSplitDragging] = useState(false)
   const [gallery, setGallery] = useState(galleryRequested)
+  /**
+   * 初回起動のセットアップ（src/renderer/onboarding/）。undefined は設定の読み込み前。
+   * 開いている間は内蔵ブラウザのビューを隠し、最初に閉じるまでターミナル（＝Agent の自動起動）を作らない
+   */
+  const [onboarding, setOnboarding] = useState<OnboardingState | null | undefined>(undefined)
+  const onboardingOpen = onboarding !== undefined && !gallery && shouldShowOnboarding(onboarding ?? undefined)
+  const [terminalsAllowed, setTerminalsAllowed] = useState(false)
+  useEffect(() => {
+    if (onboarding === undefined || onboardingOpen || terminalsAllowed) return
+    setTerminalsAllowed(true)
+    onOnboardingSettled()
+  }, [onboarding, onboardingOpen, terminalsAllowed, onOnboardingSettled])
+  const persistOnboarding = useCallback(async (patch: OnboardingPatch) => {
+    setOnboarding(await window.ade.invoke('settings:onboarding', patch))
+  }, [])
   const sidebarOpen = layout.panels.projects.visible
   const setSidebarOpen = (next: (open: boolean) => boolean) => setLayout((prev) => withPanel(prev, 'projects', { visible: next(prev.panels.projects.visible) }))
   const [activeTerminal, setActiveTerminal] = useState<string | null>(null)
@@ -150,8 +176,36 @@ function Workspace() {
   const explorerOpen = layout.panels.files.visible
   const setExplorerOpen = (next: (open: boolean) => boolean) => setLayout((prev) => withPanel(prev, 'files', { visible: next(prev.panels.files.visible) }))
   const [quickOpenOpen, setQuickOpenOpen] = useState(false)
+  /** ⌘P の画面を、フィードバックの右パネルの「ファイルを足す」から開いたか */
+  const [quickOpenForTarget, setQuickOpenForTarget] = useState(false)
+  /** フィードバックモードの右パネル（レビュー対象）。開閉と幅はこの端末に覚える */
+  const [targetsOpen, setTargetsOpenState] = useState(() => readLocal('ade.feedback.targetsOpen') !== 'false')
+  const [targetsRatio, setTargetsRatio] = useState(() => Number(readLocal('ade.feedback.targetsRatio')) || 0.78)
+  const [addedTargetFile, setAddedTargetFile] = useState<{ path: string; at: number } | null>(null)
+  const setTargetsOpen = (next: (open: boolean) => boolean) => setTargetsOpenState((prev) => {
+    const value = next(prev)
+    writeLocal('ade.feedback.targetsOpen', String(value))
+    return value
+  })
   const fileError = useCallback((message: string) => toast({ tone: 'danger', message }), [toast])
   const files = useOpenFiles({ root: workspace.folderPath, activeTab: centerTab, setActiveTab: setCenterTab, onError: fileError })
+  // プロジェクトごとに、中央のタブ・開いていたファイル・表示中のレビューを覚えて戻す（URL は main が戻す）
+  useProjectSession({
+    projectId: workspace.projectId ?? null,
+    root: workspace.folderPath,
+    ready: projectsLoaded,
+    centerTab,
+    setCenterTab: (tab) => setCenterTab(tab as CenterTab),
+    openPaths: files.files.map((file) => file.path),
+    openFile: files.open,
+    reviewId: sessionId,
+    onRestoreReview: (id) => {
+      setSessionId(id)
+      setReview(null)
+      // 消えたレビューは黙って空に戻す
+      if (id) void window.ade.invoke('review:load', id).then(setReview).catch(() => setSessionId(null))
+    }
+  })
   /** 録画中に選んでいる書き込みの道具（PEN-1 / TXT-1）。中身は後続 */
   const [tool, setTool] = useState<AnnotationTool>('none')
   /** 録画の対象（内蔵ブラウザ／画面全体／別のウインドウ）。選んですぐ録画を始めるため ref にも持つ */
@@ -176,7 +230,7 @@ function Workspace() {
 
   /** ビューに場所を譲ってよい条件。ひとつでも欠けたら 0 サイズにして隠す */
   const viewVisible =
-    !gallery && !targetPickerOpen && !footerPopoverOpen && !splitDragging && !panelDrag.drag && !projectMenuOpen && !urlDialogOpen && !quickOpenOpen && !files.pendingClose && emptyReason === null && (mode === 'feedback' || centerTab === 'browser')
+    !gallery && !onboardingOpen && !targetPickerOpen && !footerPopoverOpen && !splitDragging && !panelDrag.drag && !projectMenuOpen && !urlDialogOpen && !quickOpenOpen && !files.pendingClose && emptyReason === null && (mode === 'feedback' || centerTab === 'browser')
 
   const layoutKey = [
     mode,
@@ -185,7 +239,8 @@ function Workspace() {
     emptyReason ?? '-',
     centerTab,
     // パネルの置き場所・表示が変わると、内蔵ブラウザの置き場所も動く
-    layoutSignature(layout)
+    layoutSignature(layout),
+    targetsOpen ? `t${targetsRatio.toFixed(4)}` : '-'
   ].join(':')
   const slotRef = useViewBounds(layoutKey, viewVisible)
 
@@ -218,6 +273,7 @@ function Workspace() {
   const changeCaptureFromSettings = (patch: Partial<CaptureSettings>) => {
     patchCapture(patch)
     void window.ade.invoke('settings:capture', { captureMic, captureSystemAudio, transcription, language, micDeviceId, keepDays, stayFeedbackOnStop, ...patch })
+      // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
       .then(() => window.ade.invoke('capture:availability')).then(setAvailable).catch(() => undefined)
   }
   /** 空のコマンドは main 側で既定へ戻して保存する。入力中の表示はそのまま（読み直すと打っている文字が消える） */
@@ -263,6 +319,8 @@ function Workspace() {
   /** MODE-3 エディタで「録画」を押すとフィードバックモードへ移って始まる */
   const run = useCallback(async (fn: () => Promise<void>) => {
     try { await fn() } catch (err) {
+      // IPC の失敗は main が送り済み（reportHandled が見分けて送らない）。renderer の処理の失敗だけが届く
+      reportHandled(err, { area: 'ui', op: 'run action' })
       toast({ tone: 'danger', message: t('common.actionFailed'), detail: errorMessage(err) })
       if (modeRef.current === 'feedback') showNotice(errorMessage(err))
     }
@@ -281,7 +339,8 @@ function Workspace() {
         } catch (err) {
           // フィードバック画面はビューが全面を覆い、知らせが見えない。エディタへ戻してから伝える
           changeMode('editor')
-          await refreshHistory().catch(() => undefined)
+          // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
+        await refreshHistory().catch(() => undefined)
           throw err
         }
         setTool('none')
@@ -347,6 +406,7 @@ function Workspace() {
       // 古い形の設定（main が古いまま動いているときなど）でも描画が落ちないよう、ここでも整える
       setAgents(sanitizeAgentPreferences(settings.agents))
       setAgentPrompt(settings.agentPrompt ?? '')
+      setOnboarding(settings.onboarding ?? null)
       if (settings.capture) {
         setCaptureMic(settings.capture.captureMic); setCaptureSystemAudio(settings.capture.captureSystemAudio)
         setTranscription(settings.capture.transcription); setLanguage(settings.capture.language); setMicDeviceId(settings.capture.micDeviceId ?? '')
@@ -379,6 +439,14 @@ function Workspace() {
       offMode()
     }
   }, [])
+
+  /** ヘルプ → セットアップをもう一度・設定の「セットアップをもう一度」。録画中は全面を覆わない */
+  const reopenOnboarding = useCallback(() => {
+    if (recording) { toast({ tone: 'warning', message: t('errors.stopRecordingBeforeChange') }); return }
+    if (modeRef.current === 'feedback') changeMode('editor')
+    void persistOnboarding(reopenPatch()).catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
+  }, [recording, toast, t, changeMode, persistOnboarding])
+  useEffect(() => onShowOnboardingRequested(reopenOnboarding), [reopenOnboarding])
 
   // メニュー（＝キーボードショートカット）からの指示
   useEffect(() => {
@@ -423,6 +491,9 @@ function Workspace() {
         case 'toggleExplorer':
           setExplorerOpen((open) => !open)
           break
+        case 'toggleTargets':
+          setTargetsOpen((open) => !open)
+          break
         case 'toggleTerminalPanel':
           setLayout((prev) => withPanel(prev, 'terminal', { visible: !prev.panels.terminal.visible }))
           break
@@ -434,6 +505,9 @@ function Workspace() {
           if (settingsOpen && centerTab === 'settings') closeSettings()
           else openSettings()
           break
+        case 'showOnboarding':
+          reopenOnboarding()
+          break
         case 'toggleGallery':
           setGallery((open) => {
             window.location.hash = open ? '' : 'gallery'
@@ -442,7 +516,7 @@ function Workspace() {
           break
       }
     })
-  }, [browserState.viewport, changeMode, toggleRecording, workspace.folderPath, files.activeFile, files.save, settingsOpen, centerTab, openSettings, closeSettings])
+  }, [browserState.viewport, changeMode, toggleRecording, workspace.folderPath, files.activeFile, files.save, settingsOpen, centerTab, openSettings, closeSettings, reopenOnboarding])
 
   // #gallery で直接開けるようにする（E2Eが撮影に使う）
   useEffect(() => {
@@ -524,10 +598,8 @@ function Workspace() {
           projects={projects}
           mode={mode}
           recording={recording}
-          sidebarOpen={sidebarOpen}
           onChangeMode={changeMode}
           onProjectMenuChange={setProjectMenuOpen}
-          onToggleSidebar={() => setSidebarOpen((open) => !open)}
           onToggleRecording={toggleRecording}
           onOpenSettings={() => openSettings()}
           busy={recordBusy}
@@ -544,7 +616,7 @@ function Workspace() {
             * 枠（.sidebar-slot）が切り取り、中身は240pxのまま滑り出る。
             */}
           <div className="sidebar-slot" aria-hidden={!sidebarOpen} style={{ gridArea: 'projects' }} data-dock={layout.panels.projects.dock}>
-            <ErrorBoundary name="sidebar">
+            <ErrorBoundary name="left-sidebar">
             <Sidebar
               projects={projects}
               activeProjectId={workspace.projectId ?? null}
@@ -593,29 +665,33 @@ function Workspace() {
                 onCloseSettings={closeSettings}
               />
               {centerTab === 'settings' && settingsOpen ? (
+                <ErrorBoundary name="settings">
                 <SettingsPage
               value={{ captureMic, micDeviceId, captureSystemAudio, language, transcription, keepDays, stayFeedbackOnStop }}
               onChange={changeCaptureFromSettings}
               recording={recording}
               micDevices={micDevices}
               available={available}
-              onAvailabilityChange={() => void window.ade.invoke('capture:availability').then(setAvailable).catch(() => undefined)}
+              onAvailabilityChange={() => /* 失敗は main の IPC が送る */ void window.ade.invoke('capture:availability').then(setAvailable).catch(() => undefined)}
               onPickModel={() => void run(async () => { await window.ade.invoke('capture:model'); setAvailable(await window.ade.invoke('capture:availability')) })}
-              onModelChanged={() => void window.ade.invoke('capture:availability').then(setAvailable).catch(() => undefined)}
+              onModelChanged={() => /* 失敗は main の IPC が送る */ void window.ade.invoke('capture:availability').then(setAvailable).catch(() => undefined)}
               agents={agents}
               onAgentsChange={changeAgents}
               agentPrompt={agentPrompt}
               onAgentPromptChange={changeAgentPrompt}
                   focus={settingsFocus}
                 />
+                </ErrorBoundary>
               ) : isFileTab(centerTab) ? (
                 files.activeFile && (
+                  <ErrorBoundary name="editor">
                   <Suspense fallback={<div className="editor-area" />}>
                     <FileEditor file={files.activeFile} editor={files} />
                   </Suspense>
+                  </ErrorBoundary>
                 )
               ) : centerTab === 'browser' ? (
-                <>
+                <ErrorBoundary name="browser">
                   <BrowserToolbar
                     state={browserState}
                     urlInputRef={urlInputRef}
@@ -630,9 +706,11 @@ function Workspace() {
                     onOpenFolder={openFolder}
                     onNavigate={navigate}
                   />
-                </>
+                </ErrorBoundary>
               ) : (
-                review ? <ReviewFindings terminalId={activeTerminal} review={review} onUpdate={(next) => { setReview(next); void refreshHistory() }} /> : <FindingsList findings={findings} sessionLabel={selectedSession?.label} />
+                <ErrorBoundary name="findings">
+                {review ? <ReviewFindings terminalId={activeTerminal} review={review} onUpdate={(next) => { setReview(next); void refreshHistory() }} /> : <FindingsList findings={findings} sessionLabel={selectedSession?.label} />}
+                </ErrorBoundary>
               )}
               </ErrorBoundary>
             </section>
@@ -646,7 +724,7 @@ function Workspace() {
               onDragChange={setSplitDragging}
             />}
 
-            {projectsLoaded ? (
+            {projectsLoaded && terminalsAllowed ? (
               <ErrorBoundary name="terminal" as="section" className="terminal-pane">
               <TerminalPane
                 layoutKey={layoutKey}
@@ -668,6 +746,7 @@ function Workspace() {
 
           {/* 右のファイルツリー。閉じたら列の幅を 0 にして隠す（.sidebar-slot と同じ） */}
           <div className="explorer-slot" aria-hidden={!explorerOpen} style={{ gridArea: 'files' }} data-dock={layout.panels.files.dock}>
+            <ErrorBoundary name="file-tree">
             <FileExplorer
               root={workspace.folderPath}
               activePath={files.activeFile?.path ?? null}
@@ -675,6 +754,7 @@ function Workspace() {
               onOpen={files.open}
               onQuickOpen={() => setQuickOpenOpen(true)}
             />
+            </ErrorBoundary>
           </div>
 
           {/* パネルのつまみ。掴んで画面の端へ運ぶと置き場所が変わる（PanelDock.tsx） */}
@@ -683,7 +763,7 @@ function Workspace() {
         </div>
         <DockOverlay drag={panelDrag.drag} />
 
-        {footer.visible && <StatusBar
+        {footer.visible && <ErrorBoundary name="footer"><StatusBar
           items={footer.items}
           onStartDrag={panelDrag.start}
           state={browserState}
@@ -702,7 +782,7 @@ function Workspace() {
           onOpenTerminal={openTerminalFromResources}
           onOpenPage={openPageFromResources}
           onManageAccounts={manageAccounts}
-        />}
+        /></ErrorBoundary>}
       </div>
 
       <div className="shell shell--feedback" hidden={mode !== 'feedback'}>
@@ -723,18 +803,48 @@ function Workspace() {
           target={captureTarget}
           onPickTarget={() => setTargetPickerOpen(true)}
           notice={notice}
+          targetsOpen={targetsOpen}
+          onToggleTargets={() => setTargetsOpen((open) => !open)}
         />
-        <BrowserSlot
-          viewport={browserState.viewport}
-          slotRef={mode === 'feedback' && viewVisible ? slotRef : noopRef}
-          empty={emptyReason}
-          loadError={browserState.loadError}
-          onOpenFolder={openFolder}
-          onNavigate={navigate}
-        />
+        {/* 内蔵ブラウザと、右のレビュー対象の一覧。対象を押すと録画したまま切り替わる */}
+        <div className={`fb-body${targetsOpen ? ' has-targets' : ''}`} style={targetsOpen ? { gridTemplateColumns: `minmax(0, ${targetsRatio}fr) var(--size-splitter) minmax(0, ${1 - targetsRatio}fr)` } : undefined}>
+          <ErrorBoundary name="feedback-browser">
+          <BrowserSlot
+            viewport={browserState.viewport}
+            slotRef={mode === 'feedback' && viewVisible ? slotRef : noopRef}
+            empty={emptyReason}
+            loadError={browserState.loadError}
+            onOpenFolder={openFolder}
+            onNavigate={navigate}
+          />
+          </ErrorBoundary>
+          {targetsOpen && <>
+            <Splitter
+              ratio={targetsRatio}
+              onChange={setTargetsRatio}
+              onCommit={(ratio) => writeLocal('ade.feedback.targetsRatio', String(ratio))}
+              onDragChange={setSplitDragging}
+            />
+            <ErrorBoundary name="review-targets">
+            <ReviewTargetsPanel
+              project={projects.projects.find((p) => p.id === workspace.projectId) ?? null}
+              openFiles={files.files.map((f) => f.path)}
+              currentUrl={browserState.url}
+              addedFile={addedTargetFile}
+              onOpenUrl={navigate}
+              onOpenEditor={(path) => { files.open(path); changeMode('editor') }}
+              onPickFile={() => { setQuickOpenForTarget(true); setQuickOpenOpen(true) }}
+              onClose={() => setTargetsOpen(() => false)}
+            />
+            </ErrorBoundary>
+          </>}
+        </div>
       </div>
 
-      {quickOpenOpen && <QuickOpen onOpen={(path) => files.open(path)} onClose={() => setQuickOpenOpen(false)} />}
+      {quickOpenOpen && <QuickOpen
+        onOpen={(path) => (quickOpenForTarget ? setAddedTargetFile({ path, at: Date.now() }) : files.open(path))}
+        onClose={() => { setQuickOpenOpen(false); setQuickOpenForTarget(false) }}
+      />}
       {files.pendingClose && <UnsavedChangesDialog name={files.pendingClose.name} onChoose={files.resolveClose} />}
       {targetPickerOpen && <CaptureTargetPicker
         value={captureTarget}
@@ -742,6 +852,23 @@ function Workspace() {
         onChoose={(target) => { chooseTarget(target); setTargetPickerOpen(false) }}
         onStart={(target) => { chooseTarget(target); setTargetPickerOpen(false); toggleRecording() }}
         onClose={() => setTargetPickerOpen(false)}
+      />}
+      {onboardingOpen && <OnboardingFlow
+        onboarding={onboarding ?? null}
+        onPersist={persistOnboarding}
+        agents={agents}
+        onAgentsChange={changeAgents}
+        projects={projects}
+        voice={{
+          transcription,
+          language,
+          available,
+          onTranscriptionChange: (next) => changeCaptureFromSettings({ transcription: next }),
+          onLanguageChange: (next) => changeCaptureFromSettings({ language: next }),
+          onAvailabilityChange: () => void window.ade.invoke('capture:availability').then(setAvailable).catch(() => undefined),
+          onPickModel: () => void run(async () => { await window.ade.invoke('capture:model'); setAvailable(await window.ade.invoke('capture:availability')) }),
+          onModelChanged: () => void window.ade.invoke('capture:availability').then(setAvailable).catch(() => undefined)
+        }}
       />}
       {/* 部品見本。開発時だけ開く（表示メニュー → 部品見本、または #gallery）*/}
       {gallery && (

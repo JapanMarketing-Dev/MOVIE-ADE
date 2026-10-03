@@ -11,6 +11,7 @@ import {
 } from '../../src/main/platform/windowsSpawn'
 import { commonBinaryDirs } from '../../src/main/platform/binaryDirs'
 import { resolveWhisperBinary } from '../../src/main/pipeline/environment'
+import { DEV_APP_NAME, devHelperName, devPlistPatches } from '../../scripts/prepare-dev-electron.mjs'
 
 /** 中身を持つ仮のファイルシステム（パスは大文字小文字を区別しない＝Windows と同じ） */
 function fakeFs(files: Record<string, string>): WindowsFs {
@@ -187,5 +188,27 @@ describe('配布の設定（electron-builder.config.cjs）', () => {
   it('Linux 以外の上で Linux 版を作ろうとすると、理由を書いて止める', async () => {
     if (process.platform === 'linux') return
     await expect(config.beforePack({ electronPlatformName: 'linux', arch: 1 })).rejects.toThrow(/Linux の上で/)
+  })
+})
+
+describe('開発起動の Electron.app の名前（scripts/prepare-dev-electron.mjs）', () => {
+  it('メニューバー・Dock・⌘Tab に出る名前と識別子を固定の値で差し替える', () => {
+    expect(DEV_APP_NAME).toBe('MOVIE-ADE Dev')
+    expect(devPlistPatches()).toEqual([
+      { key: 'CFBundleName', value: 'MOVIE-ADE Dev' },
+      { key: 'CFBundleDisplayName', value: 'MOVIE-ADE Dev' },
+      { key: 'CFBundleIdentifier', value: 'com.japanmarketing.movieade.dev' }
+    ])
+  })
+
+  it('Helper も本体と同じ名前で始める（Electron は本体の名前から Helper を探す）', () => {
+    expect(devHelperName('Electron Helper')).toBe('MOVIE-ADE Dev Helper')
+    expect(devHelperName('Electron Helper (Renderer)')).toBe('MOVIE-ADE Dev Helper (Renderer)')
+  })
+
+  it('Linux の .desktop は package.json の desktopName に揃える', () => {
+    const require = createRequire(import.meta.url)
+    expect(require('../../electron-builder.config.cjs').linux.syncDesktopName).toBe(true)
+    expect(require('../../package.json').desktopName).toBe('movie-ade.desktop')
   })
 })

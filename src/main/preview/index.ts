@@ -9,6 +9,7 @@ import { PREVIEW_ASSET_HOST, PREVIEW_PROJECT_HOST, PREVIEW_SCHEME, previewKind, 
 import { readTextFile, resolveInside } from '../files'
 import { renderPreviewBody, renderPreviewMessage, renderPreviewPage } from './render'
 import { t } from '@shared/i18n'
+import { reportHandled } from '@shared/report'
 
 /**
  * markdown / Mermaid のプレビューを返すカスタムプロトコル（ade-preview://）。
@@ -72,17 +73,18 @@ async function handle(request: Request, getRoot: () => string | null): Promise<R
   const path = previewPathFromUrl(request.url)
   if (url.hostname !== PREVIEW_PROJECT_HOST || !root || !path) return respond('Not found', 'text/plain', 404)
 
-  const kind = previewKind(path)
-  if (!kind) {
-    const dot = path.lastIndexOf('.')
-    const type = dot === -1 ? undefined : IMAGE_TYPES[path.slice(dot).toLowerCase()]
-    if (!type) return respond('Not found', 'text/plain', 404)
+  // 画像は生のまま返す（markdown から参照される）。md / Mermaid 以外のテキストは読み取り専用のコードのページ
+  const dot = path.lastIndexOf('.')
+  const imageType = dot === -1 ? undefined : IMAGE_TYPES[path.slice(dot).toLowerCase()]
+  if (imageType) {
     try {
-      return respond(await readFile(await resolveInside(root, path)), type)
+      return respond(await readFile(await resolveInside(root, path)), imageType)
     } catch {
+      // 無い画像・プロジェクトの外を指す画像（想定内）
       return respond('Not found', 'text/plain', 404)
     }
   }
+  const kind = previewKind(path) ?? 'code'
 
   let body: string
   try {
@@ -107,10 +109,18 @@ export function registerPreviewProtocol(sessions: Session[], getRoot: () => stri
     ses.protocol.handle(PREVIEW_SCHEME, (request) =>
       handle(request, getRoot).catch((err: unknown) => {
         console.warn('[preview] プレビューを返せませんでした', err)
+    reportHandled(err, { area: 'preview', op: 'serve preview' })
         return respond('Error', 'text/plain', 500)
       })
     )
   }
+}
+
+/** 編集中の内容をページの中身にする（ファイルは読まないので、パスは種類の判定にだけ使う） */
+export function renderPreviewSource(path: unknown, source: unknown): string {
+  const kind = typeof path === 'string' ? previewKind(path) : null
+  if (!kind || typeof source !== 'string') return ''
+  return renderPreviewBody(kind, source)
 }
 
 /**
@@ -121,5 +131,6 @@ export function refreshPreviewIn(contents: WebContents | null, changedPaths: rea
   if (!contents || contents.isDestroyed()) return
   const path = previewPathFromUrl(contents.getURL())
   if (!path || !changedPaths.includes(path)) return
+  // 読み込み中・破棄済みのページでは呼べない（想定内。次の変更で呼び直す）
   void contents.executeJavaScript('window.__adePreviewRefresh && window.__adePreviewRefresh()').catch(() => undefined)
 }

@@ -39,8 +39,15 @@
     return mermaidLoading
   }
 
-  function renderMermaid() {
-    var nodes = Array.prototype.slice.call(root.querySelectorAll('pre.mermaid'))
+  function mermaidNodes() {
+    return Array.prototype.slice.call(root.querySelectorAll('pre.mermaid'))
+  }
+
+  /** force のときは描き終えた図も描き直す（配色の切り替え）。ふだんはまだ SVG でない図だけ */
+  function renderMermaid(force) {
+    var nodes = mermaidNodes().filter(function (node) {
+      return force || !node.querySelector('svg')
+    })
     if (nodes.length === 0) return Promise.resolve()
     return loadMermaid().then(function (mermaid) {
       return drawMermaid(mermaid, nodes)
@@ -73,6 +80,12 @@
         note.textContent = template.replace('{{error}}', err && err.message ? err.message : String(err))
         node.parentNode.insertBefore(note, node)
       })
+      // 図の書き間違い（構文の誤り）は利用者の内容なので知らせない。それ以外の失敗だけを親（アプリ）へ伝え、
+      // 親が Sentry へ送る（図の中身は含めず、例外の種類だけ）
+      var message = err && err.message ? String(err.message) : ''
+      var name = err && err.name ? String(err.name) : 'Error'
+      var parse = /parse error|syntax|lexical|unknown ?diagram|no diagram type/i.test(message + ' ' + name)
+      if (!parse && window.parent !== window) window.parent.postMessage({ type: 'ade-preview:render-error', kind: 'mermaid', name: name }, '*')
     })
   }
 
@@ -81,6 +94,35 @@
     return queue
   }
 
+  /**
+   * 中身を差し替える。中身の同じ図は描き終えた SVG をそのまま使い回す
+   * （打鍵のたびに全部の図を描き直すと、ちらつき、重くなる）。
+   */
+  function replace(html) {
+    var drawn = {}
+    mermaidNodes().forEach(function (node) {
+      if (node.dataset.source !== undefined && node.querySelector('svg')) drawn[node.dataset.source] = node.innerHTML
+    })
+    var x = window.scrollX
+    var y = window.scrollY
+    // 図の高さが決まるまで文書が縮まないよう、差し替えの間だけ高さを保つ
+    root.style.minHeight = root.offsetHeight + 'px'
+    root.innerHTML = html
+    mermaidNodes().forEach(function (node) {
+      var source = node.textContent || ''
+      if (!Object.prototype.hasOwnProperty.call(drawn, source)) return
+      node.dataset.source = source
+      node.innerHTML = drawn[source]
+      node.setAttribute('data-processed', 'true')
+    })
+    window.scrollTo(x, y)
+    return renderMermaid(false).then(function () {
+      root.style.minHeight = ''
+      window.scrollTo(x, y)
+    })
+  }
+
+  /** 保存されたファイルを取り直して差し替える */
   function refresh() {
     return enqueue(function () {
       var url = new URL(window.location.href)
@@ -91,17 +133,7 @@
           if (!res.ok) throw new Error(String(res.status))
           return res.text()
         })
-        .then(function (html) {
-          var x = window.scrollX
-          var y = window.scrollY
-          // 図の高さが決まるまで文書が縮まないよう、差し替えの間だけ高さを保つ
-          root.style.minHeight = root.offsetHeight + 'px'
-          root.innerHTML = html
-          return renderMermaid().then(function () {
-            root.style.minHeight = ''
-            window.scrollTo(x, y)
-          })
-        })
+        .then(replace)
         .catch(function () {
           // 読めなかった（消えた・外へ出るパスになった）ときは、今の表示のまま残す
         })
@@ -109,13 +141,38 @@
   }
 
   window.__adePreviewRefresh = refresh
+  // エディタの横に並べた iframe のとき、親（アプリ）からの指示を受ける
+  //   'ade-preview:refresh'                    … 保存された。ファイルを取り直す
+  //   { type: 'ade-preview:html', html }       … 編集中の内容（main が描いたもの）で差し替える
   window.addEventListener('message', function (event) {
-    if (event.source === window.parent && event.data === 'ade-preview:refresh') void refresh()
+    if (event.source !== window.parent || window.parent === window) return
+    var data = event.data
+    if (data === 'ade-preview:refresh') void refresh()
+    else if (data && data.type === 'ade-preview:html' && typeof data.html === 'string') {
+      void enqueue(function () {
+        return replace(data.html)
+      })
+    }
   })
+
+  // 横に並べたプレビューでは、ダブルクリックした塊の元の行へエディタを移す（「この箇所を編集」）。
+  // 内蔵ブラウザで開いたとき（録画でのレビュー）は、選択の邪魔をしないよう何もしない
+  if (window.parent !== window) {
+    root.addEventListener('dblclick', function (event) {
+      var block = event.target && event.target.closest ? event.target.closest('[data-line]') : null
+      if (!block) return
+      window.parent.postMessage({ type: 'ade-preview:reveal', line: Number(block.dataset.line) }, '*')
+    })
+  }
+
   media.addEventListener('change', function () {
-    void enqueue(renderMermaid)
+    void enqueue(function () {
+      return renderMermaid(true)
+    })
   })
 
   // 最初の描画
-  enqueue(renderMermaid)
+  enqueue(function () {
+    return renderMermaid(false)
+  })
 })()

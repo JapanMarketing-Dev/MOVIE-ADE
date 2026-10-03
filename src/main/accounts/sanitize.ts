@@ -2,6 +2,7 @@ import { EMPTY_AGENT_ACCOUNTS, type AgentAccount, type AgentAccountList, type Ag
 import type { AccountAgent } from '@shared/types'
 import { isValidAccountId } from './paths'
 import { t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
 
 /**
  * 保存したアカウント一覧を型どおりに直す（settings.ts の sanitize から呼ぶ）。
@@ -58,5 +59,5 @@ export function normalizeAccountLabel(label: string): string {
 /** IPC で受け取った Agent の種類を確かめる */
 export function requireTuiAgent(value: unknown): AccountAgent {
   if (value === 'claude' || value === 'codex') return value
-  throw new Error(t('accounts.errors.invalidAgent'))
+  throw new UserFacingError(t('accounts.errors.invalidAgent'))
 }

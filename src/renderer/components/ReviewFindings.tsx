@@ -1,9 +1,10 @@
-import { useEffect, useState, useRef } from 'react'
+import { Fragment, useEffect, useState, useRef } from 'react'
 import {
   AlertTriangle,
   CheckCircle2,
   Clipboard,
   Code2,
+  FileText,
   Flag,
   GitPullRequest,
   FolderOpen,
@@ -30,13 +31,15 @@ import { FindingsEmptyArt, NoImageArt } from './reviewArt'
 import { errorMessage } from '../lib/errors'
 import { GitHubSendDialog } from './GitHubSendDialog'
 import { useT } from '../lib/i18n'
+import { groupByTarget, targetHeading, type ReviewTarget } from '@shared/reviewTarget'
+import { reportHandled } from '@shared/report'
 
 type FeedbackItem = ReviewData['document']['items'][number]
 
 const time = (ms: number) => `${Math.floor(ms / 60000).toString().padStart(2, '0')}:${Math.floor(ms / 1000 % 60).toString().padStart(2, '0')}`
 
 export function hostOf(url: string): string {
-  try { return new URL(url).host || url } catch { return url }
+  try { return new URL(url).host || url } catch { return url } // 入力の検証。読めない URL は想定内
 }
 
 /** 指摘がどこから来たか。ペン・声・文字のどれで残したかを色付きのアイコンで示す */
@@ -74,6 +77,18 @@ function ModalClose({ onClose }: { onClose: () => void }) {
   return <IconButton className="rv-modal__close" label={t('common.close')} icon={<X size={16} />} autoFocus onClick={onClose} />
 }
 
+/** 対象の名前（ファイルは相対パス、URL は環境のラベル＋ホストとパス） */
+function TargetName({ target }: { target: ReviewTarget }) {
+  const t = useT()
+  if (target.kind === 'none') return <span className="rv-target__name">{t('review.targets.none')}</span>
+  const Icon = target.kind === 'file' ? FileText : Globe
+  return <>
+    <Icon size={12} aria-hidden="true" />
+    {target.label && <span className="rv-target__env">{target.label}</span>}
+    <span className="rv-target__name">{target.kind === 'file' ? target.name : targetHeading({ ...target, label: undefined })}</span>
+  </>
+}
+
 export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: string | null; review: ReviewData; onUpdate: (data: ReviewData) => void }) {
   const [runner, setRunner] = useState<OrganizeRunnerId>('codex')
   /** API キーで直接呼べる提供元（設定の「指摘の整理」でキーと接続先が揃ったもの） */
@@ -82,7 +97,7 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
     void Promise.all([window.ade.invoke('app:settings'), window.ade.invoke('capture:availability')]).then(([s, a]) => {
       if (isOrganizeRunnerId(s.organizer?.runner)) setRunner(s.organizer.runner)
       setApiReady(LLM_API_PROVIDERS.filter((p) => a.llm[p]))
-    }).catch(() => undefined)
+    }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
   }, [])
   const [busy, setBusy] = useState(false)
   const [image, setImage] = useState<{ src: string; n: number } | null>(null)
@@ -98,7 +113,11 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
   const action = (fn: () => Promise<void>) => {
     pending.current++
     setBusy(true)
-    const next = queue.current.then(fn).catch((err) => toast({ tone: 'danger', message: t('common.actionFailed'), detail: errorMessage(err) })).finally(() => {
+    const next = queue.current.then(fn).catch((err) => {
+      // IPC の失敗は main が送り済み（reportHandled が見分ける）。renderer の処理の失敗だけが届く
+      reportHandled(err, { area: 'review', op: 'edit findings' })
+      toast({ tone: 'danger', message: t('common.actionFailed'), detail: errorMessage(err) })
+    }).finally(() => {
       pending.current--
       if (!pending.current) setBusy(false)
     })
@@ -110,6 +129,17 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
   })
   const items = review.document.items
   const sendable = items.filter((it) => it.include).length
+  /*
+   * 録画の途中で対象（URL・ファイル）を切り替えたら、指摘を対象ごとにまとめ、対象で絞れるようにする。
+   * 番号はまとめた順に振る（feedback.md の節分けと同じ並び）。
+   */
+  const [targetFilter, setTargetFilter] = useState<string | null>(null)
+  const groups = groupByTarget(items, (it) => it.context.url, review.document.meta.urlPresets ?? [])
+  const grouped = groups.length > 1
+  const activeFilter = grouped && groups.some((g) => g.target.key === targetFilter) ? targetFilter : null
+  let counter = 0
+  const rows = groups.flatMap((g) => g.items.map((item, i) => ({ item, n: ++counter, group: i === 0 ? g : null })))
+    .filter((row) => !activeFilter || groups.find((g) => g.items.includes(row.item))?.target.key === activeFilter)
   const draft = !review.document.organizedByLlm && items.length > 0
 
   return <div className="findings rv" data-testid="findings" aria-busy={busy}>
@@ -173,8 +203,19 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
       {items.length === 0 && <EmptyState art={<FindingsEmptyArt />} title={t('review.emptyTitle')}
         description={t('review.emptyDescription')} />}
 
-      {items.map((item, index) => {
-        const n = index + 1
+      {grouped && <div className="rv-targets" role="group" aria-label={t('review.targets.filter')}>
+        <button type="button" className="rv-targets__chip" aria-pressed={activeFilter === null} onClick={() => setTargetFilter(null)}>
+          {t('review.targets.all')}<span className="rv-targets__count">{items.length}</span>
+        </button>
+        {groups.map((g) => <button key={g.target.key} type="button" className="rv-targets__chip" aria-pressed={activeFilter === g.target.key}
+          title={g.target.url ?? g.target.name} onClick={() => setTargetFilter(g.target.key)}>
+          <TargetName target={g.target} /><span className="rv-targets__count">{g.items.length}</span>
+        </button>)}
+      </div>}
+
+      {rows.map(({ item, n, group }) => {
+        // 隣との結合は時刻の並び（items）で判定する
+        const index = items.indexOf(item)
         const shown = item.images.find((name) => review.images[name])
         const src = shown ? review.images[shown] : undefined
         const source = sourcesOf(item)
@@ -182,7 +223,12 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
         const requestRepeats = same(item.request, item.title)
         // 見出し・要望と同じ原文は引用に出さない（原文は保存されている）
         const quotes = item.quotes.filter((q) => !same(q.text, item.title) && !same(q.text, item.request))
-        return <article key={item.id} className={`rv-card${item.include ? '' : ' is-excluded'}${checking ? ' is-checking' : ''}`} data-testid={`review-item-${n}`}>
+        return <Fragment key={item.id}>
+          {grouped && group && <h3 className="rv-target" title={group.target.url ?? group.target.name}>
+            <TargetName target={group.target} />
+            <span className="rv-targets__count">{group.items.length}</span>
+          </h3>}
+          <article className={`rv-card${item.include ? '' : ' is-excluded'}${checking ? ' is-checking' : ''}`} data-testid={`review-item-${n}`}>
           <button type="button" className="rv-card__shot" aria-label={t('review.zoomImage', { n })} disabled={!src}
             onClick={() => src && setImage({ src, n })}>
             {src ? <img src={src} alt={t('review.imageAlt', { n })} /> : <NoImageArt />}
@@ -236,6 +282,7 @@ export function ReviewFindings({ review, onUpdate, terminalId }: { terminalId: s
             </div>
           </div>
         </article>
+        </Fragment>
       })}
 
       {review.document.dropped.length > 0 && <details className="rv-dropped">

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { isPageChange } from '../main/recording/page'
+import { isPageChange } from '../shared/page'
 
 /** 入力欄の読み上げ名。main が画面の言語で渡す（--ade-annotation-label）。無ければ英語 */
 function annotationLabel(): string {
@@ -82,6 +82,12 @@ const DEFAULT_MAX_HOLD_MS = 30_000
 let enabled = false
 let mode: PenMode = 'off'
 let seq = 0
+/**
+ * このドキュメントの印。書き込みの ID（p1・x1）はページを読み直すたびに 1 から振り直されるので、
+ * 1本の録画の中で対象を切り替えると別のページの書き込みと ID が重なり、静止画を取り違える。
+ * ID の後ろにこの印を付けて、録画全体で重ならないようにする。
+ */
+const DOC_TAG = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
 
 let maxHoldMs = DEFAULT_MAX_HOLD_MS
 let layer: HTMLDivElement | null = null
@@ -337,7 +343,7 @@ function finishStroke(): void {
     at: Date.now(),
     atStart: strokeStart,
     type: 'pen',
-    id: `p${++seq}`,
+    id: `p${++seq}-${DOC_TAG}`,
     bbox: [Math.round(minX), Math.round(minY), Math.round(maxX - minX), Math.round(maxY - minY)],
     el: describe(centerX, centerY)
   })
@@ -389,7 +395,7 @@ function placeText(x: number, y: number): void {
   textLayer.append(input)
   input.focus()
   // ID は置いた時点で決める。入力中に控えた画面（draft）と、確定した書き込みを結びつけるため
-  const id = `x${++seq}`
+  const id = `x${++seq}-${DOC_TAG}`
 
   /** @param leaving ページを離れるために確定した。静止画は入力中に控えた画面を使う */
   const commit = (leaving = false): void => {

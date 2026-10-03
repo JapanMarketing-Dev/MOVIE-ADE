@@ -213,3 +213,98 @@
   justify-content: flex-end;
   gap: var(--space-2);
 }
+
+/* フッターのリポジトリとブランチ */
+
+.gh-status {
+  max-width: 48ch;
+}
+
+.gh-status > svg {
+  flex: none;
+  color: var(--color-text-muted);
+}
+
+.gh-status:disabled {
+  cursor: default;
+}
+
+.gh-status__repo,
+.gh-status__branch {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gh-status__repo {
+  flex: 0 1 auto;
+}
+
+/* 狭いときは owner/repo のほうを先に縮め、ブランチ名はなるべく全部見せる（長すぎる名前だけ切る） */
+.gh-status__branch {
+  max-width: 24ch;
+  flex: none;
+  font-family: var(--font-mono);
+}
+
+.gh-status__sep,
+.gh-status__muted {
+  color: var(--color-text-faint);
+}
+
+.gh-status__badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--color-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.gh-menu {
+  display: grid;
+  min-width: 220px;
+  gap: var(--space-1);
+}
+
+.gh-menu__item {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+  text-align: left;
+}
+
+.gh-menu__item > span {
+  flex: 1;
+}
+
+.gh-menu__item > svg {
+  flex: none;
+  color: var(--color-text-muted);
+}
+
+.gh-menu__item:hover:not(:disabled),
+.gh-menu__item:focus-visible {
+  background: var(--color-surface-hover);
+  outline: none;
+}
+
+.gh-menu__item:disabled {
+  color: var(--color-text-faint);
+  cursor: default;
+}
+
+.gh-menu__note {
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-1);
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+}

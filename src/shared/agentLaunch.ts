@@ -130,10 +130,18 @@ function quotePowerShellLiteral(value: string): string {
   return `'${value.replace(/['‘’‚‛]/g, '$&$&')}'`
 }
 
+/**
+ * どの Unix シェルでも特別な意味を持たない文字だけの引数（`--yolo`、`/opt/bin/x`、`--mode=auto` など）。
+ * 引用せずそのまま出して、プロンプトに表示される起動コマンドを読みやすくする。
+ * `%`（古い fish のプロセス展開）、`~`、先頭の `=`（zsh の =コマンド 展開）、`*?[]{}` などは含めない。
+ * Orca の quoteStartupArg は常に引用するが、ここは見え方のために安全な場合だけ省く（意味は同じ）
+ */
+const POSIX_SAFE_ARG = /^[A-Za-z0-9_@+,./:-][A-Za-z0-9_@+,./:=-]*$/
+
 export function quoteStartupArg(value: string, shell: AgentStartupShell): string {
   if (shell === 'powershell') return quotePowerShellLiteral(value)
   if (shell === 'cmd') return `"${value.replace(/([\^&|<>()%!"])/g, '^$1')}"`
-  return quotePortableUnixArg(value)
+  return POSIX_SAFE_ARG.test(value) ? value : quotePortableUnixArg(value)
 }
 
 export type AgentLaunchCommand = { ok: true; command: string } | { ok: false; error: string }

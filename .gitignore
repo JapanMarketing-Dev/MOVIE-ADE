@@ -13,3 +13,9 @@ coverage/
 .claude/settings.local.json
 .quit-probe.mjs
 .publish-forbidden.txt
+
+# エージェントの確認用ビルドや一時ファイル
+.rv-out/
+.*-out/
+.design-overflow.mjs
+out-*/

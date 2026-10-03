@@ -1,5 +1,5 @@
 import { useState, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
-import { AppWindow, Eraser, Globe, MicOff, Monitor, PanelsTopLeft, Pause, Play, PenTool, TriangleAlert, Type } from 'lucide-react'
+import { AppWindow, Eraser, Globe, MicOff, Monitor, PanelRight, PanelsTopLeft, Pause, Play, PenTool, TriangleAlert, Type } from 'lucide-react'
 import type { BrowserState, CaptureTarget } from '@shared/types'
 import { captureTargetLabel } from '@shared/captureTarget'
 import { formatShortcut } from '../lib/shortcut'
@@ -35,6 +35,7 @@ type Keys = ReadonlyArray<string>
 const KEYS = {
   record: ['Mod', 'Shift', 'R'],
   mode: ['Mod', 'Shift', 'M'],
+  targets: ['Mod', 'Shift', 'K'],
   holdPen: ['Alt']
 } as const satisfies Record<string, Keys>
 
@@ -94,7 +95,9 @@ export function FeedbackToolbar({
   onClear,
   notice,
   target = { kind: 'browser' },
-  onPickTarget
+  onPickTarget,
+  targetsOpen,
+  onToggleTargets
 }: {
   level?: number
   captureMic?: boolean
@@ -116,6 +119,10 @@ export function FeedbackToolbar({
   target?: CaptureTarget
   /** 録画の対象の選択画面を開く。録画中は押せない */
   onPickTarget?: () => void
+  /** 右パネル（レビュー対象の一覧）が開いているか */
+  targetsOpen?: boolean
+  /** 右パネルの開閉。録画中も押せる */
+  onToggleTargets?: () => void
 }) {
   /* 録画中は書き込みの道具が使える。止まっている間は押せない */
   const t = useT()
@@ -137,7 +144,8 @@ export function FeedbackToolbar({
     pen: { label: t('feedback.pen'), keys: KEYS.holdPen, note: t('feedback.whileHeld') },
     text: { label: t('feedback.text') },
     clear: { label: t('feedback.clear') },
-    editor: { label: t('feedback.toEditor'), keys: KEYS.mode }
+    editor: { label: t('feedback.toEditor'), keys: KEYS.mode },
+    targets: { label: t('feedbackTargets.toggle'), keys: KEYS.targets }
   }
   const [hintId, setHintId] = useState<string | null>(null)
   const hint = hintId ? hints[hintId] : undefined
@@ -290,6 +298,18 @@ export function FeedbackToolbar({
 
         {divider}
 
+        {onToggleTargets && slot(
+          'targets',
+          <IconButton
+            label={t('feedbackTargets.toggle')}
+            size="sm"
+            className="fb-btn"
+            selected={targetsOpen}
+            icon={<PanelRight size={18} strokeWidth={1.75} />}
+            onClick={onToggleTargets}
+            data-testid="feedback-targets-toggle"
+          />
+        )}
         {slot(
           'editor',
           <IconButton

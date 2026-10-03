@@ -17,6 +17,7 @@ export function normalizeBaseUrl(raw: string | undefined): string | null {
   const text = (raw ?? '').trim()
   if (!text) return null
   let url: URL
+  // 入力の検証。読めない URL は想定内
   try { url = new URL(text) } catch { return null }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
   // URL にキーを埋め込ませない（settings.json やログに残るため）

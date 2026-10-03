@@ -154,6 +154,7 @@ export async function downloadWhisperModel(
   options.onVerifying?.()
   const expected = (options.sha256 ?? info.sha256).toLowerCase()
   if ((await sha256File(partPath, options.signal)) !== expected) {
+    // 片付け。消せなくても次の取得で上書きする（想定内）
     await unlink(partPath).catch(() => undefined)
     throw new ModelDownloadError(t('stt.model.checksumMismatch'), 'checksum', false)
   }
@@ -174,6 +175,7 @@ export async function sha256File(path: string, signal?: AbortSignal): Promise<st
 
 /** 途中までのデータを捨てる（やり直したいとき） */
 export async function discardPartialDownload(destPath: string): Promise<void> {
+  // 途中のファイルが無いこともある（想定内）
   await unlink(`${destPath}.part`).catch(() => undefined)
 }
 
@@ -182,10 +184,12 @@ export async function partialDownloadSize(destPath: string): Promise<number> {
   return sizeOf(`${destPath}.part`)
 }
 
+// 無いことを調べている（想定内）
 async function exists(path: string): Promise<boolean> {
   return (await stat(path).catch(() => null)) !== null
 }
 
+// 無いファイルは0（想定内）
 async function sizeOf(path: string): Promise<number> {
   const s = await stat(path).catch(() => null)
   return s?.isFile() ? s.size : 0

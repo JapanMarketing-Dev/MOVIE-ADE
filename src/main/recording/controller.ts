@@ -4,7 +4,7 @@ import { redactUrl } from '../pipeline/redact'
 import { dirname, join } from 'node:path'
 import { captureTargetGap, captureTargetLabel, resolveCaptureTarget } from '@shared/captureTarget'
 import { RecordingClock } from './clock'
-import { isPageChange } from './page'
+import { isPageChange } from '@shared/page'
 import { RecorderWindow, type VideoSource } from './recorderWindow'
 import { listCaptureSources, screenAccess } from './sources'
 import { StillCapturer, webContentsStillSource, type StillSource } from './stills'
@@ -22,6 +22,8 @@ import type { Event } from '../pipeline/types'
 import type { CaptureTarget } from '@shared/types'
 import { shouldCaptureStill, toJsonLine, toLogEvent, type RawReviewEvent } from './events'
 import { t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
+import { reportHandled } from '@shared/report'
 
 /**
  * 録画の司令塔（要件 5.3・5.4 / 設計 4章）。
@@ -239,7 +241,7 @@ export class RecordingController {
   }
 
   async start(partial: Partial<RecordingOptions> & Pick<RecordingOptions, 'paths'>): Promise<void> {
-    if (this.state !== 'idle') throw new Error(t('recording.errors.alreadyRecording'))
+    if (this.state !== 'idle') throw new UserFacingError(t('recording.errors.alreadyRecording'))
     const source = this.reviewContents
     const options: RecordingOptions = { ...defaultRecordingOptions, ...partial }
     const video = await this.resolveVideo(options, source)
@@ -290,7 +292,7 @@ export class RecordingController {
       // カーソルの座標は内蔵ブラウザの中のものなので、画面・ウインドウの画像には重ねない
       getCursor: () => (video.kind === 'tab' ? this.lastCursor : undefined),
       onFrame: (frame) => {
-        this.eventWrites = this.eventWrites.then(() => appendFile(join(dirname(options.paths.eventsPath), 'frames.jsonl'), JSON.stringify(frame) + '\n')).catch((err) => this.warn(t('recording.errors.frameTimesSaveFailed', { error: String(err) })))
+        this.eventWrites = this.eventWrites.then(() => appendFile(join(dirname(options.paths.eventsPath), 'frames.jsonl'), JSON.stringify(frame) + '\n')).catch((err) => { reportHandled(err, { area: 'recording', op: 'save frame times' }); this.warn(t('recording.errors.frameTimesSaveFailed', { error: String(err) })) })
         this.handlers.onFrame?.(frame)
       },
       onWarning: (message) => this.warn(message)
@@ -308,7 +310,7 @@ export class RecordingController {
     // REC-6 上限時間
     this.maxDurationTimer = setTimeout(() => {
       this.warn(t('recording.limitReached', { limit: formatLimit(options.maxDurationMs) }))
-      void (this.handlers.onLimit?.() ?? this.stop()).catch((err) => this.warn(t('recording.errors.stopFailed', { error: String(err) })))
+      void (this.handlers.onLimit?.() ?? this.stop()).catch((err) => { reportHandled(err, { area: 'recording', op: 'stop at time limit' }); this.warn(t('recording.errors.stopFailed', { error: String(err) })) })
     }, options.maxDurationMs)
     this.maxDurationTimer.unref?.()
     this.statusTimer = setInterval(() => this.emitStatus(), 250)
@@ -323,7 +325,7 @@ export class RecordingController {
    */
   private async resolveVideo(options: RecordingOptions, source: WebContents | null): Promise<VideoSource> {
     if (options.captureTarget.kind === 'browser') {
-      if (!source) throw new Error(t('recording.errors.noBrowser'))
+      if (!source) throw new UserFacingError(t('recording.errors.noBrowser'))
       return { kind: 'tab', contents: source }
     }
     const resolved = await this.checkTarget(options.captureTarget)
@@ -339,10 +341,10 @@ export class RecordingController {
     if (target.kind === 'browser') return target
     const access = screenAccess()
     if (access === 'denied' || access === 'restricted') throw new Error(screenAccessMessage())
-    const sources = await listCaptureSources({ width: 0, height: 0 }).catch(() => [])
+    const sources = await listCaptureSources({ width: 0, height: 0 }).catch((err: unknown) => { reportHandled(err, { area: 'recording', op: 'list capture sources' }); return [] })
     const resolved = resolveCaptureTarget(target, sources)
     if (!resolved) {
-      throw new Error(t('recording.errors.targetGone', { target: captureTargetLabel(target) }))
+      throw new UserFacingError(t('recording.errors.targetGone', { target: captureTargetLabel(target) }))
     }
     return resolved
   }
@@ -373,7 +375,7 @@ export class RecordingController {
   }
 
   async stop(): Promise<RecordingResult> {
-    if (this.state === 'idle') throw new Error(t('recording.errors.notRecording'))
+    if (this.state === 'idle') throw new UserFacingError(t('recording.errors.notRecording'))
     this.state = 'stopping'
     if (this.limitWarningTimer) clearTimeout(this.limitWarningTimer)
     this.limitWarningTimer = null
@@ -461,7 +463,7 @@ export class RecordingController {
     this.handlers.onEvent?.(event)
     const path = this.options?.paths.eventsPath
     if (path) this.eventWrites = this.eventWrites.then(() => appendFile(path, toJsonLine(event)))
-      .catch((err) => this.warn(t('recording.errors.eventsSaveFailed', { error: String(err) })))
+      .catch((err) => { reportHandled(err, { area: 'recording', op: 'save events' }); this.warn(t('recording.errors.eventsSaveFailed', { error: String(err) })) })
   }
 
   private recordNav(url: string): void {

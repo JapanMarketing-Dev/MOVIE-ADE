@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import Editor from '@monaco-editor/react'
+import Editor, { type OnMount } from '@monaco-editor/react'
 import { AlertTriangle, Columns2, Globe, Save } from 'lucide-react'
 import { previewKind, previewUrl } from '@shared/preview'
 import { monaco } from './monacoSetup'
@@ -8,6 +8,12 @@ import { isMarkdownLanguage } from './language'
 import { registerModelDisposer, type OpenFilesApi, type OpenFile } from './useOpenFiles'
 import { Button, EmptyState, Spinner } from '../ui'
 import { useT } from '../lib/i18n'
+import { reportHandled } from '@shared/report'
+
+type CodeEditor = Parameters<OnMount>[0]
+
+/** 打鍵が止まってから横のプレビューを描き直すまでの待ち（数百ミリ秒で追従させる） */
+const LIVE_PREVIEW_DELAY_MS = 150
 
 /** モデルの URI。プロジェクトの根を含めて、別のプロジェクトの同名ファイルと分ける */
 function modelPath(file: OpenFile): string {
@@ -32,6 +38,8 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
   const theme = useAppTheme()
   const [themeName, setThemeName] = useState(() => applyEditorTheme(monaco, theme))
   const frameRef = useRef<HTMLIFrameElement>(null)
+  const editorRef = useRef<CodeEditor | null>(null)
+  const liveTimer = useRef<number | undefined>(undefined)
 
   useEffect(() => setThemeName(applyEditorTheme(monaco, theme)), [theme])
 
@@ -43,13 +51,50 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
     model.pushEditOperations([], [{ range: model.getFullModelRange(), text: next }], () => null)
   }, [file.id, file.revision])
 
-  // 保存されたら、横のプレビューに中身だけ差し替えさせる（スクロール位置を保つ。page.js が受ける）
+  /*
+   * 横に並べたプレビューを打鍵に追従させる。編集中の内容を main で HTML にし（ファイルは読まない）、
+   * iframe の page.js に中身だけ差し替えさせる（スクロール位置を保つ）。
+   */
+  const sendLivePreview = (delay: number) => {
+    window.clearTimeout(liveTimer.current)
+    liveTimer.current = window.setTimeout(() => {
+      const source = api.getDraft(file.id) ?? file.saved
+      void window.ade.invoke('preview:render', file.path, source).then((html) => {
+        frameRef.current?.contentWindow?.postMessage({ type: 'ade-preview:html', html }, '*')
+      }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
+    }, delay)
+  }
+  useEffect(() => () => window.clearTimeout(liveTimer.current), [])
+
+  // 外部で書き換えられたら（未保存の編集が無いときだけ）ファイルを取り直させる
   useEffect(() => {
-    if (!file.preview) return
+    if (!file.preview || file.dirty) return
     return window.ade.on('fs:changed', (event) => {
       if (event.paths.includes(file.path)) frameRef.current?.contentWindow?.postMessage('ade-preview:refresh', '*')
     })
-  }, [file.preview, file.path])
+  }, [file.preview, file.path, file.dirty])
+
+  // プレビューでダブルクリックした塊の元の行へ移る（「この箇所を編集」）
+  useEffect(() => {
+    if (!file.preview) return
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: unknown; line?: unknown; kind?: unknown; name?: unknown } | null
+      // プレビューの図（mermaid）の描画の失敗。書き間違いは page.js が除いてある。中身は含まない
+      if (event.source === frameRef.current?.contentWindow && data?.type === 'ade-preview:render-error') {
+        const failure = new Error(`${String(data.kind)} render failed: ${String(data.name)}`)
+        reportHandled(failure, { area: 'editor', op: 'render mermaid' })
+        return
+      }
+      if (event.source !== frameRef.current?.contentWindow || data?.type !== 'ade-preview:reveal' || typeof data.line !== 'number') return
+      const editor = editorRef.current
+      if (!editor) return
+      editor.revealLineInCenter(data.line)
+      editor.setPosition({ lineNumber: data.line, column: 1 })
+      editor.focus()
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [file.preview])
 
   const markdown = isMarkdownLanguage(file.language)
   const previewable = previewKind(file.path) !== null && file.status === 'ready'
@@ -124,7 +169,11 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
               language={file.language}
               theme={themeName}
               loading={<Spinner size={18} />}
-              onChange={(value) => api.setDraft(file.id, value ?? '')}
+              onMount={(editor) => { editorRef.current = editor }}
+              onChange={(value) => {
+                api.setDraft(file.id, value ?? '')
+                if (file.preview) sendLivePreview(LIVE_PREVIEW_DELAY_MS)
+              }}
               options={{
                 automaticLayout: true,
                 fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--font-mono').trim() || undefined,
@@ -134,12 +183,16 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
                 renderWhitespace: 'selection',
                 tabSize: 2,
                 wordWrap: markdown ? 'on' : 'off',
-                contextmenu: true
+                contextmenu: true,
+                // 日本語の全角の括弧や記号を「紛らわしい文字」として枠で囲まない
+                unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false, nonBasicASCII: false }
               }}
             />
             {previewable && file.preview && (
-              // 保存した内容を出す（未保存の編集は、保存すると反映される）
-              <iframe ref={frameRef} key={file.id} className="editor-preview" title={t('editor.previewFrameTitle', { name: file.name })} src={previewUrl(file.path)} data-testid="editor-preview" />
+              // 開いた直後はファイルの内容。未保存の編集があれば、読み込み終わりに編集中の内容へ差し替える
+              <iframe
+                onLoad={() => { if (file.dirty) sendLivePreview(0) }}
+                ref={frameRef} key={file.id} className="editor-preview" title={t('editor.previewFrameTitle', { name: file.name })} src={previewUrl(file.path)} data-testid="editor-preview" />
             )}
           </>
         )}

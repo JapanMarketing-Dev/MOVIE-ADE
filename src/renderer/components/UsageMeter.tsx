@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, ChevronLeft, ChevronRight, Info, Plus, RefreshCw } from 'lucide-react'
 import {
   clampUsedPercent,
@@ -15,12 +15,12 @@ import {
   type UsageState
 } from '@shared/usage'
 import { TUI_AGENT_LABEL, type AccountAgent } from '@shared/types'
-import { Segmented } from '../ui'
 import { useAgentAccounts } from '../hooks/useAgentAccounts'
 import { onAccountsStateChanged } from '../lib/accountLogin'
 import { errorMessage } from '../lib/errors'
 import { AgentIcon } from './AgentIcon'
-import { pickUsageDensityLevel, segmentDetail, type UsageMode } from '../lib/usageDensity'
+import { StatusPopover } from './StatusPopover'
+import { WIDTH_TOLERANCE_PX, pickUsageDensityLevel, segmentDetail } from '../lib/usageDensity'
 import { useT, type TFunction } from '../lib/i18n'
 import '../styles/accounts.css'
 
@@ -36,29 +36,10 @@ import '../styles/accounts.css'
  *
  * Orca と同じく、アカウントの切り替えは各行の「>」から入る内訳の中で行う。
  * 「Usage details & history」の画面・表示する Agent の選択・「% left」表示は持ち込んでいない。
- * メニューは popover（最上位レイヤー）に出し、フッターの上へ開く。
+ * ポップオーバーはフッターのほかの項目と同じ StatusPopover で出す（フッターの上へ開き、Escape・外側のクリックで閉じる）。
  */
 
 const AGENTS: readonly AccountAgent[] = ['claude', 'codex']
-const PANEL_WIDTH = 360
-const MODE_STORAGE_KEY = 'ade.usageFooterMode'
-
-function readMode(): UsageMode {
-  try {
-    return window.localStorage.getItem(MODE_STORAGE_KEY) === 'compact' ? 'compact' : 'verbose'
-  } catch {
-    return 'verbose'
-  }
-}
-
-function saveMode(mode: UsageMode): void {
-  try {
-    window.localStorage.setItem(MODE_STORAGE_KEY, mode)
-  } catch {
-    // 保存できなくても表示は切り替わる
-  }
-}
-
 /** 残り時間の表示を1分ごとに進める */
 function useMinuteClock(): number {
   const [now, setNow] = useState(() => Date.now())
@@ -86,7 +67,7 @@ function chipLabel(section: UsageSection, now: number): string {
 }
 
 /** フッターの1プロバイダ分（Orca の ProviderSegment） */
-function ProviderSegment({ p, agent, mode, level, now }: { p: ProviderRateLimits | null; agent: AccountAgent; mode: UsageMode; level: number; now: number }) {
+function ProviderSegment({ p, agent, level, now }: { p: ProviderRateLimits | null; agent: AccountAgent; level: number; now: number }) {
   const t = useT()
   if (!p || p.status === 'idle') {
     return (
@@ -121,7 +102,7 @@ function ProviderSegment({ p, agent, mode, level, now }: { p: ProviderRateLimits
       </span>
     )
   }
-  const detail = segmentDetail(mode, level)
+  const detail = segmentDetail(level)
   const sections = detail.allSections
     ? usageSections(p).filter((section) => detail.secondary || section.key !== 'fableWeekly')
     : [tightest]
@@ -148,8 +129,10 @@ function ProviderSegment({ p, agent, mode, level, now }: { p: ProviderRateLimits
  * 段階ごとに「全部出したときの幅」を覚え、空き（自分の幅＋フッターの余白）に収まるいちばん広い段階を選ぶ。
  * まだ測っていない段階はいったん出して測る（描画前の layout effect なので、ちらつかない）。
  */
-function useUsageDensity(contentKey: string): {
+function useUsageDensity(contentKey: string, options: { shrink: boolean; onFullWidth?: (px: number) => void }): {
   level: number
+  /** 段階 0（全部出したとき）の幅。まだ測っていなければ null */
+  fullWidth: number | null
   meterRef: React.RefObject<HTMLSpanElement | null>
   contentRef: React.RefObject<HTMLSpanElement | null>
 } {
@@ -159,6 +142,10 @@ function useUsageDensity(contentKey: string): {
   const widthsRef = useRef<Array<number | undefined>>([])
   const meterRef = useRef<HTMLSpanElement | null>(null)
   const contentRef = useRef<HTMLSpanElement | null>(null)
+  const optionsRef = useRef(options)
+  optionsRef.current = options
+  const reportedRef = useRef<number | null>(null)
+  const [fullWidth, setFullWidth] = useState<number | null>(null)
 
   const evaluate = useCallback(() => {
     const meter = meterRef.current
@@ -176,7 +163,15 @@ function useUsageDensity(contentKey: string): {
     const padding = style ? (Number.parseFloat(style.paddingLeft) || 0) + (Number.parseFloat(style.paddingRight) || 0) : 0
     const natural = content.scrollWidth + padding + (meterWidth - triggerWidth)
     widthsRef.current[levelRef.current] = natural
-    const next = pickUsageDensityLevel(widthsRef.current, available)
+    // 全部出したときの幅を、フッターの項目の出し入れを決める側（StatusBar）へ知らせる
+    const full = widthsRef.current[0]
+    if (full !== undefined && (reportedRef.current === null || Math.abs(reportedRef.current - full) > WIDTH_TOLERANCE_PX)) {
+      reportedRef.current = full
+      setFullWidth(full)
+      optionsRef.current.onFullWidth?.(full)
+    }
+    // ほかの項目がまだ隠れていないあいだは短くしない（隠す順は StatusBar が決める）
+    const next = optionsRef.current.shrink ? pickUsageDensityLevel(widthsRef.current, available) : 0
     if (next !== levelRef.current) setLevel(next)
   }, [])
 
@@ -186,6 +181,11 @@ function useUsageDensity(contentKey: string): {
     if (levelRef.current !== 0) setLevel(0)
     else evaluate()
   }, [contentKey, evaluate])
+
+  // 短くしてよいかが変わったら選び直す
+  useLayoutEffect(() => {
+    evaluate()
+  }, [options.shrink, evaluate])
 
   useLayoutEffect(() => {
     evaluate()
@@ -209,7 +209,7 @@ function useUsageDensity(contentKey: string): {
     }
   }, [evaluate])
 
-  return { level, meterRef, contentRef }
+  return { level, fullWidth, meterRef, contentRef }
 }
 
 /** ポップオーバーの1枠分（ラベル・ミニバー・％） */
@@ -224,11 +224,10 @@ function UsageMetric({ section }: { section: UsageSection }) {
 }
 
 /** ポップオーバーの1プロバイダ分（Orca の UsageRow） */
-function UsageRow({ p, agent, mode, now }: { p: ProviderRateLimits | null; agent: AccountAgent; mode: UsageMode; now: number }) {
+function UsageRow({ p, agent, now }: { p: ProviderRateLimits | null; agent: AccountAgent; now: number }) {
   const t = useT()
   const sections = p ? usageSections(p) : []
   const plan = formatPlanLabel(p?.planType)
-  const tightest = p && mode === 'compact' ? tightestUsageSection(p) : null
   const reset = p && sections.length > 0 ? soonestResetLabel(p, now) : null
   return (
     <span className="usage-row__body">
@@ -240,13 +239,11 @@ function UsageRow({ p, agent, mode, now }: { p: ProviderRateLimits | null; agent
         </span>
         {sections.length === 0 ? (
           <span className="usage-row__status">{p ? usageStatusLabel(p) : t('usage.loading')}</span>
-        ) : tightest ? (
-          <span className="usage-row__right"><UsageMetric section={tightest} /></span>
         ) : reset ? (
           <span className="usage-row__reset">{reset}</span>
         ) : null}
       </span>
-      {sections.length > 0 && mode === 'verbose' && (
+      {sections.length > 0 && (
         <span className="usage-row__metrics">
           {sections.map((section) => <UsageMetric key={section.key} section={section} />)}
         </span>
@@ -354,30 +351,40 @@ function AccountBreakdown({ agent, onBack, onManage, onSwitched }: { agent: Acco
 
 export function UsageMeter({
   onManageAccounts,
-  onOpenChange
+  onOpenChange,
+  shrink = true,
+  onFullWidth
 }: {
   onManageAccounts?: () => void
   /** ポップオーバーの開閉。開いている間は内蔵ブラウザ（ネイティブのビュー）を隠してもらう（App.tsx の viewVisible） */
   onOpenChange?: (open: boolean) => void
+  /**
+   * 幅が足りないとき、使用量を段階的に短くしてよいか（既定は true）。
+   * フッターの項目を優先順位で隠す側が、ほかの項目を隠し終えてから true にする。
+   */
+  shrink?: boolean
+  /** 使用量を全部出したときの幅（px）。フッターの項目の出し入れを決めるのに使う */
+  onFullWidth?: (px: number) => void
 }) {
   const onOpenChangeRef = useRef(onOpenChange)
   onOpenChangeRef.current = onOpenChange
   const t = useT()
   const [usage, setUsage] = useState<UsageState>({ claude: null, codex: null })
   const [refreshing, setRefreshing] = useState(false)
-  const [mode, setMode] = useState<UsageMode>(readMode)
   const [view, setView] = useState<'roster' | AccountAgent>('roster')
   const now = useMinuteClock()
-  const panelId = useId()
   const triggerRef = useRef<HTMLButtonElement | null>(null)
-  const panelRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
+    // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
     void window.ade.invoke('usage:get').then(setUsage).catch(() => undefined)
+    // フッターに使用量が出たときに、初めて取りに行く（main は起動直後には読まない）
+    void window.ade.invoke('usage:refresh', false).catch(() => undefined)
     return window.ade.on('usage:changed', setUsage)
   }, [])
 
   // アカウントを切り替えたら、その場で新しいアカウントの使用量を取りに行く
+  // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
   useEffect(() => onAccountsStateChanged(() => void window.ade.invoke('usage:refresh', false).catch(() => undefined)), [])
 
   const refresh = useCallback(async () => {
@@ -391,62 +398,49 @@ export function UsageMeter({
     }
   }, [])
 
+  // 開閉は共通の StatusPopover にそろえる（Escape・外側のクリックで閉じ、Escape ではボタンへフォーカスを戻す）
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
   useEffect(() => {
-    const panel = panelRef.current
-    if (!panel) return
-    const onBeforeToggle = (event: Event) => {
-      if ((event as ToggleEvent).newState !== 'open') return
-      setView('roster')
-      const rect = triggerRef.current?.getBoundingClientRect()
-      if (!rect) return
-      const maxLeft = window.innerWidth - PANEL_WIDTH - 8
-      panel.style.left = `${Math.max(8, Math.min(rect.left, maxLeft))}px`
-      panel.style.bottom = `${window.innerHeight - rect.top + 4}px`
-    }
-    const onToggle = (event: Event) => {
-      const open = (event as ToggleEvent).newState === 'open'
-      triggerRef.current?.setAttribute('aria-expanded', String(open))
-      onOpenChangeRef.current?.(open)
-      // 開いたら古いものだけ取り直す（Orca の「開いたときの更新」）
-      if (open) void window.ade.invoke('usage:refresh', false).catch(() => undefined)
-    }
-    panel.addEventListener('beforetoggle', onBeforeToggle)
-    panel.addEventListener('toggle', onToggle)
-    return () => {
-      panel.removeEventListener('beforetoggle', onBeforeToggle)
-      panel.removeEventListener('toggle', onToggle)
-      // 開いたまま外れたら、隠したビューを戻してもらう
-      onOpenChangeRef.current?.(false)
-    }
-  }, [])
+    onOpenChangeRef.current?.(open)
+    if (!open) return
+    setView('roster')
+    // 開いたら古いものだけ取り直す（Orca の「開いたときの更新」）。失敗は main の IPC が送る
+    void window.ade.invoke('usage:refresh', false).catch(() => undefined)
+  }, [open])
+  // 開いたまま外れたら、隠したビューを戻してもらう
+  useEffect(() => () => onOpenChangeRef.current?.(false), [])
 
-  const changeMode = (next: UsageMode) => {
-    setMode(next)
-    saveMode(next)
-  }
   const manage = onManageAccounts
     ? () => {
-        panelRef.current?.hidePopover()
+        setOpen(false)
         onManageAccounts()
       }
     : undefined
   const anyFetching = refreshing || AGENTS.some((agent) => usage[agent]?.status === 'fetching')
   // 表示の中身が変わったときだけ幅を測り直す（1分ごとの残り時間の更新も含む）
-  const contentKey = JSON.stringify([mode, now, AGENTS.map((agent) => {
+  const contentKey = JSON.stringify([now, AGENTS.map((agent) => {
     const p = usage[agent]
     return p && [p.status, p.session?.usedPercent, p.weekly?.usedPercent, p.fableWeekly?.usedPercent, p.session?.resetsAt, p.weekly?.resetsAt]
   })])
-  const { level, meterRef, contentRef } = useUsageDensity(contentKey)
+  const { level, fullWidth, meterRef, contentRef } = useUsageDensity(contentKey, { shrink, onFullWidth })
 
   return (
-    <span ref={meterRef} className="usage-meter" data-density={level} data-testid="usage-meter">
+    <span
+      ref={meterRef}
+      className="usage-meter"
+      data-density={level}
+      // 縮める前の幅。StatusBar が項目を隠す順を決めるときに、この幅で数える
+      data-full-width={fullWidth === null ? undefined : Math.ceil(fullWidth)}
+      data-testid="usage-meter"
+    >
       <button
         ref={triggerRef}
         type="button"
         className="usage-meter__trigger"
-        popoverTarget={panelId}
+        onClick={() => setOpen((cur) => !cur)}
         aria-haspopup="dialog"
-        aria-expanded="false"
+        aria-expanded={open}
         title={t('usage.triggerTitle')}
         data-testid="usage-meter-trigger"
       >
@@ -454,7 +448,7 @@ export function UsageMeter({
           {AGENTS.map((agent, index) => (
             <Fragment key={agent}>
               {index > 0 && <span className="usage-meter__sep" aria-hidden="true" />}
-              <ProviderSegment p={usage[agent]} agent={agent} mode={mode} level={level} now={now} />
+              <ProviderSegment p={usage[agent]} agent={agent} level={level} now={now} />
             </Fragment>
           ))}
         </span>
@@ -462,7 +456,8 @@ export function UsageMeter({
       <button type="button" className="usage-meter__refresh" onClick={() => void refresh()} aria-label={t('usage.refresh')} title={t('usage.refresh')}>
         <RefreshCw size={11} className={anyFetching ? 'is-spinning' : ''} aria-hidden="true" />
       </button>
-      <div ref={panelRef} id={panelId} popover="auto" role="dialog" aria-label={t('usage.title')} className="quick-launch usage-panel" style={{ width: PANEL_WIDTH }} data-testid="usage-panel">
+      {open && <StatusPopover anchor={triggerRef.current} label={t('usage.title')} onClose={close} className="usage-panel">
+        <div data-testid="usage-panel">
         {view === 'roster' ? (
           <>
             <div className="usage-panel__head">
@@ -472,21 +467,10 @@ export function UsageMeter({
                 <RefreshCw size={12} className={anyFetching ? 'is-spinning' : ''} aria-hidden="true" />
               </button>
             </div>
-            <div className="usage-panel__mode">
-              <Segmented<UsageMode>
-                ariaLabel={t('usage.modeLabel')}
-                value={mode}
-                onChange={changeMode}
-                options={[
-                  { value: 'verbose', label: t('usage.mode.detailed'), title: t('usage.mode.detailedHint') },
-                  { value: 'compact', label: t('usage.mode.compact'), title: t('usage.mode.compactHint') }
-                ]}
-              />
-            </div>
             <div className="usage-panel__rule" />
             {AGENTS.map((agent) => (
               <button key={agent} type="button" className="usage-row" onClick={() => setView(agent)} data-testid={`usage-row-${agent}`}>
-                <UsageRow p={usage[agent]} agent={agent} mode={mode} now={now} />
+                <UsageRow p={usage[agent]} agent={agent} now={now} />
                 <ChevronRight size={14} className="usage-row__chevron" aria-hidden="true" />
               </button>
             ))}
@@ -503,7 +487,8 @@ export function UsageMeter({
         ) : (
           <AccountBreakdown agent={view} onBack={() => setView('roster')} onManage={manage} onSwitched={() => void window.ade.invoke('usage:refresh', false)} />
         )}
-      </div>
+        </div>
+      </StatusPopover>}
     </span>
   )
 }

@@ -102,10 +102,11 @@ export function CenterTabs({
                 key={tab}
                 type="button"
                 role="tab"
-                className="ctab"
+                className="ctab ctab--page"
                 aria-selected={active === 'browser'}
                 onClick={() => onChange('browser')}
                 data-testid="ctab-browser"
+                title={pageTitle || undefined}
                 {...dragProps(tab)}
               >
                 <Globe size={13} strokeWidth={1.75} />

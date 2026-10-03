@@ -41,7 +41,15 @@ describe('tokenizeStartupCommand', () => {
 
 describe('quoteStartupArg', () => {
   it('posix はシングルクォートで囲み、アポストロフィとバックスラッシュは外へ出す（fishでも同じ意味）', () => {
-    expect(quoteStartupArg('plain', 'posix')).toBe(`'plain'`)
+    // 特別な意味を持たない文字だけなら引用しない
+    expect(quoteStartupArg('plain', 'posix')).toBe('plain')
+    expect(quoteStartupArg('--mode=auto', 'posix')).toBe('--mode=auto')
+    expect(quoteStartupArg('/opt/bin/x', 'posix')).toBe('/opt/bin/x')
+    expect(quoteStartupArg('=cmd', 'posix')).toBe(`'=cmd'`)
+    expect(quoteStartupArg('a b', 'posix')).toBe(`'a b'`)
+    expect(quoteStartupArg('~/x', 'posix')).toBe(`'~/x'`)
+    expect(quoteStartupArg('%self', 'posix')).toBe(`'%self'`)
+    expect(quoteStartupArg('*', 'posix')).toBe(`'*'`)
     expect(quoteStartupArg(`it's`, 'posix')).toBe(`'it'"'"'s'`)
     expect(quoteStartupArg('a\\b', 'posix')).toBe(`'a'"\\\\"'b'`)
     expect(quoteStartupArg('', 'posix')).toBe(`''`)
@@ -70,18 +78,18 @@ describe('buildAgentLaunchCommand', () => {
   it('既定の設定は Orca の YOLO 引数で起動する', () => {
     expect(buildAgentLaunchCommand('claude', DEFAULT_AGENT_PREFERENCES.launch.claude, 'posix')).toEqual({
       ok: true,
-      command: `claude '--dangerously-skip-permissions'`
+      command: 'claude --dangerously-skip-permissions'
     })
     expect(buildAgentLaunchCommand('codex', DEFAULT_AGENT_PREFERENCES.launch.codex, 'posix')).toEqual({
       ok: true,
-      command: `codex '--dangerously-bypass-approvals-and-sandbox'`
+      command: 'codex --dangerously-bypass-approvals-and-sandbox'
     })
   })
 
   it('コマンド本体は書いたまま使い、引数だけクォートし直す', () => {
     expect(
       buildAgentLaunchCommand('claude', { command: 'npx -y claude', args: `--append "it's ok"` }, 'posix')
-    ).toEqual({ ok: true, command: `npx -y claude '--append' 'it'"'"'s ok'` })
+    ).toEqual({ ok: true, command: `npx -y claude --append 'it'"'"'s ok'` })
   })
 
   it('引数が空ならコマンドだけ、コマンドが空なら既定のコマンド', () => {

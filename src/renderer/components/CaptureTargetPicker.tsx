@@ -48,7 +48,7 @@ export function CaptureTargetPicker({
     setLoading(true)
     try {
       setList(await window.ade.invoke('capture:sources'))
-    } catch {
+    } catch { // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
       setList({ screenAccess: 'unknown', sources: [] })
     } finally {
       setLoading(false)

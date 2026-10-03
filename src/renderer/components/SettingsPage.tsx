@@ -16,6 +16,7 @@ import { OrganizeSection } from './OrganizeSection'
 import { CrashReportsSetting } from './CrashReportsSetting'
 import { PRODUCT_NAME } from '@shared/i18n'
 import { SETTINGS_SECTIONS, activeSectionAt, filterSettingsSections, type SettingsSectionId } from '../lib/settingsSections'
+import { requestShowOnboarding } from '../onboarding/showOnboardingEvent'
 import '../styles/settings.css'
 
 export type Transcription = SttProvider
@@ -72,7 +73,7 @@ function AgentSection({ value, onChange, prompt, onPromptChange }: {
   const locale = useLocale()
   const [options, setOptions] = useState<AgentOption[]>([])
   useEffect(() => {
-    void window.ade.invoke('agents:list').then(setOptions).catch(() => undefined)
+    void window.ade.invoke('agents:list').then(setOptions).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
     return window.ade.on('agents:changed', setOptions)
   }, [])
   const installed = (id: TuiAgent) => options.find((o) => o.id === id)?.installed
@@ -121,7 +122,7 @@ function AgentSection({ value, onChange, prompt, onPromptChange }: {
             checked={enabled(agent)} onChange={(e) => setEnabled(agent, e.target.checked)} data-testid={`agent-enabled-${agent}`} />
         </div>
         <details className="st-agent-row__details">
-          <summary>{t('settings.agents.commandSummary')}<code>{[launch.command, launch.args].filter(Boolean).join(' ')}</code></summary>
+          <summary>{t('settings.agents.commandSummary')}<code title={[launch.command, launch.args].filter(Boolean).join(' ')}>{[launch.command, launch.args].filter(Boolean).join(' ')}</code></summary>
           <div className="st-agent__fields">
             <Field mono aria-label={t('settings.agents.command', { agent: TUI_AGENT_LABEL[agent] })} placeholder={defaults.command}
               value={launch.command} onChange={(e) => setLaunch(agent, { command: e.target.value })} />
@@ -206,10 +207,13 @@ function LanguageSection() {
 function AboutSection() {
   const t = useT()
   const [version, setVersion] = useState<{ version: string; packaged: boolean } | null>(null)
-  useEffect(() => { void window.ade.invoke('app:version').then(setVersion).catch(() => undefined) }, [])
+  useEffect(() => { void window.ade.invoke('app:version').then(setVersion).catch(() => undefined) }, []) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
   return <div className="st-page__group">
     <div className="st-row"><span className="st-row__label">{PRODUCT_NAME}</span>
       <span className="st-about__version" data-testid="settings-version">{version ? `${t('settings.about.version')} ${version.version}${version.packaged ? '' : ` (${t('settings.about.devBuild')})`}` : ''}</span></div>
+    {/* 初回起動のセットアップを開き直す（ヘルプ → セットアップをもう一度 と同じ） */}
+    <div className="st-row"><span className="st-row__label">{t('settings.setup.label')}</span>
+      <Button onClick={requestShowOnboarding} data-testid="settings-run-setup">{t('settings.setup.run')}</Button></div>
   </div>
 }
 

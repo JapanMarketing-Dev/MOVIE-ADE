@@ -24,6 +24,7 @@ import {
   type SttRemoteProvider,
 } from '@shared/aiProviders'
 import { t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
 import type { TranscriptSegment } from '../types'
 import { SttHttpError, type SttEngine, type TranscribeChunkInput, type TranscribeResult } from './engine'
 import { exceedsCostLimit, normalizeBaseUrl } from './endpoint'
@@ -157,7 +158,7 @@ export class CloudSttEngine implements SttEngine {
   private reservedCostUsd = 0
 
   constructor(private readonly opt: CloudSttOptions) {
-    if (!trimSlash(opt.baseUrl) || !/^https?:\/\//i.test(opt.baseUrl.trim())) throw new Error(t('stt.errors.badBaseUrl'))
+    if (!trimSlash(opt.baseUrl) || !/^https?:\/\//i.test(opt.baseUrl.trim())) throw new UserFacingError(t('stt.errors.badBaseUrl'))
     this.id = `${opt.kind}:${opt.model}`
   }
 
@@ -168,12 +169,12 @@ export class CloudSttEngine implements SttEngine {
   async transcribeChunk(input: TranscribeChunkInput): Promise<TranscribeResult> {
     const bytes = await readFile(input.wavPath)
     if (bytes.byteLength > OPENAI_MAX_BYTES) {
-      throw new Error(t('stt.errors.tooLarge', { size: (bytes.byteLength / 1024 / 1024).toFixed(1) }))
+      throw new UserFacingError(t('stt.errors.tooLarge', { size: (bytes.byteLength / 1024 / 1024).toFixed(1) }))
     }
     const durationMs = input.durationMs ?? (await wavDurationMs(input.wavPath))
     const price = this.opt.pricePerMinuteUsd ?? UNKNOWN_PRICE_PER_MINUTE_USD
     const cost = durationMs / 60_000 * price
-    if (exceedsCostLimit(this.reservedCostUsd, cost, this.opt.maxCostUsd)) throw new Error(t('stt.errors.costLimit', { label: this.opt.label }))
+    if (exceedsCostLimit(this.reservedCostUsd, cost, this.opt.maxCostUsd)) throw new UserFacingError(t('stt.errors.costLimit', { label: this.opt.label }))
     this.reservedCostUsd += cost
 
     const req = buildCloudSttRequest(this.opt, bytes, basename(input.wavPath))
@@ -181,6 +182,7 @@ export class CloudSttEngine implements SttEngine {
     const res = await fetch(req.url, { method: 'POST', headers: req.headers, body: req.body, signal: AbortSignal.timeout(this.opt.timeoutMs ?? 120_000) })
     const elapsedMs = Date.now() - started
     if (!res.ok) {
+      // 失敗の本文は説明に使うだけ（想定内）
       const body = redact(await res.text().catch(() => ''), this.opt.apiKey).slice(0, 500)
       throw new SttHttpError(t('stt.errors.failed', { label: this.opt.label, status: res.status, body }), res.status, body)
     }
@@ -221,8 +223,8 @@ export interface SttEngineSpec {
 export function createSttEngine(spec: SttEngineSpec): SttEngine {
   const preset = STT_PROVIDER_PRESETS[spec.provider]
   const ep = resolveEndpoint(preset, spec.endpoint)
-  if (preset.keyRequired && !spec.apiKey) throw new Error(t('stt.errors.keyMissing', { label: providerLabel(preset, t) }))
-  if (!ep.model) throw new Error(t('stt.check.noModel'))
+  if (preset.keyRequired && !spec.apiKey) throw new UserFacingError(t('stt.errors.keyMissing', { label: providerLabel(preset, t) }))
+  if (!ep.model) throw new UserFacingError(t('stt.check.noModel'))
   const common = { language: spec.language, maxCostUsd: spec.maxCostUsd, headers: ep.headers, pricePerMinuteUsd: preset.pricePerMinuteUsd }
   if (preset.kind === 'openai-transcriptions') {
     return new OpenAiSttEngine({ ...common, model: ep.model, baseUrl: ep.baseUrl, apiKey: spec.apiKey, keyOptional: !preset.keyRequired,

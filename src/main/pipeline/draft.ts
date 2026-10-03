@@ -7,6 +7,8 @@
  * - 画像: 書き込みがあればその確定時刻の静止画。なければ発話開始時刻の静止画（カーソルのリングを合成）
  *   まとまりの途中でURLが変わったら変化後の静止画を追加（最大3枚）
  * - 発話もペンもテキストもない区間は捨てる
+ * - 録画の途中で対象（ページ・ファイル）を切り替えたら、そこでまとまりを分ける。
+ *   書き込みも同じページのまとまりにだけ付ける（指摘がそれぞれの対象に属するように）
  *
  * つなぎ言葉・独り言の除外は③のLLMの担当（設計5章③）なので、ここでは落とさない。
  */
@@ -22,6 +24,7 @@ import type {
 } from './types'
 import { annotationFrameTime, isAnnotation } from './types'
 import { normalizeJa } from './text'
+import { pageKey } from '@shared/page'
 
 export interface DraftOptions {
   /** これ未満の間隔なら同じまとまり(ms) */
@@ -63,10 +66,11 @@ export function buildDraft(material: Material, options: Partial<DraftOptions> = 
   const transcript = [...material.transcript].sort((a, b) => a.t0 - b.t0)
   const annotations = material.events.filter(isAnnotation).sort((a, b) => a.t - b.t)
 
-  const clusters = clusterSpeech(transcript, opt.speechGapMs).flatMap((c) =>
+  const pageOf = pageLookup(material.events)
+  const clusters = clusterSpeech(transcript, opt.speechGapMs, pageOf).flatMap((c) =>
     splitLongCluster(c, opt.maxClusterMs),
   )
-  const orphans = attachAnnotations(clusters, annotations, opt.annotationWindowMs);
+  const orphans = attachAnnotations(clusters, annotations, opt.annotationWindowMs, pageOf);
 
   // 書き込み単独の指摘
   for (const a of orphans) {
@@ -102,13 +106,30 @@ export function buildDraft(material: Material, options: Partial<DraftOptions> = 
   return { items }
 }
 
-function clusterSpeech(transcript: TranscriptSegment[], gapMs: number): Cluster[] {
+/**
+ * その時刻に開いていたページ（直前の遷移の pageKey）を返す関数。遷移が無ければ ''。
+ * ハッシュのアンカーだけの移動は同じページ（page.ts）。
+ */
+export function pageLookup(events: Event[]): (t: number) => string {
+  const navs = events.filter((e): e is NavEvent => e.type === 'nav').sort((a, b) => a.t - b.t)
+  return (t) => {
+    let key = ''
+    for (const nav of navs) {
+      if (nav.t > t) break
+      key = pageKey(nav.url)
+    }
+    return key
+  }
+}
+
+function clusterSpeech(transcript: TranscriptSegment[], gapMs: number, pageOf: (t: number) => string): Cluster[] {
   const clusters: Cluster[] = []
   for (const seg of transcript) {
     const last = clusters[clusters.length - 1];
     // 間隔は「直前のまとまりの終わり」から測る。相手→自分の掛け合いも
     // 2秒未満なら1つの話題として扱い、分割・結合は③のLLMに委ねる。
-    if (last && seg.t0 - last.tEnd < gapMs) {
+    // ただし対象（ページ・ファイル）を切り替えたら、間隔が短くても別のまとまりにする
+    if (last && seg.t0 - last.tEnd < gapMs && pageOf(seg.t0) === pageOf(last.t)) {
       last.segments.push(seg)
       last.tEnd = Math.max(last.tEnd, seg.t1)
     } else {
@@ -151,13 +172,16 @@ function splitLongCluster(c: Cluster, maxMs: number): Cluster[] {
 }
 
 /** 書き込みを一番近いまとまりに付ける。付かなかったものを返す */
-function attachAnnotations(clusters: Cluster[], annotations: Annotation[], windowMs: number): Annotation[] {
+function attachAnnotations(clusters: Cluster[], annotations: Annotation[], windowMs: number, pageOf: (t: number) => string): Annotation[] {
   const orphans: Annotation[] = []
   for (const a of annotations) {
     const aStart = a.t
     const aEnd = annotationFrameTime(a)
+    const page = pageOf(aStart)
     let best: { c: Cluster; d: number } | undefined
     for (const c of clusters) {
+      // 別の対象で話した内容には付けない
+      if (pageOf(c.t) !== page) continue
       const d = gapBetween(aStart, aEnd, c.t, c.tEnd)
       if (d <= windowMs && (!best || d < best.d)) best = { c, d }
     }

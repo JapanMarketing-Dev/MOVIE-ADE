@@ -49,7 +49,7 @@ export function run(file: string, args: string[], options: { cwd?: string; input
       timeout: options.timeoutMs ?? 15_000,
       maxBuffer: 8 * 1024 * 1024,
       windowsHide: true,
-      env: { ...process.env, PATH: searchPath(), GH_PROMPT_DISABLED: '1', GH_NO_UPDATE_NOTIFIER: '1', NO_COLOR: '1', GIT_TERMINAL_PROMPT: '0' }
+      env: { ...process.env, PATH: searchPath(), GH_PROMPT_DISABLED: '1', GH_NO_UPDATE_NOTIFIER: '1', NO_COLOR: '1', GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0' }
     }, (err, stdout, stderr) => {
       const error = err as (NodeJS.ErrnoException & { killed?: boolean }) | null
       resolve({

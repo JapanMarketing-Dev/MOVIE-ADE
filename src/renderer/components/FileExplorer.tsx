@@ -3,6 +3,7 @@ import { ChevronRight, FileSearch, FileText, Folder, FolderOpen, ListCollapse, R
 import type { FsEntry } from '@shared/files'
 import { errorMessage } from '../lib/errors'
 import { SHORTCUTS } from '../lib/shortcut'
+import { PanelCloseButton } from './LayoutToggles'
 import { IconButton, Spinner } from '../ui'
 import { useT } from '../lib/i18n'
 
@@ -150,6 +151,8 @@ export function FileExplorer({
         <IconButton size="sm" label={t('fileExplorer.quickOpen', { shortcut: SHORTCUTS.quickOpen() })} icon={<FileSearch size={14} />} onClick={onQuickOpen} disabled={!root} />
         <IconButton size="sm" label={t('fileExplorer.refresh')} icon={<RefreshCw size={13} />} disabled={!root} onClick={() => { for (const dir of childrenRef.current.keys()) void loadDir(dir) }} />
         <IconButton size="sm" label={t('fileExplorer.collapseAll')} icon={<ListCollapse size={14} />} disabled={!root} onClick={() => setExpanded(new Set())} />
+        {/* ファイルツリーを閉じる（layout-footer の部品。開き直すのはタイトルバー・⌘⇧E・中央のタブの右端・設定） */}
+        <PanelCloseButton panel="files" />
       </header>
 
       {root && (

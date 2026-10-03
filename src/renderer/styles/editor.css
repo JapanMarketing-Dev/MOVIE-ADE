@@ -112,16 +112,21 @@
   grid-template-rows: var(--size-tabbar) minmax(0, 1fr);
 }
 
+/*
+ * 見出し・（外部変更の帯）・本体の縦並び。帯は出ないことが多いので grid の固定の行にはしない
+ * （行を3本決めていると、帯が無いとき本体が2行目の auto に入り、高さが数px に潰れる）。
+ */
 .editor-area {
-  display: grid;
+  display: flex;
   min-width: 0;
   min-height: 0;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  flex-direction: column;
   background: var(--color-bg-panel);
 }
 
 .editor-head {
   display: flex;
+  flex: none;
   min-width: 0;
   height: var(--size-toolbar);
   box-sizing: border-box;
@@ -164,6 +169,7 @@
 
 .editor-banner {
   display: flex;
+  flex: none;
   align-items: center;
   padding: var(--space-3) var(--space-5);
   border-bottom: var(--size-border) solid var(--color-warning-border);
@@ -182,6 +188,7 @@
   position: relative;
   min-width: 0;
   min-height: 0;
+  flex: 1;
   overflow: hidden;
 }
 

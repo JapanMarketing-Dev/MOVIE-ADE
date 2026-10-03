@@ -133,6 +133,8 @@ module.exports = {
     executableName: 'MOVIE-ADE',
     // この Mac で作った node-pty の build/Release は Windows では読めない。prebuilds/win32-<cpu> だけを使わせる
     files: ['!node_modules/node-pty/build/**'],
+    // ウインドウのアイコン（src/main/index.ts の windowIcon。exe のアイコンとは別にタイトルバー用）
+    extraResources: [{ from: 'build/icons/256x256.png', to: 'icon.png' }],
     // 署名しない（アイコンと版の埋め込みだけ行う）。
     // arch を2つ書くと両方入りの1本になるので、既定は x64 にし、arm64 は `--arm64` で別に走らせる（package.json の dist:win）
     target: [{ target: 'nsis', arch: ['x64'] }]
@@ -153,6 +155,11 @@ module.exports = {
     icon: 'build/icons',
     // 製品名の空白と括弧はコマンド名・パッケージ名に使えない
     executableName: 'movie-ade',
+    // .desktop のファイル名・StartupWMClass を package.json の desktopName（movie-ade.desktop）に揃える。
+    // Electron はこれをウインドウの app_id / WM_CLASS に使うので、ドックでランチャーと同じアイコンにまとまる
+    syncDesktopName: true,
+    // ウインドウのアイコン（src/main/index.ts の windowIcon）
+    extraResources: [{ from: 'build/icons/512x512.png', to: 'icon.png' }],
     category: 'Development',
     maintainer: 'JapanMarketing-Dev',
     synopsis: 'Give UI feedback to coding agents by talking and circling',

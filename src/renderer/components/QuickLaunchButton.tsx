@@ -114,7 +114,7 @@ export function QuickLaunchButton({
         .then((paths) => {
           if (!stale) setFiles({ query: q, paths })
         })
-        .catch(() => {
+        .catch(() => { // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
           if (!stale) setFiles({ query: q, paths: [] })
         })
     }, FILE_SEARCH_DEBOUNCE_MS)

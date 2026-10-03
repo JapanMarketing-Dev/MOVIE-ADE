@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import { resolveLocale, setLocale, type LocalePreference, type SupportedLocale } from '@shared/i18n'
+import { reportHandled } from '@shared/report'
 
 /**
  * main の画面の言語（メニュー・ダイアログ・エラー・通知）。
@@ -11,7 +12,8 @@ export function systemLocales(): string[] {
   try {
     const preferred = app.getPreferredSystemLanguages()
     return preferred.length ? preferred : [app.getLocale()]
-  } catch {
+  } catch (err) {
+    reportHandled(err, { area: 'settings', op: 'read system locales' })
     return []
   }
 }

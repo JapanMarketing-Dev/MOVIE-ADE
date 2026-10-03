@@ -7,6 +7,7 @@ import { formatDuration, formatTimecode } from './text'
 import { redactElementText, redactText, redactUrl } from './redact'
 import { renderAgentPrompt } from '@shared/agentPrompt'
 import { describeTargetUrl } from '@shared/preview'
+import { groupByTarget, targetHeading, targetOfUrl, type ReviewTarget } from '@shared/reviewTarget'
 import { getLocale, translate, type MessageParams, type SupportedLocale, type TranslationKey } from '@shared/i18n'
 
 export interface RenderOptions {
@@ -41,7 +42,11 @@ export function renderFeedbackMarkdown(doc: FeedbackDocument, options: Partial<R
   const lines: string[] = []
   lines.push(`# ${tr('feedbackMd.title', { count: items.length })}`)
   // markdown / Mermaid のプレビュー（ade-preview://）は、Agent が直すファイルの相対パスで示す
-  if (doc.meta.targetUrl) lines.push(`- ${tr('feedbackMd.label.target')}: ${describeTargetUrl(doc.meta.targetUrl) ?? redactUrl(doc.meta.targetUrl)}`)
+  // 録画の途中で対象（URL・ファイル）を切り替えたら、指摘を対象ごとの節に分ける
+  const groups = groupByTarget(items, (it) => it.context.url, doc.meta.urlPresets ?? [])
+  const sectioned = groups.length > 1
+  if (sectioned) lines.push(tr('feedbackMd.targets', { count: groups.length }))
+  else if (doc.meta.targetUrl) lines.push(`- ${tr('feedbackMd.label.target')}: ${describeTargetUrl(doc.meta.targetUrl) ?? redactUrl(doc.meta.targetUrl)}`)
   lines.push(tr('feedbackMd.recorded', { at: formatRecordedAt(doc.meta.startedAt), duration: formatDuration(doc.meta.durationMs, opt.locale) }))
   lines.push(tr('feedbackMd.penNote'))
   lines.push(tr('feedbackMd.sttNote'))
@@ -60,10 +65,23 @@ export function renderFeedbackMarkdown(doc: FeedbackDocument, options: Partial<R
   }
 
   let n = 0
-  for (const it of items) {
-    n += 1
-    lines.push('')
-    lines.push(...renderItem(it, n, opt, tr))
+  if (sectioned) {
+    groups.forEach((group, index) => {
+      lines.push('')
+      lines.push(...renderSection(group.target, index + 1, tr))
+      for (const it of group.items) {
+        n += 1
+        lines.push('')
+        // 節の下なので、指摘の見出しを1段下げる
+        lines.push(...renderItem(it, n, opt, tr).map((line, i) => (i === 0 ? `#${line}` : line)))
+      }
+    })
+  } else {
+    for (const it of items) {
+      n += 1
+      lines.push('')
+      lines.push(...renderItem(it, n, opt, tr))
+    }
   }
 
   const skipped = doc.items.filter((it) => !it.include && it.status === 'needs_check').length
@@ -82,6 +100,20 @@ export function renderFeedbackMarkdown(doc: FeedbackDocument, options: Partial<R
 }
 
 type Tr = (key: TranslationKey, params?: MessageParams) => string
+
+/** 対象の節の見出し。Agent がどのファイル・どの環境のURLへの指摘か分かるように書く */
+function renderSection(target: ReviewTarget, n: number, tr: Tr): string[] {
+  if (target.kind === 'none') return [`## ${tr('feedbackMd.sectionNone', { n })}`]
+  // URL のクエリに秘密が入りうるので、見出しも伏せ字にした URL から作る（NF-14）
+  const safeName = target.kind === 'url' && target.url ? targetOfUrl(redactUrl(target.url)).name : target.name
+  const out = [`## ${tr('feedbackMd.section', { n, name: targetHeading({ ...target, name: safeName }) })}`]
+  if (target.kind === 'file') out.push(tr('feedbackMd.sectionFile', { path: target.name }))
+  else {
+    if (target.label) out.push(tr('feedbackMd.sectionEnv', { label: target.label }))
+    if (target.url) out.push(`- URL: ${redactUrl(target.url)}`)
+  }
+  return out
+}
 
 function renderItem(it: FeedbackItem, n: number, opt: RenderOptions, tr: Tr): string[] {
   const mark = it.status === 'needs_check' ? tr('feedbackMd.needsCheckMark') : ''

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isHashRoute, isPageChange, pageKey } from '../../../src/main/recording/page'
+import { isHashRoute, isPageChange, pageKey } from '../../../src/shared/page'
 
 /**
  * 書き込み（ペン・テキスト）はその画面だけのもの。

@@ -16,6 +16,7 @@ import {
   type AnnotationMode,
   type AppMode,
   type Project,
+  type ProjectSession,
   type ProjectsState,
   type RecordingStatus,
   type Settings,
@@ -23,7 +24,7 @@ import {
   type SttProvider,
   type WorkspaceState
 } from '@shared/types'
-import { matchPresetUrl } from '@shared/projectUrl'
+import { isRecordableUrl, sessionUrl, withProjectSession } from '@shared/projectSession'
 import { THEME_BACKGROUND } from '@shared/theme'
 import { findProjectByFolder, upsertProjectFolder } from './projects'
 import { EmbeddedBrowser, PARTITION } from './browser'
@@ -31,6 +32,7 @@ import type { PcmBlock, RecordingController } from './recording'
 import { installMenu } from './menu'
 import { applyLocalePreference } from './locale'
 import { PRODUCT_NAME, getLocale, t } from '@shared/i18n'
+import { UserFacingError, toUserFacingFileError } from '@shared/errors'
 import { currentSettings, flushSettingsSync, loadSettings, updateSettings } from './settings'
 import { elapsedMs, mark, reportInteractive } from './startup'
 import { TerminalManager } from './terminal'
@@ -49,9 +51,11 @@ import { appVersion, checkForUpdate } from './updateCheck'
 import { sanitizeLayout } from '@shared/layout'
 import { ResourceCollector } from './resources'
 import { ProjectWatcher, listDirectory, listFiles, readTextFile, searchFiles, writeTextFile } from './files'
-import { refreshPreviewIn, registerPreviewProtocol } from './preview'
+import { refreshPreviewIn, registerPreviewProtocol, renderPreviewSource } from './preview'
 import { PREVIEW_SCHEME } from '@shared/preview'
-import { crashReportsActive, initCrashReporting, maybeSendTestEvent } from './telemetry'
+import { crashReportsActive, initCrashReporting, maybeSendTestEvent, reportMainError, sentryTestKinds } from './telemetry'
+import { wrapIpcHandler } from '@shared/telemetry'
+import { flow, reportHandled } from '@shared/report'
 
 /*
  * クラッシュの受け口（Crashpad / Sentry）は、OSの既定のクラッシュ処理より前に入れたいので、他の初期化より先に呼ぶ。
@@ -67,6 +71,23 @@ protocol.registerSchemesAsPrivileged([
  * E2E などが --user-data-dir を渡したときはそちらに従う。Crashpad も userData に書くので、その前に決める。
  */
 if (!app.commandLine.hasSwitch('user-data-dir')) app.setPath('userData', join(app.getPath('appData'), 'ade-movie'))
+/*
+ * macOS の開発起動では、本物のキーチェーンを使わない（Chromium の --use-mock-keychain）。
+ * 開発版の Electron.app は名前を変えて ad-hoc で署名し直している（scripts/prepare-dev-electron.mjs）ので、
+ * Chromium が起動時に Cookie の暗号化の鍵（ade-movie Safe Storage）を読むたびに、パスワードの確認が出てしまう。
+ * 開発版の Cookie と safeStorage は固定の鍵になる（初回だけ、開発版の内蔵ブラウザのログインが切れる）。
+ * 配布版は影響なし。本物のキーチェーンで試したいときは ADE_DEV_REAL_KEYCHAIN=1 を付けて起動する。
+ */
+if (!app.isPackaged && process.platform === 'darwin' && process.env.ADE_DEV_REAL_KEYCHAIN !== '1') {
+  app.commandLine.appendSwitch('use-mock-keychain')
+}
+/*
+ * 表示名は MOVIE-ADE だが、app.setName() は呼ばない。app.name（package.json の name = ade-movie）は
+ * macOS のキーチェーンの「ade-movie Safe Storage」の名前にもなっていて、変えると保存済みのキーや
+ * 内蔵ブラウザの Cookie を復号できなくなる。メニュー・Dock・⌘Tab の名前は .app の CFBundleName
+ * （配布版は electron-builder の productName、開発版は scripts/prepare-dev-electron.mjs）から出る。
+ * Windows / Linux の「について」の表示だけ、起動後に製品名にする（whenReady の直後）。
+ */
 // 配布版で設定が ON なら Sentry へ送る。それ以外は Crashpad でローカルに受けるだけ（src/main/telemetry.ts）
 initCrashReporting()
 
@@ -141,19 +162,19 @@ let transcriber: IncrementalTranscriber | null = null
 let activeOptions = { captureSystemAudio: false, transcription: 'local' as SttProvider }
 
 /**
- * 文字起こしのAPIキー（pipeline/stt/keys.ts。OS の鍵で暗号化して userData/stt-keys.bin に保存）。
- * macOS では Keychain に触れるので、起動時ではなく初めて使うときに読む。
+ * 文字起こし・整理のAPIキー（pipeline/stt/keys.ts）。配布版は OS の鍵で暗号化して userData/stt-keys.bin に保存する。
+ * - 起動時・画面の表示では復号しない（has / source は保存した提供元の名前の一覧で答える）。
+ *   復号（macOS では Keychain に触れる）は、実際に送る直前・接続の確認・キーの保存のときだけ（read / set）
+ * - dev 起動・E2E では safeStorage を使わず、その起動中だけ持つ（Keychain の確認を出さない）
  */
 let sttKeys: SttKeyStore | null = null
 async function sttKeyStore(): Promise<SttKeyStore> {
   if (!sttKeys) {
-    const { SttKeyStore: Store, devKeyEnv, safeStorageCipher } = await import('./pipeline/stt/keys')
-    // E2E では OS の鍵束に触れない（Keychain の確認で止まらないように）。起動中だけ保持する
-    const cipher = IS_E2E ? { available: () => false, encrypt: () => Buffer.alloc(0), decrypt: () => '' } : safeStorageCipher(safeStorage)
+    const { SttKeyStore: Store, chooseKeyCipher, devKeyEnv } = await import('./pipeline/stt/keys')
     // 環境変数のキー（.env の OPENAI_API_KEY）は dev 起動のときだけ使う
-    sttKeys = new Store(join(app.getPath('userData'), 'stt-keys.bin'), cipher, devKeyEnv(app.isPackaged))
+    sttKeys = new Store(join(app.getPath('userData'), 'stt-keys.bin'),
+      chooseKeyCipher({ isPackaged: app.isPackaged, isE2E: IS_E2E, safeStorage }), devKeyEnv(app.isPackaged))
   }
-  await sttKeys.load()
   return sttKeys
 }
 let sttWarnings: string[] = []
@@ -197,7 +218,7 @@ const fileWatcher = new ProjectWatcher((event) => {
 
 /** ファイルエディタの IPC が触ってよい根。未選択なら断る */
 function projectRoot(): string {
-  if (!workspace.folderPath) throw new Error(t('errors.openProjectFolder'))
+  if (!workspace.folderPath) throw new UserFacingError(t('errors.openProjectFolder'))
   return workspace.folderPath
 }
 
@@ -221,7 +242,7 @@ function projectsState(): ProjectsState {
 }
 
 function assertNotRecording(): void {
-  if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new Error(t('errors.stopRecordingBeforeFolderChange'))
+  if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new UserFacingError(t('errors.stopRecordingBeforeFolderChange'))
 }
 
 /**
@@ -229,17 +250,28 @@ function assertNotRecording(): void {
  * 内蔵ブラウザが空か、前のプロジェクトのURLを表示しているなら、このプロジェクトの先頭URLへ移る。
  */
 function openProject(project: Project): WorkspaceState {
-  const previous = currentSettings().projects.find((p) => p.id === workspace.projectId)
   const next = setWorkspace(project.folderPath, project)
   updateSettings({ activeProjectId: project.id, folderPath: project.folderPath })
   send('workspace:changed', next)
   send('projects:changed', projectsState())
-  const first = project.urls[0]
-  const url = browser?.state().url ?? ''
-  const blank = url === '' || url === DEFAULT_URL
-  const fromPrevious = previous && previous.id !== project.id && matchPresetUrl(previous.urls, url) !== null
-  if (first && (blank || fromPrevious)) void browser?.navigate(first.url)
+  // 内蔵ブラウザもそのプロジェクトの状態に戻す。前に開いていた URL → 登録 URL の先頭 → 空の画面。
+  // 前のプロジェクトの URL は、表示が変わるたびに recordProjectUrl が覚えてある
+  const target = sessionUrl(currentSettings().projects.find((p) => p.id === project.id) ?? project)
+  if (browser && browser.state().url !== target) void browser.navigate(target)
   return next
+}
+
+/**
+ * 開いているプロジェクトに、内蔵ブラウザで表示している URL を覚える。
+ * 読み込み途中は覚えない（切り替え直後は前のプロジェクトの URL がまだ出ているため）。
+ */
+function recordProjectUrl(state: { url: string; loading: boolean }): void {
+  const id = workspace.projectId
+  if (!id || state.loading || !isRecordableUrl(state.url)) return
+  const { projects } = currentSettings()
+  const project = projects.find((p) => p.id === id)
+  if (!project || project.session?.url === state.url) return
+  updateSettings({ projects: withProjectSession(projects, id, { url: state.url }) })
 }
 
 /** フォルダを登録して開く。同じフォルダが登録済みならそれを開く */
@@ -292,7 +324,7 @@ function removeProject(id: string): ProjectsState {
 function updateProject(next: Project): ProjectsState {
   const settings = currentSettings()
   const current = settings.projects.find((p) => p.id === next.id)
-  if (!current) throw new Error(t('errors.projectNotFound'))
+  if (!current) throw new UserFacingError(t('errors.projectNotFound'))
   const merged: Project = { ...current, name: next.name.trim() || current.name, urls: next.urls }
   updateSettings({ projects: settings.projects.map((p) => (p.id === next.id ? merged : p)) })
   // 表示名が変わったらタイトルバーにも反映する
@@ -324,6 +356,16 @@ function nativeThemeBackground(): string {
   return THEME_BACKGROUND[nativeTheme.shouldUseDarkColors ? 'dark' : 'light']
 }
 
+/**
+ * Windows / Linux のウインドウのアイコン。配布版は electron-builder.config.cjs の extraResources が
+ * resources/icon.png に置き、開発時は build/icon.png を使う。macOS は Dock・.app のアイコンに任せる。
+ */
+function windowIcon(): { icon?: string } {
+  if (process.platform === 'darwin') return {}
+  const icon = app.isPackaged ? join(process.resourcesPath, 'icon.png') : join(app.getAppPath(), 'build', 'icon.png')
+  return existsSync(icon) ? { icon } : {}
+}
+
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
     width: 1440,
@@ -334,6 +376,8 @@ function createWindow(): BrowserWindow {
     // 読み込み前に一瞬見える地の色。配色（nativeTheme）に合わせる
     backgroundColor: nativeThemeBackground(),
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    // Windows / Linux のタイトルバーとタスクバーのアイコン（macOS は .app のアイコンを使う）
+    ...windowIcon(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       // 最初の描画の前に配色を決められるよう、解決済みの配色を preload へ渡す
@@ -362,7 +406,7 @@ function createWindow(): BrowserWindow {
   })
 
   window.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url).catch(() => undefined)
+    void shell.openExternal(url).catch((err: unknown) => reportHandled(err, { area: 'browser', op: 'open external link' }))
     return { action: 'deny' }
   })
 
@@ -470,7 +514,7 @@ async function createAudioWriter(audioDir: string): Promise<NonNullable<typeof a
 
 async function stopReview(): Promise<RecordingStatus> {
       if (!recording || recording.status.state === 'idle') return recording?.status ?? IDLE_RECORDING_STATUS
-      if (recordingBusy) throw new Error(t('errors.recordingBusy'))
+      if (recordingBusy) throw new UserFacingError(t('errors.recordingBusy'))
       recordingBusy = true
       try {
         const result = await recording.stop()
@@ -478,6 +522,7 @@ async function stopReview(): Promise<RecordingStatus> {
         audioWriter = null
         const stt = await transcriber?.flush()
         transcriber = null
+        if (stt) flow(stt.errors.length ? 'stt failed' : 'stt end', { segments: stt.segments.length, errors: stt.errors.length })
         const paths = activePaths
         if (paths) {
           const { finishReview } = await import('./review')
@@ -490,23 +535,6 @@ async function stopReview(): Promise<RecordingStatus> {
       } finally { recordingBusy = false }
 }
 
-/** ファイル操作の失敗を、利用者に伝わる短い文にする。ファイル操作以外なら undefined */
-function fileErrorMessage(err: unknown): string | undefined {
-  switch ((err as NodeJS.ErrnoException | null)?.code) {
-    case 'EACCES':
-    case 'EPERM':
-    case 'EROFS':
-      return t('errors.saveNoPermission')
-    case 'ENOSPC':
-      return t('errors.saveNoSpace')
-    case 'ENOENT':
-    case 'ENOTDIR':
-      return t('errors.saveFolderMissing')
-    default:
-      return undefined
-  }
-}
-
 /** 直前の更新確認で見つかった新しい版のページ（app:openUpdate で開く） */
 let latestReleaseUrl: string | null = null
 
@@ -517,8 +545,26 @@ let latestReleaseUrl: string | null = null
 function historyFolder(folderPath: unknown): string | null {
   if (folderPath === undefined || folderPath === null) return workspace.folderPath
   const target = typeof folderPath === 'string' ? findProjectByFolder(currentSettings().projects, folderPath)?.folderPath ?? null : null
-  if (!target) throw new Error(t('errors.folderNotRegistered'))
+  if (!target) throw new UserFacingError(t('errors.folderNotRegistered'))
   return target
+}
+
+/**
+ * パンくずを残す IPC。失敗したとき、直前にどの操作をしたかが分かるようにする（引数の値は入れない）。
+ * 設定の保存はどの節かだけ、パネルの移動と開閉は settings:layout / settings:splitRatio。
+ */
+const FLOW_CHANNELS: Partial<Record<string, string>> = {
+  'project:switch': 'project switch', 'project:add': 'project add', 'project:remove': 'project remove', 'workspace:open': 'project open folder',
+  'recording:start': 'recording start', 'recording:stop': 'recording stop', 'recording:pause': 'recording pause', 'recording:resume': 'recording resume',
+  'review:organize': 'organize', 'review:send': 'send to agent', 'terminal:close': 'terminal close',
+  'app:checkUpdate': 'update check', 'settings:layout': 'layout change', 'settings:splitRatio': 'layout resize'
+}
+
+function flowOf(channel: string): { name: string; data?: Record<string, string> } | null {
+  const name = FLOW_CHANNELS[channel]
+  if (name) return { name }
+  if (channel.startsWith('settings:')) return { name: 'settings save', data: { section: channel.slice('settings:'.length) } }
+  return null
 }
 
 function registerIpc(): void {
@@ -538,6 +584,7 @@ function registerIpc(): void {
       else {
         // 入力欄からの遷移（navigate）は http(s) に限るので、空ページは直接読む
         const wc = browser?.contents
+        // 空ページへの切り替えは、前の読み込みの中断（ERR_ABORTED）で拒否されることがある。想定内なので送らない
         if (wc && !wc.isDestroyed()) void wc.loadURL('about:blank').catch(() => undefined)
       }
     },
@@ -547,7 +594,7 @@ function registerIpc(): void {
       return ids.length
     },
     'app:openUpdate': () => {
-      if (latestReleaseUrl) void shell.openExternal(latestReleaseUrl).catch(() => undefined)
+      if (latestReleaseUrl) void shell.openExternal(latestReleaseUrl).catch((err: unknown) => reportHandled(err, { area: 'update', op: 'open release page' }))
     },
 
     'workspace:open': () => openFolderDialog(),
@@ -563,13 +610,23 @@ function registerIpc(): void {
     },
     'project:switch': (id) => {
       const project = currentSettings().projects.find((p) => p.id === id)
-      if (!project) throw new Error(t('errors.projectNotFound'))
+      if (!project) throw new UserFacingError(t('errors.projectNotFound'))
       if (workspace.projectId === id) return workspace
       assertNotRecording()
       return openProject(project)
     },
     'project:update': (project) => updateProject(project),
     'project:remove': (id) => removeProject(id),
+    'project:saveSession': (id, session) => {
+      const { projects } = currentSettings()
+      if (!projects.some((p) => p.id === id) || !session || typeof session !== 'object') return
+      // renderer が持つ項目だけを受け取る（URL は main が覚える）。送られてこなかった項目は前の値のまま
+      const patch: Partial<ProjectSession> = {}
+      if ('centerTab' in session) patch.centerTab = session.centerTab
+      if ('openFiles' in session) patch.openFiles = session.openFiles
+      if ('reviewId' in session) patch.reviewId = session.reviewId ?? undefined
+      updateSettings({ projects: withProjectSession(projects, id, patch) })
+    },
 
     'settings:agents': (preferences) => {
       updateSettings({ agents: preferences })
@@ -616,7 +673,7 @@ function registerIpc(): void {
       },
 
     'terminal:create': (options) => {
-      if (!terminals) throw new Error(t('errors.terminalNotReady'))
+      if (!terminals) throw new UserFacingError(t('errors.terminalNotReady'))
       return terminals.create(options).then((info) => { resources.noteTerminalCreated(info.id); return info })
     },
     'terminal:write': (id, data) => terminals?.write(id, data),
@@ -625,6 +682,13 @@ function registerIpc(): void {
     'terminal:screen': (id, text) => terminals?.updateScreen(id, text),
     'terminal:agentState': (id) => terminals?.agentState(id) ?? { kind: 'unknown', state: 'unknown' },
     'terminal:cwd': (id) => terminals?.currentCwd(id) ?? null,
+    'terminal:list': () => terminals?.list() ?? [],
+    'terminal:attach': (id) => {
+      const info = terminals?.attach(String(id)) ?? null
+      // つなぎ直したターミナルは今の画面のもの。置き去り（Resource Manager の片付けの対象）にしない
+      if (info) resources.noteTerminalCreated(info.id)
+      return info
+    },
     'review:send': async (id, terminalId) => {
       const { checkedPaths, loadReviewAt, reviewInstruction } = await import('./review')
       const paths = checkedPaths(workspace.folderPath, id)
@@ -632,7 +696,7 @@ function registerIpc(): void {
       if (!data.document.items.some((it) => it.include)) return { ok: false, message: t('errors.nothingToSend') }
       const result = await terminals?.sendReview(terminalId, reviewInstruction(paths, currentSettings().agentPrompt)) ?? { ok: false, message: t('errors.openTerminal') }
       // 一覧の「送信済み」に使う。記録できなくても送信の結果は変えない
-      if (result.ok) await (await import('./sessions')).updateLabel(paths, { sentAt: new Date().toISOString() }).catch(() => undefined)
+      if (result.ok) await (await import('./sessions')).updateLabel(paths, { sentAt: new Date().toISOString() }).catch((err: unknown) => reportHandled(err, { area: 'review', op: 'record sent label' }))
       return result
     },
 
@@ -653,15 +717,25 @@ function registerIpc(): void {
     'settings:crashReports': (enabled) => updateSettings({ crashReports: enabled === true, crashReportsNoticeShown: true }),
     'telemetry:state': () => {
       const s = currentSettings()
-      return { active: crashReportsActive(), enabled: s.crashReports !== false, noticeShown: s.crashReportsNoticeShown === true }
+      return { active: crashReportsActive(), enabled: s.crashReports !== false, noticeShown: s.crashReportsNoticeShown === true, packaged: app.isPackaged, test: sentryTestKinds() }
     },
     'telemetry:noticeShown': () => updateSettings({ crashReportsNoticeShown: true }),
+    'settings:onboarding': async (patch) => {
+      const { applyOnboardingPatch } = await import('@shared/onboarding')
+      updateSettings({ onboarding: applyOnboardingPatch(currentSettings().onboarding, patch && typeof patch === 'object' ? patch : {}) })
+      return currentSettings().onboarding ?? null
+    },
+    'permissions:status': async () => (await import('./permissions')).permissionsState(),
+    'permissions:request': async (kind) => {
+      const { permissionsState, requestPermission } = await import('./permissions')
+      return kind === 'microphone' || kind === 'screen' ? requestPermission(kind) : permissionsState()
+    },
 
     // 録画の対象（captureTarget）は別に覚えるので、送られてこなければ前の値を残す
     'settings:capture': (preferences) => updateSettings({ capture: { ...currentSettings().capture, ...preferences } }),
-    'capture:devices': async () => mainWindow?.webContents.executeJavaScript(`navigator.mediaDevices.enumerateDevices().then(devices => devices.filter(d => d.kind === 'audioinput' && d.deviceId).map((d, i) => ({ id: d.deviceId, label: d.label || ${JSON.stringify(t('capture.micNumbered'))}.replace('{{n}}', String(i + 1)) })))`).catch(() => []) ?? [],
+    'capture:devices': async () => mainWindow?.webContents.executeJavaScript(`navigator.mediaDevices.enumerateDevices().then(devices => devices.filter(d => d.kind === 'audioinput' && d.deviceId).map((d, i) => ({ id: d.deviceId, label: d.label || ${JSON.stringify(t('capture.micNumbered'))}.replace('{{n}}', String(i + 1)) })))`).catch((err: unknown) => { reportHandled(err, { area: 'recording', op: 'list microphones' }); return [] }) ?? [],
     'capture:model': async () => {
-      if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new Error(t('errors.stopRecordingBeforeChange'))
+      if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new UserFacingError(t('errors.stopRecordingBeforeChange'))
       const chosen = await dialog.showOpenDialog(mainWindow!, { title: t('dialog.whisperModel.title'), properties: ['openFile'], filters: [{ name: t('dialog.whisperModel.filter'), extensions: ['bin'] }] })
       if (chosen.canceled || !chosen.filePaths[0]) return false
       process.env.ADE_WHISPER_MODEL = chosen.filePaths[0]
@@ -683,15 +757,15 @@ function registerIpc(): void {
       })() : undefined
       updateSettings({ organizer: { ...currentSettings().organizer, runner } })
       return r.organizeReview(r.checkedPaths(workspace.folderPath, id), runner,
-        api ? { endpoint: api.endpoint, apiKey: (await sttKeyStore()).get(api.vendor) } : undefined)
+        api ? { endpoint: api.endpoint, apiKey: await (await sttKeyStore()).read(api.vendor) } : undefined)
     },
     'review:frames': async (id, itemId) => {
       const r = await import('./review')
       return r.previewFrames(r.checkedPaths(workspace.folderPath, id), itemId)
     },
     'capture:apiKey': async (key, provider) => {
-      if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new Error(t('errors.stopRecordingBeforeSetup'))
-      if (typeof key !== 'string') throw new Error(t('errors.apiKeyInvalid'))
+      if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new UserFacingError(t('errors.stopRecordingBeforeSetup'))
+      if (typeof key !== 'string') throw new UserFacingError(t('errors.apiKeyInvalid'))
       // 形式の確認と保存（暗号化できなければ起動中だけ）は keys.ts。キーの値はログに出さない
       const { AI_VENDORS } = await import('@shared/aiProviders')
       return (await sttKeyStore()).set(provider && AI_VENDORS.includes(provider) ? provider : 'openai', key)
@@ -703,7 +777,7 @@ function registerIpc(): void {
       if (!isSttRemoteProvider(target?.provider)) throw new Error('unknown provider')
       // 画面でまだ保存していない値で確かめる。キーは保存済みのもの
       return checkSttEngine({ provider: target.provider, endpoint: sanitizeEndpointConfig(target.endpoint),
-        apiKey: (await sttKeyStore()).get(STT_PROVIDER_PRESETS[target.provider].vendor) })
+        apiKey: await (await sttKeyStore()).read(STT_PROVIDER_PRESETS[target.provider].vendor) })
     },
     'settings:stt': async (patch) => {
       const capture = currentSettings().capture ?? { captureMic: true, captureSystemAudio: false, transcription: 'local' as const, language: 'auto' as const, keepDays: 7, stayFeedbackOnStop: false }
@@ -718,12 +792,13 @@ function registerIpc(): void {
       const { checkLlmRunner } = await import('./pipeline/organize/runners/api')
       if (!isLlmApiProvider(target?.provider)) throw new Error('unknown provider')
       return checkLlmRunner({ provider: target.provider, endpoint: sanitizeEndpointConfig(target.endpoint),
-        apiKey: (await sttKeyStore()).get(LLM_PROVIDER_PRESETS[target.provider].vendor) })
+        apiKey: await (await sttKeyStore()).read(LLM_PROVIDER_PRESETS[target.provider].vendor) })
     },
     'capture:sources': async () => {
       const { listCaptureSources, screenAccess } = await import('./recording/sources')
       const sources = await listCaptureSources().catch((err: unknown) => {
         console.warn('[capture] 画面・ウインドウの一覧を取得できませんでした', err)
+        reportHandled(err, { area: 'recording', op: 'list capture sources' })
         return []
       })
       return { screenAccess: screenAccess(), sources }
@@ -731,7 +806,7 @@ function registerIpc(): void {
     'capture:setTarget': async (target) => {
       const { sanitizeCaptureTarget } = await import('@shared/captureTarget')
       const captureTarget = sanitizeCaptureTarget(target)
-      if (!captureTarget) throw new Error(t('errors.captureTargetInvalid'))
+      if (!captureTarget) throw new UserFacingError(t('errors.captureTargetInvalid'))
       const capture = currentSettings().capture
       if (capture) updateSettings({ capture: { ...capture, captureTarget } })
       else updateSettings({ capture: { captureMic: true, captureSystemAudio: false, transcription: 'local', language: 'auto', keepDays: 7, stayFeedbackOnStop: false, captureTarget } })
@@ -763,12 +838,13 @@ function registerIpc(): void {
       const keys = await sttKeyStore()
       const settings = currentSettings()
       return { localReady: !!resolveWhisperBinary({ modelDir: '' }, nodeProbes()) && existsSync(localModel()),
-        keyStorage: keys.storage(),
+        // 復号しない（起動直後にも呼ばれるため）。dev 版は保存しないことを画面に出す
+        keyStorage: app.isPackaged ? keys.storage() : 'dev' as const,
         keys: Object.fromEntries(ai.AI_VENDORS.map((v) => [v, keys.source(v)])) as Record<AiVendor, SttKeySource>,
         stt: Object.fromEntries(ai.STT_REMOTE_PROVIDERS.map((p) => [p, ai.isEndpointReady(ai.STT_PROVIDER_PRESETS[p],
-          settings.capture?.sttEndpoints?.[p], !!keys.get(ai.STT_PROVIDER_PRESETS[p].vendor))])) as Record<SttRemoteProvider, boolean>,
+          settings.capture?.sttEndpoints?.[p], keys.has(ai.STT_PROVIDER_PRESETS[p].vendor))])) as Record<SttRemoteProvider, boolean>,
         llm: Object.fromEntries(ai.LLM_API_PROVIDERS.map((p) => [p, ai.isEndpointReady(ai.LLM_PROVIDER_PRESETS[p],
-          settings.organizer?.endpoints?.[p], !!keys.get(ai.LLM_PROVIDER_PRESETS[p].vendor))])) as Record<LlmApiProvider, boolean> }
+          settings.organizer?.endpoints?.[p], keys.has(ai.LLM_PROVIDER_PRESETS[p].vendor))])) as Record<LlmApiProvider, boolean> }
     },
     'review:list': async (folderPath) => {
       const target = historyFolder(folderPath)
@@ -777,7 +853,7 @@ function registerIpc(): void {
     'review:label': async (id, patch, folderPath) => {
       const target = historyFolder(folderPath)
       const s = await import('./sessions')
-      if (!target || !s.isSessionId(id)) throw new Error(t('errors.folderNotRegistered'))
+      if (!target || !s.isSessionId(id)) throw new UserFacingError(t('errors.folderNotRegistered'))
       await s.updateLabel(s.sessionPaths(target, id), { ...(patch?.name !== undefined ? { name: patch.name } : {}), ...(typeof patch?.archived === 'boolean' ? { archived: patch.archived } : {}) })
     },
     'review:delete': async (ids, folderPath) => {
@@ -811,14 +887,14 @@ function registerIpc(): void {
       return r.revealReview(r.checkedPaths(workspace.folderPath, id))
     },
     'recording:start': async (options) => {
-      if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new Error(t('errors.recordingBusy'))
-      if (!workspace.folderPath) throw new Error(t('errors.openProjectFolder'))
+      if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new UserFacingError(t('errors.recordingBusy'))
+      if (!workspace.folderPath) throw new UserFacingError(t('errors.openProjectFolder'))
       const { sanitizeCaptureTarget, BROWSER_TARGET } = await import('@shared/captureTarget')
       let captureTarget = sanitizeCaptureTarget(options.captureTarget) ?? BROWSER_TARGET
       // 画面全体・別のウインドウを録るときは、内蔵ブラウザにページが無くてもよい
       if (captureTarget.kind === 'browser') {
-        if (!browser?.state().url || browser.state().url === 'about:blank') throw new Error(t('errors.openUrlToReview'))
-        if (browser.state().loadError) throw new Error(t('errors.pageNotLoaded'))
+        if (!browser?.state().url || browser.state().url === 'about:blank') throw new UserFacingError(t('errors.openUrlToReview'))
+        if (browser.state().loadError) throw new UserFacingError(t('errors.pageNotLoaded'))
       }
       recordingBusy = true
       try {
@@ -832,7 +908,9 @@ function registerIpc(): void {
         const onSegments = async (segments: import('./pipeline/types').TranscriptSegment[]) => {
           if (segments.length) await appendFile(join(paths.dir, 'transcript.jsonl'), segments.map((s) => JSON.stringify(s)).join('\n') + '\n')
         }
-        await writeFile(join(paths.dir, 'capture.json'), JSON.stringify({ startedAt: new Date().toISOString(), twoSpeakers: options.captureSystemAudio, captureTarget }))
+        await writeFile(join(paths.dir, 'capture.json'), JSON.stringify({ startedAt: new Date().toISOString(), twoSpeakers: options.captureSystemAudio, captureTarget,
+          // 指摘の URL に local / dev / prd のラベルを付けるため、録画を始めた時点の登録URLを控える
+          urlPresets: currentSettings().projects.find((p) => p.id === workspace.projectId)?.urls ?? [] }))
         activeOptions = { captureSystemAudio: options.captureSystemAudio,
           transcription: options.transcription ?? 'local' }
         sttWarnings = []
@@ -844,7 +922,7 @@ function registerIpc(): void {
             const { STT_PROVIDER_PRESETS, providerLabel } = await import('@shared/aiProviders')
             const { createSttEngine } = await import('./pipeline/stt/cloud')
             const preset = STT_PROVIDER_PRESETS[provider]
-            const apiKey = (await sttKeyStore()).get(preset.vendor)
+            const apiKey = await (await sttKeyStore()).read(preset.vendor)
             const capture = currentSettings().capture
             // 上限は設定の値（null は上限なし）。検証起動では実API保護のため $0.05 に固定する
             const maxCostUsd = IS_E2E ? 0.05 : capture?.costLimitUsd
@@ -854,7 +932,9 @@ function registerIpc(): void {
               try {
                 transcriber = new IncrementalTranscriber(createSttEngine({ provider, endpoint: capture?.sttEndpoints?.[provider], apiKey,
                   language: options.language ?? 'auto', maxCostUsd }), onSegments)
-              } catch {
+              } catch (err) {
+                // 接続先の設定の不足（UserFacingError）は送らない。それ以外の失敗だけが届く
+                reportHandled(err, { area: 'stt', op: 'create stt engine' })
                 sttWarnings.push(t('errors.endpointMissingWarning'))
               }
             }
@@ -867,6 +947,7 @@ function registerIpc(): void {
             else sttWarnings.push(t('errors.localModelMissingWarning'))
           }
         }
+        flow('stt start', { engine: transcriber ? (options.transcription ?? 'local') : 'none' })
         audioWriter = await createAudioWriter(paths.audioDir)
         await controller.start({ paths: { videoPath: paths.recording, framesDir: paths.framesDir,
           audioDir: paths.audioDir, eventsPath: paths.eventsJsonl }, captureSystemAudio: options.captureSystemAudio,
@@ -904,6 +985,7 @@ function registerIpc(): void {
     'fs:write': (relPath, content) => writeTextFile(projectRoot(), relPath, content),
     'fs:files': () => listFiles(projectRoot()),
     'fs:search': (query, mode) => searchFiles(projectRoot(), query, mode),
+    'preview:render': (path, source) => renderPreviewSource(path, source),
     'editor:unsaved': (paths) => {
       unsavedFiles = Array.isArray(paths) ? paths.filter((p): p is string => typeof p === 'string') : []
     },
@@ -920,29 +1002,40 @@ function registerIpc(): void {
       checkedPaths(workspace.folderPath, id)
       return (await import('./github')).githubPostReview(workspace.folderPath, target, body)
     },
+    'github:repoStatus': async () => {
+      const { gitRepoStatus, watchGitHead } = await import('./github/repoStatus')
+      void watchGitHead(workspace.folderPath, () => send('github:headChanged'))
+      return gitRepoStatus(workspace.folderPath)
+    },
     'github:open': async (url) => {
       // 一覧に出した GitHub のページだけを開く（任意のURL・スキームは開かない）
       const parsed = new URL(String(url))
-      if (parsed.protocol !== 'https:') throw new Error(t('errors.urlNotAllowed'))
+      if (parsed.protocol !== 'https:') throw new UserFacingError(t('errors.urlNotAllowed'))
       const repo = (await (await import('./github')).githubRepo(workspace.folderPath)).repo
-      if (parsed.host !== 'github.com' && parsed.host !== repo?.host) throw new Error(t('errors.urlNotAllowed'))
+      if (parsed.host !== 'github.com' && parsed.host !== repo?.host) throw new UserFacingError(t('errors.urlNotAllowed'))
       await shell.openExternal(parsed.toString())
     }
   }
 
   for (const [channel, handler] of Object.entries(handlers)) {
+    // 投げた例外は Sentry へも送る（kind: ipc。src/main/telemetry.ts）
+    const op = flowOf(channel)
+    const run = wrapIpcHandler(channel, async (...args: unknown[]) => {
+      // 主要な操作の区切り（パンくず）。操作名だけを残す
+      if (op) flow(op.name, op.data)
+      try {
+        return await (handler as (...a: unknown[]) => unknown)(...args)
+      } catch (err) {
+        // ファイル操作の英語のエラー（EACCES など）とパスを、そのまま画面へ出さない（想定内なので Sentry にも送らない）
+        const wrapped = toUserFacingFileError(err)
+        if (wrapped !== err) console.warn(`[ipc] ${channel} に失敗しました`, err)
+        throw wrapped
+      }
+    }, reportMainError)
     ipcMain.handle(channel, async (_event, ...args: unknown[]) => {
       // 終了処理に入った後は、破棄途中のオブジェクトを触らない
       if (shuttingDown) return null
-      let result: unknown
-      try {
-        result = await (handler as (...a: unknown[]) => unknown)(...args)
-      } catch (err) {
-        // ファイル操作の英語のエラー（EACCES など）とパスを、そのまま画面へ出さない
-        const message = fileErrorMessage(err)
-        if (message) console.warn(`[ipc] ${channel} に失敗しました`, err)
-        throw message ? new Error(message) : err
-      }
+      const result = await run(...args)
       // void を返すハンドラの戻り値は undefined に正規化する（構造化クローンの失敗を避ける）
       return result === undefined ? null : result
     })
@@ -976,6 +1069,7 @@ async function main(): Promise<void> {
   mark('app:ready')
   // Windows のタスクバーで、インストーラが作るショートカット（appId）と同じアイコンにまとめる
   if (process.platform === 'win32') app.setAppUserModelId('com.japanmarketing.movieade')
+  app.setAboutPanelOptions({ applicationName: PRODUCT_NAME })
 
   // E2E中はDockのアイコンを出さない（跳ねない・メニューバーを切り替えない）
   if (HIDE_WINDOW && process.platform === 'darwin') app.dock?.hide()
@@ -1026,9 +1120,10 @@ async function main(): Promise<void> {
   if (startupProject) {
     updateSettings({ activeProjectId: startupProject.id, folderPath: startupProject.folderPath })
     loadedSettings = currentSettings()
-    // 前回のURLが無ければ、プロジェクトの先頭URLから始める
-    const first = startupProject.urls[0]
-    if (first && (!loadedSettings.url || loadedSettings.url === DEFAULT_URL)) loadedSettings = { ...loadedSettings, url: first.url }
+    // そのプロジェクトで前に開いていた URL（無ければ登録 URL の先頭）から始める
+    const saved = loadedSettings.projects.find((p) => p.id === startupProject!.id) ?? startupProject
+    const target = sessionUrl(saved)
+    if (target !== DEFAULT_URL || !loadedSettings.url) loadedSettings = { ...loadedSettings, url: target }
   }
   if (loadedSettings.folderPath) {
     const { pruneRecordings } = await import('./sessions')
@@ -1063,6 +1158,7 @@ async function main(): Promise<void> {
   browser.onStateChange((state) => {
     // WS-1 復元用に、実際に表示しているURLを控える（入力そのままではなく正規化後）
     if (state.url && state.url !== 'about:blank') updateSettings({ url: state.url })
+    recordProjectUrl(state)
     send('browser:stateChanged', state)
   })
   // 表示幅の切替を操作ログへ残す（WS-3 → viewport イベント）
@@ -1131,7 +1227,7 @@ function beginShutdown(): boolean {
     void recording
       .stop()
       .then(() => { console.log('[STEP] recording.stop 完了'); return audioWriter?.flush() })
-      .catch((err: unknown) => console.warn('[recording] 停止に失敗しました', err))
+      .catch((err: unknown) => { console.warn('[recording] 停止に失敗しました', err); reportHandled(err, { area: 'recording', op: 'stop on quit' }) })
       .then(() => {
         console.log('[STEP] flush 完了')
         audioWriter = null
@@ -1220,6 +1316,7 @@ app.on('activate', () => {
 
 void main().catch((err) => {
   console.error('[main] 起動に失敗しました', err)
+  reportMainError(err, { kind: 'startup' })
   dialog.showErrorBox(t('dialog.startupFailed'), String(err))
   app.exit(1)
 })

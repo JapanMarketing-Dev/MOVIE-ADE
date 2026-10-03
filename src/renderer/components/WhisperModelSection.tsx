@@ -27,7 +27,7 @@ export function WhisperModelSection({ disabled, onPickModel, onChanged }: { disa
     setList(next)
     setChoice((prev) => prev ?? next.downloading ?? next.selected ?? next.models.find((m) => m.recommended)?.id ?? null)
     if (next.downloading) setStatus({ kind: 'running' })
-  }).catch(() => undefined), [])
+  }).catch(() => undefined), []) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
 
   useEffect(() => {
     void reload()

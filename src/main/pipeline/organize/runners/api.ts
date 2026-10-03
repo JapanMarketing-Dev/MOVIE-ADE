@@ -161,7 +161,8 @@ export class ApiLlmRunner implements LlmRunner {
     }
     const elapsedMs = Date.now() - started
     if (!res.ok) {
-      const body = redact(await res.text().catch(() => ''), this.opt.apiKey).slice(0, 500)
+      // 失敗の本文は説明に使うだけ（想定内）
+    const body = redact(await res.text().catch(() => ''), this.opt.apiKey).slice(0, 500)
       throw new RunnerError(describeLlmFailure(res.status, body, this.label), 'exit', commandLine, body)
     }
     const { text, usage } = this.parseResponse(await res.json())

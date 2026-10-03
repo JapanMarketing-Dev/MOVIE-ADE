@@ -97,6 +97,7 @@ export class ClaudeCodeRunner implements LlmRunner {
       })
       return r.code === 0
     } catch {
+      // CLI が入っていない（想定内）
       return false
     }
   }
@@ -209,6 +210,7 @@ function tryParse(s: string): unknown {
   try {
     return JSON.parse(s)
   } catch {
+    // JSON でない出力を見分けている（想定内）
     return undefined
   }
 }

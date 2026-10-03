@@ -7,6 +7,7 @@ import type { RecordingOptions } from './types'
 import { frameFileName, hasChanged, targetWidth } from './frames'
 // 静止画の時刻を t と呼ぶので、文の取り出しは別名にする
 import { t as translateMessage } from '@shared/i18n'
+import { reportHandled } from '@shared/report'
 
 /**
  * 静止画の収集（設計4章）。
@@ -118,6 +119,7 @@ export class StillCapturer {
   async prepare(annotationId: string): Promise<void> {
     if (this.source.gone) return
     const t = this.clock.now()
+    // 撮れない瞬間（ページの切り替え中など）は飛ばす（想定内。撮れなかったことは onWarning で伝える箇所がある）
     const image = await this.source.capture().catch(() => null)
     if (!image || image.isEmpty()) return
     this.prepared.delete(annotationId)
@@ -143,7 +145,8 @@ export class StillCapturer {
     try {
       // 遷移の直後は合成器がまだ準備できておらず UnknownVizError になることがある。
       // 1度だけ待って撮り直す
-      let image = preset?.image ?? await this.source.capture().catch(() => null)
+      // 撮れなければ1度だけ撮り直す（想定内）
+    let image = preset?.image ?? await this.source.capture().catch(() => null)
       if (!image || image.isEmpty()) {
         await new Promise((done) => setTimeout(done, 120))
         if (this.source.gone) return null
@@ -171,6 +174,7 @@ export class StillCapturer {
       this.handlers.onFrame(frame)
       return frame
     } catch (err) {
+      reportHandled(err, { area: 'recording', op: 'save still' })
       this.handlers.onWarning(translateMessage('recording.errors.stillFailed', { reason, error: String(err) }))
       return null
     } finally {

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setLocale } from '@shared/i18n'
-import { issueFromFeedback, mapPullRequests, parseAuthStatus, parseGitRemote, pickActiveAccount } from '../../src/main/github/parse'
+import { branchWebUrl } from '@shared/github'
+import { issueFromFeedback, mapPullRequests, parseGitStatus, parseAuthStatus, parseGitRemote, pickActiveAccount } from '../../src/main/github/parse'
 
 describe('GitHub: remote URL から owner/repo', () => {
   it.each([
@@ -117,5 +118,32 @@ describe('GitHub: feedback.md から Issue', () => {
     expect(title).toBe('UI Feedback (1 item): example.com')
     expect(body).not.toContain('./01.png')
     expect(body).toContain('1 image is stored locally in MOVIE-ADE')
+  })
+})
+
+describe('GitHub: git status --porcelain=v2 --branch の解析', () => {
+  it('ブランチ・ahead/behind・変更の数', () => {
+    const text = [
+      '# branch.oid 0123456789abcdef0123456789abcdef01234567',
+      '# branch.head develop',
+      '# branch.upstream origin/develop',
+      '# branch.ab +2 -1',
+      '1 .M N... 100644 100644 100644 aaa bbb src/a.ts',
+      '2 R. N... 100644 100644 100644 aaa bbb R100 src/new.ts\tsrc/old.ts',
+      'u UU N... 100644 100644 100644 100644 a b c conflict.ts',
+      '? 新しい.md',
+      '! ignored.log'
+    ].join('\n')
+    expect(parseGitStatus(text)).toEqual({ branch: 'develop', shortOid: '0123456', changes: 4, ahead: 2, behind: 1, hasUpstream: true })
+  })
+
+  it('detached HEAD・upstream なし・コミットなし', () => {
+    expect(parseGitStatus('# branch.oid abcdef1234567\n# branch.head (detached)\n')).toEqual({ branch: null, shortOid: 'abcdef1', changes: 0, ahead: 0, behind: 0, hasUpstream: false })
+    expect(parseGitStatus('# branch.oid (initial)\r\n# branch.head main\r\n? a.txt\r\n')).toEqual({ branch: 'main', shortOid: null, changes: 1, ahead: 0, behind: 0, hasUpstream: false })
+  })
+
+  it('ブランチのURLは「/」を区切りのまま残し、ほかは符号化する', () => {
+    const repo = parseGitRemote('https://github.com/o/r.git')!
+    expect(branchWebUrl(repo, 'feature/日本語#1')).toBe('https://github.com/o/r/tree/feature/%E6%97%A5%E6%9C%AC%E8%AA%9E%231')
   })
 })

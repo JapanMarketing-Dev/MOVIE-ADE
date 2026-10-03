@@ -194,9 +194,10 @@
     grid-template-rows: auto minmax(0, 1fr);
   }
 
+  /* 横へ流すと右端の項目が見えなくなるので、折り返して全部見せる */
   .st-page__nav {
-    overflow-x: auto;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
     padding: var(--space-3) var(--space-5);
     border-right: 0;

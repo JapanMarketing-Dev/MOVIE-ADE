@@ -64,6 +64,8 @@ export function ProjectMenu({
         <button
           type="button"
           className="titlebar__project"
+          // 長い名前は省略されるので、全文は OS 標準の title で見せる（Tooltip は操作の説明に使う）
+          title={workspace.folderName ?? undefined}
           aria-haspopup="menu"
           aria-expanded={open}
           onClick={() => setMenu(!open)}

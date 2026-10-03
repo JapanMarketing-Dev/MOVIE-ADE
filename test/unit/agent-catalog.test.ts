@@ -98,12 +98,12 @@ describe('起動コマンド', () => {
   it('組み込みはコマンドが空なら既定、カスタムは空なら理由を返す', () => {
     expect(buildAgentLaunchCommand('gemini', { command: '', args: '--yolo' }, 'posix')).toEqual({
       ok: true,
-      command: `gemini '--yolo'`
+      command: 'gemini --yolo'
     })
     expect(buildAgentLaunchCommand('custom:x', { command: ' ', args: '' }, 'posix').ok).toBe(false)
     expect(buildAgentLaunchCommand('custom:x', { command: 'npx -y foo', args: '--a b' }, 'posix')).toEqual({
       ok: true,
-      command: `npx -y foo '--a' 'b'`
+      command: 'npx -y foo --a b'
     })
   })
 

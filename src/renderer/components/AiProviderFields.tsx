@@ -128,7 +128,7 @@ export function KeyField({ vendor, label, optional, placeholder, available, disa
         <Button variant="ghost" disabled={disabled || busy || (source !== 'saved' && source !== 'session')} onClick={() => run('')}>{t('settings.capture.keyDelete')}</Button>
         <Button busy={busy} disabled={disabled || !key.trim()} onClick={() => run(key.trim())}>{t(available.keyStorage === 'encrypted' ? 'settings.capture.keySave' : 'settings.capture.keySetSession')}</Button>
       </div>
-      <p className="st-note">{t(available.keyStorage === 'encrypted' ? 'settings.capture.keyEncryptedNote' : 'settings.capture.keyPlainNote')}</p>
+      <p className="st-note">{t(available.keyStorage === 'encrypted' ? 'settings.capture.keyEncryptedNote' : available.keyStorage === 'dev' ? 'settings.capture.keyDevNote' : 'settings.capture.keyPlainNote')}</p>
     </div>
   </details>
 }

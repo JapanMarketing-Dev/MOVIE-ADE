@@ -117,7 +117,7 @@ ${note(`<p>${APP} is tested on macOS (Apple silicon). The Windows and Linux buil
 <p>There is no <code>SHA256SUMS</code> file. Each release has <code>releases/&lt;version&gt;/manifest.json</code> on the download server, and its <code>files[].sha256</code> field holds the expected hash of every file. <code>versions.json</code> lists the available versions.</p>
 ${code(`# the download server (currently the R2 public URL; it may move to a custom domain)
 BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
-VERSION=0.1.0
+VERSION=0.1.1
 
 # expected hashes
 curl -s $BASE/releases/$VERSION/manifest.json | jq -r '.files[] | "\\(.sha256)  \\(.name)"'
@@ -626,7 +626,7 @@ ${code(`&lt;project&gt;/.ade-movie/reviews/20261003-104500/
     <tr><td>${ui('Send to GitHub')}</td><td>GitHub via <code>gh</code></td><td>body text only (no images)</td></tr>
     <tr><td>Footer usage</td><td>Anthropic, ChatGPT</td><td>usage request with your own login</td></tr>
     <tr><td>${ui('Check for Updates')} (manual)</td><td>download server (Cloudflare R2)</td><td>request for <code>latest.json</code></td></tr>
-    <tr><td>A crash or error (installed app, ${ui('Send crash reports')} on)</td><td>Sentry</td><td>stack trace and OS / CPU / app versions (see <a href="#crash-reports">Crash reports</a>)</td></tr>
+    <tr><td>A crash or error (${ui('Send crash reports')} on)</td><td>Sentry</td><td>stack trace and OS / CPU / app versions (see <a href="#crash-reports">Crash reports</a>)</td></tr>
   </tbody>
 </table>
 <ul>
@@ -635,7 +635,7 @@ ${code(`&lt;project&gt;/.ade-movie/reviews/20261003-104500/
   <li>Text captured from the page is marked as data in <code>feedback.md</code>, so the agent is told not to follow instructions found in it.</li>
 </ul>`],
     ['crash-reports', 'Crash reports', `
-<p>When the installed app crashes or hits an unhandled error, ${APP} sends a crash report to <a href="https://sentry.io/">Sentry</a> so the bug can be fixed. It is on by default. Turn it off in ${ui('Settings → Privacy → Send crash reports')}, or with ${ui('Turn off')} on the notice shown at first launch. Turning it off takes effect at once. Turning it back on takes effect at the next launch. Development builds (<code>pnpm dev</code>) and E2E runs never send.</p>
+<p>When the app crashes or hits an unhandled error, ${APP} sends a crash report to <a href="https://sentry.io/">Sentry</a> so the bug can be fixed. It is on by default. Turn it off in ${ui('Settings → Privacy → Send crash reports')}, or with ${ui('Turn off')} on the notice shown at first launch. Turning it off takes effect at once. Turning it back on takes effect at the next launch. Development builds (<code>pnpm dev</code>) also send, tagged <code>development</code>, so the developers can fix crashes they hit while working. E2E runs and unit tests never send.</p>
 <table>
   <thead><tr><th>Sent</th><th>Not sent</th></tr></thead>
   <tbody>
@@ -645,7 +645,8 @@ ${code(`&lt;project&gt;/.ade-movie/reviews/20261003-104500/
         <li>Stack trace (where in ${APP}'s code it happened)</li>
         <li>For native crashes: the minidump (thread stacks of the crashed process)</li>
         <li>OS name and version, CPU architecture, Electron / Chrome / Node versions, app version, screen size, memory size</li>
-        <li>App lifecycle events right before the error (for example <q>app.ready</q>)</li>
+        <li>App lifecycle events right before the error (for example <q>app.ready</q>), and startup failures</li>
+        <li>Which part of the app failed: a screen area that could not render (and its React component names), an IPC call, a terminal that could not start, a crashed or hung process, or a page of the app that failed to load</li>
       </ul>
     </td><td>
       <ul>
@@ -659,7 +660,7 @@ ${code(`&lt;project&gt;/.ade-movie/reviews/20261003-104500/
     </td></tr>
   </tbody>
 </table>
-<p>At most 10 reports are sent per launch, the same error only once, and only half of JavaScript errors (native crashes are always sent). No performance tracing or session replay is used. The app uses Sentry's free plan. If it fills up, extra reports are dropped and nobody is charged.</p>
+<p>The installed app sends at most 10 reports per launch and only half of JavaScript errors (native crashes are always sent). Development builds send every error, up to 50 per launch. The same error is sent only once per launch. No performance tracing or session replay is used. The app uses Sentry's free plan. If it fills up, extra reports are dropped and nobody is charged.</p>
 <p>Building ${APP} yourself? Set <code>MOVIE_ADE_SENTRY_DSN</code> to your own Sentry DSN, or to an empty string to send nothing. The code is in <code>src/main/telemetry.ts</code> and <code>src/shared/telemetry.ts</code>.</p>`],
   ])
 
@@ -712,14 +713,15 @@ page('troubleshooting.html', 'Help', 'Troubleshooting',
 <p>Message: <q>Recording the entire screen or another window requires macOS Screen Recording permission.</q></p>
 <ol class="docs-steps">
   <li>In the ${ui('Recording Target')} dialog, click ${ui('Open System Settings')}.</li>
-  <li>${ui('Privacy &amp; Security → Screen &amp; System Audio Recording')}: turn on MOVIE-ADE, or Electron when running <code>pnpm dev</code>.</li>
+  <li>${ui('Privacy &amp; Security → Screen &amp; System Audio Recording')}: turn on MOVIE-ADE, or MOVIE-ADE Dev when running <code>pnpm dev</code>.</li>
   <li>Restart the app, then click ${ui('Check Again')}.</li>
 </ol>
-<p>Recording the ${ui('Built-in Browser')} needs no permission.</p>`],
+<p>Recording the ${ui('Built-in Browser')} needs no permission.</p>
+<p>Running from source on macOS, <code>pnpm dev</code> launches a renamed, ad-hoc signed copy of Electron called MOVIE-ADE Dev (<code>scripts/prepare-dev-electron.mjs</code>). The first time it runs, macOS asks again for Screen Recording, Microphone, and Keychain (<code>ade-movie Safe Storage</code>) access. It doesn't ask again after that.</p>`],
     ['mic', 'Microphone does not open', `
 <p>Message: <q>Couldn't open the microphone. Check the permission in your OS settings.</q></p>
 <ul>
-  <li>macOS: ${ui('System Settings → Privacy &amp; Security → Microphone')}, then turn on MOVIE-ADE (or Electron in dev).</li>
+  <li>macOS: ${ui('System Settings → Privacy &amp; Security → Microphone')}, then turn on MOVIE-ADE (or MOVIE-ADE Dev when running <code>pnpm dev</code>).</li>
   <li>Windows: ${ui('Settings → Privacy &amp; security → Microphone')}, then allow desktop apps.</li>
 </ul>
 <p>You can keep working without a mic. Pen and text still create findings.</p>`],

@@ -213,6 +213,7 @@ export function nodeProbes(): EnvironmentProbes {
         const first = out.split(/\r?\n/).find((l) => l.trim().length > 0)
         return first ? first.trim() : null
       } catch {
+        // コマンドが見つからない（想定内）
         return null
       }
     },

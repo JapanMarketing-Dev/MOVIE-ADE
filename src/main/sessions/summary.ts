@@ -86,6 +86,7 @@ export function parseStoredSummary(raw: unknown): StoredSummary | null {
 
 /** 操作ログの遷移（タイトルとURL）。nav の行だけを読む */
 export async function readNavs(paths: SessionPaths): Promise<NavRef[]> {
+  // 内蔵ブラウザ以外の録画には操作ログが無い（想定内）
   const text = await readFile(paths.eventsJsonl, 'utf8').catch(() => '')
   const out: NavRef[] = []
   for (const line of text.split('\n')) {
@@ -112,6 +113,7 @@ export async function writeSummary(paths: SessionPaths, record: SessionRecord): 
  * session.json だけ書き換わった）ときは null を返し、呼び出し側が作り直す。
  */
 export async function readFreshSummary(paths: SessionPaths): Promise<StoredSummary | null> {
+  // どちらかが無ければ作り直す（想定内）
   const [summaryStat, sessionStat] = await Promise.all([
     stat(paths.summaryJson).catch(() => null),
     stat(paths.sessionJson).catch(() => null)
@@ -120,6 +122,7 @@ export async function readFreshSummary(paths: SessionPaths): Promise<StoredSumma
   try {
     return parseStoredSummary(JSON.parse(await readFile(paths.summaryJson, 'utf8')))
   } catch {
+    // 読めない要約は session.json から作り直す（想定内）
     return null
   }
 }

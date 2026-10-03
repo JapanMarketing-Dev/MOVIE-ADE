@@ -73,6 +73,7 @@ export function redactUrl(raw: string): string {
   try {
     url = new URL(raw)
   } catch {
+    // URL として読めない文字列（想定内）。JWT だけ伏せる
     return raw.replace(JWT_ALL, redactedMark())
   }
 

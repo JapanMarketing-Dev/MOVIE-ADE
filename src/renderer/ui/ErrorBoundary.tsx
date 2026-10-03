@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { t } from '@shared/i18n'
 import { Button } from './Button'
 import { EmptyState } from './EmptyState'
+import { reportRenderError } from '../lib/telemetry'
 
 /**
  * 描画の失敗を1つの領域に閉じ込める。
@@ -33,6 +34,8 @@ export class ErrorBoundary extends Component<
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error(`[ui] ${this.props.name} を表示できませんでした`, error, info.componentStack)
+    // Sentry へも送る（設定が OFF・E2E では何もしない。src/renderer/lib/telemetry.ts）
+    reportRenderError(error, this.props.name, info.componentStack)
   }
 
   private readonly retry = (): void => this.setState({ error: null })

@@ -154,6 +154,11 @@ export interface SessionMeta {
   targetUrl?: string;
   /** 相手の声も録ったか。MTGモードの判定に使う（EXT-7） */
   twoSpeakers: boolean
+  /**
+   * 録画を始めた時点のプロジェクトの登録URL（local / dev / prd）。
+   * 指摘を対象ごとにまとめるとき、URL に環境のラベルを付けるのに使う（shared/reviewTarget.ts）
+   */
+  urlPresets?: Array<{ id: string; label: string; url: string }>
 }
 
 /** 分解の入力一式（①素材化の結果） */

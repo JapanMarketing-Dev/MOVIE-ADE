@@ -24,11 +24,22 @@ import {
   type PaneSplitDirection
 } from '../terminal/paneTree'
 import { AgentIcon } from './AgentIcon'
+import { PanelCloseButton } from './LayoutToggles'
 import { useT } from '../lib/i18n'
 import { t as tNow, type TranslationKey } from '@shared/i18n'
 import { QuickLaunchButton, type QuickLaunchAgent, type QuickLaunchSearch } from './QuickLaunchButton'
 import { agentLabel } from '@shared/agentCatalog'
 import { moveItem } from '@shared/layout'
+import {
+  TERMINAL_SNAPSHOT_KEY,
+  buildTerminalSnapshot,
+  dropRestoredPanes,
+  maxKeySeq,
+  parseTerminalSnapshot,
+  planTerminalRestore,
+  type TerminalSnapshot
+} from '../terminal/restorePlan'
+import { reportHandled } from '@shared/report'
 
 /**
  * 内蔵ターミナル（WS-4）。タブで複数のシェルを開き、閉じられる。
@@ -127,6 +138,24 @@ function newPane({ launch = null, cwd, accountLogin = null, command = null, titl
   return { key: `pane${++paneSeq}`, title: label, state: 'unknown', launch, cwd, accountLogin, command, customTitle: title }
 }
 
+/** 読み込み直しの前に書いた記録（同じウインドウの読み込み直しでは残る sessionStorage）。読めなければ null */
+function readSnapshot(): string | null {
+  try {
+    return window.sessionStorage.getItem(TERMINAL_SNAPSHOT_KEY)
+  } catch {
+    // ストレージが使えない環境（想定内。main の一覧から戻せる）
+    return null
+  }
+}
+
+function writeSnapshot(snapshot: TerminalSnapshot): void {
+  try {
+    window.sessionStorage.setItem(TERMINAL_SNAPSHOT_KEY, JSON.stringify(snapshot))
+  } catch {
+    /* 書けなくても、main の一覧から戻せる */
+  }
+}
+
 /** fs:search の結果からファイルの相対パスだけを取り出す（ファイル名の検索） */
 async function searchFileNames(query: string): Promise<string[]> {
   const result = await window.ade.invoke('fs:search', query, 'names')
@@ -203,6 +232,11 @@ export function TerminalPane({
   const seededRef = useRef(new Set<string>())
   /** PTYを作り始めたペイン。終了したペインを勝手に作り直さないよう、1ペイン1回だけ */
   const spawnedRef = useRef(new Set<string>())
+  /**
+   * 画面を読み込み直したあとの、生きているターミナルへのつなぎ直しが済んだか。
+   * 済むまでは、初めて開いたプロジェクトのタブの自動作成を待つ（作ってしまうと PTY が重なる）
+   */
+  const [restored, setRestored] = useState(false)
   const panesRef = useRef(panes)
   panesRef.current = panes
 
@@ -289,7 +323,8 @@ export function TerminalPane({
       const ptyId = getTerminal(sourceKey)?.ptyId ?? null
       const live = ptyId
         ? await Promise.race([
-            window.ade.invoke('terminal:cwd', ptyId).catch(() => null),
+            // 終了済みのターミナル（想定内。プロジェクトのフォルダで開く）
+      window.ade.invoke('terminal:cwd', ptyId).catch(() => null),
             new Promise<null>((done) => setTimeout(() => done(null), SPLIT_CWD_TIMEOUT_MS))
           ])
         : null
@@ -408,6 +443,7 @@ export function TerminalPane({
       .then((options) => {
         if (!stopped) setAgentOptions(options)
       })
+      // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
       .catch(() => undefined)
     const off = window.ade.on('agents:changed', setAgentOptions)
     return () => {
@@ -434,6 +470,7 @@ export function TerminalPane({
       .then((state) => {
         if (!stopped) setProjects(state.projects)
       })
+      // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
       .catch(() => undefined)
     const off = window.ade.on('projects:changed', (state) => setProjects(state.projects))
     return () => {
@@ -452,13 +489,15 @@ export function TerminalPane({
   // 初めて開いたプロジェクトでは、startupAgents の順にAgentタブを開く（空なら素のシェル1つ）。
   // 最初のタブを選択状態にする
   useEffect(() => {
-    if (seededRef.current.has(projectKey)) return
+    if (!restored || seededRef.current.has(projectKey)) return
     seededRef.current.add(projectKey)
     if (visibleTabs.length > 0) return
     // 無効にしたエージェントは開かない（一覧がまだ届いていなければそのまま）
     const disabled = new Set(agentOptionsRef.current.filter((o) => !o.enabled).map((o) => o.id))
     const enabledStartup = startupAgents.filter((agent) => !disabled.has(agent))
-    const launches: Array<TuiAgent | null> = enabledStartup.length > 0 ? enabledStartup : [null]
+    // プロジェクトを開いていないとき（ホームなど）はエージェントを自動で起動しない。素のシェルを1つだけ開く。
+    // 登録したプロジェクト＝信頼したフォルダなので、そこでだけ起動する（フォルダの信頼もそこにだけ書く）
+    const launches: Array<TuiAgent | null> = projectId && enabledStartup.length > 0 ? enabledStartup : [null]
     const created = launches.map((launch) => newPane({ launch, cwd }))
     const createdTabs: Tab[] = created.map((pane) => ({
       key: `tab${++tabSeq}`,
@@ -469,8 +508,80 @@ export function TerminalPane({
     setPanes((prev) => ({ ...prev, ...Object.fromEntries(created.map((pane) => [pane.key, pane])) }))
     setTabs((prev) => [...prev, ...createdTabs])
     setActiveKey(createdTabs[0]?.key ?? null)
-    // プロジェクトが切り替わったときだけ動かす（設定の変更で開き直さない）
-  }, [projectKey])
+    // プロジェクトが切り替わったとき（とつなぎ直しが済んだとき）だけ動かす（設定の変更で開き直さない）
+  }, [projectKey, restored])
+
+  // 画面を読み込み直した（⌘R・HMR）あとは、main で生きているターミナルに新しく作らずつなぎ直す。
+  // 読み込み直しの前に書いておいたタブ・分割の形（sessionStorage）と main の一覧を突き合わせる（restorePlan.ts）。
+  // 戻す先の無いもの（登録を外したプロジェクトのものなど）だけを閉じる
+  useEffect(() => {
+    let stopped = false
+    void (async () => {
+      try {
+        const [live, projectsState] = await Promise.all([
+          window.ade.invoke('terminal:list'),
+          window.ade.invoke('project:list')
+        ])
+        if (stopped || live.length === 0) return
+        const snapshot = parseTerminalSnapshot(readSnapshot())
+        tabSeq = Math.max(tabSeq, maxKeySeq(snapshot?.tabs.map((tab) => tab.key) ?? [], 'tab'))
+        paneSeq = Math.max(paneSeq, maxKeySeq(snapshot?.panes.map((pane) => pane.key) ?? [], 'pane'))
+        let plan = planTerminalRestore({
+          snapshot,
+          live,
+          projects: projectsState.projects,
+          newKey: (kind) => (kind === 'tab' ? `tab${++tabSeq}` : `pane${++paneSeq}`)
+        })
+        for (const id of plan.close) void window.ade.invoke('terminal:close', id)
+        const attached = await Promise.all(
+          plan.panes.map(async (pane) => [pane, await window.ade.invoke('terminal:attach', pane.ptyId).catch(() => null /* 終了済みの PTY（想定内） */)] as const)
+        )
+        if (stopped) return
+        const dead = new Set(attached.filter(([, info]) => !info).map(([pane]) => pane.key))
+        plan = dropRestoredPanes(plan, dead)
+        for (const [pane, info] of attached) {
+          if (!info) continue
+          const handle = acquireTerminal(pane.key)
+          spawnedRef.current.add(pane.key)
+          handle.reattach(info.id, info.history, info.size)
+        }
+        setPanes((prev) => ({
+          ...prev,
+          ...Object.fromEntries(
+            plan.panes.map((pane): [string, Pane] => [
+              pane.key,
+              { key: pane.key, title: pane.title, state: 'unknown', launch: pane.launch, cwd: pane.cwd }
+            ])
+          )
+        }))
+        setTabs((prev) => [...prev, ...plan.tabs])
+        setActiveByProject((prev) => ({ ...plan.activeByProject, ...prev }))
+        // 戻したタブのあるプロジェクトは、もう自動でタブを作らない
+        for (const tab of plan.tabs) seededRef.current.add(tab.projectId ?? '')
+      } catch (err) {
+        console.warn('[terminal] 読み込み直しのあと、ターミナルにつなぎ直せませんでした', err)
+        reportHandled(err, { area: 'terminal', op: 'reattach after reload' })
+      } finally {
+        if (!stopped) setRestored(true)
+      }
+    })()
+    return () => {
+      stopped = true
+    }
+  }, [])
+
+  // 読み込み直しに備えて、タブ・分割の形と各ペインの PTY の id を書いておく
+  useEffect(() => {
+    if (!restored) return
+    writeSnapshot(
+      buildTerminalSnapshot({
+        tabs,
+        panes: Object.values(panes),
+        ptyIdOf: (key) => getTerminal(key)?.ptyId ?? null,
+        activeByProject
+      })
+    )
+  }, [tabs, panes, activeByProject, restored])
 
   // ペインごとに xterm を開き、PTYを結びつける。
   // 非表示のペイン（裏のタブ・プロジェクトを含む）もすぐPTYを作る。寸法が測れなければ 80x24 で作り、表示時に合わせる
@@ -530,7 +641,7 @@ export function TerminalPane({
     const update = async () => {
       const states = await Promise.all(Object.keys(panesRef.current).map(async (key) => {
         const id = getTerminal(key)?.ptyId
-        const result = id ? await window.ade.invoke('terminal:agentState', id).catch(() => null) : null
+        const result = id ? await window.ade.invoke('terminal:agentState', id).catch(() => null /* 終了済み（想定内） */) : null
         return [key, (result?.state ?? 'unknown') as AgentState] as const
       }))
       if (stopped) return
@@ -769,6 +880,8 @@ export function TerminalPane({
             onNewTerminal={() => splitPane('horizontal')}
             onLaunchAgent={(agent) => splitPane('horizontal', agent)}
           />
+          {/* ターミナルのパネルを閉じる（大きさを 0 にするだけで、PTY と Agent は止まらない。⌘J で開き直す） */}
+          <PanelCloseButton panel="terminal" />
         </div>
       </div>
 

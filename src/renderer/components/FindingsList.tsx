@@ -78,7 +78,7 @@ export function FindingsList({
               </div>
               <div className="rv-card__body">
                 <div className="rv-card__top">
-                  <h3 className="rv-card__title rv-card__title--static">{f.title}</h3>
+                  <h3 className="rv-card__title rv-card__title--static" title={f.title}>{f.title}</h3>
                   {f.unresolved && <span className="rv-flag"><Flag size={11} />{t('review.needsCheck')}</span>}
                 </div>
                 <p className="rv-card__request rv-card__request--static">{f.request}</p>

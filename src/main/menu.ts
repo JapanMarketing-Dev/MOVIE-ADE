@@ -98,6 +98,12 @@ function buildMenu(handlers: Parameters<typeof installMenu>[0]): void {
           click: () => handlers.onCommand('toggleExplorer')
         },
         {
+          // フィードバックモードの右パネル（レビュー対象の一覧）。録画中に画面を広く使いたいときに隠す
+          label: t('menu.toggleTargets'),
+          accelerator: 'CmdOrCtrl+Shift+K',
+          click: () => handlers.onCommand('toggleTargets')
+        },
+        {
           label: t('menu.toggleTerminalPanel'),
           accelerator: 'CmdOrCtrl+J',
           click: () => handlers.onCommand('toggleTerminalPanel')
@@ -166,6 +172,12 @@ function buildMenu(handlers: Parameters<typeof installMenu>[0]): void {
               click: () => handlers.onCommand('splitTerminalDown')
             }
       ]
+    },
+    {
+      // ヘルプ。初回起動のセットアップ（オンボーディング）を開き直す（Orca の「Setup guide」に相当）
+      label: t('menu.help'),
+      role: 'help',
+      submenu: [{ label: t('menu.showOnboarding'), click: () => handlers.onCommand('showOnboarding') }]
     }
   ]
 

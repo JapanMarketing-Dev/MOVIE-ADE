@@ -3,6 +3,8 @@ import { createWriteStream, type WriteStream } from 'node:fs'
 import { join } from 'node:path'
 import type { AudioLevel, PcmBlock, RecordingOptions } from './types'
 import { t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
+import { reportHandled } from '@shared/report'
 
 /**
  * 録画用の非表示ウィンドウ（設計4章）。
@@ -104,6 +106,8 @@ export class RecorderWindow {
     this.window = window
     window.webContents.on('console-message', (_event, level, message) => {
       if (level >= 2) console.warn('[recorder]', message)
+      // 録画ウインドウには Sentry を入れていないので、console のエラーをここで知らせる（文は scrub される）
+      if (level >= 3) reportHandled(new Error(message), { area: 'recording', op: 'recorder window error' })
     })
     this.bind()
     await window.loadFile(this.htmlPath)
@@ -158,7 +162,7 @@ export class RecorderWindow {
    */
   async start(source: VideoSource, options: RecordingOptions, startedAtEpoch: number): Promise<void> {
     const window = this.window
-    if (!window || window.isDestroyed()) throw new Error(t('recording.errors.noRecorderWindow'))
+    if (!window || window.isDestroyed()) throw new UserFacingError(t('recording.errors.noRecorderWindow'))
 
     this.videoStream = createWriteStream(options.paths.videoPath)
     this.bytesWritten = 0

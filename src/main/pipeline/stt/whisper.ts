@@ -104,6 +104,7 @@ export async function transcribeChunk(
       commandLine,
     }
   } finally {
+    // 一時フォルダの片付け（OS が後で消す。想定内）
     if (ownsDir) await rm(dir, { recursive: true, force: true }).catch(() => undefined)
   }
 }

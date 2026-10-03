@@ -2,6 +2,7 @@
 
 .acct-row__text {
   display: flex;
+  overflow: hidden;
   min-width: 0;
   flex: 1;
   flex-direction: column;
@@ -41,14 +42,31 @@
 
 /* 設定のアカウント欄 */
 
+/* アカウント欄の本文は、欄の幅を超えて広がらない（共通の .st-section__body の列は中身に合わせて伸びるため） */
+#settings-accounts .st-section__body {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#settings-accounts .st-note {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .acct-group {
   display: grid;
+  /* 狭い設定ページでも欄の外へはみ出さない（grid の子は既定で中身の幅より縮まない） */
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   margin-top: var(--space-3);
   gap: var(--space-2);
 }
 
 .acct-group__head {
   display: flex;
+  min-width: 0;
+  /* 狭いときは「アカウントを追加」を次の行へ送る */
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
@@ -74,6 +92,7 @@
 
 .acct-row {
   display: flex;
+  min-width: 0;
   flex-wrap: wrap;
   align-items: center;
   padding: var(--space-2) var(--space-3);
@@ -126,6 +145,7 @@
 
 .acct-row__name {
   display: inline-flex;
+  max-width: 100%;
   min-width: 0;
   align-items: center;
   font-size: var(--font-size-sm);
@@ -133,11 +153,22 @@
   gap: var(--space-3);
 }
 
+.acct-row__name > .badge {
+  flex: none;
+}
+
+/* 長い名前・メールアドレスは省略記号にし、全文は title で見せる */
+.acct-row__label,
 .acct-row__detail {
   overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acct-row__detail {
   color: var(--color-text-faint);
   font-size: var(--font-size-xs);
-  text-overflow: ellipsis;
 }
 
 .acct-row__actions,
@@ -145,6 +176,11 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* ボタンは縮めず、縮むのは文字の側（.acct-row__main の min-width: 0） */
+.acct-row__actions {
+  flex: none;
 }
 
 .acct-row__edit {
@@ -344,10 +380,13 @@
   background: var(--color-danger);
 }
 
-.usage-panel {
+.sb-pop.usage-panel {
+  width: 360px;
+  max-width: calc(100vw - 32px);
   max-height: min(75vh, 560px);
   padding: 0;
   overflow-y: auto;
+  color: var(--color-text);
   font-size: var(--font-size-xs);
 }
 
@@ -389,13 +428,6 @@
   color: var(--color-text);
 }
 
-.usage-panel__mode {
-  padding: 0 var(--space-5) var(--space-4);
-}
-
-.usage-panel__mode .segmented {
-  width: 100%;
-}
 
 .usage-panel__rule {
   height: 1px;
@@ -506,7 +538,6 @@
   white-space: nowrap;
 }
 
-.usage-row__right,
 .usage-row__reset {
   margin-left: auto;
 }

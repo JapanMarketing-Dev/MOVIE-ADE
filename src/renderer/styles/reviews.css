@@ -4,26 +4,33 @@
  * 見出しをページのタイトルにした分の上書きと、フィルタ・… ボタンだけを足す。
  */
 
-.rv-list {
-  position: relative;
-}
+/* ── 共通のフィルタ（「Projects」の見出しの下）───────────────
+ * サイドバーの幅の中に収める。中の部品は幅いっぱい（min-width: 0）にして、
+ * 長い英語の文言でも外へはみ出さず折り返す。左右の余白はプロジェクトの行とそろえる。
+ */
 
-/* ── フィルタ ─────────────────────────────────────────── */
+.rv-filter-wrap {
+  display: grid;
+  min-width: 0;
+  padding: var(--space-1) var(--space-1) var(--space-3) var(--space-1);
+  gap: var(--space-3);
+}
 
 .rv-filter {
   display: flex;
+  min-width: 0;
   align-items: center;
-  padding: var(--space-2) 0 var(--space-2) var(--space-1);
   gap: var(--space-2);
 }
 
 .rv-filter__search {
   min-width: 0;
-  height: 24px;
+  height: 28px;
   flex: 1;
 }
 
 .rv-filter__search .field__input {
+  min-width: 0;
   font-size: var(--font-size-xs);
 }
 
@@ -34,7 +41,8 @@
 
 .rv-filter__panel {
   display: grid;
-  margin: 0 0 var(--space-3) var(--space-1);
+  min-width: 0;
+  box-sizing: border-box;
   padding: var(--space-4);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
@@ -43,28 +51,41 @@
   gap: var(--space-3);
 }
 
-.rv-filter__row {
+.rv-filter__label {
+  color: var(--color-text-faint);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+}
+
+.rv-filter__chips {
   display: flex;
+  min-width: 0;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
 
-.rv-chip {
+.rv-filter__chip {
+  max-width: 100%;
   height: 22px;
+  box-sizing: border-box;
   padding: 0 var(--space-4);
+  overflow: hidden;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-pill);
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
   font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.rv-chip:hover {
+.rv-filter__chip:hover {
   background: var(--color-surface-hover);
 }
 
-.rv-chip[aria-pressed='true'] {
+.rv-filter__chip[aria-pressed='true'] {
   border-color: var(--color-accent);
   background: var(--color-accent);
   color: var(--color-on-accent);
@@ -72,36 +93,62 @@
 
 .rv-filter__check {
   display: flex;
-  align-items: center;
+  min-width: 0;
+  align-items: flex-start;
   color: var(--color-text);
   cursor: pointer;
   gap: var(--space-3);
+  line-height: var(--line-height-normal);
+}
+
+.rv-filter__check > input {
+  flex: none;
+  margin: 2px 0 0;
+}
+
+.rv-filter__check > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .rv-filter__select {
-  height: 24px;
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  box-sizing: border-box;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
   background: var(--color-bg-panel);
   color: var(--color-text);
   font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
 }
 
+/* 2つのボタンは縦に並べ、左端をそろえる（横に並べると英語で収まらない） */
 .rv-filter__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: var(--space-2);
+  display: grid;
+  min-width: 0;
+  justify-items: start;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  gap: var(--space-1);
+}
+
+.rv-filter__actions .btn {
+  max-width: 100%;
+  padding-left: 0;
 }
 
 .rv-filter__danger:not(:disabled) {
   color: var(--color-danger);
 }
 
-.rv-filter__count {
-  padding: var(--space-1) var(--space-3) 0;
-  color: var(--color-text-faint);
-  font-size: var(--font-size-2xs);
+.rv-filter__confirm {
+  margin: 0;
+}
+
+.sb-reviews {
+  position: relative;
 }
 
 /* ── 1件の行 ─────────────────────────────────────────── */
@@ -116,9 +163,20 @@
 }
 
 /* 見出しはページのタイトル。時刻用の等幅をやめて、読む文字にする */
+.session-row .session__head {
+  min-width: 0;
+}
+
 .session-row .session__label {
+  min-width: 0;
   font-family: inherit;
   font-variant-numeric: normal;
+}
+
+/* 触れたときは件数の場所に … を出す（重ねない） */
+.session-row:hover .session__count,
+.session-row:focus-within .session__count {
+  visibility: hidden;
 }
 
 .session.is-archived {
@@ -181,4 +239,90 @@
 .session-row__more:hover {
   background: var(--color-surface-hover);
   color: var(--color-text);
+}
+
+/* ── 指摘の画面：対象ごとのまとめ（ReviewFindings）──────────────
+ * 録画の途中で対象（URL・ファイル）を切り替えたときだけ出す。
+ */
+
+.rv-targets {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+  gap: var(--space-3);
+}
+
+.rv-targets__chip {
+  display: inline-flex;
+  max-width: 100%;
+  height: 26px;
+  box-sizing: border-box;
+  align-items: center;
+  padding: 0 var(--space-4);
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.rv-targets__chip:hover {
+  background: var(--color-surface-hover);
+}
+
+.rv-targets__chip[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-wash);
+  color: var(--color-text);
+}
+
+.rv-targets__count {
+  flex: none;
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+.rv-target {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  margin: var(--space-6) 0 var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  gap: var(--space-3);
+}
+
+.rv-target:first-of-type {
+  margin-top: 0;
+}
+
+.rv-target > svg {
+  flex: none;
+  color: var(--color-text-muted);
+}
+
+.rv-target__env {
+  flex: none;
+  padding: 1px var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-hover);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.rv-target__name {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

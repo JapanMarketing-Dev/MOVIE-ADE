@@ -402,6 +402,7 @@
 .ctab {
   position: relative;
   display: inline-flex;
+  flex: none;
   max-width: 260px;
   align-items: center;
   padding: 0 var(--space-5);
@@ -433,8 +434,15 @@
 
 .ctab__label {
   overflow: hidden;
+  min-width: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ページのタブだけは縮んで、長いタイトルを省略する（指摘・設定のタブは縮めない）*/
+.ctab--page {
+  min-width: 72px;
+  flex: 0 1 auto;
 }
 
 /* 選択中の下線。左から伸びる */
@@ -492,6 +500,23 @@
 
 .url-form .field {
   flex: 1;
+}
+
+/* ペインが狭いときは、表示幅の切替をアイコンだけにし、URLのチップを畳む（全文はツールチップ）*/
+@container pane (width < 640px) {
+  .browser-toolbar .segmented__item > span {
+    display: none;
+  }
+
+  .browser-toolbar .segmented__item {
+    padding: 0 var(--space-4);
+  }
+}
+
+@container pane (width < 360px) {
+  .browser-toolbar .url-presets {
+    display: none;
+  }
 }
 
 /* 再読込は、読み込み中だけ回す */
@@ -1890,6 +1915,8 @@ body[data-resizing='row'] * {
 }
 
 .url-chip__main {
+  overflow: hidden;
+  max-width: 160px;
   height: 100%;
   padding: 0 var(--space-4);
   border: 0;
@@ -1899,6 +1926,7 @@ body[data-resizing='row'] * {
   font-family: var(--font-ui);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -2002,6 +2030,8 @@ body[data-resizing='row'] * {
 }
 
 .sb-head__title {
+  flex: 1;
+  min-width: 0;
   color: var(--color-text-faint);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
@@ -2293,5 +2323,79 @@ body[data-panel-dragging] * {
   color: var(--color-text);
   font-size: var(--font-size-xs);
   transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+/* タイトルバーのパネル開閉ボタン（LayoutToggles）。録画ボタンの左に寄せて並べる */
+.layout-toggles {
+  display: inline-flex;
+  align-items: center;
+  margin-right: var(--space-3);
+  gap: 2px;
+}
+
+/* フッターの項目の入れ物（幅が足りないときに優先順位の低いものから hidden にする。StatusBar.tsx） */
+.statusbar__slot {
+  display: inline-flex;
+  min-width: 0;
+  flex: none;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+/* 使用量だけは縮める（ほかを隠したあとに、使用量が自分で段階的に短くなる） */
+.statusbar__slot--shrink {
+  flex: 0 1 auto;
+}
+
+.statusbar__slot[hidden],
+.statusbar__btn[hidden] {
+  display: none;
+}
+
+/* 「…」メニュー。隠れた項目を1行ずつ並べる */
+.sb-more {
+  gap: 2px;
+}
+
+.sb-more__row {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  gap: var(--space-3);
+  text-align: left;
+}
+
+button.sb-more__row {
+  cursor: pointer;
+}
+
+button.sb-more__row:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.sb-more__row > svg {
+  flex: none;
+  color: var(--color-text-faint);
+}
+
+.sb-more__name {
+  flex: 1;
+  color: var(--color-text);
+}
+
+.sb-more__value {
+  overflow: hidden;
+  max-width: 60%;
+  color: var(--color-text-faint);
+  text-overflow: ellipsis;
   white-space: nowrap;
 }

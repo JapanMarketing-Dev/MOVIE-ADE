@@ -97,7 +97,7 @@ export function classifyUrlQuery(input: string): string | null {
     try {
       const url = new URL(query)
       return url.hostname ? url.href : null
-    } catch {
+    } catch { // 入力の検証。読めない URL は想定内
       return null
     }
   }
@@ -114,7 +114,7 @@ export function classifyUrlQuery(input: string): string | null {
   try {
     const url = new URL(`${local ? 'http' : 'https'}://${query}`)
     return url.hostname ? url.href : null
-  } catch {
+  } catch { // 入力の検証。読めない URL は想定内
     return null
   }
 }

@@ -1,5 +1,8 @@
 import { Marked } from 'marked'
 import { isMermaidFence, type PreviewKind } from '@shared/preview'
+
+/** ページの種類。md / Mermaid 以外のテキストは、読み取り専用のコードとして出す（レビューの対象にするため） */
+export type PreviewPageKind = PreviewKind | 'code'
 import { getLocale, t } from '@shared/i18n'
 
 /**
@@ -33,10 +36,28 @@ const marked = new Marked({
   }
 })
 
-/** ページの中身（<main> の内側）。ファイルが保存されたときは、これだけを取り直して差し替える */
-export function renderPreviewBody(kind: PreviewKind, source: string): string {
-  if (kind === 'mermaid') return mermaidBlock(source)
-  return marked.parse(source, { async: false })
+/** 描いた塊の最初のタグに、元の行（1始まり）を付ける。プレビューからエディタの該当行へ飛ぶのに使う */
+function withSourceLine(html: string, line: number): string {
+  return html.replace(/^(\s*<[a-z][a-z0-9]*)/i, `$1 data-line="${line}"`)
+}
+
+/**
+ * ページの中身（<main> の内側）。保存・編集のたびに、これだけを作り直して差し替える。
+ * 最上位の塊（見出し・段落・リスト・表・コード・図）ごとに描き、それぞれに data-line を付ける。
+ */
+export function renderPreviewBody(kind: PreviewPageKind, source: string): string {
+  if (kind === 'mermaid') return withSourceLine(mermaidBlock(source), 1)
+  if (kind === 'code') return `<pre class="code-view" data-line="1"><code>${escapeHtml(source)}</code></pre>\n`
+  const tokens = marked.lexer(source)
+  let line = 1
+  let html = ''
+  for (const token of tokens) {
+    // 参照リンク（[a]: url）の定義は文書全体で共有する
+    const part = marked.parser(Object.assign([token], { links: tokens.links }))
+    html += token.type === 'space' ? part : withSourceLine(part, line)
+    line += token.raw.split('\n').length - 1
+  }
+  return html
 }
 
 /** 開けないファイル（バイナリ・大きすぎる・読めない）のときの中身 */
@@ -48,7 +69,7 @@ export function renderPreviewMessage(message: string): string {
  * プレビューのページ全体。スタイルとスクリプトは同梱のもの（ade-preview://assets/…）だけを読む。
  * Mermaid（5MB 強）は図があるときだけ page.js が読み込む。
  */
-export function renderPreviewPage({ path, kind, body }: { path: string; kind: PreviewKind; body: string }): string {
+export function renderPreviewPage({ path, kind, body }: { path: string; kind: PreviewPageKind; body: string }): string {
   const name = path.slice(path.lastIndexOf('/') + 1)
   // page.js は辞書を読めないので、ページで出す文は data 属性で渡す（言語はページを返した時点のもの）
   const messages = `data-msg-mermaid-load="${escapeHtml(t('preview.mermaidLoadFailed'))}" data-msg-diagram-failed="${escapeHtml(t('preview.diagramFailed', { error: '{{error}}' }))}"`

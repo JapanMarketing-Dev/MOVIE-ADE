@@ -222,3 +222,13 @@ body {
   color: var(--warning);
   font-size: 0.85em;
 }
+
+/* md / Mermaid 以外のテキスト（読み取り専用のコード）。幅いっぱいに出し、折り返さない */
+.markdown-body pre.code-view {
+  margin: 0;
+  font-size: 13px;
+}
+
+main.markdown-body:has(> pre.code-view) {
+  max-width: none;
+}

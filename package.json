@@ -1,21 +1,22 @@
 {
   "name": "ade-movie",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "license": "MIT",
   "description": "画面を操作しながら喋って囲むだけでUIフィードバックをAgentへ渡すデスクトップADE",
   "repository": "github:JapanMarketing-Dev/MOVIE-ADE",
+  "desktopName": "movie-ade.desktop",
   "main": "out/main/index.js",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "node scripts/dev.mjs",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.preload.json --noEmit && tsc -p tsconfig.web.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "fixture:serve": "node test/fixtures/serve.mjs",
-    "postinstall": "node scripts/ensure-electron-binary.mjs && node scripts/install-app-deps.mjs",
+    "postinstall": "node scripts/ensure-electron-binary.mjs && node scripts/install-app-deps.mjs && node scripts/prepare-dev-electron.mjs",
     "rebuild:native": "node scripts/install-app-deps.mjs",
     "test:unit": "vitest run",
     "build:release": "pnpm build && node scripts/sentry-sourcemaps.mjs",

@@ -29,6 +29,7 @@ import { DEFAULT_COST_LIMIT_USD, exceedsCostLimit, normalizeBaseUrl } from './en
 import type { SttLanguage } from './whisper'
 import { cleanText } from './whisper'
 import { t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
 
 export type OpenAiSttModel =
   | 'gpt-transcribe'
@@ -140,10 +141,10 @@ export class OpenAiSttEngine implements SttEngine {
 
   constructor(private readonly opt: OpenAiSttOptions) {
     const key = opt.apiKey
-    if (!key && !opt.keyOptional) throw new Error(t('stt.errors.openaiKeyMissing'))
+    if (!key && !opt.keyOptional) throw new UserFacingError(t('stt.errors.openaiKeyMissing'))
     this.apiKey = key ?? ''
     const base = normalizeBaseUrl(opt.baseUrl ?? DEFAULT_BASE_URL)
-    if (!base) throw new Error(t('stt.errors.badBaseUrl'))
+    if (!base) throw new UserFacingError(t('stt.errors.badBaseUrl'))
     this.baseUrl = base
     this.label = opt.label ?? 'OpenAI'
     this.id = `${opt.keyOptional ? 'compatible' : 'openai'}:${opt.model}`
@@ -216,7 +217,7 @@ export class OpenAiSttEngine implements SttEngine {
     const durationMs = input.durationMs ?? (await wavDurationMs(input.wavPath))
     const cost = durationMs / 60_000 * (this.opt.pricePerMinuteUsd ?? (this.opt.pricePerMinuteUsd === null ? UNKNOWN_PRICE_PER_MINUTE_USD : sttPricePerMinuteUsd(this.opt.model)))
     if (exceedsCostLimit(this.reservedCostUsd, cost, this.opt.maxCostUsd)) {
-      throw new Error(t('stt.errors.costLimit', { label: this.label }))
+      throw new UserFacingError(t('stt.errors.costLimit', { label: this.label }))
     }
     this.reservedCostUsd += cost
     const form = this.buildForm(bytes, basename(input.wavPath))
@@ -232,6 +233,7 @@ export class OpenAiSttEngine implements SttEngine {
     const elapsedMs = Date.now() - started
 
     if (!res.ok) {
+      // 失敗の本文は説明に使うだけ。読めなければ空で続ける（想定内）
       const body = await res.text().catch(() => '')
       const safeBody = redact(body, this.apiKey).slice(0, 500)
       throw new SttHttpError(sentence(t('stt.errors.failed', { label: this.label, status: res.status, body: safeBody })), res.status, safeBody)
@@ -354,6 +356,7 @@ export async function checkSttConnection(opt: {
     return { ok: false, message: t('stt.check.unreachable', { base }) }
   }
   if (res.ok) return { ok: true, message: sentence(t('stt.check.ok', { label, model: opt.model.trim() })) }
+  // 失敗の本文は説明に使うだけ（想定内）
   const body = (await res.text().catch(() => '')).slice(0, 2000)
   return { ok: false, message: describeHttpFailure(res.status, body, label) }
 }

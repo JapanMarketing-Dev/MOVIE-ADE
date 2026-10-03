@@ -19,6 +19,8 @@ import {
 } from '@shared/files'
 import { rankQuickOpenFiles } from '@shared/quickOpen'
 import { t } from '@shared/i18n'
+import { UserFacingError } from '@shared/errors'
+import { reportHandled } from '@shared/report'
 
 /**
  * ファイルエディタの読み書き（fs:list / fs:read / fs:write / fs:files / fs:search / fs:changed）。
@@ -102,6 +104,7 @@ export async function listDirectory(root: string, relDir: string): Promise<FsEnt
         await resolveInside(root, toRel(root, absolute))
         kind = (await stat(absolute)).isDirectory() ? 'directory' : 'file'
       } catch {
+        // 外を指す・切れたリンク（想定内）
         kind = null
       }
     }
@@ -125,7 +128,7 @@ export async function readTextFile(root: string, relPath: string): Promise<FsRea
   const file = await resolveInside(root, relPath)
   const path = toRel(root, file)
   const info = await stat(file)
-  if (info.isDirectory()) throw new Error(t('files.errors.folder'))
+  if (info.isDirectory()) throw new UserFacingError(t('files.errors.folder'))
   if (hasBinaryExtension(path)) return { kind: 'binary', path, reason: t('files.errors.binary') }
   if (info.size > MAX_TEXT_FILE_SIZE) {
     return {
@@ -146,7 +149,7 @@ export async function readTextFile(root: string, relPath: string): Promise<FsRea
 }
 
 export async function writeTextFile(root: string, relPath: string, content: string): Promise<FsWriteResult> {
-  if (typeof content !== 'string') throw new Error(t('files.errors.badContent'))
+  if (typeof content !== 'string') throw new UserFacingError(t('files.errors.badContent'))
   const file = await resolveInside(root, relPath, { allowMissing: true })
   // 上書きで中身を差し替える（rename で置き換えるとリンクや権限が変わり、監視も途切れる）
   await writeFile(file, content, 'utf8')
@@ -216,6 +219,7 @@ async function walkFiles(root: string, limit: number): Promise<FsFileList> {
     try {
       dirents = await readdir(join(root, relDir), { withFileTypes: true })
     } catch {
+      // 読めないフォルダ（権限など）は飛ばす（想定内）
       continue
     }
     for (const dirent of dirents) {
@@ -241,7 +245,7 @@ export async function listFiles(root: string): Promise<FsFileList> {
     const rel = line.replace(/\\/g, '/').replace(/^\.\//, '')
     if (shouldIncludePath(rel)) files.push(rel)
     return files.length < MAX_LISTED_FILES
-  }).catch(() => null)
+  }).catch((err: unknown) => { reportHandled(err, { area: 'files', op: 'list files with rg' }); return null })
   if (truncated === null) return walkFiles(realRoot, MAX_LISTED_FILES)
   return { files, truncated }
 }
@@ -289,6 +293,7 @@ export class ProjectWatcher {
       this.watcher.on('error', () => this.close())
     } catch (err) {
       console.warn('[files] フォルダの変更を見張れません', err)
+      reportHandled(err, { area: 'files', op: 'watch project folder' })
       this.watcher = null
     }
   }

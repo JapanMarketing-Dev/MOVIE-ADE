@@ -3,6 +3,7 @@ import { compareAppVersions, isValidAppVersion, pickAppVersion, type UpdateCheck
 // package.json はビルド時に埋め込む（dev 起動では app.getAppPath() がプロジェクト直下を指さないことがある）
 import { version } from '../../package.json'
 import { t } from '@shared/i18n'
+import { errorKind, reportHandled } from '@shared/report'
 
 /**
  * 更新の確認（フッターの「更新を確認」）。
@@ -117,7 +118,7 @@ export async function checkForUpdate(): Promise<UpdateCheckResult> {
     // まだ latest.json を置いていない。失敗ではなく案内として出す
     if (res.status === 404 || res.status === 403) return { state: 'no-release', current }
     if (!res.ok) return { state: 'error', current, message: t('update.errors.http', { status: res.status }) }
-    const manifest = parseManifest(await res.json().catch(() => null))
+    const manifest = parseManifest(await res.json().catch((err: unknown) => { reportHandled(errorKind(err), { area: 'update', op: 'parse manifest' }); return null }))
     if (!manifest) return { state: 'error', current, message: t('update.errors.badManifest') }
     return judgeManifest(current, manifest)
   } catch (err) {

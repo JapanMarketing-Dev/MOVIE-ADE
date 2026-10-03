@@ -223,7 +223,14 @@ button {
   display: grid;
   min-width: 0;
   min-height: 0;
+  /*
+   * 列を明示しないと暗黙の列が中身の最小幅（長いタイトルやチップ）まで広がり、
+   * タブやツールバーが隣のペインへはみ出す。列はペインの幅に固定する。
+   * 幅で中身を畳めるよう、ペインをコンテナにする（shell.css の @container）。
+   */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: var(--size-tabbar) auto minmax(0, 1fr);
+  container: pane / inline-size;
   background: var(--color-bg-panel);
 }
 

@@ -14,7 +14,7 @@ export function CrashReportNotice() {
   const hostRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    void window.ade.invoke('telemetry:state').then((s) => setOpen(s.active && s.enabled && !s.noticeShown)).catch(() => undefined)
+    void window.ade.invoke('telemetry:state').then((s) => setOpen(s.active && s.enabled && !s.noticeShown)).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
   }, [])
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export function CrashReportNotice() {
     setOpen(false)
     // OFF にしたときも案内は出し終えた扱い（settings:crashReports が一緒に記録する）
     const done = turnOff ? window.ade.invoke('settings:crashReports', false) : window.ade.invoke('telemetry:noticeShown')
-    void done.catch(() => undefined)
+    void done.catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
   }
   return (
     <div ref={hostRef} popover="manual" className="toast-host" role="status" aria-live="polite" data-testid="crash-report-notice">

@@ -84,6 +84,7 @@ function isExecutable(path: string, platform: NodeJS.Platform): boolean {
     if (platform !== 'win32') accessSync(path, constants.X_OK)
     return true
   } catch {
+    // 無い・実行できない候補（想定内）
     return false
   }
 }

@@ -91,12 +91,12 @@ function AccountRow({
         <span className="acct-row__text">
           {editing ? null : (
             <span className="acct-row__name">
-              {accountDisplayName(account)}
+              <span className="acct-row__label" title={accountDisplayName(account)}>{accountDisplayName(account)}</span>
               {active && <Badge tone="brand">{t('accounts.selected')}</Badge>}
               {status && <Badge tone={status.tone}>{status.text}</Badge>}
             </span>
           )}
-          {!editing && detail && <span className={`acct-row__detail${account.problem ? ' is-warn' : ''}`}>{detail}</span>}
+          {!editing && detail && <span className={`acct-row__detail${account.problem ? ' is-warn' : ''}`} title={detail}>{detail}</span>}
         </span>
       </button>
       {editing && (
@@ -157,6 +157,11 @@ function AgentAccounts({
   const busy = action !== 'idle'
   const systemActive = !!view && view.activeAccountId === null
   const system = view?.systemDefault
+  const systemDetail = system?.email
+    ? t('accounts.systemDetail.email', { agent: TUI_AGENT_LABEL[agent], email: system.email })
+    : system?.signedIn
+      ? t('accounts.systemDetail.signedIn', { agent: TUI_AGENT_LABEL[agent] })
+      : t('accounts.systemDetail.signedOut', { agent: TUI_AGENT_LABEL[agent] })
 
   return (
     <div className="acct-group" id={`settings-accounts-${agent}`} data-testid={`accounts-${agent}`}>
@@ -183,13 +188,7 @@ function AgentAccounts({
               {t('accounts.systemDefault')}
               {systemActive && <Badge tone="brand">{t('accounts.selected')}</Badge>}
             </span>
-            <span className="acct-row__detail">
-              {system?.email
-                ? t('accounts.systemDetail.email', { agent: TUI_AGENT_LABEL[agent], email: system.email })
-                : system?.signedIn
-                  ? t('accounts.systemDetail.signedIn', { agent: TUI_AGENT_LABEL[agent] })
-                  : t('accounts.systemDetail.signedOut', { agent: TUI_AGENT_LABEL[agent] })}
-            </span>
+            <span className="acct-row__detail" title={systemDetail}>{systemDetail}</span>
           </span>
         </button>
       </div>
