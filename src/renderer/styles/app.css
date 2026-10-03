@@ -1,0 +1,324 @@
+/*
+ * 骨格と画面のスタイル。
+ * 値は必ず tokens.css の var(--…) を使い、ここに生の色・サイズを書かない。
+ * 共通部品（ボタン・入力欄・行など）の見た目は ui.css にある。
+ *
+ * ── 骨格（既存のADEの型に合わせる）───────────────────
+ *   タイトルバー 38px
+ *   ├ 左サイドバー 240px（レビュー一覧。折りたためる）
+ *   ├ 中央ペイン: タブ32px ＋ URLツールバー34px ＋ 内蔵ブラウザ／指摘一覧
+ *   ├ 境界 6px
+ *   └ 右: Agentのターミナル（タブ32px ＋ xterm）
+ *   ステータスバー 24px
+ *
+ * ── 動かしてよいもの / いけないもの（重要）──────────────
+ * 内蔵ブラウザ（WebContentsView）の置き場所は useViewBounds が
+ * getBoundingClientRect() で実測して main へ送る。
+ * 置き場所（.browser-slot）とその祖先を transform で動かすと実測値がずれる。
+ *   動かしてよい: タイトルバー・タブ・ツールバー・サイドバー（測っていないDOM）
+ *   不透明度だけ: 測っている要素を含むもの
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-bg-app);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis-weight: none;
+}
+
+/* macOS の枠なしタイトルバーで信号機ボタンに重ならないための余白 */
+:root {
+  --titlebar-inset: var(--space-5);
+  --sidebar-width: var(--size-sidebar);
+  --size-fb-bar: 52px; /* フィードバックモードの上の帯。見た目は feedback.css */
+}
+
+.platform-darwin {
+  --titlebar-inset: var(--size-traffic-lights);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 1px;
+}
+
+::selection {
+  background: var(--color-accent-quiet);
+}
+
+/* 日本語の本文は文節で折り返す（既定だと語の途中で切れる）*/
+.empty__description,
+.row__description,
+.toast__detail,
+.gallery__section-rule,
+.finding__request,
+.finding__quote {
+  line-break: strict;
+  word-break: auto-phrase;
+}
+
+/* 細いスクロールバー。中身より目立たせない */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-active);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-faint);
+  background-clip: content-box;
+}
+
+/* ── アプリ全体 ───────────────────────────────────────── */
+
+/*
+ * 2つのモードを同じ領域に重ね、表示だけを切り替える。
+ * 片方を取り外すと、内蔵ブラウザの置き場所だけでなく
+ * ターミナルのPTY（起動中のAgent）まで失われるため。
+ */
+.app {
+  display: grid;
+  height: 100%;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  background: var(--color-bg-app);
+}
+
+.shell {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-area: 1 / 1;
+}
+
+.shell[hidden] {
+  display: none;
+}
+
+.shell--editor {
+  grid-template-rows: var(--size-titlebar) minmax(0, 1fr) var(--size-statusbar);
+}
+
+.shell--feedback {
+  grid-template-rows: var(--size-fb-bar) minmax(0, 1fr);
+}
+
+/* モード切替。測っていないDOMだけを動かす */
+.shell:not([hidden]) .titlebar,
+.shell:not([hidden]) .statusbar,
+.shell:not([hidden]) .ctabs,
+.shell:not([hidden]) .browser-toolbar,
+.shell:not([hidden]) .terminal-tabs {
+  animation: chrome-in var(--motion-slow) var(--ease-out) backwards;
+}
+
+.shell:not([hidden]) .sidebar {
+  animation: sidebar-in var(--motion-slow) var(--ease-out) backwards;
+}
+
+.shell:not([hidden]) .fb-pill {
+  animation: pill-in var(--motion-slow) var(--ease-spring) backwards;
+}
+
+.shell:not([hidden]) .terminal-surfaces {
+  animation: fade-in var(--motion-slow) var(--ease-out) backwards;
+}
+
+/* ── タイトルバー・サイドバー・タブ・ツールバー・境界・ブラウザ枠・ターミナル・ステータスバー: shell.css ── */
+
+/* ── ワークスペース（サイドバー ＋ 本体）────────────── */
+
+.workspace {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  transition: grid-template-columns var(--motion-slow) var(--ease-out);
+}
+
+.workspace--narrow {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+/*
+ * サイドバーを入れる枠。折りたたむと列の幅が 0 になり、ここが中身を切り取る。
+ * 中身（.sidebar）は 240px のままなので、文字が詰まり直さずに滑り出る。
+ */
+.sidebar-slot {
+  overflow: hidden;
+  min-width: 0;
+}
+
+.main-split {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: var(--split-left) var(--size-splitter) minmax(0, 1fr);
+}
+
+/*
+ * 本体の中の並び。列・行・領域の名前は配置から作って style で渡す（src/shared/layout.ts の mainSplitGrid）。
+ * ここでは各要素がどの領域に入るかだけを決める。
+ */
+.main-split > .pane--browser {
+  grid-area: center;
+}
+
+.main-split > .splitter {
+  grid-area: split;
+}
+
+/* 寸法を合わせ直す前の一瞬や、隠したとき（大きさ 0）に、はみ出さないよう切る */
+.main-split > .terminal-pane {
+  overflow: hidden;
+  grid-area: term;
+}
+
+/* 横・縦に置いたパネルの高さ（プロジェクト一覧・ファイルツリーを上下に置いたとき） */
+.workspace {
+  --size-panel-strip: 220px;
+}
+
+/* 上下に置いたときは、中身を横幅いっぱいに広げる */
+.sidebar-slot[data-dock='top'] > *,
+.sidebar-slot[data-dock='bottom'] > *,
+.explorer-slot[data-dock='top'] > *,
+.explorer-slot[data-dock='bottom'] > * {
+  width: 100%;
+}
+
+/* フッターを上に置くと、タイトルバー → フッター → 本体の順に並べる */
+.shell--footer-top > .workspace {
+  order: 1;
+}
+
+.pane {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: var(--size-tabbar) auto minmax(0, 1fr);
+  background: var(--color-bg-panel);
+}
+
+/* 指摘タブのときはURLツールバーが無いので2行になる */
+.pane:has(.findings) {
+  grid-template-rows: var(--size-tabbar) minmax(0, 1fr);
+}
+
+/* ── フィードバックモード: feedback.css ────────────────── */
+
+/* ── 部品見本の入口（開発時だけ）──────────────────────── */
+
+.app__gallery {
+  position: absolute;
+  z-index: var(--z-overlay);
+  overflow: hidden;
+  background: var(--color-bg-app);
+  inset: 0;
+}
+
+/* ── その他 ───────────────────────────────────────────── */
+
+.hint {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+  gap: var(--space-3);
+}
+
+.visually-hidden {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── キーフレーム ─────────────────────────────────────── */
+
+@keyframes chrome-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sidebar-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pill-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

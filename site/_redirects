@@ -1,0 +1,5 @@
+# Cloudflare Pages already serves /download for download.html (and redirects download.html to it),
+# so only short aliases live here.
+/downloads /download 301
+/changelog /download#versions 301
+/releases /download#versions 301

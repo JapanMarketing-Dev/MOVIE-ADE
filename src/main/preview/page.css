@@ -1,0 +1,224 @@
+/*
+ * プレビューのページ（ade-preview://）のスタイル。内蔵ブラウザで開くので、アプリの tokens.css は届かない。
+ * 色はこのファイルの変数だけで決め、ライト／ダークは prefers-color-scheme で切り替える
+ * （main が nativeTheme.themeSource をアプリの配色に合わせるので、内蔵ブラウザもアプリに追従する）。
+ *
+ * Orca由来: ~/bench/orca/src/renderer/src/assets/markdown-preview.css の .markdown-body（MIT）
+ * GitHub 風の読みやすさ（見出し・コード・表・引用・タスクリスト・Mermaid）を移植した。
+ */
+
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --border: #d1d9e0;
+  --code-bg: rgb(0 0 0 / 7%);
+  --pre-bg: #f6f8fa;
+  --link: #0969da;
+  --quote-bg: rgb(0 0 0 / 2%);
+  --th-bg: rgb(0 0 0 / 4%);
+  --warning: #9a6700;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171717;
+    --fg: #e6edf3;
+    --muted: #9198a1;
+    --border: #3d444d;
+    --code-bg: rgb(255 255 255 / 10%);
+    --pre-bg: rgb(255 255 255 / 6%);
+    --link: #58a6ff;
+    --quote-bg: rgb(255 255 255 / 2.5%);
+    --th-bg: rgb(255 255 255 / 6%);
+    --warning: #d29922;
+  }
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.markdown-body {
+  max-width: 880px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 32px 40px 64px;
+  overflow-wrap: break-word;
+}
+
+.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.markdown-body h1 {
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+  font-size: 1.85em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.markdown-body h2 {
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+  font-size: 1.4em;
+}
+
+.markdown-body h3 {
+  font-size: 1.15em;
+}
+
+.markdown-body h5,
+.markdown-body h6 {
+  color: var(--muted);
+  font-size: 0.92em;
+}
+
+.markdown-body p {
+  margin: 0.75em 0;
+}
+
+.markdown-body a {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 2px;
+}
+
+.markdown-body a:hover {
+  text-decoration-color: currentColor;
+}
+
+.markdown-body code {
+  padding: 0.2em 0.4em;
+  border-radius: 5px;
+  background: var(--code-bg);
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+}
+
+.markdown-body pre {
+  overflow-x: auto;
+  margin: 1em 0;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--pre-bg);
+  line-height: 1.55;
+}
+
+.markdown-body pre code {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: inherit;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0.75em 0;
+  padding-left: 1.5em;
+}
+
+.markdown-body li {
+  margin: 0.25em 0;
+}
+
+.markdown-body li:has(> input[type='checkbox']) {
+  list-style: none;
+}
+
+.markdown-body li > input[type='checkbox'] {
+  margin: 0 0.5em 0 -1.3em;
+  vertical-align: -2px;
+}
+
+.markdown-body blockquote {
+  margin: 0.75em 0;
+  padding: 0.5em 1em;
+  border-left: 3px solid var(--border);
+  border-radius: 0 6px 6px 0;
+  background: var(--quote-bg);
+  color: var(--muted);
+}
+
+.markdown-body table {
+  display: block;
+  overflow-x: auto;
+  margin: 1em 0;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.markdown-body th {
+  background: var(--th-bg);
+  font-weight: 600;
+}
+
+.markdown-body hr {
+  height: 1px;
+  margin: 1.5em 0;
+  border: 0;
+  background: var(--border);
+}
+
+.markdown-body img {
+  max-width: 100%;
+}
+
+/* ── Mermaid ───────────────────────────────────────── */
+
+.markdown-body pre.mermaid {
+  border: 0;
+  background: transparent;
+  text-align: center;
+}
+
+.markdown-body pre.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 図のファイル（.mmd / .mermaid）を開いたとき。図を真ん中に大きく出す */
+.markdown-body--diagram {
+  max-width: none;
+}
+
+.markdown-body--diagram pre.mermaid svg {
+  width: 100%;
+}
+
+.mermaid-error {
+  margin-bottom: 0.5em;
+  color: var(--warning);
+  font-size: 0.85em;
+}

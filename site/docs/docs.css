@@ -1,0 +1,478 @@
+/*
+ * MOVIE-ADE docs (site/docs/)
+ *
+ * Colors, type, buttons, header, and footer come from ../style.css.
+ * This file only adds the three-column docs layout (pages / content / on this page) and content styles.
+ * It uses only the ../style.css tokens (--bg, --text, --border, --accent …); light / dark is handled there.
+ */
+
+.docs-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 200px;
+  gap: 40px;
+  align-items: start;
+  padding-top: 32px;
+  padding-bottom: 80px;
+}
+
+/* ── Left: pages ──────────────────────────────────── */
+
+.docs-sidebar {
+  position: sticky;
+  top: calc(var(--header) + 24px);
+  max-height: calc(100vh - var(--header) - 48px);
+  overflow-y: auto;
+  font-size: 14px;
+}
+
+.docs-sidebar-toggle {
+  display: none;
+}
+
+.docs-nav-group + .docs-nav-group {
+  margin-top: 20px;
+}
+
+.docs-nav-heading,
+.docs-toc-heading,
+.docs-eyebrow {
+  margin: 0 0 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.docs-sidebar ul,
+.docs-toc ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.docs-sidebar a {
+  display: block;
+  padding: 5px 10px;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.docs-sidebar a:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+  text-decoration: none;
+}
+
+.docs-sidebar a[aria-current='page'] {
+  color: var(--text);
+  background: var(--surface-active);
+  font-weight: 600;
+}
+
+/* ── Right: on this page ──────────────────────────── */
+
+.docs-toc {
+  position: sticky;
+  top: calc(var(--header) + 24px);
+  font-size: 13px;
+  border-left: 1px solid var(--border);
+  padding-left: 16px;
+}
+
+.docs-toc a {
+  display: block;
+  padding: 3px 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.docs-toc a:hover,
+.docs-toc a.is-active {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.docs-toc a.is-active {
+  font-weight: 600;
+}
+
+/* ── Content ──────────────────────────────────────── */
+
+.docs-content {
+  max-width: 760px;
+}
+
+.docs-content h1 {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.docs-lead {
+  color: var(--text-muted);
+  font-size: 16px;
+  margin-bottom: 32px;
+}
+
+.docs-section {
+  padding-top: 8px;
+  margin-bottom: 36px;
+}
+
+.docs-section h2 {
+  position: relative;
+  font-size: 21px;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.docs-anchor {
+  position: absolute;
+  left: -20px;
+  color: var(--text-faint);
+  opacity: 0;
+  font-weight: 400;
+}
+
+.docs-section h2:hover .docs-anchor,
+.docs-anchor:focus-visible {
+  opacity: 1;
+  text-decoration: none;
+}
+
+.docs-content p,
+.docs-content ul,
+.docs-content ol,
+.docs-content table,
+.docs-content pre,
+.docs-content dl,
+.docs-content figure {
+  margin: 0 0 14px;
+}
+
+.docs-content ul,
+.docs-content ol {
+  padding-left: 1.4em;
+}
+
+.docs-content li + li {
+  margin-top: 4px;
+}
+
+.docs-content :not(pre) > code {
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+.docs-content pre {
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  line-height: 1.6;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  font-family: var(--font-ui);
+  font-size: 0.85em;
+  line-height: 1.6;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Numbered steps */
+.docs-steps {
+  counter-reset: step;
+  list-style: none;
+  padding-left: 0 !important;
+}
+
+.docs-steps > li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 36px;
+  min-height: 24px;
+}
+
+.docs-steps > li + li {
+  margin-top: 10px;
+}
+
+.docs-steps > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 22px;
+  text-align: center;
+}
+
+/* Tables */
+.docs-content table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.docs-content th,
+.docs-content td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.docs-content th {
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Callouts */
+.docs-callout {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent-wash);
+  font-size: 14px;
+}
+
+.docs-callout > :last-child {
+  margin-bottom: 0;
+}
+
+.docs-callout-warn,
+.docs-callout-wip {
+  border-left-color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+}
+
+.docs-callout-title {
+  font-weight: 600;
+  margin-bottom: 4px !important;
+}
+
+/* Screenshot placeholders */
+.docs-shot-slot {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-sunken);
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.docs-shot img,
+.docs-figure img {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.docs-shot figcaption,
+.docs-figure figcaption {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* FAQ */
+.docs-faq dt {
+  font-weight: 600;
+  margin-top: 14px;
+}
+
+.docs-faq dd {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+}
+
+/* Previous / next */
+.docs-pager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 48px;
+}
+
+.docs-pager a {
+  display: block;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.docs-pager a:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+  text-decoration: none;
+}
+
+.docs-pager span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.docs-pager-next {
+  text-align: right;
+}
+
+.docs-edit {
+  margin-top: 20px !important;
+  font-size: 13px;
+}
+
+/* ── Narrow screens ───────────────────────────────── */
+
+@media (max-width: 1080px) {
+  .docs-layout {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .docs-toc {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .docs-layout {
+    display: block;
+    padding-top: 16px;
+  }
+  .docs-sidebar {
+    position: static;
+    max-height: none;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .docs-sidebar-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 14px;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .docs-nav-list {
+    padding: 0 8px 12px;
+  }
+  .docs-sidebar.is-collapsed .docs-nav-list {
+    display: none;
+  }
+  .docs-content h1 {
+    font-size: 26px;
+  }
+  .docs-anchor {
+    display: none;
+  }
+}
+
+/* Keep short code in the first table column (variables, file names) on one line */
+.docs-content td:first-child code {
+  white-space: nowrap;
+}
+
+/* UI labels (menu items, buttons) */
+.docs-ui {
+  font-weight: 600;
+}
+
+.docs-content q {
+  font-style: italic;
+}
+
+.docs-content pre {
+  position: relative;
+}
+
+.docs-copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  font: inherit;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.docs-content pre:hover .docs-copy,
+.docs-copy:focus-visible {
+  opacity: 1;
+}
+
+.docs-redirect {
+  padding-top: 48px;
+  padding-bottom: 80px;
+}
+
+.docs-keys td:not(:first-child) {
+  white-space: nowrap;
+}
+
+/* Wrap long commands instead of scrolling sideways */
+.docs-content pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+kbd + kbd {
+  margin-left: 2px;
+}
+
+/* Full-width tables on wide screens; scroll sideways only on narrow ones */
+@media (min-width: 761px) {
+  .docs-content table {
+    display: table;
+  }
+}
+
+.docs-figure figcaption {
+  margin-top: 0;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.docs-figure img {
+  border: 0;
+  border-radius: 0;
+}

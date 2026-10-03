@@ -1,0 +1,15 @@
+node_modules/
+dist/
+out/
+.DS_Store
+.ade-movie/
+.env
+.env.*
+test-results/
+e2e-artifacts/
+playwright-report/
+coverage/
+*.log
+.claude/settings.local.json
+.quit-probe.mjs
+.publish-forbidden.txt

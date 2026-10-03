@@ -1,0 +1,92 @@
+/**
+ * ① 文字起こしの実行方法のインタフェース。
+ * ローカル（whisper.cpp）と OpenAI の STT API を差し替えられるようにする。
+ * どの実装も同じ `{t0, t1, speaker, text}` を返す。
+ */
+import type { AudioSource, Speaker, TranscriptSegment } from '../types'
+
+export interface TranscribeChunkInput {
+  /** 16kHz モノラル WAV のパス */
+  wavPath: string;
+  /** この WAV の先頭が録画開始から何ms後か */
+  offsetMs: number;
+  /** この系統の話者（マイク=self、PC音声=other） */
+  speaker: Speaker
+  source: AudioSource;
+  /**
+   * このチャンクの長さ(ms)。
+   * 時刻を返さないモデル（gpt-transcribe）では、チャンク全体を1区間として扱うために使う。
+   * 省略時は WAV ヘッダから求める。
+   */
+  durationMs?: number
+}
+
+export interface TranscribeResult {
+  segments: TranscriptSegment[];
+  /** 実行にかかった時間(ms)。計測用 */
+  elapsedMs: number;
+  /** 実行した内容（コマンドライン or エンドポイントとモデル）。記録・調査用 */
+  commandLine: string;
+  /** 課金の根拠になる音声の長さ(秒)。API が返した値があればそれ */
+  billedSeconds?: number
+}
+
+/** 文字起こしの API が失敗の状態を返した。接続の確認で状態コードから理由を言い分けるのに使う */
+export class SttHttpError extends Error {
+  constructor(message: string, readonly status: number, readonly body: string) {
+    super(message)
+    this.name = 'SttHttpError'
+  }
+}
+
+export interface SttEngine {
+  /** 設定・ログで使う識別子 */
+  readonly id: string;
+  /** 使える状態か（バイナリ・モデルの有無、APIキーの有無） */
+  available(): Promise<boolean>;
+  /** 音声が端末外へ出るか（NF-2 の判断とUIの警告に使う） */
+  readonly sendsAudioOffDevice: boolean
+  transcribeChunk(input: TranscribeChunkInput): Promise<TranscribeResult>
+}
+
+/**
+ * 録画中の逐次実行をまとめる。区切りを push すると順番に処理し、済んだ分を保持する。
+ * 停止時は flush() で残りを待つだけでよい。
+ */
+export class IncrementalTranscriber {
+  private readonly segments: TranscriptSegment[] = []
+  private queue: Promise<void> = Promise.resolve()
+  private readonly errors: Error[] = []
+  private billedSeconds = 0
+
+  constructor(private readonly engine: SttEngine, private readonly onSegments?: (segments: TranscriptSegment[]) => Promise<void>) {}
+
+  /** 区切り1つを投入する。待たずに返る */
+  push(input: TranscribeChunkInput): void {
+    this.queue = this.queue.then(async () => {
+      try {
+        const r = await this.engine.transcribeChunk(input)
+        this.segments.push(...r.segments)
+        await this.onSegments?.(r.segments)
+        this.billedSeconds += r.billedSeconds ?? 0
+      } catch (e) {
+        this.errors.push(e instanceof Error ? e : new Error(String(e)))
+      }
+    })
+  }
+
+  /** 投入済みの全部が終わるのを待ち、時刻順の区間を返す */
+  async flush(): Promise<{ segments: TranscriptSegment[]; errors: Error[]; billedSeconds: number }> {
+    await this.queue
+    return {
+      segments: [...this.segments].sort((a, b) => a.t0 - b.t0),
+      errors: [...this.errors],
+      billedSeconds: this.billedSeconds,
+    }
+  }
+
+  /** 途中結果（UIの進捗表示用） */
+  snapshot(): TranscriptSegment[] {
+    return [...this.segments].sort((a, b) => a.t0 - b.t0)
+  }
+}

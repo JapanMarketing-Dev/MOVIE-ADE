@@ -1,0 +1,134 @@
+/**
+ * ファイルエディタ（エクスプローラ・クイックオープン・Monaco）が main と renderer で共有する型と規則。
+ *
+ * パスは常に「プロジェクトフォルダからの相対パス（`/` 区切り）」でやり取りする。
+ * renderer から絶対パスを送らせないことで、プロジェクトの外を読ませる経路を減らす
+ * （最終的な検査は main の src/main/files.ts が行う）。
+ */
+
+/** ディレクトリの1項目 */
+export interface FsEntry {
+  name: string
+  /** プロジェクトからの相対パス（`/` 区切り） */
+  path: string
+  kind: 'file' | 'directory'
+  /** 既定で畳んでおく重いディレクトリ（.git・node_modules など）。開けば中身は読める */
+  collapsed?: boolean
+}
+
+/** fs:read の結果。開けないファイルは理由を返す（例外にしない） */
+export type FsReadResult =
+  | { kind: 'text'; path: string; content: string; mtimeMs: number }
+  | { kind: 'binary'; path: string; reason: string }
+  | { kind: 'tooLarge'; path: string; size: number; reason: string }
+
+export interface FsWriteResult {
+  mtimeMs: number
+}
+
+/** fs:files（クイックオープン用のファイル一覧） */
+export interface FsFileList {
+  files: string[]
+  /** 上限で打ち切った */
+  truncated: boolean
+}
+
+/** 検索はファイル名だけ（内容検索は持たない。動画フィードバックに絞るため） */
+export type FsSearchMode = 'names'
+
+export interface FsSearchResult {
+  mode: FsSearchMode
+  /** 一致したファイル（相対パス。良い順） */
+  files: string[]
+  truncated: boolean
+}
+
+/** 外部の変更（Agent の書き換えなど）。まとめて通知する */
+export interface FsChangedEvent {
+  /** 変わったパス（相対）。ディレクトリの増減も含む */
+  paths: string[]
+}
+
+// Orca由来: src/main/ipc/filesystem/filesystem-file-content-inspection.ts（MIT）
+// 先頭 8KB に NUL があればバイナリとみなす（git と同じ判定）
+export const BINARY_PROBE_BYTES = 8192
+
+/**
+ * 開ける大きさの上限。Monaco は数MBを超えると重くなるため、Orca（50MB）より小さく絞る。
+ * 録画の素材などを誤って開いて固まるのを防ぐ。
+ */
+export const MAX_TEXT_FILE_SIZE = 5 * 1024 * 1024
+
+/** クイックオープンの一覧の上限（巨大なリポジトリで IPC が詰まらないように） */
+export const MAX_LISTED_FILES = 20_000
+
+// Orca由来: src/shared/binary-buffer.ts（MIT）
+export function isBinaryBuffer(buffer: Uint8Array): boolean {
+  const len = Math.min(buffer.length, BINARY_PROBE_BYTES)
+  for (let i = 0; i < len; i += 1) {
+    if (buffer[i] === 0) return true
+  }
+  return false
+}
+
+/**
+ * 拡張子だけでバイナリと分かるもの。中身を読まずに断れる（録画の mp4 など大きいものが多い）。
+ * Orca由来: src/shared/binary-file-extensions.ts（MIT）から抜粋
+ */
+const BINARY_EXTENSIONS = new Set([
+  '.7z', '.bz2', '.gz', '.jar', '.rar', '.tar', '.tgz', '.xz', '.zip', '.zst',
+  '.aac', '.avi', '.flac', '.m4a', '.mkv', '.mov', '.mp3', '.mp4', '.ogg', '.wav', '.webm', '.pcm',
+  '.doc', '.docx', '.pdf', '.ppt', '.pptx', '.xls', '.xlsx',
+  '.eot', '.otf', '.ttc', '.ttf', '.woff', '.woff2',
+  '.a', '.bin', '.class', '.dll', '.dylib', '.exe', '.lockb', '.node', '.o', '.pyc', '.so', '.wasm',
+  '.sqlite', '.db',
+  '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico', '.icns', '.tiff', '.heic', '.psd'
+])
+
+export function hasBinaryExtension(path: string): boolean {
+  const name = path.slice(path.lastIndexOf('/') + 1)
+  const dot = name.lastIndexOf('.')
+  return dot > 0 && BINARY_EXTENSIONS.has(name.slice(dot).toLowerCase())
+}
+
+// ─── 一覧から外す／畳むディレクトリ ─────────────────────────────
+
+/**
+ * 道具が作るキャッシュや状態。人が手で編集しないもの。
+ * Orca由来: src/shared/quick-open-filter.ts の HIDDEN_DIR_BLOCKLIST（MIT）
+ * .vscode・.idea は人が設定を編集することがあるので、ここでは外さない。
+ */
+export const HEAVY_DIRS: ReadonlySet<string> = new Set([
+  '.git',
+  'node_modules',
+  '.next',
+  '.nuxt',
+  '.cache',
+  '.yarn',
+  '.pnpm-store',
+  '.terraform',
+  '.turbo',
+  // このアプリが録画を置く場所。巨大な動画と音声が入る
+  '.ade-movie'
+])
+
+/** エクスプローラで既定では畳む（中身を先読みしない）ディレクトリ */
+export function isCollapsedByDefault(name: string): boolean {
+  return HEAVY_DIRS.has(name)
+}
+
+/**
+ * クイックオープン・検索・変更通知の対象にしてよいか（`/` 区切りの相対パス）。
+ * Orca由来: src/shared/quick-open-filter.ts の shouldIncludeQuickOpenPath（MIT）
+ */
+export function shouldIncludePath(path: string): boolean {
+  let start = 0
+  const len = path.length
+  while (start < len) {
+    let end = path.indexOf('/', start)
+    if (end === -1) end = len
+    if (HEAVY_DIRS.has(path.substring(start, end))) return false
+    start = end + 1
+  }
+  return true
+}

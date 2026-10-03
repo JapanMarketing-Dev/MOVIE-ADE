@@ -1,0 +1,184 @@
+/*
+ * サイドバーのレビュー履歴（ReviewList.tsx）。値は tokens.css の var(--…) を使う。
+ * 1件の行の基本の見た目（.session / .session__*）は shell.css。ここでは
+ * 見出しをページのタイトルにした分の上書きと、フィルタ・… ボタンだけを足す。
+ */
+
+.rv-list {
+  position: relative;
+}
+
+/* ── フィルタ ─────────────────────────────────────────── */
+
+.rv-filter {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) 0 var(--space-2) var(--space-1);
+  gap: var(--space-2);
+}
+
+.rv-filter__search {
+  min-width: 0;
+  height: 24px;
+  flex: 1;
+}
+
+.rv-filter__search .field__input {
+  font-size: var(--font-size-xs);
+}
+
+/* 既定から変えているときは、閉じていても分かるよう色を付ける */
+.rv-filter__toggle.is-active {
+  color: var(--color-accent);
+}
+
+.rv-filter__panel {
+  display: grid;
+  margin: 0 0 var(--space-3) var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  font-size: var(--font-size-xs);
+  gap: var(--space-3);
+}
+
+.rv-filter__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.rv-chip {
+  height: 22px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+}
+
+.rv-chip:hover {
+  background: var(--color-surface-hover);
+}
+
+.rv-chip[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.rv-filter__check {
+  display: flex;
+  align-items: center;
+  color: var(--color-text);
+  cursor: pointer;
+  gap: var(--space-3);
+}
+
+.rv-filter__select {
+  height: 24px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+}
+
+.rv-filter__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.rv-filter__danger:not(:disabled) {
+  color: var(--color-danger);
+}
+
+.rv-filter__count {
+  padding: var(--space-1) var(--space-3) 0;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-2xs);
+}
+
+/* ── 1件の行 ─────────────────────────────────────────── */
+
+.session-row {
+  position: relative;
+}
+
+.session-row.is-editing {
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+}
+
+/* 見出しはページのタイトル。時刻用の等幅をやめて、読む文字にする */
+.session-row .session__label {
+  font-family: inherit;
+  font-variant-numeric: normal;
+}
+
+.session.is-archived {
+  opacity: 0.6;
+}
+
+.session__archived {
+  flex: none;
+  color: var(--color-text-faint);
+}
+
+.session-row .session__meta {
+  justify-content: flex-start;
+}
+
+.session__when {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-row .session__status {
+  margin-left: auto;
+}
+
+.session__status--icon {
+  width: 18px;
+  justify-content: center;
+  padding: 0;
+}
+
+/* … は触れたとき・選んだときだけ出す（Orca のプロジェクト行と同じ） */
+.session-row__more {
+  position: absolute;
+  top: 6px;
+  right: 4px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  place-items: center;
+}
+
+.session-row:hover .session-row__more,
+.session-row__more:focus-visible {
+  opacity: 1;
+}
+
+.session-row__more:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}

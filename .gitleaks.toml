@@ -1,0 +1,12 @@
+# gitleaks の設定。既定の規則に、単体テストの偽の秘密だけを除外として足す。
+# 除外するのは、伏せ字や鍵の扱いを確かめるために、わざと秘密に見える値を置いているテストだけ。
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake secrets in unit tests"
+paths = [
+  '''(^|/)test/unit/redact\.test\.ts$''',
+  '''(^|/)test/unit/stt-provider\.test\.ts$''',
+  '''(^|/)test/unit/telemetry\.test\.ts$''',
+]

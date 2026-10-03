@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sending to agents · MOVIE-ADE docs</title>
+  <meta name="description" content="Run Claude Code or Codex in the built-in terminal and hand them a review with one click. You can also copy the instruction for any other agent, or post the review to GitHub.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="canonical" href="https://movie-ade.pages.dev/docs/agents">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="MOVIE-ADE">
+  <meta property="og:title" content="Sending to agents · MOVIE-ADE docs">
+  <meta property="og:description" content="Run Claude Code or Codex in the built-in terminal and hand them a review with one click. You can also copy the instruction for any other agent, or post the review to GitHub.">
+  <meta property="og:url" content="https://movie-ade.pages.dev/docs/agents">
+  <meta property="og:image" content="https://movie-ade.pages.dev/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
+  <script src="../js/theme.js"></script>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="docs.css">
+  <script src="docs.js" defer></script>
+</head>
+<!-- Generated layout: the sidebar, header, and footer are identical on every page in site/docs/. Change them on all pages together. -->
+<body data-page="docs">
+  <a class="skip" href="#docs-main">Skip to content</a>
+  <svg class="sprite" width="0" height="0" aria-hidden="true">
+    <symbol id="i-github" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  </svg>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="../index.html" aria-label="MOVIE-ADE home">
+        <img src="../favicon.svg" alt="" width="24" height="24">MOVIE-ADE
+      </a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="../index.html#features">Features</a>
+        <a href="../download.html">Download</a>
+        <a class="nav-keep" href="quick-start.html" aria-current="page">Docs</a>
+        <a href="../download.html#versions">Changelog</a>
+      </nav>
+      <div class="header-actions">
+        <button class="btn btn-sm btn-icon theme-toggle" type="button" data-theme-toggle aria-label="Toggle light and dark theme" title="Toggle theme">
+          <svg class="icon icon-moon"><use href="#i-moon"/></svg>
+          <svg class="icon icon-sun"><use href="#i-sun"/></svg>
+        </button>
+        <a class="btn btn-sm" href="https://github.com/JapanMarketing-Dev/MOVIE-ADE">
+          <svg class="icon icon-fill"><use href="#i-github"/></svg><span class="btn-label">GitHub</span>
+        </a>
+        <a class="btn btn-sm btn-primary" href="../download.html">
+          <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">Download</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap docs-layout">
+    <nav class="docs-sidebar" aria-label="Docs pages" id="docs-sidebar">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="true" aria-controls="docs-nav-list" data-docs-nav-toggle>
+        <svg class="icon"><use href="#i-menu"/></svg>Docs menu
+      </button>
+      <div class="docs-nav-list" id="docs-nav-list">
+      <div class="docs-nav-group">
+        <p class="docs-nav-heading">Start here</p>
+        <ul>
+          <li><a href="quick-start.html">Quick start</a></li>
+          <li><a href="install.html">Install</a></li>
+          <li><a href="concepts.html">Concepts</a></li>
+          <li><a href="keyboard.html">Keyboard shortcuts</a></li>
+        </ul>
+      </div>
+      <div class="docs-nav-group">
+        <p class="docs-nav-heading">Using MOVIE-ADE</p>
+        <ul>
+          <li><a href="projects.html">Projects and URLs</a></li>
+          <li><a href="recording.html">Recording</a></li>
+          <li><a href="agents.html" aria-current="page">Sending to agents</a></li>
+          <li><a href="editor.html">Editor and preview</a></li>
+        </ul>
+      </div>
+      <div class="docs-nav-group">
+        <p class="docs-nav-heading">Configure</p>
+        <ul>
+          <li><a href="transcription.html">Transcription and costs</a></li>
+          <li><a href="accounts.html">Accounts and usage</a></li>
+          <li><a href="settings.html">Settings reference</a></li>
+        </ul>
+      </div>
+      <div class="docs-nav-group">
+        <p class="docs-nav-heading">Reference</p>
+        <ul>
+          <li><a href="privacy.html">Data and privacy</a></li>
+          <li><a href="files.html">Files and environment</a></li>
+        </ul>
+      </div>
+      <div class="docs-nav-group">
+        <p class="docs-nav-heading">Help</p>
+        <ul>
+          <li><a href="troubleshooting.html">Troubleshooting</a></li>
+        </ul>
+      </div>
+      </div>
+    </nav>
+
+    <main class="docs-main" id="docs-main">
+      <article class="docs-content">
+        <p class="docs-eyebrow">Using MOVIE-ADE</p>
+        <h1>Sending to agents</h1>
+        <p class="docs-lead">Run Claude Code or Codex in the built-in terminal and hand them a review with one click. You can also copy the instruction for any other agent, or post the review to GitHub.</p>
+
+      <section class="docs-section" aria-labelledby="findings">
+        <h2 id="findings"><a class="docs-anchor" href="#findings" aria-label="Link to Review findings">#</a>Review findings</h2>
+        <p>Each card in the <span class="docs-ui">Findings</span> tab supports:</p>
+<ul>
+  <li>Inline edit of the title and request</li>
+  <li><span class="docs-ui">Send</span> / <span class="docs-ui">Don't send</span> toggle</li>
+  <li><span class="docs-ui">Watch Recording</span> (seeks to that time) and <span class="docs-ui">Replace Image</span> (pick another frame)</li>
+  <li><span class="docs-ui">Confirm</span> / <span class="docs-ui">Mark as Needs Review</span>, <span class="docs-ui">Merge with Next</span>, <span class="docs-ui">Delete</span></li>
+</ul>
+<p>The header has <span class="docs-ui">Undo</span>, <span class="docs-ui">Open Folder</span>, <span class="docs-ui">Copy for Agent</span>, <span class="docs-ui">Send to GitHub</span>, <span class="docs-ui">Organize</span>, and <span class="docs-ui">Send to Agent</span>. Speech that didn't become a finding is listed under <span class="docs-ui">Excluded speech</span>, where <span class="docs-ui">Restore as Finding</span> brings it back. <span class="docs-ui">Overall Note</span> adds a note for the whole review.</p>
+<figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="The Findings tab (screenshot coming soon)"><span>Screenshot coming soon</span></div><figcaption>The Findings tab</figcaption></figure>
+      </section>
+
+      <section class="docs-section" aria-labelledby="terminal">
+        <h2 id="terminal"><a class="docs-anchor" href="#terminal" aria-label="Link to Run agents in the built-in terminal">#</a>Run agents in the built-in terminal</h2>
+        <p>When a project opens, MOVIE-ADE starts one terminal tab per enabled agent in the project folder. The defaults are:</p>
+<pre><code>claude --dangerously-skip-permissions
+codex --dangerously-bypass-approvals-and-sandbox</code></pre>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">About the default flags</p><p>These flags let the agent edit files and run commands without asking. If you want approval prompts, clear the arguments in <span class="docs-ui">Settings → Agent</span> (<span class="docs-ui">Claude Code arguments</span> / <span class="docs-ui">Codex arguments</span>). <span class="docs-ui">Reset Commands</span> restores the defaults.</p></div>
+<p>If neither agent is enabled, a plain shell opens. The <span class="docs-ui">+</span> menu opens <span class="docs-ui">New Terminal</span>, launches Claude Code or Codex in a new tab, or jumps to <span class="docs-ui">Agent settings…</span>. Its search box also finds tabs, saved URLs, and files.</p>
+<p>Tabs show the agent state: <span class="docs-ui">Running</span>, <span class="docs-ui">Waiting for input</span>, <span class="docs-ui">Done (unread)</span>, <span class="docs-ui">Idle</span>.</p>
+<table class="docs-keys">
+  <thead><tr><th>Action</th><th>macOS</th><th>Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>New Terminal</td><td><kbd>⌘</kbd><kbd>T</kbd></td><td><kbd>Ctrl</kbd><kbd>T</kbd></td></tr>
+    <tr><td>Split Right</td><td><kbd>⌘</kbd><kbd>D</kbd></td><td><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
+    <tr><td>Split Down</td><td><kbd>⌘</kbd><kbd>⇧</kbd><kbd>D</kbd></td><td><kbd>Alt</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
+    <tr><td>Close Pane / Tab</td><td><kbd>⌘</kbd><kbd>W</kbd></td><td><kbd>Ctrl</kbd><kbd>W</kbd></td></tr>
+  </tbody>
+</table>
+      </section>
+
+      <section class="docs-section" aria-labelledby="send">
+        <h2 id="send"><a class="docs-anchor" href="#send" aria-label="Link to Send to Agent / Copy for Agent">#</a>Send to Agent / Copy for Agent</h2>
+        <ol class="docs-steps">
+  <li>Focus a terminal tab where Claude Code or Codex is running.</li>
+  <li>Click <span class="docs-ui">Send to Agent</span>.</li>
+  <li>MOVIE-ADE writes the instruction into the agent's input and submits it. Follow progress in the terminal.</li>
+</ol>
+<p>Nothing is sent if no agent is detected in that terminal, or if the agent is waiting for a permission answer. Answer in the terminal first.</p>
+<p><span class="docs-ui">Copy for Agent</span> puts the same instruction on the clipboard for an agent running elsewhere (another terminal, IDE, or app). Only findings toggled to <span class="docs-ui">Send</span> are addressed. The video is never included.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="prompt">
+        <h2 id="prompt"><a class="docs-anchor" href="#prompt" aria-label="Link to Customize the instruction">#</a>Customize the instruction</h2>
+        <p>Edit <span class="docs-ui">Settings → Agent → Instructions for Agent</span>. Two variables are expanded:</p>
+<table>
+  <thead><tr><th>Variable</th><th>Expands to</th></tr></thead>
+  <tbody>
+    <tr><td><code>{{path}}</code></td><td>Absolute path of <code>feedback.md</code></td></tr>
+    <tr><td><code>{{relpath}}</code></td><td>Path relative to the project: <code>.ade-movie/reviews/&lt;id&gt;/feedback.md</code></td></tr>
+  </tbody>
+</table>
+<p>Leave it empty to use the default. The maximum length is 2000 characters, and <span class="docs-ui">Reset Instructions</span> restores the default. Example:</p>
+<pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
+<p>The setting is stored as <code>agentPrompt</code> in <code>settings.json</code>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="github">
+        <h2 id="github"><a class="docs-anchor" href="#github" aria-label="Link to Send to GitHub (Issue / PR comment)">#</a>Send to GitHub (Issue / PR comment)</h2>
+        <p><span class="docs-ui">Send to GitHub</span> posts the review as a new issue or as a comment on one of your open pull requests. Authentication is delegated to the <a href="https://cli.github.com/">GitHub CLI</a>. MOVIE-ADE never reads or stores a token.</p>
+<ol class="docs-steps">
+  <li>Install <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), or see <a href="https://github.com/cli/cli#installation">cli/cli</a>.</li>
+  <li><span class="docs-ui">Settings → GitHub → Sign In in Terminal</span> runs <code>gh auth login --web -h github.com</code> in the built-in terminal.</li>
+  <li>Click <span class="docs-ui">Send to GitHub</span>, choose <span class="docs-ui">Create a new issue</span> or a PR, and review the <span class="docs-ui">Title</span> and <span class="docs-ui">Body</span> (editable).</li>
+  <li>Tick the confirmation checkbox, then <span class="docs-ui">Create Issue</span> or <span class="docs-ui">Post Comment</span>.</li>
+</ol>
+<p>Details:</p>
+<ul>
+  <li>The repository comes from <code>git remote get-url origin</code>.</li>
+  <li>MOVIE-ADE runs <code>gh issue create --repo … --title … --body-file -</code> or <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>.</li>
+  <li>The body is <code>feedback.md</code> without the image lines (images are not uploaded), up to 60,000 characters.</li>
+  <li>PR candidates are your own open PRs (up to 30).</li>
+</ul>
+<p>If <code>GH_TOKEN</code> or <code>GITHUB_TOKEN</code> is set, <code>gh</code> uses it first, and the settings panel warns about it.</p>
+      </section>
+
+        <nav class="docs-pager" aria-label="Previous and next page">
+          <a class="docs-pager-prev" href="recording.html"><span>Previous</span>Recording</a>
+          <a class="docs-pager-next" href="editor.html"><span>Next</span>Editor and preview</a>
+        </nav>
+        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/MOVIE-ADE/blob/main/site/docs/agents.html">Edit this page on GitHub</a></p>
+      </article>
+    </main>
+
+    <aside class="docs-toc" aria-label="On this page">
+      <p class="docs-toc-heading">On this page</p>
+      <ul>
+        <li><a href="#findings">Review findings</a></li>
+        <li><a href="#terminal">Run agents in the built-in terminal</a></li>
+        <li><a href="#send">Send to Agent / Copy for Agent</a></li>
+        <li><a href="#prompt">Customize the instruction</a></li>
+        <li><a href="#github">Send to GitHub (Issue / PR comment)</a></li>
+      </ul>
+    </aside>
+  </div>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div>
+          <a class="brand" href="../index.html"><img src="../favicon.svg" alt="" width="24" height="24">MOVIE-ADE</a>
+          <p class="provider">Built by <a href="https://www.japan-marketing.co.jp/">Japan Marketing LLC</a></p>
+        </div>
+        <div>
+          <h2>Product</h2>
+          <ul>
+            <li><a href="../download.html">Download</a></li>
+            <li><a href="../download.html#versions">All versions</a></li>
+            <li><a href="quick-start.html">Docs</a></li>
+            <li><a href="../index.html#features">Features</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Open source</h2>
+          <ul>
+            <li><a href="https://github.com/JapanMarketing-Dev/MOVIE-ADE">GitHub</a></li>
+            <li><a href="https://github.com/JapanMarketing-Dev/MOVIE-ADE/issues">Issues</a></li>
+            <li><a href="https://github.com/JapanMarketing-Dev/MOVIE-ADE/blob/main/LICENSE">MIT License</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Privacy</h2>
+          <p>This site uses no analytics and no cookies. It only stores your light/dark choice in your browser.</p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span data-year>2026</span> Japan Marketing LLC. MOVIE-ADE is released under the MIT License.</span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

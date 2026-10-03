@@ -1,0 +1,15 @@
+{
+  "//": "エディタ用の既定。型チェックの正本は tsconfig.{node,web,test}.json（pnpm typecheck が3つすべてを実行する）",
+  "extends": "./tsconfig.web.json",
+  "include": [
+    "src/**/*",
+    "electron.vite.config.ts"
+  ],
+  "compilerOptions": {
+    "types": [
+      "node"
+    ],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  }
+}

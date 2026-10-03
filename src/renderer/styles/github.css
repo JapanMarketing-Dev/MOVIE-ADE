@@ -1,0 +1,215 @@
+/* ── 設定の GitHub 節と、レビュー結果を GitHub へ送るダイアログ ──────────────── */
+
+.gh-section__icon {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+  color: var(--color-text-muted);
+}
+
+.gh-section__refresh {
+  margin-left: auto;
+}
+
+/*
+ * 再読み込みのボタンは節の右端にある。ツールチップを中央寄せにすると、隠れている間も（透明なだけで）
+ * ダイアログの右へはみ出して横スクロールが出る。右端にそろえて左へ開き、隠れている間は見えなくする
+ */
+.gh-section__refresh .tooltip {
+  right: 0;
+  left: auto;
+  transform: translateY(-4px);
+  visibility: hidden;
+}
+
+.gh-section__refresh .tooltip.is-open {
+  transform: none;
+  visibility: visible;
+}
+
+.gh-section code,
+.gh-send code {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.gh-callout {
+  display: grid;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-panel);
+  gap: var(--space-2);
+}
+
+.gh-callout__title {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  gap: var(--space-2);
+}
+
+.gh-command {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-canvas);
+  gap: var(--space-3);
+}
+
+.gh-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.gh-ok {
+  color: var(--color-success);
+}
+
+.gh-account__name {
+  font-weight: var(--font-weight-medium);
+}
+
+.gh-account__host,
+.gh-muted {
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+}
+
+.gh-repo {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  gap: var(--space-2);
+}
+
+.gh-repo:hover,
+.gh-repo:focus-visible {
+  background: var(--color-surface-hover);
+  outline: none;
+}
+
+/* レビュー結果を GitHub へ送る確認ダイアログ */
+
+.gh-send {
+  display: grid;
+  width: min(640px, calc(100vw - 48px));
+  max-height: calc(100vh - 96px);
+  padding: var(--space-5) var(--space-6);
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  gap: var(--space-4);
+}
+
+.gh-send__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.gh-send__head h2 {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  gap: var(--space-3);
+}
+
+.gh-send__field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.gh-send__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.gh-send__targets {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.gh-send__target {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+}
+
+.gh-send__target:has(input:checked) {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-selected);
+}
+
+.gh-send__target input {
+  margin: 0;
+}
+
+.gh-send__input,
+.gh-send__body {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+}
+
+.gh-send__body {
+  min-height: 220px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  resize: vertical;
+}
+
+.gh-send__input:focus-visible,
+.gh-send__body:focus-visible {
+  border-color: var(--color-border-focus);
+  outline: none;
+}
+
+.gh-send__confirm {
+  display: flex;
+  align-items: center;
+  padding: var(--space-3);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-quiet);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  gap: var(--space-2);
+}
+
+.gh-send__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

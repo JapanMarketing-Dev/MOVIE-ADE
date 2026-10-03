@@ -1,0 +1,190 @@
+# リリースは2段階。
+#   1. タグ（v*）を push すると、3つのOSの配布物を作って R2 の公開前の置き場（staging/<version>/）へ上げ、
+#      GitHub Release の下書き（draft）をリリースノートだけで作る。サイトとアプリの更新確認にはまだ出ない。
+#   2. 確認が済んだら、Actions の画面からこのワークフローを手動で起動し（version を入れる）、
+#      staging から releases/<version>/ へ移して versions.json / latest.json を更新する（promote）。
+#      手元から `node scripts/release-r2.mjs promote --version <version>` でも同じ。
+#
+# 【費用】このワークフローは公開リポジトリ（JapanMarketing-Dev/MOVIE-ADE）で動かす前提。
+#   公開リポジトリなら標準のランナーは無料。非公開のリポジトリで動かすと、実行時間（とくに macOS）が開発者側の費用になる。
+#   R2 は保存が月 10GB まで無料・転送料は無料。scripts/release-r2.mjs が最新10版だけを残す。
+#
+# 配布物は R2 にだけ置き、GitHub Release には添付しない（ダウンロードはサイトへのリンク）。
+# 当面は署名・公証をしない。リリースノートの雛形にそのことを書く。
+#
+# 必要な secrets（作り方は README の「配布」）:
+#   CLOUDFLARE_API_TOKEN   … R2 の movie-ade-releases に書き込める API トークン
+#   CLOUDFLARE_ACCOUNT_ID  … Cloudflare のアカウント ID
+#   SENTRY_AUTH_TOKEN      … ソースマップを Sentry へ上げるトークン（scripts/sentry-sourcemaps.mjs。任意。無ければ警告だけ）
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 公開する版（staging/<version>/ を releases/ へ移す。例 0.1.0）
+        required: true
+      replace:
+        description: 公開済みの同じ版を差し替える（staging に stage --replace で上げた分）
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build ${{ matrix.os }}
+    if: github.event_name == 'push'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: mac
+            runner: macos-latest # arm64。x64 の dmg もここで作る
+          - os: win
+            runner: windows-latest
+          - os: linux
+            runner: ubuntu-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      NODE_OPTIONS: --max-old-space-size=4096
+      # dist:* の build:release がソースマップを Sentry へ上げる。OS ごとにビルドするので、各ジョブで上げる
+      # secret が未登録のうちは警告だけ出して続ける。登録したら SENTRY_SOURCEMAPS: required に戻して、上げ損ねを止められる
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Linux build tools
+        if: matrix.os == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3
+
+      - name: Check the tag matches package.json
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "タグ ${GITHUB_REF_NAME} と package.json の版 ${version} が一致しません" >&2
+            exit 1
+          fi
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test:unit
+
+      - name: Build installers
+        run: pnpm dist:${{ matrix.os }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          path: |
+            dist/release/MOVIE-ADE-*.dmg
+            dist/release/MOVIE-ADE-*.exe
+            dist/release/MOVIE-ADE-*.AppImage
+            dist/release/MOVIE-ADE-*.deb
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    name: upload to R2 staging and draft the release notes
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write # リリースの下書きを作るため
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installers-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Write release notes
+        shell: bash
+        env:
+          # ダウンロードサイトの URL（リポジトリの変数 DOWNLOAD_URL。未設定なら README）
+          DOWNLOAD_URL: ${{ vars.DOWNLOAD_URL || 'https://github.com/JapanMarketing-Dev/MOVIE-ADE#install-and-run' }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cat > release-notes.md <<EOF
+          ## MOVIE-ADE ${version}
+
+          Download: ${DOWNLOAD_URL}
+
+          **These builds are not code-signed yet.**
+          - macOS: Gatekeeper says the developer cannot be verified. Right-click the app and choose Open, or allow it in System Settings > Privacy & Security.
+          - Windows: SmartScreen may block the installer. Choose "More info" > "Run anyway".
+          - Windows and Linux builds are a preview.
+
+          ### Changes
+          -
+          EOF
+
+      - name: Upload to R2 staging
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: >-
+          node scripts/release-r2.mjs stage
+          --version "${GITHUB_REF_NAME#v}"
+          --dir artifacts
+          --notes release-notes.md
+          --notes-url "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
+          --preview "${{ vars.PREVIEW_OS || 'win,linux' }}"
+
+      - name: Draft the GitHub release (notes only, no files)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft --title "MOVIE-ADE ${GITHUB_REF_NAME#v}" --notes-file release-notes.md
+
+  promote:
+    name: promote ${{ inputs.version }} from staging to releases
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Promote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          VERSION: ${{ inputs.version }}
+          REPLACE: ${{ inputs.replace && '--replace' || '' }}
+        # 手動で起動したこと自体を確認とみなす（消す対象はログに出る）
+        run: node scripts/release-r2.mjs promote --version "$VERSION" $REPLACE --yes

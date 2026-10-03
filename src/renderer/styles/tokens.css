@@ -1,0 +1,383 @@
+/*
+ * デザイントークン — このファイルがUIの見た目の唯一の正本。
+ *
+ * 色・余白・角丸・フォント・影・サイズ・モーションのすべてをここで定義し、
+ * 他のCSSは var(--…) しか書かない（生の色コードや px を書かない）。
+ *
+ * ── 方向性（NF-13）────────────────────────────────────
+ *
+ * Orca に合わせた、中立的なグレーの面と 1px の境界線だけで組む道具の見た目。
+ *   - 面は無彩色。グラデーション・光彩・ぼかしの影は使わない
+ *   - 角丸は 4〜6px。カードもボタンも同じ小ささにそろえる
+ *   - アイコンは lucide を 14〜16px・strokeWidth 1.5〜1.75 で単色
+ *   - 色は意味のある所だけ。アクセントは青1色、録画は赤
+ *
+ * ── テーマ ────────────────────────────────────────────
+ *
+ * ダークが既定。ライトは :root[data-theme='light'] で上書きする。
+ * data-theme は lib/theme.ts が JS で解決して書く（prefers-color-scheme の
+ * メディアクエリは使わない。docs/04_benchmark.md 2.1）。
+ *
+ * 色の値は Orca由来: ~/bench/orca/src/renderer/src/assets/main.css（MIT、commit 3793c58a）
+ * Copyright (c) 2026 Lovecast Inc. の :root（ライト）と .dark（ダーク）から写した。
+ *
+ * 旧来のグラデーション系トークン（--gradient-* / --glow-* / --brand-*）は、
+ * 参照しているCSSを壊さないよう名前だけ残し、中身を単色・無効な影にしてある。
+ */
+
+:root {
+  --size-settings-panel: 480px;
+  --size-border: 1px;
+  color-scheme: dark;
+
+  /* ── 面（奥から手前へ。無彩色）───────────────────────── */
+  --color-bg-app: #0a0a0a; /* Orca --background (dark) */
+  --color-bg-chrome: #0f0f0f; /* タイトルバー・ツールバー・ステータスバー */
+  --color-bg-sidebar: #141414; /* 左サイドバー */
+  --color-bg-panel: #171717; /* Orca --card (dark) */
+  --color-bg-elevated: #1e1e1e; /* Orca --editor-surface (dark)。入力欄・ポップオーバー */
+  --color-bg-terminal: #0f0f0f; /* ターミナルの背景 */
+  --color-bg-canvas: #ffffff; /* 内蔵ブラウザが自分で描く白（DOMでは使わない）*/
+
+  /* ── 面の状態 ─────────────────────────────────────── */
+  --color-surface-hover: #262626; /* Orca --muted (dark) */
+  --color-surface-active: #404040; /* Orca --accent (dark) */
+  --color-surface-selected: #1e1e1e; /* Orca --editor-surface (dark) */
+
+  /* ── 主ボタン（ほぼ白の地に黒い文字）──────────────────── */
+  --color-primary: #e5e5e5; /* Orca --primary (dark) */
+  --color-primary-fg: #171717; /* Orca --primary-foreground (dark) */
+
+  /* ── 線 ───────────────────────────────────────────── */
+  --color-border: rgb(255 255 255 / 7%); /* Orca --border (dark) */
+  --color-border-strong: rgb(255 255 255 / 15%); /* Orca --input (dark) */
+  --color-divider: #3f3f46; /* ペイン分割線。--border では面の上で薄すぎる */
+  --color-divider-strong: #a1a1aa;
+  --color-border-focus: #737373; /* Orca --ring (dark) */
+
+  /* ── 文字 ─────────────────────────────────────────── */
+  --color-text: #fafafa; /* Orca --foreground (dark) */
+  --color-text-muted: #a1a1a1; /* Orca --muted-foreground (dark) */
+  --color-text-faint: rgb(255 255 255 / 52%); /* Orca --terminal-pane-title-on-dark-fg */
+  --color-text-inverse: #171717; /* 主ボタン・塗りの上の文字 */
+
+  /*
+   * ── Agent の状態（04 4.1-13 / herdr の seen フラグ）──────
+   * 「終わった」と「終わったのに気づいていない」を分けるのが要点。
+   */
+  --agent-working: #eab308; /* Orca --status-warning (dark) */
+  --agent-blocked: #f97316; /* Orca --agent-question (dark)。作業中の黄と区別するため橙 */
+  --agent-done: #86efac; /* Orca --status-success (dark) */
+  --agent-idle: #a1a1a1;
+  --agent-unknown: #6c7086;
+
+  /* ── アクセント（青1色。リンク・選択・進行だけに使う）────── */
+  --color-accent: #3b82f6;
+  --color-accent-hover: #60a5fa; /* Orca の --terminal-pane-locate (dark) = blue-400 */
+  --color-accent-quiet: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  --color-accent-wash: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  --color-accent-line: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  --color-on-accent: #ffffff;
+
+  /* ── 旧ブランド色。すべてアクセントへ寄せる ───────────── */
+  --brand-iris: var(--color-accent);
+  --brand-azure: var(--color-accent);
+  --brand-aqua: var(--color-accent);
+  --brand-rose: var(--color-accent);
+
+  /*
+   * ── 旧グラデーション ──────────────────────────────
+   * 「background: A, B」の重ね塗りで使われている所があるため、色ではなく
+   * 単色の linear-gradient にしておく（背景画像として常に有効な値）。
+   */
+  --gradient-brand: linear-gradient(var(--color-primary), var(--color-primary));
+  --gradient-brand-reverse: var(--gradient-brand);
+  --gradient-pen: linear-gradient(var(--color-accent), var(--color-accent));
+  --gradient-voice: var(--gradient-pen);
+  --gradient-agent: var(--gradient-pen);
+  --gradient-record: linear-gradient(var(--color-record), var(--color-record));
+  --gradient-aurora: linear-gradient(transparent, transparent);
+  --gradient-surface: linear-gradient(transparent, transparent);
+  --gradient-sidebar: linear-gradient(transparent, transparent);
+  --pattern-dots: none;
+  --size-pattern-dots: 20px;
+  --tile-saturation: 0%; /* サイト札。色をやめてグレーの濃淡だけにする */
+  --tile-lightness: 30%;
+
+  /* ── 意味色 ───────────────────────────────────────── */
+  --color-success: #86efac; /* Orca --status-success (dark) */
+  --color-success-quiet: color-mix(in srgb, var(--color-success) 10%, transparent);
+  --color-warning: #eab308; /* Orca --status-warning (dark) */
+  --color-warning-quiet: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  --color-warning-border: color-mix(in srgb, var(--color-warning) 25%, transparent);
+  --color-danger: #ff6568; /* Orca --destructive (dark) */
+  --color-danger-quiet: color-mix(in srgb, var(--color-danger) 12%, transparent);
+
+  /* ── 録画（赤はここだけ）──────────────────────────── */
+  --color-record: #ef4444;
+  --color-record-hover: #f87171;
+  --color-record-quiet: color-mix(in srgb, var(--color-record) 14%, transparent);
+  --color-record-glow: transparent;
+  --color-record-line: color-mix(in srgb, var(--color-record) 55%, transparent);
+
+  /* ── 余白（4px 基準）─────────────────────────────── */
+  --space-0: 0;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 24px;
+  --space-8: 32px;
+  --space-9: 48px;
+
+  /* ── 角丸（4〜6px に絞る）─────────────────────────── */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-pill: 999px; /* ドット・トグルのつまみだけ */
+
+  /*
+   * ── フォント ──────────────────────────────────────
+   * 欧文は Inter / JetBrains Mono（latin サブセットのみ。fonts.css）。
+   * 和文は unicode-range から外れるので、OSのフォントへ自動で落ちる。
+   */
+  --font-ui: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text',
+    'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI',
+    Meiryo, 'Ubuntu', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'SF Mono', SFMono-Regular, ui-monospace, 'Cascadia Mono',
+    Menlo, Consolas, 'DejaVu Sans Mono', 'Noto Sans Mono CJK JP', monospace;
+
+  /* 段階を絞る。本文 12〜13px、見出しでも 16px まで（Orca の 11/12/14 帯に合わせる）*/
+  --font-size-2xs: 10px;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-md: 13px;
+  --font-size-lg: 14px;
+  --font-size-xl: 16px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --font-size-time: 13px;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 600;
+  --font-weight-heavy: 600;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.45;
+  --line-height-relaxed: 1.6;
+
+  /* ── 骨格の寸法（ベンチの実測に合わせる）──────────────── */
+  --size-titlebar: 36px; /* Orca .titlebar と同値（04 2.3）*/
+  --size-toolbar: 40px;
+  --size-tabbar: 32px;
+  --size-statusbar: 24px;
+  --size-sidebar: 240px;
+  --size-control: 26px;
+  --size-control-sm: 22px;
+  --size-row: 28px;
+  --size-splitter: 6px;
+  --size-traffic-lights: 80px;
+
+  /* ── アイコン（lucide。strokeWidth は 1.5〜1.75）─────── */
+  --size-icon-sm: 12px;
+  --size-icon: 14px;
+  --size-icon-lg: 16px;
+  --size-icon-xl: 20px;
+  --icon-stroke: 1.75;
+
+  /*
+   * ── 影 ────────────────────────────────────────────
+   * 浮くもの（メニュー・トースト・ダイアログ）だけに付ける。
+   * Orca由来: main.css の --shadow-floating と タブ作成メニューの影（MIT）
+   */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 20%);
+  --shadow-md: 0 10px 24px rgb(0 0 0 / 18%);
+  --shadow-lg: 0 16px 36px rgb(0 0 0 / 24%);
+  /* 光彩はやめた。参照が残っていても何も描かない値 */
+  --glow-brand: 0 0 0 0 transparent;
+  --glow-record: 0 0 0 0 transparent;
+  --glow-record-soft: 0 0 0 0 transparent;
+  --glow-logo: none;
+
+  /*
+   * ── モーション（04_benchmark 2.7.2 の実値）──────────────
+   */
+  --motion-instant: 100ms;
+  --motion-fast: 150ms;
+  --motion-normal: 200ms;
+  --motion-slow: 260ms;
+  --motion-exit: 180ms;
+  --motion-breathe: 1600ms;
+
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: var(--ease-out);
+  --motion-ease: var(--ease-out);
+
+  /* ── 重なり順 ──────────────────────────────────────── */
+  --z-splitter: 10;
+  --z-toolbar: 20;
+  --z-overlay: 30;
+  --z-tooltip: 40;
+  --z-toast: 50;
+
+  /*
+   * ── ターミナル（xterm.js のテーマへ渡す値）────────────
+   * 16色は Orca由来: ~/bench/orca/src/shared/terminal-themes/defaults.ts
+   * 'Ghostty Default Style Dark'（MIT）。背景だけ面の無彩色に合わせた。
+   */
+  --term-font-size: 12px;
+  --term-line-height: 1.25;
+  --term-fg: #e5e5e5;
+  --term-bg: #0f0f0f;
+  --term-cursor: #ffffff;
+  --term-selection: #5a7898;
+  --term-black: #1d1f21;
+  --term-red: #cc6666;
+  --term-green: #b5bd68;
+  --term-yellow: #f0c674;
+  --term-blue: #81a2be;
+  --term-magenta: #b294bb;
+  --term-cyan: #8abeb7;
+  --term-white: #c5c8c6;
+  --term-bright-black: #666666;
+  --term-bright-red: #d54e53;
+  --term-bright-green: #b9ca4a;
+  --term-bright-yellow: #e7c547;
+  --term-bright-blue: #7aa6da;
+  --term-bright-magenta: #c397d8;
+  --term-bright-cyan: #70c0b1;
+  --term-bright-white: #eaeaea;
+
+  /* 指摘カード・確認画面（review.css）で使う追加分 */
+  --color-scrim: rgb(10 10 10 / 72%);
+  --size-findings-shot: 38%;
+}
+
+/*
+ * ── ライト ───────────────────────────────────────────
+ * Orca由来: ~/bench/orca/src/renderer/src/assets/main.css の :root（MIT）
+ */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --color-bg-app: #ffffff; /* Orca --background */
+  --color-bg-chrome: #fafafa; /* Orca --sidebar */
+  --color-bg-sidebar: #f5f5f5; /* Orca --worktree-sidebar */
+  --color-bg-panel: #ffffff; /* Orca --card */
+  --color-bg-elevated: #ffffff; /* Orca --editor-surface */
+  --color-bg-terminal: #ffffff;
+
+  --color-surface-hover: #f5f5f5; /* Orca --muted */
+  --color-surface-active: #ebebeb; /* Orca --worktree-sidebar-accent に近い1段濃い灰 */
+  --color-surface-selected: #f5f5f5;
+
+  --color-primary: #171717; /* Orca --primary */
+  --color-primary-fg: #fafafa;
+
+  --color-border: #e5e5e5; /* Orca --border */
+  --color-border-strong: #e5e5e5; /* Orca --input */
+  --color-divider: #d4d4d8;
+  --color-divider-strong: #71717a;
+  --color-border-focus: #a1a1a1; /* Orca --ring */
+
+  --color-text: #0a0a0a; /* Orca --foreground */
+  --color-text-muted: #737373; /* Orca --muted-foreground */
+  --color-text-faint: rgb(24 24 27 / 64%); /* Orca --terminal-pane-title-on-light-fg */
+  --color-text-inverse: #fafafa;
+
+  --agent-working: #ca8a04; /* Orca --status-warning */
+  --agent-blocked: #ea580c; /* Orca --agent-question = orange-600 */
+  --agent-done: #15803d; /* Orca --status-success */
+  --agent-idle: #737373;
+
+  --color-accent: #2563eb; /* Orca --terminal-pane-locate = blue-600 */
+  --color-accent-hover: #1d4ed8;
+
+  --tile-lightness: 88%;
+
+  --color-success: #15803d;
+  --color-warning: #ca8a04;
+  --color-danger: #e40014; /* Orca --destructive */
+
+  --color-record: #dc2626;
+  --color-record-hover: #b91c1c;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 6%);
+  --shadow-md: 0 10px 24px rgb(0 0 0 / 10%);
+  --shadow-lg: 0 16px 36px rgb(0 0 0 / 14%);
+
+  /* Orca由来: ~/bench/orca/src/shared/terminal-themes/defaults.ts 'Builtin Tango Light'（MIT）*/
+  --term-fg: #2e3434;
+  --term-bg: #ffffff;
+  --term-cursor: #2e3434;
+  --term-selection: #accef7;
+  --term-black: #2e3436;
+  --term-red: #cc0000;
+  --term-green: #4e9a06;
+  --term-yellow: #8e7700;
+  --term-blue: #3465a4;
+  --term-magenta: #75507b;
+  --term-cyan: #05727e;
+  --term-white: #6a6a6a;
+  --term-bright-black: #555753;
+  --term-bright-red: #ef2929;
+  --term-bright-green: #1b7a1b;
+  --term-bright-yellow: #6d5a00;
+  --term-bright-blue: #204a87;
+  --term-bright-magenta: #ad7fa8;
+  --term-bright-cyan: #034b50;
+  --term-bright-white: #3d3d3d;
+
+  --color-scrim: rgb(255 255 255 / 72%);
+}
+
+/*
+ * テーマを切り替える瞬間だけトランジションを止める。変数が一斉に変わるので、
+ * 部品ごとに違う速さでフェードしてしまうため。
+ * Orca由来: ~/bench/orca/src/renderer/src/assets/main.css（MIT）
+ */
+.theme-transition-disabled *,
+.theme-transition-disabled *::before,
+.theme-transition-disabled *::after {
+  transition: none !important;
+}
+
+/*
+ * OSの「視差効果を減らす」（04 2.7.2）。
+ * 無限ループは止め、トランジションは0にする。
+ * 単発の出入り（enter / exit）は残す — 何が起きたか分からなくなるため。
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-instant: 0ms;
+    --motion-fast: 0ms;
+    --motion-normal: 0ms;
+    --motion-slow: 0ms;
+    --motion-exit: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* 無限に動き続けるものだけ止める */
+  .spinner,
+  .skeleton,
+  .record-dot--active,
+  .record-btn.is-recording,
+  .progress--indeterminate .progress__bar,
+  .url-progress::after,
+  .is-spinning,
+  .terminal-tab__state--done {
+    animation: none !important;
+  }
+}

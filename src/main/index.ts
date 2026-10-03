@@ -1,0 +1,1225 @@
+import { existsSync } from 'node:fs'
+import { appendFile, writeFile, readFile } from 'node:fs/promises'
+import { pathToFileURL } from 'node:url'
+import { homedir } from 'node:os'
+import type { SessionPaths } from './sessions/paths'
+import type { IncrementalTranscriber } from './pipeline/stt/engine'
+import { loadDevDotEnv, type SttKeyStore } from './pipeline/stt/keys'
+import { BrowserWindow, app, dialog, ipcMain, nativeTheme, safeStorage, shell, protocol, net, session } from 'electron'
+import { basename, join } from 'node:path'
+import type { IpcEventChannel, IpcEvents, IpcRequests } from '@shared/ipc'
+import type { AiVendor, LlmApiProvider, SttRemoteProvider } from '@shared/aiProviders'
+import {
+  DEFAULT_AGENT_PREFERENCES,
+  DEFAULT_SPLIT_RATIO,
+  DEFAULT_URL,
+  type AnnotationMode,
+  type AppMode,
+  type Project,
+  type ProjectsState,
+  type RecordingStatus,
+  type Settings,
+  type SttKeySource,
+  type SttProvider,
+  type WorkspaceState
+} from '@shared/types'
+import { matchPresetUrl } from '@shared/projectUrl'
+import { THEME_BACKGROUND } from '@shared/theme'
+import { findProjectByFolder, upsertProjectFolder } from './projects'
+import { EmbeddedBrowser, PARTITION } from './browser'
+import type { PcmBlock, RecordingController } from './recording'
+import { installMenu } from './menu'
+import { applyLocalePreference } from './locale'
+import { PRODUCT_NAME, getLocale, t } from '@shared/i18n'
+import { currentSettings, flushSettingsSync, loadSettings, updateSettings } from './settings'
+import { elapsedMs, mark, reportInteractive } from './startup'
+import { TerminalManager } from './terminal'
+import { listAgentOptions } from './agentDetection'
+import {
+  addAgentAccount,
+  listAgentAccounts,
+  reloginAgentAccount,
+  removeAgentAccount,
+  renameAgentAccount,
+  requireTuiAgent,
+  selectAgentAccount
+} from './accounts'
+import { attachUsageWindow, getAccountUsage, getUsageState, refreshUsage } from './usage/service'
+import { appVersion, checkForUpdate } from './updateCheck'
+import { sanitizeLayout } from '@shared/layout'
+import { ResourceCollector } from './resources'
+import { ProjectWatcher, listDirectory, listFiles, readTextFile, searchFiles, writeTextFile } from './files'
+import { refreshPreviewIn, registerPreviewProtocol } from './preview'
+import { PREVIEW_SCHEME } from '@shared/preview'
+import { crashReportsActive, initCrashReporting, maybeSendTestEvent } from './telemetry'
+
+/*
+ * クラッシュの受け口（Crashpad / Sentry）は、OSの既定のクラッシュ処理より前に入れたいので、他の初期化より先に呼ぶ。
+ */
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'ade-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } },
+  // markdown / Mermaid のプレビュー（src/main/preview）。page.js が fetch で中身を取り直す
+  { scheme: PREVIEW_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }
+])
+/*
+ * userData は製品名（MOVIE-ADE）ではなく、これまでと同じ「ade-movie」フォルダに固定する。
+ * 名前で決まるままにすると、改名で既存の設定・プロジェクト・保存したキーが見えなくなる。
+ * E2E などが --user-data-dir を渡したときはそちらに従う。Crashpad も userData に書くので、その前に決める。
+ */
+if (!app.commandLine.hasSwitch('user-data-dir')) app.setPath('userData', join(app.getPath('appData'), 'ade-movie'))
+// 配布版で設定が ON なら Sentry へ送る。それ以外は Crashpad でローカルに受けるだけ（src/main/telemetry.ts）
+initCrashReporting()
+
+// 開発用の .env は dev 起動のときだけ読む。配布版は読まない（pipeline/stt/keys.ts）
+loadDevDotEnv(app.isPackaged)
+mark('main:loaded')
+
+/**
+ * メインプロセスのエントリ。
+ *
+ * 起動時間（NF-5）のため、ここで読み込むのはウィンドウ・内蔵ブラウザ・設定・メニューだけ。
+ * 録画（src/main/recording）、分解（src/main/pipeline）、セッション保存（src/main/sessions）は
+ * 後続の実装で追加し、必要になった時点で動的 import する。
+ */
+
+let mainWindow: BrowserWindow | null = null
+let browser: EmbeddedBrowser | null = null
+let terminals: TerminalManager | null = null
+/** Resource Manager の集計。ターミナル・ブラウザ・プロジェクトは読むだけ */
+const resources = new ResourceCollector({
+  terminals: () => terminals?.list() ?? [],
+  projects: () => currentSettings().projects,
+  activeProjectId: () => workspace.projectId ?? null,
+  page: () => {
+    const wc = browser?.contents
+    if (!wc || wc.isDestroyed()) return null
+    return { pid: wc.getOSProcessId(), title: wc.getTitle(), url: wc.getURL() }
+  }
+})
+let mode: AppMode = 'editor'
+let workspace: WorkspaceState = { folderPath: null, folderName: null }
+/**
+ * 終了処理に入ったか。
+ * PTYの出力やブラウザの状態変化は非同期に届くため、ウィンドウを閉じ始めた後に
+ * 破棄済みのオブジェクトを触らないよう、ここで入口をふさぐ。
+ */
+let shuttingDown = false
+/** エディタで未保存のファイル（renderer が editor:unsaved で知らせる） */
+let unsavedFiles: string[] = []
+/** 「保存せずに終了」を選んだ。before-quit とウィンドウの close の両方で聞き直さない */
+let discardUnsavedConfirmed = false
+
+/**
+ * 未保存のファイルがあれば、終了してよいかを聞く（ネイティブのダイアログ。内蔵ブラウザに隠れない）。
+ * Orca由来: ~/bench/orca/src/renderer/src/components/use-terminal-editor-close-foundation.ts（MIT）の
+ * 「ウィンドウを閉じる前に未保存を確かめる」。保存はエディタで行ってもらい、ここでは捨てるかやめるかだけを聞く。
+ * @returns 終了してよいなら true
+ */
+function confirmQuitWithUnsaved(): boolean {
+  if (unsavedFiles.length === 0 || discardUnsavedConfirmed || IS_E2E) return true
+  const options = {
+    type: 'warning' as const,
+    buttons: [t('dialog.unsaved.quitWithoutSaving'), t('common.cancel')],
+    defaultId: 1,
+    cancelId: 1,
+    message: t('dialog.unsaved.message', { count: unsavedFiles.length }),
+    detail: `${unsavedFiles.slice(0, 10).join('\n')}${unsavedFiles.length > 10 ? '\n…' : ''}\n\n${t('dialog.unsaved.detail')}`
+  }
+  const choice = mainWindow && !mainWindow.isDestroyed() ? dialog.showMessageBoxSync(mainWindow, options) : dialog.showMessageBoxSync(options)
+  if (choice !== 0) return false
+  discardUnsavedConfirmed = true
+  return true
+}
+/** 録画エンジン。起動を軽くするため、録画を始める時点で初めて読み込む（NF-5） */
+let recording: RecordingController | null = null
+/**
+ * 録画中の音声を無音で区切ってセッションへ書き出す係（系統ごと）。
+ * 文字起こしへ渡す形（16kHz モノラルWAV）で、録画中に逐次書く（NF-12）。
+ */
+let activePaths: SessionPaths | null = null
+let transcriber: IncrementalTranscriber | null = null
+let activeOptions = { captureSystemAudio: false, transcription: 'local' as SttProvider }
+
+/**
+ * 文字起こしのAPIキー（pipeline/stt/keys.ts。OS の鍵で暗号化して userData/stt-keys.bin に保存）。
+ * macOS では Keychain に触れるので、起動時ではなく初めて使うときに読む。
+ */
+let sttKeys: SttKeyStore | null = null
+async function sttKeyStore(): Promise<SttKeyStore> {
+  if (!sttKeys) {
+    const { SttKeyStore: Store, devKeyEnv, safeStorageCipher } = await import('./pipeline/stt/keys')
+    // E2E では OS の鍵束に触れない（Keychain の確認で止まらないように）。起動中だけ保持する
+    const cipher = IS_E2E ? { available: () => false, encrypt: () => Buffer.alloc(0), decrypt: () => '' } : safeStorageCipher(safeStorage)
+    // 環境変数のキー（.env の OPENAI_API_KEY）は dev 起動のときだけ使う
+    sttKeys = new Store(join(app.getPath('userData'), 'stt-keys.bin'), cipher, devKeyEnv(app.isPackaged))
+  }
+  await sttKeys.load()
+  return sttKeys
+}
+let sttWarnings: string[] = []
+let recordingBusy = false
+
+function localModel(): string {
+  if (process.env.ADE_WHISPER_MODEL) return process.env.ADE_WHISPER_MODEL
+  // 設定の「モデルをダウンロード」で落とした既定のモデル（userData/models）
+  const downloaded = join(app.getPath('userData'), 'models', 'ggml-large-v3-turbo.bin')
+  return existsSync(downloaded) ? downloaded : join(homedir(), '.cache/ade-movie/models/ggml-small.bin')
+}
+
+/** 設定の「モデルをダウンロード」（pipeline/stt/modelManager.ts）。使うときに読み込む */
+let modelDownloads: import('./pipeline/stt/modelManager').WhisperModelDownloads | null = null
+async function whisperModelDownloads(): Promise<import('./pipeline/stt/modelManager').WhisperModelDownloads> {
+  if (!modelDownloads) {
+    const { WhisperModelDownloads } = await import('./pipeline/stt/modelManager')
+    modelDownloads = new WhisperModelDownloads(app.getPath('userData'))
+  }
+  return modelDownloads
+}
+
+let audioWriter: { write(block: PcmBlock): void; flush(): Promise<void> } | null = null
+
+function send<C extends IpcEventChannel>(channel: C, ...args: Parameters<IpcEvents[C]>): void {
+  if (shuttingDown) return
+  const window = mainWindow
+  if (!window || window.isDestroyed()) return
+  const wc = window.webContents
+  if (wc.isDestroyed()) return
+  wc.send(channel, ...args)
+}
+
+/** 登録済みプロジェクトとして開くときは project を渡す。表示名はプロジェクト名を優先する */
+/** 開いているプロジェクトの外部の変更（Agent の書き換えなど）をエディタへ知らせる */
+const fileWatcher = new ProjectWatcher((event) => {
+  send('fs:changed', event)
+  // 内蔵ブラウザで開いているプレビューは、読み直さずに中身だけ差し替える（録画中の書き込みを残す）
+  refreshPreviewIn(browser?.contents ?? null, event.paths)
+})
+
+/** ファイルエディタの IPC が触ってよい根。未選択なら断る */
+function projectRoot(): string {
+  if (!workspace.folderPath) throw new Error(t('errors.openProjectFolder'))
+  return workspace.folderPath
+}
+
+function setWorkspace(folderPath: string | null, project: Project | null = null): WorkspaceState {
+  if (folderPath !== workspace.folderPath) fileWatcher.watch(folderPath)
+  workspace = {
+    folderPath,
+    folderName: project?.name ?? (folderPath ? basename(folderPath) : null),
+    projectId: project?.id ?? null
+  }
+  terminals?.setCwd(folderPath)
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setTitle(workspace.folderName ? `${workspace.folderName} — ${PRODUCT_NAME}` : PRODUCT_NAME)
+  }
+  return workspace
+}
+
+function projectsState(): ProjectsState {
+  const { projects, activeProjectId } = currentSettings()
+  return { projects, activeProjectId }
+}
+
+function assertNotRecording(): void {
+  if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new Error(t('errors.stopRecordingBeforeFolderChange'))
+}
+
+/**
+ * プロジェクトを開く。ターミナルの起動先（cwd）と保存先をそのフォルダに切り替える。
+ * 内蔵ブラウザが空か、前のプロジェクトのURLを表示しているなら、このプロジェクトの先頭URLへ移る。
+ */
+function openProject(project: Project): WorkspaceState {
+  const previous = currentSettings().projects.find((p) => p.id === workspace.projectId)
+  const next = setWorkspace(project.folderPath, project)
+  updateSettings({ activeProjectId: project.id, folderPath: project.folderPath })
+  send('workspace:changed', next)
+  send('projects:changed', projectsState())
+  const first = project.urls[0]
+  const url = browser?.state().url ?? ''
+  const blank = url === '' || url === DEFAULT_URL
+  const fromPrevious = previous && previous.id !== project.id && matchPresetUrl(previous.urls, url) !== null
+  if (first && (blank || fromPrevious)) void browser?.navigate(first.url)
+  return next
+}
+
+/** フォルダを登録して開く。同じフォルダが登録済みならそれを開く */
+function openFolderAsProject(folderPath: string): WorkspaceState {
+  const { projects, project, alreadyPresent } = upsertProjectFolder(currentSettings().projects, folderPath)
+  if (!alreadyPresent) updateSettings({ projects })
+  return openProject(project)
+}
+
+async function pickFolder(): Promise<string | null> {
+  const window = mainWindow
+  if (!window || window.isDestroyed() || shuttingDown) return null
+  const result = await dialog.showOpenDialog(window, {
+    title: t('dialog.openFolder.title'),
+    buttonLabel: t('dialog.openFolder.button'),
+    properties: ['openDirectory', 'createDirectory']
+  })
+  if (result.canceled || result.filePaths.length === 0) return null
+  return result.filePaths[0] ?? null
+}
+
+/** フォルダを開く（メニュー・空状態の「フォルダを開く」）。開いたフォルダはプロジェクトとして登録する */
+async function openFolderDialog(): Promise<WorkspaceState> {
+  assertNotRecording()
+  const folder = await pickFolder()
+  return folder ? openFolderAsProject(folder) : workspace
+}
+
+/** 登録を外す。開いているプロジェクトを外したら、残りの先頭へ移る（無ければ何も開いていない状態） */
+function removeProject(id: string): ProjectsState {
+  const settings = currentSettings()
+  if (!settings.projects.some((p) => p.id === id)) return projectsState()
+  const wasActive = workspace.projectId === id || settings.activeProjectId === id
+  if (wasActive) assertNotRecording()
+  const projects = settings.projects.filter((p) => p.id !== id)
+  updateSettings({ projects, ...(wasActive ? { activeProjectId: null } : {}) })
+  if (wasActive) {
+    const fallback = projects[0]
+    if (fallback) openProject(fallback)
+    else {
+      updateSettings({ folderPath: null })
+      send('workspace:changed', setWorkspace(null))
+    }
+  }
+  send('projects:changed', projectsState())
+  return projectsState()
+}
+
+/** 名前・URLの変更。フォルダは変えられない（別フォルダは別プロジェクトとして足す） */
+function updateProject(next: Project): ProjectsState {
+  const settings = currentSettings()
+  const current = settings.projects.find((p) => p.id === next.id)
+  if (!current) throw new Error(t('errors.projectNotFound'))
+  const merged: Project = { ...current, name: next.name.trim() || current.name, urls: next.urls }
+  updateSettings({ projects: settings.projects.map((p) => (p.id === next.id ? merged : p)) })
+  // 表示名が変わったらタイトルバーにも反映する
+  if (workspace.projectId === next.id) {
+    const saved = currentSettings().projects.find((p) => p.id === next.id) ?? merged
+    send('workspace:changed', setWorkspace(saved.folderPath, saved))
+  }
+  send('projects:changed', projectsState())
+  return projectsState()
+}
+
+/*
+ * E2E 実行中は、使っている人の画面にウィンドウを出さない。
+ *
+ * E2Eは1回で十数回アプリを起動するため、そのたびにウィンドウが開いては閉じ、
+ * フォーカスとDockを奪う。これが「アプリが落ち続けている」ように見えていた。
+ *
+ *   ADE_E2E=1      … 画面に出さずに動かす（既定のE2E動作）
+ *   ADE_E2E_SHOW=1 … E2E中でも従来どおり表示する（目視デバッグ用）
+ *
+ * 製品の通常起動では、どちらの環境変数も無いので挙動は変わらない。
+ */
+const IS_E2E = process.env.ADE_E2E === '1'
+const SHOW_IN_E2E = process.env.ADE_E2E_SHOW === '1'
+const HIDE_WINDOW = IS_E2E && !SHOW_IN_E2E
+
+/** 解決済みの配色に合わせた地の色（tokens.css の --color-bg-app と同値） */
+function nativeThemeBackground(): string {
+  return THEME_BACKGROUND[nativeTheme.shouldUseDarkColors ? 'dark' : 'light']
+}
+
+function createWindow(): BrowserWindow {
+  const window = new BrowserWindow({
+    width: 1440,
+    height: 900,
+    minWidth: 900,
+    minHeight: 600,
+    show: false,
+    // 読み込み前に一瞬見える地の色。配色（nativeTheme）に合わせる
+    backgroundColor: nativeThemeBackground(),
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      // 最初の描画の前に配色を決められるよう、解決済みの配色を preload へ渡す
+      additionalArguments: [`--ade-theme=${nativeTheme.shouldUseDarkColors ? 'dark' : 'light'}`, `--ade-locale=${getLocale()}`],
+      contextIsolation: true,
+      nodeIntegration: false,
+      // preload は contextBridge / ipcRenderer しか使わないので、サンドボックス内で動く
+      sandbox: true,
+      spellcheck: false,
+      /*
+       * 非表示・背面でも描画を止めない。
+       * useViewBounds は requestAnimationFrame で内蔵ブラウザの位置を実測し、
+       * E2Eは capturePage で画面を撮るため、止まると両方が狂う。
+       */
+      backgroundThrottling: false
+    }
+  })
+
+  window.once('ready-to-show', () => {
+    mark('window:readyToShow')
+    // 画面に出さない指定のときは show() を呼ばない（フォーカスも奪わない）
+    if (HIDE_WINDOW) return
+    // E2Eで表示する場合も、前面に出して作業を邪魔しない
+    if (IS_E2E) window.showInactive()
+    else window.show()
+  })
+
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    void shell.openExternal(url).catch(() => undefined)
+    return { action: 'deny' }
+  })
+
+  // 単一ウィンドウのアプリなので、ウィンドウを閉じる＝アプリの終了とする（3つのOSで同じ）。
+  // 終了の手順は beginShutdown() に一本化する。
+  window.on('close', (event) => {
+    if (beginShutdown()) event.preventDefault()
+  })
+
+  window.on('closed', () => {
+    mainWindow = null
+  })
+
+  return window
+}
+
+const IDLE_RECORDING_STATUS: RecordingStatus = {
+  state: 'idle',
+  elapsedMs: 0,
+  videoBytes: 0,
+  frameCount: 0,
+  eventCount: 0
+}
+
+/**
+ * 録画エンジンを必要になった時点で用意する（設計1.3「起動時に読むコードを最小化」）。
+ *
+ * 音声（onPcm）・操作ログ（onEvent）・静止画（onFrame）を分解パイプラインと
+ * セッション保存へ渡す結線は、進行役（src/main/review）が作られたときに差し込む。
+ */
+async function ensureRecording(): Promise<RecordingController> {
+  if (recording) return recording
+  const { RecordingController } = await import('./recording')
+  recording = new RecordingController(
+    {
+      recorderHtml: join(__dirname, '../recorder/index.html'),
+      recorderPreload: join(__dirname, '../preload/recorder.js')
+    },
+    {
+      onLimit: () => stopReview().then(() => undefined),
+      onStatus: (status) => send('recording:status', status),
+      onLevel: (level) => send('recording:level', level),
+      onPcm: (block) => audioWriter?.write(block),
+      onWarning: (message) => send('recording:warning', message)
+    }
+  )
+  const contents = browser?.contents
+  if (contents) recording.attach(contents)
+  return recording
+}
+
+/**
+ * 録画中の音声を、無音で区切って 16kHz モノラルWAV で書き出す係を作る。
+ *
+ * 文字起こし（src/main/pipeline/stt）は逐次処理が前提で、
+ * ファイル全体を一度に渡すと同じ文の繰り返し誤認識が起きる（05_pipeline_findings 2章）。
+ * ここで区切っておき、後段はこのWAVをそのまま読む。
+ * 文字起こしの起動そのものは進行役（src/main/review）が受け持つ。
+ */
+async function createAudioWriter(audioDir: string): Promise<NonNullable<typeof audioWriter>> {
+  const { SilenceSegmenter } = await import('./pipeline/stt/segmenter')
+  const { writeWavFile } = await import('./pipeline/stt/wav')
+  const SAMPLE_RATE = 16_000
+
+  // マイクとPC音声は別々に区切る（二重取りの除去は後段が時刻で行う）
+  const perSource = new Map<PcmBlock['source'], InstanceType<typeof SilenceSegmenter>>()
+  const counters = new Map<PcmBlock['source'], number>()
+  const offsets = new Map<PcmBlock['source'], number>()
+
+  const segmenterFor = (source: PcmBlock['source']): InstanceType<typeof SilenceSegmenter> => {
+    const found = perSource.get(source)
+    if (found) return found
+    const made = new SilenceSegmenter(
+      async (chunk) => {
+        const seq = (counters.get(source) ?? 0) + 1
+        counters.set(source, seq)
+        const name = `${source}-${String(seq).padStart(5, '0')}-${chunk.offsetMs}.wav`
+        const wavPath = join(audioDir, name)
+        await writeWavFile(wavPath, chunk.samples, SAMPLE_RATE)
+        recording?.clearAnnotations()
+        transcriber?.push({ wavPath, offsetMs: chunk.offsetMs + (offsets.get(source) ?? 0), source,
+          speaker: source === 'mic' ? 'self' : 'other' })
+      },
+      { sampleRate: SAMPLE_RATE }
+    )
+    perSource.set(source, made)
+    return made
+  }
+
+  return {
+    // 区切りの時刻は Segmenter が流し込まれたサンプル数から数える（block.offsetMs と同じ基準）
+    write: (block) => {
+      if (!offsets.has(block.source)) offsets.set(block.source, block.offsetMs)
+      segmenterFor(block.source).push(block.samples)
+    },
+    flush: async () => {
+      for (const segmenter of perSource.values()) {
+        const result = await segmenter.flush()
+        sttWarnings.push(...result.errors.map((e) => t('errors.saveAudioFailed', { message: e.message })))
+      }
+      perSource.clear()
+    }
+  }
+}
+
+async function stopReview(): Promise<RecordingStatus> {
+      if (!recording || recording.status.state === 'idle') return recording?.status ?? IDLE_RECORDING_STATUS
+      if (recordingBusy) throw new Error(t('errors.recordingBusy'))
+      recordingBusy = true
+      try {
+        const result = await recording.stop()
+        await audioWriter?.flush()
+        audioWriter = null
+        const stt = await transcriber?.flush()
+        transcriber = null
+        const paths = activePaths
+        if (paths) {
+          const { finishReview } = await import('./review')
+          const review = await finishReview(paths, result, stt?.segments ?? [],
+            [...sttWarnings, ...(stt?.errors.map((e) => t('errors.transcriptionFailed', { message: e.message })) ?? [])],
+            activeOptions.captureSystemAudio)
+          send('review:ready', review)
+        }
+        return recording.status
+      } finally { recordingBusy = false }
+}
+
+/** ファイル操作の失敗を、利用者に伝わる短い文にする。ファイル操作以外なら undefined */
+function fileErrorMessage(err: unknown): string | undefined {
+  switch ((err as NodeJS.ErrnoException | null)?.code) {
+    case 'EACCES':
+    case 'EPERM':
+    case 'EROFS':
+      return t('errors.saveNoPermission')
+    case 'ENOSPC':
+      return t('errors.saveNoSpace')
+    case 'ENOENT':
+    case 'ENOTDIR':
+      return t('errors.saveFolderMissing')
+    default:
+      return undefined
+  }
+}
+
+/** 直前の更新確認で見つかった新しい版のページ（app:openUpdate で開く） */
+let latestReleaseUrl: string | null = null
+
+/**
+ * レビュー履歴を読む・整理するフォルダ。省略時は開いているプロジェクト。
+ * 別フォルダは登録済みプロジェクトに限る（renderer から任意のパスを読ませない・消させない）。
+ */
+function historyFolder(folderPath: unknown): string | null {
+  if (folderPath === undefined || folderPath === null) return workspace.folderPath
+  const target = typeof folderPath === 'string' ? findProjectByFolder(currentSettings().projects, folderPath)?.folderPath ?? null : null
+  if (!target) throw new Error(t('errors.folderNotRegistered'))
+  return target
+}
+
+function registerIpc(): void {
+  const handlers: { [C in keyof IpcRequests]: (...args: Parameters<IpcRequests[C]>) => unknown } = {
+    'app:ready': () => reportInteractive(),
+    'app:settings': () => ({ ...currentSettings() }),
+    'app:version': () => ({ version: appVersion(), packaged: app.isPackaged }),
+    'app:checkUpdate': async () => {
+      const result = await checkForUpdate()
+      // 開くURLは main が覚えておく。renderer から任意のURLを開かせない
+      latestReleaseUrl = result.state === 'available' ? result.url : null
+      return result
+    },
+    'resources:snapshot': () => resources.collect(),
+    'resources:kill': (target) => {
+      if (target.kind === 'terminal') terminals?.close(target.id)
+      else {
+        // 入力欄からの遷移（navigate）は http(s) に限るので、空ページは直接読む
+        const wc = browser?.contents
+        if (wc && !wc.isDestroyed()) void wc.loadURL('about:blank').catch(() => undefined)
+      }
+    },
+    'resources:cleanup': () => {
+      const ids = resources.orphanIds()
+      for (const id of ids) terminals?.close(id)
+      return ids.length
+    },
+    'app:openUpdate': () => {
+      if (latestReleaseUrl) void shell.openExternal(latestReleaseUrl).catch(() => undefined)
+    },
+
+    'workspace:open': () => openFolderDialog(),
+    'workspace:current': () => workspace,
+
+    'project:list': () => projectsState(),
+    'project:add': async () => {
+      assertNotRecording()
+      const folder = await pickFolder()
+      if (!folder) return null
+      openFolderAsProject(folder)
+      return projectsState()
+    },
+    'project:switch': (id) => {
+      const project = currentSettings().projects.find((p) => p.id === id)
+      if (!project) throw new Error(t('errors.projectNotFound'))
+      if (workspace.projectId === id) return workspace
+      assertNotRecording()
+      return openProject(project)
+    },
+    'project:update': (project) => updateProject(project),
+    'project:remove': (id) => removeProject(id),
+
+    'settings:agents': (preferences) => {
+      updateSettings({ agents: preferences })
+      // 「＋」メニューと設定画面に、保存した結果（sanitize 後）と検出を配る
+      void listAgentOptions(currentSettings().agents).then((options) => send('agents:changed', options))
+    },
+    'agents:list': (refresh) => listAgentOptions(currentSettings().agents, refresh === true),
+    'settings:agentPrompt': (template) => updateSettings({ agentPrompt: typeof template === 'string' ? template : undefined }),
+
+    // Claude Code / Codex のアカウント（src/main/accounts）。renderer からの値は種類を確かめてから使う
+    'accounts:list': () => listAgentAccounts(),
+    'accounts:add': (agent) => addAgentAccount(requireTuiAgent(agent)),
+    'accounts:rename': (agent, accountId, label) => renameAgentAccount(requireTuiAgent(agent), String(accountId), String(label ?? '')),
+    'accounts:remove': (agent, accountId) => removeAgentAccount(requireTuiAgent(agent), String(accountId)),
+    'accounts:select': (agent, accountId) => selectAgentAccount(requireTuiAgent(agent), accountId === null ? null : String(accountId)),
+    'accounts:relogin': (agent, accountId) => reloginAgentAccount(requireTuiAgent(agent), String(accountId)),
+    'usage:get': () => getUsageState(),
+    'usage:refresh': (force) => refreshUsage(force === true),
+    'usage:accounts': (agent, force) => getAccountUsage(requireTuiAgent(agent), force === true),
+
+    'mode:set': (next) => {
+      if (mode === next) return
+      mode = next
+      send('mode:changed', mode)
+    },
+
+    'browser:setBounds': (bounds) => browser?.setBounds(bounds),
+    'browser:navigate': (url) => browser?.navigate(url),
+    'browser:back': () => browser?.back(),
+    'browser:forward': () => browser?.forward(),
+    'browser:reload': () => browser?.reload(),
+    'browser:setViewport': (viewport) => {
+      updateSettings({ viewport })
+      browser?.setViewport(viewport)
+    },
+    'browser:state': () =>
+      browser?.state() ?? {
+        url: '',
+        title: '',
+        canGoBack: false,
+        canGoForward: false,
+        loading: false,
+        viewport: 'desktop' as const
+      },
+
+    'terminal:create': (options) => {
+      if (!terminals) throw new Error(t('errors.terminalNotReady'))
+      return terminals.create(options).then((info) => { resources.noteTerminalCreated(info.id); return info })
+    },
+    'terminal:write': (id, data) => terminals?.write(id, data),
+    'terminal:resize': (id, size) => terminals?.resize(id, size),
+    'terminal:close': (id) => terminals?.close(id),
+    'terminal:screen': (id, text) => terminals?.updateScreen(id, text),
+    'terminal:agentState': (id) => terminals?.agentState(id) ?? { kind: 'unknown', state: 'unknown' },
+    'terminal:cwd': (id) => terminals?.currentCwd(id) ?? null,
+    'review:send': async (id, terminalId) => {
+      const { checkedPaths, loadReviewAt, reviewInstruction } = await import('./review')
+      const paths = checkedPaths(workspace.folderPath, id)
+      const data = await loadReviewAt(paths)
+      if (!data.document.items.some((it) => it.include)) return { ok: false, message: t('errors.nothingToSend') }
+      const result = await terminals?.sendReview(terminalId, reviewInstruction(paths, currentSettings().agentPrompt)) ?? { ok: false, message: t('errors.openTerminal') }
+      // 一覧の「送信済み」に使う。記録できなくても送信の結果は変えない
+      if (result.ok) await (await import('./sessions')).updateLabel(paths, { sentAt: new Date().toISOString() }).catch(() => undefined)
+      return result
+    },
+
+    'settings:splitRatio': (ratio) => updateSettings({ splitRatio: ratio }),
+    'settings:layout': (layout) => updateSettings({ layout: sanitizeLayout(layout) }),
+    // Orca由来: ~/bench/orca/src/main/ipc/settings.ts の nativeTheme.themeSource（MIT）
+    'settings:theme': (theme) => {
+      updateSettings({ theme })
+      nativeTheme.themeSource = currentSettings().theme ?? 'system'
+    },
+    // メニューは onLocaleChange で作り直る（menu.ts）。renderer へは解決済みの言語を送る
+    'settings:locale': (locale) => {
+      updateSettings({ locale })
+      const resolved = applyLocalePreference(currentSettings().locale)
+      send('locale:changed', resolved)
+      return resolved
+    },
+    'settings:crashReports': (enabled) => updateSettings({ crashReports: enabled === true, crashReportsNoticeShown: true }),
+    'telemetry:state': () => {
+      const s = currentSettings()
+      return { active: crashReportsActive(), enabled: s.crashReports !== false, noticeShown: s.crashReportsNoticeShown === true }
+    },
+    'telemetry:noticeShown': () => updateSettings({ crashReportsNoticeShown: true }),
+
+    // 録画の対象（captureTarget）は別に覚えるので、送られてこなければ前の値を残す
+    'settings:capture': (preferences) => updateSettings({ capture: { ...currentSettings().capture, ...preferences } }),
+    'capture:devices': async () => mainWindow?.webContents.executeJavaScript(`navigator.mediaDevices.enumerateDevices().then(devices => devices.filter(d => d.kind === 'audioinput' && d.deviceId).map((d, i) => ({ id: d.deviceId, label: d.label || ${JSON.stringify(t('capture.micNumbered'))}.replace('{{n}}', String(i + 1)) })))`).catch(() => []) ?? [],
+    'capture:model': async () => {
+      if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new Error(t('errors.stopRecordingBeforeChange'))
+      const chosen = await dialog.showOpenDialog(mainWindow!, { title: t('dialog.whisperModel.title'), properties: ['openFile'], filters: [{ name: t('dialog.whisperModel.filter'), extensions: ['bin'] }] })
+      if (chosen.canceled || !chosen.filePaths[0]) return false
+      process.env.ADE_WHISPER_MODEL = chosen.filePaths[0]
+      updateSettings({ whisperModel: chosen.filePaths[0] })
+      return true
+    },
+    'review:restore': async (id, t) => {
+      const r = await import('./review')
+      return r.restoreDropped(r.checkedPaths(workspace.folderPath, id), t)
+    },
+    'review:organize': async (id, runner) => {
+      const r = await import('./review')
+      const { LLM_PROVIDER_PRESETS, isOrganizeRunnerId } = await import('@shared/aiProviders')
+      if (!isOrganizeRunnerId(runner)) throw new Error('unknown runner')
+      // API キーで直接呼ぶ場合は、保存したキーと接続先を渡す（配布版は環境変数のキーを読まない）
+      const api = runner.startsWith('api:') ? (() => {
+        const provider = runner.slice(4) as keyof typeof LLM_PROVIDER_PRESETS
+        return { endpoint: currentSettings().organizer?.endpoints?.[provider], vendor: LLM_PROVIDER_PRESETS[provider].vendor }
+      })() : undefined
+      updateSettings({ organizer: { ...currentSettings().organizer, runner } })
+      return r.organizeReview(r.checkedPaths(workspace.folderPath, id), runner,
+        api ? { endpoint: api.endpoint, apiKey: (await sttKeyStore()).get(api.vendor) } : undefined)
+    },
+    'review:frames': async (id, itemId) => {
+      const r = await import('./review')
+      return r.previewFrames(r.checkedPaths(workspace.folderPath, id), itemId)
+    },
+    'capture:apiKey': async (key, provider) => {
+      if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new Error(t('errors.stopRecordingBeforeSetup'))
+      if (typeof key !== 'string') throw new Error(t('errors.apiKeyInvalid'))
+      // 形式の確認と保存（暗号化できなければ起動中だけ）は keys.ts。キーの値はログに出さない
+      const { AI_VENDORS } = await import('@shared/aiProviders')
+      return (await sttKeyStore()).set(provider && AI_VENDORS.includes(provider) ? provider : 'openai', key)
+    },
+    'capture:testConnection': async (target) => {
+      const { STT_PROVIDER_PRESETS, isSttRemoteProvider } = await import('@shared/aiProviders')
+      const { sanitizeEndpointConfig } = await import('./pipeline/stt/endpoint')
+      const { checkSttEngine } = await import('./pipeline/stt/cloud')
+      if (!isSttRemoteProvider(target?.provider)) throw new Error('unknown provider')
+      // 画面でまだ保存していない値で確かめる。キーは保存済みのもの
+      return checkSttEngine({ provider: target.provider, endpoint: sanitizeEndpointConfig(target.endpoint),
+        apiKey: (await sttKeyStore()).get(STT_PROVIDER_PRESETS[target.provider].vendor) })
+    },
+    'settings:stt': async (patch) => {
+      const capture = currentSettings().capture ?? { captureMic: true, captureSystemAudio: false, transcription: 'local' as const, language: 'auto' as const, keepDays: 7, stayFeedbackOnStop: false }
+      updateSettings({ capture: { ...capture,
+        ...(patch?.sttEndpoints !== undefined ? { sttEndpoints: patch.sttEndpoints } : {}),
+        ...(patch && 'costLimitUsd' in patch ? { costLimitUsd: patch.costLimitUsd } : {}) } })
+    },
+    'settings:organizer': (prefs) => updateSettings({ organizer: { ...currentSettings().organizer, ...prefs } }),
+    'organize:testConnection': async (target) => {
+      const { LLM_PROVIDER_PRESETS, isLlmApiProvider } = await import('@shared/aiProviders')
+      const { sanitizeEndpointConfig } = await import('./pipeline/stt/endpoint')
+      const { checkLlmRunner } = await import('./pipeline/organize/runners/api')
+      if (!isLlmApiProvider(target?.provider)) throw new Error('unknown provider')
+      return checkLlmRunner({ provider: target.provider, endpoint: sanitizeEndpointConfig(target.endpoint),
+        apiKey: (await sttKeyStore()).get(LLM_PROVIDER_PRESETS[target.provider].vendor) })
+    },
+    'capture:sources': async () => {
+      const { listCaptureSources, screenAccess } = await import('./recording/sources')
+      const sources = await listCaptureSources().catch((err: unknown) => {
+        console.warn('[capture] 画面・ウインドウの一覧を取得できませんでした', err)
+        return []
+      })
+      return { screenAccess: screenAccess(), sources }
+    },
+    'capture:setTarget': async (target) => {
+      const { sanitizeCaptureTarget } = await import('@shared/captureTarget')
+      const captureTarget = sanitizeCaptureTarget(target)
+      if (!captureTarget) throw new Error(t('errors.captureTargetInvalid'))
+      const capture = currentSettings().capture
+      if (capture) updateSettings({ capture: { ...capture, captureTarget } })
+      else updateSettings({ capture: { captureMic: true, captureSystemAudio: false, transcription: 'local', language: 'auto', keepDays: 7, stayFeedbackOnStop: false, captureTarget } })
+    },
+    'capture:openScreenSettings': async () => (await import('./recording/sources')).openScreenSettings(),
+    'capture:whisperModels': async () => {
+      const { nodeProbes, resolveWhisperBinary } = await import('./pipeline/environment')
+      const { whisperInstallHint } = await import('./pipeline/stt/modelManager')
+      const downloads = await whisperModelDownloads()
+      const models = await downloads.list()
+      const current = localModel()
+      return { models, binaryFound: !!resolveWhisperBinary({ modelDir: '' }, nodeProbes()), installHint: whisperInstallHint(process.platform),
+        downloading: downloads.downloading(), selected: models.find((m) => m.downloaded && downloads.pathOf(m.id) === current)?.id ?? null }
+    },
+    'capture:downloadModel': async (id) => {
+      const { isWhisperModelId } = await import('./pipeline/stt/models')
+      if (!isWhisperModelId(id)) throw new Error('unknown model')
+      const result = await (await whisperModelDownloads()).start(id, (p) => send('capture:modelProgress', p))
+      if (!result.ok) return { ok: false, reason: result.reason, message: result.message }
+      // 落とし終えたらそのモデルを使う（「モデルを選ぶ」と同じ扱い）。録画中なら次の録画から
+      process.env.ADE_WHISPER_MODEL = result.path
+      updateSettings({ whisperModel: result.path })
+      return { ok: true }
+    },
+    'capture:cancelModelDownload': async () => { (await whisperModelDownloads()).cancel() },
+    'capture:availability': async () => {
+      const { nodeProbes, resolveWhisperBinary } = await import('./pipeline/environment')
+      const ai = await import('@shared/aiProviders')
+      const keys = await sttKeyStore()
+      const settings = currentSettings()
+      return { localReady: !!resolveWhisperBinary({ modelDir: '' }, nodeProbes()) && existsSync(localModel()),
+        keyStorage: keys.storage(),
+        keys: Object.fromEntries(ai.AI_VENDORS.map((v) => [v, keys.source(v)])) as Record<AiVendor, SttKeySource>,
+        stt: Object.fromEntries(ai.STT_REMOTE_PROVIDERS.map((p) => [p, ai.isEndpointReady(ai.STT_PROVIDER_PRESETS[p],
+          settings.capture?.sttEndpoints?.[p], !!keys.get(ai.STT_PROVIDER_PRESETS[p].vendor))])) as Record<SttRemoteProvider, boolean>,
+        llm: Object.fromEntries(ai.LLM_API_PROVIDERS.map((p) => [p, ai.isEndpointReady(ai.LLM_PROVIDER_PRESETS[p],
+          settings.organizer?.endpoints?.[p], !!keys.get(ai.LLM_PROVIDER_PRESETS[p].vendor))])) as Record<LlmApiProvider, boolean> }
+    },
+    'review:list': async (folderPath) => {
+      const target = historyFolder(folderPath)
+      return target ? (await import('./sessions')).listSessions(target) : []
+    },
+    'review:label': async (id, patch, folderPath) => {
+      const target = historyFolder(folderPath)
+      const s = await import('./sessions')
+      if (!target || !s.isSessionId(id)) throw new Error(t('errors.folderNotRegistered'))
+      await s.updateLabel(s.sessionPaths(target, id), { ...(patch?.name !== undefined ? { name: patch.name } : {}), ...(typeof patch?.archived === 'boolean' ? { archived: patch.archived } : {}) })
+    },
+    'review:delete': async (ids, folderPath) => {
+      const target = historyFolder(folderPath)
+      if (!target || !Array.isArray(ids)) return []
+      const s = await import('./sessions')
+      // 録画中・分解中のレビューは消さない（書き込み中のフォルダを消すと保存に失敗する）
+      const busy = (recordingBusy || (recording && recording.status.state !== 'idle')) && activePaths?.dir.startsWith(target) ? activePaths.id : null
+      const deleted: string[] = []
+      for (const id of ids) {
+        if (typeof id !== 'string' || id === busy) continue
+        await s.deleteSession(target, id)
+        deleted.push(id)
+      }
+      return deleted
+    },
+    'review:load': async (id) => {
+      const r = await import('./review')
+      return r.loadReviewAt(r.checkedPaths(workspace.folderPath, id))
+    },
+    'review:edit': async (id, edit) => {
+      const r = await import('./review')
+      return r.editReview(r.checkedPaths(workspace.folderPath, id), edit)
+    },
+    'review:copy': async (id) => {
+      const r = await import('./review')
+      return r.copyReview(r.checkedPaths(workspace.folderPath, id), currentSettings().agentPrompt)
+    },
+    'review:folder': async (id) => {
+      const r = await import('./review')
+      return r.revealReview(r.checkedPaths(workspace.folderPath, id))
+    },
+    'recording:start': async (options) => {
+      if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new Error(t('errors.recordingBusy'))
+      if (!workspace.folderPath) throw new Error(t('errors.openProjectFolder'))
+      const { sanitizeCaptureTarget, BROWSER_TARGET } = await import('@shared/captureTarget')
+      let captureTarget = sanitizeCaptureTarget(options.captureTarget) ?? BROWSER_TARGET
+      // 画面全体・別のウインドウを録るときは、内蔵ブラウザにページが無くてもよい
+      if (captureTarget.kind === 'browser') {
+        if (!browser?.state().url || browser.state().url === 'about:blank') throw new Error(t('errors.openUrlToReview'))
+        if (browser.state().loadError) throw new Error(t('errors.pageNotLoaded'))
+      }
+      recordingBusy = true
+      try {
+        const controller = await ensureRecording()
+        captureTarget = await controller.checkTarget(captureTarget)
+        const { createSession } = await import('./sessions')
+        const { ensureGitExclude } = await import('./sessions')
+        await ensureGitExclude(workspace.folderPath)
+        const paths = await createSession(workspace.folderPath)
+        activePaths = paths
+        const onSegments = async (segments: import('./pipeline/types').TranscriptSegment[]) => {
+          if (segments.length) await appendFile(join(paths.dir, 'transcript.jsonl'), segments.map((s) => JSON.stringify(s)).join('\n') + '\n')
+        }
+        await writeFile(join(paths.dir, 'capture.json'), JSON.stringify({ startedAt: new Date().toISOString(), twoSpeakers: options.captureSystemAudio, captureTarget }))
+        activeOptions = { captureSystemAudio: options.captureSystemAudio,
+          transcription: options.transcription ?? 'local' }
+        sttWarnings = []
+        transcriber = null
+        if (options.captureMic !== false && (process.env.ADE_SYNTHETIC_MIC !== '1' || (IS_E2E && process.env.ADE_QA_AUDIO))) {
+          const { IncrementalTranscriber } = await import('./pipeline/stt/engine')
+          if (activeOptions.transcription !== 'local') {
+            const provider = activeOptions.transcription
+            const { STT_PROVIDER_PRESETS, providerLabel } = await import('@shared/aiProviders')
+            const { createSttEngine } = await import('./pipeline/stt/cloud')
+            const preset = STT_PROVIDER_PRESETS[provider]
+            const apiKey = (await sttKeyStore()).get(preset.vendor)
+            const capture = currentSettings().capture
+            // 上限は設定の値（null は上限なし）。検証起動では実API保護のため $0.05 に固定する
+            const maxCostUsd = IS_E2E ? 0.05 : capture?.costLimitUsd
+            // キーが無ければ別のキーや接続先へ切り替えず、端末内の文字起こしを案内するだけにする
+            if (preset.keyRequired && !apiKey) sttWarnings.push(t('stt.errors.keyMissing', { label: providerLabel(preset, t) }))
+            else {
+              try {
+                transcriber = new IncrementalTranscriber(createSttEngine({ provider, endpoint: capture?.sttEndpoints?.[provider], apiKey,
+                  language: options.language ?? 'auto', maxCostUsd }), onSegments)
+              } catch {
+                sttWarnings.push(t('errors.endpointMissingWarning'))
+              }
+            }
+          } else {
+            const { nodeProbes, resolveWhisperBinary } = await import('./pipeline/environment')
+            const binary = resolveWhisperBinary({ modelDir: '' }, nodeProbes())
+            const { WhisperCppEngine } = await import('./pipeline/stt/whisper')
+            if (binary && existsSync(localModel())) transcriber = new IncrementalTranscriber(
+              new WhisperCppEngine({ binary, model: localModel(), language: options.language ?? 'auto', greedy: true }), onSegments)
+            else sttWarnings.push(t('errors.localModelMissingWarning'))
+          }
+        }
+        audioWriter = await createAudioWriter(paths.audioDir)
+        await controller.start({ paths: { videoPath: paths.recording, framesDir: paths.framesDir,
+          audioDir: paths.audioDir, eventsPath: paths.eventsJsonl }, captureSystemAudio: options.captureSystemAudio,
+          captureMic: options.captureMic !== false, captureTarget,
+          ...(IS_E2E && process.env.ADE_QA_LIMIT_MS ? { maxDurationMs: Number(process.env.ADE_QA_LIMIT_MS) } : {}),
+          ...(options.micDeviceId ? { micDeviceId: options.micDeviceId } : {}),
+          ...(process.env.ADE_SYNTHETIC_MIC === '1' ? { syntheticMic: true } : {}),
+          ...(IS_E2E && process.env.ADE_QA_AUDIO ? { syntheticMicWavBase64: (await readFile(process.env.ADE_QA_AUDIO)).toString('base64') } : {}) })
+        for (const warning of sttWarnings) send('recording:warning', warning)
+        return controller.status
+      } finally { recordingBusy = false }
+    },
+    'recording:pause': async () => {
+      const controller = await ensureRecording()
+      controller.pause()
+      return controller.status
+    },
+    'recording:resume': async () => {
+      const controller = await ensureRecording()
+      controller.resume()
+      return controller.status
+    },
+    'recording:stop': () => stopReview(),
+    'recording:status': () => recording?.status ?? IDLE_RECORDING_STATUS,
+    'annotation:setMode': async (mode: AnnotationMode) => {
+      ;(await ensureRecording()).setAnnotationMode(mode)
+    },
+    'annotation:clear': async () => {
+      ;(await ensureRecording()).clearAnnotations()
+    },
+
+    // ファイルエディタ（src/main/files.ts がプロジェクトの外を断る）
+    'fs:list': (relDir) => listDirectory(projectRoot(), relDir),
+    'fs:read': (relPath) => readTextFile(projectRoot(), relPath),
+    'fs:write': (relPath, content) => writeTextFile(projectRoot(), relPath, content),
+    'fs:files': () => listFiles(projectRoot()),
+    'fs:search': (query, mode) => searchFiles(projectRoot(), query, mode),
+    'editor:unsaved': (paths) => {
+      unsavedFiles = Array.isArray(paths) ? paths.filter((p): p is string => typeof p === 'string') : []
+    },
+
+    // GitHub 連携（src/main/github/。gh CLI を呼ぶので、使うときだけ読み込む）
+    'github:status': async () => (await import('./github')).githubStatus(),
+    'github:repo': async () => (await import('./github')).githubRepo(workspace.folderPath),
+    'github:reviewDraft': async (id) => {
+      const { checkedPaths } = await import('./review')
+      return (await import('./github')).githubReviewDraft(checkedPaths(workspace.folderPath, id), workspace.folderPath)
+    },
+    'github:postReview': async (id, target, body) => {
+      const { checkedPaths } = await import('./review')
+      checkedPaths(workspace.folderPath, id)
+      return (await import('./github')).githubPostReview(workspace.folderPath, target, body)
+    },
+    'github:open': async (url) => {
+      // 一覧に出した GitHub のページだけを開く（任意のURL・スキームは開かない）
+      const parsed = new URL(String(url))
+      if (parsed.protocol !== 'https:') throw new Error(t('errors.urlNotAllowed'))
+      const repo = (await (await import('./github')).githubRepo(workspace.folderPath)).repo
+      if (parsed.host !== 'github.com' && parsed.host !== repo?.host) throw new Error(t('errors.urlNotAllowed'))
+      await shell.openExternal(parsed.toString())
+    }
+  }
+
+  for (const [channel, handler] of Object.entries(handlers)) {
+    ipcMain.handle(channel, async (_event, ...args: unknown[]) => {
+      // 終了処理に入った後は、破棄途中のオブジェクトを触らない
+      if (shuttingDown) return null
+      let result: unknown
+      try {
+        result = await (handler as (...a: unknown[]) => unknown)(...args)
+      } catch (err) {
+        // ファイル操作の英語のエラー（EACCES など）とパスを、そのまま画面へ出さない
+        const message = fileErrorMessage(err)
+        if (message) console.warn(`[ipc] ${channel} に失敗しました`, err)
+        throw message ? new Error(message) : err
+      }
+      // void を返すハンドラの戻り値は undefined に正規化する（構造化クローンの失敗を避ける）
+      return result === undefined ? null : result
+    })
+  }
+}
+
+let loadedSettings: Settings = {
+  folderPath: null,
+  url: 'about:blank',
+  splitRatio: DEFAULT_SPLIT_RATIO,
+  viewport: 'desktop',
+  projects: [],
+  activeProjectId: null,
+  agents: DEFAULT_AGENT_PREFERENCES
+}
+
+async function main(): Promise<void> {
+  // 同じプロジェクトを二重に開かない
+  if (!app.requestSingleInstanceLock()) {
+    app.quit()
+    return
+  }
+
+  app.on('second-instance', () => {
+    if (!mainWindow) return
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  })
+
+  await app.whenReady()
+  mark('app:ready')
+  // Windows のタスクバーで、インストーラが作るショートカット（appId）と同じアイコンにまとめる
+  if (process.platform === 'win32') app.setAppUserModelId('com.japanmarketing.movieade')
+
+  // E2E中はDockのアイコンを出さない（跳ねない・メニューバーを切り替えない）
+  if (HIDE_WINDOW && process.platform === 'darwin') app.dock?.hide()
+  // 開発起動では .app の icns が無いので、Dock のアイコンだけ build/icon.png に差し替える
+  const devIcon = join(app.getAppPath(), 'build', 'icon.png')
+  if (!app.isPackaged && !HIDE_WINDOW && process.platform === 'darwin' && existsSync(devIcon)) {
+    app.dock?.setIcon(devIcon)
+  }
+
+  loadedSettings = await loadSettings()
+  maybeSendTestEvent()
+  // ウインドウ・メニュー・ダイアログを作る前に画面の言語を決める
+  applyLocalePreference(loadedSettings.locale)
+  // ウインドウを作る前に配色を決める。renderer の prefers-color-scheme もこれに従う
+  nativeTheme.themeSource = loadedSettings.theme ?? 'system'
+  nativeTheme.on('updated', () => {
+    const color = nativeThemeBackground()
+    mainWindow?.setBackgroundColor(color)
+    browser?.setBackgroundColor(color)
+    // renderer の prefers-color-scheme は Playwright などに上書きされうるので、解決済みの値を送る
+    send('theme:changed', nativeTheme.shouldUseDarkColors ? 'dark' : 'light')
+  })
+  if (loadedSettings.whisperModel) process.env.ADE_WHISPER_MODEL = loadedSettings.whisperModel
+  protocol.handle('ade-media', async (request) => {
+    const url = new URL(request.url)
+    const match = /^\/(\d{8}-\d{6})\/recording\.webm$/.exec(url.pathname)
+    if (url.hostname !== 'review' || !match || !workspace.folderPath) return new Response('Not found', { status: 404 })
+    const { checkedPaths } = await import('./review')
+    const file = checkedPaths(workspace.folderPath, match[1]!).recording
+    if (!existsSync(file)) return new Response('Not found', { status: 404 })
+    return net.fetch(pathToFileURL(file).href, { headers: request.headers })
+  })
+
+  // 起動時にプロジェクトフォルダ・URLを指定できる（E2Eと `ade-movie <folder>` 相当の用途）。
+  // 指定がなければ WS-1 のとおり前回の値を復元する。
+  // 開くプロジェクトは ADE_PROJECT_DIR → 前回のプロジェクト の順に決める。
+  // 指定フォルダもプロジェクトとして登録し、2回目以降は同じプロジェクト（URLプリセット込み）を開く。
+  const presetFolder = process.env.ADE_PROJECT_DIR
+  const startupFolder = presetFolder && presetFolder.length > 0 ? presetFolder : loadedSettings.folderPath
+  let startupProject = presetFolder && presetFolder.length > 0
+    ? null
+    : loadedSettings.projects.find((p) => p.id === loadedSettings.activeProjectId) ?? null
+  if (!startupProject && startupFolder) {
+    const added = upsertProjectFolder(loadedSettings.projects, startupFolder)
+    startupProject = added.project
+    if (!added.alreadyPresent) updateSettings({ projects: added.projects })
+  }
+  if (startupProject) {
+    updateSettings({ activeProjectId: startupProject.id, folderPath: startupProject.folderPath })
+    loadedSettings = currentSettings()
+    // 前回のURLが無ければ、プロジェクトの先頭URLから始める
+    const first = startupProject.urls[0]
+    if (first && (!loadedSettings.url || loadedSettings.url === DEFAULT_URL)) loadedSettings = { ...loadedSettings, url: first.url }
+  }
+  if (loadedSettings.folderPath) {
+    const { pruneRecordings } = await import('./sessions')
+    await pruneRecordings(loadedSettings.folderPath, { keepDays: loadedSettings.capture?.keepDays ?? 7 })
+  }
+  const presetUrl = process.env.ADE_INITIAL_URL
+  if (presetUrl && presetUrl.length > 0) loadedSettings.url = presetUrl
+
+  terminals = new TerminalManager(
+    (id, data) => send('terminal:data', id, data),
+    (id, code) => send('terminal:exit', id, code)
+  )
+
+  mainWindow = createWindow()
+  // 使用量（フッター左下）。窓が前にあるときだけ取りに行く
+  attachUsageWindow(mainWindow, (state) => send('usage:changed', state))
+  // 読み込み直し（⌘R・開発時の再読込）より前のターミナルは、どのタブにも付かずに残る
+  mainWindow.webContents.on('did-start-loading', () => resources.markRendererLoad())
+  setWorkspace(loadedSettings.folderPath, startupProject)
+  registerIpc()
+  installMenu({
+    onOpenFolder: () => void openFolderDialog(),
+    onCommand: (command) => send('menu:command', command)
+  })
+
+  // プレビュー（ade-preview://）は内蔵ブラウザと、エディタの横並びの iframe（既定のセッション）の両方で開く。
+  // 前回のURLがプレビューでも開けるよう、内蔵ブラウザを作る前に登録する
+  registerPreviewProtocol([session.defaultSession, session.fromPartition(PARTITION)], () => workspace.folderPath)
+
+  // 内蔵ブラウザと renderer は並行して起動する（設計 1.3）
+  browser = new EmbeddedBrowser()
+  browser.onStateChange((state) => {
+    // WS-1 復元用に、実際に表示しているURLを控える（入力そのままではなく正規化後）
+    if (state.url && state.url !== 'about:blank') updateSettings({ url: state.url })
+    send('browser:stateChanged', state)
+  })
+  // 表示幅の切替を操作ログへ残す（WS-3 → viewport イベント）
+  browser.onViewportChange = (width) => recording?.recordViewport(width)
+  browser.attach(mainWindow, loadedSettings.url, loadedSettings.viewport)
+  browser.setBackgroundColor(nativeThemeBackground())
+  mark('browser:attached')
+
+  const rendererUrl = process.env.ELECTRON_RENDERER_URL
+  if (rendererUrl) {
+    await mainWindow.loadURL(rendererUrl)
+  } else {
+    await mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+  mark('renderer:loaded')
+  console.log(`[startup] renderer 読み込み完了 ${elapsedMs()}ms`)
+}
+
+// 単一ウィンドウのアプリなので、macOS でもウィンドウなしで残らない
+app.on('window-all-closed', () => {
+  app.quit()
+})
+
+/** SIGHUP を無視するシェルを強制終了に切り替えるまでの時間 */
+const QUIT_PTY_ESCALATE_MS = 500
+/** PTYの終了通知を待つ上限。超えたら警告してそのまま終了する */
+const QUIT_PTY_TIMEOUT_MS = 2000
+/** app.quit() のあと、これだけ経っても終わらなければ強制的に終了する */
+const QUIT_WATCHDOG_MS = 3000
+
+/** 終了処理の状態。入口が複数あるので1か所で持つ */
+let shutdownPhase: 'running' | 'draining' | 'ready' = 'running'
+
+/**
+ * 終了の入口（ウィンドウの close / before-quit）を1つにまとめたもの。
+ *
+ * PTYが残っていれば、その場の終了をいったん止めて（戻り値 true）、
+ * 全PTYの onExit が届くのを待ってから改めて `app.quit()` する。
+ * ここで待たないと、node-pty の ThreadSafeFunction が Node の環境解体に重なり、
+ * プロセスが abort する（SIGABRT）。
+ *
+ * @returns 呼び出し側が今回の終了を見送るべきなら true
+ */
+function beginShutdown(): boolean {
+  console.log('[STEP] beginShutdown phase=' + shutdownPhase)
+  if (shutdownPhase === 'ready') return false
+  // 未保存のファイルがあって、やめると答えたら終了しない（true を返して呼び出し側に見送らせる）
+  if (shutdownPhase === 'running' && !confirmQuitWithUnsaved()) return true
+  shuttingDown = true
+
+  if (shutdownPhase === 'draining') {
+    // すでに後始末中。終わるまで待たせる
+    return true
+  }
+
+  flushSettingsSync()
+  fileWatcher.close()
+
+  /*
+   * 録画中なら、その時点までの記録を閉じてから終わる（NF-12）。
+   * 動画の最後のチャンクと操作ログを書き終えるまで、終了を見送る。
+   */
+  if (recording && recording.status.state !== 'idle') {
+    shutdownPhase = 'draining'
+    console.log('[STEP] recording.stop 開始')
+    void recording
+      .stop()
+      .then(() => { console.log('[STEP] recording.stop 完了'); return audioWriter?.flush() })
+      .catch((err: unknown) => console.warn('[recording] 停止に失敗しました', err))
+      .then(() => {
+        console.log('[STEP] flush 完了')
+        audioWriter = null
+        recording?.dispose()
+        recording = null
+        // 録画を閉じたら、そのままPTYの後始末へ進む。
+        // ここで app.quit() だけ呼ぶと、生きたままのPTYが Node の環境解体を
+        // 止めてしまい、アプリが終了できなくなる
+        drainTerminalsAndQuit()
+      })
+    return true
+  }
+  recording?.dispose()
+  recording = null
+  audioWriter = null
+
+  // 内蔵ブラウザ（WebContentsView）はここで破棄しない。
+  // ウィンドウを閉じる処理と removeChildView / webContents.close() が重なると、
+  // Electron のネイティブ側で二重破棄になりうる。後始末は Electron に任せる。
+
+  if (!terminals || terminals.pendingCount() === 0) {
+    shutdownPhase = 'ready'
+    return false
+  }
+
+  shutdownPhase = 'draining'
+  drainTerminalsAndQuit()
+  return true
+}
+
+/**
+ * 全PTYの終了通知を待ってから `app.quit()` する。
+ * 終了の経路がどれであっても（ウィンドウを閉じる / Cmd+Q / 録画の後）ここを通す。
+ */
+function drainTerminalsAndQuit(): void {
+  shutdownPhase = 'draining'
+  const pending = terminals?.pendingCount() ?? 0
+  const finish = (): void => {
+    shutdownPhase = 'ready'
+    app.quit()
+
+    /*
+     * 最後の保険。PTYの子プロセスが残ってハンドルを掴んでいると、
+     * Nodeの環境解体が終わらずアプリが終了できなくなることがある。
+     * 設定の保存とPTYの後始末は済んでいるので、ここまで来たら強制的に落とす。
+     */
+    const watchdog = setTimeout(() => {
+      console.warn(`[quit] ${QUIT_WATCHDOG_MS}ms 経っても終了できないため、強制的に終了します`)
+      app.exit(0)
+    }, QUIT_WATCHDOG_MS)
+    watchdog.unref?.()
+  }
+
+  if (!terminals || pending === 0) {
+    finish()
+    return
+  }
+
+  void terminals
+    .disposeAllAndWait({
+      escalateAfterMs: QUIT_PTY_ESCALATE_MS,
+      timeoutMs: QUIT_PTY_TIMEOUT_MS
+    })
+    .then(({ clean, pending: left, waitedMs }) => {
+      if (clean) {
+        console.log(`[terminal] 終了前にPTYを片付けました（${pending}件 / ${waitedMs}ms）`)
+      } else {
+        // 待ち続けるとアプリを終了できなくなるため、警告だけ出して進める
+        console.warn(
+          `[terminal] ${QUIT_PTY_TIMEOUT_MS}ms 以内に終了通知が届かないPTYが${left}件あります。そのまま終了します`
+        )
+      }
+      finish()
+    })
+}
+
+app.on('before-quit', (event) => {
+  if (beginShutdown()) event.preventDefault()
+})
+
+app.on('activate', () => {
+  // ウィンドウを閉じたら終了するので、ここで作り直す経路は持たない
+  if (HIDE_WINDOW) return
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show()
+})
+
+void main().catch((err) => {
+  console.error('[main] 起動に失敗しました', err)
+  dialog.showErrorBox(t('dialog.startupFailed'), String(err))
+  app.exit(1)
+})

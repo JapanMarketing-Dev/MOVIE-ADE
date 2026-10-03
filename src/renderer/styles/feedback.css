@@ -1,0 +1,629 @@
+/* feedback 領域のスタイル。値は tokens.css の var(--…) を使う */
+
+/*
+ * ── フィードバックモード（MODE-2 / NF-13 / REC-5）────────────
+ *
+ * MTGで相手に画面共有される画面。収録ツールの操作盤のように、
+ * 暗いガラスのピルに大きめのアイコンを並べ、文字は最小限にする。
+ *   録画中   … 縁が赤く光り、点が呼吸する
+ *   一時停止 … 縁と時間が琥珀色になり、時間が点滅し、札が出る
+ *   書き込み中 … 選んだ道具がペンのグラデーションで塗られ、ピルの下に同じ色の線
+ *
+ * ⚠ 下は内蔵ブラウザ（ネイティブのビュー）。帯の外へはみ出したものは隠れる。
+ * ⚠ .browser-slot とその祖先は動かさない（ビューの位置を測っている）。
+ *   ここで動かすのは帯の中のものだけ、transform / opacity だけ。
+ */
+
+.fb-bar {
+  --fb-paused: var(--color-warning);
+  --fb-paused-quiet: var(--color-warning-quiet);
+  --fb-btn: 32px;
+
+  display: grid;
+  height: var(--size-fb-bar);
+  align-items: center;
+  padding: 0 var(--space-5) 0 var(--titlebar-inset);
+  background: var(--color-bg-chrome);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  -webkit-app-region: drag;
+}
+
+/* ── ピル ─────────────────────────────────────────── */
+
+.fb-pill {
+  position: relative;
+  display: flex;
+  max-width: 100%;
+  height: 42px;
+  align-items: center;
+  padding: 0 var(--space-3) 0 var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-md);
+  gap: var(--space-2);
+  grid-column: 2;
+  transition:
+    border-color var(--motion-normal) var(--ease-out),
+    box-shadow var(--motion-normal) var(--ease-out);
+  -webkit-app-region: no-drag;
+}
+
+.fb-pill.is-recording {
+  border-color: var(--color-record-line);
+}
+
+.fb-pill.is-paused {
+  border-color: var(--fb-paused);
+  box-shadow:
+    var(--shadow-md),
+    0 0 0 3px var(--fb-paused-quiet);
+}
+
+/* 道具を持っている間は、ピルの下端にアクセントの線 */
+.fb-pill::after {
+  position: absolute;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  bottom: -6px;
+  content: '';
+  left: 22%;
+  opacity: 0;
+  right: 22%;
+  transform: scaleX(0.4);
+  transition:
+    opacity var(--motion-normal) var(--ease-out),
+    transform var(--motion-slow) var(--ease-spring);
+}
+
+.fb-pill.has-tool::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.fb-pill__divider {
+  width: 1px;
+  height: 20px;
+  flex: none;
+  margin: 0 var(--space-2);
+  background: var(--color-border-strong);
+}
+
+/* ── 状態（点・経過時間・札）──────────────────────────── */
+
+.fb-status {
+  display: inline-flex;
+  align-items: center;
+  padding-right: var(--space-2);
+  gap: var(--space-4);
+}
+
+/*
+ * フィードバックモードの文字は 13px 以上（04 2.2）。
+ * 経過時間は 15px / 600 / tabular-nums（04 2.5。REC-5）。
+ */
+.fb-status__elapsed {
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-lg);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.02em;
+  transition: color var(--motion-normal) var(--ease-out);
+}
+
+.fb-pill.is-recording .fb-status__elapsed {
+  color: var(--color-record-hover);
+}
+
+.fb-pill.is-paused .fb-status__elapsed {
+  color: var(--fb-paused);
+  animation: fb-blink 1200ms steps(1, end) infinite;
+}
+
+/* 一時停止の記号（2本の縦棒）。録画の点と同じ位置に置き換わる */
+.fb-status__pause {
+  display: inline-flex;
+  width: 9px;
+  height: 11px;
+  justify-content: space-between;
+}
+
+.fb-status__pause span {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--fb-paused);
+}
+
+.fb-status__badge {
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-pill);
+  background: var(--fb-paused-quiet);
+  color: var(--fb-paused);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  white-space: nowrap;
+  animation: fb-pop var(--motion-normal) var(--ease-spring) backwards;
+}
+
+/* ── マイクの入力レベル ─────────────────────────────── */
+
+.fb-mic {
+  display: inline-flex;
+  height: 18px;
+  align-items: center;
+  padding: 0 var(--space-2);
+  color: var(--color-text-faint);
+  gap: 2px;
+}
+
+.fb-mic__bar {
+  width: 3px;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--color-text-faint);
+  opacity: 0.45;
+  transform-origin: center;
+  transition: transform 90ms linear;
+}
+
+.fb-mic.is-live .fb-mic__bar {
+  background: var(--color-text);
+  opacity: 1;
+}
+
+.fb-mic.is-off {
+  color: var(--color-text-faint);
+}
+
+/* ── ボタン ──────────────────────────────────────── */
+
+/* ボタンを包む枠。押せないボタンの代わりに指先を受け、案内を出す */
+.fb-slot {
+  display: inline-flex;
+}
+
+.fb-slot :disabled {
+  pointer-events: none;
+}
+
+/* 共有画面でも狙いやすい 32×32。アイコンは 18px */
+.fb-pill .fb-btn {
+  width: var(--fb-btn);
+  height: var(--fb-btn);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.fb-pill .fb-btn:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.fb-pill .fb-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.fb-pill .fb-btn:disabled {
+  color: var(--color-text-faint);
+  opacity: 0.45;
+}
+
+/*
+ * 選択中の道具（PEN-2）。ペンON中はページ操作が行われないので、
+ * 「いまモードが変わっている」ことを面で示す。赤は録画専用なのでペンの色で塗る。
+ */
+.fb-pill .fb-btn--tool[aria-pressed='true'] {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.fb-pill .fb-btn--tool[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+/* 一時停止中は「再開」を目立たせる */
+.fb-pill .fb-btn--resume:not(:disabled) {
+  background: var(--fb-paused);
+  box-shadow: 0 0 0 4px var(--fb-paused-quiet);
+  color: var(--color-text-inverse);
+}
+
+.fb-pill .fb-btn--resume:hover:not(:disabled) {
+  background: var(--fb-paused);
+  color: var(--color-text-inverse);
+  transform: scale(1.06);
+}
+
+/* 一時停止中は録画の呼吸を止める（止まっていることを動きでも示す）*/
+.fb-pill.is-paused .record-btn.is-recording {
+  animation: none;
+  opacity: 0.85;
+}
+
+/* 録画ボタン。ピルの中でいちばん大きい面 */
+.fb-pill .record-btn--compact {
+  height: var(--fb-btn);
+  padding: 0 var(--space-6) 0 var(--space-5);
+  font-size: var(--font-size-md);
+  gap: var(--space-3);
+}
+
+/* ── 案内の枠（ふだんはページ名、指したボタンの名前とキー）──── */
+
+/* 中身が変わってもピルの幅が揺れないよう、幅を決めておく */
+.fb-hint {
+  display: inline-flex;
+  overflow: hidden;
+  width: 22ch;
+  min-width: 0;
+  align-items: center;
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-md);
+}
+
+.fb-hint__page {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fb-hint.has-notice {
+  width: auto;
+  max-width: min(48ch, 36vw);
+}
+
+/* 録画中の警告。ビューに隠れるトーストの代わりに、帯の中に数秒出す */
+.fb-hint__notice {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  color: var(--color-warning);
+  font-weight: var(--font-weight-medium);
+  gap: var(--space-3);
+  animation: fb-hint-in var(--motion-fast) var(--ease-out);
+}
+
+.fb-hint__notice svg {
+  flex: none;
+}
+
+.fb-hint__notice-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fb-hint__tip {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+  gap: var(--space-4);
+  white-space: nowrap;
+  animation: fb-hint-in var(--motion-fast) var(--ease-out);
+}
+
+/* 補足（「押す間」など）。キーの後ろに小さく */
+.fb-hint__note {
+  margin-left: calc(var(--space-2) * -1);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-regular);
+}
+
+/* ── キーキャップ ───────────────────────────────────── */
+
+.fb-keycaps {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.fb-keycap {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-app);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  place-items: center;
+}
+
+/* 帯の右端のキー一覧。読ませるものではなく、目に入れば十分 */
+.fb-keys {
+  display: flex;
+  min-width: 0;
+  justify-content: flex-end;
+  color: var(--color-text-faint);
+  gap: var(--space-6);
+  grid-column: 3;
+}
+
+.fb-keys__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  -webkit-app-region: no-drag;
+}
+
+.fb-keys .fb-keycap {
+  color: var(--color-text-muted);
+}
+
+.fb-keys__rec {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-record);
+}
+
+/* ピルの横に収まらない幅では出さない（案内の枠にも同じキーが出る）*/
+@media (max-width: 1320px) {
+  .fb-keys {
+    display: none;
+  }
+}
+
+/* ── 動き ────────────────────────────────────────── */
+
+@keyframes fb-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes fb-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+@keyframes fb-hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fb-pill.is-paused .fb-status__elapsed,
+  .fb-status__badge,
+  .fb-hint__notice,
+  .fb-hint__tip {
+    animation: none;
+  }
+
+  .fb-mic__bar {
+    transition: none;
+  }
+}
+
+/*
+ * ── 録画の対象の選択画面（CaptureTargetPicker / REC-2 の拡張）────────
+ * 内蔵ブラウザ／画面全体／別のウインドウをサムネイルで選ぶ。
+ * 開いている間は内蔵ブラウザのビューを隠すので、モーダルは普通のDOMでよい。
+ */
+
+.capture-picker {
+  display: grid;
+  width: min(100%, 760px);
+  gap: var(--space-5);
+}
+
+.capture-picker .rv-modal__head {
+  margin-bottom: 0;
+}
+
+.capture-picker__kinds {
+  justify-self: start;
+}
+
+.capture-picker__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.capture-picker__hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.capture-picker__loading {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+}
+
+.capture-picker__access {
+  display: flex;
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-quiet);
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  gap: var(--space-5);
+}
+
+.capture-picker__access > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--color-warning);
+}
+
+.capture-picker__access p {
+  margin: 0 0 var(--space-3);
+}
+
+.capture-picker__steps {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.capture-picker__access-actions {
+  display: flex;
+  margin-top: var(--space-4);
+  gap: var(--space-4);
+}
+
+.capture-grid {
+  display: grid;
+  overflow: auto;
+  max-height: 52vh;
+  padding: var(--space-1);
+  gap: var(--space-5);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.capture-card {
+  display: grid;
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+  gap: var(--space-3);
+  text-align: left;
+  transition: border-color var(--motion-fast), background var(--motion-fast);
+}
+
+.capture-card:hover {
+  border-color: var(--color-accent-line);
+}
+
+.capture-card:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+.capture-card.is-selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-wash);
+}
+
+.capture-card__thumb {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  aspect-ratio: 16 / 10;
+  background: var(--color-bg-app);
+  color: var(--color-text-faint);
+  place-items: center;
+}
+
+.capture-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.capture-card__check {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: grid;
+  border-radius: 50%;
+  background: var(--color-bg-app);
+  color: var(--color-accent);
+  place-items: center;
+}
+
+.capture-card__label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.capture-card__app {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.capture-card__name {
+  overflow: hidden;
+  font-size: var(--font-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capture-card--browser {
+  display: flex;
+  align-items: center;
+  padding: var(--space-6);
+  gap: var(--space-6);
+}
+
+.capture-card__browser-icon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  place-items: center;
+}
+
+.capture-card__body {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.capture-card--browser .capture-card__name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+}
+
+.capture-card__note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.capture-picker__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+
+.capture-picker__current {
+  overflow: hidden;
+  margin-right: auto;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

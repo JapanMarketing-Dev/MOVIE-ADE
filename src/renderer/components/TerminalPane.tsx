@@ -1,0 +1,879 @@
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Columns2, Plus, Rows2, SquareTerminal, X } from 'lucide-react'
+import { TUI_AGENT_LABEL, type AccountLoginRequest, type AgentOption, type Project, type TuiAgent } from '@shared/types'
+import { SHORTCUTS, formatShortcut } from '../lib/shortcut'
+import { Button, EmptyState, IconTile } from '../ui'
+import { acquireTerminal, getTerminal, releaseTerminal } from '../terminal/terminalClient'
+import { onAccountLoginRequest } from '../lib/accountLogin'
+import { onTerminalCommandRequest } from '../lib/terminalCommand'
+import {
+  ACTIVE_PANE_OPACITY,
+  DIVIDER_HIT_PADDING_PX,
+  hasLeaf,
+  DIVIDER_THICKNESS_PX,
+  INACTIVE_PANE_OPACITY,
+  leaf,
+  leafIds,
+  neighborLeaf,
+  ratioFromDrag,
+  removeLeaf,
+  setRatio,
+  splitLeaf,
+  type PaneNode,
+  type PanePath,
+  type PaneSplitDirection
+} from '../terminal/paneTree'
+import { AgentIcon } from './AgentIcon'
+import { useT } from '../lib/i18n'
+import { t as tNow, type TranslationKey } from '@shared/i18n'
+import { QuickLaunchButton, type QuickLaunchAgent, type QuickLaunchSearch } from './QuickLaunchButton'
+import { agentLabel } from '@shared/agentCatalog'
+import { moveItem } from '@shared/layout'
+
+/**
+ * 内蔵ターミナル（WS-4）。タブで複数のシェルを開き、閉じられる。
+ *
+ * xterm のインスタンスは terminalClient が持ち、ここは「どのタブ・ペインを見せるか」と
+ * リサイズの追従だけを担う。非表示のペインは寸法が0になるので fit は見えているペインにだけ行う。
+ *
+ * タブはプロジェクトごとに分ける（Orcaのワークスペースごとのタブと同じ）。表示中のプロジェクトの
+ * タブだけを見せ、別のプロジェクトへ切り替えても裏のPTY・Agentと分割の形は止めずに生かしておく。
+ * 初めて開いたプロジェクトでは、設定の startupAgents の順にAgentタブを自動で開く。
+ *
+ * 1つのタブの中は、Orca と同じく左右・上下に何度でも分割できる（⌘D で右、⌘⇧D で下）。
+ * ペインごとに別のPTYで、「Agentへ送信」の宛先はフォーカス中のペインになる。
+ * Orca由来: ~/bench/orca/src/renderer/src/components/terminal-pane/terminal-shortcut-policy.ts,
+ *           ~/bench/orca/src/shared/keybindings/definitions-core-4.ts,
+ *           ~/bench/orca/src/renderer/src/lib/pane-manager/pane-divider.ts,
+ *           ~/bench/orca/src/renderer/src/lib/pane-manager/pane-divider-drag.ts（MIT, Copyright 2026 Lovecast Inc.）
+ */
+
+/**
+ * Agent の状態（04_benchmark 4.1-13 / herdr の seen フラグ）。
+ *
+ * 要点は done と idle を分けること。「終わった」のではなく
+ * 「終わったのに、まだこちらが気づいていない」を表せる。
+ * フィードバックモードで録画している間に Agent が終わった場合、
+ * モードを戻した瞬間にそれが分かる。
+ * 検知の実装は後続。ここでは印の見た目と置き場所を用意する。
+ */
+export type AgentState = 'working' | 'blocked' | 'done' | 'idle' | 'unknown'
+
+const AGENT_STATE_LABEL: Record<AgentState, TranslationKey> = {
+  working: 'terminal.state.working',
+  blocked: 'terminal.state.blocked',
+  done: 'terminal.state.done',
+  idle: 'terminal.state.idle',
+  unknown: 'terminal.state.unknown'
+}
+
+/** 分割したタブの印に出す順。気づいてほしいものほど先 */
+const STATE_PRIORITY: AgentState[] = ['blocked', 'done', 'working', 'idle', 'unknown']
+
+/** 1つのペイン（＝1つのPTY） */
+interface Pane {
+  key: string
+  title: string
+  /** Agentの状態（検知結果） */
+  state: AgentState
+  /** 起動したAgent。素のシェルなら null */
+  launch: TuiAgent | null
+  /** 起動時のカレント。省略時は main 側で開いているプロジェクトのフォルダ */
+  cwd: string | null
+  /** アカウント追加・再ログインのためのタブ（`claude auth login` などを起動する） */
+  accountLogin?: AccountLoginRequest | null
+  /** シェル起動後に実行する1行（設定の GitHub 節の `gh auth login` など） */
+  command?: string | null
+  /** 依頼元が決めたタブ名 */
+  customTitle?: string | null
+}
+
+interface Tab {
+  key: string
+  /** どのプロジェクトのタブか。プロジェクト未登録のフォルダなら null */
+  projectId: string | null
+  /** ペインの分割の形 */
+  layout: PaneNode
+  /** フォーカス中のペイン */
+  activePane: string
+}
+
+/** 寸法が測れない（非表示の）ペインを作るときの大きさ。表示したときに合わせ直す */
+const FALLBACK_SIZE = { cols: 80, rows: 24 }
+/** ターミナルのタブをドラッグするときのデータの種類（中央のタブ 'application/x-ade-center-tab' とは別） */
+const TAB_DRAG_TYPE = 'application/x-ade-terminal-tab'
+/** Resource Manager（フッター）から、そのターミナルのタブへ移るよう頼むイベント。detail は { id: ptyId } */
+const FOCUS_TERMINAL_EVENT = 'ade:focus-terminal'
+/** 分割元のカレントを調べるのを待つ上限。macOS の lsof は初回だけ遅いことがある（Orca と同じ値） */
+const SPLIT_CWD_TIMEOUT_MS = 1000
+/** 区切り線の掴める幅（見える線 ＋ 両側の余白） */
+const DIVIDER_HIT_SIZE = DIVIDER_THICKNESS_PX + DIVIDER_HIT_PADDING_PX * 2
+
+let tabSeq = 0
+let paneSeq = 0
+
+interface PaneSpec {
+  launch?: TuiAgent | null
+  cwd: string | null
+  accountLogin?: AccountLoginRequest | null
+  command?: string | null
+  title?: string | null
+}
+
+function newPane({ launch = null, cwd, accountLogin = null, command = null, title = null }: PaneSpec): Pane {
+  const label =
+    title ||
+    (accountLogin ? tNow('terminal.loginTitle', { agent: TUI_AGENT_LABEL[accountLogin.agent] }) : launch ? agentLabel(launch) : tNow('terminal.shell'))
+  return { key: `pane${++paneSeq}`, title: label, state: 'unknown', launch, cwd, accountLogin, command, customTitle: title }
+}
+
+/** fs:search の結果からファイルの相対パスだけを取り出す（ファイル名の検索） */
+async function searchFileNames(query: string): Promise<string[]> {
+  const result = await window.ade.invoke('fs:search', query, 'names')
+  return result.files
+}
+
+/** Orca と同じ割り当て。macOS は ⌘D / ⌘⇧D、それ以外は Ctrl+Shift+D / Alt+Shift+D */
+function splitShortcut(direction: PaneSplitDirection): string {
+  const mac = globalThis.window?.ade?.platform === 'darwin'
+  if (direction === 'vertical') return mac ? formatShortcut('Mod', 'D') : formatShortcut('Ctrl', 'Shift', 'D')
+  return mac ? formatShortcut('Mod', 'Shift', 'D') : formatShortcut('Alt', 'Shift', 'D')
+}
+
+/**
+ * ⌘D / ⌘⇧D（Orca と同じ割り当て）。ターミナルにフォーカスがあるときだけ効かせる
+ * （Orca の terminal-shortcut-policy と同じ。エディタの ⌘D を奪わない）
+ */
+function splitDirectionForKey(event: React.KeyboardEvent): PaneSplitDirection | null {
+  if (event.code !== 'KeyD') return null
+  if (window.ade.platform === 'darwin') {
+    if (!event.metaKey || event.ctrlKey || event.altKey) return null
+    return event.shiftKey ? 'horizontal' : 'vertical'
+  }
+  if (event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey) return 'vertical'
+  if (event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey) return 'horizontal'
+  return null
+}
+
+/**
+ * ⌘W をターミナル以外（エディタなど）に譲るためのイベント。⌘W はメニューが受けるので、
+ * ターミナルにフォーカスが無いときはこれを投げ、だれかが preventDefault() したらターミナルは閉じない
+ */
+export const CLOSE_REQUEST_EVENT = 'ade:close-request'
+
+export function TerminalPane({
+  layoutKey,
+  onReady,
+  commandRef,
+  onActiveTerminal,
+  projectId = null,
+  cwd = null,
+  startupAgents = [],
+  onOpenAgentSettings,
+  onOpenFile
+}: {
+  /** 分割幅など、レイアウトが変わったことを知らせる値 */
+  layoutKey: string
+  onReady?: () => void
+  /** フォーカス中のペインのPTY（「Agentへ送信」の宛先） */
+  onActiveTerminal?: (id: string | null) => void
+  /** メニュー（ショートカット）からタブ操作を呼べるようにする窓口 */
+  commandRef?: React.RefObject<{ add: () => void; close: () => void } | null>
+  /** 表示中のプロジェクト。タブはこれごとに分かれる */
+  projectId?: string | null
+  /** 新しいタブのカレント（プロジェクトのフォルダ） */
+  cwd?: string | null
+  /** 初めて開いたプロジェクトで自動で開くAgent（順序どおり）。空なら素のシェル1つ */
+  startupAgents?: TuiAgent[]
+  /** 「＋」メニューの「Agent設定…」。渡されたときだけ出す */
+  onOpenAgentSettings?: () => void
+  /** 「＋」の検索でファイルを選んだとき（エディタで開く）。渡されたときだけファイルを検索する */
+  onOpenFile?: (path: string) => void
+}) {
+  const sectionRef = useRef<HTMLElement | null>(null)
+  const t = useT()
+  const [tabs, setTabs] = useState<Tab[]>([])
+  const [panes, setPanes] = useState<Record<string, Pane>>({})
+  /** プロジェクトごとの選択中タブ。切り替えて戻ったときに同じタブを見せる */
+  const [activeByProject, setActiveByProject] = useState<Record<string, string | null>>({})
+  /** ペインの描画先（xterm の器を入れる場所） */
+  const nodesRef = useRef(new Map<string, HTMLDivElement>())
+  const leafRefs = useRef(new Map<string, (node: HTMLDivElement | null) => void>())
+  /** 一度でもタブを開いたプロジェクト。全部閉じても自動では開き直さない */
+  const seededRef = useRef(new Set<string>())
+  /** PTYを作り始めたペイン。終了したペインを勝手に作り直さないよう、1ペイン1回だけ */
+  const spawnedRef = useRef(new Set<string>())
+  const panesRef = useRef(panes)
+  panesRef.current = panes
+
+  const projectKey = projectId ?? ''
+  const visibleTabs = useMemo(
+    () => tabs.filter((tab) => (tab.projectId ?? '') === projectKey),
+    [tabs, projectKey]
+  )
+  const activeKey = activeByProject[projectKey] ?? null
+  const activeTab = visibleTabs.find((tab) => tab.key === activeKey) ?? null
+  const focusedPane = activeTab?.activePane ?? null
+  const focusedPaneRef = useRef(focusedPane)
+  focusedPaneRef.current = focusedPane
+
+  const setActiveKey = useCallback(
+    (key: string | null) => setActiveByProject((prev) => ({ ...prev, [projectKey]: key })),
+    [projectKey]
+  )
+
+  /**
+   * 寸法を合わせ、PTYにも伝える。器の大きさの変化は TerminalHandle が自分で追うので、
+   * ここは表示を切り替えた直後など、念のため合わせ直したいときだけ呼ぶ（非表示なら何もしない）
+   */
+  const fitPane = useCallback((key: string) => {
+    getTerminal(key)?.scheduleFit()
+  }, [])
+
+  const fitVisible = useCallback(() => {
+    if (!activeTab) return
+    for (const key of leafIds(activeTab.layout)) fitPane(key)
+  }, [activeTab, fitPane])
+
+  /**
+   * ペインの描画先を登録する。分割で木の形が変わるとDOMが作り直されるので、
+   * そのたびに xterm の器を新しい場所へ移す。キーごとに同じ関数を返し、毎回の描画で付け外ししない
+   */
+  const leafRef = useCallback((key: string) => {
+    let ref = leafRefs.current.get(key)
+    if (!ref) {
+      ref = (node) => {
+        const previous = nodesRef.current.get(key)
+        if (!node) {
+          if (nodesRef.current.get(key) === previous) nodesRef.current.delete(key)
+          return
+        }
+        nodesRef.current.set(key, node)
+        getTerminal(key)?.open(node)
+      }
+      leafRefs.current.set(key, ref)
+    }
+    return ref
+  }, [])
+
+  const releasePane = useCallback((key: string) => {
+    releaseTerminal(key)
+    nodesRef.current.delete(key)
+    leafRefs.current.delete(key)
+    spawnedRef.current.delete(key)
+  }, [])
+
+  /** タブを開く。agent を渡すとそのAgentが起動した状態のタブになる */
+  const addTab = useCallback(
+    (launch: TuiAgent | null = null, extra: Omit<PaneSpec, 'launch' | 'cwd'> = {}) => {
+      const pane = newPane({ ...extra, launch, cwd })
+      const key = `tab${++tabSeq}`
+      setPanes((prev) => ({ ...prev, [pane.key]: pane }))
+      setTabs((prev) => [...prev, { key, projectId, layout: leaf(pane.key), activePane: pane.key }])
+      setActiveKey(key)
+    },
+    [projectId, cwd, setActiveKey]
+  )
+
+  /**
+   * フォーカス中のペインを分割し、新しいペインを右（下）に置いてフォーカスを移す。
+   * 新しいペインのカレントは、分割元のシェルの「今の」カレント（cd した先。Orca の
+   * terminal-pane-split-with-inherited-cwd / resolve-split-cwd と同じ）。調べられなければ起動時のカレント
+   */
+  const splitPane = useCallback(
+    async (direction: PaneSplitDirection, launch: TuiAgent | null = null) => {
+      if (!activeTab) return
+      const tabKey = activeTab.key
+      const sourceKey = activeTab.activePane
+      const source = panesRef.current[sourceKey]
+      const ptyId = getTerminal(sourceKey)?.ptyId ?? null
+      const live = ptyId
+        ? await Promise.race([
+            window.ade.invoke('terminal:cwd', ptyId).catch(() => null),
+            new Promise<null>((done) => setTimeout(() => done(null), SPLIT_CWD_TIMEOUT_MS))
+          ])
+        : null
+      const pane = newPane({ launch, cwd: live || source?.cwd || cwd })
+      setPanes((prev) => ({ ...prev, [pane.key]: pane }))
+      setTabs((prev) =>
+        prev.map((tab) =>
+          tab.key === tabKey && hasLeaf(tab.layout, sourceKey)
+            ? { ...tab, layout: splitLeaf(tab.layout, sourceKey, direction, pane.key), activePane: pane.key }
+            : tab
+        )
+      )
+    },
+    [activeTab, cwd]
+  )
+
+  const focusPane = useCallback((tabKey: string, paneKey: string) => {
+    setTabs((prev) =>
+      prev.some((tab) => tab.key === tabKey && tab.activePane !== paneKey)
+        ? prev.map((tab) => (tab.key === tabKey ? { ...tab, activePane: paneKey } : tab))
+        : prev
+    )
+  }, [])
+
+  const closeTab = useCallback(
+    (key: string) => {
+      const tab = tabs.find((t) => t.key === key)
+      if (!tab) return
+      const keys = leafIds(tab.layout)
+      for (const paneKey of keys) releasePane(paneKey)
+      // 更新関数の中で別の state を更新しない（Reactが更新を捨てることがある）。
+      // 選択中のタブを閉じたときの移動は、下の effect に任せる。
+      setTabs((prev) => prev.filter((t) => t.key !== key))
+      setPanes((prev) => {
+        const next = { ...prev }
+        for (const paneKey of keys) delete next[paneKey]
+        return next
+      })
+    },
+    [tabs, releasePane]
+  )
+
+  /** ペインを閉じる。最後の1枚ならタブごと閉じる（Orca の closeActivePane と同じ） */
+  const closePane = useCallback(
+    (tabKey: string, paneKey: string) => {
+      const tab = tabs.find((t) => t.key === tabKey)
+      if (!tab) return
+      const layout = removeLeaf(tab.layout, paneKey)
+      if (!layout) {
+        closeTab(tabKey)
+        return
+      }
+      releasePane(paneKey)
+      const nextActive = tab.activePane === paneKey ? (neighborLeaf(tab.layout, paneKey) ?? leafIds(layout)[0]!) : tab.activePane
+      setTabs((prev) => prev.map((t) => (t.key === tabKey ? { ...t, layout, activePane: nextActive } : t)))
+      setPanes((prev) => {
+        const next = { ...prev }
+        delete next[paneKey]
+        return next
+      })
+    },
+    [tabs, closeTab, releasePane]
+  )
+
+  const setSplitRatio = useCallback((tabKey: string, path: PanePath, ratio: number) => {
+    setTabs((prev) => prev.map((tab) => (tab.key === tabKey ? { ...tab, layout: setRatio(tab.layout, path, ratio) } : tab)))
+  }, [])
+
+  // アカウントの追加・再ログインの依頼が来たら、ログイン用のタブを開いて選択する
+  const addTabRef = useRef(addTab)
+  addTabRef.current = addTab
+  useEffect(() => onAccountLoginRequest((req) => addTabRef.current(null, { accountLogin: req })), [])
+  // 「新しいタブでこの1行を実行して」の依頼（設定の GitHub 節の `gh auth login` など）。
+  // コマンドは Agent と同じく、シェルの最初のプロンプトで実行させる（main の起動ファイルの仕組み）
+  useEffect(
+    () => onTerminalCommandRequest((req) => addTabRef.current(null, { command: req.command, title: req.title ?? null })),
+    []
+  )
+
+  // メニューの「右に分割／下に分割」をクリックしたとき（キーは下の onKeyDownCapture が拾う）
+  const splitPaneRef = useRef<(direction: PaneSplitDirection) => void>(() => undefined)
+  splitPaneRef.current = (direction) => void splitPane(direction)
+  useEffect(
+    () =>
+      window.ade.on('menu:command', (command) => {
+        if (command === 'splitTerminalRight') splitPaneRef.current('vertical')
+        if (command === 'splitTerminalDown') splitPaneRef.current('horizontal')
+      }),
+    []
+  )
+
+  // Resource Manager の行から、そのターミナル（main の id ＝ ptyId）のタブへ移る
+  const tabsRef = useRef(tabs)
+  tabsRef.current = tabs
+  useEffect(() => {
+    const onFocusTerminal = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id
+      if (!id) return
+      const paneKey = Object.keys(panesRef.current).find((key) => getTerminal(key)?.ptyId === id)
+      const tab = paneKey ? tabsRef.current.find((t) => hasLeaf(t.layout, paneKey)) : undefined
+      if (!paneKey || !tab) return
+      setActiveByProject((prev) => ({ ...prev, [tab.projectId ?? '']: tab.key }))
+      focusPane(tab.key, paneKey)
+    }
+    window.addEventListener(FOCUS_TERMINAL_EVENT, onFocusTerminal)
+    return () => window.removeEventListener(FOCUS_TERMINAL_EVENT, onFocusTerminal)
+  }, [focusPane])
+
+  // 「＋」の検索に出す登録URL（全プロジェクト分）
+  // 「＋」と分割のメニューに出すエージェント。Orca と同じく、インストール済みか登録したもので、無効にしていないもの
+  const [agentOptions, setAgentOptions] = useState<AgentOption[]>([])
+  useEffect(() => {
+    let stopped = false
+    void window.ade
+      .invoke('agents:list')
+      .then((options) => {
+        if (!stopped) setAgentOptions(options)
+      })
+      .catch(() => undefined)
+    const off = window.ade.on('agents:changed', setAgentOptions)
+    return () => {
+      stopped = true
+      off()
+    }
+  }, [])
+  const menuAgents = useMemo<QuickLaunchAgent[]>(
+    // カスタムは書きかけ（コマンドが空）のあいだは出さない
+    () =>
+      agentOptions
+        .filter((o) => o.enabled && (o.installed || (o.custom && o.command.trim() !== '')))
+        .map((o) => ({ id: o.id, label: o.label })),
+    [agentOptions]
+  )
+  const agentOptionsRef = useRef(agentOptions)
+  agentOptionsRef.current = agentOptions
+
+  const [projects, setProjects] = useState<Project[]>([])
+  useEffect(() => {
+    let stopped = false
+    void window.ade
+      .invoke('project:list')
+      .then((state) => {
+        if (!stopped) setProjects(state.projects)
+      })
+      .catch(() => undefined)
+    const off = window.ade.on('projects:changed', (state) => setProjects(state.projects))
+    return () => {
+      stopped = true
+      off()
+    }
+  }, [])
+
+  // 閉じたタブが選択中だったら、表示中のプロジェクトに残っている最後のタブへ移る
+  useEffect(() => {
+    if (activeKey !== null && visibleTabs.some((tab) => tab.key === activeKey)) return
+    const next = visibleTabs.length > 0 ? (visibleTabs[visibleTabs.length - 1]?.key ?? null) : null
+    if (next !== activeKey) setActiveKey(next)
+  }, [visibleTabs, activeKey, setActiveKey])
+
+  // 初めて開いたプロジェクトでは、startupAgents の順にAgentタブを開く（空なら素のシェル1つ）。
+  // 最初のタブを選択状態にする
+  useEffect(() => {
+    if (seededRef.current.has(projectKey)) return
+    seededRef.current.add(projectKey)
+    if (visibleTabs.length > 0) return
+    // 無効にしたエージェントは開かない（一覧がまだ届いていなければそのまま）
+    const disabled = new Set(agentOptionsRef.current.filter((o) => !o.enabled).map((o) => o.id))
+    const enabledStartup = startupAgents.filter((agent) => !disabled.has(agent))
+    const launches: Array<TuiAgent | null> = enabledStartup.length > 0 ? enabledStartup : [null]
+    const created = launches.map((launch) => newPane({ launch, cwd }))
+    const createdTabs: Tab[] = created.map((pane) => ({
+      key: `tab${++tabSeq}`,
+      projectId,
+      layout: leaf(pane.key),
+      activePane: pane.key
+    }))
+    setPanes((prev) => ({ ...prev, ...Object.fromEntries(created.map((pane) => [pane.key, pane])) }))
+    setTabs((prev) => [...prev, ...createdTabs])
+    setActiveKey(createdTabs[0]?.key ?? null)
+    // プロジェクトが切り替わったときだけ動かす（設定の変更で開き直さない）
+  }, [projectKey])
+
+  // ペインごとに xterm を開き、PTYを結びつける。
+  // 非表示のペイン（裏のタブ・プロジェクトを含む）もすぐPTYを作る。寸法が測れなければ 80x24 で作り、表示時に合わせる
+  useEffect(() => {
+    for (const pane of Object.values(panes)) {
+      const node = nodesRef.current.get(pane.key)
+      if (!node) continue
+      const handle = acquireTerminal(pane.key)
+      handle.open(node)
+      if (handle.ptyId !== null || spawnedRef.current.has(pane.key)) continue
+      spawnedRef.current.add(pane.key)
+      const measurable = node.offsetWidth > 0 && node.offsetHeight > 0
+      const size = (measurable ? handle.fit() : null) ?? FALLBACK_SIZE
+      void window.ade
+        .invoke('terminal:create', {
+          size,
+          cwd: pane.cwd,
+          agent: pane.launch,
+          accountLogin: pane.accountLogin ?? null,
+          command: pane.command ?? null,
+          title: pane.customTitle ?? null
+        })
+        .then((info) => {
+          // 作っている間にペインを閉じたら、できたPTYもすぐ閉じる
+          if (getTerminal(pane.key) !== handle) {
+            void window.ade.invoke('terminal:close', info.id)
+            return
+          }
+          handle.bindPty(info.id)
+          if (pane.key === focusedPaneRef.current) onActiveTerminal?.(info.id)
+          fitPane(pane.key)
+          setPanes((prev) =>
+            prev[pane.key] ? { ...prev, [pane.key]: { ...prev[pane.key]!, title: info.title } } : prev
+          )
+          onReady?.()
+        })
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : String(err)
+          handle.write(`\r\n\u001b[31m${tNow('terminal.startFailed', { message })}\u001b[0m\r\n`)
+          if (message.includes('node-pty')) {
+            handle.write(
+              `\u001b[2m${tNow('terminal.nodePtyHint')}\u001b[0m\r\n`
+            )
+          }
+        })
+    }
+  }, [panes, tabs, onReady, onActiveTerminal, fitPane])
+
+  // 「Agentへ送信」の宛先は、フォーカス中のペインのPTY
+  useEffect(() => {
+    onActiveTerminal?.(focusedPane ? getTerminal(focusedPane)?.ptyId ?? null : null)
+  }, [focusedPane, onActiveTerminal])
+
+  const paneKeys = Object.keys(panes).join(':')
+  useEffect(() => {
+    let stopped = false
+    const update = async () => {
+      const states = await Promise.all(Object.keys(panesRef.current).map(async (key) => {
+        const id = getTerminal(key)?.ptyId
+        const result = id ? await window.ade.invoke('terminal:agentState', id).catch(() => null) : null
+        return [key, (result?.state ?? 'unknown') as AgentState] as const
+      }))
+      if (stopped) return
+      setPanes((current) => {
+        let changed = false
+        const next = { ...current }
+        for (const [key, state] of states) {
+          const pane = next[key]
+          if (pane && pane.state !== state) {
+            next[key] = { ...pane, state }
+            changed = true
+          }
+        }
+        return changed ? next : current
+      })
+    }
+    const timer = setInterval(() => void update(), 1000)
+    return () => { stopped = true; clearInterval(timer) }
+  }, [paneKeys])
+
+  // 表示中のタブに寸法を合わせ、フォーカス中のペインへ焦点を移す
+  useEffect(() => {
+    if (!focusedPane) return
+    const frame = requestAnimationFrame(() => {
+      fitVisible()
+      getTerminal(focusedPane)?.focus()
+    })
+    return () => cancelAnimationFrame(frame)
+    // fitVisible は分割の比率でも変わるが、ドラッグのたびに焦点を取り直さない
+  }, [activeKey, focusedPane])
+
+  useEffect(() => {
+    fitVisible()
+  }, [layoutKey])
+
+  // メニューからのタブ操作をつなぐ
+  useEffect(() => {
+    if (!commandRef) return
+    commandRef.current = {
+      // メニューの「新しいタブ」は素のシェル
+      add: () => addTab(null),
+      // ⌘W はフォーカス中のペインを閉じる（最後の1枚ならタブごと。Orca と同じ）。
+      // ターミナルにフォーカスが無いときは先にほかへ譲り、エディタなどが引き受けたらそちらに任せる
+      close: () => {
+        const focused = sectionRef.current?.contains(document.activeElement) ?? false
+        if (!focused && !window.dispatchEvent(new CustomEvent(CLOSE_REQUEST_EVENT, { cancelable: true }))) return
+        if (activeTab) closePane(activeTab.key, activeTab.activePane)
+      }
+    }
+    return () => {
+      commandRef.current = null
+    }
+  }, [commandRef, addTab, closePane, activeTab])
+
+  // アンマウント時（＝アプリ終了）にPTYを残さない
+  useEffect(
+    () => () => {
+      for (const key of Object.keys(panesRef.current)) releaseTerminal(key)
+      nodesRef.current.clear()
+      spawnedRef.current.clear()
+    },
+    []
+  )
+
+  // xterm に届く前に拾い、シェルへは送らない
+  const onKeyDownCapture = (event: React.KeyboardEvent) => {
+    const direction = splitDirectionForKey(event)
+    if (!direction || !activeTab) return
+    event.preventDefault()
+    event.stopPropagation()
+    void splitPane(direction)
+  }
+
+  // Orca のタブ列と同じく、タブをドラッグして別のタブの前（左半分）か後ろ（右半分）へ落とすと並びが変わる。
+  // 中央のタブ（CenterTabs）とは別のデータの種類にして、混ざらないようにする
+  const [tabDrop, setTabDrop] = useState<{ key: string; before: boolean } | null>(null)
+  const tabDragProps = (key: string) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent<HTMLElement>) => {
+      e.dataTransfer.setData(TAB_DRAG_TYPE, key)
+      e.dataTransfer.effectAllowed = 'move'
+    },
+    onDragOver: (e: React.DragEvent<HTMLElement>) => {
+      if (!e.dataTransfer.types.includes(TAB_DRAG_TYPE)) return
+      e.preventDefault()
+      const rect = e.currentTarget.getBoundingClientRect()
+      const before = e.clientX < rect.left + rect.width / 2
+      if (tabDrop?.key !== key || tabDrop.before !== before) setTabDrop({ key, before })
+    },
+    onDragLeave: () => setTabDrop(null),
+    onDrop: (e: React.DragEvent<HTMLElement>) => {
+      e.preventDefault()
+      const from = e.dataTransfer.getData(TAB_DRAG_TYPE)
+      const before = tabDrop?.before ?? true
+      setTabDrop(null)
+      if (!from) return
+      // 全プロジェクトのタブを1列で持っているので、並びの中で動かせば裏のプロジェクトのタブの順は変わらない
+      setTabs((prev) => {
+        const order = moveItem(prev.map((tab) => tab.key), from, key, before)
+        return order.flatMap((k) => prev.filter((tab) => tab.key === k))
+      })
+    },
+    onDragEnd: () => setTabDrop(null),
+    'data-drop': tabDrop?.key === key ? (tabDrop.before ? 'before' : 'after') : undefined
+  })
+
+  const quickSearch = useMemo<QuickLaunchSearch>(
+    () => ({
+      tabs: visibleTabs.map((tab) => ({ key: tab.key, title: panes[tab.activePane]?.title ?? t('terminal.shell') })),
+      // 表示中のプロジェクトのURLを先に出す
+      urls: [...projects]
+        .sort((a, b) => Number(b.id === projectId) - Number(a.id === projectId))
+        .flatMap((project) => project.urls.map((u) => ({ label: u.label, url: u.url, project: project.name }))),
+      onSelectTab: setActiveKey,
+      onOpenUrl: (url) => void window.ade.invoke('browser:navigate', url),
+      ...(onOpenFile ? { searchFiles: searchFileNames, onOpenFile } : {})
+    }),
+    [visibleTabs, panes, projects, projectId, setActiveKey, onOpenFile, t]
+  )
+
+  const renderNode = (tab: Tab, node: PaneNode, path: PanePath, split: boolean): ReactNode => {
+    if (node.type === 'leaf') {
+      const active = node.leafId === tab.activePane
+      return (
+        <div
+          key={node.leafId}
+          className="terminal-leaf"
+          data-pane={node.leafId}
+          data-active={active}
+          data-testid={`terminal-pane-${node.leafId}`}
+          style={{ opacity: !split || active ? ACTIVE_PANE_OPACITY : INACTIVE_PANE_OPACITY }}
+          ref={leafRef(node.leafId)}
+          onMouseDown={() => focusPane(tab.key, node.leafId)}
+          onFocus={() => focusPane(tab.key, node.leafId)}
+        />
+      )
+    }
+    const vertical = node.direction === 'vertical'
+    return (
+      <div key={path} className={`terminal-split ${vertical ? 'is-vertical' : 'is-horizontal'}`}>
+        <div className="terminal-split__child" style={{ flex: `${node.ratio} 1 0%` }}>
+          {renderNode(tab, node.first, `${path}0`, true)}
+        </div>
+        <PaneDivider vertical={vertical} onRatio={(ratio) => setSplitRatio(tab.key, path, ratio)} />
+        <div className="terminal-split__child" style={{ flex: `${1 - node.ratio} 1 0%` }}>
+          {renderNode(tab, node.second, `${path}1`, true)}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <section
+      ref={sectionRef}
+      onKeyDownCapture={onKeyDownCapture}
+      className="terminal-pane"
+      data-testid="terminal-pane"
+      aria-label={t('terminal.label')}
+    >
+      <div className="terminal-tabs" role="tablist">
+        {visibleTabs.map((tab) => {
+          const ids = leafIds(tab.layout)
+          const pane = panes[tab.activePane]
+          const title = pane?.title ?? t('terminal.shell')
+          const state =
+            STATE_PRIORITY.find((s) => ids.some((id) => panes[id]?.state === s)) ?? 'unknown'
+          return (
+            <div
+              key={tab.key}
+              className="terminal-tab"
+              role="tab"
+              aria-selected={tab.key === activeKey}
+              onClick={() => setActiveKey(tab.key)}
+              data-testid={`terminal-tab-${tab.key}`}
+              data-active-pane={tab.activePane}
+              {...tabDragProps(tab.key)}
+            >
+              {/* Agentの状態の印（WS-4 / 04 4.1-13）。分割していれば一番気づいてほしいペインの状態 */}
+              <span
+                className={`terminal-tab__state terminal-tab__state--${state}`}
+                title={t(AGENT_STATE_LABEL[state])}
+                aria-label={t(AGENT_STATE_LABEL[state])}
+              />
+              {(pane?.launch ?? pane?.accountLogin?.agent) && (
+                <span className="terminal-tab__agent">
+                  <AgentIcon agent={(pane.launch ?? pane.accountLogin?.agent)!} label={pane.title} size={12} />
+                </span>
+              )}
+              {/* 通し番号は main が title に含めている（例「1: zsh」）。ここでは足さない */}
+              <span className="terminal-tab__title">{title}</span>
+              {ids.length > 1 && (
+                <span className="terminal-tab__count" title={t('terminal.splitInto', { count: ids.length })}>
+                  {ids.length}
+                </span>
+              )}
+              <button
+                type="button"
+                className="terminal-tab__close"
+                aria-label={t('terminal.closeNamed', { title })}
+                title={t('terminal.closeTab')}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  closeTab(tab.key)
+                }}
+              >
+                <X size={12} strokeWidth={2} />
+              </button>
+            </div>
+          )
+        })}
+        <QuickLaunchButton
+          agents={menuAgents}
+          onNewTerminal={() => addTab(null)}
+          onLaunchAgent={addTab}
+          onOpenAgentSettings={onOpenAgentSettings}
+          search={quickSearch}
+        />
+        <div className="terminal-tabs__actions">
+          <QuickLaunchButton
+            icon={<Columns2 size={14} strokeWidth={1.75} />}
+            label={t('terminal.splitRight')}
+            newTerminalShortcut={splitShortcut('vertical')}
+            testId="terminal-split-right"
+            agents={menuAgents}
+            disabled={!activeTab}
+            onNewTerminal={() => splitPane('vertical')}
+            onLaunchAgent={(agent) => splitPane('vertical', agent)}
+          />
+          <QuickLaunchButton
+            icon={<Rows2 size={14} strokeWidth={1.75} />}
+            label={t('terminal.splitDown')}
+            newTerminalShortcut={splitShortcut('horizontal')}
+            testId="terminal-split-down"
+            agents={menuAgents}
+            disabled={!activeTab}
+            onNewTerminal={() => splitPane('horizontal')}
+            onLaunchAgent={(agent) => splitPane('horizontal', agent)}
+          />
+        </div>
+      </div>
+
+      <div className="terminal-surfaces">
+        {visibleTabs.length === 0 && (
+          <EmptyState
+            size="sm"
+            testId="terminal-empty"
+            art={
+              <IconTile tone="agent" size="lg">
+                <SquareTerminal size={22} strokeWidth={1.75} />
+              </IconTile>
+            }
+            title={t('terminal.emptyTitle')}
+            description={t('terminal.emptyDescription')}
+            actions={
+              <>
+                <Button
+                  variant="default"
+                  icon={<Plus size={15} strokeWidth={2} />}
+                  onClick={() => addTab(null)}
+                >
+                  {t('terminal.openShell')}
+                </Button>
+                {menuAgents.map((agent) => (
+                  <Button
+                    key={agent.id}
+                    variant="ghost"
+                    icon={<AgentIcon agent={agent.id} label={agent.label} size={15} />}
+                    onClick={() => addTab(agent.id)}
+                    data-testid={`terminal-empty-launch-${agent.id.replace(':', '-')}`}
+                  >
+                    {agent.label}
+                  </Button>
+                ))}
+              </>
+            }
+            hints={
+              <span className="hint">
+                <kbd className="kbd">{SHORTCUTS.newTerminal()}</kbd>{t('terminal.newTab')}
+              </span>
+            }
+          />
+        )}
+        {/* 裏のプロジェクトのタブも描画したまま隠す（PTYと分割の形を保つ） */}
+        {tabs.map((tab) => (
+          <div
+            key={tab.key}
+            className="terminal-surface"
+            hidden={tab.key !== activeKey || (tab.projectId ?? '') !== projectKey}
+          >
+            {renderNode(tab, tab.layout, '', tab.layout.type === 'split')}
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/**
+ * ペインの間の区切り線。掴める幅は見える線より広く、線そのものは CSS の ::after で描く（Orca と同じ）。
+ * ドラッグ中は1フレームに1回だけ比率を更新する。
+ */
+function PaneDivider({ vertical, onRatio }: { vertical: boolean; onRatio: (ratio: number) => void }) {
+  const [dragging, setDragging] = useState(false)
+
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const divider = event.currentTarget
+    const split = divider.parentElement
+    if (!split) return
+    const rect = split.getBoundingClientRect()
+    const start = vertical ? rect.left : rect.top
+    const total = (vertical ? rect.width : rect.height) - DIVIDER_HIT_SIZE
+    let frame = 0
+    divider.setPointerCapture(event.pointerId)
+    setDragging(true)
+    const onMove = (move: PointerEvent) => {
+      const offset = (vertical ? move.clientX : move.clientY) - start - DIVIDER_HIT_SIZE / 2
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => onRatio(ratioFromDrag(offset, total)))
+    }
+    const onEnd = () => {
+      divider.removeEventListener('pointermove', onMove)
+      divider.removeEventListener('pointerup', onEnd)
+      divider.removeEventListener('pointercancel', onEnd)
+      setDragging(false)
+    }
+    divider.addEventListener('pointermove', onMove)
+    divider.addEventListener('pointerup', onEnd)
+    divider.addEventListener('pointercancel', onEnd)
+  }
+
+  return (
+    <div
+      className={`terminal-divider ${vertical ? 'is-vertical' : 'is-horizontal'}${dragging ? ' is-dragging' : ''}`}
+      role="separator"
+      aria-orientation={vertical ? 'vertical' : 'horizontal'}
+      style={{
+        [vertical ? 'width' : 'height']: DIVIDER_HIT_SIZE,
+        ['--divider-thickness' as string]: `${DIVIDER_THICKNESS_PX}px`,
+        ['--divider-extension' as string]: `${DIVIDER_HIT_SIZE / 2}px`
+      }}
+      onPointerDown={onPointerDown}
+      data-testid="terminal-divider"
+    />
+  )
+}

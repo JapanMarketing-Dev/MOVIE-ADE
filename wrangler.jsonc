@@ -1,0 +1,8 @@
+{
+  // ダウンロードサイト（site/）を Cloudflare Pages（movie-ade.pages.dev）で公開する。ビルド工程はない。
+  // デプロイ: npx wrangler pages deploy site --project-name movie-ade --branch main
+  // 配布ファイルは Cloudflare R2 に置き、サイトは site/js/config.js の DOWNLOAD_BASE から読む。
+  "name": "movie-ade",
+  "compatibility_date": "2026-10-01",
+  "pages_build_output_dir": "./site"
+}

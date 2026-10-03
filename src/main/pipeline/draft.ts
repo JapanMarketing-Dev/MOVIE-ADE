@@ -1,0 +1,227 @@
+/**
+ * ② 下書き（ルール。LLMなしでも成立する最低ライン）
+ * 03_design.md 5章② / 02_requirements.md EXT-2・EXT-3・EXT-11
+ *
+ * - 発話の間隔が2秒未満なら同じまとまりにする
+ * - ペン・テキストは、時刻が重なる（または前後3秒以内の）まとまりに付ける。該当がなければ単独の指摘
+ * - 画像: 書き込みがあればその確定時刻の静止画。なければ発話開始時刻の静止画（カーソルのリングを合成）
+ *   まとまりの途中でURLが変わったら変化後の静止画を追加（最大3枚）
+ * - 発話もペンもテキストもない区間は捨てる
+ *
+ * つなぎ言葉・独り言の除外は③のLLMの担当（設計5章③）なので、ここでは落とさない。
+ */
+import type {
+  Annotation,
+  Draft,
+  DraftItem,
+  Event,
+  FrameRef,
+  Material,
+  NavEvent,
+  TranscriptSegment,
+} from './types'
+import { annotationFrameTime, isAnnotation } from './types'
+import { normalizeJa } from './text'
+
+export interface DraftOptions {
+  /** これ未満の間隔なら同じまとまり(ms) */
+  speechGapMs: number;
+  /**
+   * 1つのまとまりの長さの上限(ms)。超えたら内部の最も大きい間隔で割る。
+   *
+   * 2人のMTGでは掛け合いの間隔が2秒を切り続けるため、間隔の規則だけでは
+   * 録画全体が1つのまとまりになってしまう（実測: 8分のMTGが5件になった）。
+   * 上限を入れることで、LLMが使えないときの下書きも実用的な粒度に収まる。
+   */
+  maxClusterMs: number;
+  /** 書き込みをまとまりに紐づける許容幅(ms) */
+  annotationWindowMs: number;
+  /** 1指摘あたりの画像の最大枚数 */
+  maxFrames: number;
+  /** 正規化後これ未満の文字数で書き込みの無いまとまりは捨てる（「ん」などの取りこぼし） */
+  minTextLength: number
+}
+
+export const defaultDraftOptions: DraftOptions = {
+  speechGapMs: 2000,
+  maxClusterMs: 30_000,
+  annotationWindowMs: 3000,
+  maxFrames: 3,
+  minTextLength: 2,
+}
+
+interface Cluster {
+  t: number
+  tEnd: number
+  segments: TranscriptSegment[]
+  annotations: Annotation[]
+  origin: 'speech' | 'annotation'
+}
+
+export function buildDraft(material: Material, options: Partial<DraftOptions> = {}): Draft {
+  const opt = { ...defaultDraftOptions, ...options }
+  const transcript = [...material.transcript].sort((a, b) => a.t0 - b.t0)
+  const annotations = material.events.filter(isAnnotation).sort((a, b) => a.t - b.t)
+
+  const clusters = clusterSpeech(transcript, opt.speechGapMs).flatMap((c) =>
+    splitLongCluster(c, opt.maxClusterMs),
+  )
+  const orphans = attachAnnotations(clusters, annotations, opt.annotationWindowMs);
+
+  // 書き込み単独の指摘
+  for (const a of orphans) {
+    clusters.push({
+      t: a.t,
+      tEnd: annotationFrameTime(a),
+      segments: [],
+      annotations: [a],
+      origin: 'annotation',
+    })
+  }
+
+  clusters.sort((a, b) => a.t - b.t)
+
+  const items: DraftItem[] = []
+  for (const c of clusters) {
+    if (c.segments.length === 0 && c.annotations.length === 0) continue
+    if (c.annotations.length === 0) {
+      const len = normalizeJa(c.segments.map((s) => s.text).join('')).length
+      if (len < opt.minTextLength) continue
+    }
+    items.push({
+      id: `d${items.length + 1}`,
+      t: c.t,
+      tEnd: c.tEnd,
+      segments: c.segments,
+      annotationIds: c.annotations.map((a) => a.id),
+      frameTimes: pickFrameTimes(c, material.frames, material.events, opt.maxFrames),
+      origin: c.origin,
+    })
+  }
+
+  return { items }
+}
+
+function clusterSpeech(transcript: TranscriptSegment[], gapMs: number): Cluster[] {
+  const clusters: Cluster[] = []
+  for (const seg of transcript) {
+    const last = clusters[clusters.length - 1];
+    // 間隔は「直前のまとまりの終わり」から測る。相手→自分の掛け合いも
+    // 2秒未満なら1つの話題として扱い、分割・結合は③のLLMに委ねる。
+    if (last && seg.t0 - last.tEnd < gapMs) {
+      last.segments.push(seg)
+      last.tEnd = Math.max(last.tEnd, seg.t1)
+    } else {
+      clusters.push({ t: seg.t0, tEnd: seg.t1, segments: [seg], annotations: [], origin: 'speech' })
+    }
+  }
+  return clusters
+}
+
+/**
+ * 長すぎるまとまりを、内部で最も間隔が大きいところで割る。
+ * 上限に収まるまで再帰的に割る（割れなければそのまま返す）。
+ */
+function splitLongCluster(c: Cluster, maxMs: number): Cluster[] {
+  if (c.tEnd - c.t <= maxMs || c.segments.length < 2) return [c]
+
+  let bestIndex = -1
+  let bestGap = -1
+  for (let i = 1; i < c.segments.length; i++) {
+    const gap = c.segments[i]!.t0 - c.segments[i - 1]!.t1
+    if (gap > bestGap) {
+      bestGap = gap
+      bestIndex = i
+    }
+  }
+  if (bestIndex <= 0) return [c]
+
+  const make = (segs: TranscriptSegment[]): Cluster => ({
+    t: segs[0]!.t0,
+    tEnd: segs[segs.length - 1]!.t1,
+    segments: segs,
+    annotations: [],
+    origin: 'speech',
+  })
+
+  return [
+    ...splitLongCluster(make(c.segments.slice(0, bestIndex)), maxMs),
+    ...splitLongCluster(make(c.segments.slice(bestIndex)), maxMs),
+  ]
+}
+
+/** 書き込みを一番近いまとまりに付ける。付かなかったものを返す */
+function attachAnnotations(clusters: Cluster[], annotations: Annotation[], windowMs: number): Annotation[] {
+  const orphans: Annotation[] = []
+  for (const a of annotations) {
+    const aStart = a.t
+    const aEnd = annotationFrameTime(a)
+    let best: { c: Cluster; d: number } | undefined
+    for (const c of clusters) {
+      const d = gapBetween(aStart, aEnd, c.t, c.tEnd)
+      if (d <= windowMs && (!best || d < best.d)) best = { c, d }
+    }
+    if (best) {
+      best.c.annotations.push(a)
+      best.c.tEnd = Math.max(best.c.tEnd, aEnd)
+      best.c.t = Math.min(best.c.t, aStart)
+    } else {
+      orphans.push(a)
+    }
+  }
+  return orphans
+}
+
+/** 2区間の隙間(ms)。重なっていれば0 */
+function gapBetween(a0: number, a1: number, b0: number, b1: number): number {
+  if (a1 >= b0 && b1 >= a0) return 0
+  return a1 < b0 ? b0 - a1 : a0 - b1
+}
+
+function pickFrameTimes(c: Cluster, frames: FrameRef[], events: Event[], maxFrames: number): number[] {
+  const out: number[] = []
+  const push = (t: number | undefined) => {
+    if (t === undefined) return
+    if (!out.includes(t) && out.length < maxFrames) out.push(t)
+  }
+
+  if (c.annotations.length > 0) {
+    // 書き込みの確定時刻（ペン=描き終わり、テキスト=設置時刻）
+    for (const a of [...c.annotations].sort((x, y) => annotationFrameTime(x) - annotationFrameTime(y))) {
+      const associated = frames.find((f) => f.annotationId === a.id)
+      push(associated?.t ?? nearestFrameTime(frames, annotationFrameTime(a)))
+    }
+  } else {
+    push(nearestFrameTime(frames, c.t))
+  }
+
+  // まとまりの途中でURLが変わったら、変化後の静止画を足す
+  const navs = events.filter((e): e is NavEvent => e.type === 'nav' && e.t > c.t && e.t <= c.tEnd)
+  for (const n of navs) push(nearestFrameTimeAfter(frames, n.t));
+
+  return out.sort((a, b) => a - b)
+}
+
+/** 指定時刻に最も近い静止画の時刻。同距離なら後ろ（書き込みが写っている側）を選ぶ */
+export function nearestFrameTime(frames: FrameRef[], t: number): number | undefined {
+  let best: FrameRef | undefined
+  let bestD = Infinity
+  for (const f of frames) {
+    const d = Math.abs(f.t - t)
+    if (d < bestD || (d === bestD && best && f.t > best.t)) {
+      best = f
+      bestD = d
+    }
+  }
+  return best?.t
+}
+
+/** 指定時刻以降で最初の静止画の時刻。無ければ undefined */
+export function nearestFrameTimeAfter(frames: FrameRef[], t: number): number | undefined {
+  let best: FrameRef | undefined
+  for (const f of frames) {
+    if (f.t < t) continue
+    if (!best || f.t < best.t) best = f
+  }
+  return best?.t
+}

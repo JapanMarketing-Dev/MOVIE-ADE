@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Troubleshooting · MOVIE-ADE docs</title>
+  <meta name="description" content="Common problems and fixes. The quoted messages are what the app shows in English.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="canonical" href="https://movie-ade.pages.dev/docs/troubleshooting">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="MOVIE-ADE">
+  <meta property="og:title" content="Troubleshooting · MOVIE-ADE docs">
+  <meta property="og:description" content="Common problems and fixes. The quoted messages are what the app shows in English.">
+  <meta property="og:url" content="https://movie-ade.pages.dev/docs/troubleshooting">
+  <meta property="og:image" content="https://movie-ade.pages.dev/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
+  <script src="../js/theme.js"></script>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="docs.css">
+  <script src="docs.js" defer></script>
+</head>
+<!-- Generated layout: the sidebar, header, and footer are identical on every page in site/docs/. Change them on all pages together. -->
+<body data-page="docs">
+  <a class="skip" href="#docs-main">Skip to content</a>
+  <svg class="sprite" width="0" height="0" aria-hidden="true">
+    <symbol id="i-github" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  </svg>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="../index.html" aria-label="MOVIE-ADE home">
+        <img src="../favicon.svg" alt="" width="24" height="24">MOVIE-ADE
+      </a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="../index.html#features">Features</a>
+        <a href="../download.html">Download</a>
+        <a class="nav-keep" href="quick-start.html" aria-current="page">Docs</a>
+        <a href="../download.html#versions">Changelog</a>
+      </nav>
+      <div class="header-actions">
+        <button class="btn btn-sm btn-icon theme-toggle" type="button" data-theme-toggle aria-label="Toggle light and dark theme" title="Toggle theme">
+          <svg class="icon icon-moon"><use href="#i-moon"/></svg>
+          <svg class="icon icon-sun"><use href="#i-sun"/></svg>
+        </button>
+        <a class="btn btn-sm" href="https://github.com/JapanMarketing-Dev/MOVIE-ADE">
+          <svg class="icon icon-fill"><use href="#i-github"/></svg><span class="btn-label">GitHub</span>
+        </a>
+        <a class="btn btn-sm btn-primary" href="../download.html">
+          <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">Download</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap docs-layout">
+    <nav class="docs-sidebar" aria-label="Docs pages" id="docs-sidebar">
+      <button class="docs-sidebar-toggle" type="button" aria-expanded="true" aria-controls="docs-nav-list" data-docs-nav-toggle>
+        <svg class="icon"><use href="#i-menu"/></svg>Docs menu
+      </button>
+      <div class="docs-nav-list" id="docs-nav-list">
+      <div class="docs-nav-group">
+        <p class="docs-nav-heading">Start here</p>
+        <ul>
+          <li><a href="quick-start.html">Quick start</a></li>
+          <li><a href="install.html">Install</a></li>
+          <li><a href="concepts.html">Concepts</a></li>
+          <li><a href="keyboard.html">Keyboard shortcuts</a></li>
+        </ul>
+      </div>
+      <div class="docs-nav-group">
+        <p class="docs-nav-heading">Using MOVIE-ADE</p>
+        <ul>
+          <li><a href="projects.html">Projects and URLs</a></li>
+          <li><a href="recording.html">Recording</a></li>
+          <li><a href="agents.html">Sending to agents</a></li>
+          <li><a href="editor.html">Editor and preview</a></li>
+        </ul>
+      </div>
+      <div class="docs-nav-group">
+        <p class="docs-nav-heading">Configure</p>
+        <ul>
+          <li><a href="transcription.html">Transcription and costs</a></li>
+          <li><a href="accounts.html">Accounts and usage</a></li>
+          <li><a href="settings.html">Settings reference</a></li>
+        </ul>
+      </div>
+      <div class="docs-nav-group">
+        <p class="docs-nav-heading">Reference</p>
+        <ul>
+          <li><a href="privacy.html">Data and privacy</a></li>
+          <li><a href="files.html">Files and environment</a></li>
+        </ul>
+      </div>
+      <div class="docs-nav-group">
+        <p class="docs-nav-heading">Help</p>
+        <ul>
+          <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li>
+        </ul>
+      </div>
+      </div>
+    </nav>
+
+    <main class="docs-main" id="docs-main">
+      <article class="docs-content">
+        <p class="docs-eyebrow">Help</p>
+        <h1>Troubleshooting</h1>
+        <p class="docs-lead">Common problems and fixes. The quoted messages are what the app shows in English.</p>
+
+      <section class="docs-section" aria-labelledby="screen-permission">
+        <h2 id="screen-permission"><a class="docs-anchor" href="#screen-permission" aria-label="Link to Screen or window capture fails (macOS)">#</a>Screen or window capture fails (macOS)</h2>
+        <p>Message: <q>Recording the entire screen or another window requires macOS Screen Recording permission.</q></p>
+<ol class="docs-steps">
+  <li>In the <span class="docs-ui">Recording Target</span> dialog, click <span class="docs-ui">Open System Settings</span>.</li>
+  <li><span class="docs-ui">Privacy &amp; Security → Screen &amp; System Audio Recording</span>: turn on MOVIE-ADE, or Electron when running <code>pnpm dev</code>.</li>
+  <li>Restart the app, then click <span class="docs-ui">Check Again</span>.</li>
+</ol>
+<p>Recording the <span class="docs-ui">Built-in Browser</span> needs no permission.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="mic">
+        <h2 id="mic"><a class="docs-anchor" href="#mic" aria-label="Link to Microphone does not open">#</a>Microphone does not open</h2>
+        <p>Message: <q>Couldn't open the microphone. Check the permission in your OS settings.</q></p>
+<ul>
+  <li>macOS: <span class="docs-ui">System Settings → Privacy &amp; Security → Microphone</span>, then turn on MOVIE-ADE (or Electron in dev).</li>
+  <li>Windows: <span class="docs-ui">Settings → Privacy &amp; security → Microphone</span>, then allow desktop apps.</li>
+</ul>
+<p>You can keep working without a mic. Pen and text still create findings.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="whisper">
+        <h2 id="whisper"><a class="docs-anchor" href="#whisper" aria-label="Link to No on-device model / whisper-cli not found">#</a>No on-device model / whisper-cli not found</h2>
+        <p>Message: <q>No on-device transcription model found. Audio will be saved, and only text and pen findings will be processed.</q></p>
+<p>Download a model in Settings, or choose an existing <code>ggml-*.bin</code>. If Settings says <q>whisper.cpp (whisper-cli) was not found</q>, install it (<a href="transcription.html#whisper">instructions</a>), make sure it is on <code>PATH</code>, and reopen Settings. Packaged apps launched from Finder or Explorer may not see your shell's <code>PATH</code>, so install to a standard location such as Homebrew's.</p>
+<p>A model download that fails its sha256 check is discarded. Retry it.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="node-pty">
+        <h2 id="node-pty"><a class="docs-anchor" href="#node-pty" aria-label="Link to Terminal: node-pty could not be loaded">#</a>Terminal: node-pty could not be loaded</h2>
+        <p>This happens when running from source and node-pty was built for a different Node or Electron ABI.</p>
+<pre><code>pnpm rebuild:native</code></pre>
+      </section>
+
+      <section class="docs-section" aria-labelledby="agent">
+        <h2 id="agent"><a class="docs-anchor" href="#agent" aria-label="Link to Agent not found / Send to Agent doesn't send">#</a>Agent not found / Send to Agent doesn't send</h2>
+        <ul>
+  <li><code>command not found: claude</code> (or <code>codex</code>) in the terminal: the CLI is not installed or not on <code>PATH</code>. MOVIE-ADE shows the shell's own error and adds no hint. Check that the command works in your normal terminal, or set an absolute path in <span class="docs-ui">Settings → Agent → … command</span>.</li>
+  <li><q>The agent is waiting for confirmation. Respond in the terminal, then send.</q> Answer the agent's prompt first.</li>
+  <li><q>The agent's input isn't ready yet.</q> Wait for the agent to finish starting.</li>
+  <li><q>The text was entered but not sent. Press Enter in the terminal.</q></li>
+  <li><q>Open a terminal first.</q></li>
+  <li><q>Can't parse launch arguments: Unclosed quote.</q> Fix the quoting in the agent's arguments.</li>
+</ul>
+      </section>
+
+      <section class="docs-section" aria-labelledby="cannot-record">
+        <h2 id="cannot-record"><a class="docs-anchor" href="#cannot-record" aria-label="Link to Recording won't start">#</a>Recording won't start</h2>
+        <ul>
+  <li><q>Open a project folder first.</q></li>
+  <li><q>Open a URL to review first.</q></li>
+  <li><q>The page didn't load. Open a URL that displays, then record.</q> Check that the dev server is running. <q>Can't connect to the server</q> means nothing is listening on that port.</li>
+</ul>
+      </section>
+
+      <section class="docs-section" aria-labelledby="openai">
+        <h2 id="openai"><a class="docs-anchor" href="#openai" aria-label="Link to OpenAI key or endpoint not set">#</a>OpenAI key or endpoint not set</h2>
+        <p><q>No OpenAI API key is set…</q> or <q>The transcription endpoint (Base URL / model) isn't set…</q>: add it in Settings, or switch to <span class="docs-ui">On device (free)</span>. The audio of that recording is already saved.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="github">
+        <h2 id="github"><a class="docs-anchor" href="#github" aria-label="Link to GitHub errors">#</a>GitHub errors</h2>
+        <ul>
+  <li><q>GitHub CLI (gh) not found.</q> Install <code>gh</code>.</li>
+  <li><q>Not signed in to GitHub.</q> <span class="docs-ui">Settings → GitHub → Sign In in Terminal</span>.</li>
+  <li><q>No origin remote.</q> or <q>origin isn't a GitHub repository.</q> Check <code>git remote -v</code>.</li>
+  <li><q>Repository not found, or you don't have access.</q> Check <code>gh auth status</code> and <code>GH_TOKEN</code>.</li>
+</ul>
+      </section>
+
+      <section class="docs-section" aria-labelledby="report">
+        <h2 id="report"><a class="docs-anchor" href="#report" aria-label="Link to Report a bug">#</a>Report a bug</h2>
+        <p>Open an issue at <a href="https://github.com/JapanMarketing-Dev/MOVIE-ADE/issues">github.com/JapanMarketing-Dev/MOVIE-ADE/issues</a> with your OS, the app version (footer → <span class="docs-ui">Updates</span>), and steps to reproduce. Don't attach <code>.ade-movie/</code> contents that contain private screens.</p>
+      </section>
+
+        <nav class="docs-pager" aria-label="Previous and next page">
+          <a class="docs-pager-prev" href="files.html"><span>Previous</span>Files and environment</a>
+          <span></span>
+        </nav>
+        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/MOVIE-ADE/blob/main/site/docs/troubleshooting.html">Edit this page on GitHub</a></p>
+      </article>
+    </main>
+
+    <aside class="docs-toc" aria-label="On this page">
+      <p class="docs-toc-heading">On this page</p>
+      <ul>
+        <li><a href="#screen-permission">Screen or window capture fails (macOS)</a></li>
+        <li><a href="#mic">Microphone does not open</a></li>
+        <li><a href="#whisper">No on-device model / whisper-cli not found</a></li>
+        <li><a href="#node-pty">Terminal: node-pty could not be loaded</a></li>
+        <li><a href="#agent">Agent not found / Send to Agent doesn't send</a></li>
+        <li><a href="#cannot-record">Recording won't start</a></li>
+        <li><a href="#openai">OpenAI key or endpoint not set</a></li>
+        <li><a href="#github">GitHub errors</a></li>
+        <li><a href="#report">Report a bug</a></li>
+      </ul>
+    </aside>
+  </div>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div>
+          <a class="brand" href="../index.html"><img src="../favicon.svg" alt="" width="24" height="24">MOVIE-ADE</a>
+          <p class="provider">Built by <a href="https://www.japan-marketing.co.jp/">Japan Marketing LLC</a></p>
+        </div>
+        <div>
+          <h2>Product</h2>
+          <ul>
+            <li><a href="../download.html">Download</a></li>
+            <li><a href="../download.html#versions">All versions</a></li>
+            <li><a href="quick-start.html">Docs</a></li>
+            <li><a href="../index.html#features">Features</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Open source</h2>
+          <ul>
+            <li><a href="https://github.com/JapanMarketing-Dev/MOVIE-ADE">GitHub</a></li>
+            <li><a href="https://github.com/JapanMarketing-Dev/MOVIE-ADE/issues">Issues</a></li>
+            <li><a href="https://github.com/JapanMarketing-Dev/MOVIE-ADE/blob/main/LICENSE">MIT License</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Privacy</h2>
+          <p>This site uses no analytics and no cookies. It only stores your light/dark choice in your browser.</p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span data-year>2026</span> Japan Marketing LLC. MOVIE-ADE is released under the MIT License.</span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,495 @@
+/*
+ * ファイルエディタ（中央のファイルタブ・Monaco・markdown プレビュー・右のファイルツリー・⌘P）。
+ * 色・寸法・時間は tokens.css の var(--…) だけを使う。
+ */
+
+/* ── 右のファイルツリーの列 ───────────────────────────
+ * .workspace の列（app.css）に右の列を足す。閉じたら幅 0 にして隠す（.sidebar-slot と同じ畳み方）。
+ */
+.workspace:has(> .explorer-slot) {
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) 0;
+}
+
+.workspace--narrow:has(> .explorer-slot) {
+  grid-template-columns: 0 minmax(0, 1fr) 0;
+}
+
+.workspace--explorer:has(> .explorer-slot) {
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--size-sidebar);
+}
+
+.workspace--narrow.workspace--explorer:has(> .explorer-slot) {
+  grid-template-columns: 0 minmax(0, 1fr) var(--size-sidebar);
+}
+
+.explorer-slot {
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ── 中央のタブ（ファイル）──────────────────────────── */
+
+.ctabs {
+  overflow: hidden;
+}
+
+.ctabs__files {
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ctab--file {
+  flex: none;
+  padding-right: var(--space-3);
+}
+
+.ctab__close {
+  position: relative;
+  display: inline-grid;
+  width: var(--size-control-sm);
+  height: var(--size-control-sm);
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.ctab__close:hover {
+  background: var(--color-surface-active);
+  color: var(--color-text);
+}
+
+.ctab__close > svg {
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-out);
+}
+
+.ctab--file:hover .ctab__close > svg,
+.ctab--file[aria-selected='true'] .ctab__close > svg,
+.ctab__close:focus-visible > svg {
+  opacity: 1;
+}
+
+/* 未保存の印。× の場所に点を出し、ホバーで × に戻す（Orca と同じ） */
+.ctab__dirty {
+  position: absolute;
+  width: var(--space-4);
+  height: var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--color-text-muted);
+  opacity: 0;
+}
+
+.ctab--file.is-dirty .ctab__dirty {
+  opacity: 1;
+}
+
+.ctab--file.is-dirty .ctab__close > svg {
+  opacity: 0;
+}
+
+.ctab--file.is-dirty .ctab__close:hover .ctab__dirty,
+.ctab--file.is-dirty .ctab__close:focus-visible .ctab__dirty {
+  opacity: 0;
+}
+
+.ctab--file.is-dirty .ctab__close:hover > svg,
+.ctab--file.is-dirty .ctab__close:focus-visible > svg {
+  opacity: 1;
+}
+
+/* ── エディタ ──────────────────────────────────────── */
+
+/* ファイルのタブではURLツールバーが無いので2行になる（app.css の .pane と同じ考え方） */
+.pane:has(> .editor-area) {
+  grid-template-rows: var(--size-tabbar) minmax(0, 1fr);
+}
+
+.editor-area {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  background: var(--color-bg-panel);
+}
+
+.editor-head {
+  display: flex;
+  min-width: 0;
+  height: var(--size-toolbar);
+  box-sizing: border-box;
+  align-items: center;
+  padding: 0 var(--space-4) 0 var(--space-5);
+  background: var(--color-bg-chrome);
+  box-shadow: inset 0 calc(-1 * var(--size-border)) 0 var(--color-border);
+  gap: var(--space-3);
+}
+
+.editor-head__path {
+  display: flex;
+  overflow: hidden;
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.editor-head__dir::after {
+  padding: 0 var(--space-2);
+  color: var(--color-text-faint);
+  content: '/';
+}
+
+.editor-head__name {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.editor-head__dirty {
+  flex: none;
+  color: var(--color-warning);
+  font-size: var(--font-size-xs);
+}
+
+.editor-head__spacer {
+  flex: 1;
+}
+
+.editor-banner {
+  display: flex;
+  align-items: center;
+  padding: var(--space-3) var(--space-5);
+  border-bottom: var(--size-border) solid var(--color-warning-border);
+  background: var(--color-warning-quiet);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  gap: var(--space-4);
+}
+
+.editor-banner > svg {
+  flex: none;
+  color: var(--color-warning);
+}
+
+.editor-body {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor-body > section,
+.editor-body > div {
+  height: 100%;
+}
+
+.editor-body__center {
+  display: grid;
+  height: 100%;
+  place-items: center;
+}
+
+/* ── 右のファイルツリー ─────────────────────────────── */
+
+.explorer {
+  display: grid;
+  width: var(--size-sidebar);
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  border-left: var(--size-border) solid var(--color-border);
+  background: var(--color-bg-sidebar);
+  grid-template-rows: var(--size-tabbar) auto minmax(0, 1fr);
+}
+
+.explorer__head {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3) 0 var(--space-5);
+  box-shadow: inset 0 calc(-1 * var(--size-border)) 0 var(--color-border);
+  gap: var(--space-1);
+}
+
+.explorer__title {
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.explorer__query {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--size-border) solid var(--color-border);
+  gap: var(--space-2);
+}
+
+.explorer__search {
+  display: flex;
+  height: var(--size-control);
+  box-sizing: border-box;
+  align-items: center;
+  padding: 0 var(--space-4);
+  border: var(--size-border) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  gap: var(--space-3);
+}
+
+.explorer__search:focus-within {
+  border-color: var(--color-border-focus);
+}
+
+.explorer__search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  outline: none;
+}
+
+
+
+
+
+.explorer__body {
+  overflow: auto;
+  min-height: 0;
+  padding: var(--space-2) 0;
+}
+
+.explorer__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.explorer__row {
+  display: flex;
+  width: 100%;
+  height: var(--size-row);
+  box-sizing: border-box;
+  align-items: center;
+  padding: 0 var(--space-4) 0 calc(var(--space-4) + var(--depth, 0) * var(--space-5));
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  gap: var(--space-2);
+  text-align: left;
+}
+
+.explorer__row:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.explorer__row.is-active {
+  background: var(--color-surface-selected);
+  color: var(--color-text);
+  box-shadow: inset var(--space-1) 0 0 var(--color-accent);
+}
+
+.explorer__row.is-heavy {
+  color: var(--color-text-faint);
+}
+
+.explorer__row > svg {
+  flex: none;
+}
+
+.explorer__chevron {
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+
+.explorer__chevron.is-open {
+  transform: rotate(90deg);
+}
+
+.explorer__chevron-space {
+  width: var(--size-icon-sm);
+  flex: none;
+}
+
+.explorer__name {
+  overflow: hidden;
+  min-width: 0;
+  flex: 0 1 auto;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorer__dir {
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorer__badge {
+  margin-left: auto;
+  color: var(--color-warning);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-bold);
+}
+
+
+
+
+
+.explorer__note {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ── ⌘P クイックオープン ───────────────────────────── */
+
+.quick-open-modal[open] {
+  display: block;
+  padding: 0;
+}
+
+.quick-open-shade {
+  display: flex;
+  height: 100%;
+  box-sizing: border-box;
+  justify-content: center;
+  padding: 12vh var(--space-7) var(--space-7);
+}
+
+.quick-open {
+  display: flex;
+  overflow: hidden;
+  width: min(100%, var(--size-settings-panel));
+  max-height: 60vh;
+  flex-direction: column;
+  align-self: flex-start;
+  border: var(--size-border) solid var(--color-border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+}
+
+.quick-open__input {
+  display: flex;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: var(--size-border) solid var(--color-border);
+  color: var(--color-text-muted);
+  gap: var(--space-4);
+}
+
+.quick-open__input input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-md);
+  outline: none;
+}
+
+.quick-open__list {
+  overflow: auto;
+  margin: 0;
+  padding: var(--space-2) 0;
+  list-style: none;
+}
+
+.quick-open__item {
+  display: flex;
+  height: var(--size-row);
+  align-items: center;
+  padding: 0 var(--space-5);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  gap: var(--space-4);
+}
+
+.quick-open__item[aria-selected='true'] {
+  background: var(--color-surface-active);
+}
+
+.quick-open__name {
+  flex: none;
+  color: var(--color-text);
+}
+
+.quick-open__dir {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-open__note {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+}
+
+.quick-open__note--foot {
+  padding: var(--space-3) var(--space-5);
+  border-top: var(--size-border) solid var(--color-border);
+  font-size: var(--font-size-xs);
+}
+
+/* ── 閉じるときの確認 ──────────────────────────────── */
+
+.unsaved-dialog__body {
+  margin: 0 0 var(--space-6);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+}
+
+.unsaved-dialog__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ctabs__end {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 0 var(--space-3);
+}
+
+/* プレビューを横に並べる（左に Monaco、右に ade-preview:// の iframe） */
+.editor-body--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.editor-preview {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border: 0;
+  border-left: var(--size-border) solid var(--color-border);
+  background: var(--color-bg-panel);
+}

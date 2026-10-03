@@ -1,0 +1,257 @@
+/*
+ * 部品見本の画面（開発時のみ）。
+ * 見本そのものの枠組みのスタイル。部品の見た目は ui.css にあり、ここでは上書きしない。
+ */
+
+.gallery {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: var(--size-topbar) minmax(0, 1fr);
+  background: var(--color-bg-app);
+}
+
+.gallery__bar {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-5) 0 var(--titlebar-inset);
+  background: var(--color-bg-chrome);
+  box-shadow: inset 0 -1px 0 var(--color-border);
+  gap: var(--space-5);
+  -webkit-app-region: drag;
+}
+
+.gallery__app {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+}
+
+.gallery__note {
+  overflow: hidden;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gallery__bar-spacer {
+  flex: 1;
+}
+
+.gallery__scroll {
+  overflow-y: auto;
+  padding: var(--space-7) var(--space-8) var(--space-9);
+}
+
+/* ── 節 ───────────────────────────────────────────────── */
+
+.gallery__section {
+  max-width: 1100px;
+  margin: 0 auto var(--space-9);
+}
+
+.gallery__section-head {
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gallery__section-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+/* 見た目より先に「使いどころ」を読ませる */
+.gallery__section-rule {
+  max-width: 78ch;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+}
+
+.gallery__section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* ── 見本の枠 ─────────────────────────────────────────── */
+
+.gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--space-5);
+}
+
+.specimen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.specimen__stage {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-panel);
+}
+
+.specimen__stage > * {
+  max-width: 100%;
+}
+
+.specimen__label {
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+}
+
+.gallery__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.gallery__stack {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.gallery__hint {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+}
+
+/* ── 面の見本 ─────────────────────────────────────────── */
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-4);
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  gap: var(--space-2);
+}
+
+.swatch__chip {
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.swatch__label {
+  font-size: var(--font-size-sm);
+}
+
+.swatch__token {
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+/* ブランドの線そのものの見本 */
+.gallery__wire {
+  display: block;
+  width: 100%;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+}
+
+.gallery__wire--record {
+  background: var(--color-record);
+}
+
+/* ── タブの見本 ───────────────────────────────────────── */
+
+.gallery__tabstrip {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.gallery__tabstrip .terminal-tabs {
+  height: var(--size-tabbar);
+}
+
+/* ── ツールバーの見本（横幅いっぱいで確認する）─────────── */
+
+.gallery__bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.gallery__bar-specimen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.gallery__bar-specimen .feedback-toolbar {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  /* 見本では信号機ボタンの余白を取らない（枠の中に置いているため） */
+  padding-left: var(--space-5);
+}
+
+.gallery__agent {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  gap: var(--space-3);
+}
+
+/* ── 一覧の見本 ───────────────────────────────────────── */
+
+.gallery__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* 指摘のサムネイル（画像が入る場所）*/
+.gallery__thumb {
+  display: block;
+  width: 56px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(160deg, var(--color-surface-hover), var(--color-bg-elevated));
+}
+
+/* ── 空状態の見本 ─────────────────────────────────────── */
+
+.gallery__empties {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-5);
+}
+
+.gallery__empty-frame {
+  min-height: 300px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(90% 70% at 50% 42%, rgb(125 108 255 / 7%), transparent 70%),
+    var(--color-bg-app);
+}

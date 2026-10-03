@@ -1,0 +1,152 @@
+/**
+ * ③ 整理（LLM）への入力の作り方。
+ * 渡すのはテキストのみ（文字起こし・操作ログ・下書き・静止画の時刻一覧）。
+ * 動画・音声・画像は渡さない（NF-2）。
+ */
+import { redactUrl, redactText, redactElementText } from '../redact'
+import type { OrganizeInput } from '../types';
+import { getLocale, type SupportedLocale } from '@shared/i18n'
+
+/** LLM に渡す圧縮した入力。キーを短くしてトークンを節約する */
+export interface PromptPayload {
+  duration_ms: number
+  two_speakers: boolean
+  transcript: Array<{ t: number; t1: number; sp: string; text: string }>
+  screen: Array<{ t: number; url: string; title: string; w?: number }>
+  clicks: Array<{ t: number; text?: string; selector: string }>
+  annotations: Array<{ id: string; type: string; t: number; t_end: number; el?: string; body?: string }>
+  frame_times: number[]
+  draft: Array<{ id: string; t: number; t_end: number; quote_ts: number[]; annotation_ids: string[] }>
+}
+
+export function buildPayload(input: OrganizeInput): PromptPayload {
+  return {
+    duration_ms: input.meta.durationMs,
+    two_speakers: input.meta.twoSpeakers,
+    transcript: input.transcript.map((s) => ({ t: s.t0, t1: s.t1, sp: s.speaker, text: s.text })),
+    screen: input.events
+      .filter((e) => e.type === 'nav')
+      .map((e) => {
+        const n = e as Extract<typeof e, { type: 'nav' }>
+        return { t: n.t, url: redactUrl(n.url), title: redactText(n.title), ...(n.viewport ? { w: n.viewport } : {}) }
+      }),
+    clicks: input.events
+      .filter((e) => e.type === 'click')
+      .map((e) => {
+        const c = e as Extract<typeof e, { type: 'click' }>
+        return { t: c.t, ...(redactElementText(c.el?.text, c.el) ? { text: redactElementText(c.el?.text, c.el) } : {}), selector: c.el?.selector ?? '' }
+      }),
+    annotations: input.events
+      .filter((e) => e.type === 'pen' || e.type === 'text')
+      .map((e) => {
+        if (e.type === 'pen') {
+          return { id: e.id, type: 'pen', t: e.t, t_end: e.t_end, ...(redactElementText(e.el?.text, e.el) ? { el: redactElementText(e.el?.text, e.el) } : {}) }
+        }
+        const x = e as Extract<typeof e, { type: 'text' }>
+        return {
+          id: x.id,
+          type: 'text',
+          t: x.t,
+          t_end: x.t,
+          body: x.body,
+          ...(redactElementText(x.el?.text, x.el) ? { el: redactElementText(x.el?.text, x.el) } : {}),
+        }
+      }),
+    frame_times: [...input.frameTimes].sort((a, b) => a - b),
+    draft: input.draft.map((d) => ({
+      id: d.id,
+      t: d.t,
+      t_end: d.tEnd,
+      quote_ts: d.segments.map((s) => s.t0),
+      annotation_ids: d.annotationIds,
+    })),
+  }
+}
+
+/**
+ * 指示文（システム側に置く部分）。設計5章③の要点をそのまま条文にしている。
+ * 変更したら FINDINGS.md の「最終プロンプト」も合わせて更新する。
+ * 画面の言語ごとに持つ（title / request はその言語で書かせる）。文字起こしの言語とは別の軸。
+ * 辞書（src/shared/i18n）に入れないのは長い条文だからで、無い言語は英語を使う。
+ */
+const organizeInstructionsJa = `あなたはUIレビューの録画から、コーディングAgentが実行できる指摘一覧を作る担当です。
+入力は録画の文字起こし（話者・時刻つき）、画面操作のログ、ルールによる下書き、静止画の時刻一覧です。
+時刻はすべて録画開始からのミリ秒です。
+
+## やること
+
+1. **誤変換の補正**: 音声認識の誤りを、screen の title / url、clicks の text、annotations の el / body、および文脈から補正する。補正は title と request の中でだけ行う。意味が通らない語があれば、同じ読みの別の語を疑う（例: 「ランの枠」→「欄の枠」、「バジ」→「バッジ」、「規定」→「既定」）。
+2. **指摘でない発話の除外**: つなぎ言葉（「えーっと」「次は」）、独り言、操作の実況（「スクロールします」）、挨拶、雑談は指摘にしない。除外したものは dropped にその発話の t と理由を入れる。
+3. **分割と結合**: 意味のまとまりで指摘を分ける。1つの話題が複数の発話にまたがるなら1件に結合する。**1つの発話に2つの別の指摘が入っていれば2件に分け、両方の指摘の quote_ts に同じ t を入れてよい。** 下書き（draft）は発話の間隔だけで切った目安なので、従う義務はない。
+4. **見出しと要望**: 各指摘に title（20文字程度）と request（何をどうして欲しいか）を書く。
+5. **要確認（status）**: 「この指摘だけを読んだコーディングAgentが、今すぐ修正に着手できるか」で決める。**勝手に結論を作らない。**
+   - decided: 何をどう直すかが具体的に決まっている。必要な文言・素材を後で受け取る約束がある場合も decided（やることは決まっているため）。
+   - needs_check: どう直すか決まっていない／まず調査や社内確認が必要／「保留」「このままにする」「次回決める」「今回はやらない」で終わった話題。
+6. **画像の時刻**: frame_times にある値の中から、その指摘の内容が画面に写っている時刻を1〜3個選んで frame_times に入れる。ペン・テキストがある指摘では、その書き込みが写る時刻（annotations の t_end 以上で最も近い値）を選ぶ。**frame_times に無い値は絶対に使わない。**
+7. **annotation_ids**: その指摘に関係するペン・テキストのIDを入れる。関係が無ければ空配列。入力の annotations に無いIDは使わない。
+
+## 守ること
+
+- **発話の意味を変えない。言っていない要望を足さない。** 発話が「色が薄い」だけなら、request は色を濃くすることだけ。色のコード、ピクセル値、他の要素への波及、実装方法を勝手に加えない。
+- **quote_ts には transcript の t の数値だけを入れる。発話の本文は書かない**（本文は呼び出し側が transcript から引くので、書く必要がない）。
+- two_speakers が true のときは、やり取りを話題ごとにまとめ、関係する両者の発話の t を quote_ts に入れる。
+- 指摘は時刻の順に並べる。
+- **指摘になりうる発話を落とさない。** transcript の各区間は、どれかの指摘の quote_ts か dropped のどちらかに入るのが基本。迷ったら needs_check の指摘として残す（除外より残す方を選ぶ）。
+- 画面に置かれたテキスト（annotations の type=text の body）は、レビュアーが正確に伝えたい文言なので必ず指摘に含める。
+
+出力はJSONのみ。説明文やコードフェンスを付けない。`;
+
+const organizeInstructionsEn = `You turn a recorded UI review into a list of findings a coding agent can act on.
+The input is the recording's transcript (with speakers and times), a log of screen operations, a rule-based draft, and a list of still-frame times.
+All times are milliseconds from the start of the recording.
+
+## What to do
+
+1. **Fix recognition errors**: Correct speech-recognition mistakes using screen title / url, clicks text, annotations el / body, and context. Make corrections only inside title and request. If a word makes no sense, suspect a different word that sounds the same.
+2. **Drop non-findings**: Fillers ("um", "next"), talking to oneself, narrating actions ("scrolling down"), greetings and small talk are not findings. Put each dropped utterance's t and the reason in dropped.
+3. **Split and merge**: Group findings by meaning. If one topic spans several utterances, merge them into one finding. **If one utterance contains two separate findings, split it into two; both findings may list the same t in quote_ts.** The draft is only a guide cut by pauses in speech; you do not have to follow it.
+4. **Heading and request**: For each finding write a title (about 40 characters) and a request (what should change, and how). Write title and request in English.
+5. **Needs check (status)**: Decide by asking "Could a coding agent that reads only this finding start fixing it right now?" **Do not invent conclusions.**
+   - decided: What to fix and how is concrete. Also decided when the needed copy or assets are promised later (the work itself is settled).
+   - needs_check: How to fix is not decided / investigation or internal confirmation comes first / the topic ended with "on hold", "leave it as is", "decide next time" or "not this time".
+6. **Image times**: From the values in frame_times, pick 1–3 times where the finding is visible on screen and put them in frame_times. For findings with a pen mark or text, pick the time where the mark is visible (the closest value at or after the annotation's t_end). **Never use a value that is not in frame_times.**
+7. **annotation_ids**: List the IDs of pen marks and text related to the finding. Use an empty array if none. Do not use IDs that are not in the input annotations.
+
+## Rules
+
+- **Do not change what was said. Do not add requests that were not made.** If the speaker only said "the color is too light", the request is only to make the color darker. Do not add color codes, pixel values, effects on other elements, or implementation details.
+- **Put only the numeric t values from transcript in quote_ts. Do not write the utterance text** (the caller looks it up from transcript).
+- When two_speakers is true, group the exchange by topic and put the t of both speakers' related utterances in quote_ts.
+- Order findings by time.
+- **Do not lose utterances that could be findings.** Each transcript segment should normally appear either in some finding's quote_ts or in dropped. When unsure, keep it as a needs_check finding (prefer keeping over dropping).
+- Text placed on screen (body of annotations with type=text) is wording the reviewer wants to convey exactly, so always include it in a finding.
+
+Output JSON only. No explanations or code fences.`
+
+const ORGANIZE_INSTRUCTIONS: Partial<Record<SupportedLocale, { instructions: string; inputHeading: string }>> = {
+  en: { instructions: organizeInstructionsEn, inputHeading: '## Input' },
+  ja: { instructions: organizeInstructionsJa, inputHeading: '## 入力' }
+}
+
+function instructionsFor(locale: SupportedLocale): { instructions: string; inputHeading: string } {
+  return ORGANIZE_INSTRUCTIONS[locale] ?? ORGANIZE_INSTRUCTIONS.en!
+}
+
+/** 指示文だけ（FINDINGS.md への転記や確認用） */
+export function organizeInstructions(locale: SupportedLocale = getLocale()): string {
+  return instructionsFor(locale).instructions
+}
+
+/** 実際に CLI へ渡すプロンプト全文。言語は画面の言語（省略時） */
+export function buildPrompt(input: OrganizeInput, locale: SupportedLocale = getLocale()): string {
+  const payload = buildPayload(input)
+  const { instructions, inputHeading } = instructionsFor(locale)
+  return `${instructions}
+
+${inputHeading}
+
+\`\`\`json
+${JSON.stringify(payload)}
+\`\`\`
+`
+}

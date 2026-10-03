@@ -1,0 +1,1138 @@
+/*
+ * 共通部品のスタイル（src/renderer/ui/* に対応）。
+ * 値は必ず tokens.css の var(--…) を使い、ここに生の色・サイズを書かない。
+ *
+ * 見た目の決まり（Orca に合わせる）:
+ *   面   … 無彩色のグレーと 1px の境界線だけ。グラデーション・光彩は使わない
+ *   塗る … 主要アクション（primary ボタン）だけ。ほぼ白（ライトではほぼ黒）の単色
+ *   色   … アクセントの青は選択・進行・リンクだけ。赤は録画だけ
+ */
+
+/* ── アイコン ─────────────────────────────────────────── */
+
+/*
+ * lucide の線を細くそろえる（既定の 2 は太く、玩具っぽく見える）。
+ * CSS は SVG の属性より強いので、各所の strokeWidth 指定もここで上書きされる。
+ * Orca由来: Orca は lucide を 14〜16px・1.5〜1.75 で使っている（MIT）
+ */
+.lucide {
+  stroke-width: var(--icon-stroke);
+}
+
+/* ── ボタン ───────────────────────────────────────────── */
+
+.btn {
+  position: relative;
+  display: inline-flex;
+  height: var(--size-control);
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  gap: var(--space-3);
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out),
+    transform var(--motion-instant) var(--ease-out);
+  white-space: nowrap;
+  -webkit-app-region: no-drag;
+}
+
+.btn > svg {
+  flex: none;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+/* 押した手応え。移動ではなく縮みにして、隣の部品を動かさない */
+.btn:active:not(:disabled) {
+  background: var(--color-surface-active);
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  color: var(--color-text-faint);
+  cursor: default;
+  opacity: 0.55;
+}
+
+.btn.is-busy {
+  cursor: progress;
+}
+
+/* ── 主要アクション。塗るのはこのボタンだけ（Orca の primary と同じ地と文字）── */
+
+.btn--primary {
+  border-color: transparent;
+  background: var(--color-primary);
+  color: var(--color-primary-fg);
+}
+
+.btn--primary:hover:not(:disabled) {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--color-primary) 88%, var(--color-bg-app));
+}
+
+.btn--primary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 80%, var(--color-bg-app));
+}
+
+.btn--primary:disabled {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-faint);
+}
+
+/* ── 控えめ ───────────────────────────────────────────── */
+
+.btn--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-regular);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* 選択中の控えめボタン（トグル）。色は付けず、灰色の面だけ敷く（Orca と同じ）*/
+.btn--ghost[aria-pressed='true'] {
+  background: var(--color-surface-active);
+  color: var(--color-text);
+}
+
+/* ── 危険 ─────────────────────────────────────────────── */
+
+.btn--danger {
+  border-color: var(--color-danger);
+  background: transparent;
+  color: var(--color-danger);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-text-inverse);
+}
+
+.btn--danger:disabled {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-faint);
+}
+
+/* ── 録画。ブランドとは別系統（REC-5 / NF-11）─────────── */
+
+.btn--record {
+  border-color: var(--color-record);
+  background: transparent;
+  color: var(--color-record);
+  font-weight: var(--font-weight-bold);
+}
+
+.btn--record:hover:not(:disabled) {
+  background: var(--color-record);
+  border-color: var(--color-record);
+  color: var(--color-on-accent);
+}
+
+.btn--record:disabled {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-faint);
+}
+
+/* 録画中。塗りつぶして、ゆっくり呼吸させる */
+.btn--record[aria-pressed='true'] {
+  border-color: var(--color-record);
+  background: var(--color-record);
+  color: var(--color-on-accent);
+  animation: record-breathe var(--motion-breathe) var(--ease-in-out) infinite;
+}
+
+/* ── アイコンボタン ───────────────────────────────────── */
+
+.btn--icon {
+  width: var(--size-control);
+  padding: 0;
+}
+
+.btn--icon-sm {
+  width: var(--size-control-sm);
+  height: var(--size-control-sm);
+  border-radius: var(--radius-sm);
+}
+
+.btn__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 録画ボタン（この画面で最も目立つ主要アクション）───── */
+
+/*
+ * 押す前 … 録画の赤の単色で塗る。
+ * 録画中 … 塗りを外し、薄い赤の地に赤い縁と赤い停止記号。
+ * 同じ赤でも「塗り」と「縁」で入れ替えるので、状態を取り違えない。
+ */
+.record-btn {
+  position: relative;
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  padding: 0 var(--space-6) 0 var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--color-record);
+  color: var(--color-on-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  gap: var(--space-4);
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-normal) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    transform var(--motion-instant) var(--ease-out);
+  -webkit-app-region: no-drag;
+}
+
+.record-btn:hover:not(:disabled) {
+  background: var(--color-record-hover);
+}
+
+.record-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.record-btn:focus-visible {
+  outline-offset: 2px;
+}
+
+/* 印。押す前は白い丸（録る）、録画中は赤い四角（止める） */
+.record-btn__mark {
+  display: grid;
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-on-accent);
+  color: var(--color-record);
+  place-items: center;
+  transition:
+    border-radius var(--motion-normal) var(--ease-spring),
+    background var(--motion-fast) var(--ease-out);
+}
+
+.record-btn__label {
+  position: relative;
+}
+
+.record-btn:disabled {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border-strong);
+  box-shadow: none;
+  color: var(--color-text-faint);
+  cursor: default;
+}
+
+.record-btn:disabled .record-btn__mark {
+  background: var(--color-text-faint);
+  box-shadow: none;
+}
+
+/* 録画中（REC-5 / NF-11） */
+.record-btn.is-recording {
+  border-color: var(--color-record);
+  background: var(--color-record-quiet);
+  color: var(--color-record-hover);
+  animation: record-ring var(--motion-breathe) var(--ease-in-out) infinite;
+}
+
+.record-btn.is-recording:hover:not(:disabled) {
+  background: var(--color-danger-quiet);
+}
+
+.record-btn.is-recording .record-btn__mark {
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* フィードバックモードの細いツールバー用 */
+.record-btn--compact {
+  height: var(--size-control);
+  padding: 0 var(--space-5) 0 var(--space-4);
+  font-size: var(--font-size-xs);
+  gap: var(--space-3);
+}
+
+.record-btn--compact .record-btn__mark {
+  width: 8px;
+  height: 8px;
+}
+
+/* ── セグメント切替 ───────────────────────────────────── */
+
+/*
+ * 選択中は1枚の「つまみ」を滑らせる。項目ごとに背景を付け外しすると
+ * どちらへ動いたのか分からない。等幅の格子にして、つまみの移動量を揃える。
+ */
+.segmented {
+  position: relative;
+  display: grid;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-app);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  -webkit-app-region: no-drag;
+}
+
+.segmented__thumb {
+  position: absolute;
+  z-index: 0;
+  top: var(--space-1);
+  left: var(--space-1);
+  width: calc((100% - var(--space-1) * 2) / var(--segmented-count, 2));
+  height: calc(100% - var(--space-1) * 2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-active);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--motion-normal) var(--ease-spring);
+}
+
+.segmented__item {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  height: calc(var(--size-control) - var(--space-2) * 2);
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  gap: var(--space-3);
+  transition: color var(--motion-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+.segmented__item:hover {
+  color: var(--color-text);
+}
+
+.segmented__item[aria-pressed='true'] {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.segmented__item[aria-pressed='true'] > svg {
+  color: var(--color-text);
+}
+
+.segmented__item:focus-visible {
+  outline-offset: -1px;
+}
+
+/* ── 入力欄 ───────────────────────────────────────────── */
+
+.field {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  height: var(--size-control);
+  align-items: center;
+  padding: 0 var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  gap: var(--space-4);
+  transition:
+    border-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out);
+  -webkit-app-region: no-drag;
+}
+
+/* フォーカスは縁の色と1pxのリングだけ（Orca の focus-visible:ring と同じ考え方）*/
+.field:focus-within {
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 1px var(--color-border-focus);
+}
+
+.field.is-invalid {
+  border-color: var(--color-danger);
+}
+
+.field[data-disabled] {
+  background: var(--color-bg-panel);
+  opacity: 0.6;
+}
+
+.field__icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--color-text-faint);
+}
+
+.field:focus-within .field__icon {
+  color: var(--color-text-muted);
+}
+
+.field__input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+}
+
+.field__input--mono {
+  font-family: var(--font-mono);
+}
+
+.field__input::placeholder {
+  color: var(--color-text-faint);
+}
+
+.field__input:focus {
+  outline: none;
+}
+
+.field__trailing {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+  gap: var(--space-3);
+  white-space: nowrap;
+}
+
+/* ── バッジ ───────────────────────────────────────────── */
+
+.badge {
+  display: inline-flex;
+  height: 18px;
+  align-items: center;
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  gap: var(--space-2);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.badge--neutral {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-muted);
+}
+
+.badge--brand {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-quiet);
+  color: var(--color-accent);
+}
+
+.badge--success {
+  border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
+  color: var(--color-success);
+}
+
+.badge--warning {
+  border-color: var(--color-warning-border);
+  color: var(--color-warning);
+}
+
+.badge--danger {
+  border-color: color-mix(in srgb, var(--color-danger) 30%, transparent);
+  background: var(--color-danger-quiet);
+  color: var(--color-danger);
+}
+
+.badge--record {
+  border-color: var(--color-record);
+  background: var(--color-record-quiet);
+  color: var(--color-record);
+}
+
+.count-badge {
+  display: inline-flex;
+  min-width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+}
+
+.count-badge--brand {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.count-badge--record {
+  background: var(--color-record);
+  color: var(--color-on-accent);
+}
+
+.count-badge--neutral {
+  background: var(--color-surface-active);
+  color: var(--color-text);
+}
+
+.count-badge--success {
+  background: var(--color-success);
+  color: var(--color-text-inverse);
+}
+
+.count-badge--warning {
+  background: var(--color-warning);
+  color: var(--color-text-inverse);
+}
+
+.count-badge--danger {
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
+}
+
+/* ── ツールチップ ─────────────────────────────────────── */
+
+.tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: var(--z-tooltip);
+  display: flex;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  gap: var(--space-4);
+  left: 50%;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.tooltip--bottom {
+  top: calc(100% + var(--space-3));
+  transform: translate(-50%, -4px);
+  transition:
+    opacity var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.tooltip--top {
+  bottom: calc(100% + var(--space-3));
+  transform: translate(-50%, 4px);
+  transition:
+    opacity var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.tooltip.is-open {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.tooltip__key {
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+/* ── 一覧の行 ─────────────────────────────────────────── */
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-md);
+  gap: var(--space-5);
+  transition: background var(--motion-fast) var(--ease-out);
+}
+
+.row.is-interactive {
+  cursor: pointer;
+}
+
+.row.is-interactive:hover {
+  background: var(--color-surface-hover);
+}
+
+/* 選択中は左端に細い線を出す */
+.row::before {
+  position: absolute;
+  top: var(--space-4);
+  bottom: var(--space-4);
+  left: 0;
+  width: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--color-text);
+  content: '';
+  opacity: 0;
+  transform: scaleY(0.3);
+  transition:
+    opacity var(--motion-fast) var(--ease-out),
+    transform var(--motion-normal) var(--ease-spring);
+}
+
+.row.is-selected::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.row.is-selected {
+  background: var(--color-surface-selected);
+}
+
+.row__leading {
+  display: flex;
+  overflow: hidden;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+}
+
+.row__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.row__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.row__title {
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row__meta {
+  flex: none;
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.row__description {
+  overflow: hidden;
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  display: -webkit-box;
+  font-size: var(--font-size-sm);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.row__trailing {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* 現れる動き。Stagger と組み合わせて順番に出す */
+.row--appear,
+.stagger__item {
+  animation: row-appear var(--motion-normal) var(--ease-out) backwards;
+}
+
+/* ── カード ───────────────────────────────────────────── */
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-panel);
+}
+
+.card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-5);
+}
+
+.card__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+}
+
+.card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.card__body {
+  padding: var(--space-6);
+}
+
+/* ── 処理中 ───────────────────────────────────────────── */
+
+.spinner {
+  display: inline-block;
+  flex: none;
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  border-top-color: var(--color-text-muted);
+  animation: spin 620ms linear infinite;
+}
+
+.progress {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-hover);
+}
+
+.progress__bar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent);
+  transform-origin: left center;
+  transition: transform var(--motion-normal) var(--ease-out);
+}
+
+/* 終わりが読めない処理。線が一方向に流れ続ける */
+.progress--indeterminate .progress__bar {
+  width: 40%;
+  animation: progress-slide 1200ms var(--ease-in-out) infinite;
+  transition: none;
+}
+
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-hover);
+  animation: skeleton-pulse 1400ms var(--ease-in-out) infinite;
+}
+
+/* 録画中の点。ゆっくりした呼吸で、画面共有でも気づける */
+.record-dot {
+  display: inline-block;
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-record);
+  opacity: 0.3;
+}
+
+.record-dot--active {
+  animation: record-breathe var(--motion-breathe) var(--ease-in-out) infinite;
+  opacity: 1;
+}
+
+/* ── トースト ─────────────────────────────────────────── */
+
+/*
+ * 内蔵ブラウザ（WebContentsView）はDOMの上に重なるので、
+ * ビューの領域ではなくツールバー寄りの右上に出す。
+ */
+.toast-host {
+  position: fixed;
+  z-index: var(--z-toast);
+  display: flex;
+  width: min(380px, calc(100vw - var(--space-7)));
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-4);
+  pointer-events: none;
+  right: var(--space-6);
+  top: calc(var(--size-titlebar) + var(--size-tabbar) + var(--space-4));
+  /* popover の既定（中央寄せ・枠・背景）を打ち消す */
+  left: auto;
+  bottom: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.toast {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-lg);
+  gap: var(--space-4);
+  pointer-events: auto;
+  animation: toast-in var(--motion-normal) var(--ease-spring) backwards;
+}
+
+/* 左端の色の帯で、読まずに種類が分かる */
+.toast::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--toast-tone, var(--color-accent));
+  content: '';
+}
+
+.toast--info {
+  --toast-tone: var(--color-accent);
+}
+
+.toast--success {
+  --toast-tone: var(--color-success);
+}
+
+.toast--warning {
+  --toast-tone: var(--color-warning);
+}
+
+.toast--danger {
+  --toast-tone: var(--color-danger);
+}
+
+.toast__icon {
+  display: inline-flex;
+  flex: none;
+  padding-top: 1px;
+}
+
+.toast--info .toast__icon {
+  color: var(--color-accent);
+}
+
+.toast--success .toast__icon {
+  color: var(--color-success);
+}
+
+.toast--warning .toast__icon {
+  color: var(--color-warning);
+}
+
+.toast--danger .toast__icon {
+  color: var(--color-danger);
+}
+
+.toast__body {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.toast__message {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.toast__detail {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+/* ── 空状態 ───────────────────────────────────────────── */
+
+.empty {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  place-items: center;
+  padding: var(--space-7);
+  text-align: center;
+}
+
+/*
+ * 文章は 44ch で折り返すが、入れ物はもう少し広くする。
+ * 候補のチップ（localhost:3000 など）を1行に収めるため。
+ */
+.empty__inner {
+  display: flex;
+  max-width: 480px;
+  flex-direction: column;
+  align-items: center;
+  animation: empty-in var(--motion-slow) var(--ease-out) backwards;
+  gap: var(--space-4);
+}
+
+.empty__title,
+.empty__description {
+  max-width: 44ch;
+  text-wrap: balance;
+}
+
+.empty__art {
+  display: grid;
+  margin-bottom: var(--space-3);
+  place-items: center;
+  color: var(--color-text-faint);
+}
+
+/* 内蔵ブラウザの枠いっぱいに出す空状態。文字は少なく */
+.empty--hero .empty__inner {
+  max-width: 520px;
+}
+
+.empty__title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+}
+
+.empty--sm .empty__title {
+  font-size: var(--font-size-md);
+}
+
+.empty__description {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.empty__actions {
+  display: flex;
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.empty__hints {
+  display: flex;
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+  gap: var(--space-3) var(--space-6);
+}
+
+.empty__hints .kbd {
+  margin-right: var(--space-2);
+}
+
+/* 描画に失敗した領域（ErrorBoundary）。元の領域の箱の中いっぱいに、空状態と同じ形で出す */
+.error-boundary {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-bg-app);
+}
+
+.error-boundary__detail {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  margin-top: var(--space-3);
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── ロゴ ─────────────────────────────────────────────── */
+
+.logo {
+  display: block;
+  flex: none;
+}
+
+/* ── アイコンの印（IconTile）─────────────────────────── */
+
+/* 色付きの札はやめた。枠線だけの小さな四角に、単色のアイコンを置く */
+.icon-tile {
+  display: inline-grid;
+  flex: none;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  place-items: center;
+}
+
+.icon-tile--sm {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+}
+
+.icon-tile--md {
+  width: 28px;
+  height: 28px;
+}
+
+.icon-tile--lg {
+  width: 36px;
+  height: 36px;
+}
+
+/* ── キー表記 ─────────────────────────────────────────── */
+
+.kbd {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-app);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  line-height: 1;
+}
+
+/* ── キーフレーム ─────────────────────────────────────── */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes progress-slide {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes record-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.62;
+  }
+}
+
+@keyframes row-appear {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes empty-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes record-ring {
+  0%,
+  100% {
+    border-color: var(--color-record);
+  }
+
+  60% {
+    border-color: var(--color-record-line);
+  }
+}
+
+/* 視差効果を減らす設定では、録画中の縁の呼吸も止める（色の変化は残す） */
+@media (prefers-reduced-motion: reduce) {
+  .record-btn.is-recording {
+    animation: none !important;
+  }
+}

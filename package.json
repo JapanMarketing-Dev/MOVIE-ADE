@@ -1,0 +1,74 @@
+{
+  "name": "ade-movie",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "画面を操作しながら喋って囲むだけでUIフィードバックをAgentへ渡すデスクトップADE",
+  "repository": "github:JapanMarketing-Dev/MOVIE-ADE",
+  "main": "out/main/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.preload.json --noEmit && tsc -p tsconfig.web.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "fixture:serve": "node test/fixtures/serve.mjs",
+    "postinstall": "node scripts/ensure-electron-binary.mjs && node scripts/install-app-deps.mjs",
+    "rebuild:native": "node scripts/install-app-deps.mjs",
+    "test:unit": "vitest run",
+    "build:release": "pnpm build && node scripts/sentry-sourcemaps.mjs",
+    "build:mac:dev": "pnpm build && electron-builder --config electron-builder.dev.cjs --mac --dir --arm64",
+    "build:win:dev": "pnpm build && electron-builder --config electron-builder.dev.cjs --win --dir --x64",
+    "build:linux:dev": "pnpm build && electron-builder --config electron-builder.dev.cjs --linux --dir --x64",
+    "dist:mac": "pnpm build:release && electron-builder --config electron-builder.config.cjs --mac dmg --arm64 --x64",
+    "dist:win": "pnpm build:release && electron-builder --config electron-builder.config.cjs --win nsis --x64 && electron-builder --config electron-builder.config.cjs --win nsis --arm64",
+    "dist:linux": "pnpm build:release && electron-builder --config electron-builder.config.cjs --linux AppImage deb --x64",
+    "release:build": "bash scripts/build-release.sh",
+    "release:r2": "node scripts/release-r2.mjs",
+    "lp:dev": "node tools/qa/serve-site.mjs",
+    "docs:build": "node tools/docs/build-docs.mjs",
+    "site:deploy": "npx --yes wrangler@4 pages deploy site --project-name movie-ade --branch main",
+    "site:meta": "node tools/qa/site-meta.mjs"
+  },
+  "pnpm": {
+    "//": "インストール時にビルド／ダウンロードのスクリプトを走らせる必要があるものだけを許可する",
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild",
+      "node-pty"
+    ]
+  },
+  "dependencies": {
+    "@sentry/electron": "8.0.0",
+    "ajv": "^8.20.0",
+    "node-pty": "^1.1.0"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@monaco-editor/react": "^4.7.0",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "@xterm/addon-canvas": "^0.7.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-webgl": "^0.18.0",
+    "@xterm/xterm": "^5.5.0",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "lucide-react": "^1.49.0",
+    "marked": "^18.0.14",
+    "mermaid": "^12.1.0",
+    "monaco-editor": "^0.57.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.6",
+    "vitest": "^5.0.3"
+  }
+}

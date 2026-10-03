@@ -1,0 +1,55 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+import { DOWNLOAD_BASE, SITE_URL } from '../../site/js/config.js'
+
+/** ダウンロードサイトの静的な約束ごと（絶対 URL・言語・配信設定） */
+
+const read = (p: string) => readFileSync(resolve(__dirname, '../..', p), 'utf8')
+const attr = (html: string, re: RegExp) => re.exec(html)?.[1]
+
+describe.each([
+  ['site/index.html', '/'],
+  ['site/download.html', '/download']
+])('%s', (file, path) => {
+  const html = read(file)
+
+  it('og:image・og:url・canonical は config.js の SITE_URL から作った絶対 URL（ずれたら pnpm site:meta）', () => {
+    expect(attr(html, /<meta property="og:image" content="([^"]*)"/)).toBe(`${SITE_URL}/assets/og.png`)
+    expect(attr(html, /<meta property="og:url" content="([^"]*)"/)).toBe(`${SITE_URL}${path}`)
+    expect(attr(html, /<link rel="canonical" href="([^"]*)"/)).toBe(`${SITE_URL}${path}`)
+  })
+
+  it('英語のページで、日本語の文字を含まない（コメントを除く）', () => {
+    expect(html).toContain('<html lang="en">')
+    expect(html.replace(/<!--[\s\S]*?-->/g, '')).not.toMatch(/[぀-ヿ一-鿿]/)
+  })
+
+  it('CSP に合わせ、インラインの script を持たない', () => {
+    expect(html).not.toMatch(/<script>(?!<\/script>)/)
+    expect(html).toContain('<script src="js/theme.js"></script>')
+  })
+
+  it('提供元と GitHub へのリンクがある', () => {
+    expect(html).toContain('Built by <a href="https://www.japan-marketing.co.jp/">Japan Marketing LLC</a>')
+    expect(html).toContain('href="https://github.com/JapanMarketing-Dev/MOVIE-ADE"')
+  })
+})
+
+describe('配信の設定', () => {
+  it('wrangler.jsonc は Cloudflare Pages の出力に site/ を指す', () => {
+    const json = JSON.parse(read('wrangler.jsonc').replace(/^\s*\/\/.*$/gm, ''))
+    expect(json).toMatchObject({ name: 'movie-ade', pages_build_output_dir: './site' })
+  })
+
+  it('_headers の connect-src は配布元（R2）だけを許す', () => {
+    const headers = read('site/_headers')
+    expect(headers).toContain(`connect-src 'self' ${DOWNLOAD_BASE};`)
+    expect(headers).toContain("script-src 'self';")
+  })
+
+  it('GitHub Pages 向けの名残が無い', () => {
+    expect(read('site/404.html')).not.toContain('/MOVIE-ADE/')
+    expect(() => read('site/.nojekyll')).toThrow()
+  })
+})

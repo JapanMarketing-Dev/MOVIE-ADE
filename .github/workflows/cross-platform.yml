@@ -1,0 +1,86 @@
+# 3つのOS（macOS / Windows / Linux）で、型検査・単体テスト・展開済みアプリのビルドを行う。
+#
+# 【費用】リポジトリ（JapanMarketing-Dev/MOVIE-ADE）は公開なので、標準のランナーは無料。そのため push / PR で自動で走らせる。
+#   非公開に戻すときは、実行時間（とくに macOS）が開発者側の費用になるので、on を workflow_dispatch だけにすること。
+#   macOS のランナーは重いので、macOS は1ジョブだけにしている。
+#
+# 署名・公証・公開リリースはしない。E2E は流さない（テスト方針: 単体テスト中心）。
+# Linux 版は node-pty の Linux 用バイナリが同梱されていないため、ubuntu の上でだけ作れる。
+name: Cross-platform
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cross-platform-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: mac
+            runner: macos-latest # arm64
+          - os: win
+            runner: windows-latest
+          - os: linux
+            runner: ubuntu-latest
+    env:
+      # 署名の証明書を探しに行かない（dev ビルドは署名しない）
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # renderer（Monaco を含む）のビルドは Node の既定のヒープ（メモリ 7GB 前後の環境で約 2GB）を超える
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # node-pty を Linux でソースからビルドするための道具（ubuntu-latest には大半が入っている）
+      - name: Install Linux build tools
+        if: matrix.os == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test:unit
+
+      - name: Dev build (${{ matrix.os }})
+        run: pnpm build:${{ matrix.os }}:dev --publish never
+
+      - name: Upload unpacked app
+        uses: actions/upload-artifact@v4
+        with:
+          name: ade-dev-${{ matrix.os }}-unpacked
+          path: |
+            dist/dev/*-unpacked
+            dist/dev/mac-arm64
+          if-no-files-found: error
+          retention-days: 7

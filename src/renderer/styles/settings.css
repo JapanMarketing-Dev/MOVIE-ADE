@@ -1,0 +1,347 @@
+/*
+ * 設定のページ（中央のタブ）。VS Code / Orca の設定ページにならい、
+ * 左に節の一覧、右に検索欄と全節を縦に並べる。
+ * 色・寸法は tokens.css の var(--…) だけを使う（中立なグレー・1px の線・小さな角丸）。
+ * 行や欄（st-row / st-select / st-note / st-key …）は review.css の設定の部品をそのまま使う。
+ */
+
+.st-page {
+  display: grid;
+  overflow: hidden;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 200px minmax(0, 1fr);
+  background: var(--color-bg-panel);
+}
+
+.st-page__nav {
+  display: flex;
+  overflow-y: auto;
+  flex-direction: column;
+  padding: var(--space-6) var(--space-4);
+  border-right: 1px solid var(--color-border);
+  gap: var(--space-1);
+}
+
+.st-page__title {
+  margin: 0 0 var(--space-4);
+  padding: 0 var(--space-4);
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.st-page__navitem {
+  height: 28px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-md);
+  text-align: left;
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
+}
+
+.st-page__navitem:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.st-page__navitem[aria-current='true'] {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+/* 検索で外れた節は、一覧では薄くして押せなくする（場所は動かさない） */
+.st-page__navitem:disabled {
+  color: var(--color-text-faint);
+  cursor: default;
+  opacity: 0.5;
+}
+
+.st-page__main {
+  display: grid;
+  overflow: hidden;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.st-page__search {
+  padding: var(--space-5) var(--space-7) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.st-page__search .field {
+  max-width: 640px;
+}
+
+.st-page__scroll {
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-7) var(--space-9);
+}
+
+/* 本文は読みやすい幅に収める（横に広いウィンドウでも行が伸びすぎない） */
+.st-page__scroll > * {
+  max-width: 720px;
+}
+
+.st-page__autosave {
+  margin: 0 0 var(--space-2);
+}
+
+.st-page__section {
+  padding: var(--space-6) 0;
+  border-bottom: 1px solid var(--color-border);
+  scroll-margin-top: var(--space-4);
+}
+
+.st-page__section:last-child {
+  border-bottom: 0;
+}
+
+.st-page__heading {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.st-page__body,
+.st-page__group {
+  display: grid;
+  /* 1列を親の幅に固定する。既定の auto だと、折り返さない子（コマンドの表示など）の幅まで列が広がり、右が切れる */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.st-page__section {
+  min-width: 0;
+}
+
+/* 自分で section を出す欄（アカウント・GitHub・配置）は、ページでは枠と左の字下げを外す */
+.st-page__section .st-section {
+  padding: 0;
+  border-top: 0;
+}
+
+.st-page__section .st-section__title {
+  margin-bottom: var(--space-4);
+  font-size: var(--font-size-lg);
+}
+
+.st-page__section .st-section__icon {
+  display: none;
+}
+
+.st-page__section .st-section__body {
+  padding-left: 0;
+}
+
+.st-page__empty {
+  margin: var(--space-8) 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+}
+
+.st-about__version {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+
+/* 録画中の注意は、ページの先頭で幅いっぱいに出す */
+.st-page__scroll > .st-lock {
+  margin: 0 0 var(--space-4);
+}
+
+/* 中央のペインはタブ列＋ツールバー＋本体の3行。設定のページはツールバーが無いので2行にする */
+.pane:has(> .st-page) {
+  grid-template-rows: var(--size-tabbar) minmax(0, 1fr);
+}
+
+/*
+ * 中央のペインは狭くなりうる（ターミナルを右に置いたとき）。
+ * 幅が足りないときは、VS Code と同じく節の一覧を上の横並びに畳み、行は折り返す。
+ */
+/* @container は子孫にしか効かないので、幅を測る器はページの親（中央のペイン）にする */
+.pane:has(> .st-page) {
+  container-type: inline-size;
+}
+
+.st-page__scroll {
+  overflow-x: hidden;
+}
+
+.st-page .st-row {
+  flex-wrap: wrap;
+  row-gap: var(--space-2);
+}
+
+.st-page .st-row > .st-row__label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@container (max-width: 680px) {
+  .st-page {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .st-page__nav {
+    overflow-x: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: var(--space-3) var(--space-5);
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+    scrollbar-width: none;
+  }
+
+  .st-page__title {
+    display: none;
+  }
+
+  .st-page__navitem {
+    flex: none;
+    font-size: var(--font-size-sm);
+  }
+
+  .st-page__search {
+    padding: var(--space-4) var(--space-5) var(--space-3);
+  }
+
+  .st-page__scroll {
+    padding: var(--space-3) var(--space-5) var(--space-8);
+  }
+}
+
+/* ── Agents 節（Orca の Agents 設定ページにならう）──────── */
+
+.st-page__subheading {
+  margin: var(--space-6) 0 var(--space-2);
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+}
+
+/* 起動するエージェント。選んだ順の番号を右に出す */
+.st-agent-startup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.st-agent-pick {
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  padding: 0 var(--space-4) 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+}
+
+.st-agent-pick[data-checked] {
+  border-color: var(--color-text-muted);
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.st-agent-pick > input {
+  margin: 0;
+}
+
+.st-agent-pick__order {
+  min-width: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-active);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  line-height: 16px;
+  text-align: center;
+}
+
+.st-agent-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-3);
+}
+
+.st-agent-row[data-disabled] .st-agent-row__name,
+.st-agent-row[data-disabled] .st-agent-row__details {
+  opacity: 0.55;
+}
+
+.st-agent-row__head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.st-agent-row__name {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+}
+
+.st-agent-row__namefield {
+  flex: 1;
+  min-width: 0;
+}
+
+.st-agent-row__state {
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.st-agent-row__state.is-missing {
+  color: var(--color-warning);
+}
+
+.st-agent-row__state a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.st-agent-row__details {
+  min-width: 0;
+}
+
+.st-agent-row__details > summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  gap: var(--space-3);
+}
+
+.st-agent-row__details > summary > code {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.st-agent-row__details[open] > summary {
+  margin-bottom: var(--space-3);
+}
