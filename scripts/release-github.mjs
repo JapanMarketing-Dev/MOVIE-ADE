@@ -6,9 +6,11 @@
  *   1. node scripts/release-r2.mjs stage …
  *   2. node scripts/release-github.mjs create --version <v> [--target <public main の commit>] [--dry-run]
  *        → staging の manifest から SHA256SUMS を作り、それだけを付けた GitHub Release の下書きを作る
- *   3. gh release download v<v> --repo <repo> --pattern SHA256SUMS --dir <フォルダ>
- *      node scripts/release-r2.mjs promote --version <v> --expect-sums <フォルダ>/SHA256SUMS
- *        → R2 の manifest が GitHub の SHA256SUMS と一致しなければ公開しない
+ *        SHA256SUMS には R2 とは別の鍵で署名し（scripts/release-signing.mjs。鍵は ~/.ferret-signing か RELEASE_SIGNING_KEY）、
+ *        SHA256SUMS.sig も付ける（security-3 [2]）
+ *   3. gh release download v<v> --repo <repo> --pattern 'SHA256SUMS*' --dir <フォルダ>
+ *      node scripts/release-r2.mjs promote --version <v> --expect-sums <フォルダ>/SHA256SUMS --sums-sig <フォルダ>/SHA256SUMS.sig
+ *        → 署名が合わない・R2 の manifest が GitHub の SHA256SUMS と一致しなければ公開しない
  *   4. node scripts/release-github.mjs publish --version <v> [--dry-run]   … 下書きを公開する
  *
  * すでに promote した版は create --from releases で作れる。manifest を手元のファイルから読むときは --manifest <file>。
@@ -29,6 +31,7 @@ import {
   workPath
 } from './release-r2-lib.mjs'
 import { runTool, wranglerInvocation } from './release-tools.mjs'
+import { assertSignedSums, loadSigningKey, signSshsig } from './release-signing.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const BUCKET = process.env.R2_BUCKET ?? 'movie-ade-releases'
@@ -83,11 +86,17 @@ if (args.command === 'publish') {
     const sums = formatSha256Sums(manifest.files)
     writeFileSync(sumsFile, sums, { flag: 'wx' })
     console.log(`SHA256SUMS（${manifest.files.length} 件。manifest の値と同じ）:\n${sums}`)
+    // R2 の書き込みとは別の鍵で署名する。出す前に、リポジトリの公開鍵で確かめられることを確かめる
+    const sigFile = workPath(work, 'SHA256SUMS.sig', nodePath)
+    const signature = signSshsig(Buffer.from(sums), loadSigningKey())
+    assertSignedSums(Buffer.from(sums), signature)
+    writeFileSync(sigFile, signature, { flag: 'wx' })
     gh(
       ghReleaseCreateArgs({
         version: args.version,
         repo: args.repo,
         sumsFile,
+        sigFile,
         notes: ghReleaseNotes(args.version),
         target: args.target,
         prerelease: manifest.prerelease,

@@ -96,7 +96,6 @@ export function AgentInstallTerminal({ agentId, label, command, guideUrl, onRefr
     <div className="agent-install__actions">
       {state.phase === 'idle' && <>
         <Button variant="primary" icon={<Download size={13} />} onClick={start} data-testid={`agent-install-${agentId}-run`}>{t('agentInstall.install')}</Button>
-        {guide}
       </>}
       {busy && <>
         <span className="agent-install__status" role="status"><Spinner size={12} />{t(state.phase === 'starting' ? 'agentInstall.starting' : 'agentInstall.running')}</span>

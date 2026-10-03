@@ -1,3 +1,5 @@
+import { forgeBranchUrl, type Forge } from './forge'
+
 /**
  * GitHub 連携の型（main と renderer で共有する）。
  *
@@ -30,13 +32,16 @@ export interface GitHubStatus {
   error: string | null
 }
 
-/** プロジェクトの origin から求めた GitHub のリポジトリ */
+/** プロジェクトの origin から求めた GitHub / GitLab のリポジトリ */
 export interface GitHubRepoRef {
   host: string
+  /** GitLab ではサブグループを含む（group/sub） */
   owner: string
   repo: string
   /** ブラウザで開くURL（https://github.com/owner/repo） */
   webUrl: string
+  /** 無ければ GitHub（今までの値との互換） */
+  forge?: Forge
 }
 
 export interface GitHubRepoResult {
@@ -87,7 +92,7 @@ export interface GitRepoStatus {
   hasUpstream: boolean
 }
 
-/** GitHub のブランチのページ。ブランチ名の「/」は区切りのまま残す */
+/** GitHub / GitLab のブランチのページ。ブランチ名の「/」は区切りのまま残す */
 export function branchWebUrl(repo: GitHubRepoRef, branch: string): string {
-  return `${repo.webUrl}/tree/${branch.split('/').map(encodeURIComponent).join('/')}`
+  return forgeBranchUrl(repo.webUrl, repo.forge ?? 'github', branch)
 }

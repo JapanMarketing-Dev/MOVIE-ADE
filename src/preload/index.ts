@@ -44,6 +44,7 @@ const api: AdeApi = {
   },
 
   platform: process.platform,
+  systemVersion: process.getSystemVersion(),
 
   // 見本データは ADE_DEMO=1 のときだけ。非表示実行(ADE_E2E)とは別の軸にして、
   // 「製品と同じ見た目のまま非表示で撮る」ことも出来るようにする

@@ -225,13 +225,18 @@ export interface CustomAgent extends AgentLaunchConfig {
 }
 
 export interface AgentPreferences {
-  /** 組み込みのエージェントの起動コマンド（既定は Orca と同じ。権限確認を省くフラグ付き） */
+  /** 組み込みのエージェントの起動コマンド。権限確認を省くフラグは持たない（security-3 [1]。bypassProjects で決める） */
   launch: Record<BuiltinAgent, AgentLaunchConfig>
   customAgents: CustomAgent[]
   /** メニューに出さないエージェント（Orca の disabledTuiAgents） */
   disabledAgents: TuiAgent[]
   /** プロジェクトを開いたとき自動で開くAgentタブ（順序どおり）。空なら素のシェル1つ */
   startupAgents: TuiAgent[]
+  /**
+   * 利用者が確認のうえ「権限確認を省く」を許したプロジェクトの id。登録しただけのプロジェクトは入らない。
+   * ここにあるプロジェクトだけ、Claude Code / Codex のフォルダの信頼を先に書き、手で開いた Agent に権限確認を省く引数を付ける
+   */
+  bypassProjects: string[]
 }
 
 /** 設定画面・メニューに出す1件（main が検出結果と設定を合わせて返す） */
@@ -269,6 +274,8 @@ export interface TerminalCreateOptions {
   exitWhenDone?: boolean
   /** タブ名。省略時は Agent 名やシェル名 */
   title?: string | null
+  /** プロジェクトを開いたときの自動起動（startupAgents）。権限確認を省く引数は付けない（security-3 [1]） */
+  autoStart?: boolean
 }
 
 /** 復元対象の設定（WS-1 ＋ 分割幅） */
@@ -563,6 +570,8 @@ export interface SttAvailability {
   stt: Record<SttRemoteProvider, boolean>
   /** 「指摘を整理」を API で呼ぶ提供元ごとに、呼べる状態か */
   llm: Record<LlmApiProvider, boolean>
+  /** この PC のメモリ（と GPU）から選んだ、Ollama で動かすモデルの推奨（@shared/localModels）。古い main では無い */
+  localModels?: import('./localModels').LocalModelRecommendation
 }
 
 export interface CapturePreferences { captureMic: boolean; captureSystemAudio: boolean; transcription: SttProvider; language: SttLanguageCode; micDeviceId?: string; keepDays: number; stayFeedbackOnStop: boolean

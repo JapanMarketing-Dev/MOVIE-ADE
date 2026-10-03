@@ -1,10 +1,11 @@
 import { useState, type Ref } from 'react'
-import { Ban, Check, CheckCircle2, Circle, CircleDot, Eye, MessageCircleQuestion, MessageSquare, Send, X } from 'lucide-react'
+import { Ban, Check, CheckCircle2, Circle, CircleDot, Eye, ListFilter, MessageCircleQuestion, MessageSquare, Send, X } from 'lucide-react'
 import { countProgress, lastVerdict, type FindingProgress, type ProgressEntry, type ProgressMap, type ReviewVerdict } from '@shared/findingProgress'
 import { REPLY_MAX } from '@shared/agentPrompt'
 import type { TranslationKey } from '@shared/i18n'
 import { Button, Tooltip } from '../ui'
 import { useT } from '../lib/i18n'
+import { FINDING_STATUSES, isStatusShown, onlyStatus, toggleStatus, type HiddenStatuses } from '@shared/findingStatusFilter'
 
 /**
  * Findings の進み具合（未対応・対応中・人の確認待ち・完了・Agent からの確認）。ReviewFindings から使う。
@@ -36,6 +37,38 @@ export function ProgressToggle({ n, progress, disabled, onChange }: {
       <Icon size={12} strokeWidth={2.25} aria-hidden="true" />{state}
     </button>
   </Tooltip>
+}
+
+/**
+ * 一覧の上の「進み具合で絞り込む」。チップを押すとその進み具合の表示と非表示を切り替え、
+ * 横の「だけ」でそれだけを出す。件数0の進み具合も出す（隠したまま忘れないように）。保存は呼び出し側
+ */
+export function StatusFilterBar({ counts, hidden, onChange }: {
+  counts: Record<FindingProgress, number>
+  hidden: HiddenStatuses
+  onChange: (hidden: FindingProgress[]) => void
+}) {
+  const t = useT()
+  return <div className="rv-status-filter" role="group" aria-label={t('review.statusFilter.label')} data-testid="findings-status-filter">
+    {FINDING_STATUSES.map((status) => {
+      const Icon = ICON[status]
+      const state = t(LABEL[status])
+      const shown = isStatusShown(hidden, status)
+      return <span key={status} className={`rv-status-filter__item rv-status-filter__item--${status}`}>
+        <button type="button" className="rv-status-filter__chip" aria-pressed={shown} title={t('review.statusFilter.toggle', { state })}
+          onClick={() => onChange(toggleStatus(hidden, status))} data-testid={`findings-status-filter-${status}`}>
+          <Icon size={12} strokeWidth={2.25} aria-hidden="true" /><span className="rv-status-filter__label">{state}</span><span className="rv-status-filter__count">{counts[status]}</span>
+        </button>
+        <button type="button" className="rv-status-filter__only" aria-label={t('review.statusFilter.only', { state })} title={t('review.statusFilter.only', { state })}
+          onClick={() => onChange(onlyStatus(status))} data-testid={`findings-status-only-${status}`}>
+          <ListFilter size={11} strokeWidth={2.25} aria-hidden="true" />
+        </button>
+      </span>
+    })}
+    {hidden.length > 0 && <button type="button" className="rv-status-filter__reset" onClick={() => onChange([])} data-testid="findings-status-filter-all">
+      {t('review.statusFilter.all')}
+    </button>}
+  </div>
 }
 
 /** ヘッダーの「2 / 5 done · 3 to review · 1 needs you」と細い進捗バー。Agent へ送る指摘だけを数え、done は人が OK したものだけ */

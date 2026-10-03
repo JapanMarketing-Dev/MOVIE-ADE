@@ -4,7 +4,7 @@
 #   pnpm release:build            # package.json の version で作る
 #   SKIP_LINUX=1 pnpm release:build   # Linux を飛ばす（コンテナが使えないとき）
 #
-# 続けて: pnpm release:r2 stage --preview win,linux → 確認 → pnpm release:r2 promote --version <version>
+# 続けて: pnpm release:r2 stage → 確認 → pnpm release:r2 promote --version <version>
 #
 # 手順:
 #   1. 作業ツリーを一時フォルダへ複製する（APFS の複製なので速く、場所も取らない）。
@@ -64,6 +64,9 @@ pnpm exec electron-builder --config electron-builder.config.cjs --mac dmg --arm6
 echo "== Windows（x64 / arm64）"
 pnpm exec electron-builder --config electron-builder.config.cjs --win --dir --x64
 pnpm exec electron-builder --config electron-builder.config.cjs --win --dir --arm64
+# 展開済みの中身（Ferret.exe・ffmpeg.dll・node-pty の部品が CPU ごとに正しいか）を確かめる。実機の無いところでの検査
+node scripts/check-win-unpacked.mjs dist/release/win-unpacked x64
+node scripts/check-win-unpacked.mjs dist/release/win-arm64-unpacked arm64
 rm -rf "${OUT}"
 mkdir -p "${OUT}"
 # Mac の makensis は、electron-builder のテンプレート（node_modules の下）のパスが長いと、アンインストーラを
@@ -130,4 +133,4 @@ fi
 rm -rf "${WORK}"
 echo "== できたもの（${OUT}）"
 ls -la "${OUT}"/Ferret-"${VERSION}"-*
-echo "次: pnpm release:r2 stage --preview win,linux  →  確認  →  pnpm release:r2 promote --version ${VERSION}"
+echo "次: pnpm release:r2 stage  →  確認  →  pnpm release:r2 promote --version ${VERSION}"

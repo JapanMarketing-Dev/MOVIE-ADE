@@ -13,7 +13,7 @@ import {
   formatBytes,
   formatDate,
   excerptNotes,
-} from './releases.js?v=92f7848e'
+} from './releases.js?v=cf49ede6'
 
 const $ = (sel, root = document) => root.querySelector(sel)
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)]

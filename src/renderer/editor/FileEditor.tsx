@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import Editor, { type OnMount } from '@monaco-editor/react'
-import { AlertTriangle, Columns2, Globe, Save } from 'lucide-react'
+import { AlertTriangle, Columns2, ExternalLink, FileCode, FolderOpen, Globe, Save } from 'lucide-react'
 import { previewKind, previewUrl } from '@shared/preview'
+import { isRiskyToOpenExternally, isSvgPath } from '@shared/fileViewer'
+import FileViewer from './FileViewer'
 import { monaco } from './monacoSetup'
 import { applyEditorTheme, useAppTheme } from './editorTheme'
 import { isMarkdownLanguage } from './language'
@@ -97,7 +99,7 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
   }, [file.preview])
 
   const markdown = isMarkdownLanguage(file.language)
-  const previewable = previewKind(file.path) !== null && file.status === 'ready'
+  const previewable = previewKind(file.path) !== null && file.status === 'ready' && !file.viewer
   const segments = file.path.split('/')
 
   return (
@@ -128,7 +130,24 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
             </Button>
           </>
         )}
-        {file.status === 'ready' && (
+        {file.viewer && file.status === 'ready' && (
+          <>
+            {file.viewer === 'image' && isSvgPath(file.path) && (
+              <Button variant="ghost" icon={<FileCode size={13} />} onClick={() => api.openAsText(file.id)} data-testid="viewer-open-as-text">
+                {t('viewer.openAsText')}
+              </Button>
+            )}
+            <Button variant="ghost" icon={<FolderOpen size={13} />} onClick={() => api.reveal(file.id)} data-testid="viewer-reveal">
+              {t('viewer.showInFolder')}
+            </Button>
+            {!isRiskyToOpenExternally(file.path) && (
+              <Button variant="ghost" icon={<ExternalLink size={13} />} onClick={() => api.openExternally(file.id)} data-testid="viewer-open-external">
+                {t('viewer.openExternal')}
+              </Button>
+            )}
+          </>
+        )}
+        {file.status === 'ready' && !file.viewer && (
           <Button variant="ghost" icon={<Save size={13} />} disabled={!file.dirty && !file.external} onClick={() => void api.save(file.id)} data-testid="editor-save">
             {t('common.save')}
           </Button>
@@ -160,6 +179,8 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
           <div className="editor-body__center"><Spinner size={18} /></div>
         ) : file.status === 'unavailable' ? (
           <EmptyState size="sm" title={t('editor.cannotOpen')} description={file.message ?? ''} testId="editor-unavailable" />
+        ) : file.viewer ? (
+          <FileViewer path={file.path} name={file.name} viewer={file.viewer} info={file.info} message={file.message} revision={file.revision} />
         ) : (
           <>
             <Editor

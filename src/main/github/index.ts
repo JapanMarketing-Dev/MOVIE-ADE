@@ -10,9 +10,11 @@ import type {
 } from '@shared/github'
 import type { SessionPaths } from '../sessions/paths'
 import { gh, ghError, ghErrorMessage, run } from './gh'
-import { issueFromFeedback, mapPullRequests, parseAuthStatus, parseGitRemote, pickActiveAccount } from './parse'
+import { issueFromFeedback, mapPullRequests, needsHostLookup, parseAuthStatus, parseForgeRemote, pickActiveAccount } from './parse'
+import { commentOnMergeRequest, createGitLabIssue, knownGitLabHosts, myOpenMergeRequests } from './gitlab'
 import { formatNumber, t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
+import { cliInstallCommand } from '@shared/cliTools'
 import { errorKind, reportHandled } from '@shared/report'
 
 /**
@@ -29,10 +31,10 @@ const PR_LIMIT = 30
 /** GitHub の本文の上限は 65536 文字。余裕を見て切る */
 const BODY_MAX = 60_000
 
+/** gh の入れ方。コマンドは CLI の一覧（@shared/cliTools）が正本。その OS の1行が無ければ案内の文 */
 function installHint(): string {
-  if (process.platform === 'darwin') return 'brew install gh'
-  if (process.platform === 'win32') return 'winget install --id GitHub.cli'
-  return t('github.errors.installHint')
+  const platform = process.platform === 'darwin' || process.platform === 'win32' ? process.platform : 'linux'
+  return cliInstallCommand('gh', platform) ?? t('github.errors.installHint')
 }
 
 export async function githubStatus(): Promise<GitHubStatus> {
@@ -58,8 +60,17 @@ export async function githubRepo(folderPath: string | null): Promise<GitHubRepoR
   if (result.failed) {
     return { repo: null, reason: /not a git repository/i.test(result.stderr) ? t('github.errors.notGitRepo') : t('github.errors.noOrigin') }
   }
-  const repo = parseGitRemote(result.stdout)
-  return repo ? { repo, reason: null } : { repo: null, reason: t('github.errors.originNotGitHub') }
+  const repo = await resolveRemote(result.stdout)
+  return repo ? { repo, reason: null } : { repo: null, reason: t('github.errors.originNotForge') }
+}
+
+/**
+ * origin の URL を GitHub / GitLab のリポジトリとして読む。github.com・gitlab.com などで決まらないホスト
+ * （セルフホスト）のときだけ glab に登録したホストを聞く（glab の結果は少しの間覚えている）
+ */
+export async function resolveRemote(remoteUrl: string, lookup: () => Promise<string[]> = knownGitLabHosts): Promise<GitHubRepoRef | null> {
+  const hosts = needsHostLookup(remoteUrl) ? await lookup().catch(() => []) : []
+  return parseForgeRemote(remoteUrl, hosts)
 }
 
 /** gh の --repo 指定。github.com 以外（GHES）はホスト付きで渡す */
@@ -101,7 +112,8 @@ export async function githubReviewDraft(paths: SessionPaths, folderPath: string 
     throw new UserFacingError(t('github.errors.feedbackMissing'))
   }
   const { title, body } = issueFromFeedback(markdown)
-  return { repo, title, body, pullRequests: await myOpenPullRequests(repo, folderPath) }
+  const pullRequests = repo.forge === 'gitlab' ? await myOpenMergeRequests(repo) : await myOpenPullRequests(repo, folderPath)
+  return { repo, title, body, pullRequests }
 }
 
 /**
@@ -113,6 +125,15 @@ export async function githubPostReview(folderPath: string | null, target: GitHub
   const text = String(body ?? '').trim()
   if (!text) throw new UserFacingError(t('github.errors.bodyEmpty'))
   if (text.length > BODY_MAX) throw new UserFacingError(t('github.errors.bodyTooLong', { max: formatNumber(BODY_MAX) }))
+  if (repo.forge === 'gitlab') {
+    if (target?.kind === 'issue') {
+      const title = String(target.title ?? '').replace(/[\r\n]+/g, ' ').trim().slice(0, 255)
+      if (!title) throw new UserFacingError(t('github.errors.titleRequired'))
+      return createGitLabIssue(repo, title, text)
+    }
+    if (target?.kind === 'pr-comment' && Number.isInteger(target.number) && target.number > 0) return commentOnMergeRequest(repo, target.number, text)
+    throw new UserFacingError(t('github.errors.badTarget'))
+  }
   let args: string[]
   if (target?.kind === 'issue') {
     const title = String(target.title ?? '').trim().slice(0, 256)

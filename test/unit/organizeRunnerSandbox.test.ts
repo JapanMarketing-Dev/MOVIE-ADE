@@ -49,7 +49,7 @@ describe('security-2 [3] Codex の整理はツールなし・空の作業フォ�
   it('security-2 [3] シェル・画像・ブラウザ・Web 検索・MCP などのツールを全部切る', () => {
     const args = new CodexRunner().buildArgs('/s.json', '/o.json', req(), '/work')
     const configs = args.flatMap((a, i) => (args[i - 1] === '-c' ? [a] : []))
-    for (const name of ['shell_tool', 'unified_exec', 'view_image', 'browser_use', 'computer_use', 'apps', 'plugins', 'hooks', 'multi_agent']) {
+    for (const name of ['shell_tool', 'unified_exec', 'view_image', 'browser_use', 'computer_use', 'apps', 'plugins', 'hooks', 'multi_agent', 'multi_agent_v2', 'code_mode', 'code_mode_host']) {
       expect(configs).toContain(`features.${name}=false`)
     }
     expect(CODEX_DISABLED_FEATURES.length).toBe(new Set(CODEX_DISABLED_FEATURES).size)

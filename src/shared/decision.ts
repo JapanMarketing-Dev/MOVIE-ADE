@@ -169,12 +169,23 @@ export function sanitizeDecisionPreferences(raw: unknown): DecisionPreferences {
   }
 }
 
-/** プリセットを選んだときの入力欄の値。キーの値・しきい値・料金・有効の状態は持ち越す */
-export function applyDecisionPreset(prefs: DecisionPreferences, preset: DecisionPreset): DecisionPreferences {
+/**
+ * Ollama でモデルを決めていないときに、この PC に合うモデル（@shared/localModels の推奨。clef / clef-flash）を入れる。
+ * main（中継・ターミナルの環境変数）と画面（欄の表示・Agent への指示文）の両方がこれを通す。ほかの提供元・決めてあるモデルはそのまま
+ */
+export function withLocalDecisionModel<T extends Pick<DecisionPreferences, 'preset' | 'model'>>(prefs: T, localModel: string | undefined): T {
+  return prefs.preset === 'ollama' && !prefs.model && localModel ? { ...prefs, model: localModel } : prefs
+}
+
+/**
+ * プリセットを選んだときの入力欄の値。キーの値・しきい値・料金・有効の状態は持ち越す。
+ * localModel は Ollama のときに入れるモデル（この PC のメモリから選んだ推奨。省略時はプリセットの clef-flash）
+ */
+export function applyDecisionPreset(prefs: DecisionPreferences, preset: DecisionPreset, localModel?: string): DecisionPreferences {
   const def = DECISION_PRESETS[preset]
   const { enabled, apiKey, passThreshold, timeoutMs } = prefs
   return sanitizeDecisionPreferences({
-    enabled, preset, endpoint: def.endpoint, model: def.model, images: def.images, imageFormat: def.imageFormat, authScheme: def.authScheme,
+    enabled, preset, endpoint: def.endpoint, model: preset === 'ollama' && localModel ? localModel : def.model, images: def.images, imageFormat: def.imageFormat, authScheme: def.authScheme,
     ...(def.apiKeyEnv ? { apiKeyEnv: def.apiKeyEnv } : {}), ...(def.pricing ? { pricing: def.pricing } : {}),
     ...(preset === prefs.preset && prefs.accountId ? { accountId: prefs.accountId } : {}),
     ...(apiKey ? { apiKey } : {}), ...(passThreshold !== undefined ? { passThreshold } : {}), ...(timeoutMs ? { timeoutMs } : {})
@@ -275,7 +286,8 @@ export function decisionTerminalEnvChanged(prev: DecisionPreferences, next: Deci
  * 設定の案内（「キーを作る ↗」などのリンクと「Agent に設定を頼む」指示文。@shared/setupGuide）に渡す形。
  * 判定モデルのプリセットから写して作る。Ollama の確かめ方は OpenAI 互換の /v1/models を使う（/v1/systemone は GET できない）
  */
-export function decisionSetupGuide(prefs: Pick<DecisionPreferences, 'preset' | 'endpoint' | 'model' | 'apiKeyEnv' | 'authScheme'>, label: string): import('./setupGuide').SetupGuide {
+export function decisionSetupGuide(raw: Pick<DecisionPreferences, 'preset' | 'endpoint' | 'model' | 'apiKeyEnv' | 'authScheme'>, label: string, localModel?: string): import('./setupGuide').SetupGuide {
+  const prefs = withLocalDecisionModel(raw, localModel)
   const def = DECISION_PRESETS[prefs.preset]
   const endpoint = prefs.endpoint || def.endpoint
   const local = prefs.preset === 'ollama'

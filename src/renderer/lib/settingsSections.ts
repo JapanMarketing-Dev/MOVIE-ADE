@@ -21,6 +21,8 @@ export const SETTINGS_SECTIONS = [
   'language',
   'layout',
   'github',
+  // よく使うサービスの CLI（gh・wrangler・Ollama・クラウド・デプロイ先）のインストールとログイン
+  'cli',
   'about'
 ] as const
 
@@ -43,7 +45,10 @@ export const SECTION_KEYWORDS: Record<SettingsSectionId, readonly string[]> = {
   agents: ['agent', 'claude', 'codex', 'gemini', 'opencode', 'cursor', 'copilot', 'aider', 'grok', 'qwen', 'amp', 'custom', 'install',
     'command', 'args', 'arguments', 'prompt', 'instruction', 'startup', 'エージェント', 'カスタム', 'インストール', 'コマンド', '引数', '指示', 'プロンプト', '起動'],
   accounts: ['account', 'login', 'sign in', 'usage', 'manage', 'アカウント', 'ログイン', '使用量', '管理'],
-  github: ['github', 'gh', 'pull request', 'pr', 'issue', 'repository', 'リポジトリ', 'プルリクエスト', 'イシュー'],
+  github: ['github', 'gh', 'gitlab', 'glab', 'merge request', 'pull request', 'pr', 'issue', 'repository', 'リポジトリ', 'プルリクエスト', 'イシュー'],
+  cli: ['cli', 'command line', 'install', 'login', 'sign in', 'wrangler', 'cloudflare', 'ollama', 'gitlab', 'glab', 'gh', 'vercel', 'netlify',
+    'supabase', 'firebase', 'fly', 'railway', 'heroku', 'stripe', 'gcloud', 'google cloud', 'aws', 'azure', 'docker',
+    'コマンドライン', 'インストール', 'ログイン', 'ツール'],
   about: ['about', 'version', 'update', 'ferret', 'movie-ade', 'バージョン', '更新', 'について']
 }
 

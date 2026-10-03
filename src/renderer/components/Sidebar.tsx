@@ -25,6 +25,7 @@ import type { TranslationKey } from '@shared/i18n'
 import { ReviewFilterBar, ReviewList, loadReviewFilter, saveReviewFilter, toReviewSession, type ReviewSession } from './ReviewList'
 import { SetupProgressLink } from '../onboarding/SetupChecklist'
 import { FeedbackLink } from './FeedbackDialog'
+import { useWorkingProjects } from '../terminal/agentActivity'
 
 export { toReviewSession, type ReviewSession }
 
@@ -95,6 +96,8 @@ export function Sidebar({
   const toast = useToast()
   const t = useT()
   const rootRef = useRef<HTMLElement | null>(null)
+  /** ターミナルで Agent が動いているプロジェクト（行に「実行中」の印を出す） */
+  const workingProjects = useWorkingProjects()
   const [open, setOpen] = useState<Record<string, boolean>>(loadOpen)
   /** 開いていないプロジェクトの履歴。開いた（展開した）ときに読み込む */
   const [others, setOthers] = useState<Record<string, ReviewSession[]>>({})
@@ -342,6 +345,11 @@ export function Sidebar({
                           : active ? <FolderOpen size={14} strokeWidth={1.5} /> : <Folder size={14} strokeWidth={1.5} />}
                       </span>
                       <span className="sb-project__name" title={project.name}>{project.name}</span>
+                      {workingProjects.includes(project.id) && (
+                        <span className="sb-project__working" role="img" aria-label={t('sidebar.agentWorking')} title={t('sidebar.agentWorking')} data-testid="sidebar-project-working">
+                          <span /><span /><span />
+                        </span>
+                      )}
                       {items && items.length > 0 && (() => {
                         // 絞り込みで隠れている分があれば「表示中/全体」
                         const shown = filterReviews(items, filter).length

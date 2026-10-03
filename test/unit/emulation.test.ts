@@ -19,6 +19,9 @@ describe('エミュレーションの判定', () => {
     const { reportInteractive, setStartupTags } = await import('../../src/main/startup')
     setStartupTags({ emulation: 'prism' })
     reportInteractive()
-    expect(reportPerf).toHaveBeenCalledWith('slow-startup', expect.any(Number), { tags: { emulation: 'prism' }, context: {} })
+    expect(reportPerf).toHaveBeenCalledWith('slow-startup', expect.any(Number), {
+      tags: expect.objectContaining({ emulation: 'prism', 'startup.phase': expect.any(String) }),
+      context: expect.objectContaining({ total: expect.any(String), pre_js: expect.any(String), js: expect.any(String) })
+    })
   })
 })

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FsChangedEvent } from '@shared/files'
+import { MAX_VIEWER_BYTES, formatByteSize, mediaKindOf, type FileViewerKind, type FsFileInfo } from '@shared/fileViewer'
 import { previewUrl } from '@shared/preview'
 import { errorMessage } from '../lib/errors'
 import { t } from '@shared/i18n'
@@ -39,6 +40,15 @@ export interface OpenFile {
   preview: boolean
   /** ディスクの内容でバッファを差し替えた回数。エディタはこれを見てモデルを入れ替える */
   revision: number
+  /**
+   * 文字として開けないファイルの見せ方（画像・動画・音声・PDF・その他のバイナリ）。
+   * あれば Monaco を出さず、保存もしない（文字化けした内容でファイルを壊さない）
+   */
+  viewer?: FileViewerKind
+  /** viewer のときの大きさと先頭のバイト */
+  info?: FsFileInfo
+  /** SVG を（画像ではなく）コードとして開いている */
+  asText?: boolean
 }
 
 export type FileTabId = `file:${string}`
@@ -83,6 +93,12 @@ export interface OpenFilesApi {
   reloadFromDisk: (id: string) => void
   /** 外部の変更の知らせを閉じ、自分の変更を残す */
   keepMine: (id: string) => void
+  /** 画像として見ている SVG を、コードとして開き直す */
+  openAsText: (id: string) => void
+  /** フォルダ（Finder など）でファイルを選んで見せる */
+  reveal: (id: string) => void
+  /** OS の既定のアプリで開く（実行されうる種類は main が断る） */
+  openExternally: (id: string) => void
   /** 閉じる確認の対象。null なら出していない */
   pendingClose: OpenFile | null
   resolveClose: (choice: 'save' | 'discard' | 'cancel') => void
@@ -115,14 +131,33 @@ export function useOpenFiles({
   const files = useMemo(() => allFiles.filter((f) => f.root === root), [allFiles, root])
   const activeFile = activeTab.startsWith('file:') ? (files.find((f) => fileTabId(f.id) === activeTab) ?? null) : null
 
-  const load = useCallback(async (id: string, path: string) => {
+  const load = useCallback(async (id: string, path: string, asText = false) => {
     try {
+      // 画像・動画・音声・PDF は中身を読まず、大きさだけ見てビューアで開く（中身は ade-media://project/ から）
+      const media = asText ? null : mediaKindOf(path)
+      if (media) {
+        const info = await window.ade.invoke('fs:inspect', path)
+        const limit = MAX_VIEWER_BYTES[media]
+        const tooLarge = info.size > limit
+        drafts.current.delete(id)
+        patch(id, (f) => ({
+          status: 'ready', viewer: tooLarge ? 'binary' : media, info, saved: '', dirty: false, external: undefined, revision: f.revision + 1,
+          message: tooLarge ? t('viewer.tooLargeToShow', { size: formatByteSize(info.size), limit: formatByteSize(limit) }) : undefined
+        }))
+        return
+      }
       const result = await window.ade.invoke('fs:read', path)
       if (result.kind === 'text') {
         drafts.current.set(id, result.content)
-        patch(id, (f) => ({ status: 'ready', saved: result.content, dirty: false, message: undefined, external: undefined, revision: f.revision + 1 }))
+        patch(id, (f) => ({ status: 'ready', saved: result.content, dirty: false, message: undefined, external: undefined, viewer: undefined, info: undefined, revision: f.revision + 1 }))
       } else {
-        patch(id, { status: 'unavailable', message: result.reason })
+        // バイナリ・大きすぎるファイルは、大きさと先頭の16進数だけ見せる（Monaco には出さない）
+        const info = await window.ade.invoke('fs:inspect', path)
+        drafts.current.delete(id)
+        patch(id, (f) => ({
+          status: 'ready', viewer: 'binary', info, saved: '', dirty: false, external: undefined, revision: f.revision + 1,
+          message: result.kind === 'tooLarge' ? result.reason : undefined
+        }))
       }
     } catch (err) {
       patch(id, { status: 'unavailable', message: errorMessage(err) })
@@ -160,7 +195,8 @@ export function useOpenFiles({
 
   const save = useCallback(async (id: string): Promise<boolean> => {
     const file = filesRef.current.find((f) => f.id === id)
-    if (!file || file.status !== 'ready' || file.root !== root) return false
+    // ビューアで開いたファイルは書かない（空の内容で上書きして壊さない）
+    if (!file || file.status !== 'ready' || file.root !== root || file.viewer) return false
     const content = drafts.current.get(id) ?? file.saved
     try {
       await window.ade.invoke('fs:write', file.path, content)
@@ -206,9 +242,23 @@ export function useOpenFiles({
   const togglePreview = useCallback((id: string) => patch(id, (f) => ({ preview: !f.preview })), [patch])
   const reloadFromDisk = useCallback((id: string) => {
     const file = filesRef.current.find((f) => f.id === id)
-    if (file) void load(id, file.path)
+    if (file) void load(id, file.path, file.asText)
   }, [load])
   const keepMine = useCallback((id: string) => patch(id, { external: undefined }), [patch])
+  const openAsText = useCallback((id: string) => {
+    const file = filesRef.current.find((f) => f.id === id)
+    if (!file) return
+    patch(id, { asText: true, status: 'loading', viewer: undefined, info: undefined, message: undefined })
+    void load(id, file.path, true)
+  }, [patch, load])
+  const reveal = useCallback((id: string) => {
+    const file = filesRef.current.find((f) => f.id === id)
+    if (file) void window.ade.invoke('fs:reveal', file.path).catch((err) => onError(errorMessage(err)))
+  }, [onError])
+  const openExternally = useCallback((id: string) => {
+    const file = filesRef.current.find((f) => f.id === id)
+    if (file) void window.ade.invoke('fs:openExternal', file.path).catch((err) => onError(errorMessage(err)))
+  }, [onError])
   const openPreviewInBrowser = useCallback((id: string) => {
     const file = filesRef.current.find((f) => f.id === id)
     if (!file) return
@@ -226,6 +276,11 @@ export function useOpenFiles({
       const changed = new Set(event.paths)
       for (const file of filesRef.current) {
         if (file.root !== root || file.status === 'loading' || !changed.has(file.path)) continue
+        // ビューアで開いたファイルは編集中の内容が無いので、そのまま開き直す（画像・動画は URL を変えて取り直す）
+        if (file.viewer) {
+          void load(file.id, file.path, file.asText)
+          continue
+        }
         void window.ade.invoke('fs:read', file.path).then(
           (result) => {
             const current = filesRef.current.find((f) => f.id === file.id)
@@ -245,7 +300,7 @@ export function useOpenFiles({
         )
       }
     })
-  }, [root, patch])
+  }, [root, patch, load])
 
   /*
    * ⌘W。メニューはターミナルを閉じる指示を出すが、TerminalPane はターミナルにフォーカスが無いとき
@@ -281,6 +336,6 @@ export function useOpenFiles({
 
   return {
     files, activeFile, open, requestClose, save, setDraft, getDraft, togglePreview, openPreviewInBrowser,
-    reloadFromDisk, keepMine, pendingClose, resolveClose, dirtyPaths
+    reloadFromDisk, keepMine, openAsText, reveal, openExternally, pendingClose, resolveClose, dirtyPaths
   }
 }

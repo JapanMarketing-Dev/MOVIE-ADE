@@ -37,10 +37,11 @@ describe('設定の読み込み: プロジェクト', () => {
 })
 
 describe('設定の読み込み: Agent', () => {
-  it('未設定なら Orca と同じ既定値（YOLO 引数・Claude と Codex を起動）', () => {
+  it('未設定なら Claude と Codex を普通のモードで起動する（権限確認を省く引数なし・省くプロジェクトなし。security-3 [1]）', () => {
     expect(sanitize({}).agents).toEqual(DEFAULT_AGENT_PREFERENCES)
-    expect(DEFAULT_AGENT_PREFERENCES.launch.claude.args).toBe('--dangerously-skip-permissions')
-    expect(DEFAULT_AGENT_PREFERENCES.launch.codex.args).toBe('--dangerously-bypass-approvals-and-sandbox')
+    expect(DEFAULT_AGENT_PREFERENCES.launch.claude.args).toBe('')
+    expect(DEFAULT_AGENT_PREFERENCES.launch.codex.args).toBe('')
+    expect(DEFAULT_AGENT_PREFERENCES.bypassProjects).toEqual([])
   })
 
   it('空のコマンドは既定へ戻し、未知のAgentと重複は捨てる', () => {

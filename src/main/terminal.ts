@@ -6,26 +6,27 @@ import { homedir } from 'node:os'
 import type { IPty } from 'node-pty'
 import { type TerminalAttachInfo, type TerminalCreateOptions, type TerminalSessionInfo, type TerminalSize, type TerminalTabInfo, type TuiAgent } from '@shared/types'
 import { buildAgentLaunchCommand, startupShellForPath } from '@shared/agentLaunch'
-import { agentForProcess, agentLabel, findCustomAgent, isBuiltinAgent } from '@shared/agentCatalog'
+import { agentForProcess, agentLabel, findCustomAgent, isBuiltinAgent, resolveAgentLaunchPolicy } from '@shared/agentCatalog'
 import { currentSettings } from './settings'
 import { planStartupDelivery } from './shellStartup'
 import { buildAccountLoginLaunch, resolveAgentEnv } from './accounts'
 import { resolveProcessCwd } from './processCwd'
 import { isInheritedAgentSessionEnv } from './inheritedAgentEnv'
 import { TerminalHistory } from './terminalHistory'
-import { applyAgentWorkspaceTrust } from './agentWorkspaceTrust'
+import { applyAgentWorkspaceTrust, registeredProjectIdFor } from './agentWorkspaceTrust'
 import { detectState, parseTitle, stripAnsi } from './agent/state'
 import type { AgentKind } from './agent/protocol'
 import { ComposerReadiness } from './agent/readiness'
 import { sendToAgent } from './agent/send'
 import { chooseSendTarget } from './agent/sendTarget'
 import { agentSubmitsPaste } from '@shared/sendTarget'
-import { agentInProcessTree, isShellProcess, parseProcessRows, type ProcessRow } from './agent/processTree'
+import { agentInProcessTree, hasForegroundChild, isShellProcess, parseProcessRows, parseWindowsProcessRows, type ProcessRow } from './agent/processTree'
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import { reportMainError } from './telemetry'
 import { flow, reportHandled, timedSync, errorKind } from '@shared/report'
 import { exitWhenDoneCommand } from '@shared/agentInstall'
+import { isKnownCliInstallCommand } from '@shared/cliTools'
 import { DECISION_ENV_PREFIXES } from '@shared/decision'
 
 /**
@@ -127,6 +128,32 @@ function processRows(): Promise<ProcessRow[]> {
   return processCache.rows
 }
 
+/**
+ * Windows のプロセス一覧（ps が無いので PowerShell の Win32_Process）。PowerShell の起動は重く、
+ * ARM64 のエミュレーションでは数秒かかるので、前の結果をすぐ返しつつ裏で取り直す（3秒に1回まで）
+ */
+const WINDOWS_PROCESS_QUERY =
+  "$ProgressPreference = 'SilentlyContinue'; Get-CimInstance Win32_Process -Property ProcessId,ParentProcessId,Name,CommandLine | " +
+  'ForEach-Object { [string]::Join([char]9, @($_.ProcessId, $_.ParentProcessId, $_.Name, $_.CommandLine)) }'
+let windowsProcessCache: { at: number; rows: ProcessRow[] | null; pending: Promise<ProcessRow[]> | null } = { at: 0, rows: null, pending: null }
+function windowsProcessRows(): Promise<ProcessRow[]> {
+  const cache = windowsProcessCache
+  if (!cache.pending && Date.now() - cache.at > 3000) {
+    cache.pending = promisify(execFile)('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', WINDOWS_PROCESS_QUERY], { timeout: 15_000, maxBuffer: 10 * 1024 * 1024, windowsHide: true })
+      .then(({ stdout }) => {
+        const rows = parseWindowsProcessRows(stdout)
+        windowsProcessCache = { at: Date.now(), rows, pending: null }
+        return rows
+      }, (err: unknown) => {
+        windowsProcessCache = { at: Date.now(), rows: cache.rows, pending: null }
+        throw err
+      })
+    cache.pending.catch(() => undefined) // 前の結果を返すときは、ここでの失敗を誰も受け取らない
+  }
+  if (cache.rows) return Promise.resolve(cache.rows)
+  return cache.pending ?? Promise.reject(new Error('process list unavailable'))
+}
+
 interface Session {
   id: string
   pty: IPty
@@ -223,26 +250,38 @@ export class TerminalManager {
       loginTitle = login.title
       deliver(login.command, login.env)
     } else if (agent) {
-      const prefs = currentSettings().agents
+      const settings = currentSettings()
+      const prefs = settings.agents
       // 組み込みは launch の設定、カスタムは登録した command / args
-      const config = isBuiltinAgent(agent) ? prefs.launch[agent] : findCustomAgent(prefs, agent)
-      if (!config) throw new UserFacingError(t('terminal.errors.unknownAgent', { agent: agentLabel(agent, prefs) }))
+      const configured = isBuiltinAgent(agent) ? prefs.launch[agent] : findCustomAgent(prefs, agent)
+      if (!configured) throw new UserFacingError(t('terminal.errors.unknownAgent', { agent: agentLabel(agent, prefs) }))
+      // 権限確認を省くか・フォルダの信頼を書くかは、ここ（main）で決める。登録しただけのプロジェクトでは省かない（security-3 [1]）
+      const projectId = registeredProjectIdFor(cwd, settings.projects)
+      const policy = isBuiltinAgent(agent)
+        ? resolveAgentLaunchPolicy({ agent, args: configured.args, projectId, bypassProjects: prefs.bypassProjects, autoStart: options.autoStart === true })
+        : null
+      const config = policy ? { ...configured, args: policy.args } : configured
       const launch = buildAgentLaunchCommand(agent, config, startupShellForPath(shell.file))
       if (!launch.ok) throw new UserFacingError(t('terminal.errors.launch', { agent: agentLabel(agent, prefs), error: launch.error }))
       // パンくず：自作の Agent は名前を出さない（利用者が付けた名前を送らない）
       flow('agent launch', { agent: isBuiltinAgent(agent) ? agent : 'custom' })
       const accountEnv = resolveAgentEnv(agent)
-      // 登録済みのプロジェクトなら、Claude Code / Codex の「このフォルダを信頼しますか」を出さないよう先に書いておく
-      // （Orca と同じ。書く先はアカウント切り替えの CLAUDE_CONFIG_DIR / CODEX_HOME を含む、起動する環境のもの）
-      await applyAgentWorkspaceTrust({
-        agent,
-        cwd,
-        projectFolders: currentSettings().projects.map((project) => project.folderPath),
-        env: ptyEnv(accountEnv)
-      })
+      // 利用者が権限確認を省くと決めたプロジェクトでだけ、Claude Code / Codex の「このフォルダを信頼しますか」を先に書いておく
+      // （書く先はアカウント切り替えの CLAUDE_CONFIG_DIR / CODEX_HOME を含む、起動する環境のもの）。
+      // 登録しただけのプロジェクトでは書かず、エージェント自身にフォルダのパスを見せて聞かせる
+      if (policy?.trustFolder) {
+        await applyAgentWorkspaceTrust({
+          agent,
+          cwd,
+          projectFolders: settings.projects.filter((project) => prefs.bypassProjects.includes(project.id)).map((project) => project.folderPath),
+          env: ptyEnv(accountEnv)
+        })
+      }
       deliver(launch.command, accountEnv)
     } else if (options.command?.trim()) {
-      deliver(options.exitWhenDone ? exitWhenDoneCommand(oneShotCommand(options.command), shell.file) : options.command.trim(), {})
+      // CLI のインストール（設定の「CLI」の一覧から）は E2E では本物を走らせない（oneShotCommand が差し替える）
+      const line = options.exitWhenDone || isKnownCliInstallCommand(options.command) ? oneShotCommand(options.command) : options.command.trim()
+      deliver(options.exitWhenDone ? exitWhenDoneCommand(line, shell.file) : line, {})
     }
     const id = `t${++this.seq}`
     // 判定モデルの中継の URL など（このタブに結び付ける）。用意できなくてもタブは開く（指示文の受け入れ確認が使えないだけ）
@@ -398,10 +437,20 @@ export class TerminalManager {
     if (!session) return { kind: 'unknown', state: 'unknown', agent: null }
     const prefs = currentSettings().agents
     const command = session.pty.process
-    let agent = agentForProcess(command, prefs)
+    const windows = process.platform === 'win32'
+    // node-pty の Windows 版の process は端末名（xterm-256color）で、前面のプロセスを表さない
+    let agent = windows ? null : agentForProcess(command, prefs)
     // 名前で決まらないとき（npm 版は node、公式インストーラの Claude Code は版番号、ラッパーのスクリプトなど）は、
     // シェルの子から1段ずつコマンド行を見て同定する（agent/processTree.ts）。シェルに戻っていれば何も居ない
-    const foreground = !isShellProcess(command)
+    let foreground = !isShellProcess(command)
+    if (windows) {
+      // Windows はシェルの子を見る。一覧が取れなければ、起動時の Agent で判断する（下）
+      const rows = await windowsProcessRows().catch(() => null)
+      if (rows) {
+        foreground = hasForegroundChild(rows, session.pty.pid)
+        if (foreground) agent = agentInProcessTree(rows, session.pty.pid, (line) => agentForProcess(line, prefs))
+      }
+    }
     if (!agent && foreground && process.platform !== 'win32') {
       try {
         agent = agentInProcessTree(await processRows(), session.pty.pid, (line) => agentForProcess(line, prefs))

@@ -523,8 +523,9 @@ div.rv-card__shot {
 }
 
 .rv-card__request {
-  min-height: calc(1lh + var(--space-2) * 2);
-  max-height: calc(10lh + var(--space-2) * 2);
+  min-height: calc(2lh + var(--space-2) * 2);
+  /* Agent に渡す本文。長くても中でスクロールさせず全文を見せる（極端に長いときだけ上限） */
+  max-height: calc(30lh + var(--space-2) * 2);
   field-sizing: content;
   font-size: var(--font-size-md);
   line-height: var(--line-height-normal);
@@ -1451,6 +1452,13 @@ button.st-link {
 
 .st-textarea::placeholder {
   color: var(--color-text-faint);
+}
+
+/* 「Agentへの指示」。既定の文（placeholder）も書いた文も、中でスクロールさせず全体を見せる */
+.st-textarea--prompt {
+  min-height: calc(8lh + var(--space-3) * 2);
+  max-height: 70vh;
+  field-sizing: content;
 }
 
 /* 実際に送る文。読むためのものなので等幅・控えめな面に置く */

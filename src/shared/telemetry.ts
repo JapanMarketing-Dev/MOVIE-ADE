@@ -113,6 +113,26 @@ const WEB_URL = /\b(?:https?|wss?):\/\/[^\s"'<>()]+/gi
 /** ホームの下の利用者名（/Users/<name>、/home/<name>、C:\Users\<name>）。区切りは / と \ の両方 */
 const HOME_UNIX = /(^|[\s"'(=:]|file:\/\/)\/(?:Users|home)\/[^/\\\s"']+/g
 const HOME_WIN = /\b[A-Za-z]:[\\/]+(?:Users|Documents and Settings)[\\/]+[^\\/\s"']+/gi
+/**
+ * 素の IP アドレス（SECURITY.md で送らないと約束している）。URL の中のものは WEB_URL が先に丸ごと消す。
+ * IPv6 は省略形（::）・8区切りの全形・末尾が IPv4 の形・%ゾーン付き。時刻（12:34:56）や C++ の Foo::bar には当てない
+ */
+const IPV4_CORE = String.raw`(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}`
+const IPV4 = new RegExp(String.raw`(?<![\w.])${IPV4_CORE}(?!\w|\.\d)`, 'g')
+const H6 = '[0-9a-f]{1,4}'
+const IPV6_TAIL = String.raw`(?:${IPV4_CORE}|${H6})`
+const IPV6 = new RegExp(
+  String.raw`(?<![\w:.])(?:` +
+    // 全形（8区切り）。末尾 32bit が IPv4 の形も
+    String.raw`(?:${H6}:){7}${H6}|(?:${H6}:){6}${IPV4_CORE}|` +
+    // 省略形。:: の前後どちらかに少なくとも1区切り
+    String.raw`(?:${H6}(?::${H6}){0,6})?::(?:(?:${H6}:){0,6}${IPV6_TAIL})?` +
+  // 後ろの :<ポート>（全形のあとの :443 など）は IP に含めず、IP だけを落とす
+  String.raw`)(?:%[\w.-]+)?(?!\w|\.\d|:(?!\d{1,5}(?![\w:])))`,
+  'gi'
+)
+const IP_PLACEHOLDER = '<ip>'
+
 /** よく使われる API キーの形（redact.ts の looksSecret と同じ前置き）、Bearer、JWT、長い16進 */
 const SECRET_PATTERNS: RegExp[] = [
   /\b(?:sk|pk|rk)-[A-Za-z0-9_-]{10,}/g,
@@ -138,6 +158,7 @@ export function scrubString(input: string, ctx: ScrubContext = {}, max = MAX_STR
   s = s.replace(HOME_WIN, '~')
   s = s.replace(WEB_URL, '<url>')
   s = s.replace(EMAIL, '<email>')
+  s = s.replace(IPV6, (m) => (m === '::' ? m : IP_PLACEHOLDER)).replace(IPV4, IP_PLACEHOLDER)
   for (const re of SECRET_PATTERNS) s = s.replace(re, '<secret>')
   if (s.length > max) s = `${s.slice(0, max)}…`
   return s
@@ -221,7 +242,7 @@ function pick(obj: Record<string, unknown>, keys: string[]): Record<string, unkn
 }
 
 /** 残してよい contexts（OS・端末・アプリ・実行環境の版）。それ以外は落とす */
-const ALLOWED_CONTEXTS = new Set(['os', 'device', 'app', 'runtime', 'electron', 'chrome', 'node', 'gpu', 'culture', 'trace', 'react', 'block'])
+const ALLOWED_CONTEXTS = new Set(['os', 'device', 'app', 'runtime', 'electron', 'chrome', 'node', 'gpu', 'culture', 'trace', 'react', 'block', 'startup'])
 
 type EventLike = {
   user?: unknown
@@ -484,8 +505,13 @@ export function resolveEnvironment(c: { packaged: boolean; version: string; forc
   return c.packaged ? 'production' : 'development'
 }
 
-export type PerfAnomaly = 'slow-startup' | 'event-loop-block'
-const PERF_TITLE: Record<PerfAnomaly, string> = { 'slow-startup': 'Slow startup', 'event-loop-block': 'Main event loop blocked' }
+export type PerfAnomaly = 'slow-startup' | 'slow-pre-js' | 'event-loop-block'
+const PERF_TITLE: Record<PerfAnomaly, string> = {
+  'slow-startup': 'Slow startup',
+  // JS より前（プロセスの生成からアプリの JS が動くまで）で遅れた起動。初回起動の Gatekeeper の検査など（src/shared/startupBreakdown.ts）
+  'slow-pre-js': 'Slow launch before JS',
+  'event-loop-block': 'Main event loop blocked'
+}
 
 /**
  * 性能の異常のイベントの形。題名は「Slow startup (7.4s)」のように種類と長さだけ、まとめ方（fingerprint）は種類ごとに固定。

@@ -183,7 +183,10 @@
 }
 
 .gh-send__body {
-  min-height: 220px;
+  /* 送る本文。ダイアログの高さに合わせて広げ、短い本文なら中でスクロールさせない */
+  min-height: min(360px, calc(100vh - 420px));
+  max-height: calc(100vh - 300px);
+  field-sizing: content;
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
   line-height: var(--line-height-normal);
@@ -371,7 +374,10 @@
 }
 
 .feedback__text {
-  min-height: 52px;
+  min-height: calc(2lh + var(--space-2) * 2);
+  max-height: calc(12lh + var(--space-2) * 2);
+  field-sizing: content;
+  line-height: var(--line-height-normal);
   resize: vertical;
 }
 
@@ -481,7 +487,10 @@
 }
 
 .feedback__summary {
-  min-height: 96px;
+  min-height: calc(5lh + var(--space-2) * 2);
+  max-height: calc(16lh + var(--space-2) * 2);
+  field-sizing: content;
+  line-height: var(--line-height-normal);
   resize: vertical;
 }
 
@@ -540,4 +549,22 @@
   border-radius: var(--radius-sm);
   cursor: crosshair;
   touch-action: none;
+}
+
+/* 設定の節の中の GitHub / GitLab の見出し */
+.gh-section__sub {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.gh-section__gitlab {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* コマンドを文の中に挟む案内。st-note の flex だと文とコマンドが列に分かれるので、ふつうの段落として流す */
+.gh-callout .gh-callout__help {
+  display: block;
 }

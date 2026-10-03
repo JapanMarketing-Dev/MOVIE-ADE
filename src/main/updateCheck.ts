@@ -4,7 +4,8 @@ import { compareAppVersions, isValidAppVersion, pickAppVersion, type UpdateCheck
 import { version } from '../../package.json'
 import { t } from '@shared/i18n'
 import { reportHandled } from '@shared/report'
-import { SMALL_JSON_MAX_BYTES, readBoundedJson } from './boundedResponse'
+import { SMALL_JSON_MAX_BYTES, readBoundedBytes, readBoundedJson, readBoundedText } from './boundedResponse'
+import { SIGNED_SUMS_MAX_BYTES, releaseFilesAreSigned } from './releaseSignature'
 
 /**
  * 更新の確認（フッターの「更新を確認」）。
@@ -15,6 +16,8 @@ import { SMALL_JSON_MAX_BYTES, readBoundedJson } from './boundedResponse'
  * 配信元（R2）の latest.json と package.json の version を比べて案内するだけにする。
  * dev 起動でも同じで、自動で入れ替えることはしない。
  * latest.json は Cache-Control: max-age=300 で配られ、GitHub API のような回数の上限も認証も要らない。
+ * 新しい版を案内する前に、releases/<版>/SHA256SUMS の署名を同梱の公開鍵で確かめ、latest.json のファイルの sha256 が
+ * それに載っていることを確かめる（security-3 [2]。R2 だけを書き換えられても、偽の版へ案内しない。src/main/releaseSignature.ts）。
  */
 
 /** 配信元。独自ドメインへ移すときはここだけ変える（今は r2.dev の開発用 URL） */
@@ -114,9 +117,20 @@ export function judgeManifest(
  * 確認できなかったことを Sentry へ warning（area: update）で知らせる。理由の種類だけを付ける（URL・本文は付けない）。
  * 確認は利用者が押したときだけなので、件数は少ない。オフライン（network / timeout）も、配信元の不調に気づけるよう送る。
  */
-function reportCheckFailure(reason: 'http' | 'bad-manifest' | 'bad-version' | 'network' | 'timeout', err?: unknown): void {
+function reportCheckFailure(reason: 'http' | 'bad-manifest' | 'bad-version' | 'network' | 'timeout' | 'unsigned', err?: unknown): void {
   // net の失敗の文（net::ERR_…）は手がかりになるので残す。URL は送る前の除去で落ちる
   reportHandled(err instanceof Error ? err : new Error(`update check failed: ${reason}`), { area: 'update', op: `check update: ${reason}` })
+}
+
+/** releases/<版>/SHA256SUMS(.sig) を取り、署名と latest.json のファイルを突き合わせる。取れなければ false */
+async function releaseIsSigned(fetcher: typeof net.fetch, manifest: ReleaseManifest, latest: string, signal: AbortSignal): Promise<boolean> {
+  // latest は judgeManifest が版の形を確かめたもの。配信元の下の固定の名前だけを読む
+  const base = new URL(`releases/${latest}/`, RELEASE_BASE_URL)
+  const [sumsRes, sigRes] = await Promise.all(['SHA256SUMS', 'SHA256SUMS.sig'].map((name) => fetcher(new URL(name, base).toString(), { signal })))
+  if (!sumsRes!.ok || !sigRes!.ok) return false
+  const sums = await readBoundedBytes(sumsRes!, SIGNED_SUMS_MAX_BYTES)
+  const signature = await readBoundedText(sigRes!, SIGNED_SUMS_MAX_BYTES)
+  return releaseFilesAreSigned(manifest.files, sums, signature)
 }
 
 export async function checkForUpdate(fetcher: typeof net.fetch = net.fetch): Promise<UpdateCheckResult> {
@@ -138,6 +152,10 @@ export async function checkForUpdate(fetcher: typeof net.fetch = net.fetch): Pro
     }
     const result = judgeManifest(current, manifest)
     if (result.state === 'error') reportCheckFailure('bad-version')
+    if (result.state === 'available' && !(await releaseIsSigned(fetcher, manifest, result.latest, controller.signal))) {
+      reportCheckFailure('unsigned')
+      return { state: 'error', current, message: t('update.errors.unverified') }
+    }
     return result
   } catch (err) {
     const aborted = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')

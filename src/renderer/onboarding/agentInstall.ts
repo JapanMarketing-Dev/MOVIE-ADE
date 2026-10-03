@@ -19,7 +19,8 @@ function currentPlatform(): PlatformName {
  * 正本はカタログ（src/shared/agentCatalog.ts）。OS ごとに出し分ける:
  *   - Windows: installWindows（公式の Windows の手順）があればそれ。無く、install が POSIX のシェル向けなら undefined
  *     （公式ページへのリンクだけを出す）。npm / pip などの OS に関係ないコマンドはそのまま
- *   - macOS / Linux: install
+ *   - Linux: installLinux（install が macOS の Homebrew だけのもの）があればそれ。無ければ install
+ *   - macOS: install
  * どれも無いもの（ソースからしか入れられないなど）は undefined
  */
 export function agentInstallCommand(agent: BuiltinAgent, platform: PlatformName = currentPlatform()): string | undefined {
@@ -30,6 +31,10 @@ export function agentInstallCommand(agent: BuiltinAgent, platform: PlatformName 
     if (windows) return windows
     const install = entry.install.trim()
     return install && !isPosixOnlyInstall(install) ? install : undefined
+  }
+  if (platform === 'linux') {
+    const linux = entry.installLinux?.trim()
+    if (linux) return linux
   }
   return entry.install.trim() || undefined
 }

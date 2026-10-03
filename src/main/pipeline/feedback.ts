@@ -194,6 +194,10 @@ function renderDecisionCheck(threshold: number, tr: Tr): string[] {
     tr('feedbackMd.check.progress'),
     '',
     tr('feedbackMd.check.rules'),
+    // 判定 API に届かなければ、止まる前に Agent が Ollama を入れて起動しモデルを落とす（人の手作業にしない）
+    tr('feedbackMd.check.setup'),
+    // 判定に送るかは Agent が決める。人が明示的に承認・合格を出した指摘は送らなくてよい
+    tr('feedbackMd.check.skip'),
     tr('feedbackMd.check.exits'),
     tr('feedbackMd.check.report'),
     '',
@@ -204,7 +208,8 @@ function renderDecisionCheck(threshold: number, tr: Tr): string[] {
     `cat > state.txt <<'${marker}'`,
     '<title> / <request> / Done when: <...>',
     marker,
-    `export STATE_FILE=state.txt BEFORE=/abs/path/01.png AFTER=/abs/path/after/i1.png Q='${DECISION_QUESTIONS_JSON}'`,
+    // パスは単一引用符で囲む（Windows の C:\… の \ や、空白を含むフォルダを bash が崩さない）
+    `export STATE_FILE=state.txt BEFORE='/abs/path/01.png' AFTER='/abs/path/after/i1.png' Q='${DECISION_QUESTIONS_JSON}'`,
     DECISION_NODE_LINE,
     'curl -sS -X POST "$FERRET_DECISION_URL" -H \'content-type: application/json\' --data-binary @req.json',
     '```',

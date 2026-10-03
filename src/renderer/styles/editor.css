@@ -500,3 +500,140 @@
   border-left: var(--size-border) solid var(--color-border);
   background: var(--color-bg-panel);
 }
+
+/* ── 文字として開けないファイル（画像・動画・音声・PDF・バイナリ。FileViewer.tsx）──── */
+.file-viewer {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  background: var(--color-bg-panel);
+}
+
+.file-viewer__toolbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: var(--size-border) solid var(--color-border);
+  gap: var(--space-2);
+}
+
+.file-viewer__zoom {
+  min-width: 44px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.file-viewer__meta {
+  display: inline-flex;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  gap: var(--space-5);
+}
+
+.file-viewer__note {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* 大きい画像はスクロールで見る。小さいときは真ん中に置く（margin: auto で、はみ出した側も切れない） */
+.file-viewer__stage {
+  display: flex;
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  padding: var(--space-6);
+}
+
+.file-viewer__image {
+  flex: none;
+  margin: auto;
+  /* 透明な部分が分かるよう市松模様にする */
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #ddd 25%, transparent 25%),
+    linear-gradient(-45deg, #ddd 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ddd 75%),
+    linear-gradient(-45deg, transparent 75%, #ddd 75%);
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
+  box-shadow: 0 0 0 var(--size-border) var(--color-border);
+  image-rendering: auto;
+}
+
+.file-viewer--media {
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  gap: var(--space-4);
+}
+
+.file-viewer__video {
+  max-width: 100%;
+  max-height: calc(100% - 32px);
+  background: #000;
+}
+
+.file-viewer__audio {
+  width: min(560px, 100%);
+}
+
+.file-viewer__pdf {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--color-bg-panel);
+}
+
+.file-viewer--binary {
+  overflow: auto;
+  align-items: center;
+  padding: var(--space-7) var(--space-6);
+}
+
+/* 空状態の部品は既定で高さいっぱいに広がるので、見出しと16進数を上から続けて並べる */
+.file-viewer--binary > .empty {
+  height: auto;
+  flex: none;
+  padding-bottom: 0;
+}
+
+.file-viewer--binary > .file-viewer__note {
+  text-align: center;
+}
+
+.file-viewer__hex {
+  max-width: 100%;
+  margin-top: var(--space-6);
+}
+
+.file-viewer__hex h3 {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.file-viewer__hex pre {
+  overflow: auto;
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border: var(--size-border) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  /* <=> や -> を合字にしない（1バイト1文字で並べる） */
+  font-variant-ligatures: none;
+  line-height: 1.6;
+  user-select: text;
+  white-space: pre;
+}

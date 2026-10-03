@@ -43,6 +43,7 @@ class MemoryStorage implements LimiterStorage {
 function fakeEnv() {
   const media = new Map<string, { bytes: Uint8Array; contentType?: string }>()
   const limiters = new Map<string, { storage: MemoryStorage; obj: FeedbackLimiter }>()
+  const queues = new Map<string, Promise<unknown>>()
   const env: Env = {
     GITHUB_TOKEN: TOKEN,
     RATE_LIMIT_SALT: SALT,
@@ -68,7 +69,15 @@ function fakeEnv() {
           const storage = new MemoryStorage()
           limiters.set(name, { storage, obj: new FeedbackLimiter({ storage }) })
         }
-        return { fetch: (r: Request) => limiters.get(name)!.obj.fetch(r) }
+        // Durable Object は1つの鍵の要求を1つずつ処理する（input gate）。偽物も鍵ごとに1つずつ流す
+        const entry = limiters.get(name)!
+        return {
+          fetch: (r: Request) => {
+            const run = (queues.get(name) ?? Promise.resolve()).then(() => entry.obj.fetch(r))
+            queues.set(name, run.catch(() => undefined))
+            return run
+          }
+        }
       }
     }
   }
@@ -477,11 +486,11 @@ describe('feedback-relay: 頻度の上限と連投', () => {
     const { env, limiters } = fakeEnv()
     await send(env, fakeGithub(), post(form()))
     const names = [...limiters.keys()]
-    expect(names.length).toBe(4) // ip・install・global・dup
+    expect(names.length).toBe(5) // attempt・ip・install・global・dup
     for (const name of names) {
       expect(name).not.toContain(IP)
       expect(name).not.toContain(INSTALL)
-      expect(name).toMatch(/^(ip|install|dup):[0-9a-f]{64}$|^global$/)
+      expect(name).toMatch(/^(attempt|ip|install|dup):[0-9a-f]{64}$|^global$/)
     }
     for (const { storage } of limiters.values()) {
       for (const [k, v] of storage.data) {
@@ -523,5 +532,102 @@ describe('feedback-relay: 画像を返す', () => {
     for (const bad of ['../secret.png', `${'0'.repeat(31)}.png`, `${'0'.repeat(32)}.svg`, `${'0'.repeat(32)}.png`]) {
       expect((await handle(new Request(`${BASE}/v1/media/${bad}`), env)).status).toBe(404)
     }
+  })
+})
+
+/* ── security-3（Codex の3回目のスキャン）[3][4][7] ─────────────────── */
+
+describe('security-3 [3][4][7] 中継の上限は、重い処理・副作用・広い枠より前に、1回の呼び出しで決める', () => {
+  const globalCount = (limiters: ReturnType<typeof fakeEnv>['limiters']) => ((limiters.get('global')?.storage.data.get('times') as number[] | undefined) ?? []).length
+
+  it('security-3 [3] 送り主の枠で断られた要求は、全体の枠（global）を減らさない', async () => {
+    const { env, limiters } = fakeEnv()
+    const gh = fakeGithub()
+    const t0 = 1_800_000_000_000
+    // 同じインストール ID で5件（IP は毎回変える）→ 6件目以降はインストール ID の枠で断られる
+    for (let i = 0; i < 5; i++) expect((await send(env, gh, post(form({ title: `ok ${i}` }), { 'cf-connecting-ip': `198.51.100.${i}` }), t0 + i)).res.status).toBe(201)
+    expect(globalCount(limiters)).toBe(5)
+    for (let i = 0; i < 20; i++) {
+      const r = await send(env, gh, post(form({ title: `denied ${i}` }), { 'cf-connecting-ip': `203.0.113.${i + 10}` }), t0 + 100 + i)
+      expect(r.res.status).toBe(429)
+    }
+    expect(globalCount(limiters)).toBe(5)
+    // 断られた IP の枠も残らない（予約を戻す）。同じ IP から別のインストール ID なら通る
+    expect((await send(env, gh, post(form({ title: 'other install', installId: INSTALL2 }), { 'cf-connecting-ip': '203.0.113.10' }), t0 + 500)).res.status).toBe(201)
+  })
+
+  it('security-3 [3] 全体の枠で断られたら、先に取った IP・インストール ID の予約を戻す', async () => {
+    const { env, limiters } = fakeEnv()
+    const gh = fakeGithub()
+    const t0 = 1_800_000_000_000
+    // 全体の枠を埋めておく
+    const full = Array.from({ length: 200 }, (_, i) => t0 - 1000 + i)
+    limiters.set('global', { storage: Object.assign(new MemoryStorage(), { data: new Map<string, unknown>([['times', full]]) }), obj: undefined as never })
+    limiters.get('global')!.obj = new FeedbackLimiter({ storage: limiters.get('global')!.storage })
+    expect((await send(env, gh, post(form()), t0)).res.status).toBe(429)
+    for (const [name, { storage }] of limiters) {
+      if (/^(ip|install):/.test(name)) expect((storage.data.get('times') as number[] | undefined) ?? []).toEqual([])
+    }
+    expect(gh.calls).toHaveLength(0)
+  })
+
+  it('security-3 [4] 送信の枠を使い切った IP の要求は、本文を読む前に断る', async () => {
+    const { env } = fakeEnv()
+    const gh = fakeGithub()
+    const t0 = 1_800_000_000_000
+    for (let i = 0; i < 5; i++) expect((await send(env, gh, post(form({ title: `t${i}`, installId: undefined })), t0 + i)).res.status).toBe(201)
+    let pulled = 0
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled++
+        controller.enqueue(new Uint8Array(1024 * 1024))
+        if (pulled >= 8) controller.close()
+      }
+    })
+    const req = new Request(`${BASE}/v1/issues`, {
+      method: 'POST', body, duplex: 'half',
+      headers: { 'cf-connecting-ip': IP, 'content-type': 'multipart/form-data; boundary=x' }
+    } as RequestInit)
+    const r = await send(env, gh, req, t0 + 100)
+    expect(r.res.status).toBe(429)
+    // ReadableStream は最初の1塊を先に引くことがあるが、本文全体（8MB）は読まない
+    expect(pulled).toBeLessThanOrEqual(1)
+  })
+
+  it('security-3 [4] 形の悪い要求も、本文を読む前の試みの上限に数える（全体の枠は食わない）', async () => {
+    const { env, limiters } = fakeEnv()
+    const gh = fakeGithub()
+    const t0 = 1_800_000_000_000
+    const statuses: number[] = []
+    for (let i = 0; i < 31; i++) statuses.push((await send(env, gh, post('not multipart', { 'content-type': 'text/plain' }), t0 + i)).res.status)
+    expect(statuses.slice(0, 30).every((s) => s === 415)).toBe(true)
+    expect(statuses[30]).toBe(429)
+    expect(globalCount(limiters)).toBe(0)
+    // 試みの上限は IP ごと。ほかの IP は通る
+    expect((await send(env, gh, post(form(), { 'cf-connecting-ip': '192.0.2.50' }), t0 + 100)).res.status).toBe(201)
+  })
+
+  it('security-3 [7] 同時に来た同じ内容は、1件だけが画像の保存と Issue の作成に進む', async () => {
+    const { env, media } = fakeEnv()
+    const gh = fakeGithub()
+    const t0 = 1_800_000_000_000
+    const results = await Promise.all(Array.from({ length: 5 }, (_, i) =>
+      send(env, gh, post(form({ installId: `0000000${i}-0000-4000-8000-000000000000` }, [{ bytes: png() }]), { 'cf-connecting-ip': `198.51.100.${i + 20}` }), t0 + i)))
+    expect(results.map((r) => r.res.status).sort()).toEqual([201, 409, 409, 409, 409])
+    expect(gh.calls).toHaveLength(1)
+    expect(media.size).toBe(1)
+  })
+
+  it('security-3 [7] Issue を作れなかったら内容の鍵を戻し、同じ内容を送り直せる', async () => {
+    const { env } = fakeEnv()
+    const t0 = 1_800_000_000_000
+    expect((await send(env, fakeGithub(500), post(form()), t0)).res.status).toBe(502)
+    expect((await send(env, fakeGithub(), post(form()), t0 + 1000)).res.status).toBe(201)
+  })
+
+  it('security-3 [3][7] decide: release は hit で数えた同じ時刻の1件だけを取り消す', () => {
+    const now = 1_800_000_000_000
+    expect(decide([now - 5, now, now], 'release', [], now).times).toEqual([now - 5, now])
+    expect(decide([now - 5], 'release', [], now).times).toEqual([now - 5])
   })
 })

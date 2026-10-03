@@ -130,23 +130,28 @@ page('install.html', 'Start here', 'Install',
   </tbody>
 </table>
 <p>Releases up to 0.1.x were published under the old name, as <code>MOVIE-ADE-&lt;version&gt;-…</code>. The <code>Ferret-…</code> names start with 0.2.0.</p>
-${note(`<p>${APP} is tested on macOS (Apple silicon). The Windows and Linux builds are marked <strong>Preview</strong>: they are built and published, but not yet validated on real machines.</p>`, 'warn')}`],
-    ['verify', 'Verify the download (sha256)', `
-<p>There is no <code>SHA256SUMS</code> file. Each release has <code>releases/&lt;version&gt;/manifest.json</code> on the download server, and its <code>files[].sha256</code> field holds the expected hash of every file. <code>versions.json</code> lists the available versions.</p>
+${note(`<p>${APP} supports macOS, Windows and Linux. The Windows and Linux builds are not code-signed yet, so the first launch asks you to confirm (see the steps below).</p>`, 'warn')}`],
+    ['verify', 'Verify the download (signed SHA256SUMS)', `
+<p>Every release has a <code>SHA256SUMS</code> file and its signature <code>SHA256SUMS.sig</code>. The signature is made with the ${APP} release key, which is kept apart from the download server, so a changed installer on the download server can't come with a valid signature. The public key is <em>not</em> taken from the download server: get it from the repository (<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers"><code>build/release-signing/allowed_signers</code></a>) or copy it from here:</p>
+${code(`release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9`)}
+<p>Its fingerprint is <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code>. The same files are attached to each release on GitHub. Check the signature with <code>ssh-keygen</code> (included in macOS, Windows 10 and later, and Linux), then compare the hash of your download with the signed list:</p>
 ${code(`# the download server (currently the R2 public URL; it may move to a custom domain)
 BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
-VERSION=0.2.0
+VERSION=$(curl -s $BASE/latest.json | jq -r .version)
+curl -sO $BASE/releases/$VERSION/SHA256SUMS
+curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
 
-# expected hashes
-curl -s $BASE/releases/$VERSION/manifest.json | jq -r '.files[] | "\\(.sha256)  \\(.name)"'
+# save the public key above as allowed_signers, then:
+ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
+# → Good "ferret-release" signature for release@ferretade.dev …
 
 # macOS
-shasum -a 256 Ferret-&lt;version&gt;-mac-arm64.dmg
+shasum -a 256 -c SHA256SUMS --ignore-missing
 # Linux
-sha256sum Ferret-&lt;version&gt;-linux-x86_64.AppImage`)}
-${code(`# Windows (PowerShell)
+sha256sum -c SHA256SUMS --ignore-missing`)}
+${code(`# Windows (PowerShell): compare with the line for your file in SHA256SUMS
 Get-FileHash .\\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256`)}
-<p>Compare the output with the manifest. A match only proves the file is what was uploaded. On macOS, the Developer ID signature and Apple's notarization are checked by Gatekeeper when you open the app. The Windows and Linux builds are not code-signed.</p>`],
+<p>Stop if <code>ssh-keygen</code> doesn't print <q>Good "ferret-release" signature</q> or the hash isn't in the list. ${APP}'s ${ui('Check for Updates')} does the same check with the key built into the app and doesn't offer a version whose signature doesn't match. On macOS you can also check the Developer ID signature and notarization with <code>spctl -a -vv /Applications/Ferret.app</code>. The Windows and Linux installers are not code-signed by Microsoft or a Linux distribution yet. Releases up to 0.3.0 were published before signing started and have only the unsigned hashes in <code>releases/&lt;version&gt;/manifest.json</code>.</p>`],
     ['macos', 'macOS', `
 <ol class="docs-steps">
   <li>Open the <code>.dmg</code> and drag <code>Ferret.app</code> to <code>/Applications</code>.</li>
@@ -158,19 +163,20 @@ ${code(`spctl -a -vv /Applications/Ferret.app
 # source=Notarized Developer ID`)}
 <p><strong>Older versions only (0.2.0 build 2 and earlier)</strong> were not signed. For those, macOS says the developer cannot be verified: close the dialog, open ${ui('System Settings → Privacy &amp; Security')}, click ${ui('Open Anyway')} next to the Ferret message, and confirm with ${ui('Open')}. If it says the app "is damaged", remove the quarantine attribute:</p>
 ${code('xattr -dr com.apple.quarantine /Applications/Ferret.app')}`],
-    ['windows', 'Windows (Preview)', `
+    ['windows', 'Windows', `
 <ol class="docs-steps">
   <li>Run <code>Ferret-&lt;version&gt;-win-&lt;arch&gt;.exe</code>.</li>
   <li>When SmartScreen shows "Windows protected your PC", click ${ui('More info')}, then ${ui('Run anyway')}.</li>
   <li>Choose the install folder. The installer creates a desktop shortcut.</li>
 </ol>`],
-    ['linux', 'Linux (Preview)', `
+    ['linux', 'Linux', `
 <p>AppImage:</p>
 ${code(`chmod +x Ferret-&lt;version&gt;-linux-x86_64.AppImage
 ./Ferret-&lt;version&gt;-linux-x86_64.AppImage`)}
 <p>Debian / Ubuntu:</p>
 ${code('sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb')}
-<p>The deb installs the <code>ferret</code> package and command.</p>`],
+<p>The deb installs the <code>ferret</code> package and command.</p>
+<p>On Ubuntu 23.10 and later, the AppImage can stop at launch with a sandbox error, because AppArmor restricts the user namespaces Electron's sandbox uses. Install the <code>.deb</code> instead; it sets up the sandbox helper.</p>`],
     ['source', 'Build from source', `
 <p>Requires Node.js 20+ (CI and local development use 22), pnpm, and git.</p>
 ${code(`git clone ${REPO}.git
@@ -362,10 +368,10 @@ page('agents.html', `Using ${APP}`, 'Sending to agents',
 <p>The header has ${ui('Undo')}, ${ui('Open Folder')}, ${ui('Copy for Agent')}, ${ui('Send to GitHub')}, ${ui('Organize')}, and ${ui('Send to Agent')}. Speech that didn't become a finding is listed under ${ui('Excluded speech')}, where ${ui('Restore as Finding')} brings it back. ${ui('Overall Note')} adds a note for the whole review.</p>
 ${shot('findings', 'The Findings tab')}`],
     ['terminal', 'Run agents in the built-in terminal', `
-<p>When a project opens, ${APP} starts one terminal tab per enabled agent in the project folder. The defaults are:</p>
-${code(`claude --dangerously-skip-permissions
-codex --dangerously-bypass-approvals-and-sandbox`)}
-${note(`<p>These flags let the agent edit files and run commands without asking. If you want approval prompts, clear the arguments in ${ui('Settings → Agent')} (${ui('Claude Code arguments')} / ${ui('Codex arguments')}). ${ui('Reset Commands')} restores the defaults.</p>`, 'warn', 'About the default flags')}
+<p>When a project opens, ${APP} starts one terminal tab per enabled agent in the project folder, in the agent's normal mode:</p>
+${code(`claude
+codex`)}
+${note(`<p>Registering or cloning a project does not make Ferret trust it. Claude Code and Codex ask whether you trust the folder the first time, and keep asking before they edit files or run commands. To let agents skip permission prompts, approvals and the sandbox in one project you trust, turn it on for that project under ${ui('Settings → Agent → Skip permission prompts')} and confirm. It then applies only to agents you open yourself in that project folder; agents started when the project opens always keep their prompts. Skip-permission flags typed into the arguments are ignored.</p>`, 'warn', 'Permission prompts stay on')}
 <p>If neither agent is enabled, a plain shell opens. The ${ui('+')} menu opens ${ui('New Terminal')}, launches Claude Code or Codex in a new tab, or jumps to ${ui('Agent settings…')}. Its search box also finds tabs, saved URLs, and files.</p>
 <p>Tabs show the agent state: ${ui('Running')}, ${ui('Waiting for input')}, ${ui('Done (unread)')}, ${ui('Idle')}.</p>
 ${clip('terminals', 'Dragging terminal tabs and panes to split, move, and turn them back into tabs.')}
@@ -627,8 +633,9 @@ page('settings.html', 'Configure', 'Settings reference',
   <thead><tr><th>Setting</th><th>Default</th></tr></thead>
   <tbody>
     <tr><td>${ui('Start Claude Code')} / ${ui('Start Codex')}</td><td>Both on</td></tr>
-    <tr><td>${ui('Claude Code command')} / ${ui('arguments')}</td><td><code>claude</code> / <code>--dangerously-skip-permissions</code></td></tr>
-    <tr><td>${ui('Codex command')} / ${ui('arguments')}</td><td><code>codex</code> / <code>--dangerously-bypass-approvals-and-sandbox</code></td></tr>
+    <tr><td>${ui('Claude Code command')} / ${ui('arguments')}</td><td><code>claude</code> / none</td></tr>
+    <tr><td>${ui('Codex command')} / ${ui('arguments')}</td><td><code>codex</code> / none</td></tr>
+    <tr><td>${ui('Skip permission prompts')} (per project)</td><td>Off for every project (<a href="agents.html#terminal">details</a>)</td></tr>
     <tr><td>${ui('Instructions for Agent')}</td><td>Built-in text (<a href="agents.html#prompt">variables</a>)</td></tr>
   </tbody>
 </table>`],

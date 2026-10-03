@@ -22,6 +22,8 @@
  *     版のファイルは1年の immutable で返すので、同じ URL を上書きすると、ブラウザや将来の CDN が古いものを返しうるため
  *   - promote は、消す古いファイルを表示して確認を求めてから、manifest と索引を作り直し、古いファイルを消す
  *     （確認なしで進めるときは --yes。CI 用）
+ * --sums-sig は SHA256SUMS の署名（scripts/release-signing.mjs。R2 の書き込みとは別の鍵）。promote は署名が無い・合わなければ止め、
+ * 合えば releases/<version>/SHA256SUMS(.sig) も置く（アプリの更新確認が確かめる。security-3 [2]）。
  * --expect-sums は、R2 とは別の場所（GitHub Release）に置いた SHA256SUMS。渡すと、manifest の各ファイルの sha256 が
  * それと過不足なく一致しなければ止める（R2 だけを書き換えられても公開しない）。CI の stage / promote は必ず渡す。
  * 手元から公開するときは、stage のあとに scripts/release-github.mjs create で SHA256SUMS だけの GitHub Release の下書きを作り、
@@ -63,6 +65,7 @@ import {
   workPath
 } from './release-r2-lib.mjs'
 import { runTool, wranglerInvocation } from './release-tools.mjs'
+import { assertSignedSums } from './release-signing.mjs'
 
 const BUCKET = process.env.R2_BUCKET ?? 'movie-ade-releases'
 const PUBLIC_BASE = process.env.R2_PUBLIC_BASE ?? 'https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev'
@@ -86,6 +89,7 @@ function parseArgs(argv) {
     else if (key === '--replace') args.replace = true
     else if (key === '--yes') args.yes = true
     else if (key === '--expect-sums') args.expectSums = value()
+    else if (key === '--sums-sig') args.sumsSig = value()
     else throw new Error(`知らない引数です: ${key}`)
   }
   args.version ??= JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
@@ -143,10 +147,22 @@ function getIndex() {
   return x === null ? emptyIndex() : validateIndex(x)
 }
 
-/** --expect-sums の SHA256SUMS と manifest を突き合わせる（渡されていなければ何もしない） */
-function checkExpectedSums(manifest, args) {
+/**
+ * --expect-sums の SHA256SUMS と manifest を突き合わせる（渡されていなければ何もしない）。
+ * --sums-sig があれば、SHA256SUMS の署名をリポジトリの公開鍵で確かめる（security-3 [2]。R2 の外の鍵）。
+ * promote は両方が無ければ止める（requireSigned）
+ */
+function checkExpectedSums(manifest, args, requireSigned = false) {
+  if (requireSigned && !args.dryRun && (!args.expectSums || !args.sumsSig)) {
+    throw new Error('公開には署名した SHA256SUMS が要ります（--expect-sums SHA256SUMS --sums-sig SHA256SUMS.sig。scripts/release-signing.mjs sign で作る）')
+  }
   if (!args.expectSums) return
-  assertManifestMatchesSums(manifest, parseSha256Sums(readFileSync(resolve(root, args.expectSums), 'utf8')))
+  const sums = readFileSync(resolve(root, args.expectSums))
+  if (args.sumsSig) {
+    assertSignedSums(sums, readFileSync(resolve(root, args.sumsSig), 'utf8'))
+    console.log(`SHA256SUMS の署名（${args.sumsSig}）をリポジトリの公開鍵で確かめました`)
+  }
+  assertManifestMatchesSums(manifest, parseSha256Sums(sums.toString('utf8')))
   console.log(`SHA256SUMS（${args.expectSums}）と manifest の ${manifest.files.length} 件が一致しました`)
 }
 
@@ -262,7 +278,7 @@ async function discard(args) {
 async function promote(args, work) {
   const manifest = getManifest(`staging/${args.version}/manifest.json`, args.version)
   if (!manifest) throw new Error(`staging/${args.version}/manifest.json がありません（先に stage する）`)
-  checkExpectedSums(manifest, args)
+  checkExpectedSums(manifest, args, true)
   const index = getIndex()
   let nextIndex
   let removed = []
@@ -303,6 +319,11 @@ async function promote(args, work) {
     if (!args.dryRun) rmSync(local)
   }
   putJson(`releases/${args.version}/manifest.json`, manifest, MANIFEST_CACHE, args.dryRun, work)
+  // 署名した SHA256SUMS も並べて置く。アプリの更新確認が、同梱の公開鍵で確かめてから案内する（src/main/releaseSignature.ts）
+  if (args.expectSums && args.sumsSig) {
+    put(`releases/${args.version}/SHA256SUMS`, resolve(root, args.expectSums), 'text/plain; charset=utf-8', MANIFEST_CACHE, args.dryRun)
+    put(`releases/${args.version}/SHA256SUMS.sig`, resolve(root, args.sumsSig), 'text/plain; charset=utf-8', MANIFEST_CACHE, args.dryRun)
+  }
 
   // 古い版を消すときに使うので、外れる版の manifest を先に読んでおく
   // 形の正しくない manifest の版は、ファイルを消さずに警告だけ出す（R2 の別の場所を消さない）

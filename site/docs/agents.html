@@ -127,10 +127,10 @@
 
       <section class="docs-section" aria-labelledby="terminal">
         <h2 id="terminal"><a class="docs-anchor" href="#terminal" aria-label="Link to Run agents in the built-in terminal">#</a>Run agents in the built-in terminal</h2>
-        <p>When a project opens, Ferret starts one terminal tab per enabled agent in the project folder. The defaults are:</p>
-<pre><code>claude --dangerously-skip-permissions
-codex --dangerously-bypass-approvals-and-sandbox</code></pre>
-<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">About the default flags</p><p>These flags let the agent edit files and run commands without asking. If you want approval prompts, clear the arguments in <span class="docs-ui">Settings → Agent</span> (<span class="docs-ui">Claude Code arguments</span> / <span class="docs-ui">Codex arguments</span>). <span class="docs-ui">Reset Commands</span> restores the defaults.</p></div>
+        <p>When a project opens, Ferret starts one terminal tab per enabled agent in the project folder, in the agent's normal mode:</p>
+<pre><code>claude
+codex</code></pre>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Permission prompts stay on</p><p>Registering or cloning a project does not make Ferret trust it. Claude Code and Codex ask whether you trust the folder the first time, and keep asking before they edit files or run commands. To let agents skip permission prompts, approvals and the sandbox in one project you trust, turn it on for that project under <span class="docs-ui">Settings → Agent → Skip permission prompts</span> and confirm. It then applies only to agents you open yourself in that project folder; agents started when the project opens always keep their prompts. Skip-permission flags typed into the arguments are ignored.</p></div>
 <p>If neither agent is enabled, a plain shell opens. The <span class="docs-ui">+</span> menu opens <span class="docs-ui">New Terminal</span>, launches Claude Code or Codex in a new tab, or jumps to <span class="docs-ui">Agent settings…</span>. Its search box also finds tabs, saved URLs, and files.</p>
 <p>Tabs show the agent state: <span class="docs-ui">Running</span>, <span class="docs-ui">Waiting for input</span>, <span class="docs-ui">Done (unread)</span>, <span class="docs-ui">Idle</span>.</p>
 <figure class="docs-clip" data-clip="terminals">

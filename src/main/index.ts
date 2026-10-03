@@ -43,6 +43,7 @@ import { elapsedMs, mark, reportInteractive, setStartupTags } from './startup'
 import { emulationKind } from './emulation'
 import { TerminalManager } from './terminal'
 import { listAgentOptions } from './agentDetection'
+import { listCliTools } from './cliTools'
 import {
   addAgentAccount,
   listAgentAccounts,
@@ -57,7 +58,9 @@ import { listAgentResources } from './agentResources'
 import { appVersion, checkForUpdate } from './updateCheck'
 import { sanitizeLayout } from '@shared/layout'
 import { ResourceCollector } from './resources'
-import { ProjectWatcher, listDirectory, listFiles, readTextFile, searchFiles, writeTextFile } from './files'
+import { ProjectWatcher, listDirectory, listFiles, readTextFile, resolveInside, searchFiles, writeTextFile } from './files'
+import { inspectProjectFile, projectMediaResponse } from './projectMedia'
+import { isRiskyToOpenExternally } from '@shared/fileViewer'
 import { refreshPreviewIn, registerPreviewProtocol, renderPreviewSource } from './preview'
 import { PREVIEW_SCHEME } from '@shared/preview'
 import { crashReportsActive, initCrashReporting, maybeSendTestEvent, reportMainError, sentryTestKinds, setTelemetryContext, telemetryInstallId, trackIpc } from './telemetry'
@@ -234,9 +237,11 @@ function recordCall(record: import('@shared/apiUsage').ApiCallRecord): void {
 async function decision(): Promise<import('./decision/service').DecisionService> {
   if (!decisionService) {
     const { DecisionService } = await import('./decision/service')
-    const { DECISION_PRESETS } = await import('@shared/decision')
+    const { DECISION_PRESETS, DEFAULT_DECISION_PREFERENCES, withLocalDecisionModel } = await import('@shared/decision')
+    const { localModelRecommendation } = await import('./localModels')
     decisionService = new DecisionService({
-      prefs: () => currentSettings().decision,
+      // Ollama でモデルを決めていなければ、この PC に合うもの（clef / clef-flash）を使う
+      prefs: () => withLocalDecisionModel(currentSettings().decision ?? DEFAULT_DECISION_PREFERENCES, localModelRecommendation().decision),
       // キーは中継に最初の依頼が来たときに初めて読む（起動時には復号しない）
       readKey: (prefs) => providerKey(prefs as KeyRef, DECISION_PRESETS[prefs.preset].vendor),
       getEnv: (name) => envGetter(keyLookup())(name),
@@ -481,6 +486,17 @@ function updateProject(next: ProjectUpdate): ProjectsState {
 const IS_E2E = process.env.ADE_E2E === '1'
 const SHOW_IN_E2E = process.env.ADE_E2E_SHOW === '1'
 const HIDE_WINDOW = IS_E2E && !SHOW_IN_E2E
+
+/*
+ * 検証起動では既定のブラウザを開かない（作った Issue・GitHub / GitLab のページ・フィードバックの「新しい Issue」が
+ * 本物のブラウザに出ないように）。開こうとした URL は ADE_E2E_OPEN_LOG のファイルに1行ずつ書き、E2E が確かめる
+ */
+if (IS_E2E) {
+  shell.openExternal = async (url: string) => {
+    const log = process.env.ADE_E2E_OPEN_LOG
+    if (log) await import('node:fs/promises').then((fs) => fs.appendFile(log, `${url}\n`, 'utf8'))
+  }
+}
 
 /** 解決済みの配色に合わせた地の色（tokens.css の --color-bg-app と同値） */
 function nativeThemeBackground(): string {
@@ -855,6 +871,7 @@ function registerIpc(): void {
     'project:remove': (id) => removeProject(id),
     'project:sshHosts': async () => (await import('./projectSources')).listSshHosts(),
     'project:githubRepos': async () => (await import('./projectSources')).listGitHubRepos(),
+    'project:gitlabRepos': async () => (await import('./github/gitlab')).listGitLabRepos(),
     'project:cloneDefaults': async () => ({ parent: (await import('./projectSources')).defaultCloneParent(), home: homedir() }),
     'project:pickParent': async (current) => {
       const window = mainWindow
@@ -894,6 +911,7 @@ function registerIpc(): void {
       void listAgentOptions(currentSettings().agents).then((options) => send('agents:changed', options))
     },
     'agents:list': (refresh) => listAgentOptions(currentSettings().agents, refresh === true),
+    'cliTools:list': (refresh) => listCliTools(refresh === true),
     'agents:resources': (agent) => listAgentResources(String(agent) as Parameters<typeof listAgentResources>[0], workspace.folderPath ?? null),
     'settings:agentPrompt': (template) => updateSettings({ agentPrompt: typeof template === 'string' ? template : undefined }),
 
@@ -1035,11 +1053,14 @@ function registerIpc(): void {
     'review:organize': async (id, runner) => {
       const r = await import('./review')
       const { LLM_PROVIDER_PRESETS, isOrganizeRunnerId } = await import('@shared/aiProviders')
+      // Ollama でモデルを決めていなければ、この PC に合うもの（gpt-oss / qwen3）を使う
+      const localOrganizeModel = (await import('./localModels')).localModelRecommendation().organize
       if (!isOrganizeRunnerId(runner)) throw new Error('unknown runner')
       // API キーで直接呼ぶ場合は、キーと接続先を渡す（キーは settings.json の指定 > 保存したキー。名前の無い環境変数は読まない）
       const api = runner.startsWith('api:') ? (() => {
         const provider = runner.slice(4) as keyof typeof LLM_PROVIDER_PRESETS
-        return { endpoint: currentSettings().organizer?.endpoints?.[provider], vendor: LLM_PROVIDER_PRESETS[provider].vendor }
+        const endpoint = currentSettings().organizer?.endpoints?.[provider]
+        return { endpoint: provider === 'ollama' && !endpoint?.model ? { ...endpoint, model: localOrganizeModel } : endpoint, vendor: LLM_PROVIDER_PRESETS[provider].vendor }
       })() : undefined
       updateSettings({ organizer: { ...currentSettings().organizer, runner } })
       return r.organizeReview(r.checkedPaths(workspace.folderPath, id), runner,
@@ -1165,7 +1186,9 @@ function registerIpc(): void {
         stt: Object.fromEntries(ai.STT_REMOTE_PROVIDERS.map((p) => [p, ai.isEndpointReady(ai.STT_PROVIDER_PRESETS[p],
           settings.capture?.sttEndpoints?.[p], !!sttRef(p) || keys.has(ai.STT_PROVIDER_PRESETS[p].vendor))])) as Record<SttRemoteProvider, boolean>,
         llm: Object.fromEntries(ai.LLM_API_PROVIDERS.map((p) => [p, ai.isEndpointReady(ai.LLM_PROVIDER_PRESETS[p],
-          settings.organizer?.endpoints?.[p], !!llmRef(p) || keys.has(ai.LLM_PROVIDER_PRESETS[p].vendor))])) as Record<LlmApiProvider, boolean> }
+          settings.organizer?.endpoints?.[p], !!llmRef(p) || keys.has(ai.LLM_PROVIDER_PRESETS[p].vendor))])) as Record<LlmApiProvider, boolean>,
+        // Ollama の既定のモデル（判定・整理）。この PC のメモリと GPU から選ぶ
+        localModels: (await import('./localModels')).localModelRecommendation() }
     },
     'review:list': async (folderPath) => {
       const target = historyFolder(folderPath)
@@ -1348,6 +1371,15 @@ function registerIpc(): void {
     'fs:write': (relPath, content) => writeTextFile(projectRoot(), relPath, content),
     'fs:files': () => listFiles(projectRoot()),
     'fs:search': (query, mode) => searchFiles(projectRoot(), query, mode),
+    'fs:inspect': (relPath) => inspectProjectFile(projectRoot(), relPath),
+    'fs:reveal': async (relPath) => shell.showItemInFolder(await resolveInside(projectRoot(), relPath)),
+    'fs:openExternal': async (relPath) => {
+      const file = await resolveInside(projectRoot(), relPath)
+      // ワンクリックで実行されうるもの（.app・.command・拡張子なし など）は開かない。Finder で表示はできる
+      if (isRiskyToOpenExternally(file.split(/[\\/]/).join('/'))) throw new UserFacingError(t('files.errors.openRisky'))
+      const failure = await shell.openPath(file)
+      if (failure) throw new UserFacingError(failure)
+    },
     'preview:render': (path, source) => renderPreviewSource(path, source),
     'editor:unsaved': (paths) => {
       unsavedFiles = Array.isArray(paths) ? paths.filter((p): p is string => typeof p === 'string') : []
@@ -1356,6 +1388,10 @@ function registerIpc(): void {
     // GitHub 連携（src/main/github/。gh CLI を呼ぶので、使うときだけ読み込む）
     'github:status': async () => (await import('./github')).githubStatus(),
     'github:repo': async () => (await import('./github')).githubRepo(workspace.folderPath),
+    'gitlab:status': async () => {
+      const [{ githubRepo }, { gitlabStatus }] = await Promise.all([import('./github'), import('./github/gitlab')])
+      return gitlabStatus((await githubRepo(workspace.folderPath)).repo)
+    },
     'github:reviewDraft': async (id) => {
       const { checkedPaths } = await import('./review')
       return (await import('./github')).githubReviewDraft(checkedPaths(workspace.folderPath, id), workspace.folderPath)
@@ -1398,8 +1434,15 @@ function registerIpc(): void {
     },
     'feedback:captureWindow': async () => {
       if (!mainWindow || mainWindow.isDestroyed()) throw new UserFacingError(t('feedback.errors.captureFailed'))
-      const { fitScreenshot } = await import('./feedbackCapture')
-      return fitScreenshot(await mainWindow.webContents.capturePage())
+      const [{ fitScreenshot, overlayView }, { nativeImage }] = await Promise.all([import('./feedbackCapture'), import('electron')])
+      const window = mainWindow
+      const shot = await window.webContents.capturePage()
+      // ウインドウの画像には内蔵ブラウザ（別のレイヤー）が写らないので、ビューも撮って同じ位置に重ねる（画面収録の許可は要らない）
+      const target = browser?.visibleSnapshotTarget() ?? null
+      const viewShot = target ? await target.contents.capturePage().catch(() => null) : null
+      const [width, height] = window.isDestroyed() ? [0, 0] : window.getContentSize()
+      const merged = viewShot && target ? overlayView(shot, { width: width!, height: height! }, { image: viewShot, bounds: target.bounds }) : null
+      return fitScreenshot(merged ? nativeImage.createFromBitmap(Buffer.from(merged.data.buffer, merged.data.byteOffset, merged.data.byteLength), { width: merged.width, height: merged.height }) : shot)
     },
     'github:repoStatus': async () => {
       const { gitRepoStatus, watchGitHead } = await import('./github/repoStatus')
@@ -1520,6 +1563,8 @@ async function main(): Promise<void> {
   if (loadedSettings.whisperModel) process.env.ADE_WHISPER_MODEL = loadedSettings.whisperModel
   protocol.handle('ade-media', async (request) => {
     const url = new URL(request.url)
+    // エディタで開いたプロジェクトの画像・動画・音声・PDF（src/main/projectMedia.ts が外・リンク・パイプを断る）
+    if (url.hostname === 'project') return projectMediaResponse(workspace.folderPath, request.url, request.headers.get('range'))
     // Agent が撮った AFTER のスクリーンショット: /<id>/file/<レビューのフォルダからの相対パス>（src/main/afterShots.ts が中を確かめる）
     const shot = /^\/(\d{8}-\d{6})\/file\/(.+)$/.exec(url.pathname)
     if (url.hostname === 'review' && shot && workspace.folderPath) {

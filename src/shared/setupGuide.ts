@@ -1,10 +1,12 @@
 /**
  * AI の接続先の設定の案内（文字起こし・整理・判定モデルで共通）。
  * - 「キーを作る ↗」「ID はここ ↗」「ドキュメント ↗」のリンク（外部のブラウザで開く。https だけ）
- * - Agent に設定を頼む指示文（Account ID を調べる・キーの作り方を案内する・settings.json と .env に書く）
+ * - Agent に設定を頼む指示文。人の手作業を最小にし、Agent に全部させる: CLI が無ければ入れて使い（ollama・wrangler など）、
+ *   画面の操作が要るところはブラウザを操作するツール（Playwright・browser use など）で進め、Ferret の settings.json と .env に書き、
+ *   最後に1回呼んで確かめる。人に頼むのはログインや承認など本人にしかできない操作だけ（2026-10-03 の方針）
  *
- * 指示文の決まり：キーや ID の値は入れない。Agent にも値を表示させない。キーの作成・ログイン・権限の付与は
- * 利用者が自分で行い、Agent に代わりにさせない。settings.json にはキーそのものを書かず、apiKeyEnv で参照する。
+ * 指示文の決まり：キーや ID の値は入れない（引数に無い）。Agent にも値を画面・ログ・会話に出させない。
+ * settings.json にはキーそのものを書かず、.env に置いて apiKeyEnv で参照する。
  */
 import type { MessageParams, TranslationKey } from './i18n'
 import type { AiKeyPermission } from './aiProviders'
@@ -59,22 +61,39 @@ export interface SetupPromptTarget {
   settingsPath: string
   /** 設定フォルダの .env の絶対パス（settingsFile:info の dir + .env。main がキーを探す場所） */
   envPath: string
+  /** settings.json の JSON Schema の絶対パス（settingsFile:info の schemaPath）。省略時は settings.json と同じフォルダの settings.schema.json */
+  schemaPath?: string
   /** settings.json の中の接続先の場所（例 capture.sttEndpoints.groq） */
   endpointPath: string
   /** その提供元を使うようにする項目（例 capture.transcription = "groq"） */
   select?: { path: string; value: string }
+  /** 揃ったら true にする項目（例 decision.enabled）。前の手順がすべて済んでから */
+  enablePath?: string
+}
+
+/** 端末内のサーバーの種類（入れ方・モデルの落とし方の案内を分ける）。インストールのページの場所で見分ける */
+function localServerKind(guide: SetupGuide): 'ollama' | 'other' {
+  try {
+    return guide.installUrl && new URL(guide.installUrl).hostname === 'ollama.com' ? 'ollama' : 'other'
+  } catch {
+    return 'other'
+  }
 }
 
 type Translate = (key: TranslationKey, params?: MessageParams) => string
 
 /**
  * Agent に設定を頼む指示文。番号付きの手順にする。キーや ID の値は受け取らない（引数に無い）ので、文に入りようがない。
+ * 手順の並び: Ferret の設定ファイルの場所 → 端末内のサーバーを入れて起動・モデルを落とす → Base URL → Account ID → キー → .env と apiKeyEnv
+ * → 使う提供元を選ぶ → 有効にする → 1回呼んで確かめ、値を見せずに報告
  */
 export function buildAgentSetupPrompt(guide: SetupGuide, target: SetupPromptTarget, t: Translate): string {
   const at = { provider: guide.label, path: target.endpointPath, settingsPath: target.settingsPath }
-  const steps: string[] = []
+  const schemaPath = target.schemaPath ?? target.settingsPath.replace(/settings\.json$/, 'settings.schema.json')
+  const steps: string[] = [t('ai.setup.prompt.settings', { settingsPath: target.settingsPath, schemaPath, envPath: target.envPath })]
   if (guide.local) {
-    steps.push(t('ai.setup.prompt.local', { provider: guide.label, installUrl: guide.installUrl ?? '', baseUrl: guide.baseUrl.replace(/\/+$/, ''), model: guide.model || '-' }))
+    const local = { provider: guide.label, installUrl: guide.installUrl ?? '', baseUrl: guide.baseUrl.replace(/\/+$/, ''), model: guide.model || '-' }
+    steps.push(t(localServerKind(guide) === 'ollama' ? 'ai.setup.prompt.ollama' : 'ai.setup.prompt.local', local))
   }
   if (guide.needsBaseUrl) steps.push(t('ai.setup.prompt.baseUrl', at))
   if (guide.needsAccountId) {
@@ -87,6 +106,7 @@ export function buildAgentSetupPrompt(guide: SetupGuide, target: SetupPromptTarg
     steps.push(t(guide.keyRequired ? 'ai.setup.prompt.envFile' : 'ai.setup.prompt.envFileOptional', { ...at, envPath: target.envPath, envVar }))
   }
   if (target.select) steps.push(t('ai.setup.prompt.select', { selectPath: target.select.path, selectValue: target.select.value, settingsPath: target.settingsPath }))
+  if (target.enablePath) steps.push(t('ai.setup.prompt.enable', { enablePath: target.enablePath, settingsPath: target.settingsPath }))
   steps.push(t('ai.setup.prompt.finish'))
   const docs = isSafeExternalUrl(guide.docsUrl) ? `\n${t('ai.setup.prompt.docs', { docsUrl: guide.docsUrl })}` : ''
   return `${t('ai.setup.prompt.intro', { provider: guide.label, purpose: target.purpose })}\n${steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}${docs}`

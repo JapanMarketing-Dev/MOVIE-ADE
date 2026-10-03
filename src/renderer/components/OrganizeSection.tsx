@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Sparkles } from 'lucide-react'
-import { LLM_API_PROVIDERS, LLM_PROVIDER_PRESETS, providerLabel, type AiEndpointConfig, type LlmApiProvider } from '@shared/aiProviders'
+import { LLM_API_PROVIDERS, LLM_PROVIDER_PRESETS, RECOMMENDED_ORGANIZE_PROVIDER, providerLabel, type AiEndpointConfig, type LlmApiProvider } from '@shared/aiProviders'
+import { withRecommendedModel } from '@shared/localModels'
 import type { SttAvailability } from '@shared/types'
 import { useT } from '../lib/i18n'
 import { ProviderSetup } from './AiProviderFields'
@@ -13,7 +14,8 @@ import { ProviderSetup } from './AiProviderFields'
  */
 export function OrganizeSection({ recording = false, headless = false }: { recording?: boolean; /** 見出しと外枠を出さない（設定ページの PageSection に入れるとき） */ headless?: boolean }) {
   const t = useT()
-  const [provider, setProvider] = useState<LlmApiProvider>('anthropic')
+  // 既定はおすすめの Ollama（端末内・キー不要。モデルは PC に合わせて main が選ぶ）
+  const [provider, setProvider] = useState<LlmApiProvider>(RECOMMENDED_ORGANIZE_PROVIDER)
   const [endpoints, setEndpoints] = useState<Partial<Record<LlmApiProvider, AiEndpointConfig>>>({})
   const [available, setAvailable] = useState<SttAvailability | null>(null)
   const saveTimer = useRef<number | undefined>(undefined)
@@ -39,7 +41,9 @@ export function OrganizeSection({ recording = false, headless = false }: { recor
     }, 400)
   }
 
-  const preset = LLM_PROVIDER_PRESETS[provider]
+  // Ollama の推奨のモデルは、この PC のメモリと GPU から main が選んだもの（@shared/localModels）
+  const localModel = provider === 'ollama' ? available?.localModels?.organize : undefined
+  const preset = localModel ? { ...LLM_PROVIDER_PRESETS[provider], model: localModel, models: withRecommendedModel(LLM_PROVIDER_PRESETS[provider].models, localModel) } : LLM_PROVIDER_PRESETS[provider]
   const endpoint = endpoints[provider]
 
   // 提供元 → モデル → キーの3段（文字起こしと同じ部品）。どれで整理するかは指摘の画面の「整理」の横で選ぶ
@@ -48,7 +52,7 @@ export function OrganizeSection({ recording = false, headless = false }: { recor
       <label className="st-row"><span className="st-row__label">{t('ai.organize.provider2')}</span><span className="rv-select">
         <select className="st-select" aria-label={t('ai.organize.provider')} value={provider} disabled={recording} onChange={(e) => setProvider(e.target.value as LlmApiProvider)} data-testid="organize-provider">
           {LLM_API_PROVIDERS.map((p) => <option key={p} value={p}>
-            {p === 'compatible' ? t('ai.providerCustom') : providerLabel(LLM_PROVIDER_PRESETS[p], t)}{available?.llm[p] ? ' ✓' : ''}
+            {p === 'compatible' ? t('ai.providerCustom') : p === RECOMMENDED_ORGANIZE_PROVIDER ? t('onboarding.decision.recommendedOption', { label: providerLabel(LLM_PROVIDER_PRESETS[p], t) }) : providerLabel(LLM_PROVIDER_PRESETS[p], t)}{available?.llm[p] ? ' ✓' : ''}
           </option>)}
         </select></span></label>
       {available && <ProviderSetup key={provider} preset={preset} value={endpoint} disabled={recording} testId="organize-endpoint"

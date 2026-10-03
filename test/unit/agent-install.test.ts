@@ -233,11 +233,22 @@ describe('agentInstallCommand の OS ごとの出し分け', () => {
 
   it('Windows の手順が分からず、POSIX のシェル向けしか無いものはリンクだけ（undefined）', () => {
     expect(agentInstallCommand('amp', 'win32')).toBeUndefined()
-    expect(agentInstallCommand('grok', 'win32')).toBeUndefined()
     // Homebrew（Windows に無い）と sh -c "$(curl …)" も同じ扱い
-    expect(agentInstallCommand('crush', 'win32')).toBeUndefined()
-    expect(agentInstallCommand('crush', 'darwin')).toBe('brew install charmbracelet/tap/crush')
+    expect(agentInstallCommand('rovo', 'win32')).toBeUndefined()
     expect(agentInstallCommand('trae', 'win32')).toBeUndefined()
+  })
+
+  it('公式の Windows の手順があるものは出す（Droid・Kiro・Grok・Junie・Kimi は PowerShell、Qoder は CMD、Crush は winget）', () => {
+    for (const agent of ['droid', 'kiro', 'grok', 'junie', 'kimi'] as const) {
+      expect(agentInstallCommand(agent, 'win32')).toMatch(/^powershell -NoProfile -ExecutionPolicy Bypass -Command "[^"]+"$/)
+    }
+    expect(agentInstallCommand('qoder', 'win32')).toBe('curl -fsSL https://qoder.com/install.cmd -o install.cmd && install.cmd && del install.cmd')
+    expect(agentInstallCommand('crush', 'win32')).toBe('winget install charmbracelet.crush')
+  })
+
+  it('macOS が Homebrew だけのものは、Linux では Linux の公式の手順を出す', () => {
+    expect(agentInstallCommand('crush', 'darwin')).toBe('brew install charmbracelet/tap/crush')
+    expect(agentInstallCommand('crush', 'linux')).toBe('npm install -g @charmland/crush')
   })
 
   it('Windows でも npm などの OS に関係ないコマンドはそのまま出す', () => {

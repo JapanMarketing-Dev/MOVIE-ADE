@@ -1,3 +1,4 @@
+import { LinuxTreeWatcher } from './linuxTreeWatch'
 import { spawn } from 'node:child_process'
 import { FileTooLargeError, NotRegularFileError, readFileBounded } from './boundedFile'
 import { constants, existsSync, watch, type FSWatcher } from 'node:fs'
@@ -193,7 +194,8 @@ const RG_EXCLUDES = ['.git', 'node_modules', '.ferret', '.ade-movie'].flatMap((d
  */
 function runRg(rg: string, cwd: string, args: string[], onLine: (line: string) => boolean): Promise<boolean> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(rg, args, { cwd, stdio: ['ignore', 'pipe', 'ignore'] })
+    // Windows で検索のたびにコンソールの窓が一瞬出ないようにする
+    const child = spawn(rg, args, { cwd, stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true })
     let buffer = ''
     let stopped = false
     child.stdout.setEncoding('utf8')
@@ -290,7 +292,7 @@ const MAX_PENDING_PATHS = 1000
 const WATCH_BURST_EVENTS = 2000
 
 export class ProjectWatcher {
-  private watcher: FSWatcher | null = null
+  private watcher: FSWatcher | LinuxTreeWatcher | null = null
   private pending = new Set<string>()
   /** 進み具合（progress.json）が変わったレビューのID。.ferret/ は変更通知の対象外なので別に拾う */
   private progress = new Set<string>()
@@ -306,7 +308,7 @@ export class ProjectWatcher {
     this.close()
     if (!root) return
     try {
-      this.watcher = watch(root, { recursive: true }, (_event, filename) => {
+      const onEvent = (_event: string, filename: string | Buffer | null): void => {
         if (this.burst.events++ === 0) this.burst.since = Date.now()
         if (!filename) return
         const rel = String(filename).split(sep).join('/')
@@ -319,7 +321,11 @@ export class ProjectWatcher {
         if (this.pending.size >= MAX_PENDING_PATHS) return
         this.pending.add(rel)
         this.timer ??= setTimeout(() => this.flush(), CHANGE_BATCH_MS)
-      })
+      }
+      // Linux の recursive は node_modules まで全部に inotify を張るので、対象のフォルダにだけ張る（linuxTreeWatch.ts）
+      this.watcher = process.platform === 'linux'
+        ? new LinuxTreeWatcher(root, onEvent, (err) => reportHandled(err, { area: 'files', op: 'watch project folder (limit)' }))
+        : watch(root, { recursive: true }, onEvent)
       // 監視できなくなっても（フォルダの削除など）アプリは止めない
       this.watcher.on('error', () => this.close())
     } catch (err) {

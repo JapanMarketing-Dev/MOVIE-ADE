@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Download — Ferret</title>
-  <meta name="description" content="Download Ferret for macOS (Apple silicon / Intel). Windows (x64 / Arm64) and Linux (AppImage / .deb) builds are in preview. All versions and release notes.">
+  <meta name="description" content="Download Ferret for macOS (Apple silicon / Intel), Windows (x64 / Arm64) and Linux (AppImage / .deb). All versions and release notes.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
   <!-- Absolute URLs come from SITE_URL in js/config.js; run `pnpm site:meta` after changing it -->
@@ -12,7 +12,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
   <meta property="og:title" content="Download Ferret">
-  <meta property="og:description" content="macOS builds, plus Windows and Linux previews. All versions and release notes.">
+  <meta property="og:description" content="Builds for macOS, Windows and Linux. All versions and release notes.">
   <meta property="og:url" content="https://ferretade.dev/download">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -21,7 +21,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png?v=5434b34e">
   <script src="js/theme.js?v=28aec166"></script>
   <link rel="stylesheet" href="style.css?v=a8bc0e67">
-  <script type="module" src="js/app.js?v=c5c74b59"></script>
+  <script type="module" src="js/app.js?v=e3a25155"></script>
 </head>
 <body data-page="download">
   <svg class="sprite" width="0" height="0" aria-hidden="true">
@@ -89,10 +89,10 @@
       </div>
       <div class="slots">
         <div class="os-col"><h3><svg class="icon"><use href="#i-monitor"/></svg>macOS</h3><div class="slot" data-slot="mac-arm64"></div><div class="slot" data-slot="mac-x64"></div></div>
-        <div class="os-col"><h3><svg class="icon"><use href="#i-monitor"/></svg>Windows <span class="badge badge-warn">Preview</span></h3><div class="slot" data-slot="win-x64"></div><div class="slot" data-slot="win-arm64"></div></div>
-        <div class="os-col"><h3><svg class="icon"><use href="#i-monitor"/></svg>Linux <span class="badge badge-warn">Preview</span></h3><div class="slot" data-slot="linux-appimage"></div><div class="slot" data-slot="linux-deb"></div></div>
+        <div class="os-col"><h3><svg class="icon"><use href="#i-monitor"/></svg>Windows</h3><div class="slot" data-slot="win-x64"></div><div class="slot" data-slot="win-arm64"></div></div>
+        <div class="os-col"><h3><svg class="icon"><use href="#i-monitor"/></svg>Linux</h3><div class="slot" data-slot="linux-appimage"></div><div class="slot" data-slot="linux-deb"></div></div>
       </div>
-      <p class="help">Not sure which Mac you have? Open Apple menu → About This Mac. “Chip: Apple M1” or later means Apple silicon. Windows and Linux builds are previews and have not been tested on real hardware yet.</p>
+      <p class="help">Not sure which Mac you have? Open Apple menu → About This Mac. “Chip: Apple M1” or later means Apple silicon. The Windows and Linux builds are not code-signed yet; <a href="docs/install.html">Install</a> shows the first-launch step.</p>
     </section>
 
     <section class="section" id="versions">

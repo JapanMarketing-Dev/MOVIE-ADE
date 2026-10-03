@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
+import { join, relative, resolve, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
@@ -104,11 +104,11 @@ describe('GitHub Actions の固定', () => {
     }
   })
 
-  it('release は SHA256SUMS だけを R2 の外（GitHub Release）に出し、stage / promote はそれと突き合わせる', () => {
+  it('release は SHA256SUMS とその署名だけを R2 の外（GitHub Release）に出し、stage / promote はそれと突き合わせる', () => {
     const text = read(`${workflowDir}/release.yml`)
     expect(text).toMatch(/sha256sum Ferret-\* > \.\.\/SHA256SUMS/)
     // GitHub Release に付けるのは SHA256SUMS だけ（インストーラーは R2 だけ。attestation は入れない決定）
-    expect(text).toMatch(/gh release create "\$\{GITHUB_REF_NAME\}" SHA256SUMS --repo/)
+    expect(text).toMatch(/gh release create "\$\{GITHUB_REF_NAME\}" SHA256SUMS SHA256SUMS\.sig --repo/)
     expect(text).not.toMatch(/gh release (create|upload)[^\n]*\.(dmg|exe|AppImage|deb)/)
     expect(text).not.toMatch(/attest-build-provenance|id-token:/)
     const jobs = jobsOf(text)
@@ -161,7 +161,8 @@ describe('スクリプトの外の道具の起動', () => {
   })
 
   it('検査の対象のファイルが実際にある（パスの書き間違いで素通りしない）', () => {
-    expect(scriptFiles.map((f) => relative(root, join(root, f)))).toEqual(expect.arrayContaining(['scripts/release-r2.mjs', 'scripts/release-github.mjs', 'scripts/release-tools.mjs', 'scripts/sentry-sourcemaps.mjs', 'scripts/sentry-release.mjs', 'scripts/dev.mjs', 'scripts/install-app-deps.mjs']))
+    // relative は OS の区切り（Windows は \）で返すので / にそろえて比べる
+    expect(scriptFiles.map((f) => relative(root, join(root, f)).split(sep).join('/'))).toEqual(expect.arrayContaining(['scripts/release-r2.mjs', 'scripts/release-github.mjs', 'scripts/release-tools.mjs', 'scripts/sentry-sourcemaps.mjs', 'scripts/sentry-release.mjs', 'scripts/dev.mjs', 'scripts/install-app-deps.mjs']))
     expect(workflows).toEqual(expect.arrayContaining([`${workflowDir}/release.yml`, `${workflowDir}/cross-platform.yml`]))
   })
 })

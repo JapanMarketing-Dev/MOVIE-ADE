@@ -124,26 +124,31 @@
   </tbody>
 </table>
 <p>Releases up to 0.1.x were published under the old name, as <code>MOVIE-ADE-&lt;version&gt;-…</code>. The <code>Ferret-…</code> names start with 0.2.0.</p>
-<div class="docs-callout docs-callout-warn"><p>Ferret is tested on macOS (Apple silicon). The Windows and Linux builds are marked <strong>Preview</strong>: they are built and published, but not yet validated on real machines.</p></div>
+<div class="docs-callout docs-callout-warn"><p>Ferret supports macOS, Windows and Linux. The Windows and Linux builds are not code-signed yet, so the first launch asks you to confirm (see the steps below).</p></div>
       </section>
 
       <section class="docs-section" aria-labelledby="verify">
-        <h2 id="verify"><a class="docs-anchor" href="#verify" aria-label="Link to Verify the download (sha256)">#</a>Verify the download (sha256)</h2>
-        <p>There is no <code>SHA256SUMS</code> file. Each release has <code>releases/&lt;version&gt;/manifest.json</code> on the download server, and its <code>files[].sha256</code> field holds the expected hash of every file. <code>versions.json</code> lists the available versions.</p>
+        <h2 id="verify"><a class="docs-anchor" href="#verify" aria-label="Link to Verify the download (signed SHA256SUMS)">#</a>Verify the download (signed SHA256SUMS)</h2>
+        <p>Every release has a <code>SHA256SUMS</code> file and its signature <code>SHA256SUMS.sig</code>. The signature is made with the Ferret release key, which is kept apart from the download server, so a changed installer on the download server can't come with a valid signature. The public key is <em>not</em> taken from the download server: get it from the repository (<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers" target="_blank" rel="noopener noreferrer"><code>build/release-signing/allowed_signers</code><span class="sr-only"> (opens in a new tab)</span></a>) or copy it from here:</p>
+<pre><code>release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9</code></pre>
+<p>Its fingerprint is <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code>. The same files are attached to each release on GitHub. Check the signature with <code>ssh-keygen</code> (included in macOS, Windows 10 and later, and Linux), then compare the hash of your download with the signed list:</p>
 <pre><code># the download server (currently the R2 public URL; it may move to a custom domain)
 BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
-VERSION=0.2.0
+VERSION=$(curl -s $BASE/latest.json | jq -r .version)
+curl -sO $BASE/releases/$VERSION/SHA256SUMS
+curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
 
-# expected hashes
-curl -s $BASE/releases/$VERSION/manifest.json | jq -r '.files[] | "\(.sha256)  \(.name)"'
+# save the public key above as allowed_signers, then:
+ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
+# → Good "ferret-release" signature for release@ferretade.dev …
 
 # macOS
-shasum -a 256 Ferret-&lt;version&gt;-mac-arm64.dmg
+shasum -a 256 -c SHA256SUMS --ignore-missing
 # Linux
-sha256sum Ferret-&lt;version&gt;-linux-x86_64.AppImage</code></pre>
-<pre><code># Windows (PowerShell)
+sha256sum -c SHA256SUMS --ignore-missing</code></pre>
+<pre><code># Windows (PowerShell): compare with the line for your file in SHA256SUMS
 Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
-<p>Compare the output with the manifest. A match only proves the file is what was uploaded. On macOS, the Developer ID signature and Apple's notarization are checked by Gatekeeper when you open the app. The Windows and Linux builds are not code-signed.</p>
+<p>Stop if <code>ssh-keygen</code> doesn't print <q>Good "ferret-release" signature</q> or the hash isn't in the list. Ferret's <span class="docs-ui">Check for Updates</span> does the same check with the key built into the app and doesn't offer a version whose signature doesn't match. On macOS you can also check the Developer ID signature and notarization with <code>spctl -a -vv /Applications/Ferret.app</code>. The Windows and Linux installers are not code-signed by Microsoft or a Linux distribution yet. Releases up to 0.3.0 were published before signing started and have only the unsigned hashes in <code>releases/&lt;version&gt;/manifest.json</code>.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="macos">
@@ -161,7 +166,7 @@ Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
       </section>
 
       <section class="docs-section" aria-labelledby="windows">
-        <h2 id="windows"><a class="docs-anchor" href="#windows" aria-label="Link to Windows (Preview)">#</a>Windows (Preview)</h2>
+        <h2 id="windows"><a class="docs-anchor" href="#windows" aria-label="Link to Windows">#</a>Windows</h2>
         <ol class="docs-steps">
   <li>Run <code>Ferret-&lt;version&gt;-win-&lt;arch&gt;.exe</code>.</li>
   <li>When SmartScreen shows "Windows protected your PC", click <span class="docs-ui">More info</span>, then <span class="docs-ui">Run anyway</span>.</li>
@@ -170,13 +175,14 @@ Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
       </section>
 
       <section class="docs-section" aria-labelledby="linux">
-        <h2 id="linux"><a class="docs-anchor" href="#linux" aria-label="Link to Linux (Preview)">#</a>Linux (Preview)</h2>
+        <h2 id="linux"><a class="docs-anchor" href="#linux" aria-label="Link to Linux">#</a>Linux</h2>
         <p>AppImage:</p>
 <pre><code>chmod +x Ferret-&lt;version&gt;-linux-x86_64.AppImage
 ./Ferret-&lt;version&gt;-linux-x86_64.AppImage</code></pre>
 <p>Debian / Ubuntu:</p>
 <pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
 <p>The deb installs the <code>ferret</code> package and command.</p>
+<p>On Ubuntu 23.10 and later, the AppImage can stop at launch with a sandbox error, because AppArmor restricts the user namespaces Electron's sandbox uses. Install the <code>.deb</code> instead; it sets up the sandbox helper.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="source">
@@ -212,10 +218,10 @@ pnpm dist:linux   # AppImage + deb (x64)</code></pre>
       <p class="docs-toc-heading">On this page</p>
       <ul>
         <li><a href="#download">Download</a></li>
-        <li><a href="#verify">Verify the download (sha256)</a></li>
+        <li><a href="#verify">Verify the download (signed SHA256SUMS)</a></li>
         <li><a href="#macos">macOS</a></li>
-        <li><a href="#windows">Windows (Preview)</a></li>
-        <li><a href="#linux">Linux (Preview)</a></li>
+        <li><a href="#windows">Windows</a></li>
+        <li><a href="#linux">Linux</a></li>
         <li><a href="#source">Build from source</a></li>
         <li><a href="#update">Updates</a></li>
       </ul>

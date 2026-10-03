@@ -46,3 +46,40 @@ export function isShellProcess(name: string): boolean {
   const base = (name.trim().split(/[\\/]/).pop() ?? '').toLowerCase().replace(/^-/, '').replace(/\.exe$/, '')
   return base === '' || SHELLS.has(base)
 }
+
+/**
+ * Windows のプロセス一覧（PowerShell の Win32_Process を「pid ⇥ ppid ⇥ Name ⇥ CommandLine」で並べたもの）を行に分ける。
+ * command は「実行ファイル名＋引数」にする（CommandLine の先頭の実行ファイルは "C:\Program Files\…" のように空白を含むので、
+ * そのまま空白で区切ると agentForProcess が名前を読めない）。CommandLine が読めないプロセスは Name だけ
+ */
+export function parseWindowsProcessRows(stdout: string): ProcessRow[] {
+  return stdout.split(/\r?\n/).flatMap((line) => {
+    const [pid, parent, name = '', ...rest] = line.split('\t')
+    if (!/^\d+$/.test(pid?.trim() ?? '') || !/^\d+$/.test(parent?.trim() ?? '') || !name.trim()) return []
+    const commandLine = rest.join('\t').trim()
+    let args = ''
+    if (commandLine.startsWith('"')) {
+      const end = commandLine.indexOf('"', 1)
+      args = end > 0 ? commandLine.slice(end + 1) : ''
+    } else if (commandLine) {
+      const space = commandLine.search(/\s/)
+      args = space > 0 ? commandLine.slice(space) : ''
+    }
+    return [{ pid: Number(pid), parent: Number(parent), command: `${name.trim()} ${args.trim()}`.trim() }]
+  })
+}
+
+/** ConPTY がシェルの横に置くコンソールのホスト。前面のプロセスには数えない */
+const CONSOLE_HOSTS = new Set(['conhost', 'openconsole'])
+
+/**
+ * Windows で、シェル（shellPid）の子に何か動いているか（プロンプトに戻っていなければ true）。
+ * node-pty の Windows 版の pty.process は端末名（xterm-256color）を返すだけで前面のプロセスを表さないので、子の有無で見る
+ */
+export function hasForegroundChild(rows: readonly ProcessRow[], shellPid: number): boolean {
+  return rows.some((row) => {
+    if (row.parent !== shellPid) return false
+    const base = (row.command.split(/\s/)[0] ?? '').toLowerCase().replace(/\.exe$/, '')
+    return !CONSOLE_HOSTS.has(base)
+  })
+}

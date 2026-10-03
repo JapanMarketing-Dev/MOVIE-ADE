@@ -2136,6 +2136,58 @@ body[data-resizing='row'] * {
   flex: none;
 }
 
+/* Agent が動いているプロジェクトの印。ターミナルのタブの「実行中」と同じ色の3本の棒が上下する */
+.sb-project__working {
+  display: inline-flex;
+  height: 10px;
+  flex: none;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.sb-project__working > span {
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--agent-working);
+  animation: sb-agent-working 900ms ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+.sb-project__working > span:nth-child(2) {
+  animation-delay: -300ms;
+}
+
+.sb-project__working > span:nth-child(3) {
+  animation-delay: -600ms;
+}
+
+@keyframes sb-agent-working {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* 動きを減らす設定では止め、高さの違う棒として残す（動いていることは色と形で分かる） */
+@media (prefers-reduced-motion: reduce) {
+  .sb-project__working > span {
+    animation: none;
+  }
+
+  .sb-project__working > span:nth-child(1) {
+    transform: scaleY(0.5);
+  }
+
+  .sb-project__working > span:nth-child(3) {
+    transform: scaleY(0.75);
+  }
+}
+
 /* … と折りたたみは、行に触れたときだけ件数の上に重ねて出す（Orca の ProjectHeaderActions） */
 .sb-project__actions {
   position: absolute;
@@ -2688,6 +2740,18 @@ button.sb-more__row:hover {
   flex: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.apd__repos-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.apd__repo-host {
+  flex: none;
+  color: var(--color-text-faint);
 }
 
 .apd__repo-private {

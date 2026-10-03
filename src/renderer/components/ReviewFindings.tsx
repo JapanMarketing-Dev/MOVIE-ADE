@@ -25,7 +25,7 @@ import {
   X
 } from 'lucide-react'
 import { isUnsentTake, playbackAt, takeAt, type ReviewData, type ReviewEdit, type ReviewFrame } from '@shared/review'
-import { LLM_API_PROVIDERS, LLM_PROVIDER_PRESETS, isOrganizeRunnerId, providerLabel, type LlmApiProvider, type OrganizeRunnerId } from '@shared/aiProviders'
+import { LLM_API_PROVIDERS, LLM_PROVIDER_PRESETS, RECOMMENDED_ORGANIZE_PROVIDER, isOrganizeRunnerId, providerLabel, type LlmApiProvider, type OrganizeRunnerId } from '@shared/aiProviders'
 import { Button, EmptyState, IconButton, Modal, Tooltip, useToast } from '../ui'
 import { FindingsEmptyArt } from './reviewArt'
 import { FindingShots } from './ReviewShots'
@@ -39,10 +39,28 @@ import type { TuiAgent } from '@shared/types'
 import { formatShortcut } from '../lib/shortcut'
 import { loadSendTargets, rememberedSendTarget, resolveRememberedTarget, sendReviewToAgent } from '../lib/sendReview'
 import { SendTargetButton } from './SendTargetButton'
-import { NeedsHumanPanel, ProgressSummary, ProgressToggle, QueuedPanel, ReviewActions, VerdictPanel } from './FindingProgress'
-import { countProgress, nextProgress, pendingIds, progressOf, type ReviewVerdict } from '@shared/findingProgress'
+import { NeedsHumanPanel, ProgressSummary, ProgressToggle, QueuedPanel, ReviewActions, StatusFilterBar, VerdictPanel } from './FindingProgress'
+import { countByStatus, isStatusShown, sanitizeHiddenStatuses } from '@shared/findingStatusFilter'
+import { countProgress, nextProgress, pendingIds, progressOf, type FindingProgress, type ReviewVerdict } from '@shared/findingProgress'
 
 type FeedbackItem = ReviewData['document']['items'][number]
+
+/** 進み具合の絞り込み（隠す進み具合）。全レビュー共通で1つ。この端末だけの好みなので localStorage に置く（読めなくても既定で動く） */
+const STATUS_FILTER_KEY = 'ade.findings.hiddenStatuses'
+function loadHiddenStatuses(): FindingProgress[] {
+  try {
+    return sanitizeHiddenStatuses(JSON.parse(localStorage.getItem(STATUS_FILTER_KEY) ?? '[]'))
+  } catch { // ストレージが使えない・壊れた値（想定内。すべて表示で続ける）
+    return []
+  }
+}
+function saveHiddenStatuses(hidden: readonly FindingProgress[]): void {
+  try {
+    localStorage.setItem(STATUS_FILTER_KEY, JSON.stringify(hidden))
+  } catch {
+    // 保存できなくても、この起動の間は効く
+  }
+}
 
 const time = (ms: number) => `${Math.floor(ms / 60000).toString().padStart(2, '0')}:${Math.floor(ms / 1000 % 60).toString().padStart(2, '0')}`
 
@@ -111,7 +129,8 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
   onRecord?: (mode: 'append' | 'new') => void
   recording?: boolean
 }) {
-  const [runner, setRunner] = useState<OrganizeRunnerId>('codex')
+  // 既定はおすすめの Ollama（端末内・キー不要）。選び直した人の選択は settings に残る
+  const [runner, setRunner] = useState<OrganizeRunnerId>(`api:${RECOMMENDED_ORGANIZE_PROVIDER}`)
   /** Agent がどこにも居ないときに起動するもの（設定の startupAgents の先頭） */
   const [defaultAgent, setDefaultAgent] = useState<TuiAgent>('claude')
   /** 送り先を覚える単位（開いているプロジェクト） */
@@ -185,9 +204,19 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
   const [reviewIndex, setReviewIndex] = useState(0)
   const reviewing = (it: FeedbackItem) => it.include && progressOf(review.progress, it.id) === 'human_review'
   const progressCount = countProgress(items, review.progress)
-  const rows = groups.flatMap((g) => g.items.map((item, i) => ({ item, n: ++counter, group: i === 0 ? g : null })))
-    .filter((row) => !activeFilter || groups.find((g) => g.items.includes(row.item))?.target.key === activeFilter)
+  /** 進み具合で隠すもの（確認モードの間は使わない。確認モードは確認待ちだけを並べる） */
+  const [hiddenStatuses, setHiddenStatusesState] = useState<FindingProgress[]>(loadHiddenStatuses)
+  const setHiddenStatuses = (next: FindingProgress[]) => {
+    setHiddenStatusesState(next)
+    saveHiddenStatuses(next)
+  }
+  const statusFiltered = !reviewMode && hiddenStatuses.length > 0
+  const rows = groups.flatMap((g) => g.items.map((item) => ({ item, n: ++counter, owner: g })))
+    .filter((row) => !activeFilter || row.owner.target.key === activeFilter)
     .filter((row) => !reviewMode || reviewing(row.item))
+    .filter((row) => !statusFiltered || isStatusShown(hiddenStatuses, progressOf(review.progress, row.item.id)))
+    // 対象の見出しは、絞り込んだあとの各対象の先頭に出す（先頭の指摘が隠れても見出しは残す）
+    .map((row, i, all) => ({ ...row, group: i === 0 || all[i - 1]!.owner !== row.owner ? row.owner : null }))
   const currentRow = reviewMode ? rows[Math.min(reviewIndex, rows.length - 1)] : undefined
   /** 本文を差し替えて Agent へ送る（確認への返答・NG の送り直し）。宛先は Send to Agent のボタンと同じ */
   const sendText = async (text: string) => {
@@ -288,10 +317,12 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
             setRunner(next)
             void window.ade.invoke('settings:organizer', { runner: next })
           }}>
+            {/* 先頭はおすすめの Ollama（設定していなくても出す。動いていなければ押したときに理由を出す） */}
+            <option value={`api:${RECOMMENDED_ORGANIZE_PROVIDER}`}>{t('onboarding.decision.recommendedOption', { label: providerLabel(LLM_PROVIDER_PRESETS[RECOMMENDED_ORGANIZE_PROVIDER], t) })}</option>
             <optgroup label={t('review.organizeRunnerCli')}><option value="codex">Codex</option><option value="claude-code">Claude Code</option></optgroup>
             {/* 選んでいる API は、キーを消したあとでも残す（押すと理由を出す） */}
-            {(apiReady.length > 0 || runner.startsWith('api:')) && <optgroup label={t('review.organizeRunnerApi')}>
-              {LLM_API_PROVIDERS.filter((p) => apiReady.includes(p) || runner === `api:${p}`).map((p) => <option key={p} value={`api:${p}`}>{providerLabel(LLM_PROVIDER_PRESETS[p], t)}</option>)}
+            {LLM_API_PROVIDERS.some((p) => p !== RECOMMENDED_ORGANIZE_PROVIDER && (apiReady.includes(p) || runner === `api:${p}`)) && <optgroup label={t('review.organizeRunnerApi')}>
+              {LLM_API_PROVIDERS.filter((p) => p !== RECOMMENDED_ORGANIZE_PROVIDER && (apiReady.includes(p) || runner === `api:${p}`)).map((p) => <option key={p} value={`api:${p}`}>{providerLabel(LLM_PROVIDER_PRESETS[p], t)}</option>)}
             </optgroup>}
           </select></span></Tooltip>
         </div>
@@ -326,6 +357,8 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
 
       {items.length === 0 && <EmptyState art={<FindingsEmptyArt />} title={t('review.emptyTitle')}
         description={t('review.emptyDescription')} actions={recordButton('rv-record rv-record--empty')} />}
+
+      {items.length > 0 && !reviewMode && <StatusFilterBar counts={countByStatus(items, review.progress)} hidden={hiddenStatuses} onChange={setHiddenStatuses} />}
 
       {grouped && <div className="rv-targets" role="group" aria-label={t('review.targets.filter')}>
         <button type="button" className="rv-targets__chip" aria-pressed={activeFilter === null} onClick={() => setTargetFilter(null)}>
@@ -453,6 +486,7 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
       </details>}
 
       {/* 全体への補足（Overall Note）の欄は置かない。古いレビューの note は feedback.md に今までどおり載る */}
+      {statusFiltered && rows.length === 0 && <p className="rv-head__hint" role="status" data-testid="findings-status-filter-empty">{t('review.statusFilter.empty')}</p>}
       {reviewMode && rows.length === 0 && <p className="rv-head__hint" role="status" data-testid="review-mode-empty">{t('review.reviewMode.empty')}</p>}
     </div>
 

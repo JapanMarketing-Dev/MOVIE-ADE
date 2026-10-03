@@ -67,7 +67,9 @@ export function reportAnomaly(message: string, tags: Record<string, string>, lev
 /** 性能の異常（起動が遅い・main の停止）。題名は「Slow startup (7.4s)」、まとめ方は種類ごと（src/shared/telemetry.ts） */
 export function reportPerf(perf: PerfAnomaly, ms: number, extra?: { tags: Record<string, string>; context: Record<string, string> }): void {
   const e = perfAnomalyEvent(perf, ms)
-  reporter?.message(e.message, { ...e.tags, ...extra?.tags }, e.level, e.fingerprint, extra ? { block: extra.context } : undefined)
+  // 内訳は contexts.block（main の停止）か contexts.startup（起動の遅さ）に入れる
+  const key = perf === 'event-loop-block' ? 'block' : 'startup'
+  reporter?.message(e.message, { ...e.tags, ...extra?.tags }, e.level, e.fingerprint, extra ? { [key]: extra.context } : undefined)
 }
 
 /**
