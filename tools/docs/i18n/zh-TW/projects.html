@@ -1,0 +1,56 @@
+<!-- Ferret docs translation: zh-TW / projects. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 5c9e1003a2 -->
+專案與 URL
+
+<!-- @lead 4a937bd356 -->
+專案就是一個資料夾（通常是你的儲存庫根目錄）。每個專案都有自己儲存的 URL，因此本機、開發與正式環境只要按一下就能切換。
+
+<!-- @add-project eb372d2531 -->
+## 新增專案
+<ol class="docs-steps">
+  <li>使用 <span class="docs-ui">檔案 → 開啟專案資料夾…</span>（{{keys:Mod+O}}）、側邊欄中的 <span class="docs-ui">新增專案</span>，或標題列專案選單中的 <span class="docs-ui">新增專案…</span>。</li>
+  <li>選擇專案的來源：
+    <ul>
+      <li><span class="docs-ui">在這台電腦上</span>：選擇一個資料夾。</li>
+      <li><span class="docs-ui">從 GitHub / GitLab 複製</span>：從你的儲存庫中選擇一個（透過你的 <code>gh</code> 或 <code>glab</code> 登入列出），或貼上 URL，再選擇上層資料夾，Ferret 就會複製並開啟它。</li>
+      <li><span class="docs-ui">透過 SSH 開啟</span>：從 <code>~/.ssh/config</code> 中選擇主機。終端機與 Agent 會在遠端機器上執行；審查則保留在這台電腦上。</li>
+    </ul>
+  </li>
+</ol>
+<p>名稱預設為資料夾名稱。新增已經登錄過的資料夾時，會直接開啟它（在 macOS 與 Windows 上，路徑比對不分大小寫）。你可以從側邊欄選單 <span class="docs-ui">重新命名</span> 專案，或 <span class="docs-ui">從清單中移除</span>。移除絕不會刪除資料夾。</p>
+<p>終端機會在專案資料夾中開啟，審查則儲存在 <code>&lt;project&gt;/.ferret/</code> 底下。</p>
+
+<!-- @save-url 8914160725 -->
+## 儲存 URL
+<ol class="docs-steps">
+  <li>在內建瀏覽器中開啟頁面。</li>
+  <li>按一下瀏覽器工具列中的 <span class="docs-ui">+</span>（<span class="docs-ui">儲存目前的 URL</span>）。目前的 URL 會預先填入。</li>
+  <li>輸入 <span class="docs-ui">名稱</span>，然後按一下 <span class="docs-ui">儲存</span>。</li>
+</ol>
+<p>只接受 <code>http://</code> 與 <code>https://</code> 的 URL。如果保留建議的名稱，會根據主機推測名稱：</p>
+<table>
+  <thead><tr><th>主機</th><th>名稱</th></tr></thead>
+  <tbody>
+    <tr><td><code>localhost</code>、<code>127.*</code>、<code>::1</code>、<code>0.0.0.0</code>、<code>*.localhost</code></td><td><code>local</code></td></tr>
+    <tr><td>包含 <code>dev</code>、<code>develop</code>、<code>development</code></td><td><code>dev</code></td></tr>
+    <tr><td>包含 <code>stg</code>、<code>stage</code>、<code>staging</code></td><td><code>stg</code></td></tr>
+    <tr><td>其他</td><td><code>prd</code></td></tr>
+  </tbody>
+</table>
+<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="瀏覽器工具列中儲存的 URL（螢幕截圖即將推出）"><span>螢幕截圖即將推出</span></div><figcaption>瀏覽器工具列中儲存的 URL</figcaption></figure>
+
+<!-- @review-targets 351621051d -->
+## 審查目標面板
+{{clip:targets|在不停止錄製的情況下切換審查目標與頁面。}}
+<p>在意見模式中，右側的 <span class="docs-ui">審查目標</span> 面板會列出目前專案中所有可以審查的項目。切換目標不會停止錄製。可用 <span class="docs-ui">顯示方式 → 切換審查目標</span>（{{keys:Mod+Shift+K}}）或 <span class="docs-ui">隱藏面板</span> 切換面板顯示。</p>
+<ul>
+  <li><strong><span class="docs-ui">目標</span></strong>：專案中儲存的 URL。每個 URL 底下是你在該網站造訪過的頁面樹狀結構。造訪過但未儲存的網站會各自成為一個群組。</li>
+  <li><strong><span class="docs-ui">檔案</span></strong>：專案資料夾。檔案會以預覽開啟（Markdown 與 Mermaid 會轉譯顯示，其他文字為唯讀），因此也能審查文件。鉛筆圖示（<span class="docs-ui">在編輯器中開啟</span>）會在編輯器中開啟檔案。</li>
+</ul>
+<p><span class="docs-ui">篩選目標</span> 會同時篩選目標、頁面與檔案，使用與 <span class="docs-ui">前往檔案…</span> 相同的模糊比對。在清單中，可用 <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> 或 <kbd>1</kbd>–<kbd>9</kbd> 切換目標。<span class="docs-ui">開啟 URL…</span> 可開啟一次性的 URL，<span class="docs-ui">儲存到專案 URL</span> 則會保留它。</p>
+<p>目標來自 <code>settings.json</code> 中的 <code>projects[].urls</code>（請參閱<a href="settings-json.html#example">範例</a>）。每個項目都需要 <code>url</code>、<code>launchCommand</code>（在終端機中執行，例如啟動桌面 App）或 <code>windowMatch</code>（要錄製的視窗）其中之一。選擇視窗目標會將它設為錄製來源，因此錄製期間無法這麼做。造訪過的頁面會依專案記住，只保存在這台電腦上（最多 200 個）。</p>
+
+<!-- @switch-env 5103621352 -->
+## 開啟與切換環境
+<p>按一下儲存的 URL 即可開啟。如果目前的頁面位於另一個儲存的 URL 之下，Ferret 會保留路徑、查詢字串與雜湊，只替換來源（origin）。例如在 <code>http://localhost:3000/pricing?plan=pro</code> 上按一下 <code>prd</code>，會開啟 <code>https://example.com/pricing?plan=pro</code>。</p>
+<p>與目前頁面相符（最長前綴）的標籤會反白顯示。在標籤上按右鍵，或使用其鉛筆圖示，即可編輯或 <span class="docs-ui">刪除</span> 它。開啟專案時若沒有上次的 URL，會載入第一個儲存的 URL。</p>

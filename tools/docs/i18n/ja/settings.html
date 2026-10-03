@@ -1,0 +1,71 @@
+<!-- Ferret docs translation: ja / settings. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 526d0b4160 -->
+設定の一覧
+
+<!-- @lead bb6030179f -->
+<span class="docs-ui">設定</span> はタイトルバーの歯車から開きます。録画中は設定を変えられません。
+
+<!-- @microphone afd769f38a -->
+## マイク
+<table>
+  <thead><tr><th>設定</th><th>既定値</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">自分の声を録る</span></td><td>オン</td></tr>
+    <tr><td><span class="docs-ui">マイク</span></td><td><span class="docs-ui">システムの既定</span></td></tr>
+    <tr><td><span class="docs-ui">相手の声も録る</span>（ベータ）</td><td>オフ</td></tr>
+  </tbody>
+</table>
+
+<!-- @transcription 89ff79d384 -->
+## 文字起こし
+<table>
+  <thead><tr><th>設定</th><th>既定値</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">言語</span>（話す言語）</td><td><span class="docs-ui">自動</span></td></tr>
+    <tr><td><span class="docs-ui">処理</span></td><td><span class="docs-ui">この端末（無料）</span></td></tr>
+    <tr><td><span class="docs-ui">モデル</span>（端末内）</td><td><code>large-v3-turbo</code>（おすすめ）</td></tr>
+    <tr><td><span class="docs-ui">接続先の Base URL</span> / <span class="docs-ui">モデル</span>（互換）</td><td>空</td></tr>
+    <tr><td><span class="docs-ui">OpenAIのAPIキー</span> / <span class="docs-ui">接続先のAPIキー（省略可）</span></td><td>未設定</td></tr>
+    <tr><td><span class="docs-ui">費用の上限</span></td><td>1回のレビューにつき $1 まで</td></tr>
+  </tbody>
+</table>
+<p><a href="transcription.html">文字起こしと費用</a>を見てください。</p>
+
+<!-- @storage 24cf46ed41 -->
+## 保管
+<table>
+  <thead><tr><th>設定</th><th>既定値</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">録画の保管</span>: 7日 / 30日 / <span class="docs-ui">ずっと</span></td><td>7日</td></tr>
+    <tr><td><span class="docs-ui">停止後もフィードバック画面のまま</span></td><td>オフ</td></tr>
+  </tbody>
+</table>
+
+<!-- @agent e6bb38101d -->
+## Agent
+<table>
+  <thead><tr><th>設定</th><th>既定値</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">プロジェクトを開いたら起動</span></td><td>Claude Code、Codex（<a href="agents.html#supported">対応しているエージェント</a>から好きなものを選べます。選ばなくてもかまいません）</td></tr>
+    <tr><td><span class="docs-ui">&lt;agent&gt; をメニューに出す</span></td><td>すべてのエージェントでオン</td></tr>
+    <tr><td><span class="docs-ui">コマンド</span> / <span class="docs-ui">引数</span>（エージェントごと）</td><td>そのエージェントのコマンド（たとえば <code>claude</code>、<code>codex</code>、<code>gemini</code>）/ なし</td></tr>
+    <tr><td><span class="docs-ui">カスタムエージェント</span></td><td>なし（<span class="docs-ui">カスタムエージェントを追加</span> で任意の CLI を登録できます）</td></tr>
+    <tr><td><span class="docs-ui">権限確認を省く</span>（プロジェクトごと）</td><td>すべてのプロジェクトでオフ（<a href="agents.html#terminal">詳細</a>）</td></tr>
+    <tr><td><span class="docs-ui">Agentへの指示</span></td><td>組み込みの文面（<a href="agents.html#prompt">変数</a>）</td></tr>
+  </tbody>
+</table>
+
+<!-- @other 37b81ab14b -->
+## アカウント、GitHub、外観、言語
+<ul>
+  <li><span class="docs-ui">アカウント</span>: <a href="accounts.html">アカウントと使用量</a>を見てください。</li>
+  <li><span class="docs-ui">GitHub / GitLab</span>: <code>gh</code> と <code>glab</code> のサインイン。<a href="agents.html#github">GitHub や GitLab に送る</a>を見てください。</li>
+  <li><span class="docs-ui">CLI</span>: 各サービスの CLI のインストールとサインイン。<a href="agents.html#cli-tools">CLI ツール</a>を見てください。</li>
+  <li><span class="docs-ui">外観 → 配色</span>: <span class="docs-ui">システム</span>（既定）、<span class="docs-ui">ライト</span>、<span class="docs-ui">ダーク</span>。</li>
+  <li><span class="docs-ui">言語 → 画面</span>: <span class="docs-ui">システム</span>（既定。Ferret がその言語を持っていれば OS の言語に合わせ、無ければ英語）か、14言語のどれか: English、日本語、简体中文、繁體中文、한국어、Español、Français、Deutsch、Italiano、Português (Brasil)、Русский、हिन्दी、Bahasa Indonesia、Tiếng Việt。</li>
+</ul>
+<p>フッターからは、ターミナルの位置（右 / 下）とマイクのオン・オフを切り替えられます。</p>
+
+<!-- @settings-json ed64241c44 -->
+## settings.json
+<p>ここまでの設定はすべて <code>~/.ferret/settings.json</code>（どの OS でも同じパス）に保存され、隣に JSON Schema があります。アプリの起動中でも、手で直したりコーディングエージェントに編集させたりでき、変更はすぐ反映されます。<a href="settings-json.html">settings.json で設定する</a>を見てください。</p>

@@ -1,0 +1,93 @@
+<!-- Ferret docs translation: hi / install. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 569ca49f4a -->
+इंस्टॉल करें
+
+<!-- @lead 1947d59ea4 -->
+Ferret macOS, Windows और Linux के लिए एक डेस्कटॉप ऐप है। macOS build पर Developer ID से हस्ताक्षर है और Apple ने उसे notarize किया है। Windows और Linux builds पर अभी code signing नहीं है, इसलिए ये OS पहली बार चलाने से पहले आपसे पुष्टि माँगते हैं।
+
+<!-- @download 91a49c9274 -->
+## डाउनलोड
+<p><a href="../download.html">डाउनलोड पेज</a> से अपने OS और CPU के लिए फ़ाइल लें। फ़ाइलें GitHub Releases से नहीं, बल्कि Cloudflare R2 से दी जाती हैं, और सिर्फ़ 10 सबसे नए versions रखे जाते हैं।</p>
+<table>
+  <thead><tr><th>OS</th><th>फ़ाइलें</th></tr></thead>
+  <tbody>
+    <tr><td>macOS (Apple silicon / Intel)</td><td><code>Ferret-&lt;version&gt;-mac-arm64.dmg</code>, <code>Ferret-&lt;version&gt;-mac-x64.dmg</code></td></tr>
+    <tr><td>Windows (x64 / arm64)</td><td><code>Ferret-&lt;version&gt;-win-x64.exe</code>, <code>Ferret-&lt;version&gt;-win-arm64.exe</code> (NSIS installer)</td></tr>
+    <tr><td>Linux (x64)</td><td><code>Ferret-&lt;version&gt;-linux-x86_64.AppImage</code>, <code>Ferret-&lt;version&gt;-linux-amd64.deb</code></td></tr>
+  </tbody>
+</table>
+<p>0.1.x तक के releases पुराने नाम से, <code>MOVIE-ADE-&lt;version&gt;-…</code> के रूप में प्रकाशित हुए थे। <code>Ferret-…</code> नाम 0.2.0 से शुरू होते हैं।</p>
+<div class="docs-callout docs-callout-warn"><p>Ferret macOS, Windows और Linux को सपोर्ट करता है। Windows और Linux builds पर अभी code signing नहीं है, इसलिए पहली बार चलाने पर पुष्टि माँगी जाती है (नीचे दिए कदम देखें)।</p></div>
+
+<!-- @verify 14ef497c52 -->
+## डाउनलोड की जाँच करें (हस्ताक्षरित SHA256SUMS)
+<p>हर release में एक <code>SHA256SUMS</code> फ़ाइल और उसका हस्ताक्षर <code>SHA256SUMS.sig</code> होता है। हस्ताक्षर Ferret की release key से बनाया जाता है, जो डाउनलोड server से अलग रखी जाती है, इसलिए डाउनलोड server पर बदला गया installer किसी मान्य हस्ताक्षर के साथ नहीं आ सकता। Public key डाउनलोड server से <em>नहीं</em> ली जाती: इसे repository (<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers"><code>build/release-signing/allowed_signers</code></a>) से लें या यहाँ से कॉपी करें:</p>
+<pre><code>release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9</code></pre>
+<p>इसका fingerprint <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code> है। यही फ़ाइलें GitHub पर हर release के साथ भी जुड़ी होती हैं। <code>ssh-keygen</code> (macOS, Windows 10 और बाद के versions, और Linux में शामिल) से हस्ताक्षर जाँचें, फिर अपने डाउनलोड के hash की तुलना हस्ताक्षरित सूची से करें:</p>
+<pre><code># the download server (currently the R2 public URL; it may move to a custom domain)
+BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
+VERSION=$(curl -s $BASE/latest.json | jq -r .version)
+curl -sO $BASE/releases/$VERSION/SHA256SUMS
+curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
+
+# save the public key above as allowed_signers, then:
+ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
+# → Good "ferret-release" signature for release@ferretade.dev …
+
+# macOS
+shasum -a 256 -c SHA256SUMS --ignore-missing
+# Linux
+sha256sum -c SHA256SUMS --ignore-missing</code></pre>
+<pre><code># Windows (PowerShell): compare with the line for your file in SHA256SUMS
+Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
+<p>अगर <code>ssh-keygen</code> <q>Good "ferret-release" signature</q> न दिखाए या hash सूची में न हो, तो आगे न बढ़ें। Ferret का <span class="docs-ui">अपडेट जाँचें</span> ऐप में बनी key से यही जाँच करता है और ऐसा कोई version नहीं सुझाता जिसका हस्ताक्षर मेल न खाए। macOS पर आप <code>spctl -a -vv /Applications/Ferret.app</code> से Developer ID हस्ताक्षर और notarization भी जाँच सकते हैं। Windows और Linux installers पर अभी Microsoft या किसी Linux distribution का code signing नहीं है। 0.3.0 तक के releases हस्ताक्षर शुरू होने से पहले प्रकाशित हुए थे, और उनमें सिर्फ़ <code>releases/&lt;version&gt;/manifest.json</code> में बिना हस्ताक्षर वाले hashes हैं।</p>
+
+<!-- @macos 1aa07136fd -->
+## macOS
+<ol class="docs-steps">
+  <li><code>.dmg</code> खोलें और <code>Ferret.app</code> को <code>/Applications</code> में drag करें।</li>
+  <li>इसे चलाएँ। ऐप पर Developer ID से हस्ताक्षर है और Apple ने इसे notarize किया है (ticket stapled है), इसलिए यह बिना किसी चेतावनी के खुलता है।</li>
+</ol>
+<p>हस्ताक्षर खुद जाँचने के लिए:</p>
+<pre><code>spctl -a -vv /Applications/Ferret.app
+# accepted
+# source=Notarized Developer ID</code></pre>
+<p><strong>सिर्फ़ पुराने versions (0.2.0 build 2 और उससे पहले)</strong> पर हस्ताक्षर नहीं था। उनके लिए macOS कहता है कि developer की पुष्टि नहीं की जा सकती: dialog बंद करें, <span class="docs-ui">System Settings → Privacy &amp; Security</span> खोलें, Ferret वाले संदेश के बगल में <span class="docs-ui">Open Anyway</span> पर क्लिक करें, और <span class="docs-ui">Open</span> से पुष्टि करें। अगर यह कहे कि ऐप "is damaged", तो quarantine attribute हटा दें:</p>
+<pre><code>xattr -dr com.apple.quarantine /Applications/Ferret.app</code></pre>
+
+<!-- @windows b5761835f1 -->
+## Windows
+<ol class="docs-steps">
+  <li><code>Ferret-&lt;version&gt;-win-&lt;arch&gt;.exe</code> चलाएँ।</li>
+  <li>जब SmartScreen "Windows protected your PC" दिखाए, तो <span class="docs-ui">More info</span> पर क्लिक करें, फिर <span class="docs-ui">Run anyway</span> पर।</li>
+  <li>इंस्टॉल फ़ोल्डर चुनें। Installer एक डेस्कटॉप shortcut बनाता है।</li>
+</ol>
+
+<!-- @linux c46965a0c5 -->
+## Linux
+<p>AppImage:</p>
+<pre><code>chmod +x Ferret-&lt;version&gt;-linux-x86_64.AppImage
+./Ferret-&lt;version&gt;-linux-x86_64.AppImage</code></pre>
+<p>Debian / Ubuntu:</p>
+<pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
+<p>deb पैकेज <code>ferret</code> package और command इंस्टॉल करता है।</p>
+<p>Ubuntu 23.10 और बाद के versions पर AppImage launch के समय sandbox error के साथ रुक सकता है, क्योंकि AppArmor उन user namespaces को सीमित करता है जिनका इस्तेमाल Electron का sandbox करता है। इसके बजाय <code>.deb</code> इंस्टॉल करें; यह sandbox helper सेट कर देता है।</p>
+
+<!-- @source 06a127ac19 -->
+## Source से build करें
+<p>इसके लिए Node.js 20+ (CI और local development में 22 इस्तेमाल होता है), pnpm और git चाहिए।</p>
+<pre><code>git clone https://github.com/JapanMarketing-Dev/ferret.git
+cd ferret
+pnpm install          # postinstall prepares node-pty for Electron
+pnpm dev              # run in development mode</code></pre>
+<p>Installers पैकेज करने के लिए (output <code>dist/release/</code> में, config <code>electron-builder.config.cjs</code> में)। Linux build सिर्फ़ Linux पर चलता है।</p>
+<pre><code>pnpm dist:mac     # dmg (arm64, x64)
+pnpm dist:win     # NSIS installers (x64, arm64)
+pnpm dist:linux   # AppImage + deb (x64)</code></pre>
+<p><code>build:&lt;os&gt;:dev</code> scripts सिर्फ़ एक unpacked ऐप (<code>--dir</code>) बनाते हैं, जो local testing के लिए ज़्यादा तेज़ है।</p>
+<p>Windows पर <code>pnpm install</code> दोबारा build करने के बजाय node-pty के साथ आने वाली prebuilt binaries इस्तेमाल करता है (दोबारा build करने के लिए Visual Studio C++ build tools चाहिए होते)। ज़बरदस्ती rebuild करने के लिए <code>ADE_FORCE_NATIVE_REBUILD=1</code> सेट करें।</p>
+<p>अगर टर्मिनल बताए कि node-pty load नहीं हो सका, तो <code>pnpm rebuild:native</code> चलाएँ।</p>
+
+<!-- @update 7f4d958687 -->
+## अपडेट
+<p>Ferret अपने-आप अपडेट नहीं होता। फ़ुटर में <span class="docs-ui">अपडेट</span> खोलें और <span class="docs-ui">अपडेट जाँचें</span> पर क्लिक करें। यह डाउनलोड server (R2) से <code>latest.json</code> लाता है, versions की तुलना करता है, और डाउनलोड पेज का लिंक देता है। 0.4.0 से यह उस version की <code>SHA256SUMS</code> का हस्ताक्षर भी ऐप में बनी release key से जाँचता है, और ऐसा कोई version नहीं सुझाता जिसका हस्ताक्षर सत्यापित न हो सके। जब तक आप क्लिक नहीं करते, कुछ भी जाँचा नहीं जाता, और कुछ भी अपने-आप इंस्टॉल नहीं होता।</p>

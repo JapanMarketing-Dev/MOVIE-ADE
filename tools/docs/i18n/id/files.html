@@ -1,0 +1,50 @@
+<!-- Ferret docs translation: id / files. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 647281bf9e -->
+File dan lingkungan
+
+<!-- @lead b2a7619b5e -->
+Tempat Ferret menyimpan file-nya sendiri, serta variabel lingkungan yang dibaca atau diaturnya.
+
+<!-- @userdata ee70336b22 -->
+## Folder userData
+<p>Data aplikasi berada di folder <code>userData</code> milik Electron. Namanya dipatok ke <code>ade-movie</code> (bukan nama produk), sehingga data tetap ada meskipun produk berganti nama. Ganti lokasinya dengan <code>--user-data-dir=&lt;path&gt;</code>.</p>
+<table>
+  <thead><tr><th>OS</th><th>Path</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td><code>~/Library/Application Support/ade-movie/</code></td></tr>
+    <tr><td>Windows</td><td><code>%APPDATA%\ade-movie\</code></td></tr>
+    <tr><td>Linux</td><td><code>~/.config/ade-movie/</code> (atau <code>$XDG_CONFIG_HOME/ade-movie/</code>)</td></tr>
+  </tbody>
+</table>
+<pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
+stt-keys.bin        # API keys, encrypted with safeStorage
+models/             # downloaded whisper models (ggml-*.bin)
+accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts
+accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
+<p>Pengaturan Anda tidak ada di folder ini: pengaturan berada di <code>~/.ferret/</code> (lihat <a href="settings-json.html">Konfigurasi dengan settings.json</a>).</p>
+<p>Model yang Anda pilih sendiri boleh berada di mana saja. Lokasi bawaan lama <code>~/.cache/ade-movie/models/ggml-small.bin</code> juga masih diperiksa.</p>
+
+<!-- @env 1d9b0a6a78 -->
+## Variabel lingkungan
+<table>
+  <thead><tr><th>Variabel</th><th>Efek</th></tr></thead>
+  <tbody>
+    <tr><td><code>CLAUDE_CONFIG_DIR</code>, <code>CODEX_HOME</code></td><td>Diatur oleh Ferret untuk tab agent saat akun tambahan dipilih</td></tr>
+    <tr><td><code>GH_TOKEN</code>, <code>GITHUB_TOKEN</code></td><td>Dipakai oleh <code>gh</code> sebelum login miliknya sendiri. Ferret memberi peringatan jika salah satunya diatur</td></tr>
+    <tr><td><code>FERRET_CONFIG_DIR</code> (atau <code>MOVIE_ADE_CONFIG_DIR</code> yang lama)</td><td>Folder untuk <code>settings.json</code>, <code>state.json</code>, dan <code>settings.schema.json</code> sebagai pengganti <code>~/.ferret</code></td></tr>
+    <tr><td>Nama di <code>apiKeyEnv</code></td><td>API key yang Anda rujuk dari <code>settings.json</code>. Juga dibaca dari <code>.env</code> proyek dan <code>~/.ferret/.env</code></td></tr>
+    <tr><td><code>ADE_PROJECT_DIR</code></td><td>Membuka (dan mendaftarkan) folder ini sebagai proyek saat peluncuran</td></tr>
+    <tr><td><code>ADE_INITIAL_URL</code></td><td>Memuat URL ini di browser bawaan saat peluncuran</td></tr>
+    <tr><td><code>ADE_WHISPER_MODEL</code></td><td>Path absolut model GGML untuk transkripsi di perangkat, menggantikan model bawaan yang diunduh</td></tr>
+    <tr><td><code>FERRET_SENTRY_DSN</code> (atau <code>MOVIE_ADE_SENTRY_DSN</code> yang lama)</td><td>Tujuan laporan crash. Jika kosong, tidak ada yang dikirim (lihat <a href="privacy.html#crash-reports">Laporan crash</a>)</td></tr>
+    <tr><td><code>OPENAI_API_KEY</code></td><td>Dibaca dari <code>.env</code> hanya saat pengembangan (<code>pnpm dev</code>), tidak pernah di build yang dipaketkan</td></tr>
+    <tr><td><code>PATH</code></td><td>Dipakai untuk menemukan perintah agent Anda (<code>claude</code>, <code>codex</code>, <code>gemini</code>…), <code>gh</code>, <code>git</code>, <code>whisper-cli</code>. Di macOS dan Linux, lokasi Homebrew, linuxbrew, dan snap ditambahkan</td></tr>
+  </tbody>
+</table>
+
+<!-- @project aa7d8b3567 -->
+## Di dalam proyek Anda
+<ul>
+  <li><code>.ferret/reviews/&lt;id&gt;/</code>: tinjauan (lihat <a href="privacy.html#reviews">Data dan privasi</a>). Tinjauan lama di <code>.ade-movie/reviews/</code> tetap dibaca</li>
+  <li><code>.git/info/exclude</code>: satu baris, <code>.ferret/</code>, ditambahkan saat perekaman pertama</li>
+</ul>

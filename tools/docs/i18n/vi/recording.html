@@ -1,0 +1,54 @@
+<!-- Ferret docs translation: vi / recording. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 80e8dd1a5a -->
+Ghi
+
+<!-- @lead 14988eae28 -->
+Ghi trình duyệt tích hợp, toàn màn hình hoặc một cửa sổ khác. Vừa dùng trang vừa nói, khoanh vùng và gõ.
+
+<!-- @target 133550362a -->
+## Chọn nội dung cần ghi
+<p>Trong chế độ Feedback, nhấn <span class="docs-ui">Chọn mục tiêu ghi</span>. Hộp thoại <span class="docs-ui">Mục tiêu ghi</span> có các lựa chọn:</p>
+<table>
+  <thead><tr><th>Mục tiêu</th><th>Nội dung được ghi</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Trình duyệt tích hợp</span> (mặc định)</td><td>Video, giọng nói và nét bút, cùng URL, selector của phần tử, các lần click và cuộn. Không cần quyền của hệ điều hành.</td></tr>
+    <tr><td><span class="docs-ui">Toàn màn hình</span></td><td>Video, giọng nói và nét bút. Không có URL, phần tử hay nhật ký thao tác (điều này được ghi chú trong <code>feedback.md</code>).</td></tr>
+    <tr><td><span class="docs-ui">Cửa sổ</span></td><td>Giống như trên. Các cửa sổ của chính Ferret không có trong danh sách.</td></tr>
+  </tbody>
+</table>
+<p>Lựa chọn của bạn được ghi nhớ. Trên macOS, ghi màn hình và cửa sổ cần quyền Ghi màn hình (<a href="troubleshooting.html#screen-permission">cách cấp quyền</a>).</p>
+
+<!-- @record 0d1af48c7a -->
+## Bắt đầu, tạm dừng, dừng
+{{clip:record|Ghi: nói về trang và khoanh vùng chỗ cần sửa bằng bút.}}
+<ol class="docs-steps">
+  <li>Mở trang cần review trong trình duyệt tích hợp.</li>
+  <li>Nhấn <span class="docs-ui">Ghi</span> trên thanh tiêu đề, hoặc {{keys:Mod+Shift+R}}.</li>
+  <li><span class="docs-ui">Tạm dừng</span> dừng việc vẽ và bộ đếm thời gian. <span class="docs-ui">Tiếp tục</span> để ghi tiếp.</li>
+  <li>Nhấn <span class="docs-ui">Dừng</span> hoặc {{keys:Mod+Shift+R}} lần nữa.</li>
+</ol>
+<p>Trong thanh bên, mỗi dự án có nút <span class="docs-ui">Review mới</span> riêng (hoặc nút <span class="docs-ui">+</span> trên hàng của dự án, <span class="docs-ui">Review mới trong &lt;name&gt;</span>). Nếu là dự án khác, Ferret chuyển sang dự án đó trước rồi mới bắt đầu ghi. Không thể bắt đầu khi đang có một bản ghi khác chạy.</p>
+<p>Mỗi bản ghi dài tối đa 90 phút. Bạn sẽ nhận cảnh báo khi gần đến giới hạn, và khi đạt giới hạn, việc ghi tự động dừng và được lưu.</p>
+<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="Toolbar chế độ Feedback (ảnh chụp màn hình sắp có)"><span>Ảnh chụp màn hình sắp có</span></div><figcaption>Toolbar chế độ Feedback</figcaption></figure>
+
+<!-- @pen 0232dc7983 -->
+## Bút
+<ul>
+  <li><strong><span class="docs-ui">Bút</span></strong>: chọn công cụ này, hoặc giữ {{keys:Alt}} để chỉ vẽ trong lúc giữ phím (bị bỏ qua khi đang gõ trong một ô nhập).</li>
+  <li><strong><span class="docs-ui">Xóa</span></strong>: xóa các nét đang có.</li>
+</ul>
+<p>Hãy khoanh vùng chỗ bạn đang nói tới: lời nói và nét bút sẽ nằm trong cùng một góp ý. Bút chỉ dùng được trong lúc ghi. Không có công cụ văn bản; hãy nói ra thay vì gõ. Phím tắt cho bút, khung và màu có trong <a href="keyboard.html#drawing">Phím tắt</a>.</p>
+
+<!-- @annotations-clear ea2e57b47b -->
+## Khi nào nét bút biến mất
+<p>Nét bút thuộc về màn hình mà nó được vẽ lên. Nét bút được ghi vào góp ý hiện tại rồi bị xóa khi:</p>
+<ul>
+  <li>trang chuyển hướng: tải lại toàn bộ, hoặc SPA đổi route sang path hay query mới. Nếu chỉ đổi hash thì nét bút được giữ lại.</li>
+  <li>bạn cuộn trang</li>
+  <li>một đoạn lời nói kết thúc</li>
+</ul>
+
+<!-- @mic 3540329978 -->
+## Microphone
+<p>Microphone được bật theo mặc định. Bật/tắt từ footer (<span class="docs-ui">Tắt microphone</span> / <span class="docs-ui">Bật microphone</span>) hoặc bằng <span class="docs-ui">Ghi giọng của tôi</span> trong Cài đặt. Chọn thiết bị trong <span class="docs-ui">Microphone</span>.</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Sắp có</p><p><span class="docs-ui">Ghi cả phía bên kia</span> (ghi những người tham gia khác trong cuộc họp qua âm thanh hệ thống) đang ở giai đoạn beta. Tính năng này chưa được kiểm chứng với các ứng dụng họp.</p></div>

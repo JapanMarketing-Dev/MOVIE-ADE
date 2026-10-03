@@ -1,0 +1,24 @@
+<!-- Ferret docs translation: it / accounts. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title cb165a192d -->
+Account e utilizzo
+
+<!-- @lead 6a6ab3126f -->
+Passa da un accesso all'altro tra più account di Claude Code o Codex, e tieni d'occhio le finestre dei limiti di utilizzo nel footer. Per ora entrambe le funzioni sono disponibili solo con Claude Code e Codex; gli altri agent continuano a usare il proprio accesso come al solito.
+
+<!-- @accounts f0d5cb0211 -->
+## Più account
+<p>Gli account sono facoltativi. Aggiungili solo se passi da uno all'altro.</p>
+<ol class="docs-steps">
+  <li>Apri <span class="docs-ui">Impostazioni → Account</span>, oppure <span class="docs-ui">Gestisci account…</span> dal menu di utilizzo nel footer.</li>
+  <li><span class="docs-ui">Aggiungi account</span> avvia l'accesso dell'agent in una scheda del terminale integrato.</li>
+  <li>Scegli l'account da usare. Le schede in esecuzione mantengono il proprio account. Le nuove schede usano quello selezionato.</li>
+</ol>
+<p>Come funziona: ogni account aggiunto ha la propria directory di configurazione, <code>&lt;userData&gt;/accounts/&lt;agent&gt;/&lt;id&gt;/</code>. Ferret avvia l'agent con <code>CLAUDE_CONFIG_DIR</code> (Claude Code) o <code>CODEX_HOME</code> (Codex) che puntano lì. <span class="docs-ui">Predefinito di sistema</span> usa i soliti <code>~/.claude</code> / <code>~/.codex</code> senza modifiche.</p>
+<p>Rimuovere un account elimina la sua directory di configurazione. Non esegue la disconnessione sul server.</p>
+
+<!-- @usage bb03a3a17a -->
+## Utilizzo nel footer
+<p>Il footer mostra quanto è stato usato di ogni finestra dei limiti: la finestra di 5 ore e quella settimanale, più la finestra settimanale per modello di Claude. I colori diventano gialli al 60% e rossi all'80%. I valori si aggiornano ogni 15 minuti, oppure con <span class="docs-ui">Aggiorna utilizzo</span>.</p>
+<p>Quanto viene mostrato dipende dallo spazio disponibile nel footer. Se c'è spazio, mostra barre, nomi delle finestre e percentuali. Man mano che il footer si restringe, elimina prima le parti meno utili, fino a lasciare una sola percentuale per agent. Fai clic sull'utilizzo per vedere tutto in un popover.</p>
+<p>L'utilizzo viene recuperato direttamente da Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) e da ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) con le credenziali dell'account con cui hai effettuato l'accesso.</p>
+<figure class="docs-shot" data-shot="usage"><div class="docs-shot-slot" role="img" aria-label="Utilizzo nel footer (screenshot in arrivo)"><span>Screenshot in arrivo</span></div><figcaption>Utilizzo nel footer</figcaption></figure>

@@ -1,0 +1,176 @@
+<!-- Ferret docs translation: de / settings-json. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 356c52a302 -->
+Mit settings.json konfigurieren
+
+<!-- @lead a353948c8f -->
+Alle Einstellungen von Ferret stehen in einer einzigen JSON-Datei, neben der ein JSON Schema liegt. So können Sie oder Ihr eigener Coding-Agent (zum Beispiel Claude Code, Codex oder Gemini CLI) die App konfigurieren, indem Sie eine Datei bearbeiten. Änderungen werden übernommen, während die App läuft.
+
+<!-- @path de46fc6989 -->
+## Wo die Datei liegt
+<p>Der Pfad ist auf jedem Betriebssystem derselbe:</p>
+<pre><code>~/.ferret/settings.json          # your settings (edit this)
+~/.ferret/settings.schema.json   # JSON Schema, rewritten by the app on launch
+~/.ferret/state.json             # open folder, last URL, open tabs (managed by the app)
+~/.ferret/.env                   # optional: API keys referenced by apiKeyEnv</code></pre>
+<ul>
+  <li>Setzen Sie <code>FERRET_CONFIG_DIR</code> (der alte Name <code>MOVIE_ADE_CONFIG_DIR</code> funktioniert ebenfalls), um einen anderen Ordner zu verwenden, z. B. einen in einem Dotfiles-Repository. <code>~</code> wird aufgelöst.</li>
+  <li>Entwicklungs-Builds (<code>pnpm dev</code>) verwenden <code>~/.ferret/dev/</code>, sodass die Arbeit an Ferret selbst nie Ihre echten Einstellungen überschreibt.</li>
+  <li>Upgrade von 0.1.0: Beim ersten Start wird die alte <code>&lt;userData&gt;/settings.json</code> in die neuen Dateien kopiert. Die alte Datei bleibt als Sicherung erhalten und wird nie verändert.</li>
+</ul>
+<p>Upgrade von MOVIE-ADE: Beim ersten Start werden <code>settings.json</code>, <code>state.json</code>, <code>usage/</code> und <code>.env</code> von <code>~/.movie-ade/</code> nach <code>~/.ferret/</code> kopiert. Der alte Ordner bleibt erhalten und wird nicht verändert.</p>
+<p>In der App zeigen die <span class="docs-ui">Einstellungen</span> oben den Pfad an, zusammen mit <span class="docs-ui">settings.json öffnen</span> (bearbeitet die Datei im integrierten Editor mit Vervollständigung aus dem Schema) und <span class="docs-ui">Im Ordner zeigen</span>.</p>
+
+<!-- @schema 9eeea0d22b -->
+## Schema und Validierung
+<p>Die erste Zeile von <code>settings.json</code> lautet <code>"$schema": "./settings.schema.json"</code>. Editoren wie VS Code und Agents wie Claude Code nutzen sie für Vervollständigung, Validierung und die Beschreibung jedes Felds. Das Schema wird mit der App ausgeliefert und bei jedem Start neben die Datei geschrieben, sodass es immer zur installierten Version passt.</p>
+<p>Schlüssel, die Ferret nicht kennt, bleiben beim Speichern durch die App unverändert erhalten. Geöffnete Tabs, die letzte URL und anderer Sitzungszustand werden in <code>state.json</code> gespeichert, nicht hier.</p>
+
+<!-- @example fece1b6b16 -->
+## Kommentiertes Beispiel
+<p>JSON kennt keine Kommentare, daher stehen die Erläuterungen unter dem Beispiel. Jedes Feld ist optional; lassen Sie weg, was Sie nicht brauchen.</p>
+<pre><code>{
+  "$schema": "./settings.schema.json",
+  "theme": "dark",
+  "locale": "en",
+  "projects": [
+    {
+      "id": "shop",
+      "name": "shop",
+      "folderPath": "/Users/you/src/shop",
+      "kind": "web",
+      "urls": [
+        { "id": "local", "label": "local", "url": "http://localhost:3000" },
+        { "id": "prd", "label": "prd", "url": "https://shop.example.com" }
+      ]
+    }
+  ],
+  "agents": {
+    "customAgents": [
+      { "id": "custom:my-agent", "name": "My agent", "command": "my-agent", "args": "--yes" }
+    ],
+    "startupAgents": ["claude", "custom:my-agent"]
+  },
+  "capture": {
+    "transcription": "compatible",
+    "language": "auto",
+    "costLimitUsd": null,
+    "sttEndpoints": {
+      "compatible": {
+        "baseUrl": "http://gpu-box.local:8000/v1",
+        "model": "Systran/faster-whisper-large-v3",
+        "apiKeyEnv": "WHISPER_SERVER_TOKEN"
+      }
+    }
+  },
+  "organizer": {
+    "runner": "api:compatible",
+    "endpoints": {
+      "compatible": { "baseUrl": "http://localhost:11434/v1", "model": "qwen3:14b" }
+    }
+  },
+  "decision": {
+    "enabled": true,
+    "preset": "ollama",
+    "endpoint": "http://localhost:11434/v1/systemone",
+    "model": "clef-flash"
+  },
+  "layout": {
+    "panels": {
+      "projects": { "dock": "left", "visible": true },
+      "terminal": { "dock": "bottom", "visible": true },
+      "files": { "dock": "right", "visible": false }
+    }
+  }
+}</code></pre>
+<ul>
+  <li><code>projects[].urls</code>: Review-Ziele für das URL-Menü. Die erste URL wird beim Öffnen des Projekts geöffnet. <code>id</code> kann ein beliebiger eindeutiger String sein.</li>
+  <li><code>agents.customAgents</code>: ein beliebiges CLI oder Wrapper-Skript. <code>startupAgents</code> listet die Agent-Tabs, die mit einem Projekt geöffnet werden, in dieser Reihenfolge.</li>
+  <li><code>capture.sttEndpoints.compatible</code>: jeder Server, der OpenAIs <code>/v1/audio/transcriptions</code> implementiert (speaches, vLLM, LocalAI …). <code>costLimitUsd: null</code> schaltet das Kostenlimit ab, was bei Ihrer eigenen GPU sinnvoll ist. Siehe <a href="transcription.html">Transkription und Kosten</a>.</li>
+  <li><code>organizer</code>: <span class="docs-ui">Befunde ordnen</span> wird direkt an einen OpenAI-kompatiblen <code>/v1/chat/completions</code>-Server gesendet (hier Ollama). Mit <code>"runner": "claude-code"</code> oder <code>"codex"</code> verwenden Sie stattdessen Ihr eigenes CLI-Login, mit <code>organizer.cliModels</code> wählen Sie deren Modell.</li>
+  <li><code>decision</code>: das Modell, das prüft, ob jeder Befund behoben wurde. Clef Flash auf einem lokalen Ollama ist kostenlos und liest Screenshots. <code>preset</code> kann auch <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code> oder <code>custom</code> sein.</li>
+  <li>Jeder Anbieter-Block (<code>sttEndpoints.*</code>, <code>organizer.endpoints.*</code>) akzeptiert außerdem <code>timeoutMs</code>, <code>headers</code> und, für Azure, <code>apiVersion</code>.</li>
+</ul>
+<div class="docs-callout docs-callout-note"><p>Ferret bezahlt nie in Ihrem Namen für KI. Es gibt keinen eingebauten Schlüssel und keinen Relay-Server: Jede Anfrage geht von Ihrem Rechner an den von Ihnen konfigurierten Endpoint, mit Ihrem Schlüssel.</p></div>
+
+<!-- @custom 3d0b17a588 -->
+## Beliebige Anbieter: eigene Endpoints
+<p>Presets füllen nur URL und Modell vor. Jede Verbindung (Transkription, Befunde ordnen, Entscheidungsmodell) akzeptiert außerdem beliebige URLs, Modelle, Header und Authentifizierung, sodass Sie jeden Anbieter verwenden können: Cloudflare, ein Gateway, einen Unternehmens-Proxy oder Ihren eigenen Server. Die folgenden Felder haben in allen drei denselben Namen und dieselbe Form.</p>
+<table>
+  <thead><tr><th>Feld</th><th>Bedeutung</th></tr></thead>
+  <tbody>
+    <tr><td><code>baseUrl</code>, <code>model</code></td><td>Beliebige http(s)-URL und beliebiger Modellname. <code>{account_id}</code> in der URL wird durch <code>accountId</code> oder durch die Umgebungsvariable <code>CLOUDFLARE_ACCOUNT_ID</code> ersetzt</td></tr>
+    <tr><td><code>authScheme</code></td><td><code>bearer</code> (<code>Authorization: Bearer &lt;key&gt;</code>), <code>header</code> (der Schlüssel im Header, dessen Name in <code>authHeader</code> steht) oder <code>none</code>. Lassen Sie es weg, um die Voreinstellung des Anbieters beizubehalten</td></tr>
+    <tr><td><code>headers</code></td><td>Zusätzliche Header. Ein Wert ist ein einfacher String oder <code>{"env": "VAR"}</code>, um ihn aus einer Umgebungsvariable zu lesen (gesucht wie bei <code>apiKeyEnv</code>). Geheime Header wie <code>Authorization</code> oder ein Gateway-Token werden nur als <code>{"env": …}</code> akzeptiert. Auf der Seite „Einstellungen“ schreiben Sie <code>Name: ${VAR}</code></td></tr>
+    <tr><td><code>apiKey</code> / <code>apiKeyEnv</code></td><td>Der Schlüssel, siehe <a href="#keys">API-Schlüssel</a></td></tr>
+  </tbody>
+</table>
+<p><strong>Transkription</strong> mit einem beliebigen OpenAI-kompatiblen <code>/v1/audio/transcriptions</code>-Server, der seinen Schlüssel in einem <code>api-key</code>-Header erwartet:</p>
+<pre><code>"capture": {
+  "transcription": "compatible",
+  "sttEndpoints": {
+    "compatible": {
+      "baseUrl": "https://stt.internal.example.com/v1",
+      "model": "whisper-large-v3",
+      "authScheme": "header",
+      "authHeader": "api-key",
+      "apiKeyEnv": "INTERNAL_STT_KEY",
+      "headers": { "X-Team": "design" }
+    }
+  }
+}</code></pre>
+<p><strong>Befunde ordnen</strong> mit Cloudflare Workers AI (OpenAI-kompatible Chat Completions), optional über AI Gateway:</p>
+<pre><code>"organizer": {
+  "runner": "api:compatible",
+  "endpoints": {
+    "compatible": {
+      "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
+      "model": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      "apiKeyEnv": "CLOUDFLARE_API_TOKEN",
+      "headers": { "cf-aig-authorization": { "env": "CF_AIG_TOKEN" } }
+    }
+  }
+}</code></pre>
+<p><strong>Entscheidungsmodell</strong> auf Cloudflare Workers AI (Clef Flash) oder mit <code>"preset": "custom"</code> auf einem beliebigen Server, der die System One API spricht. Das Entscheidungsmodell erwartet in <code>endpoint</code> eine vollständige Anfrage-URL (mit eingesetztem <code>{account_id}</code> und <code>{model}</code>); alle anderen Felder haben denselben Namen und dieselbe Form wie oben:</p>
+<pre><code>"decision": {
+  "enabled": true,
+  "preset": "cloudflare",
+  "endpoint": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}",
+  "model": "clef-flash",
+  "authScheme": "bearer",
+  "apiKeyEnv": "CLOUDFLARE_API_TOKEN",
+  "headers": { "cf-aig-authorization": { "env": "CF_AIG_TOKEN" } }
+}</code></pre>
+<p>Legen Sie <code>CLOUDFLARE_ACCOUNT_ID</code>, <code>CLOUDFLARE_API_TOKEN</code> und die übrigen Variablen in <code>~/.ferret/.env</code> ab. Die Modellnamen oben sind Beispiele. Prüfen Sie die Modellliste Ihres Anbieters.</p>
+
+<!-- @keys d478d4a8f1 -->
+## API-Schlüssel
+<p>Jeder Anbieter-Block nimmt einen Schlüssel auf eine von drei Arten entgegen. Der zuerst gefundene gilt:</p>
+<ol>
+  <li><code>"apiKey": "…"</code>: der Schlüssel im Klartext in <code>settings.json</code>. Jeder, der die Datei lesen kann, kann auch den Schlüssel lesen, und die <span class="docs-ui">Einstellungen</span> zeigen eine Warnung, solange einer vorhanden ist. Vermeiden Sie das, besonders wenn die Datei in einem Dotfiles-Repository liegt.</li>
+  <li><code>"apiKeyEnv": "OPENAI_API_KEY"</code>: der Name einer Umgebungsvariable. Ferret sucht in seiner eigenen Umgebung, dann in der <code>.env</code> des geöffneten Projekts, dann in <code>~/.ferret/.env</code>. Apps, die über den Finder oder das Startmenü geöffnet werden, sehen keine Variablen, die in Ihrem Shell-Profil exportiert sind; <code>~/.ferret/.env</code> ist daher der zuverlässige Ort.</li>
+  <li>Der in den <span class="docs-ui">Einstellungen</span> gespeicherte Schlüssel: mit dem Schlüsselbund des Betriebssystems verschlüsselt in <code>&lt;userData&gt;/stt-keys.bin</code> (siehe <a href="transcription.html#keys">Wo Schlüssel gespeichert werden</a>).</li>
+</ol>
+<p>Ferret liest eine Umgebungsvariable nur, wenn Sie sie in <code>apiKeyEnv</code> angeben. Schlüssel werden nie protokolliert, nie in der Oberfläche angezeigt und nie in Absturzberichte aufgenommen.</p>
+
+<!-- @reload 4c8b56784b -->
+## Live-Reload
+{{clip:settings-json|settings.json bearbeiten: Die App übernimmt die Änderung im laufenden Betrieb.}}
+<p>Ferret überwacht <code>settings.json</code>. Ändert sich die Datei, liest die App sie neu ein, prüft sie gegen das Schema und wendet sie an: Theme, Sprache, Layout, Agents, Projekte und KI-Endpoints werden ohne Neustart aktualisiert, und die Seite „Einstellungen“ wird neu geladen.</p>
+<ul>
+  <li>Enthält die Datei einen JSON-Syntaxfehler oder einen Wert vom falschen Typ, wird nichts aus dieser Bearbeitung übernommen. Die App behält die letzten gültigen Einstellungen, zeigt den Fehler mit Zeilennummer an und überschreibt Ihre Datei nicht, bis Sie den Fehler behoben haben.</li>
+  <li>Wenn die App selbst speichert (weil Sie etwas in den <span class="docs-ui">Einstellungen</span> geändert haben), schreibt sie in eine temporäre Datei und benennt diese in <code>settings.json</code> um, sodass ein Absturz nie eine halb geschriebene Datei hinterlässt.</li>
+</ul>
+
+<!-- @agent d9a63aa906 -->
+## Ferret von Ihrem Coding-Agent konfigurieren lassen
+<p>Fügen Sie Folgendes in Claude Code, Codex oder einen anderen Agent ein, der Dateien bearbeiten kann:</p>
+<pre><code>Edit ~/.ferret/settings.json following the JSON Schema in
+~/.ferret/settings.schema.json (read the field descriptions first).
+Keep unknown keys and keep the file valid JSON. Never write API keys in
+plaintext: set "apiKeyEnv" to an environment variable name instead and
+tell me which variable to put in ~/.ferret/.env.
+Ferret applies the change as soon as the file is saved.
+
+Task: &lt;what you want, e.g. "use my Ollama at http://localhost:11434 with
+qwen3:14b for Organize findings and add a prd URL for the shop project"&gt;</code></pre>
+<p>Derselbe Prompt mit Ihren tatsächlichen Pfaden steht unter <span class="docs-ui">Einstellungen</span> → <span class="docs-ui">Ferret von Ihrem Coding-Agent konfigurieren lassen</span>, mit einer Schaltfläche <span class="docs-ui">Prompt kopieren</span>.</p>

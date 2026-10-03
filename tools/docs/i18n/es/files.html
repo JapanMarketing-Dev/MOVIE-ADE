@@ -1,0 +1,50 @@
+<!-- Ferret docs translation: es / files. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 647281bf9e -->
+Archivos y entorno
+
+<!-- @lead b2a7619b5e -->
+Dónde guarda Ferret sus propios archivos y qué variables de entorno lee o define.
+
+<!-- @userdata ee70336b22 -->
+## Carpeta userData
+<p>Los datos de la app están en la carpeta <code>userData</code> de Electron. Su nombre está fijado en <code>ade-movie</code> (no en el nombre del producto), así que los datos sobreviven a los cambios de nombre. Puedes cambiarla con <code>--user-data-dir=&lt;path&gt;</code>.</p>
+<table>
+  <thead><tr><th>Sistema operativo</th><th>Ruta</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td><code>~/Library/Application Support/ade-movie/</code></td></tr>
+    <tr><td>Windows</td><td><code>%APPDATA%\ade-movie\</code></td></tr>
+    <tr><td>Linux</td><td><code>~/.config/ade-movie/</code> (o <code>$XDG_CONFIG_HOME/ade-movie/</code>)</td></tr>
+  </tbody>
+</table>
+<pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
+stt-keys.bin        # API keys, encrypted with safeStorage
+models/             # downloaded whisper models (ggml-*.bin)
+accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts
+accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
+<p>Tus ajustes no están en esta carpeta: están en <code>~/.ferret/</code> (consulta <a href="settings-json.html">Configurar con settings.json</a>).</p>
+<p>Un modelo que hayas elegido tú puede estar en cualquier sitio. La antigua ubicación predeterminada <code>~/.cache/ade-movie/models/ggml-small.bin</code> se sigue comprobando.</p>
+
+<!-- @env 1d9b0a6a78 -->
+## Variables de entorno
+<table>
+  <thead><tr><th>Variable</th><th>Efecto</th></tr></thead>
+  <tbody>
+    <tr><td><code>CLAUDE_CONFIG_DIR</code>, <code>CODEX_HOME</code></td><td>Ferret las define para las pestañas de agente cuando hay seleccionada una cuenta añadida</td></tr>
+    <tr><td><code>GH_TOKEN</code>, <code>GITHUB_TOKEN</code></td><td><code>gh</code> las usa antes que su propio inicio de sesión. Ferret avisa cuando alguna está definida</td></tr>
+    <tr><td><code>FERRET_CONFIG_DIR</code> (o la antigua <code>MOVIE_ADE_CONFIG_DIR</code>)</td><td>Carpeta para <code>settings.json</code>, <code>state.json</code> y <code>settings.schema.json</code> en lugar de <code>~/.ferret</code></td></tr>
+    <tr><td>Nombres en <code>apiKeyEnv</code></td><td>Claves de API a las que apuntas desde <code>settings.json</code>. También se leen del <code>.env</code> del proyecto y de <code>~/.ferret/.env</code></td></tr>
+    <tr><td><code>ADE_PROJECT_DIR</code></td><td>Abre (y registra) esta carpeta como proyecto al iniciar</td></tr>
+    <tr><td><code>ADE_INITIAL_URL</code></td><td>Carga esta URL en el navegador integrado al iniciar</td></tr>
+    <tr><td><code>ADE_WHISPER_MODEL</code></td><td>Ruta absoluta de un modelo GGML para la transcripción en el dispositivo, en lugar del predeterminado descargado</td></tr>
+    <tr><td><code>FERRET_SENTRY_DSN</code> (o la antigua <code>MOVIE_ADE_SENTRY_DSN</code>)</td><td>Adónde van los informes de fallos. Vacía significa que no se envía ninguno (consulta <a href="privacy.html#crash-reports">Informes de fallos</a>)</td></tr>
+    <tr><td><code>OPENAI_API_KEY</code></td><td>Se lee de <code>.env</code> solo en desarrollo (<code>pnpm dev</code>), nunca en las versiones empaquetadas</td></tr>
+    <tr><td><code>PATH</code></td><td>Se usa para encontrar los comandos de tus agentes (<code>claude</code>, <code>codex</code>, <code>gemini</code>…), <code>gh</code>, <code>git</code> y <code>whisper-cli</code>. En macOS y Linux se añaden las ubicaciones de Homebrew, linuxbrew y snap</td></tr>
+  </tbody>
+</table>
+
+<!-- @project aa7d8b3567 -->
+## Dentro de tu proyecto
+<ul>
+  <li><code>.ferret/reviews/&lt;id&gt;/</code>: revisiones (consulta <a href="privacy.html#reviews">Datos y privacidad</a>). Las revisiones antiguas en <code>.ade-movie/reviews/</code> se siguen leyendo</li>
+  <li><code>.git/info/exclude</code>: una línea, <code>.ferret/</code>, que se añade en la primera grabación</li>
+</ul>

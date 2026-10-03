@@ -1,0 +1,71 @@
+<!-- Ferret docs translation: ko / settings. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 526d0b4160 -->
+설정 참조
+
+<!-- @lead bb6030179f -->
+제목 표시줄의 톱니바퀴에서 <span class="docs-ui">설정</span>을 엽니다. 녹화 중에는 설정을 바꿀 수 없습니다.
+
+<!-- @microphone afd769f38a -->
+## 마이크
+<table>
+  <thead><tr><th>설정</th><th>기본값</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">내 음성 녹음</span></td><td>켜짐</td></tr>
+    <tr><td><span class="docs-ui">마이크</span></td><td><span class="docs-ui">시스템 기본값</span></td></tr>
+    <tr><td><span class="docs-ui">상대방 음성도 녹음</span>(베타)</td><td>꺼짐</td></tr>
+  </tbody>
+</table>
+
+<!-- @transcription 89ff79d384 -->
+## 음성 인식
+<table>
+  <thead><tr><th>설정</th><th>기본값</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">언어</span>(말하는 언어)</td><td><span class="docs-ui">자동</span></td></tr>
+    <tr><td><span class="docs-ui">엔진</span></td><td><span class="docs-ui">기기 내(무료)</span></td></tr>
+    <tr><td><span class="docs-ui">모델</span>(기기 내)</td><td><code>large-v3-turbo</code>(권장)</td></tr>
+    <tr><td><span class="docs-ui">엔드포인트 Base URL</span> / <span class="docs-ui">모델</span>(호환)</td><td>비어 있음</td></tr>
+    <tr><td><span class="docs-ui">OpenAI API 키</span> / <span class="docs-ui">엔드포인트 API 키(선택 사항)</span></td><td>설정 안 됨</td></tr>
+    <tr><td><span class="docs-ui">비용 한도</span></td><td>리뷰당 최대 $1</td></tr>
+  </tbody>
+</table>
+<p><a href="transcription.html">음성 인식과 비용</a>을 참고하세요.</p>
+
+<!-- @storage 24cf46ed41 -->
+## 저장
+<table>
+  <thead><tr><th>설정</th><th>기본값</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">녹화 보관</span>: 7일 / 30일 / <span class="docs-ui">영구</span></td><td>7일</td></tr>
+    <tr><td><span class="docs-ui">중지 후에도 피드백 화면에 머무르기</span></td><td>꺼짐</td></tr>
+  </tbody>
+</table>
+
+<!-- @agent e6bb38101d -->
+## 에이전트
+<table>
+  <thead><tr><th>설정</th><th>기본값</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">프로젝트를 열 때 시작</span></td><td>Claude Code, Codex(<a href="agents.html#supported">지원하는 에이전트</a> 중 원하는 것을 고르거나 고르지 않을 수 있음)</td></tr>
+    <tr><td><span class="docs-ui">메뉴에 &lt;agent&gt; 표시</span></td><td>모든 에이전트에서 켜짐</td></tr>
+    <tr><td><span class="docs-ui">명령</span> / <span class="docs-ui">인수</span>(에이전트별)</td><td>에이전트 자체의 명령(예: <code>claude</code>, <code>codex</code>, <code>gemini</code>) / 없음</td></tr>
+    <tr><td><span class="docs-ui">사용자 지정 에이전트</span></td><td>없음(<span class="docs-ui">사용자 지정 에이전트 추가</span>로 어떤 CLI든 등록)</td></tr>
+    <tr><td><span class="docs-ui">권한 확인 건너뛰기</span>(프로젝트별)</td><td>모든 프로젝트에서 꺼짐(<a href="agents.html#terminal">자세히</a>)</td></tr>
+    <tr><td><span class="docs-ui">에이전트에게 보낼 지시</span></td><td>기본 제공 텍스트(<a href="agents.html#prompt">변수</a>)</td></tr>
+  </tbody>
+</table>
+
+<!-- @other 37b81ab14b -->
+## 계정, GitHub, 모양, 언어
+<ul>
+  <li><span class="docs-ui">계정</span>: <a href="accounts.html">계정과 사용량</a>을 참고하세요.</li>
+  <li><span class="docs-ui">GitHub / GitLab</span>: <code>gh</code>와 <code>glab</code> 로그인. <a href="agents.html#github">GitHub 또는 GitLab으로 보내기</a>를 참고하세요.</li>
+  <li><span class="docs-ui">CLI 도구</span>: 서비스 CLI를 설치하고 로그인합니다. <a href="agents.html#cli-tools">CLI 도구</a>를 참고하세요.</li>
+  <li><span class="docs-ui">모양 → 테마</span>: <span class="docs-ui">시스템</span>(기본값), <span class="docs-ui">라이트</span>, <span class="docs-ui">다크</span>.</li>
+  <li><span class="docs-ui">언어 → 인터페이스</span>: <span class="docs-ui">시스템</span>(기본값. Ferret이 OS 언어를 지원하면 그 언어를, 아니면 영어를 사용) 또는 14개 언어 중 하나: English, 日本語, 简体中文, 繁體中文, 한국어, Español, Français, Deutsch, Italiano, Português (Brasil), Русский, हिन्दी, Bahasa Indonesia, Tiếng Việt.</li>
+</ul>
+<p>푸터에서는 터미널 위치(오른쪽 / 아래)와 마이크 켜기/끄기를 바꿀 수 있습니다.</p>
+
+<!-- @settings-json ed64241c44 -->
+## settings.json
+<p>위의 모든 설정은 <code>~/.ferret/settings.json</code>(모든 OS에서 같은 경로)에 저장되며, 그 옆에 JSON Schema가 있습니다. 앱이 실행 중일 때 직접 또는 코딩 에이전트로 편집할 수 있고, 변경 사항은 바로 적용됩니다. <a href="settings-json.html">settings.json으로 설정하기</a>를 참고하세요.</p>

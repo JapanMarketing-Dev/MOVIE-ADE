@@ -1,0 +1,73 @@
+<!-- Ferret docs translation: it / troubleshooting. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title c3af076f92 -->
+Risoluzione dei problemi
+
+<!-- @lead eabdc6539a -->
+Problemi comuni e come risolverli. I messaggi citati sono quelli che l'app mostra in italiano.
+
+<!-- @screen-permission 45fa22d7c7 -->
+## La cattura dello schermo o della finestra non funziona (macOS)
+<p>Messaggio: <q>Per registrare l'intero schermo o un'altra finestra serve il permesso Registrazione schermo di macOS.</q></p>
+<ol class="docs-steps">
+  <li>Nella finestra <span class="docs-ui">Target di registrazione</span>, fai clic su <span class="docs-ui">Apri Impostazioni di Sistema</span>.</li>
+  <li><span class="docs-ui">Privacy e sicurezza → Registrazione schermo e audio di sistema</span>: attiva Ferret.</li>
+  <li>Riavvia l'app, poi fai clic su <span class="docs-ui">Controlla di nuovo</span>.</li>
+</ol>
+<p>Registrare il <span class="docs-ui">Browser integrato</span> non richiede alcun permesso.</p>
+<p>Quando lo esegui dai sorgenti su macOS, <code>pnpm dev</code> avvia una copia rinominata di Electron, con firma ad hoc, che si chiama anch'essa Ferret (<code>scripts/prepare-dev-electron.mjs</code>), quindi compare come voce Ferret separata in questi elenchi. Al primo avvio macOS chiede di nuovo l'accesso a Registrazione schermo e Microfono. Dopo non lo chiede più. Le build di sviluppo usano un portachiavi fittizio (<code>--use-mock-keychain</code>), quindi non compare alcuna richiesta del Portachiavi: cookie e chiavi salvati in una build di sviluppo sono cifrati con una chiave fissa, non con il vero Portachiavi. Imposta <code>ADE_DEV_REAL_KEYCHAIN=1</code> per usare il vero Portachiavi.</p>
+
+<!-- @mic 400e196b24 -->
+## Il microfono non si apre
+<p>Messaggio: <q>Impossibile aprire il microfono. Controlla il permesso nelle impostazioni del sistema operativo.</q></p>
+<ul>
+  <li>macOS: <span class="docs-ui">Impostazioni di Sistema → Privacy e sicurezza → Microfono</span>, poi attiva Ferret.</li>
+  <li>Windows: <span class="docs-ui">Impostazioni → Privacy e sicurezza → Microfono</span>, poi consenti l'accesso alle app desktop.</li>
+</ul>
+<p>Senza microfono, i cerchi della penna creano comunque segnalazioni, ma senza una richiesta a voce.</p>
+
+<!-- @whisper ec2a54a0ef -->
+## Nessun modello sul dispositivo / whisper-cli non trovato
+<p>Messaggio: <q>Nessun modello di trascrizione sul dispositivo trovato. L'audio verrà salvato e verranno elaborate solo le segnalazioni con la penna.</q></p>
+<p>Scarica un modello nelle Impostazioni, oppure scegli un <code>ggml-*.bin</code> esistente. Se le Impostazioni dicono <q>whisper.cpp (whisper-cli) non trovato</q>, installalo (<a href="transcription.html#whisper">istruzioni</a>), assicurati che sia nel <code>PATH</code> e riapri le Impostazioni. Le app pacchettizzate avviate dal Finder o da Esplora file potrebbero non vedere il <code>PATH</code> della tua shell, quindi installalo in un percorso standard come quello di Homebrew.</p>
+<p>Un modello scaricato che non supera il controllo sha256 viene scartato. Riprova a scaricarlo.</p>
+
+<!-- @node-pty bb433d3335 -->
+## Terminale: non è stato possibile caricare node-pty
+<p>Succede quando esegui dai sorgenti e node-pty è stato compilato per un ABI di Node o Electron diverso.</p>
+<pre><code>pnpm rebuild:native</code></pre>
+
+<!-- @agent 1b8e87d730 -->
+## Agent non trovato / Invia all'Agent non invia
+<ul>
+  <li><code>command not found: claude</code> (oppure <code>codex</code>, <code>gemini</code> o il comando di un altro agent) nel terminale: la CLI non è installata o non è nel <code>PATH</code>. Ferret mostra l'errore della shell così com'è e non aggiunge suggerimenti. Controlla che il comando funzioni nel tuo terminale abituale, usa <span class="docs-ui">Installa</span> in <span class="docs-ui">Impostazioni → Agent</span>, oppure imposta un percorso assoluto come <span class="docs-ui">Comando</span> di quell'agent.</li>
+  <li><q>L'agent è in attesa di conferma. Rispondi nel terminale, poi invia.</q> Rispondi prima alla richiesta dell'agent.</li>
+  <li><q>L'input dell'agent non è ancora pronto.</q> Attendi che l'agent finisca di avviarsi.</li>
+  <li><q>Il testo è stato inserito ma non inviato. Premi Invio nel terminale.</q></li>
+  <li><q>Apri prima un terminale.</q></li>
+  <li><q>Impossibile analizzare gli argomenti di avvio: Virgolette non chiuse.</q> Correggi le virgolette negli argomenti dell'agent.</li>
+</ul>
+
+<!-- @cannot-record 7b2c3ffb80 -->
+## La registrazione non si avvia
+<ul>
+  <li><q>Apri prima una cartella di progetto.</q></li>
+  <li><q>Apri prima un URL da revisionare.</q></li>
+  <li><q>La pagina non si è caricata. Apri un URL che viene visualizzato, poi registra.</q> Controlla che il server di sviluppo sia in esecuzione. <q>Impossibile connettersi al server</q> significa che nessuno è in ascolto su quella porta.</li>
+</ul>
+
+<!-- @openai a24af71f0e -->
+## Chiave OpenAI o endpoint non impostati
+<p><q>Nessuna chiave API OpenAI impostata…</q> oppure <q>L'endpoint di trascrizione (Base URL / modello) non è impostato…</q>: aggiungili nelle Impostazioni, oppure passa a <span class="docs-ui">Sul dispositivo (gratuito)</span>. L'audio di quella registrazione è già salvato.</p>
+
+<!-- @github 81f6d68f2f -->
+## Errori di GitHub
+<ul>
+  <li><q>GitHub CLI (gh) non trovata.</q> Installa <code>gh</code>.</li>
+  <li><q>Accesso a GitHub non effettuato.</q> <span class="docs-ui">Impostazioni → GitHub / GitLab → Accedi nel terminale</span>.</li>
+  <li><q>Nessun remote origin.</q> oppure <q>origin non è un repository GitHub.</q> Controlla <code>git remote -v</code>.</li>
+  <li><q>Repository non trovato oppure non hai accesso.</q> Controlla <code>gh auth status</code> e <code>GH_TOKEN</code>.</li>
+</ul>
+
+<!-- @report 20a1889e90 -->
+## Segnalare un bug
+<p>Apri una issue su <a href="https://github.com/JapanMarketing-Dev/ferret/issues">github.com/JapanMarketing-Dev/ferret/issues</a> indicando il sistema operativo, la versione dell'app (footer → <span class="docs-ui">Aggiornamenti</span>) e i passaggi per riprodurre il problema. Non allegare contenuti di <code>.ferret/</code> che mostrano schermate private.</p>

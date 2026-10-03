@@ -1,0 +1,56 @@
+<!-- Ferret docs translation: pt-BR / projects. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 5c9e1003a2 -->
+Projetos e URLs
+
+<!-- @lead 4a937bd356 -->
+Um projeto é uma pasta (normalmente a raiz do seu repositório). Cada projeto guarda as próprias URLs salvas, então local, dev e produção ficam a um clique de distância.
+
+<!-- @add-project eb372d2531 -->
+## Adicionar um projeto
+<ol class="docs-steps">
+  <li><span class="docs-ui">Arquivo → Abrir pasta do projeto…</span> ({{keys:Mod+O}}), <span class="docs-ui">Adicionar projeto</span> na barra lateral ou <span class="docs-ui">Adicionar projeto…</span> no menu de projetos da barra de título.</li>
+  <li>Escolha de onde vem o projeto:
+    <ul>
+      <li><span class="docs-ui">Neste computador</span>: escolha uma pasta.</li>
+      <li><span class="docs-ui">Clonar do GitHub / GitLab</span>: escolha um dos seus repositórios (listados pelo seu login do <code>gh</code> ou do <code>glab</code>) ou cole uma URL, escolha a pasta de destino, e o Ferret clona e abre o repositório.</li>
+      <li><span class="docs-ui">Abrir via SSH</span>: escolha um host do <code>~/.ssh/config</code>. O terminal e os agentes rodam na máquina remota; as revisões ficam neste computador.</li>
+    </ul>
+  </li>
+</ol>
+<p>O nome padrão é o nome da pasta. Adicionar uma pasta já registrada apenas a abre (no macOS e no Windows, os caminhos são comparados sem diferenciar maiúsculas de minúsculas). No menu da barra lateral, você pode <span class="docs-ui">Renomear</span> um projeto ou usar <span class="docs-ui">Remover da lista</span>. Remover nunca exclui a pasta.</p>
+<p>Os terminais abrem na pasta do projeto, e as revisões são salvas em <code>&lt;project&gt;/.ferret/</code>.</p>
+
+<!-- @save-url 8914160725 -->
+## Salvar URLs
+<ol class="docs-steps">
+  <li>Abra a página no navegador integrado.</li>
+  <li>Clique em <span class="docs-ui">+</span> (<span class="docs-ui">Salvar URL atual</span>) na barra de ferramentas do navegador. A URL atual já vem preenchida.</li>
+  <li>Digite um <span class="docs-ui">Nome</span> e clique em <span class="docs-ui">Salvar</span>.</li>
+</ol>
+<p>Só são aceitas URLs <code>http://</code> e <code>https://</code>. Se você mantiver o nome sugerido, ele é deduzido a partir do host:</p>
+<table>
+  <thead><tr><th>Host</th><th>Nome</th></tr></thead>
+  <tbody>
+    <tr><td><code>localhost</code>, <code>127.*</code>, <code>::1</code>, <code>0.0.0.0</code>, <code>*.localhost</code></td><td><code>local</code></td></tr>
+    <tr><td>contém <code>dev</code>, <code>develop</code>, <code>development</code></td><td><code>dev</code></td></tr>
+    <tr><td>contém <code>stg</code>, <code>stage</code>, <code>staging</code></td><td><code>stg</code></td></tr>
+    <tr><td>qualquer outro</td><td><code>prd</code></td></tr>
+  </tbody>
+</table>
+<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="URLs salvas na barra de ferramentas do navegador (captura de tela em breve)"><span>Captura de tela em breve</span></div><figcaption>URLs salvas na barra de ferramentas do navegador</figcaption></figure>
+
+<!-- @review-targets 351621051d -->
+## Painel de alvos de revisão
+{{clip:targets|Trocando de alvo de revisão e de página sem parar a gravação.}}
+<p>No modo Feedback, o painel <span class="docs-ui">Alvos de revisão</span> à direita lista tudo o que você pode revisar no projeto atual. Trocar de alvo não interrompe a gravação. Mostre ou oculte o painel com <span class="docs-ui">Exibir → Alternar alvos de revisão</span> ({{keys:Mod+Shift+K}}) ou <span class="docs-ui">Ocultar painel</span>.</p>
+<ul>
+  <li><strong><span class="docs-ui">Alvos</span></strong>: as URLs salvas do projeto. Abaixo de cada uma há uma árvore com as páginas que você visitou naquele site. Sites visitados que não estão salvos aparecem como grupos próprios.</li>
+  <li><strong><span class="docs-ui">Arquivos</span></strong>: a pasta do projeto. Um arquivo abre como prévia (Markdown e Mermaid renderizados, outros textos somente leitura), então você também pode revisar documentos. O lápis (<span class="docs-ui">Abrir no editor</span>) o abre no editor.</li>
+</ul>
+<p><span class="docs-ui">Filtrar alvos</span> filtra alvos, páginas e arquivos ao mesmo tempo, com a mesma busca aproximada de <span class="docs-ui">Ir para arquivo…</span>. Na lista, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> ou <kbd>1</kbd>–<kbd>9</kbd> trocam de alvo. <span class="docs-ui">Abrir URL…</span> abre uma URL avulsa, e <span class="docs-ui">Salvar nas URLs do projeto</span> a guarda.</p>
+<p>Os alvos vêm de <code>projects[].urls</code> no <code>settings.json</code> (veja <a href="settings-json.html#example">o exemplo</a>). Cada entrada precisa de uma <code>url</code>, de um <code>launchCommand</code> (executado em um terminal, por exemplo para iniciar um app de desktop) ou de um <code>windowMatch</code> (a janela a gravar). Escolher um alvo de janela o define como a fonte da gravação, então isso não pode ser feito durante a gravação. As páginas visitadas são lembradas por projeto, apenas nesta máquina (até 200).</p>
+
+<!-- @switch-env 5103621352 -->
+## Abrir e trocar de ambiente
+<p>Clique em uma URL salva para abri-la. Se a página atual estiver sob outra URL salva, o Ferret mantém o caminho, a query e o hash e troca só a origem. Por exemplo, em <code>http://localhost:3000/pricing?plan=pro</code>, clicar em <code>prd</code> abre <code>https://example.com/pricing?plan=pro</code>.</p>
+<p>O chip que corresponde à página atual (o prefixo mais longo) fica destacado. Clique com o botão direito em um chip ou use o ícone de lápis para editá-lo ou usar <span class="docs-ui">Excluir</span>. Quando um projeto abre e não há URL anterior, a primeira URL salva dele é carregada.</p>

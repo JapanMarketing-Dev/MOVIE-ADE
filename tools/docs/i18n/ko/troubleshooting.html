@@ -1,0 +1,73 @@
+<!-- Ferret docs translation: ko / troubleshooting. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title c3af076f92 -->
+문제 해결
+
+<!-- @lead eabdc6539a -->
+자주 겪는 문제와 해결 방법입니다. 인용한 메시지는 앱이 한국어로 표시하는 문구입니다.
+
+<!-- @screen-permission 45fa22d7c7 -->
+## 화면이나 창을 녹화할 수 없음(macOS)
+<p>메시지: <q>전체 화면이나 다른 창을 녹화하려면 macOS 화면 기록 권한이 필요합니다.</q></p>
+<ol class="docs-steps">
+  <li><span class="docs-ui">녹화 대상</span> 대화 상자에서 <span class="docs-ui">시스템 설정 열기</span>를 클릭합니다.</li>
+  <li><span class="docs-ui">개인정보 보호 및 보안 → 화면 및 시스템 오디오 기록</span>에서 Ferret을 켭니다.</li>
+  <li>앱을 다시 시작한 다음 <span class="docs-ui">다시 확인</span>을 클릭합니다.</li>
+</ol>
+<p><span class="docs-ui">내장 브라우저</span> 녹화에는 권한이 필요 없습니다.</p>
+<p>macOS에서 소스로 실행할 때 <code>pnpm dev</code>는 이름을 바꾸고 ad-hoc 서명한 Electron 사본을 실행하며, 이 사본의 이름도 Ferret입니다(<code>scripts/prepare-dev-electron.mjs</code>). 그래서 위 목록에 별도의 Ferret 항목으로 나타납니다. 처음 실행할 때 macOS가 화면 기록과 마이크 접근 권한을 다시 묻습니다. 그 뒤로는 다시 묻지 않습니다. 개발 빌드는 모의 키체인(<code>--use-mock-keychain</code>)을 사용하므로 키체인 확인 창이 나타나지 않습니다. 개발 빌드에서 저장한 쿠키와 키는 실제 키체인이 아니라 고정된 키로 암호화됩니다. 실제 키체인을 사용하려면 <code>ADE_DEV_REAL_KEYCHAIN=1</code>을 설정하세요.</p>
+
+<!-- @mic 400e196b24 -->
+## 마이크가 열리지 않음
+<p>메시지: <q>마이크를 열 수 없습니다. OS 설정에서 권한을 확인하세요.</q></p>
+<ul>
+  <li>macOS: <span class="docs-ui">시스템 설정 → 개인정보 보호 및 보안 → 마이크</span>에서 Ferret을 켭니다.</li>
+  <li>Windows: <span class="docs-ui">설정 → 개인 정보 및 보안 → 마이크</span>에서 데스크톱 앱의 접근을 허용합니다.</li>
+</ul>
+<p>마이크가 없어도 펜으로 둘러싼 곳은 지적 사항이 되지만, 말로 한 요청은 들어가지 않습니다.</p>
+
+<!-- @whisper ec2a54a0ef -->
+## 기기 내 모델이 없음 / whisper-cli를 찾을 수 없음
+<p>메시지: <q>기기 내 음성 인식 모델을 찾을 수 없습니다. 오디오는 저장되며, 펜 지적 사항만 처리됩니다.</q></p>
+<p>설정에서 모델을 다운로드하거나 이미 있는 <code>ggml-*.bin</code>을 선택하세요. 설정에 <q>whisper.cpp(whisper-cli)를 찾을 수 없습니다</q>가 표시되면 설치하고(<a href="transcription.html#whisper">설치 방법</a>), <code>PATH</code>에 있는지 확인한 뒤 설정을 다시 여세요. Finder나 탐색기에서 실행한 패키징된 앱은 셸의 <code>PATH</code>를 보지 못할 수 있으므로, Homebrew 같은 표준 위치에 설치하세요.</p>
+<p>sha256 검사에 실패한 모델 다운로드는 삭제됩니다. 다시 시도하세요.</p>
+
+<!-- @node-pty bb433d3335 -->
+## 터미널: node-pty를 불러올 수 없음
+<p>소스로 실행할 때 node-pty가 다른 Node 또는 Electron ABI용으로 빌드되어 있으면 발생합니다.</p>
+<pre><code>pnpm rebuild:native</code></pre>
+
+<!-- @agent 1b8e87d730 -->
+## 에이전트를 찾을 수 없음 / 에이전트에게 보내기가 전송되지 않음
+<ul>
+  <li>터미널에 <code>command not found: claude</code>(또는 <code>codex</code>, <code>gemini</code>, 다른 에이전트의 명령)가 표시됨: CLI가 설치되어 있지 않거나 <code>PATH</code>에 없습니다. Ferret은 셸의 오류를 그대로 보여 주며 힌트를 덧붙이지 않습니다. 평소 쓰는 터미널에서 명령이 동작하는지 확인하거나, <span class="docs-ui">설정 → 에이전트</span>의 <span class="docs-ui">설치</span>를 사용하거나, 해당 에이전트의 <span class="docs-ui">명령</span>에 절대 경로를 지정하세요.</li>
+  <li><q>에이전트가 확인을 기다리고 있습니다. 터미널에서 응답한 후 보내세요.</q> 먼저 에이전트의 확인 요청에 답하세요.</li>
+  <li><q>에이전트의 입력이 아직 준비되지 않았습니다.</q> 에이전트가 시작을 마칠 때까지 기다리세요.</li>
+  <li><q>텍스트는 입력되었지만 전송되지 않았습니다. 터미널에서 Enter를 누르세요.</q></li>
+  <li><q>먼저 터미널을 여세요.</q></li>
+  <li><q>실행 인수를 해석할 수 없습니다: 따옴표가 닫히지 않았습니다.</q> 에이전트 인수의 따옴표를 고치세요.</li>
+</ul>
+
+<!-- @cannot-record 7b2c3ffb80 -->
+## 녹화가 시작되지 않음
+<ul>
+  <li><q>먼저 프로젝트 폴더를 여세요.</q></li>
+  <li><q>먼저 리뷰할 URL을 여세요.</q></li>
+  <li><q>페이지가 로드되지 않았습니다. 표시되는 URL을 연 후 녹화하세요.</q> 개발 서버가 실행 중인지 확인하세요. <q>서버에 연결할 수 없습니다</q>는 해당 포트에서 아무것도 수신하고 있지 않다는 뜻입니다.</li>
+</ul>
+
+<!-- @openai a24af71f0e -->
+## OpenAI 키나 엔드포인트가 설정되지 않음
+<p><q>OpenAI API 키가 설정되지 않았습니다…</q> 또는 <q>음성 인식 엔드포인트(Base URL / 모델)가 설정되지 않았습니다…</q>: 설정에서 추가하거나 <span class="docs-ui">기기 내(무료)</span>로 전환하세요. 해당 녹화의 오디오는 이미 저장되어 있습니다.</p>
+
+<!-- @github 81f6d68f2f -->
+## GitHub 오류
+<ul>
+  <li><q>GitHub CLI(gh)를 찾을 수 없습니다.</q> <code>gh</code>를 설치하세요.</li>
+  <li><q>GitHub에 로그인되어 있지 않습니다.</q> <span class="docs-ui">설정 → GitHub / GitLab → 터미널에서 로그인</span>을 사용하세요.</li>
+  <li><q>origin 원격 저장소가 없습니다.</q> 또는 <q>origin이 GitHub 저장소가 아닙니다.</q> <code>git remote -v</code>를 확인하세요.</li>
+  <li><q>저장소를 찾을 수 없거나 접근 권한이 없습니다.</q> <code>gh auth status</code>와 <code>GH_TOKEN</code>을 확인하세요.</li>
+</ul>
+
+<!-- @report 20a1889e90 -->
+## 버그 신고
+<p><a href="https://github.com/JapanMarketing-Dev/ferret/issues">github.com/JapanMarketing-Dev/ferret/issues</a>에 OS, 앱 버전(푸터 → <span class="docs-ui">업데이트</span>), 재현 절차를 적어 issue를 등록하세요. 비공개 화면이 담긴 <code>.ferret/</code>의 내용은 첨부하지 마세요.</p>

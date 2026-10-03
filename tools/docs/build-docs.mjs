@@ -380,7 +380,7 @@ page('agents.html', `Using ${APP}`, 'Sending to agents',
   <li>${ui('Confirm')} / ${ui('Mark as Needs Review')}, ${ui('Merge with Next')}, ${ui('Delete')}</li>
 </ul>
 <p>${ui('Filter by progress')} shows or hides findings by status (for example ${ui('Only')} the ones waiting for your review); ${ui('Show all')} clears it.</p>
-<p>The header has ${ui('Undo')}, ${ui('Open Folder')}, ${ui('Copy for Agent')}, ${ui('Send to GitHub / GitLab')}, ${ui('Organize')}, and ${ui('Send to Agent')}. Speech that didn't become a finding is listed under ${ui('Excluded speech')}, where ${ui('Restore as Finding')} brings it back. ${ui('Overall Note')} adds a note for the whole review.</p>
+<p>The header has ${ui('Undo')}, ${ui('Open Folder')}, ${ui('Copy for Agent')}, ${ui('Send to GitHub / GitLab')}, ${ui('Organize')}, and ${ui('Send to Agent')}. Speech that didn't become a finding is listed under ${ui('Excluded speech')}, where ${ui('Restore as Finding')} brings it back.</p>
 ${shot('findings', 'The Findings tab')}`],
     ['terminal', 'Run agents in the built-in terminal', `
 <p>When a project opens, ${APP} starts one terminal tab per agent in ${ui('Settings → Agents → Start When a Project Opens')}, in the project folder and in the agent's normal mode. The default is Claude Code and Codex:</p>
@@ -468,7 +468,7 @@ ${code('Read {{relpath}} and the PNGs next to it. Fix only findings marked to se
 <p>${ui('Send to GitHub')} posts the review as a new issue or as a comment on one of your open pull requests. Authentication is delegated to the <a href="https://cli.github.com/">GitHub CLI</a>. ${APP} never reads or stores a token.</p>
 <ol class="docs-steps">
   <li>Install <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), or see <a href="https://github.com/cli/cli#installation">cli/cli</a>.</li>
-  <li>${ui('Settings → GitHub → Sign In in Terminal')} runs <code>gh auth login --web -h github.com</code> in the built-in terminal.</li>
+  <li>${ui('Settings → GitHub / GitLab → Sign In in Terminal')} runs <code>gh auth login --web -h github.com</code> in the built-in terminal.</li>
   <li>Click ${ui('Send to GitHub')}, choose ${ui('Create a new issue')} or a PR, and review the ${ui('Title')} and ${ui('Body')} (editable).</li>
   <li>Tick the confirmation checkbox, then ${ui('Create Issue')} or ${ui('Post Comment')}.</li>
 </ol>
@@ -566,7 +566,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
     <tr><td><code>tiny</code></td><td>78 MB</td><td>Fastest. Not accurate enough for Japanese</td></tr>
   </tbody>
 </table>
-<p>Already have a model? Use ${ui('Choose a file…')} to point at any <code>ggml-*.bin</code>. Without a model, Settings says no model is set. You can still record: audio is saved, and and only pen findings are produced.</p>
+<p>Already have a model? Use ${ui('Choose a file…')} to point at any <code>ggml-*.bin</code>. Without a model, Settings says no model is set. You can still record: audio is saved, and only pen findings are produced.</p>
 <p>whisper-cli is not bundled with the app. Install it yourself as shown above. When it can't be found, Settings shows <q>whisper.cpp (whisper-cli) was not found. Install it, then reopen the settings.</q> with the same instructions.</p>`],
     ['openai', 'Your own OpenAI key', `
 <ol class="docs-steps">
@@ -624,7 +624,7 @@ page('accounts.html', 'Configure', 'Accounts and usage',
 <p>Removing an account deletes its config directory. It does not sign you out on the server.</p>`],
     ['usage', 'Usage in the footer', `
 <p>The footer shows how much of each rate-limit window is used: the 5-hour window and the weekly window, plus the per-model weekly window for Claude. Colors turn yellow at 60% and red at 80%. Values refresh every 15 minutes, or on ${ui('Refresh usage')}.</p>
-<p>Display: ${ui('Detailed')} (bars, window names, and percentages) or ${ui('Compact')} (one value per agent).</p>
+<p>How much is shown depends on the space in the footer. With room it shows bars, window names, and percentages. As the footer gets narrower it drops the less useful parts first, down to one percentage per agent. Click the usage to see everything in a popover.</p>
 <p>Usage is fetched directly from Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) and ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) with the signed-in account's own credentials.</p>
 ${shot('usage', 'Usage in the footer')}`],
   ])
@@ -1026,7 +1026,7 @@ ${code('pnpm rebuild:native')}`],
     ['github', 'GitHub errors', `
 <ul>
   <li><q>GitHub CLI (gh) not found.</q> Install <code>gh</code>.</li>
-  <li><q>Not signed in to GitHub.</q> ${ui('Settings → GitHub → Sign In in Terminal')}.</li>
+  <li><q>Not signed in to GitHub.</q> ${ui('Settings → GitHub / GitLab → Sign In in Terminal')}.</li>
   <li><q>No origin remote.</q> or <q>origin isn't a GitHub repository.</q> Check <code>git remote -v</code>.</li>
   <li><q>Repository not found, or you don't have access.</q> Check <code>gh auth status</code> and <code>GH_TOKEN</code>.</li>
 </ul>`],

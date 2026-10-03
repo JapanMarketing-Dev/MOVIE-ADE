@@ -1,0 +1,66 @@
+<!-- Ferret docs translation: fr / quick-start. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 0eb95fb624 -->
+Démarrage rapide
+
+<!-- @lead 8e0cda30a0 -->
+Installez Ferret, ouvrez votre projet et l'URL de son serveur de développement, enregistrez un premier retour et confiez-le à votre agent de code. Comptez environ cinq minutes.
+
+<!-- @before 9aee0a2173 -->
+## Avant de commencer
+{{clip:quick-start|Ouvrir une page, enregistrer, entourer en parlant, arrêter, puis envoyer les remarques à un agent.}}
+<ul>
+  <li>Un agent de code qui s'exécute dans un terminal, installé et connecté : par exemple Claude Code (<code>claude</code>), Codex (<code>codex</code>) ou Gemini CLI (<code>gemini</code>). Ferret le lance dans son terminal intégré. Tout agent de la <a href="agents.html#supported">liste des agents pris en charge</a> fonctionne, de même que toute autre CLI que vous ajoutez vous-même.</li>
+  <li>Une application web accessible par URL, par exemple un serveur de développement sur <code>http://localhost:3000</code>.</li>
+  <li>Un microphone. Un retour, c'est votre voix plus le stylo. Sans micro, les zones entourées au stylo deviennent quand même des remarques, mais sans paroles.</li>
+</ul>
+
+<!-- @install 6d549cfebe -->
+## 1. Installer
+<p>Téléchargez la version correspondant à votre OS depuis la <a href="../download.html">page de téléchargement</a> et ouvrez-la. La version macOS est signée avec un Developer ID et notariée par Apple : elle s'ouvre comme n'importe quelle autre application. Les versions Windows et Linux ne sont pas encore signées, leur premier lancement demande donc une étape de plus. Consultez <a href="install.html">Installation</a> pour Windows SmartScreen, Linux et la compilation depuis les sources.</p>
+
+<!-- @open fad3e18b1d -->
+## 2. Ouvrir un projet et une URL
+<ol class="docs-steps">
+  <li><span class="docs-ui">Fichier → Ouvrir un dossier de projet…</span> ({{keys:Mod+O}}), puis choisissez la racine de votre dépôt.</li>
+  <li>Saisissez l'URL de votre serveur de développement dans la barre d'adresse du navigateur ({{keys:Mod+L}}) et appuyez sur <kbd>Enter</kbd>.</li>
+  <li>Facultatif : cliquez sur <span class="docs-ui">+</span> (<span class="docs-ui">Enregistrer l'URL actuelle</span>) pour la garder comme raccourci en un clic, par exemple <code>local</code>, <code>dev</code> ou <code>prd</code>.</li>
+</ol>
+<p>L'ouverture d'un projet démarre aussi vos agents dans des onglets de terminal, dans ce dossier. Par défaut, ce sont Claude Code et Codex ; choisissez ceux que vous utilisez dans <span class="docs-ui">Réglages → Agents → Démarrer à l'ouverture d'un projet</span> (voir <a href="settings.html#agent">Réglages</a>).</p>
+
+<!-- @record 36e1ea60f7 -->
+## 3. Enregistrer
+<ol class="docs-steps">
+  <li>Cliquez sur <span class="docs-ui">Enregistrer</span> dans la barre de titre, ou appuyez sur {{keys:Mod+Shift+R}}. La fenêtre passe en mode Retours.</li>
+  <li>Utilisez la page normalement et dites ce qui doit changer.</li>
+  <li>Maintenez {{keys:Alt}} (ou choisissez <span class="docs-ui">Stylo</span>) et faites glisser pour entourer l'endroit dont vous parlez.</li>
+  <li>Cliquez sur <span class="docs-ui">Arrêter</span> ou appuyez de nouveau sur {{keys:Mod+Shift+R}}.</li>
+</ol>
+<p>Chaque moment où vous parlez ou entourez quelque chose devient une remarque : une capture d'écran avec vos traits de stylo, la demande, vos paroles d'origine, l'URL et l'élément que vous avez désigné.</p>
+
+<!-- @review 152a385c40 -->
+## 4. Vérifier les remarques
+<p>Une fois l'enregistrement arrêté, la fenêtre revient en mode Éditeur et ouvre l'onglet <span class="docs-ui">Remarques</span>.</p>
+<ul>
+  <li>Modifiez directement un titre ou une demande.</li>
+  <li>Pour chaque remarque, basculez entre <span class="docs-ui">Envoyer</span> et <span class="docs-ui">Ne pas envoyer</span>, utilisez <span class="docs-ui">Fusionner avec la suivante</span> ou <span class="docs-ui">Supprimer</span>.</li>
+  <li><span class="docs-ui">Annuler</span> revient sur la dernière modification.</li>
+</ul>
+
+<!-- @send bdd30ad5ee -->
+## 5. Envoyer à un agent
+<ol class="docs-steps">
+  <li>Cliquez sur <span class="docs-ui">Envoyer à l'agent</span>. L'envoi part vers l'agent de l'onglet de terminal actuel, ou vers un agent en cours d'exécution. La flèche à côté du bouton permet de choisir un agent ou un onglet précis.</li>
+  <li>Si aucun agent ne tourne encore, Ferret en démarre un d'abord et envoie dès qu'il est prêt.</li>
+</ol>
+<p>Ferret saisit une instruction dans l'invite de l'agent et la valide. Par défaut, elle commence ainsi :</p>
+<pre><code>Lisez "{{path}}" ainsi que l'image de chaque remarque dans le même dossier, puis implémentez chaque remarque marquée pour l'envoi. …</code></pre>
+<p>La suite demande à l'agent de vérifier chaque changement sur l'écran réel, de noter son avancement pour chaque remarque et de terminer par une liste Terminé / Non terminé. L'agent lit <code>.ferret/reviews/&lt;timestamp&gt;/feedback.md</code> et les PNG placés à côté. La vidéo n'est jamais envoyée. Vous utilisez un agent en dehors de Ferret ? Cliquez sur <span class="docs-ui">Copier pour l'agent</span> et collez.</p>
+<p>L'instruction par défaut suit la langue d'affichage. Vous pouvez la remplacer dans les réglages : voir <a href="agents.html#prompt">Personnaliser l'instruction</a>.</p>
+
+<!-- @next 1bb70e0695 -->
+## Étapes suivantes
+<ul>
+  <li><a href="concepts.html">Concepts</a> : les modes, les remarques et ce que reçoit l'agent</li>
+  <li><a href="transcription.html">Transcription et coûts</a> : téléchargez un modèle whisper gratuit qui tourne sur l'appareil, ou utilisez votre propre endpoint</li>
+  <li><a href="keyboard.html">Raccourcis clavier</a></li>
+</ul>

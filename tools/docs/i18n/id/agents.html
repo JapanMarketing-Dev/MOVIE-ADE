@@ -1,0 +1,147 @@
+<!-- Ferret docs translation: id / agents. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title a7a0afdf19 -->
+Mengirim ke agent
+
+<!-- @lead 14c9151ac0 -->
+Jalankan agent coding Anda di terminal bawaan dan serahkan tinjauan kepadanya dengan satu klik. Claude Code dan Codex adalah contoh yang umum, tetapi agent mana pun dalam daftar di bawah bisa dipakai, begitu juga CLI yang Anda tambahkan sendiri. Anda juga bisa menyalin instruksi untuk agent yang berjalan di tempat lain, atau mengirim tinjauan ke GitHub.
+
+<!-- @findings 2c83c22ebb -->
+## Meninjau temuan
+<p>Setiap kartu di tab <span class="docs-ui">Temuan</span> mendukung:</p>
+<ul>
+  <li>Edit judul dan permintaan langsung di tempat</li>
+  <li>Sakelar <span class="docs-ui">Kirim</span> / <span class="docs-ui">Jangan kirim</span></li>
+  <li><span class="docs-ui">Tonton Rekaman</span> (melompat ke waktu tersebut) dan <span class="docs-ui">Ganti Gambar</span> (pilih frame lain)</li>
+  <li><span class="docs-ui">Konfirmasi</span> / <span class="docs-ui">Tandai Perlu Ditinjau</span>, <span class="docs-ui">Gabung dengan Berikutnya</span>, <span class="docs-ui">Hapus</span></li>
+</ul>
+<p><span class="docs-ui">Saring menurut progres</span> menampilkan atau menyembunyikan temuan berdasarkan status (misalnya <span class="docs-ui">Hanya</span> temuan yang menunggu tinjauan Anda); <span class="docs-ui">Tampilkan semua</span> menghapus saringan.</p>
+<p>Header berisi <span class="docs-ui">Urungkan</span>, <span class="docs-ui">Buka Folder</span>, <span class="docs-ui">Salin untuk Agent</span>, <span class="docs-ui">Kirim ke GitHub / GitLab</span>, <span class="docs-ui">Rapikan</span>, dan <span class="docs-ui">Kirim ke Agent</span>. Ucapan yang tidak menjadi temuan dicantumkan di <span class="docs-ui">Ucapan yang dikecualikan</span>, tempat <span class="docs-ui">Pulihkan sebagai Temuan</span> mengembalikannya.</p>
+<figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="Tab Temuan (screenshot segera hadir)"><span>Screenshot segera hadir</span></div><figcaption>Tab Temuan</figcaption></figure>
+
+<!-- @terminal 45dd9bf23b -->
+## Menjalankan agent di terminal bawaan
+<p>Saat proyek dibuka, Ferret memulai satu tab terminal per agent yang ada di <span class="docs-ui">Pengaturan → Agent → Jalankan Saat Proyek Dibuka</span>, di folder proyek dan dalam mode normal agent tersebut. Bawaannya adalah Claude Code dan Codex:</p>
+<pre><code>claude
+codex</code></pre>
+<p>Sebagai gantinya, pilih agent mana pun dari <a href="#supported">daftar yang didukung</a> (agent dimulai sesuai urutan Anda memilihnya), atau tidak sama sekali.</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Permintaan izin tetap aktif</p><p>Mendaftarkan atau meng-clone proyek tidak membuat Ferret memercayainya. Agent seperti Claude Code dan Codex menanyakan apakah Anda memercayai folder tersebut pada kali pertama, dan terus bertanya sebelum mengedit file atau menjalankan perintah. Agar agent bisa melewati permintaan izin, persetujuan, dan sandbox di satu proyek yang Anda percayai, aktifkan untuk proyek tersebut di <span class="docs-ui">Pengaturan → Agent → Lewati permintaan izin</span> lalu konfirmasi. Ferret menambahkan flag lewati milik masing-masing agent jika flag tersebut diketahui; agent tanpa flag yang diketahui tetap meminta izin. Pengaturan ini hanya berlaku untuk agent yang Anda buka sendiri di folder proyek tersebut; agent yang dimulai saat proyek dibuka selalu tetap meminta izin. Flag lewati izin yang diketik di argumen akan diabaikan.</p></div>
+<p>Jika tidak ada agent yang dipilih, shell biasa yang dibuka. Menu <span class="docs-ui">+</span> membuka <span class="docs-ui">Terminal Baru</span>, menjalankan salah satu agent Anda di tab baru, atau melompat ke <span class="docs-ui">Pengaturan agent…</span>. Kotak pencariannya juga menemukan tab, URL tersimpan, dan file.</p>
+<p>Tab menampilkan status agent: <span class="docs-ui">Berjalan</span>, <span class="docs-ui">Menunggu input</span>, <span class="docs-ui">Selesai (belum dibaca)</span>, <span class="docs-ui">Diam</span>. Di sidebar, proyek yang agent-nya sedang berjalan diberi tanda, sehingga Anda bisa melihatnya tanpa berpindah proyek.</p>
+{{clip:terminals|Menyeret tab dan panel terminal untuk memisah, memindahkan, dan mengembalikannya menjadi tab.}}
+<p><strong>Seret untuk memisah.</strong> Seret tab, atau panel melalui pegangannya (muncul setelah tab dipisah), lalu lepaskan:</p>
+<ul>
+  <li>di seperempat bagian luar tepi panel: <span class="docs-ui">Pisah ke Kiri</span> / <span class="docs-ui">Pisah ke Kanan</span> / <span class="docs-ui">Pisah ke Atas</span> / <span class="docs-ui">Pisah ke Bawah</span></li>
+  <li>di tengah panel: <span class="docs-ui">Buka sebagai Tab</span> (panel keluar dari pemisahannya dan menjadi tab tersendiri)</li>
+  <li>di pita tipis di sekeliling seluruh area terminal: <span class="docs-ui">Pisah seluruh area ke kiri</span> dan seterusnya (jika ada 2 panel atau lebih)</li>
+  <li>di bilah tab: <span class="docs-ui">Tempatkan sebagai tab di sini</span></li>
+</ul>
+<p>Proses tetap berjalan saat Anda memindahkannya, dan tab yang menjadi kosong akan ditutup. Pemisahan dengan keyboard:</p>
+<table class="docs-keys">
+  <thead><tr><th>Tindakan</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Terminal Baru</td><td class="os-mac">{{keys-mac:Mod+T}}</td><td class="os-win">{{keys-win:Mod+T}}</td></tr>
+    <tr><td>Pisah ke Kanan</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
+    <tr><td>Pisah ke Bawah</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+    <tr><td>Tutup Panel / Tab</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @supported 69600dc42f -->
+## Agent yang didukung
+<p>Ferret tidak terikat pada satu agent. Ferret mengenali agent coding di bawah ini: Ferret bisa menjalankannya, mendeteksinya di terminal untuk <span class="docs-ui">Kirim ke Agent</span>, dan menampilkan apakah agent tersebut terinstal. <span class="docs-ui">Pengaturan → Agent</span> mencantumkannya dengan <span class="docs-ui">Terinstal</span> / <span class="docs-ui">Tidak ditemukan</span>, tombol <span class="docs-ui">Instal</span> jika vendornya menyediakan installer satu baris, serta perintah dan argumen untuk masing-masing.</p>
+{{agent-catalog}}
+<p>Tidak ada di daftar? <span class="docs-ui">Pengaturan → Agent → Tambah Agent Kustom</span> mendaftarkan CLI atau skrip wrapper apa pun (nama, perintah, dan opsional nama proses yang dipakai untuk mengenalinya), atau tambahkan ke <code>agents.customAgents</code> di <a href="settings-json.html#example">settings.json</a>. Agent yang berjalan di luar Ferret bisa memakai <span class="docs-ui">Salin untuk Agent</span>.</p>
+<p>Beberapa fitur bergantung pada agent dan untuk saat ini terbatas pada Claude Code dan Codex:</p>
+<ul>
+  <li><a href="accounts.html">Akun dan penggunaan</a>: berpindah antara beberapa login dan meteran batas rate di footer.</li>
+  <li><span class="docs-ui">Rapikan</span>: berjalan dengan login Claude Code atau Codex Anda, atau dengan API LLM yang Anda konfigurasi.</li>
+</ul>
+
+<!-- @send d320d66d74 -->
+## Kirim ke Agent / Salin untuk Agent
+{{clip:send|Dari tab Temuan ke agent di terminal bawaan dengan Kirim ke Agent.}}
+<ol class="docs-steps">
+  <li>Klik <span class="docs-ui">Kirim ke Agent</span>. Secara bawaan (<span class="docs-ui">Otomatis (tab saat ini atau agent yang berjalan)</span>), instruksi dikirim ke agent di tab terminal saat ini, atau ke agent yang sedang berjalan. Gunakan panah di samping tombol (<span class="docs-ui">Pilih agent tujuan</span>) untuk memilih agent atau tab tertentu.</li>
+  <li>Ferret menulis instruksi ke input agent lalu mengirimkannya. Pantau progresnya di terminal.</li>
+</ol>
+<p>Jika tidak ada agent yang berjalan, Ferret menjalankannya terlebih dahulu dan mengirim begitu agent siap. Tidak ada yang dikirim selama agent menunggu jawaban izin. Jawab di terminal terlebih dahulu.</p>
+<p><span class="docs-ui">Salin untuk Agent</span> menaruh instruksi yang sama di clipboard untuk agent yang berjalan di tempat lain (terminal lain, IDE, atau aplikasi). Hanya temuan yang disetel ke <span class="docs-ui">Kirim</span> yang disertakan. Videonya tidak pernah disertakan.</p>
+
+<!-- @verify f8f4f5bb1d -->
+## Pemeriksaan penerimaan dengan model keputusan
+{{clip:verify|Agent memperbaiki temuan dan memeriksa masing-masing dengan model keputusan sampai semuanya lolos.}}
+<p>Aktifkan fitur ini, dan agent coding Anda akan memeriksa hasil kerjanya sendiri terhadap setiap temuan sebelum melaporkan Selesai. Ferret sendiri tidak menilai apa pun: Ferret memberi agent sebuah <em>model keputusan</em> (API apa pun yang kompatibel dengan System One) dan, di <code>feedback.md</code>, memintanya mengulang sampai setiap temuan lolos.</p>
+<ol class="docs-steps">
+  <li>Agent mengimplementasikan temuan.</li>
+  <li>Untuk setiap temuan, agent mengambil screenshot AFTER (viewport dan status halaman yang sama dengan gambar BEFORE) dan mengirim satu permintaan berisi teks temuan, baris "Selesai jika", serta gambar BEFORE/AFTER ke model keputusan.</li>
+  <li>Temuan lolos jika P(done) setidaknya sama dengan ambang batas (bawaan 0.7) dan pilihannya adalah <code>done</code>. Agent memperbaiki sisanya dan menilai ulang <strong>semua</strong> temuan di setiap putaran, dan hanya berhenti jika setiap temuan lolos dalam putaran yang sama, atau karena alasan jujur yang harus disebutkannya: API tidak dapat dijangkau, temuan berada di luar cakupan, atau temuan macet dengan skor yang tidak berubah.</li>
+  <li>Daftar akhir Selesai / Belum selesai mencantumkan skor setiap temuan dan jumlah putarannya.</li>
+</ol>
+<p>Siapkan di <span class="docs-ui">Pengaturan → Model keputusan</span> lalu aktifkan <span class="docs-ui">Tambahkan pemeriksaan model keputusan ke instruksi agent</span>. Preset hanya mengisi field; setiap field tetap bisa diedit, dan <span class="docs-ui">Kustom</span> berfungsi dengan API kompatibel apa pun.</p>
+<table>
+  <thead><tr><th>Preset</th><th>URL permintaan</th><th>Model</th><th>Key</th></tr></thead>
+  <tbody>
+    <tr><td>Ollama (bawaan)</td><td><code>http://localhost:11434/v1/systemone</code></td><td><code>clef-flash</code>, <code>clef</code> (membaca gambar); <code>nimble</code>, <code>tev1</code> (hanya teks)</td><td>tidak perlu, gratis</td></tr>
+    <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (membaca gambar)</td><td><code>CLOUDFLARE_API_TOKEN</code> (izin Workers AI); account ID dari field atau <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
+    <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (hanya teks)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
+    <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (hanya teks)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>Kustom</td><td>URL lengkap apa pun</td><td>apa pun</td><td>Bearer, header kustom, atau tidak ada; header tambahan diperbolehkan</td></tr>
+  </tbody>
+</table>
+<p>Untuk Ollama, instal (0.35.1 atau lebih baru untuk Clef / Clef Flash) lalu tarik modelnya di terminal. Ferret tidak menjalankan installer:</p>
+<pre><code>ollama pull clef-flash</code></pre>
+<p>Key diambil dari field key (disimpan bersama API key Anda yang lain), dari variabel lingkungan yang Anda sebutkan (lingkungan aplikasi, <code>.env</code> proyek, atau <code>~/.ferret/.env</code>), atau dari <code>apiKey</code> di <code>settings.json</code>. Header tambahan bisa membaca nilai dari variabel lingkungan dengan <code>${VAR}</code>.</p>
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">Bagaimana key tidak masuk ke prompt</p><p>Agent tidak pernah melihat key Anda. Ferret menjalankan relay lokal di <code>127.0.0.1</code> dan memberi setiap terminal <code>FERRET_DECISION_URL</code> (relay tersebut, dengan token per terminal), <code>FERRET_DECISION_MODEL</code>, dan <code>FERRET_DECISION_IMAGES</code> (selama satu rilis, nama lama <code>MOVIE_ADE_DECISION_*</code> juga diatur). Relay menambahkan key dan header lalu meneruskan permintaan tanpa perubahan, sehingga prompt, <code>feedback.md</code>, dan transkrip agent tidak berisi rahasia apa pun. Terminal yang dibuka setelah Anda mengubah pengaturan akan memakai nilai yang baru.</p></div>
+<p>Cloudflare berbeda dari dokumentasi System One dalam dua hal (diperiksa terhadap API yang sebenarnya): gambar harus berupa data URI (<code>data:image/jpeg;base64,…</code>, jika tidak akan muncul 422 "image must be an embedded base64 data URI"), dan jawabannya dibungkus sebagai <code>{ "result": { … }, "success": true }</code> (error dikembalikan sebagai <code>{ "success": false, "errors": [ … ] }</code>). Preset Cloudflare mengatur <span class="docs-ui">Encoding gambar</span> ke data URI, agent menerimanya sebagai <code>FERRET_DECISION_IMAGE_FORMAT</code>, dan instruksinya meminta agent membaca <code>.result</code> jika ada. Relay meneruskan kedua arah tanpa perubahan. Untuk memakai Global API Key alih-alih API token, atur <span class="docs-ui">Autentikasi</span> ke <span class="docs-ui">Tanpa key</span> lalu tambahkan header <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> dan <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code>.</p>
+<p>Hanya Clef dan Clef Flash yang membaca gambar. Dengan model yang hanya teks, matikan <span class="docs-ui">Kirim gambar BEFORE/AFTER</span>; agent kemudian menilai hanya dari teks, yang kurang andal.</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama dan gambar besar</p><p>Ollama 0.35.0 membatasi permintaan <code>/v1/systemone</code> hingga 64 KiB, sehingga permintaan dengan screenshot gagal dengan HTTP 413. Instruksinya meminta agent mengecilkan kedua gambar menjadi lebar maksimal 1024px dalam format JPEG (kualitas sekitar 70). Jika masih mendapat 413, perbarui Ollama ke 0.35.1 atau lebih baru, atau beralih ke Cloudflare Workers AI.</p></div>
+
+<!-- @api-usage cacf2ecce0 -->
+## Penggunaan API di footer
+<p>Panggilan keputusan melewati relay, sehingga Ferret bisa menghitungnya. Item footer di samping meteran penggunaan agent menampilkan model keputusan serta jumlah panggilan, token, dan biaya hari ini (misalnya <code>clef-flash · 42 calls · 18.3k tok</code>). Klik untuk melihat rincian hari ini, bulan ini, per proyek, per model, dan per jenis (keputusan / transkripsi / merapikan), serta 50 panggilan terakhir.</p>
+<p>Biaya hanya muncul jika API melaporkannya (Vercel AI Gateway melakukannya) atau jika Anda mengatur harga per 1 juta token di <span class="docs-ui">Pengaturan → Model keputusan</span>; jika tidak, yang ditampilkan adalah "—". Hanya metadata yang dicatat (waktu, proyek, model, status, latensi, ukuran, jumlah gambar, token, biaya), tidak pernah gambar, teks, atau key, di <code>~/.ferret/usage/decision-YYYY-MM.jsonl</code>, satu file per bulan.</p>
+
+<!-- @prompt f46545b478 -->
+## Menyesuaikan instruksi
+<p>Edit <span class="docs-ui">Pengaturan → Agent → Instruksi untuk Agent</span>. Dua variabel akan diekspansi:</p>
+<table>
+  <thead><tr><th>Variabel</th><th>Diekspansi menjadi</th></tr></thead>
+  <tbody>
+    <tr><td><code>{{path}}</code></td><td>Path absolut <code>feedback.md</code></td></tr>
+    <tr><td><code>{{relpath}}</code></td><td>Path relatif terhadap proyek: <code>.ferret/reviews/&lt;id&gt;/feedback.md</code></td></tr>
+  </tbody>
+</table>
+<p>Biarkan kosong untuk memakai bawaan. Panjang maksimumnya 2000 karakter, dan <span class="docs-ui">Reset Instruksi</span> mengembalikan bawaan. Contoh:</p>
+<pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
+<p>Pengaturan ini disimpan sebagai <code>agentPrompt</code> di <code>settings.json</code>.</p>
+
+<!-- @github aba5332ec5 -->
+## Kirim ke GitHub atau GitLab (Issue / komentar PR atau MR)
+<p><span class="docs-ui">Kirim ke GitHub</span> mengirim tinjauan sebagai issue baru atau sebagai komentar pada salah satu pull request Anda yang terbuka. Autentikasi diserahkan ke <a href="https://cli.github.com/">GitHub CLI</a>. Ferret tidak pernah membaca atau menyimpan token.</p>
+<ol class="docs-steps">
+  <li>Instal <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), atau lihat <a href="https://github.com/cli/cli#installation">cli/cli</a>.</li>
+  <li><span class="docs-ui">Pengaturan → GitHub / GitLab → Masuk di Terminal</span> menjalankan <code>gh auth login --web -h github.com</code> di terminal bawaan.</li>
+  <li>Klik <span class="docs-ui">Kirim ke GitHub</span>, pilih <span class="docs-ui">Buat issue baru</span> atau sebuah PR, lalu periksa <span class="docs-ui">Judul</span> dan <span class="docs-ui">Isi</span> (bisa diedit).</li>
+  <li>Centang kotak konfirmasi, lalu klik <span class="docs-ui">Buat Issue</span> atau <span class="docs-ui">Kirim Komentar</span>.</li>
+</ol>
+<p>Detail:</p>
+<ul>
+  <li>Repositori diambil dari <code>git remote get-url origin</code>.</li>
+  <li>Ferret menjalankan <code>gh issue create --repo … --title … --body-file -</code> atau <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>.</li>
+  <li>Isinya adalah <code>feedback.md</code> tanpa baris gambar (gambar tidak diunggah), hingga 60.000 karakter.</li>
+  <li>Kandidat PR adalah PR terbuka milik Anda sendiri (hingga 30).</li>
+</ul>
+<p>Jika <code>GH_TOKEN</code> atau <code>GITHUB_TOKEN</code> diatur, <code>gh</code> memakainya terlebih dahulu, dan panel pengaturan memberi peringatan tentang hal itu.</p>
+<p><strong>GitLab.</strong> Jika <code>origin</code> adalah proyek GitLab (gitlab.com atau GitLab self-managed), tombol yang sama mengirim ke GitLab melalui <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a> (<code>glab</code>): issue baru, atau komentar pada salah satu merge request Anda yang terbuka. Masuk melalui <span class="docs-ui">Pengaturan → GitHub / GitLab</span>, yang menjalankan <code>glab auth login</code> (dengan <code>--hostname</code> untuk GitLab self-managed) di terminal bawaan. Ferret tidak pernah membaca atau menyimpan token, dan memberi peringatan jika <code>GITLAB_TOKEN</code> diatur.</p>
+<p><strong>Ajakan memberi bintang.</strong> Setelah <span class="docs-ui">Kirim ke Agent</span> pertama Anda, dan saat Anda mencapai 3, 10, dan 30 tinjauan yang selesai, Ferret mungkin meminta Anda memberi bintang di GitHub. Ajakan ini muncul paling banyak 3 kali, dengan jarak minimal 3 hari, dan tidak pernah saat merekam. <span class="docs-ui">Beri bintang di GitHub</span> memberi bintang melalui login <code>gh</code> Anda sendiri (atau membuka GitHub jika <code>gh</code> tidak tersedia), dan <span class="docs-ui">Jangan tanya lagi</span> menghentikan ajakan tersebut. Anda juga bisa memberi bintang dari <span class="docs-ui">Bantuan → Beri bintang Ferret di GitHub</span>.</p>
+
+<!-- @cli-tools 01bc2517bf -->
+## Menginstal dan masuk ke alat CLI
+<p><span class="docs-ui">Pengaturan → Alat CLI</span> mencantumkan alat baris perintah yang sering dibutuhkan agent Anda, menampilkan mana yang terinstal beserta versinya, dan menjalankan perintah instalasi atau masuk resmi untuk OS Anda di tab terminal baru:</p>
+<ul>
+  <li>Hosting Git: <code>gh</code>, <code>glab</code></li>
+  <li>AI dan model: Ollama, Cloudflare <code>wrangler</code></li>
+  <li>Deploy: Vercel, Netlify, Fly.io, Railway, Heroku</li>
+  <li>Cloud dan layanan: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+</ul>
+<p>Jika suatu alat tidak memiliki installer resmi satu baris untuk OS Anda, <span class="docs-ui">Dokumentasi</span> akan membuka halaman instalasinya. Daftar ini memeriksa ulang dengan sendirinya setelah instalasi selesai.</p>

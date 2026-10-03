@@ -1,0 +1,147 @@
+<!-- Ferret docs translation: zh-TW / agents. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title a7a0afdf19 -->
+傳送給 Agent
+
+<!-- @lead 14c9151ac0 -->
+在內建終端機中執行你的程式設計 Agent，按一下就把審查交給它。常見的例子是 Claude Code 和 Codex，但下方清單中的任何 Agent 都能使用，你自己新增的 CLI 也可以。你也可以把指示複製給在其他地方執行的 Agent，或把審查發佈到 GitHub。
+
+<!-- @findings 2c83c22ebb -->
+## 檢查意見
+<p><span class="docs-ui">意見</span> 分頁中的每張卡片都可以：</p>
+<ul>
+  <li>直接編輯標題與要求</li>
+  <li>切換 <span class="docs-ui">傳送</span> / <span class="docs-ui">不傳送</span></li>
+  <li><span class="docs-ui">觀看錄影</span>（跳到該時間點）與 <span class="docs-ui">替換圖片</span>（改選其他影格）</li>
+  <li><span class="docs-ui">確認</span> / <span class="docs-ui">標記為需要確認</span>、<span class="docs-ui">與下一則合併</span>、<span class="docs-ui">刪除</span></li>
+</ul>
+<p><span class="docs-ui">依進度篩選</span> 可依狀態顯示或隱藏意見（例如 <span class="docs-ui">僅顯示</span> 等待你確認的意見）；<span class="docs-ui">全部顯示</span> 會清除篩選。</p>
+<p>標頭有 <span class="docs-ui">還原</span>、<span class="docs-ui">開啟資料夾</span>、<span class="docs-ui">拷貝給 Agent</span>、<span class="docs-ui">傳送到 GitHub / GitLab</span>、<span class="docs-ui">整理</span> 與 <span class="docs-ui">傳送給 Agent</span>。沒有成為意見的語音會列在 <span class="docs-ui">已排除的語音</span> 中，按 <span class="docs-ui">還原為意見</span> 即可取回。</p>
+<figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="意見分頁（螢幕截圖即將提供）"><span>螢幕截圖即將提供</span></div><figcaption>意見分頁</figcaption></figure>
+
+<!-- @terminal 45dd9bf23b -->
+## 在內建終端機中執行 Agent
+<p>開啟專案時，Ferret 會依 <span class="docs-ui">設定 → Agent → 開啟專案時啟動</span> 中選擇的 Agent，在專案資料夾中為每個 Agent 開一個終端機分頁，並以 Agent 的一般模式啟動。預設是 Claude Code 和 Codex：</p>
+<pre><code>claude
+codex</code></pre>
+<p>你也可以改從<a href="#supported">支援清單</a>中挑選任何 Agent（依選取順序啟動），或都不選。</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">權限確認維持開啟</p><p>登錄或複製專案並不會讓 Ferret 信任它。Claude Code 和 Codex 等 Agent 第一次會詢問你是否信任該資料夾，之後在修改檔案或執行指令前也會持續詢問。若要讓 Agent 在你信任的某個專案中略過權限確認、核准與沙箱，請在 <span class="docs-ui">設定 → Agent → 略過權限確認</span> 中為該專案開啟並確認。Ferret 會為已知略過參數的 Agent 加上各自的參數；沒有已知參數的 Agent 會保留確認。此設定只套用到你自己在該專案資料夾中開啟的 Agent；開啟專案時自動啟動的 Agent 一律保留確認。在參數中輸入的略過權限參數會被忽略。</p></div>
+<p>若沒有選擇任何 Agent，會開啟一般的 shell。<span class="docs-ui">+</span> 選單可以開啟 <span class="docs-ui">新增終端機</span>、在新分頁中啟動你的任一 Agent，或跳到 <span class="docs-ui">Agent 設定…</span>。它的搜尋框也能找到分頁、已儲存的 URL 和檔案。</p>
+<p>分頁會顯示 Agent 的狀態：<span class="docs-ui">執行中</span>、<span class="docs-ui">等待輸入</span>、<span class="docs-ui">完成（未讀）</span>、<span class="docs-ui">閒置</span>。側邊欄會標示有 Agent 正在執行的專案，不必切換專案就能看到。</p>
+{{clip:terminals|拖曳終端機分頁與窗格來分割、移動，再把它們變回分頁。}}
+<p><strong>拖曳來分割。</strong>拖曳分頁，或拖曳窗格的把手（分頁分割後才會出現），然後放到：</p>
+<ul>
+  <li>窗格邊緣外側四分之一處：<span class="docs-ui">向左分割</span> / <span class="docs-ui">向右分割</span> / <span class="docs-ui">向上分割</span> / <span class="docs-ui">向下分割</span></li>
+  <li>窗格中央：<span class="docs-ui">以分頁開啟</span>（窗格會離開分割，成為獨立的分頁）</li>
+  <li>整個終端機區域周圍的細長區域：<span class="docs-ui">將整個區域向左分割</span> 等（有 2 個以上窗格時）</li>
+  <li>分頁列：<span class="docs-ui">以分頁放在這裡</span></li>
+</ul>
+<p>移動時程序會繼續執行，變成空的分頁會自動關閉。鍵盤分割：</p>
+<table class="docs-keys">
+  <thead><tr><th>動作</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>新增終端機</td><td class="os-mac">{{keys-mac:Mod+T}}</td><td class="os-win">{{keys-win:Mod+T}}</td></tr>
+    <tr><td>向右分割</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
+    <tr><td>向下分割</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+    <tr><td>關閉窗格 / 分頁</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @supported 69600dc42f -->
+## 支援的 Agent
+<p>Ferret 不綁定特定 Agent。它能辨識下列程式設計 Agent：可以啟動它們、在終端機中偵測它們以使用 <span class="docs-ui">傳送給 Agent</span>，並顯示是否已安裝。<span class="docs-ui">設定 → Agent</span> 會列出它們並標示 <span class="docs-ui">已安裝</span> / <span class="docs-ui">找不到</span>；若供應商有提供一行安裝指令，會顯示 <span class="docs-ui">安裝</span> 按鈕，並列出每個 Agent 的指令與參數。</p>
+{{agent-catalog}}
+<p>清單裡沒有？<span class="docs-ui">設定 → Agent → 新增自訂 Agent</span> 可以登錄任何 CLI 或包裝腳本（名稱、指令，以及選填的用來辨識它的程序名稱），或在 <a href="settings-json.html#example">settings.json</a> 的 <code>agents.customAgents</code> 中加入。在 Ferret 外執行的 Agent 可以使用 <span class="docs-ui">拷貝給 Agent</span>。</p>
+<p>有幾項功能取決於 Agent，目前僅限 Claude Code 和 Codex：</p>
+<ul>
+  <li><a href="accounts.html">帳號與用量</a>：在多個登入之間切換，以及頁尾的速率限制計量表。</li>
+  <li><span class="docs-ui">整理</span>：使用你的 Claude Code 或 Codex 登入執行，或使用你設定的 LLM API。</li>
+</ul>
+
+<!-- @send d320d66d74 -->
+## 傳送給 Agent / 拷貝給 Agent
+{{clip:send|在意見分頁按「傳送給 Agent」，交給內建終端機中的 Agent。}}
+<ol class="docs-steps">
+  <li>按 <span class="docs-ui">傳送給 Agent</span>。預設（<span class="docs-ui">自動（目前分頁或執行中的 Agent）</span>）會送到目前終端機分頁中的 Agent，或正在執行的 Agent。用按鈕旁的箭頭（<span class="docs-ui">選擇要傳送的 Agent</span>）可以指定特定的 Agent 或分頁。</li>
+  <li>Ferret 會把指示寫入 Agent 的輸入欄並送出。請在終端機中查看進度。</li>
+</ol>
+<p>若沒有 Agent 在執行，Ferret 會先啟動一個，並在它就緒後立即傳送。Agent 正在等待權限回覆時不會傳送任何內容，請先在終端機中回覆。</p>
+<p><span class="docs-ui">拷貝給 Agent</span> 會把同樣的指示放到剪貼簿，給在其他地方（其他終端機、IDE 或 App）執行的 Agent 使用。只有切換為 <span class="docs-ui">傳送</span> 的意見會被處理。影片絕不會包含在內。</p>
+
+<!-- @verify f8f4f5bb1d -->
+## 用判定模型做驗收檢查
+{{clip:verify|Agent 修正意見，並用判定模型逐一檢查，直到全部通過。}}
+<p>開啟後，你的程式設計 Agent 會在回報「完成」之前，依每則意見檢查自己的成果。Ferret 本身不做任何判定：它把<em>判定模型</em>（任何相容 System One 的 API）提供給 Agent，並在 <code>feedback.md</code> 中要求它反覆執行，直到每則意見都通過。</p>
+<ol class="docs-steps">
+  <li>Agent 實作意見。</li>
+  <li>對每則意見，Agent 擷取 AFTER 螢幕截圖（與 BEFORE 靜態畫面相同的視窗範圍與頁面狀態），並把意見內容、其「完成條件」行以及 BEFORE/AFTER 圖片，以一個請求傳給判定模型。</li>
+  <li>當 P(done) 達到門檻（預設 0.7）且選擇為 <code>done</code> 時，該意見即通過。Agent 會修正其餘意見，並在每一輪重新判定<strong>所有</strong>意見；只有在同一輪中所有意見都通過時才停止，或因為必須說明的正當理由而停止：API 無法連線、某則意見超出範圍，或某則意見卡住且分數沒有變化。</li>
+  <li>最後的「完成 / 未完成」清單會包含每則意見的分數與輪數。</li>
+</ol>
+<p>請在 <span class="docs-ui">設定 → 判定模型</span> 中設定，並開啟 <span class="docs-ui">在 Agent 指示中加入判定模型檢查</span>。預設組合只會幫你填入欄位；每個欄位都能再編輯，<span class="docs-ui">自訂</span> 可搭配任何相容的 API。</p>
+<table>
+  <thead><tr><th>預設組合</th><th>請求 URL</th><th>模型</th><th>金鑰</th></tr></thead>
+  <tbody>
+    <tr><td>Ollama（預設）</td><td><code>http://localhost:11434/v1/systemone</code></td><td><code>clef-flash</code>、<code>clef</code>（可讀圖片）；<code>nimble</code>、<code>tev1</code>（僅文字）</td><td>不需要，免費</td></tr>
+    <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>、<code>clef</code>（可讀圖片）</td><td><code>CLOUDFLARE_API_TOKEN</code>（Workers AI 權限）；帳戶 ID 來自欄位或 <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
+    <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>、<code>convaiinnovations/laya</code>（僅文字）</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
+    <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>、<code>jev-preview</code>（僅文字）</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>自訂</td><td>任何完整 URL</td><td>任何</td><td>Bearer、自訂標頭或不使用；可加入額外標頭</td></tr>
+  </tbody>
+</table>
+<p>使用 Ollama 時，請先安裝（Clef / Clef Flash 需要 0.35.1 以上），並在終端機中下載模型。Ferret 不會執行安裝程式：</p>
+<pre><code>ollama pull clef-flash</code></pre>
+<p>金鑰來自金鑰欄位（與你的其他 API 金鑰一起儲存）、你指定的環境變數（App 的環境、專案的 <code>.env</code> 或 <code>~/.ferret/.env</code>），或 <code>settings.json</code> 中的 <code>apiKey</code>。額外標頭可以用 <code>${VAR}</code> 讀取環境變數的值。</p>
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">金鑰如何不出現在提示詞中</p><p>Agent 永遠看不到你的金鑰。Ferret 會在 <code>127.0.0.1</code> 上執行本機中繼，並提供每個終端機 <code>FERRET_DECISION_URL</code>（中繼的位址，附每個終端機專用的權杖）、<code>FERRET_DECISION_MODEL</code> 與 <code>FERRET_DECISION_IMAGES</code>（在一個版本內，也會同時設定舊的 <code>MOVIE_ADE_DECISION_*</code> 名稱）。中繼會加上金鑰與標頭，並原封不動地轉送請求，因此提示詞、<code>feedback.md</code> 和 Agent 的對話紀錄中都不含機密。變更設定後開啟的終端機會套用新設定。</p></div>
+<p>Cloudflare 與 System One 文件有兩點不同（已用實際 API 確認）：圖片必須是 data URI（<code>data:image/jpeg;base64,…</code>，否則會回傳 422 "image must be an embedded base64 data URI"），且回應會包裝成 <code>{ "result": { … }, "success": true }</code>（錯誤則回傳 <code>{ "success": false, "errors": [ … ] }</code>）。Cloudflare 預設組合會把 <span class="docs-ui">圖片編碼</span> 設為 data URI，Agent 會以 <code>FERRET_DECISION_IMAGE_FORMAT</code> 取得此設定，指示中也會要求它在有 <code>.result</code> 時讀取該欄位。中繼對雙向內容都原封不動地傳遞。若要改用 Global API Key 而非 API 權杖，請把 <span class="docs-ui">驗證</span> 設為 <span class="docs-ui">無金鑰</span>，並加入標頭 <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> 與 <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code>。</p>
+<p>只有 Clef 和 Clef Flash 能讀取圖片。使用僅限文字的模型時，請關閉 <span class="docs-ui">傳送 BEFORE/AFTER 圖片</span>；此時 Agent 只依文字判定，可靠度較低。</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama 與大型圖片</p><p>Ollama 0.35.0 將 <code>/v1/systemone</code> 請求限制在 64 KiB，因此附上螢幕截圖的請求會以 HTTP 413 失敗。指示會要求 Agent 把兩張圖片都縮小到寬度最多 1024px 的 JPEG（品質約 70）。如果仍然收到 413，請把 Ollama 更新到 0.35.1 以上，或改用 Cloudflare Workers AI。</p></div>
+
+<!-- @api-usage cacf2ecce0 -->
+## 頁尾的 API 用量
+<p>判定呼叫會經過中繼，因此 Ferret 可以計算它們。頁尾中 Agent 用量計量表旁的項目會顯示判定模型，以及今天的呼叫次數、權杖數與費用（例如 <code>clef-flash · 42 calls · 18.3k tok</code>）。按一下即可查看今天、本月、各專案、各模型與各類型（判定 / 轉錄 / 整理）的用量，以及最近 50 次呼叫。</p>
+<p>只有在 API 回報費用（Vercel AI Gateway 會回報），或你在 <span class="docs-ui">設定 → 判定模型</span> 中設定每 1M 權杖的價格時，才會顯示費用；否則會顯示「—」。只會記錄中繼資料（時間、專案、模型、狀態、延遲、大小、圖片數、權杖數、費用），絕不記錄圖片、文字或金鑰；記錄存放在 <code>~/.ferret/usage/decision-YYYY-MM.jsonl</code>，每月一個檔案。</p>
+
+<!-- @prompt f46545b478 -->
+## 自訂指示
+<p>編輯 <span class="docs-ui">設定 → Agent → 給 Agent 的指示</span>。會展開兩個變數：</p>
+<table>
+  <thead><tr><th>變數</th><th>展開為</th></tr></thead>
+  <tbody>
+    <tr><td><code>{{path}}</code></td><td><code>feedback.md</code> 的絕對路徑</td></tr>
+    <tr><td><code>{{relpath}}</code></td><td>相對於專案的路徑：<code>.ferret/reviews/&lt;id&gt;/feedback.md</code></td></tr>
+  </tbody>
+</table>
+<p>留空即使用預設值。長度上限為 2000 個字元，<span class="docs-ui">重設指示</span> 會恢復預設值。範例：</p>
+<pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
+<p>此設定以 <code>agentPrompt</code> 儲存在 <code>settings.json</code> 中。</p>
+
+<!-- @github aba5332ec5 -->
+## 傳送到 GitHub 或 GitLab（Issue / PR 或 MR 留言）
+<p><span class="docs-ui">傳送到 GitHub</span> 會把審查發佈為新的 Issue，或作為留言發佈到你某個開啟中的 Pull Request。驗證交由 <a href="https://cli.github.com/">GitHub CLI</a> 處理。Ferret 絕不讀取或儲存權杖。</p>
+<ol class="docs-steps">
+  <li>安裝 <code>gh</code>：<code>brew install gh</code>（macOS）、<code>winget install --id GitHub.cli</code>（Windows），或參閱 <a href="https://github.com/cli/cli#installation">cli/cli</a>。</li>
+  <li><span class="docs-ui">設定 → GitHub / GitLab → 在終端機中登入</span> 會在內建終端機中執行 <code>gh auth login --web -h github.com</code>。</li>
+  <li>按 <span class="docs-ui">傳送到 GitHub</span>，選擇 <span class="docs-ui">建立新的 Issue</span> 或某個 PR，並檢查 <span class="docs-ui">標題</span> 與 <span class="docs-ui">內文</span>（可編輯）。</li>
+  <li>勾選確認核取方塊，然後按 <span class="docs-ui">建立 Issue</span> 或 <span class="docs-ui">發佈留言</span>。</li>
+</ol>
+<p>詳細說明：</p>
+<ul>
+  <li>儲存庫取自 <code>git remote get-url origin</code>。</li>
+  <li>Ferret 會執行 <code>gh issue create --repo … --title … --body-file -</code> 或 <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>。</li>
+  <li>內文是去掉圖片行的 <code>feedback.md</code>（不會上傳圖片），最多 60,000 個字元。</li>
+  <li>可選的 PR 是你自己開啟中的 PR（最多 30 個）。</li>
+</ul>
+<p>如果設定了 <code>GH_TOKEN</code> 或 <code>GITHUB_TOKEN</code>，<code>gh</code> 會優先使用它，設定面板也會發出警告。</p>
+<p><strong>GitLab。</strong>當 <code>origin</code> 是 GitLab 專案（gitlab.com 或自行管理的 GitLab）時，同一個按鈕會透過 <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a>（<code>glab</code>）傳送到 GitLab：建立新的 Issue，或在你某個開啟中的 Merge Request 上留言。請用 <span class="docs-ui">設定 → GitHub / GitLab</span> 登入，它會在內建終端機中執行 <code>glab auth login</code>（自行管理的 GitLab 會加上 <code>--hostname</code>）。Ferret 絕不讀取或儲存權杖，並會在設定了 <code>GITLAB_TOKEN</code> 時發出警告。</p>
+<p><strong>加星提示。</strong>在你第一次使用 <span class="docs-ui">傳送給 Agent</span> 後，以及完成的審查達到 3、10、30 份時，Ferret 可能會請你在 GitHub 上為它加星。最多詢問 3 次，每次至少間隔 3 天，且錄製中絕不詢問。<span class="docs-ui">在 GitHub 上加星</span> 會透過你自己的 <code>gh</code> 登入加星（若無法使用 <code>gh</code> 則開啟 GitHub），<span class="docs-ui">不再詢問</span> 會停止提示。你也可以從 <span class="docs-ui">說明 → 在 GitHub 上為 Ferret 加星</span> 加星。</p>
+
+<!-- @cli-tools 01bc2517bf -->
+## 安裝並登入 CLI 工具
+<p><span class="docs-ui">設定 → CLI 工具</span> 會列出 Agent 經常需要的命令列工具，顯示哪些已安裝及其版本，並在新的終端機分頁中執行適用於你作業系統的官方安裝或登入指令：</p>
+<ul>
+  <li>Git 代管：<code>gh</code>、<code>glab</code></li>
+  <li>AI 與模型：Ollama、Cloudflare <code>wrangler</code></li>
+  <li>部署：Vercel、Netlify、Fly.io、Railway、Heroku</li>
+  <li>雲端與服務：Supabase、Firebase、Stripe、Google Cloud（<code>gcloud</code>）、AWS、Azure、Docker</li>
+</ul>
+<p>若某個工具沒有適用於你作業系統的官方一行安裝指令，<span class="docs-ui">文件</span> 會改為開啟它的安裝頁面。安裝完成後，清單會自動重新檢查。</p>

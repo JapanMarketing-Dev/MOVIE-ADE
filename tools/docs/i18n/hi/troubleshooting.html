@@ -1,0 +1,73 @@
+<!-- Ferret docs translation: hi / troubleshooting. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title c3af076f92 -->
+समस्या निवारण
+
+<!-- @lead eabdc6539a -->
+आम समस्याएँ और उनके हल। उद्धृत संदेश वही हैं जो ऐप हिन्दी में दिखाता है।
+
+<!-- @screen-permission 45fa22d7c7 -->
+## स्क्रीन या विंडो रिकॉर्ड नहीं होती (macOS)
+<p>संदेश: <q>पूरी स्क्रीन या दूसरी विंडो रिकॉर्ड करने के लिए macOS की Screen Recording अनुमति चाहिए।</q></p>
+<ol class="docs-steps">
+  <li><span class="docs-ui">रिकॉर्डिंग Target</span> dialog में <span class="docs-ui">System Settings खोलें</span> पर क्लिक करें।</li>
+  <li><span class="docs-ui">Privacy &amp; Security → Screen &amp; System Audio Recording</span>: Ferret चालू करें।</li>
+  <li>ऐप रीस्टार्ट करें, फिर <span class="docs-ui">फिर से जाँचें</span> पर क्लिक करें।</li>
+</ol>
+<p><span class="docs-ui">बिल्ट-इन Browser</span> रिकॉर्ड करने के लिए किसी अनुमति की ज़रूरत नहीं होती।</p>
+<p>macOS पर source से चलाते समय <code>pnpm dev</code> Electron की एक renamed, ad-hoc signed copy launch करता है जिसका नाम भी Ferret है (<code>scripts/prepare-dev-electron.mjs</code>), इसलिए यह इन सूचियों में एक अलग Ferret entry के रूप में दिखता है। पहली बार चलने पर macOS फिर से Screen Recording और Microphone की अनुमति माँगता है। उसके बाद दोबारा नहीं माँगता। Development builds एक mock keychain (<code>--use-mock-keychain</code>) इस्तेमाल करते हैं, इसलिए Keychain का कोई prompt नहीं आता: dev build में सेव की गई cookies और keys असली Keychain से नहीं, एक तय key से encrypt होती हैं। असली Keychain इस्तेमाल करने के लिए <code>ADE_DEV_REAL_KEYCHAIN=1</code> सेट करें।</p>
+
+<!-- @mic 400e196b24 -->
+## माइक्रोफ़ोन नहीं खुलता
+<p>संदेश: <q>माइक्रोफ़ोन नहीं खुल सका। OS settings में अनुमति जाँचें।</q></p>
+<ul>
+  <li>macOS: <span class="docs-ui">System Settings → Privacy &amp; Security → Microphone</span>, फिर Ferret चालू करें।</li>
+  <li>Windows: <span class="docs-ui">Settings → Privacy &amp; security → Microphone</span>, फिर डेस्कटॉप ऐप्स को अनुमति दें।</li>
+</ul>
+<p>माइक के बिना भी पेन से घेरी गई जगहें findings बनाती हैं, पर उनमें बोला गया अनुरोध नहीं होता।</p>
+
+<!-- @whisper ec2a54a0ef -->
+## डिवाइस पर कोई मॉडल नहीं / whisper-cli नहीं मिला
+<p>संदेश: <q>डिवाइस पर ट्रांसक्रिप्शन का कोई मॉडल नहीं मिला। ऑडियो सेव होगा, और सिर्फ़ पेन findings प्रोसेस होंगी।</q></p>
+<p>Settings में मॉडल डाउनलोड करें, या पहले से मौजूद <code>ggml-*.bin</code> चुनें। अगर Settings में <q>whisper.cpp (whisper-cli) नहीं मिला</q> दिखे, तो उसे इंस्टॉल करें (<a href="transcription.html#whisper">निर्देश</a>), पक्का करें कि वह <code>PATH</code> में है, और Settings दोबारा खोलें। Finder या Explorer से launch किए गए पैकेज वाले ऐप आपकी shell का <code>PATH</code> शायद न देखें, इसलिए Homebrew जैसी किसी मानक जगह पर इंस्टॉल करें।</p>
+<p>जो मॉडल डाउनलोड sha256 जाँच में fail होता है, उसे हटा दिया जाता है। दोबारा कोशिश करें।</p>
+
+<!-- @node-pty bb433d3335 -->
+## टर्मिनल: node-pty load नहीं हो सका
+<p>यह तब होता है जब आप source से चला रहे हों और node-pty किसी दूसरे Node या Electron ABI के लिए build हुआ हो।</p>
+<pre><code>pnpm rebuild:native</code></pre>
+
+<!-- @agent 1b8e87d730 -->
+## Agent नहीं मिला / Agent को भेजें नहीं भेजता
+<ul>
+  <li>टर्मिनल में <code>command not found: claude</code> (या <code>codex</code>, <code>gemini</code>, या किसी दूसरे agent का command): CLI इंस्टॉल नहीं है या <code>PATH</code> में नहीं है। Ferret shell का अपना error दिखाता है और कोई संकेत नहीं जोड़ता। जाँचें कि command आपके सामान्य टर्मिनल में चलता है, <span class="docs-ui">Settings → Agents</span> में <span class="docs-ui">इंस्टॉल करें</span> इस्तेमाल करें, या उस agent के <span class="docs-ui">कमांड</span> में absolute path सेट करें।</li>
+  <li><q>agent पुष्टि का इंतज़ार कर रहा है। terminal में जवाब दें, फिर भेजें।</q> पहले agent के सवाल का जवाब दें।</li>
+  <li><q>agent का इनपुट अभी तैयार नहीं है।</q> Agent के पूरी तरह शुरू होने तक इंतज़ार करें।</li>
+  <li><q>टेक्स्ट डाल दिया गया पर भेजा नहीं गया। terminal में Enter दबाएँ।</q></li>
+  <li><q>पहले एक terminal खोलें।</q></li>
+  <li><q>launch arguments पार्स नहीं हो सके: Quote बंद नहीं किया गया।</q> Agent के arguments में quotes ठीक करें।</li>
+</ul>
+
+<!-- @cannot-record 7b2c3ffb80 -->
+## रिकॉर्डिंग शुरू नहीं होती
+<ul>
+  <li><q>पहले एक प्रोजेक्ट फ़ोल्डर खोलें।</q></li>
+  <li><q>पहले समीक्षा के लिए URL खोलें।</q></li>
+  <li><q>पेज लोड नहीं हुआ। दिखने वाला URL खोलें, फिर रिकॉर्ड करें।</q> जाँचें कि dev server चल रहा है। <q>सर्वर से कनेक्ट नहीं हो सका</q> का मतलब है कि उस port पर कुछ भी सुन नहीं रहा।</li>
+</ul>
+
+<!-- @openai a24af71f0e -->
+## OpenAI key या endpoint सेट नहीं है
+<p><q>कोई OpenAI API key सेट नहीं है।…</q> या <q>ट्रांसक्रिप्शन endpoint (Base URL / मॉडल) सेट नहीं है।…</q>: इसे Settings में जोड़ें, या <span class="docs-ui">डिवाइस पर (मुफ़्त)</span> पर जाएँ। उस रिकॉर्डिंग का ऑडियो पहले ही सेव हो चुका है।</p>
+
+<!-- @github 81f6d68f2f -->
+## GitHub errors
+<ul>
+  <li><q>GitHub CLI (gh) नहीं मिला।</q> <code>gh</code> इंस्टॉल करें।</li>
+  <li><q>GitHub में साइन इन नहीं है।</q> <span class="docs-ui">Settings → GitHub / GitLab → Terminal में साइन इन करें</span>।</li>
+  <li><q>कोई origin remote नहीं है।</q> या <q>origin कोई GitHub repository नहीं है।</q> <code>git remote -v</code> जाँचें।</li>
+  <li><q>Repository नहीं मिली, या आपके पास एक्सेस नहीं है।</q> <code>gh auth status</code> और <code>GH_TOKEN</code> जाँचें।</li>
+</ul>
+
+<!-- @report 20a1889e90 -->
+## Bug रिपोर्ट करें
+<p><a href="https://github.com/JapanMarketing-Dev/ferret/issues">github.com/JapanMarketing-Dev/ferret/issues</a> पर एक issue खोलें, जिसमें आपका OS, ऐप का version (फ़ुटर → <span class="docs-ui">अपडेट</span>), और समस्या दोहराने के कदम हों। <code>.ferret/</code> की ऐसी सामग्री न जोड़ें जिसमें निजी स्क्रीन हों।</p>

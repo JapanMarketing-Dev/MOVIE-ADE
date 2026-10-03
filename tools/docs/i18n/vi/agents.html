@@ -1,0 +1,147 @@
+<!-- Ferret docs translation: vi / agents. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title a7a0afdf19 -->
+Gửi cho agent
+
+<!-- @lead 14c9151ac0 -->
+Chạy coding agent của bạn trong terminal tích hợp và giao cho nó một review chỉ với một cú bấm. Claude Code và Codex là các ví dụ thường gặp, nhưng mọi agent trong danh sách bên dưới đều dùng được, kể cả một CLI do bạn tự thêm. Bạn cũng có thể sao chép chỉ dẫn cho một agent chạy ở nơi khác, hoặc đăng review lên GitHub.
+
+<!-- @findings 2c83c22ebb -->
+## Xem lại các góp ý
+<p>Mỗi thẻ trong tab <span class="docs-ui">Góp ý</span> hỗ trợ:</p>
+<ul>
+  <li>Sửa trực tiếp tiêu đề và yêu cầu</li>
+  <li>Bật/tắt <span class="docs-ui">Gửi</span> / <span class="docs-ui">Không gửi</span></li>
+  <li><span class="docs-ui">Xem bản ghi</span> (tua tới thời điểm đó) và <span class="docs-ui">Thay ảnh</span> (chọn khung hình khác)</li>
+  <li><span class="docs-ui">Xác nhận</span> / <span class="docs-ui">Đánh dấu cần xem lại</span>, <span class="docs-ui">Gộp với mục sau</span>, <span class="docs-ui">Xóa</span></li>
+</ul>
+<p><span class="docs-ui">Lọc theo tiến độ</span> hiện hoặc ẩn góp ý theo trạng thái (ví dụ <span class="docs-ui">Chỉ</span> những góp ý đang chờ bạn review); <span class="docs-ui">Hiện tất cả</span> bỏ bộ lọc.</p>
+<p>Phần đầu có <span class="docs-ui">Hoàn tác</span>, <span class="docs-ui">Mở thư mục</span>, <span class="docs-ui">Sao chép cho Agent</span>, <span class="docs-ui">Gửi lên GitHub / GitLab</span>, <span class="docs-ui">Sắp xếp</span> và <span class="docs-ui">Gửi cho Agent</span>. Lời nói không trở thành góp ý được liệt kê trong <span class="docs-ui">Lời nói bị loại</span>, nơi <span class="docs-ui">Khôi phục thành góp ý</span> đưa nó trở lại.</p>
+<figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="Tab Góp ý (ảnh chụp màn hình sắp có)"><span>Ảnh chụp màn hình sắp có</span></div><figcaption>Tab Góp ý</figcaption></figure>
+
+<!-- @terminal 45dd9bf23b -->
+## Chạy agent trong terminal tích hợp
+<p>Khi mở một dự án, Ferret khởi động một tab terminal cho mỗi agent trong <span class="docs-ui">Cài đặt → Agent → Khởi chạy khi mở dự án</span>, trong thư mục dự án và ở chế độ thường của agent. Mặc định là Claude Code và Codex:</p>
+<pre><code>claude
+codex</code></pre>
+<p>Bạn có thể chọn bất kỳ agent nào trong <a href="#supported">danh sách được hỗ trợ</a> (chúng khởi động theo thứ tự bạn chọn), hoặc không chọn agent nào.</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Yêu cầu cấp quyền vẫn được giữ</p><p>Đăng ký hay clone một dự án không khiến Ferret tin cậy nó. Các agent như Claude Code và Codex sẽ hỏi bạn có tin cậy thư mục ở lần đầu, và tiếp tục hỏi trước khi sửa tệp hoặc chạy lệnh. Để cho agent bỏ qua yêu cầu cấp quyền, phê duyệt và sandbox trong một dự án bạn tin cậy, hãy bật cho dự án đó trong <span class="docs-ui">Cài đặt → Agent → Bỏ qua yêu cầu cấp quyền</span> và xác nhận. Ferret thêm cờ bỏ qua riêng của từng agent khi biết cờ đó; agent không có cờ đã biết vẫn giữ yêu cầu xác nhận. Thiết lập này chỉ áp dụng cho các agent bạn tự mở trong thư mục dự án đó; agent tự khởi động khi mở dự án luôn giữ yêu cầu xác nhận. Cờ bỏ qua quyền gõ trong ô tham số sẽ bị bỏ qua.</p></div>
+<p>Nếu không chọn agent nào, một shell thường sẽ mở ra. Menu <span class="docs-ui">+</span> mở <span class="docs-ui">Terminal mới</span>, khởi chạy bất kỳ agent nào của bạn trong tab mới, hoặc chuyển tới <span class="docs-ui">Cài đặt Agent…</span>. Ô tìm kiếm của nó cũng tìm được tab, URL đã lưu và tệp.</p>
+<p>Tab hiển thị trạng thái của agent: <span class="docs-ui">Đang chạy</span>, <span class="docs-ui">Đang chờ nhập</span>, <span class="docs-ui">Xong (chưa đọc)</span>, <span class="docs-ui">Rảnh</span>. Ở thanh bên, dự án có agent đang chạy được đánh dấu, nên bạn thấy được mà không cần chuyển dự án.</p>
+{{clip:terminals|Kéo tab và pane của terminal để chia, di chuyển và biến chúng trở lại thành tab.}}
+<p><strong>Kéo để chia.</strong> Kéo một tab, hoặc một pane bằng tay nắm của nó (xuất hiện khi tab đã được chia), rồi thả:</p>
+<ul>
+  <li>vào một phần tư bên ngoài ở cạnh của pane: <span class="docs-ui">Chia sang trái</span> / <span class="docs-ui">Chia sang phải</span> / <span class="docs-ui">Chia lên trên</span> / <span class="docs-ui">Chia xuống dưới</span></li>
+  <li>vào giữa pane: <span class="docs-ui">Mở dưới dạng tab</span> (pane rời khỏi vùng chia và trở thành tab riêng)</li>
+  <li>vào dải mỏng quanh toàn bộ vùng terminal: <span class="docs-ui">Chia toàn bộ vùng sang trái</span>, v.v. (khi có từ 2 pane trở lên)</li>
+  <li>vào thanh tab: <span class="docs-ui">Đặt làm tab tại đây</span></li>
+</ul>
+<p>Tiến trình vẫn tiếp tục chạy trong lúc bạn di chuyển, và tab bị bỏ trống sẽ đóng lại. Chia bằng bàn phím:</p>
+<table class="docs-keys">
+  <thead><tr><th>Thao tác</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Terminal mới</td><td class="os-mac">{{keys-mac:Mod+T}}</td><td class="os-win">{{keys-win:Mod+T}}</td></tr>
+    <tr><td>Chia sang phải</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
+    <tr><td>Chia xuống dưới</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+    <tr><td>Đóng pane / tab</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @supported 69600dc42f -->
+## Các agent được hỗ trợ
+<p>Ferret không gắn với một agent duy nhất. Nó nhận biết các coding agent dưới đây: có thể khởi động chúng, phát hiện chúng trong terminal để dùng <span class="docs-ui">Gửi cho Agent</span>, và cho biết chúng đã được cài hay chưa. <span class="docs-ui">Cài đặt → Agent</span> liệt kê chúng kèm <span class="docs-ui">Đã cài đặt</span> / <span class="docs-ui">Không tìm thấy</span>, nút <span class="docs-ui">Cài đặt</span> khi nhà cung cấp có trình cài đặt một dòng, và lệnh cùng tham số của từng agent.</p>
+{{agent-catalog}}
+<p>Không có trong danh sách? <span class="docs-ui">Cài đặt → Agent → Thêm agent tùy chỉnh</span> đăng ký bất kỳ CLI hoặc script bọc nào (tên, lệnh, và tùy chọn tên tiến trình dùng để nhận biết nó), hoặc thêm vào <code>agents.customAgents</code> trong <a href="settings-json.html#example">settings.json</a>. Agent chạy bên ngoài Ferret có thể dùng <span class="docs-ui">Sao chép cho Agent</span>.</p>
+<p>Một vài tính năng phụ thuộc vào agent và hiện chỉ dành cho Claude Code và Codex:</p>
+<ul>
+  <li><a href="accounts.html">Tài khoản và mức sử dụng</a>: chuyển qua lại giữa nhiều lần đăng nhập và đồng hồ rate limit ở chân trang.</li>
+  <li><span class="docs-ui">Sắp xếp</span>: chạy bằng thông tin đăng nhập Claude Code hoặc Codex của bạn, hoặc bằng một LLM API do bạn cấu hình.</li>
+</ul>
+
+<!-- @send d320d66d74 -->
+## Gửi cho Agent / Sao chép cho Agent
+{{clip:send|Từ tab Góp ý tới agent trong terminal tích hợp bằng Gửi cho Agent.}}
+<ol class="docs-steps">
+  <li>Bấm <span class="docs-ui">Gửi cho Agent</span>. Mặc định (<span class="docs-ui">Tự động (tab hiện tại hoặc agent đang chạy)</span>), chỉ dẫn được gửi tới agent trong tab terminal hiện tại, hoặc tới một agent đang chạy. Dùng mũi tên cạnh nút (<span class="docs-ui">Chọn agent để gửi</span>) để chọn một agent hoặc tab cụ thể.</li>
+  <li>Ferret ghi chỉ dẫn vào ô nhập của agent và gửi đi. Theo dõi tiến độ trong terminal.</li>
+</ol>
+<p>Nếu chưa có agent nào chạy, Ferret khởi động một agent trước và gửi ngay khi nó sẵn sàng. Không có gì được gửi khi agent đang chờ trả lời về quyền. Hãy trả lời trong terminal trước.</p>
+<p><span class="docs-ui">Sao chép cho Agent</span> đưa cùng chỉ dẫn đó vào clipboard cho một agent chạy ở nơi khác (terminal khác, IDE hoặc ứng dụng khác). Chỉ những góp ý được bật <span class="docs-ui">Gửi</span> mới được xử lý. Video không bao giờ được đính kèm.</p>
+
+<!-- @verify f8f4f5bb1d -->
+## Kiểm tra nghiệm thu bằng model quyết định
+{{clip:verify|Agent sửa các góp ý và kiểm tra từng góp ý bằng model quyết định cho tới khi tất cả đều đạt.}}
+<p>Bật tính năng này và coding agent của bạn sẽ tự kiểm tra công việc của mình theo từng góp ý trước khi báo Xong. Ferret không tự đánh giá gì cả: nó cung cấp cho agent một <em>model quyết định</em> (bất kỳ API nào tương thích System One) và yêu cầu agent, trong <code>feedback.md</code>, lặp lại cho tới khi mọi góp ý đều đạt.</p>
+<ol class="docs-steps">
+  <li>Agent triển khai các góp ý.</li>
+  <li>Với mỗi góp ý, agent chụp ảnh màn hình AFTER (cùng viewport và trạng thái trang như ảnh BEFORE) và gửi một request gồm nội dung góp ý, dòng "Done when" của nó và ảnh BEFORE/AFTER tới model quyết định.</li>
+  <li>Một góp ý đạt khi P(done) ít nhất bằng ngưỡng (mặc định 0.7) và lựa chọn là <code>done</code>. Agent sửa những góp ý còn lại và đánh giá lại <strong>tất cả</strong> góp ý ở mỗi vòng, và chỉ dừng khi mọi góp ý đều đạt trong cùng một vòng, hoặc vì một lý do chính đáng mà nó phải nêu rõ: không truy cập được API, góp ý nằm ngoài phạm vi, hoặc góp ý bị kẹt với điểm số không đổi.</li>
+  <li>Danh sách Xong / Chưa xong cuối cùng có điểm số của từng góp ý và số vòng.</li>
+</ol>
+<p>Thiết lập trong <span class="docs-ui">Cài đặt → Model quyết định</span> và bật <span class="docs-ui">Thêm bước kiểm tra bằng model quyết định vào chỉ dẫn cho agent</span>. Preset chỉ điền sẵn các trường; mọi trường vẫn sửa được, và <span class="docs-ui">Tùy chỉnh</span> dùng được với bất kỳ API tương thích nào.</p>
+<table>
+  <thead><tr><th>Preset</th><th>URL request</th><th>Model</th><th>Key</th></tr></thead>
+  <tbody>
+    <tr><td>Ollama (mặc định)</td><td><code>http://localhost:11434/v1/systemone</code></td><td><code>clef-flash</code>, <code>clef</code> (đọc được ảnh); <code>nimble</code>, <code>tev1</code> (chỉ văn bản)</td><td>không cần, miễn phí</td></tr>
+    <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (đọc được ảnh)</td><td><code>CLOUDFLARE_API_TOKEN</code> (quyền Workers AI); account ID lấy từ trường nhập hoặc <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
+    <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (chỉ văn bản)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
+    <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (chỉ văn bản)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>Tùy chỉnh</td><td>bất kỳ URL đầy đủ nào</td><td>bất kỳ</td><td>Bearer, header tùy chỉnh, hoặc không có; cho phép thêm header</td></tr>
+  </tbody>
+</table>
+<p>Với Ollama, hãy cài đặt nó (0.35.1 trở lên cho Clef / Clef Flash) và pull model trong terminal. Ferret không chạy trình cài đặt:</p>
+<pre><code>ollama pull clef-flash</code></pre>
+<p>Key được lấy từ trường key (lưu cùng các API key khác của bạn), từ một biến môi trường do bạn đặt tên (môi trường của ứng dụng, <code>.env</code> của dự án, hoặc <code>~/.ferret/.env</code>), hoặc từ <code>apiKey</code> trong <code>settings.json</code>. Header bổ sung có thể đọc giá trị từ biến môi trường bằng <code>${VAR}</code>.</p>
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">Cách key được giữ ngoài prompt</p><p>Agent không bao giờ thấy key của bạn. Ferret chạy một relay cục bộ trên <code>127.0.0.1</code> và cấp cho mỗi terminal <code>FERRET_DECISION_URL</code> (relay, kèm token riêng cho từng terminal), <code>FERRET_DECISION_MODEL</code> và <code>FERRET_DECISION_IMAGES</code> (trong một bản phát hành, các tên cũ <code>MOVIE_ADE_DECISION_*</code> cũng được đặt). Relay thêm key và header rồi chuyển tiếp request nguyên vẹn, nên prompt, <code>feedback.md</code> và transcript của agent không chứa bí mật nào. Các terminal mở sau khi bạn đổi cài đặt sẽ nhận giá trị mới.</p></div>
+<p>Cloudflare khác tài liệu System One ở hai điểm (đã kiểm tra với API thật): ảnh phải là data URI (<code>data:image/jpeg;base64,…</code>, nếu không sẽ nhận 422 "image must be an embedded base64 data URI"), và câu trả lời được bọc dưới dạng <code>{ "result": { … }, "success": true }</code> (lỗi trả về dạng <code>{ "success": false, "errors": [ … ] }</code>). Preset Cloudflare đặt <span class="docs-ui">Mã hóa ảnh</span> thành data URI, agent nhận giá trị này qua <code>FERRET_DECISION_IMAGE_FORMAT</code>, và chỉ dẫn yêu cầu agent đọc <code>.result</code> khi có. Relay chuyển nguyên vẹn cả hai chiều. Để dùng Global API Key thay cho API token, đặt <span class="docs-ui">Xác thực</span> thành <span class="docs-ui">Không có key</span> và thêm các header <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> và <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code>.</p>
+<p>Chỉ Clef và Clef Flash đọc được ảnh. Với model chỉ xử lý văn bản, hãy tắt <span class="docs-ui">Gửi ảnh BEFORE/AFTER</span>; khi đó agent chỉ đánh giá dựa trên văn bản, kém tin cậy hơn.</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama và ảnh lớn</p><p>Ollama 0.35.0 giới hạn request <code>/v1/systemone</code> ở 64 KiB, nên request có ảnh chụp màn hình sẽ thất bại với HTTP 413. Chỉ dẫn yêu cầu agent thu nhỏ cả hai ảnh về chiều rộng tối đa 1024px ở dạng JPEG (chất lượng khoảng 70). Nếu vẫn nhận 413, hãy cập nhật Ollama lên 0.35.1 trở lên, hoặc chuyển sang Cloudflare Workers AI.</p></div>
+
+<!-- @api-usage cacf2ecce0 -->
+## Mức sử dụng API ở chân trang
+<p>Các lệnh gọi model quyết định đi qua relay, nên Ferret có thể đếm chúng. Mục ở chân trang cạnh đồng hồ mức sử dụng agent hiển thị model quyết định cùng số lệnh gọi, token và chi phí của hôm nay (ví dụ <code>clef-flash · 42 calls · 18.3k tok</code>). Bấm vào để xem theo hôm nay, tháng này, theo dự án, theo model và theo loại (quyết định / chuyển văn bản / sắp xếp), cùng 50 lệnh gọi gần nhất.</p>
+<p>Chi phí chỉ hiện khi API báo về (Vercel AI Gateway có báo) hoặc khi bạn đặt giá cho mỗi 1M token trong <span class="docs-ui">Cài đặt → Model quyết định</span>; nếu không sẽ hiện "—". Chỉ metadata được ghi lại (thời gian, dự án, model, trạng thái, độ trễ, kích thước, số ảnh, token, chi phí), không bao giờ ghi ảnh, văn bản hay key, trong <code>~/.ferret/usage/decision-YYYY-MM.jsonl</code>, mỗi tháng một tệp.</p>
+
+<!-- @prompt f46545b478 -->
+## Tùy chỉnh chỉ dẫn
+<p>Sửa <span class="docs-ui">Cài đặt → Agent → Chỉ dẫn cho Agent</span>. Hai biến được thay thế:</p>
+<table>
+  <thead><tr><th>Biến</th><th>Được thay bằng</th></tr></thead>
+  <tbody>
+    <tr><td><code>{{path}}</code></td><td>Đường dẫn tuyệt đối của <code>feedback.md</code></td></tr>
+    <tr><td><code>{{relpath}}</code></td><td>Đường dẫn tương đối so với dự án: <code>.ferret/reviews/&lt;id&gt;/feedback.md</code></td></tr>
+  </tbody>
+</table>
+<p>Để trống để dùng chỉ dẫn mặc định. Độ dài tối đa là 2000 ký tự, và <span class="docs-ui">Đặt lại chỉ dẫn</span> khôi phục chỉ dẫn mặc định. Ví dụ:</p>
+<pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
+<p>Thiết lập này được lưu dưới dạng <code>agentPrompt</code> trong <code>settings.json</code>.</p>
+
+<!-- @github aba5332ec5 -->
+## Gửi lên GitHub hoặc GitLab (Issue / comment trên PR hoặc MR)
+<p><span class="docs-ui">Gửi lên GitHub</span> đăng review thành một issue mới hoặc thành comment trên một pull request đang mở của bạn. Việc xác thực được giao cho <a href="https://cli.github.com/">GitHub CLI</a>. Ferret không bao giờ đọc hay lưu token.</p>
+<ol class="docs-steps">
+  <li>Cài <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), hoặc xem <a href="https://github.com/cli/cli#installation">cli/cli</a>.</li>
+  <li><span class="docs-ui">Cài đặt → GitHub / GitLab → Đăng nhập trong terminal</span> chạy <code>gh auth login --web -h github.com</code> trong terminal tích hợp.</li>
+  <li>Bấm <span class="docs-ui">Gửi lên GitHub</span>, chọn <span class="docs-ui">Tạo Issue mới</span> hoặc một PR, rồi xem lại <span class="docs-ui">Tiêu đề</span> và <span class="docs-ui">Nội dung</span> (có thể sửa).</li>
+  <li>Đánh dấu ô xác nhận, rồi bấm <span class="docs-ui">Tạo Issue</span> hoặc <span class="docs-ui">Đăng comment</span>.</li>
+</ol>
+<p>Chi tiết:</p>
+<ul>
+  <li>Repository được lấy từ <code>git remote get-url origin</code>.</li>
+  <li>Ferret chạy <code>gh issue create --repo … --title … --body-file -</code> hoặc <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>.</li>
+  <li>Nội dung là <code>feedback.md</code> đã bỏ các dòng ảnh (ảnh không được tải lên), tối đa 60.000 ký tự.</li>
+  <li>Các PR có thể chọn là PR đang mở của chính bạn (tối đa 30).</li>
+</ul>
+<p>Nếu <code>GH_TOKEN</code> hoặc <code>GITHUB_TOKEN</code> được đặt, <code>gh</code> sẽ ưu tiên dùng nó, và panel cài đặt sẽ cảnh báo về điều này.</p>
+<p><strong>GitLab.</strong> Khi <code>origin</code> là một dự án GitLab (gitlab.com hoặc GitLab tự quản lý), cùng nút đó sẽ gửi lên GitLab qua <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a> (<code>glab</code>): một issue mới, hoặc comment trên một merge request đang mở của bạn. Đăng nhập bằng <span class="docs-ui">Cài đặt → GitHub / GitLab</span>, mục này chạy <code>glab auth login</code> (kèm <code>--hostname</code> cho GitLab tự quản lý) trong terminal tích hợp. Ferret không bao giờ đọc hay lưu token, và sẽ cảnh báo khi <code>GITLAB_TOKEN</code> được đặt.</p>
+<p><strong>Lời mời gắn sao.</strong> Sau lần <span class="docs-ui">Gửi cho Agent</span> đầu tiên, và khi bạn đạt 3, 10 và 30 review đã hoàn tất, Ferret có thể đề nghị bạn gắn sao cho nó trên GitHub. Nó hỏi tối đa 3 lần, cách nhau ít nhất 3 ngày, và không bao giờ hỏi trong lúc đang ghi. <span class="docs-ui">Gắn sao trên GitHub</span> gắn sao qua thông tin đăng nhập <code>gh</code> của chính bạn (hoặc mở GitHub nếu không có <code>gh</code>), và <span class="docs-ui">Không hỏi lại</span> dừng các lời mời. Bạn cũng có thể gắn sao từ <span class="docs-ui">Trợ giúp → Gắn sao Ferret trên GitHub</span>.</p>
+
+<!-- @cli-tools 01bc2517bf -->
+## Cài đặt và đăng nhập công cụ CLI
+<p><span class="docs-ui">Cài đặt → Công cụ CLI</span> liệt kê các công cụ dòng lệnh mà agent của bạn thường cần, cho biết công cụ nào đã cài và phiên bản của chúng, và chạy lệnh cài đặt hoặc đăng nhập chính thức cho hệ điều hành của bạn trong một tab terminal mới:</p>
+<ul>
+  <li>Lưu trữ Git: <code>gh</code>, <code>glab</code></li>
+  <li>AI và model: Ollama, Cloudflare <code>wrangler</code></li>
+  <li>Deploy: Vercel, Netlify, Fly.io, Railway, Heroku</li>
+  <li>Đám mây và dịch vụ: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+</ul>
+<p>Khi một công cụ không có trình cài đặt chính thức một dòng cho hệ điều hành của bạn, <span class="docs-ui">Tài liệu</span> sẽ mở trang cài đặt của nó thay thế. Danh sách tự kiểm tra lại khi quá trình cài đặt kết thúc.</p>

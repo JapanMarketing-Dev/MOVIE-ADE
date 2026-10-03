@@ -1,0 +1,66 @@
+<!-- Ferret docs translation: zh-CN / quick-start. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 0eb95fb624 -->
+快速开始
+
+<!-- @lead 8e0cda30a0 -->
+安装 Ferret，打开项目及其开发服务器 URL，录制一条反馈，再交给你的编码 Agent。大约需要五分钟。
+
+<!-- @before 9aee0a2173 -->
+## 开始之前
+{{clip:quick-start|打开页面并录制，一边用画笔圈出位置一边讲解，停止后把反馈发送给 Agent。}}
+<ul>
+  <li>一个在终端中运行、已安装并登录的编码 Agent，例如 Claude Code（<code>claude</code>）、Codex（<code>codex</code>）或 Gemini CLI（<code>gemini</code>）。Ferret 会在内置终端中运行它。<a href="agents.html#supported">支持列表</a>中的任何 Agent 都可以使用，你自己添加的其他 CLI 也可以。</li>
+  <li>一个可以通过 URL 打开的 Web 应用，例如运行在 <code>http://localhost:3000</code> 的开发服务器。</li>
+  <li>一个麦克风。反馈由你的语音和画笔组成。没有麦克风时，用画笔圈出的位置仍会成为反馈，只是不带文字。</li>
+</ul>
+
+<!-- @install 6d549cfebe -->
+## 1. 安装
+<p>从<a href="../download.html">下载页面</a>获取适合你操作系统的安装包并打开。macOS 版使用 Developer ID 签名并经过 Apple 公证，因此可以像其他应用一样直接打开。Windows 版和 Linux 版尚未进行代码签名，首次启动时需要多一个步骤。关于 Windows SmartScreen、Linux 以及从源码构建，请参阅<a href="install.html">安装</a>。</p>
+
+<!-- @open fad3e18b1d -->
+## 2. 打开项目和 URL
+<ol class="docs-steps">
+  <li>选择 <span class="docs-ui">文件 → 打开项目文件夹…</span>（{{keys:Mod+O}}），然后选中你的仓库根目录。</li>
+  <li>在浏览器的地址栏（{{keys:Mod+L}}）中输入开发服务器的 URL，然后按 <kbd>Enter</kbd>。</li>
+  <li>可选：点击 <span class="docs-ui">+</span>（<span class="docs-ui">保存当前 URL</span>），将其保存为可一键打开的预设，例如 <code>local</code>、<code>dev</code> 或 <code>prd</code>。</li>
+</ol>
+<p>打开项目时，Ferret 还会在该文件夹的终端标签页中启动你的 Agent。默认是 Claude Code 和 Codex；可以在 <span class="docs-ui">设置 → Agent → 打开项目时启动</span> 中选择你要用的 Agent（参阅<a href="settings.html#agent">设置</a>）。</p>
+
+<!-- @record 36e1ea60f7 -->
+## 3. 录制
+<ol class="docs-steps">
+  <li>点击标题栏中的 <span class="docs-ui">录制</span>，或按 {{keys:Mod+Shift+R}}。窗口会切换到反馈模式。</li>
+  <li>像平常一样操作页面，同时说出需要修改的地方。</li>
+  <li>按住 {{keys:Alt}}（或选择 <span class="docs-ui">画笔</span>）并拖动，圈出你正在讲的位置。</li>
+  <li>点击 <span class="docs-ui">停止</span>，或再次按 {{keys:Mod+Shift+R}}。</li>
+</ol>
+<p>你每次说话或圈画的时刻都会成为一条反馈：包括带有画笔标记的截图、修改请求、你的原话、URL，以及你所指的元素。</p>
+
+<!-- @review 152a385c40 -->
+## 4. 检查反馈
+<p>停止后，窗口会回到编辑器模式，并打开 <span class="docs-ui">反馈</span> 标签页。</p>
+<ul>
+  <li>可以直接修改标题或请求内容。</li>
+  <li>可以为每条反馈切换 <span class="docs-ui">发送</span> / <span class="docs-ui">不发送</span>，或选择 <span class="docs-ui">与下一条合并</span>、<span class="docs-ui">删除</span>。</li>
+  <li><span class="docs-ui">撤销</span> 会撤回上一次编辑。</li>
+</ul>
+
+<!-- @send bdd30ad5ee -->
+## 5. 发送给 Agent
+<ol class="docs-steps">
+  <li>点击 <span class="docs-ui">发送给 Agent</span>。反馈会发送给当前终端标签页中的 Agent，或某个正在运行的 Agent。按钮旁的箭头可以指定 Agent 或标签页。</li>
+  <li>如果还没有 Agent 在运行，Ferret 会先启动一个，并在它就绪后立即发送。</li>
+</ol>
+<p>Ferret 会在 Agent 的输入框中输入一条指令并提交。默认情况下，指令的开头如下：</p>
+<pre><code>阅读 "{{path}}" 以及同一文件夹中每条反馈对应的图片，然后实现所有标记为发送的反馈。…</code></pre>
+<p>后续内容会要求 Agent 在实际界面上确认每处修改、逐条记录进度，并在最后给出“已完成 / 未完成”列表。Agent 会读取 <code>.ferret/reviews/&lt;timestamp&gt;/feedback.md</code> 及其旁边的 PNG 图片。视频永远不会被发送。如果使用 Ferret 之外的 Agent，请点击 <span class="docs-ui">拷贝给 Agent</span> 然后粘贴。</p>
+<p>默认指令会跟随界面语言。你可以在设置中替换它：参阅<a href="agents.html#prompt">自定义指令</a>。</p>
+
+<!-- @next 1bb70e0695 -->
+## 下一步
+<ul>
+  <li><a href="concepts.html">概念</a>：模式、反馈，以及 Agent 收到的内容</li>
+  <li><a href="transcription.html">转写与费用</a>：下载免费的本机 whisper 模型，或使用你自己的端点</li>
+  <li><a href="keyboard.html">键盘快捷键</a></li>
+</ul>

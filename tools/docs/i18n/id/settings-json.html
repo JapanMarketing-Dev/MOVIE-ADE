@@ -1,0 +1,176 @@
+<!-- Ferret docs translation: id / settings-json. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 356c52a302 -->
+Konfigurasi dengan settings.json
+
+<!-- @lead a353948c8f -->
+Semua pengaturan Ferret berada dalam satu file JSON dengan JSON Schema di sebelahnya, sehingga Anda atau agent coding Anda sendiri (misalnya Claude Code, Codex, atau Gemini CLI) bisa mengonfigurasi aplikasi dengan mengedit file. Perubahan diterapkan saat aplikasi sedang berjalan.
+
+<!-- @path de46fc6989 -->
+## Lokasi file
+<p>Path-nya sama di setiap OS:</p>
+<pre><code>~/.ferret/settings.json          # your settings (edit this)
+~/.ferret/settings.schema.json   # JSON Schema, rewritten by the app on launch
+~/.ferret/state.json             # open folder, last URL, open tabs (managed by the app)
+~/.ferret/.env                   # optional: API keys referenced by apiKeyEnv</code></pre>
+<ul>
+  <li>Atur <code>FERRET_CONFIG_DIR</code> (nama lama <code>MOVIE_ADE_CONFIG_DIR</code> juga berfungsi) untuk memakai folder lain, misalnya folder di dalam repo dotfiles. <code>~</code> akan diekspansi.</li>
+  <li>Build pengembangan (<code>pnpm dev</code>) memakai <code>~/.ferret/dev/</code>, sehingga mengutak-atik Ferret tidak pernah menimpa pengaturan Anda yang sebenarnya.</li>
+  <li>Upgrade dari 0.1.0: saat peluncuran pertama, <code>&lt;userData&gt;/settings.json</code> yang lama disalin ke file-file baru. File lama dibiarkan di tempatnya sebagai cadangan dan tidak pernah diubah.</li>
+</ul>
+<p>Upgrade dari MOVIE-ADE: saat peluncuran pertama, <code>settings.json</code>, <code>state.json</code>, <code>usage/</code>, dan <code>.env</code> disalin dari <code>~/.movie-ade/</code> ke <code>~/.ferret/</code>. Folder lama dibiarkan di tempatnya dan tidak diubah.</p>
+<p>Di aplikasi, <span class="docs-ui">Pengaturan</span> menampilkan path-nya di bagian atas, dengan <span class="docs-ui">Buka settings.json</span> (mengeditnya di editor bawaan dengan pelengkapan dari schema) dan <span class="docs-ui">Tampilkan di folder</span>.</p>
+
+<!-- @schema 9eeea0d22b -->
+## Schema dan validasi
+<p>Baris pertama <code>settings.json</code> adalah <code>"$schema": "./settings.schema.json"</code>. Editor seperti VS Code dan agent seperti Claude Code memakainya untuk pelengkapan, validasi, dan deskripsi setiap field. Schema disertakan di dalam aplikasi dan ditulis di sebelah file pada setiap peluncuran, sehingga selalu cocok dengan versi yang terinstal.</p>
+<p>Key yang tidak dikenal Ferret dipertahankan apa adanya saat aplikasi menyimpan. Tab yang terbuka, URL terakhir, dan status sesi lainnya disimpan di <code>state.json</code>, bukan di sini.</p>
+
+<!-- @example fece1b6b16 -->
+## Contoh dengan penjelasan
+<p>JSON tidak mendukung komentar, jadi catatannya ada di bawah contoh. Setiap field bersifat opsional; hilangkan yang tidak Anda perlukan.</p>
+<pre><code>{
+  "$schema": "./settings.schema.json",
+  "theme": "dark",
+  "locale": "en",
+  "projects": [
+    {
+      "id": "shop",
+      "name": "shop",
+      "folderPath": "/Users/you/src/shop",
+      "kind": "web",
+      "urls": [
+        { "id": "local", "label": "local", "url": "http://localhost:3000" },
+        { "id": "prd", "label": "prd", "url": "https://shop.example.com" }
+      ]
+    }
+  ],
+  "agents": {
+    "customAgents": [
+      { "id": "custom:my-agent", "name": "My agent", "command": "my-agent", "args": "--yes" }
+    ],
+    "startupAgents": ["claude", "custom:my-agent"]
+  },
+  "capture": {
+    "transcription": "compatible",
+    "language": "auto",
+    "costLimitUsd": null,
+    "sttEndpoints": {
+      "compatible": {
+        "baseUrl": "http://gpu-box.local:8000/v1",
+        "model": "Systran/faster-whisper-large-v3",
+        "apiKeyEnv": "WHISPER_SERVER_TOKEN"
+      }
+    }
+  },
+  "organizer": {
+    "runner": "api:compatible",
+    "endpoints": {
+      "compatible": { "baseUrl": "http://localhost:11434/v1", "model": "qwen3:14b" }
+    }
+  },
+  "decision": {
+    "enabled": true,
+    "preset": "ollama",
+    "endpoint": "http://localhost:11434/v1/systemone",
+    "model": "clef-flash"
+  },
+  "layout": {
+    "panels": {
+      "projects": { "dock": "left", "visible": true },
+      "terminal": { "dock": "bottom", "visible": true },
+      "files": { "dock": "right", "visible": false }
+    }
+  }
+}</code></pre>
+<ul>
+  <li><code>projects[].urls</code>: target tinjauan untuk menu URL. Yang pertama dibuka saat proyek dibuka. <code>id</code> boleh berupa string unik apa pun.</li>
+  <li><code>agents.customAgents</code>: CLI atau skrip wrapper apa pun. <code>startupAgents</code> berisi daftar tab agent yang dibuka bersama proyek, sesuai urutan.</li>
+  <li><code>capture.sttEndpoints.compatible</code>: server apa pun yang mengimplementasikan <code>/v1/audio/transcriptions</code> milik OpenAI (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> mematikan batas biaya, yang masuk akal untuk GPU milik sendiri. Lihat <a href="transcription.html">Transkripsi dan biaya</a>.</li>
+  <li><code>organizer</code>: <span class="docs-ui">Rapikan temuan</span> yang dikirim langsung ke server <code>/v1/chat/completions</code> yang kompatibel dengan OpenAI (di sini Ollama). Gunakan <code>"runner": "claude-code"</code> atau <code>"codex"</code> untuk memakai login CLI Anda sendiri, dan <code>organizer.cliModels</code> untuk memilih modelnya.</li>
+  <li><code>decision</code>: model yang memeriksa apakah setiap temuan sudah diperbaiki. Clef Flash di Ollama lokal gratis dan bisa membaca screenshot. <code>preset</code> juga bisa berupa <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code>, atau <code>custom</code>.</li>
+  <li>Setiap blok penyedia (<code>sttEndpoints.*</code>, <code>organizer.endpoints.*</code>) juga menerima <code>timeoutMs</code>, <code>headers</code>, dan, untuk Azure, <code>apiVersion</code>.</li>
+</ul>
+<div class="docs-callout docs-callout-note"><p>Ferret tidak pernah membayar AI atas nama Anda. Tidak ada key bawaan dan tidak ada server relay: setiap permintaan dikirim dari mesin Anda ke endpoint yang Anda konfigurasi, dengan key Anda.</p></div>
+
+<!-- @custom 3d0b17a588 -->
+## Penyedia apa pun: endpoint kustom
+<p>Preset hanya mengisi URL dan model di awal. Setiap koneksi (transkripsi, Rapikan temuan, model keputusan) juga menerima URL, model, header, dan autentikasi apa pun, sehingga Anda bisa memakai penyedia apa pun: Cloudflare, gateway, proxy perusahaan, atau server Anda sendiri. Field di bawah ini memiliki nama dan bentuk yang sama di ketiganya.</p>
+<table>
+  <thead><tr><th>Field</th><th>Arti</th></tr></thead>
+  <tbody>
+    <tr><td><code>baseUrl</code>, <code>model</code></td><td>URL http(s) dan nama model apa pun. <code>{account_id}</code> di URL diganti dengan <code>accountId</code>, atau dengan variabel lingkungan <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
+    <tr><td><code>authScheme</code></td><td><code>bearer</code> (<code>Authorization: Bearer &lt;key&gt;</code>), <code>header</code> (key di header yang dinamai oleh <code>authHeader</code>), atau <code>none</code>. Hilangkan untuk mempertahankan bawaan penyedia</td></tr>
+    <tr><td><code>headers</code></td><td>Header tambahan. Nilainya berupa string biasa, atau <code>{"env": "VAR"}</code> untuk membacanya dari variabel lingkungan (dicari seperti <code>apiKeyEnv</code>). Header rahasia seperti <code>Authorization</code> atau token gateway hanya diterima sebagai <code>{"env": …}</code>. Di halaman Pengaturan, tulis <code>Name: ${VAR}</code></td></tr>
+    <tr><td><code>apiKey</code> / <code>apiKeyEnv</code></td><td>Key-nya, lihat <a href="#keys">API key</a></td></tr>
+  </tbody>
+</table>
+<p><strong>Transkripsi</strong> dengan server <code>/v1/audio/transcriptions</code> kompatibel OpenAI mana pun yang meminta key-nya di header <code>api-key</code>:</p>
+<pre><code>"capture": {
+  "transcription": "compatible",
+  "sttEndpoints": {
+    "compatible": {
+      "baseUrl": "https://stt.internal.example.com/v1",
+      "model": "whisper-large-v3",
+      "authScheme": "header",
+      "authHeader": "api-key",
+      "apiKeyEnv": "INTERNAL_STT_KEY",
+      "headers": { "X-Team": "design" }
+    }
+  }
+}</code></pre>
+<p><strong>Rapikan temuan</strong> dengan Cloudflare Workers AI (chat completions yang kompatibel dengan OpenAI), opsional melalui AI Gateway:</p>
+<pre><code>"organizer": {
+  "runner": "api:compatible",
+  "endpoints": {
+    "compatible": {
+      "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
+      "model": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      "apiKeyEnv": "CLOUDFLARE_API_TOKEN",
+      "headers": { "cf-aig-authorization": { "env": "CF_AIG_TOKEN" } }
+    }
+  }
+}</code></pre>
+<p><strong>Model keputusan</strong> di Cloudflare Workers AI (Clef Flash), atau dengan <code>"preset": "custom"</code> di server apa pun yang mendukung System One API. Model keputusan menerima URL permintaan lengkap di <code>endpoint</code> (dengan <code>{account_id}</code> dan <code>{model}</code> yang diisi); setiap field lainnya memiliki nama dan bentuk yang sama seperti di atas:</p>
+<pre><code>"decision": {
+  "enabled": true,
+  "preset": "cloudflare",
+  "endpoint": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}",
+  "model": "clef-flash",
+  "authScheme": "bearer",
+  "apiKeyEnv": "CLOUDFLARE_API_TOKEN",
+  "headers": { "cf-aig-authorization": { "env": "CF_AIG_TOKEN" } }
+}</code></pre>
+<p>Taruh <code>CLOUDFLARE_ACCOUNT_ID</code>, <code>CLOUDFLARE_API_TOKEN</code>, dan variabel lainnya di <code>~/.ferret/.env</code>. Nama model di atas hanya contoh. Periksa daftar model penyedia Anda.</p>
+
+<!-- @keys d478d4a8f1 -->
+## API key
+<p>Setiap blok penyedia menerima key dengan salah satu dari tiga cara. Yang pertama ditemukan yang dipakai:</p>
+<ol>
+  <li><code>"apiKey": "…"</code>: key dalam teks biasa di <code>settings.json</code>. Siapa pun yang bisa membaca file tersebut bisa membaca key-nya, dan <span class="docs-ui">Pengaturan</span> menampilkan peringatan selama key tersebut ada. Hindari cara ini, terutama jika file berada di repo dotfiles.</li>
+  <li><code>"apiKeyEnv": "OPENAI_API_KEY"</code>: nama variabel lingkungan. Ferret mencari di lingkungannya sendiri, lalu di <code>.env</code> proyek yang terbuka, lalu di <code>~/.ferret/.env</code>. Aplikasi yang dibuka dari Finder atau menu Start tidak melihat variabel yang diekspor di profil shell Anda, jadi <code>~/.ferret/.env</code> adalah tempat yang andal.</li>
+  <li>Key yang disimpan di <span class="docs-ui">Pengaturan</span>: dienkripsi dengan keychain OS di <code>&lt;userData&gt;/stt-keys.bin</code> (lihat <a href="transcription.html#keys">Tempat key disimpan</a>).</li>
+</ol>
+<p>Ferret hanya membaca variabel lingkungan yang Anda sebutkan di <code>apiKeyEnv</code>. Key tidak pernah dicatat di log, tidak pernah ditampilkan di UI, dan tidak pernah disertakan dalam laporan crash.</p>
+
+<!-- @reload 4c8b56784b -->
+## Muat ulang langsung
+{{clip:settings-json|Mengedit settings.json: aplikasi menerapkan perubahan saat sedang berjalan.}}
+<p>Ferret memantau <code>settings.json</code>. Saat file berubah, aplikasi membacanya ulang, memeriksanya terhadap schema, lalu menerapkannya: tema, bahasa, tata letak, agent, proyek, dan endpoint AI diperbarui tanpa restart, dan halaman Pengaturan ikut diperbarui.</p>
+<ul>
+  <li>Jika file memiliki error sintaks JSON atau nilai dengan tipe yang salah, tidak ada bagian dari edit tersebut yang diterapkan. Aplikasi mempertahankan pengaturan valid terakhir, menampilkan error beserta nomor barisnya, dan tidak menimpa file Anda sampai Anda memperbaikinya.</li>
+  <li>Saat aplikasi sendiri yang menyimpan (Anda mengubah sesuatu di <span class="docs-ui">Pengaturan</span>), aplikasi menulis ke file sementara lalu mengganti namanya menjadi <code>settings.json</code>, sehingga crash tidak pernah meninggalkan file yang setengah tertulis.</li>
+</ul>
+
+<!-- @agent d9a63aa906 -->
+## Biarkan agent coding mengonfigurasi Ferret
+<p>Tempel ini ke Claude Code, Codex, atau agent apa pun yang bisa mengedit file:</p>
+<pre><code>Edit ~/.ferret/settings.json following the JSON Schema in
+~/.ferret/settings.schema.json (read the field descriptions first).
+Keep unknown keys and keep the file valid JSON. Never write API keys in
+plaintext: set "apiKeyEnv" to an environment variable name instead and
+tell me which variable to put in ~/.ferret/.env.
+Ferret applies the change as soon as the file is saved.
+
+Task: &lt;what you want, e.g. "use my Ollama at http://localhost:11434 with
+qwen3:14b for Organize findings and add a prd URL for the shop project"&gt;</code></pre>
+<p>Prompt yang sama, dengan path Anda yang sebenarnya sudah terisi, ada di <span class="docs-ui">Pengaturan</span> → <span class="docs-ui">Biarkan coding agent mengonfigurasi Ferret</span> dengan tombol <span class="docs-ui">Salin prompt</span>.</p>

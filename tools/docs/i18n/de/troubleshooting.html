@@ -1,0 +1,73 @@
+<!-- Ferret docs translation: de / troubleshooting. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title c3af076f92 -->
+Fehlerbehebung
+
+<!-- @lead eabdc6539a -->
+Häufige Probleme und ihre Lösungen. Die zitierten Meldungen sind die, die die App auf Deutsch anzeigt.
+
+<!-- @screen-permission 45fa22d7c7 -->
+## Aufnahme des Bildschirms oder eines Fensters schlägt fehl (macOS)
+<p>Meldung: <q>Für die Aufnahme des ganzen Bildschirms oder eines anderen Fensters ist die macOS-Berechtigung „Bildschirmaufnahme“ nötig.</q></p>
+<ol class="docs-steps">
+  <li>Klicken Sie im Dialog <span class="docs-ui">Aufnahmeziel</span> auf <span class="docs-ui">Systemeinstellungen öffnen</span>.</li>
+  <li><span class="docs-ui">Datenschutz &amp; Sicherheit → Bildschirm- &amp; Systemaudioaufnahme</span>: Aktivieren Sie Ferret.</li>
+  <li>Starten Sie die App neu und klicken Sie dann auf <span class="docs-ui">Erneut prüfen</span>.</li>
+</ol>
+<p>Für die Aufnahme mit dem Ziel <span class="docs-ui">Integrierter Browser</span> ist keine Berechtigung nötig.</p>
+<p>Wenn Sie Ferret unter macOS aus dem Quellcode starten, startet <code>pnpm dev</code> eine umbenannte, ad hoc signierte Kopie von Electron, die ebenfalls Ferret heißt (<code>scripts/prepare-dev-electron.mjs</code>). Sie erscheint daher als eigener Ferret-Eintrag in diesen Listen. Beim ersten Start fragt macOS erneut nach dem Zugriff auf Bildschirmaufnahme und Mikrofon, danach nicht mehr. Entwicklungs-Builds verwenden einen Mock-Schlüsselbund (<code>--use-mock-keychain</code>), daher erscheint keine Schlüsselbund-Abfrage: Cookies und Schlüssel, die in einem Dev-Build gespeichert werden, sind mit einem festen Schlüssel verschlüsselt, nicht mit dem echten Schlüsselbund. Setzen Sie <code>ADE_DEV_REAL_KEYCHAIN=1</code>, um den echten Schlüsselbund zu verwenden.</p>
+
+<!-- @mic 400e196b24 -->
+## Mikrofon lässt sich nicht öffnen
+<p>Meldung: <q>Mikrofon konnte nicht geöffnet werden. Prüfen Sie die Berechtigung in den Systemeinstellungen.</q></p>
+<ul>
+  <li>macOS: <span class="docs-ui">Systemeinstellungen → Datenschutz &amp; Sicherheit → Mikrofon</span>, dann Ferret aktivieren.</li>
+  <li>Windows: <span class="docs-ui">Einstellungen → Datenschutz und Sicherheit → Mikrofon</span>, dann Desktop-Apps den Zugriff erlauben.</li>
+</ul>
+<p>Ohne Mikrofon erzeugen Stiftkreise trotzdem Befunde, sie enthalten aber keine gesprochene Anfrage.</p>
+
+<!-- @whisper ec2a54a0ef -->
+## Kein lokales Modell / whisper-cli nicht gefunden
+<p>Meldung: <q>Kein Transkriptionsmodell auf dem Gerät gefunden. Das Audio wird gespeichert; nur Stiftbefunde werden verarbeitet.</q></p>
+<p>Laden Sie in den Einstellungen ein Modell herunter oder wählen Sie eine vorhandene <code>ggml-*.bin</code>. Wenn die Einstellungen <q>whisper.cpp (whisper-cli) wurde nicht gefunden</q> anzeigen, installieren Sie es (<a href="transcription.html#whisper">Anleitung</a>), stellen Sie sicher, dass es im <code>PATH</code> liegt, und öffnen Sie die Einstellungen erneut. Paketierte Apps, die aus dem Finder oder Explorer gestartet werden, sehen den <code>PATH</code> Ihrer Shell möglicherweise nicht. Installieren Sie es daher an einem Standardort, etwa dem von Homebrew.</p>
+<p>Ein Modell-Download, dessen sha256-Prüfung fehlschlägt, wird verworfen. Versuchen Sie es erneut.</p>
+
+<!-- @node-pty bb433d3335 -->
+## Terminal: node-pty konnte nicht geladen werden
+<p>Das passiert, wenn Sie Ferret aus dem Quellcode starten und node-pty für eine andere Node- oder Electron-ABI gebaut wurde.</p>
+<pre><code>pnpm rebuild:native</code></pre>
+
+<!-- @agent 1b8e87d730 -->
+## Agent nicht gefunden / „An Agent senden“ sendet nicht
+<ul>
+  <li><code>command not found: claude</code> (oder <code>codex</code>, <code>gemini</code> oder der Befehl eines anderen Agents) im Terminal: Die CLI ist nicht installiert oder liegt nicht im <code>PATH</code>. Ferret zeigt den Fehler der Shell selbst an und fügt keinen Hinweis hinzu. Prüfen Sie, ob der Befehl in Ihrem normalen Terminal funktioniert, verwenden Sie <span class="docs-ui">Installieren</span> unter <span class="docs-ui">Einstellungen → Agents</span> oder tragen Sie einen absoluten Pfad als <span class="docs-ui">Befehl</span> dieses Agents ein.</li>
+  <li><q>Der Agent wartet auf eine Bestätigung. Antworten Sie im Terminal und senden Sie dann.</q> Beantworten Sie zuerst die Abfrage des Agents.</li>
+  <li><q>Die Eingabe des Agents ist noch nicht bereit.</q> Warten Sie, bis der Agent vollständig gestartet ist.</li>
+  <li><q>Der Text wurde eingegeben, aber nicht gesendet. Drücken Sie im Terminal die Eingabetaste.</q></li>
+  <li><q>Öffnen Sie zuerst ein Terminal.</q></li>
+  <li><q>Startargumente können nicht geparst werden: Unclosed quote.</q> Korrigieren Sie die Anführungszeichen in den Argumenten des Agents.</li>
+</ul>
+
+<!-- @cannot-record 7b2c3ffb80 -->
+## Aufnahme startet nicht
+<ul>
+  <li><q>Öffnen Sie zuerst einen Projektordner.</q></li>
+  <li><q>Öffnen Sie zuerst eine zu prüfende URL.</q></li>
+  <li><q>Die Seite wurde nicht geladen. Öffnen Sie eine URL, die angezeigt wird, und nehmen Sie dann auf.</q> Prüfen Sie, ob der Dev-Server läuft. <q>Keine Verbindung zum Server.</q> bedeutet, dass an diesem Port nichts lauscht.</li>
+</ul>
+
+<!-- @openai a24af71f0e -->
+## OpenAI-Schlüssel oder Endpoint nicht gesetzt
+<p><q>Kein OpenAI-API-Schlüssel gesetzt …</q> oder <q>Der Transkriptions-Endpoint (Base URL / Modell) ist nicht gesetzt …</q>: Tragen Sie ihn in den Einstellungen ein oder wechseln Sie zu <span class="docs-ui">Auf dem Gerät (kostenlos)</span>. Das Audio dieser Aufnahme ist bereits gespeichert.</p>
+
+<!-- @github 81f6d68f2f -->
+## GitHub-Fehler
+<ul>
+  <li><q>GitHub CLI (gh) nicht gefunden.</q> Installieren Sie <code>gh</code>.</li>
+  <li><q>Nicht bei GitHub angemeldet.</q> <span class="docs-ui">Einstellungen → GitHub / GitLab → Im Terminal anmelden</span>.</li>
+  <li><q>Kein origin-Remote.</q> oder <q>origin ist kein GitHub-Repository.</q> Prüfen Sie <code>git remote -v</code>.</li>
+  <li><q>Repository nicht gefunden oder kein Zugriff.</q> Prüfen Sie <code>gh auth status</code> und <code>GH_TOKEN</code>.</li>
+</ul>
+
+<!-- @report 20a1889e90 -->
+## Fehler melden
+<p>Eröffnen Sie ein Issue unter <a href="https://github.com/JapanMarketing-Dev/ferret/issues">github.com/JapanMarketing-Dev/ferret/issues</a> mit Ihrem Betriebssystem, der App-Version (Fußzeile → <span class="docs-ui">Updates</span>) und den Schritten zur Reproduktion. Hängen Sie keine Inhalte aus <code>.ferret/</code> an, die private Bildschirme zeigen.</p>

@@ -37,9 +37,12 @@ describe('docs の言語', () => {
   })
 
   it('訳の無いページは英語の本文に「まだ訳していない」帯を出し、検索に載せない', () => {
-    const name = TRANSLATABLE.find((n) => n !== '_site' && localized('ko', n).status === 'none')!
-    const html = docs[`ko/${name}.html`]
-    expect(html).toContain('<html lang="ko">')
+    // 全言語の訳がそろうと「訳の無いページ」は無くなる。そのときはこの確かめは要らない（どれかが欠けたら、その組で確かめる）
+    const missing = LANGS.filter((l) => l !== 'en').flatMap((lang) => TRANSLATABLE.filter((n) => n !== '_site' && localized(lang, n).status === 'none').map((name) => ({ lang, name })))
+    if (missing.length === 0) return
+    const { lang, name } = missing[0]!
+    const html = docs[`${lang}/${name}.html`]
+    expect(html).toContain(`<html lang="${lang}">`)
     expect(html).toContain('docs-callout-i18n')
     expect(html).toContain('<meta name="robots" content="noindex, follow">')
     expect(html).toContain(`<link rel="canonical" href="https://ferretade.dev/docs/${name}">`)

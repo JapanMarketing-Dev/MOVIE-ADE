@@ -9,6 +9,19 @@
   <meta name="theme-color" content="#050508">
   <link rel="canonical" href="https://ferretade.dev/docs/accounts">
   <link rel="alternate" hreflang="en" href="https://ferretade.dev/docs/accounts">
+  <link rel="alternate" hreflang="ja" href="https://ferretade.dev/docs/ja/accounts">
+  <link rel="alternate" hreflang="zh-CN" href="https://ferretade.dev/docs/zh-CN/accounts">
+  <link rel="alternate" hreflang="zh-TW" href="https://ferretade.dev/docs/zh-TW/accounts">
+  <link rel="alternate" hreflang="ko" href="https://ferretade.dev/docs/ko/accounts">
+  <link rel="alternate" hreflang="es" href="https://ferretade.dev/docs/es/accounts">
+  <link rel="alternate" hreflang="fr" href="https://ferretade.dev/docs/fr/accounts">
+  <link rel="alternate" hreflang="de" href="https://ferretade.dev/docs/de/accounts">
+  <link rel="alternate" hreflang="it" href="https://ferretade.dev/docs/it/accounts">
+  <link rel="alternate" hreflang="pt-BR" href="https://ferretade.dev/docs/pt-BR/accounts">
+  <link rel="alternate" hreflang="ru" href="https://ferretade.dev/docs/ru/accounts">
+  <link rel="alternate" hreflang="hi" href="https://ferretade.dev/docs/hi/accounts">
+  <link rel="alternate" hreflang="id" href="https://ferretade.dev/docs/id/accounts">
+  <link rel="alternate" hreflang="vi" href="https://ferretade.dev/docs/vi/accounts">
   <link rel="alternate" hreflang="x-default" href="https://ferretade.dev/docs/accounts">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
@@ -158,7 +171,7 @@
       <section class="docs-section" aria-labelledby="usage">
         <h2 id="usage"><a class="docs-anchor" href="#usage" aria-label="Link to Usage in the footer">#</a>Usage in the footer</h2>
         <p>The footer shows how much of each rate-limit window is used: the 5-hour window and the weekly window, plus the per-model weekly window for Claude. Colors turn yellow at 60% and red at 80%. Values refresh every 15 minutes, or on <span class="docs-ui">Refresh usage</span>.</p>
-<p>Display: <span class="docs-ui">Detailed</span> (bars, window names, and percentages) or <span class="docs-ui">Compact</span> (one value per agent).</p>
+<p>How much is shown depends on the space in the footer. With room it shows bars, window names, and percentages. As the footer gets narrower it drops the less useful parts first, down to one percentage per agent. Click the usage to see everything in a popover.</p>
 <p>Usage is fetched directly from Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) and ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) with the signed-in account's own credentials.</p>
 <figure class="docs-shot" data-shot="usage"><div class="docs-shot-slot" role="img" aria-label="Usage in the footer (screenshot coming soon)"><span>Screenshot coming soon</span></div><figcaption>Usage in the footer</figcaption></figure>
       </section>

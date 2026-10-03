@@ -1,0 +1,71 @@
+<!-- Ferret docs translation: id / settings. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 526d0b4160 -->
+Referensi pengaturan
+
+<!-- @lead bb6030179f -->
+Buka <span class="docs-ui">Pengaturan</span> dari ikon roda gigi di bilah judul. Pengaturan tidak bisa diubah saat sedang merekam.
+
+<!-- @microphone afd769f38a -->
+## Mikrofon
+<table>
+  <thead><tr><th>Pengaturan</th><th>Bawaan</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Rekam suara saya</span></td><td>Aktif</td></tr>
+    <tr><td><span class="docs-ui">Mikrofon</span></td><td><span class="docs-ui">Default Sistem</span></td></tr>
+    <tr><td><span class="docs-ui">Rekam juga pihak lain</span> (beta)</td><td>Nonaktif</td></tr>
+  </tbody>
+</table>
+
+<!-- @transcription 89ff79d384 -->
+## Transkripsi
+<table>
+  <thead><tr><th>Pengaturan</th><th>Bawaan</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Bahasa</span> (yang diucapkan)</td><td><span class="docs-ui">Otomatis</span></td></tr>
+    <tr><td><span class="docs-ui">Mesin</span></td><td><span class="docs-ui">Di perangkat (gratis)</span></td></tr>
+    <tr><td><span class="docs-ui">Model</span> (di perangkat)</td><td><code>large-v3-turbo</code> (disarankan)</td></tr>
+    <tr><td><span class="docs-ui">Base URL endpoint</span> / <span class="docs-ui">Model</span> (kompatibel)</td><td>kosong</td></tr>
+    <tr><td><span class="docs-ui">API key OpenAI</span> / <span class="docs-ui">API key endpoint (opsional)</span></td><td>belum diatur</td></tr>
+    <tr><td><span class="docs-ui">Batas biaya</span></td><td>Hingga $1 per tinjauan</td></tr>
+  </tbody>
+</table>
+<p>Lihat <a href="transcription.html">Transkripsi dan biaya</a>.</p>
+
+<!-- @storage 24cf46ed41 -->
+## Penyimpanan
+<table>
+  <thead><tr><th>Pengaturan</th><th>Bawaan</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Simpan rekaman</span>: 7 hari / 30 hari / <span class="docs-ui">Selamanya</span></td><td>7 hari</td></tr>
+    <tr><td><span class="docs-ui">Tetap di layar umpan balik setelah berhenti</span></td><td>Nonaktif</td></tr>
+  </tbody>
+</table>
+
+<!-- @agent e6bb38101d -->
+## Agent
+<table>
+  <thead><tr><th>Pengaturan</th><th>Bawaan</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Jalankan Saat Proyek Dibuka</span></td><td>Claude Code, Codex (pilih <a href="agents.html#supported">agent yang didukung</a> mana pun, atau tidak sama sekali)</td></tr>
+    <tr><td><span class="docs-ui">Tampilkan &lt;agent&gt; di menu</span></td><td>Aktif untuk setiap agent</td></tr>
+    <tr><td><span class="docs-ui">Perintah</span> / <span class="docs-ui">argumen</span> (per agent)</td><td>Perintah milik agent itu sendiri (misalnya <code>claude</code>, <code>codex</code>, <code>gemini</code>) / tidak ada</td></tr>
+    <tr><td><span class="docs-ui">Agent Kustom</span></td><td>Tidak ada (<span class="docs-ui">Tambah Agent Kustom</span> mendaftarkan CLI apa pun)</td></tr>
+    <tr><td><span class="docs-ui">Lewati permintaan izin</span> (per proyek)</td><td>Nonaktif untuk setiap proyek (<a href="agents.html#terminal">detail</a>)</td></tr>
+    <tr><td><span class="docs-ui">Instruksi untuk Agent</span></td><td>Teks bawaan (<a href="agents.html#prompt">variabel</a>)</td></tr>
+  </tbody>
+</table>
+
+<!-- @other 37b81ab14b -->
+## Akun, GitHub, tampilan, bahasa
+<ul>
+  <li><span class="docs-ui">Akun</span>: lihat <a href="accounts.html">Akun dan penggunaan</a>.</li>
+  <li><span class="docs-ui">GitHub / GitLab</span>: login <code>gh</code> dan <code>glab</code>. Lihat <a href="agents.html#github">Kirim ke GitHub atau GitLab</a>.</li>
+  <li><span class="docs-ui">Alat CLI</span>: instal dan masuk ke CLI layanan. Lihat <a href="agents.html#cli-tools">Alat CLI</a>.</li>
+  <li><span class="docs-ui">Tampilan → Tema</span>: <span class="docs-ui">Sistem</span> (bawaan), <span class="docs-ui">Terang</span>, <span class="docs-ui">Gelap</span>.</li>
+  <li><span class="docs-ui">Bahasa → Antarmuka</span>: <span class="docs-ui">Sistem</span> (bawaan; mengikuti bahasa OS jika Ferret mendukungnya, selain itu bahasa Inggris) atau salah satu dari 14 bahasa: English, 日本語, 简体中文, 繁體中文, 한국어, Español, Français, Deutsch, Italiano, Português (Brasil), Русский, हिन्दी, Bahasa Indonesia, Tiếng Việt.</li>
+</ul>
+<p>Dari footer: posisi terminal (kanan / bawah) dan sakelar mikrofon.</p>
+
+<!-- @settings-json ed64241c44 -->
+## settings.json
+<p>Semua pengaturan di atas disimpan di <code>~/.ferret/settings.json</code> (path yang sama di setiap OS), dengan JSON Schema di sebelahnya. Anda bisa mengeditnya saat aplikasi berjalan, secara manual atau dengan agent coding Anda; perubahan langsung diterapkan. Lihat <a href="settings-json.html">Konfigurasi dengan settings.json</a>.</p>

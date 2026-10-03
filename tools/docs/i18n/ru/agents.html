@@ -1,0 +1,147 @@
+<!-- Ferret docs translation: ru / agents. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title a7a0afdf19 -->
+Отправка агентам
+
+<!-- @lead 14c9151ac0 -->
+Запускайте агента для написания кода во встроенном терминале и передавайте ему ревью одним щелчком. Обычно это Claude Code и Codex, но подойдёт любой агент из списка ниже, а также CLI, добавленный вами. Можно также скопировать инструкцию для агента, работающего в другом месте, или опубликовать ревью на GitHub.
+
+<!-- @findings 2c83c22ebb -->
+## Работа с замечаниями
+<p>Каждая карточка во вкладке <span class="docs-ui">Замечания</span> поддерживает:</p>
+<ul>
+  <li>правку заголовка и запроса прямо на месте;</li>
+  <li>переключатель <span class="docs-ui">Отправить</span> / <span class="docs-ui">Не отправлять</span>;</li>
+  <li><span class="docs-ui">Смотреть запись</span> (переход к этому моменту) и <span class="docs-ui">Заменить изображение</span> (выбор другого кадра);</li>
+  <li><span class="docs-ui">Подтвердить</span> / <span class="docs-ui">Отметить «Нужна проверка»</span>, <span class="docs-ui">Объединить со следующим</span>, <span class="docs-ui">Удалить</span>.</li>
+</ul>
+<p><span class="docs-ui">Фильтр по прогрессу</span> показывает или скрывает замечания по статусу (например, <span class="docs-ui">Только</span> те, что ждут вашей проверки); <span class="docs-ui">Показать все</span> сбрасывает фильтр.</p>
+<p>В заголовке есть кнопки <span class="docs-ui">Отменить</span>, <span class="docs-ui">Открыть папку</span>, <span class="docs-ui">Копировать для агента</span>, <span class="docs-ui">В GitHub / GitLab</span>, <span class="docs-ui">Обработать</span> и <span class="docs-ui">Отправить агенту</span>. Речь, которая не стала замечанием, перечислена в разделе <span class="docs-ui">Исключённая речь</span>, где <span class="docs-ui">Вернуть как замечание</span> возвращает её.</p>
+<figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="Вкладка «Замечания» (скриншот скоро появится)"><span>Скриншот скоро появится</span></div><figcaption>Вкладка «Замечания»</figcaption></figure>
+
+<!-- @terminal 45dd9bf23b -->
+## Агенты во встроенном терминале
+<p>При открытии проекта Ferret запускает по одной вкладке терминала на каждого агента из <span class="docs-ui">Настройки → Агенты → Запуск при открытии проекта</span> — в папке проекта и в обычном режиме агента. По умолчанию это Claude Code и Codex:</p>
+<pre><code>claude
+codex</code></pre>
+<p>Вместо них можно выбрать любых агентов из <a href="#supported">списка поддерживаемых</a> (они запускаются в порядке выбора) или ни одного.</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Запросы разрешений остаются включёнными</p><p>Регистрация или клонирование проекта не означает, что Ferret ему доверяет. Агенты, такие как Claude Code и Codex, в первый раз спрашивают, доверяете ли вы папке, и продолжают спрашивать, прежде чем редактировать файлы или выполнять команды. Чтобы агенты пропускали запросы разрешений, подтверждения и песочницу в одном проекте, которому вы доверяете, включите это для проекта в <span class="docs-ui">Настройки → Агенты → Пропускать запросы разрешений</span> и подтвердите. Ferret добавляет собственный флаг пропуска каждого агента, если он известен; агенты без известного флага сохраняют запросы. Это действует только для агентов, которых вы открываете сами в папке этого проекта; агенты, запущенные при открытии проекта, всегда сохраняют запросы. Флаги пропуска разрешений, введённые в аргументы, игнорируются.</p></div>
+<p>Если ни один агент не выбран, открывается обычная оболочка. Меню <span class="docs-ui">+</span> открывает <span class="docs-ui">Новый терминал</span>, запускает любого из ваших агентов в новой вкладке или переходит в <span class="docs-ui">Настройки агентов…</span>. Его поле поиска также находит вкладки, сохранённые URL и файлы.</p>
+<p>Вкладки показывают состояние агента: <span class="docs-ui">Работает</span>, <span class="docs-ui">Ожидает ввода</span>, <span class="docs-ui">Готово (не прочитано)</span>, <span class="docs-ui">Простаивает</span>. На боковой панели отмечается проект, в котором работает агент, так что это видно без переключения проектов.</p>
+{{clip:terminals|Перетаскивание вкладок и панелей терминала: разделение, перемещение и возврат во вкладки.}}
+<p><strong>Разделение перетаскиванием.</strong> Перетащите вкладку или панель за её ручку (она появляется, когда вкладка разделена) и отпустите:</p>
+<ul>
+  <li>на внешней четверти края панели: <span class="docs-ui">Разделить влево</span> / <span class="docs-ui">Разделить вправо</span> / <span class="docs-ui">Разделить вверх</span> / <span class="docs-ui">Разделить вниз</span>;</li>
+  <li>в центре панели: <span class="docs-ui">Открыть как вкладку</span> (панель выходит из разделения и становится отдельной вкладкой);</li>
+  <li>на узкой полосе вокруг всей области терминала: <span class="docs-ui">Разделить всю область влево</span> и т. д. (когда панелей 2 или больше);</li>
+  <li>на панели вкладок: <span class="docs-ui">Вкладкой сюда</span>.</li>
+</ul>
+<p>Процессы продолжают работать при перемещении, а опустевшая вкладка закрывается. Разделение с клавиатуры:</p>
+<table class="docs-keys">
+  <thead><tr><th>Действие</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Новый терминал</td><td class="os-mac">{{keys-mac:Mod+T}}</td><td class="os-win">{{keys-win:Mod+T}}</td></tr>
+    <tr><td>Разделить вправо</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
+    <tr><td>Разделить вниз</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+    <tr><td>Закрыть панель / вкладку</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @supported 69600dc42f -->
+## Поддерживаемые агенты
+<p>Ferret не привязан к одному агенту. Он распознаёт перечисленных ниже агентов для написания кода: может запускать их, находить в терминале для <span class="docs-ui">Отправить агенту</span> и показывать, установлены ли они. <span class="docs-ui">Настройки → Агенты</span> перечисляют их с пометкой <span class="docs-ui">Установлен</span> / <span class="docs-ui">Не найден</span>, кнопкой <span class="docs-ui">Установить</span> там, где разработчик агента публикует установщик в одну строку, а также с командой и аргументами для каждого.</p>
+{{agent-catalog}}
+<p>Нужного нет в списке? <span class="docs-ui">Настройки → Агенты → Добавить своего агента</span> регистрирует любой CLI или скрипт-обёртку (название, команда и, при желании, имя процесса, по которому его распознавать); можно также добавить его в <code>agents.customAgents</code> в <a href="settings-json.html#example">settings.json</a>. Агенты, работающие вне Ferret, могут использовать <span class="docs-ui">Копировать для агента</span>.</p>
+<p>Несколько функций зависят от агента и пока доступны только для Claude Code и Codex:</p>
+<ul>
+  <li><a href="accounts.html">Аккаунты и использование</a>: переключение между несколькими входами и индикатор лимитов в нижней панели.</li>
+  <li><span class="docs-ui">Обработать</span>: работает через ваш вход в Claude Code или Codex либо через настроенный вами LLM API.</li>
+</ul>
+
+<!-- @send d320d66d74 -->
+## Отправить агенту / Копировать для агента
+{{clip:send|Из вкладки «Замечания» — агенту во встроенном терминале кнопкой «Отправить агенту».}}
+<ol class="docs-steps">
+  <li>Нажмите <span class="docs-ui">Отправить агенту</span>. По умолчанию (<span class="docs-ui">Авто (текущая вкладка или запущенный агент)</span>) замечания уходят агенту в текущей вкладке терминала или запущенному агенту. Стрелка рядом с кнопкой (<span class="docs-ui">Выбрать агента для отправки</span>) позволяет выбрать конкретного агента или вкладку.</li>
+  <li>Ferret записывает инструкцию в поле ввода агента и отправляет её. Следите за ходом работы в терминале.</li>
+</ol>
+<p>Если ни один агент не запущен, Ferret сначала запускает его и отправляет, как только он будет готов. Пока агент ждёт ответа на запрос разрешения, ничего не отправляется. Сначала ответьте в терминале.</p>
+<p><span class="docs-ui">Копировать для агента</span> помещает ту же инструкцию в буфер обмена для агента, работающего в другом месте (в другом терминале, IDE или приложении). Учитываются только замечания, переключённые на <span class="docs-ui">Отправить</span>. Видео никогда не включается.</p>
+
+<!-- @verify f8f4f5bb1d -->
+## Проверка приёмки моделью решений
+{{clip:verify|Агент исправляет замечания и проверяет каждое моделью решений, пока все не пройдут.}}
+<p>Включите эту функцию, и ваш агент для написания кода будет проверять свою работу по каждому замечанию, прежде чем сообщить «Готово». Сам Ferret ничего не оценивает: он даёт агенту <em>модель решений</em> (любой API, совместимый с System One) и в <code>feedback.md</code> поручает ему повторять цикл, пока все замечания не пройдут.</p>
+<ol class="docs-steps">
+  <li>Агент реализует замечания.</li>
+  <li>Для каждого замечания он снимает скриншот ПОСЛЕ (с тем же viewport и состоянием страницы, что и кадр ДО) и отправляет модели решений один запрос с текстом замечания, его строкой «Готово, когда» и изображениями ДО/ПОСЛЕ.</li>
+  <li>Замечание проходит, когда P(done) не ниже порога (по умолчанию 0.7) и выбран вариант <code>done</code>. Агент исправляет остальное и в каждом раунде заново оценивает <strong>все</strong> замечания; он останавливается, только когда все замечания проходят в одном раунде, либо по честной причине, которую обязан назвать: API недоступен, замечание вне рамок задачи или замечание застряло с неизменными оценками.</li>
+  <li>Итоговый список «Готово / Не готово» включает оценки по каждому замечанию и число раундов.</li>
+</ol>
+<p>Настройте это в <span class="docs-ui">Настройки → Модель решений</span> и включите <span class="docs-ui">Добавить проверку моделью решений в инструкции агента</span>. Пресеты лишь заполняют поля; все поля остаются редактируемыми, а <span class="docs-ui">Свой</span> работает с любым совместимым API.</p>
+<table>
+  <thead><tr><th>Пресет</th><th>URL запроса</th><th>Модели</th><th>Ключ</th></tr></thead>
+  <tbody>
+    <tr><td>Ollama (по умолчанию)</td><td><code>http://localhost:11434/v1/systemone</code></td><td><code>clef-flash</code>, <code>clef</code> (читают изображения); <code>nimble</code>, <code>tev1</code> (только текст)</td><td>не нужен, бесплатно</td></tr>
+    <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (читают изображения)</td><td><code>CLOUDFLARE_API_TOKEN</code> (разрешение Workers AI); ID аккаунта из поля или <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
+    <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (только текст)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
+    <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (только текст)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>Свой</td><td>любой полный URL</td><td>любые</td><td>Bearer, свой заголовок или без ключа; допускаются дополнительные заголовки</td></tr>
+  </tbody>
+</table>
+<p>Для Ollama установите его (0.35.1 или новее для Clef / Clef Flash) и скачайте модель в терминале. Ferret не запускает установщики:</p>
+<pre><code>ollama pull clef-flash</code></pre>
+<p>Ключи берутся из поля ключа (сохраняется вместе с другими вашими API-ключами), из указанной вами переменной окружения (окружение приложения, <code>.env</code> проекта или <code>~/.ferret/.env</code>) или из <code>apiKey</code> в <code>settings.json</code>. Дополнительные заголовки могут брать значения из переменных окружения через <code>${VAR}</code>.</p>
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">Как ключ не попадает в промпты</p><p>Агенты никогда не видят ваш ключ. Ferret запускает локальный релей на <code>127.0.0.1</code> и передаёт каждому терминалу <code>FERRET_DECISION_URL</code> (релей с токеном для этого терминала), <code>FERRET_DECISION_MODEL</code> и <code>FERRET_DECISION_IMAGES</code> (в течение одного выпуска задаются также старые имена <code>MOVIE_ADE_DECISION_*</code>). Релей добавляет ключ и заголовки и пересылает запрос без изменений, поэтому промпты, <code>feedback.md</code> и расшифровки сессий агентов не содержат секретов. Терминалы, открытые после изменения настроек, получают новые значения.</p></div>
+<p>Cloudflare отличается от документации System One в двух местах (проверено на работающем API): изображения должны быть data URI (<code>data:image/jpeg;base64,…</code>, иначе 422 "image must be an embedded base64 data URI"), а ответ обёрнут в <code>{ "result": { … }, "success": true }</code> (ошибки возвращаются как <code>{ "success": false, "errors": [ … ] }</code>). Пресет Cloudflare устанавливает <span class="docs-ui">Кодирование изображений</span> в data URI, агенты получают это как <code>FERRET_DECISION_IMAGE_FORMAT</code>, а инструкции велят им читать <code>.result</code>, если он есть. Релей пропускает данные в обоих направлениях без изменений. Чтобы использовать Global API Key вместо API-токена, выберите в <span class="docs-ui">Аутентификация</span> значение <span class="docs-ui">Без ключа</span> и добавьте заголовки <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> и <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code>.</p>
+<p>Изображения читают только Clef и Clef Flash. С текстовой моделью отключите <span class="docs-ui">Отправлять изображения ДО/ПОСЛЕ</span>; тогда агент оценивает только по тексту, что менее надёжно.</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama и большие изображения</p><p>Ollama 0.35.0 ограничивает запросы к <code>/v1/systemone</code> 64 KiB, поэтому запросы со скриншотами завершаются ошибкой HTTP 413. Инструкции велят агенту уменьшать оба изображения до ширины не более 1024px в формате JPEG (качество около 70). Если 413 всё равно возникает, обновите Ollama до 0.35.1 или новее либо перейдите на Cloudflare Workers AI.</p></div>
+
+<!-- @api-usage cacf2ecce0 -->
+## Использование API в нижней панели
+<p>Вызовы модели решений идут через релей, поэтому Ferret может их подсчитывать. Элемент нижней панели рядом с индикатором использования агентов показывает модель решений и сегодняшние вызовы, токены и стоимость (например, <code>clef-flash · 42 calls · 18.3k tok</code>). Щёлкните по нему, чтобы увидеть данные за сегодня, за этот месяц, по проектам, по моделям и по видам (модель решений / распознавание / обработка), а также последние 50 вызовов.</p>
+<p>Стоимость показывается, только если API её сообщает (Vercel AI Gateway сообщает) или если вы задали цены за 1M токенов в <span class="docs-ui">Настройки → Модель решений</span>; иначе отображается «—». В <code>~/.ferret/usage/decision-YYYY-MM.jsonl</code>, по одному файлу в месяц, записываются только метаданные (время, проект, модель, статус, задержка, размер, число изображений, токены, стоимость) — никогда изображения, текст или ключи.</p>
+
+<!-- @prompt f46545b478 -->
+## Настройка инструкции
+<p>Отредактируйте <span class="docs-ui">Настройки → Агенты → Инструкции для агента</span>. Подставляются две переменные:</p>
+<table>
+  <thead><tr><th>Переменная</th><th>Заменяется на</th></tr></thead>
+  <tbody>
+    <tr><td><code>{{path}}</code></td><td>Абсолютный путь к <code>feedback.md</code></td></tr>
+    <tr><td><code>{{relpath}}</code></td><td>Путь относительно проекта: <code>.ferret/reviews/&lt;id&gt;/feedback.md</code></td></tr>
+  </tbody>
+</table>
+<p>Оставьте поле пустым, чтобы использовать инструкцию по умолчанию. Максимальная длина — 2000 символов, а <span class="docs-ui">Сбросить инструкции</span> восстанавливает значение по умолчанию. Пример:</p>
+<pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
+<p>Параметр хранится как <code>agentPrompt</code> в <code>settings.json</code>.</p>
+
+<!-- @github aba5332ec5 -->
+## Отправка в GitHub или GitLab (Issue / комментарий к PR или MR)
+<p><span class="docs-ui">Отправить в GitHub</span> публикует ревью как новый issue или как комментарий к одному из ваших открытых pull request. Аутентификация делегируется <a href="https://cli.github.com/">GitHub CLI</a>. Ferret никогда не читает и не хранит токен.</p>
+<ol class="docs-steps">
+  <li>Установите <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows) или см. <a href="https://github.com/cli/cli#installation">cli/cli</a>.</li>
+  <li><span class="docs-ui">Настройки → GitHub / GitLab → Войти через терминал</span> запускает <code>gh auth login --web -h github.com</code> во встроенном терминале.</li>
+  <li>Нажмите <span class="docs-ui">Отправить в GitHub</span>, выберите <span class="docs-ui">Создать новый Issue</span> или PR и проверьте <span class="docs-ui">Заголовок</span> и <span class="docs-ui">Текст</span> (их можно править).</li>
+  <li>Поставьте флажок подтверждения, затем нажмите <span class="docs-ui">Создать Issue</span> или <span class="docs-ui">Отправить комментарий</span>.</li>
+</ol>
+<p>Подробности:</p>
+<ul>
+  <li>Репозиторий берётся из <code>git remote get-url origin</code>.</li>
+  <li>Ferret выполняет <code>gh issue create --repo … --title … --body-file -</code> или <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>.</li>
+  <li>Текст — это <code>feedback.md</code> без строк с изображениями (изображения не загружаются), не более 60 000 символов.</li>
+  <li>Кандидаты PR — ваши собственные открытые PR (до 30).</li>
+</ul>
+<p>Если задан <code>GH_TOKEN</code> или <code>GITHUB_TOKEN</code>, <code>gh</code> использует его в первую очередь, и панель настроек предупреждает об этом.</p>
+<p><strong>GitLab.</strong> Когда <code>origin</code> — проект GitLab (gitlab.com или собственный экземпляр GitLab), та же кнопка отправляет в GitLab через <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a> (<code>glab</code>): новый issue или комментарий к одному из ваших открытых merge request. Войдите через <span class="docs-ui">Настройки → GitHub / GitLab</span>: это запускает <code>glab auth login</code> (с <code>--hostname</code> для собственного экземпляра GitLab) во встроенном терминале. Ferret никогда не читает и не хранит токен и предупреждает, если задан <code>GITLAB_TOKEN</code>.</p>
+<p><strong>Предложение поставить звезду.</strong> После первого <span class="docs-ui">Отправить агенту</span>, а также при достижении 3, 10 и 30 завершённых ревью Ferret может предложить поставить ему звезду на GitHub. Он спрашивает не более 3 раз, с перерывом не менее 3 дней, и никогда во время записи. <span class="docs-ui">Поставить звезду</span> ставит звезду через ваш собственный вход в <code>gh</code> (или открывает GitHub, если <code>gh</code> недоступен), а <span class="docs-ui">Больше не спрашивать</span> отключает эти предложения. Поставить звезду можно также через <span class="docs-ui">Справка → Поставить звезду Ferret на GitHub</span>.</p>
+
+<!-- @cli-tools 01bc2517bf -->
+## Установка CLI-инструментов и вход в них
+<p><span class="docs-ui">Настройки → CLI-инструменты</span> перечисляют инструменты командной строки, которые часто нужны вашим агентам, показывают, какие установлены и их версии, и запускают официальную команду установки или входа для вашей ОС в новой вкладке терминала:</p>
+<ul>
+  <li>Git-хостинг: <code>gh</code>, <code>glab</code></li>
+  <li>ИИ и модели: Ollama, Cloudflare <code>wrangler</code></li>
+  <li>Деплой: Vercel, Netlify, Fly.io, Railway, Heroku</li>
+  <li>Облака и сервисы: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+</ul>
+<p>Если у инструмента нет официального установщика в одну строку для вашей ОС, <span class="docs-ui">Документация</span> открывает его страницу установки. Когда установка завершается, список сам проверяет всё заново.</p>

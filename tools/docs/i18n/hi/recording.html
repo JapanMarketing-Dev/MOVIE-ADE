@@ -1,0 +1,54 @@
+<!-- Ferret docs translation: hi / recording. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 80e8dd1a5a -->
+रिकॉर्डिंग
+
+<!-- @lead 14988eae28 -->
+बिल्ट-इन ब्राउज़र, पूरी स्क्रीन या कोई दूसरी विंडो रिकॉर्ड करें। पेज इस्तेमाल करते हुए बोलें, घेरें और टाइप करें।
+
+<!-- @target 133550362a -->
+## क्या रिकॉर्ड करना है, चुनें
+<p>Feedback मोड में <span class="docs-ui">रिकॉर्डिंग target चुनें</span> पर क्लिक करें। <span class="docs-ui">रिकॉर्डिंग Target</span> dialog में ये विकल्प हैं:</p>
+<table>
+  <thead><tr><th>Target</th><th>क्या रिकॉर्ड होता है</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">बिल्ट-इन Browser</span> (डिफ़ॉल्ट)</td><td>वीडियो, आवाज़ और पेन, साथ में URL, element selectors, clicks और scrolls। OS की किसी अनुमति की ज़रूरत नहीं।</td></tr>
+    <tr><td><span class="docs-ui">पूरी स्क्रीन</span></td><td>वीडियो, आवाज़ और पेन। URL, element या action log नहीं (यह बात <code>feedback.md</code> में लिखी जाती है)।</td></tr>
+    <tr><td><span class="docs-ui">विंडो</span></td><td>ऊपर जैसा ही। Ferret की अपनी विंडो सूची में नहीं होतीं।</td></tr>
+  </tbody>
+</table>
+<p>आपका चुनाव याद रखा जाता है। macOS पर स्क्रीन और विंडो रिकॉर्ड करने के लिए Screen Recording की अनुमति चाहिए (<a href="troubleshooting.html#screen-permission">अनुमति कैसे दें</a>)।</p>
+
+<!-- @record 0d1af48c7a -->
+## शुरू करें, विराम दें, रोकें
+{{clip:record|रिकॉर्डिंग: पेज के बारे में बोलें और पेन से जगह को घेरें।}}
+<ol class="docs-steps">
+  <li>जिस पेज का review करना है, उसे बिल्ट-इन ब्राउज़र में खोलें।</li>
+  <li>टाइटल बार में <span class="docs-ui">रिकॉर्ड</span>, या {{keys:Mod+Shift+R}}।</li>
+  <li><span class="docs-ui">विराम</span> ड्रॉ करना और टाइमर रोक देता है। <span class="docs-ui">फिर शुरू करें</span> आगे जारी रखता है।</li>
+  <li><span class="docs-ui">रोकें</span> या फिर से {{keys:Mod+Shift+R}}।</li>
+</ol>
+<p>साइडबार में हर प्रोजेक्ट का अपना <span class="docs-ui">नया Review</span> होता है (या उसकी row पर <span class="docs-ui">+</span>, <span class="docs-ui">&lt;name&gt; में नया review</span>)। किसी दूसरे प्रोजेक्ट पर यह पहले उस प्रोजेक्ट पर जाता है और फिर रिकॉर्डिंग शुरू करता है। कोई दूसरी रिकॉर्डिंग चल रही हो तो यह शुरू नहीं होता।</p>
+<p>एक रिकॉर्डिंग अधिकतम 90 मिनट की हो सकती है। सीमा के पास आपको चेतावनी मिलती है, और सीमा पर पहुँचते ही रिकॉर्डिंग अपने-आप रुककर सेव हो जाती है।</p>
+<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="Feedback मोड का टूलबार (screenshot जल्द आ रहा है)"><span>Screenshot जल्द आ रहा है</span></div><figcaption>Feedback मोड का टूलबार</figcaption></figure>
+
+<!-- @pen 0232dc7983 -->
+## पेन
+<ul>
+  <li><strong><span class="docs-ui">पेन</span></strong>: इसे चुनें, या सिर्फ़ दबाए रखने तक ड्रॉ करने के लिए {{keys:Alt}} दबाए रखें (किसी field में टाइप करते समय अनदेखा किया जाता है)।</li>
+  <li><strong><span class="docs-ui">साफ़ करें</span></strong>: मौजूदा निशान हटा देता है।</li>
+</ul>
+<p>जिस जगह के बारे में बोल रहे हैं, उसे बोलते-बोलते घेरें: शब्द और निशान एक ही finding में पहुँचते हैं। पेन सिर्फ़ रिकॉर्डिंग के दौरान उपलब्ध है। कोई टेक्स्ट टूल नहीं है। उसकी जगह बोलकर बताएँ। पेन, बॉक्स और रंगों की keys <a href="keyboard.html#drawing">कीबोर्ड शॉर्टकट</a> में दी गई हैं।</p>
+
+<!-- @annotations-clear ea2e57b47b -->
+## निशान कब गायब होते हैं
+<p>निशान उसी स्क्रीन के होते हैं जिस पर वे बनाए गए थे। इन स्थितियों में वे मौजूदा finding में दर्ज होकर साफ़ हो जाते हैं:</p>
+<ul>
+  <li>पेज navigate होता है: पूरा load, या SPA में किसी नए path या query पर route बदलना। सिर्फ़ hash बदलने पर वे बने रहते हैं।</li>
+  <li>आप पेज scroll करते हैं</li>
+  <li>बोला गया एक हिस्सा (segment) खत्म होता है</li>
+</ul>
+
+<!-- @mic 3540329978 -->
+## माइक्रोफ़ोन
+<p>माइक्रोफ़ोन डिफ़ॉल्ट रूप से चालू रहता है। इसे फ़ुटर से (<span class="docs-ui">माइक्रोफ़ोन बंद करें</span> / <span class="docs-ui">माइक्रोफ़ोन चालू करें</span>) या Settings में <span class="docs-ui">मेरी आवाज़ रिकॉर्ड करें</span> से टॉगल करें। डिवाइस <span class="docs-ui">माइक्रोफ़ोन</span> में चुनें।</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">जल्द आ रहा है</p><p><span class="docs-ui">सामने वाले को भी रिकॉर्ड करें</span> (system audio के ज़रिए मीटिंग के दूसरे प्रतिभागियों को रिकॉर्ड करना) beta में है। इसे अभी meeting apps के साथ परखा नहीं गया है।</p></div>

@@ -1,0 +1,147 @@
+<!-- Ferret docs translation: de / agents. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title a7a0afdf19 -->
+An Agents senden
+
+<!-- @lead 14c9151ac0 -->
+Führen Sie Ihren Coding-Agent im integrierten Terminal aus und übergeben Sie ihm ein Review mit einem Klick. Claude Code und Codex sind die üblichen Beispiele, aber jeder Agent aus der Liste unten funktioniert, ebenso eine CLI, die Sie selbst hinzufügen. Sie können die Anweisung auch für einen Agent kopieren, der anderswo läuft, oder das Review auf GitHub veröffentlichen.
+
+<!-- @findings 2c83c22ebb -->
+## Befunde eines Reviews
+<p>Jede Karte im Tab <span class="docs-ui">Befunde</span> bietet:</p>
+<ul>
+  <li>Direktes Bearbeiten von Titel und Anforderung</li>
+  <li>Umschalter <span class="docs-ui">Senden</span> / <span class="docs-ui">Nicht senden</span></li>
+  <li><span class="docs-ui">Aufnahme ansehen</span> (springt zu dieser Stelle) und <span class="docs-ui">Bild ersetzen</span> (ein anderes Einzelbild wählen)</li>
+  <li><span class="docs-ui">Bestätigen</span> / <span class="docs-ui">Als „Prüfen“ markieren</span>, <span class="docs-ui">Mit nächstem zusammenführen</span>, <span class="docs-ui">Löschen</span></li>
+</ul>
+<p><span class="docs-ui">Nach Fortschritt filtern</span> blendet Befunde nach Status ein oder aus (zum Beispiel <span class="docs-ui">Nur</span> die, die auf Ihre Prüfung warten); <span class="docs-ui">Alle anzeigen</span> hebt den Filter auf.</p>
+<p>In der Kopfzeile finden Sie <span class="docs-ui">Widerrufen</span>, <span class="docs-ui">Ordner öffnen</span>, <span class="docs-ui">Für Agent kopieren</span>, <span class="docs-ui">An GitHub / GitLab senden</span>, <span class="docs-ui">Ordnen</span> und <span class="docs-ui">An Agent senden</span>. Gesprochenes, das nicht zu einem Befund wurde, steht unter <span class="docs-ui">Ausgeschlossene Sprache</span>; dort holt <span class="docs-ui">Als Befund wiederherstellen</span> es zurück.</p>
+<figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="Der Tab „Befunde“ (Screenshot folgt)"><span>Screenshot folgt</span></div><figcaption>Der Tab „Befunde“</figcaption></figure>
+
+<!-- @terminal 45dd9bf23b -->
+## Agents im integrierten Terminal ausführen
+<p>Wenn ein Projekt geöffnet wird, startet Ferret für jeden Agent unter <span class="docs-ui">Einstellungen → Agents → Beim Öffnen eines Projekts starten</span> einen Terminal-Tab, im Projektordner und im normalen Modus des Agents. Standardmäßig sind das Claude Code und Codex:</p>
+<pre><code>claude
+codex</code></pre>
+<p>Sie können stattdessen beliebige Agents aus der <a href="#supported">Liste der unterstützten Agents</a> wählen (sie starten in der Reihenfolge, in der Sie sie auswählen) oder gar keinen.</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Berechtigungsabfragen bleiben aktiv</p><p>Wenn Sie ein Projekt registrieren oder klonen, vertraut Ferret ihm dadurch nicht. Agents wie Claude Code und Codex fragen beim ersten Mal, ob Sie dem Ordner vertrauen, und fragen weiterhin nach, bevor sie Dateien bearbeiten oder Befehle ausführen. Damit Agents in einem Projekt, dem Sie vertrauen, Berechtigungsabfragen, Freigaben und die Sandbox überspringen, aktivieren Sie dies für dieses Projekt unter <span class="docs-ui">Einstellungen → Agents → Berechtigungsabfragen überspringen</span> und bestätigen. Ferret fügt das jeweilige Skip-Flag des Agents hinzu, sofern eines bekannt ist; Agents ohne bekanntes Flag fragen weiterhin. Die Einstellung gilt dann nur für Agents, die Sie selbst in diesem Projektordner öffnen; Agents, die beim Öffnen des Projekts starten, fragen immer. Flags zum Überspringen von Berechtigungen, die Sie in die Argumente eintippen, werden ignoriert.</p></div>
+<p>Ist kein Agent ausgewählt, öffnet sich eine normale Shell. Das Menü <span class="docs-ui">+</span> öffnet ein <span class="docs-ui">Neues Terminal</span>, startet einen Ihrer Agents in einem neuen Tab oder springt zu den <span class="docs-ui">Agent-Einstellungen …</span>. Sein Suchfeld findet außerdem Tabs, gespeicherte URLs und Dateien.</p>
+<p>Tabs zeigen den Zustand des Agents: <span class="docs-ui">Läuft</span>, <span class="docs-ui">Wartet auf Eingabe</span>, <span class="docs-ui">Fertig (ungelesen)</span>, <span class="docs-ui">Inaktiv</span>. In der Seitenleiste ist ein Projekt, in dem ein Agent läuft, markiert, sodass Sie es sehen, ohne das Projekt zu wechseln.</p>
+{{clip:terminals|Terminal-Tabs und -Bereiche ziehen, um sie zu teilen, zu verschieben und wieder zu Tabs zu machen.}}
+<p><strong>Zum Teilen ziehen.</strong> Ziehen Sie einen Tab oder einen Bereich an seinem Griff (sichtbar, sobald ein Tab geteilt ist) und legen Sie ihn ab:</p>
+<ul>
+  <li>auf dem äußeren Viertel eines Bereichsrands: <span class="docs-ui">Links teilen</span> / <span class="docs-ui">Rechts teilen</span> / <span class="docs-ui">Oben teilen</span> / <span class="docs-ui">Unten teilen</span></li>
+  <li>in der Mitte eines Bereichs: <span class="docs-ui">Als Tab öffnen</span> (ein Bereich verlässt seine Teilung und wird zu einem eigenen Tab)</li>
+  <li>auf dem schmalen Streifen um den gesamten Terminalbereich: <span class="docs-ui">Gesamte Fläche links teilen</span> usw. (bei 2 oder mehr Bereichen)</li>
+  <li>auf der Tableiste: <span class="docs-ui">Hier als Tab ablegen</span></li>
+</ul>
+<p>Prozesse laufen weiter, während Sie sie verschieben, und ein leer gewordener Tab wird geschlossen. Teilen per Tastatur:</p>
+<table class="docs-keys">
+  <thead><tr><th>Aktion</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>Neues Terminal</td><td class="os-mac">{{keys-mac:Mod+T}}</td><td class="os-win">{{keys-win:Mod+T}}</td></tr>
+    <tr><td>Rechts teilen</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
+    <tr><td>Unten teilen</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+    <tr><td>Bereich / Tab schließen</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @supported 69600dc42f -->
+## Unterstützte Agents
+<p>Ferret ist nicht an einen bestimmten Agent gebunden. Es erkennt die folgenden Coding-Agents: Es kann sie starten, sie für <span class="docs-ui">An Agent senden</span> in einem Terminal erkennen und anzeigen, ob sie installiert sind. <span class="docs-ui">Einstellungen → Agents</span> listet sie mit <span class="docs-ui">Installiert</span> / <span class="docs-ui">Nicht gefunden</span> auf, mit einer Schaltfläche <span class="docs-ui">Installieren</span>, wo der Anbieter einen einzeiligen Installer veröffentlicht, sowie mit Befehl und Argumenten für jeden Agent.</p>
+{{agent-catalog}}
+<p>Nicht in der Liste? <span class="docs-ui">Einstellungen → Agents → Eigenen Agent hinzufügen</span> registriert eine beliebige CLI oder ein Wrapper-Skript (einen Namen, einen Befehl und optional den Prozessnamen, an dem er erkannt wird), oder Sie fügen ihn unter <code>agents.customAgents</code> in der <a href="settings-json.html#example">settings.json</a> hinzu. Agents, die außerhalb von Ferret laufen, können <span class="docs-ui">Für Agent kopieren</span> nutzen.</p>
+<p>Einige Funktionen hängen vom Agent ab und sind vorerst auf Claude Code und Codex beschränkt:</p>
+<ul>
+  <li><a href="accounts.html">Konten und Nutzung</a>: Wechsel zwischen mehreren Logins und die Rate-Limit-Anzeige in der Fußzeile.</li>
+  <li><span class="docs-ui">Ordnen</span>: läuft über Ihr Claude-Code- oder Codex-Login oder über eine LLM-API, die Sie konfigurieren.</li>
+</ul>
+
+<!-- @send d320d66d74 -->
+## An Agent senden / Für Agent kopieren
+{{clip:send|Vom Tab „Befunde“ mit „An Agent senden“ zum Agent im integrierten Terminal.}}
+<ol class="docs-steps">
+  <li>Klicken Sie auf <span class="docs-ui">An Agent senden</span>. Standardmäßig (<span class="docs-ui">Automatisch (aktueller Tab oder laufender Agent)</span>) geht das Review an den Agent im aktuellen Terminal-Tab oder an einen laufenden Agent. Mit dem Pfeil neben der Schaltfläche (<span class="docs-ui">Agent zum Senden wählen</span>) wählen Sie einen bestimmten Agent oder Tab.</li>
+  <li>Ferret schreibt die Anweisung in die Eingabe des Agents und sendet sie ab. Den Fortschritt verfolgen Sie im Terminal.</li>
+</ol>
+<p>Läuft kein Agent, startet Ferret zuerst einen und sendet, sobald er bereit ist. Solange der Agent auf die Antwort zu einer Berechtigungsabfrage wartet, wird nichts gesendet. Antworten Sie zuerst im Terminal.</p>
+<p><span class="docs-ui">Für Agent kopieren</span> legt dieselbe Anweisung in die Zwischenablage, für einen Agent, der anderswo läuft (ein anderes Terminal, eine IDE oder eine App). Berücksichtigt werden nur Befunde, die auf <span class="docs-ui">Senden</span> gestellt sind. Das Video wird nie mitgeschickt.</p>
+
+<!-- @verify f8f4f5bb1d -->
+## Abnahmeprüfung mit einem Entscheidungsmodell
+{{clip:verify|Der Agent behebt die Befunde und prüft jeden mit dem Entscheidungsmodell, bis alle bestehen.}}
+<p>Schalten Sie dies ein, und Ihr Coding-Agent prüft seine eigene Arbeit anhand jedes Befunds, bevor er „Erledigt“ meldet. Ferret beurteilt selbst nichts: Es gibt dem Agent ein <em>Entscheidungsmodell</em> (eine beliebige System-One-kompatible API) und weist ihn in der <code>feedback.md</code> an, so lange in einer Schleife zu arbeiten, bis jeder Befund besteht.</p>
+<ol class="docs-steps">
+  <li>Der Agent setzt die Befunde um.</li>
+  <li>Für jeden Befund erstellt er einen AFTER-Screenshot (gleicher Viewport und gleicher Seitenzustand wie das BEFORE-Standbild) und sendet eine Anfrage mit dem Text des Befunds, seiner Zeile „Done when“ und den BEFORE/AFTER-Bildern an das Entscheidungsmodell.</li>
+  <li>Ein Befund besteht, wenn P(done) mindestens den Schwellenwert erreicht (Standard 0,7) und die Wahl <code>done</code> lautet. Der Agent behebt den Rest und beurteilt in jeder Runde <strong>alle</strong> Befunde neu. Er hört erst auf, wenn alle Befunde in derselben Runde bestehen, oder aus einem nachvollziehbaren Grund, den er angeben muss: Die API ist nicht erreichbar, ein Befund liegt außerhalb des Umfangs, oder ein Befund kommt bei unveränderten Werten nicht weiter.</li>
+  <li>Die abschließende Liste „Erledigt“ / „Nicht erledigt“ enthält die Werte jedes Befunds und die Anzahl der Runden.</li>
+</ol>
+<p>Richten Sie es unter <span class="docs-ui">Einstellungen → Entscheidungsmodell</span> ein und aktivieren Sie <span class="docs-ui">Entscheidungsmodell-Prüfung zu Agent-Anweisungen hinzufügen</span>. Voreinstellungen füllen nur die Felder aus; jedes Feld bleibt bearbeitbar, und <span class="docs-ui">Benutzerdefiniert</span> funktioniert mit jeder kompatiblen API.</p>
+<table>
+  <thead><tr><th>Voreinstellung</th><th>Anfrage-URL</th><th>Modelle</th><th>Schlüssel</th></tr></thead>
+  <tbody>
+    <tr><td>Ollama (Standard)</td><td><code>http://localhost:11434/v1/systemone</code></td><td><code>clef-flash</code>, <code>clef</code> (lesen Bilder); <code>nimble</code>, <code>tev1</code> (nur Text)</td><td>keiner, kostenlos</td></tr>
+    <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (lesen Bilder)</td><td><code>CLOUDFLARE_API_TOKEN</code> (Berechtigung für Workers AI); Konto-ID aus dem Feld oder <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
+    <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (nur Text)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
+    <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (nur Text)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>Benutzerdefiniert</td><td>eine beliebige vollständige URL</td><td>beliebig</td><td>Bearer, ein eigener Header oder keiner; zusätzliche Header möglich</td></tr>
+  </tbody>
+</table>
+<p>Für Ollama installieren Sie es (0.35.1 oder neuer für Clef / Clef Flash) und laden das Modell in einem Terminal herunter. Ferret führt keine Installer aus:</p>
+<pre><code>ollama pull clef-flash</code></pre>
+<p>Schlüssel kommen aus dem Schlüsselfeld (zusammen mit Ihren anderen API-Schlüsseln gespeichert), aus einer von Ihnen benannten Umgebungsvariable (aus der Umgebung der App, der <code>.env</code> des Projekts oder <code>~/.ferret/.env</code>) oder aus <code>apiKey</code> in der <code>settings.json</code>. Zusätzliche Header können mit <code>${VAR}</code> Werte aus Umgebungsvariablen lesen.</p>
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">Wie der Schlüssel aus den Prompts herausgehalten wird</p><p>Agents sehen Ihren Schlüssel nie. Ferret betreibt ein lokales Relay auf <code>127.0.0.1</code> und gibt jedem Terminal <code>FERRET_DECISION_URL</code> (das Relay, mit einem Token pro Terminal), <code>FERRET_DECISION_MODEL</code> und <code>FERRET_DECISION_IMAGES</code> (für ein Release werden zusätzlich die alten Namen <code>MOVIE_ADE_DECISION_*</code> gesetzt). Das Relay fügt Schlüssel und Header hinzu und leitet die Anfrage unverändert weiter, sodass Prompts, <code>feedback.md</code> und Agent-Transkripte keine Geheimnisse enthalten. Terminals, die Sie nach einer Änderung der Einstellungen öffnen, übernehmen diese.</p></div>
+<p>Cloudflare weicht in zwei Punkten von der System-One-Dokumentation ab (geprüft gegen die Live-API): Bilder müssen Data-URIs sein (<code>data:image/jpeg;base64,…</code>, sonst 422 „image must be an embedded base64 data URI“), und die Antwort ist als <code>{ "result": { … }, "success": true }</code> verpackt (Fehler kommen als <code>{ "success": false, "errors": [ … ] }</code> zurück). Die Cloudflare-Voreinstellung setzt <span class="docs-ui">Bildkodierung</span> auf Data-URI, Agents erhalten dies als <code>FERRET_DECISION_IMAGE_FORMAT</code>, und die Anweisungen fordern sie auf, <code>.result</code> zu lesen, wenn vorhanden. Das Relay reicht beide Richtungen unverändert durch. Um statt eines API-Tokens einen Global API Key zu verwenden, setzen Sie <span class="docs-ui">Authentifizierung</span> auf <span class="docs-ui">Kein Schlüssel</span> und fügen die Header <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> und <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code> hinzu.</p>
+<p>Nur Clef und Clef Flash lesen Bilder. Bei einem reinen Textmodell schalten Sie <span class="docs-ui">VORHER/NACHHER-Bilder senden</span> aus; der Agent urteilt dann nur anhand von Text, was weniger zuverlässig ist.</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama und große Bilder</p><p>Ollama 0.35.0 begrenzt Anfragen an <code>/v1/systemone</code> auf 64 KiB, daher schlagen Anfragen mit Screenshots mit HTTP 413 fehl. Die Anweisungen fordern den Agent auf, beide Bilder auf höchstens 1024px Breite als JPEG (Qualität etwa 70) zu verkleinern. Erhält er trotzdem 413, aktualisieren Sie Ollama auf 0.35.1 oder neuer oder wechseln Sie zu Cloudflare Workers AI.</p></div>
+
+<!-- @api-usage cacf2ecce0 -->
+## API-Nutzung in der Fußzeile
+<p>Entscheidungsaufrufe laufen über das Relay, daher kann Ferret sie zählen. Der Eintrag in der Fußzeile neben der Nutzungsanzeige des Agents zeigt das Entscheidungsmodell sowie die Aufrufe, Tokens und Kosten des heutigen Tages (zum Beispiel <code>clef-flash · 42 calls · 18.3k tok</code>). Ein Klick darauf zeigt die Werte für heute, diesen Monat, pro Projekt, pro Modell und pro Art (Entscheidung / Transkription / Ordnen) sowie die letzten 50 Aufrufe.</p>
+<p>Kosten erscheinen nur, wenn die API sie meldet (Vercel AI Gateway tut das) oder wenn Sie unter <span class="docs-ui">Einstellungen → Entscheidungsmodell</span> Preise pro 1 Mio. Tokens festlegen; andernfalls wird „—“ angezeigt. Protokolliert werden nur Metadaten (Zeit, Projekt, Modell, Status, Latenz, Größe, Bildanzahl, Tokens, Kosten), nie Bilder, Text oder Schlüssel, und zwar in <code>~/.ferret/usage/decision-YYYY-MM.jsonl</code>, eine Datei pro Monat.</p>
+
+<!-- @prompt f46545b478 -->
+## Anweisung anpassen
+<p>Bearbeiten Sie <span class="docs-ui">Einstellungen → Agents → Anweisungen für Agent</span>. Zwei Variablen werden ersetzt:</p>
+<table>
+  <thead><tr><th>Variable</th><th>Wird ersetzt durch</th></tr></thead>
+  <tbody>
+    <tr><td><code>{{path}}</code></td><td>Absoluter Pfad der <code>feedback.md</code></td></tr>
+    <tr><td><code>{{relpath}}</code></td><td>Pfad relativ zum Projekt: <code>.ferret/reviews/&lt;id&gt;/feedback.md</code></td></tr>
+  </tbody>
+</table>
+<p>Lassen Sie das Feld leer, um die Standardanweisung zu verwenden. Die maximale Länge beträgt 2000 Zeichen, und <span class="docs-ui">Anweisungen zurücksetzen</span> stellt die Standardanweisung wieder her. Beispiel:</p>
+<pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
+<p>Die Einstellung wird als <code>agentPrompt</code> in der <code>settings.json</code> gespeichert.</p>
+
+<!-- @github aba5332ec5 -->
+## An GitHub oder GitLab senden (Issue / Kommentar zu PR oder MR)
+<p><span class="docs-ui">An GitHub senden</span> veröffentlicht das Review als neues Issue oder als Kommentar zu einem Ihrer offenen Pull Requests. Die Authentifizierung übernimmt die <a href="https://cli.github.com/">GitHub CLI</a>. Ferret liest oder speichert nie ein Token.</p>
+<ol class="docs-steps">
+  <li>Installieren Sie <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), oder siehe <a href="https://github.com/cli/cli#installation">cli/cli</a>.</li>
+  <li><span class="docs-ui">Einstellungen → GitHub / GitLab → Im Terminal anmelden</span> führt <code>gh auth login --web -h github.com</code> im integrierten Terminal aus.</li>
+  <li>Klicken Sie auf <span class="docs-ui">An GitHub senden</span>, wählen Sie <span class="docs-ui">Neues Issue erstellen</span> oder einen PR und prüfen Sie <span class="docs-ui">Titel</span> und <span class="docs-ui">Text</span> (bearbeitbar).</li>
+  <li>Setzen Sie das Häkchen zur Bestätigung und klicken Sie dann auf <span class="docs-ui">Issue erstellen</span> oder <span class="docs-ui">Kommentar senden</span>.</li>
+</ol>
+<p>Details:</p>
+<ul>
+  <li>Das Repository ergibt sich aus <code>git remote get-url origin</code>.</li>
+  <li>Ferret führt <code>gh issue create --repo … --title … --body-file -</code> oder <code>gh pr comment &lt;n&gt; --repo … --body-file -</code> aus.</li>
+  <li>Der Text ist die <code>feedback.md</code> ohne die Bildzeilen (Bilder werden nicht hochgeladen), bis zu 60.000 Zeichen.</li>
+  <li>Als PRs kommen Ihre eigenen offenen PRs infrage (bis zu 30).</li>
+</ul>
+<p>Ist <code>GH_TOKEN</code> oder <code>GITHUB_TOKEN</code> gesetzt, verwendet <code>gh</code> dieses zuerst, und der Einstellungsbereich warnt davor.</p>
+<p><strong>GitLab.</strong> Ist <code>origin</code> ein GitLab-Projekt (gitlab.com oder ein selbstverwaltetes GitLab), sendet dieselbe Schaltfläche über die <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a> (<code>glab</code>) an GitLab: als neues Issue oder als Kommentar zu einem Ihrer offenen Merge Requests. Melden Sie sich über <span class="docs-ui">Einstellungen → GitHub / GitLab</span> an; dies führt <code>glab auth login</code> (bei einem selbstverwalteten GitLab mit <code>--hostname</code>) im integrierten Terminal aus. Ferret liest oder speichert das Token nie und warnt, wenn <code>GITLAB_TOKEN</code> gesetzt ist.</p>
+<p><strong>Bitte um einen Stern.</strong> Nach Ihrem ersten <span class="docs-ui">An Agent senden</span> sowie bei 3, 10 und 30 abgeschlossenen Reviews bittet Ferret Sie möglicherweise, ihm auf GitHub einen Stern zu geben. Es fragt höchstens 3-mal, mit mindestens 3 Tagen Abstand, und nie während einer Aufnahme. <span class="docs-ui">Stern auf GitHub geben</span> vergibt den Stern über Ihr eigenes <code>gh</code>-Login (oder öffnet GitHub, wenn <code>gh</code> nicht verfügbar ist), und <span class="docs-ui">Nicht mehr fragen</span> beendet die Nachfragen. Sie können auch über <span class="docs-ui">Hilfe → Ferret auf GitHub einen Stern geben</span> einen Stern vergeben.</p>
+
+<!-- @cli-tools 01bc2517bf -->
+## CLI-Tools installieren und anmelden
+<p><span class="docs-ui">Einstellungen → CLI-Tools</span> listet Kommandozeilen-Tools auf, die Ihre Agents häufig benötigen, zeigt, welche installiert sind und in welcher Version, und führt den offiziellen Installations- oder Anmeldebefehl für Ihr Betriebssystem in einem neuen Terminal-Tab aus:</p>
+<ul>
+  <li>Git-Hosting: <code>gh</code>, <code>glab</code></li>
+  <li>KI und Modelle: Ollama, Cloudflare <code>wrangler</code></li>
+  <li>Deployment: Vercel, Netlify, Fly.io, Railway, Heroku</li>
+  <li>Cloud und Dienste: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+</ul>
+<p>Hat ein Tool für Ihr Betriebssystem keinen offiziellen einzeiligen Installer, öffnet <span class="docs-ui">Doku</span> stattdessen dessen Installationsseite. Die Liste prüft von selbst erneut, sobald eine Installation abgeschlossen ist.</p>

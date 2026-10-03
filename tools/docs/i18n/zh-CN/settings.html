@@ -1,0 +1,71 @@
+<!-- Ferret docs translation: zh-CN / settings. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 526d0b4160 -->
+设置参考
+
+<!-- @lead bb6030179f -->
+点击标题栏中的齿轮图标打开 <span class="docs-ui">设置</span>。录制期间无法更改设置。
+
+<!-- @microphone afd769f38a -->
+## 麦克风
+<table>
+  <thead><tr><th>设置</th><th>默认值</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">录制我的语音</span></td><td>开</td></tr>
+    <tr><td><span class="docs-ui">麦克风</span></td><td><span class="docs-ui">系统默认</span></td></tr>
+    <tr><td><span class="docs-ui">同时录制对方的声音</span>（测试版）</td><td>关</td></tr>
+  </tbody>
+</table>
+
+<!-- @transcription 89ff79d384 -->
+## 转写
+<table>
+  <thead><tr><th>设置</th><th>默认值</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">语言</span>（说话语言）</td><td><span class="docs-ui">自动</span></td></tr>
+    <tr><td><span class="docs-ui">引擎</span></td><td><span class="docs-ui">本机（免费）</span></td></tr>
+    <tr><td><span class="docs-ui">模型</span>（本机）</td><td><code>large-v3-turbo</code>（推荐）</td></tr>
+    <tr><td><span class="docs-ui">端点 Base URL</span> / <span class="docs-ui">模型</span>（兼容 OpenAI）</td><td>空</td></tr>
+    <tr><td><span class="docs-ui">OpenAI API 密钥</span> / <span class="docs-ui">Endpoint API key（可选）</span></td><td>未设置</td></tr>
+    <tr><td><span class="docs-ui">费用上限</span></td><td>每次审查最多 $1</td></tr>
+  </tbody>
+</table>
+<p>参见<a href="transcription.html">转写与费用</a>。</p>
+
+<!-- @storage 24cf46ed41 -->
+## 存储
+<table>
+  <thead><tr><th>设置</th><th>默认值</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">保留录制内容</span>：7 天 / 30 天 / <span class="docs-ui">永久</span></td><td>7 天</td></tr>
+    <tr><td><span class="docs-ui">停止后停留在反馈界面</span></td><td>关</td></tr>
+  </tbody>
+</table>
+
+<!-- @agent e6bb38101d -->
+## Agent
+<table>
+  <thead><tr><th>设置</th><th>默认值</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">打开项目时启动</span></td><td>Claude Code、Codex（可选择任意<a href="agents.html#supported">支持的 Agent</a>，也可以都不选）</td></tr>
+    <tr><td><span class="docs-ui">在菜单中显示 &lt;agent&gt;</span></td><td>所有 Agent 均为开</td></tr>
+    <tr><td><span class="docs-ui">命令</span> / <span class="docs-ui">参数</span>（每个 Agent）</td><td>该 Agent 自己的命令（例如 <code>claude</code>、<code>codex</code>、<code>gemini</code>）/ 无</td></tr>
+    <tr><td><span class="docs-ui">自定义 Agent</span></td><td>无（<span class="docs-ui">添加自定义 Agent</span> 可登记任意 CLI）</td></tr>
+    <tr><td><span class="docs-ui">跳过权限确认</span>（按项目）</td><td>所有项目均为关（<a href="agents.html#terminal">详情</a>）</td></tr>
+    <tr><td><span class="docs-ui">给 Agent 的指令</span></td><td>内置文本（<a href="agents.html#prompt">变量</a>）</td></tr>
+  </tbody>
+</table>
+
+<!-- @other 37b81ab14b -->
+## 账户、GitHub、外观、语言
+<ul>
+  <li><span class="docs-ui">账户</span>：参见<a href="accounts.html">账户与用量</a>。</li>
+  <li><span class="docs-ui">GitHub / GitLab</span>：<code>gh</code> 和 <code>glab</code> 的登录。参见<a href="agents.html#github">发送到 GitHub 或 GitLab</a>。</li>
+  <li><span class="docs-ui">CLI 工具</span>：安装并登录各服务的 CLI。参见<a href="agents.html#cli-tools">CLI 工具</a>。</li>
+  <li><span class="docs-ui">外观 → 主题</span>：<span class="docs-ui">跟随系统</span>（默认）、<span class="docs-ui">浅色</span>、<span class="docs-ui">深色</span>。</li>
+  <li><span class="docs-ui">语言 → 界面</span>：<span class="docs-ui">跟随系统</span>（默认；Ferret 支持操作系统的语言时跟随该语言，否则使用英语），或 14 种语言之一：English、日本語、简体中文、繁體中文、한국어、Español、Français、Deutsch、Italiano、Português (Brasil)、Русский、हिन्दी、Bahasa Indonesia、Tiếng Việt。</li>
+</ul>
+<p>在底部栏中：终端位置（右侧 / 底部）和麦克风开关。</p>
+
+<!-- @settings-json ed64241c44 -->
+## settings.json
+<p>以上所有设置都保存在 <code>~/.ferret/settings.json</code>（所有操作系统路径相同），旁边还有一个 JSON Schema。应用运行时也可以编辑它，手动编辑或让你的编码 Agent 编辑都可以；更改会立即生效。参见<a href="settings-json.html">用 settings.json 配置</a>。</p>

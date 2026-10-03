@@ -1,0 +1,176 @@
+<!-- Ferret docs translation: zh-CN / settings-json. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 356c52a302 -->
+使用 settings.json 配置
+
+<!-- @lead a353948c8f -->
+Ferret 的所有设置都保存在一个 JSON 文件中，旁边附有 JSON Schema，因此你或你的编码 Agent（例如 Claude Code、Codex 或 Gemini CLI）可以通过编辑文件来配置应用。更改会在应用运行时生效。
+
+<!-- @path de46fc6989 -->
+## 文件位置
+<p>路径在所有操作系统上都相同：</p>
+<pre><code>~/.ferret/settings.json          # your settings (edit this)
+~/.ferret/settings.schema.json   # JSON Schema, rewritten by the app on launch
+~/.ferret/state.json             # open folder, last URL, open tabs (managed by the app)
+~/.ferret/.env                   # optional: API keys referenced by apiKeyEnv</code></pre>
+<ul>
+  <li>设置 <code>FERRET_CONFIG_DIR</code>（旧名称 <code>MOVIE_ADE_CONFIG_DIR</code> 也可用）即可使用其他文件夹，例如 dotfiles 仓库中的某个文件夹。<code>~</code> 会被展开。</li>
+  <li>开发构建（<code>pnpm dev</code>）使用 <code>~/.ferret/dev/</code>，因此开发 Ferret 时绝不会改写你真正的设置。</li>
+  <li>从 0.1.0 升级：首次启动时，旧的 <code>&lt;userData&gt;/settings.json</code> 会被复制到新文件中。旧文件保留原处作为备份，且永远不会被修改。</li>
+</ul>
+<p>从 MOVIE-ADE 升级：首次启动时，<code>settings.json</code>、<code>state.json</code>、<code>usage/</code> 和 <code>.env</code> 会从 <code>~/.movie-ade/</code> 复制到 <code>~/.ferret/</code>。旧文件夹保留原处，不会被修改。</p>
+<p>在应用中，<span class="docs-ui">设置</span> 顶部会显示该路径，并提供 <span class="docs-ui">打开 settings.json</span>（在内置编辑器中编辑，带有基于 Schema 的补全）和 <span class="docs-ui">在文件夹中显示</span>。</p>
+
+<!-- @schema 9eeea0d22b -->
+## Schema 与校验
+<p><code>settings.json</code> 的第一行是 <code>"$schema": "./settings.schema.json"</code>。VS Code 等编辑器和 Claude Code 等 Agent 会利用它进行补全、校验，并显示每个字段的说明。Schema 随应用一起发布，每次启动时都会写到该文件旁边，因此它始终与已安装的版本一致。</p>
+<p>Ferret 不认识的键在应用保存时会原样保留。打开的标签页、上次的 URL 和其他会话状态保存在 <code>state.json</code> 中，而不在这里。</p>
+
+<!-- @example fece1b6b16 -->
+## 带注释的示例
+<p>JSON 不支持注释，所以说明写在示例下方。所有字段都是可选的；不需要的可以省略。</p>
+<pre><code>{
+  "$schema": "./settings.schema.json",
+  "theme": "dark",
+  "locale": "en",
+  "projects": [
+    {
+      "id": "shop",
+      "name": "shop",
+      "folderPath": "/Users/you/src/shop",
+      "kind": "web",
+      "urls": [
+        { "id": "local", "label": "local", "url": "http://localhost:3000" },
+        { "id": "prd", "label": "prd", "url": "https://shop.example.com" }
+      ]
+    }
+  ],
+  "agents": {
+    "customAgents": [
+      { "id": "custom:my-agent", "name": "My agent", "command": "my-agent", "args": "--yes" }
+    ],
+    "startupAgents": ["claude", "custom:my-agent"]
+  },
+  "capture": {
+    "transcription": "compatible",
+    "language": "auto",
+    "costLimitUsd": null,
+    "sttEndpoints": {
+      "compatible": {
+        "baseUrl": "http://gpu-box.local:8000/v1",
+        "model": "Systran/faster-whisper-large-v3",
+        "apiKeyEnv": "WHISPER_SERVER_TOKEN"
+      }
+    }
+  },
+  "organizer": {
+    "runner": "api:compatible",
+    "endpoints": {
+      "compatible": { "baseUrl": "http://localhost:11434/v1", "model": "qwen3:14b" }
+    }
+  },
+  "decision": {
+    "enabled": true,
+    "preset": "ollama",
+    "endpoint": "http://localhost:11434/v1/systemone",
+    "model": "clef-flash"
+  },
+  "layout": {
+    "panels": {
+      "projects": { "dock": "left", "visible": true },
+      "terminal": { "dock": "bottom", "visible": true },
+      "files": { "dock": "right", "visible": false }
+    }
+  }
+}</code></pre>
+<ul>
+  <li><code>projects[].urls</code>：URL 菜单中的审查对象。打开项目时会打开第一个。<code>id</code> 可以是任意唯一字符串。</li>
+  <li><code>agents.customAgents</code>：任意 CLI 或包装脚本。<code>startupAgents</code> 按顺序列出随项目打开的 Agent 标签页。</li>
+  <li><code>capture.sttEndpoints.compatible</code>：任何实现了 OpenAI <code>/v1/audio/transcriptions</code> 的服务器（speaches、vLLM、LocalAI…）。<code>costLimitUsd: null</code> 会关闭费用上限，这适合使用你自己的 GPU 的情况。参见<a href="transcription.html">转写与费用</a>。</li>
+  <li><code>organizer</code>：<span class="docs-ui">整理反馈</span> 直接发送到兼容 OpenAI 的 <code>/v1/chat/completions</code> 服务器（此处为 Ollama）。如果想改用你自己的 CLI 登录，请使用 <code>"runner": "claude-code"</code> 或 <code>"codex"</code>，并用 <code>organizer.cliModels</code> 选择它们的模型。</li>
+  <li><code>decision</code>：检查每条反馈是否已修复的模型。在本地 Ollama 上运行的 Clef Flash 免费，并且能读取截图。<code>preset</code> 也可以是 <code>cloudflare</code>、<code>vercel</code>、<code>typesafe</code> 或 <code>custom</code>。</li>
+  <li>每个提供商块（<code>sttEndpoints.*</code>、<code>organizer.endpoints.*</code>）还接受 <code>timeoutMs</code>、<code>headers</code>，对于 Azure 还接受 <code>apiVersion</code>。</li>
+</ul>
+<div class="docs-callout docs-callout-note"><p>Ferret 绝不会代你为 AI 付费。没有内置密钥，也没有中继服务器：每个请求都使用你的密钥，从你的电脑直接发送到你配置的端点。</p></div>
+
+<!-- @custom 3d0b17a588 -->
+## 任意提供商：自定义端点
+<p>预设只会预先填好 URL 和模型。每个连接（转写、整理反馈、判定模型）都可以使用任意 URL、模型、请求头和认证方式，因此你可以使用任何提供商：Cloudflare、网关、公司代理或你自己的服务器。下列字段在这三者中名称和结构都相同。</p>
+<table>
+  <thead><tr><th>字段</th><th>含义</th></tr></thead>
+  <tbody>
+    <tr><td><code>baseUrl</code>, <code>model</code></td><td>任意 http(s) URL 和模型名称。URL 中的 <code>{account_id}</code> 会被替换为 <code>accountId</code>，或 <code>CLOUDFLARE_ACCOUNT_ID</code> 环境变量的值</td></tr>
+    <tr><td><code>authScheme</code></td><td><code>bearer</code>（<code>Authorization: Bearer &lt;key&gt;</code>）、<code>header</code>（将密钥放在 <code>authHeader</code> 指定名称的请求头中）或 <code>none</code>。省略时沿用提供商的默认方式</td></tr>
+    <tr><td><code>headers</code></td><td>额外的请求头。值可以是普通字符串，也可以是 <code>{"env": "VAR"}</code>，从环境变量读取（查找方式与 <code>apiKeyEnv</code> 相同）。<code>Authorization</code> 或网关令牌等机密请求头只接受 <code>{"env": …}</code> 形式。在设置页面中，请写成 <code>Name: ${VAR}</code></td></tr>
+    <tr><td><code>apiKey</code> / <code>apiKeyEnv</code></td><td>密钥，参见 <a href="#keys">API 密钥</a></td></tr>
+  </tbody>
+</table>
+<p>使用任意兼容 OpenAI 的 <code>/v1/audio/transcriptions</code> 服务器进行<strong>转写</strong>，且该服务器要求将密钥放在 <code>api-key</code> 请求头中：</p>
+<pre><code>"capture": {
+  "transcription": "compatible",
+  "sttEndpoints": {
+    "compatible": {
+      "baseUrl": "https://stt.internal.example.com/v1",
+      "model": "whisper-large-v3",
+      "authScheme": "header",
+      "authHeader": "api-key",
+      "apiKeyEnv": "INTERNAL_STT_KEY",
+      "headers": { "X-Team": "design" }
+    }
+  }
+}</code></pre>
+<p>使用 Cloudflare Workers AI（兼容 OpenAI 的 chat completions）进行<strong>整理反馈</strong>，可选择经由 AI Gateway：</p>
+<pre><code>"organizer": {
+  "runner": "api:compatible",
+  "endpoints": {
+    "compatible": {
+      "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
+      "model": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      "apiKeyEnv": "CLOUDFLARE_API_TOKEN",
+      "headers": { "cf-aig-authorization": { "env": "CF_AIG_TOKEN" } }
+    }
+  }
+}</code></pre>
+<p>在 Cloudflare Workers AI（Clef Flash）上运行<strong>判定模型</strong>，或使用 <code>"preset": "custom"</code> 在任何支持 System One API 的服务器上运行。判定模型在 <code>endpoint</code> 中接受完整的请求 URL（会填入 <code>{account_id}</code> 和 <code>{model}</code>）；其他字段的名称和结构与上文相同：</p>
+<pre><code>"decision": {
+  "enabled": true,
+  "preset": "cloudflare",
+  "endpoint": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}",
+  "model": "clef-flash",
+  "authScheme": "bearer",
+  "apiKeyEnv": "CLOUDFLARE_API_TOKEN",
+  "headers": { "cf-aig-authorization": { "env": "CF_AIG_TOKEN" } }
+}</code></pre>
+<p>请将 <code>CLOUDFLARE_ACCOUNT_ID</code>、<code>CLOUDFLARE_API_TOKEN</code> 和其他变量放在 <code>~/.ferret/.env</code> 中。上面的模型名称只是示例，请查看你的提供商的模型列表。</p>
+
+<!-- @keys d478d4a8f1 -->
+## API 密钥
+<p>每个提供商块可以通过以下三种方式之一接收密钥，以最先找到的为准：</p>
+<ol>
+  <li><code>"apiKey": "…"</code>：以明文形式写在 <code>settings.json</code> 中的密钥。任何能读取该文件的人都能读到密钥，只要存在明文密钥，<span class="docs-ui">设置</span> 就会显示警告。请避免这样做，尤其是当该文件位于 dotfiles 仓库中时。</li>
+  <li><code>"apiKeyEnv": "OPENAI_API_KEY"</code>：环境变量的名称。Ferret 依次在自身的环境、当前打开项目的 <code>.env</code>、<code>~/.ferret/.env</code> 中查找。从访达或开始菜单打开的应用看不到你在 shell 配置文件中 export 的变量，因此 <code>~/.ferret/.env</code> 是最可靠的位置。</li>
+  <li>保存在 <span class="docs-ui">设置</span> 中的密钥：使用操作系统钥匙串加密，保存在 <code>&lt;userData&gt;/stt-keys.bin</code> 中（参见<a href="transcription.html#keys">密钥的存储位置</a>）。</li>
+</ol>
+<p>只有当你在 <code>apiKeyEnv</code> 中指定了某个环境变量的名称时，Ferret 才会读取它。密钥永远不会被写入日志、不会在界面中显示，也不会包含在崩溃报告中。</p>
+
+<!-- @reload 4c8b56784b -->
+## 实时重新载入
+{{clip:settings-json|编辑 settings.json：应用在运行时即应用更改。}}
+<p>Ferret 会监视 <code>settings.json</code>。文件发生变化时，应用会重新读取它，按 Schema 校验后应用：主题、语言、布局、Agent、项目和 AI 端点都会在不重启的情况下更新，设置页面也会刷新。</p>
+<ul>
+  <li>如果文件存在 JSON 语法错误或类型错误的值，这次编辑的任何内容都不会被应用。应用会保留上一次有效的设置，显示错误及其行号，并且在你修复之前不会覆盖你的文件。</li>
+  <li>当应用自己保存时（你在 <span class="docs-ui">设置</span> 中做了更改），它会先写入临时文件，再将其重命名覆盖 <code>settings.json</code>，因此即使崩溃也不会留下写了一半的文件。</li>
+</ul>
+
+<!-- @agent d9a63aa906 -->
+## 让你的编码 Agent 配置 Ferret
+<p>将以下内容粘贴到 Claude Code、Codex 或任何能编辑文件的 Agent 中：</p>
+<pre><code>Edit ~/.ferret/settings.json following the JSON Schema in
+~/.ferret/settings.schema.json (read the field descriptions first).
+Keep unknown keys and keep the file valid JSON. Never write API keys in
+plaintext: set "apiKeyEnv" to an environment variable name instead and
+tell me which variable to put in ~/.ferret/.env.
+Ferret applies the change as soon as the file is saved.
+
+Task: &lt;what you want, e.g. "use my Ollama at http://localhost:11434 with
+qwen3:14b for Organize findings and add a prd URL for the shop project"&gt;</code></pre>
+<p>同样的提示词（已填入你的实际路径）位于 <span class="docs-ui">设置</span> → <span class="docs-ui">让你的编码 Agent 配置 Ferret</span>，并附有 <span class="docs-ui">复制提示词</span> 按钮。</p>

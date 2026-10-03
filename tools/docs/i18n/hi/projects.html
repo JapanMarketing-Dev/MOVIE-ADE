@@ -1,0 +1,56 @@
+<!-- Ferret docs translation: hi / projects. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 5c9e1003a2 -->
+प्रोजेक्ट और URL
+
+<!-- @lead 4a937bd356 -->
+प्रोजेक्ट एक फ़ोल्डर होता है (आम तौर पर आपकी repository का root)। हर प्रोजेक्ट के अपने सेव किए गए URL होते हैं, इसलिए local, dev और production के बीच सिर्फ़ एक क्लिक का फ़ासला रहता है।
+
+<!-- @add-project eb372d2531 -->
+## प्रोजेक्ट जोड़ें
+<ol class="docs-steps">
+  <li><span class="docs-ui">फ़ाइल → प्रोजेक्ट फ़ोल्डर खोलें…</span> ({{keys:Mod+O}}), साइडबार में <span class="docs-ui">प्रोजेक्ट जोड़ें</span>, या टाइटल बार के प्रोजेक्ट मेन्यू में <span class="docs-ui">प्रोजेक्ट जोड़ें…</span> चुनें।</li>
+  <li>चुनें कि प्रोजेक्ट कहाँ से आएगा:
+    <ul>
+      <li><span class="docs-ui">इस कंप्यूटर पर</span>: एक फ़ोल्डर चुनें।</li>
+      <li><span class="docs-ui">GitHub / GitLab से clone करें</span>: अपनी repositories में से एक चुनें (जो आपके <code>gh</code> या <code>glab</code> login से सूची में आती हैं) या URL paste करें, parent फ़ोल्डर चुनें, और Ferret उसे clone करके खोल देता है।</li>
+      <li><span class="docs-ui">SSH से खोलें</span>: <code>~/.ssh/config</code> से एक host चुनें। टर्मिनल और agents remote मशीन पर चलते हैं; reviews इसी कंप्यूटर पर रहते हैं।</li>
+    </ul>
+  </li>
+</ol>
+<p>डिफ़ॉल्ट नाम फ़ोल्डर का नाम होता है। पहले से रजिस्टर किया गया फ़ोल्डर जोड़ने पर वही खुल जाता है (macOS और Windows पर paths की तुलना बड़े-छोटे अक्षरों का फ़र्क किए बिना होती है)। साइडबार मेन्यू से आप किसी प्रोजेक्ट का <span class="docs-ui">नाम बदलें</span> या उसे <span class="docs-ui">सूची से हटाएँ</span> कर सकते हैं। हटाने से फ़ोल्डर कभी डिलीट नहीं होता।</p>
+<p>टर्मिनल प्रोजेक्ट फ़ोल्डर में खुलते हैं, और reviews <code>&lt;project&gt;/.ferret/</code> के अंदर सेव होते हैं।</p>
+
+<!-- @save-url 8914160725 -->
+## URL सेव करें
+<ol class="docs-steps">
+  <li>बिल्ट-इन ब्राउज़र में पेज खोलें।</li>
+  <li>ब्राउज़र टूलबार में <span class="docs-ui">+</span> (<span class="docs-ui">मौजूदा URL सेव करें</span>) पर क्लिक करें। मौजूदा URL पहले से भरा होता है।</li>
+  <li><span class="docs-ui">नाम</span> डालें और <span class="docs-ui">सेव करें</span> पर क्लिक करें।</li>
+</ol>
+<p>सिर्फ़ <code>http://</code> और <code>https://</code> URL स्वीकार किए जाते हैं। अगर आप सुझाया गया नाम ही रहने दें, तो नाम host से अनुमान लगाया जाता है:</p>
+<table>
+  <thead><tr><th>Host</th><th>नाम</th></tr></thead>
+  <tbody>
+    <tr><td><code>localhost</code>, <code>127.*</code>, <code>::1</code>, <code>0.0.0.0</code>, <code>*.localhost</code></td><td><code>local</code></td></tr>
+    <tr><td><code>dev</code>, <code>develop</code>, <code>development</code> शामिल हो</td><td><code>dev</code></td></tr>
+    <tr><td><code>stg</code>, <code>stage</code>, <code>staging</code> शामिल हो</td><td><code>stg</code></td></tr>
+    <tr><td>बाकी सब</td><td><code>prd</code></td></tr>
+  </tbody>
+</table>
+<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="ब्राउज़र टूलबार में सेव किए गए URL (screenshot जल्द आ रहा है)"><span>Screenshot जल्द आ रहा है</span></div><figcaption>ब्राउज़र टूलबार में सेव किए गए URL</figcaption></figure>
+
+<!-- @review-targets 351621051d -->
+## Review targets पैनल
+{{clip:targets|रिकॉर्डिंग रोके बिना review targets और पेज बदलना।}}
+<p>Feedback मोड में, दाईं ओर का <span class="docs-ui">Review targets</span> पैनल मौजूदा प्रोजेक्ट में review की जा सकने वाली हर चीज़ की सूची दिखाता है। Target बदलने से रिकॉर्डिंग नहीं रुकती। पैनल को <span class="docs-ui">दृश्य → Review targets टॉगल करें</span> ({{keys:Mod+Shift+K}}) या <span class="docs-ui">पैनल छिपाएँ</span> से टॉगल करें।</p>
+<ul>
+  <li><strong><span class="docs-ui">Targets</span></strong>: प्रोजेक्ट के सेव किए गए URL। हर एक के नीचे उस साइट पर आपके देखे गए पेजों का ट्री होता है। जिन देखी गई साइटों को सेव नहीं किया गया, वे अपने अलग समूहों में दिखती हैं।</li>
+  <li><strong><span class="docs-ui">फ़ाइलें</span></strong>: प्रोजेक्ट फ़ोल्डर। फ़ाइल प्रीव्यू के रूप में खुलती है (Markdown और Mermaid render होकर, बाकी टेक्स्ट सिर्फ़ पढ़ने के लिए), ताकि आप दस्तावेज़ों का भी review कर सकें। पेंसिल (<span class="docs-ui">editor में खोलें</span>) उसे editor में खोलती है।</li>
+</ul>
+<p><span class="docs-ui">targets फ़िल्टर करें</span> targets, पेज और फ़ाइलें, तीनों को एक साथ फ़िल्टर करता है, <span class="docs-ui">फ़ाइल पर जाएँ…</span> जैसी ही fuzzy matching के साथ। सूची में <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> या <kbd>1</kbd>–<kbd>9</kbd> से targets बदलते हैं। <span class="docs-ui">URL खोलें…</span> एक बार के लिए कोई URL खोलता है, और <span class="docs-ui">प्रोजेक्ट URL में सहेजें</span> उसे रख लेता है।</p>
+<p>Targets <code>settings.json</code> के <code>projects[].urls</code> से आते हैं (<a href="settings-json.html#example">उदाहरण</a> देखें)। हर entry में एक <code>url</code>, एक <code>launchCommand</code> (टर्मिनल में चलता है, जैसे कोई डेस्कटॉप ऐप शुरू करने के लिए), या एक <code>windowMatch</code> (रिकॉर्ड की जाने वाली विंडो) होना चाहिए। विंडो वाला target चुनने पर वह रिकॉर्डिंग का source बन जाता है, इसलिए यह रिकॉर्डिंग के दौरान नहीं किया जा सकता। देखे गए पेज हर प्रोजेक्ट के लिए सिर्फ़ इसी मशीन पर याद रखे जाते हैं (अधिकतम 200)।</p>
+
+<!-- @switch-env 5103621352 -->
+## Environments खोलें और बदलें
+<p>सेव किए गए URL को खोलने के लिए उस पर क्लिक करें। अगर मौजूदा पेज किसी दूसरे सेव किए गए URL के अंतर्गत है, तो Ferret path, query और hash वैसे ही रखता है और सिर्फ़ origin बदलता है। उदाहरण के लिए, <code>http://localhost:3000/pricing?plan=pro</code> पर <code>prd</code> क्लिक करने से <code>https://example.com/pricing?plan=pro</code> खुलता है।</p>
+<p>मौजूदा पेज से मेल खाने वाला chip (सबसे लंबा prefix) हाइलाइट होता है। किसी chip को संपादित करने या <span class="docs-ui">हटाएँ</span> के लिए उस पर right-click करें या उसका पेंसिल आइकन इस्तेमाल करें। जब कोई प्रोजेक्ट खुलता है और पिछला कोई URL नहीं होता, तो उसका पहला सेव किया गया URL लोड होता है।</p>

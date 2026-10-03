@@ -1,0 +1,35 @@
+<!-- Ferret docs translation: fr / editor. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 05d78374e2 -->
+Éditeur et aperçu
+
+<!-- @lead 97cbc36c8d -->
+Ouvrez et modifiez les fichiers du projet, et prévisualisez le Markdown et Mermaid. Un aperçu ouvert dans le navigateur intégré peut être enregistré et relu comme n'importe quelle page web.
+
+<!-- @files f1e2c27cca -->
+## Ouvrir et modifier des fichiers
+<ul>
+  <li><span class="docs-ui">Fichiers</span> (l'arborescence) : {{keys:Mod+Shift+E}}, avec <span class="docs-ui">Filtrer par nom de fichier</span>, <span class="docs-ui">Actualiser</span> et <span class="docs-ui">Tout réduire</span>.</li>
+  <li><span class="docs-ui">Aller au fichier…</span> : {{keys:Mod+P}}.</li>
+  <li>Enregistrez avec {{keys:Mod+S}}. Fermer un fichier modifié demande <q>Enregistrer les modifications de &lt;name&gt; ?</q> avec <span class="docs-ui">Enregistrer</span>, <span class="docs-ui">Ne pas enregistrer</span> et <span class="docs-ui">Annuler</span>.</li>
+  <li>Si le fichier change sur le disque alors que vous avez des modifications non enregistrées, choisissez <span class="docs-ui">Recharger depuis le disque</span> ou <span class="docs-ui">Garder mes modifications</span>.</li>
+</ul>
+<p>L'éditeur est Monaco. Les fichiers qui ne sont pas du texte s'ouvrent dans une visionneuse : images (zoom avant et arrière ; un SVG peut aussi s'afficher sous forme de code), vidéo et audio avec une barre de lecture, PDF et, pour tout autre fichier binaire, sa taille et une vue hexadécimale des premiers octets. Les visionneuses sont en lecture seule, et les fichiers situés hors du dossier du projet, ou atteints par un lien symbolique qui en sort, ne sont pas affichés.</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Bientôt disponible</p><p>Créer, renommer et supprimer des fichiers depuis l'arborescence.</p></div>
+
+<!-- @preview b8c0baaad4 -->
+## Aperçu Markdown et Mermaid
+<p>L'aperçu fonctionne pour <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> et <code>.mermaid</code>. Mermaid est intégré à l'application : les diagrammes s'affichent donc hors ligne.</p>
+<ul>
+  <li><span class="docs-ui">Ouvrir l'aperçu sur le côté</span> : à côté de l'éditeur</li>
+  <li><span class="docs-ui">Ouvrir l'aperçu</span> : dans le navigateur intégré (<code>ade-preview://</code>), pour pouvoir l'enregistrer et le relire</li>
+</ul>
+
+<!-- @review-docs 3956ed6f10 -->
+## Relire de la documentation en l'enregistrant
+<ol class="docs-steps">
+  <li>Ouvrez un fichier Markdown et cliquez sur <span class="docs-ui">Ouvrir l'aperçu</span>.</li>
+  <li>Enregistrez comme d'habitude. Commentez la spécification ou le document de conception à voix haute et entourez ce qui ne va pas.</li>
+  <li>Arrêtez. Les remarques font référence au chemin du fichier relatif au projet au lieu d'une URL.</li>
+  <li><span class="docs-ui">Envoyer à l'agent</span> pour faire corriger le document.</li>
+</ol>
+<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="Aperçu Markdown dans le navigateur intégré (capture d'écran bientôt disponible)"><span>Capture d'écran bientôt disponible</span></div><figcaption>Aperçu Markdown dans le navigateur intégré</figcaption></figure>

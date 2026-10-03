@@ -1,0 +1,56 @@
+<!-- Ferret docs translation: vi / projects. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 5c9e1003a2 -->
+Dự án và URL
+
+<!-- @lead 4a937bd356 -->
+Một dự án là một thư mục (thường là thư mục gốc của repo). Mỗi dự án giữ các URL đã lưu của riêng nó, nên local, dev và production chỉ cách nhau một cú bấm.
+
+<!-- @add-project eb372d2531 -->
+## Thêm dự án
+<ol class="docs-steps">
+  <li><span class="docs-ui">Tệp → Mở thư mục dự án…</span> ({{keys:Mod+O}}), <span class="docs-ui">Thêm dự án</span> ở thanh bên, hoặc <span class="docs-ui">Thêm dự án</span> trong menu dự án ở thanh tiêu đề.</li>
+  <li>Chọn nguồn của dự án:
+    <ul>
+      <li><span class="docs-ui">Trên máy tính này</span>: chọn một thư mục.</li>
+      <li><span class="docs-ui">Clone từ GitHub / GitLab</span>: chọn một repository của bạn (được liệt kê qua thông tin đăng nhập <code>gh</code> hoặc <code>glab</code>) hoặc dán URL, chọn thư mục cha, rồi Ferret sẽ clone và mở nó.</li>
+      <li><span class="docs-ui">Mở qua SSH</span>: chọn một host từ <code>~/.ssh/config</code>. Terminal và agent chạy trên máy từ xa; các review vẫn nằm trên máy tính này.</li>
+    </ul>
+  </li>
+</ol>
+<p>Tên mặc định là tên thư mục. Thêm một thư mục đã được đăng ký thì Ferret sẽ mở nó thay vì thêm lại (trên macOS và Windows, đường dẫn được so sánh không phân biệt chữ hoa chữ thường). Từ menu ở thanh bên, bạn có thể <span class="docs-ui">Đổi tên</span> dự án hoặc <span class="docs-ui">Xóa khỏi danh sách</span>. Việc xóa không bao giờ xóa thư mục.</p>
+<p>Terminal mở trong thư mục dự án, và các review được lưu dưới <code>&lt;project&gt;/.ferret/</code>.</p>
+
+<!-- @save-url 8914160725 -->
+## Lưu URL
+<ol class="docs-steps">
+  <li>Mở trang trong trình duyệt tích hợp.</li>
+  <li>Bấm <span class="docs-ui">+</span> (<span class="docs-ui">Lưu URL hiện tại</span>) trên thanh công cụ của trình duyệt. URL hiện tại được điền sẵn.</li>
+  <li>Nhập <span class="docs-ui">Tên</span> rồi bấm <span class="docs-ui">Lưu</span>.</li>
+</ol>
+<p>Chỉ chấp nhận URL <code>http://</code> và <code>https://</code>. Nếu bạn giữ nguyên tên được gợi ý, tên sẽ được đoán từ host:</p>
+<table>
+  <thead><tr><th>Host</th><th>Tên</th></tr></thead>
+  <tbody>
+    <tr><td><code>localhost</code>, <code>127.*</code>, <code>::1</code>, <code>0.0.0.0</code>, <code>*.localhost</code></td><td><code>local</code></td></tr>
+    <tr><td>chứa <code>dev</code>, <code>develop</code>, <code>development</code></td><td><code>dev</code></td></tr>
+    <tr><td>chứa <code>stg</code>, <code>stage</code>, <code>staging</code></td><td><code>stg</code></td></tr>
+    <tr><td>mọi trường hợp khác</td><td><code>prd</code></td></tr>
+  </tbody>
+</table>
+<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="URL đã lưu trên thanh công cụ của trình duyệt (ảnh chụp màn hình sắp có)"><span>Ảnh chụp màn hình sắp có</span></div><figcaption>URL đã lưu trên thanh công cụ của trình duyệt</figcaption></figure>
+
+<!-- @review-targets 351621051d -->
+## Panel mục tiêu review
+{{clip:targets|Chuyển mục tiêu review và trang mà không dừng ghi.}}
+<p>Trong chế độ Feedback, panel <span class="docs-ui">Mục tiêu review</span> ở bên phải liệt kê mọi thứ bạn có thể review trong dự án hiện tại. Chuyển mục tiêu không làm dừng việc ghi. Bật/tắt panel bằng <span class="docs-ui">Xem → Bật/tắt mục tiêu review</span> ({{keys:Mod+Shift+K}}) hoặc <span class="docs-ui">Ẩn panel</span>.</p>
+<ul>
+  <li><strong><span class="docs-ui">Đích</span></strong>: các URL đã lưu của dự án. Dưới mỗi URL là cây các trang bạn đã truy cập trên site đó. Những site bạn đã truy cập nhưng chưa lưu xuất hiện thành nhóm riêng.</li>
+  <li><strong><span class="docs-ui">Tệp</span></strong>: thư mục dự án. Một tệp được mở dưới dạng xem trước (Markdown và Mermaid được hiển thị, văn bản khác ở chế độ chỉ đọc), nên bạn cũng có thể review tài liệu. Biểu tượng bút chì (<span class="docs-ui">Mở trong editor</span>) mở tệp trong editor.</li>
+</ul>
+<p><span class="docs-ui">Lọc mục tiêu</span> lọc cùng lúc mục tiêu, trang và tệp, với cách khớp gần đúng giống <span class="docs-ui">Đi đến tệp…</span>. Trong danh sách, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> hoặc <kbd>1</kbd>–<kbd>9</kbd> để chuyển mục tiêu. <span class="docs-ui">Mở URL…</span> mở một URL dùng một lần, và <span class="docs-ui">Lưu vào URL của dự án</span> giữ lại URL đó.</p>
+<p>Mục tiêu lấy từ <code>projects[].urls</code> trong <code>settings.json</code> (xem <a href="settings-json.html#example">ví dụ</a>). Mỗi mục cần một <code>url</code>, một <code>launchCommand</code> (chạy trong terminal, ví dụ để khởi động ứng dụng desktop), hoặc một <code>windowMatch</code> (cửa sổ cần ghi). Chọn một mục tiêu là cửa sổ sẽ đặt nó làm nguồn ghi, nên không thể làm việc này trong lúc đang ghi. Các trang đã truy cập được ghi nhớ theo từng dự án, chỉ trên máy này (tối đa 200).</p>
+
+<!-- @switch-env 5103621352 -->
+## Mở và chuyển môi trường
+<p>Bấm vào một URL đã lưu để mở nó. Nếu trang hiện tại nằm dưới một URL đã lưu khác, Ferret giữ nguyên path, query và hash, chỉ đổi origin. Ví dụ, đang ở <code>http://localhost:3000/pricing?plan=pro</code>, bấm <code>prd</code> sẽ mở <code>https://example.com/pricing?plan=pro</code>.</p>
+<p>Chip khớp với trang hiện tại (tiền tố dài nhất) được làm nổi bật. Nhấp chuột phải vào chip hoặc dùng biểu tượng bút chì của nó để sửa hoặc <span class="docs-ui">Xóa</span>. Khi mở một dự án mà chưa có URL trước đó, URL đã lưu đầu tiên của dự án sẽ được tải.</p>

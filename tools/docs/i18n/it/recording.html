@@ -1,0 +1,54 @@
+<!-- Ferret docs translation: it / recording. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 80e8dd1a5a -->
+Registrazione
+
+<!-- @lead 14988eae28 -->
+Registra il browser integrato, un intero schermo o un'altra finestra. Parla, cerchia e scrivi mentre usi la pagina.
+
+<!-- @target 133550362a -->
+## Scegliere cosa registrare
+<p>In modalità Feedback, fai clic su <span class="docs-ui">Scegli il target di registrazione</span>. La finestra <span class="docs-ui">Target di registrazione</span> offre:</p>
+<table>
+  <thead><tr><th>Target</th><th>Cosa viene catturato</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Browser integrato</span> (predefinito)</td><td>Video, voce e penna, più URL, selettori degli elementi, clic e scorrimenti. Non serve alcun permesso del sistema operativo.</td></tr>
+    <tr><td><span class="docs-ui">Intero schermo</span></td><td>Video, voce e penna. Nessun URL, elemento o registro delle azioni (questo viene indicato in <code>feedback.md</code>).</td></tr>
+    <tr><td><span class="docs-ui">Finestra</span></td><td>Come sopra. Le finestre di Ferret stesso non sono elencate.</td></tr>
+  </tbody>
+</table>
+<p>La scelta viene ricordata. Su macOS, la cattura dello schermo e delle finestre richiede il permesso di registrazione dello schermo (<a href="troubleshooting.html#screen-permission">come concederlo</a>).</p>
+
+<!-- @record 0d1af48c7a -->
+## Avviare, mettere in pausa, fermare
+{{clip:record|Registrazione: parla della pagina e cerchia il punto con la penna.}}
+<ol class="docs-steps">
+  <li>Apri la pagina da rivedere nel browser integrato.</li>
+  <li><span class="docs-ui">Registra</span> nella barra del titolo, oppure {{keys:Mod+Shift+R}}.</li>
+  <li><span class="docs-ui">Pausa</span> ferma il disegno e il timer. <span class="docs-ui">Riprendi</span> continua.</li>
+  <li><span class="docs-ui">Ferma</span>, oppure di nuovo {{keys:Mod+Shift+R}}.</li>
+</ol>
+<p>Nella barra laterale, ogni progetto ha il proprio <span class="docs-ui">Nuova revisione</span> (oppure il <span class="docs-ui">+</span> sulla sua riga, <span class="docs-ui">Nuova revisione in &lt;name&gt;</span>). Su un altro progetto, passa prima a quel progetto e poi avvia la registrazione. Non si avvia mentre è in corso un'altra registrazione.</p>
+<p>Una registrazione dura al massimo 90 minuti. Ricevi un avviso vicino al limite, e quando lo si raggiunge la registrazione si ferma e viene salvata automaticamente.</p>
+<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="Barra degli strumenti della modalità Feedback (screenshot in arrivo)"><span>Screenshot in arrivo</span></div><figcaption>Barra degli strumenti della modalità Feedback</figcaption></figure>
+
+<!-- @pen 0232dc7983 -->
+## Penna
+<ul>
+  <li><strong><span class="docs-ui">Penna</span></strong>: selezionala, oppure tieni premuto {{keys:Alt}} per disegnare solo finché il tasto è premuto (ignorato mentre scrivi in un campo).</li>
+  <li><strong><span class="docs-ui">Cancella</span></strong>: rimuove i segni attuali.</li>
+</ul>
+<p>Cerchia il punto mentre ne parli: le parole e i segni finiscono nella stessa segnalazione. La penna è disponibile solo durante la registrazione. Non c'è uno strumento di testo: dillo a voce. I tasti per la penna, il riquadro e i colori sono elencati in <a href="keyboard.html#drawing">Scorciatoie da tastiera</a>.</p>
+
+<!-- @annotations-clear ea2e57b47b -->
+## Quando i segni scompaiono
+<p>I segni appartengono alla schermata su cui sono stati disegnati. Vengono registrati nella segnalazione attuale, e poi cancellati, quando:</p>
+<ul>
+  <li>la pagina cambia: un caricamento completo, oppure un cambio di route di una SPA verso un nuovo percorso o una nuova query. Un cambio del solo hash li mantiene.</li>
+  <li>scorri la pagina</li>
+  <li>termina un segmento parlato</li>
+</ul>
+
+<!-- @mic 3540329978 -->
+## Microfono
+<p>Il microfono è attivo per impostazione predefinita. Puoi attivarlo o disattivarlo dal footer (<span class="docs-ui">Disattiva microfono</span> / <span class="docs-ui">Attiva microfono</span>) oppure con <span class="docs-ui">Registra la mia voce</span> nelle Impostazioni. Scegli un dispositivo in <span class="docs-ui">Microfono</span>.</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">In arrivo</p><p><span class="docs-ui">Registra anche l'interlocutore</span> (cattura degli altri partecipanti a una riunione tramite l'audio di sistema) è in beta. Non è ancora stato verificato con le app per riunioni.</p></div>

@@ -1,0 +1,54 @@
+<!-- Ferret docs translation: de / recording. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 80e8dd1a5a -->
+Aufnahme
+
+<!-- @lead 14988eae28 -->
+Nehmen Sie den integrierten Browser, einen ganzen Bildschirm oder ein anderes Fenster auf. Sprechen, einkreisen und tippen Sie, während Sie die Seite bedienen.
+
+<!-- @target 133550362a -->
+## Aufnahmeziel wählen
+<p>Klicken Sie im Feedback-Modus auf <span class="docs-ui">Aufnahmeziel wählen</span>. Der Dialog <span class="docs-ui">Aufnahmeziel</span> bietet:</p>
+<table>
+  <thead><tr><th>Ziel</th><th>Erfasst</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Integrierter Browser</span> (Standard)</td><td>Video, Stimme und Stift, dazu URL, Element-Selektoren, Klicks und Scrollen. Keine Betriebssystem-Berechtigung nötig.</td></tr>
+    <tr><td><span class="docs-ui">Ganzer Bildschirm</span></td><td>Video, Stimme und Stift. Keine URL, kein Element und kein Aktionsprotokoll (das wird in <code>feedback.md</code> vermerkt).</td></tr>
+    <tr><td><span class="docs-ui">Fenster</span></td><td>Wie oben. Die eigenen Fenster von Ferret werden nicht aufgeführt.</td></tr>
+  </tbody>
+</table>
+<p>Ihre Auswahl wird gespeichert. Unter macOS erfordert die Aufnahme von Bildschirm und Fenstern die Berechtigung „Bildschirmaufnahme“ (<a href="troubleshooting.html#screen-permission">so erteilen Sie sie</a>).</p>
+
+<!-- @record 0d1af48c7a -->
+## Starten, pausieren, stoppen
+{{clip:record|Aufnahme: über die Seite sprechen und die Stelle mit dem Stift einkreisen.}}
+<ol class="docs-steps">
+  <li>Öffnen Sie die zu prüfende Seite im integrierten Browser.</li>
+  <li><span class="docs-ui">Aufnehmen</span> in der Titelleiste oder {{keys:Mod+Shift+R}}.</li>
+  <li><span class="docs-ui">Pause</span> hält Zeichnen und Timer an. <span class="docs-ui">Fortsetzen</span> macht weiter.</li>
+  <li><span class="docs-ui">Stopp</span> oder erneut {{keys:Mod+Shift+R}}.</li>
+</ol>
+<p>In der Seitenleiste hat jedes Projekt sein eigenes <span class="docs-ui">Neues Review</span> (oder das <span class="docs-ui">+</span> in seiner Zeile, <span class="docs-ui">Neues Review in &lt;name&gt;</span>). Bei einem anderen Projekt wird zuerst zu diesem Projekt gewechselt und dann die Aufnahme gestartet. Solange eine andere Aufnahme läuft, startet es nicht.</p>
+<p>Eine Aufnahme ist auf 90 Minuten begrenzt. Kurz vor dem Limit erhalten Sie eine Warnung, und beim Erreichen wird die Aufnahme automatisch gestoppt und gespeichert.</p>
+<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="Werkzeugleiste im Feedback-Modus (Screenshot folgt)"><span>Screenshot folgt</span></div><figcaption>Werkzeugleiste im Feedback-Modus</figcaption></figure>
+
+<!-- @pen 0232dc7983 -->
+## Stift
+<ul>
+  <li><strong><span class="docs-ui">Stift</span></strong>: Wählen Sie ihn aus, oder halten Sie {{keys:Alt}} gedrückt, um nur so lange zu zeichnen, wie die Taste gedrückt ist (wird beim Tippen in ein Feld ignoriert).</li>
+  <li><strong><span class="docs-ui">Leeren</span></strong>: entfernt die aktuellen Markierungen.</li>
+</ul>
+<p>Kreisen Sie die Stelle ein, während Sie darüber sprechen: Worte und Markierungen landen im selben Befund. Der Stift ist nur während einer Aufnahme verfügbar. Ein Textwerkzeug gibt es nicht. Sagen Sie es stattdessen. Die Tasten für Stift, Rahmen und Farben finden Sie unter <a href="keyboard.html#drawing">Tastenkürzel</a>.</p>
+
+<!-- @annotations-clear ea2e57b47b -->
+## Wann Markierungen verschwinden
+<p>Markierungen gehören zu dem Bildschirm, auf dem sie gezeichnet wurden. Sie werden in den aktuellen Befund übernommen und dann gelöscht, wenn:</p>
+<ul>
+  <li>die Seite navigiert: ein vollständiges Laden oder ein SPA-Routenwechsel zu einem neuen Pfad oder einer neuen Query. Eine reine Änderung des Hashs behält sie.</li>
+  <li>Sie auf der Seite scrollen</li>
+  <li>ein gesprochener Abschnitt endet</li>
+</ul>
+
+<!-- @mic 3540329978 -->
+## Mikrofon
+<p>Das Mikrofon ist standardmäßig eingeschaltet. Schalten Sie es in der Fußleiste um (<span class="docs-ui">Mikrofon ausschalten</span> / <span class="docs-ui">Mikrofon einschalten</span>) oder mit <span class="docs-ui">Meine Stimme aufnehmen</span> in den Einstellungen. Ein Gerät wählen Sie unter <span class="docs-ui">Mikrofon</span>.</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Demnächst</p><p><span class="docs-ui">Auch die Gegenseite aufnehmen</span> (andere Teilnehmende in einem Meeting über das Systemaudio erfassen) ist in der Beta. Mit Meeting-Apps wurde es noch nicht geprüft.</p></div>

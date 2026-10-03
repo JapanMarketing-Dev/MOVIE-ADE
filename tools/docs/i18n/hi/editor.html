@@ -1,0 +1,35 @@
+<!-- Ferret docs translation: hi / editor. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 05d78374e2 -->
+Editor और प्रीव्यू
+
+<!-- @lead 97cbc36c8d -->
+प्रोजेक्ट की फ़ाइलें खोलें और संपादित करें, और Markdown व Mermaid का प्रीव्यू देखें। बिल्ट-इन ब्राउज़र में खोला गया प्रीव्यू किसी भी वेब पेज की तरह रिकॉर्ड और review किया जा सकता है।
+
+<!-- @files f1e2c27cca -->
+## फ़ाइलें खोलें और संपादित करें
+<ul>
+  <li><span class="docs-ui">फ़ाइलें</span> (फ़ाइल ट्री): {{keys:Mod+Shift+E}}, जिसमें <span class="docs-ui">फ़ाइल नाम से फ़िल्टर करें</span>, <span class="docs-ui">रिफ़्रेश करें</span> और <span class="docs-ui">सब छोटा करें</span> हैं।</li>
+  <li><span class="docs-ui">फ़ाइल पर जाएँ…</span>: {{keys:Mod+P}}।</li>
+  <li>{{keys:Mod+S}} से सेव करें। बदली हुई फ़ाइल बंद करने पर <q>&lt;name&gt; में बदलाव सेव करें?</q> पूछा जाता है, जिसमें <span class="docs-ui">सेव करें</span>, <span class="docs-ui">सेव न करें</span> और <span class="docs-ui">रद्द करें</span> होते हैं।</li>
+  <li>अगर बिना सेव किए बदलावों के दौरान फ़ाइल डिस्क पर बदल जाए, तो <span class="docs-ui">डिस्क से रीलोड करें</span> या <span class="docs-ui">मेरे बदलाव रखें</span> चुनें।</li>
+</ul>
+<p>Editor Monaco है। जो फ़ाइलें टेक्स्ट नहीं हैं, वे इसकी जगह एक viewer में खुलती हैं: इमेज (zoom in और out; SVG को code के रूप में भी दिखाया जा सकता है), seek bar के साथ वीडियो और ऑडियो, PDF, और किसी भी दूसरी binary फ़ाइल के लिए उसका size और शुरुआती bytes का hex view। Viewers सिर्फ़ पढ़ने के लिए हैं, और प्रोजेक्ट फ़ोल्डर के बाहर की फ़ाइलें या फ़ोल्डर से बाहर ले जाने वाले symbolic link से पहुँची फ़ाइलें नहीं दिखाई जातीं।</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">जल्द आ रहा है</p><p>फ़ाइल ट्री से फ़ाइलें बनाना, उनका नाम बदलना और उन्हें डिलीट करना।</p></div>
+
+<!-- @preview b8c0baaad4 -->
+## Markdown और Mermaid प्रीव्यू
+<p>प्रीव्यू <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> और <code>.mermaid</code> के लिए काम करता है। Mermaid ऐप के साथ ही आता है, इसलिए diagrams offline render होते हैं।</p>
+<ul>
+  <li><span class="docs-ui">प्रीव्यू बगल में खोलें</span>: editor के बगल में</li>
+  <li><span class="docs-ui">प्रीव्यू खोलें</span>: बिल्ट-इन ब्राउज़र (<code>ade-preview://</code>) में, ताकि आप उसे रिकॉर्ड और review कर सकें</li>
+</ul>
+
+<!-- @review-docs 3956ed6f10 -->
+## रिकॉर्ड करके दस्तावेज़ों का review करें
+<ol class="docs-steps">
+  <li>एक Markdown फ़ाइल खोलें और <span class="docs-ui">प्रीव्यू खोलें</span> पर क्लिक करें।</li>
+  <li>हमेशा की तरह रिकॉर्ड करें। spec या design doc पर बोलते जाएँ और जो गलत है उसे घेरें।</li>
+  <li>रोकें। Findings में URL की जगह फ़ाइल का प्रोजेक्ट-सापेक्ष path होता है।</li>
+  <li>दस्तावेज़ ठीक करवाने के लिए <span class="docs-ui">Agent को भेजें</span>।</li>
+</ol>
+<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="बिल्ट-इन ब्राउज़र में Markdown प्रीव्यू (screenshot जल्द आ रहा है)"><span>Screenshot जल्द आ रहा है</span></div><figcaption>बिल्ट-इन ब्राउज़र में Markdown प्रीव्यू</figcaption></figure>

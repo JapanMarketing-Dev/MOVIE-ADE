@@ -1,0 +1,54 @@
+<!-- Ferret docs translation: zh-TW / recording. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 80e8dd1a5a -->
+錄製
+
+<!-- @lead 14988eae28 -->
+錄製內建瀏覽器、整個螢幕或其他視窗。一邊操作頁面，一邊說話、圈選與輸入。
+
+<!-- @target 133550362a -->
+## 選擇要錄製的內容
+<p>在意見模式中，按一下 <span class="docs-ui">選擇錄製目標</span>。<span class="docs-ui">錄製目標</span> 對話框提供以下選項：</p>
+<table>
+  <thead><tr><th>目標</th><th>擷取的內容</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">內建瀏覽器</span>（預設）</td><td>影像、語音與畫筆，以及 URL、元素選擇器、點擊與捲動。不需要作業系統權限。</td></tr>
+    <tr><td><span class="docs-ui">整個螢幕</span></td><td>影像、語音與畫筆。沒有 URL、元素與操作記錄（<code>feedback.md</code> 中會註明這一點）。</td></tr>
+    <tr><td><span class="docs-ui">視窗</span></td><td>同上。Ferret 本身的視窗不會列出。</td></tr>
+  </tbody>
+</table>
+<p>你的選擇會被記住。在 macOS 上，擷取螢幕與視窗需要螢幕錄製權限（<a href="troubleshooting.html#screen-permission">授予方式</a>）。</p>
+
+<!-- @record 0d1af48c7a -->
+## 開始、暫停、停止
+{{clip:record|錄製：一邊談論頁面，一邊用畫筆圈出位置。}}
+<ol class="docs-steps">
+  <li>在內建瀏覽器中開啟要審查的頁面。</li>
+  <li>按標題列中的 <span class="docs-ui">錄製</span>，或按 {{keys:Mod+Shift+R}}。</li>
+  <li><span class="docs-ui">暫停</span> 會停止繪圖與計時器。<span class="docs-ui">繼續</span> 會接著錄製。</li>
+  <li>按 <span class="docs-ui">停止</span>，或再按一次 {{keys:Mod+Shift+R}}。</li>
+</ol>
+<p>在側邊欄中，每個專案都有自己的 <span class="docs-ui">新增審查</span>（或該列上的 <span class="docs-ui">+</span>，即 <span class="docs-ui">在 &lt;name&gt; 中新增審查</span>）。在其他專案上使用時，會先切換到該專案，再開始錄製。如果有其他錄製正在進行，則不會開始。</p>
+<p>每次錄製的上限為 90 分鐘。接近上限時會出現警告，達到上限時會自動停止並儲存。</p>
+<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="意見模式工具列（螢幕截圖即將推出）"><span>螢幕截圖即將推出</span></div><figcaption>意見模式工具列</figcaption></figure>
+
+<!-- @pen 0232dc7983 -->
+## 畫筆
+<ul>
+  <li><strong><span class="docs-ui">畫筆</span></strong>：選取它，或按住 {{keys:Alt}}，只在按住時繪圖（在欄位中輸入文字時會被忽略）。</li>
+  <li><strong><span class="docs-ui">清除</span></strong>：移除目前的標記。</li>
+</ul>
+<p>一邊談論某個位置，一邊把它圈起來：話語與標記會歸入同一則意見。畫筆只在錄製時可用。沒有文字工具，請直接用說的。畫筆、方框與顏色的按鍵列在<a href="keyboard.html#drawing">鍵盤快速鍵</a>中。</p>
+
+<!-- @annotations-clear ea2e57b47b -->
+## 標記何時消失
+<p>標記屬於繪製當時的畫面。在下列情況下，標記會記錄到目前的意見中，然後清除：</p>
+<ul>
+  <li>頁面導覽時：完整載入，或 SPA 路由變更到新的路徑或查詢字串。只變更雜湊時會保留標記。</li>
+  <li>捲動頁面時</li>
+  <li>一段語音結束時</li>
+</ul>
+
+<!-- @mic 3540329978 -->
+## 麥克風
+<p>麥克風預設為開啟。可從頁尾（<span class="docs-ui">關閉麥克風</span> / <span class="docs-ui">開啟麥克風</span>）或設定中的 <span class="docs-ui">錄下我的聲音</span> 切換。在 <span class="docs-ui">麥克風</span> 中選擇裝置。</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">即將推出</p><p><span class="docs-ui">也錄下對方的聲音</span>（透過系統音訊擷取會議中的其他參與者）目前為 Beta 版。尚未在會議 App 中驗證。</p></div>

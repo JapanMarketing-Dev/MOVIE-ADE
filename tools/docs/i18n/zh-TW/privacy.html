@@ -1,0 +1,96 @@
+<!-- Ferret docs translation: zh-TW / privacy. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title bd3b785878 -->
+資料與隱私權
+
+<!-- @lead f52bb23052 -->
+審查存放在你的專案資料夾中。設定存放在 <code>~/.ferret/</code>，金鑰與帳號則存放在作業系統的使用者資料資料夾。只有當機報告會經由 Sentry 送到開發者手上，而且你可以關閉。你選擇從 App 傳送的意見回饋會成為公開的 GitHub issue。
+
+<!-- @reviews 2d1a3289b5 -->
+## .ferret/reviews/ 的內容
+<pre><code>&lt;project&gt;/.ferret/reviews/20261003-104500/
+├── feedback.md      # what the agent reads
+├── 01.png, 02.png…  # one or more images per finding
+├── session.json     # review state and edit history
+├── events.jsonl     # action log (built-in browser only)
+├── recording.webm   # the video
+└── work/            # intermediate audio and frames</code></pre>
+<p>改名之前建立的審查存放在 <code>.ade-movie/reviews/</code>。這些審查仍會列出並可開啟，新的審查則會存到 <code>.ferret/reviews/</code>。</p>
+<p>開始錄製時，<code>.ferret/</code> 會被加到 <code>.git/info/exclude</code>。也能處理 worktree 與 submodule。<code>.gitignore</code> 絕不會被修改。中斷的審查若紀錄仍保留著，就能從歷程記錄中復原，此時 App 會警告最後幾秒可能遺失。</p>
+
+<!-- @retention 41bc6cfa7d -->
+## 保留期間
+<p><span class="docs-ui">保留錄影</span>（預設 7 天，可選 30 天或 <span class="docs-ui">永久</span>）：啟動時，超過該期間的已完成審查會刪除 <code>recording.webm</code> 與 <code>work/</code>。<code>feedback.md</code> 與意見的圖片會保留。未完成的審查絕不會被清除。清除作業在啟動時針對最後開啟的專案執行。</p>
+
+<!-- @network 8886bf9546 -->
+## 哪些資料會離開你的電腦
+<table>
+  <thead><tr><th>時機</th><th>傳送目的地</th><th>資料</th></tr></thead>
+  <tbody>
+    <tr><td>轉錄：<span class="docs-ui">本機（免費）</span></td><td>無</td><td>—</td></tr>
+    <tr><td>轉錄：OpenAI / 相容 OpenAI</td><td>OpenAI 或你的 Base URL</td><td>音訊片段</td></tr>
+    <tr><td>下載模型</td><td>Hugging Face</td><td>檔案請求</td></tr>
+    <tr><td><span class="docs-ui">整理</span></td><td>你的 Claude Code / Codex CLI，或你在 <code>organizer</code> 中設定的 LLM 端點</td><td>僅文字與操作記錄（不含圖片、音訊或影片）</td></tr>
+    <tr><td>驗收檢查（判定模型，預設關閉）</td><td>你的 Agent 經由本機中繼送到 Ollama / Cloudflare / AI Gateway / TypeSafe / 你的 URL</td><td>Agent 送出的內容：意見文字、「完成條件」，以及 BEFORE/AFTER 螢幕截圖（僅限圖片模型）</td></tr>
+    <tr><td><span class="docs-ui">傳送給 Agent</span></td><td>你終端機中的 Agent</td><td>一則指向 <code>feedback.md</code> 的指示</td></tr>
+    <tr><td><span class="docs-ui">傳送到 GitHub</span></td><td>透過 <code>gh</code> 送到 GitHub</td><td>僅內文（不含圖片）</td></tr>
+    <tr><td>頁尾的用量（僅限 Claude Code 與 Codex）</td><td>Anthropic、ChatGPT</td><td>以你自己的登入發出的用量請求</td></tr>
+    <tr><td>GitHub 加星提示</td><td>透過你的 <code>gh</code> 送到 GitHub</td><td>檢查你是否已為儲存庫加星，只有在你按下 <span class="docs-ui">在 GitHub 上加星</span> 時才會加星</td></tr>
+    <tr><td><span class="docs-ui">檢查更新</span>（手動）</td><td>下載伺服器（Cloudflare R2）</td><td><code>latest.json</code> 的請求</td></tr>
+    <tr><td>從 App 傳送意見回饋（僅在你傳送時；即將推出）</td><td>開發者的意見回饋中繼（Cloudflare Worker），會在 <code>JapanMarketing-Dev/ferret</code> 中建立公開 issue</td><td>你的文字、屬於錯誤或想法、App / 作業系統版本與 CPU，以及你附加的最多 3 張螢幕截圖。金鑰、權杖、電子郵件地址與主資料夾路徑會被遮蔽。中繼不會儲存你的 IP 位址（請參閱<a href="#feedback">從 App 傳送意見回饋</a>）</td></tr>
+    <tr><td>當機或錯誤（<span class="docs-ui">傳送當機報告</span> 開啟時）</td><td>Sentry</td><td>stack trace 與作業系統 / CPU / App 版本（請參閱<a href="#crash-reports">當機報告</a>）</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li>App 沒有分析功能、沒有效能追蹤，也沒有工作階段重播。唯一會在你未要求時傳送的資料是當機報告：錯誤、每次啟動一個工作階段，以及啟動緩慢與畫面凍結的警告，全部說明如下，且全部由 <span class="docs-ui">傳送當機報告</span> 控制。</li>
+  <li>URL 中看起來像機密的值（權杖、金鑰）會在寫入 <code>feedback.md</code> 之前被遮蔽。</li>
+  <li>從頁面擷取的文字在 <code>feedback.md</code> 中會被標示為資料，因此 Agent 會被告知不要遵循其中的指示。</li>
+  <li>本網站（不是 App）使用 Cloudflare Web Analytics 計算頁面瀏覽次數：不使用 Cookie、不做跨網站追蹤，也不收集個人資料。</li>
+</ul>
+
+<!-- @feedback ba5f3fb0a3 -->
+## 從 App 傳送意見回饋
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">即將推出</p><p>App 內的意見回饋表單及其中繼尚未發布。本節說明它們將如何運作。</p></div>
+<p>你將可以在 Ferret 內傳送錯誤回報或想法，不需要 GitHub 帳號。只有在你傳送時才會送出，並會成為 <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a> 中加上 <code>from-app</code> 標籤的<strong>公開</strong> issue。請勿包含任何你不會公開發表的內容。</p>
+<ul>
+  <li>App 會從你的電腦把內容送到一個小型中繼（由開發者營運的 Cloudflare Worker），由它用自己的 GitHub 權杖建立 issue。這個中繼是開發者唯一會收到你所寫內容的伺服器。</li>
+  <li>會傳送：你的標題與文字、屬於錯誤或想法、App 版本，以及你附加的最多 3 張 PNG 或 JPEG 螢幕截圖。作業系統名稱與版本、CPU 架構與隨機安裝 ID 只有在你保留勾選時才會傳送。不會傳送：你的姓名、電子郵件、GitHub 帳號、專案檔案、錄影或意見。</li>
+  <li>在建立 issue 之前，中繼會遮蔽看起來像金鑰或權杖的文字、電子郵件地址，以及主資料夾路徑中的使用者名稱，並避免 <code>@mentions</code> 通知任何人。它也會移除螢幕截圖中的位置資訊與其他中繼資料。不過仍請自行檢查你的文字：遮蔽無法攔截所有內容。</li>
+  <li>中繼不會儲存你的 IP 位址。為了限制單一傳送者的發文頻率（每小時 5 則、每天 20 則），它會以帶金鑰的雜湊計算 IP 位址（以及安裝 ID，若有傳送），最多保留 24 小時後刪除。兩者都不會出現在 issue 中。</li>
+  <li>螢幕截圖由中繼以無法猜測的名稱保存在 Cloudflare R2 中，並顯示在 issue 裡。若要移除某則 issue 或其螢幕截圖，請在該 issue 留言或另開新的 issue。</li>
+  <li>中繼的程式碼位於儲存庫的 <code>workers/feedback-relay</code>。</li>
+</ul>
+
+<!-- @crash-reports 3fdd78f6c3 -->
+## 當機報告
+<p>當 App 當機或遇到未處理的錯誤時，Ferret 會把當機報告傳送到 <a href="https://sentry.io/">Sentry</a>，以便修正錯誤。此功能預設為開啟。你可以在 <span class="docs-ui">設定 → 隱私權 → 傳送當機報告</span> 中關閉，或在首次啟動時顯示的通知上按 <span class="docs-ui">關閉</span>。關閉會立即生效；重新開啟則在下次啟動時生效。開發版建置（<code>pnpm dev</code>）也會傳送，並加上 <code>development</code> 標記，讓開發者能修正他們在開發時遇到的當機。E2E 執行與單元測試絕不會傳送。</p>
+<table>
+  <thead><tr><th>會傳送</th><th>不會傳送</th></tr></thead>
+  <tbody>
+    <tr><td>
+      <ul>
+        <li>錯誤類型與訊息，主資料夾路徑會顯示為 <code>~</code></li>
+        <li>Stack trace（發生在 Ferret 程式碼的哪個位置）</li>
+        <li>原生當機時：只有哪個程序當機、結束原因（例如 <q>crashed</q> 或 <q>oom</q>）以及 App 版本</li>
+        <li>作業系統名稱與版本、CPU 架構、Electron / Chrome / Node 版本、App 版本、螢幕大小、記憶體大小</li>
+        <li>錯誤發生前的 App 生命週期事件（例如 <q>app.ready</q>），以及啟動失敗</li>
+        <li>App 的哪個部分失敗：無法繪製的畫面區域（及其 React 元件名稱）、IPC 呼叫、無法啟動的終端機、當機或停止回應的程序，或載入失敗的 App 頁面</li>
+        <li>你當時在 App 中的位置：編輯器模式或意見模式、開啟的分頁（瀏覽器、意見、設定，或只記為 <q>file</q>），以及是否正在錄製</li>
+        <li>每次啟動一個工作階段（已開始、正常結束或當機），以便計算各版本的無當機率</li>
+        <li>隨機安裝 ID（首次啟動時建立，保存在 App 的設定資料夾中），以便計算受影響的安裝數量。它不會與你的姓名、電子郵件或裝置連結</li>
+        <li>僅限 JavaScript 當機：Ferret 本身最後 50 行記錄（例如 <q>[startup]</q> 與 <q>[recording]</q>），會經過縮短，並移除路徑、URL、電子郵件與金鑰</li>
+      </ul>
+    </td><td>
+      <ul>
+        <li>你的專案資料夾路徑與檔案名稱（替換為 <code>&lt;project&gt;</code>）</li>
+        <li>在內建瀏覽器中開啟的 URL 及其他任何網址（替換為 <code>&lt;url&gt;</code>）</li>
+        <li>終端機輸出、轉錄內容、意見、頁面文字、螢幕截圖</li>
+        <li>電子郵件地址與 API 金鑰或權杖（會被替換）</li>
+        <li>你的姓名、裝置名稱、IP 位址（不會儲存）、Cookie、區域變數</li>
+        <li>原生當機的記憶體傾印（minidump）。其中可能包含記憶體中的任何內容，因此會留在你的電腦上</li>
+        <li>點擊、網路請求，以及任何不屬於 Ferret 本身的記錄行</li>
+      </ul>
+    </td></tr>
+  </tbody>
+</table>
+<p>已安裝的 App 每次啟動最多傳送 10 份報告，且 JavaScript 錯誤只傳送一半（原生當機一律傳送）。開發版建置會傳送所有錯誤，每次啟動最多 50 份。同一個錯誤每次啟動只會傳送一次。啟動緩慢（超過 5 秒）與 App 長時間凍結（超過 1 秒）會以警告傳送，最多每 10 分鐘一次。不使用效能追蹤或工作階段重播。App 使用 Sentry 的免費方案；額度用完時，多出的報告會被捨棄，不會向任何人收費。</p>
+<p>自行建置 Ferret 嗎？請將 <code>FERRET_SENTRY_DSN</code>（舊名稱 <code>MOVIE_ADE_SENTRY_DSN</code> 也可使用）設為你自己的 Sentry DSN，或設為空字串以完全不傳送。程式碼位於 <code>src/main/telemetry.ts</code> 與 <code>src/shared/telemetry.ts</code>。</p>

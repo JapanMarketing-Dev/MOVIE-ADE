@@ -1,0 +1,35 @@
+<!-- Ferret docs translation: id / editor. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 05d78374e2 -->
+Editor dan pratinjau
+
+<!-- @lead 97cbc36c8d -->
+Buka dan edit file proyek, serta pratinjau Markdown dan Mermaid. Pratinjau yang dibuka di browser bawaan dapat direkam dan ditinjau seperti halaman web lainnya.
+
+<!-- @files f1e2c27cca -->
+## Membuka dan mengedit file
+<ul>
+  <li><span class="docs-ui">File</span> (pohon file): {{keys:Mod+Shift+E}}, dengan <span class="docs-ui">Filter berdasarkan nama file</span>, <span class="docs-ui">Segarkan</span>, dan <span class="docs-ui">Ciutkan Semua</span>.</li>
+  <li><span class="docs-ui">Buka File…</span>: {{keys:Mod+P}}.</li>
+  <li>Simpan dengan {{keys:Mod+S}}. Menutup file yang diubah akan menanyakan <q>Simpan perubahan pada &lt;name&gt;?</q> dengan <span class="docs-ui">Simpan</span>, <span class="docs-ui">Jangan Simpan</span>, dan <span class="docs-ui">Batal</span>.</li>
+  <li>Jika file berubah di disk saat Anda memiliki edit yang belum disimpan, pilih <span class="docs-ui">Muat Ulang dari Disk</span> atau <span class="docs-ui">Pertahankan Perubahan Saya</span>.</li>
+</ul>
+<p>Editornya adalah Monaco. File yang bukan teks dibuka di penampil: gambar (perbesar dan perkecil; SVG juga bisa ditampilkan sebagai kode), video dan audio dengan bilah posisi, PDF, dan untuk file biner lainnya, ukurannya serta tampilan hex dari byte-byte pertama. Penampil bersifat hanya-baca, dan file di luar folder proyek atau yang dicapai melalui symbolic link yang keluar dari folder tersebut tidak ditampilkan.</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Segera hadir</p><p>Membuat, mengganti nama, dan menghapus file dari pohon file.</p></div>
+
+<!-- @preview b8c0baaad4 -->
+## Pratinjau Markdown dan Mermaid
+<p>Pratinjau berfungsi untuk <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code>, dan <code>.mermaid</code>. Mermaid sudah dibundel dengan aplikasi, sehingga diagram dirender secara offline.</p>
+<ul>
+  <li><span class="docs-ui">Buka Pratinjau di Samping</span>: di sebelah editor</li>
+  <li><span class="docs-ui">Buka Pratinjau</span>: di browser bawaan (<code>ade-preview://</code>), sehingga Anda bisa merekam dan meninjaunya</li>
+</ul>
+
+<!-- @review-docs 3956ed6f10 -->
+## Meninjau dokumen dengan merekam
+<ol class="docs-steps">
+  <li>Buka file Markdown lalu klik <span class="docs-ui">Buka Pratinjau</span>.</li>
+  <li>Rekam seperti biasa. Bahas spesifikasi atau dokumen desainnya dan lingkari bagian yang salah.</li>
+  <li>Berhenti. Temuan merujuk ke path file relatif terhadap proyek, bukan URL.</li>
+  <li>Klik <span class="docs-ui">Kirim ke Agent</span> agar dokumennya diperbaiki.</li>
+</ol>
+<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="Pratinjau Markdown di browser bawaan (screenshot segera hadir)"><span>Screenshot segera hadir</span></div><figcaption>Pratinjau Markdown di browser bawaan</figcaption></figure>

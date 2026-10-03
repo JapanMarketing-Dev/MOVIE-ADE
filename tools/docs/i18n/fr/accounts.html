@@ -1,0 +1,24 @@
+<!-- Ferret docs translation: fr / accounts. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title cb165a192d -->
+Comptes et utilisation
+
+<!-- @lead 6a6ab3126f -->
+Passez d'une connexion Claude Code ou Codex à une autre, et suivez vos fenêtres de limite d'utilisation dans le pied de page. Ces deux fonctions ne marchent pour l'instant qu'avec Claude Code et Codex ; les autres agents continuent d'utiliser leur propre connexion comme d'habitude.
+
+<!-- @accounts f0d5cb0211 -->
+## Plusieurs comptes
+<p>Les comptes sont facultatifs. Ajoutez-en seulement si vous jonglez entre plusieurs.</p>
+<ol class="docs-steps">
+  <li>Ouvrez <span class="docs-ui">Réglages → Comptes</span>, ou <span class="docs-ui">Gérer les comptes…</span> depuis le menu d'utilisation du pied de page.</li>
+  <li><span class="docs-ui">Ajouter un compte</span> lance la connexion de l'agent dans un onglet du terminal intégré.</li>
+  <li>Choisissez le compte à utiliser. Les onglets en cours gardent leur compte. Les nouveaux onglets utilisent celui qui est sélectionné.</li>
+</ol>
+<p>Fonctionnement : chaque compte ajouté a son propre dossier de configuration, <code>&lt;userData&gt;/accounts/&lt;agent&gt;/&lt;id&gt;/</code>. Ferret lance l'agent avec <code>CLAUDE_CONFIG_DIR</code> (Claude Code) ou <code>CODEX_HOME</code> (Codex) pointant vers ce dossier. <span class="docs-ui">Par défaut du système</span> utilise vos <code>~/.claude</code> / <code>~/.codex</code> habituels, sans modification.</p>
+<p>Supprimer un compte supprime son dossier de configuration. Cela ne vous déconnecte pas côté serveur.</p>
+
+<!-- @usage bb03a3a17a -->
+## Utilisation dans le pied de page
+<p>Le pied de page indique la part utilisée de chaque fenêtre de limite : la fenêtre de 5 heures et la fenêtre hebdomadaire, plus la fenêtre hebdomadaire par modèle pour Claude. Les couleurs passent au jaune à 60 % et au rouge à 80 %. Les valeurs se mettent à jour toutes les 15 minutes, ou avec <span class="docs-ui">Rafraîchir l'utilisation</span>.</p>
+<p>Le niveau de détail dépend de la place disponible dans le pied de page. S'il y a de la place, il affiche des barres, les noms des fenêtres et les pourcentages. À mesure que le pied de page se rétrécit, il retire d'abord les éléments les moins utiles, jusqu'à ne garder qu'un pourcentage par agent. Cliquez sur l'utilisation pour tout voir dans une fenêtre contextuelle.</p>
+<p>L'utilisation est récupérée directement auprès d'Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) et de ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) avec les identifiants du compte connecté.</p>
+<figure class="docs-shot" data-shot="usage"><div class="docs-shot-slot" role="img" aria-label="Utilisation dans le pied de page (capture d'écran bientôt disponible)"><span>Capture d'écran bientôt disponible</span></div><figcaption>Utilisation dans le pied de page</figcaption></figure>

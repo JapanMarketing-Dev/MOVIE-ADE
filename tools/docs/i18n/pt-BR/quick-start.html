@@ -1,0 +1,66 @@
+<!-- Ferret docs translation: pt-BR / quick-start. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 0eb95fb624 -->
+Início rápido
+
+<!-- @lead 8e0cda30a0 -->
+Instale o Ferret, abra seu projeto e a URL do servidor de desenvolvimento, grave um feedback e entregue-o ao seu agente de programação. Leva cerca de cinco minutos.
+
+<!-- @before 9aee0a2173 -->
+## Antes de começar
+{{clip:quick-start|Abra uma página, grave, circule e fale, pare e envie os apontamentos a um agente.}}
+<ul>
+  <li>Um agente de programação que rode no terminal, instalado e com login feito: por exemplo Claude Code (<code>claude</code>), Codex (<code>codex</code>) ou Gemini CLI (<code>gemini</code>). O Ferret o executa no terminal integrado. Qualquer agente da <a href="agents.html#supported">lista de suportados</a> funciona, assim como qualquer outra CLI que você mesmo adicionar.</li>
+  <li>Um app web que você possa abrir por URL, por exemplo um servidor de desenvolvimento em <code>http://localhost:3000</code>.</li>
+  <li>Um microfone. O feedback é a sua voz mais a caneta. Sem microfone, os círculos da caneta ainda viram apontamentos, mas sem palavras.</li>
+</ul>
+
+<!-- @install 6d549cfebe -->
+## 1. Instalar
+<p>Baixe a versão para o seu sistema operacional na <a href="../download.html">página de download</a> e abra-a. A versão para macOS é assinada com um Developer ID e notarizada pela Apple, então abre como qualquer outro app. As versões para Windows e Linux ainda não têm assinatura de código, por isso a primeira execução exige um passo a mais. Veja <a href="install.html">Instalação</a> para o Windows SmartScreen, Linux e compilação a partir do código-fonte.</p>
+
+<!-- @open fad3e18b1d -->
+## 2. Abrir um projeto e uma URL
+<ol class="docs-steps">
+  <li><span class="docs-ui">Arquivo → Abrir pasta do projeto…</span> ({{keys:Mod+O}}) e escolha a raiz do seu repositório.</li>
+  <li>Digite a URL do servidor de desenvolvimento na barra de endereço do navegador ({{keys:Mod+L}}) e pressione <kbd>Enter</kbd>.</li>
+  <li>Opcional: clique em <span class="docs-ui">+</span> (<span class="docs-ui">Salvar URL atual</span>) para guardá-la como um atalho de um clique, como <code>local</code>, <code>dev</code> ou <code>prd</code>.</li>
+</ol>
+<p>Abrir um projeto também inicia seus agentes em abas de terminal nessa pasta. Por padrão, são o Claude Code e o Codex; escolha os que você usa em <span class="docs-ui">Configurações → Agents → Iniciar ao abrir um projeto</span> (veja <a href="settings.html#agent">Configurações</a>).</p>
+
+<!-- @record 36e1ea60f7 -->
+## 3. Gravar
+<ol class="docs-steps">
+  <li>Clique em <span class="docs-ui">Gravar</span> na barra de título ou pressione {{keys:Mod+Shift+R}}. A janela muda para o modo Feedback.</li>
+  <li>Use a página normalmente e diga o que deve mudar.</li>
+  <li>Segure {{keys:Alt}} (ou escolha <span class="docs-ui">Caneta</span>) e arraste para circular o ponto enquanto fala sobre ele.</li>
+  <li>Clique em <span class="docs-ui">Parar</span> ou pressione {{keys:Mod+Shift+R}} de novo.</li>
+</ol>
+<p>Cada momento em que você fala ou circula vira um apontamento: uma captura de tela com as marcas da caneta, o pedido, as palavras originais, a URL e o elemento que você indicou.</p>
+
+<!-- @review 152a385c40 -->
+## 4. Conferir os apontamentos
+<p>Depois que você para, a janela volta ao modo Editor e abre a aba <span class="docs-ui">Apontamentos</span>.</p>
+<ul>
+  <li>Edite um título ou pedido ali mesmo.</li>
+  <li>Alterne entre <span class="docs-ui">Enviar</span> / <span class="docs-ui">Não enviar</span> em cada apontamento, use <span class="docs-ui">Mesclar com o próximo</span> ou <span class="docs-ui">Excluir</span>.</li>
+  <li><span class="docs-ui">Desfazer</span> reverte a última edição.</li>
+</ul>
+
+<!-- @send bdd30ad5ee -->
+## 5. Enviar a um agente
+<ol class="docs-steps">
+  <li>Clique em <span class="docs-ui">Enviar ao Agent</span>. O envio vai para o agente da aba de terminal atual ou para um que esteja em execução. A seta ao lado do botão escolhe um agente ou uma aba específica.</li>
+  <li>Se nenhum agente estiver em execução, o Ferret inicia um primeiro e envia assim que ele estiver pronto.</li>
+</ol>
+<p>O Ferret digita uma instrução no prompt do agente e a envia. Por padrão, ela começa assim:</p>
+<pre><code>Leia "{{path}}" e a imagem de cada apontamento na mesma pasta e implemente todos os apontamentos marcados para envio. …</code></pre>
+<p>O restante pede ao agente que confira cada alteração na tela real, registre o progresso de cada apontamento e termine com uma lista de Concluído / Não concluído. O agente lê <code>.ferret/reviews/&lt;timestamp&gt;/feedback.md</code> e os PNGs ao lado dele. O vídeo nunca é enviado. Usa um agente fora do Ferret? Clique em <span class="docs-ui">Copiar para o Agent</span> e cole.</p>
+<p>O texto padrão segue o idioma da interface. Você pode substituí-lo nas Configurações: veja <a href="agents.html#prompt">Personalizar a instrução</a>.</p>
+
+<!-- @next 1bb70e0695 -->
+## Próximos passos
+<ul>
+  <li><a href="concepts.html">Conceitos</a>: modos, apontamentos e o que o agente recebe</li>
+  <li><a href="transcription.html">Transcrição e custos</a>: baixe um modelo whisper gratuito que roda no dispositivo ou use seu próprio endpoint</li>
+  <li><a href="keyboard.html">Atalhos de teclado</a></li>
+</ul>

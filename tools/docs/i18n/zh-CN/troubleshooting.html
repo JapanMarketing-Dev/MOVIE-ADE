@@ -1,0 +1,73 @@
+<!-- Ferret docs translation: zh-CN / troubleshooting. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title c3af076f92 -->
+故障排除
+
+<!-- @lead eabdc6539a -->
+常见问题及解决方法。引号中的消息是应用在简体中文界面下显示的内容。
+
+<!-- @screen-permission 45fa22d7c7 -->
+## 无法录制屏幕或窗口（macOS）
+<p>消息：<q>录制整个屏幕或其他窗口需要 macOS 屏幕录制权限。</q></p>
+<ol class="docs-steps">
+  <li>在 <span class="docs-ui">录制对象</span> 对话框中点击 <span class="docs-ui">打开系统设置</span>。</li>
+  <li>在 <span class="docs-ui">隐私与安全性 → 屏幕与系统录音</span> 中打开 Ferret。</li>
+  <li>重新启动应用，然后点击 <span class="docs-ui">重新检查</span>。</li>
+</ol>
+<p>录制 <span class="docs-ui">内置浏览器</span> 不需要任何权限。</p>
+<p>在 macOS 上从源码运行时，<code>pnpm dev</code> 会启动一个经过重命名、采用临时（ad-hoc）签名的 Electron 副本，它同样叫 Ferret（<code>scripts/prepare-dev-electron.mjs</code>），因此会在这些列表中显示为另一个 Ferret 条目。第一次运行时，macOS 会再次请求屏幕录制和麦克风权限，之后不会再询问。开发版本使用模拟钥匙串（<code>--use-mock-keychain</code>），因此不会弹出钥匙串提示：开发版本中保存的 Cookie 和密钥使用固定密钥加密，而不是真正的钥匙串。设置 <code>ADE_DEV_REAL_KEYCHAIN=1</code> 即可使用真正的钥匙串。</p>
+
+<!-- @mic 400e196b24 -->
+## 麦克风无法打开
+<p>消息：<q>无法打开麦克风。请在系统设置中检查权限。</q></p>
+<ul>
+  <li>macOS：在 <span class="docs-ui">系统设置 → 隐私与安全性 → 麦克风</span> 中打开 Ferret。</li>
+  <li>Windows：在 <span class="docs-ui">设置 → 隐私和安全性 → 麦克风</span> 中允许桌面应用访问。</li>
+</ul>
+<p>没有麦克风时，用画笔圈出的地方仍会生成反馈，但不带口述的请求。</p>
+
+<!-- @whisper ec2a54a0ef -->
+## 没有本机模型 / 找不到 whisper-cli
+<p>消息：<q>未找到本机转写模型。音频会被保存，仅处理画笔反馈。</q></p>
+<p>在设置中下载模型，或选择已有的 <code>ggml-*.bin</code>。如果设置中显示 <q>未找到 whisper.cpp（whisper-cli）。</q>，请安装它（<a href="transcription.html#whisper">安装说明</a>），确认它在 <code>PATH</code> 中，然后重新打开设置。从 Finder 或资源管理器启动的打包应用可能读不到 shell 的 <code>PATH</code>，因此请安装到 Homebrew 等标准位置。</p>
+<p>未通过 sha256 校验的模型下载会被丢弃。请重试。</p>
+
+<!-- @node-pty bb433d3335 -->
+## 终端：无法加载 node-pty
+<p>从源码运行时，如果 node-pty 是针对不同的 Node 或 Electron ABI 构建的，就会出现此问题。</p>
+<pre><code>pnpm rebuild:native</code></pre>
+
+<!-- @agent 1b8e87d730 -->
+## 找不到 Agent / 发送给 Agent 没有发送
+<ul>
+  <li>终端中出现 <code>command not found: claude</code>（或 <code>codex</code>、<code>gemini</code> 等其他 Agent 的命令）：CLI 未安装或不在 <code>PATH</code> 中。Ferret 会直接显示 shell 自身的错误，不附加提示。请确认该命令在你平时使用的终端中可以运行，或在 <span class="docs-ui">设置 → Agent</span> 中使用 <span class="docs-ui">安装</span>，或将绝对路径设为该 Agent 的 <span class="docs-ui">命令</span>。</li>
+  <li><q>Agent 正在等待确认。请在终端中回应后再发送。</q> 请先回应 Agent 的提示。</li>
+  <li><q>Agent 的输入尚未就绪。</q> 请等待 Agent 启动完成。</li>
+  <li><q>文本已输入但未发送。请在终端中按 Enter。</q></li>
+  <li><q>请先打开终端。</q></li>
+  <li><q>无法解析启动参数：引号未闭合。</q> 请修正该 Agent 参数中的引号。</li>
+</ul>
+
+<!-- @cannot-record 7b2c3ffb80 -->
+## 无法开始录制
+<ul>
+  <li><q>请先打开项目文件夹。</q></li>
+  <li><q>请先打开要审查的 URL。</q></li>
+  <li><q>页面未加载。请打开可显示的 URL 后再录制。</q> 请确认开发服务器正在运行。<q>无法连接到服务器</q> 表示该端口上没有任何服务在监听。</li>
+</ul>
+
+<!-- @openai a24af71f0e -->
+## 未设置 OpenAI 密钥或 endpoint
+<p><q>未设置 OpenAI API key。…</q> 或 <q>未设置转写 endpoint（Base URL / 模型）。…</q>：请在设置中添加，或切换到 <span class="docs-ui">本机（免费）</span>。该次录制的音频已经保存。</p>
+
+<!-- @github 81f6d68f2f -->
+## GitHub 错误
+<ul>
+  <li><q>未找到 GitHub CLI（gh）。</q> 请安装 <code>gh</code>。</li>
+  <li><q>未登录 GitHub。</q> <span class="docs-ui">设置 → GitHub / GitLab → 在终端中登录</span>。</li>
+  <li><q>没有 origin 远程仓库。</q> 或 <q>origin 不是 GitHub 仓库。</q> 请检查 <code>git remote -v</code>。</li>
+  <li><q>未找到仓库，或你没有访问权限。</q> 请检查 <code>gh auth status</code> 和 <code>GH_TOKEN</code>。</li>
+</ul>
+
+<!-- @report 20a1889e90 -->
+## 报告问题
+<p>请在 <a href="https://github.com/JapanMarketing-Dev/ferret/issues">github.com/JapanMarketing-Dev/ferret/issues</a> 提交 issue，并写明你的操作系统、应用版本（页脚 → <span class="docs-ui">更新</span>）以及复现步骤。不要附上包含私密画面的 <code>.ferret/</code> 内容。</p>

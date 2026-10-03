@@ -1,0 +1,147 @@
+<!-- Ferret docs translation: hi / agents. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title a7a0afdf19 -->
+Agents को भेजना
+
+<!-- @lead 14c9151ac0 -->
+अपने coding agent को बिल्ट-इन टर्मिनल में चलाएँ और एक क्लिक में उसे review सौंप दें। आम उदाहरण Claude Code और Codex हैं, पर नीचे की सूची का कोई भी agent काम करता है, और आपका खुद जोड़ा गया CLI भी। आप कहीं और चल रहे agent के लिए निर्देश कॉपी भी कर सकते हैं, या review को GitHub पर पोस्ट कर सकते हैं।
+
+<!-- @findings 2c83c22ebb -->
+## Findings की समीक्षा
+<p><span class="docs-ui">Findings</span> टैब का हर कार्ड इन कामों को सपोर्ट करता है:</p>
+<ul>
+  <li>शीर्षक और अनुरोध को वहीं संपादित करना</li>
+  <li><span class="docs-ui">भेजें</span> / <span class="docs-ui">न भेजें</span> टॉगल</li>
+  <li><span class="docs-ui">रिकॉर्डिंग देखें</span> (उस समय पर पहुँचता है) और <span class="docs-ui">इमेज बदलें</span> (दूसरा frame चुनें)</li>
+  <li><span class="docs-ui">पुष्टि करें</span> / <span class="docs-ui">जाँच ज़रूरी के रूप में चिह्नित करें</span>, <span class="docs-ui">अगले के साथ मर्ज करें</span>, <span class="docs-ui">हटाएँ</span></li>
+</ul>
+<p><span class="docs-ui">प्रगति के अनुसार फ़िल्टर करें</span> स्थिति के आधार पर findings दिखाता या छिपाता है (जैसे <span class="docs-ui">केवल</span> वे जो आपकी समीक्षा का इंतज़ार कर रहे हैं); <span class="docs-ui">सभी दिखाएँ</span> फ़िल्टर हटा देता है।</p>
+<p>हेडर में <span class="docs-ui">पूर्ववत करें</span>, <span class="docs-ui">फ़ोल्डर खोलें</span>, <span class="docs-ui">Agent के लिए कॉपी करें</span>, <span class="docs-ui">GitHub / GitLab पर भेजें</span>, <span class="docs-ui">व्यवस्थित करें</span> और <span class="docs-ui">Agent को भेजें</span> हैं। जो बोली finding नहीं बनी, वह <span class="docs-ui">बाहर रखी गई बोली</span> में सूचीबद्ध होती है, जहाँ <span class="docs-ui">Finding के रूप में वापस लाएँ</span> उसे वापस ले आता है।</p>
+<figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="Findings टैब (screenshot जल्द आ रहा है)"><span>Screenshot जल्द आ रहा है</span></div><figcaption>Findings टैब</figcaption></figure>
+
+<!-- @terminal 45dd9bf23b -->
+## बिल्ट-इन टर्मिनल में agents चलाएँ
+<p>जब कोई प्रोजेक्ट खुलता है, तो Ferret <span class="docs-ui">Settings → Agents → प्रोजेक्ट खुलने पर शुरू करें</span> में चुने गए हर agent के लिए एक टर्मिनल टैब शुरू करता है, प्रोजेक्ट फ़ोल्डर में और agent के सामान्य मोड में। डिफ़ॉल्ट Claude Code और Codex हैं:</p>
+<pre><code>claude
+codex</code></pre>
+<p>इनकी जगह <a href="#supported">समर्थित सूची</a> से कोई भी agents चुनें (वे उसी क्रम में शुरू होते हैं जिसमें आप उन्हें चुनते हैं), या कोई भी नहीं।</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">अनुमति पूछना चालू रहता है</p><p>किसी प्रोजेक्ट को रजिस्टर या clone करने से Ferret उस पर भरोसा नहीं करने लगता। Claude Code और Codex जैसे agents पहली बार पूछते हैं कि क्या आप फ़ोल्डर पर भरोसा करते हैं, और फ़ाइलें संपादित करने या commands चलाने से पहले पूछते रहते हैं। किसी भरोसेमंद प्रोजेक्ट में agents को अनुमति पूछना, approvals और sandbox छोड़ने देने के लिए, उस प्रोजेक्ट के लिए <span class="docs-ui">Settings → Agents → अनुमति पूछना छोड़ें (प्रति प्रोजेक्ट)</span> में इसे चालू करें और पुष्टि करें। जहाँ किसी agent का अपना skip flag ज्ञात है, Ferret उसे जोड़ता है; जिन agents का कोई ज्ञात flag नहीं है, वे पूछते रहते हैं। यह सिर्फ़ उन agents पर लागू होता है जिन्हें आप उस प्रोजेक्ट फ़ोल्डर में खुद खोलते हैं; प्रोजेक्ट खुलने पर शुरू होने वाले agents हमेशा पूछते रहते हैं। Arguments में टाइप किए गए skip-permission flags अनदेखे किए जाते हैं।</p></div>
+<p>अगर कोई agent नहीं चुना गया है, तो एक सामान्य shell खुलता है। <span class="docs-ui">+</span> मेन्यू <span class="docs-ui">नया Terminal</span> खोलता है, आपके किसी भी agent को नए टैब में शुरू करता है, या <span class="docs-ui">Agent सेटिंग्स…</span> पर ले जाता है। इसका search box टैब, सेव किए गए URL और फ़ाइलें भी ढूँढता है।</p>
+<p>टैब agent की स्थिति दिखाते हैं: <span class="docs-ui">चल रहा है</span>, <span class="docs-ui">इनपुट का इंतज़ार</span>, <span class="docs-ui">पूरा (नहीं पढ़ा)</span>, <span class="docs-ui">निष्क्रिय</span>। साइडबार में जिस प्रोजेक्ट में कोई agent चल रहा हो, उस पर निशान लगा होता है, ताकि प्रोजेक्ट बदले बिना आप इसे देख सकें।</p>
+{{clip:terminals|टर्मिनल टैब और panes को drag करके विभाजित करना, हिलाना, और वापस टैब बनाना।}}
+<p><strong>Drag करके विभाजित करें।</strong> किसी टैब को, या किसी pane को उसके handle से (जो टैब विभाजित होने के बाद दिखता है) drag करें और drop करें:</p>
+<ul>
+  <li>किसी pane के किनारे के बाहरी चौथाई हिस्से पर: <span class="docs-ui">बाईं ओर विभाजित करें</span> / <span class="docs-ui">दाईं ओर विभाजित करें</span> / <span class="docs-ui">ऊपर विभाजित करें</span> / <span class="docs-ui">नीचे विभाजित करें</span></li>
+  <li>किसी pane के बीच में: <span class="docs-ui">टैब के रूप में खोलें</span> (pane अपने विभाजन से निकलकर अलग टैब बन जाता है)</li>
+  <li>पूरे टर्मिनल क्षेत्र के चारों ओर की पतली पट्टी पर: <span class="docs-ui">पूरे क्षेत्र को बाईं ओर विभाजित करें</span> आदि (जब 2 या ज़्यादा panes हों)</li>
+  <li>टैब बार पर: <span class="docs-ui">यहाँ टैब के रूप में रखें</span></li>
+</ul>
+<p>हिलाते समय processes चलते रहते हैं, और खाली रह गया टैब बंद हो जाता है। कीबोर्ड से विभाजन:</p>
+<table class="docs-keys">
+  <thead><tr><th>काम</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <tbody>
+    <tr><td>नया Terminal</td><td class="os-mac">{{keys-mac:Mod+T}}</td><td class="os-win">{{keys-win:Mod+T}}</td></tr>
+    <tr><td>दाईं ओर विभाजित करें</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
+    <tr><td>नीचे विभाजित करें</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+    <tr><td>Pane / टैब बंद करें</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
+  </tbody>
+</table>
+
+<!-- @supported 69600dc42f -->
+## समर्थित agents
+<p>Ferret किसी एक agent से बँधा नहीं है। यह नीचे दिए coding agents को पहचानता है: यह उन्हें शुरू कर सकता है, <span class="docs-ui">Agent को भेजें</span> के लिए उन्हें टर्मिनल में पहचान सकता है, और दिखा सकता है कि वे इंस्टॉल हैं या नहीं। <span class="docs-ui">Settings → Agents</span> उन्हें <span class="docs-ui">इंस्टॉल है</span> / <span class="docs-ui">नहीं मिला</span> के साथ सूचीबद्ध करता है, जहाँ vendor एक-लाइन installer देता है वहाँ <span class="docs-ui">इंस्टॉल करें</span> बटन के साथ, और हर एक के command और arguments के साथ।</p>
+{{agent-catalog}}
+<p>सूची में नहीं है? <span class="docs-ui">Settings → Agents → Custom Agent जोड़ें</span> कोई भी CLI या wrapper script रजिस्टर करता है (एक नाम, एक command, और चाहें तो वह process नाम जिससे उसे पहचाना जाए), या उसे <a href="settings-json.html#example">settings.json</a> में <code>agents.customAgents</code> में जोड़ें। Ferret के बाहर चलने वाले agents <span class="docs-ui">Agent के लिए कॉपी करें</span> इस्तेमाल कर सकते हैं।</p>
+<p>कुछ फ़ीचर agent पर निर्भर हैं और फ़िलहाल Claude Code और Codex तक सीमित हैं:</p>
+<ul>
+  <li><a href="accounts.html">अकाउंट और usage</a>: कई logins के बीच बदलना और फ़ुटर में rate-limit मीटर।</li>
+  <li><span class="docs-ui">व्यवस्थित करें</span>: आपके Claude Code या Codex login पर, या आपके कॉन्फ़िगर किए गए LLM API पर चलता है।</li>
+</ul>
+
+<!-- @send d320d66d74 -->
+## Agent को भेजें / Agent के लिए कॉपी करें
+{{clip:send|Findings टैब से Agent को भेजें के ज़रिए बिल्ट-इन टर्मिनल के agent तक।}}
+<ol class="docs-steps">
+  <li><span class="docs-ui">Agent को भेजें</span> पर क्लिक करें। डिफ़ॉल्ट रूप से (<span class="docs-ui">अपने-आप (मौजूदा tab या चल रहा Agent)</span>) यह मौजूदा टर्मिनल टैब के agent को, या किसी चल रहे agent को जाता है। किसी खास agent या टैब को चुनने के लिए बटन के बगल का तीर (<span class="docs-ui">भेजने के लिए Agent चुनें</span>) इस्तेमाल करें।</li>
+  <li>Ferret agent के इनपुट में निर्देश लिखकर उसे submit करता है। प्रगति टर्मिनल में देखें।</li>
+</ol>
+<p>अगर कोई agent नहीं चल रहा, तो Ferret पहले एक शुरू करता है और तैयार होते ही भेज देता है। जब agent किसी अनुमति के जवाब का इंतज़ार कर रहा हो, तब कुछ नहीं भेजा जाता। पहले टर्मिनल में जवाब दें।</p>
+<p><span class="docs-ui">Agent के लिए कॉपी करें</span> वही निर्देश कहीं और (दूसरे टर्मिनल, IDE या ऐप में) चल रहे agent के लिए clipboard पर रख देता है। सिर्फ़ <span class="docs-ui">भेजें</span> पर टॉगल किए गए findings ही शामिल होते हैं। वीडियो कभी शामिल नहीं होता।</p>
+
+<!-- @verify f8f4f5bb1d -->
+## Decision model से स्वीकृति जाँच
+{{clip:verify|Agent findings ठीक करता है और हर एक को decision model से तब तक जाँचता है जब तक सभी पास न हो जाएँ।}}
+<p>इसे चालू करने पर आपका coding agent "पूरा" बताने से पहले हर finding के सामने अपने काम की जाँच करता है। Ferret खुद कुछ भी तय नहीं करता: यह agent को एक <em>decision model</em> (कोई भी System One compatible API) देता है और <code>feedback.md</code> में उसे बताता है कि जब तक हर finding पास न हो, तब तक दोहराता रहे।</p>
+<ol class="docs-steps">
+  <li>Agent findings लागू करता है।</li>
+  <li>हर finding के लिए वह एक AFTER screenshot लेता है (BEFORE still जैसा ही viewport और पेज की स्थिति) और finding का टेक्स्ट, उसकी "Done when" लाइन और BEFORE/AFTER इमेज के साथ decision model को एक request भेजता है।</li>
+  <li>कोई finding तब पास होता है जब P(done) कम से कम threshold (डिफ़ॉल्ट 0.7) हो और choice <code>done</code> हो। Agent बाकी को ठीक करता है और हर round में <strong>सभी</strong> findings को फिर से जाँचता है, और सिर्फ़ तब रुकता है जब एक ही round में हर finding पास हो जाए, या किसी ईमानदार कारण से जो उसे बताना होगा: API तक पहुँच नहीं हो पा रही, कोई finding दायरे से बाहर है, या कोई finding बिना बदले scores के अटका हुआ है।</li>
+  <li>अंतिम "पूरा / पूरा नहीं" सूची में हर finding के scores और rounds की संख्या होती है।</li>
+</ol>
+<p>इसे <span class="docs-ui">Settings → Decision model</span> में सेट करें और <span class="docs-ui">Agent निर्देशों में decision model जाँच जोड़ें</span> चालू करें। Presets सिर्फ़ fields भरते हैं; हर field संपादित किया जा सकता है, और <span class="docs-ui">Custom</span> किसी भी compatible API के साथ काम करता है।</p>
+<table>
+  <thead><tr><th>Preset</th><th>Request URL</th><th>मॉडल</th><th>Key</th></tr></thead>
+  <tbody>
+    <tr><td>Ollama (डिफ़ॉल्ट)</td><td><code>http://localhost:11434/v1/systemone</code></td><td><code>clef-flash</code>, <code>clef</code> (इमेज पढ़ते हैं); <code>nimble</code>, <code>tev1</code> (सिर्फ़ टेक्स्ट)</td><td>कोई नहीं, मुफ़्त</td></tr>
+    <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (इमेज पढ़ते हैं)</td><td><code>CLOUDFLARE_API_TOKEN</code> (Workers AI अनुमति); account ID field से या <code>CLOUDFLARE_ACCOUNT_ID</code> से</td></tr>
+    <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (सिर्फ़ टेक्स्ट)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
+    <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (सिर्फ़ टेक्स्ट)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>Custom</td><td>कोई भी पूरा URL</td><td>कोई भी</td><td>Bearer, कोई custom header, या कुछ नहीं; अतिरिक्त headers की अनुमति है</td></tr>
+  </tbody>
+</table>
+<p>Ollama के लिए उसे इंस्टॉल करें (Clef / Clef Flash के लिए 0.35.1 या बाद का) और टर्मिनल में मॉडल pull करें। Ferret installers नहीं चलाता:</p>
+<pre><code>ollama pull clef-flash</code></pre>
+<p>Keys key field से (आपकी दूसरी API keys के साथ सेव होती हैं), आपके बताए environment variable से (ऐप का environment, प्रोजेक्ट का <code>.env</code>, या <code>~/.ferret/.env</code>), या <code>settings.json</code> के <code>apiKey</code> से आती हैं। अतिरिक्त headers <code>${VAR}</code> के ज़रिए environment variables से मान पढ़ सकते हैं।</p>
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">Key prompts से बाहर कैसे रहती है</p><p>Agents आपकी key कभी नहीं देखते। Ferret <code>127.0.0.1</code> पर एक local relay चलाता है और हर टर्मिनल को <code>FERRET_DECISION_URL</code> (relay, हर टर्मिनल के अलग token के साथ), <code>FERRET_DECISION_MODEL</code> और <code>FERRET_DECISION_IMAGES</code> देता है (एक release के लिए पुराने <code>MOVIE_ADE_DECISION_*</code> नाम भी सेट किए जाते हैं)। Relay key और headers जोड़कर request को बिना बदले आगे भेजता है, इसलिए prompts, <code>feedback.md</code> और agent transcripts में कोई secret नहीं होता। Settings बदलने के बाद खोले गए टर्मिनलों को नए मान मिलते हैं।</p></div>
+<p>Cloudflare दो बातों में System One के दस्तावेज़ों से अलग है (live API से जाँचा गया): इमेज data URI होनी चाहिए (<code>data:image/jpeg;base64,…</code>, वरना 422 "image must be an embedded base64 data URI"), और जवाब <code>{ "result": { … }, "success": true }</code> में लिपटा होता है (errors <code>{ "success": false, "errors": [ … ] }</code> के रूप में आते हैं)। Cloudflare preset <span class="docs-ui">इमेज एन्कोडिंग</span> को data URI पर सेट करता है, agents को यह <code>FERRET_DECISION_IMAGE_FORMAT</code> के रूप में मिलता है, और निर्देश उन्हें बताते हैं कि <code>.result</code> मौजूद हो तो उसे पढ़ें। Relay दोनों दिशाओं में सब कुछ बिना बदले आगे भेजता है। API token के बजाय Global API Key इस्तेमाल करने के लिए <span class="docs-ui">ऑथेंटिकेशन</span> को <span class="docs-ui">कोई key नहीं</span> पर सेट करें और headers <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> और <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code> जोड़ें।</p>
+<p>सिर्फ़ Clef और Clef Flash इमेज पढ़ते हैं। सिर्फ़-टेक्स्ट मॉडल के साथ <span class="docs-ui">BEFORE/AFTER इमेज भेजें</span> बंद करें; तब agent सिर्फ़ टेक्स्ट से तय करता है, जो कम भरोसेमंद है।</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama और बड़ी इमेज</p><p>Ollama 0.35.0 <code>/v1/systemone</code> requests को 64 KiB तक सीमित करता है, इसलिए screenshots वाली requests HTTP 413 के साथ fail होती हैं। निर्देश agent से कहते हैं कि दोनों इमेज को अधिकतम 1024px चौड़ाई तक छोटा करके JPEG (quality लगभग 70) बनाए। अगर फिर भी 413 मिले, तो Ollama को 0.35.1 या बाद के version पर अपडेट करें, या Cloudflare Workers AI पर जाएँ।</p></div>
+
+<!-- @api-usage cacf2ecce0 -->
+## फ़ुटर में API usage
+<p>Decision calls relay से होकर जाते हैं, इसलिए Ferret उन्हें गिन सकता है। फ़ुटर में agent usage मीटर के बगल वाला आइटम decision model और आज के calls, tokens और खर्च दिखाता है (जैसे <code>clef-flash · 42 calls · 18.3k tok</code>)। आज, इस महीने, हर प्रोजेक्ट, हर मॉडल और हर प्रकार (decision / transcription / organize) के हिसाब से, और पिछले 50 calls देखने के लिए उस पर क्लिक करें।</p>
+<p>खर्च सिर्फ़ तब दिखता है जब API उसे बताता है (Vercel AI Gateway बताता है) या जब आप <span class="docs-ui">Settings → Decision model</span> में प्रति 1M tokens कीमतें सेट करते हैं; वरना "—" दिखता है। सिर्फ़ metadata (समय, प्रोजेक्ट, मॉडल, status, latency, size, इमेज की संख्या, tokens, खर्च) दर्ज होता है, इमेज, टेक्स्ट या keys कभी नहीं, <code>~/.ferret/usage/decision-YYYY-MM.jsonl</code> में, हर महीने एक फ़ाइल।</p>
+
+<!-- @prompt f46545b478 -->
+## निर्देश बदलें
+<p><span class="docs-ui">Settings → Agents → Agent के लिए निर्देश</span> संपादित करें। दो variables expand होते हैं:</p>
+<table>
+  <thead><tr><th>Variable</th><th>किसमें बदलता है</th></tr></thead>
+  <tbody>
+    <tr><td><code>{{path}}</code></td><td><code>feedback.md</code> का absolute path</td></tr>
+    <tr><td><code>{{relpath}}</code></td><td>प्रोजेक्ट के सापेक्ष path: <code>.ferret/reviews/&lt;id&gt;/feedback.md</code></td></tr>
+  </tbody>
+</table>
+<p>डिफ़ॉल्ट इस्तेमाल करने के लिए इसे खाली छोड़ दें। अधिकतम लंबाई 2000 अक्षर है, और <span class="docs-ui">निर्देश रीसेट करें</span> डिफ़ॉल्ट वापस ले आता है। उदाहरण:</p>
+<pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
+<p>यह सेटिंग <code>settings.json</code> में <code>agentPrompt</code> के रूप में सेव होती है।</p>
+
+<!-- @github aba5332ec5 -->
+## GitHub या GitLab पर भेजें (Issue / PR या MR comment)
+<p><span class="docs-ui">GitHub पर भेजें</span> review को एक नए issue के रूप में, या आपके किसी खुले pull request पर comment के रूप में पोस्ट करता है। Authentication <a href="https://cli.github.com/">GitHub CLI</a> को सौंपा जाता है। Ferret कभी कोई token नहीं पढ़ता या सेव करता।</p>
+<ol class="docs-steps">
+  <li><code>gh</code> इंस्टॉल करें: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), या <a href="https://github.com/cli/cli#installation">cli/cli</a> देखें।</li>
+  <li><span class="docs-ui">Settings → GitHub / GitLab → Terminal में साइन इन करें</span> बिल्ट-इन टर्मिनल में <code>gh auth login --web -h github.com</code> चलाता है।</li>
+  <li><span class="docs-ui">GitHub पर भेजें</span> पर क्लिक करें, <span class="docs-ui">नया issue बनाएँ</span> या कोई PR चुनें, और <span class="docs-ui">शीर्षक</span> और <span class="docs-ui">Body</span> (संपादित किए जा सकते हैं) जाँचें।</li>
+  <li>पुष्टि वाला checkbox टिक करें, फिर <span class="docs-ui">Issue बनाएँ</span> या <span class="docs-ui">Comment पोस्ट करें</span>।</li>
+</ol>
+<p>विवरण:</p>
+<ul>
+  <li>Repository <code>git remote get-url origin</code> से ली जाती है।</li>
+  <li>Ferret <code>gh issue create --repo … --title … --body-file -</code> या <code>gh pr comment &lt;n&gt; --repo … --body-file -</code> चलाता है।</li>
+  <li>Body इमेज वाली लाइनों के बिना <code>feedback.md</code> होती है (इमेज अपलोड नहीं होतीं), अधिकतम 60,000 अक्षर।</li>
+  <li>PR के विकल्प आपके अपने खुले PRs होते हैं (अधिकतम 30)।</li>
+</ul>
+<p>अगर <code>GH_TOKEN</code> या <code>GITHUB_TOKEN</code> सेट है, तो <code>gh</code> पहले उसी का इस्तेमाल करता है, और settings पैनल इसकी चेतावनी देता है।</p>
+<p><strong>GitLab।</strong> जब <code>origin</code> कोई GitLab प्रोजेक्ट हो (gitlab.com या self-managed GitLab), तो वही बटन <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a> (<code>glab</code>) के ज़रिए GitLab पर भेजता है: एक नया issue, या आपके किसी खुले merge request पर comment। <span class="docs-ui">Settings → GitHub / GitLab</span> से साइन इन करें, जो बिल्ट-इन टर्मिनल में <code>glab auth login</code> चलाता है (self-managed GitLab के लिए <code>--hostname</code> के साथ)। Ferret कभी token नहीं पढ़ता या सेव करता, और <code>GITLAB_TOKEN</code> सेट होने पर चेतावनी देता है।</p>
+<p><strong>स्टार का अनुरोध।</strong> आपके पहले <span class="docs-ui">Agent को भेजें</span> के बाद, और जब आप 3, 10 और 30 पूरे reviews तक पहुँचते हैं, Ferret आपसे GitHub पर उसे स्टार देने के लिए कह सकता है। यह अधिकतम 3 बार पूछता है, कम से कम 3 दिन के अंतर पर, और रिकॉर्डिंग के दौरान कभी नहीं। <span class="docs-ui">GitHub पर स्टार दें</span> आपके अपने <code>gh</code> login से स्टार देता है (या <code>gh</code> उपलब्ध न हो तो GitHub खोलता है), और <span class="docs-ui">फिर न पूछें</span> अनुरोध बंद कर देता है। आप <span class="docs-ui">सहायता → GitHub पर Ferret को स्टार दें</span> से भी स्टार दे सकते हैं।</p>
+
+<!-- @cli-tools 01bc2517bf -->
+## CLI tools इंस्टॉल करें और उनमें साइन इन करें
+<p><span class="docs-ui">Settings → CLI टूल</span> उन command-line tools की सूची देता है जिनकी आपके agents को अक्सर ज़रूरत होती है, दिखाता है कि कौन-से इंस्टॉल हैं और उनका version क्या है, और आपके OS के लिए आधिकारिक install या sign-in command एक नए टर्मिनल टैब में चलाता है:</p>
+<ul>
+  <li>Git hosting: <code>gh</code>, <code>glab</code></li>
+  <li>AI और मॉडल: Ollama, Cloudflare <code>wrangler</code></li>
+  <li>Deploy: Vercel, Netlify, Fly.io, Railway, Heroku</li>
+  <li>Cloud और सेवाएँ: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+</ul>
+<p>जहाँ किसी tool का आपके OS के लिए कोई एक-लाइन आधिकारिक installer नहीं है, वहाँ <span class="docs-ui">दस्तावेज़</span> उसकी जगह उसका install पेज खोलता है। Install पूरा होने पर सूची अपने-आप फिर से जाँच करती है।</p>

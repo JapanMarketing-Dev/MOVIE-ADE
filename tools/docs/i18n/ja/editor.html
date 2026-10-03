@@ -1,0 +1,35 @@
+<!-- Ferret docs translation: ja / editor. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 05d78374e2 -->
+エディタとプレビュー
+
+<!-- @lead 97cbc36c8d -->
+プロジェクトのファイルを開いて編集し、Markdown と Mermaid をプレビューします。内蔵のブラウザで開いたプレビューは、ほかの Web ページと同じように録画してレビューできます。
+
+<!-- @files f1e2c27cca -->
+## ファイルを開いて編集する
+<ul>
+  <li><span class="docs-ui">ファイル</span>（ファイルツリー）: {{keys:Mod+Shift+E}}。<span class="docs-ui">ファイル名で絞り込む</span>、<span class="docs-ui">再読込</span>、<span class="docs-ui">すべて畳む</span> があります。</li>
+  <li><span class="docs-ui">ファイルを名前で開く…</span>: {{keys:Mod+P}}。</li>
+  <li>{{keys:Mod+S}} で保存します。変更したファイルを閉じると <q>&lt;name&gt; の変更を保存しますか？</q> と尋ねられ、<span class="docs-ui">保存</span>、<span class="docs-ui">保存しない</span>、<span class="docs-ui">キャンセル</span> を選べます。</li>
+  <li>保存していない編集がある間にディスク上のファイルが変わったときは、<span class="docs-ui">ディスクの内容を読み込む</span> か <span class="docs-ui">自分の変更を残す</span> を選びます。</li>
+</ul>
+<p>エディタは Monaco です。テキストでないファイルは代わりにビューアで開きます。画像（拡大・縮小でき、SVG はコードとしても表示可能）、シークバー付きの動画と音声、PDF、そのほかのバイナリファイルはサイズと先頭のバイトの 16 進表示です。ビューアは読み取り専用で、プロジェクトのフォルダの外にあるファイルや、フォルダの外へ出るシンボリックリンクの先にあるファイルは表示しません。</p>
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">準備中</p><p>ファイルツリーからのファイルの作成、名前の変更、削除。</p></div>
+
+<!-- @preview b8c0baaad4 -->
+## Markdown と Mermaid のプレビュー
+<p>プレビューできるのは <code>.md</code>、<code>.markdown</code>、<code>.mdx</code>、<code>.mmd</code>、<code>.mermaid</code> です。Mermaid はアプリに同梱しているので、オフラインでも図を描けます。</p>
+<ul>
+  <li><span class="docs-ui">プレビューを横に並べる</span>: エディタの隣に表示</li>
+  <li><span class="docs-ui">プレビューを開く</span>: 内蔵のブラウザ（<code>ade-preview://</code>）で表示。録画してレビューできます</li>
+</ul>
+
+<!-- @review-docs 3956ed6f10 -->
+## ドキュメントを録画でレビューする
+<ol class="docs-steps">
+  <li>Markdown のファイルを開き、<span class="docs-ui">プレビューを開く</span> を押します。</li>
+  <li>いつもどおり録画します。仕様書や設計書を読みながら話し、おかしいところを囲みます。</li>
+  <li>止めます。指摘には URL の代わりに、プロジェクトからのファイルの相対パスが入ります。</li>
+  <li><span class="docs-ui">Agentへ送信</span> で、ドキュメントを直してもらいます。</li>
+</ol>
+<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="内蔵のブラウザでの Markdown のプレビュー（スクリーンショットは準備中）"><span>スクリーンショットは準備中です</span></div><figcaption>内蔵のブラウザでの Markdown のプレビュー</figcaption></figure>

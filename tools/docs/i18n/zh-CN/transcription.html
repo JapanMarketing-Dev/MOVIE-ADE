@@ -1,0 +1,103 @@
+<!-- Ferret docs translation: zh-CN / transcription. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 9d4646b18d -->
+转写与费用
+
+<!-- @lead 456b515bb7 -->
+你可以选择本机 whisper（免费）、你自己的 OpenAI 密钥，或任何兼容 OpenAI 的端点（例如你自己的 GPU 主机）。音频会从你的电脑直接发送到你选择的服务。
+
+<!-- @cost-model 251147437b -->
+## 谁付费，流量去向何处
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">费用与网络模型</p><ul>
+  <li>开发者（Japan Marketing LLC）不为任何转写或 AI 用量付费，也不进行代理或计费。</li>
+  <li>请求从你的电脑直接发送到 OpenAI 或你的端点，绝不经过开发者的服务器。</li>
+  <li>OpenAI 的用量计入你自己的 OpenAI 账户。</li>
+  <li><span class="docs-ui">整理</span> 使用你已登录的 Claude Code / Codex CLI，除非你明确选择 API 运行方式（<code>organizer.runner: "api:&lt;provider&gt;"</code>，参见<a href="settings-json.html#example">用 settings.json 配置</a>）。它绝不会自行改用 API 密钥。</li>
+</ul></div>
+
+<!-- @methods d7ad6a3f10 -->
+## 方式
+<p>在 <span class="docs-ui">设置 → 转写 → 引擎</span> 中选择。底部状态栏的 <span class="docs-ui">麦克风与转写</span> 弹出框会显示当前的选择。</p>
+<table>
+  <thead><tr><th>引擎</th><th>音频发送到</th><th>费用</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">本机（免费）</span>（默认）</td><td>不发送</td><td>免费</td></tr>
+    <tr><td><span class="docs-ui">OpenAI（你的密钥）</span></td><td>OpenAI</td><td>计入你的 OpenAI 账单：<code>gpt-transcribe</code> 为 $0.0045/分钟（约 $0.27/小时）</td></tr>
+    <tr><td><span class="docs-ui">兼容 OpenAI（自托管 GPU、Groq 等）</span></td><td>你的 <span class="docs-ui">端点 Base URL</span></td><td>取决于端点</td></tr>
+  </tbody>
+</table>
+<p><span class="docs-ui">设置 → 转写 → 语言</span>：<span class="docs-ui">自动</span>、<span class="docs-ui">日语</span> 或 <span class="docs-ui">英语</span>。这是说话所用的语言，与界面语言相互独立。</p>
+
+<!-- @whisper 867ce20365 -->
+## 本机 whisper（免费）
+<p>本机转写使用 <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a>：即 <code>whisper-cli</code> 可执行文件加上一个 GGML 模型。</p>
+<p><strong>1. 安装 whisper-cli</strong>。Ferret 会依次查找随附的副本（<code>resources/whisper/&lt;platform&gt;-&lt;arch&gt;/</code>）、<code>PATH</code>，以及 Homebrew 等常见位置。</p>
+<pre><code># macOS
+brew install whisper-cpp
+
+# Linux: build from source, then add build/bin to PATH
+git clone https://github.com/ggml-org/whisper.cpp &amp;&amp; cd whisper.cpp
+cmake -B build &amp;&amp; cmake --build build -j --config Release
+
+# Windows: download the zip from github.com/ggml-org/whisper.cpp/releases
+# and add the folder containing whisper-cli.exe to PATH</code></pre>
+<p><strong>2. 获取模型</strong>。选中 <span class="docs-ui">本机（免费）</span> 后，选择一个 <span class="docs-ui">模型</span>，然后点击 <span class="docs-ui">下载模型</span>。文件直接从 Hugging Face（<code>ggerganov/whisper.cpp</code>）下载，并与应用中固定的 sha256 进行校验（不一致时会删除该文件），然后保存到 <code>&lt;userData&gt;/models/</code>。下载完成的模型会被自动选中。<span class="docs-ui">取消</span> 会保留已下载的部分文件，<span class="docs-ui">继续下载</span> 会从中断处继续。</p>
+<table>
+  <thead><tr><th>模型</th><th>大小</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>large-v3-turbo</code></td><td>1.6 GB</td><td>推荐的默认选项。在 Metal / GPU 上速度快</td></tr>
+    <tr><td><code>large-v3-turbo-q5_0</code></td><td>574 MB</td><td>量化版。节省磁盘和内存</td></tr>
+    <tr><td><code>small</code></td><td>488 MB</td><td>适用于只有 CPU 的电脑</td></tr>
+    <tr><td><code>base</code></td><td>148 MB</td><td>轻量。日语识别错误较多</td></tr>
+    <tr><td><code>tiny</code></td><td>78 MB</td><td>最快。日语准确度不足</td></tr>
+  </tbody>
+</table>
+<p>已经有模型了？使用 <span class="docs-ui">选择文件…</span> 指定任意 <code>ggml-*.bin</code>。没有模型时，设置中会提示尚未设置模型。你仍然可以录制：音频会被保存，但只会生成画笔标注的反馈。</p>
+<p>whisper-cli 不随应用附带，请按上述方法自行安装。找不到它时，设置中会显示 <q>未找到 whisper.cpp（whisper-cli）。请安装后重新打开设置。</q>，并附上同样的安装说明。</p>
+
+<!-- @openai 2160e9a2fc -->
+## 使用你自己的 OpenAI 密钥
+<ol class="docs-steps">
+  <li>将 <span class="docs-ui">引擎</span> 设为 <span class="docs-ui">OpenAI（你的密钥）</span>。</li>
+  <li>将以 <code>sk-</code> 开头的密钥粘贴到 <span class="docs-ui">OpenAI API 密钥</span>，然后点击 <span class="docs-ui">保存</span>。</li>
+  <li>点击 <span class="docs-ui">测试连接</span>。它会发送 1 秒的静音（约 $0.0001）。</li>
+</ol>
+<p>模型固定为 <code>gpt-transcribe</code>。仅在开发环境（<code>pnpm dev</code>）中，还会读取被 git 忽略的 <code>.env</code> 文件中的 <code>OPENAI_API_KEY</code>。打包后的版本绝不会读取 <code>.env</code>。</p>
+
+<!-- @compatible 8c200e00b1 -->
+## 兼容 OpenAI 的端点
+<p>Ferret 会发送 <code>POST &lt;base&gt;/v1/audio/transcriptions</code>（multipart：<code>file</code>、<code>model</code>、<code>response_format=json</code>、<code>language</code>、<code>prompt</code>），因此它面向实现了 OpenAI 转写接口的服务器。</p>
+<ol class="docs-steps">
+  <li>将 <span class="docs-ui">引擎</span> 设为 <span class="docs-ui">兼容 OpenAI（自托管 GPU、Groq 等）</span>。</li>
+  <li>填写 <span class="docs-ui">端点 Base URL</span> 和 <span class="docs-ui">模型</span>（端点上的模型名称）。</li>
+  <li>如果服务器需要密钥，请输入 <span class="docs-ui">Endpoint API key（可选）</span>，然后点击 <span class="docs-ui">保存</span>。</li>
+  <li>点击 <span class="docs-ui">测试连接</span>。出错时会指出原因，例如 Base URL 错误（没有 <code>/v1/audio/transcriptions</code>）、密钥被拒绝或模型名称未知。</li>
+</ol>
+<table>
+  <thead><tr><th>服务器</th><th>Base URL</th><th>模型（示例）</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://github.com/speaches-ai/speaches">speaches</a>（原 faster-whisper-server）</td><td><code>http://localhost:8000/v1</code></td><td><code>Systran/faster-whisper-small</code></td></tr>
+    <tr><td><a href="https://docs.vllm.ai/">vLLM</a>（<code>vllm serve openai/whisper-large-v3</code>）</td><td><code>http://localhost:8000/v1</code></td><td><code>openai/whisper-large-v3</code></td></tr>
+    <tr><td><a href="https://console.groq.com/docs/speech-to-text">Groq</a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
+  </tbody>
+</table>
+<div class="docs-callout docs-callout-warn"><p>Ferret 面向这类兼容 OpenAI 的服务器设计，但尚未用 Ferret 对它们进行测试。上表中的 URL 和模型名称是各服务器文档中给出的默认值。</p></div>
+<ul>
+  <li>保存时会去掉末尾的 <code>/v1</code> 或粘贴进来的 <code>/v1/audio/transcriptions</code>，因此两种写法都可以。</li>
+  <li>包含用户名或密码的 URL 会被拒绝，因此密钥绝不会写入 <code>settings.json</code>。</li>
+  <li>如果 GPU 主机位于你的局域网或 tailnet 中，请使用它的地址，例如 <code>http://100.x.y.z:8000/v1</code>。</li>
+</ul>
+
+<!-- @limit 7bee560470 -->
+## 费用上限
+<p>对于 OpenAI 和兼容端点，可以设置 <span class="docs-ui">费用上限</span>：<span class="docs-ui">无</span>，或从 <span class="docs-ui">每次审查最多 $0.10</span> 起，依次为 $0.50、$1（默认）、$5 和 $20。使用你自己的 GPU 时，选择 <span class="docs-ui">无</span> 比较合适。该设置保存为 <code>capture.costLimitUsd</code>（最大 1000，<code>null</code> 表示不设上限）。兼容端点按 $0.006/分钟估算。</p>
+<p>当下一段音频会超出上限时，Ferret 会停止发送并保留音频。失败的 API 调用不会自动重试。</p>
+
+<!-- @keys a6be4d5386 -->
+## 密钥的存储位置
+<p>在 <span class="docs-ui">设置</span> 中输入的密钥会用 Electron <code>safeStorage</code> 加密，并写入 <code>&lt;userData&gt;/stt-keys.bin</code>。应用绝不会把它们写入 <code>settings.json</code>。如果想改为在 <code>settings.json</code> 中引用密钥（环境变量或 <code>.env</code> 条目），请参见 <a href="settings-json.html#keys">API 密钥</a>。</p>
+<ul>
+  <li>macOS：钥匙串</li>
+  <li>Windows：DPAPI</li>
+  <li>Linux：libsecret 或 KWallet。如果只有 <code>basic_text</code> 后端可用，密钥只会在本次会话期间保存在内存中（按钮显示为 <span class="docs-ui">仅本次会话设置</span>）。</li>
+</ul>
+<p><span class="docs-ui">删除密钥</span> 会将其删除。关于 <code>&lt;userData&gt;</code> 的路径，请参见<a href="files.html#userdata">文件与环境</a>。</p>

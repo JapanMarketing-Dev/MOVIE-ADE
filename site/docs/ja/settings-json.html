@@ -3,18 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Configure with settings.json · Ferret ドキュメント</title>
-  <meta name="description" content="Every Ferret setting lives in one JSON file with a JSON Schema next to it, so you or your own coding agent (for example Claude Code, Codex or Gemini CLI) can configure the app by editing a file. Changes apply while the app is running.">
+  <title>settings.json で設定する · Ferret ドキュメント</title>
+  <meta name="description" content="Ferret の設定はすべて1つの JSON ファイルにあり、隣に JSON Schema が置かれています。そのため、自分で、またはコーディングエージェント（たとえば Claude Code、Codex、Gemini CLI）にファイルを編集させて、アプリを設定できます。変更はアプリの起動中に反映されます。">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
-  <meta name="robots" content="noindex, follow">
-  <link rel="canonical" href="https://ferretade.dev/docs/settings-json">
+  <link rel="canonical" href="https://ferretade.dev/docs/ja/settings-json">
   <link rel="alternate" hreflang="en" href="https://ferretade.dev/docs/settings-json">
+  <link rel="alternate" hreflang="ja" href="https://ferretade.dev/docs/ja/settings-json">
+  <link rel="alternate" hreflang="zh-CN" href="https://ferretade.dev/docs/zh-CN/settings-json">
+  <link rel="alternate" hreflang="zh-TW" href="https://ferretade.dev/docs/zh-TW/settings-json">
+  <link rel="alternate" hreflang="ko" href="https://ferretade.dev/docs/ko/settings-json">
+  <link rel="alternate" hreflang="es" href="https://ferretade.dev/docs/es/settings-json">
+  <link rel="alternate" hreflang="fr" href="https://ferretade.dev/docs/fr/settings-json">
+  <link rel="alternate" hreflang="de" href="https://ferretade.dev/docs/de/settings-json">
+  <link rel="alternate" hreflang="it" href="https://ferretade.dev/docs/it/settings-json">
+  <link rel="alternate" hreflang="pt-BR" href="https://ferretade.dev/docs/pt-BR/settings-json">
+  <link rel="alternate" hreflang="ru" href="https://ferretade.dev/docs/ru/settings-json">
+  <link rel="alternate" hreflang="hi" href="https://ferretade.dev/docs/hi/settings-json">
+  <link rel="alternate" hreflang="id" href="https://ferretade.dev/docs/id/settings-json">
+  <link rel="alternate" hreflang="vi" href="https://ferretade.dev/docs/vi/settings-json">
   <link rel="alternate" hreflang="x-default" href="https://ferretade.dev/docs/settings-json">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
-  <meta property="og:title" content="Configure with settings.json · Ferret ドキュメント">
-  <meta property="og:description" content="Every Ferret setting lives in one JSON file with a JSON Schema next to it, so you or your own coding agent (for example Claude Code, Codex or Gemini CLI) can configure the app by editing a file. Changes apply while the app is running.">
+  <meta property="og:title" content="settings.json で設定する · Ferret ドキュメント">
+  <meta property="og:description" content="Ferret の設定はすべて1つの JSON ファイルにあり、隣に JSON Schema が置かれています。そのため、自分で、またはコーディングエージェント（たとえば Claude Code、Codex、Gemini CLI）にファイルを編集させて、アプリを設定できます。変更はアプリの起動中に反映されます。">
   <meta property="og:url" content="https://ferretade.dev/docs/ja/settings-json">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="ja_JP">
@@ -23,8 +35,8 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Configure with settings.json · Ferret ドキュメント">
-  <meta name="twitter:description" content="Every Ferret setting lives in one JSON file with a JSON Schema next to it, so you or your own coding agent (for example Claude Code, Codex or Gemini CLI) can configure the app by editing a file. Changes apply while the app is running.">
+  <meta name="twitter:title" content="settings.json で設定する · Ferret ドキュメント">
+  <meta name="twitter:description" content="Ferret の設定はすべて1つの JSON ファイルにあり、隣に JSON Schema が置かれています。そのため、自分で、またはコーディングエージェント（たとえば Claude Code、Codex、Gemini CLI）にファイルを編集させて、アプリを設定できます。変更はアプリの起動中に反映されます。">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -99,40 +111,40 @@
         <p class="docs-nav-heading">はじめに</p>
         <ul>
           <li><a href="quick-start.html">クイックスタート</a></li>
-          <li><a href="install.html">Install</a></li>
-          <li><a href="concepts.html">Concepts</a></li>
-          <li><a href="keyboard.html">Keyboard shortcuts</a></li>
+          <li><a href="install.html">インストール</a></li>
+          <li><a href="concepts.html">考え方</a></li>
+          <li><a href="keyboard.html">キーボードショートカット</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
         <p class="docs-nav-heading">Ferret の使い方</p>
         <ul>
-          <li><a href="projects.html">Projects and URLs</a></li>
-          <li><a href="recording.html">Recording</a></li>
-          <li><a href="agents.html">Sending to agents</a></li>
-          <li><a href="editor.html">Editor and preview</a></li>
+          <li><a href="projects.html">プロジェクトと URL</a></li>
+          <li><a href="recording.html">録画</a></li>
+          <li><a href="agents.html">エージェントに送る</a></li>
+          <li><a href="editor.html">エディタとプレビュー</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
         <p class="docs-nav-heading">設定</p>
         <ul>
-          <li><a href="transcription.html">Transcription and costs</a></li>
-          <li><a href="accounts.html">Accounts and usage</a></li>
-          <li><a href="settings.html">Settings reference</a></li>
-          <li><a href="settings-json.html" aria-current="page">Configure with settings.json</a></li>
+          <li><a href="transcription.html">文字起こしと費用</a></li>
+          <li><a href="accounts.html">アカウントと使用量</a></li>
+          <li><a href="settings.html">設定の一覧</a></li>
+          <li><a href="settings-json.html" aria-current="page">settings.json で設定する</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
         <p class="docs-nav-heading">リファレンス</p>
         <ul>
-          <li><a href="privacy.html">Data and privacy</a></li>
-          <li><a href="files.html">Files and environment</a></li>
+          <li><a href="privacy.html">データとプライバシー</a></li>
+          <li><a href="files.html">ファイルと環境変数</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
         <p class="docs-nav-heading">ヘルプ</p>
         <ul>
-          <li><a href="troubleshooting.html">Troubleshooting</a></li>
+          <li><a href="troubleshooting.html">困ったときは</a></li>
         </ul>
       </div>
       </div>
@@ -140,36 +152,35 @@
 
     <main class="docs-main" id="docs-main">
       <article class="docs-content">
-        <div class="docs-callout docs-callout-i18n"><p>このページはまだ翻訳されていないため、英語で表示しています。 <a href="../settings-json.html" hreflang="en">English</a></p></div>
         <p class="docs-eyebrow">設定</p>
-        <h1 lang="en">Configure with settings.json</h1>
-        <p class="docs-lead" lang="en">Every Ferret setting lives in one JSON file with a JSON Schema next to it, so you or your own coding agent (for example Claude Code, Codex or Gemini CLI) can configure the app by editing a file. Changes apply while the app is running.</p>
+        <h1>settings.json で設定する</h1>
+        <p class="docs-lead">Ferret の設定はすべて1つの JSON ファイルにあり、隣に JSON Schema が置かれています。そのため、自分で、またはコーディングエージェント（たとえば Claude Code、Codex、Gemini CLI）にファイルを編集させて、アプリを設定できます。変更はアプリの起動中に反映されます。</p>
 
-      <section class="docs-section" aria-labelledby="path" lang="en">
-        <h2 id="path"><a class="docs-anchor" href="#path" aria-label="「Where the file lives」へのリンク">#</a>Where the file lives</h2>
-        <p>The path is the same on every OS:</p>
+      <section class="docs-section" aria-labelledby="path">
+        <h2 id="path"><a class="docs-anchor" href="#path" aria-label="「ファイルの場所」へのリンク">#</a>ファイルの場所</h2>
+        <p>パスはどの OS でも同じです。</p>
 <pre><code>~/.ferret/settings.json          # your settings (edit this)
 ~/.ferret/settings.schema.json   # JSON Schema, rewritten by the app on launch
 ~/.ferret/state.json             # open folder, last URL, open tabs (managed by the app)
 ~/.ferret/.env                   # optional: API keys referenced by apiKeyEnv</code></pre>
 <ul>
-  <li>Set <code>FERRET_CONFIG_DIR</code> (the old name <code>MOVIE_ADE_CONFIG_DIR</code> also works) to use another folder, e.g. one inside a dotfiles repo. <code>~</code> is expanded.</li>
-  <li>Development builds (<code>pnpm dev</code>) use <code>~/.ferret/dev/</code>, so hacking on Ferret never rewrites your real settings.</li>
-  <li>Upgrading from 0.1.0: on first launch, the old <code>&lt;userData&gt;/settings.json</code> is copied into the new files. The old file is left in place as a backup and is never modified.</li>
+  <li>別のフォルダ（たとえば dotfiles リポジトリの中）を使うには <code>FERRET_CONFIG_DIR</code> を設定します（以前の名前 <code>MOVIE_ADE_CONFIG_DIR</code> も使えます）。<code>~</code> は展開されます。</li>
+  <li>開発用のビルド（<code>pnpm dev</code>）は <code>~/.ferret/dev/</code> を使うので、Ferret 自体を開発しても普段の設定は書き換わりません。</li>
+  <li>0.1.0 からの更新: 初回の起動で、以前の <code>&lt;userData&gt;/settings.json</code> を新しいファイルにコピーします。古いファイルはバックアップとしてそのまま残し、変更しません。</li>
 </ul>
-<p>Upgrading from MOVIE-ADE: on first launch, <code>settings.json</code>, <code>state.json</code>, <code>usage/</code>, and <code>.env</code> are copied from <code>~/.movie-ade/</code> into <code>~/.ferret/</code>. The old folder is left in place and not modified.</p>
-<p>In the app, <span class="docs-ui">Settings</span> shows the path at the top, with <span class="docs-ui">Open settings.json</span> (edits it in the built-in editor with schema completion) and <span class="docs-ui">Reveal in folder</span>.</p>
+<p>MOVIE-ADE からの更新: 初回の起動で、<code>settings.json</code>、<code>state.json</code>、<code>usage/</code>、<code>.env</code> を <code>~/.movie-ade/</code> から <code>~/.ferret/</code> にコピーします。古いフォルダはそのまま残し、変更しません。</p>
+<p>アプリの <span class="docs-ui">設定</span> では、上部にパスが表示され、<span class="docs-ui">settings.json を開く</span>（スキーマの補完つきで内蔵エディタで編集）と <span class="docs-ui">フォルダで表示</span> があります。</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="schema" lang="en">
-        <h2 id="schema"><a class="docs-anchor" href="#schema" aria-label="「Schema and validation」へのリンク">#</a>Schema and validation</h2>
-        <p>The first line of <code>settings.json</code> is <code>"$schema": "./settings.schema.json"</code>. Editors such as VS Code and agents such as Claude Code use it for completion, validation and the description of every field. The schema ships inside the app and is written next to the file on every launch, so it always matches the installed version.</p>
-<p>Keys Ferret doesn't know are kept as they are when the app saves. Open tabs, the last URL and other session state are kept in <code>state.json</code>, not here.</p>
+      <section class="docs-section" aria-labelledby="schema">
+        <h2 id="schema"><a class="docs-anchor" href="#schema" aria-label="「スキーマと検証」へのリンク">#</a>スキーマと検証</h2>
+        <p><code>settings.json</code> の最初の行は <code>"$schema": "./settings.schema.json"</code> です。VS Code などのエディタや Claude Code などのエージェントは、これを使って補完・検証し、各項目の説明を表示します。スキーマはアプリに同梱され、起動のたびにファイルの隣へ書き出されるので、常にインストールしているバージョンと一致します。</p>
+<p>Ferret が知らないキーは、アプリが保存するときもそのまま残します。開いているタブや最後の URL などのセッションの状態は、ここではなく <code>state.json</code> に保存します。</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="example" lang="en">
-        <h2 id="example"><a class="docs-anchor" href="#example" aria-label="「Annotated example」へのリンク">#</a>Annotated example</h2>
-        <p>JSON has no comments, so the notes are below the example. Every field is optional; leave out what you don't need.</p>
+      <section class="docs-section" aria-labelledby="example">
+        <h2 id="example"><a class="docs-anchor" href="#example" aria-label="「注釈つきの例」へのリンク">#</a>注釈つきの例</h2>
+        <p>JSON にはコメントが書けないので、説明は例の下に置きます。どの項目も省略でき、要らないものは書かなくてかまいません。</p>
 <pre><code>{
   "$schema": "./settings.schema.json",
   "theme": "dark",
@@ -225,29 +236,29 @@
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>: review targets for the URL menu. The first one opens when the project opens. <code>id</code> can be any unique string.</li>
-  <li><code>agents.customAgents</code>: any CLI or wrapper script. <code>startupAgents</code> lists the agent tabs opened with a project, in order.</li>
-  <li><code>capture.sttEndpoints.compatible</code>: any server that implements OpenAI's <code>/v1/audio/transcriptions</code> (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> turns off the cost cap, which makes sense for your own GPU. See <a href="transcription.html">Transcription and costs</a>.</li>
-  <li><code>organizer</code>: <span class="docs-ui">Organize findings</span> sent straight to an OpenAI-compatible <code>/v1/chat/completions</code> server (here Ollama). Use <code>"runner": "claude-code"</code> or <code>"codex"</code> to use your own CLI login instead, and <code>organizer.cliModels</code> to pick their model.</li>
-  <li><code>decision</code>: the model that checks whether each finding was fixed. Clef Flash on a local Ollama is free and reads screenshots. <code>preset</code> can also be <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code> or <code>custom</code>.</li>
-  <li>Every provider block (<code>sttEndpoints.*</code>, <code>organizer.endpoints.*</code>) also takes <code>timeoutMs</code>, <code>headers</code> and, for Azure, <code>apiVersion</code>.</li>
+  <li><code>projects[].urls</code>: URL メニューに出るレビュー対象。プロジェクトを開くと最初のものが開きます。<code>id</code> は重複しなければどんな文字列でもかまいません。</li>
+  <li><code>agents.customAgents</code>: 任意の CLI やラッパースクリプト。<code>startupAgents</code> は、プロジェクトと一緒に開くエージェントのタブを順に並べたものです。</li>
+  <li><code>capture.sttEndpoints.compatible</code>: OpenAI の <code>/v1/audio/transcriptions</code> を実装したサーバーならどれでも使えます（speaches、vLLM、LocalAI…）。<code>costLimitUsd: null</code> で費用の上限を外します。自前の GPU ならこれが妥当です。<a href="transcription.html">文字起こしと費用</a>を見てください。</li>
+  <li><code>organizer</code>: <span class="docs-ui">指摘を整理</span> を OpenAI 互換の <code>/v1/chat/completions</code> サーバー（ここでは Ollama）に直接送ります。代わりに自分の CLI のログインを使うなら <code>"runner": "claude-code"</code> か <code>"codex"</code> にし、そのモデルは <code>organizer.cliModels</code> で選びます。</li>
+  <li><code>decision</code>: 各指摘が直ったかを判定するモデル。ローカルの Ollama で動く Clef Flash は無料で、スクリーンショットも読めます。<code>preset</code> には <code>cloudflare</code>、<code>vercel</code>、<code>typesafe</code>、<code>custom</code> も指定できます。</li>
+  <li>どの接続先のブロック（<code>sttEndpoints.*</code>、<code>organizer.endpoints.*</code>）も、<code>timeoutMs</code>、<code>headers</code>、Azure なら <code>apiVersion</code> を受け付けます。</li>
 </ul>
-<div class="docs-callout docs-callout-note"><p>Ferret never pays for AI on your behalf. There is no built-in key and no relay server: every request goes from your machine to the endpoint you configure, with your key.</p></div>
+<div class="docs-callout docs-callout-note"><p>Ferret があなたの代わりに AI の費用を払うことはありません。組み込みのキーも中継サーバーも無く、すべてのリクエストはあなたのマシンから、あなたが設定した接続先へ、あなたのキーで送られます。</p></div>
       </section>
 
-      <section class="docs-section" aria-labelledby="custom" lang="en">
-        <h2 id="custom"><a class="docs-anchor" href="#custom" aria-label="「Any provider: custom endpoints」へのリンク">#</a>Any provider: custom endpoints</h2>
-        <p>Presets only prefill the URL and model. Every connection (transcription, Organize findings, decision model) also accepts any URL, model, headers and auth, so you can use any provider: Cloudflare, a gateway, a corporate proxy or your own server. The fields below have the same names and shape in all three.</p>
+      <section class="docs-section" aria-labelledby="custom">
+        <h2 id="custom"><a class="docs-anchor" href="#custom" aria-label="「どのプロバイダでも: カスタムの接続先」へのリンク">#</a>どのプロバイダでも: カスタムの接続先</h2>
+        <p>プリセットは URL とモデルを埋めるだけです。どの接続（文字起こし、指摘を整理、判定モデル）も任意の URL、モデル、ヘッダー、認証を受け付けるので、Cloudflare、ゲートウェイ、社内のプロキシ、自前のサーバーなど、どのプロバイダでも使えます。下の項目は3つとも同じ名前・同じ形です。</p>
 <table>
-  <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+  <thead><tr><th>項目</th><th>意味</th></tr></thead>
   <tbody>
-    <tr><td><code>baseUrl</code>, <code>model</code></td><td>Any http(s) URL and model name. <code>{account_id}</code> in the URL is replaced by <code>accountId</code>, or by the <code>CLOUDFLARE_ACCOUNT_ID</code> environment variable</td></tr>
-    <tr><td><code>authScheme</code></td><td><code>bearer</code> (<code>Authorization: Bearer &lt;key&gt;</code>), <code>header</code> (the key in the header named by <code>authHeader</code>) or <code>none</code>. Omit it to keep the provider's default</td></tr>
-    <tr><td><code>headers</code></td><td>Extra headers. A value is a plain string, or <code>{"env": "VAR"}</code> to read it from an environment variable (looked up like <code>apiKeyEnv</code>). Secret headers such as <code>Authorization</code> or a gateway token are accepted only as <code>{"env": …}</code>. In the Settings page, write <code>Name: ${VAR}</code></td></tr>
-    <tr><td><code>apiKey</code> / <code>apiKeyEnv</code></td><td>The key, see <a href="#keys">API keys</a></td></tr>
+    <tr><td><code>baseUrl</code>, <code>model</code></td><td>任意の http(s) の URL とモデル名。URL の中の <code>{account_id}</code> は <code>accountId</code>、または環境変数 <code>CLOUDFLARE_ACCOUNT_ID</code> に置き換わります</td></tr>
+    <tr><td><code>authScheme</code></td><td><code>bearer</code>（<code>Authorization: Bearer &lt;key&gt;</code>）、<code>header</code>（<code>authHeader</code> で指定した名前のヘッダーにキーを入れる）、<code>none</code> のどれか。省略するとプロバイダの既定のままです</td></tr>
+    <tr><td><code>headers</code></td><td>追加のヘッダー。値はただの文字列か、環境変数から読む <code>{"env": "VAR"}</code>（<code>apiKeyEnv</code> と同じ順で探します）。<code>Authorization</code> やゲートウェイのトークンのような秘密のヘッダーは <code>{"env": …}</code> の形でしか受け付けません。設定画面では <code>Name: ${VAR}</code> と書きます</td></tr>
+    <tr><td><code>apiKey</code> / <code>apiKeyEnv</code></td><td>キー。<a href="#keys">API キー</a>を参照</td></tr>
   </tbody>
 </table>
-<p><strong>Transcription</strong> with any OpenAI-compatible <code>/v1/audio/transcriptions</code> server that wants its key in an <code>api-key</code> header:</p>
+<p>キーを <code>api-key</code> ヘッダーで受け取る、OpenAI 互換の <code>/v1/audio/transcriptions</code> サーバーで<strong>文字起こし</strong>する例:</p>
 <pre><code>"capture": {
   "transcription": "compatible",
   "sttEndpoints": {
@@ -261,7 +272,7 @@
     }
   }
 }</code></pre>
-<p><strong>Organize findings</strong> with Cloudflare Workers AI (OpenAI-compatible chat completions), optionally through AI Gateway:</p>
+<p>Cloudflare Workers AI（OpenAI 互換の chat completions）で<strong>指摘を整理</strong>する例。AI Gateway を通すこともできます:</p>
 <pre><code>"organizer": {
   "runner": "api:compatible",
   "endpoints": {
@@ -273,7 +284,7 @@
     }
   }
 }</code></pre>
-<p><strong>Decision model</strong> on Cloudflare Workers AI (Clef Flash), or with <code>"preset": "custom"</code> on any server that speaks the System One API. The decision model takes a full request URL in <code>endpoint</code> (with <code>{account_id}</code> and <code>{model}</code> filled in); every other field has the same name and shape as above:</p>
+<p>Cloudflare Workers AI（Clef Flash）の<strong>判定モデル</strong>の例。<code>"preset": "custom"</code> にすれば、System One API を話すどのサーバーでも使えます。判定モデルは <code>endpoint</code> にリクエスト先の完全な URL を取ります（<code>{account_id}</code> と <code>{model}</code> は埋められます）。ほかの項目は上と同じ名前・同じ形です:</p>
 <pre><code>"decision": {
   "enabled": true,
   "preset": "cloudflare",
@@ -283,36 +294,36 @@
   "apiKeyEnv": "CLOUDFLARE_API_TOKEN",
   "headers": { "cf-aig-authorization": { "env": "CF_AIG_TOKEN" } }
 }</code></pre>
-<p>Put <code>CLOUDFLARE_ACCOUNT_ID</code>, <code>CLOUDFLARE_API_TOKEN</code> and the other variables in <code>~/.ferret/.env</code>. The model names above are examples. Check your provider's model list.</p>
+<p><code>CLOUDFLARE_ACCOUNT_ID</code>、<code>CLOUDFLARE_API_TOKEN</code> などの変数は <code>~/.ferret/.env</code> に書きます。上のモデル名は例です。プロバイダのモデル一覧を確かめてください。</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="keys" lang="en">
-        <h2 id="keys"><a class="docs-anchor" href="#keys" aria-label="「API keys」へのリンク">#</a>API keys</h2>
-        <p>Each provider block accepts a key in one of three ways. The first one found wins:</p>
+      <section class="docs-section" aria-labelledby="keys">
+        <h2 id="keys"><a class="docs-anchor" href="#keys" aria-label="「API キー」へのリンク">#</a>API キー</h2>
+        <p>どの接続先のブロックも、キーを次の3通りのどれかで受け付けます。最初に見つかったものが使われます。</p>
 <ol>
-  <li><code>"apiKey": "…"</code>: the key in plaintext in <code>settings.json</code>. Anyone who can read the file can read the key, and <span class="docs-ui">Settings</span> shows a warning while one is present. Avoid it, especially if the file is in a dotfiles repo.</li>
-  <li><code>"apiKeyEnv": "OPENAI_API_KEY"</code>: the name of an environment variable. Ferret looks in its own environment, then the open project's <code>.env</code>, then <code>~/.ferret/.env</code>. Apps opened from the Finder or Start menu don't see variables exported in your shell profile, so <code>~/.ferret/.env</code> is the reliable place.</li>
-  <li>The key saved in <span class="docs-ui">Settings</span>: encrypted with the OS keychain in <code>&lt;userData&gt;/stt-keys.bin</code> (see <a href="transcription.html#keys">Where keys are stored</a>).</li>
+  <li><code>"apiKey": "…"</code>: <code>settings.json</code> に平文で書いたキー。ファイルを読める人はキーも読め、キーがある間は <span class="docs-ui">設定</span> に警告が出ます。特にファイルを dotfiles リポジトリに置いているなら避けてください。</li>
+  <li><code>"apiKeyEnv": "OPENAI_API_KEY"</code>: 環境変数の名前。Ferret は自分の環境、開いているプロジェクトの <code>.env</code>、<code>~/.ferret/.env</code> の順に探します。Finder やスタートメニューから開いたアプリには、シェルのプロファイルで export した変数が見えないので、<code>~/.ferret/.env</code> に置くのが確実です。</li>
+  <li><span class="docs-ui">設定</span> で保存したキー: OS のキーチェーンで暗号化して <code>&lt;userData&gt;/stt-keys.bin</code> に保存します（<a href="transcription.html#keys">キーの保存場所</a>を参照）。</li>
 </ol>
-<p>Ferret reads an environment variable only when you name it in <code>apiKeyEnv</code>. Keys are never logged, never shown in the UI, and never included in crash reports.</p>
+<p>Ferret が環境変数を読むのは、<code>apiKeyEnv</code> にその名前を書いたときだけです。キーをログに残したり、画面に表示したり、クラッシュレポートに含めたりすることはありません。</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="reload" lang="en">
-        <h2 id="reload"><a class="docs-anchor" href="#reload" aria-label="「Live reload」へのリンク">#</a>Live reload</h2>
+      <section class="docs-section" aria-labelledby="reload">
+        <h2 id="reload"><a class="docs-anchor" href="#reload" aria-label="「編集するとすぐ反映」へのリンク">#</a>編集するとすぐ反映</h2>
         <figure class="docs-clip" data-clip="settings-json">
-  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/settings-json.webp" data-src="../assets/clips/settings-json.mp4" data-src-webm="../assets/clips/settings-json.webm" aria-label="Editing settings.json: the app applies the change while it is running."></video>
-  <figcaption>Editing settings.json: the app applies the change while it is running.</figcaption>
+  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/settings-json.webp" data-src="../assets/clips/settings-json.mp4" data-src-webm="../assets/clips/settings-json.webm" aria-label="settings.json を編集すると、起動中のアプリにそのまま反映される。"></video>
+  <figcaption>settings.json を編集すると、起動中のアプリにそのまま反映される。</figcaption>
 </figure>
-<p>Ferret watches <code>settings.json</code>. When it changes, the app re-reads it, checks it against the schema and applies it: theme, language, layout, agents, projects and AI endpoints update without a restart, and the Settings page refreshes.</p>
+<p>Ferret は <code>settings.json</code> を見張っています。変わると読み直し、スキーマで確かめてから反映します。配色、言語、レイアウト、エージェント、プロジェクト、AI の接続先は再起動なしで更新され、設定画面も更新されます。</p>
 <ul>
-  <li>If the file has a JSON syntax error or a value of the wrong type, nothing from that edit is applied. The app keeps the last valid settings, shows the error with its line number, and doesn't overwrite your file until you fix it.</li>
-  <li>When the app itself saves (you changed something in <span class="docs-ui">Settings</span>), it writes to a temporary file and renames it over <code>settings.json</code>, so a crash never leaves a half-written file.</li>
+  <li>ファイルに JSON の構文エラーや型の違う値があると、その編集は何も反映しません。アプリは直前の正しい設定のまま動き、エラーを行番号つきで表示し、直すまでファイルを上書きしません。</li>
+  <li>アプリ自身が保存するとき（<span class="docs-ui">設定</span> で何かを変えたとき）は、一時ファイルに書いてから <code>settings.json</code> へ名前を変えて置き換えるので、途中で落ちても書きかけのファイルは残りません。</li>
 </ul>
       </section>
 
-      <section class="docs-section" aria-labelledby="agent" lang="en">
-        <h2 id="agent"><a class="docs-anchor" href="#agent" aria-label="「Let your coding agent configure Ferret」へのリンク">#</a>Let your coding agent configure Ferret</h2>
-        <p>Paste this into Claude Code, Codex or any agent that can edit files:</p>
+      <section class="docs-section" aria-labelledby="agent">
+        <h2 id="agent"><a class="docs-anchor" href="#agent" aria-label="「コーディングエージェントに Ferret を設定させる」へのリンク">#</a>コーディングエージェントに Ferret を設定させる</h2>
+        <p>次の文を Claude Code、Codex など、ファイルを編集できるエージェントに貼り付けます。</p>
 <pre><code>Edit ~/.ferret/settings.json following the JSON Schema in
 ~/.ferret/settings.schema.json (read the field descriptions first).
 Keep unknown keys and keep the file valid JSON. Never write API keys in
@@ -322,27 +333,27 @@ Ferret applies the change as soon as the file is saved.
 
 Task: &lt;what you want, e.g. "use my Ollama at http://localhost:11434 with
 qwen3:14b for Organize findings and add a prd URL for the shop project"&gt;</code></pre>
-<p>The same prompt, with your actual paths filled in, is under <span class="docs-ui">Settings</span> → <span class="docs-ui">Let your coding agent configure Ferret</span> with a <span class="docs-ui">Copy prompt</span> button.</p>
+<p>同じプロンプトが、実際のパスを埋めた形で <span class="docs-ui">設定</span> → <span class="docs-ui">コーディングエージェントに設定させる</span> にあり、<span class="docs-ui">プロンプトをコピー</span> ボタンでコピーできます。</p>
       </section>
 
         <nav class="docs-pager" aria-label="前と次のページ">
-          <a class="docs-pager-prev" href="settings.html"><span>前へ</span>Settings reference</a>
-          <a class="docs-pager-next" href="privacy.html"><span>次へ</span>Data and privacy</a>
+          <a class="docs-pager-prev" href="settings.html"><span>前へ</span>設定の一覧</a>
+          <a class="docs-pager-next" href="privacy.html"><span>次へ</span>データとプライバシー</a>
         </nav>
-        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/README.md" target="_blank" rel="noopener noreferrer">GitHub でこのページの翻訳を手伝う<span class="sr-only"> （新しいタブで開きます）</span></a></p>
+        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/ja/settings-json.html" target="_blank" rel="noopener noreferrer">GitHub でこのページの翻訳を手伝う<span class="sr-only"> （新しいタブで開きます）</span></a></p>
       </article>
     </main>
 
     <aside class="docs-toc" aria-label="このページの内容">
       <p class="docs-toc-heading">このページの内容</p>
       <ul>
-        <li><a href="#path">Where the file lives</a></li>
-        <li><a href="#schema">Schema and validation</a></li>
-        <li><a href="#example">Annotated example</a></li>
-        <li><a href="#custom">Any provider: custom endpoints</a></li>
-        <li><a href="#keys">API keys</a></li>
-        <li><a href="#reload">Live reload</a></li>
-        <li><a href="#agent">Let your coding agent configure Ferret</a></li>
+        <li><a href="#path">ファイルの場所</a></li>
+        <li><a href="#schema">スキーマと検証</a></li>
+        <li><a href="#example">注釈つきの例</a></li>
+        <li><a href="#custom">どのプロバイダでも: カスタムの接続先</a></li>
+        <li><a href="#keys">API キー</a></li>
+        <li><a href="#reload">編集するとすぐ反映</a></li>
+        <li><a href="#agent">コーディングエージェントに Ferret を設定させる</a></li>
       </ul>
     </aside>
   </div>

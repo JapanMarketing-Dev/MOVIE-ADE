@@ -1,0 +1,24 @@
+<!-- Ferret docs translation: hi / accounts. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title cb165a192d -->
+अकाउंट और usage
+
+<!-- @lead 6a6ab3126f -->
+कई Claude Code या Codex logins के बीच बदलें, और फ़ुटर में अपनी rate-limit windows पर नज़र रखें। फ़िलहाल ये दोनों फ़ीचर सिर्फ़ Claude Code और Codex के साथ काम करते हैं; दूसरे agents हमेशा की तरह अपना ही login इस्तेमाल करते रहते हैं।
+
+<!-- @accounts f0d5cb0211 -->
+## कई अकाउंट
+<p>अकाउंट वैकल्पिक हैं। इन्हें सिर्फ़ तभी जोड़ें जब आप कई अकाउंट के बीच बदलते हों।</p>
+<ol class="docs-steps">
+  <li><span class="docs-ui">Settings → अकाउंट</span> खोलें, या फ़ुटर के usage मेन्यू से <span class="docs-ui">अकाउंट प्रबंधित करें…</span>।</li>
+  <li><span class="docs-ui">अकाउंट जोड़ें</span> बिल्ट-इन टर्मिनल टैब में agent का login शुरू करता है।</li>
+  <li>इस्तेमाल करने वाला अकाउंट चुनें। चल रहे टैब अपना अकाउंट रखते हैं। नए टैब चुना गया अकाउंट इस्तेमाल करते हैं।</li>
+</ol>
+<p>यह कैसे काम करता है: जोड़े गए हर अकाउंट को अपनी config directory मिलती है, <code>&lt;userData&gt;/accounts/&lt;agent&gt;/&lt;id&gt;/</code>। Ferret agent को <code>CLAUDE_CONFIG_DIR</code> (Claude Code) या <code>CODEX_HOME</code> (Codex) के साथ उसी directory की ओर इशारा करते हुए launch करता है। <span class="docs-ui">सिस्टम डिफ़ॉल्ट</span> आपकी सामान्य <code>~/.claude</code> / <code>~/.codex</code> को बिना बदले इस्तेमाल करता है।</p>
+<p>अकाउंट हटाने से उसकी config directory डिलीट हो जाती है। इससे server पर आप sign out नहीं होते।</p>
+
+<!-- @usage bb03a3a17a -->
+## फ़ुटर में usage
+<p>फ़ुटर दिखाता है कि हर rate-limit window का कितना हिस्सा इस्तेमाल हो चुका है: 5 घंटे की window और साप्ताहिक window, साथ में Claude के लिए हर मॉडल की साप्ताहिक window। 60% पर रंग पीला और 80% पर लाल हो जाता है। मान हर 15 मिनट में, या <span class="docs-ui">usage रिफ़्रेश करें</span> पर रिफ़्रेश होते हैं।</p>
+<p>कितना दिखता है, यह फ़ुटर में उपलब्ध जगह पर निर्भर करता है। जगह हो तो यह bars, window के नाम और प्रतिशत दिखाता है। फ़ुटर जितना संकरा होता है, यह कम काम के हिस्से पहले हटाता जाता है, यहाँ तक कि हर agent के लिए सिर्फ़ एक प्रतिशत बचता है। सब कुछ एक popover में देखने के लिए usage पर क्लिक करें।</p>
+<p>Usage सीधे Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) और ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) से, साइन इन किए गए अकाउंट के अपने credentials के साथ लाया जाता है।</p>
+<figure class="docs-shot" data-shot="usage"><div class="docs-shot-slot" role="img" aria-label="फ़ुटर में usage (screenshot जल्द आ रहा है)"><span>Screenshot जल्द आ रहा है</span></div><figcaption>फ़ुटर में usage</figcaption></figure>

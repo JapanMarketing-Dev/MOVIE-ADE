@@ -9,6 +9,19 @@
   <meta name="theme-color" content="#050508">
   <link rel="canonical" href="https://ferretade.dev/docs/agents">
   <link rel="alternate" hreflang="en" href="https://ferretade.dev/docs/agents">
+  <link rel="alternate" hreflang="ja" href="https://ferretade.dev/docs/ja/agents">
+  <link rel="alternate" hreflang="zh-CN" href="https://ferretade.dev/docs/zh-CN/agents">
+  <link rel="alternate" hreflang="zh-TW" href="https://ferretade.dev/docs/zh-TW/agents">
+  <link rel="alternate" hreflang="ko" href="https://ferretade.dev/docs/ko/agents">
+  <link rel="alternate" hreflang="es" href="https://ferretade.dev/docs/es/agents">
+  <link rel="alternate" hreflang="fr" href="https://ferretade.dev/docs/fr/agents">
+  <link rel="alternate" hreflang="de" href="https://ferretade.dev/docs/de/agents">
+  <link rel="alternate" hreflang="it" href="https://ferretade.dev/docs/it/agents">
+  <link rel="alternate" hreflang="pt-BR" href="https://ferretade.dev/docs/pt-BR/agents">
+  <link rel="alternate" hreflang="ru" href="https://ferretade.dev/docs/ru/agents">
+  <link rel="alternate" hreflang="hi" href="https://ferretade.dev/docs/hi/agents">
+  <link rel="alternate" hreflang="id" href="https://ferretade.dev/docs/id/agents">
+  <link rel="alternate" hreflang="vi" href="https://ferretade.dev/docs/vi/agents">
   <link rel="alternate" hreflang="x-default" href="https://ferretade.dev/docs/agents">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
@@ -158,7 +171,7 @@
   <li><span class="docs-ui">Confirm</span> / <span class="docs-ui">Mark as Needs Review</span>, <span class="docs-ui">Merge with Next</span>, <span class="docs-ui">Delete</span></li>
 </ul>
 <p><span class="docs-ui">Filter by progress</span> shows or hides findings by status (for example <span class="docs-ui">Only</span> the ones waiting for your review); <span class="docs-ui">Show all</span> clears it.</p>
-<p>The header has <span class="docs-ui">Undo</span>, <span class="docs-ui">Open Folder</span>, <span class="docs-ui">Copy for Agent</span>, <span class="docs-ui">Send to GitHub / GitLab</span>, <span class="docs-ui">Organize</span>, and <span class="docs-ui">Send to Agent</span>. Speech that didn't become a finding is listed under <span class="docs-ui">Excluded speech</span>, where <span class="docs-ui">Restore as Finding</span> brings it back. <span class="docs-ui">Overall Note</span> adds a note for the whole review.</p>
+<p>The header has <span class="docs-ui">Undo</span>, <span class="docs-ui">Open Folder</span>, <span class="docs-ui">Copy for Agent</span>, <span class="docs-ui">Send to GitHub / GitLab</span>, <span class="docs-ui">Organize</span>, and <span class="docs-ui">Send to Agent</span>. Speech that didn't become a finding is listed under <span class="docs-ui">Excluded speech</span>, where <span class="docs-ui">Restore as Finding</span> brings it back.</p>
 <figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="The Findings tab (screenshot coming soon)"><span>Screenshot coming soon</span></div><figcaption>The Findings tab</figcaption></figure>
       </section>
 
@@ -327,7 +340,7 @@ codex</code></pre>
         <p><span class="docs-ui">Send to GitHub</span> posts the review as a new issue or as a comment on one of your open pull requests. Authentication is delegated to the <a href="https://cli.github.com/" target="_blank" rel="noopener noreferrer">GitHub CLI<span class="sr-only"> (opens in a new tab)</span></a>. Ferret never reads or stores a token.</p>
 <ol class="docs-steps">
   <li>Install <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), or see <a href="https://github.com/cli/cli#installation" target="_blank" rel="noopener noreferrer">cli/cli<span class="sr-only"> (opens in a new tab)</span></a>.</li>
-  <li><span class="docs-ui">Settings → GitHub → Sign In in Terminal</span> runs <code>gh auth login --web -h github.com</code> in the built-in terminal.</li>
+  <li><span class="docs-ui">Settings → GitHub / GitLab → Sign In in Terminal</span> runs <code>gh auth login --web -h github.com</code> in the built-in terminal.</li>
   <li>Click <span class="docs-ui">Send to GitHub</span>, choose <span class="docs-ui">Create a new issue</span> or a PR, and review the <span class="docs-ui">Title</span> and <span class="docs-ui">Body</span> (editable).</li>
   <li>Tick the confirmation checkbox, then <span class="docs-ui">Create Issue</span> or <span class="docs-ui">Post Comment</span>.</li>
 </ol>

@@ -3,18 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sending to agents · Ferret docs</title>
-  <meta name="description" content="Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.">
+  <title>Enviar a agentes · Documentación de Ferret</title>
+  <meta name="description" content="Ejecuta tu agente de programación en la terminal integrada y pásale una revisión con un clic. Claude Code y Codex son los ejemplos habituales, pero sirve cualquier agente de la lista de abajo, y también un CLI que añadas tú. También puedes copiar la instrucción para un agente que se ejecute en otro sitio, o publicar la revisión en GitHub.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
-  <meta name="robots" content="noindex, follow">
-  <link rel="canonical" href="https://ferretade.dev/docs/agents">
+  <link rel="canonical" href="https://ferretade.dev/docs/es/agents">
   <link rel="alternate" hreflang="en" href="https://ferretade.dev/docs/agents">
+  <link rel="alternate" hreflang="ja" href="https://ferretade.dev/docs/ja/agents">
+  <link rel="alternate" hreflang="zh-CN" href="https://ferretade.dev/docs/zh-CN/agents">
+  <link rel="alternate" hreflang="zh-TW" href="https://ferretade.dev/docs/zh-TW/agents">
+  <link rel="alternate" hreflang="ko" href="https://ferretade.dev/docs/ko/agents">
+  <link rel="alternate" hreflang="es" href="https://ferretade.dev/docs/es/agents">
+  <link rel="alternate" hreflang="fr" href="https://ferretade.dev/docs/fr/agents">
+  <link rel="alternate" hreflang="de" href="https://ferretade.dev/docs/de/agents">
+  <link rel="alternate" hreflang="it" href="https://ferretade.dev/docs/it/agents">
+  <link rel="alternate" hreflang="pt-BR" href="https://ferretade.dev/docs/pt-BR/agents">
+  <link rel="alternate" hreflang="ru" href="https://ferretade.dev/docs/ru/agents">
+  <link rel="alternate" hreflang="hi" href="https://ferretade.dev/docs/hi/agents">
+  <link rel="alternate" hreflang="id" href="https://ferretade.dev/docs/id/agents">
+  <link rel="alternate" hreflang="vi" href="https://ferretade.dev/docs/vi/agents">
   <link rel="alternate" hreflang="x-default" href="https://ferretade.dev/docs/agents">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
-  <meta property="og:title" content="Sending to agents · Ferret docs">
-  <meta property="og:description" content="Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.">
+  <meta property="og:title" content="Enviar a agentes · Documentación de Ferret">
+  <meta property="og:description" content="Ejecuta tu agente de programación en la terminal integrada y pásale una revisión con un clic. Claude Code y Codex son los ejemplos habituales, pero sirve cualquier agente de la lista de abajo, y también un CLI que añadas tú. También puedes copiar la instrucción para un agente que se ejecute en otro sitio, o publicar la revisión en GitHub.">
   <meta property="og:url" content="https://ferretade.dev/docs/es/agents">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="es_ES">
@@ -23,8 +35,8 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Sending to agents · Ferret docs">
-  <meta name="twitter:description" content="Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.">
+  <meta name="twitter:title" content="Enviar a agentes · Documentación de Ferret">
+  <meta name="twitter:description" content="Ejecuta tu agente de programación en la terminal integrada y pásale una revisión con un clic. Claude Code y Codex son los ejemplos habituales, pero sirve cualquier agente de la lista de abajo, y también un CLI que añadas tú. También puedes copiar la instrucción para un agente que se ejecute en otro sitio, o publicar la revisión en GitHub.">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -35,8 +47,8 @@
   <script src="../docs.js?v=cb59f7a6" defer></script>
 </head>
 <!-- Generated by tools/docs/build-docs.mjs: the sidebar, header, and footer are identical on every page in site/docs/. Change them there. -->
-<body data-page="docs" data-copy="Copy" data-copied="Copied" data-copy-failed="Copy failed">
-  <a class="skip" href="#docs-main">Skip to content</a>
+<body data-page="docs" data-copy="Copiar" data-copied="Copiado" data-copy-failed="No se pudo copiar">
+  <a class="skip" href="#docs-main">Saltar al contenido</a>
   <svg class="sprite" width="0" height="0" aria-hidden="true">
     <symbol id="i-github" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
@@ -48,14 +60,14 @@
 
   <header class="site-header">
     <div class="wrap">
-      <a class="brand" href="../../index.html" aria-label="Ferret home">
+      <a class="brand" href="../../index.html" aria-label="Inicio de Ferret">
         <img class="wordmark" src="../../assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22">
       </a>
-      <nav class="site-nav" aria-label="Main">
-        <a href="../../index.html#features">Features</a>
-        <a href="../../download.html">Download</a>
-        <a class="nav-keep" href="quick-start.html" aria-current="page">Docs</a>
-        <a href="../../download.html#versions">Changelog</a>
+      <nav class="site-nav" aria-label="Principal">
+        <a href="../../index.html#features">Funciones</a>
+        <a href="../../download.html">Descargar</a>
+        <a class="nav-keep" href="quick-start.html" aria-current="page">Documentación</a>
+        <a href="../../download.html#versions">Novedades</a>
       </nav>
       <div class="header-actions">
         <details class="docs-lang">
@@ -77,62 +89,62 @@
             <li><a href="../vi/agents.html" hreflang="vi" lang="vi" data-docs-lang="vi">Tiếng Việt</a></li>
           </ul>
         </details>
-        <a class="btn btn-sm btn-icon btn-ghost" href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-discord"/></svg><span class="sr-only">Discord</span><span class="sr-only"> (opens in a new tab)</span></a>
-        <a class="btn btn-sm btn-icon btn-ghost" href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-x"/></svg><span class="sr-only">X</span><span class="sr-only"> (opens in a new tab)</span></a>
+        <a class="btn btn-sm btn-icon btn-ghost" href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-discord"/></svg><span class="sr-only">Discord</span><span class="sr-only"> (se abre en una pestaña nueva)</span></a>
+        <a class="btn btn-sm btn-icon btn-ghost" href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-x"/></svg><span class="sr-only">X</span><span class="sr-only"> (se abre en una pestaña nueva)</span></a>
         <a class="btn btn-sm btn-ghost" href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">
           <svg class="icon icon-fill"><use href="#i-github"/></svg><span class="btn-label">GitHub</span>
-        <span class="sr-only"> (opens in a new tab)</span></a>
+        <span class="sr-only"> (se abre en una pestaña nueva)</span></a>
         <a class="btn btn-sm btn-primary" href="../../download.html">
-          <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">Download</span>
+          <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">Descargar</span>
         </a>
       </div>
     </div>
   </header>
 
   <div class="wrap docs-layout">
-    <nav class="docs-sidebar" aria-label="Docs pages" id="docs-sidebar">
+    <nav class="docs-sidebar" aria-label="Páginas de la documentación" id="docs-sidebar">
       <button class="docs-sidebar-toggle" type="button" aria-expanded="true" aria-controls="docs-nav-list" data-docs-nav-toggle>
-        <svg class="icon"><use href="#i-menu"/></svg>Docs menu
+        <svg class="icon"><use href="#i-menu"/></svg>Menú de la documentación
       </button>
       <div class="docs-nav-list" id="docs-nav-list">
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Start here</p>
+        <p class="docs-nav-heading">Primeros pasos</p>
         <ul>
-          <li><a href="quick-start.html">Quick start</a></li>
-          <li><a href="install.html">Install</a></li>
-          <li><a href="concepts.html">Concepts</a></li>
-          <li><a href="keyboard.html">Keyboard shortcuts</a></li>
+          <li><a href="quick-start.html">Guía rápida</a></li>
+          <li><a href="install.html">Instalación</a></li>
+          <li><a href="concepts.html">Conceptos</a></li>
+          <li><a href="keyboard.html">Atajos de teclado</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Using Ferret</p>
+        <p class="docs-nav-heading">Uso de Ferret</p>
         <ul>
-          <li><a href="projects.html">Projects and URLs</a></li>
-          <li><a href="recording.html">Recording</a></li>
-          <li><a href="agents.html" aria-current="page">Sending to agents</a></li>
-          <li><a href="editor.html">Editor and preview</a></li>
+          <li><a href="projects.html">Proyectos y URL</a></li>
+          <li><a href="recording.html">Grabación</a></li>
+          <li><a href="agents.html" aria-current="page">Enviar a agentes</a></li>
+          <li><a href="editor.html">Editor y vista previa</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Configure</p>
+        <p class="docs-nav-heading">Configuración</p>
         <ul>
-          <li><a href="transcription.html">Transcription and costs</a></li>
-          <li><a href="accounts.html">Accounts and usage</a></li>
-          <li><a href="settings.html">Settings reference</a></li>
-          <li><a href="settings-json.html">Configure with settings.json</a></li>
+          <li><a href="transcription.html">Transcripción y costes</a></li>
+          <li><a href="accounts.html">Cuentas y uso</a></li>
+          <li><a href="settings.html">Referencia de ajustes</a></li>
+          <li><a href="settings-json.html">Configurar con settings.json</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Reference</p>
+        <p class="docs-nav-heading">Referencia</p>
         <ul>
-          <li><a href="privacy.html">Data and privacy</a></li>
-          <li><a href="files.html">Files and environment</a></li>
+          <li><a href="privacy.html">Datos y privacidad</a></li>
+          <li><a href="files.html">Archivos y entorno</a></li>
         </ul>
       </div>
       <div class="docs-nav-group">
-        <p class="docs-nav-heading">Help</p>
+        <p class="docs-nav-heading">Ayuda</p>
         <ul>
-          <li><a href="troubleshooting.html">Troubleshooting</a></li>
+          <li><a href="troubleshooting.html">Solución de problemas</a></li>
         </ul>
       </div>
       </div>
@@ -140,243 +152,242 @@
 
     <main class="docs-main" id="docs-main">
       <article class="docs-content">
-        <div class="docs-callout docs-callout-i18n"><p>Esta página aún no está traducida. Se muestra en inglés. <a href="../agents.html" hreflang="en">English</a></p></div>
-        <p class="docs-eyebrow">Using Ferret</p>
-        <h1 lang="en">Sending to agents</h1>
-        <p class="docs-lead" lang="en">Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.</p>
+        <p class="docs-eyebrow">Uso de Ferret</p>
+        <h1>Enviar a agentes</h1>
+        <p class="docs-lead">Ejecuta tu agente de programación en la terminal integrada y pásale una revisión con un clic. Claude Code y Codex son los ejemplos habituales, pero sirve cualquier agente de la lista de abajo, y también un CLI que añadas tú. También puedes copiar la instrucción para un agente que se ejecute en otro sitio, o publicar la revisión en GitHub.</p>
         <div class="docs-os" role="group" aria-label="Atajos para" data-docs-os hidden>
           <span class="docs-os-label">Atajos para</span>
           <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">macOS</button>
           <button type="button" class="docs-os-btn" data-os-choice="win" aria-pressed="false">Windows / Linux</button>
         </div>
 
-      <section class="docs-section" aria-labelledby="findings" lang="en">
-        <h2 id="findings"><a class="docs-anchor" href="#findings" aria-label="Link to Review findings">#</a>Review findings</h2>
-        <p>Each card in the <span class="docs-ui">Findings</span> tab supports:</p>
+      <section class="docs-section" aria-labelledby="findings">
+        <h2 id="findings"><a class="docs-anchor" href="#findings" aria-label="Enlace a Revisar los hallazgos">#</a>Revisar los hallazgos</h2>
+        <p>Cada tarjeta de la pestaña <span class="docs-ui">Hallazgos</span> permite:</p>
 <ul>
-  <li>Inline edit of the title and request</li>
-  <li><span class="docs-ui">Send</span> / <span class="docs-ui">Don't send</span> toggle</li>
-  <li><span class="docs-ui">Watch Recording</span> (seeks to that time) and <span class="docs-ui">Replace Image</span> (pick another frame)</li>
-  <li><span class="docs-ui">Confirm</span> / <span class="docs-ui">Mark as Needs Review</span>, <span class="docs-ui">Merge with Next</span>, <span class="docs-ui">Delete</span></li>
+  <li>Editar directamente el título y la petición</li>
+  <li>Alternar <span class="docs-ui">Enviar</span> / <span class="docs-ui">No enviar</span></li>
+  <li><span class="docs-ui">Ver grabación</span> (salta a ese momento) y <span class="docs-ui">Reemplazar imagen</span> (elegir otro fotograma)</li>
+  <li><span class="docs-ui">Confirmar</span> / <span class="docs-ui">Marcar como pendiente de revisión</span>, <span class="docs-ui">Combinar con el siguiente</span>, <span class="docs-ui">Eliminar</span></li>
 </ul>
-<p><span class="docs-ui">Filter by progress</span> shows or hides findings by status (for example <span class="docs-ui">Only</span> the ones waiting for your review); <span class="docs-ui">Show all</span> clears it.</p>
-<p>The header has <span class="docs-ui">Undo</span>, <span class="docs-ui">Open Folder</span>, <span class="docs-ui">Copy for Agent</span>, <span class="docs-ui">Send to GitHub / GitLab</span>, <span class="docs-ui">Organize</span>, and <span class="docs-ui">Send to Agent</span>. Speech that didn't become a finding is listed under <span class="docs-ui">Excluded speech</span>, where <span class="docs-ui">Restore as Finding</span> brings it back. <span class="docs-ui">Overall Note</span> adds a note for the whole review.</p>
-<figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="The Findings tab (screenshot coming soon)"><span>Screenshot coming soon</span></div><figcaption>The Findings tab</figcaption></figure>
+<p><span class="docs-ui">Filtrar por progreso</span> muestra u oculta hallazgos según su estado (por ejemplo, <span class="docs-ui">Solo</span> los que esperan tu revisión); <span class="docs-ui">Mostrar todo</span> quita el filtro.</p>
+<p>La cabecera tiene <span class="docs-ui">Deshacer</span>, <span class="docs-ui">Abrir carpeta</span>, <span class="docs-ui">Copiar para el agente</span>, <span class="docs-ui">Enviar a GitHub / GitLab</span>, <span class="docs-ui">Organizar</span> y <span class="docs-ui">Enviar al agente</span>. Lo que dijiste y no se convirtió en hallazgo aparece en <span class="docs-ui">Voz excluida</span>, donde <span class="docs-ui">Restaurar como hallazgo</span> lo recupera.</p>
+<figure class="docs-shot" data-shot="findings"><div class="docs-shot-slot" role="img" aria-label="La pestaña Hallazgos (captura disponible próximamente)"><span>Captura disponible próximamente</span></div><figcaption>La pestaña Hallazgos</figcaption></figure>
       </section>
 
-      <section class="docs-section" aria-labelledby="terminal" lang="en">
-        <h2 id="terminal"><a class="docs-anchor" href="#terminal" aria-label="Link to Run agents in the built-in terminal">#</a>Run agents in the built-in terminal</h2>
-        <p>When a project opens, Ferret starts one terminal tab per agent in <span class="docs-ui">Settings → Agents → Start When a Project Opens</span>, in the project folder and in the agent's normal mode. The default is Claude Code and Codex:</p>
+      <section class="docs-section" aria-labelledby="terminal">
+        <h2 id="terminal"><a class="docs-anchor" href="#terminal" aria-label="Enlace a Ejecutar agentes en la terminal integrada">#</a>Ejecutar agentes en la terminal integrada</h2>
+        <p>Al abrir un proyecto, Ferret inicia una pestaña de terminal por cada agente de <span class="docs-ui">Ajustes → Agentes → Iniciar al abrir un proyecto</span>, en la carpeta del proyecto y en el modo normal del agente. De forma predeterminada son Claude Code y Codex:</p>
 <pre><code>claude
 codex</code></pre>
-<p>Pick any agents from the <a href="#supported">supported list</a> instead (they start in the order you pick them), or none.</p>
-<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Permission prompts stay on</p><p>Registering or cloning a project does not make Ferret trust it. Agents such as Claude Code and Codex ask whether you trust the folder the first time, and keep asking before they edit files or run commands. To let agents skip permission prompts, approvals and the sandbox in one project you trust, turn it on for that project under <span class="docs-ui">Settings → Agents → Skip permission prompts</span> and confirm. Ferret adds each agent's own skip flag where one is known; agents without a known flag keep their prompts. It then applies only to agents you open yourself in that project folder; agents started when the project opens always keep their prompts. Skip-permission flags typed into the arguments are ignored.</p></div>
-<p>If no agent is selected, a plain shell opens. The <span class="docs-ui">+</span> menu opens <span class="docs-ui">New Terminal</span>, launches any of your agents in a new tab, or jumps to <span class="docs-ui">Agent settings…</span>. Its search box also finds tabs, saved URLs, and files.</p>
-<p>Tabs show the agent state: <span class="docs-ui">Running</span>, <span class="docs-ui">Waiting for input</span>, <span class="docs-ui">Done (unread)</span>, <span class="docs-ui">Idle</span>. In the sidebar, a project where an agent is running is marked, so you can see it without switching projects.</p>
+<p>En su lugar puedes elegir cualquier agente de la <a href="#supported">lista de compatibles</a> (se inician en el orden en que los eliges) o ninguno.</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Las solicitudes de permiso siguen activas</p><p>Registrar o clonar un proyecto no hace que Ferret confíe en él. Agentes como Claude Code y Codex preguntan la primera vez si confías en la carpeta, y siguen preguntando antes de editar archivos o ejecutar comandos. Para que los agentes omitan las solicitudes de permiso, las aprobaciones y el sandbox en un proyecto de confianza, actívalo para ese proyecto en <span class="docs-ui">Ajustes → Agentes → Omitir las solicitudes de permiso</span> y confirma. Ferret añade la opción de omisión propia de cada agente cuando se conoce; los agentes sin una opción conocida mantienen sus solicitudes. Después solo se aplica a los agentes que abres tú en la carpeta de ese proyecto; los agentes que se inician al abrir el proyecto siempre mantienen sus solicitudes. Las opciones de omisión de permisos escritas en los argumentos se ignoran.</p></div>
+<p>Si no hay ningún agente seleccionado, se abre una shell normal. El menú <span class="docs-ui">+</span> abre una <span class="docs-ui">Nueva terminal</span>, inicia cualquiera de tus agentes en una pestaña nueva o lleva a <span class="docs-ui">Ajustes de agentes…</span>. Su cuadro de búsqueda también encuentra pestañas, URL guardadas y archivos.</p>
+<p>Las pestañas muestran el estado del agente: <span class="docs-ui">En ejecución</span>, <span class="docs-ui">Esperando entrada</span>, <span class="docs-ui">Terminado (sin leer)</span>, <span class="docs-ui">Inactivo</span>. En la barra lateral se marcan los proyectos con un agente en ejecución, así que lo ves sin cambiar de proyecto.</p>
 <figure class="docs-clip" data-clip="terminals">
-  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/terminals.webp" data-src="../assets/clips/terminals.mp4" data-src-webm="../assets/clips/terminals.webm" aria-label="Dragging terminal tabs and panes to split, move, and turn them back into tabs."></video>
-  <figcaption>Dragging terminal tabs and panes to split, move, and turn them back into tabs.</figcaption>
+  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/terminals.webp" data-src="../assets/clips/terminals.mp4" data-src-webm="../assets/clips/terminals.webm" aria-label="Arrastrar pestañas y paneles de terminal para dividirlos, moverlos y volver a convertirlos en pestañas."></video>
+  <figcaption>Arrastrar pestañas y paneles de terminal para dividirlos, moverlos y volver a convertirlos en pestañas.</figcaption>
 </figure>
-<p><strong>Drag to split.</strong> Drag a tab, or a pane by its handle (shown once a tab is split), and drop it:</p>
+<p><strong>Arrastrar para dividir.</strong> Arrastra una pestaña, o un panel por su asa (aparece cuando una pestaña está dividida), y suéltala:</p>
 <ul>
-  <li>on the outer quarter of a pane's edge: <span class="docs-ui">Split left</span> / <span class="docs-ui">Split right</span> / <span class="docs-ui">Split up</span> / <span class="docs-ui">Split down</span></li>
-  <li>on the center of a pane: <span class="docs-ui">Open as a tab</span> (a pane leaves its split and becomes its own tab)</li>
-  <li>on the thin band around the whole terminal area: <span class="docs-ui">Split the whole area left</span> and so on (when there are 2 or more panes)</li>
-  <li>on the tab bar: <span class="docs-ui">Place as a tab here</span></li>
+  <li>en el cuarto exterior del borde de un panel: <span class="docs-ui">Dividir a la izquierda</span> / <span class="docs-ui">Dividir a la derecha</span> / <span class="docs-ui">Dividir hacia arriba</span> / <span class="docs-ui">Dividir hacia abajo</span></li>
+  <li>en el centro de un panel: <span class="docs-ui">Abrir como pestaña</span> (un panel sale de su división y pasa a ser una pestaña propia)</li>
+  <li>en la franja fina alrededor de toda el área de terminal: <span class="docs-ui">Dividir toda el área a la izquierda</span>, etc. (cuando hay 2 o más paneles)</li>
+  <li>en la barra de pestañas: <span class="docs-ui">Colocar aquí como pestaña</span></li>
 </ul>
-<p>Processes keep running while you move them, and a tab left empty closes. Keyboard splits:</p>
+<p>Los procesos siguen ejecutándose mientras los mueves, y una pestaña que se queda vacía se cierra. Divisiones con el teclado:</p>
 <table class="docs-keys">
-  <thead><tr><th>Action</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
+  <thead><tr><th>Acción</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
   <tbody>
-    <tr><td>New Terminal</td><td class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></td></tr>
-    <tr><td>Split Right</td><td class="os-mac"><kbd>⌘</kbd><kbd>D</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
-    <tr><td>Split Down</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>D</kbd></td><td class="os-win"><kbd>Alt</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
-    <tr><td>Close Pane / Tab</td><td class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></td></tr>
+    <tr><td>Nueva terminal</td><td class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></td></tr>
+    <tr><td>Dividir a la derecha</td><td class="os-mac"><kbd>⌘</kbd><kbd>D</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
+    <tr><td>Dividir hacia abajo</td><td class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>D</kbd></td><td class="os-win"><kbd>Alt</kbd><kbd>Shift</kbd><kbd>D</kbd></td></tr>
+    <tr><td>Cerrar panel / pestaña</td><td class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></td><td class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></td></tr>
   </tbody>
 </table>
       </section>
 
-      <section class="docs-section" aria-labelledby="supported" lang="en">
-        <h2 id="supported"><a class="docs-anchor" href="#supported" aria-label="Link to Supported agents">#</a>Supported agents</h2>
-        <p>Ferret is not tied to one agent. It recognizes the coding agents below: it can start them, detect them in a terminal for <span class="docs-ui">Send to Agent</span>, and show whether they are installed. <span class="docs-ui">Settings → Agents</span> lists them with <span class="docs-ui">Installed</span> / <span class="docs-ui">Not found</span>, an <span class="docs-ui">Install</span> button where the vendor publishes a one-line installer, and the command and arguments for each.</p>
+      <section class="docs-section" aria-labelledby="supported">
+        <h2 id="supported"><a class="docs-anchor" href="#supported" aria-label="Enlace a Agentes compatibles">#</a>Agentes compatibles</h2>
+        <p>Ferret no está atado a un solo agente. Reconoce los agentes de programación de abajo: puede iniciarlos, detectarlos en una terminal para <span class="docs-ui">Enviar al agente</span> y mostrar si están instalados. <span class="docs-ui">Ajustes → Agentes</span> los muestra con <span class="docs-ui">Instalado</span> / <span class="docs-ui">No encontrado</span>, un botón <span class="docs-ui">Instalar</span> cuando el fabricante publica un instalador de una línea, y el comando y los argumentos de cada uno.</p>
 <ul class="docs-agent-list">
-  <li><a href="https://code.claude.com/docs/en/setup" target="_blank" rel="noopener noreferrer">Claude Code<span class="sr-only"> (opens in a new tab)</span></a> <code>claude</code></li>
-  <li><a href="https://github.com/openai/codex" target="_blank" rel="noopener noreferrer">Codex<span class="sr-only"> (opens in a new tab)</span></a> <code>codex</code></li>
-  <li><a href="https://github.com/google-gemini/gemini-cli" target="_blank" rel="noopener noreferrer">Gemini CLI<span class="sr-only"> (opens in a new tab)</span></a> <code>gemini</code></li>
-  <li><a href="https://cursor.com/docs/cli/installation" target="_blank" rel="noopener noreferrer">Cursor<span class="sr-only"> (opens in a new tab)</span></a> <code>agent</code></li>
-  <li><a href="https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli" target="_blank" rel="noopener noreferrer">GitHub Copilot<span class="sr-only"> (opens in a new tab)</span></a> <code>copilot</code></li>
-  <li><a href="https://docs.devin.ai/work-with-devin/devin-cli" target="_blank" rel="noopener noreferrer">Devin<span class="sr-only"> (opens in a new tab)</span></a> <code>devin</code></li>
-  <li><a href="https://opencode.ai/docs/" target="_blank" rel="noopener noreferrer">OpenCode<span class="sr-only"> (opens in a new tab)</span></a> <code>opencode</code></li>
-  <li><a href="https://ampcode.com/docs/cli" target="_blank" rel="noopener noreferrer">Amp<span class="sr-only"> (opens in a new tab)</span></a> <code>amp</code></li>
-  <li><a href="https://docs.factory.com/cli/getting-started/quickstart" target="_blank" rel="noopener noreferrer">Droid<span class="sr-only"> (opens in a new tab)</span></a> <code>droid</code></li>
-  <li><a href="https://kiro.dev/docs/cli/" target="_blank" rel="noopener noreferrer">Kiro<span class="sr-only"> (opens in a new tab)</span></a> <code>kiro-cli chat</code></li>
-  <li><a href="https://aider.chat/docs/install.html" target="_blank" rel="noopener noreferrer">Aider<span class="sr-only"> (opens in a new tab)</span></a> <code>aider</code></li>
-  <li><a href="https://ante.run/start/quickstart/" target="_blank" rel="noopener noreferrer">Ante<span class="sr-only"> (opens in a new tab)</span></a> <code>ante</code></li>
-  <li><a href="https://antigravity.google/docs/cli/install" target="_blank" rel="noopener noreferrer">Antigravity<span class="sr-only"> (opens in a new tab)</span></a> <code>agy</code></li>
-  <li><a href="https://docs.augmentcode.com/cli/overview" target="_blank" rel="noopener noreferrer">Auggie<span class="sr-only"> (opens in a new tab)</span></a> <code>auggie</code></li>
-  <li><a href="https://github.com/autohandai/code-cli" target="_blank" rel="noopener noreferrer">Autohand Code<span class="sr-only"> (opens in a new tab)</span></a> <code>autohand</code></li>
-  <li><a href="https://docs.blackbox.ai/features/blackbox-cli/getting-started" target="_blank" rel="noopener noreferrer">BLACKBOX CLI<span class="sr-only"> (opens in a new tab)</span></a> <code>blackbox</code></li>
-  <li><a href="https://docs.cline.bot/cline-cli/overview" target="_blank" rel="noopener noreferrer">Cline<span class="sr-only"> (opens in a new tab)</span></a> <code>cline</code></li>
-  <li><a href="https://www.codebuddy.ai/docs/cli/installation" target="_blank" rel="noopener noreferrer">CodeBuddy<span class="sr-only"> (opens in a new tab)</span></a> <code>codebuddy</code></li>
-  <li><a href="https://www.codebuff.com/docs/help/quick-start" target="_blank" rel="noopener noreferrer">Codebuff<span class="sr-only"> (opens in a new tab)</span></a> <code>codebuff</code></li>
-  <li><a href="https://commandcode.ai/docs/quickstart" target="_blank" rel="noopener noreferrer">Command Code<span class="sr-only"> (opens in a new tab)</span></a> <code>command-code --trust</code></li>
-  <li><a href="https://docs.continue.dev/cli/quickstart" target="_blank" rel="noopener noreferrer">Continue<span class="sr-only"> (opens in a new tab)</span></a> <code>cn</code></li>
-  <li><a href="https://github.com/charmbracelet/crush" target="_blank" rel="noopener noreferrer">Charm (Crush)<span class="sr-only"> (opens in a new tab)</span></a> <code>crush</code></li>
-  <li><a href="https://deepseek-harness.github.io/deepseek-harness/" target="_blank" rel="noopener noreferrer">DeepSeek Harness<span class="sr-only"> (opens in a new tab)</span></a> <code>dsh tui</code></li>
-  <li><a href="https://forgecode.dev/docs/" target="_blank" rel="noopener noreferrer">ForgeCode<span class="sr-only"> (opens in a new tab)</span></a> <code>forge</code></li>
-  <li><a href="https://freebuff.com/cli" target="_blank" rel="noopener noreferrer">Freebuff<span class="sr-only"> (opens in a new tab)</span></a> <code>freebuff</code></li>
-  <li><a href="https://goose-docs.ai/docs/getting-started/installation/" target="_blank" rel="noopener noreferrer">Goose<span class="sr-only"> (opens in a new tab)</span></a> <code>goose session</code></li>
-  <li><a href="https://github.com/xai-org/grok-build" target="_blank" rel="noopener noreferrer">Grok<span class="sr-only"> (opens in a new tab)</span></a> <code>grok</code></li>
-  <li><a href="https://hermes-agent.nousresearch.com/docs/" target="_blank" rel="noopener noreferrer">Hermes Agent<span class="sr-only"> (opens in a new tab)</span></a> <code>hermes --tui</code></li>
-  <li><a href="https://junie.jetbrains.com/docs/junie-cli.html" target="_blank" rel="noopener noreferrer">Junie CLI<span class="sr-only"> (opens in a new tab)</span></a> <code>junie</code></li>
-  <li><a href="https://kilo.ai/docs/code-with-ai/platforms/cli" target="_blank" rel="noopener noreferrer">Kilocode<span class="sr-only"> (opens in a new tab)</span></a> <code>kilo</code></li>
-  <li><a href="https://www.kimi.com/code/docs/en/kimi-code-cli/guides/getting-started" target="_blank" rel="noopener noreferrer">Kimi<span class="sr-only"> (opens in a new tab)</span></a> <code>kimi</code></li>
-  <li><a href="https://github.com/letta-ai/letta-code" target="_blank" rel="noopener noreferrer">Letta Code<span class="sr-only"> (opens in a new tab)</span></a> <code>letta</code></li>
-  <li><a href="https://mimo.xiaomi.com/coder" target="_blank" rel="noopener noreferrer">MiMo Code<span class="sr-only"> (opens in a new tab)</span></a> <code>mimo</code></li>
-  <li><a href="https://github.com/mistralai/mistral-vibe" target="_blank" rel="noopener noreferrer">Mistral Vibe<span class="sr-only"> (opens in a new tab)</span></a> <code>vibe</code></li>
-  <li><a href="https://dev.meta.ai/docs/muse-code" target="_blank" rel="noopener noreferrer">Muse<span class="sr-only"> (opens in a new tab)</span></a> <code>muse --trust-workspace</code></li>
-  <li><a href="https://omp.sh/docs" target="_blank" rel="noopener noreferrer">oh-my-pi<span class="sr-only"> (opens in a new tab)</span></a> <code>omp</code></li>
-  <li><a href="https://openclaude.gitlawb.com/" target="_blank" rel="noopener noreferrer">OpenClaude<span class="sr-only"> (opens in a new tab)</span></a> <code>openclaude</code></li>
-  <li><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener noreferrer">OpenClaw<span class="sr-only"> (opens in a new tab)</span></a> <code>openclaw chat</code></li>
-  <li><a href="https://docs.openhands.dev/openhands/usage/cli/installation" target="_blank" rel="noopener noreferrer">OpenHands CLI<span class="sr-only"> (opens in a new tab)</span></a> <code>openhands</code></li>
-  <li><a href="https://pi.dev" target="_blank" rel="noopener noreferrer">Pi<span class="sr-only"> (opens in a new tab)</span></a> <code>pi</code></li>
-  <li><a href="https://github.com/PrimeIntellect-ai/prime-agent" target="_blank" rel="noopener noreferrer">Prime Agent<span class="sr-only"> (opens in a new tab)</span></a> <code>prime-agent</code></li>
-  <li><a href="https://docs.qoder.com/cli/installation" target="_blank" rel="noopener noreferrer">Qoder CLI<span class="sr-only"> (opens in a new tab)</span></a> <code>qoder</code></li>
-  <li><a href="https://github.com/QwenLM/qwen-code" target="_blank" rel="noopener noreferrer">Qwen Code<span class="sr-only"> (opens in a new tab)</span></a> <code>qwen</code></li>
-  <li><a href="https://github.com/RooCodeInc/Roo-Code/tree/main/apps/cli" target="_blank" rel="noopener noreferrer">Roo Code CLI<span class="sr-only"> (opens in a new tab)</span></a> <code>roo</code></li>
-  <li><a href="https://support.atlassian.com/rovo/docs/install-and-run-rovo-dev-cli-on-your-device/" target="_blank" rel="noopener noreferrer">Rovo Dev<span class="sr-only"> (opens in a new tab)</span></a> <code>acli rovodev run</code></li>
-  <li><a href="https://docs.trae.cn/cli_get-started-with-trae-code-cli-2" target="_blank" rel="noopener noreferrer">Trae CLI<span class="sr-only"> (opens in a new tab)</span></a> <code>traecli</code></li>
-  <li><a href="https://zcode.z.ai/en/docs" target="_blank" rel="noopener noreferrer">ZCode<span class="sr-only"> (opens in a new tab)</span></a> <code>zcode</code></li>
+  <li><a href="https://code.claude.com/docs/en/setup" target="_blank" rel="noopener noreferrer">Claude Code<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>claude</code></li>
+  <li><a href="https://github.com/openai/codex" target="_blank" rel="noopener noreferrer">Codex<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>codex</code></li>
+  <li><a href="https://github.com/google-gemini/gemini-cli" target="_blank" rel="noopener noreferrer">Gemini CLI<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>gemini</code></li>
+  <li><a href="https://cursor.com/docs/cli/installation" target="_blank" rel="noopener noreferrer">Cursor<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>agent</code></li>
+  <li><a href="https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli" target="_blank" rel="noopener noreferrer">GitHub Copilot<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>copilot</code></li>
+  <li><a href="https://docs.devin.ai/work-with-devin/devin-cli" target="_blank" rel="noopener noreferrer">Devin<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>devin</code></li>
+  <li><a href="https://opencode.ai/docs/" target="_blank" rel="noopener noreferrer">OpenCode<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>opencode</code></li>
+  <li><a href="https://ampcode.com/docs/cli" target="_blank" rel="noopener noreferrer">Amp<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>amp</code></li>
+  <li><a href="https://docs.factory.com/cli/getting-started/quickstart" target="_blank" rel="noopener noreferrer">Droid<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>droid</code></li>
+  <li><a href="https://kiro.dev/docs/cli/" target="_blank" rel="noopener noreferrer">Kiro<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>kiro-cli chat</code></li>
+  <li><a href="https://aider.chat/docs/install.html" target="_blank" rel="noopener noreferrer">Aider<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>aider</code></li>
+  <li><a href="https://ante.run/start/quickstart/" target="_blank" rel="noopener noreferrer">Ante<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>ante</code></li>
+  <li><a href="https://antigravity.google/docs/cli/install" target="_blank" rel="noopener noreferrer">Antigravity<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>agy</code></li>
+  <li><a href="https://docs.augmentcode.com/cli/overview" target="_blank" rel="noopener noreferrer">Auggie<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>auggie</code></li>
+  <li><a href="https://github.com/autohandai/code-cli" target="_blank" rel="noopener noreferrer">Autohand Code<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>autohand</code></li>
+  <li><a href="https://docs.blackbox.ai/features/blackbox-cli/getting-started" target="_blank" rel="noopener noreferrer">BLACKBOX CLI<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>blackbox</code></li>
+  <li><a href="https://docs.cline.bot/cline-cli/overview" target="_blank" rel="noopener noreferrer">Cline<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>cline</code></li>
+  <li><a href="https://www.codebuddy.ai/docs/cli/installation" target="_blank" rel="noopener noreferrer">CodeBuddy<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>codebuddy</code></li>
+  <li><a href="https://www.codebuff.com/docs/help/quick-start" target="_blank" rel="noopener noreferrer">Codebuff<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>codebuff</code></li>
+  <li><a href="https://commandcode.ai/docs/quickstart" target="_blank" rel="noopener noreferrer">Command Code<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>command-code --trust</code></li>
+  <li><a href="https://docs.continue.dev/cli/quickstart" target="_blank" rel="noopener noreferrer">Continue<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>cn</code></li>
+  <li><a href="https://github.com/charmbracelet/crush" target="_blank" rel="noopener noreferrer">Charm (Crush)<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>crush</code></li>
+  <li><a href="https://deepseek-harness.github.io/deepseek-harness/" target="_blank" rel="noopener noreferrer">DeepSeek Harness<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>dsh tui</code></li>
+  <li><a href="https://forgecode.dev/docs/" target="_blank" rel="noopener noreferrer">ForgeCode<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>forge</code></li>
+  <li><a href="https://freebuff.com/cli" target="_blank" rel="noopener noreferrer">Freebuff<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>freebuff</code></li>
+  <li><a href="https://goose-docs.ai/docs/getting-started/installation/" target="_blank" rel="noopener noreferrer">Goose<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>goose session</code></li>
+  <li><a href="https://github.com/xai-org/grok-build" target="_blank" rel="noopener noreferrer">Grok<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>grok</code></li>
+  <li><a href="https://hermes-agent.nousresearch.com/docs/" target="_blank" rel="noopener noreferrer">Hermes Agent<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>hermes --tui</code></li>
+  <li><a href="https://junie.jetbrains.com/docs/junie-cli.html" target="_blank" rel="noopener noreferrer">Junie CLI<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>junie</code></li>
+  <li><a href="https://kilo.ai/docs/code-with-ai/platforms/cli" target="_blank" rel="noopener noreferrer">Kilocode<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>kilo</code></li>
+  <li><a href="https://www.kimi.com/code/docs/en/kimi-code-cli/guides/getting-started" target="_blank" rel="noopener noreferrer">Kimi<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>kimi</code></li>
+  <li><a href="https://github.com/letta-ai/letta-code" target="_blank" rel="noopener noreferrer">Letta Code<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>letta</code></li>
+  <li><a href="https://mimo.xiaomi.com/coder" target="_blank" rel="noopener noreferrer">MiMo Code<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>mimo</code></li>
+  <li><a href="https://github.com/mistralai/mistral-vibe" target="_blank" rel="noopener noreferrer">Mistral Vibe<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>vibe</code></li>
+  <li><a href="https://dev.meta.ai/docs/muse-code" target="_blank" rel="noopener noreferrer">Muse<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>muse --trust-workspace</code></li>
+  <li><a href="https://omp.sh/docs" target="_blank" rel="noopener noreferrer">oh-my-pi<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>omp</code></li>
+  <li><a href="https://openclaude.gitlawb.com/" target="_blank" rel="noopener noreferrer">OpenClaude<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>openclaude</code></li>
+  <li><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener noreferrer">OpenClaw<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>openclaw chat</code></li>
+  <li><a href="https://docs.openhands.dev/openhands/usage/cli/installation" target="_blank" rel="noopener noreferrer">OpenHands CLI<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>openhands</code></li>
+  <li><a href="https://pi.dev" target="_blank" rel="noopener noreferrer">Pi<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>pi</code></li>
+  <li><a href="https://github.com/PrimeIntellect-ai/prime-agent" target="_blank" rel="noopener noreferrer">Prime Agent<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>prime-agent</code></li>
+  <li><a href="https://docs.qoder.com/cli/installation" target="_blank" rel="noopener noreferrer">Qoder CLI<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>qoder</code></li>
+  <li><a href="https://github.com/QwenLM/qwen-code" target="_blank" rel="noopener noreferrer">Qwen Code<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>qwen</code></li>
+  <li><a href="https://github.com/RooCodeInc/Roo-Code/tree/main/apps/cli" target="_blank" rel="noopener noreferrer">Roo Code CLI<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>roo</code></li>
+  <li><a href="https://support.atlassian.com/rovo/docs/install-and-run-rovo-dev-cli-on-your-device/" target="_blank" rel="noopener noreferrer">Rovo Dev<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>acli rovodev run</code></li>
+  <li><a href="https://docs.trae.cn/cli_get-started-with-trae-code-cli-2" target="_blank" rel="noopener noreferrer">Trae CLI<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>traecli</code></li>
+  <li><a href="https://zcode.z.ai/en/docs" target="_blank" rel="noopener noreferrer">ZCode<span class="sr-only"> (se abre en una pestaña nueva)</span></a> <code>zcode</code></li>
 </ul>
-<p>Not in the list? <span class="docs-ui">Settings → Agents → Add Custom Agent</span> registers any CLI or wrapper script (a name, a command, and optionally the process name used to recognize it), or add it to <code>agents.customAgents</code> in <a href="settings-json.html#example">settings.json</a>. Agents running outside Ferret can use <span class="docs-ui">Copy for Agent</span>.</p>
-<p>A few features depend on the agent and are limited to Claude Code and Codex for now:</p>
+<p>¿No está en la lista? <span class="docs-ui">Ajustes → Agentes → Añadir agente personalizado</span> registra cualquier CLI o script envoltorio (un nombre, un comando y, opcionalmente, el nombre de proceso con el que se reconoce), o añádelo a <code>agents.customAgents</code> en <a href="settings-json.html#example">settings.json</a>. Los agentes que se ejecutan fuera de Ferret pueden usar <span class="docs-ui">Copiar para el agente</span>.</p>
+<p>Algunas funciones dependen del agente y por ahora se limitan a Claude Code y Codex:</p>
 <ul>
-  <li><a href="accounts.html">Accounts and usage</a>: switching between several logins and the rate-limit meter in the footer.</li>
-  <li><span class="docs-ui">Organize</span>: runs on your Claude Code or Codex login, or on an LLM API you configure.</li>
+  <li><a href="accounts.html">Cuentas y uso</a>: cambiar entre varios inicios de sesión y el medidor de límite de uso del pie de la ventana.</li>
+  <li><span class="docs-ui">Organizar</span>: se ejecuta con tu sesión de Claude Code o Codex, o con una API de LLM que configures.</li>
 </ul>
       </section>
 
-      <section class="docs-section" aria-labelledby="send" lang="en">
-        <h2 id="send"><a class="docs-anchor" href="#send" aria-label="Link to Send to Agent / Copy for Agent">#</a>Send to Agent / Copy for Agent</h2>
+      <section class="docs-section" aria-labelledby="send">
+        <h2 id="send"><a class="docs-anchor" href="#send" aria-label="Enlace a Enviar al agente / Copiar para el agente">#</a>Enviar al agente / Copiar para el agente</h2>
         <figure class="docs-clip" data-clip="send">
-  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/send.webp" data-src="../assets/clips/send.mp4" data-src-webm="../assets/clips/send.webm" aria-label="From the Findings tab to the agent in the built-in terminal with Send to Agent."></video>
-  <figcaption>From the Findings tab to the agent in the built-in terminal with Send to Agent.</figcaption>
+  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/send.webp" data-src="../assets/clips/send.mp4" data-src-webm="../assets/clips/send.webm" aria-label="De la pestaña Hallazgos al agente de la terminal integrada con Enviar al agente."></video>
+  <figcaption>De la pestaña Hallazgos al agente de la terminal integrada con Enviar al agente.</figcaption>
 </figure>
 <ol class="docs-steps">
-  <li>Click <span class="docs-ui">Send to Agent</span>. By default (<span class="docs-ui">Auto (current tab or a running agent)</span>) it goes to the agent in the current terminal tab, or to one that is running. Use the arrow next to the button (<span class="docs-ui">Choose the agent to send to</span>) to pick a specific agent or tab.</li>
-  <li>Ferret writes the instruction into the agent's input and submits it. Follow progress in the terminal.</li>
+  <li>Haz clic en <span class="docs-ui">Enviar al agente</span>. De forma predeterminada (<span class="docs-ui">Automático (pestaña actual o un agente en marcha)</span>) se envía al agente de la pestaña de terminal actual o a uno en marcha. Usa la flecha junto al botón (<span class="docs-ui">Elige el agente al que enviar</span>) para elegir un agente o una pestaña concretos.</li>
+  <li>Ferret escribe la instrucción en la entrada del agente y la envía. Sigue el progreso en la terminal.</li>
 </ol>
-<p>If no agent is running, Ferret starts one first and sends as soon as it is ready. Nothing is sent while the agent is waiting for a permission answer. Answer in the terminal first.</p>
-<p><span class="docs-ui">Copy for Agent</span> puts the same instruction on the clipboard for an agent running elsewhere (another terminal, IDE, or app). Only findings toggled to <span class="docs-ui">Send</span> are addressed. The video is never included.</p>
+<p>Si no hay ningún agente en marcha, Ferret inicia uno primero y envía en cuanto está listo. No se envía nada mientras el agente espera una respuesta a una solicitud de permiso. Responde primero en la terminal.</p>
+<p><span class="docs-ui">Copiar para el agente</span> pone la misma instrucción en el portapapeles para un agente que se ejecute en otro sitio (otra terminal, un IDE u otra app). Solo se incluyen los hallazgos marcados como <span class="docs-ui">Enviar</span>. El vídeo nunca se incluye.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="verify" lang="en">
-        <h2 id="verify"><a class="docs-anchor" href="#verify" aria-label="Link to Acceptance check with a decision model">#</a>Acceptance check with a decision model</h2>
+      <section class="docs-section" aria-labelledby="verify">
+        <h2 id="verify"><a class="docs-anchor" href="#verify" aria-label="Enlace a Comprobación de aceptación con un modelo de decisión">#</a>Comprobación de aceptación con un modelo de decisión</h2>
         <figure class="docs-clip" data-clip="verify">
-  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/verify.webp" data-src="../assets/clips/verify.mp4" aria-label="The agent fixes the findings and checks each one with the decision model until all pass."></video>
-  <figcaption>The agent fixes the findings and checks each one with the decision model until all pass.</figcaption>
+  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/verify.webp" data-src="../assets/clips/verify.mp4" aria-label="El agente corrige los hallazgos y comprueba cada uno con el modelo de decisión hasta que todos pasan."></video>
+  <figcaption>El agente corrige los hallazgos y comprueba cada uno con el modelo de decisión hasta que todos pasan.</figcaption>
 </figure>
-<p>Turn this on and your coding agent checks its own work against each finding before it reports Done. Ferret does not judge anything itself: it gives the agent a <em>decision model</em> (any System One compatible API) and tells it, in <code>feedback.md</code>, to loop until every finding passes.</p>
+<p>Actívala y tu agente de programación comprobará su propio trabajo frente a cada hallazgo antes de informar de que está hecho. Ferret no juzga nada por sí mismo: da al agente un <em>modelo de decisión</em> (cualquier API compatible con System One) y le indica, en <code>feedback.md</code>, que repita hasta que todos los hallazgos pasen.</p>
 <ol class="docs-steps">
-  <li>The agent implements the findings.</li>
-  <li>For each finding it captures an AFTER screenshot (same viewport and page state as the BEFORE still) and sends one request with the finding text, its "Done when" line and the BEFORE/AFTER images to the decision model.</li>
-  <li>A finding passes when P(done) is at least the threshold (default 0.7) and the choice is <code>done</code>. The agent fixes the rest and re-judges <strong>all</strong> findings every round, and stops only when every finding passes in the same round, or for an honest reason it must state: the API is unreachable, a finding is out of scope, or a finding is stuck with unchanged scores.</li>
-  <li>The final Done / Not done list includes each finding's scores and the number of rounds.</li>
+  <li>El agente implementa los hallazgos.</li>
+  <li>Para cada hallazgo captura una screenshot AFTER (mismo viewport y mismo estado de la página que la imagen BEFORE) y envía al modelo de decisión una solicitud con el texto del hallazgo, su línea «Done when» y las imágenes BEFORE/AFTER.</li>
+  <li>Un hallazgo pasa cuando P(done) es al menos el umbral (0.7 de forma predeterminada) y la elección es <code>done</code>. El agente corrige el resto y vuelve a juzgar <strong>todos</strong> los hallazgos en cada ronda, y solo se detiene cuando todos pasan en la misma ronda, o por un motivo honesto que debe indicar: la API no responde, un hallazgo está fuera de alcance o un hallazgo está atascado con las puntuaciones sin cambios.</li>
+  <li>La lista final de Hecho / No hecho incluye las puntuaciones de cada hallazgo y el número de rondas.</li>
 </ol>
-<p>Set it up in <span class="docs-ui">Settings → Decision model</span> and turn on <span class="docs-ui">Add the decision-model check to agent instructions</span>. Presets only fill in the fields; every field stays editable, and <span class="docs-ui">Custom</span> works with any compatible API.</p>
+<p>Configúrala en <span class="docs-ui">Ajustes → Modelo de decisión</span> y activa <span class="docs-ui">Añadir la comprobación con modelo de decisión a las instrucciones del agente</span>. Los preajustes solo rellenan los campos; todos los campos siguen siendo editables, y <span class="docs-ui">Personalizado</span> funciona con cualquier API compatible.</p>
 <table>
-  <thead><tr><th>Preset</th><th>Request URL</th><th>Models</th><th>Key</th></tr></thead>
+  <thead><tr><th>Preajuste</th><th>URL de la solicitud</th><th>Modelos</th><th>Clave</th></tr></thead>
   <tbody>
-    <tr><td>Ollama (default)</td><td><code>http://localhost:11434/v1/systemone</code></td><td><code>clef-flash</code>, <code>clef</code> (read images); <code>nimble</code>, <code>tev1</code> (text only)</td><td>none, free</td></tr>
-    <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (read images)</td><td><code>CLOUDFLARE_API_TOKEN</code> (Workers AI permission); account ID from the field or <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
-    <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (text only)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
-    <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (text only)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
-    <tr><td>Custom</td><td>any full URL</td><td>any</td><td>Bearer, a custom header, or none; extra headers allowed</td></tr>
+    <tr><td>Ollama (predeterminado)</td><td><code>http://localhost:11434/v1/systemone</code></td><td><code>clef-flash</code>, <code>clef</code> (leen imágenes); <code>nimble</code>, <code>tev1</code> (solo texto)</td><td>ninguna, gratis</td></tr>
+    <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (leen imágenes)</td><td><code>CLOUDFLARE_API_TOKEN</code> (permiso de Workers AI); ID de cuenta del campo o de <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
+    <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (solo texto)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
+    <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (solo texto)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>Personalizado</td><td>cualquier URL completa</td><td>cualquiera</td><td>Bearer, una cabecera personalizada o ninguna; se admiten cabeceras adicionales</td></tr>
   </tbody>
 </table>
-<p>For Ollama, install it (0.35.1 or later for Clef / Clef Flash) and pull the model in a terminal. Ferret doesn't run installers:</p>
+<p>Para Ollama, instálalo (0.35.1 o posterior para Clef / Clef Flash) y descarga el modelo en una terminal. Ferret no ejecuta instaladores:</p>
 <pre><code>ollama pull clef-flash</code></pre>
-<p>Keys come from the key field (saved with your other API keys), an environment variable you name (the app's environment, the project <code>.env</code>, or <code>~/.ferret/.env</code>), or <code>apiKey</code> in <code>settings.json</code>. Extra headers can read values from environment variables with <code>${VAR}</code>.</p>
-<div class="docs-callout docs-callout-note"><p class="docs-callout-title">How the key stays out of prompts</p><p>Agents never see your key. Ferret runs a local relay on <code>127.0.0.1</code> and gives each terminal <code>FERRET_DECISION_URL</code> (the relay, with a per-terminal token), <code>FERRET_DECISION_MODEL</code> and <code>FERRET_DECISION_IMAGES</code> (for one release, the old <code>MOVIE_ADE_DECISION_*</code> names are set too). The relay adds the key and headers and forwards the request unchanged, so prompts, <code>feedback.md</code> and agent transcripts contain no secrets. Terminals opened after you change the settings pick them up.</p></div>
-<p>Cloudflare differs from the System One docs in two ways (checked against the live API): images must be data URIs (<code>data:image/jpeg;base64,…</code>, otherwise 422 "image must be an embedded base64 data URI"), and the answer is wrapped as <code>{ "result": { … }, "success": true }</code> (errors come back as <code>{ "success": false, "errors": [ … ] }</code>). The Cloudflare preset sets <span class="docs-ui">Image encoding</span> to data URI, agents get it as <code>FERRET_DECISION_IMAGE_FORMAT</code>, and the instructions tell them to read <code>.result</code> when present. The relay passes both directions through unchanged. To use a Global API Key instead of an API token, set <span class="docs-ui">Authentication</span> to <span class="docs-ui">No key</span> and add the headers <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> and <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code>.</p>
-<p>Only Clef and Clef Flash read images. With a text-only model, turn off <span class="docs-ui">Send BEFORE/AFTER images</span>; the agent then judges from text alone, which is less reliable.</p>
-<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama and large images</p><p>Ollama 0.35.0 limits <code>/v1/systemone</code> requests to 64 KiB, so requests with screenshots fail with HTTP 413. The instructions tell the agent to shrink both images to at most 1024px wide as JPEG (quality about 70). If it still gets 413, update Ollama to 0.35.1 or later, or switch to Cloudflare Workers AI.</p></div>
+<p>Las claves se toman del campo de clave (guardada con tus otras claves de API), de una variable de entorno que indiques (el entorno de la app, el <code>.env</code> del proyecto o <code>~/.ferret/.env</code>) o de <code>apiKey</code> en <code>settings.json</code>. Las cabeceras adicionales pueden leer valores de variables de entorno con <code>${VAR}</code>.</p>
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">Cómo se mantiene la clave fuera de los prompts</p><p>Los agentes nunca ven tu clave. Ferret ejecuta un relay local en <code>127.0.0.1</code> y da a cada terminal <code>FERRET_DECISION_URL</code> (el relay, con un token por terminal), <code>FERRET_DECISION_MODEL</code> y <code>FERRET_DECISION_IMAGES</code> (durante una versión también se definen los nombres antiguos <code>MOVIE_ADE_DECISION_*</code>). El relay añade la clave y las cabeceras y reenvía la solicitud sin cambios, así que los prompts, <code>feedback.md</code> y las transcripciones de los agentes no contienen secretos. Las terminales abiertas después de cambiar los ajustes los aplican.</p></div>
+<p>Cloudflare se diferencia de la documentación de System One en dos cosas (comprobado con la API real): las imágenes deben ser data URI (<code>data:image/jpeg;base64,…</code>; si no, 422 "image must be an embedded base64 data URI"), y la respuesta viene envuelta como <code>{ "result": { … }, "success": true }</code> (los errores llegan como <code>{ "success": false, "errors": [ … ] }</code>). El preajuste de Cloudflare pone <span class="docs-ui">Codificación de imágenes</span> en data URI, los agentes lo reciben como <code>FERRET_DECISION_IMAGE_FORMAT</code> y las instrucciones les dicen que lean <code>.result</code> cuando exista. El relay deja pasar ambas direcciones sin cambios. Para usar una Global API Key en lugar de un API token, pon <span class="docs-ui">Autenticación</span> en <span class="docs-ui">Sin clave</span> y añade las cabeceras <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> y <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code>.</p>
+<p>Solo Clef y Clef Flash leen imágenes. Con un modelo solo de texto, desactiva <span class="docs-ui">Enviar imágenes BEFORE/AFTER</span>; el agente juzga entonces solo con texto, lo que es menos fiable.</p>
+<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama e imágenes grandes</p><p>Ollama 0.35.0 limita las solicitudes a <code>/v1/systemone</code> a 64 KiB, así que las solicitudes con capturas fallan con HTTP 413. Las instrucciones indican al agente que reduzca ambas imágenes a un máximo de 1024px de ancho en JPEG (calidad de unos 70). Si aun así recibe 413, actualiza Ollama a 0.35.1 o posterior, o cambia a Cloudflare Workers AI.</p></div>
       </section>
 
-      <section class="docs-section" aria-labelledby="api-usage" lang="en">
-        <h2 id="api-usage"><a class="docs-anchor" href="#api-usage" aria-label="Link to API usage in the footer">#</a>API usage in the footer</h2>
-        <p>Decision calls go through the relay, so Ferret can count them. The footer item next to the agent usage meter shows the decision model and today's calls, tokens and cost (for example <code>clef-flash · 42 calls · 18.3k tok</code>). Click it for today, this month, per project, per model and per kind (decision / transcription / organize), and the last 50 calls.</p>
-<p>Cost appears only when the API reports it (Vercel AI Gateway does) or when you set prices per 1M tokens in <span class="docs-ui">Settings → Decision model</span>; otherwise it shows "—". Only metadata is logged (time, project, model, status, latency, size, image count, tokens, cost), never images, text or keys, in <code>~/.ferret/usage/decision-YYYY-MM.jsonl</code>, one file per month.</p>
+      <section class="docs-section" aria-labelledby="api-usage">
+        <h2 id="api-usage"><a class="docs-anchor" href="#api-usage" aria-label="Enlace a Uso de la API en el pie de la ventana">#</a>Uso de la API en el pie de la ventana</h2>
+        <p>Las llamadas de decisión pasan por el relay, así que Ferret puede contarlas. El elemento del pie situado junto al medidor de uso del agente muestra el modelo de decisión y las llamadas, los tokens y el coste de hoy (por ejemplo <code>clef-flash · 42 calls · 18.3k tok</code>). Haz clic para ver hoy, este mes, por proyecto, por modelo y por tipo (decisión / transcripción / organización), y las últimas 50 llamadas.</p>
+<p>El coste solo aparece cuando la API lo informa (Vercel AI Gateway lo hace) o cuando defines precios por 1M de tokens en <span class="docs-ui">Ajustes → Modelo de decisión</span>; si no, se muestra "—". Solo se registran metadatos (hora, proyecto, modelo, estado, latencia, tamaño, número de imágenes, tokens, coste), nunca imágenes, texto ni claves, en <code>~/.ferret/usage/decision-YYYY-MM.jsonl</code>, un archivo por mes.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="prompt" lang="en">
-        <h2 id="prompt"><a class="docs-anchor" href="#prompt" aria-label="Link to Customize the instruction">#</a>Customize the instruction</h2>
-        <p>Edit <span class="docs-ui">Settings → Agents → Instructions for Agent</span>. Two variables are expanded:</p>
+      <section class="docs-section" aria-labelledby="prompt">
+        <h2 id="prompt"><a class="docs-anchor" href="#prompt" aria-label="Enlace a Personalizar la instrucción">#</a>Personalizar la instrucción</h2>
+        <p>Edita <span class="docs-ui">Ajustes → Agentes → Instrucciones para el agente</span>. Se expanden dos variables:</p>
 <table>
-  <thead><tr><th>Variable</th><th>Expands to</th></tr></thead>
+  <thead><tr><th>Variable</th><th>Se expande a</th></tr></thead>
   <tbody>
-    <tr><td><code>{{path}}</code></td><td>Absolute path of <code>feedback.md</code></td></tr>
-    <tr><td><code>{{relpath}}</code></td><td>Path relative to the project: <code>.ferret/reviews/&lt;id&gt;/feedback.md</code></td></tr>
+    <tr><td><code>{{path}}</code></td><td>Ruta absoluta de <code>feedback.md</code></td></tr>
+    <tr><td><code>{{relpath}}</code></td><td>Ruta relativa al proyecto: <code>.ferret/reviews/&lt;id&gt;/feedback.md</code></td></tr>
   </tbody>
 </table>
-<p>Leave it empty to use the default. The maximum length is 2000 characters, and <span class="docs-ui">Reset Instructions</span> restores the default. Example:</p>
+<p>Déjala vacía para usar la predeterminada. La longitud máxima es de 2000 caracteres, y <span class="docs-ui">Restablecer instrucciones</span> recupera la predeterminada. Ejemplo:</p>
 <pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
-<p>The setting is stored as <code>agentPrompt</code> in <code>settings.json</code>.</p>
+<p>El ajuste se guarda como <code>agentPrompt</code> en <code>settings.json</code>.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="github" lang="en">
-        <h2 id="github"><a class="docs-anchor" href="#github" aria-label="Link to Send to GitHub or GitLab (Issue / PR or MR comment)">#</a>Send to GitHub or GitLab (Issue / PR or MR comment)</h2>
-        <p><span class="docs-ui">Send to GitHub</span> posts the review as a new issue or as a comment on one of your open pull requests. Authentication is delegated to the <a href="https://cli.github.com/" target="_blank" rel="noopener noreferrer">GitHub CLI<span class="sr-only"> (opens in a new tab)</span></a>. Ferret never reads or stores a token.</p>
+      <section class="docs-section" aria-labelledby="github">
+        <h2 id="github"><a class="docs-anchor" href="#github" aria-label="Enlace a Enviar a GitHub o GitLab (Issue / comentario en PR o MR)">#</a>Enviar a GitHub o GitLab (Issue / comentario en PR o MR)</h2>
+        <p><span class="docs-ui">Enviar a GitHub</span> publica la revisión como un issue nuevo o como un comentario en una de tus pull requests abiertas. La autenticación se delega en <a href="https://cli.github.com/" target="_blank" rel="noopener noreferrer">GitHub CLI<span class="sr-only"> (se abre en una pestaña nueva)</span></a>. Ferret nunca lee ni guarda un token.</p>
 <ol class="docs-steps">
-  <li>Install <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), or see <a href="https://github.com/cli/cli#installation" target="_blank" rel="noopener noreferrer">cli/cli<span class="sr-only"> (opens in a new tab)</span></a>.</li>
-  <li><span class="docs-ui">Settings → GitHub → Sign In in Terminal</span> runs <code>gh auth login --web -h github.com</code> in the built-in terminal.</li>
-  <li>Click <span class="docs-ui">Send to GitHub</span>, choose <span class="docs-ui">Create a new issue</span> or a PR, and review the <span class="docs-ui">Title</span> and <span class="docs-ui">Body</span> (editable).</li>
-  <li>Tick the confirmation checkbox, then <span class="docs-ui">Create Issue</span> or <span class="docs-ui">Post Comment</span>.</li>
+  <li>Instala <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), o consulta <a href="https://github.com/cli/cli#installation" target="_blank" rel="noopener noreferrer">cli/cli<span class="sr-only"> (se abre en una pestaña nueva)</span></a>.</li>
+  <li><span class="docs-ui">Ajustes → GitHub / GitLab → Iniciar sesión en la terminal</span> ejecuta <code>gh auth login --web -h github.com</code> en la terminal integrada.</li>
+  <li>Haz clic en <span class="docs-ui">Enviar a GitHub</span>, elige <span class="docs-ui">Crear un Issue nuevo</span> o una PR, y revisa el <span class="docs-ui">Título</span> y el <span class="docs-ui">Cuerpo</span> (editables).</li>
+  <li>Marca la casilla de confirmación y luego <span class="docs-ui">Crear Issue</span> o <span class="docs-ui">Publicar comentario</span>.</li>
 </ol>
-<p>Details:</p>
+<p>Detalles:</p>
 <ul>
-  <li>The repository comes from <code>git remote get-url origin</code>.</li>
-  <li>Ferret runs <code>gh issue create --repo … --title … --body-file -</code> or <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>.</li>
-  <li>The body is <code>feedback.md</code> without the image lines (images are not uploaded), up to 60,000 characters.</li>
-  <li>PR candidates are your own open PRs (up to 30).</li>
+  <li>El repositorio se obtiene de <code>git remote get-url origin</code>.</li>
+  <li>Ferret ejecuta <code>gh issue create --repo … --title … --body-file -</code> o <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>.</li>
+  <li>El cuerpo es <code>feedback.md</code> sin las líneas de imagen (las imágenes no se suben), hasta 60.000 caracteres.</li>
+  <li>Las PR candidatas son tus propias PR abiertas (hasta 30).</li>
 </ul>
-<p>If <code>GH_TOKEN</code> or <code>GITHUB_TOKEN</code> is set, <code>gh</code> uses it first, and the settings panel warns about it.</p>
-<p><strong>GitLab.</strong> When <code>origin</code> is a GitLab project (gitlab.com or a self-managed GitLab), the same button sends to GitLab through the <a href="https://gitlab.com/gitlab-org/cli" target="_blank" rel="noopener noreferrer">GitLab CLI<span class="sr-only"> (opens in a new tab)</span></a> (<code>glab</code>): a new issue, or a comment on one of your open merge requests. Sign in with <span class="docs-ui">Settings → GitHub / GitLab</span>, which runs <code>glab auth login</code> (with <code>--hostname</code> for a self-managed GitLab) in the built-in terminal. Ferret never reads or stores the token, and warns when <code>GITLAB_TOKEN</code> is set.</p>
-<p><strong>Star prompt.</strong> After your first <span class="docs-ui">Send to Agent</span>, and when you reach 3, 10, and 30 finished reviews, Ferret may ask you to star it on GitHub. It asks at most 3 times, at least 3 days apart, and never while recording. <span class="docs-ui">Star on GitHub</span> stars it through your own <code>gh</code> login (or opens GitHub if <code>gh</code> isn't available), and <span class="docs-ui">Don't Ask Again</span> stops the prompts. You can also star from <span class="docs-ui">Help → Star Ferret on GitHub</span>.</p>
+<p>Si <code>GH_TOKEN</code> o <code>GITHUB_TOKEN</code> están definidos, <code>gh</code> los usa primero, y el panel de ajustes avisa de ello.</p>
+<p><strong>GitLab.</strong> Cuando <code>origin</code> es un proyecto de GitLab (gitlab.com o un GitLab autogestionado), el mismo botón envía a GitLab mediante <a href="https://gitlab.com/gitlab-org/cli" target="_blank" rel="noopener noreferrer">GitLab CLI<span class="sr-only"> (se abre en una pestaña nueva)</span></a> (<code>glab</code>): un issue nuevo o un comentario en una de tus merge requests abiertas. Inicia sesión con <span class="docs-ui">Ajustes → GitHub / GitLab</span>, que ejecuta <code>glab auth login</code> (con <code>--hostname</code> para un GitLab autogestionado) en la terminal integrada. Ferret nunca lee ni guarda el token, y avisa cuando <code>GITLAB_TOKEN</code> está definido.</p>
+<p><strong>Petición de estrella.</strong> Después de tu primer <span class="docs-ui">Enviar al agente</span>, y cuando llegas a 3, 10 y 30 revisiones terminadas, Ferret puede pedirte que le des una estrella en GitHub. Lo pide como máximo 3 veces, con al menos 3 días de separación, y nunca mientras grabas. <span class="docs-ui">Dar estrella en GitHub</span> da la estrella mediante tu propia sesión de <code>gh</code> (o abre GitHub si <code>gh</code> no está disponible), y <span class="docs-ui">No volver a preguntar</span> detiene las peticiones. También puedes dar la estrella desde <span class="docs-ui">Ayuda → Dar una estrella a Ferret en GitHub</span>.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="cli-tools" lang="en">
-        <h2 id="cli-tools"><a class="docs-anchor" href="#cli-tools" aria-label="Link to Install and sign in to CLI tools">#</a>Install and sign in to CLI tools</h2>
-        <p><span class="docs-ui">Settings → CLI tools</span> lists command-line tools your agents often need, shows which are installed and their version, and runs the official install or sign-in command for your OS in a new terminal tab:</p>
+      <section class="docs-section" aria-labelledby="cli-tools">
+        <h2 id="cli-tools"><a class="docs-anchor" href="#cli-tools" aria-label="Enlace a Instalar herramientas CLI e iniciar sesión">#</a>Instalar herramientas CLI e iniciar sesión</h2>
+        <p><span class="docs-ui">Ajustes → Herramientas CLI</span> muestra las herramientas de línea de comandos que tus agentes suelen necesitar, indica cuáles están instaladas y su versión, y ejecuta el comando oficial de instalación o de inicio de sesión para tu sistema operativo en una pestaña de terminal nueva:</p>
 <ul>
-  <li>Git hosting: <code>gh</code>, <code>glab</code></li>
-  <li>AI and models: Ollama, Cloudflare <code>wrangler</code></li>
-  <li>Deploy: Vercel, Netlify, Fly.io, Railway, Heroku</li>
-  <li>Cloud and services: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+  <li>Alojamiento Git: <code>gh</code>, <code>glab</code></li>
+  <li>IA y modelos: Ollama, Cloudflare <code>wrangler</code></li>
+  <li>Despliegue: Vercel, Netlify, Fly.io, Railway, Heroku</li>
+  <li>Nube y servicios: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
 </ul>
-<p>Where a tool has no one-line official installer for your OS, <span class="docs-ui">Docs</span> opens its install page instead. The list checks again on its own once an install finishes.</p>
+<p>Cuando una herramienta no tiene un instalador oficial de una línea para tu sistema operativo, <span class="docs-ui">Documentación</span> abre su página de instalación. La lista se vuelve a comprobar sola cuando termina una instalación.</p>
       </section>
 
-        <nav class="docs-pager" aria-label="Previous and next page">
-          <a class="docs-pager-prev" href="recording.html"><span>Previous</span>Recording</a>
-          <a class="docs-pager-next" href="editor.html"><span>Next</span>Editor and preview</a>
+        <nav class="docs-pager" aria-label="Página anterior y siguiente">
+          <a class="docs-pager-prev" href="recording.html"><span>Anterior</span>Grabación</a>
+          <a class="docs-pager-next" href="editor.html"><span>Siguiente</span>Editor y vista previa</a>
         </nav>
-        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/README.md" target="_blank" rel="noopener noreferrer">Help translate this page on GitHub<span class="sr-only"> (opens in a new tab)</span></a></p>
+        <p class="docs-edit"><a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/tools/docs/i18n/es/agents.html" target="_blank" rel="noopener noreferrer">Ayuda a traducir esta página en GitHub<span class="sr-only"> (se abre en una pestaña nueva)</span></a></p>
       </article>
     </main>
 
-    <aside class="docs-toc" aria-label="On this page">
-      <p class="docs-toc-heading">On this page</p>
+    <aside class="docs-toc" aria-label="En esta página">
+      <p class="docs-toc-heading">En esta página</p>
       <ul>
-        <li><a href="#findings">Review findings</a></li>
-        <li><a href="#terminal">Run agents in the built-in terminal</a></li>
-        <li><a href="#supported">Supported agents</a></li>
-        <li><a href="#send">Send to Agent / Copy for Agent</a></li>
-        <li><a href="#verify">Acceptance check with a decision model</a></li>
-        <li><a href="#api-usage">API usage in the footer</a></li>
-        <li><a href="#prompt">Customize the instruction</a></li>
-        <li><a href="#github">Send to GitHub or GitLab (Issue / PR or MR comment)</a></li>
-        <li><a href="#cli-tools">Install and sign in to CLI tools</a></li>
+        <li><a href="#findings">Revisar los hallazgos</a></li>
+        <li><a href="#terminal">Ejecutar agentes en la terminal integrada</a></li>
+        <li><a href="#supported">Agentes compatibles</a></li>
+        <li><a href="#send">Enviar al agente / Copiar para el agente</a></li>
+        <li><a href="#verify">Comprobación de aceptación con un modelo de decisión</a></li>
+        <li><a href="#api-usage">Uso de la API en el pie de la ventana</a></li>
+        <li><a href="#prompt">Personalizar la instrucción</a></li>
+        <li><a href="#github">Enviar a GitHub o GitLab (Issue / comentario en PR o MR)</a></li>
+        <li><a href="#cli-tools">Instalar herramientas CLI e iniciar sesión</a></li>
       </ul>
     </aside>
   </div>
@@ -386,29 +397,29 @@ codex</code></pre>
       <div class="footer-grid">
         <div class="footer-brand">
           <a class="brand" href="../../index.html"><img class="wordmark" src="../../assets/ferret-wordmark.svg" alt="Ferret" width="67" height="22"></a>
-          <p class="footer-tag">The ADE for feedback by voice and screen.</p>
-          <p class="provider">Built by <a href="https://www.japan-marketing.co.jp/" target="_blank" rel="noopener noreferrer">Japan Marketing LLC<span class="sr-only"> (opens in a new tab)</span></a></p>
+          <p class="footer-tag">El ADE para dar feedback con la voz y la pantalla.</p>
+          <p class="provider">Creado por <a href="https://www.japan-marketing.co.jp/" target="_blank" rel="noopener noreferrer">Japan Marketing LLC<span class="sr-only"> (se abre en una pestaña nueva)</span></a></p>
         </div>
         <div>
-          <h2>Product</h2>
+          <h2>Producto</h2>
           <ul>
-            <li><a href="../../download.html">Download</a></li>
-            <li><a href="../../download.html#versions">Changelog</a></li>
-            <li><a href="quick-start.html">Docs</a></li>
-            <li><a href="privacy.html">Privacy</a></li>
+            <li><a href="../../download.html">Descargar</a></li>
+            <li><a href="../../download.html#versions">Novedades</a></li>
+            <li><a href="quick-start.html">Documentación</a></li>
+            <li><a href="privacy.html">Privacidad</a></li>
           </ul>
         </div>
         <div>
-          <h2>Community</h2>
+          <h2>Comunidad</h2>
           <ul>
-            <li><a href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (opens in a new tab)</span></a></li>
-            <li><a href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer">Discord<span class="sr-only"> (opens in a new tab)</span></a></li>
-            <li><a href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer">X<span class="sr-only"> (opens in a new tab)</span></a></li>
+            <li><a href="https://github.com/JapanMarketing-Dev/ferret" target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (se abre en una pestaña nueva)</span></a></li>
+            <li><a href="https://discord.gg/A5zAuwg866" target="_blank" rel="noopener noreferrer">Discord<span class="sr-only"> (se abre en una pestaña nueva)</span></a></li>
+            <li><a href="https://x.com/ai_agent_dev" target="_blank" rel="noopener noreferrer">X<span class="sr-only"> (se abre en una pestaña nueva)</span></a></li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> Japan Marketing LLC · <a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License<span class="sr-only"> (opens in a new tab)</span></a></span>
+        <span>© <span data-year>2026</span> Japan Marketing LLC · <a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Licencia MIT<span class="sr-only"> (se abre en una pestaña nueva)</span></a></span>
       </div>
     </div>
   </footer>

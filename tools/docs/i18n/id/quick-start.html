@@ -1,0 +1,66 @@
+<!-- Ferret docs translation: id / quick-start. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 0eb95fb624 -->
+Mulai cepat
+
+<!-- @lead 8e0cda30a0 -->
+Instal Ferret, buka proyek Anda beserta URL dev server-nya, rekam satu umpan balik, lalu serahkan ke agent coding Anda. Sekitar lima menit.
+
+<!-- @before 9aee0a2173 -->
+## Sebelum mulai
+{{clip:quick-start|Buka halaman, rekam, lingkari sambil berbicara, hentikan, lalu kirim temuan ke agent.}}
+<ul>
+  <li>Agent coding yang berjalan di terminal, sudah terinstal dan sudah masuk (sign in): misalnya Claude Code (<code>claude</code>), Codex (<code>codex</code>), atau Gemini CLI (<code>gemini</code>). Ferret menjalankannya di terminal bawaannya. Agent mana pun dalam <a href="agents.html#supported">daftar yang didukung</a> bisa dipakai, begitu juga CLI lain yang Anda tambahkan sendiri.</li>
+  <li>Aplikasi web yang bisa dibuka lewat URL, misalnya dev server di <code>http://localhost:3000</code>.</li>
+  <li>Mikrofon. Umpan balik terdiri dari suara Anda ditambah pena. Tanpa mikrofon, lingkaran pena tetap menjadi temuan, tetapi tanpa kata-kata.</li>
+</ul>
+
+<!-- @install 6d549cfebe -->
+## 1. Instal
+<p>Unduh build untuk OS Anda dari <a href="../download.html">halaman unduhan</a>, lalu buka. Build macOS ditandatangani dengan Developer ID dan dinotarisasi oleh Apple, jadi bisa dibuka seperti aplikasi lain. Build Windows dan Linux belum memiliki tanda tangan kode, sehingga peluncuran pertamanya memerlukan satu langkah tambahan. Lihat <a href="install.html">Instalasi</a> untuk Windows SmartScreen, Linux, dan build dari kode sumber.</p>
+
+<!-- @open fad3e18b1d -->
+## 2. Buka proyek dan URL
+<ol class="docs-steps">
+  <li>Pilih <span class="docs-ui">File → Buka Folder Proyek…</span> ({{keys:Mod+O}}), lalu pilih root repositori Anda.</li>
+  <li>Ketik URL dev server Anda di bilah URL browser ({{keys:Mod+L}}), lalu tekan <kbd>Enter</kbd>.</li>
+  <li>Opsional: klik <span class="docs-ui">+</span> (<span class="docs-ui">Simpan URL saat ini</span>) untuk menyimpannya sebagai preset sekali klik, misalnya <code>local</code>, <code>dev</code>, atau <code>prd</code>.</li>
+</ol>
+<p>Membuka proyek juga menjalankan agent Anda di tab terminal pada folder tersebut. Secara bawaan, agent tersebut adalah Claude Code dan Codex; pilih yang Anda pakai di <span class="docs-ui">Pengaturan → Agent → Jalankan Saat Proyek Dibuka</span> (lihat <a href="settings.html#agent">Pengaturan</a>).</p>
+
+<!-- @record 36e1ea60f7 -->
+## 3. Rekam
+<ol class="docs-steps">
+  <li>Klik <span class="docs-ui">Rekam</span> di bilah judul, atau tekan {{keys:Mod+Shift+R}}. Jendela beralih ke mode Umpan Balik.</li>
+  <li>Gunakan halaman seperti biasa dan sebutkan apa yang perlu diubah.</li>
+  <li>Tahan {{keys:Alt}} (atau pilih <span class="docs-ui">Pena</span>) lalu seret untuk melingkari bagian yang sedang Anda bicarakan.</li>
+  <li>Klik <span class="docs-ui">Berhenti</span> atau tekan {{keys:Mod+Shift+R}} lagi.</li>
+</ol>
+<p>Setiap momen Anda berbicara atau melingkari menjadi satu temuan: screenshot dengan coretan pena Anda, permintaannya, kata-kata asli Anda, URL, dan elemen yang Anda tunjuk.</p>
+
+<!-- @review 152a385c40 -->
+## 4. Periksa temuan
+<p>Setelah Anda berhenti, jendela kembali ke mode Editor dan membuka tab <span class="docs-ui">Temuan</span>.</p>
+<ul>
+  <li>Edit judul atau permintaan langsung di tempat.</li>
+  <li>Alihkan <span class="docs-ui">Kirim</span> / <span class="docs-ui">Jangan kirim</span> per temuan, <span class="docs-ui">Gabung dengan Berikutnya</span>, atau <span class="docs-ui">Hapus</span>.</li>
+  <li><span class="docs-ui">Urungkan</span> membatalkan edit terakhir.</li>
+</ul>
+
+<!-- @send bdd30ad5ee -->
+## 5. Kirim ke agent
+<ol class="docs-steps">
+  <li>Klik <span class="docs-ui">Kirim ke Agent</span>. Temuan dikirim ke agent di tab terminal saat ini, atau ke agent yang sedang berjalan. Panah di samping tombol memilih agent atau tab tertentu.</li>
+  <li>Jika belum ada agent yang berjalan, Ferret menjalankannya terlebih dahulu dan mengirim begitu agent siap.</li>
+</ol>
+<p>Ferret mengetik satu instruksi ke prompt agent lalu mengirimkannya. Secara bawaan, instruksinya diawali dengan:</p>
+<pre><code>Baca "{{path}}" dan gambar untuk setiap temuan di folder yang sama, lalu implementasikan setiap temuan yang ditandai untuk dikirim. …</code></pre>
+<p>Bagian selanjutnya meminta agent memeriksa setiap perubahan di layar yang sebenarnya, mencatat progres per temuan, dan menutup dengan daftar Selesai / Belum selesai. Agent membaca <code>.ferret/reviews/&lt;timestamp&gt;/feedback.md</code> dan file PNG di sebelahnya. Videonya tidak pernah dikirim. Memakai agent di luar Ferret? Klik <span class="docs-ui">Salin untuk Agent</span> lalu tempel.</p>
+<p>Instruksi bawaan mengikuti bahasa tampilan. Anda bisa menggantinya di Pengaturan: lihat <a href="agents.html#prompt">Menyesuaikan instruksi</a>.</p>
+
+<!-- @next 1bb70e0695 -->
+## Langkah berikutnya
+<ul>
+  <li><a href="concepts.html">Konsep</a>: mode, temuan, dan apa yang diterima agent</li>
+  <li><a href="transcription.html">Transkripsi dan biaya</a>: unduh model whisper gratis di perangkat, atau gunakan endpoint Anda sendiri</li>
+  <li><a href="keyboard.html">Pintasan keyboard</a></li>
+</ul>

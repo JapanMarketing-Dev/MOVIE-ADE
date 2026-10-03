@@ -1,0 +1,96 @@
+<!-- Ferret docs translation: ja / privacy. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title bd3b785878 -->
+データとプライバシー
+
+<!-- @lead f52bb23052 -->
+レビューはプロジェクトのフォルダに、設定は <code>~/.ferret/</code> に、キーとアカウントは OS のユーザーデータのフォルダに置かれます。開発者に届くのは Sentry 経由のクラッシュレポートだけで、これは止められます。アプリから自分で送ったフィードバックは、公開の GitHub の issue になります。
+
+<!-- @reviews 2d1a3289b5 -->
+## .ferret/reviews/ の中身
+<pre><code>&lt;project&gt;/.ferret/reviews/20261003-104500/
+├── feedback.md      # what the agent reads
+├── 01.png, 02.png…  # one or more images per finding
+├── session.json     # review state and edit history
+├── events.jsonl     # action log (built-in browser only)
+├── recording.webm   # the video
+└── work/            # intermediate audio and frames</code></pre>
+<p>名前を変える前に作ったレビューは <code>.ade-movie/reviews/</code> にあります。これも一覧に出て開けます。新しいレビューは <code>.ferret/reviews/</code> に入ります。</p>
+<p>録画を始めると、<code>.git/info/exclude</code> に <code>.ferret/</code> を書き足します。worktree と submodule にも対応しています。<code>.gitignore</code> は書き換えません。途中で止まったレビューは、記録が残っていれば履歴から復元できます。そのときは、最後の数秒が欠けているかもしれないと警告が出ます。</p>
+
+<!-- @retention 41bc6cfa7d -->
+## 保管期間
+<p><span class="docs-ui">録画の保管</span>（最初の設定は7日。30日か <span class="docs-ui">ずっと</span> も選べます）: 起動したとき、その期間より古い完了済みのレビューから <code>recording.webm</code> と <code>work/</code> を消します。<code>feedback.md</code> と指摘の画像は残ります。完了していないレビューは消しません。消す処理は起動時に、最後に開いたプロジェクトに対して行います。</p>
+
+<!-- @network 8886bf9546 -->
+## 外に出るデータ
+<table>
+  <thead><tr><th>いつ</th><th>送り先</th><th>データ</th></tr></thead>
+  <tbody>
+    <tr><td>文字起こし: <span class="docs-ui">この端末（無料）</span></td><td>なし</td><td>—</td></tr>
+    <tr><td>文字起こし: OpenAI / 互換</td><td>OpenAI か、自分で決めた Base URL</td><td>音声の断片</td></tr>
+    <tr><td>モデルのダウンロード</td><td>Hugging Face</td><td>ファイルの要求</td></tr>
+    <tr><td><span class="docs-ui">整理</span></td><td>自分の Claude Code / Codex CLI か、<code>organizer</code> で設定した LLM のエンドポイント</td><td>文字と操作の記録だけ（画像・音声・動画は送らない）</td></tr>
+    <tr><td>受け入れの判定（判定モデル。最初はオフ）</td><td>自分のエージェントから、ローカルの中継を通って Ollama / Cloudflare / AI Gateway / TypeSafe / 自分の URL へ</td><td>エージェントが送るもの: 指摘の文、「完了の条件」、BEFORE/AFTER のスクリーンショット（画像を扱えるモデルのときだけ）</td></tr>
+    <tr><td><span class="docs-ui">Agentへ送信</span></td><td>ターミナルのエージェント</td><td><code>feedback.md</code> を指す指示1つ</td></tr>
+    <tr><td><span class="docs-ui">GitHub に送る</span></td><td><code>gh</code> 経由で GitHub</td><td>本文だけ（画像は送らない）</td></tr>
+    <tr><td>フッターの使用量（Claude Code と Codex だけ）</td><td>Anthropic、ChatGPT</td><td>自分のログインで使用量を問い合わせる</td></tr>
+    <tr><td>GitHub の star のお願い</td><td>自分の <code>gh</code> 経由で GitHub</td><td>リポジトリに star 済みかを確かめ、<span class="docs-ui">GitHub で star</span> を押したときだけ star する</td></tr>
+    <tr><td><span class="docs-ui">更新を確認</span>（手動）</td><td>ダウンロードのサーバー（Cloudflare R2）</td><td><code>latest.json</code> の要求</td></tr>
+    <tr><td>アプリからフィードバックを送る（送ったときだけ。準備中）</td><td>開発者のフィードバック中継（Cloudflare Worker）。ここが <code>JapanMarketing-Dev/ferret</code> に公開の issue を作る</td><td>書いた文、不具合か案か、アプリ / OS のバージョンと CPU、添えたスクリーンショット3枚まで。キー、トークン、メールアドレス、ホームフォルダのパスは伏せます。中継は IP アドレスを保存しません（<a href="#feedback">アプリからのフィードバック</a>を参照）</td></tr>
+    <tr><td>クラッシュやエラー（<span class="docs-ui">クラッシュレポートを送る</span> がオン）</td><td>Sentry</td><td>スタックトレースと OS / CPU / アプリのバージョン（<a href="#crash-reports">クラッシュレポート</a>を参照）</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li>アプリにはアクセス解析も、パフォーマンスのトレースも、セッションリプレイもありません。頼まれずに送るのはクラッシュレポートだけです。中身はエラー、起動ごとに1つのセッション、遅い起動と固まったときの警告で、どれも下で説明しているとおり <span class="docs-ui">クラッシュレポートを送る</span> で止められます。</li>
+  <li>URL の中の秘密らしい値（トークン、キー）は、<code>feedback.md</code> に書く前に伏せます。</li>
+  <li>ページから取った文字は <code>feedback.md</code> でデータとして印を付けるので、エージェントにはその中の指示に従わないよう伝わります。</li>
+  <li>この Web サイト（アプリではなく）は、Cloudflare Web Analytics でページの閲覧数を数えています。Cookie を使わず、サイトをまたいだ追跡もせず、個人のデータも取りません。</li>
+</ul>
+
+<!-- @feedback ba5f3fb0a3 -->
+## アプリからのフィードバック
+<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">準備中</p><p>アプリ内のフィードバックの入力画面と、その中継はまだ公開していません。この節では、公開後の動きを説明します。</p></div>
+<p>GitHub のアカウントが無くても、Ferret の中から不具合の報告や案を送れるようになります。送るのは自分で送ったときだけで、<a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a> に <code>from-app</code> のラベル付きで<strong>公開の</strong> issue として載ります。人前に出したくないことは書かないでください。</p>
+<ul>
+  <li>アプリは自分のパソコンから小さな中継（開発者が動かす Cloudflare Worker）へ送り、中継が自分の GitHub のトークンで issue を作ります。書いた内容を受け取る開発者のサーバーは、この中継だけです。</li>
+  <li>送るもの: 題名と本文、不具合か案か、アプリのバージョン、添えた PNG か JPEG のスクリーンショット3枚まで。OS の名前とバージョン、CPU のアーキテクチャ、ランダムなインストール ID は、含めたままにしたときだけ送ります。送らないもの: 名前、メールアドレス、GitHub のアカウント、プロジェクトのファイル、録画、指摘。</li>
+  <li>issue を作る前に、中継はキーやトークンに見える文字、メールアドレス、ホームフォルダのパスの中のユーザー名を伏せ、<code>@mentions</code> で誰かに通知が飛ばないようにします。スクリーンショットからは位置情報などのメタデータも取り除きます。それでも伏せきれないことがあるので、文は自分でも確かめてください。</li>
+  <li>中継は IP アドレスを保存しません。1人が投稿できる回数（1時間に5回、1日に20回）を抑えるため、IP アドレス（と、送っていればインストール ID）の鍵付きハッシュを最長24時間数え、その後に消します。どちらも issue には出ません。</li>
+  <li>スクリーンショットは、中継が推測できない名前で Cloudflare R2 に置き、issue に表示します。issue やそのスクリーンショットを消してほしいときは、その issue にコメントするか、新しい issue を作ってください。</li>
+  <li>中継のコードはリポジトリの <code>workers/feedback-relay</code> にあります。</li>
+</ul>
+
+<!-- @crash-reports 3fdd78f6c3 -->
+## クラッシュレポート
+<p>アプリが落ちたり、処理されないエラーが起きたりすると、Ferret は不具合を直せるよう <a href="https://sentry.io/">Sentry</a> にクラッシュレポートを送ります。最初の設定ではオンです。<span class="docs-ui">設定 → プライバシー → クラッシュレポートを送る</span> か、初回の起動で出るお知らせの <span class="docs-ui">OFF にする</span> で止められます。止めるとすぐに効きます。もう一度オンにしたときは、次の起動から効きます。開発用のビルド（<code>pnpm dev</code>）も <code>development</code> の札を付けて送るので、開発者は作業中に出会ったクラッシュも直せます。E2E の実行と単体テストからは送りません。</p>
+<table>
+  <thead><tr><th>送るもの</th><th>送らないもの</th></tr></thead>
+  <tbody>
+    <tr><td>
+      <ul>
+        <li>エラーの種類とメッセージ（ホームフォルダのパスは <code>~</code> にします）</li>
+        <li>スタックトレース（Ferret のコードのどこで起きたか）</li>
+        <li>ネイティブのクラッシュでは、どのプロセスが落ちたか、なぜ終わったか（たとえば <q>crashed</q> や <q>oom</q>）、アプリのバージョンだけ</li>
+        <li>OS の名前とバージョン、CPU のアーキテクチャ、Electron / Chrome / Node のバージョン、アプリのバージョン、画面の大きさ、メモリの量</li>
+        <li>エラーの直前のアプリの節目の出来事（たとえば <q>app.ready</q>）と、起動の失敗</li>
+        <li>アプリのどこで失敗したか: 描けなかった画面の部分（とその React のコンポーネント名）、IPC の呼び出し、起動できなかったターミナル、落ちたか固まったプロセス、読み込めなかったアプリのページ</li>
+        <li>アプリのどこにいたか: エディタモードかフィードバックモードか、開いていたタブ（ブラウザ、指摘、設定、またはただの <q>file</q>）、録画中だったか</li>
+        <li>起動ごとに1つのセッション（始まった、ふつうに終わった、落ちた）。バージョンごとにクラッシュしなかった割合を測るためです</li>
+        <li>ランダムなインストール ID（初回の起動で作り、アプリの設定フォルダに置きます）。影響を受けたインストールの数を数えるためです。名前、メールアドレス、端末とは結び付きません</li>
+        <li>JavaScript のクラッシュのときだけ: Ferret 自身のログの最後の50行（<q>[startup]</q> や <q>[recording]</q> など）。短くし、パス、URL、メールアドレス、キーを取り除きます</li>
+      </ul>
+    </td><td>
+      <ul>
+        <li>プロジェクトのフォルダのパスとファイル名（<code>&lt;project&gt;</code> に置き換えます）</li>
+        <li>内蔵ブラウザで開いた URL と、その他の Web アドレス（<code>&lt;url&gt;</code> に置き換えます）</li>
+        <li>ターミナルの出力、文字起こし、指摘、ページの文字、スクリーンショット</li>
+        <li>メールアドレスと API キーやトークン（置き換えます）</li>
+        <li>名前、端末名、IP アドレス（保存しません）、Cookie、ローカル変数</li>
+        <li>ネイティブのクラッシュのメモリダンプ（minidump）。メモリにあったものが何でも入りうるので、自分のパソコンに残します</li>
+        <li>クリック、ネットワークの要求、Ferret 自身のものでないログの行</li>
+      </ul>
+    </td></tr>
+  </tbody>
+</table>
+<p>インストールしたアプリが送るのは起動ごとに最大10件で、JavaScript のエラーは半分だけ送ります（ネイティブのクラッシュは必ず送ります）。開発用のビルドはすべてのエラーを、起動ごとに50件まで送ります。同じエラーは起動ごとに1回だけ送ります。遅い起動（5秒を超えるもの）と、アプリが長く固まったとき（1秒を超えるもの）は警告として、10分に1回まで送ります。パフォーマンスのトレースとセッションリプレイは使いません。アプリは Sentry の無料プランを使っています。上限に達したら余った分は捨てられ、誰にも料金はかかりません。</p>
+<p>Ferret を自分でビルドする場合は、<code>FERRET_SENTRY_DSN</code>（古い名前の <code>MOVIE_ADE_SENTRY_DSN</code> も使えます）に自分の Sentry の DSN を入れるか、空の文字列にして何も送らないようにします。コードは <code>src/main/telemetry.ts</code> と <code>src/shared/telemetry.ts</code> にあります。</p>
