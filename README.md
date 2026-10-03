@@ -11,9 +11,9 @@
   <img src=".github/assets/ferret-wordmark-light.svg" alt="Ferret" height="64">
 </picture>
 
-**Show it. Say it. Your agent proves it's done.**<br>
-Point at what's wrong and talk, on your own or live in a meeting.<br>
-Your coding agent implements each finding and verifies it against your screenshot.
+**The ADE for feedback by voice and screen.**<br>
+Stop typing instructions. Point at the real screen, say what's wrong, and hand your agent dozens of precise findings at once.<br>
+Do it live in meetings, and let a decision model check each fix. (ADE = Agentic Development Environment.)
 
 [![GitHub stars](https://img.shields.io/github/stars/JapanMarketing-Dev/ferret?style=flat&color=7c5cff&label=stars)](https://github.com/JapanMarketing-Dev/ferret/stargazers)
 [![Version](https://img.shields.io/github/package-json/v/JapanMarketing-Dev/ferret?style=flat&label=version&color=ff4fa3)](https://ferretade.dev/download)
@@ -34,9 +34,9 @@ Your coding agent implements each finding and verifies it against your screensho
 
 <br>
 
-## Feedback, just by showing it
+## Don’t describe the screen. Point at it.
 
-Skip the ticket. Use your app in the built-in browser, circle what bothers you with the pen, and say what you want. When you stop, every moment becomes a **finding**: a still with your pen marks, your words, the URL and a clear **Done when** your agent can check.
+A typed prompt spends most of its words explaining where things are. Instead, use your app in the built-in browser, circle what bothers you with the pen, and say what you want. When you stop, every mark and every sentence becomes text: a **finding** with a still of your marks, what you said word for word, the URL and a clear **Done when** your agent can check. Talk as much as you like; on-device whisper transcribes it for free.
 
 <img src="docs/images/shots/record.webp" width="100%" alt="Recording in Ferret: a pen circle around Sign up and a box around Start trial, with the mic level moving in the toolbar.">
 
@@ -44,9 +44,17 @@ Skip the ticket. Use your app in the built-in browser, circle what bothers you w
 
 → [Recording](https://ferretade.dev/docs/recording.html)
 
-## Verified, not just “done”
+## Live in meetings: more feedback, all of it precise
 
-After implementing a finding, the agent takes a fresh screenshot and asks a **decision model** whether it matches what you asked for. It keeps going until every finding passes, then reports **Done** or **Not done** with a score for each. No more “I think it's fixed.”
+Run it during an online meeting on Zoom, Meet or Teams, or around one screen in a room. Everyone points and talks while you record the built-in browser, any window or the whole screen. Instead of a few lines of meeting notes, your agent gets every remark as text, tied to the exact spot on the screen.
+
+<img src="docs/images/shots/capture-target.webp" width="100%" alt="The Recording Target dialog with Built-in Browser, Entire Screen and Window.">
+
+→ [Choosing what to record](https://ferretade.dev/docs/recording.html#target)
+
+## A decision model checks it: you define “done”
+
+Every finding carries a **Done when**. After implementing it, the agent sends a fresh screenshot and that condition to the **decision model** you choose, and keeps going until every finding passes, reporting **Done** or **Not done** with a score for each. That is how you know the agent did what you expected. Ferret itself never judges.
 
 Works with TypeSafe Jev, Cloudflare Clef / Clef Flash (via Ollama or Workers AI), Vercel AI Gateway, or any compatible API, on your own key: you pay your provider directly, and Ferret never charges.
 
@@ -55,14 +63,6 @@ Works with TypeSafe Jev, Cloudflare Clef / Clef Flash (via Ollama or Workers AI)
 <sub>Real decision-model calls (Cloudflare Workers AI Clef Flash, 2 calls). AFTER images prepared for the demo. Ferret itself doesn't judge; the agent calls the decision model you configure.</sub>
 
 → [Sending to agents and verification](https://ferretade.dev/docs/agents.html#verify)
-
-## Use it live in meetings
-
-Run a review in an in-person design review, or while screen-sharing on Zoom, Meet or Teams. Everyone talks through what they see while you record the built-in browser, any window or the whole screen. The discussion becomes a findings list your agent can act on, instead of meeting notes nobody reads.
-
-<img src="docs/images/shots/capture-target.webp" width="100%" alt="The Recording Target dialog with Built-in Browser, Entire Screen and Window.">
-
-→ [Choosing what to record](https://ferretade.dev/docs/recording.html#target)
 
 ## More
 

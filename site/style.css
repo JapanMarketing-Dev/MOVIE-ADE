@@ -1,5 +1,5 @@
 /*
- * MOVIE-ADE site (index, download, docs, 404)
+ * Ferret site (index, download, docs, 404)
  *
  * One quiet dark theme: flat near-black surfaces, 1px hairline borders, monochrome type and real product
  * imagery. One restrained accent for links and focus, green only for "Done", magenta only for the pen in the
@@ -935,28 +935,6 @@ p {
   }
 }
 
-/* Trust line: one quiet sentence under the hero */
-.trust {
-  margin-bottom: 64px;
-}
-
-.trust-line {
-  padding-top: 20px;
-  padding-bottom: 20px;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  color: var(--text-faint);
-  font-size: 13.5px;
-  text-align: center;
-}
-
-.trust-line a {
-  color: var(--text-muted);
-  text-decoration: underline;
-  text-decoration-color: rgb(255 255 255 / 25%);
-  text-underline-offset: 3px;
-}
-
 /* ── LP: pillars ───────────────────────────────────── */
 
 .pillar-row {
@@ -1698,15 +1676,6 @@ p {
 }
 
 @media (max-width: 900px) {
-  .trust-list {
-    grid-template-columns: 1fr 1fr;
-  }
-  .trust-list li:nth-child(3) {
-    border-left: 0;
-  }
-  .trust-list li:nth-child(n + 3) {
-    border-top: 1px solid var(--border);
-  }
   .targets {
     grid-template-columns: 1fr;
   }
@@ -1772,13 +1741,6 @@ p {
   }
   .vp-score span {
     top: 34px;
-  }
-  .trust-list {
-    grid-template-columns: 1fr;
-  }
-  .trust-list li + li {
-    border-left: 0;
-    border-top: 1px solid var(--border);
   }
   .cta .os-card {
     grid-template-columns: 1fr;
@@ -1848,6 +1810,184 @@ p {
   .duo {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Feature grid (Orca-style: picture, short title, one line) ── */
+
+.feat-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 40px 28px;
+}
+
+.feat img,
+.feat-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0b0b10;
+}
+
+.feat h3 {
+  margin-top: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.feat p {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.feat-art {
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  overflow: hidden;
+}
+
+.feat-needs > div {
+  width: 100%;
+  max-width: 300px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-panel);
+}
+
+.needs-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.feat .needs-q {
+  margin-top: 10px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.feat .needs-from {
+  margin-top: 8px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.feat-byok ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 300px;
+  display: grid;
+  gap: 8px;
+}
+
+.feat-byok li {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  font-size: 13px;
+}
+
+.feat-byok em {
+  color: var(--text-faint);
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+@media (max-width: 1080px) {
+  .feat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .feat-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
+
+/* Pillar 1: a typed prompt next to the same feedback on the real screen */
+.versus {
+  display: grid;
+  gap: 16px;
+}
+
+.versus figure {
+  margin: 0;
+}
+
+.versus figcaption {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
+.versus figcaption span {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.versus .frame figcaption {
+  display: none;
+}
+
+.prompt {
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.caret {
+  display: inline-block;
+  width: 7px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--text-muted);
+  animation: caret 1s steps(1) infinite;
+}
+
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+.versus-said {
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 13.5px;
 }
 
 /* Scroll reveal: only hidden when JS runs (html.js) and motion is allowed */
@@ -2190,7 +2330,7 @@ p {
 
 .footer-grid {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr 1.4fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 32px;
 }
 
@@ -2226,6 +2366,20 @@ p {
   margin-top: 6px;
   color: var(--text-faint);
   max-width: 22em;
+}
+
+@media (max-width: 900px) {
+  .footer-brand {
+    grid-column: 1 / -1;
+  }
+}
+
+.footer-bottom a {
+  color: var(--text-faint);
+}
+
+.footer-bottom a:hover {
+  color: var(--text);
 }
 
 .footer-bottom {
@@ -2345,9 +2499,6 @@ p {
 @media (max-width: 420px) {
   .hero-actions .btn-lg {
     width: 100%;
-  }
-  .footer-grid {
-    grid-template-columns: 1fr;
   }
 }
 

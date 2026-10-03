@@ -147,6 +147,41 @@
   overflow-y: auto;
 }
 
+/* 製品の一言。小見出し（.ob-eyebrow）より大きく、見出し（.ob-title）より小さい */
+.ob-tagline {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+}
+
+/* ── 製品の考え方（最初の画面の3行） ── */
+.ob-concept {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 760px;
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  list-style: none;
+}
+
+.ob-concept li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+}
+
+.ob-concept .lucide {
+  flex: none;
+  margin-top: 3px;
+  color: var(--color-text);
+}
+
 /* ── 下の帯 ── */
 .ob-footer {
   display: flex;

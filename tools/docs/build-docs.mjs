@@ -41,8 +41,8 @@ const clip = (name, caption, alt = caption) => {
 const shot = (name, caption) =>
   `<figure class="docs-shot" data-shot="${name}"><div class="docs-shot-slot" role="img" aria-label="${caption} (screenshot coming soon)"><span>Screenshot coming soon</span></div><figcaption>${caption}</figcaption></figure>`
 const figure = (name, alt, caption) => `<figure class="shot docs-figure">
-  <img class="shot-light" src="assets/${name}-light.png" width="1600" height="1000" alt="${alt}">
-  <img class="shot-dark" src="assets/${name}-dark.png" width="1600" height="1000" alt="${alt} (dark theme)">
+  <img class="shot-light" src="assets/${name}-light.png" width="1600" height="972" alt="${alt}">
+  <img class="shot-dark" src="assets/${name}-dark.png" width="1600" height="972" alt="${alt} (dark theme)">
   <figcaption>${caption}</figcaption>
 </figure>`
 const note = (html, kind = 'note', title = '') =>
@@ -197,7 +197,7 @@ page('concepts.html', 'Start here', 'Concepts',
     <tr><td>Feedback</td><td>Only the page under review and a small recording toolbar</td><td>Recording, solo or while screen-sharing in a meeting</td></tr>
   </tbody>
 </table>
-${figure('editor', 'Ferret in Editor mode: projects and reviews on the left, the built-in browser in the center, a terminal and the file tree on the right, usage in the footer.', 'Editor mode: Record is at the top right, and Findings is the tab next to the browser.')}
+${figure('editor', 'Ferret in Editor mode: projects and reviews on the left, the built-in browser in the center, a terminal and the file tree on the right.', 'Editor mode: Record is at the top right, and Findings is the tab next to the browser.')}
 <p>The app starts in Editor mode. Recording switches to Feedback mode, and stopping switches back unless ${ui('Stay on the feedback screen after stopping')} is on. Switch manually with ${k('⌘', '⇧', 'M')} / ${k('Ctrl', 'Shift', 'M')}.</p>`],
     ['findings', 'Findings', `
 <p>A finding is created whenever you speak or circle with the pen. Each one carries:</p>
@@ -1033,36 +1033,31 @@ const newTabLinks = (html) =>
 const footer = `<footer class="site-footer">
     <div class="wrap">
       <div class="footer-grid">
-        <div>
+        <div class="footer-brand">
           ${tabLink('../index.html', `<img class="wordmark" src="../assets/ferret-wordmark.svg" alt="${APP}" width="67" height="22">`, ' class="brand"')}
+          <p class="footer-tag">The ADE for feedback by voice and screen.</p>
           <p class="provider">Built by ${tabLink('https://www.japan-marketing.co.jp/', 'Japan Marketing LLC')}</p>
-          <p class="footer-tag">Show it, say it, and your coding agent gets it done.</p>
         </div>
         <div>
           <h2>Product</h2>
           <ul>
             <li>${tabLink('../download.html', 'Download')}</li>
-            <li>${tabLink('../download.html#versions', 'All versions')}</li>
+            <li>${tabLink('../download.html#versions', 'Changelog')}</li>
             <li>${tabLink('quick-start.html', 'Docs')}</li>
-            <li>${tabLink('../index.html#features', 'Features')}</li>
+            <li>${tabLink('privacy.html', 'Privacy')}</li>
           </ul>
         </div>
         <div>
-          <h2>Open source</h2>
+          <h2>Community</h2>
           <ul>
             <li>${tabLink(REPO, 'GitHub')}</li>
             <li>${tabLink(DISCORD, 'Discord')}</li>
             <li>${tabLink(X_URL, 'X')}</li>
-            <li>${tabLink(`${REPO}/blob/main/LICENSE`, 'MIT License')}</li>
           </ul>
-        </div>
-        <div>
-          <h2>Privacy</h2>
-          <p>Cookie-free page-view counts via Cloudflare Web Analytics. No cookies, no cross-site tracking, no personal data.</p>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> Japan Marketing LLC. ${APP} is released under the MIT License.</span>
+        <span>© <span data-year>2026</span> Japan Marketing LLC · ${tabLink(`${REPO}/blob/main/LICENSE`, 'MIT License')}</span>
       </div>
     </div>
   </footer>`
@@ -1096,8 +1091,8 @@ function shell({ file, title, description, body, head = '' }) {
   <meta property="og:url" content="${url}">
   <meta property="og:image" content="${SITE_URL}/assets/og.png">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="../favicon.svg?v=${assetVersion('favicon.svg')}" type="image/svg+xml">
+  <link rel="icon" href="../favicon-32.png?v=${assetVersion('favicon-32.png')}" type="image/png" sizes="32x32">
   <script src="../js/theme.js?v=${assetVersion('js/theme.js')}"></script>
   <link rel="stylesheet" href="../style.css?v=${assetVersion('style.css')}">
   <link rel="stylesheet" href="docs.css?v=${assetVersion('docs/docs.css')}">

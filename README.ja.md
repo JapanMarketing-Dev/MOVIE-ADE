@@ -11,9 +11,9 @@
   <img src=".github/assets/ferret-wordmark-light.svg" alt="Ferret" height="64">
 </picture>
 
-**見せて、話す。Agent が直して、終わったことを確かめる。**<br>
-ひとりでも、会議中でも、画面を指して話すだけ。<br>
-コーディング Agent が指摘を実装し、あなたのスクリーンショットと照らして確かめます。
+**声と画面で、大量のフィードバックを的確に渡す ADE。**<br>
+テキストで指示を書く代わりに、実際の画面の上で声と箇所を指して、たくさんの指摘を一度に的確に Agent へ渡せます。<br>
+会議中にもそのまま使え、直ったかは判定モデルが確かめます（ADE = Agentic Development Environment）。
 
 [![GitHub stars](https://img.shields.io/github/stars/JapanMarketing-Dev/ferret?style=flat&color=7c5cff&label=stars)](https://github.com/JapanMarketing-Dev/ferret/stargazers)
 [![Version](https://img.shields.io/github/package-json/v/JapanMarketing-Dev/ferret?style=flat&label=version&color=ff4fa3)](https://ferretade.dev/download)
@@ -34,9 +34,9 @@
 
 <br>
 
-## 見せるだけでフィードバック
+## 画面を説明しない。画面を指す。
 
-チケットは書きません。内蔵ブラウザでアプリを操作し、気になる所をペンで囲んで、どうしたいかを話すだけ。止めると、場面ごとに**指摘**ができます。ペンの跡が入った静止画、話した言葉、URL、そして Agent が確かめられる **Done when**（完了の条件）がそろいます。
+テキストの指示は、どこの話かを説明するだけで言葉の大半を使ってしまいます。Ferret なら、内蔵ブラウザでアプリを操作し、気になる所をペンで囲んで、どうしたいかを話すだけ。止めると、印も言葉もテキストになり、場面ごとの**指摘**になります。ペンの跡が入った静止画、話した言葉そのまま、URL、そして Agent が確かめられる **Done when**（完了の条件）がそろいます。いくら話しても構いません。端末内の whisper なら文字起こしは無料です。
 
 <img src="docs/images/shots/record.webp" width="100%" alt="録画中: Sign up をペンで囲み、Start trial を四角で囲んだ画面。ツールバーでマイクの入力レベルが動いている">
 
@@ -44,9 +44,17 @@
 
 → [Recording](https://ferretade.dev/docs/recording.html)
 
-## 「たぶん直った」で終わらせない
+## 会議でそのまま使う: より多く、より的確に
 
-Agent は指摘を実装したあと、新しいスクリーンショットを撮り、頼まれたとおりになっているかを**決定モデル**に確かめます。すべての指摘が通るまで続け、指摘ごとのスコア付きで **Done** か **Not done** を報告します。
+Zoom・Meet・Teams のオンライン会議でも、対面で1つの画面を囲むときでも使えます。内蔵ブラウザ・任意のウィンドウ・画面全体のどれかを録画しながら、みんなが指して話します。数行の議事録ではなく、すべての発言が画面上の場所と組になったテキストとして Agent に届きます。
+
+<img src="docs/images/shots/capture-target.webp" width="100%" alt="録画対象のダイアログ: 内蔵ブラウザ、画面全体、ウィンドウ">
+
+→ [録画する対象の選び方](https://ferretade.dev/docs/recording.html#target)
+
+## 判定モデルが確かめる: 「完了」を定義できる
+
+どの指摘にも **Done when** が付いています。Agent は実装したあと、新しいスクリーンショットとその条件を、あなたが選んだ**判定モデル**に送り、すべての指摘が通るまで続けて、指摘ごとのスコア付きで **Done** か **Not done** を報告します。これで、Agent が期待どおりに動いたかが分かります。Ferret 自身は判定しません。
 
 使える決定モデルは TypeSafe Jev、Cloudflare Clef / Clef Flash（Ollama か Workers AI 経由）、Vercel AI Gateway、または互換の API です。キーは各自持ちで、料金は提供元へ直接払います。Ferret が課金することはありません。
 
@@ -55,14 +63,6 @@ Agent は指摘を実装したあと、新しいスクリーンショットを�
 <sub>本物の判定モデルの呼び出し（Cloudflare Workers AI の Clef Flash、2回）。AFTER の画像はデモ用に用意したものです。Ferret 自身は判定せず、Agent があなたの設定した決定モデルを呼び出します。</sub>
 
 → [Sending to agents（検証）](https://ferretade.dev/docs/agents.html#verify)
-
-## 会議でそのまま使う
-
-対面のデザインレビューでも、Zoom・Meet・Teams の画面共有中でも使えます。内蔵ブラウザ・任意のウィンドウ・画面全体のどれかを録画しながら、みんなが見たままを話します。議論は、誰も読まない議事録ではなく、Agent がそのまま動ける指摘の一覧になります。
-
-<img src="docs/images/shots/capture-target.webp" width="100%" alt="録画対象のダイアログ: 内蔵ブラウザ、画面全体、ウィンドウ">
-
-→ [録画する対象の選び方](https://ferretade.dev/docs/recording.html#target)
 
 ## そのほか
 

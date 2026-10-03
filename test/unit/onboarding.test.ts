@@ -174,3 +174,31 @@ describe('isContinueShortcut', () => {
     expect(isContinueShortcut(key({ key: 'a', metaKey: true }), true)).toBe(false)
   })
 })
+
+describe('製品の考え方の文言（最初の画面・最後の手順・指摘が無い画面・判定モデル）', async () => {
+  const { LOCALES } = await import('@shared/i18n')
+  const { FINISH_STEP_KEYS, ONBOARDING_CONCEPT_KEYS } = await import('../../src/renderer/onboarding/onboardingFlowState')
+
+  it('最初の画面は3段（印と声 → 会議 → 判定モデル）で、手順は増やさない', () => {
+    expect(ONBOARDING_CONCEPT_KEYS).toEqual(['onboarding.concept.feedback', 'onboarding.concept.meetings', 'onboarding.concept.decision'])
+    expect(ONBOARDING_STEPS).toHaveLength(6)
+  })
+
+  it('最後の手順の流れに、会議での使い方と判定モデルが入っている', () => {
+    expect(FINISH_STEP_KEYS).toContain('onboarding.finish.meetings')
+    expect(FINISH_STEP_KEYS[FINISH_STEP_KEYS.length - 1]).toBe('onboarding.finish.decision')
+  })
+
+  it.each(Object.keys(LOCALES))('%s: 考え方の文言がすべてある', (locale) => {
+    const dict = LOCALES[locale as keyof typeof LOCALES] as Record<string, string>
+    for (const key of [...ONBOARDING_CONCEPT_KEYS, ...FINISH_STEP_KEYS, 'decision.settings.concept', 'review.emptyDescription', 'onboarding.tagline']) {
+      expect(dict[key], key).toBeTruthy()
+    }
+  })
+
+  it('指摘が無い画面は、廃止した文字入力に触れない（声とペン・四角の枠）', () => {
+    const { en } = LOCALES
+    expect(en['review.emptyDescription']).not.toMatch(/write/i)
+    expect(en['review.emptyDescription']).toMatch(/box/)
+  })
+})

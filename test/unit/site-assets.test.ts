@@ -25,6 +25,16 @@ describe.each(pages)('%s', (page) => {
     })
     expect(wrong).toEqual([])
   })
+
+  it('ファビコンの参照も今の版を持つ（版が無いと、ブラウザが改名前のファビコンを1日覚えたままになる）', () => {
+    const refs = [...html.matchAll(/<link rel="(?:icon|apple-touch-icon)"[^>]*\shref="([^"]+)"/g)].map((m) => m[1]!)
+    const wrong = refs.filter((ref) => {
+      const [path, query] = ref.split('?')
+      const rel = posix.normalize(posix.join(posix.dirname(page), path!))
+      return query !== `v=${assetVersion(rel)}`
+    })
+    expect(wrong).toEqual([])
+  })
 })
 
 describe('JS モジュールの import', () => {

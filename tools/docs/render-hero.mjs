@@ -48,7 +48,7 @@ const server = createServer((req, res) => {
   }
 }).listen(0)
 const base = `http://127.0.0.1:${server.address().port}`
-const tmp = mkdtempSync(join(tmpdir(), 'movie-ade-hero-'))
+const tmp = mkdtempSync(join(tmpdir(), 'ferret-hero-'))
 const browser = await chromium.launch()
 
 async function stage(scale) {

@@ -7,7 +7,8 @@
  * The story, on an 8.8 s loop:
  *   1. A browser shows a pricing page (the frame stays put between loops; only the overlays reset).
  *   2. A pen circles the "Sign up" button and the plans while you talk (mic level in the REC pill, your words in a bubble).
- *   3. The recording becomes two finding cards: a still with the pen mark, the request and "Done when".
+ *   3. When you stop, your words turn into text and pair up with your marks: two finding cards, each with a still,
+ *      the words you said and a "Done when".
  *   4. The cards fly into a terminal where an agent (claude / codex / gemini, in turn) implements them.
  *   5. The page gets fixed, the agent compares it with your screenshot (score 0.94), and "✓ Done" is verified.
  *
@@ -76,8 +77,8 @@ const SAID = [
 ]
 const PLANS = { cx: BROWSER.x + 1 + 299, cy: PAGE_Y + 140, rx: 150, ry: 20 }
 const FINDINGS = [
-  { title: 'Sign up is easy to miss', done: 'Solid brand color, white text' },
-  { title: 'Add a yearly toggle', done: 'Monthly / Yearly above plans' },
+  { title: 'Sign up is easy to miss', said: '“Make Sign up stand out”', done: 'Solid brand color, white text' },
+  { title: 'Add a yearly toggle', said: '“…and add a yearly toggle here”', done: 'Monthly / Yearly above plans' },
 ]
 
 /* ── state over time ─────────────────────────────────── */
@@ -103,7 +104,8 @@ export function heroState(t, loopIndex = 0) {
     pen: inOutSine(seg(t, 1.0, 1.9)),
     pen2: inOutSine(seg(t, 2.05, 2.7)),
     penFade: 1 - seg(t, 5.55, 5.95),
-    caption: seg(t, 0.9, 1.1) * (1 - seg(t, 3.0, 3.3)),
+    caption: seg(t, 0.9, 1.1) * (1 - seg(t, 3.0, 3.25)),
+    xfer: seg(t, 3.0, 3.65),
     flash: Math.max(0, 1 - Math.abs(t - 3.02) / 0.16),
     cards: [card(0), card(1)],
     term: first ? outCubic(seg(t, 3.55, 4.05)) : 1,
@@ -132,6 +134,7 @@ export function posterState() {
     pen2: 1,
     penFade: 1,
     caption: 1,
+    xfer: 0,
     t: 1.9,
     cards: [{ appear: 1, fly: 0 }, { appear: 1, fly: 0 }],
     fix: 0,
@@ -396,7 +399,7 @@ function drawBrowser(ctx, s) {
     ctx.save()
     ctx.globalAlpha *= s.caption
     ctx.font = `500 15px ${SANS}`
-    const w = ctx.measureText(`“${words}”`).width + 32
+    const w = ctx.measureText(`“${words}”`).width + 58
     const x = b.x + 18
     const y = b.y + b.h - 54
     ctx.shadowColor = 'rgba(0,0,0,0.25)'
@@ -412,7 +415,13 @@ function drawBrowser(ctx, s) {
     ctx.closePath()
     ctx.fill()
     ctx.shadowColor = 'transparent'
-    text(ctx, `“${shown}${shown.length === words.length ? '”' : ''}`, x + 16, y + 19, { size: 15, weight: 500, color: '#14141c' })
+    // mic level next to the words
+    for (let i = 0; i < 4; i++) {
+      const lv = s.poster ? 0.6 : s.speak * (0.3 + 0.7 * Math.abs(Math.sin(s.t * 10 + i * 1.9)))
+      const h = 4 + lv * 14
+      bar(ctx, x + 14 + i * 5, y + 18 - h / 2, 3, h, C.pen)
+    }
+    text(ctx, `“${shown}${shown.length === words.length ? '”' : ''}`, x + 42, y + 19, { size: 15, weight: 500, color: '#14141c' })
     ctx.restore()
   }
   // Done badge
@@ -472,13 +481,10 @@ function drawCard(ctx, s, i, x, y) {
   // request + done when
   const f = FINDINGS[i]
   const lx = x + 142
-  text(ctx, f.title, lx, y + 26, { size: 15.5, weight: 650 })
-  text(ctx, 'DONE WHEN', lx, y + 50, { size: 9.5, weight: 700, color: C.violetSoft, font: MONO })
-  text(ctx, f.done, lx, y + 67, { size: 13, color: '#d4d3e2' })
-  ctx.fillStyle = 'rgba(124,92,255,0.14)'
-  rr(ctx, lx, y + 84, 104, 18, 9)
-  ctx.fill()
-  text(ctx, 'localhost:3000', lx + 52, y + 93.5, { size: 10.5, color: C.violetSoft, font: MONO, align: 'center' })
+  text(ctx, f.title, lx, y + 24, { size: 15.5, weight: 650 })
+  text(ctx, f.said, lx, y + 45, { size: 12.5, color: C.violetSoft })
+  text(ctx, 'DONE WHEN', lx, y + 69, { size: 9.5, weight: 700, color: C.violetSoft, font: MONO })
+  text(ctx, f.done, lx, y + 87, { size: 13, color: '#d4d3e2' })
 }
 
 function drawCards(ctx, s) {
@@ -501,6 +507,45 @@ function drawCards(ctx, s) {
     ctx.scale(sc, sc)
     ctx.rotate(p * 0.25 * (i ? -1 : 1))
     drawCard(ctx, s, i, -CARD_W / 2, -CARD_H / 2)
+    ctx.restore()
+  })
+}
+
+/* At stop, the words become text and travel with the marks to their finding cards. */
+function drawTransfer(ctx, s) {
+  if (s.xfer <= 0 || s.xfer >= 1) return
+  const p = inOutCubic(s.xfer)
+  const fade = 1 - seg(s.xfer, 0.75, 1)
+  const b = BROWSER
+  const marks = [
+    { from: [SIGNUP.x + SIGNUP.w / 2, SIGNUP.y + SIGNUP.h / 2, 62, 26], to: [CARDS[0].x + 10 + 100.3, CARDS[0].y + 16 + 5.6, 13, 6] },
+    { from: [PLANS.cx, PLANS.cy, PLANS.rx, PLANS.ry], to: [CARDS[1].x + 10 + 60, CARDS[1].y + 16 + 26, 34, 7] },
+  ]
+  FINDINGS.forEach((f, i) => {
+    const d = clamp((p - i * 0.12) / 0.88)
+    if (d <= 0) return
+    ctx.save()
+    ctx.globalAlpha *= fade
+    // the mark shrinks into the still
+    const m = marks[i]
+    ctx.strokeStyle = C.pen
+    ctx.lineWidth = lerp(3, 1.6, d)
+    ctx.beginPath()
+    ctx.ellipse(lerp(m.from[0], m.to[0], d), lerp(m.from[1], m.to[1], d), lerp(m.from[2], m.to[2], d), lerp(m.from[3], m.to[3], d), 0, 0, Math.PI * 2)
+    ctx.stroke()
+    // the words, now text, move to the card
+    const x = lerp(b.x + 24, CARDS[i].x + 142, d)
+    const y = lerp(b.y + b.h - 36 - (1 - i) * 30, CARDS[i].y + 45, d)
+    ctx.font = `500 13px ${SANS}`
+    const w = ctx.measureText(f.said).width + 20
+    ctx.fillStyle = 'rgba(22,21,31,0.95)'
+    rr(ctx, x - 10, y - 12, w, 24, 8)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)'
+    ctx.lineWidth = 1
+    rr(ctx, x - 9.5, y - 11.5, w - 1, 23, 7.5)
+    ctx.stroke()
+    text(ctx, f.said, x, y + 0.5, { size: 13, color: '#ecebf5' })
     ctx.restore()
   })
 }
@@ -571,6 +616,7 @@ export function drawHero(ctx, s) {
   drawBrowser(ctx, s)
   drawTerminal(ctx, s)
   drawCards(ctx, s)
+  drawTransfer(ctx, s)
   if (s.flash > 0) {
     ctx.fillStyle = `rgba(255,255,255,${s.flash * 0.18})`
     rr(ctx, BROWSER.x, BROWSER.y, BROWSER.w, BROWSER.h, 12)

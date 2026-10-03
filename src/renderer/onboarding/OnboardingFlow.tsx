@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { BadgeCheck, PenLine, Users } from 'lucide-react'
 import { ONBOARDING_STEPS, type OnboardingPatch, type OnboardingState, type OnboardingStepId } from '@shared/onboarding'
 import type { AgentPreferences, ProjectsState } from '@shared/types'
 import { PRODUCT_NAME, type TranslationKey } from '@shared/i18n'
@@ -9,6 +10,7 @@ import { OnboardingFooter } from './OnboardingFooter'
 import { OnboardingSkipConfirmationDialog } from './OnboardingSkipConfirmationDialog'
 import {
   LAST_STEP_INDEX,
+  ONBOARDING_CONCEPT_KEYS,
   clampStepIndex,
   completePatch,
   dismissPatch,
@@ -21,6 +23,9 @@ import {
   stepPatch
 } from './onboardingFlowState'
 import '../styles/onboarding.css'
+
+/** 考え方の3段のアイコン（印と声・会議・判定モデル）。並びは ONBOARDING_CONCEPT_KEYS と同じ */
+const CONCEPT_ICONS = [PenLine, Users, BadgeCheck]
 
 /**
  * 初回起動のセットアップ（オンボーディング）。ウインドウ全体を覆う手順の画面。
@@ -118,6 +123,15 @@ export function OnboardingFlow({ onboarding, onPersist, agents, onAgentsChange, 
 
         <div className="ob-heading">
           {stepIndex === 0 && <div className="ob-eyebrow">{t('onboarding.welcome')}</div>}
+          {/* 製品の一言（小見出しより大きい普通の文字）。下の3行がその中身 */}
+          {stepIndex === 0 && <p className="ob-tagline" data-testid="onboarding-tagline">{t('onboarding.tagline')}</p>}
+          {/* 製品の考え方（3段）。最初の画面だけに出し、手順は増やさない */}
+          {stepIndex === 0 && <ul className="ob-concept" data-testid="onboarding-concept">
+            {ONBOARDING_CONCEPT_KEYS.map((key, i) => {
+              const Icon = CONCEPT_ICONS[i]!
+              return <li key={key}><Icon size={14} aria-hidden="true" /><span>{t(key)}</span></li>
+            })}
+          </ul>}
           <h1 ref={headingRef} tabIndex={-1} className="ob-title">{t(`onboarding.${stepId}.title` as TranslationKey)}</h1>
           <p className="ob-subtitle">{t(`onboarding.${stepId}.subtitle` as TranslationKey)}</p>
         </div>

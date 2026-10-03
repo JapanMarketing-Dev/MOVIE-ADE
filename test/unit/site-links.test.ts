@@ -15,7 +15,7 @@ const files = [
   ...readdirSync(SITE).filter((f) => f.endsWith('.html')).map((f) => join(SITE, f)),
   ...readdirSync(join(SITE, 'docs')).filter((f) => f.endsWith('.html')).map((f) => join(SITE, 'docs', f)),
 ]
-const OWN = ['https://movie-ade.japan-marketing.co.jp', 'https://movie-ade.pages.dev', SITE_URL]
+const OWN = ['https://movie-ade.pages.dev', SITE_URL]
 
 const anchors = (html: string) => [...html.matchAll(/<a\s[^>]*>/g)].map((m) => m[0])
 const hrefOf = (tag: string) => /\shref="([^"]*)"/.exec(tag)?.[1] ?? ''

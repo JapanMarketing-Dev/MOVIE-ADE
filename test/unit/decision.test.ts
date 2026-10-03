@@ -140,8 +140,9 @@ describe('feedback.md の受け入れ確認の節', () => {
   })
 
   it('各指摘に BEFORE（注釈付きの静止画）の絶対パスと「完了の条件」を書く', () => {
-    expect(md).toContain(`- BEFORE image (for the acceptance check): ${reviewDir}/01.png`)
-    expect(md).toContain(`- BEFORE image (for the acceptance check): ${reviewDir}/02.png`)
+    // 絶対パスは OS の区切りで組み立てる（Windows は \\）。期待値も join で作る
+    expect(md).toContain(`- BEFORE image (for the acceptance check): ${join(reviewDir, '01.png')}`)
+    expect(md).toContain(`- BEFORE image (for the acceptance check): ${join(reviewDir, '02.png')}`)
     expect(md.match(/^- Done when: /gm)).toHaveLength(2)
   })
 

@@ -83,6 +83,8 @@ export function DecisionSection({ recording = false }: { recording?: boolean }) 
   const num = (v: string) => (v.trim() === '' ? undefined : Number(v))
 
   return <div id="settings-verify" className="st-page__group" data-testid="decision-settings">
+    {/* 位置づけ（Agent が期待どおりに動いたかを定義する・BYOK）。Ferret 自身が呼ばない・中継の説明は下の intro が持つ */}
+    <p className="st-note" data-testid="decision-concept">{t('decision.settings.concept')}</p>
     <p className="st-note">{t('decision.settings.intro')}</p>
     <label className="st-row st-row--switch" data-disabled={recording || undefined}>
       <span className="st-row__label">{t('decision.settings.enable')}</span>

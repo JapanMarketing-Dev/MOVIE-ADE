@@ -29,7 +29,8 @@ for (const [file, deps] of MODULE_IMPORTS) {
 for (const name of readdirSync(SITE_DIR).filter((f) => f.endsWith('.html'))) {
   const path = join(SITE_DIR, name)
   const before = readFileSync(path, 'utf8')
-  const after = before.replace(/((?:src|href)=")(\/?)((?:js\/)?[\w-]+\.(?:css|js))(\?v=[0-9a-f]+)?"/g, (whole, attr, slash, rel) =>
+  // ファビコンにも版を付ける。版が無いと、ブラウザが古いファビコン（改名前の絵）を1日覚えたままになる
+  const after = before.replace(/((?:src|href)=")(\/?)((?:js\/)?[\w-]+\.(?:css|js)|favicon\.svg|favicon-32\.png|apple-touch-icon\.png)(\?v=[0-9a-f]+)?"/g, (whole, attr, slash, rel) =>
     `${attr}${slash}${rel}?v=${assetVersion(rel)}"`)
   write(path, before, after)
 }

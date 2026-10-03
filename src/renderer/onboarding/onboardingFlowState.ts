@@ -71,3 +71,14 @@ export function isContinueShortcut(event: { key: string; metaKey: boolean; ctrlK
   if (event.key !== 'Enter' || event.altKey || event.shiftKey) return false
   return mac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey
 }
+
+/**
+ * 最初の画面に出す製品の考え方（3段）と、最後の手順の流れ。並びと文言キーをここで持つ（単体テストで全言語にあるかを見る）。
+ *   1. 印（ペン・四角の枠）と声をテキストにして、大量のフィードバックを的確に Agent へ伝える
+ *   2. オンライン・オフラインの会議でもその場で録れる
+ *   3. できたかを利用者の判定モデルで Agent が確かめる（Agent が期待どおりに動いたかを定義する）
+ */
+export const ONBOARDING_CONCEPT_KEYS = ['onboarding.concept.feedback', 'onboarding.concept.meetings', 'onboarding.concept.decision'] as const
+
+export const FINISH_STEP_KEYS = ['onboarding.finish.step1', 'onboarding.finish.step2', 'onboarding.finish.meetings',
+  'onboarding.finish.step3', 'onboarding.finish.step4', 'onboarding.finish.decision'] as const

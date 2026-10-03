@@ -15,6 +15,7 @@ import { AgentIcon } from '../components/AgentIcon'
 import { TranscriptionSection, type SpeechLanguageValue } from '../components/TranscriptionSection'
 import { CrashReportsSetting } from '../components/CrashReportsSetting'
 import { agentInstallCommand } from './agentInstall'
+import { FINISH_STEP_KEYS } from './onboardingFlowState'
 import { AgentInstallTerminal } from './AgentInstallTerminal'
 
 /**
@@ -243,7 +244,8 @@ export function PermissionsStep() {
 export function FinishStep() {
   const t = useT()
   const record = formatShortcut('Mod', 'Shift', 'R')
-  const steps: TranslationKey[] = ['onboarding.finish.step1', 'onboarding.finish.step2', 'onboarding.finish.step3', 'onboarding.finish.step4']
+  // 会議でも使えること（録画の対象）と、判定モデルで Agent が確かめることを流れの中に入れる（onboardingFlowState.ts）
+  const steps: readonly TranslationKey[] = FINISH_STEP_KEYS
   return <div className="ob-stack">
     <ol className="ob-howto">
       {steps.map((key, i) => <li key={key}><span className="ob-howto__n" aria-hidden="true">{i + 1}</span>
