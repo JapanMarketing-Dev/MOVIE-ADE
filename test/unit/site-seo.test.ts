@@ -8,20 +8,23 @@ const SITE = resolve(__dirname, '../../site')
 const read = (p: string) => readFileSync(join(SITE, p), 'utf8')
 const pages = [
   ...readdirSync(SITE).filter((f) => f.endsWith('.html') && f !== '404.html'),
-  ...readdirSync(join(SITE, 'docs')).filter((f) => f.endsWith('.html')).map((f) => `docs/${f}`)
+  ...readdirSync(join(SITE, 'docs'), { recursive: true, encoding: 'utf8' }).filter((f) => f.endsWith('.html')).map((f) => `docs/${f.split('\\').join('/')}`)
 ]
 /** meta refresh で移るだけのページ（サイトマップには載せず、/docs/ はサーバーで転送する） */
 const isRedirect = (p: string) => /http-equiv="refresh"/.test(read(p))
+/** まだ訳の無い docs/<lang>/ のページ（英語の本文を出す）。検索には載せず、canonical は英語のページ */
+const isNoindex = (p: string) => /<meta name="robots" content="noindex/.test(read(p))
+const englishOf = (p: string) => p.replace(/^docs\/[\w-]+\//, 'docs/')
 const pagePath = (p: string) => (p === 'index.html' ? '/' : p.endsWith('/index.html') ? `/${p.slice(0, -10)}` : `/${p.replace(/\.html$/, '')}`)
 
 describe('サイトマップ', () => {
   const locs = [...read('sitemap.xml').matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])
 
-  it('404 を除く全ページを、canonical と同じ URL で1回ずつ載せる', () => {
-    const expected = pages.filter((p) => !isRedirect(p)).map((p) => SITE_URL + pagePath(p)).sort()
+  it('404 を除く全ページを、canonical と同じ URL で1回ずつ載せる（訳の無い言語のページは載せず、canonical は英語）', () => {
+    const expected = pages.filter((p) => !isRedirect(p) && !isNoindex(p)).map((p) => SITE_URL + pagePath(p)).sort()
     expect([...locs].sort()).toEqual(expected)
     for (const p of pages) {
-      expect(/<link rel="canonical" href="([^"]*)"/.exec(read(p))?.[1]).toBe(SITE_URL + pagePath(p))
+      expect(/<link rel="canonical" href="([^"]*)"/.exec(read(p))?.[1]).toBe(SITE_URL + pagePath(isNoindex(p) ? englishOf(p) : p))
     }
   })
 
@@ -45,6 +48,9 @@ describe('ちらつきと欠けの防止', () => {
   it('Docs への入口は /docs/ ではなく quick-start を直接指し、/docs/ はサーバーで転送する', () => {
     for (const p of all) expect({ page: p, bad: /href="(\.\/|\/)?docs\/"/.test(read(p)) }).toEqual({ page: p, bad: false })
     expect(read('_redirects')).toMatch(/^\/docs\/ \/docs\/quick-start 301$/m)
+    // 言語版の docs も、入口（/docs/<lang>/）は描く前に quick-start へ送る
+    for (const lang of ['ja', 'zh-CN', 'zh-TW', 'ko', 'es', 'fr', 'de', 'it', 'pt-BR', 'ru', 'hi', 'id', 'vi'])
+      expect(read('_redirects')).toContain(`/docs/${lang}/ /docs/${lang}/quick-start 301`)
   })
 })
 

@@ -9,6 +9,7 @@
  *   - 画面の項目名は src/shared/i18n/en.ts の英語にそろえる
  * test/unit/site-docs-links.test.ts が、書き出し済みの HTML がこのファイルの出力と一致するかとリンク切れを確かめる。
  */
+import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,22 +23,18 @@ const SITE_URL = /export const SITE_URL = '([^']+)'/.exec(readFileSync(resolve(D
 if (!SITE_URL) throw new Error('site/js/config.js に SITE_URL が見つかりません')
 
 const k = (...keys) => keys.map((x) => `<kbd>${x}</kbd>`).join('')
+/**
+ * OS で違うショートカット。本文には {{keys:…}} の札で書き、書き出すときに macOS と Windows / Linux の両方の表記に開く
+ * （docs.js が見ている人の OS に合わせて片方に絞る）。札は翻訳でもそのまま残す。書き方は expandKeys を見る。
+ * 割り当ての正本は src/main/menu.ts・src/shared/browserNav.ts・src/shared/annotation.ts・TerminalPane の splitDirectionForKey。
+ */
+const keys = (spec) => `{{keys:${spec}}}`
 const code = (s) => `<pre><code>${s}</code></pre>`
 /**
  * 機能の横に置く短いループ動画（onorca.dev/docs のように）。site/docs/assets/clips/<name>.mp4 と <name>.webp（poster）を使う。
- * 画面に入ったときだけ読み込み（docs.js）、「動きを減らす」設定では poster だけを出す。ファイルがまだ無いあいだは枠だけを出す。
+ * 本文には {{clip:<name>|<説明>}} の札で書き、書き出すときに開く（説明は訳す。ファイルがまだ無いあいだは枠だけを出す）。
  */
-const clip = (name, caption, alt = caption) => {
-  const mp4 = `assets/clips/${name}.mp4`
-  const poster = `assets/clips/${name}.webp`
-  if (!existsSync(join(DOCS_DIR, mp4)) || !existsSync(join(DOCS_DIR, poster)))
-    return `<figure class="docs-clip" data-clip="${name}"><div class="docs-shot-slot" role="img" aria-label="${alt} (clip coming soon)"><span>Clip coming soon</span></div><figcaption>${caption}</figcaption></figure>`
-  const webm = `assets/clips/${name}.webm`
-  return `<figure class="docs-clip" data-clip="${name}">
-  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="${poster}" data-src="${mp4}"${existsSync(join(DOCS_DIR, webm)) ? ` data-src-webm="${webm}"` : ''} aria-label="${alt}"></video>
-  <figcaption>${caption}</figcaption>
-</figure>`
-}
+const clip = (name, caption) => `{{clip:${name}|${caption}}}`
 const shot = (name, caption) =>
   `<figure class="docs-shot" data-shot="${name}"><div class="docs-shot-slot" role="img" aria-label="${caption} (screenshot coming soon)"><span>Screenshot coming soon</span></div><figcaption>${caption}</figcaption></figure>`
 const figure = (name, alt, caption) => `<figure class="shot docs-figure">
@@ -48,9 +45,9 @@ const figure = (name, alt, caption) => `<figure class="shot docs-figure">
 const note = (html, kind = 'note', title = '') =>
   `<div class="docs-callout docs-callout-${kind}">${title ? `<p class="docs-callout-title">${title}</p>` : ''}${html}</div>`
 const soon = (html) => note(html, 'wip', 'Coming soon')
-const keyRow = (action, mac, other) => `<tr><td>${action}</td><td>${mac}</td><td>${other}</td></tr>`
+const keyRow = (action, spec) => `<tr><td>${action}</td><td class="os-mac">{{keys-mac:${spec}}}</td><td class="os-win">{{keys-win:${spec}}}</td></tr>`
 const keyTable = (rows) => `<table class="docs-keys">
-  <thead><tr><th>Action</th><th>macOS</th><th>Windows / Linux</th></tr></thead>
+  <thead><tr><th>Action</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
   <tbody>
     ${rows.join('\n    ')}
   </tbody>
@@ -64,12 +61,12 @@ const page = (file, group, title, lead, sections) => pages.push({ file, group, t
 /* ───────────── Start here ───────────── */
 
 page('quick-start.html', 'Start here', 'Quick start',
-  `Install ${APP}, open your project and its dev server URL, record one piece of feedback, and hand it to Claude Code or Codex. About five minutes.`,
+  `Install ${APP}, open your project and its dev server URL, record one piece of feedback, and hand it to your coding agent. About five minutes.`,
   [
     ['before', 'Before you start', `
 ${clip('quick-start', 'Open a page, record, circle and talk, stop, and send the findings to an agent.')}
 <ul>
-  <li>Claude Code (<code>claude</code>) or Codex (<code>codex</code>) installed and signed in. ${APP} runs them in its built-in terminal.</li>
+  <li>A coding agent that runs in a terminal, installed and signed in: for example Claude Code (<code>claude</code>), Codex (<code>codex</code>), or Gemini CLI (<code>gemini</code>). ${APP} runs it in its built-in terminal. Any agent in the <a href="agents.html#supported">supported list</a> works, and so does any other CLI you add yourself.</li>
   <li>A web app you can open by URL, e.g. a dev server on <code>http://localhost:3000</code>.</li>
   <li>A microphone. Feedback is your voice plus the pen. Without a mic, pen circles still become findings, but they have no words.</li>
 </ul>`],
@@ -77,17 +74,17 @@ ${clip('quick-start', 'Open a page, record, circle and talk, stop, and send the 
 <p>Download the build for your OS from the <a href="../download.html">download page</a> and open it. The macOS build is signed with a Developer ID and notarized by Apple, so it opens like any other app. The Windows and Linux builds are not code-signed yet, so their first launch needs one extra step. See <a href="install.html">Install</a> for Windows SmartScreen, Linux, and building from source.</p>`],
     ['open', '2. Open a project and a URL', `
 <ol class="docs-steps">
-  <li>${ui('File → Open Project Folder…')} (${k('⌘', 'O')} / ${k('Ctrl', 'O')}) and pick your repository root.</li>
-  <li>Type your dev server URL into the browser's URL bar (${k('⌘', 'L')} / ${k('Ctrl', 'L')}) and press ${k('Enter')}.</li>
+  <li>${ui('File → Open Project Folder…')} (${keys('Mod+O')}) and pick your repository root.</li>
+  <li>Type your dev server URL into the browser's URL bar (${keys('Mod+L')}) and press ${k('Enter')}.</li>
   <li>Optional: click ${ui('+')} (${ui('Save current URL')}) to keep it as a one-click preset such as <code>local</code>, <code>dev</code>, or <code>prd</code>.</li>
 </ol>
-<p>Opening a project also starts Claude Code and Codex in terminal tabs in that folder (configurable in <a href="settings.html#agent">Settings</a>).</p>`],
+<p>Opening a project also starts your agents in terminal tabs in that folder. Out of the box these are Claude Code and Codex; pick the ones you use under ${ui('Settings → Agents → Start When a Project Opens')} (see <a href="settings.html#agent">Settings</a>).</p>`],
     ['record', '3. Record', `
 <ol class="docs-steps">
-  <li>Click ${ui('Record')} in the title bar, or press ${k('⌘', '⇧', 'R')} / ${k('Ctrl', 'Shift', 'R')}. The window switches to Feedback mode.</li>
+  <li>Click ${ui('Record')} in the title bar, or press ${keys('Mod+Shift+R')}. The window switches to Feedback mode.</li>
   <li>Use the page as usual and say what should change.</li>
-  <li>Hold ${k('⌥')} / ${k('Alt')} (or pick ${ui('Pen')}) and drag to circle the spot while you talk about it.</li>
-  <li>Click ${ui('Stop')} or press ${k('⌘', '⇧', 'R')} again.</li>
+  <li>Hold ${keys('Alt')} (or pick ${ui('Pen')}) and drag to circle the spot while you talk about it.</li>
+  <li>Click ${ui('Stop')} or press ${keys('Mod+Shift+R')} again.</li>
 </ol>
 <p>Each moment you speak or circle becomes one finding: a screenshot with your pen marks, the request, the original words, the URL, and the element you pointed at.</p>`],
     ['review', '4. Check the findings', `
@@ -99,12 +96,12 @@ ${clip('quick-start', 'Open a page, record, circle and talk, stop, and send the 
 </ul>`],
     ['send', '5. Send to an agent', `
 <ol class="docs-steps">
-  <li>Make sure a Claude Code or Codex tab is running in the built-in terminal.</li>
-  <li>Click ${ui('Send to Agent')}.</li>
+  <li>Click ${ui('Send to Agent')}. It goes to the agent in the current terminal tab, or to a running one. The arrow next to the button picks a specific agent or tab.</li>
+  <li>If no agent is running yet, ${APP} starts one first and sends as soon as it is ready.</li>
 </ol>
-<p>${APP} types one instruction into the agent's prompt and submits it. By default the instruction is:</p>
-${code('Read "{{path}}", check the image for each finding in the same folder, and address the findings marked for sending.')}
-<p>The agent reads <code>.ferret/reviews/&lt;timestamp&gt;/feedback.md</code> and the PNGs next to it. The video is never sent. Using an agent outside ${APP}? Click ${ui('Copy for Agent')} and paste.</p>
+<p>${APP} types one instruction into the agent's prompt and submits it. By default it begins:</p>
+${code('Read "{{path}}" and the image for each finding in the same folder, then implement every finding marked for sending. …')}
+<p>The rest asks the agent to check each change on the actual screen, record its progress per finding, and finish with a Done / Not done list. The agent reads <code>.ferret/reviews/&lt;timestamp&gt;/feedback.md</code> and the PNGs next to it. The video is never sent. Using an agent outside ${APP}? Click ${ui('Copy for Agent')} and paste.</p>
 <p>The default follows the display language. You can replace it in Settings: see <a href="agents.html#prompt">Customize the instruction</a>.</p>`],
     ['next', 'Next steps', `
 <ul>
@@ -206,7 +203,7 @@ page('concepts.html', 'Start here', 'Concepts',
   </tbody>
 </table>
 ${figure('editor', 'Ferret in Editor mode: projects and reviews on the left, the built-in browser in the center, a terminal and the file tree on the right.', 'Editor mode: Record is at the top right, and Findings is the tab next to the browser.')}
-<p>The app starts in Editor mode. Recording switches to Feedback mode, and stopping switches back unless ${ui('Stay on the feedback screen after stopping')} is on. Switch manually with ${k('⌘', '⇧', 'M')} / ${k('Ctrl', 'Shift', 'M')}.</p>`],
+<p>The app starts in Editor mode. Recording switches to Feedback mode, and stopping switches back unless ${ui('Stay on the feedback screen after stopping')} is on. Switch manually with ${keys('Mod+Shift+M')}.</p>`],
     ['findings', 'Findings', `
 <p>A finding is created whenever you speak or circle with the pen. Each one carries:</p>
 <ul>
@@ -215,7 +212,7 @@ ${figure('editor', 'Ferret in Editor mode: projects and reviews on the left, the
   <li>one or more PNGs with your pen marks and cursor ring</li>
   <li>the URL, the CSS selector and text of the element you pointed at, and the actions just before. These are recorded only when you capture the built-in browser.</li>
 </ul>
-<p>Right after you stop, findings are a draft split by rules. ${ui('Organize')} asks Claude Code or Codex (your own CLI login, non-interactive), or an LLM API you configure, to tidy titles and requests from the text and action log only. No images or audio are sent.</p>`],
+<p>Right after you stop, findings are a draft split by rules. ${ui('Organize')} asks Claude Code or Codex (your own CLI login, non-interactive; these two are the only agents it can use), or an LLM API you configure, to tidy titles and requests from the text and action log only. No images or audio are sent.</p>`],
     ['feedback-md', 'What the agent receives', `
 <p>Every review is written to <code>&lt;project&gt;/.ferret/reviews/&lt;YYYYMMDD-HHMMSS&gt;/feedback.md</code>, with the images next to it. Its layout:</p>
 ${code(`# UI feedback (N)
@@ -231,41 +228,52 @@ ${code(`# UI feedback (N)
 - element: \`button.plan-cta\` ("Sign up")
 - prior actions`)}
 <p>The headings and labels in <code>feedback.md</code> follow the interface language (Settings → Language).</p>
-<p>Agents read this with the tools they already have (file read, image view), so no plugin or MCP server is needed.</p>`],
+<p>Agents read this with the tools they already have (file read, image view), so no plugin or MCP server is needed. Any agent that can read files and images can use it.</p>`],
     ['local-first', 'Local first', `
 <p>Recordings, images, and notes stay in your project folder. Transcription runs on-device by default. Anything that leaves your machine goes straight from your computer to the service you chose (OpenAI, your endpoint, GitHub). There are two exceptions: crash reporting to Sentry (errors, one session per launch, and freeze warnings; on by default, off in Settings), and in-app feedback you choose to send (coming soon), which goes through the developer's small relay and becomes a public GitHub issue. The relay does not store your IP address. Apart from that relay, the developer runs no servers and pays for nothing on your behalf. See <a href="privacy.html">Data and privacy</a>.</p>`],
   ])
 
 page('keyboard.html', 'Start here', 'Keyboard shortcuts',
-  `Menu shortcuts use ${k('⌘')} on macOS and ${k('Ctrl')} on Windows and Linux. Source: <code>src/main/menu.ts</code> and <code>src/renderer/lib/shortcut.ts</code>.`,
+  `Shortcuts are shown for the OS you are reading on; use the switch below to see the other one. Most use Command on macOS where Windows and Linux use Ctrl, and Option where they use Alt. A few differ more than that, and the tables list both. Source: <code>src/main/menu.ts</code>, <code>src/shared/browserNav.ts</code>, <code>src/shared/annotation.ts</code>, and the terminal's key handling.`,
   [
     ['recording', 'Recording', keyTable([
-      keyRow('Start / Stop Recording', k('⌘', '⇧', 'R'), k('Ctrl', 'Shift', 'R')),
-      keyRow('Switch Mode (Editor / Feedback)', k('⌘', '⇧', 'M'), k('Ctrl', 'Shift', 'M')),
-      keyRow('Pen while held', k('⌥'), k('Alt')),
+      keyRow('Start / Stop Recording', 'Mod+Shift+R'),
+      keyRow('Switch Mode (Editor / Feedback)', 'Mod+Shift+M'),
+      keyRow('Pen while held', 'Alt'),
     ])],
+    ['drawing', 'Drawing while recording', keyTable([
+      keyRow('Pen', 'P'),
+      keyRow('Box', 'B / R'),
+      keyRow('Use the page (stop drawing)', 'V / Esc'),
+      keyRow('Next color', 'C'),
+      keyRow('Undo the last mark', 'Mod+Z'),
+      keyRow('Redo', 'Mod+Shift+Z|Ctrl+Shift+Z / Ctrl+Y'),
+    ]) + `<p>These keys work while you record the built-in browser and the page has focus. They are ignored while you type in a field on the page, and the letter keys only work without modifier keys, so the page's own shortcuts keep working.</p>`],
     ['browser', 'Browser and view', keyTable([
-      keyRow('Focus URL Bar', k('⌘', 'L'), k('Ctrl', 'L')),
-      keyRow('Reload Page', k('⌘', 'R'), k('Ctrl', 'R')),
-      keyRow('Toggle Desktop / Mobile Width', k('⌘', '⇧', 'V'), k('Ctrl', 'Shift', 'V')),
-      keyRow('Toggle Sidebar', k('⌘', 'B'), k('Ctrl', 'B')),
-      keyRow('Toggle File Tree', k('⌘', '⇧', 'E'), k('Ctrl', 'Shift', 'E')),
-      keyRow('Toggle Review Targets', k('⌘', '⇧', 'K'), k('Ctrl', 'Shift', 'K')),
+      keyRow('Focus URL Bar', 'Mod+L'),
+      keyRow('Reload Page', 'Mod+R'),
+      keyRow('Back', 'Mod+[|Alt+Left'),
+      keyRow('Forward', 'Mod+]|Alt+Right'),
+      keyRow('Toggle Desktop / Mobile Width', 'Mod+Shift+V'),
+      keyRow('Toggle Sidebar', 'Mod+B'),
+      keyRow('Toggle File Tree', 'Mod+Shift+E'),
+      keyRow('Toggle Review Targets', 'Mod+Shift+K'),
     ])],
     ['files', 'Files', keyTable([
-      keyRow('Open Project Folder…', k('⌘', 'O'), k('Ctrl', 'O')),
-      keyRow('Go to File…', k('⌘', 'P'), k('Ctrl', 'P')),
-      keyRow('Save', k('⌘', 'S'), k('Ctrl', 'S')),
+      keyRow('Open Project Folder…', 'Mod+O'),
+      keyRow('Go to File…', 'Mod+P'),
+      keyRow('Save', 'Mod+S'),
     ])],
     ['terminal', 'Terminal', keyTable([
-      keyRow('New Terminal', k('⌘', 'T'), k('Ctrl', 'T')),
-      keyRow('Close Pane / Tab', k('⌘', 'W'), k('Ctrl', 'W')),
-      keyRow('Split Right', k('⌘', 'D'), k('Ctrl', 'Shift', 'D')),
-      keyRow('Split Down', k('⌘', '⇧', 'D'), k('Alt', 'Shift', 'D')),
+      keyRow('New Terminal', 'Mod+T'),
+      keyRow('Close Pane / Tab', 'Mod+W'),
+      keyRow('Split Right', 'Mod+D|Ctrl+Shift+D'),
+      keyRow('Split Down', 'Mod+Shift+D|Alt+Shift+D'),
     ]) + `<p>Split shortcuts work while a terminal has focus.</p>`],
-    ['window', 'Window', keyTable([
-      keyRow('Close Window', k('⌘', '⇧', 'W'), '—'),
-    ])],
+    ['window', 'Window and settings', keyTable([
+      keyRow('Settings…', 'Mod+,'),
+      keyRow('Close Window', 'Mod+Shift+W|'),
+    ]) + `<p>Windows and Linux have no shortcut to close the window: ${ui('File → Exit')} quits the app.</p>`],
   ])
 
 /* ───────────── Using Ferret ───────────── */
@@ -275,7 +283,7 @@ page('projects.html', `Using ${APP}`, 'Projects and URLs',
   [
     ['add-project', 'Add a project', `
 <ol class="docs-steps">
-  <li>${ui('File → Open Project Folder…')} (${k('⌘', 'O')} / ${k('Ctrl', 'O')}), ${ui('Add Project')} in the sidebar, or ${ui('Add Project…')} in the title bar project menu.</li>
+  <li>${ui('File → Open Project Folder…')} (${keys('Mod+O')}), ${ui('Add Project')} in the sidebar, or ${ui('Add Project…')} in the title bar project menu.</li>
   <li>Choose where the project comes from:
     <ul>
       <li>${ui('On this computer')}: pick a folder.</li>
@@ -305,7 +313,7 @@ page('projects.html', `Using ${APP}`, 'Projects and URLs',
 ${shot('url-presets', 'Saved URLs in the browser toolbar')}`],
     ['review-targets', 'Review targets panel', `
 ${clip('targets', 'Switching review targets and pages without stopping the recording.')}
-<p>In Feedback mode, the ${ui('Review targets')} panel on the right lists everything you can review for the current project. Switching targets doesn't stop the recording. Toggle the panel with ${ui('View → Toggle Review Targets')} (${k('⌘', '⇧', 'K')} / ${k('Ctrl', 'Shift', 'K')}) or ${ui('Hide panel')}.</p>
+<p>In Feedback mode, the ${ui('Review targets')} panel on the right lists everything you can review for the current project. Switching targets doesn't stop the recording. Toggle the panel with ${ui('View → Toggle Review Targets')} (${keys('Mod+Shift+K')}) or ${ui('Hide panel')}.</p>
 <ul>
   <li><strong>${ui('Targets')}</strong>: the project's saved URLs. Under each one is a tree of the pages you have visited on that site. Sites you visited that aren't saved appear as their own groups.</li>
   <li><strong>${ui('Files')}</strong>: the project folder. A file opens as a preview (Markdown and Mermaid rendered, other text read-only), so you can review docs too. The pencil (${ui('Open in editor')}) opens it in the editor.</li>
@@ -335,19 +343,19 @@ page('recording.html', `Using ${APP}`, 'Recording',
 ${clip('record', 'Recording: talk about the page and circle the spot with the pen.')}
 <ol class="docs-steps">
   <li>Open the page to review in the built-in browser.</li>
-  <li>${ui('Record')} in the title bar, or ${k('⌘', '⇧', 'R')} / ${k('Ctrl', 'Shift', 'R')}.</li>
+  <li>${ui('Record')} in the title bar, or ${keys('Mod+Shift+R')}.</li>
   <li>${ui('Pause')} stops drawing and the timer. ${ui('Resume')} continues.</li>
-  <li>${ui('Stop')} or ${k('⌘', '⇧', 'R')} again.</li>
+  <li>${ui('Stop')} or ${keys('Mod+Shift+R')} again.</li>
 </ol>
 <p>In the sidebar, each project has its own ${ui('New Review')} (or the ${ui('+')} on its row, ${ui('New review in &lt;name&gt;')}). On another project, it switches to that project first and then starts recording. It won't start while another recording is running.</p>
 <p>A recording is capped at 90 minutes. You get a warning near the limit, and the recording stops and saves automatically when it is reached.</p>
 ${shot('feedback-toolbar', 'Feedback mode toolbar')}`],
     ['pen', 'Pen', `
 <ul>
-  <li><strong>${ui('Pen')}</strong>: select it, or hold ${k('⌥')} / ${k('Alt')} to draw only while held (ignored while typing in a field).</li>
+  <li><strong>${ui('Pen')}</strong>: select it, or hold ${keys('Alt')} to draw only while held (ignored while typing in a field).</li>
   <li><strong>${ui('Clear')}</strong>: removes the current marks.</li>
 </ul>
-<p>Circle the spot while you talk about it: the words and the marks end up in the same finding. The pen is available only while recording. There is no text tool. Say it instead.</p>`],
+<p>Circle the spot while you talk about it: the words and the marks end up in the same finding. The pen is available only while recording. There is no text tool. Say it instead. Keys for the pen, the box, and colors are listed in <a href="keyboard.html#drawing">Keyboard shortcuts</a>.</p>`],
     ['annotations-clear', 'When marks disappear', `
 <p>Marks belong to the screen they were drawn on. They are recorded into the current finding, then cleared, when:</p>
 <ul>
@@ -361,7 +369,7 @@ ${soon(`<p>${ui('Record the other side too')} (capturing other participants in a
   ])
 
 page('agents.html', `Using ${APP}`, 'Sending to agents',
-  'Run Claude Code or Codex in the built-in terminal and hand them a review with one click. You can also copy the instruction for any other agent, or post the review to GitHub.',
+  'Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.',
   [
     ['findings', 'Review findings', `
 <p>Each card in the ${ui('Findings')} tab supports:</p>
@@ -375,11 +383,12 @@ page('agents.html', `Using ${APP}`, 'Sending to agents',
 <p>The header has ${ui('Undo')}, ${ui('Open Folder')}, ${ui('Copy for Agent')}, ${ui('Send to GitHub / GitLab')}, ${ui('Organize')}, and ${ui('Send to Agent')}. Speech that didn't become a finding is listed under ${ui('Excluded speech')}, where ${ui('Restore as Finding')} brings it back. ${ui('Overall Note')} adds a note for the whole review.</p>
 ${shot('findings', 'The Findings tab')}`],
     ['terminal', 'Run agents in the built-in terminal', `
-<p>When a project opens, ${APP} starts one terminal tab per enabled agent in the project folder, in the agent's normal mode:</p>
+<p>When a project opens, ${APP} starts one terminal tab per agent in ${ui('Settings → Agents → Start When a Project Opens')}, in the project folder and in the agent's normal mode. The default is Claude Code and Codex:</p>
 ${code(`claude
 codex`)}
-${note(`<p>Registering or cloning a project does not make Ferret trust it. Claude Code and Codex ask whether you trust the folder the first time, and keep asking before they edit files or run commands. To let agents skip permission prompts, approvals and the sandbox in one project you trust, turn it on for that project under ${ui('Settings → Agent → Skip permission prompts')} and confirm. It then applies only to agents you open yourself in that project folder; agents started when the project opens always keep their prompts. Skip-permission flags typed into the arguments are ignored.</p>`, 'warn', 'Permission prompts stay on')}
-<p>If neither agent is enabled, a plain shell opens. The ${ui('+')} menu opens ${ui('New Terminal')}, launches Claude Code or Codex in a new tab, or jumps to ${ui('Agent settings…')}. Its search box also finds tabs, saved URLs, and files.</p>
+<p>Pick any agents from the <a href="#supported">supported list</a> instead (they start in the order you pick them), or none.</p>
+${note(`<p>Registering or cloning a project does not make Ferret trust it. Agents such as Claude Code and Codex ask whether you trust the folder the first time, and keep asking before they edit files or run commands. To let agents skip permission prompts, approvals and the sandbox in one project you trust, turn it on for that project under ${ui('Settings → Agents → Skip permission prompts')} and confirm. ${APP} adds each agent's own skip flag where one is known; agents without a known flag keep their prompts. It then applies only to agents you open yourself in that project folder; agents started when the project opens always keep their prompts. Skip-permission flags typed into the arguments are ignored.</p>`, 'warn', 'Permission prompts stay on')}
+<p>If no agent is selected, a plain shell opens. The ${ui('+')} menu opens ${ui('New Terminal')}, launches any of your agents in a new tab, or jumps to ${ui('Agent settings…')}. Its search box also finds tabs, saved URLs, and files.</p>
 <p>Tabs show the agent state: ${ui('Running')}, ${ui('Waiting for input')}, ${ui('Done (unread)')}, ${ui('Idle')}. In the sidebar, a project where an agent is running is marked, so you can see it without switching projects.</p>
 ${clip('terminals', 'Dragging terminal tabs and panes to split, move, and turn them back into tabs.')}
 <p><strong>Drag to split.</strong> Drag a tab, or a pane by its handle (shown once a tab is split), and drop it:</p>
@@ -391,19 +400,27 @@ ${clip('terminals', 'Dragging terminal tabs and panes to split, move, and turn t
 </ul>
 <p>Processes keep running while you move them, and a tab left empty closes. Keyboard splits:</p>
 ${keyTable([
-  keyRow('New Terminal', k('⌘', 'T'), k('Ctrl', 'T')),
-  keyRow('Split Right', k('⌘', 'D'), k('Ctrl', 'Shift', 'D')),
-  keyRow('Split Down', k('⌘', '⇧', 'D'), k('Alt', 'Shift', 'D')),
-  keyRow('Close Pane / Tab', k('⌘', 'W'), k('Ctrl', 'W')),
+  keyRow('New Terminal', 'Mod+T'),
+  keyRow('Split Right', 'Mod+D|Ctrl+Shift+D'),
+  keyRow('Split Down', 'Mod+Shift+D|Alt+Shift+D'),
+  keyRow('Close Pane / Tab', 'Mod+W'),
 ])}`],
+    ['supported', 'Supported agents', `
+<p>${APP} is not tied to one agent. It recognizes the coding agents below: it can start them, detect them in a terminal for ${ui('Send to Agent')}, and show whether they are installed. ${ui('Settings → Agents')} lists them with ${ui('Installed')} / ${ui('Not found')}, an ${ui('Install')} button where the vendor publishes a one-line installer, and the command and arguments for each.</p>
+{{agent-catalog}}
+<p>Not in the list? ${ui('Settings → Agents → Add Custom Agent')} registers any CLI or wrapper script (a name, a command, and optionally the process name used to recognize it), or add it to <code>agents.customAgents</code> in <a href="settings-json.html#example">settings.json</a>. Agents running outside ${APP} can use ${ui('Copy for Agent')}.</p>
+<p>A few features depend on the agent and are limited to Claude Code and Codex for now:</p>
+<ul>
+  <li><a href="accounts.html">Accounts and usage</a>: switching between several logins and the rate-limit meter in the footer.</li>
+  <li>${ui('Organize')}: runs on your Claude Code or Codex login, or on an LLM API you configure.</li>
+</ul>`],
     ['send', 'Send to Agent / Copy for Agent', `
 ${clip('send', 'From the Findings tab to the agent in the built-in terminal with Send to Agent.')}
 <ol class="docs-steps">
-  <li>Focus a terminal tab where Claude Code or Codex is running.</li>
-  <li>Click ${ui('Send to Agent')}.</li>
+  <li>Click ${ui('Send to Agent')}. By default (${ui('Auto (current tab or a running agent)')}) it goes to the agent in the current terminal tab, or to one that is running. Use the arrow next to the button (${ui('Choose the agent to send to')}) to pick a specific agent or tab.</li>
   <li>${APP} writes the instruction into the agent's input and submits it. Follow progress in the terminal.</li>
 </ol>
-<p>Nothing is sent if no agent is detected in that terminal, or if the agent is waiting for a permission answer. Answer in the terminal first.</p>
+<p>If no agent is running, ${APP} starts one first and sends as soon as it is ready. Nothing is sent while the agent is waiting for a permission answer. Answer in the terminal first.</p>
 <p>${ui('Copy for Agent')} puts the same instruction on the clipboard for an agent running elsewhere (another terminal, IDE, or app). Only findings toggled to ${ui('Send')} are addressed. The video is never included.</p>`],
     ['verify', 'Acceptance check with a decision model', `
 ${clip('verify', 'The agent fixes the findings and checks each one with the decision model until all pass.')}
@@ -436,7 +453,7 @@ ${note(`<p>Ollama 0.35.0 limits <code>/v1/systemone</code> requests to 64 KiB, s
 <p>Decision calls go through the relay, so ${APP} can count them. The footer item next to the agent usage meter shows the decision model and today's calls, tokens and cost (for example <code>clef-flash · 42 calls · 18.3k tok</code>). Click it for today, this month, per project, per model and per kind (decision / transcription / organize), and the last 50 calls.</p>
 <p>Cost appears only when the API reports it (Vercel AI Gateway does) or when you set prices per 1M tokens in ${ui('Settings → Decision model')}; otherwise it shows "—". Only metadata is logged (time, project, model, status, latency, size, image count, tokens, cost), never images, text or keys, in <code>~/.ferret/usage/decision-YYYY-MM.jsonl</code>, one file per month.</p>`],
     ['prompt', 'Customize the instruction', `
-<p>Edit ${ui('Settings → Agent → Instructions for Agent')}. Two variables are expanded:</p>
+<p>Edit ${ui('Settings → Agents → Instructions for Agent')}. Two variables are expanded:</p>
 <table>
   <thead><tr><th>Variable</th><th>Expands to</th></tr></thead>
   <tbody>
@@ -481,9 +498,9 @@ page('editor.html', `Using ${APP}`, 'Editor and preview',
   [
     ['files', 'Open and edit files', `
 <ul>
-  <li>${ui('Files')} (the file tree): ${k('⌘', '⇧', 'E')} / ${k('Ctrl', 'Shift', 'E')}, with ${ui('Filter by file name')}, ${ui('Refresh')}, and ${ui('Collapse All')}.</li>
-  <li>${ui('Go to File…')}: ${k('⌘', 'P')} / ${k('Ctrl', 'P')}.</li>
-  <li>Save with ${k('⌘', 'S')} / ${k('Ctrl', 'S')}. Closing a modified file asks <q>Save changes to &lt;name&gt;?</q> with ${ui('Save')}, ${ui("Don't Save")}, and ${ui('Cancel')}.</li>
+  <li>${ui('Files')} (the file tree): ${keys('Mod+Shift+E')}, with ${ui('Filter by file name')}, ${ui('Refresh')}, and ${ui('Collapse All')}.</li>
+  <li>${ui('Go to File…')}: ${keys('Mod+P')}.</li>
+  <li>Save with ${keys('Mod+S')}. Closing a modified file asks <q>Save changes to &lt;name&gt;?</q> with ${ui('Save')}, ${ui("Don't Save")}, and ${ui('Cancel')}.</li>
   <li>If the file changes on disk while you have unsaved edits, choose ${ui('Reload from Disk')} or ${ui('Keep My Changes')}.</li>
 </ul>
 <p>The editor is Monaco. Files that aren't text open in a viewer instead: images (zoom in and out; SVG can also be shown as code), video and audio with a seek bar, PDF, and, for any other binary file, its size and a hex view of the first bytes. Viewers are read-only, and files outside the project folder or reached through a symbolic link that leaves it are not shown.</p>
@@ -594,7 +611,7 @@ ${note(`<p>${APP} is designed for OpenAI-compatible servers like these, but they
   ])
 
 page('accounts.html', 'Configure', 'Accounts and usage',
-  'Switch between several Claude Code or Codex logins, and watch your rate-limit windows in the footer.',
+  'Switch between several Claude Code or Codex logins, and watch your rate-limit windows in the footer. Both features work only with Claude Code and Codex for now; other agents keep using their own login as usual.',
   [
     ['accounts', 'Multiple accounts', `
 <p>Accounts are optional. Add them only if you switch between several.</p>
@@ -645,13 +662,14 @@ page('settings.html', 'Configure', 'Settings reference',
     <tr><td>${ui('Stay on the feedback screen after stopping')}</td><td>Off</td></tr>
   </tbody>
 </table>`],
-    ['agent', 'Agent', `
+    ['agent', 'Agents', `
 <table>
   <thead><tr><th>Setting</th><th>Default</th></tr></thead>
   <tbody>
-    <tr><td>${ui('Start Claude Code')} / ${ui('Start Codex')}</td><td>Both on</td></tr>
-    <tr><td>${ui('Claude Code command')} / ${ui('arguments')}</td><td><code>claude</code> / none</td></tr>
-    <tr><td>${ui('Codex command')} / ${ui('arguments')}</td><td><code>codex</code> / none</td></tr>
+    <tr><td>${ui('Start When a Project Opens')}</td><td>Claude Code, Codex (pick any <a href="agents.html#supported">supported agents</a>, or none)</td></tr>
+    <tr><td>${ui('Show &lt;agent&gt; in menus')}</td><td>On for every agent</td></tr>
+    <tr><td>${ui('Command')} / ${ui('arguments')} (per agent)</td><td>The agent's own command (for example <code>claude</code>, <code>codex</code>, <code>gemini</code>) / none</td></tr>
+    <tr><td>${ui('Custom Agents')}</td><td>None (${ui('Add Custom Agent')} registers any CLI)</td></tr>
     <tr><td>${ui('Skip permission prompts')} (per project)</td><td>Off for every project (<a href="agents.html#terminal">details</a>)</td></tr>
     <tr><td>${ui('Instructions for Agent')}</td><td>Built-in text (<a href="agents.html#prompt">variables</a>)</td></tr>
   </tbody>
@@ -662,7 +680,7 @@ page('settings.html', 'Configure', 'Settings reference',
   <li>${ui('GitHub / GitLab')}: <code>gh</code> and <code>glab</code> sign-in. See <a href="agents.html#github">Send to GitHub or GitLab</a>.</li>
   <li>${ui('CLI tools')}: install and sign in to service CLIs. See <a href="agents.html#cli-tools">CLI tools</a>.</li>
   <li>${ui('Appearance → Theme')}: ${ui('System')} (default), ${ui('Light')}, ${ui('Dark')}.</li>
-  <li>${ui('Language → Interface')}: ${ui('System')} (default; follows the OS language: Japanese on a Japanese OS, English otherwise), English, or Japanese.</li>
+  <li>${ui('Language → Interface')}: ${ui('System')} (default; follows the OS language when ${APP} has it, English otherwise) or one of 14 languages: English, 日本語, 简体中文, 繁體中文, 한국어, Español, Français, Deutsch, Italiano, Português (Brasil), Русский, हिन्दी, Bahasa Indonesia, Tiếng Việt.</li>
 </ul>
 <p>From the footer: terminal position (right / bottom) and the microphone toggle.</p>`],
     ['settings-json', 'settings.json', `
@@ -670,7 +688,7 @@ page('settings.html', 'Configure', 'Settings reference',
   ])
 
 page('settings-json.html', 'Configure', 'Configure with settings.json',
-  `Every ${APP} setting lives in one JSON file with a JSON Schema next to it, so you or your own coding agent (Claude Code, Codex…) can configure the app by editing a file. Changes apply while the app is running.`,
+  `Every ${APP} setting lives in one JSON file with a JSON Schema next to it, so you or your own coding agent (for example Claude Code, Codex or Gemini CLI) can configure the app by editing a file. Changes apply while the app is running.`,
   [
     ['path', 'Where the file lives', `
 <p>The path is the same on every OS:</p>
@@ -858,7 +876,7 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
     <tr><td>Acceptance check (decision model, off by default)</td><td>your agent, through the local relay, to Ollama / Cloudflare / AI Gateway / TypeSafe / your URL</td><td>what the agent sends: finding text, "Done when", and BEFORE/AFTER screenshots (image models only)</td></tr>
     <tr><td>${ui('Send to Agent')}</td><td>the agent in your terminal</td><td>one instruction pointing at <code>feedback.md</code></td></tr>
     <tr><td>${ui('Send to GitHub')}</td><td>GitHub via <code>gh</code></td><td>body text only (no images)</td></tr>
-    <tr><td>Footer usage</td><td>Anthropic, ChatGPT</td><td>usage request with your own login</td></tr>
+    <tr><td>Footer usage (Claude Code and Codex only)</td><td>Anthropic, ChatGPT</td><td>usage request with your own login</td></tr>
     <tr><td>GitHub star prompt</td><td>GitHub via your <code>gh</code></td><td>checks whether you starred the repo, and stars it only if you click ${ui('Star on GitHub')}</td></tr>
     <tr><td>${ui('Check for Updates')} (manual)</td><td>download server (Cloudflare R2)</td><td>request for <code>latest.json</code></td></tr>
     <tr><td>Sending feedback from the app (only when you send it; coming soon)</td><td>the developer's feedback relay (a Cloudflare Worker), which opens a public issue in <code>JapanMarketing-Dev/ferret</code></td><td>your text, bug or idea, app / OS version and CPU, and up to 3 screenshots you attach. Keys, tokens, email addresses, and home-folder paths are masked. The relay does not store your IP address (see <a href="#feedback">Feedback from the app</a>)</td></tr>
@@ -950,7 +968,7 @@ accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts`)}
     <tr><td><code>ADE_WHISPER_MODEL</code></td><td>Absolute path of a GGML model to use for on-device transcription, overriding the downloaded default</td></tr>
     <tr><td><code>FERRET_SENTRY_DSN</code> (or the old <code>MOVIE_ADE_SENTRY_DSN</code>)</td><td>Where crash reports go. Empty means none are sent (see <a href="privacy.html#crash-reports">Crash reports</a>)</td></tr>
     <tr><td><code>OPENAI_API_KEY</code></td><td>Read from <code>.env</code> in development only (<code>pnpm dev</code>), never in packaged builds</td></tr>
-    <tr><td><code>PATH</code></td><td>Used to find <code>claude</code>, <code>codex</code>, <code>gh</code>, <code>git</code>, <code>whisper-cli</code>. On macOS and Linux, Homebrew, linuxbrew, and snap locations are added</td></tr>
+    <tr><td><code>PATH</code></td><td>Used to find your agents' commands (<code>claude</code>, <code>codex</code>, <code>gemini</code>…), <code>gh</code>, <code>git</code>, <code>whisper-cli</code>. On macOS and Linux, Homebrew, linuxbrew, and snap locations are added</td></tr>
   </tbody>
 </table>`],
     ['project', 'Inside your project', `
@@ -990,7 +1008,7 @@ page('troubleshooting.html', 'Help', 'Troubleshooting',
 ${code('pnpm rebuild:native')}`],
     ['agent', "Agent not found / Send to Agent doesn't send", `
 <ul>
-  <li><code>command not found: claude</code> (or <code>codex</code>) in the terminal: the CLI is not installed or not on <code>PATH</code>. ${APP} shows the shell's own error and adds no hint. Check that the command works in your normal terminal, or set an absolute path in ${ui('Settings → Agent → … command')}.</li>
+  <li><code>command not found: claude</code> (or <code>codex</code>, <code>gemini</code>, or another agent's command) in the terminal: the CLI is not installed or not on <code>PATH</code>. ${APP} shows the shell's own error and adds no hint. Check that the command works in your normal terminal, use ${ui('Install')} in ${ui('Settings → Agents')}, or set an absolute path as that agent's ${ui('Command')}.</li>
   <li><q>The agent is waiting for confirmation. Respond in the terminal, then send.</q> Answer the agent's prompt first.</li>
   <li><q>The agent's input isn't ready yet.</q> Wait for the agent to finish starting.</li>
   <li><q>The text was entered but not sent. Press Enter in the terminal.</q></li>
@@ -1016,15 +1034,238 @@ ${code('pnpm rebuild:native')}`],
 <p>Open an issue at <a href="${REPO}/issues">${REPO.replace('https://', '')}/issues</a> with your OS, the app version (footer → ${ui('Updates')}), and steps to reproduce. Don't attach <code>.ferret/</code> contents that contain private screens.</p>`],
   ])
 
-/* ───────────── frame ───────────── */
+
+/* ───────────── languages ───────────── */
+
+/**
+ * アプリと同じ14言語（src/shared/i18n の LOCALES）。名前はその言語自身の表記（LOCALE_LABELS と同じ。単体テストで確かめる）。
+ * 英語は /docs/<page>、ほかは /docs/<lang>/<page> に書き出す。ブラウザの言語での自動の転送はしない（docs.js は選んだ言語だけを覚える）。
+ */
+export const LANGS = ['en', 'ja', 'zh-CN', 'zh-TW', 'ko', 'es', 'fr', 'de', 'it', 'pt-BR', 'ru', 'hi', 'id', 'vi']
+export const LANG_LABELS = {
+  en: 'English',
+  ja: '日本語',
+  'zh-CN': '简体中文',
+  'zh-TW': '繁體中文',
+  ko: '한국어',
+  es: 'Español',
+  fr: 'Français',
+  de: 'Deutsch',
+  it: 'Italiano',
+  'pt-BR': 'Português (Brasil)',
+  ru: 'Русский',
+  hi: 'हिन्दी',
+  id: 'Bahasa Indonesia',
+  vi: 'Tiếng Việt',
+}
+/** 訳のファイルの置き場所。書き方は i18n/README.md */
+export const I18N_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'i18n')
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
 const GROUPS = [...new Set(pages.map((p) => p.group))]
+const groupKey = (g) => `group.${g.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+
+/** ヘッダー・フッター・ナビなど、ページの外枠の文言（英語）。訳は i18n/<lang>/_site.html。{{名前}} は書き出すときに埋める */
+const SITE_STRINGS = {
+  skip: 'Skip to content',
+  home: `${APP} home`,
+  'nav.label': 'Main',
+  'nav.features': 'Features',
+  'nav.download': 'Download',
+  'nav.docs': 'Docs',
+  'nav.changelog': 'Changelog',
+  'lang.label': 'Language',
+  'docs.title': `${APP} docs`,
+  'docs.page-title': `{{title}} · ${APP} docs`,
+  'docs.description': `${APP} documentation: install, record UI feedback, and send it to your coding agent.`,
+  'docs.start': 'Start with the <a href="quick-start.html">Quick start</a>.',
+  'docs.pages': 'Docs pages',
+  'docs.menu': 'Docs menu',
+  'docs.toc': 'On this page',
+  'docs.anchor': 'Link to {{heading}}',
+  'docs.pager': 'Previous and next page',
+  'docs.prev': 'Previous',
+  'docs.next': 'Next',
+  'docs.edit': 'Edit this page on GitHub',
+  'docs.translate': 'Help translate this page on GitHub',
+  'docs.untranslated': 'This page is not translated yet. It is shown in English.',
+  'docs.partial': 'Parts of this page are not translated yet and are shown in English.',
+  'os.label': 'Shortcuts for',
+  'os.mac': 'macOS',
+  'os.win': 'Windows / Linux',
+  copy: 'Copy',
+  copied: 'Copied',
+  'copy-failed': 'Copy failed',
+  'clip.soon': 'Clip coming soon',
+  'new-tab': '(opens in a new tab)',
+  'footer.tagline': 'The ADE for feedback by voice and screen.',
+  'footer.built-by': 'Built by {{company}}',
+  'footer.product': 'Product',
+  'footer.community': 'Community',
+  'footer.privacy': 'Privacy',
+  'footer.license': 'MIT License',
+  ...Object.fromEntries(GROUPS.map((g) => [groupKey(g), g])),
+}
+
+const base = (file) => file.replace(/\.html$/, '')
+/** 原文のハッシュ（sha256 の先頭10文字）。訳のファイルの各単位に書き、英語が変わったら古い訳として扱う */
+export const sourceHash = (s) => createHash('sha256').update(s).digest('hex').slice(0, 10)
+
+/** 訳す単位を持つもの: '_site'（外枠の文言）と各ページ（拡張子なし） */
+export const TRANSLATABLE = ['_site', ...pages.map((p) => base(p.file))]
+
+/** 英語の訳す単位（id → 原文）。ページは title・lead・各節（「## 見出し」の1行と本文）。'_site' は外枠の文言 */
+export function englishUnits(name) {
+  if (name === '_site') return new Map(Object.entries(SITE_STRINGS))
+  const p = pages.find((x) => base(x.file) === name)
+  if (!p) throw new Error(`docs のページがありません: ${name}`)
+  return new Map([['title', p.title], ['lead', p.lead], ...p.sections.map(([id, h, html]) => [id, `## ${h}\n${html.trim()}`])])
+}
+
+export const translationPath = (lang, name) => join(I18N_DIR, lang, `${name}.html`)
+
+const MARK = /^<!-- @([\w.-]+) ([0-9a-f]{10}) -->$/
+/** 足場で作った「まだ訳していない」単位の印 */
+const PENDING = '0000000000'
+/** 訳のファイル（<!-- @<id> <原文のハッシュ> --> の行で区切る）を読む。id → { hash, text }。最初の区切りより前は説明として読み飛ばす */
+export function parseTranslation(text) {
+  const units = new Map()
+  let cur = null
+  for (const line of text.split(/\r?\n/)) {
+    const m = MARK.exec(line)
+    if (m) {
+      if (units.has(m[1])) throw new Error(`同じ単位が2回あります: @${m[1]}`)
+      cur = { hash: m[2], lines: [] }
+      units.set(m[1], cur)
+    } else if (cur) cur.lines.push(line)
+  }
+  return new Map([...units].map(([id, u]) => [id, { hash: u.hash, text: u.lines.join('\n').trim() }]))
+}
+
+/** 訳のファイルの形に書く（足場づくり・ハッシュの更新に使う） */
+export function formatTranslation(lang, name, units) {
+  const head = `<!-- Ferret docs translation: ${lang} / ${name}. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->`
+  return `${head}\n${[...units].map(([id, { hash, text }]) => `<!-- @${id} ${hash} -->\n${text}\n`).join('\n')}`
+}
+
+const cache = new Map()
+/**
+ * その言語の単位。訳が無い・空・原文のハッシュが違う（古い）単位は英語で埋める。
+ * status: full（全部訳あり）/ partial（一部）/ none（訳が1つも使えない）
+ */
+export function localized(lang, name) {
+  const key = `${lang}/${name}`
+  if (cache.has(key)) return cache.get(key)
+  const en = englishUnits(name)
+  let result
+  if (lang === 'en') result = { units: en, status: 'full', stale: [], missing: [], extra: [] }
+  else {
+    const path = translationPath(lang, name)
+    const tr = existsSync(path) ? parseTranslation(readFileSync(path, 'utf8')) : new Map()
+    const units = new Map()
+    const stale = []
+    const missing = []
+    for (const [id, source] of en) {
+      const t = tr.get(id)
+      if (!t?.text || t.hash === PENDING) missing.push(id)
+      else if (t.hash !== sourceHash(source)) stale.push(id)
+      units.set(id, t?.text && t.hash !== PENDING && t.hash === sourceHash(source) ? t.text : source)
+    }
+    const used = en.size - stale.length - missing.length
+    const status = used === 0 ? 'none' : used === en.size ? 'full' : 'partial'
+    result = { units, status, stale, missing, extra: [...tr.keys()].filter((id) => !en.has(id)) }
+  }
+  cache.set(key, result)
+  return result
+}
+
+/** 外枠の文言を引く関数 */
+const chrome = (lang) => {
+  const { units } = localized(lang, '_site')
+  return (key, vars = {}) => units.get(key).replace(/\{\{(\w+)\}\}/g, (_, v) => vars[v] ?? '')
+}
+
+/* ───────────── tokens ───────────── */
+
+const MAC_KEYS = { Mod: '⌘', Cmd: '⌘', Shift: '⇧', Alt: '⌥', Ctrl: '⌃', Left: '←', Right: '→', Up: '↑', Down: '↓' }
+const WIN_KEYS = { Mod: 'Ctrl', Left: '←', Right: '→', Up: '↑', Down: '↓' }
+
+/**
+ * {{keys:…}} の書き方: 'Mod+Shift+R'（Mod は macOS で ⌘、Windows / Linux で Ctrl。Alt は ⌥ / Alt）。
+ * ' / ' で並べると「どちらでも」（'B / R'）。OS で割り当てが違うものは '|' で macOS 側と Windows / Linux 側を分ける
+ * （'Mod+D|Ctrl+Shift+D'。'|' の後ろが空なら Windows / Linux には無い）。
+ */
+function keysFor(spec, os) {
+  const [mac, win = mac] = spec.split('|')
+  const side = os === 'mac' ? mac : win
+  if (!side) return ''
+  const names = os === 'mac' ? MAC_KEYS : WIN_KEYS
+  return side.split(' / ').map((combo) => combo.split('+').map((x) => `<kbd>${names[x] ?? x}</kbd>`).join('')).join(' / ')
+}
+
+/** 本文の中のショートカット。JS が無くても両方が読める。docs.js が <html data-os> を付けると片方だけになる */
+function inlineKeys(spec) {
+  const mac = keysFor(spec, 'mac')
+  const win = keysFor(spec, 'win')
+  if (mac === win) return mac
+  if (!win) return `<span class="docs-kbd"><span class="os-mac">${mac}</span></span>`
+  return `<span class="docs-kbd"><span class="os-mac">${mac}</span><span class="os-sep"> / </span><span class="os-win">${win}</span></span>`
+}
+
+/** Ferret が知っているコーディングエージェント（src/shared/agentCatalog.ts の BUILTIN_AGENTS の順）。TS を読まずに文字として拾う（単体テストで本物と比べる） */
+export function agentCatalog() {
+  const src = readFileSync(join(ROOT, 'src/shared/agentCatalog.ts'), 'utf8')
+  const order = /export const BUILTIN_AGENTS[^=]*=\s*\[([\s\S]*?)\]/.exec(src)?.[1]
+  const table = /export const AGENT_CATALOG[^=]*=\s*\{([\s\S]*?)\n\}/.exec(src)?.[1]
+  if (!order || !table) throw new Error('src/shared/agentCatalog.ts の BUILTIN_AGENTS / AGENT_CATALOG が読めません')
+  return [...order.matchAll(/'([\w-]+)'/g)].map(([, id]) => {
+    const block = new RegExp(`\\n  '?${id}'?: \\{([\\s\\S]*?)\\n  \\}`).exec(table)?.[1]
+    const field = (name) => block && new RegExp(`\\n\\s+${name}: '((?:[^'\\\\]|\\\\.)*)'`).exec(block)?.[1]?.replace(/\\'/g, "'")
+    const entry = { id, label: field('label'), command: field('launchCmd') ?? field('detectCmd'), homepageUrl: field('homepageUrl') }
+    if (!entry.label || !entry.command || !entry.homepageUrl) throw new Error(`agentCatalog.ts の ${id} が読めません`)
+    return entry
+  })
+}
+
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
+
+const agentList = () => `<ul class="docs-agent-list">
+  ${agentCatalog().map((a) => `<li><a href="${esc(a.homepageUrl)}">${esc(a.label)}</a> <code>${esc(a.command)}</code></li>`).join('\n  ')}
+</ul>`
+
+function clipHtml(name, caption, c) {
+  const mp4 = `assets/clips/${name}.mp4`
+  const poster = `assets/clips/${name}.webp`
+  if (!existsSync(join(DOCS_DIR, mp4)) || !existsSync(join(DOCS_DIR, poster)))
+    return `<figure class="docs-clip" data-clip="${name}"><div class="docs-shot-slot" role="img" aria-label="${attr(caption)} (${c('clip.soon')})"><span>${c('clip.soon')}</span></div><figcaption>${caption}</figcaption></figure>`
+  const webm = `assets/clips/${name}.webm`
+  return `<figure class="docs-clip" data-clip="${name}">
+  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="${poster}" data-src="${mp4}"${existsSync(join(DOCS_DIR, webm)) ? ` data-src-webm="${webm}"` : ''} aria-label="${attr(caption)}"></video>
+  <figcaption>${caption}</figcaption>
+</figure>`
+}
+
+/** 本文の札（{{keys:…}}・{{keys-mac:…}}・{{keys-win:…}}・{{clip:名前|説明}}・{{agent-catalog}}）を HTML に開く */
+export const TOKEN = /\{\{(keys|keys-mac|keys-win|clip|agent-catalog)(?::([^}]*))?\}\}/g
+function expand(html, c) {
+  return html.replace(TOKEN, (whole, kind, arg = '') => {
+    if (kind === 'keys') return inlineKeys(arg)
+    if (kind === 'keys-mac') return keysFor(arg, 'mac') || '—'
+    if (kind === 'keys-win') return keysFor(arg, 'win') || '—'
+    if (kind === 'agent-catalog') return agentList()
+    const bar = arg.indexOf('|')
+    return clipHtml(arg.slice(0, bar), arg.slice(bar + 1), c)
+  })
+}
+
+/* ───────────── frame ───────────── */
 
 const sprite = `<svg class="sprite" width="0" height="0" aria-hidden="true">
     <symbol id="i-github" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
     <symbol id="i-discord" viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></symbol>
   </svg>`
 
@@ -1032,25 +1273,30 @@ const sprite = `<svg class="sprite" width="0" height="0" aria-hidden="true">
 const DISCORD = 'https://discord.gg/A5zAuwg866'
 const X_URL = 'https://x.com/ai_agent_dev'
 
-const header = `<header class="site-header">
+/** その言語のページの場所（英語は /docs/<page>、ほかは /docs/<lang>/<page>） */
+const docPath = (lang, file) => (lang === 'en' ? file : `${lang}/${file}`)
+const pageUrl = (lang, file) => `${SITE_URL}/docs/${docPath(lang, file === 'index.html' ? '' : base(file))}`
+
+const header = (c) => `<header class="site-header">
     <div class="wrap">
-      <a class="brand" href="../index.html" aria-label="${APP} home">
+      <a class="brand" href="../index.html" aria-label="${c('home')}">
         <img class="wordmark" src="../assets/ferret-wordmark.svg" alt="${APP}" width="67" height="22">
       </a>
-      <nav class="site-nav" aria-label="Main">
-        <a href="../index.html#features">Features</a>
-        <a href="../download.html">Download</a>
-        <a class="nav-keep" href="quick-start.html" aria-current="page">Docs</a>
-        <a href="../download.html#versions">Changelog</a>
+      <nav class="site-nav" aria-label="${c('nav.label')}">
+        <a href="../index.html#features">${c('nav.features')}</a>
+        <a href="../download.html">${c('nav.download')}</a>
+        <a class="nav-keep" href="quick-start.html" aria-current="page">${c('nav.docs')}</a>
+        <a href="../download.html#versions">${c('nav.changelog')}</a>
       </nav>
       <div class="header-actions">
+        {{lang-menu}}
         <a class="btn btn-sm btn-icon btn-ghost" href="${DISCORD}"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-discord"/></svg><span class="sr-only">Discord</span></a>
         <a class="btn btn-sm btn-icon btn-ghost" href="${X_URL}"><svg class="icon icon-fill" aria-hidden="true"><use href="#i-x"/></svg><span class="sr-only">X</span></a>
         <a class="btn btn-sm btn-ghost" href="${REPO}">
           <svg class="icon icon-fill"><use href="#i-github"/></svg><span class="btn-label">GitHub</span>
         </a>
         <a class="btn btn-sm btn-primary" href="../download.html">
-          <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">Download</span>
+          <svg class="icon"><use href="#i-download"/></svg><span class="btn-label">${c('nav.download')}</span>
         </a>
       </div>
     </div>
@@ -1058,79 +1304,124 @@ const header = `<header class="site-header">
 
 // 外部（https:// の他サイト）リンクだけを新しいタブで開く。サイト内のリンクは、フッターも含めて同じタブ
 const NEW_TAB = 'target="_blank" rel="noopener noreferrer"'
-const NEW_TAB_NOTE = '<span class="sr-only"> (opens in a new tab)</span>'
-const tabLink = (href, label, attrs = '') =>
-  /^https:\/\//.test(href) ? `<a${attrs} href="${href}" ${NEW_TAB}>${label}${NEW_TAB_NOTE}</a>` : `<a${attrs} href="${href}">${label}</a>`
+const newTabNote = (c) => `<span class="sr-only"> ${c('new-tab')}</span>`
+const tabLink = (c, href, label, attrs = '') =>
+  /^https:\/\//.test(href) ? `<a${attrs} href="${href}" ${NEW_TAB}>${label}${newTabNote(c)}</a>` : `<a${attrs} href="${href}">${label}</a>`
 
 /** 本文とヘッダーの外部リンク（自サイト以外の http(s)）に新しいタブの属性を付ける。本文側で target を書いたリンクはそのまま */
-const newTabLinks = (html) =>
+const newTabLinks = (html, c) =>
   html.replace(/<a(\s[^>]*)>([\s\S]*?)<\/a>/g, (whole, attrs, inner) => {
     const href = /\shref="([^"]*)"/.exec(attrs)?.[1] ?? ''
     if (!/^https?:\/\//.test(href) || href.startsWith(SITE_URL) || /\starget=/.test(attrs)) return whole
-    return `<a${attrs} ${NEW_TAB}>${inner}${NEW_TAB_NOTE}</a>`
+    return `<a${attrs} ${NEW_TAB}>${inner}${newTabNote(c)}</a>`
   })
 
-const footer = `<footer class="site-footer">
+const footer = (c) => `<footer class="site-footer">
     <div class="wrap">
       <div class="footer-grid">
         <div class="footer-brand">
-          ${tabLink('../index.html', `<img class="wordmark" src="../assets/ferret-wordmark.svg" alt="${APP}" width="67" height="22">`, ' class="brand"')}
-          <p class="footer-tag">The ADE for feedback by voice and screen.</p>
-          <p class="provider">Built by ${tabLink('https://www.japan-marketing.co.jp/', 'Japan Marketing LLC')}</p>
+          ${tabLink(c, '../index.html', `<img class="wordmark" src="../assets/ferret-wordmark.svg" alt="${APP}" width="67" height="22">`, ' class="brand"')}
+          <p class="footer-tag">${c('footer.tagline')}</p>
+          <p class="provider">${c('footer.built-by', { company: tabLink(c, 'https://www.japan-marketing.co.jp/', 'Japan Marketing LLC') })}</p>
         </div>
         <div>
-          <h2>Product</h2>
+          <h2>${c('footer.product')}</h2>
           <ul>
-            <li>${tabLink('../download.html', 'Download')}</li>
-            <li>${tabLink('../download.html#versions', 'Changelog')}</li>
-            <li>${tabLink('quick-start.html', 'Docs')}</li>
-            <li>${tabLink('privacy.html', 'Privacy')}</li>
+            <li>${tabLink(c, '../download.html', c('nav.download'))}</li>
+            <li>${tabLink(c, '../download.html#versions', c('nav.changelog'))}</li>
+            <li>${tabLink(c, 'quick-start.html', c('nav.docs'))}</li>
+            <li>${tabLink(c, 'privacy.html', c('footer.privacy'))}</li>
           </ul>
         </div>
         <div>
-          <h2>Community</h2>
+          <h2>${c('footer.community')}</h2>
           <ul>
-            <li>${tabLink(REPO, 'GitHub')}</li>
-            <li>${tabLink(DISCORD, 'Discord')}</li>
-            <li>${tabLink(X_URL, 'X')}</li>
+            <li>${tabLink(c, REPO, 'GitHub')}</li>
+            <li>${tabLink(c, DISCORD, 'Discord')}</li>
+            <li>${tabLink(c, X_URL, 'X')}</li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> Japan Marketing LLC · ${tabLink(`${REPO}/blob/main/LICENSE`, 'MIT License')}</span>
+        <span>© <span data-year>2026</span> Japan Marketing LLC · ${tabLink(c, `${REPO}/blob/main/LICENSE`, c('footer.license'))}</span>
       </div>
     </div>
   </footer>`
 
-const sidebar = (current) => GROUPS.map((g) => `<div class="docs-nav-group">
-        <p class="docs-nav-heading">${g}</p>
-        <ul>
-          ${pages.filter((p) => p.group === g).map((p) => `<li><a href="${p.file}"${p.file === current ? ' aria-current="page"' : ''}>${p.title}</a></li>`).join('\n          ')}
-        </ul>
-      </div>`).join('\n      ')
+// SNS のカード。tools/qa/site-meta.mjs の socialMeta と同じ行を書く（site:meta を走らせても差分が出ないように）
+const OG_IMAGE_ALT = 'Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.'
+const OG_LOCALES = { en: 'en_US', ja: 'ja_JP', 'zh-CN': 'zh_CN', 'zh-TW': 'zh_TW', ko: 'ko_KR', es: 'es_ES', fr: 'fr_FR', de: 'de_DE', it: 'it_IT', 'pt-BR': 'pt_BR', ru: 'ru_RU', hi: 'hi_IN', id: 'id_ID', vi: 'vi_VN' }
 
 const strip = (s) => s.replace(/<[^>]+>/g, '')
 const attr = (s) => strip(s).replace(/"/g, '&quot;')
 
-function shell({ file, title, description, body, head = '' }) {
-  const url = `${SITE_URL}/docs/${file === 'index.html' ? '' : file.replace(/\.html$/, '')}`
-  return `<!doctype html>
-<html lang="en">
+/** ページの単位を、見出し・本文に分けて返す（訳が無い単位は英語。fallback はその単位が英語のままか） */
+function pageText(lang, p) {
+  const loc = localized(lang, base(p.file))
+  const fallback = new Set([...loc.stale, ...loc.missing])
+  const sections = p.sections.map(([id]) => {
+    const [first, ...rest] = loc.units.get(id).split('\n')
+    return { id, heading: first.replace(/^##\s*/, ''), html: rest.join('\n').trim(), en: fallback.has(id) }
+  })
+  return { title: loc.units.get('title'), lead: loc.units.get('lead'), sections, status: loc.status, fallback }
+}
+
+/** 言語のページで使えるもの（英語と、訳が1つでもある言語）。hreflang に並べる */
+const availableLangs = (file) => LANGS.filter((l) => l === 'en' || (file !== 'index.html' && localized(l, base(file)).status !== 'none'))
+
+/** ヘッダーの言語の選択。JS が無くても開ける <details> と、各言語の同じページへのリンク */
+function langMenu(lang, file, c) {
+  const up = lang === 'en' ? '' : '../'
+  const items = LANGS.map((l) => {
+    const href = `${up}${l === 'en' ? '' : `${l}/`}${file}`
+    return `<li><a href="${href}" hreflang="${l}" lang="${l}"${l === lang ? ' aria-current="true"' : ''} data-docs-lang="${l}">${LANG_LABELS[l]}</a></li>`
+  })
+  return `<details class="docs-lang">
+          <summary class="btn btn-sm btn-ghost" aria-label="${c('lang.label')}: ${LANG_LABELS[lang]}"><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg><span class="btn-label">${LANG_LABELS[lang]}</span></summary>
+          <ul class="docs-lang-list">
+            ${items.join('\n            ')}
+          </ul>
+        </details>`
+}
+
+/** /docs/<lang>/ のページは1段深いので、サイトの他の場所と docs/assets への相対パスを1段上げる */
+const relocate = (html) =>
+  html.replace(/(\s(?:href|src|poster|data-src|data-src-webm)=")((?:\.\.\/|assets\/|docs\.(?:css|js))[^"]*)"/g, (whole, a, path) => `${a}../${path}"`)
+
+function shell({ lang, file, title, description, body, head = '', noindex = false }) {
+  const c = chrome(lang)
+  const url = pageUrl(lang, file)
+  const canonical = noindex ? pageUrl('en', file) : url
+  const alternates =
+    file === 'index.html'
+      ? ''
+      : [...availableLangs(file).map((l) => `<link rel="alternate" hreflang="${l}" href="${pageUrl(l, file)}">`), `<link rel="alternate" hreflang="x-default" href="${pageUrl('en', file)}">`].join('\n  ')
+  const html = `<!doctype html>
+<html lang="${lang}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${title}</title>
   <meta name="description" content="${attr(description)}">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#050508">
-  <link rel="canonical" href="${url}">
+  <meta name="theme-color" content="#050508">${noindex ? '\n  <meta name="robots" content="noindex, follow">' : ''}
+  <link rel="canonical" href="${canonical}">${alternates ? `\n  ${alternates}` : ''}
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="${APP}">
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${attr(description)}">
   <meta property="og:url" content="${url}">
-  <meta property="og:image" content="${SITE_URL}/assets/og.png">
+  <meta property="og:image" content="${SITE_URL}/assets/og.png?v=${assetVersion('assets/og.png')}">
+  <meta property="og:locale" content="${OG_LOCALES[lang]}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="${OG_IMAGE_ALT}">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${title}">
+  <meta name="twitter:description" content="${attr(description)}">
+  <meta name="twitter:image" content="${SITE_URL}/assets/og.png?v=${assetVersion('assets/og.png')}">
+  <meta name="twitter:image:alt" content="${OG_IMAGE_ALT}">
   <link rel="icon" href="../favicon.svg?v=${assetVersion('favicon.svg')}" type="image/svg+xml">
   <link rel="icon" href="../favicon-32.png?v=${assetVersion('favicon-32.png')}" type="image/png" sizes="32x32">
   <script src="../js/theme.js?v=${assetVersion('js/theme.js')}"></script>
@@ -1138,93 +1429,236 @@ function shell({ file, title, description, body, head = '' }) {
   <link rel="stylesheet" href="docs.css?v=${assetVersion('docs/docs.css')}">
   <script src="docs.js?v=${assetVersion('docs/docs.js')}" defer></script>${head ? `\n  ${head}` : ''}
 </head>
-<!-- Generated layout: the sidebar, header, and footer are identical on every page in site/docs/. Change them on all pages together. -->
-<body data-page="docs">
-  <a class="skip" href="#docs-main">Skip to content</a>
+<!-- Generated by tools/docs/build-docs.mjs: the sidebar, header, and footer are identical on every page in site/docs/. Change them there. -->
+<body data-page="docs" data-copy="${attr(c('copy'))}" data-copied="${attr(c('copied'))}" data-copy-failed="${attr(c('copy-failed'))}">
+  <a class="skip" href="#docs-main">${c('skip')}</a>
   ${sprite}
 
-  ${newTabLinks(header)}
+  ${newTabLinks(header(c), c)}
 
-  ${newTabLinks(body)}
+  ${newTabLinks(body, c)}
 
-  ${footer}
+  ${footer(c)}
 </body>
 </html>
 `
+  return (lang === 'en' ? html : relocate(html)).replace('{{lang-menu}}', langMenu(lang, file, c)).replace('{{en-link}}', `../${file}`)
 }
 
-function docPage(p, i) {
+/** OS の切り替え（ショートカットのあるページだけ）。JS が無いあいだは隠し、両方の表記を出したままにする */
+const osSwitch = (c) => `<div class="docs-os" role="group" aria-label="${c('os.label')}" data-docs-os hidden>
+          <span class="docs-os-label">${c('os.label')}</span>
+          <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">${c('os.mac')}</button>
+          <button type="button" class="docs-os-btn" data-os-choice="win" aria-pressed="false">${c('os.win')}</button>
+        </div>`
+
+function docPage(lang, p, i) {
+  const c = chrome(lang)
+  const t = pageText(lang, p)
+  const titleOf = (x) => localized(lang, base(x.file)).units.get('title')
   const prev = pages[i - 1]
   const next = pages[i + 1]
-  const sections = p.sections.map(([id, h, html]) => `<section class="docs-section" aria-labelledby="${id}">
-        <h2 id="${id}"><a class="docs-anchor" href="#${id}" aria-label="Link to ${attr(h)}">#</a>${h}</h2>
-        ${html.trim()}
+  const enAttr = (en) => (en && lang !== 'en' ? ' lang="en"' : '')
+  const sections = t.sections.map(({ id, heading, html, en }) => `<section class="docs-section" aria-labelledby="${id}"${enAttr(en)}>
+        <h2 id="${id}"><a class="docs-anchor" href="#${id}" aria-label="${attr(c('docs.anchor', { heading }))}">#</a>${heading}</h2>
+        ${html}
       </section>`).join('\n\n      ')
+  const banner =
+    lang === 'en' || t.status === 'full'
+      ? ''
+      : `\n        ${note(`<p>${c(t.status === 'none' ? 'docs.untranslated' : 'docs.partial')} <a href="{{en-link}}" hreflang="en">English</a></p>`, 'i18n')}`
+  const hasKeys = [t.lead, ...t.sections.map((s) => s.html)].some((s) => /\{\{keys/.test(s))
+  const sidebar = GROUPS.map((g) => `<div class="docs-nav-group">
+        <p class="docs-nav-heading">${c(groupKey(g))}</p>
+        <ul>
+          ${pages.filter((x) => x.group === g).map((x) => `<li><a href="${x.file}"${x.file === p.file ? ' aria-current="page"' : ''}>${titleOf(x)}</a></li>`).join('\n          ')}
+        </ul>
+      </div>`).join('\n      ')
+  const editHref =
+    lang === 'en' ? `${REPO}/blob/main/tools/docs/build-docs.mjs` : t.status === 'none' ? `${REPO}/blob/main/tools/docs/i18n/README.md` : `${REPO}/blob/main/tools/docs/i18n/${lang}/${base(p.file)}.html`
   const body = `<div class="wrap docs-layout">
-    <nav class="docs-sidebar" aria-label="Docs pages" id="docs-sidebar">
+    <nav class="docs-sidebar" aria-label="${c('docs.pages')}" id="docs-sidebar">
       <button class="docs-sidebar-toggle" type="button" aria-expanded="true" aria-controls="docs-nav-list" data-docs-nav-toggle>
-        <svg class="icon"><use href="#i-menu"/></svg>Docs menu
+        <svg class="icon"><use href="#i-menu"/></svg>${c('docs.menu')}
       </button>
       <div class="docs-nav-list" id="docs-nav-list">
-      ${sidebar(p.file)}
+      ${sidebar}
       </div>
     </nav>
 
     <main class="docs-main" id="docs-main">
-      <article class="docs-content">
-        <p class="docs-eyebrow">${p.group}</p>
-        <h1>${p.title}</h1>
-        <p class="docs-lead">${p.lead}</p>
+      <article class="docs-content">${banner}
+        <p class="docs-eyebrow">${c(groupKey(p.group))}</p>
+        <h1${enAttr(t.fallback.has('title'))}>${t.title}</h1>
+        <p class="docs-lead"${enAttr(t.fallback.has('lead'))}>${t.lead}</p>${hasKeys ? `\n        ${osSwitch(c)}` : ''}
 
       ${sections}
 
-        <nav class="docs-pager" aria-label="Previous and next page">
-          ${prev ? `<a class="docs-pager-prev" href="${prev.file}"><span>Previous</span>${prev.title}</a>` : '<span></span>'}
-          ${next ? `<a class="docs-pager-next" href="${next.file}"><span>Next</span>${next.title}</a>` : '<span></span>'}
+        <nav class="docs-pager" aria-label="${c('docs.pager')}">
+          ${prev ? `<a class="docs-pager-prev" href="${prev.file}"><span>${c('docs.prev')}</span>${titleOf(prev)}</a>` : '<span></span>'}
+          ${next ? `<a class="docs-pager-next" href="${next.file}"><span>${c('docs.next')}</span>${titleOf(next)}</a>` : '<span></span>'}
         </nav>
-        <p class="docs-edit"><a href="${REPO}/blob/main/site/docs/${p.file}">Edit this page on GitHub</a></p>
+        <p class="docs-edit"><a href="${editHref}">${c(lang === 'en' ? 'docs.edit' : 'docs.translate')}</a></p>
       </article>
     </main>
 
-    <aside class="docs-toc" aria-label="On this page">
-      <p class="docs-toc-heading">On this page</p>
+    <aside class="docs-toc" aria-label="${c('docs.toc')}">
+      <p class="docs-toc-heading">${c('docs.toc')}</p>
       <ul>
-        ${p.sections.map(([id, h]) => `<li><a href="#${id}">${strip(h)}</a></li>`).join('\n        ')}
+        ${t.sections.map(({ id, heading }) => `<li><a href="#${id}">${strip(heading)}</a></li>`).join('\n        ')}
       </ul>
     </aside>
   </div>`
-  return shell({ file: p.file, title: `${strip(p.title)} · ${APP} docs`, description: p.lead, body })
+  return shell({
+    lang,
+    file: p.file,
+    title: c('docs.page-title', { title: strip(t.title) }),
+    description: t.lead,
+    body: expand(body, c),
+    noindex: lang !== 'en' && t.status === 'none',
+  })
 }
 
 /** /docs/ は Quick start へ移すだけのページ（meta refresh は CSP の対象外） */
-function indexPage() {
+function indexPage(lang) {
+  const c = chrome(lang)
   return shell({
+    lang,
     file: 'index.html',
-    title: `${APP} docs`,
-    description: `${APP} documentation: install, record UI feedback, and send it to Claude Code or Codex.`,
+    title: c('docs.title'),
+    description: c('docs.description'),
     head: '<meta http-equiv="refresh" content="0; url=quick-start.html">',
     body: `<main class="wrap docs-redirect" id="docs-main">
-    <h1>${APP} docs</h1>
-    <p>Start with the <a href="quick-start.html">Quick start</a>.</p>
+    <h1>${c('docs.title')}</h1>
+    <p>${c('docs.start')}</p>
     <ul>
-      ${pages.map((p) => `<li><a href="${p.file}">${p.title}</a></li>`).join('\n      ')}
+      ${pages.map((p) => `<li><a href="${p.file}">${localized(lang, base(p.file)).units.get('title')}</a></li>`).join('\n      ')}
     </ul>
   </main>`,
   })
 }
 
-/** ファイル名 → HTML。書き出しはしない（テストから使う） */
+/** site/docs/ からの相対パス → HTML。書き出しはしない（テストから使う） */
 export function renderDocs() {
-  const out = { 'index.html': indexPage() }
-  pages.forEach((p, i) => (out[p.file] = docPage(p, i)))
+  const out = {}
+  for (const lang of LANGS) {
+    out[docPath(lang, 'index.html')] = indexPage(lang)
+    pages.forEach((p, i) => (out[docPath(lang, p.file)] = docPage(lang, p, i)))
+  }
   return out
 }
 
+/** 言語ごと・ページごとの訳の状態（--status と単体テストで使う） */
+export function translationStatus() {
+  const rows = []
+  for (const lang of LANGS.filter((l) => l !== 'en'))
+    for (const name of TRANSLATABLE) {
+      const { status, stale, missing, extra } = localized(lang, name)
+      rows.push({ lang, name, status, stale, missing, extra, exists: existsSync(translationPath(lang, name)) })
+    }
+  return rows
+}
+
+/** 訳す量の目安（英語の単位の文字数。タグと札を除く） */
+export const unitSize = (name) => [...englishUnits(name).values()].reduce((n, s) => n + strip(s.replace(TOKEN, '')).length, 0)
+
+
+/** 足場: 訳のファイルが無ければ、英語の本文と「まだ訳していない」印（0000000000）で作る。あれば足りない単位だけを足す */
+function scaffold(lang, name) {
+  const path = translationPath(lang, name)
+  const en = englishUnits(name)
+  const have = existsSync(path) ? parseTranslation(readFileSync(path, 'utf8')) : new Map()
+  const units = new Map([...en].map(([id, source]) => [id, have.get(id) ?? { hash: PENDING, text: source }]))
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, formatTranslation(lang, name, units))
+  return path
+}
+
+/**
+ * ハッシュの更新: 訳した単位に今の英語のハッシュを書く。英語と同じ文のままの単位は「まだ訳していない」のまま残す
+ * （--force なら全部。固有名詞だけの見出しのように、訳しても英語と同じになる単位があるとき）
+ */
+function rehash(lang, name, force) {
+  const path = translationPath(lang, name)
+  const en = englishUnits(name)
+  const have = parseTranslation(readFileSync(path, 'utf8'))
+  const units = new Map(
+    [...have].filter(([id]) => en.has(id)).map(([id, u]) => [id, { hash: force || u.text !== en.get(id) ? sourceHash(en.get(id)) : PENDING, text: u.text }]),
+  )
+  writeFileSync(path, formatTranslation(lang, name, units))
+  return path
+}
+
+/**
+ * 1つの言語の訳のファイルを検査する（何も書き出さない。翻訳担当が並列に自分の言語だけを確かめる用）。
+ * 古い・余分な単位、札とリンク先の違い、⌘ ⌥ ⇧ ⌃ の直書き、見出しの形、訳した HTML の書き出しで落ちないか。問題の一覧を返す
+ */
+export function checkTranslations(lang) {
+  const problems = []
+  const tokens = (s) => [...s.matchAll(/\{\{[^}]*\}\}/g)].map(([t]) => (t.startsWith('{{clip:') ? t.slice(0, t.indexOf('|')) : t)).sort().join(' ')
+  const hrefs = (s) => [...s.matchAll(/\shref="([^"]*)"/g)].map((m) => m[1]).sort().join(' ')
+  const dir = join(I18N_DIR, lang)
+  for (const f of existsSync(dir) ? readdirSync(dir) : []) if (!TRANSLATABLE.includes(f.replace(/\.html$/, ''))) problems.push(`${lang}/${f}: unknown page`)
+  for (const name of TRANSLATABLE) {
+    const path = translationPath(lang, name)
+    if (!existsSync(path)) continue
+    let units
+    try {
+      units = parseTranslation(readFileSync(path, 'utf8'))
+    } catch (e) {
+      problems.push(`${lang}/${name}: ${e.message}`)
+      continue
+    }
+    const en = englishUnits(name)
+    const { stale, extra } = localized(lang, name)
+    if (stale.length) problems.push(`${lang}/${name}: stale (English changed) ${stale.join(',')}`)
+    if (extra.length) problems.push(`${lang}/${name}: units not in English ${extra.join(',')}`)
+    for (const [id, { hash, text }] of units) {
+      if (!en.has(id) || hash === PENDING) continue
+      const at = `${lang}/${name} @${id}`
+      if (tokens(text) !== tokens(en.get(id))) problems.push(`${at}: {{…}} tokens differ from English`)
+      if (hrefs(text) !== hrefs(en.get(id))) problems.push(`${at}: href targets differ from English`)
+      if (/[⌘⌥⇧⌃]/.test(text)) problems.push(`${at}: write shortcuts as {{keys:…}}, not ⌘ ⌥ ⇧ ⌃`)
+      if (name !== '_site' && id !== 'title' && id !== 'lead' && !/^## /.test(text)) problems.push(`${at}: the first line must be "## <heading>"`)
+    }
+  }
+  try {
+    pages.forEach((p, i) => docPage(lang, p, i))
+    indexPage(lang)
+  } catch (e) {
+    problems.push(`${lang}: rendering failed: ${e.message}`)
+  }
+  return problems
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const docs = renderDocs()
-  mkdirSync(DOCS_DIR, { recursive: true })
-  // 消したページが残らないよう、出力に無い HTML を消す（docs.css / docs.js は残す）
-  for (const f of readdirSync(DOCS_DIR)) if (f.endsWith('.html') && !(f in docs)) rmSync(join(DOCS_DIR, f))
-  for (const [file, html] of Object.entries(docs)) writeFileSync(join(DOCS_DIR, file), html)
-  console.log(`site/docs: ${Object.keys(docs).length} pages`)
+  const [cmd, lang, name = 'all', ...rest] = process.argv.slice(2)
+  const names = name === 'all' ? TRANSLATABLE : [name]
+  if (cmd === '--status') {
+    for (const r of translationStatus().filter((x) => !lang || x.lang === lang))
+      if (r.status !== 'full' || r.extra.length)
+        console.log(`${r.lang}/${r.name}: ${r.status}${r.stale.length ? ` stale=${r.stale.join(',')}` : ''}${r.missing.length ? ` missing=${r.missing.join(',')}` : ''}${r.extra.length ? ` extra=${r.extra.join(',')}` : ''}`)
+    console.log('sizes (English characters per page):')
+    for (const n of TRANSLATABLE) console.log(`  ${n}: ${unitSize(n)}`)
+  } else if (cmd === '--check') {
+    if (!LANGS.includes(lang) || lang === 'en') throw new Error(`言語を ${LANGS.slice(1).join(' / ')} から指定してください`)
+    const problems = checkTranslations(lang)
+    for (const line of problems) console.log(line)
+    for (const r of translationStatus().filter((x) => x.lang === lang && x.exists)) console.log(`${r.lang}/${r.name}: ${r.status}${r.missing.length ? ` (not translated yet: ${r.missing.join(',')})` : ''}`)
+    console.log(problems.length ? `${problems.length} problem(s)` : 'ok')
+    process.exitCode = problems.length ? 1 : 0
+  } else if (cmd === '--scaffold' || cmd === '--rehash') {
+    if (!LANGS.includes(lang) || lang === 'en') throw new Error(`言語を ${LANGS.slice(1).join(' / ')} から指定してください`)
+    for (const n of names) console.log(cmd === '--scaffold' ? scaffold(lang, n) : rehash(lang, n, rest.includes('--force') || name === '--force'))
+  } else {
+    const docs = renderDocs()
+    // 消したページが残らないよう、出力に無い HTML を消す（docs.css / docs.js は残す）
+    for (const dir of ['', ...LANGS.filter((l) => l !== 'en')]) {
+      const abs = join(DOCS_DIR, dir)
+      mkdirSync(abs, { recursive: true })
+      for (const f of readdirSync(abs)) if (f.endsWith('.html') && !(`${dir ? `${dir}/` : ''}${f}` in docs)) rmSync(join(abs, f))
+    }
+    for (const [file, html] of Object.entries(docs)) writeFileSync(join(DOCS_DIR, file), html)
+    console.log(`site/docs: ${Object.keys(docs).length} pages`)
+  }
 }

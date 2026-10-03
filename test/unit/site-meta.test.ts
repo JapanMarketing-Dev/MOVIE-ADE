@@ -15,9 +15,22 @@ describe.each([
   const html = read(file)
 
   it('og:image・og:url・canonical は config.js の SITE_URL から作った絶対 URL（ずれたら pnpm site:meta）', () => {
-    expect(attr(html, /<meta property="og:image" content="([^"]*)"/)).toBe(`${SITE_URL}/assets/og.png`)
+    expect(attr(html, /<meta property="og:image" content="([^"]*)"/)).toMatch(new RegExp(`^${SITE_URL.replace(/[.]/g, '\\.')}/assets/og\\.png\\?v=[0-9a-f]{8}$`))
     expect(attr(html, /<meta property="og:url" content="([^"]*)"/)).toBe(`${SITE_URL}${path}`)
     expect(attr(html, /<link rel="canonical" href="([^"]*)"/)).toBe(`${SITE_URL}${path}`)
+  })
+
+  it('SNS のカード: og.png の寸法・代替テキストと、og:title・og:description と同じ twitter:*（ずれたら pnpm site:meta）', () => {
+    expect(attr(html, /<meta property="og:image:width" content="([^"]*)"/)).toBe('1200')
+    expect(attr(html, /<meta property="og:image:height" content="([^"]*)"/)).toBe('630')
+    expect(attr(html, /<meta property="og:image:alt" content="([^"]+)"/)).toBeTruthy()
+    expect(attr(html, /<meta name="twitter:card" content="([^"]*)"/)).toBe('summary_large_image')
+    expect(attr(html, /<meta name="twitter:title" content="([^"]*)"/)).toBe(attr(html, /<meta property="og:title" content="([^"]*)"/))
+    expect(attr(html, /<meta name="twitter:description" content="([^"]*)"/)).toBe(attr(html, /<meta property="og:description" content="([^"]*)"/))
+    expect(attr(html, /<meta name="twitter:image" content="([^"]*)"/)).toMatch(new RegExp(`^${SITE_URL.replace(/[.]/g, '\\.')}/assets/og\\.png\\?v=[0-9a-f]{8}$`))
+    // og.png の実寸がメタの寸法と合う（PNG の IHDR）
+    const png = readFileSync(resolve(__dirname, '../..', 'site/assets/og.png'))
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1200, 630])
   })
 
   it('英語のページで、日本語の文字を含まない（コメントを除く）', () => {

@@ -6,3 +6,30 @@
 # /docs/ renders a page and then meta-refreshes, which flashes. Redirect before anything is drawn.
 /docs /docs/quick-start 301
 /docs/ /docs/quick-start 301
+# Same for each docs language (tools/docs/build-docs.mjs writes /docs/<lang>/)
+/docs/ja /docs/ja/quick-start 301
+/docs/ja/ /docs/ja/quick-start 301
+/docs/zh-CN /docs/zh-CN/quick-start 301
+/docs/zh-CN/ /docs/zh-CN/quick-start 301
+/docs/zh-TW /docs/zh-TW/quick-start 301
+/docs/zh-TW/ /docs/zh-TW/quick-start 301
+/docs/ko /docs/ko/quick-start 301
+/docs/ko/ /docs/ko/quick-start 301
+/docs/es /docs/es/quick-start 301
+/docs/es/ /docs/es/quick-start 301
+/docs/fr /docs/fr/quick-start 301
+/docs/fr/ /docs/fr/quick-start 301
+/docs/de /docs/de/quick-start 301
+/docs/de/ /docs/de/quick-start 301
+/docs/it /docs/it/quick-start 301
+/docs/it/ /docs/it/quick-start 301
+/docs/pt-BR /docs/pt-BR/quick-start 301
+/docs/pt-BR/ /docs/pt-BR/quick-start 301
+/docs/ru /docs/ru/quick-start 301
+/docs/ru/ /docs/ru/quick-start 301
+/docs/hi /docs/hi/quick-start 301
+/docs/hi/ /docs/hi/quick-start 301
+/docs/id /docs/id/quick-start 301
+/docs/id/ /docs/id/quick-start 301
+/docs/vi /docs/vi/quick-start 301
+/docs/vi/ /docs/vi/quick-start 301
