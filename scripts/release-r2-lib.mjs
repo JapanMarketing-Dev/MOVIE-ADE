@@ -379,7 +379,7 @@ export function ghReleaseNotes(version, downloadUrl = 'https://ferretade.dev/dow
     'ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig < SHA256SUMS',
     '```',
     '',
-    '**The installers themselves are not code-signed by Apple or Microsoft yet.** A matching hash in a correctly signed `SHA256SUMS` shows the file is the one the Ferret release key published.',
+    'The macOS app is signed with a Developer ID and notarized by Apple. **The Windows and Linux installers are not code-signed yet.** A matching hash in a correctly signed `SHA256SUMS` shows the file is the one the Ferret release key published.',
     ''
   ].join('\n')
 }

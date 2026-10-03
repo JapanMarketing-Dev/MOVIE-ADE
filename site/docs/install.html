@@ -203,7 +203,7 @@ pnpm dist:linux   # AppImage + deb (x64)</code></pre>
 
       <section class="docs-section" aria-labelledby="update">
         <h2 id="update"><a class="docs-anchor" href="#update" aria-label="Link to Updates">#</a>Updates</h2>
-        <p>Ferret does not auto-update. In the footer, open <span class="docs-ui">Updates</span> and click <span class="docs-ui">Check for Updates</span>. It fetches <code>latest.json</code> from the download server (R2), compares versions, and links to the download page. Nothing is checked until you click, and nothing is installed automatically.</p>
+        <p>Ferret does not auto-update. In the footer, open <span class="docs-ui">Updates</span> and click <span class="docs-ui">Check for Updates</span>. It fetches <code>latest.json</code> from the download server (R2), compares versions, and links to the download page. From 0.4.0 it also checks the signature of that version's <code>SHA256SUMS</code> with the release key built into the app, and doesn't offer a version whose signature can't be verified. Nothing is checked until you click, and nothing is installed automatically.</p>
       </section>
 
         <nav class="docs-pager" aria-label="Previous and next page">

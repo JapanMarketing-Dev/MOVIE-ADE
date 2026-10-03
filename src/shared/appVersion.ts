@@ -11,6 +11,8 @@ export type UpdateCheckResult =
   | { state: 'no-source'; current: string }
   /** 配布元にまだリリースが無い（非公開リポジトリで gh 未ログインのときも同じ） */
   | { state: 'no-release'; current: string }
+  /** 新しい版はあるが、署名が無い・合わない（security-3 [2]）。待っても直らないので「確認できなかった」とは分けて出す */
+  | { state: 'unverified'; current: string; latest: string }
   | { state: 'error'; current: string; message: string }
 
 // Orca由来: ~/bench/orca/src/shared/app-version.ts（MIT）。parseVersion / compareAppVersions を移植

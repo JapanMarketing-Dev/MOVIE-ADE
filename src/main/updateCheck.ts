@@ -122,15 +122,21 @@ function reportCheckFailure(reason: 'http' | 'bad-manifest' | 'bad-version' | 'n
   reportHandled(err instanceof Error ? err : new Error(`update check failed: ${reason}`), { area: 'update', op: `check update: ${reason}` })
 }
 
-/** releases/<版>/SHA256SUMS(.sig) を取り、署名と latest.json のファイルを突き合わせる。取れなければ false */
-async function releaseIsSigned(fetcher: typeof net.fetch, manifest: ReleaseManifest, latest: string, signal: AbortSignal): Promise<boolean> {
+/**
+ * releases/<版>/SHA256SUMS(.sig) を取り、署名と latest.json のファイルを突き合わせる。
+ * 'signed' / 'unsigned'（無い・合わない。恒久的）/ 一時的な HTTP の失敗（5xx・429）はその状態の数。ネットワークの失敗は例外のまま
+ */
+async function releaseSignature(fetcher: typeof net.fetch, manifest: ReleaseManifest, latest: string, signal: AbortSignal): Promise<'signed' | 'unsigned' | number> {
   // latest は judgeManifest が版の形を確かめたもの。配信元の下の固定の名前だけを読む
   const base = new URL(`releases/${latest}/`, RELEASE_BASE_URL)
-  const [sumsRes, sigRes] = await Promise.all(['SHA256SUMS', 'SHA256SUMS.sig'].map((name) => fetcher(new URL(name, base).toString(), { signal })))
-  if (!sumsRes!.ok || !sigRes!.ok) return false
-  const sums = await readBoundedBytes(sumsRes!, SIGNED_SUMS_MAX_BYTES)
-  const signature = await readBoundedText(sigRes!, SIGNED_SUMS_MAX_BYTES)
-  return releaseFilesAreSigned(manifest.files, sums, signature)
+  const responses = await Promise.all(['SHA256SUMS', 'SHA256SUMS.sig'].map((name) => fetcher(new URL(name, base).toString(), { signal })))
+  const transient = responses.find((r) => r.status >= 500 || r.status === 429)
+  if (transient) return transient.status
+  const [sumsRes, sigRes] = responses as [Response, Response]
+  if (!sumsRes.ok || !sigRes.ok) return 'unsigned'
+  const sums = await readBoundedBytes(sumsRes, SIGNED_SUMS_MAX_BYTES)
+  const signature = await readBoundedText(sigRes, SIGNED_SUMS_MAX_BYTES)
+  return releaseFilesAreSigned(manifest.files, sums, signature) ? 'signed' : 'unsigned'
 }
 
 export async function checkForUpdate(fetcher: typeof net.fetch = net.fetch): Promise<UpdateCheckResult> {
@@ -152,9 +158,16 @@ export async function checkForUpdate(fetcher: typeof net.fetch = net.fetch): Pro
     }
     const result = judgeManifest(current, manifest)
     if (result.state === 'error') reportCheckFailure('bad-version')
-    if (result.state === 'available' && !(await releaseIsSigned(fetcher, manifest, result.latest, controller.signal))) {
+    if (result.state !== 'available') return result
+    const signed = await releaseSignature(fetcher, manifest, result.latest, controller.signal)
+    // 配信元の一時的な不調（5xx・429）は、ネットワークの失敗と同じく「あとで試す」
+    if (typeof signed === 'number') {
+      reportCheckFailure('http', new Error(`update check failed: HTTP ${signed} (signature)`))
+      return { state: 'error', current, message: t('update.errors.http', { status: signed }) }
+    }
+    if (signed === 'unsigned') {
       reportCheckFailure('unsigned')
-      return { state: 'error', current, message: t('update.errors.unverified') }
+      return { state: 'unverified', current, latest: result.latest }
     }
     return result
   } catch (err) {

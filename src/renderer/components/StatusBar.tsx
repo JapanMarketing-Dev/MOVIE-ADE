@@ -231,6 +231,8 @@ function UpdatePopover({ version, packaged }: { version: string; packaged: boole
       <Button onClick={() => void window.ade.invoke('app:openUpdate')}>{t('statusBar.open')}</Button>
     </div>}
     {result?.state === 'no-release' && <p className="st-note">{t('statusBar.noRelease')}</p>}
+    {/* 署名が無い・合わない版は案内しない（security-3 [2]）。待っても直らないので「もう一度」は言わない */}
+    {result?.state === 'unverified' && <p className="st-note st-note--warn" data-testid="statusbar-update-unverified"><CircleAlert size={12} aria-hidden="true" />{t('statusBar.updateUnverified', { version: result.latest })}</p>}
     {result?.state === 'no-source' && <p className="st-note st-note--warn"><CircleAlert size={12} aria-hidden="true" />{t('statusBar.noSource')}</p>}
     {/* 確認できなかったのは一時的なことが多い。警告の色にせず、下のボタンでもう一度試せることを伝える */}
     {result?.state === 'error' && <p className="st-note" data-testid="statusbar-update-retry">{t('statusBar.checkRetry', { message: result.message })}</p>}

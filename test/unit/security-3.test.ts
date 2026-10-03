@@ -208,9 +208,14 @@ describe('security-3 [2] 配布物の真正性を、R2 とは別の鍵の署名�
         if (url.endsWith('/SHA256SUMS.sig')) return new Response(signSshsig(Buffer.from(`${'a'.repeat(64)}  Ferret-99.0.0-mac-arm64.dmg\n`), tempKey().pem))
         return new Response('nope', { status: 404 })
       }) as unknown as typeof fetch
-      expect((await checkForUpdate(fetcher)).state).toBe('error')
+      // 署名が合わない・無いのは恒久的（unverified）。配信元の一時的な不調（5xx）・ネットワークの失敗は「あとで試す」（error）と分ける
+      expect(await checkForUpdate(fetcher)).toEqual({ state: 'unverified', current: expect.any(String), latest: '99.0.0' })
       const missing = (async (url: string) => url.endsWith('latest.json') ? fetcher(url) : new Response('', { status: 404 })) as unknown as typeof fetch
-      expect((await checkForUpdate(missing)).state).toBe('error')
+      expect((await checkForUpdate(missing)).state).toBe('unverified')
+      const down = (async (url: string) => url.endsWith('latest.json') ? fetcher(url) : new Response('', { status: 503 })) as unknown as typeof fetch
+      expect((await checkForUpdate(down)).state).toBe('error')
+      const offline = (async (url: string) => { if (url.endsWith('latest.json')) return fetcher(url); throw new Error('net::ERR_INTERNET_DISCONNECTED') }) as unknown as typeof fetch
+      expect((await checkForUpdate(offline)).state).toBe('error')
     } finally {
       setReporter(null)
     }
