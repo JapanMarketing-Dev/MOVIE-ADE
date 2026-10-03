@@ -508,3 +508,143 @@ kbd + kbd {
   color: var(--text-muted);
   font-size: 13px;
 }
+
+/* Shortcuts differ by OS. Without JS both are shown; docs.js sets <html data-os> to keep one */
+.docs-kbd {
+  white-space: nowrap;
+}
+
+html[data-os='mac'] .os-win,
+html[data-os='mac'] .os-sep,
+html[data-os='win'] .os-mac,
+html[data-os='win'] .os-sep {
+  display: none;
+}
+
+.docs-os {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 24px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.docs-os[hidden] {
+  display: none;
+}
+
+.docs-os-label {
+  padding: 0 6px 0 8px;
+  color: var(--text-muted);
+}
+
+.docs-os-btn {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.docs-os-btn:hover {
+  color: var(--text);
+}
+
+.docs-os-btn[aria-pressed='true'] {
+  background: var(--accent-wash);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+  color: var(--text);
+}
+
+/* Language menu in the header. A <details>, so it opens without JS */
+.docs-lang {
+  position: relative;
+}
+
+.docs-lang > summary {
+  list-style: none;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.docs-lang > summary::-webkit-details-marker {
+  display: none;
+}
+
+.docs-lang-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 200px;
+  max-height: min(70vh, 520px);
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+}
+
+.docs-lang-list a {
+  display: block;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.docs-lang-list a:hover {
+  background: var(--accent-wash);
+}
+
+.docs-lang-list a[aria-current='true'] {
+  color: var(--accent);
+}
+
+/* "Not translated yet" notice on translated pages */
+.docs-callout-i18n {
+  border-left-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+/* Supported agents (generated from src/shared/agentCatalog.ts) */
+.docs-agent-list {
+  columns: 2 220px;
+  column-gap: 24px;
+}
+
+.docs-agent-list li {
+  break-inside: avoid;
+}
+
+/* Narrow screens: the language button joins the header, so keep the nav on one line and drop the Download label */
+.site-nav a {
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .docs-lang-list {
+    position: fixed;
+    top: 64px;
+    right: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-actions .btn-primary .btn-label {
+    display: none;
+  }
+  .header-actions .btn-primary {
+    width: 38px;
+    padding: 0;
+  }
+}

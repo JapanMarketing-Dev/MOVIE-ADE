@@ -7,7 +7,8 @@ import { DOCS_DIR, renderDocs } from '../../tools/docs/build-docs.mjs'
 // 内部リンク（href / src）が実在するファイルと見出しの id を指しているか確かめる
 const SITE = resolve(__dirname, '../../site')
 
-const pages = readdirSync(DOCS_DIR).filter((f) => f.endsWith('.html'))
+// 英語は site/docs/、ほかの言語は site/docs/<lang>/
+const pages = readdirSync(DOCS_DIR, { recursive: true, encoding: 'utf8' }).filter((f) => f.endsWith('.html')).map((f) => f.split('\\').join('/'))
 
 function targetFile(from: string, path: string): string {
   const abs = resolve(dirname(from), path)

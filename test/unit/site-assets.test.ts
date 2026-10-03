@@ -10,7 +10,7 @@ import { MODULE_IMPORTS, SITE_DIR, assetVersion } from '../../tools/docs/asset-v
  */
 const pages = [
   ...readdirSync(SITE_DIR).filter((f) => f.endsWith('.html')),
-  ...readdirSync(join(SITE_DIR, 'docs')).filter((f) => f.endsWith('.html')).map((f) => `docs/${f}`),
+  ...readdirSync(join(SITE_DIR, 'docs'), { recursive: true, encoding: 'utf8' }).filter((f) => f.endsWith('.html')).map((f) => `docs/${f.split('\\').join('/')}`),
 ]
 
 describe.each(pages)('%s', (page) => {

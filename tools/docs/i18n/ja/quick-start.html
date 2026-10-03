@@ -1,0 +1,66 @@
+<!-- Ferret docs translation: ja / quick-start. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title 0eb95fb624 -->
+クイックスタート
+
+<!-- @lead 8e0cda30a0 -->
+Ferret を入れ、プロジェクトと開発サーバーの URL を開き、フィードバックを1回録画して、コーディングエージェントに渡します。5分ほどで終わります。
+
+<!-- @before 9aee0a2173 -->
+## 始める前に
+{{clip:quick-start|ページを開いて録画し、ペンで囲みながら話し、止めて、指摘をエージェントへ送る。}}
+<ul>
+  <li>ターミナルで動くコーディングエージェント（インストールしてサインイン済みのもの）。たとえば Claude Code（<code>claude</code>）、Codex（<code>codex</code>）、Gemini CLI（<code>gemini</code>）など。Ferret は内蔵のターミナルでそれを動かします。<a href="agents.html#supported">対応している一覧</a>のエージェントならどれでも使え、自分で足した CLI も使えます。</li>
+  <li>URL で開ける Web アプリ。たとえば <code>http://localhost:3000</code> の開発サーバー。</li>
+  <li>マイク。フィードバックは声とペンで伝えます。マイクが無くてもペンで囲んだところは指摘になりますが、言葉は付きません。</li>
+</ul>
+
+<!-- @install 6d549cfebe -->
+## 1. インストール
+<p><a href="../download.html">ダウンロードページ</a>から自分の OS 用のファイルを取って開きます。macOS 版は Developer ID で署名され Apple の公証を受けているので、ほかのアプリと同じように開けます。Windows 版と Linux 版はまだコード署名が無いため、初回の起動で確認の手順が1つ増えます。Windows の SmartScreen、Linux、ソースからのビルドは<a href="install.html">インストール</a>を見てください。</p>
+
+<!-- @open fad3e18b1d -->
+## 2. プロジェクトと URL を開く
+<ol class="docs-steps">
+  <li><span class="docs-ui">ファイル → プロジェクトフォルダを開く…</span>（{{keys:Mod+O}}）で、リポジトリのルートを選びます。</li>
+  <li>ブラウザの URL バー（{{keys:Mod+L}}）に開発サーバーの URL を入れて <kbd>Enter</kbd> を押します。</li>
+  <li>必要なら <span class="docs-ui">+</span>（<span class="docs-ui">表示中のURLを登録</span>）を押し、<code>local</code>・<code>dev</code>・<code>prd</code> のようにワンクリックで開ける URL として残します。</li>
+</ol>
+<p>プロジェクトを開くと、そのフォルダのターミナルのタブでエージェントも起動します。最初の設定では Claude Code と Codex です。使うものは <span class="docs-ui">設定 → Agent → プロジェクトを開いたら起動</span> で選べます（<a href="settings.html#agent">設定</a>を参照）。</p>
+
+<!-- @record 36e1ea60f7 -->
+## 3. 録画する
+<ol class="docs-steps">
+  <li>タイトルバーの <span class="docs-ui">録画</span> を押すか、{{keys:Mod+Shift+R}} を押します。ウィンドウがフィードバックモードに切り替わります。</li>
+  <li>いつもどおりページを操作しながら、直してほしいことを話します。</li>
+  <li>{{keys:Alt}} を押したまま（または <span class="docs-ui">ペン</span> を選んで）ドラッグし、話している場所を囲みます。</li>
+  <li><span class="docs-ui">停止</span> を押すか、もう一度 {{keys:Mod+Shift+R}} を押します。</li>
+</ol>
+<p>話したり囲んだりした場面がそれぞれ1件の指摘になります。ペンの跡が入ったスクリーンショット、依頼、話した言葉そのもの、URL、指した要素が1件にまとまります。</p>
+
+<!-- @review 152a385c40 -->
+## 4. 指摘を確かめる
+<p>止めるとウィンドウはエディタモードに戻り、<span class="docs-ui">指摘</span> タブが開きます。</p>
+<ul>
+  <li>題名や依頼はその場で直せます。</li>
+  <li>指摘ごとに <span class="docs-ui">送信する</span> / <span class="docs-ui">送信しない</span> を切り替えたり、<span class="docs-ui">次とまとめる</span>、<span class="docs-ui">削除</span> ができます。</li>
+  <li><span class="docs-ui">元に戻す</span> で直前の編集を取り消せます。</li>
+</ul>
+
+<!-- @send bdd30ad5ee -->
+## 5. エージェントに送る
+<ol class="docs-steps">
+  <li><span class="docs-ui">Agentへ送信</span> を押します。いま開いているターミナルのタブのエージェントか、動いているエージェントに届きます。ボタンの横の矢印で、送り先のエージェントやタブを選べます。</li>
+  <li>エージェントがまだ動いていなければ、Ferret が先に起動し、準備ができしだい送ります。</li>
+</ol>
+<p>Ferret はエージェントの入力欄に指示を1つ書き込んで送信します。最初の設定では、指示は次のように始まります。</p>
+<pre><code>"{{path}}" と、同じフォルダにある各指摘の画像を読み、送信対象の指摘をすべて実装してください。…</code></pre>
+<p>続きでは、変えた画面を実際に見て確かめること、指摘ごとの進み具合を書くこと、最後に「完了／未完了」の一覧で報告することを頼みます。エージェントは <code>.ferret/reviews/&lt;timestamp&gt;/feedback.md</code> と、その横の PNG を読みます。動画は送りません。Ferret の外で動くエージェントを使うときは、<span class="docs-ui">Agent向けにコピー</span> を押して貼り付けます。</p>
+<p>最初の指示は画面の言語に合わせて変わります。設定で差し替えることもできます。<a href="agents.html#prompt">指示を変える</a>を見てください。</p>
+
+<!-- @next 1bb70e0695 -->
+## 次に読む
+<ul>
+  <li><a href="concepts.html">考え方</a>: モード、指摘、エージェントが受け取るもの</li>
+  <li><a href="transcription.html">文字起こしと費用</a>: 無料の端末内 whisper モデルを入れるか、自分のエンドポイントを使う</li>
+  <li><a href="keyboard.html">キーボードショートカット</a></li>
+</ul>
