@@ -238,6 +238,19 @@ export function groupTargetsByPurpose<T extends Pick<ProjectTarget, 'purpose'>>(
   return TARGET_PURPOSES.map((purpose) => ({ purpose, targets: targets.filter((t) => purposeOf(t) === purpose) })).filter((g) => g.targets.length > 0)
 }
 
+/**
+ * 確認先の並びを変える（ツールバーのボタンをドラッグ）。from を to の前（before）か後ろへ動かす。
+ * ボタンは区分（アプリ・デザイン・設計書）ごとにまとめて出すので、区分をまたぐ移動はしない（元の並びのまま返す）
+ */
+export function dropTarget<T extends Pick<ProjectTarget, 'id' | 'purpose'>>(targets: readonly T[], fromId: string, toId: string, before: boolean): T[] {
+  const from = targets.find((t) => t.id === fromId)
+  const to = targets.find((t) => t.id === toId)
+  if (!from || !to || from === to || purposeOf(from) !== purposeOf(to)) return [...targets]
+  const rest = targets.filter((t) => t !== from)
+  const at = rest.indexOf(to) + (before ? 0 : 1)
+  return [...rest.slice(0, at), from, ...rest.slice(at)]
+}
+
 /** URL を持つ確認先だけ（内蔵ブラウザで開けるもの） */
 export function urlTargets<T extends ProjectTarget>(targets: readonly T[]): Array<T & { url: string }> {
   return targets.filter((t): t is T & { url: string } => !!t.url)

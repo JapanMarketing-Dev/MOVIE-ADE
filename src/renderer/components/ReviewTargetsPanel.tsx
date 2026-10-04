@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { AppWindow, BookmarkPlus, Check, ChevronRight, Clock, FileCode, FileText, Folder, FolderOpen, Globe, Link, PencilLine, Plus, Search, X } from 'lucide-react'
+import { AppWindow, BookmarkPlus, Check, ChevronRight, Clock, FileCode, FileText, Folder, FolderOpen, Globe, Link, PencilLine, Plus, Search } from 'lucide-react'
 import type { Project } from '@shared/types'
 import { expandedStorageKey } from '@shared/fileTreeState'
 import { pageKey } from '@shared/page'
@@ -20,7 +20,7 @@ import {
 import { errorMessage } from '../lib/errors'
 import { useT } from '../lib/i18n'
 import { requestTerminalCommand } from '../lib/terminalCommand'
-import { Button, Field, IconButton, Spinner, useToast } from '../ui'
+import { Button, Field, Spinner, useToast } from '../ui'
 import { useFileTree, VirtualRows, type FileTreeRow } from './fileTree'
 import { TargetPurposeIcon } from './TargetPurposeIcon'
 
@@ -82,7 +82,8 @@ export function ReviewTargetsPanel({
   onOpenEditor,
   onSelectWindow,
   recording = false,
-  onClose
+  head,
+  hidden
 }: {
   /** 今のプロジェクト（確認先・保存先）。開いていなければ null */
   project: Project | null
@@ -99,7 +100,10 @@ export function ReviewTargetsPanel({
   onSelectWindow?: (windowMatch: string, launched: boolean) => void
   /** 録画中か。録画中は録画の対象（ウインドウ）を切り替えられない */
   recording?: boolean
-  onClose: () => void
+  /** パネルの頭に題の代わりに出すもの（「レビュー対象 | 文字起こし」のタブ）。省略時は題 */
+  head?: ReactNode
+  /** 文字起こしのタブを見ている間は隠す（検索の文字などは残す） */
+  hidden?: boolean
 }) {
   const t = useT()
   const toast = useToast()
@@ -390,10 +394,9 @@ export function ReviewTargetsPanel({
   }
 
   return (
-    <aside className="fb-targets" aria-label={t('feedbackTargets.title')} data-testid="feedback-targets" onKeyDown={onKey}>
+    <aside className="fb-targets" aria-label={t('feedbackTargets.title')} data-testid="feedback-targets" onKeyDown={onKey} hidden={hidden}>
       <header className="fb-targets__head">
-        <span className="fb-targets__title">{t('feedbackTargets.title')}</span>
-        <IconButton size="sm" label={t('feedbackTargets.close')} title={t('feedbackTargets.close')} icon={<X size={14} />} onClick={onClose} />
+        {head ?? <span className="fb-targets__title">{t('feedbackTargets.title')}</span>}
       </header>
 
       <div className="fb-targets__search">

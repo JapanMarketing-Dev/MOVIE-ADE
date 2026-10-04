@@ -173,4 +173,127 @@ describe('runCliAction（ボタンから内蔵ターミナルへ）', () => {
     expect((await runCliAction('ollama', 'login', 'x', { request: () => { called = true; return true } })).result).toBe('failed')
     expect(called).toBe(false)
   })
+
+  it('その OS で使えない CLI（UTM を Windows で）は何も送らない', async () => {
+    const { runCliAction } = await import('../../src/renderer/lib/cliTools')
+    let called = false
+    const r = await runCliAction('utm', 'install', 'x', { request: () => { called = true; return true }, platform: 'win32' })
+    expect(r.result).toBe('failed')
+    expect(called).toBe(false)
+  })
+})
+
+describe('よく使うサービスの CLI のカタログ', () => {
+  it('どの CLI もサイトと公式ページ（https）・種類を持ち、どの種類にも1つ以上ある', async () => {
+    const { CLI_TOOL_CATEGORIES, cliSiteHost } = await import('@shared/cliTools')
+    const { isSafeExternalUrl } = await import('@shared/setupGuide')
+    for (const id of CLI_TOOL_IDS) {
+      const entry = CLI_TOOLS[id]
+      expect(isSafeExternalUrl(entry.siteUrl), id).toBe(true)
+      expect(isSafeExternalUrl(entry.homepageUrl), id).toBe(true)
+      expect(CLI_TOOL_CATEGORIES, id).toContain(entry.category)
+      expect(cliSiteHost(id), id).toMatch(/^[a-z0-9.-]+\.[a-z]+$/)
+    }
+    for (const category of CLI_TOOL_CATEGORIES) {
+      expect(CLI_TOOL_IDS.some((id) => CLI_TOOLS[id].category === category), category).toBe(true)
+    }
+    expect(new Set(CLI_TOOL_IDS.map((id) => CLI_TOOLS[id].label)).size).toBe(CLI_TOOL_IDS.length)
+  })
+
+  it('一覧の順は種類ごとにまとまっている', async () => {
+    const { CLI_TOOL_CATEGORIES } = await import('@shared/cliTools')
+    const order = CLI_TOOL_IDS.map((id) => CLI_TOOL_CATEGORIES.indexOf(CLI_TOOLS[id].category))
+    expect(order).toEqual([...order].sort((a, b) => a - b))
+  })
+
+  it('各 OS で、インストールコマンドか公式ページか「その OS では使えない」のどれかになる', async () => {
+    const { cliToolSupported } = await import('@shared/cliTools')
+    for (const id of CLI_TOOL_IDS) {
+      const platforms = CLI_TOOLS[id].platforms
+      for (const os of ['darwin', 'linux', 'win32'] as const) {
+        const supported = cliToolSupported(id, os)
+        expect(supported, `${id} ${os}`).toBe(!platforms || platforms.includes(os))
+        // 使えない OS にはコマンドを出さない（カタログにも書かない）
+        if (!supported) {
+          expect(cliInstallCommand(id, os), `${id} ${os}`).toBeUndefined()
+          expect(CLI_TOOLS[id].install[os], `${id} ${os}`).toBeUndefined()
+        }
+      }
+    }
+  })
+
+  it('種類の振り分け（Wrangler はホスティング、Sentry は監視、UTM は仮想マシン）', () => {
+    expect(CLI_TOOLS.wrangler.category).toBe('deploy')
+    expect(CLI_TOOLS.sentry.category).toBe('monitoring')
+    expect(CLI_TOOLS.supabase.category).toBe('database')
+    expect(CLI_TOOLS.stripe.category).toBe('payments')
+    expect(CLI_TOOLS.docker.category).toBe('containers')
+    expect(CLI_TOOLS.adb.category).toBe('mobile')
+    expect(CLI_TOOLS.utm.category).toBe('vm')
+    expect(CLI_TOOLS.ollama.category).toBe('ai')
+    // AI・モデルには AI の CLI だけ
+    expect(CLI_TOOL_IDS.filter((id) => CLI_TOOLS[id].category === 'ai')).toEqual(['ollama'])
+  })
+
+  it('Sentry CLI は OS ごとの公式の入れ方とログイン', () => {
+    expect(cliInstallCommand('sentry', 'darwin')).toBe('brew install getsentry/tools/sentry-cli')
+    expect(cliInstallCommand('sentry', 'linux')).toBe('curl -sL https://sentry.io/get-cli/ | sh')
+    expect(cliInstallCommand('sentry', 'win32')).toBe('npm install -g @sentry/cli')
+    expect(cliLoginCommand('sentry')).toBe('sentry-cli login')
+    expect(cliDetectCommands('sentry')).toEqual(['sentry-cli'])
+  })
+
+  it('UTM は macOS だけ。Homebrew の cask で入れ、アプリの中の utmctl があるかだけを見る（走らせない）', async () => {
+    const { cliVersionArgs, cliDisplayCommand } = await import('@shared/cliTools')
+    expect(cliInstallCommand('utm', 'darwin')).toBe('brew install --cask utm')
+    expect(cliInstallCommand('utm', 'win32')).toBeUndefined()
+    expect(cliInstallCommand('utm', 'linux')).toBeUndefined()
+    expect(cliDetectCommands('utm')).toEqual(['/Applications/UTM.app/Contents/MacOS/utmctl'])
+    expect(cliDisplayCommand('utm')).toBe('utmctl')
+    // utmctl・xcrun を走らせると OS のダイアログ（自動化の許可・ツールのインストール）が出ることがある
+    expect(cliVersionArgs('utm')).toBeNull()
+    expect(cliVersionArgs('xcode')).toBeNull()
+    expect(cliLoginCommand('utm')).toBeUndefined()
+  })
+
+  it('Xcode のコマンドラインツールは macOS だけで、置き場の絶対パスで見る', async () => {
+    const { cliToolSupported } = await import('@shared/cliTools')
+    expect(cliToolSupported('xcode', 'darwin')).toBe(true)
+    expect(cliToolSupported('xcode', 'win32')).toBe(false)
+    expect(cliInstallCommand('xcode', 'darwin')).toBe('xcode-select --install')
+    for (const command of cliDetectCommands('xcode')) expect(command.startsWith('/')).toBe(true)
+  })
+
+  it('kubectl の版は手元だけを見る（クラスタに繋がない）', async () => {
+    const { cliVersionArgs } = await import('@shared/cliTools')
+    expect(cliVersionArgs('kubectl')).toEqual(['version', '--client'])
+    expect(cliVersionArgs('gh')).toEqual(['--version'])
+  })
+
+  it('絶対パスで見るものは macOS 向けだけ（ほかの OS で POSIX の絶対パスを探さない）', () => {
+    for (const id of CLI_TOOL_IDS) {
+      if (!cliDetectCommands(id).some((c) => c.includes('/'))) continue
+      expect(CLI_TOOLS[id].platforms, id).toEqual(['darwin'])
+    }
+  })
+})
+
+describe('mapWithLimit（版の読み取りを同時にいくつまで走らせるか）', () => {
+  it('同時に limit 個までしか走らせず、結果は入力の順', async () => {
+    const { mapWithLimit, VERSION_CONCURRENCY } = await import('../../src/main/cliTools')
+    let active = 0
+    let peak = 0
+    const items = Array.from({ length: 20 }, (_, i) => i)
+    const out = await mapWithLimit(items, VERSION_CONCURRENCY, async (i) => {
+      active++
+      peak = Math.max(peak, active)
+      await new Promise((r) => setTimeout(r, (20 - i) % 3))
+      active--
+      return i * 2
+    })
+    expect(out).toEqual(items.map((i) => i * 2))
+    expect(peak).toBeLessThanOrEqual(VERSION_CONCURRENCY)
+    expect(peak).toBeGreaterThan(1)
+    expect(await mapWithLimit([], 4, async (x: number) => x)).toEqual([])
+  })
 })

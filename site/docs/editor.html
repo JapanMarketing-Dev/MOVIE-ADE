@@ -167,7 +167,7 @@
         <ul>
   <li><span class="docs-ui">Files</span> (the file tree): <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></span></span>, with <span class="docs-ui">Filter by file name</span>, <span class="docs-ui">Refresh</span>, and <span class="docs-ui">Collapse All</span>.</li>
   <li><span class="docs-ui">Go to File…</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></span></span>.</li>
-  <li>Drag a file from Finder (File Explorer on Windows, your file manager on Linux) onto the tab bar or the editor to open it. Files in the project open in the editor or a viewer. To bring a file from outside the project in, drop it on <span class="docs-ui">Files</span>, which copies it into the project. A folder dropped here opens as a project. Files dragged from <span class="docs-ui">Files</span> open the same way.</li>
+  <li>Drag a file from Finder (File Explorer on Windows, your file manager on Linux) onto the tab bar or the editor to open it. Files in the project open in the editor or a viewer. To bring a file from outside the project in, drop it on <span class="docs-ui">Files</span>, which copies it into the project. A folder dropped here opens as a project. Files dragged from <span class="docs-ui">Files</span> open the same way. Images and videos dropped on an open Markdown file are embedded in it instead (see <a href="#embed-media">Embed images and videos in Markdown</a>).</li>
   <li>Save with <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></span></span>. Closing a modified file asks <q>Save changes to &lt;name&gt;?</q> with <span class="docs-ui">Save</span>, <span class="docs-ui">Don't Save</span>, and <span class="docs-ui">Cancel</span>.</li>
   <li>If the file changes on disk while you have unsaved edits, choose <span class="docs-ui">Reload from Disk</span> or <span class="docs-ui">Keep My Changes</span>.</li>
 </ul>
@@ -196,24 +196,36 @@
       <section class="docs-section" aria-labelledby="preview">
         <h2 id="preview"><a class="docs-anchor" href="#preview" aria-label="Link to Markdown and Mermaid preview">#</a>Markdown and Mermaid preview</h2>
         <p>Preview works for <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code>, and <code>.mermaid</code>. Mermaid is bundled with the app, so diagrams render offline.</p>
+<p>A Markdown file has two views at the top of the editor: <span class="docs-ui">Source</span> and <span class="docs-ui">Preview</span>. The preview is always editable, so you can type straight into it; click <span class="docs-ui">Source</span> to go back to the text. Both show the same content, and saving, the unsaved mark, and the close confirmation work the same way.</p>
+<ul>
+  <li>Type straight into headings, paragraphs, lists, checkboxes, tables, links, and bold, italic, or inline code. Typing <code>#</code>, <code>-</code>, <code>1.</code>, or <code>&gt;</code> and a space at the start of a line starts a heading, list, or quote.</li>
+  <li>Code blocks and Mermaid diagrams are edited as their source, with the language shown in the corner. To see the diagram drawn, open the file from <span class="docs-ui">Files</span> in the <a href="projects.html#review-targets"><span class="docs-ui">Review targets</span></a> panel.</li>
+  <li>Front matter (the <code>---</code> block at the top) is shown as text above the document and can be edited there.</li>
+  <li>Parts you don't change are saved exactly as written, including heading style, list markers, blank lines, table alignment, and line endings. A block you edit keeps its style where possible; otherwise that block is written in a standard Markdown form, with <code>-</code> for lists and <code>#</code> for headings.</li>
+  <li>Images and videos in the project are shown. Images from other sites are not loaded; their host name is shown instead. Other HTML in the file is shown as text.</li>
+</ul>
+<p><code>.mdx</code> files (edited as source only), <code>.mmd</code>, and <code>.mermaid</code> files have a read-only preview instead:</p>
 <ul>
   <li><span class="docs-ui">Open Preview to the Side</span>: next to the editor</li>
   <li><span class="docs-ui">Open Preview</span>: in the built-in browser (<code>ade-preview://</code>), so you can record and review it</li>
 </ul>
-<p>To edit a Markdown file as it looks in the preview, click <span class="docs-ui">Edit in Preview</span> at the top of the editor, and click <span class="docs-ui">Source</span> to go back. Both show the same content, and saving, the unsaved mark, and the close confirmation work the same way.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="embed-media">
+        <h2 id="embed-media"><a class="docs-anchor" href="#embed-media" aria-label="Link to Embed images and videos in Markdown">#</a>Embed images and videos in Markdown</h2>
+        <p>Drag images (PNG, JPEG, GIF, WebP, SVG, AVIF) or videos (MP4, WebM, MOV) onto a Markdown file, in <span class="docs-ui">Source</span> or <span class="docs-ui">Preview</span>, to embed them where you drop them.</p>
 <ul>
-  <li>Type straight into headings, paragraphs, lists, checkboxes, tables, links, and bold, italic, or inline code. Typing <code>#</code>, <code>-</code>, <code>1.</code>, or <code>&gt;</code> and a space at the start of a line starts a heading, list, or quote.</li>
-  <li>Code blocks and Mermaid diagrams are edited as their source, with the language shown in the corner. The diagram renders in <span class="docs-ui">Open Preview to the Side</span> or <span class="docs-ui">Open Preview</span>.</li>
-  <li>Front matter (the <code>---</code> block at the top) is shown as text above the document and can be edited there.</li>
-  <li>Parts you don't change are saved exactly as written, including heading style, list markers, blank lines, table alignment, and line endings. A block you edit keeps its style where possible; otherwise that block is written in a standard Markdown form, with <code>-</code> for lists and <code>#</code> for headings.</li>
-  <li>Images in the project are shown. Images from other sites are not loaded; their host name is shown instead. HTML in the file is shown as text.</li>
+  <li>Files already in the project, including ones dragged from <span class="docs-ui">Files</span>, are linked with a path relative to the Markdown file. Nothing is copied.</li>
+  <li>Files from outside the project (Finder, the desktop, File Explorer on Windows) are first copied into a folder next to the Markdown file: <code>assets</code>, <code>images</code>, <code>media</code>, or <code>img</code> if one is already there, otherwise a new <code>assets</code> folder. Spaces in the name become <code>-</code>, and if the name is taken the copy is named <code>name-2</code>. The originals stay where they were.</li>
+  <li>Images are written as <code>![name](assets/name.png)</code> and videos as <code>&lt;video&#32;src="assets/name.mp4" controls&gt;&lt;/video&gt;</code>, which GitHub also plays. Both are shown in <span class="docs-ui">Preview</span>.</li>
+  <li>An image can be up to 50 MB and a video up to 500 MB, and one drop copies up to 50 files and 1 GB. Other files dropped with them open in the editor as usual.</li>
 </ul>
       </section>
 
       <section class="docs-section" aria-labelledby="review-docs">
         <h2 id="review-docs"><a class="docs-anchor" href="#review-docs" aria-label="Link to Review docs by recording">#</a>Review docs by recording</h2>
         <ol class="docs-steps">
-  <li>Open a Markdown file and click <span class="docs-ui">Open Preview</span>.</li>
+  <li>In the <a href="projects.html#review-targets"><span class="docs-ui">Review targets</span></a> panel, open the Markdown file from <span class="docs-ui">Files</span>. It opens as a preview in the built-in browser.</li>
   <li>Record as usual. Talk through the spec or design doc and circle what's wrong.</li>
   <li>Stop. Findings reference the file's project-relative path instead of a URL.</li>
   <li><span class="docs-ui">Send to Agent</span> to have the doc fixed.</li>
@@ -235,6 +247,7 @@
         <li><a href="#files">Open and edit files</a></li>
         <li><a href="#file-tree">Work with files in the file tree</a></li>
         <li><a href="#preview">Markdown and Mermaid preview</a></li>
+        <li><a href="#embed-media">Embed images and videos in Markdown</a></li>
         <li><a href="#review-docs">Review docs by recording</a></li>
       </ul>
     </aside>

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sending to agents · Ferret docs</title>
-  <meta name="description" content="Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.">
+  <meta name="description" content="Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
   <link rel="canonical" href="https://ferretade.dev/docs/agents">
@@ -26,7 +26,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
   <meta property="og:title" content="Sending to agents · Ferret docs">
-  <meta property="og:description" content="Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.">
+  <meta property="og:description" content="Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere.">
   <meta property="og:url" content="https://ferretade.dev/docs/agents">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="en_US">
@@ -36,7 +36,7 @@
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Sending to agents · Ferret docs">
-  <meta name="twitter:description" content="Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.">
+  <meta name="twitter:description" content="Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere.">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -155,7 +155,7 @@
       <article class="docs-content">
         <p class="docs-eyebrow">Using Ferret</p>
         <h1>Sending to agents</h1>
-        <p class="docs-lead">Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.</p>
+        <p class="docs-lead">Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere.</p>
         <div class="docs-os" role="group" aria-label="Shortcuts for" data-docs-os hidden>
           <span class="docs-os-label">Shortcuts for</span>
           <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">macOS</button>
@@ -169,11 +169,11 @@
   <li>Inline edit of the title and request</li>
   <li><span class="docs-ui">Send</span> / <span class="docs-ui">Don't send</span> toggle</li>
   <li><span class="docs-ui">Watch Recording</span> (seeks to that time) and <span class="docs-ui">Replace Image</span> (pick another frame)</li>
-  <li><span class="docs-ui">Confirm</span> / <span class="docs-ui">Mark as Needs Review</span>, <span class="docs-ui">Merge with Next</span>, <span class="docs-ui">Delete</span></li>
+  <li><span class="docs-ui">Confirm</span>, <span class="docs-ui">Delete</span></li>
 </ul>
 <p><span class="docs-ui">Filter by progress</span> shows or hides findings by status (for example <span class="docs-ui">Only</span> the ones waiting for your review); <span class="docs-ui">Show all</span> clears it.</p>
 <p>To reorder findings, drag the handle to the left of a card's title, or select the handle and press <kbd>↑</kbd> / <kbd>↓</kbd>. The numbers, <code>feedback.md</code>, and what you send to the agent follow the new order. While a filter is on, the order among the visible findings changes and hidden findings keep their place. When a review covers several pages or files, findings move within their own group. <span class="docs-ui">Sort findings</span> in the header switches between <span class="docs-ui">Manual (drag order)</span>, <span class="docs-ui">Recording time</span>, and <span class="docs-ui">Progress</span> (not started first, done last); sorting by progress saves that order as the manual order.</p>
-<p>The header has <span class="docs-ui">Undo</span>, <span class="docs-ui">Open Folder</span>, <span class="docs-ui">Copy for Agent</span>, <span class="docs-ui">Send to GitHub / GitLab</span>, <span class="docs-ui">Organize</span>, and <span class="docs-ui">Send to Agent</span>. Speech that didn't become a finding is listed under <span class="docs-ui">Excluded speech</span>, where <span class="docs-ui">Restore as Finding</span> brings it back.</p>
+<p>The header has <span class="docs-ui">Undo</span>, <span class="docs-ui">Open Folder</span>, <span class="docs-ui">Copy for Agent</span>, <span class="docs-ui">Organize</span>, and <span class="docs-ui">Send to Agent</span>. Speech that didn't become a finding is listed under <span class="docs-ui">Excluded speech</span>, where <span class="docs-ui">Restore as Finding</span> brings it back. Speech with no meaningful words never becomes a finding and is listed there too: phrases speech-to-text sometimes invents from silence, such as “Shh.” or “Thanks for watching”, fillers like “um”, and a bare “OK” or “yes” with no pen mark.</p>
 <figure class="docs-shot" data-shot="findings"><img src="assets/findings.png?v=4fea3924" width="1600" height="972" alt="The Findings tab" loading="lazy" decoding="async"><figcaption>The Findings tab</figcaption></figure>
       </section>
 
@@ -339,35 +339,25 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>The setting is stored as <code>agentPrompt</code> in <code>settings.json</code>.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="github">
-        <h2 id="github"><a class="docs-anchor" href="#github" aria-label="Link to Send to GitHub or GitLab (Issue / PR or MR comment)">#</a>Send to GitHub or GitLab (Issue / PR or MR comment)</h2>
-        <p><span class="docs-ui">Send to GitHub</span> posts the review as a new issue or as a comment on one of your open pull requests. Authentication is delegated to the <a href="https://cli.github.com/" target="_blank" rel="noopener noreferrer">GitHub CLI<span class="sr-only"> (opens in a new tab)</span></a>. Ferret never reads or stores a token.</p>
-<ol class="docs-steps">
-  <li>Install <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), or see <a href="https://github.com/cli/cli#installation" target="_blank" rel="noopener noreferrer">cli/cli<span class="sr-only"> (opens in a new tab)</span></a>.</li>
-  <li><span class="docs-ui">Settings → GitHub / GitLab → Sign In in Terminal</span> runs <code>gh auth login --web -h github.com</code> in the built-in terminal.</li>
-  <li>Click <span class="docs-ui">Send to GitHub</span>, choose <span class="docs-ui">Create a new issue</span> or a PR, and review the <span class="docs-ui">Title</span> and <span class="docs-ui">Body</span> (editable).</li>
-  <li>Tick the confirmation checkbox, then <span class="docs-ui">Create Issue</span> or <span class="docs-ui">Post Comment</span>.</li>
-</ol>
-<p>Details:</p>
-<ul>
-  <li>The repository comes from <code>git remote get-url origin</code>.</li>
-  <li>Ferret runs <code>gh issue create --repo … --title … --body-file -</code> or <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>.</li>
-  <li>The body is <code>feedback.md</code> without the image lines (images are not uploaded), up to 60,000 characters.</li>
-  <li>PR candidates are your own open PRs (up to 30).</li>
-</ul>
-<p>If <code>GH_TOKEN</code> or <code>GITHUB_TOKEN</code> is set, <code>gh</code> uses it first, and the settings panel warns about it.</p>
-<p><strong>GitLab.</strong> When <code>origin</code> is a GitLab project (gitlab.com or a self-managed GitLab), the same button sends to GitLab through the <a href="https://gitlab.com/gitlab-org/cli" target="_blank" rel="noopener noreferrer">GitLab CLI<span class="sr-only"> (opens in a new tab)</span></a> (<code>glab</code>): a new issue, or a comment on one of your open merge requests. Sign in with <span class="docs-ui">Settings → GitHub / GitLab</span>, which runs <code>glab auth login</code> (with <code>--hostname</code> for a self-managed GitLab) in the built-in terminal. Ferret never reads or stores the token, and warns when <code>GITLAB_TOKEN</code> is set.</p>
-<p><strong>Star prompt.</strong> After your first <span class="docs-ui">Send to Agent</span>, and when you reach 3, 10, and 30 finished reviews, Ferret may ask you to star it on GitHub. It asks at most 3 times, at least 3 days apart, and never while recording. <span class="docs-ui">Star on GitHub</span> stars it through your own <code>gh</code> login (or opens GitHub if <code>gh</code> isn't available), and <span class="docs-ui">Don't Ask Again</span> stops the prompts. You can also star from <span class="docs-ui">Help → Star Ferret on GitHub</span>.</p>
+      <section class="docs-section" aria-labelledby="star">
+        <h2 id="star"><a class="docs-anchor" href="#star" aria-label="Link to Star Ferret on GitHub">#</a>Star Ferret on GitHub</h2>
+        <p>After your first <span class="docs-ui">Send to Agent</span>, and when you reach 3, 10, and 30 finished reviews, Ferret may ask you to star it on GitHub. It asks at most 3 times, at least 3 days apart, and never while recording. <span class="docs-ui">Star on GitHub</span> stars it through your own <code>gh</code> login (or opens GitHub if <code>gh</code> isn't available), and <span class="docs-ui">Don't Ask Again</span> stops the prompts. You can also star from <span class="docs-ui">Help → Star Ferret on GitHub</span>.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="cli-tools">
-        <h2 id="cli-tools"><a class="docs-anchor" href="#cli-tools" aria-label="Link to Install and sign in to CLI tools">#</a>Install and sign in to CLI tools</h2>
-        <p><span class="docs-ui">Settings → CLI tools</span> lists command-line tools your agents often need, shows which are installed and their version, and runs the official install or sign-in command for your OS in a new terminal tab:</p>
+        <h2 id="cli-tools"><a class="docs-anchor" href="#cli-tools" aria-label="Link to Service CLIs">#</a>Service CLIs</h2>
+        <p><span class="docs-ui">Settings → Service CLIs</span> lists the command-line tools of services you often use, so your agents can work with them. Installing them is optional: install only what you need, and Ferret works without any of them. Each row shows whether the tool is installed and its version, a link to the service's website, and buttons that run the official install or sign-in command for your OS in a new terminal tab:</p>
 <ul>
-  <li>Git hosting: <code>gh</code>, <code>glab</code></li>
-  <li>AI and models: Ollama, Cloudflare <code>wrangler</code></li>
-  <li>Deploy: Vercel, Netlify, Fly.io, Railway, Heroku</li>
-  <li>Cloud and services: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+  <li>Git hosting: GitHub (<code>gh</code>), GitLab (<code>glab</code>)</li>
+  <li>Hosting &amp; deploy: Vercel, Netlify, Cloudflare (<code>wrangler</code>), Firebase, Fly.io, Railway, Heroku</li>
+  <li>Cloud: AWS, Google Cloud (<code>gcloud</code>), Azure (<code>az</code>)</li>
+  <li>Databases &amp; backend: Supabase, Neon, PlanetScale, Turso</li>
+  <li>Errors &amp; monitoring: Sentry (<code>sentry-cli</code>), Datadog (<code>datadog-ci</code>)</li>
+  <li>Payments: Stripe</li>
+  <li>Containers: Docker, <code>kubectl</code></li>
+  <li>Mobile: Xcode Command Line Tools (macOS only), Android Platform Tools (<code>adb</code>), Expo EAS, fastlane</li>
+  <li>Virtual machines: UTM (macOS only), Lima, Multipass</li>
+  <li>AI &amp; models: Ollama</li>
 </ul>
 <p>Where a tool has no one-line official installer for your OS, <span class="docs-ui">Docs</span> opens its install page instead. The list checks again on its own once an install finishes.</p>
       </section>
@@ -390,8 +380,8 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
         <li><a href="#verify">Acceptance check with a decision model</a></li>
         <li><a href="#api-usage">API usage in the footer</a></li>
         <li><a href="#prompt">Customize the instruction</a></li>
-        <li><a href="#github">Send to GitHub or GitLab (Issue / PR or MR comment)</a></li>
-        <li><a href="#cli-tools">Install and sign in to CLI tools</a></li>
+        <li><a href="#star">Star Ferret on GitHub</a></li>
+        <li><a href="#cli-tools">Service CLIs</a></li>
       </ul>
     </aside>
   </div>

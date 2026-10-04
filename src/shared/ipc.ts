@@ -3,6 +3,7 @@ import type { FailoverLaunchRequest, FailoverNotice, LimitFailoverPrefs } from '
 import type { CliToolStatus } from './cliTools'
 import type { AiEndpointConfig, AiVendor, LlmApiProvider, OrganizeRunnerId, SttRemoteProvider } from './aiProviders'
 import type { AnnotationColor } from './annotation'
+import type { AgentSkillAgent, AgentSkillStatus } from './agentSkill'
 import type { SendRequest } from './sendTarget'
 import type { CloneFailureKind, CloneProgress, GitHubRepoList, SshConfigHost } from './projectSource'
 import type { SshTarget } from './sshCommand'
@@ -68,8 +69,7 @@ import type { FsChangedEvent, FsCreated, FsEntry, FsFileList, FsReadResult, FsSe
 import type { FsFileInfo } from './fileViewer'
 import type { StarActionResult, StarPromptMode } from './starPrompt'
 import type { FeedbackEnvironment, FeedbackSubmitInput, FeedbackSubmitResult } from './feedback'
-import type { GitHubPostResult, GitHubRepoResult, GitRepoStatus, GitHubReviewDraft, GitHubReviewTarget, GitHubStatus } from './github'
-import type { GitLabStatus } from './forge'
+import type { GitRepoStatus } from './github'
 import type { DroppedEntry } from './externalDrop'
 
 /**
@@ -249,6 +249,10 @@ export interface IpcRequests {
   'telemetry:noticeShown': () => void
   /** 初回起動のセットアップの進み具合を保存する（null で項目を消す）。保存後の値を返す */
   'settings:onboarding': (patch: OnboardingPatch) => OnboardingState | null
+  /** Ferret の設定を変える skill（Claude Code・Codex）を入れてあるか */
+  'agentSkill:status': () => AgentSkillStatus[]
+  /** skill を入れる・書き直す（押した直後だけ）。agents を省くと使っている Agent すべて */
+  'agentSkill:install': (agents?: AgentSkillAgent[]) => AgentSkillStatus[]
   /** マイク・画面収録の OS の許可の状態（読むだけで確認のダイアログは出さない） */
   'permissions:status': () => PermissionsState
   /** 押したときだけ許可を求める。マイクは OS の確認、画面収録はシステム設定を開く（macOS だけ） */
@@ -264,6 +268,11 @@ export interface IpcRequests {
   /** 書き込みの色を変え、settings.json（capture.annotationColor）にも残す */
   'annotation:setColor': (color: AnnotationColor) => void
   'annotation:clear': () => void
+  /**
+   * 文字で指摘（エディタの内蔵ブラウザ・映したウインドウで枠を引いて指示を打つ。録画しない）の入・切。
+   * reviewId は足し先（Findings で開いているレビュー）。無ければ最初の1件で新しいレビューを作る。実際の状態を返す
+   */
+  'note:setMode': (enabled: boolean, reviewId?: string | null) => boolean
   /** 書き込みを一つ前に戻す・やり直す（描く・動かす・消去が1手。録画中だけ） */
   'annotation:undo': () => void
   'annotation:redo': () => void
@@ -346,6 +355,8 @@ export interface IpcRequests {
   'fs:move': (relPaths: string[], destRel: string) => FsTransfer[]
   /** OS から落としたファイル・フォルダ（drop:inspect で確かめた絶対パスだけ）を destRel のフォルダへコピーする */
   'fs:import': (absolutePaths: string[], destRel: string) => FsTransfer[]
+  /** OS から Markdown のファイルへ落とした画像・動画（drop:inspect で確かめた絶対パスだけ）を、その隣の assets/ などへコピーする。コピーの相対パスを渡した順に返す */
+  'fs:importMedia': (markdownRel: string, absolutePaths: string[]) => string[]
   /** パスをクリップボードへ書く（絶対パスか、プロジェクトからの相対パス）。書いた文字列を返す */
   'fs:copyPath': (relPaths: string[], kind: 'absolute' | 'relative') => string
   /** 「ターミナルで開く」の作業フォルダ（絶対パス）。ファイルならその親 */
@@ -364,20 +375,10 @@ export interface IpcRequests {
   'preview:render': (path: string, source: string) => string
 
   // GitHub 連携（認証は gh CLI に任せる。トークンは扱わない）
-  /** `gh auth status` の読み取り。gh が無ければ ghInstalled: false */
-  'github:status': () => GitHubStatus
-  /** 開いているプロジェクトの origin から求めた owner/repo */
-  'github:repo': () => GitHubRepoResult
-  /** レビュー結果を送る前の下書き（送り先の候補と本文）。GitHub には書き込まない */
-  'github:reviewDraft': (sessionId: string) => GitHubReviewDraft
-  /** 確認ダイアログで承認された本文を Issue / PR コメントとして書き込む */
-  'github:postReview': (sessionId: string, target: GitHubReviewTarget, body: string) => GitHubPostResult
-  /** リポジトリ・作った Issue などのページを既定のブラウザで開く（GitHub のURLだけ） */
+  /** リポジトリ・ブランチ・フィードバックで作った Issue のページを既定のブラウザで開く（GitHub と今のプロジェクトのホストのURLだけ） */
   'github:open': (url: string) => void
   /** フッター用：今のプロジェクトのリポジトリ・ブランチ・変更の数。呼ぶと .git/HEAD の見張りも始める */
   'github:repoStatus': () => GitRepoStatus
-  /** `glab auth status` の読み取り（GitLab。認証は glab CLI に任せる）。glab が無ければ glabInstalled: false */
-  'gitlab:status': () => GitLabStatus
 
   // GitHub の star のお願い（src/main/starPrompt.ts）。star するのは利用者が押したときだけ
   /** トーストの「Star」。gh で star できたら true（できなければ画面はブラウザの案内に切り替える） */
@@ -413,9 +414,15 @@ export interface IpcEvents {
   /** エージェントの設定が変わった（settings:agents の保存後） */
   'agents:changed': (options: AgentOption[]) => void
   'recording:status': (status: RecordingStatus) => void
+  /** 録画の対象を main が変えた（ウインドウを映している間に URL を開いたので内蔵ブラウザへ戻した） */
+  'capture:targetChanged': (target: CaptureTarget) => void
   'recording:level': (level: AudioLevel) => void
   /** 録画は続いているが、何かが取れなかった（マイク無しなど）ことを知らせる */
   'recording:warning': (message: string) => void
+  /** 録画中の文字起こしの状態（右パネルの「文字起こし」タブと、止まったときの警告。@shared/liveTranscript） */
+  'transcript:status': (status: import('./liveTranscript').LiveTranscriptStatus) => void
+  /** 録画中に文字起こしできた発話（区切り1つ分） */
+  'transcript:segments': (batch: import('./liveTranscript').LiveTranscriptBatch) => void
   /** 書き込みの「元に戻す／やり直す」ができるかが変わった */
   'annotation:history': (history: AnnotationHistory) => void
   /** ページに焦点があるときに押された、書き込みの道具の切り替えキー（ツールバーで処理する） */
@@ -424,6 +431,12 @@ export interface IpcEvents {
   /** API の呼び出しを記録したあとの集計（フッターの使用量を更新する） */
   'usage:apiCallsChanged': (summary: ApiUsageSummary) => void
   'review:ready': (review: ReviewData) => void
+  /** 文字で指摘を足した（足した後のレビューと、その中の打った指摘の数）。画面はブラウザのまま */
+  'note:added': (result: { review: ReviewData; count: number }) => void
+  /** 文字で指摘の入・切を main が変えた（ページの Esc・録画の開始・プロジェクトの切り替え） */
+  'note:mode': (active: boolean) => void
+  /** 文字で指摘を足せなかった理由 */
+  'note:error': (message: string) => void
   /** 開いているプロジェクトのレビューの progress.json（指摘の進み具合）が変わった。Agent の書き込みを画面へ反映する */
   'review:progressChanged': (ids: string[]) => void
   /** 使用量が変わった（取得中・成功・失敗） */
@@ -549,7 +562,7 @@ export const IPC_REQUEST_CHANNELS = [
   'settings:theme',
   'settings:locale',
   'settings:crashReports', 'telemetry:state', 'telemetry:noticeShown',
-  'settings:onboarding', 'permissions:status', 'permissions:request',
+  'settings:onboarding', 'agentSkill:status', 'agentSkill:install', 'permissions:status', 'permissions:request',
   'recording:start',
   'recording:pause',
   'recording:resume',
@@ -558,12 +571,13 @@ export const IPC_REQUEST_CHANNELS = [
   'annotation:setMode',
   'annotation:setColor',
   'annotation:clear',
+  'note:setMode',
   'annotation:undo',
   'annotation:redo',
   'review:list', 'review:activity', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:replyPrompt', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
   'capture:screenAccess', 'capture:sources', 'capture:setTarget', 'capture:openScreenSettings',
-  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:create', 'fs:copy', 'fs:move', 'fs:import', 'fs:copyPath', 'fs:terminalDir', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'preview:render',
-  'github:status', 'github:repo', 'github:reviewDraft', 'github:postReview', 'github:open', 'github:repoStatus', 'gitlab:status',
+  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:create', 'fs:copy', 'fs:move', 'fs:import', 'fs:importMedia', 'fs:copyPath', 'fs:terminalDir', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'preview:render',
+  'github:open', 'github:repoStatus',
   'star:star', 'star:openWeb', 'star:later', 'star:never', 'star:fromMenu',
   'feedback:environment', 'feedback:account', 'feedback:submit', 'feedback:captureWindow'
 ] as const satisfies readonly IpcRequestChannel[]
@@ -580,7 +594,8 @@ export const IPC_EVENT_CHANNELS = [
   'agents:changed',
   'recording:status',
   'recording:level',
-  'recording:warning', 'annotation:history', 'annotation:shortcut', 'capture:modelProgress', 'usage:apiCallsChanged', 'review:ready', 'review:progressChanged',
+  'recording:warning', 'transcript:status', 'transcript:segments', 'capture:targetChanged', 'annotation:history', 'annotation:shortcut', 'capture:modelProgress', 'usage:apiCallsChanged', 'review:ready', 'review:progressChanged',
+  'note:added', 'note:mode', 'note:error',
   'fs:changed',
   'theme:changed',
   'locale:changed',

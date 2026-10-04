@@ -50,32 +50,6 @@ export interface GitHubRepoResult {
   reason: string | null
 }
 
-export interface GitHubPullRequest {
-  number: number
-  title: string
-  state: 'OPEN' | 'CLOSED' | 'MERGED'
-  isDraft: boolean
-  url: string
-  updatedAt: string
-  headRefName: string
-}
-
-/** レビュー結果を GitHub へ送る前の下書き。画面で送り先と本文を見せてから送る */
-export interface GitHubReviewDraft {
-  repo: GitHubRepoRef
-  title: string
-  body: string
-  /** コメント先の候補（自分の開いている PR） */
-  pullRequests: GitHubPullRequest[]
-}
-
-export type GitHubReviewTarget = { kind: 'issue'; title: string } | { kind: 'pr-comment'; number: number }
-
-export interface GitHubPostResult {
-  /** 作った Issue・コメントのURL */
-  url: string
-}
-
 /** フッターに出す、今のプロジェクトのリポジトリとブランチ */
 export interface GitRepoStatus {
   /** git のリポジトリか。false なら項目を隠す */

@@ -1,5 +1,4 @@
-import type { GitHubAccount, GitHubPullRequest, GitHubRepoRef } from '@shared/github'
-import { SUPPORTED_LOCALES, t, translate, type MessageKey } from '@shared/i18n'
+import type { GitHubAccount, GitHubRepoRef } from '@shared/github'
 import { forgeForHost, isSafeGitLabPath, isSafeHost } from '@shared/forge'
 
 /**
@@ -145,30 +144,6 @@ export function pickActiveAccount(accounts: GitHubAccount[], host?: string): Git
   return pool.find((a) => a.active) ?? pool[0] ?? null
 }
 
-// ─── gh pr list --json ───────────────────
-
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null
-const asString = (value: unknown): string => (typeof value === 'string' ? value : '')
-
-export function mapPullRequests(json: unknown): GitHubPullRequest[] {
-  if (!Array.isArray(json)) return []
-  return json.flatMap((raw) => {
-    const r = asRecord(raw)
-    if (!r || typeof r.number !== 'number') return []
-    const state = asString(r.state).toUpperCase()
-    return [{
-      number: r.number,
-      title: asString(r.title),
-      state: state === 'MERGED' || state === 'CLOSED' ? state : 'OPEN',
-      isDraft: r.isDraft === true,
-      url: asString(r.url),
-      updatedAt: asString(r.updatedAt),
-      headRefName: asString(r.headRefName)
-    } satisfies GitHubPullRequest]
-  })
-}
-
 // ─── git status --porcelain=v2 --branch ─────────────────
 
 interface GitStatusSummary {
@@ -211,51 +186,4 @@ export function parseGitStatus(text: string): GitStatusSummary {
     }
   }
   return summary
-}
-
-// ─── feedback.md → Issue ─────────────────────────────
-
-/** Issue のタイトルの上限（GitHub は 256 文字） */
-const TITLE_MAX = 120
-
-/**
- * feedback.md から Issue のタイトルと本文を作る。
- * - タイトル: 見出し（「UIフィードバック（N件）」）と対象のホスト
- * - 本文: feedback.md のまま。ただし画像（./01.png）は GitHub からは見えないので行ごと外し、末尾に断り書きを付ける
- */
-export function issueFromFeedback(markdown: string): { title: string; body: string } {
-  const lines = markdown.replace(/\r\n/g, '\n').split('\n')
-  const heading = lines.find((l) => l.startsWith('# '))?.slice(2).trim() || t('github.issue.titleFallback')
-  // feedback.md は書き出した時点の画面の言語なので、どの言語の見出しでも読めるようにする
-  const targetLine = labelLine('feedbackMd.label.target')
-  const imageLine = labelLine('feedbackMd.label.images')
-  const target = lines.map((l) => l.match(targetLine)?.[1]).find(Boolean)
-  let host = ''
-  if (target) {
-    try { host = new URL(target).host } catch { host = target }
-  }
-  const title = (host ? `${heading}: ${host}` : heading).slice(0, TITLE_MAX)
-  // 末尾の Agent 向けの節（進み具合・AFTER の撮り方・受け入れ確認・ほかの指摘）は GitHub / GitLab へ出さない。
-  // progress.json や after/ の絶対パス（ホームのパスを含む）が書かれているため。指摘ごとの BEFORE / AFTER の行も外す
-  const agentHeadings = new Set(SUPPORTED_LOCALES.flatMap((locale) => (['feedbackMd.progress.heading', 'feedbackMd.after.heading', 'feedbackMd.check.heading', 'feedbackMd.others.heading'] as const)
-    .map((key) => `## ${translate(locale, key)}`)))
-  const cutAt = lines.findIndex((l) => agentHeadings.has(l.trim()))
-  const agentLinePrefixes = [...new Set(SUPPORTED_LOCALES.flatMap((locale) => [
-    translate(locale, 'feedbackMd.beforeImage', { path: '\0' }),
-    translate(locale, 'feedbackMd.afterLine', { url: '\0', width: '\0', height: '\0', path: '\0' }),
-    translate(locale, 'feedbackMd.afterLineLocal', { url: '\0', width: '\0', height: '\0', path: '\0' })
-  ].map((line) => line.split('\0')[0]!)))].filter((prefix) => prefix.length > 2)
-  const kept = (cutAt >= 0 ? lines.slice(0, lines[cutAt - 1]?.trim() === '---' ? cutAt - 1 : cutAt) : lines)
-    .filter((l) => !agentLinePrefixes.some((prefix) => l.startsWith(prefix)))
-  const images = kept.filter((l) => imageLine.test(l)).length
-  const body = kept.filter((l) => !imageLine.test(l)).join('\n').trim()
-  const note = images > 0 ? `\n\n---\n${t('github.issue.imagesNote', { count: images })}` : ''
-  return { title, body: `${body}${note}\n\n<sub>${t('github.issue.sentFrom')}</sub>` }
-}
-
-/** 「- 対象: 値」「- Target: 値」のような行。すべての言語の見出しを受け付ける */
-function labelLine(key: MessageKey): RegExp {
-  const labels = [...new Set(SUPPORTED_LOCALES.map((locale) => translate(locale, key)))]
-  const escaped = labels.map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-  return new RegExp(`^- (?:${escaped.join('|')}):\\s*(\\S+)?`)
 }

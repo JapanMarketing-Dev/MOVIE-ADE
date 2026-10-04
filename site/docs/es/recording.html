@@ -210,7 +210,18 @@
   <li><strong><span class="docs-ui">Lápiz</span></strong>: selecciónalo o mantén pulsada <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Alt</kbd></span></span> para dibujar solo mientras la mantienes (se ignora mientras escribes en un campo).</li>
   <li><strong><span class="docs-ui">Borrar</span></strong>: elimina los trazos actuales.</li>
 </ul>
-<p>Rodea el punto mientras hablas de él: las palabras y los trazos acaban en el mismo hallazgo. El lápiz solo está disponible mientras grabas. No hay herramienta de texto: dilo en voz alta. Las teclas del lápiz, el recuadro y los colores están en <a href="keyboard.html#drawing">Atajos de teclado</a>.</p>
+<p>Rodea el punto mientras hablas de él: las palabras y los trazos acaban en el mismo hallazgo. El lápiz solo está disponible mientras grabas, y mientras grabas no hay herramienta de texto: dilo en voz alta o escríbelo después con <a href="#type">Escribir comentario</a>. Las teclas del lápiz, el recuadro y los colores están en <a href="keyboard.html#drawing">Atajos de teclado</a>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="type">
+        <h2 id="type"><a class="docs-anchor" href="#type" aria-label="Enlace a Escribir en lugar de hablar">#</a>Escribir en lugar de hablar</h2>
+        <p>Cuando no te venga bien hablar, escribe el hallazgo. Solo funciona en el modo Editor, en la pestaña <span class="docs-ui">Navegador</span>, mientras no estás grabando.</p>
+<ol class="docs-steps">
+  <li>Haz clic en <span class="docs-ui">Escribir comentario</span> en la barra de herramientas del navegador.</li>
+  <li>Arrastra un recuadro alrededor del punto de la página, o haz clic en un elemento para enmarcarlo.</li>
+  <li>Escribe qué debe cambiar. <kbd>Enter</kbd> lo añade, <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd><kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Enter</kbd></span></span> empieza una línea nueva y <kbd>Esc</kbd> cancela el recuadro. El Enter con el que confirmas una conversión del método de entrada no lo añade.</li>
+</ol>
+<p>Cada uno se convierte en un hallazgo con una imagen de la página y el recuadro, además de la URL y el elemento enmarcado, como un hallazgo grabado. Se añade a la revisión abierta en <span class="docs-ui">Hallazgos</span>, o a una revisión nueva si no hay ninguna abierta. El navegador sigue delante, así que puedes añadir varios seguidos; <kbd>Esc</kbd> sin recuadro abierto, o volver a pulsar el botón, termina. También funciona en la ventana de una app de escritorio o de un simulador mostrada en lugar del navegador, sin la URL.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="annotations-clear">
@@ -226,6 +237,12 @@
       <section class="docs-section" aria-labelledby="mic">
         <h2 id="mic"><a class="docs-anchor" href="#mic" aria-label="Enlace a Micrófono">#</a>Micrófono</h2>
         <p>El micrófono está activado de forma predeterminada. Actívalo o desactívalo desde el pie de la ventana (<span class="docs-ui">Desactivar micrófono</span> / <span class="docs-ui">Activar micrófono</span>) o con <span class="docs-ui">Grabar mi voz</span> en Ajustes. Elige un dispositivo en <span class="docs-ui">Micrófono</span>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="live-transcript">
+        <h2 id="live-transcript"><a class="docs-anchor" href="#live-transcript" aria-label="Enlace a Ver lo que se está transcribiendo">#</a>Ver lo que se está transcribiendo</h2>
+        <p>Mientras grabas, abre la pestaña <span class="docs-ui">Transcripción</span> en la parte superior del panel derecho del modo feedback para leer tus palabras como texto, con el momento en que las dijiste (y quién las dijo cuando también grabas a la otra parte de una reunión). El texto aparece unos segundos después de una pausa, así que puedes comprobar pronto que se está captando lo que dices. La línea superior muestra <span class="docs-ui">Transcribiendo</span>, cuántas partes están en espera o por qué se detuvo la transcripción.</p>
+<p>Si la transcripción falla, no hay modelo ni clave, unos 2 minutos de voz no producen texto o no llega sonido al micrófono, Ferret te avisa una vez y marca el botón del panel derecho, aunque la pestaña esté cerrada. La grabación continúa y el audio se conserva. Para ocultar la pestaña, desactiva <span class="docs-ui">Mostrar la transcripción en vivo al grabar (panel derecho del modo feedback)</span> en <span class="docs-ui">Ajustes → Transcripción</span>. Los avisos se siguen mostrando.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other-side">
@@ -278,8 +295,10 @@
         <li><a href="#desktop-mobile">Apps de escritorio, juegos y apps móviles</a></li>
         <li><a href="#record">Iniciar, pausar, detener</a></li>
         <li><a href="#pen">Lápiz</a></li>
+        <li><a href="#type">Escribir en lugar de hablar</a></li>
         <li><a href="#annotations-clear">Cuándo desaparecen los trazos</a></li>
         <li><a href="#mic">Micrófono</a></li>
+        <li><a href="#live-transcript">Ver lo que se está transcribiendo</a></li>
         <li><a href="#other-side">Grabar a la otra parte de una reunión</a></li>
         <li><a href="#other-side-os">Audio del sistema según el sistema operativo</a></li>
         <li><a href="#other-side-tips">Consejos para reuniones</a></li>

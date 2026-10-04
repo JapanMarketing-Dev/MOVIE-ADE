@@ -1,9 +1,9 @@
-import { BrowserWindow, desktopCapturer, screen, shell, systemPreferences } from 'electron'
+import { BrowserWindow, desktopCapturer, nativeImage, screen, shell, systemPreferences } from 'electron'
 import type { CaptureSourceInfo, CaptureSourceList } from '@shared/types'
 import { t } from '@shared/i18n'
 import { reportHandled } from '@shared/report'
-import { withAppWindows } from '@shared/desktopApps'
-import { listMacWindows } from './devices'
+import { windowNumberOf, withAppWindows } from '@shared/desktopApps'
+import { captureMacWindowImage, listMacWindows } from './devices'
 
 /**
  * 画面全体・別のウインドウの録画対象（REC-2 の拡張 / 設計9章）。
@@ -49,7 +49,7 @@ export async function openScreenSettings(): Promise<void> {
  * 除くのは自分の BrowserWindow の ID と自分のプロセスのウインドウだけ。同じ Electron で動く開発中のアプリは出す。
  *
  * macOS では、desktopCapturer が出さない常に手前のウインドウ（alwaysOnTop・パネル）を足し、各ウインドウにアプリ名を付ける
- * （@shared/desktopApps の withAppWindows）。足したウインドウはサムネイルが無い（アプリ名と題名で選ぶ）。
+ * （@shared/desktopApps の withAppWindows）。足したウインドウは desktopCapturer がサムネイルを作らないので、screencapture で撮って付ける。
  *
  * @param thumbnail サムネイルの大きさ。0×0 なら作らない（録画開始時の存在確認用。速い）
  */
@@ -84,7 +84,20 @@ export async function listCaptureSources(
         ...(source.appIcon && !source.appIcon.isEmpty() ? { appIcon: source.appIcon.toDataURL() } : {})
       }
     })
-  return withAppWindows(listed, macWindows, process.pid)
+  const all = withAppWindows(listed, macWindows, process.pid)
+  if (!withThumbnail) return all
+  return Promise.all(all.map(async (source) => {
+    if (source.thumbnail || source.kind !== 'window') return source
+    const id = windowNumberOf(source.id)
+    const image = id !== null ? await captureMacWindowImage(id).catch((err: unknown) => { reportHandled(err, { area: 'recording', op: 'window thumbnail' }); return null }) : null
+    if (!image) return source
+    const picture = nativeImage.createFromBuffer(image)
+    if (picture.isEmpty()) return source
+    const size = picture.getSize()
+    const scale = Math.min(thumbnail.width / size.width, thumbnail.height / size.height, 1)
+    const fitted = scale < 1 ? picture.resize({ width: Math.max(1, Math.round(size.width * scale)), height: Math.max(1, Math.round(size.height * scale)), quality: 'good' }) : picture
+    return { ...source, thumbnail: fitted.toDataURL() }
+  }))
 }
 
 /** 画面の名前。OSの名前（Entire Screen など）は区別が付かないので、番号と大きさにする */

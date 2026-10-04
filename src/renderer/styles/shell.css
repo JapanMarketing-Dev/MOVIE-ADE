@@ -422,6 +422,21 @@
 
 /* ── ブラウザのツールバー ─────────────────────────────── */
 
+.browser-toolbar__shown {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.browser-toolbar__shown-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .browser-toolbar {
   display: flex;
   height: var(--size-toolbar);
@@ -430,6 +445,17 @@
   background: var(--color-bg-panel);
   box-shadow: inset 0 -1px 0 var(--color-border);
   gap: var(--space-3);
+}
+
+/* 文字で指摘が入のあいだは、ページを操作できない（枠を引く）ことを面で示す（録画の道具と同じ塗り） */
+.browser-toolbar__note {
+  flex: none;
+}
+
+.browser-toolbar__note[aria-pressed='true'],
+.browser-toolbar__note[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .browser-toolbar__nav {
@@ -458,6 +484,10 @@
 
   .browser-toolbar .segmented__item {
     padding: 0 var(--space-4);
+  }
+
+  .browser-toolbar__note .btn__label {
+    display: none;
   }
 }
 
@@ -1969,6 +1999,30 @@ body[data-resizing='row'] * {
   overflow-x: auto;
   gap: var(--space-2);
   scrollbar-width: none;
+}
+
+/* ドラッグで並べ替えている確認先のボタン（UrlPresets）。落とす側に線を出す */
+.url-chip.is-dragging {
+  opacity: 0.5;
+}
+
+.url-chip.is-drop-before::before,
+.url-chip.is-drop-after::after {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--color-accent);
+  content: '';
+}
+
+.url-chip.is-drop-before::before {
+  left: -4px;
+}
+
+.url-chip.is-drop-after::after {
+  right: -4px;
 }
 
 .url-chip {

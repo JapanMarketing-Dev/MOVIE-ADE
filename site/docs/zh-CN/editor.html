@@ -167,7 +167,7 @@
         <ul>
   <li><span class="docs-ui">文件</span>（文件树）：<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></span></span>，提供 <span class="docs-ui">按文件名筛选</span>、<span class="docs-ui">刷新</span> 和 <span class="docs-ui">全部折叠</span>。</li>
   <li><span class="docs-ui">转到文件…</span>：<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></span></span>。</li>
-  <li>从访达（Windows 上为文件资源管理器，Linux 上为文件管理器）把文件拖到标签栏或编辑器上即可打开。项目中的文件会在编辑器或查看器中打开。要把项目外的文件带进来，请把它放到 <span class="docs-ui">文件</span> 上，它会被复制到项目中。放到这里的文件夹会作为项目打开。从 <span class="docs-ui">文件</span> 拖出的文件也以同样方式打开。</li>
+  <li>从访达（Windows 上为文件资源管理器，Linux 上为文件管理器）把文件拖到标签栏或编辑器上即可打开。项目中的文件会在编辑器或查看器中打开。要把项目外的文件带进来，请把它放到 <span class="docs-ui">文件</span> 上，它会被复制到项目中。放到这里的文件夹会作为项目打开。从 <span class="docs-ui">文件</span> 拖出的文件也以同样方式打开。图片和视频放到已打开的 Markdown 文件上时，则会嵌入到该文件中（参见<a href="#embed-media">在 Markdown 中嵌入图片和视频</a>）。</li>
   <li>用 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></span></span> 保存。关闭已修改的文件时会询问 <q>要保存对 &lt;name&gt; 的更改吗？</q>，可选 <span class="docs-ui">保存</span>、<span class="docs-ui">不保存</span> 和 <span class="docs-ui">取消</span>。</li>
   <li>如果你有未保存的编辑时文件在磁盘上被更改，可选择 <span class="docs-ui">从磁盘重新载入</span> 或 <span class="docs-ui">保留我的更改</span>。</li>
 </ul>
@@ -196,24 +196,36 @@
       <section class="docs-section" aria-labelledby="preview">
         <h2 id="preview"><a class="docs-anchor" href="#preview" aria-label="指向“Markdown 和 Mermaid 预览”的链接">#</a>Markdown 和 Mermaid 预览</h2>
         <p>预览支持 <code>.md</code>、<code>.markdown</code>、<code>.mdx</code>、<code>.mmd</code> 和 <code>.mermaid</code>。Mermaid 随应用一起打包，因此离线也能渲染图表。</p>
+<p>Markdown 文件在编辑器顶部有两种视图：<span class="docs-ui">源代码</span> 和 <span class="docs-ui">预览</span>。预览始终可以编辑，因此可以直接在其中输入；点击 <span class="docs-ui">源代码</span> 即可回到文本。两者显示相同的内容，保存、未保存标记和关闭时的确认也都一样。</p>
+<ul>
+  <li>可以直接在标题、段落、列表、复选框、表格、链接以及粗体、斜体或行内代码中输入。在行首输入 <code>#</code>、<code>-</code>、<code>1.</code> 或 <code>&gt;</code> 加一个空格，即可开始标题、列表或引用。</li>
+  <li>代码块和 Mermaid 图表以源代码形式编辑，角落里会显示语言。要查看绘制出的图表，请在 <a href="projects.html#review-targets"><span class="docs-ui">审查对象</span></a> 面板中从 <span class="docs-ui">文件</span> 打开该文件。</li>
+  <li>前置元数据（顶部的 <code>---</code> 块）以文本形式显示在文档上方，可以在那里编辑。</li>
+  <li>未修改的部分会按原样保存，包括标题样式、列表标记、空行、表格对齐和换行符。编辑过的块会尽量保留原有样式；无法保留时，该块会以标准 Markdown 形式写出，列表用 <code>-</code>，标题用 <code>#</code>。</li>
+  <li>项目中的图片和视频会显示。不会加载其他网站的图片，而是显示其主机名。文件中的其他 HTML 会以文本形式显示。</li>
+</ul>
+<p><code>.mdx</code> 文件（仅以源代码形式编辑）、<code>.mmd</code> 和 <code>.mermaid</code> 文件则改用只读预览：</p>
 <ul>
   <li><span class="docs-ui">在侧边打开预览</span>：在编辑器旁边打开</li>
   <li><span class="docs-ui">打开预览</span>：在内置浏览器（<code>ade-preview://</code>）中打开，因此可以录制和审查</li>
 </ul>
-<p>要按预览中的样子编辑 Markdown 文件，请点击编辑器顶部的 <span class="docs-ui">在预览中编辑</span>，点击 <span class="docs-ui">源代码</span> 即可返回。两者显示相同的内容，保存、未保存标记和关闭时的确认也都一样。</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="embed-media">
+        <h2 id="embed-media"><a class="docs-anchor" href="#embed-media" aria-label="指向“在 Markdown 中嵌入图片和视频”的链接">#</a>在 Markdown 中嵌入图片和视频</h2>
+        <p>把图片（PNG、JPEG、GIF、WebP、SVG、AVIF）或视频（MP4、WebM、MOV）拖到 Markdown 文件上（<span class="docs-ui">源代码</span> 或 <span class="docs-ui">预览</span> 均可），即可将其嵌入到放下的位置。</p>
 <ul>
-  <li>可以直接在标题、段落、列表、复选框、表格、链接以及粗体、斜体或行内代码中输入。在行首输入 <code>#</code>、<code>-</code>、<code>1.</code> 或 <code>&gt;</code> 加一个空格，即可开始标题、列表或引用。</li>
-  <li>代码块和 Mermaid 图表以源代码形式编辑，角落里会显示语言。图表在 <span class="docs-ui">在侧边打开预览</span> 或 <span class="docs-ui">打开预览</span> 中渲染。</li>
-  <li>前置元数据（顶部的 <code>---</code> 块）以文本形式显示在文档上方，可以在那里编辑。</li>
-  <li>未修改的部分会按原样保存，包括标题样式、列表标记、空行、表格对齐和换行符。编辑过的块会尽量保留原有样式；无法保留时，该块会以标准 Markdown 形式写出，列表用 <code>-</code>，标题用 <code>#</code>。</li>
-  <li>项目中的图片会显示。不会加载其他网站的图片，而是显示其主机名。文件中的 HTML 会以文本形式显示。</li>
+  <li>已在项目中的文件（包括从 <span class="docs-ui">文件</span> 拖出的文件）会以相对于该 Markdown 文件的路径链接，不会复制任何内容。</li>
+  <li>项目外的文件（来自访达、桌面，或 Windows 上的文件资源管理器）会先被复制到 Markdown 文件旁边的文件夹中：如果已有 <code>assets</code>、<code>images</code>、<code>media</code> 或 <code>img</code>，就复制到其中，否则新建一个 <code>assets</code> 文件夹。名称中的空格会变成 <code>-</code>，如果名称已被占用，副本会命名为 <code>name-2</code>。原文件保留在原处。</li>
+  <li>图片写作 <code>![name](assets/name.png)</code>，视频写作 <code>&lt;video&#32;src="assets/name.mp4" controls&gt;&lt;/video&gt;</code>，GitHub 也能播放。两者都会在 <span class="docs-ui">预览</span> 中显示。</li>
+  <li>单个图片最大 50 MB，单个视频最大 500 MB，一次拖放最多复制 50 个文件、共 1 GB。一起放下的其他文件会照常在编辑器中打开。</li>
 </ul>
       </section>
 
       <section class="docs-section" aria-labelledby="review-docs">
         <h2 id="review-docs"><a class="docs-anchor" href="#review-docs" aria-label="指向“通过录制审查文档”的链接">#</a>通过录制审查文档</h2>
         <ol class="docs-steps">
-  <li>打开一个 Markdown 文件，点击 <span class="docs-ui">打开预览</span>。</li>
+  <li>在 <a href="projects.html#review-targets"><span class="docs-ui">审查对象</span></a> 面板中，从 <span class="docs-ui">文件</span> 打开 Markdown 文件。它会在内置浏览器中以预览形式打开。</li>
   <li>照常录制。一边讲解规格或设计文档，一边圈出有问题的地方。</li>
   <li>停止。反馈引用的是该文件相对于项目的路径，而不是 URL。</li>
   <li>点击 <span class="docs-ui">发送给 Agent</span>，让它修改文档。</li>
@@ -235,6 +247,7 @@
         <li><a href="#files">打开和编辑文件</a></li>
         <li><a href="#file-tree">在文件树中处理文件</a></li>
         <li><a href="#preview">Markdown 和 Mermaid 预览</a></li>
+        <li><a href="#embed-media">在 Markdown 中嵌入图片和视频</a></li>
         <li><a href="#review-docs">通过录制审查文档</a></li>
       </ul>
     </aside>

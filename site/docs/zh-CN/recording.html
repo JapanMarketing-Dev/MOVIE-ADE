@@ -210,7 +210,18 @@
   <li><strong><span class="docs-ui">画笔</span></strong>：选中它，或按住 <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Alt</kbd></span></span>，仅在按住期间绘制（在输入框中打字时会被忽略）。</li>
   <li><strong><span class="docs-ui">清除</span></strong>：移除当前的标记。</li>
 </ul>
-<p>一边讲解一边圈出位置：话语和标记会进入同一条反馈。画笔仅在录制时可用。没有文字工具，请直接说出来。画笔、方框和颜色的按键见<a href="keyboard.html#drawing">键盘快捷键</a>。</p>
+<p>一边讲解一边圈出位置：话语和标记会进入同一条反馈。画笔仅在录制时可用。录制时没有文字工具：请直接说出来，或之后用<a href="#type">文字反馈</a>输入。画笔、方框和颜色的按键见<a href="keyboard.html#drawing">键盘快捷键</a>。</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="type">
+        <h2 id="type"><a class="docs-anchor" href="#type" aria-label="指向“不说话，用文字反馈”的链接">#</a>不说话，用文字反馈</h2>
+        <p>不方便说话时，可以把反馈打出来。仅在编辑器模式的 <span class="docs-ui">浏览器</span> 标签页、且未在录制时可用。</p>
+<ol class="docs-steps">
+  <li>点击浏览器工具栏中的 <span class="docs-ui">文字反馈</span>。</li>
+  <li>在页面上拖动，框住要改的位置；也可以点击某个元素，直接把它框住。</li>
+  <li>输入要怎么改。<kbd>Enter</kbd> 添加，<span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd><kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Enter</kbd></span></span> 换行，<kbd>Esc</kbd> 取消方框。使用输入法选字时按下的 Enter 不会添加。</li>
+</ol>
+<p>每一条都会成为一条反馈，附带页面和方框的图片、URL 以及框住的元素，和录制得到的反馈一样。它会添加到 <span class="docs-ui">反馈</span> 中打开的评审；没有打开的评审时会新建一个。浏览器保持在前面，可以连续添加多条；在没有方框时按 <kbd>Esc</kbd>，或再次点击按钮即可结束。在浏览器位置显示的桌面应用或模拟器窗口上也能同样使用（不带 URL）。</p>
       </section>
 
       <section class="docs-section" aria-labelledby="annotations-clear">
@@ -226,6 +237,12 @@
       <section class="docs-section" aria-labelledby="mic">
         <h2 id="mic"><a class="docs-anchor" href="#mic" aria-label="指向“麦克风”的链接">#</a>麦克风</h2>
         <p>麦克风默认开启。可以在底栏中切换（<span class="docs-ui">关闭麦克风</span> / <span class="docs-ui">打开麦克风</span>），也可以在设置中使用 <span class="docs-ui">录制我的语音</span>。在 <span class="docs-ui">麦克风</span> 下选择设备。</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="live-transcript">
+        <h2 id="live-transcript"><a class="docs-anchor" href="#live-transcript" aria-label="指向“查看转写内容”的链接">#</a>查看转写内容</h2>
+        <p>录制时，打开反馈模式右侧面板顶部的 <span class="docs-ui">转写</span> 标签，就能以文字形式查看你说的话及其时间（同时录制会议对方的声音时，还会显示是谁说的）。说完稍作停顿，几秒后就会出现文字，因此可以尽早确认所说的内容是否被记录下来。顶部一行显示 <span class="docs-ui">正在转写</span>、等待中的段数，或转写停止的原因。</p>
+<p>如果转写失败、没有设置模型或密钥、约 2 分钟的语音没有转成文字，或麦克风没有收到声音，即使标签已关闭，Ferret 也会提示一次，并在右侧面板按钮上做标记。录制会继续，音频也会保留。要隐藏该标签，请在 <span class="docs-ui">设置 → 转写</span> 中关闭 <span class="docs-ui">录制时显示实时转写（反馈模式的右侧面板）</span>。警告仍会显示。</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other-side">
@@ -278,8 +295,10 @@
         <li><a href="#desktop-mobile">桌面应用、游戏和移动应用</a></li>
         <li><a href="#record">开始、暂停、停止</a></li>
         <li><a href="#pen">画笔</a></li>
+        <li><a href="#type">不说话，用文字反馈</a></li>
         <li><a href="#annotations-clear">标记何时消失</a></li>
         <li><a href="#mic">麦克风</a></li>
+        <li><a href="#live-transcript">查看转写内容</a></li>
         <li><a href="#other-side">录制会议中对方的声音</a></li>
         <li><a href="#other-side-os">各操作系统的系统音频</a></li>
         <li><a href="#other-side-tips">会议录制技巧</a></li>

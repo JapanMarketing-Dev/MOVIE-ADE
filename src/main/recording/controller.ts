@@ -10,7 +10,7 @@ import { DEFAULT_ANNOTATION_COLOR, type AnnotationColor } from '@shared/annotati
 import { RecorderWindow, type VideoSource } from './recorderWindow'
 import { listCaptureSources, screenAccess } from './sources'
 import { readDevice } from './devices'
-import { StillCapturer, webContentsStillSource, type StillSource } from './stills'
+import { StillCapturer, mirrorStillSource, webContentsStillSource, type StillSource } from './stills'
 import {
   defaultRecordingOptions,
   type AudioLevel,
@@ -78,8 +78,20 @@ export interface RecordingAssets {
   recorderPreload: string
 }
 
+/**
+ * 画面全体・別のウインドウを録る間、その映像を内蔵ブラウザの場所に映すビュー（browser.ts の showMirror）。
+ * 映したビューには書き込みの注入スクリプトが入っているので、書き込みはそこで受ける
+ */
+export interface CaptureMirror {
+  show(sourceId: string): Promise<WebContents | null>
+  hide(): void
+}
+
 export class RecordingController {
   private source: WebContents | null = null
+  /** 画面・ウインドウの映像を映したビュー。録画中だけ。あれば書き込みはこちらで受ける */
+  private mirrorContents: WebContents | null = null
+  private mirror: CaptureMirror | null = null
   private clock: RecordingClock | null = null
   private recorder: RecorderWindow | null = null
   private lastViewWidth = 0
@@ -131,7 +143,7 @@ export class RecordingController {
     wc.on('did-finish-load', () => this.pushMode())
     // 別のドキュメントへ移る前に、入力中の文を確定させる（ページを離れると吹き出しごと消えるため）
     wc.on('did-start-navigation', (details) => {
-      if (details.isMainFrame && !details.isSameDocument && isPageChange(this.pageUrl, details.url)) {
+      if (this.recordsBrowser && details.isMainFrame && !details.isSameDocument && isPageChange(this.pageUrl, details.url)) {
         this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'commit' })
       }
     })
@@ -145,6 +157,11 @@ export class RecordingController {
     })
   }
 
+  /** 画面・ウインドウを録るときに映像を映す先を結びつける */
+  setMirror(mirror: CaptureMirror): void {
+    this.mirror = mirror
+  }
+
   /**
    * SPA の画面遷移（pushState など）。ドキュメントはそのままなので、書き込みが残ってしまう。
    * パスかクエリが変わったら、その画面の書き込みを記録し終えてから消す（ハッシュだけなら残す）。
@@ -156,7 +173,8 @@ export class RecordingController {
   private onInPageNavigate(url: string): void {
     const changed = isPageChange(this.pageUrl, url)
     this.pageUrl = url
-    if (!changed) {
+    // 画面・ウインドウを録っているときの書き込みは映したビューのもので、内蔵ブラウザの遷移では消さない
+    if (!changed || !this.recordsBrowser) {
       this.recordNav(url)
       return
     }
@@ -193,29 +211,32 @@ export class RecordingController {
     this.boundReview = true
 
     ipcMain.on(REVIEW_CHANNELS.ready, (event) => {
-      if (event.sender === this.source) this.pushMode()
+      if (event.sender === this.reviewContents) this.pushMode()
     })
 
     ipcMain.on(REVIEW_CHANNELS.history, (event, history: unknown) => {
-      if (event.sender !== this.source || !this.admit('history')) return
+      if (event.sender !== this.reviewContents || !this.admit('history')) return
       const value = history as { canUndo?: unknown; canRedo?: unknown } | null
       this.handlers.onAnnotationHistory?.({ canUndo: value?.canUndo === true, canRedo: value?.canRedo === true })
     })
 
     ipcMain.on(REVIEW_CHANNELS.shortcut, (event, action: unknown) => {
-      if (event.sender !== this.source || this.state !== 'recording' || !this.admit('shortcut')) return
+      if (event.sender !== this.reviewContents || this.state !== 'recording' || !this.admit('shortcut')) return
       if (action === 'pen' || action === 'rect' || action === 'off' || action === 'color') this.handlers.onAnnotationShortcut?.(action)
     })
 
     ipcMain.on(REVIEW_CHANNELS.event, (event, raw: RawReviewEvent) => {
-      if (event.sender !== this.source) return
+      if (event.sender !== this.reviewContents) return
       // ページ移動に伴う確定が済んだ返事（onInPageNavigate）
       if (raw?.type === 'left') return void this.finishLeave()
       this.recordInjected(raw)
     })
   }
 
+  /** 書き込みを受けるビュー。画面・ウインドウを映しているならそちら、ほかは内蔵ブラウザ */
   private get reviewContents(): WebContents | null {
+    const mirror = this.mirrorContents
+    if (mirror && !mirror.isDestroyed()) return mirror
     const wc = this.source
     return wc && !wc.isDestroyed() ? wc : null
   }
@@ -331,10 +352,11 @@ export class RecordingController {
     }
 
     const recorder = this.recorder
+    if (video.kind === 'desktop') await this.openMirror(video.sourceId)
     const stillSource: StillSource =
       video.kind === 'tab'
         ? webContentsStillSource(video.contents)
-        : { capture: () => recorder.grabFrame(), get gone() { return recorder.gone } }
+        : mirrorStillSource(() => this.mirrorContents, { capture: () => recorder.grabFrame(), get gone() { return recorder.gone } })
     this.stills = new StillCapturer(stillSource, clock, options, {
       // カーソルの座標は内蔵ブラウザの中のものなので、画面・ウインドウの画像には重ねない
       getCursor: () => (video.kind === 'tab' ? this.lastCursor : undefined),
@@ -364,6 +386,28 @@ export class RecordingController {
     this.statusTimer.unref?.()
 
     this.emitStatus()
+  }
+
+  /**
+   * 録っている画面・ウインドウを内蔵ブラウザの場所に映す。映せなくても録画は続ける（書き込みが引けないだけ）。
+   * 内蔵ブラウザの書き込みは止めておく（録っている映像とは別の画面なので）
+   */
+  private async openMirror(sourceId: string): Promise<void> {
+    if (!this.mirror) return
+    const browser = this.source && !this.source.isDestroyed() ? this.source : null
+    browser?.send(REVIEW_CHANNELS.command, { type: 'disable' })
+    this.mirrorContents = await this.mirror.show(sourceId).catch((err: unknown) => {
+      reportHandled(err, { area: 'recording', op: 'show capture mirror' })
+      return null
+    })
+  }
+
+  private closeMirror(): void {
+    if (!this.mirrorContents) return
+    this.mirrorContents = null
+    this.mirror?.hide()
+    // 内蔵ブラウザの注入側へ、いまの状態（録画していないので無効）を送り直す
+    this.pushMode()
   }
 
   /**
@@ -469,6 +513,7 @@ export class RecordingController {
     this.stills = null
     this.clock = null
     this.state = 'idle'
+    this.closeMirror()
     this.emitStatus()
 
     return {
@@ -491,6 +536,7 @@ export class RecordingController {
     this.recorder?.dispose()
     this.recorder = null
     this.stills?.stop()
+    this.closeMirror()
   }
 
   // ───────────────────────── 受け口 ─────────────────────────

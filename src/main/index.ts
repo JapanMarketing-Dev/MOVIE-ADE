@@ -1,4 +1,4 @@
-import { CAPTURE_INDICATOR, UserGestures, appMediaAllowed, captureRequestProblem, indicatorTitle, isGestureInput, isRecorderContents, isTrustedIpcSender, nextAudioConsent, type CaptureConsentState } from './captureConsent'
+import { CAPTURE_INDICATOR, UserGestures, ViewInputGrant, appMediaAllowed, captureRequestProblem, indicatorTitle, isGestureInput, isRecorderContents, isTrustedIpcSender, nextAudioConsent, type CaptureConsentState } from './captureConsent'
 import { ProgramCopies, normalizeTerminalClipboardMode, programCopyDecision } from './terminalClipboard'
 import { showAgentNotification } from './agentNotify'
 import { failoverPrefs, initFailover, onUsageChanged, setFailoverPrefs } from './failover/service'
@@ -10,7 +10,8 @@ import { homedir } from 'node:os'
 import type { SessionPaths } from './sessions/paths'
 import type { IncrementalTranscriber } from './pipeline/stt/engine'
 import { loadDevDotEnv, type SttKeyStore } from './pipeline/stt/keys'
-import { sanitizeCaptureTarget } from '@shared/captureTarget'
+import { captureTargetLabel, resolveCaptureTarget, sanitizeCaptureTarget } from '@shared/captureTarget'
+import { AGENT_SKILL_AGENTS, type AgentSkillAgent, type SkillContext } from '@shared/agentSkill'
 import { BrowserWindow, Notification, app, clipboard, dialog, ipcMain, nativeTheme, safeStorage, shell, protocol, session } from 'electron'
 import { basename, dirname, isAbsolute, join } from 'node:path'
 import type { IpcEventChannel, IpcEvents, IpcRequests } from '@shared/ipc'
@@ -21,6 +22,7 @@ import {
   DEFAULT_URL,
   type AnnotationMode,
   type AppMode,
+  type CaptureTarget,
   type Project,
   type ProjectUpdate,
   type ProjectSession,
@@ -33,6 +35,7 @@ import {
 } from '@shared/types'
 import { isRecordableUrl, sessionUrl, withProjectSession } from '@shared/projectSession'
 import { THEME_BACKGROUND } from '@shared/theme'
+import { normalizeAnnotationColor } from '@shared/annotation'
 import { findProjectByFolder, markProjectOpened, newProject, reorderProjects, upsertProjectFolder } from './projects'
 import { checkSshTarget, remoteWorkspaceDirName, sshDefaultName, type SshTarget } from '@shared/sshCommand'
 import { EmbeddedBrowser, browserSession } from './browser'
@@ -69,7 +72,7 @@ import { installMethodFor } from '@shared/appUpdate'
 import { sanitizeLayout } from '@shared/layout'
 import { ResourceCollector } from './resources'
 import { ProjectWatcher, listDirectory, listFiles, readTextFile, resolveInside, searchFiles, writeTextFile } from './files'
-import { copyEntries, createEntry, importEntries, moveEntries, pathsForClipboard, renameEntry, terminalDirFor, trashEntries, trashFor } from './fileOps'
+import { copyEntries, createEntry, importEntries, importMediaForMarkdown, moveEntries, pathsForClipboard, renameEntry, terminalDirFor, trashEntries, trashFor } from './fileOps'
 import { inspectProjectFile, projectMediaResponse } from './projectMedia'
 import { isRiskyToOpenExternally } from '@shared/fileViewer'
 import { refreshPreviewIn, registerPreviewProtocol, renderPreviewSource } from './preview'
@@ -140,6 +143,13 @@ let terminalFocused = false
  * 窓に届いた本物の入力とメニューの操作からだけ作り、renderer の求めは同意にしない
  */
 const gestures = new UserGestures()
+/**
+ * 文字で指摘の静止画の許可。内蔵ブラウザ・映したウインドウのビューに届いた本物の入力（Enter・クリック）から、そのビューだけに1回（captureConsent.ts）。
+ * アプリの窓の同意（gestures）とは別に持つ（ページの中の操作で、窓の撮影・録画の同意を作らない）
+ */
+const noteInputs = new ViewInputGrant<Electron.WebContents>()
+/** 文字で指摘（エディタで枠を引いて指示を打つ。src/main/textNotes.ts）。最初に入れたときに用意する */
+let textNotes: import('./textNotes').TextNotes | null = null
 /** 利用者が選んだ録る対象と音。起動時の設定から始め、操作の直後の変更でだけ広げる */
 let captureConsent: CaptureConsentState = { target: { kind: 'browser' }, mic: true, systemAudio: false }
 /** 録画中か（main が出す印。窓の題名と macOS の Dock） */
@@ -206,6 +216,8 @@ let activePaths: SessionPaths | null = null
 /** 「このレビューに追加で録る」の録画中なら、足す先のレビューと録画の番号（activePaths は takes/<n>/ を指す） */
 let activeAppend: { review: SessionPaths; n: number } | null = null
 let transcriber: IncrementalTranscriber | null = null
+/** 録画中の文字起こしの途中経過を画面へ送る（右パネルの「文字起こし」タブと、止まったときの警告。pipeline/stt/liveFeed.ts） */
+let liveFeed: import('./pipeline/stt/liveFeed').LiveTranscriptFeed | null = null
 let activeOptions = { captureSystemAudio: false, captureMic: true, transcription: 'local' as SttProvider }
 
 /**
@@ -387,7 +399,11 @@ function projectRoot(): string {
 }
 
 function setWorkspace(folderPath: string | null, project: Project | null = null): WorkspaceState {
-  if (folderPath !== workspace.folderPath) fileWatcher.watch(folderPath)
+  if (folderPath !== workspace.folderPath) {
+    fileWatcher.watch(folderPath)
+    // 文字で指摘は前のプロジェクトのレビューへ足さない（切って足し先も外す）
+    textNotes?.setActive(false, { reviewId: null, notify: true })
+  }
   workspace = {
     folderPath,
     folderName: project?.name ?? (folderPath ? basename(folderPath) : null),
@@ -447,6 +463,8 @@ function openProject(project: Project): WorkspaceState {
   // 前のプロジェクトの URL は、表示が変わるたびに recordProjectUrl が覚えてある
   const target = sessionUrl(currentSettings().projects.find((p) => p.id === project.id) ?? project)
   if (browser && browser.state().url !== target) void browser.navigate(target)
+  // 録画の対象の画面・ウインドウは前のプロジェクトで選んだもの。別のアプリを映したり録ったりしないよう、内蔵ブラウザに戻す
+  if (captureConsent.target.kind !== 'browser') setCaptureTargetFromMain({ kind: 'browser' })
   return next
 }
 
@@ -734,7 +752,7 @@ async function ensureRecording(): Promise<RecordingController> {
         }
         send('recording:status', status)
       },
-      onLevel: (level) => send('recording:level', level),
+      onLevel: (level) => { send('recording:level', level); liveFeed?.level(level.source, level.rms, level.peak) },
       onPcm: (block) => audioWriter?.write(block),
       onWarning: (message) => send('recording:warning', message),
       onAnnotationHistory: (history) => send('annotation:history', history),
@@ -743,7 +761,105 @@ async function ensureRecording(): Promise<RecordingController> {
   )
   const contents = browser?.contents
   if (contents) recording.attach(contents)
+  // 画面・ウインドウを録る間は、その映像を内蔵ブラウザの場所に映し、その上に書き込める
+  recording.setMirror({
+    show: (sourceId) => { mirrorRecording = sourceId; return syncMirror() },
+    hide: () => { mirrorRecording = null; void syncMirror() }
+  })
   return recording
+}
+
+/** Agent に入れる設定の skill に書く、この Ferret の設定ファイルの場所 */
+function agentSkillContext(): SkillContext {
+  const dir = configDir()
+  return { settingsPath: join(dir, 'settings.json'), schemaPath: join(dir, 'settings.schema.json'), version: app.getVersion() }
+}
+
+/**
+ * 入れてある設定の skill を、この版の設定の項目に合わせて書き直す（起動時）。
+ * 配布版だけ。開発版・E2E が、ふだん使う Agent の skill を開発用の設定ファイルへ向け直さないように
+ */
+function syncAgentSkillOnStart(): void {
+  if (!IS_PACKAGED || IS_E2E) return
+  void import('./agentSkill').then(({ syncAgentSkill }) => syncAgentSkill(agentSkillContext()))
+    .catch((err: unknown) => reportHandled(err, { area: 'agent-launch', op: 'sync agent skill' }))
+}
+
+/** main が録画の対象を変える（内蔵ブラウザへ戻すときだけ）。設定に残し、画面へ知らせる */
+function setCaptureTargetFromMain(target: CaptureTarget): void {
+  captureConsent = { ...captureConsent, target }
+  const capture = currentSettings().capture
+  if (capture) updateSettings({ capture: { ...capture, captureTarget: target } })
+  void syncMirror()
+  send('capture:targetChanged', target)
+}
+
+/** 録画中の画面・ウインドウ（録画が映させているもの）。録画していなければ null */
+let mirrorRecording: string | null = null
+let mirrorQueue: Promise<unknown> = Promise.resolve()
+
+/**
+ * 録画の対象に選んだウインドウ（デスクトップアプリ・シミュレータ・ゲームのエディタなど）を、録画していなくても映す。
+ * 画面全体は映さない（エディタ自身が映り込むため。録画中だけ映す）。画面収録の許可が無ければ映さない（OS の確認を出さない）
+ */
+async function previewSourceId(): Promise<string | null> {
+  const target = captureConsent.target
+  if (target.kind !== 'window') return null
+  const { listCaptureSources, screenAccess } = await import('./recording/sources')
+  if (screenAccess() !== 'granted') return null
+  const sources = await listCaptureSources({ width: 0, height: 0 }).catch((err: unknown) => { reportHandled(err, { area: 'recording', op: 'list mirror sources' }); return [] })
+  const resolved = resolveCaptureTarget(target, sources)
+  return resolved && resolved.kind === 'window' ? resolved.sourceId : target.sourceId
+}
+
+/**
+ * 内蔵ブラウザの場所に映すものを決め直す。録画中はその対象、そうでなければ選んだウインドウ、どちらも無ければ内蔵ブラウザ。
+ * 呼ばれた順に1つずつ行う（選び直しと録画の開始が重なっても、最後の状態に揃う）
+ */
+function syncMirror(): Promise<Electron.WebContents | null> {
+  const next = mirrorQueue.then(async () => {
+    const wanted = mirrorRecording ?? await previewSourceId()
+    if (!browser) return null
+    if (!wanted) { browser.hideMirror(); return null }
+    return browser.showMirror(join(__dirname, '../recorder/mirror.html'), wanted, t('recording.mirrorUnavailable', { target: captureTargetLabel(captureConsent.target) }))
+  })
+  mirrorQueue = next.catch(() => undefined)
+  return next.catch((err: unknown) => { reportHandled(err, { area: 'recording', op: 'sync capture mirror' }); return null })
+}
+
+/** 文字で指摘の受け口を用意する（最初に入れたとき。src/main/textNotes.ts） */
+async function ensureTextNotes(): Promise<import('./textNotes').TextNotes> {
+  if (textNotes) return textNotes
+  const { TextNotes } = await import('./textNotes')
+  textNotes = new TextNotes({
+    views: () => ({ browser: browser?.contents ?? null, mirror: browser?.mirrorContents ?? null }),
+    recording: () => recordingBusy || (!!recording && recording.status.state !== 'idle'),
+    capture: async (view) => {
+      // そのビューで直前に利用者が Enter・クリックした1回だけ撮る（security-5 [1]。ページのスクリプトや IPC だけでは撮れない）
+      if (!noteInputs.consume(view)) return false
+      const image = await view.capturePage()
+      if (image.isEmpty()) return null
+      const { width } = image.getSize()
+      const saved = width > 2560 ? image.resize({ width: 2560, quality: 'better' }) : image
+      return { png: saved.toPNG(), size: saved.getSize() }
+    },
+    save: async (request, reviewId, mirrored) => {
+      if (!workspace.folderPath) throw new UserFacingError(t('errors.openProjectFolder'))
+      const { addTextNote } = await import('./review')
+      const urlPresets = currentSettings().projects.find((p) => p.id === workspace.projectId)?.urls ?? []
+      return addTextNote(workspace.folderPath, reviewId, { ...request, ...(mirrored ? { captureTarget: captureConsent.target } : {}), urlPresets })
+    },
+    color: () => normalizeAnnotationColor(currentSettings().capture?.annotationColor),
+    labels: () => ({ placeholder: t('textNote.page.placeholder'), hint: t('textNote.page.hint'), add: t('textNote.page.add') }),
+    onMode: (active) => send('note:mode', active),
+    onAdded: (result) => send('note:added', result as { review: import('@shared/review').ReviewData; count: number }),
+    onError: (err) => {
+      if (!(err instanceof UserFacingError)) reportHandled(err, { area: 'review', op: 'add text note' })
+      send('note:error', err instanceof UserFacingError ? err.message : t('textNote.errors.saveFailed'))
+    }
+  })
+  textNotes.bind()
+  return textNotes
 }
 
 /**
@@ -867,6 +983,7 @@ async function stopReview(): Promise<RecordingStatus> {
         audioWriter = null
         const stt = await transcriber?.flush()
         transcriber = null
+        liveFeed?.stop()
         if (stt) flow(stt.errors.length ? 'stt failed' : 'stt end', { segments: stt.segments.length, errors: stt.errors.length })
         const paths = activePaths
         const append = activeAppend
@@ -1185,7 +1302,11 @@ function registerIpc(): void {
     },
 
     'browser:setBounds': (bounds) => browser?.setBounds(bounds),
-    'browser:navigate': (url) => browser?.navigate(url),
+    'browser:navigate': (url) => {
+      // ウインドウを映している間に URL を開いたら、内蔵ブラウザへ戻す（録画中は録画の対象を変えない）。狭める向きなので操作の許可は要らない
+      if (captureConsent.target.kind === 'window' && (recording?.status.state ?? 'idle') === 'idle') setCaptureTargetFromMain({ kind: 'browser' })
+      return browser?.navigate(url)
+    },
     'browser:back': () => browser?.back(),
     'browser:forward': () => browser?.forward(),
     'browser:reload': () => browser?.reload(),
@@ -1303,6 +1424,13 @@ function registerIpc(): void {
       return { active: crashReportsActive(), enabled: s.crashReports !== false, noticeShown: s.crashReportsNoticeShown === true, packaged: IS_PACKAGED, test: sentryTestKinds() }
     },
     'telemetry:noticeShown': () => updateSettings({ crashReportsNoticeShown: true }),
+    'agentSkill:status': async () => (await import('./agentSkill')).agentSkillStatus(agentSkillContext()),
+    'agentSkill:install': async (agents) => {
+      // Agent の設定のフォルダへ書くので、利用者が押した直後だけ
+      if (!gestures.consume('choice')) throw new UserFacingError(t('errors.needsUserAction'))
+      const wanted = Array.isArray(agents) ? agents.filter((a): a is AgentSkillAgent => (AGENT_SKILL_AGENTS as readonly string[]).includes(a)) : undefined
+      return (await import('./agentSkill')).installAgentSkill(agentSkillContext(), wanted)
+    },
     'settings:onboarding': async (patch) => {
       const { applyOnboardingPatch } = await import('@shared/onboarding')
       updateSettings({ onboarding: applyOnboardingPatch(currentSettings().onboarding, patch && typeof patch === 'object' ? patch : {}) })
@@ -1442,6 +1570,8 @@ function registerIpc(): void {
       // 録る対象は、利用者が選んだ直後だけ変える。録画はこの対象しか録らない
       if (!gestures.consume('choice')) throw new UserFacingError(t('errors.needsUserAction'))
       captureConsent = { ...captureConsent, target: captureTarget }
+      // 選んだウインドウをエディタに映す（録画中は録画の対象を映したまま）
+      void syncMirror()
       const capture = currentSettings().capture
       if (capture) updateSettings({ capture: { ...capture, captureTarget } })
       else updateSettings({ capture: { captureMic: true, captureSystemAudio: false, transcription: 'local', language: 'auto', keepDays: 7, stayFeedbackOnStop: false, captureTarget } })
@@ -1567,6 +1697,8 @@ function registerIpc(): void {
         throw new UserFacingError(t('errors.captureChooseAgain'))
       }
       if (!gestures.consume('record')) throw new UserFacingError(t('errors.needsUserAction'))
+      // 文字で指摘は録画と同時に使わない（録画の書き込みと取り違えない）
+      textNotes?.setActive(false, { notify: true })
       // 画面全体・別のウインドウを録るときは、内蔵ブラウザにページが無くてもよい
       if (captureTarget.kind === 'browser') {
         if (!browser?.state().url || browser.state().url === 'about:blank') throw new UserFacingError(t('errors.openUrlToReview'))
@@ -1601,6 +1733,8 @@ function registerIpc(): void {
         const systemAudioSafe = systemAudioCheck ?? (options.captureSystemAudio && (IS_E2E || process.env.ADE_SYNTHETIC_MIC === '1') ? 'denied' as const : null)
         if ((options.captureMic !== false || options.captureSystemAudio) && (process.env.ADE_SYNTHETIC_MIC !== '1' || (IS_E2E && process.env.ADE_QA_AUDIO) || systemAudioCheck)) {
           const { IncrementalTranscriber } = await import('./pipeline/stt/engine')
+          // 区切りごとの進み具合を右パネルの「文字起こし」タブへ（録画は待たせない）
+          const onProgress = (progress: import('./pipeline/stt/engine').TranscriberProgress) => liveFeed?.progress(progress)
           if (activeOptions.transcription !== 'local') {
             const provider = activeOptions.transcription
             const { STT_PROVIDER_PRESETS, providerLabel, resolveEndpoint } = await import('@shared/aiProviders')
@@ -1619,7 +1753,7 @@ function registerIpc(): void {
             else {
               try {
                 transcriber = new IncrementalTranscriber(createSttEngine({ provider, endpoint: resolveEndpointRefs(capture?.sttEndpoints?.[provider], keyLookup()), apiKey,
-                  language: options.language ?? 'auto', maxCostUsd }), onSegments)
+                  language: options.language ?? 'auto', maxCostUsd }), onSegments, onProgress)
               } catch (err) {
                 // 接続先の設定の不足（UserFacingError）は送らない。それ以外の失敗だけが届く
                 reportHandled(err, { area: 'stt', op: 'create stt engine' })
@@ -1631,11 +1765,15 @@ function registerIpc(): void {
             const binary = await resolveWhisperBinary({ modelDir: '' }, nodeProbes())
             const { WhisperCppEngine } = await import('./pipeline/stt/whisper')
             if (binary && existsSync(localModel())) transcriber = new IncrementalTranscriber(
-              new WhisperCppEngine({ binary, model: localModel(), language: options.language ?? 'auto', greedy: true }), onSegments)
+              new WhisperCppEngine({ binary, model: localModel(), language: options.language ?? 'auto', greedy: true }), onSegments, onProgress)
             else sttWarnings.push(t('errors.localModelMissingWarning'))
           }
         }
         flow('stt start', { engine: transcriber ? (options.transcription ?? 'local') : 'none' })
+        const { LiveTranscriptFeed } = await import('./pipeline/stt/liveFeed')
+        liveFeed ??= new LiveTranscriptFeed({ status: (status) => send('transcript:status', status), segments: (batch) => send('transcript:segments', batch) })
+        liveFeed.start({ transcribing: transcriber !== null, audio: options.captureMic !== false || options.captureSystemAudio, mic: options.captureMic !== false,
+          twoSpeakers: options.captureSystemAudio, message: sttWarnings[0] })
         audioWriter = await createAudioWriter(paths.audioDir)
         await controller.start({ paths: { videoPath: paths.recording, framesDir: paths.framesDir,
           audioDir: paths.audioDir, eventsPath: paths.eventsJsonl }, captureSystemAudio: options.captureSystemAudio,
@@ -1645,6 +1783,7 @@ function registerIpc(): void {
           ...(process.env.ADE_SYNTHETIC_MIC === '1' ? { syntheticMic: true } : {}),
           ...(systemAudioSafe ? { syntheticSystemAudio: systemAudioSafe } : {}),
           ...(IS_E2E && process.env.ADE_QA_AUDIO ? { syntheticMicWavBase64: (await readFile(process.env.ADE_QA_AUDIO)).toString('base64') } : {}) })
+          .catch((err: unknown) => { liveFeed?.stop(); throw err })
         for (const warning of sttWarnings) send('recording:warning', warning)
         return controller.status
       } finally { recordingBusy = false }
@@ -1666,12 +1805,19 @@ function registerIpc(): void {
       ;(await ensureRecording()).setAnnotationMode(mode === 'pen' || mode === 'rect' ? mode : 'off')
     },
     'annotation:setColor': async (value: unknown) => {
-      const { normalizeAnnotationColor } = await import('@shared/annotation')
       const annotationColor = normalizeAnnotationColor(value)
       ;(await ensureRecording()).setAnnotationColor(annotationColor)
       const capture = currentSettings().capture
       if (capture) updateSettings({ capture: { ...capture, annotationColor } })
       else updateSettings({ capture: { captureMic: true, captureSystemAudio: false, transcription: 'local', language: 'auto', keepDays: 7, stayFeedbackOnStop: false, annotationColor } })
+      textNotes?.refreshColor()
+    },
+    'note:setMode': async (enabled, reviewId) => {
+      // ツールバーの［文字で指摘］。録画中・プロジェクト未選択は入れない。足し先は開いているレビュー（このプロジェクトのもの。review.ts の addTextNote が確かめる）
+      if (enabled === true && !workspace.folderPath) throw new UserFacingError(t('errors.openProjectFolder'))
+      if (enabled === true && (recordingBusy || (recording && recording.status.state !== 'idle'))) throw new UserFacingError(t('errors.recordingBusy'))
+      const notes = enabled === true ? await ensureTextNotes() : textNotes
+      return notes?.setActive(enabled === true, { reviewId: typeof reviewId === 'string' && reviewId ? reviewId : null }) ?? false
     },
     'annotation:clear': async () => {
       // ツールバーの［消去］。元に戻すで画面に戻せる
@@ -1695,6 +1841,7 @@ function registerIpc(): void {
     'fs:copy': (relPaths, destRel) => copyEntries(projectRoot(), relPaths, destRel),
     'fs:move': (relPaths, destRel) => moveEntries(projectRoot(), relPaths, destRel),
     'fs:import': (absolutePaths, destRel) => importEntries(projectRoot(), absolutePaths, destRel),
+    'fs:importMedia': (markdownRel, absolutePaths) => importMediaForMarkdown(projectRoot(), markdownRel, absolutePaths),
     'fs:copyPath': async (relPaths, kind) => {
       const text = await pathsForClipboard(projectRoot(), relPaths, kind === 'relative' ? 'relative' : 'absolute')
       clipboard.writeText(text)
@@ -1716,22 +1863,6 @@ function registerIpc(): void {
       unsavedFiles = Array.isArray(paths) ? paths.filter((p): p is string => typeof p === 'string') : []
     },
 
-    // GitHub 連携（src/main/github/。gh CLI を呼ぶので、使うときだけ読み込む）
-    'github:status': async () => (await import('./github')).githubStatus(),
-    'github:repo': async () => (await import('./github')).githubRepo(workspace.folderPath),
-    'gitlab:status': async () => {
-      const [{ githubRepo }, { gitlabStatus }] = await Promise.all([import('./github'), import('./github/gitlab')])
-      return gitlabStatus((await githubRepo(workspace.folderPath)).repo)
-    },
-    'github:reviewDraft': async (id) => {
-      const { checkedPaths } = await import('./review')
-      return (await import('./github')).githubReviewDraft(checkedPaths(workspace.folderPath, id), workspace.folderPath)
-    },
-    'github:postReview': async (id, target, body) => {
-      const { checkedPaths } = await import('./review')
-      checkedPaths(workspace.folderPath, id)
-      return (await import('./github')).githubPostReview(workspace.folderPath, target, body)
-    },
     'star:star': async () => (await starPrompt()).star(),
     'star:openWeb': async () => (await starPrompt()).openWeb(),
     'star:later': async () => (await starPrompt()).later(),
@@ -2030,9 +2161,15 @@ async function main(): Promise<void> {
   })
   // 表示幅の切替を操作ログへ残す（WS-3 → viewport イベント）
   browser.onViewportChange = (width) => recording?.recordViewport(width)
+  // 文字で指摘の静止画は、そのビューへの本物の入力の直後だけ（noteInputs）
+  browser.onPageInput = (contents) => noteInputs.sawInput(contents)
   browser.attach(mainWindow, loadedSettings.url, loadedSettings.viewport)
   browser.setBackgroundColor(nativeThemeBackground())
   mark('browser:attached')
+  // 前回ウインドウを選んでいたなら、起動したときからそれを映す
+  void syncMirror()
+  // 入れてある設定の skill を、この版の設定の項目に合わせる
+  syncAgentSkillOnStart()
 
   const rendererUrl = process.env.ELECTRON_RENDERER_URL
   if (rendererUrl) {

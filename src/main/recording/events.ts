@@ -44,7 +44,7 @@ export const MAX_ERASE_IDS = 50
 /** 座標・大きさの絶対値の上限(px)。画面の外の極端な値で bbox を壊さない */
 const MAX_COORDINATE = 100_000
 
-function sanitizeElement(el: unknown): ElementRef | undefined {
+export function sanitizeElement(el: unknown): ElementRef | undefined {
   if (typeof el !== 'object' || el === null) return undefined
   const value = el as Partial<ElementRef>
   if (typeof value.selector !== 'string' || value.selector.length === 0) return undefined

@@ -35,6 +35,12 @@
   white-space: nowrap;
 }
 
+/* サービスのサイト（ホスト名のリンク）。.st-link の margin-right: auto で操作のボタンを押しやらない */
+.cli-tool__site {
+  margin-right: 0;
+  font-size: var(--font-size-xs);
+}
+
 .cli-tool__actions {
   display: flex;
   align-items: center;

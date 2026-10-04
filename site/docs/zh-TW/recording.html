@@ -210,7 +210,18 @@
   <li><strong><span class="docs-ui">畫筆</span></strong>：選取它，或按住 <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Alt</kbd></span></span>，只在按住時繪圖（在欄位中輸入文字時會被忽略）。</li>
   <li><strong><span class="docs-ui">清除</span></strong>：移除目前的標記。</li>
 </ul>
-<p>一邊談論某個位置，一邊把它圈起來：話語與標記會歸入同一則意見。畫筆只在錄製時可用。沒有文字工具，請直接用說的。畫筆、方框與顏色的按鍵列在<a href="keyboard.html#drawing">鍵盤快速鍵</a>中。</p>
+<p>一邊談論某個位置，一邊把它圈起來：話語與標記會歸入同一則意見。畫筆只在錄製時可用。錄製時沒有文字工具：請直接用說的，或之後用<a href="#type">文字回饋</a>輸入。畫筆、方框與顏色的按鍵列在<a href="keyboard.html#drawing">鍵盤快速鍵</a>中。</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="type">
+        <h2 id="type"><a class="docs-anchor" href="#type" aria-label="連結至「不用說的，改用文字回饋」">#</a>不用說的，改用文字回饋</h2>
+        <p>不方便說話時，可以把意見打出來。只能在編輯器模式的 <span class="docs-ui">瀏覽器</span> 分頁、且未在錄製時使用。</p>
+<ol class="docs-steps">
+  <li>按下瀏覽器工具列中的 <span class="docs-ui">文字回饋</span>。</li>
+  <li>在頁面上拖曳，框住要修改的位置；也可以點選某個元素，直接把它框起來。</li>
+  <li>輸入要怎麼改。<kbd>Enter</kbd> 新增，<span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd><kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Enter</kbd></span></span> 換行，<kbd>Esc</kbd> 取消方框。用輸入法選字時按下的 Enter 不會新增。</li>
+</ol>
+<p>每一則都會成為一則意見，附上頁面與方框的圖片、URL 以及框住的元素，和錄製得到的意見一樣。它會加入 <span class="docs-ui">意見</span> 中開啟的審查；沒有開啟的審查時會建立新的。瀏覽器維持在前面，可以連續新增多則；在沒有方框時按 <kbd>Esc</kbd>，或再按一次按鈕即可結束。在瀏覽器位置顯示的桌面應用程式或模擬器視窗上也能同樣使用（不附 URL）。</p>
       </section>
 
       <section class="docs-section" aria-labelledby="annotations-clear">
@@ -226,6 +237,12 @@
       <section class="docs-section" aria-labelledby="mic">
         <h2 id="mic"><a class="docs-anchor" href="#mic" aria-label="連結至「麥克風」">#</a>麥克風</h2>
         <p>麥克風預設為開啟。可從頁尾（<span class="docs-ui">關閉麥克風</span> / <span class="docs-ui">開啟麥克風</span>）或設定中的 <span class="docs-ui">錄下我的聲音</span> 切換。在 <span class="docs-ui">麥克風</span> 中選擇裝置。</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="live-transcript">
+        <h2 id="live-transcript"><a class="docs-anchor" href="#live-transcript" aria-label="連結至「查看轉錄內容」">#</a>查看轉錄內容</h2>
+        <p>錄製時，開啟回饋模式右側面板頂端的 <span class="docs-ui">轉錄</span> 分頁，就能以文字查看你說的話與說話的時間（同時錄製會議對方的聲音時，也會顯示是誰說的）。說完稍作停頓，幾秒後就會出現文字，因此能及早確認所說的內容有被記錄下來。頂端一行會顯示 <span class="docs-ui">正在轉錄</span>、等待中的段數，或轉錄停止的原因。</p>
+<p>若轉錄失敗、未設定模型或金鑰、約 2 分鐘的語音沒有轉成文字，或麥克風沒有收到聲音，即使分頁已關閉，Ferret 也會提示一次，並在右側面板按鈕上加上標記。錄製會繼續，音訊也會保留。若要隱藏該分頁，請在 <span class="docs-ui">設定 → 轉錄</span> 中關閉 <span class="docs-ui">錄製時顯示即時轉錄（回饋模式的右側面板）</span>。警告仍會顯示。</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other-side">
@@ -278,8 +295,10 @@
         <li><a href="#desktop-mobile">桌面應用程式、遊戲與行動應用程式</a></li>
         <li><a href="#record">開始、暫停、停止</a></li>
         <li><a href="#pen">畫筆</a></li>
+        <li><a href="#type">不用說的，改用文字回饋</a></li>
         <li><a href="#annotations-clear">標記何時消失</a></li>
         <li><a href="#mic">麥克風</a></li>
+        <li><a href="#live-transcript">查看轉錄內容</a></li>
         <li><a href="#other-side">錄下會議中對方的聲音</a></li>
         <li><a href="#other-side-os">各作業系統的系統音訊</a></li>
         <li><a href="#other-side-tips">會議中的訣竅</a></li>

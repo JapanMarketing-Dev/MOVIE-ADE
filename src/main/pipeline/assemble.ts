@@ -15,10 +15,12 @@ import type {
   Material,
   OrganizeOutput,
   Quote,
-  SessionMeta
+  SessionMeta,
+  TranscriptSegment
 } from './types'
 import { buildItemContext } from './context'
 import { nearestFrameTime } from './draft'
+import { isMeaninglessUtterance } from './meaningless'
 import { t } from '@shared/i18n'
 
 export interface AssembleOptions {
@@ -95,8 +97,9 @@ export function assembleFromOrganized(
   options: Partial<AssembleOptions> = {}
 ): FeedbackDocument {
   const opt = { ...defaultAssembleOptions, ...options }
+  const cleaned = withoutMeaningless(output, material.transcript)
 
-  const pending: PendingItem[] = output.items.map((it, i) => {
+  const pending: PendingItem[] = cleaned.items.map(({ item: it }, i) => {
     const frameTimes = resolveFrameTimes(it.frame_times, material.frames)
     return {
       id: `i${i + 1}`,
@@ -111,20 +114,83 @@ export function assembleFromOrganized(
       include: it.status === 'decided' || opt.includeNeedsCheck
     }
   })
+  const penOnly = new Set(cleaned.items.flatMap(({ penOnly }, i) => (penOnly ? [`i${i + 1}`] : [])))
 
   return {
     meta: material.meta,
-    items: finalizeItems(pending, material.events, opt),
-    dropped: output.dropped,
+    items: finalizeItems(pending, material.events, opt).map((item) => (penOnly.has(item.id) ? withPenTitle(item, true) : item)),
+    dropped: cleaned.dropped,
     organizedByLlm: true
   }
+}
+
+/** 「除外した発話」に付ける理由（意味の通じない発話） */
+function meaninglessReason(): string {
+  return t('review.droppedMeaningless')
+}
+
+/**
+ * 整理（LLM）の出力からも、意味の通じない発話（meaningless.ts）を外す。下書き（draft.ts）と同じ決まり:
+ * - 意味の無い引用は外す（書き込みのある指摘の返事「はい」「OK」は残す）
+ * - 引用が残らず書き込みも無い指摘は消し、その発話を「除外した発話」へ入れる
+ * - 引用が残らず書き込みがある指摘は残し、見出しは囲んだ要素・要望は空にする（書き込みだけの指摘と同じ。penOnly）
+ * - 見出し・要望そのものが意味の無い文なら、残った引用から作り直す
+ * - どの指摘にも除外にも入っていない意味の無い発話も「除外した発話」へ入れる（戻せるように）
+ */
+function withoutMeaningless(output: OrganizeOutput, transcript: TranscriptSegment[]): {
+  items: Array<{ item: OrganizeOutput['items'][number]; penOnly: boolean }>
+  dropped: OrganizeOutput['dropped']
+} {
+  const removed: Quote[] = []
+  const items: Array<{ item: OrganizeOutput['items'][number]; penOnly: boolean }> = []
+  for (const it of output.items) {
+    const hasAnnotation = it.annotation_ids.length > 0
+    const quotes = it.quotes.filter((q) => !isMeaninglessUtterance(q.text, { hasAnnotation }))
+    removed.push(...it.quotes.filter((q) => !quotes.includes(q)))
+    const titleMeaningless = isMeaninglessUtterance(it.title, { hasAnnotation })
+    const requestMeaningless = isMeaninglessUtterance(it.request, { hasAnnotation }) && it.request.trim() !== ''
+    if (quotes.length === 0) {
+      // 引用の無い書き込みだけの指摘は、もともとの形（見出し・要望は整理のまま）。意味の無い引用を外して空になったものだけ直す
+      if (!hasAnnotation) continue
+      const emptied = it.quotes.length > 0
+      if (!emptied && !titleMeaningless && !requestMeaningless) { items.push({ item: it, penOnly: false }); continue }
+      items.push({ item: { ...it, quotes: [], request: emptied || requestMeaningless ? '' : it.request }, penOnly: emptied || titleMeaningless })
+      continue
+    }
+    if (quotes.length === it.quotes.length && !titleMeaningless && !requestMeaningless) { items.push({ item: it, penOnly: false }); continue }
+    const spoken = quotes.map((q) => q.text.trim()).join(' ').trim()
+    items.push({
+      item: {
+        ...it,
+        quotes,
+        title: titleMeaningless ? truncate(spoken, 60) : it.title,
+        request: requestMeaningless ? spoken : it.request
+      },
+      penOnly: false
+    })
+  }
+
+  const quoted = new Set(items.flatMap(({ item }) => item.quotes.map((q) => q.t)))
+  const dropped = [...output.dropped]
+  const seen = new Set(dropped.map((d) => d.t))
+  const add = (t: number, text: string) => {
+    if (quoted.has(t) || seen.has(t)) return
+    seen.add(t)
+    dropped.push({ t, text, reason: meaninglessReason() })
+  }
+  for (const q of removed) add(q.t, q.text)
+  for (const s of transcript) if (isMeaninglessUtterance(s.text, { hasAnnotation: true })) add(s.t0, s.text)
+  dropped.sort((a, b) => a.t - b.t)
+  return { items, dropped }
 }
 
 /** 下書きのまま（LLM未設定・失敗・タイムアウト時のフォールバック。EXT-11） */
 export function assembleFromDraft(
   material: Material,
   draft: DraftItem[],
-  options: Partial<AssembleOptions> = {}
+  options: Partial<AssembleOptions> = {},
+  /** 指摘にしなかった意味の通じない発話（Draft.meaningless）。「除外した発話」に入れ、確認画面から戻せるようにする */
+  meaningless: TranscriptSegment[] = []
 ): FeedbackDocument {
   const opt = { ...defaultAssembleOptions, ...options }
 
@@ -145,13 +211,8 @@ export function assembleFromDraft(
   return {
     meta: material.meta,
     // 話していないペンだけの指摘は、囲んだ要素を見出しにする（どこを囲んだかが一目で分かる）
-    items: finalizeItems(pending, material.events, opt).map((item) => {
-      const element = item.context.element
-      if (item.quotes.length > 0 || !element) return item
-      const text = !element.sensitive ? element.text?.replace(/\s+/g, ' ').trim() : ''
-      return { ...item, title: t('review.penTitleAt', { target: text ? `“${truncate(text, 40)}”` : element.selector }) }
-    }),
-    dropped: [],
+    items: finalizeItems(pending, material.events, opt).map((item) => (item.quotes.length > 0 ? item : withPenTitle(item, false))),
+    dropped: meaningless.map((s) => ({ t: s.t0, text: s.text, reason: meaninglessReason() })),
     organizedByLlm: false
   }
 }
@@ -170,6 +231,17 @@ export function toPending(item: FeedbackItem): PendingItem {
     draftIds: item.draftIds,
     include: item.include
   }
+}
+
+/**
+ * 話していないペンだけの指摘の見出し: 囲んだ要素（の文字。伏せる要素ならセレクタ）。
+ * 要素が分からなければ、fallback のときだけ「ペンで囲んだ箇所」にする（下書きは draftTitle が既に付けている）
+ */
+function withPenTitle(item: FeedbackItem, fallback: boolean): FeedbackItem {
+  const element = item.context.element
+  if (!element) return fallback ? { ...item, title: t('review.penFallbackTitle') } : item
+  const text = !element.sensitive ? element.text?.replace(/\s+/g, ' ').trim() : ''
+  return { ...item, title: t('review.penTitleAt', { target: text ? `“${truncate(text, 40)}”` : element.selector }) }
 }
 
 function spokenText(d: DraftItem): string {

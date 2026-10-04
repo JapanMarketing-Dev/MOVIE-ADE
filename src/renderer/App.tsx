@@ -1,5 +1,7 @@
 import { ExternalDropOverlay, useExternalDrop } from './hooks/useExternalDrop'
 import { planEditorDrop, readDrop } from './lib/externalDrop'
+import { embedMedia, markdownDropTargetAt, planMediaDrop, planTreeMediaDrop } from './editor/markdownDrop'
+import { isMarkdownLanguage } from './editor/language'
 import { delay } from '@shared/delay'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -24,7 +26,10 @@ import { UnsavedChangesDialog } from './components/UnsavedChangesDialog'
 import { useOpenFiles } from './editor/useOpenFiles'
 import { FeedbackToolbar, type AnnotationTool } from './components/FeedbackToolbar'
 import { ReviewTargetsPanel } from './components/ReviewTargetsPanel'
-import { readLocal } from './lib/localPref'
+import { FeedbackSideTabs, LiveTranscriptPanel, type FeedbackSideTab } from './components/LiveTranscriptPanel'
+import { useLiveTranscript } from './lib/liveTranscript'
+import { liveTranscriptProblem } from '@shared/liveTranscript'
+import { readLocal, writeLocal } from './lib/localPref'
 import { useUrlHistory } from './lib/urlHistory'
 import { subscribeIpc } from './lib/ipcEvents'
 import { CaptureTargetPicker } from './components/CaptureTargetPicker'
@@ -196,6 +201,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const [micDeviceId, setMicDeviceId] = useState('')
   const [keepDays, setKeepDays] = useState(7)
   const [stayFeedbackOnStop, setStayFeedbackOnStop] = useState(false)
+  /** 録画中の文字起こしを右パネルのタブに出すか（設定の capture.showLiveTranscript。止まったときの警告は切っても出す） */
+  const [showLiveTranscript, setShowLiveTranscript] = useState(true)
   const [language, setLanguage] = useState<SttLanguageCode>('auto')
   const [captureSystemAudio, setCaptureSystemAudio] = useState(false)
   const [level, setLevel] = useState(0)
@@ -237,21 +244,66 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     void window.ade.invoke('settings:feedbackTargets', { visible: value }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
     return value
   })
+  /*
+   * 録画中の文字起こし（右パネルの「文字起こし」タブ）。パネルを閉じていても受け取る。
+   * 止まった・声が文字にならない・マイクに音が来ないときは、パネルを見ていなくても1回だけ知らせ、右パネルの開閉ボタンに印を付ける
+   */
+  const live = useLiveTranscript()
+  const [sideTab, setSideTab] = useState<FeedbackSideTab>(() => readLocal('ade.feedback.sideTab') === 'transcript' ? 'transcript' : 'targets')
+  const chooseSideTab = (tab: FeedbackSideTab) => {
+    setSideTab(tab)
+    writeLocal('ade.feedback.sideTab', tab)
+  }
+  const shownSideTab: FeedbackSideTab = showLiveTranscript ? sideTab : 'targets'
+  const liveProblem = liveTranscriptProblem(live.status)
+  const liveToasted = useRef(new Set<string>())
+  useEffect(() => {
+    // 文字起こしが動いていない（モデル・キーが無い）ことは、録画の警告（recording:warning）がすでに知らせている
+    if (!liveProblem || liveProblem === 'unavailable') return
+    const key = `${live.status.run}:${liveProblem}`
+    if (liveToasted.current.has(key)) return
+    liveToasted.current.add(key)
+    const message = liveProblem === 'error' ? t('liveTranscript.toast.error', { message: live.status.message ?? '' }) : t(`liveTranscript.warning.${liveProblem}`)
+    toast({ tone: 'warning', message, duration: 0 })
+    showNotice(message)
+  }, [liveProblem, live.status.run, live.status.message, toast, showNotice, t])
+  const liveAlert = liveProblem && !(targetsOpen && shownSideTab === 'transcript') ? t('liveTranscript.alert') : null
   const fileError = useCallback((message: string) => toast({ tone: 'danger', message }), [toast])
   const files = useOpenFiles({ root: workspace.folderPath, activeTab: centerTab, setActiveTab: setCenterTab, onError: fileError })
-  // 外からエディタの領域へ落としたファイルを開く。プロジェクトの外はファイルツリーへの取り込みを案内し、フォルダはプロジェクトとして開く
-  const editorDrop = useExternalDrop((dataTransfer) => void readDrop(dataTransfer).then(async (entries) => {
-    const plan = planEditorDrop(entries)
-    for (const path of plan.open) files.open(path)
-    if (plan.outside) toast({ tone: 'info', message: t('drop.editor.outside', { name: plan.outside }) })
-    else if (plan.unreadable) toast({ tone: 'warning', message: t('drop.errors.unreadable') })
-    if (plan.folder) await window.ade.invoke('project:addDropped', plan.folder)
-  }).catch((err) => toast({ tone: 'warning', message: errorMessage(err) })), true, (relPaths) => void (async () => {
+  // 外からエディタの領域へ落としたファイルを開く。プロジェクトの外はファイルツリーへの取り込みを案内し、フォルダはプロジェクトとして開く。
+  // Markdown のエディタ（ソース・プレビュー）の上に落とした画像・動画は、開かずにその位置へ埋め込む（外のものは隣の assets/ などへコピー。markdownDrop.ts）
+  const importMedia = useCallback((markdownRel: string, paths: string[]) => window.ade.invoke('fs:importMedia', markdownRel, paths), [])
+  const editorDrop = useExternalDrop((dataTransfer, point) => {
+    // 位置の判定は落とした瞬間に（読み取りを待つ間に画面が変わっても、落とした先のエディタへ入れる）
+    const markdownTarget = markdownDropTargetAt(point)
+    void readDrop(dataTransfer).then(async (entries) => {
+      let rest = entries
+      if (markdownTarget) {
+        const media = planMediaDrop(entries)
+        rest = media.rest
+        await embedMedia(markdownTarget, media.media, point, importMedia)
+        if (rest.length === 0 && entries.length > 0) return
+      }
+      const plan = planEditorDrop(rest)
+      for (const path of plan.open) files.open(path)
+      if (plan.outside) toast({ tone: 'info', message: t('drop.editor.outside', { name: plan.outside }) })
+      else if (plan.unreadable) toast({ tone: 'warning', message: t('drop.errors.unreadable') })
+      if (plan.folder) await window.ade.invoke('project:addDropped', plan.folder)
+    }).catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
+  }, true, (relPaths, point) => void (async () => {
+    let rest = relPaths
+    const markdownTarget = markdownDropTargetAt(point)
+    if (markdownTarget) {
+      const media = planTreeMediaDrop(relPaths)
+      rest = media.rest
+      await embedMedia(markdownTarget, media.media, point, importMedia)
+    }
     // ファイルツリーの行: ファイルだけを開く（フォルダは fs:inspect が断る）
-    for (const path of relPaths) {
+    for (const path of rest) {
       if (await window.ade.invoke('fs:inspect', path).then(() => true, () => false)) files.open(path)
     }
-  })())
+  })().catch((err) => toast({ tone: 'warning', message: errorMessage(err) })))
+  const markdownActive = centerTab.startsWith('file:') && !!files.activeFile && isMarkdownLanguage(files.activeFile.language) && files.activeFile.status === 'ready' && !files.activeFile.viewer
   // プロジェクトごとに、中央のタブ・開いていたファイル・表示中のレビューを覚えて戻す（URL は main が戻す）
   useProjectSession({
     projectId: workspace.projectId ?? null,
@@ -286,7 +338,10 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
    * 内蔵ブラウザのビューはDOMの上に必ず重なるので、出している間はビューを隠す。
    */
   const emptyReason: SlotEmptyReason | null =
-    workspace.folderPath === null
+    // 画面・ウインドウを録っている間と、ウインドウを選んでいる間は、その映像を内蔵ブラウザの場所に映す（main の syncMirror）。空の案内で隠さない
+    (recording && captureTarget.kind !== 'browser') || captureTarget.kind === 'window'
+      ? null
+      : workspace.folderPath === null
       ? 'no-folder'
       : browserState.url === '' || browserState.url === DEFAULT_URL
         ? 'no-url'
@@ -330,6 +385,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     if (patch.transcription !== undefined) setTranscription(patch.transcription)
     if (patch.keepDays !== undefined) setKeepDays(patch.keepDays)
     if (patch.stayFeedbackOnStop !== undefined) setStayFeedbackOnStop(patch.stayFeedbackOnStop)
+    if (patch.showLiveTranscript !== undefined) setShowLiveTranscript(patch.showLiveTranscript)
   }
 
   /** フッターからの変更は閉じる操作が無いので、その場で保存する */
@@ -396,6 +452,54 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   }, [toast, showNotice])
 
   const refreshHistory = useCallback(async () => { setHistory(await window.ade.invoke('review:list')) }, [])
+  /*
+   * 文字で指摘（エディタの内蔵ブラウザ・映したウインドウで、枠を引いて指示を打つ。録画しない）。
+   * 使えるのはエディタのブラウザのタブで、録画していないとき。足し先は開いているレビュー（無ければ最初の1件で新しく作る）。
+   * 足しても画面はブラウザのまま（続けて何件も足せる）。Esc（ページ）かボタンでやめる
+   */
+  const [noteMode, setNoteMode] = useState(false)
+  const noteAllowed = mode === 'editor' && centerTab === 'browser' && !recording && !recordBusy && workspace.folderPath !== null && emptyReason === null
+  const openReviewForNote = review?.id ?? null
+  const toggleNote = () => {
+    const next = !noteMode
+    void window.ade.invoke('note:setMode', next, openReviewForNote).then(setNoteMode).catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
+  }
+  // 使えない場面（タブ・モードの切り替え・録画の開始）になったら切る
+  useEffect(() => {
+    if (!noteMode || noteAllowed) return
+    setNoteMode(false)
+    void window.ade.invoke('note:setMode', false).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
+  }, [noteMode, noteAllowed])
+  // 開いているレビューが変わったら足し先も変える
+  useEffect(() => {
+    if (!noteMode) return
+    void window.ade.invoke('note:setMode', true, openReviewForNote).then(setNoteMode).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
+  }, [openReviewForNote])
+  // アプリの側に焦点があるときの Esc でもやめる（ページに焦点があるときは注入スクリプトが main へ知らせる）。文字を打つ欄・端末の Esc は奪わない
+  useEffect(() => {
+    if (!noteMode) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.isComposing || event.defaultPrevented) return
+      if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable], .xterm')) return
+      setNoteMode(false)
+      void window.ade.invoke('note:setMode', false).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [noteMode])
+  useEffect(() => {
+    const offs = [
+      window.ade.on('note:mode', setNoteMode),
+      window.ade.on('note:added', ({ review: next, count }) => {
+        setReview(next); setSessionId(next.id)
+        toast({ tone: 'success', message: t('textNote.added', { count }) })
+        void refreshHistory().catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
+      }),
+      window.ade.on('note:error', (message) => toast({ tone: 'warning', message }))
+    ]
+    return () => offs.forEach((off) => off())
+  }, [toast, t, refreshHistory])
+
   const toggleRecording = useCallback(() => {
     // Findings の「追加で録る」から来たときだけ、開いているレビューへ足す（1回限り）
     const appendTo = appendNext.current
@@ -497,6 +601,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     const offs = [
       window.ade.on('recording:level', (data) => { if (data.source === 'mic') setLevel(data.rms) }),
       window.ade.on('recording:status', setRecordStatus),
+      // ウインドウを映している間に URL を開くと、main が内蔵ブラウザへ戻す
+      window.ade.on('capture:targetChanged', (target) => { captureTargetRef.current = target; setCaptureTarget(target) }),
       window.ade.on('annotation:history', setAnnotationHistory),
       window.ade.on('recording:warning', (message) => { toast({ tone: 'warning', message, duration: 0 }); showNotice(message) }),
       window.ade.on('review:ready', (data) => {
@@ -541,6 +647,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         setCaptureMic(settings.capture.captureMic); setCaptureSystemAudio(settings.capture.captureSystemAudio)
         setTranscription(settings.capture.transcription); setLanguage(settings.capture.language); setMicDeviceId(settings.capture.micDeviceId ?? '')
         setKeepDays(settings.capture.keepDays); setStayFeedbackOnStop(settings.capture.stayFeedbackOnStop); setAnnotationColor(normalizeAnnotationColor(settings.capture.annotationColor))
+        setShowLiveTranscript(settings.capture.showLiveTranscript !== false)
       }
       applyFeedbackTargets(settings.feedbackTargets ?? {})
       toast({ tone: 'info', message: t('settings.file.reloaded') })
@@ -570,6 +677,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         setCaptureMic(settings.capture.captureMic); setCaptureSystemAudio(settings.capture.captureSystemAudio)
         setTranscription(settings.capture.transcription); setLanguage(settings.capture.language); setMicDeviceId(settings.capture.micDeviceId ?? '')
         setKeepDays(settings.capture.keepDays); setStayFeedbackOnStop(settings.capture.stayFeedbackOnStop); setAnnotationColor(normalizeAnnotationColor(settings.capture.annotationColor))
+        setShowLiveTranscript(settings.capture.showLiveTranscript !== false)
         if (settings.capture.captureTarget) { captureTargetRef.current = settings.capture.captureTarget; setCaptureTarget(settings.capture.captureTarget) }
       }
       if (settings.feedbackTargets) applyFeedbackTargets(settings.feedbackTargets)
@@ -745,7 +853,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const showDemo = window.ade.demo && workspace.folderPath !== null
   const sessions = history.length ? history.map(toReviewSession) : showDemo ? demoSessions() : []
   const findings = showDemo ? demoFindings() : []
-  const capture = showDemo ? demoCapture() : { ...EMPTY_CAPTURE, microphone: captureMic ? t('capture.summary.defaultMic') : t('capture.summary.noRecording'), transcription: transcription === 'openai' ? t('capture.summary.openai') : transcription === 'compatible' ? t('capture.summary.compatible') : transcription !== 'local' ? t('capture.summary.provider', { label: providerLabel(STT_PROVIDER_PRESETS[transcription], t) }) : available.localReady ? t('capture.summary.local') : t('capture.summary.localMissing'), organizer: t('capture.summary.organizer') }
+  const capture = showDemo ? demoCapture() : { ...EMPTY_CAPTURE, microphone: captureMic ? t('capture.summary.defaultMic') : t('capture.summary.noRecording'), transcription: transcription === 'openai' ? t('capture.summary.openai') : transcription === 'compatible' ? t('capture.summary.compatible') : transcription !== 'local' ? t('capture.summary.provider', { label: providerLabel(STT_PROVIDER_PRESETS[transcription], t) }) : available.localReady ? t('capture.summary.local') : t('capture.summary.localMissing') }
   const selectedSession = sessions.find((s) => s.id === sessionId)
 
   const wsGrid = workspaceGrid(layout)
@@ -826,7 +934,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
             } as React.CSSProperties}
           >
             <section className="pane pane--browser external-drop-host" aria-label={t('app.reviewTarget')} data-testid="center-pane" {...editorDrop.props}>
-              {editorDrop.over && <ExternalDropOverlay label={t('drop.editor.hint')} testId="editor-file-drop" align="top" />}
+              {editorDrop.over && <ExternalDropOverlay label={t(markdownActive ? 'drop.editor.markdownHint' : 'drop.editor.hint')} testId="editor-file-drop" align="top" />}
               <ErrorBoundary name="center">
               <CenterTabs
                 active={centerTab}
@@ -835,8 +943,6 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                 onChange={setCenterTab}
                 files={files.files}
                 onCloseFile={files.requestClose}
-                explorerOpen={explorerOpen}
-                onToggleExplorer={() => setExplorerOpen((open) => !open)}
                 order={centerOrder}
                 onReorder={setCenterOrder}
                 settingsOpen={settingsOpen}
@@ -845,7 +951,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
               {centerTab === 'settings' && settingsOpen ? (
                 <ErrorBoundary name="settings">
                 <SettingsPage
-              value={{ captureMic, micDeviceId, captureSystemAudio, language, transcription, keepDays, stayFeedbackOnStop }}
+              value={{ captureMic, micDeviceId, captureSystemAudio, language, transcription, keepDays, stayFeedbackOnStop, showLiveTranscript }}
               onChange={changeCaptureFromSettings}
               recording={recording}
               micDevices={micDevices}
@@ -876,6 +982,11 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                     project={projects.projects.find((p) => p.id === workspace.projectId) ?? null}
                     onOverlayChange={setUrlDialogOpen}
                     onSelectWindow={selectWindowTarget}
+                    shownTarget={captureTarget.kind === 'window' || (recording && captureTarget.kind !== 'browser') ? captureTarget : undefined}
+                    onShowBrowser={recording ? undefined : () => chooseTarget({ kind: 'browser' })}
+                    noteMode={noteMode}
+                    noteDisabled={!noteAllowed}
+                    onToggleNote={toggleNote}
                   />
                   <BrowserSlot
                     viewport={browserState.viewport}
@@ -994,7 +1105,14 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           onPickTarget={() => setTargetPickerOpen(true)}
           notice={notice}
           targetsOpen={targetsOpen}
-          onToggleTargets={() => setTargetsOpen((open) => !open)}
+          targetsAlert={liveAlert}
+          onToggleTargets={() => {
+            // 文字起こしに問題があるときは、開いたら文字起こしのタブを見せる
+            if (liveAlert && showLiveTranscript) { chooseSideTab('transcript'); setTargetsOpen(() => true); return }
+            setTargetsOpen((open) => !open)
+          }}
+          mic={{ settings: { captureMic, micDeviceId, captureSystemAudio, transcription, language }, onChange: changeCaptureFromFooter,
+            devices: micDevices, available, onOpenSettings: () => openSettings(), onPopoverChange: setFooterPopoverOpen }}
         />
         {/* 内蔵ブラウザと、右のレビュー対象の一覧。対象を押すと録画したまま切り替わる */}
         <div className={`fb-body${targetsOpen ? ' has-targets' : ''}`} style={targetsOpen ? { gridTemplateColumns: `minmax(0, ${targetsRatio}fr) var(--size-splitter) minmax(0, ${1 - targetsRatio}fr)` } : undefined}>
@@ -1025,9 +1143,14 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
               onOpenEditor={(path) => { files.open(path); changeMode('editor') }}
               onSelectWindow={selectWindowTarget}
               recording={recording}
-              onClose={() => setTargetsOpen(() => false)}
+              hidden={shownSideTab !== 'targets'}
+              head={showLiveTranscript ? <FeedbackSideTabs value={shownSideTab} onChange={chooseSideTab} alert={liveProblem !== null} /> : undefined}
             />
             </ErrorBoundary>
+            {showLiveTranscript && <ErrorBoundary name="live-transcript">
+            <LiveTranscriptPanel status={live.status} segments={live.segments} hidden={shownSideTab !== 'transcript'}
+              head={<FeedbackSideTabs value={shownSideTab} onChange={chooseSideTab} alert={liveProblem !== null} />} />
+            </ErrorBoundary>}
           </>}
         </div>
       </div>

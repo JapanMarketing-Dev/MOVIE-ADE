@@ -12,6 +12,9 @@
  *   書き込みも同じページのまとまりにだけ付ける（指摘がそれぞれの対象に属するように）
  *
  * つなぎ言葉・独り言の除外は③のLLMの担当（設計5章③）なので、ここでは落とさない。
+ * ただし意味の通じない発話（「Shh.」「ご視聴ありがとうございました」などの聞き取りの誤り、「えー」だけ、
+ * 書き込みの無い「はい」だけ。meaningless.ts）は指摘にせず、Draft.meaningless に分けて「除外した発話」に入れる。
+ * 書き込みに添えた意味の無い発話は外し、書き込みだけの指摘（囲んだ要素の見出し）にする。
  */
 import type {
   Annotation,
@@ -25,6 +28,7 @@ import type {
 } from './types'
 import { annotationFrameTime, isAnnotation, resolveAnnotationEdits } from './types'
 import { normalizeJa } from './text'
+import { isMeaninglessUtterance } from './meaningless'
 import { pageKey } from '@shared/page'
 
 export interface DraftOptions {
@@ -64,7 +68,11 @@ interface Cluster {
 
 export function buildDraft(material: Material, options: Partial<DraftOptions> = {}): Draft {
   const opt = { ...defaultDraftOptions, ...options }
-  const transcript = [...material.transcript].sort((a, b) => a.t0 - b.t0)
+  const sorted = [...material.transcript].sort((a, b) => a.t0 - b.t0)
+  // 書き込みがあっても意味の無い発話（聞き取りの誤り・つなぎ言葉）は、まとまりを作る前に外す
+  // （まとまり同士をつないだり、書き込みを引き寄せたりしないように）
+  const meaningless = sorted.filter((s) => isMeaninglessUtterance(s.text, { hasAnnotation: true }))
+  const transcript = sorted.filter((s) => !meaningless.includes(s))
   // 録画中に動かした書き込みは最後の位置のものだけ、元に戻した書き込みは外す
   const events = resolveAnnotationEdits(material.events)
   const annotations = events.filter(isAnnotation).sort((a, b) => a.t - b.t)
@@ -84,6 +92,19 @@ export function buildDraft(material: Material, options: Partial<DraftOptions> = 
       annotations: [a],
       origin: 'annotation',
     })
+  }
+
+  // 返事だけの発話（「はい」「OK」）は、書き込みの無いまとまりでは外す（指示を含まない）
+  for (const c of clusters) {
+    if (c.annotations.length > 0) continue
+    const acks = c.segments.filter((s) => isMeaninglessUtterance(s.text, { hasAnnotation: false }))
+    if (acks.length === 0) continue
+    meaningless.push(...acks)
+    c.segments = c.segments.filter((s) => !acks.includes(s))
+    if (c.segments.length > 0) {
+      c.t = c.segments[0]!.t0
+      c.tEnd = c.segments.reduce((m, s) => Math.max(m, s.t1), c.t)
+    }
   }
 
   clusters.sort((a, b) => a.t - b.t)
@@ -106,7 +127,7 @@ export function buildDraft(material: Material, options: Partial<DraftOptions> = 
     })
   }
 
-  return { items }
+  return { items, meaningless: meaningless.sort((a, b) => a.t0 - b.t0) }
 }
 
 /**

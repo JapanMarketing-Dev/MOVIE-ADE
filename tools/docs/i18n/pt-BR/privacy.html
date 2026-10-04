@@ -21,7 +21,7 @@ As revisões ficam na pasta do seu projeto. As configurações ficam em <code>~/
 ## Retenção
 <p><span class="docs-ui">Manter gravações</span> (7 dias por padrão, 30 dias ou <span class="docs-ui">Para sempre</span>): ao iniciar, as revisões concluídas mais antigas que isso perdem o <code>recording.webm</code> e a pasta <code>work/</code>. O <code>feedback.md</code> e as imagens dos apontamentos são mantidos. Revisões incompletas nunca são limpas. A limpeza é feita ao iniciar, no último projeto aberto.</p>
 
-<!-- @network cab5d43d47 -->
+<!-- @network e41bf8a43d -->
 ## O que sai da sua máquina
 <table>
   <thead><tr><th>Quando</th><th>Destino</th><th>Dados</th></tr></thead>
@@ -32,7 +32,6 @@ As revisões ficam na pasta do seu projeto. As configurações ficam em <code>~/
     <tr><td><span class="docs-ui">Organizar</span></td><td>a sua CLI do Claude Code / Codex, ou o endpoint de LLM que você definir em <code>organizer</code></td><td>apenas texto e registro de ações (sem imagens, áudio ou vídeo)</td></tr>
     <tr><td>Verificação de aceitação (modelo de decisão, desativada por padrão)</td><td>o seu agente, pelo relay local, para Ollama / Cloudflare / AI Gateway / TypeSafe / a sua URL</td><td>o que o agente envia: o texto do apontamento, o "Done when" e as capturas de tela ANTES/DEPOIS (só modelos de imagem)</td></tr>
     <tr><td><span class="docs-ui">Enviar ao Agent</span></td><td>o agente no seu terminal</td><td>uma instrução que aponta para o <code>feedback.md</code></td></tr>
-    <tr><td><span class="docs-ui">Enviar ao GitHub</span></td><td>GitHub, via <code>gh</code></td><td>apenas o texto do corpo (sem imagens)</td></tr>
     <tr><td>Uso no rodapé (só Claude Code e Codex)</td><td>Anthropic, ChatGPT</td><td>requisição de uso com o seu próprio login</td></tr>
     <tr><td>Pedido de estrela no GitHub</td><td>GitHub, via o seu <code>gh</code></td><td>verifica se você deu estrela ao repositório e só dá a estrela se você clicar em <span class="docs-ui">Dar estrela no GitHub</span></td></tr>
     <tr><td>Atualizações (ao iniciar o Ferret, a cada 6 horas e em <span class="docs-ui">Verificar atualizações</span>)</td><td>servidor de download (Cloudflare R2)</td><td>requisições do <code>latest.json</code> e do <code>SHA256SUMS</code> daquela versão (no macOS também <code>UPDATE-SHA256SUMS</code>); quando há uma versão nova, o arquivo de atualização do seu computador (só quando você clica em <span class="docs-ui">Baixar</span> se <span class="docs-ui">Atualizar automaticamente</span> estiver desligado)</td></tr>

@@ -47,7 +47,7 @@ function recorderPagePlugin(): Plugin {
         }
       })
       mkdirSync(recorderOut, { recursive: true })
-      for (const file of ['index.html', 'pcm-worklet.js']) {
+      for (const file of ['index.html', 'pcm-worklet.js', 'mirror.html', 'mirror.css', 'mirror.js']) {
         copyFileSync(resolve(recorderSrc, file), resolve(recorderOut, file))
       }
     }

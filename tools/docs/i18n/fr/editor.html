@@ -5,12 +5,12 @@
 <!-- @lead 97cbc36c8d -->
 Ouvrez et modifiez les fichiers du projet, et prévisualisez le Markdown et Mermaid. Un aperçu ouvert dans le navigateur intégré peut être enregistré et relu comme n'importe quelle page web.
 
-<!-- @files c2eff8e24c -->
+<!-- @files 542bb5ee81 -->
 ## Ouvrir et modifier des fichiers
 <ul>
   <li><span class="docs-ui">Fichiers</span> (l'arborescence) : {{keys:Mod+Shift+E}}, avec <span class="docs-ui">Filtrer par nom de fichier</span>, <span class="docs-ui">Actualiser</span> et <span class="docs-ui">Tout réduire</span>.</li>
   <li><span class="docs-ui">Aller au fichier…</span> : {{keys:Mod+P}}.</li>
-  <li>Faites glisser un fichier depuis le Finder (l'Explorateur de fichiers sous Windows, votre gestionnaire de fichiers sous Linux) sur la barre d'onglets ou sur l'éditeur pour l'ouvrir. Les fichiers du projet s'ouvrent dans l'éditeur ou dans une visionneuse. Pour faire entrer dans le projet un fichier situé ailleurs, déposez-le sur <span class="docs-ui">Fichiers</span> : il y est copié. Un dossier déposé ici s'ouvre comme projet. Les fichiers glissés depuis <span class="docs-ui">Fichiers</span> s'ouvrent de la même façon.</li>
+  <li>Faites glisser un fichier depuis le Finder (l'Explorateur de fichiers sous Windows, votre gestionnaire de fichiers sous Linux) sur la barre d'onglets ou sur l'éditeur pour l'ouvrir. Les fichiers du projet s'ouvrent dans l'éditeur ou dans une visionneuse. Pour faire entrer dans le projet un fichier situé ailleurs, déposez-le sur <span class="docs-ui">Fichiers</span> : il y est copié. Un dossier déposé ici s'ouvre comme projet. Les fichiers glissés depuis <span class="docs-ui">Fichiers</span> s'ouvrent de la même façon. Les images et vidéos déposées sur un fichier Markdown ouvert y sont en revanche intégrées (voir <a href="#embed-media">Intégrer des images et des vidéos dans Markdown</a>).</li>
   <li>Enregistrez avec {{keys:Mod+S}}. Fermer un fichier modifié demande <q>Enregistrer les modifications de &lt;name&gt; ?</q> avec <span class="docs-ui">Enregistrer</span>, <span class="docs-ui">Ne pas enregistrer</span> et <span class="docs-ui">Annuler</span>.</li>
   <li>Si le fichier change sur le disque alors que vous avez des modifications non enregistrées, choisissez <span class="docs-ui">Recharger depuis le disque</span> ou <span class="docs-ui">Garder mes modifications</span>.</li>
 </ul>
@@ -34,26 +34,37 @@ Ouvrez et modifiez les fichiers du projet, et prévisualisez le Markdown et Merm
 </ul>
 <p>Les onglets ouverts suivent un fichier renommé ou déplacé et gardent les modifications non enregistrées. Ferret n'écrase pas un fichier ou un dossier existant du même nom, et garde tout à l'intérieur du dossier du projet : il refuse <code>..</code>, les chemins absolus, les liens symboliques qui pointent à l'extérieur, tout ce qui se trouve dans <code>.git</code>, le déplacement d'un dossier dans lui-même, et les noms qu'un OS ne peut pas utiliser : <code>/ \ &lt; &gt; : " | ? *</code>, caractères de contrôle, espace ou point final, et noms réservés de Windows comme <code>CON</code> ou <code>NUL</code>. Une copie ou un dépôt peut contenir jusqu'à 10 000 éléments et 1 Go.</p>
 
-<!-- @preview cb127d2292 -->
+<!-- @preview 8cf744371d -->
 ## Aperçu Markdown et Mermaid
 <p>L'aperçu fonctionne pour <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> et <code>.mermaid</code>. Mermaid est intégré à l'application : les diagrammes s'affichent donc hors ligne.</p>
+<p>Un fichier Markdown a deux vues en haut de l'éditeur : <span class="docs-ui">Source</span> et <span class="docs-ui">Aperçu</span>. L'aperçu est toujours modifiable, vous pouvez donc saisir directement dedans ; cliquez sur <span class="docs-ui">Source</span> pour revenir au texte. Les deux affichent le même contenu, et l'enregistrement, la marque de modifications non enregistrées et la confirmation à la fermeture fonctionnent de la même façon.</p>
+<ul>
+  <li>Saisissez directement dans les titres, paragraphes, listes, cases à cocher, tableaux, liens, et le texte en gras, en italique ou en code en ligne. Taper <code>#</code>, <code>-</code>, <code>1.</code> ou <code>&gt;</code> suivi d'une espace en début de ligne commence un titre, une liste ou une citation.</li>
+  <li>Les blocs de code et les diagrammes Mermaid se modifient sous forme de source, avec le langage indiqué dans le coin. Pour voir le diagramme dessiné, ouvrez le fichier depuis <span class="docs-ui">Fichiers</span> dans le panneau <a href="projects.html#review-targets"><span class="docs-ui">Cibles de relecture</span></a>.</li>
+  <li>Le front matter (le bloc <code>---</code> en haut) s'affiche sous forme de texte au-dessus du document et peut y être modifié.</li>
+  <li>Les parties que vous ne modifiez pas sont enregistrées exactement telles qu'elles sont écrites, y compris le style des titres, les marqueurs de liste, les lignes vides, l'alignement des tableaux et les fins de ligne. Un bloc modifié garde son style si possible ; sinon, ce bloc est écrit sous une forme Markdown standard, avec <code>-</code> pour les listes et <code>#</code> pour les titres.</li>
+  <li>Les images et vidéos du projet sont affichées. Les images d'autres sites ne sont pas chargées ; leur nom d'hôte s'affiche à la place. Le reste du HTML du fichier s'affiche sous forme de texte.</li>
+</ul>
+<p>Les fichiers <code>.mdx</code> (modifiés uniquement sous forme de source), <code>.mmd</code> et <code>.mermaid</code> ont à la place un aperçu en lecture seule :</p>
 <ul>
   <li><span class="docs-ui">Ouvrir l'aperçu sur le côté</span> : à côté de l'éditeur</li>
   <li><span class="docs-ui">Ouvrir l'aperçu</span> : dans le navigateur intégré (<code>ade-preview://</code>), pour pouvoir l'enregistrer et le relire</li>
 </ul>
-<p>Pour modifier un fichier Markdown tel qu'il apparaît dans l'aperçu, cliquez sur <span class="docs-ui">Modifier dans l'aperçu</span> en haut de l'éditeur, puis sur <span class="docs-ui">Source</span> pour revenir. Les deux affichent le même contenu, et l'enregistrement, la marque de modifications non enregistrées et la confirmation à la fermeture fonctionnent de la même façon.</p>
+
+<!-- @embed-media d24ca87d61 -->
+## Intégrer des images et des vidéos dans Markdown
+<p>Faites glisser des images (PNG, JPEG, GIF, WebP, SVG, AVIF) ou des vidéos (MP4, WebM, MOV) sur un fichier Markdown, en <span class="docs-ui">Source</span> ou en <span class="docs-ui">Aperçu</span>, pour les intégrer à l'endroit où vous les déposez.</p>
 <ul>
-  <li>Saisissez directement dans les titres, paragraphes, listes, cases à cocher, tableaux, liens, et le texte en gras, en italique ou en code en ligne. Taper <code>#</code>, <code>-</code>, <code>1.</code> ou <code>&gt;</code> suivi d'une espace en début de ligne commence un titre, une liste ou une citation.</li>
-  <li>Les blocs de code et les diagrammes Mermaid se modifient sous forme de source, avec le langage indiqué dans le coin. Le diagramme s'affiche dans <span class="docs-ui">Ouvrir l'aperçu sur le côté</span> ou <span class="docs-ui">Ouvrir l'aperçu</span>.</li>
-  <li>Le front matter (le bloc <code>---</code> en haut) s'affiche sous forme de texte au-dessus du document et peut y être modifié.</li>
-  <li>Les parties que vous ne modifiez pas sont enregistrées exactement telles qu'elles sont écrites, y compris le style des titres, les marqueurs de liste, les lignes vides, l'alignement des tableaux et les fins de ligne. Un bloc modifié garde son style si possible ; sinon, ce bloc est écrit sous une forme Markdown standard, avec <code>-</code> pour les listes et <code>#</code> pour les titres.</li>
-  <li>Les images du projet sont affichées. Les images d'autres sites ne sont pas chargées ; leur nom d'hôte s'affiche à la place. Le HTML du fichier s'affiche sous forme de texte.</li>
+  <li>Les fichiers déjà présents dans le projet, y compris ceux glissés depuis <span class="docs-ui">Fichiers</span>, sont liés avec un chemin relatif au fichier Markdown. Rien n'est copié.</li>
+  <li>Les fichiers extérieurs au projet (Finder, le bureau, l'Explorateur de fichiers sous Windows) sont d'abord copiés dans un dossier à côté du fichier Markdown : <code>assets</code>, <code>images</code>, <code>media</code> ou <code>img</code> s'il en existe déjà un, sinon un nouveau dossier <code>assets</code>. Les espaces du nom deviennent <code>-</code>, et si le nom est déjà pris, la copie s'appelle <code>name-2</code>. Les originaux restent où ils étaient.</li>
+  <li>Les images sont écrites sous la forme <code>![name](assets/name.png)</code> et les vidéos sous la forme <code>&lt;video&#32;src="assets/name.mp4" controls&gt;&lt;/video&gt;</code>, que GitHub lit aussi. Les deux s'affichent dans <span class="docs-ui">Aperçu</span>.</li>
+  <li>Une image peut faire jusqu'à 50 Mo et une vidéo jusqu'à 500 Mo, et un dépôt copie au plus 50 fichiers et 1 Go. Les autres fichiers déposés en même temps s'ouvrent dans l'éditeur comme d'habitude.</li>
 </ul>
 
-<!-- @review-docs 4b5c6316ba -->
+<!-- @review-docs 4ff22f4a6c -->
 ## Relire de la documentation en l'enregistrant
 <ol class="docs-steps">
-  <li>Ouvrez un fichier Markdown et cliquez sur <span class="docs-ui">Ouvrir l'aperçu</span>.</li>
+  <li>Dans le panneau <a href="projects.html#review-targets"><span class="docs-ui">Cibles de relecture</span></a>, ouvrez le fichier Markdown depuis <span class="docs-ui">Fichiers</span>. Il s'ouvre en aperçu dans le navigateur intégré.</li>
   <li>Enregistrez comme d'habitude. Commentez la spécification ou le document de conception à voix haute et entourez ce qui ne va pas.</li>
   <li>Arrêtez. Les remarques font référence au chemin du fichier relatif au projet au lieu d'une URL.</li>
   <li><span class="docs-ui">Envoyer à l'agent</span> pour faire corriger le document.</li>

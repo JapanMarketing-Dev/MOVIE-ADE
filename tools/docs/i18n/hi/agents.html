@@ -2,21 +2,21 @@
 <!-- @title a7a0afdf19 -->
 Agents को भेजना
 
-<!-- @lead 14c9151ac0 -->
-अपने coding agent को बिल्ट-इन टर्मिनल में चलाएँ और एक क्लिक में उसे review सौंप दें। आम उदाहरण Claude Code और Codex हैं, पर नीचे की सूची का कोई भी agent काम करता है, और आपका खुद जोड़ा गया CLI भी। आप कहीं और चल रहे agent के लिए निर्देश कॉपी भी कर सकते हैं, या review को GitHub पर पोस्ट कर सकते हैं।
+<!-- @lead 5567d6b158 -->
+अपने coding agent को बिल्ट-इन टर्मिनल में चलाएँ और एक क्लिक में उसे review सौंप दें। आम उदाहरण Claude Code और Codex हैं, पर नीचे की सूची का कोई भी agent काम करता है, और आपका खुद जोड़ा गया CLI भी। आप कहीं और चल रहे agent के लिए निर्देश कॉपी भी कर सकते हैं।
 
-<!-- @findings 3f601cd2f3 -->
+<!-- @findings 5cd787aa9a -->
 ## Findings की समीक्षा
 <p><span class="docs-ui">Findings</span> टैब का हर कार्ड इन कामों को सपोर्ट करता है:</p>
 <ul>
   <li>शीर्षक और अनुरोध को वहीं संपादित करना</li>
   <li><span class="docs-ui">भेजें</span> / <span class="docs-ui">न भेजें</span> टॉगल</li>
   <li><span class="docs-ui">रिकॉर्डिंग देखें</span> (उस समय पर पहुँचता है) और <span class="docs-ui">इमेज बदलें</span> (दूसरा frame चुनें)</li>
-  <li><span class="docs-ui">पुष्टि करें</span> / <span class="docs-ui">जाँच ज़रूरी के रूप में चिह्नित करें</span>, <span class="docs-ui">अगले के साथ मर्ज करें</span>, <span class="docs-ui">हटाएँ</span></li>
+  <li><span class="docs-ui">पुष्टि करें</span>, <span class="docs-ui">हटाएँ</span></li>
 </ul>
 <p><span class="docs-ui">प्रगति के अनुसार फ़िल्टर करें</span> स्थिति के आधार पर findings दिखाता या छिपाता है (जैसे <span class="docs-ui">केवल</span> वे जो आपकी समीक्षा का इंतज़ार कर रहे हैं); <span class="docs-ui">सभी दिखाएँ</span> फ़िल्टर हटा देता है।</p>
 <p>findings का क्रम बदलने के लिए कार्ड के शीर्षक के बाईं ओर के हैंडल को खींचें, या हैंडल चुनकर <kbd>↑</kbd> / <kbd>↓</kbd> दबाएँ। नंबर, <code>feedback.md</code> और Agent को भेजी जाने वाली सामग्री नए क्रम के अनुसार होती है। फ़िल्टर चालू होने पर क्रम सिर्फ़ दिख रही findings के बीच बदलता है, और छिपी हुई findings अपनी जगह पर रहती हैं। जब एक review कई पेजों या फ़ाइलों को कवर करता है, तो findings अपने ही समूह के अंदर खिसकती हैं। हेडर में <span class="docs-ui">findings का क्रम</span> से <span class="docs-ui">मैन्युअल (खींचने का क्रम)</span>, <span class="docs-ui">रिकॉर्डिंग का समय</span> और <span class="docs-ui">प्रगति</span> (शुरू न हुई पहले, पूरी हुई आख़िर में) के बीच बदला जा सकता है; प्रगति के अनुसार लगाने पर वह क्रम मैन्युअल क्रम के रूप में सहेजा जाता है।</p>
-<p>हेडर में <span class="docs-ui">पूर्ववत करें</span>, <span class="docs-ui">फ़ोल्डर खोलें</span>, <span class="docs-ui">Agent के लिए कॉपी करें</span>, <span class="docs-ui">GitHub / GitLab पर भेजें</span>, <span class="docs-ui">व्यवस्थित करें</span> और <span class="docs-ui">Agent को भेजें</span> हैं। जो बोली finding नहीं बनी, वह <span class="docs-ui">बाहर रखी गई बोली</span> में सूचीबद्ध होती है, जहाँ <span class="docs-ui">Finding के रूप में वापस लाएँ</span> उसे वापस ले आता है।</p>
+<p>हेडर में <span class="docs-ui">पूर्ववत करें</span>, <span class="docs-ui">फ़ोल्डर खोलें</span>, <span class="docs-ui">Agent के लिए कॉपी करें</span>, <span class="docs-ui">व्यवस्थित करें</span> और <span class="docs-ui">Agent को भेजें</span> हैं। जो बोली finding नहीं बनी, वह <span class="docs-ui">बाहर रखी गई बोली</span> में सूचीबद्ध होती है, जहाँ <span class="docs-ui">Finding के रूप में वापस लाएँ</span> उसे वापस ले आता है। जिस बोलचाल में कोई अर्थपूर्ण शब्द नहीं होता, वह कभी Finding नहीं बनती और वहीं सूची में दिखती है: ऐसे वाक्य जो ट्रांसक्रिप्शन कभी-कभी खामोशी से गढ़ लेता है, जैसे “Shh.” या “देखने के लिए धन्यवाद”, “अं” जैसे भराव शब्द, और पेन के निशान के बिना अकेला “OK” या “हाँ”।</p>
 {{shot:findings|Findings टैब}}
 
 <!-- @terminal fe13fc4b52 -->
@@ -118,33 +118,23 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
 <p>यह सेटिंग <code>settings.json</code> में <code>agentPrompt</code> के रूप में सेव होती है।</p>
 
-<!-- @github aba5332ec5 -->
-## GitHub या GitLab पर भेजें (Issue / PR या MR comment)
-<p><span class="docs-ui">GitHub पर भेजें</span> review को एक नए issue के रूप में, या आपके किसी खुले pull request पर comment के रूप में पोस्ट करता है। Authentication <a href="https://cli.github.com/">GitHub CLI</a> को सौंपा जाता है। Ferret कभी कोई token नहीं पढ़ता या सेव करता।</p>
-<ol class="docs-steps">
-  <li><code>gh</code> इंस्टॉल करें: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), या <a href="https://github.com/cli/cli#installation">cli/cli</a> देखें।</li>
-  <li><span class="docs-ui">Settings → GitHub / GitLab → Terminal में साइन इन करें</span> बिल्ट-इन टर्मिनल में <code>gh auth login --web -h github.com</code> चलाता है।</li>
-  <li><span class="docs-ui">GitHub पर भेजें</span> पर क्लिक करें, <span class="docs-ui">नया issue बनाएँ</span> या कोई PR चुनें, और <span class="docs-ui">शीर्षक</span> और <span class="docs-ui">Body</span> (संपादित किए जा सकते हैं) जाँचें।</li>
-  <li>पुष्टि वाला checkbox टिक करें, फिर <span class="docs-ui">Issue बनाएँ</span> या <span class="docs-ui">Comment पोस्ट करें</span>।</li>
-</ol>
-<p>विवरण:</p>
-<ul>
-  <li>Repository <code>git remote get-url origin</code> से ली जाती है।</li>
-  <li>Ferret <code>gh issue create --repo … --title … --body-file -</code> या <code>gh pr comment &lt;n&gt; --repo … --body-file -</code> चलाता है।</li>
-  <li>Body इमेज वाली लाइनों के बिना <code>feedback.md</code> होती है (इमेज अपलोड नहीं होतीं), अधिकतम 60,000 अक्षर।</li>
-  <li>PR के विकल्प आपके अपने खुले PRs होते हैं (अधिकतम 30)।</li>
-</ul>
-<p>अगर <code>GH_TOKEN</code> या <code>GITHUB_TOKEN</code> सेट है, तो <code>gh</code> पहले उसी का इस्तेमाल करता है, और settings पैनल इसकी चेतावनी देता है।</p>
-<p><strong>GitLab।</strong> जब <code>origin</code> कोई GitLab प्रोजेक्ट हो (gitlab.com या self-managed GitLab), तो वही बटन <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a> (<code>glab</code>) के ज़रिए GitLab पर भेजता है: एक नया issue, या आपके किसी खुले merge request पर comment। <span class="docs-ui">Settings → GitHub / GitLab</span> से साइन इन करें, जो बिल्ट-इन टर्मिनल में <code>glab auth login</code> चलाता है (self-managed GitLab के लिए <code>--hostname</code> के साथ)। Ferret कभी token नहीं पढ़ता या सेव करता, और <code>GITLAB_TOKEN</code> सेट होने पर चेतावनी देता है।</p>
-<p><strong>स्टार का अनुरोध।</strong> आपके पहले <span class="docs-ui">Agent को भेजें</span> के बाद, और जब आप 3, 10 और 30 पूरे reviews तक पहुँचते हैं, Ferret आपसे GitHub पर उसे स्टार देने के लिए कह सकता है। यह अधिकतम 3 बार पूछता है, कम से कम 3 दिन के अंतर पर, और रिकॉर्डिंग के दौरान कभी नहीं। <span class="docs-ui">GitHub पर स्टार दें</span> आपके अपने <code>gh</code> login से स्टार देता है (या <code>gh</code> उपलब्ध न हो तो GitHub खोलता है), और <span class="docs-ui">फिर न पूछें</span> अनुरोध बंद कर देता है। आप <span class="docs-ui">सहायता → GitHub पर Ferret को स्टार दें</span> से भी स्टार दे सकते हैं।</p>
+<!-- @star 68ccf733da -->
+## GitHub पर Ferret को स्टार दें
+<p>आपके पहले <span class="docs-ui">Agent को भेजें</span> के बाद, और जब आप 3, 10 और 30 पूरे reviews तक पहुँचते हैं, Ferret आपसे GitHub पर उसे स्टार देने के लिए कह सकता है। यह अधिकतम 3 बार पूछता है, कम से कम 3 दिन के अंतर पर, और रिकॉर्डिंग के दौरान कभी नहीं। <span class="docs-ui">GitHub पर स्टार दें</span> आपके अपने <code>gh</code> login से स्टार देता है (या <code>gh</code> उपलब्ध न हो तो GitHub खोलता है), और <span class="docs-ui">फिर न पूछें</span> अनुरोध बंद कर देता है। आप <span class="docs-ui">सहायता → GitHub पर Ferret को स्टार दें</span> से भी स्टार दे सकते हैं।</p>
 
-<!-- @cli-tools 01bc2517bf -->
-## CLI tools इंस्टॉल करें और उनमें साइन इन करें
-<p><span class="docs-ui">Settings → CLI टूल</span> उन command-line tools की सूची देता है जिनकी आपके agents को अक्सर ज़रूरत होती है, दिखाता है कि कौन-से इंस्टॉल हैं और उनका version क्या है, और आपके OS के लिए आधिकारिक install या sign-in command एक नए टर्मिनल टैब में चलाता है:</p>
+<!-- @cli-tools 3d47130f13 -->
+## सेवाओं के CLI
+<p><span class="docs-ui">Settings → सेवाओं के CLI</span> में अक्सर इस्तेमाल होने वाली सेवाओं के कमांड-लाइन टूल दिखते हैं, ताकि आपके एजेंट उनके साथ काम कर सकें। इन्हें इंस्टॉल करना ज़रूरी नहीं है: सिर्फ़ वही इंस्टॉल करें जिसकी ज़रूरत हो; Ferret इनके बिना भी काम करता है। हर पंक्ति में दिखता है कि टूल इंस्टॉल है या नहीं और उसका वर्ज़न, सेवा की वेबसाइट का लिंक, और ऐसे बटन जो आपके OS के लिए आधिकारिक इंस्टॉल या साइन-इन कमांड को नए टर्मिनल टैब में चलाते हैं:</p>
 <ul>
-  <li>Git hosting: <code>gh</code>, <code>glab</code></li>
-  <li>AI और मॉडल: Ollama, Cloudflare <code>wrangler</code></li>
-  <li>Deploy: Vercel, Netlify, Fly.io, Railway, Heroku</li>
-  <li>Cloud और सेवाएँ: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+  <li>Git होस्टिंग: GitHub (<code>gh</code>), GitLab (<code>glab</code>)</li>
+  <li>होस्टिंग और डिप्लॉय: Vercel, Netlify, Cloudflare (<code>wrangler</code>), Firebase, Fly.io, Railway, Heroku</li>
+  <li>क्लाउड: AWS, Google Cloud (<code>gcloud</code>), Azure (<code>az</code>)</li>
+  <li>डेटाबेस और बैकएंड: Supabase, Neon, PlanetScale, Turso</li>
+  <li>एरर और मॉनिटरिंग: Sentry (<code>sentry-cli</code>), Datadog (<code>datadog-ci</code>)</li>
+  <li>भुगतान: Stripe</li>
+  <li>कंटेनर: Docker, <code>kubectl</code></li>
+  <li>मोबाइल: Xcode Command Line Tools (केवल macOS), Android Platform Tools (<code>adb</code>), Expo EAS, fastlane</li>
+  <li>वर्चुअल मशीन: UTM (केवल macOS), Lima, Multipass</li>
+  <li>AI और मॉडल: Ollama</li>
 </ul>
 <p>जहाँ किसी tool का आपके OS के लिए कोई एक-लाइन आधिकारिक installer नहीं है, वहाँ <span class="docs-ui">दस्तावेज़</span> उसकी जगह उसका install पेज खोलता है। Install पूरा होने पर सूची अपने-आप फिर से जाँच करती है।</p>

@@ -9,6 +9,7 @@ import { assertStillInside, openContained } from './containedFile'
 import { OutsideProjectError, createFileIn, entryIdentity, mkdirIn, removeIn, renameIn, symlinkIn, trashIn, withPinnedDir } from './pinnedDir'
 import { isWithin } from './sessions/containment'
 import { isRecentlyDropped } from './droppedPaths'
+import { MAX_MARKDOWN_MEDIA_BYTES, MAX_MARKDOWN_MEDIA_FILES, MAX_MARKDOWN_MEDIA_TOTAL_BYTES, isMarkdownFilePath, markdownMediaKind, pickMediaFolder, safeMediaFileName, uniqueMediaName } from '@shared/markdownMedia'
 
 const O_NONBLOCK = (constants as { O_NONBLOCK?: number }).O_NONBLOCK ?? 0
 const O_NOFOLLOW = (constants as { O_NOFOLLOW?: number }).O_NOFOLLOW ?? 0
@@ -365,6 +366,57 @@ export async function importEntries(root: string, absolutePaths: unknown, destRe
     await copyOrCleanUp(root, source.absolute, target, 'external')
     taken.push(name)
     done.push({ from: basename(source.absolute), to: relativeInside(root, target) ?? '' })
+  }
+  return done
+}
+
+/**
+ * OS から Markdown のファイルへ落とした画像・動画を、その Markdown の隣のフォルダ（assets/ など。@shared/markdownMedia の
+ * pickMediaFolder。無ければ作る）へコピーする。コピーしたものの相対パスを、渡した順に返す。
+ * 元のパスは importEntries と同じく、最近落とされて drop:inspect で確かめたものだけ。埋め込める種類の普通のファイルだけを、
+ * 種類ごとの大きさの上限までで受ける。名前は Markdown のリンクに書ける形にし、重なれば「名前-2」にする（上書きしない）。
+ * 書き込みは親フォルダを開いて持ったまま（pinnedDir.ts）、プロジェクトの中・.git の外だけ
+ */
+export async function importMediaForMarkdown(root: string, markdownRel: unknown, absolutePaths: unknown, wasDropped: (path: unknown) => boolean = isRecentlyDropped): Promise<string[]> {
+  if (!Array.isArray(absolutePaths) || absolutePaths.length === 0 || absolutePaths.length > MAX_MARKDOWN_MEDIA_FILES) throw badRequest()
+  const markdown = await resolveExisting(root, markdownRel)
+  if (markdown.rel === '' || !isMarkdownFilePath(markdown.rel)) throw badRequest()
+  await assertOutsideGit(root, markdown.absolute, markdown.rel)
+  if (!(await stat(markdown.absolute)).isFile()) throw badRequest()
+  const sources: string[] = []
+  let total = 0
+  for (const source of absolutePaths) {
+    if (typeof source !== 'string' || !isAbsolute(source) || source.includes('\0') || !wasDropped(source)) throw badRequest()
+    const name = basename(source)
+    const kind = markdownMediaKind(name)
+    if (!kind) throw new UserFacingError(t('files.errors.notMedia', { name }))
+    // リンク・パイプ・フォルダは受けない（lstat。リンクを辿らない）
+    const info = await lstat(source).catch((err: unknown) => { if (isMissing(err)) throw new UserFacingError(t('files.errors.notFound')); throw err })
+    if (!info.isFile()) throw new UserFacingError(t('files.errors.notMedia', { name }))
+    const limit = MAX_MARKDOWN_MEDIA_BYTES[kind]
+    if (info.size > limit) throw new UserFacingError(t('files.errors.mediaTooLarge', { name, limit: Math.round(limit / 1024 / 1024) }))
+    total += info.size
+    if (total > MAX_COPY_BYTES || total > MAX_MARKDOWN_MEDIA_TOTAL_BYTES) throw new UserFacingError(t('files.errors.copyTooLarge', { limit: Math.round(MAX_MARKDOWN_MEDIA_TOTAL_BYTES / 1024 / 1024 / 1024) }))
+    sources.push(source)
+  }
+  // コピー先のフォルダ。Markdown の隣の assets / images / media / img のうち既にあるもの、無ければ作る
+  const dir = dirname(markdown.absolute)
+  const siblings = await readdir(await assertStillInside(root, dir), { withFileTypes: true })
+  const folder = pickMediaFolder(siblings.filter((entry) => entry.isDirectory()).map((entry) => entry.name), siblings.map((entry) => entry.name))
+  if (!folder) throw new UserFacingError(t('files.errors.notFolder'))
+  const dest = join(dir, folder)
+  await withPinnedDir(root, dir, (pin) => mkdirIn(pin, folder)).catch((err: unknown) => {
+    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw toUserFacingFileError(err)
+  })
+  const target = await resolveDestination(root, relativeInside(root, dest) ?? '')
+  const taken = await namesIn(root, target.absolute)
+  const done: string[] = []
+  for (const source of sources) {
+    const name = uniqueMediaName(safeMediaFileName(basename(source)), taken)
+    const file = join(target.absolute, name)
+    await copyOrCleanUp(root, source, file, 'external')
+    taken.push(name)
+    done.push(relativeInside(root, file) ?? '')
   }
   return done
 }

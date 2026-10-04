@@ -1,7 +1,7 @@
 import { delay } from '@shared/delay'
 import { agentLabel } from '@shared/agentCatalog'
 import { t } from '@shared/i18n'
-import { AUTO_TARGET, buildSendTargetOptions, parseSendTarget, resolveRememberedTarget, type RunningAgentTerminal, type SendTarget, type SendTargetOption } from '@shared/sendTarget'
+import { AUTO_TARGET, buildSendTargetOptions, parseSendTarget, projectTerminals, resolveRememberedTarget, type RunningAgentTerminal, type SendTarget, type SendTargetOption } from '@shared/sendTarget'
 import type { AgentOption, TuiAgent } from '@shared/types'
 import { requestAgentLaunch } from './agentLaunchRequest'
 
@@ -71,10 +71,11 @@ export async function sendReviewToAgent(options: SendReviewOptions): Promise<{ o
 
 /** 宛先の一覧を今の状態から作る（有効でインストール済みの Agent ＋ 動いている Agent のタブ） */
 export async function loadSendTargets(): Promise<{ options: SendTargetOption[]; agents: AgentOption[]; running: RunningAgentTerminal[] }> {
-  const [agents, list] = await Promise.all([window.ade.invoke('agents:list'), window.ade.invoke('terminal:list')])
-  const running = await Promise.all(list.map(async (info, i) => {
+  const [agents, list, workspace] = await Promise.all([window.ade.invoke('agents:list'), window.ade.invoke('terminal:list'), window.ade.invoke('workspace:current')])
+  // ほかのプロジェクトで開いたままのターミナルは出さない（main の自動の宛先と同じ決まり。agent/sendTarget.ts）
+  const running = await Promise.all(projectTerminals(list, workspace.folderPath).map(async (info) => {
     const state = await window.ade.invoke('terminal:agentState', info.id).catch(() => null) // 閉じたばかりのタブ（想定内）
-    return { id: info.id, agent: state && state.kind !== 'unknown' ? state.agent ?? info.agent : null, index: i + 1 }
+    return { id: info.id, agent: state && state.kind !== 'unknown' ? state.agent ?? info.agent : null, index: info.index }
   }))
   return { options: buildSendTargetOptions(agents, running), agents, running }
 }

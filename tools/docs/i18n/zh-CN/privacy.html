@@ -21,7 +21,7 @@
 ## 保留期限
 <p><span class="docs-ui">保留录制内容</span>（默认 7 天，可选 30 天或 <span class="docs-ui">永久</span>）：启动时，超过该期限的已完成审查会删除 <code>recording.webm</code> 和 <code>work/</code>。<code>feedback.md</code> 和反馈图片会保留。未完成的审查永远不会被清理。清理在启动时针对上次打开的项目执行。</p>
 
-<!-- @network cab5d43d47 -->
+<!-- @network e41bf8a43d -->
 ## 哪些数据会离开你的电脑
 <table>
   <thead><tr><th>时机</th><th>目的地</th><th>数据</th></tr></thead>
@@ -32,7 +32,6 @@
     <tr><td><span class="docs-ui">整理</span></td><td>你的 Claude Code / Codex CLI，或你在 <code>organizer</code> 中设置的 LLM 端点</td><td>仅文本和操作日志（不含图片、音频或视频）</td></tr>
     <tr><td>验收检查（判定模型，默认关闭）</td><td>你的 Agent，经由本地中继，发送到 Ollama / Cloudflare / AI Gateway / TypeSafe / 你的 URL</td><td>Agent 发送的内容：反馈文本、“完成条件”以及 BEFORE/AFTER 截图（仅限图像模型）</td></tr>
     <tr><td><span class="docs-ui">发送给 Agent</span></td><td>你终端中的 Agent</td><td>一条指向 <code>feedback.md</code> 的指令</td></tr>
-    <tr><td><span class="docs-ui">发送到 GitHub</span></td><td>通过 <code>gh</code> 发送到 GitHub</td><td>仅正文文本（不含图片）</td></tr>
     <tr><td>底部栏用量显示（仅 Claude Code 和 Codex）</td><td>Anthropic、ChatGPT</td><td>使用你自己的登录发出的用量请求</td></tr>
     <tr><td>GitHub 点星提示</td><td>通过你的 <code>gh</code> 发送到 GitHub</td><td>检查你是否已为仓库点星，只有在你点击 <span class="docs-ui">在 GitHub 上点星</span> 时才会点星</td></tr>
     <tr><td>更新（Ferret 启动时、每 6 小时、<span class="docs-ui">检查更新</span>）</td><td>下载服务器（Cloudflare R2）</td><td>对 <code>latest.json</code> 及该版本 <code>SHA256SUMS</code>（在 macOS 上还有 <code>UPDATE-SHA256SUMS</code>）的请求；发现新版本时，下载适用于你电脑的更新文件（关闭 <span class="docs-ui">自动更新</span> 时，只在点击 <span class="docs-ui">下载</span> 时下载）</td></tr>

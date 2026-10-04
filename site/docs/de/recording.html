@@ -210,7 +210,18 @@
   <li><strong><span class="docs-ui">Stift</span></strong>: Wählen Sie ihn aus, oder halten Sie <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Alt</kbd></span></span> gedrückt, um nur so lange zu zeichnen, wie die Taste gedrückt ist (wird beim Tippen in ein Feld ignoriert).</li>
   <li><strong><span class="docs-ui">Leeren</span></strong>: entfernt die aktuellen Markierungen.</li>
 </ul>
-<p>Kreisen Sie die Stelle ein, während Sie darüber sprechen: Worte und Markierungen landen im selben Befund. Der Stift ist nur während einer Aufnahme verfügbar. Ein Textwerkzeug gibt es nicht. Sagen Sie es stattdessen. Die Tasten für Stift, Rahmen und Farben finden Sie unter <a href="keyboard.html#drawing">Tastenkürzel</a>.</p>
+<p>Kreisen Sie die Stelle ein, während Sie darüber sprechen: Worte und Markierungen landen im selben Befund. Der Stift ist nur während einer Aufnahme verfügbar, und während der Aufnahme gibt es kein Textwerkzeug: Sagen Sie es stattdessen, oder tippen Sie es danach mit <a href="#type">Feedback tippen</a>. Die Tasten für Stift, Rahmen und Farben finden Sie unter <a href="keyboard.html#drawing">Tastenkürzel</a>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="type">
+        <h2 id="type"><a class="docs-anchor" href="#type" aria-label="Link zu „Tippen statt sprechen“">#</a>Tippen statt sprechen</h2>
+        <p>Wenn Sprechen gerade unpraktisch ist, tippen Sie den Befund. Das geht nur im Editor-Modus, im Tab <span class="docs-ui">Browser</span>, und nicht während einer Aufnahme.</p>
+<ol class="docs-steps">
+  <li>Klicken Sie in der Browser-Symbolleiste auf <span class="docs-ui">Feedback tippen</span>.</li>
+  <li>Ziehen Sie einen Rahmen um die Stelle auf der Seite, oder klicken Sie auf ein Element, um es einzurahmen.</li>
+  <li>Tippen Sie, was sich ändern soll. <kbd>Enter</kbd> fügt es hinzu, <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd><kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Enter</kbd></span></span> beginnt eine neue Zeile, <kbd>Esc</kbd> verwirft den Rahmen. Ein Enter, mit dem Sie eine Umwandlung der Eingabemethode bestätigen, fügt nichts hinzu.</li>
+</ol>
+<p>Jeder wird zu einem Befund mit einem Bild der Seite und des Rahmens, dazu URL und eingerahmtes Element, wie ein aufgenommener Befund. Er wird dem unter <span class="docs-ui">Befunde</span> geöffneten Review hinzugefügt, oder einem neuen Review, wenn keines geöffnet ist. Der Browser bleibt vorne, sodass Sie mehrere nacheinander hinzufügen können; <kbd>Esc</kbd> ohne offenen Rahmen oder ein erneuter Klick auf die Schaltfläche beendet es. Es funktioniert auch auf dem Fenster einer Desktop-App oder eines Simulators, das an Stelle des Browsers angezeigt wird, dann ohne URL.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="annotations-clear">
@@ -226,6 +237,12 @@
       <section class="docs-section" aria-labelledby="mic">
         <h2 id="mic"><a class="docs-anchor" href="#mic" aria-label="Link zu „Mikrofon“">#</a>Mikrofon</h2>
         <p>Das Mikrofon ist standardmäßig eingeschaltet. Schalten Sie es in der Fußleiste um (<span class="docs-ui">Mikrofon ausschalten</span> / <span class="docs-ui">Mikrofon einschalten</span>) oder mit <span class="docs-ui">Meine Stimme aufnehmen</span> in den Einstellungen. Ein Gerät wählen Sie unter <span class="docs-ui">Mikrofon</span>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="live-transcript">
+        <h2 id="live-transcript"><a class="docs-anchor" href="#live-transcript" aria-label="Link zu „Sehen, was transkribiert wird“">#</a>Sehen, was transkribiert wird</h2>
+        <p>Öffne während der Aufnahme den Tab <span class="docs-ui">Transkript</span> oben im rechten Panel des Feedback-Modus, um deine Worte als Text mit dem Zeitpunkt zu lesen, zu dem sie gesagt wurden (und wer sie gesagt hat, wenn auch die Gegenseite eines Meetings aufgenommen wird). Der Text erscheint einige Sekunden nach einer Sprechpause, so kannst du früh prüfen, ob das Gesagte erfasst wird. Die oberste Zeile zeigt <span class="docs-ui">Transkribiert</span>, wie viele Abschnitte warten oder warum die Transkription angehalten hat.</p>
+<p>Wenn die Transkription fehlschlägt, kein Modell oder Schlüssel eingerichtet ist, etwa 2 Minuten Sprache keinen Text ergeben oder kein Ton am Mikrofon ankommt, warnt dich Ferret einmal und markiert die Schaltfläche des rechten Panels, auch wenn der Tab geschlossen ist. Die Aufnahme läuft weiter und der Ton bleibt erhalten. Um den Tab auszublenden, schalte <span class="docs-ui">Live-Transkript während der Aufnahme anzeigen (rechtes Panel im Feedback-Modus)</span> unter <span class="docs-ui">Einstellungen → Transkription</span> aus. Die Warnungen erscheinen trotzdem.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other-side">
@@ -278,8 +295,10 @@
         <li><a href="#desktop-mobile">Desktop-Apps, Spiele und Mobil-Apps</a></li>
         <li><a href="#record">Starten, pausieren, stoppen</a></li>
         <li><a href="#pen">Stift</a></li>
+        <li><a href="#type">Tippen statt sprechen</a></li>
         <li><a href="#annotations-clear">Wann Markierungen verschwinden</a></li>
         <li><a href="#mic">Mikrofon</a></li>
+        <li><a href="#live-transcript">Sehen, was transkribiert wird</a></li>
         <li><a href="#other-side">Die Gegenseite eines Meetings aufnehmen</a></li>
         <li><a href="#other-side-os">Systemaudio je Betriebssystem</a></li>
         <li><a href="#other-side-tips">Tipps für Meetings</a></li>

@@ -75,6 +75,28 @@ function listDirs(dir) {
   return existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => join(dir, d.name)) : []
 }
 
+/**
+ * 配布物（app.asar）に入れるもの。out/・package.json・node_modules だけ。
+ * OS ごとの files（win.files など）を書くときは、必ずこの一覧に足す形にする。OS の側に除外だけを書くと、
+ * この一覧が効かずに作業フォルダが丸ごと入る（0.4.6 の公開前に、Windows 版へ Agent の作業ツリーとレビューの記録が入った）。
+ * 中身は scripts/check-app-asar.mjs がビルドのたびに確かめる
+ */
+const APP_FILES = [
+  'out/**/*',
+  'package.json',
+  'node_modules/**/*',
+  '!**/*.map',
+  '!**/.env*',
+  '!**/e2e-artifacts/**',
+  // @sentry/node が依存に持つビルド用の道具（vite / rollup などのプラグイン用）。実行時は読まない（@sentry/node の
+  // 本体は bundler-plugin を import せず、サブパスの ./vite などからだけ読む）。Sentry CLI（FSL ライセンス・15MB）と
+  // ネイティブ付きの oxc-parser を配布物に入れない
+  '!**/node_modules/@sentry/bundler-plugins/**',
+  '!**/node_modules/sentry/**',
+  '!**/node_modules/oxc-parser/**',
+  '!**/node_modules/@oxc-parser/**'
+]
+
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   // 0.1.x（MOVIE-ADE）は com.japanmarketing.movieade。変えると macOS では画面収録・マイクの許可を取り直すことになる。
@@ -92,21 +114,7 @@ module.exports = {
     output: 'dist/release',
     buildResources: 'build'
   },
-  files: [
-    'out/**/*',
-    'package.json',
-    'node_modules/**/*',
-    '!**/*.map',
-    '!**/.env*',
-    '!**/e2e-artifacts/**',
-    // @sentry/node が依存に持つビルド用の道具（vite / rollup などのプラグイン用）。実行時は読まない（@sentry/node の
-    // 本体は bundler-plugin を import せず、サブパスの ./vite などからだけ読む）。Sentry CLI（FSL ライセンス・15MB）と
-    // ネイティブ付きの oxc-parser を配布物に入れない
-    '!**/node_modules/@sentry/bundler-plugins/**',
-    '!**/node_modules/sentry/**',
-    '!**/node_modules/oxc-parser/**',
-    '!**/node_modules/@oxc-parser/**'
-  ],
+  files: APP_FILES,
   // node-pty はネイティブモジュールと補助の実行ファイル（spawn-helper、Windows の conpty.dll / OpenConsole.exe）を
   // asar の外に置かないと起動できない
   asarUnpack: ['node_modules/node-pty/**/*'],
@@ -195,7 +203,7 @@ module.exports = {
     icon: 'build/icon.ico',
     executableName: 'Ferret',
     // この Mac で作った node-pty の build/Release は Windows では読めない。prebuilds/win32-<cpu> だけを使わせる
-    files: ['!node_modules/node-pty/build/**'],
+    files: [...APP_FILES, '!node_modules/node-pty/build/**'],
     // ウインドウのアイコン（src/main/index.ts の windowIcon。exe のアイコンとは別にタイトルバー用）
     extraResources: [{ from: 'build/icons/256x256.png', to: 'icon.png' }],
     // 署名しない（アイコンと版の埋め込みだけ行う）。

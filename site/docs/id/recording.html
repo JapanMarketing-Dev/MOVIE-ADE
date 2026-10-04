@@ -210,7 +210,18 @@
   <li><strong><span class="docs-ui">Pena</span></strong>: pilih, atau tahan <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Alt</kbd></span></span> untuk menggambar hanya selama tombol ditahan (diabaikan saat mengetik di kolom input).</li>
   <li><strong><span class="docs-ui">Bersihkan</span></strong>: menghapus coretan saat ini.</li>
 </ul>
-<p>Lingkari bagian yang sedang Anda bicarakan: kata-kata dan coretan akan masuk ke temuan yang sama. Pena hanya tersedia saat merekam. Tidak ada alat teks; ucapkan saja. Tombol untuk pena, kotak, dan warna tercantum di <a href="keyboard.html#drawing">Pintasan keyboard</a>.</p>
+<p>Lingkari bagian yang sedang Anda bicarakan: kata-kata dan coretan akan masuk ke temuan yang sama. Pena hanya tersedia saat merekam, dan saat merekam tidak ada alat teks: ucapkan saja, atau ketik nanti dengan <a href="#type">Masukan teks</a>. Tombol untuk pena, kotak, dan warna tercantum di <a href="keyboard.html#drawing">Pintasan keyboard</a>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="type">
+        <h2 id="type"><a class="docs-anchor" href="#type" aria-label="Tautan ke Mengetik alih-alih berbicara">#</a>Mengetik alih-alih berbicara</h2>
+        <p>Saat berbicara tidak memungkinkan, ketik temuannya. Ini hanya berfungsi di mode Editor, pada tab <span class="docs-ui">Browser</span>, saat tidak sedang merekam.</p>
+<ol class="docs-steps">
+  <li>Klik <span class="docs-ui">Masukan teks</span> di bilah alat browser.</li>
+  <li>Seret kotak di sekitar bagian halaman, atau klik sebuah elemen untuk mengotakinya.</li>
+  <li>Ketik apa yang perlu diubah. <kbd>Enter</kbd> menambahkannya, <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd><kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Enter</kbd></span></span> membuat baris baru, dan <kbd>Esc</kbd> membatalkan kotak. Enter untuk mengonfirmasi konversi metode input tidak menambahkannya.</li>
+</ol>
+<p>Masing-masing menjadi temuan dengan gambar halaman dan kotaknya, beserta URL dan elemen yang dikotaki, sama seperti temuan hasil rekaman. Temuan ditambahkan ke ulasan yang terbuka di <span class="docs-ui">Temuan</span>, atau ke ulasan baru jika tidak ada yang terbuka. Browser tetap di depan, jadi Anda bisa menambahkan beberapa sekaligus; <kbd>Esc</kbd> saat tidak ada kotak terbuka, atau menekan tombolnya lagi, akan menghentikannya. Ini juga berfungsi pada jendela aplikasi desktop atau simulator yang ditampilkan di tempat browser, tanpa URL.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="annotations-clear">
@@ -226,6 +237,12 @@
       <section class="docs-section" aria-labelledby="mic">
         <h2 id="mic"><a class="docs-anchor" href="#mic" aria-label="Tautan ke Mikrofon">#</a>Mikrofon</h2>
         <p>Mikrofon aktif secara bawaan. Alihkan dari footer (<span class="docs-ui">Matikan mikrofon</span> / <span class="docs-ui">Nyalakan mikrofon</span>) atau dengan <span class="docs-ui">Rekam suara saya</span> di Pengaturan. Pilih perangkat di <span class="docs-ui">Mikrofon</span>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="live-transcript">
+        <h2 id="live-transcript"><a class="docs-anchor" href="#live-transcript" aria-label="Tautan ke Lihat apa yang sedang ditranskripsi">#</a>Lihat apa yang sedang ditranskripsi</h2>
+        <p>Saat merekam, buka tab <span class="docs-ui">Transkrip</span> di bagian atas panel kanan mode feedback untuk membaca ucapan Anda sebagai teks, beserta waktu diucapkannya (dan siapa yang mengucapkannya bila pihak lain dalam rapat juga direkam). Teks muncul beberapa detik setelah Anda jeda, jadi Anda bisa memastikan sejak awal bahwa ucapan Anda tertangkap. Baris atas menampilkan <span class="docs-ui">Mentranskripsi</span>, berapa bagian yang menunggu, atau alasan transkripsi berhenti.</p>
+<p>Jika transkripsi gagal, belum ada model atau kunci, sekitar 2 menit suara tidak menghasilkan teks, atau tidak ada suara yang sampai ke mikrofon, Ferret memperingatkan Anda sekali dan menandai tombol panel kanan, meskipun tab ditutup. Rekaman tetap berjalan dan audionya disimpan. Untuk menyembunyikan tab, matikan <span class="docs-ui">Tampilkan transkrip langsung saat merekam (panel kanan mode feedback)</span> di <span class="docs-ui">Pengaturan → Transkripsi</span>. Peringatan tetap muncul.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other-side">
@@ -278,8 +295,10 @@
         <li><a href="#desktop-mobile">Aplikasi desktop, game, dan aplikasi seluler</a></li>
         <li><a href="#record">Mulai, jeda, berhenti</a></li>
         <li><a href="#pen">Pena</a></li>
+        <li><a href="#type">Mengetik alih-alih berbicara</a></li>
         <li><a href="#annotations-clear">Kapan coretan menghilang</a></li>
         <li><a href="#mic">Mikrofon</a></li>
+        <li><a href="#live-transcript">Lihat apa yang sedang ditranskripsi</a></li>
         <li><a href="#other-side">Merekam pihak lain dalam rapat</a></li>
         <li><a href="#other-side-os">Audio sistem per OS</a></li>
         <li><a href="#other-side-tips">Tips untuk rapat</a></li>

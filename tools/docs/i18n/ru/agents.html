@@ -2,21 +2,21 @@
 <!-- @title a7a0afdf19 -->
 Отправка агентам
 
-<!-- @lead 14c9151ac0 -->
-Запускайте агента для написания кода во встроенном терминале и передавайте ему ревью одним щелчком. Обычно это Claude Code и Codex, но подойдёт любой агент из списка ниже, а также CLI, добавленный вами. Можно также скопировать инструкцию для агента, работающего в другом месте, или опубликовать ревью на GitHub.
+<!-- @lead 5567d6b158 -->
+Запускайте агента для написания кода во встроенном терминале и передавайте ему ревью одним щелчком. Обычно это Claude Code и Codex, но подойдёт любой агент из списка ниже, а также CLI, добавленный вами. Можно также скопировать инструкцию для агента, работающего в другом месте.
 
-<!-- @findings 3f601cd2f3 -->
+<!-- @findings 5cd787aa9a -->
 ## Работа с замечаниями
 <p>Каждая карточка во вкладке <span class="docs-ui">Замечания</span> поддерживает:</p>
 <ul>
   <li>правку заголовка и запроса прямо на месте;</li>
   <li>переключатель <span class="docs-ui">Отправить</span> / <span class="docs-ui">Не отправлять</span>;</li>
   <li><span class="docs-ui">Смотреть запись</span> (переход к этому моменту) и <span class="docs-ui">Заменить изображение</span> (выбор другого кадра);</li>
-  <li><span class="docs-ui">Подтвердить</span> / <span class="docs-ui">Отметить «Нужна проверка»</span>, <span class="docs-ui">Объединить со следующим</span>, <span class="docs-ui">Удалить</span>.</li>
+  <li><span class="docs-ui">Подтвердить</span>, <span class="docs-ui">Удалить</span>.</li>
 </ul>
 <p><span class="docs-ui">Фильтр по прогрессу</span> показывает или скрывает замечания по статусу (например, <span class="docs-ui">Только</span> те, что ждут вашей проверки); <span class="docs-ui">Показать все</span> сбрасывает фильтр.</p>
 <p>Чтобы изменить порядок замечаний, перетащите маркер слева от заголовка карточки или выберите маркер и нажмите <kbd>↑</kbd> / <kbd>↓</kbd>. Номера, <code>feedback.md</code> и то, что вы отправляете агенту, следуют новому порядку. Когда включён фильтр, порядок меняется среди видимых замечаний, а скрытые остаются на своих местах. Если ревью охватывает несколько страниц или файлов, замечания перемещаются внутри своей группы. <span class="docs-ui">Сортировка замечаний</span> в заголовке переключает <span class="docs-ui">Вручную (порядок перетаскивания)</span>, <span class="docs-ui">По времени записи</span> и <span class="docs-ui">По прогрессу</span> (сначала не начатые, в конце готовые); сортировка по прогрессу сохраняет этот порядок как ручной.</p>
-<p>В заголовке есть кнопки <span class="docs-ui">Отменить</span>, <span class="docs-ui">Открыть папку</span>, <span class="docs-ui">Копировать для агента</span>, <span class="docs-ui">В GitHub / GitLab</span>, <span class="docs-ui">Обработать</span> и <span class="docs-ui">Отправить агенту</span>. Речь, которая не стала замечанием, перечислена в разделе <span class="docs-ui">Исключённая речь</span>, где <span class="docs-ui">Вернуть как замечание</span> возвращает её.</p>
+<p>В заголовке есть кнопки <span class="docs-ui">Отменить</span>, <span class="docs-ui">Открыть папку</span>, <span class="docs-ui">Копировать для агента</span>, <span class="docs-ui">Обработать</span> и <span class="docs-ui">Отправить агенту</span>. Речь, которая не стала замечанием, перечислена в разделе <span class="docs-ui">Исключённая речь</span>, где <span class="docs-ui">Вернуть как замечание</span> возвращает её. Речь без осмысленных слов никогда не становится замечанием и тоже попадает в этот список: фразы, которые распознавание речи иногда выдумывает из тишины, например «Shh.» или «Спасибо за просмотр», слова-паразиты вроде «э-э», а также одиночное «OK» или «да» без пометки пером.</p>
 {{shot:findings|Вкладка «Замечания»}}
 
 <!-- @terminal fe13fc4b52 -->
@@ -118,33 +118,23 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
 <p>Параметр хранится как <code>agentPrompt</code> в <code>settings.json</code>.</p>
 
-<!-- @github aba5332ec5 -->
-## Отправка в GitHub или GitLab (Issue / комментарий к PR или MR)
-<p><span class="docs-ui">Отправить в GitHub</span> публикует ревью как новый issue или как комментарий к одному из ваших открытых pull request. Аутентификация делегируется <a href="https://cli.github.com/">GitHub CLI</a>. Ferret никогда не читает и не хранит токен.</p>
-<ol class="docs-steps">
-  <li>Установите <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows) или см. <a href="https://github.com/cli/cli#installation">cli/cli</a>.</li>
-  <li><span class="docs-ui">Настройки → GitHub / GitLab → Войти через терминал</span> запускает <code>gh auth login --web -h github.com</code> во встроенном терминале.</li>
-  <li>Нажмите <span class="docs-ui">Отправить в GitHub</span>, выберите <span class="docs-ui">Создать новый Issue</span> или PR и проверьте <span class="docs-ui">Заголовок</span> и <span class="docs-ui">Текст</span> (их можно править).</li>
-  <li>Поставьте флажок подтверждения, затем нажмите <span class="docs-ui">Создать Issue</span> или <span class="docs-ui">Отправить комментарий</span>.</li>
-</ol>
-<p>Подробности:</p>
-<ul>
-  <li>Репозиторий берётся из <code>git remote get-url origin</code>.</li>
-  <li>Ferret выполняет <code>gh issue create --repo … --title … --body-file -</code> или <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>.</li>
-  <li>Текст — это <code>feedback.md</code> без строк с изображениями (изображения не загружаются), не более 60 000 символов.</li>
-  <li>Кандидаты PR — ваши собственные открытые PR (до 30).</li>
-</ul>
-<p>Если задан <code>GH_TOKEN</code> или <code>GITHUB_TOKEN</code>, <code>gh</code> использует его в первую очередь, и панель настроек предупреждает об этом.</p>
-<p><strong>GitLab.</strong> Когда <code>origin</code> — проект GitLab (gitlab.com или собственный экземпляр GitLab), та же кнопка отправляет в GitLab через <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a> (<code>glab</code>): новый issue или комментарий к одному из ваших открытых merge request. Войдите через <span class="docs-ui">Настройки → GitHub / GitLab</span>: это запускает <code>glab auth login</code> (с <code>--hostname</code> для собственного экземпляра GitLab) во встроенном терминале. Ferret никогда не читает и не хранит токен и предупреждает, если задан <code>GITLAB_TOKEN</code>.</p>
-<p><strong>Предложение поставить звезду.</strong> После первого <span class="docs-ui">Отправить агенту</span>, а также при достижении 3, 10 и 30 завершённых ревью Ferret может предложить поставить ему звезду на GitHub. Он спрашивает не более 3 раз, с перерывом не менее 3 дней, и никогда во время записи. <span class="docs-ui">Поставить звезду</span> ставит звезду через ваш собственный вход в <code>gh</code> (или открывает GitHub, если <code>gh</code> недоступен), а <span class="docs-ui">Больше не спрашивать</span> отключает эти предложения. Поставить звезду можно также через <span class="docs-ui">Справка → Поставить звезду Ferret на GitHub</span>.</p>
+<!-- @star 68ccf733da -->
+## Поставить звезду Ferret на GitHub
+<p>После первого <span class="docs-ui">Отправить агенту</span>, а также при достижении 3, 10 и 30 завершённых ревью Ferret может предложить поставить ему звезду на GitHub. Он спрашивает не более 3 раз, с перерывом не менее 3 дней, и никогда во время записи. <span class="docs-ui">Поставить звезду</span> ставит звезду через ваш собственный вход в <code>gh</code> (или открывает GitHub, если <code>gh</code> недоступен), а <span class="docs-ui">Больше не спрашивать</span> отключает эти предложения. Поставить звезду можно также через <span class="docs-ui">Справка → Поставить звезду Ferret на GitHub</span>.</p>
 
-<!-- @cli-tools 01bc2517bf -->
-## Установка CLI-инструментов и вход в них
-<p><span class="docs-ui">Настройки → CLI-инструменты</span> перечисляют инструменты командной строки, которые часто нужны вашим агентам, показывают, какие установлены и их версии, и запускают официальную команду установки или входа для вашей ОС в новой вкладке терминала:</p>
+<!-- @cli-tools 3d47130f13 -->
+## CLI сервисов
+<p><span class="docs-ui">Настройки → CLI сервисов</span> показывает инструменты командной строки часто используемых сервисов, чтобы ваши агенты могли с ними работать. Устанавливать их не обязательно: установите только то, что нужно; Ferret работает и без них. В каждой строке видно, установлен ли инструмент и какая у него версия, есть ссылка на сайт сервиса и кнопки, которые запускают официальную команду установки или входа для вашей ОС в новой вкладке терминала:</p>
 <ul>
-  <li>Git-хостинг: <code>gh</code>, <code>glab</code></li>
-  <li>ИИ и модели: Ollama, Cloudflare <code>wrangler</code></li>
-  <li>Деплой: Vercel, Netlify, Fly.io, Railway, Heroku</li>
-  <li>Облака и сервисы: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+  <li>Git-хостинг: GitHub (<code>gh</code>), GitLab (<code>glab</code>)</li>
+  <li>Хостинг и развёртывание: Vercel, Netlify, Cloudflare (<code>wrangler</code>), Firebase, Fly.io, Railway, Heroku</li>
+  <li>Облако: AWS, Google Cloud (<code>gcloud</code>), Azure (<code>az</code>)</li>
+  <li>Базы данных и бэкенд: Supabase, Neon, PlanetScale, Turso</li>
+  <li>Ошибки и мониторинг: Sentry (<code>sentry-cli</code>), Datadog (<code>datadog-ci</code>)</li>
+  <li>Платежи: Stripe</li>
+  <li>Контейнеры: Docker, <code>kubectl</code></li>
+  <li>Мобильная разработка: Xcode Command Line Tools (Только macOS), Android Platform Tools (<code>adb</code>), Expo EAS, fastlane</li>
+  <li>Виртуальные машины: UTM (Только macOS), Lima, Multipass</li>
+  <li>ИИ и модели: Ollama</li>
 </ul>
 <p>Если у инструмента нет официального установщика в одну строку для вашей ОС, <span class="docs-ui">Документация</span> открывает его страницу установки. Когда установка завершается, список сам проверяет всё заново.</p>

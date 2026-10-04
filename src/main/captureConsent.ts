@@ -65,6 +65,32 @@ export class UserGestures {
   }
 }
 
+/**
+ * 内蔵ブラウザ・映したウインドウのビューに届いた本物の入力（クリック・キー）からの、そのビューだけの1回きりの許可。
+ * 文字で指摘の静止画は、利用者がそのビューで指示を打って Enter を押した（・足すボタンを押した）直後に1枚だけ撮る。
+ * 入力の記録は main が各ビューの input-event から付ける（ページのスクリプトや IPC からは付けられない）。
+ * アプリの窓の許可（UserGestures）とは別に持つ（ページの中の操作で、アプリの窓の撮影・録画の許可を作らない）
+ */
+export class ViewInputGrant<View extends object> {
+  private readonly last = new WeakMap<View, number>()
+
+  constructor(private readonly windowMs = 5_000, private readonly now: () => number = Date.now) {}
+
+  /** そのビューに本物の入力が届いた（main のビューの input-event からだけ呼ぶ） */
+  sawInput(view: View): void {
+    this.last.set(view, this.now())
+  }
+
+  /** そのビューの直前の入力の許可を使う。1回の入力で1回だけ */
+  consume(view: View): boolean {
+    const at = this.last.get(view)
+    if (at === undefined) return false
+    this.last.delete(view)
+    const age = this.now() - at
+    return age >= 0 && age <= this.windowMs
+  }
+}
+
 /** IPC の送り主の最小の形（Electron の IpcMainInvokeEvent の一部） */
 export interface IpcSenderLike {
   sender: unknown

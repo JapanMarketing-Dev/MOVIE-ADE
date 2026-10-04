@@ -12,8 +12,7 @@ import {
   parseSendTarget,
   resolveRememberedTarget,
   sendTargetKey,
-  type RunningAgentTerminal
-} from '../../src/shared/sendTarget'
+  type RunningAgentTerminal, isInsideDir, projectTerminals } from '../../src/shared/sendTarget'
 import { chooseSendTarget } from '../../src/main/agent/sendTarget'
 import { sendToAgent } from '../../src/main/agent/send'
 import { sanitizePastePayload } from '../../src/main/agent/sanitize'
@@ -142,5 +141,30 @@ describe('貼り付ける本文の整え方（ページの文字からの指示�
   it('文字の向きを変える制御文字を落とす。ESC は見える文字にする', () => {
     expect(sanitizePastePayload('a\u202eb\u2066c\u2069d')).toBe('abcd')
     expect(sanitizePastePayload('x\x1b[201~y')).toBe('x␛[201~y')
+  })
+})
+
+describe('宛先の候補は開いているプロジェクトのターミナルだけ', () => {
+  const list = [
+    { id: 'a', cwd: '/work/other' },
+    { id: 'b', cwd: '/work/reply' },
+    { id: 'c', cwd: '/work/reply/server' },
+    { id: 'd', cwd: '/work/reply-old' }
+  ]
+
+  it('ほかのプロジェクト・名前が前方だけ同じフォルダのタブは出さず、番号はこのプロジェクトの中で振り直す', () => {
+    expect(projectTerminals(list, '/work/reply/')).toEqual([
+      { id: 'b', cwd: '/work/reply', index: 1 },
+      { id: 'c', cwd: '/work/reply/server', index: 2 }
+    ])
+  })
+
+  it('プロジェクトを開いていなければ全部', () => {
+    expect(projectTerminals(list, null).map((x) => x.index)).toEqual([1, 2, 3, 4])
+  })
+
+  it('Windows の区切りでも中と分かる', () => {
+    expect(isInsideDir('C:\\work\\reply\\app', 'C:\\work\\reply')).toBe(true)
+    expect(isInsideDir('C:\\work\\replyx', 'C:\\work\\reply')).toBe(false)
   })
 })

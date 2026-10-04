@@ -3,6 +3,7 @@ import { hasExternalFiles, readDrop } from '../lib/externalDrop'
 import { shellPathsText, shellQuotingFor, treePathsForTerminal } from '@shared/externalDrop'
 import { hasTreePaths, treeDragPaths } from '../lib/treeDrag'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Columns2, Plus, Rows2, SquareTerminal, X } from 'lucide-react'
 import { TUI_AGENT_LABEL, type AccountLoginRequest, type AgentOption, type Project, type TuiAgent } from '@shared/types'
 import { SHORTCUTS, formatShortcut } from '../lib/shortcut'
@@ -436,6 +437,9 @@ export function TerminalPane({
     },
     [tabs, closeTab, releasePane]
   )
+
+  /** 区画の右クリックのメニュー（右に分割・下に分割・区画を閉じる） */
+  const [paneMenu, setPaneMenu] = useState<{ x: number; y: number; tabKey: string; paneKey: string; split: boolean } | null>(null)
 
   const setSplitRatio = useCallback((tabKey: string, path: PanePath, ratio: number) => {
     setTabs((prev) => prev.map((tab) => (tab.key === tabKey ? { ...tab, layout: setRatio(tab.layout, path, ratio) } : tab)))
@@ -1095,6 +1099,12 @@ export function TerminalPane({
           ref={leafRef(node.leafId)}
           onMouseDown={() => focusPane(tab.key, node.leafId)}
           onFocus={() => focusPane(tab.key, node.leafId)}
+          onContextMenu={(e) => {
+            // 右クリックで分割・区画を閉じる（右上のボタンより見つけやすい）
+            e.preventDefault()
+            focusPane(tab.key, node.leafId)
+            setPaneMenu({ x: e.clientX, y: e.clientY, tabKey: tab.key, paneKey: node.leafId, split })
+          }}
         >
           {/* 分割中のペインを動かすつまみ（Orca の .pane-drag-handle）。xterm の器はこの後ろに足される */}
           <div
@@ -1217,6 +1227,9 @@ export function TerminalPane({
         </div>
       </div>
 
+      {paneMenu && <PaneContextMenu at={paneMenu} onClose={() => setPaneMenu(null)}
+        onSplit={(direction) => { setPaneMenu(null); void splitPane(direction) }}
+        onClosePane={() => { setPaneMenu(null); closePane(paneMenu.tabKey, paneMenu.paneKey) }} />}
       <div className="terminal-surfaces" data-dragging={dragging || undefined} {...surfaceDropProps}>
         {visibleTabs.length === 0 && (
           <EmptyState
@@ -1348,5 +1361,43 @@ function PaneDivider({ vertical, onRatio }: { vertical: boolean; onRatio: (ratio
       onDoubleClick={() => onRatio(0.5)}
       data-testid="terminal-divider"
     />
+  )
+}
+
+/**
+ * ターミナルの区画の右クリックのメニュー。右に分割・下に分割と、分割しているときは区画を閉じる。
+ * 外を押す・Esc で閉じる。画面の端からはみ出さないよう位置を寄せる
+ */
+function PaneContextMenu({ at, onClose, onSplit, onClosePane }: {
+  at: { x: number; y: number; split: boolean }
+  onClose: () => void
+  onSplit: (direction: PaneSplitDirection) => void
+  onClosePane: () => void
+}) {
+  const t = useT()
+  const ref = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    ref.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus()
+    const down = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) onClose() }
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose() } }
+    window.addEventListener('pointerdown', down, true)
+    window.addEventListener('keydown', key)
+    return () => { window.removeEventListener('pointerdown', down, true); window.removeEventListener('keydown', key) }
+  }, [onClose])
+  const left = Math.max(4, Math.min(at.x, window.innerWidth - 200))
+  const top = Math.max(4, Math.min(at.y, window.innerHeight - 120))
+  return createPortal(
+    <div ref={ref} className="pane-menu" role="menu" aria-label={t('terminal.paneMenu')} style={{ left, top }} data-testid="terminal-pane-menu">
+      <button type="button" role="menuitem" className="pane-menu__item" onClick={() => onSplit('vertical')} data-testid="terminal-pane-menu-split-right">
+        <Columns2 size={14} strokeWidth={1.75} aria-hidden="true" /><span>{t('terminal.splitRight')}</span><kbd className="pane-menu__key">{splitShortcut('vertical')}</kbd>
+      </button>
+      <button type="button" role="menuitem" className="pane-menu__item" onClick={() => onSplit('horizontal')} data-testid="terminal-pane-menu-split-down">
+        <Rows2 size={14} strokeWidth={1.75} aria-hidden="true" /><span>{t('terminal.splitDown')}</span><kbd className="pane-menu__key">{splitShortcut('horizontal')}</kbd>
+      </button>
+      {at.split && <button type="button" role="menuitem" className="pane-menu__item" onClick={onClosePane} data-testid="terminal-pane-menu-close">
+        <X size={14} strokeWidth={1.75} aria-hidden="true" /><span>{t('terminal.closePane')}</span>
+      </button>}
+    </div>,
+    document.body
   )
 }

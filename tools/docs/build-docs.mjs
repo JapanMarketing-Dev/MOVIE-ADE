@@ -93,7 +93,7 @@ ${clip('quick-start', 'Open a page, record, circle and talk, stop, and send the 
 <p>After you stop, the window returns to Editor mode and opens the ${ui('Findings')} tab.</p>
 <ul>
   <li>Edit a title or request in place.</li>
-  <li>Toggle ${ui('Send')} / ${ui("Don't send")} per finding, ${ui('Merge with Next')}, or ${ui('Delete')}.</li>
+  <li>Toggle ${ui('Send')} / ${ui("Don't send")} per finding, or ${ui('Delete')}.</li>
   <li>${ui('Undo')} reverts the last edit.</li>
 </ul>`],
     ['send', '5. Send to an agent', `
@@ -341,7 +341,15 @@ ${shot('feedback-toolbar', 'Feedback mode toolbar')}`],
   <li><strong>${ui('Pen')}</strong>: select it, or hold ${keys('Alt')} to draw only while held (ignored while typing in a field).</li>
   <li><strong>${ui('Clear')}</strong>: removes the current marks.</li>
 </ul>
-<p>Circle the spot while you talk about it: the words and the marks end up in the same finding. The pen is available only while recording. There is no text tool. Say it instead. Keys for the pen, the box, and colors are listed in <a href="keyboard.html#drawing">Keyboard shortcuts</a>.</p>`],
+<p>Circle the spot while you talk about it: the words and the marks end up in the same finding. The pen is available only while recording, and there is no text tool while recording: say it instead, or type it afterwards with <a href="#type">Type feedback</a>. Keys for the pen, the box, and colors are listed in <a href="keyboard.html#drawing">Keyboard shortcuts</a>.</p>`],
+    ['type', 'Type feedback instead of talking', `
+<p>When talking isn't convenient, type the finding instead. This works only in Editor mode, on the ${ui('Browser')} tab, while not recording.</p>
+<ol class="docs-steps">
+  <li>Click ${ui('Type feedback')} in the browser toolbar.</li>
+  <li>Drag a box around the spot on the page, or click an element to box it.</li>
+  <li>Type what should change. ${keys('Enter')} adds it, ${keys('Shift+Enter')} starts a new line, and ${keys('Esc')} cancels the box. Enter while converting text with an input method doesn't add it.</li>
+</ol>
+<p>Each one becomes a finding with an image of the page and the box, plus the URL and the boxed element, like a recorded finding. It is added to the review open in ${ui('Findings')}, or to a new review if none is open. The browser stays in front, so you can add several in a row; ${keys('Esc')} with no box open, or the button again, stops. It also works on a desktop app or simulator window shown in place of the browser, without the URL.</p>`],
     ['annotations-clear', 'When marks disappear', `
 <p>Marks belong to the screen they were drawn on. They are recorded into the current finding, then cleared, when:</p>
 <ul>
@@ -351,6 +359,9 @@ ${shot('feedback-toolbar', 'Feedback mode toolbar')}`],
 </ul>`],
     ['mic', 'Microphone', `
 <p>The microphone is on by default. Toggle it from the footer (${ui('Turn microphone off')} / ${ui('Turn microphone on')}) or with ${ui('Record my voice')} in Settings. Choose a device under ${ui('Microphone')}.</p>`],
+    ['live-transcript', 'See what is being transcribed', `
+<p>While you record, open the ${ui('Transcript')} tab at the top of the right panel in feedback mode to read your words as text, with the time they were said (and who said it when the other side of a meeting is recorded). Text appears a few seconds after you pause, so you can check early that what you say is being captured. The top line shows ${ui('Transcribing')}, how many parts are waiting, or why transcription stopped.</p>
+<p>If transcription fails, no model or key is set, about 2 minutes of voice produce no text, or no sound reaches the microphone, ${APP} warns you once and marks the right panel button, even when the tab is closed. Recording continues and the audio is kept. To hide the tab, turn off ${ui('Show the live transcript while recording (right panel of feedback mode)')} in ${ui('Settings → Transcription')}. The warnings still appear.</p>`],
     ['other-side', 'Record the other side of a meeting', `
 <p>To review a page together on a call, let ${APP} record what you hear from your computer as well as your microphone. This works with any meeting app (Zoom, Google Meet, Microsoft Teams, and others), because ${APP} records your computer's audio, not the app. The two are kept apart: your microphone is transcribed as <strong>Me</strong> and your computer's audio as <strong>Other</strong>, so each finding shows who asked for what. It also works with your microphone turned off.</p>
 <ol class="docs-steps">
@@ -380,7 +391,7 @@ ${shot('feedback-toolbar', 'Feedback mode toolbar')}`],
   ])
 
 page('agents.html', `Using ${APP}`, 'Sending to agents',
-  'Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere, or post the review to GitHub.',
+  'Run your coding agent in the built-in terminal and hand it a review with one click. Claude Code and Codex are the usual examples, but any agent in the list below works, and so does a CLI you add yourself. You can also copy the instruction for an agent running elsewhere.',
   [
     ['findings', 'Review findings', `
 <p>Each card in the ${ui('Findings')} tab supports:</p>
@@ -388,11 +399,11 @@ page('agents.html', `Using ${APP}`, 'Sending to agents',
   <li>Inline edit of the title and request</li>
   <li>${ui('Send')} / ${ui("Don't send")} toggle</li>
   <li>${ui('Watch Recording')} (seeks to that time) and ${ui('Replace Image')} (pick another frame)</li>
-  <li>${ui('Confirm')} / ${ui('Mark as Needs Review')}, ${ui('Merge with Next')}, ${ui('Delete')}</li>
+  <li>${ui('Confirm')}, ${ui('Delete')}</li>
 </ul>
 <p>${ui('Filter by progress')} shows or hides findings by status (for example ${ui('Only')} the ones waiting for your review); ${ui('Show all')} clears it.</p>
 <p>To reorder findings, drag the handle to the left of a card's title, or select the handle and press ${k('↑')} / ${k('↓')}. The numbers, <code>feedback.md</code>, and what you send to the agent follow the new order. While a filter is on, the order among the visible findings changes and hidden findings keep their place. When a review covers several pages or files, findings move within their own group. ${ui('Sort findings')} in the header switches between ${ui('Manual (drag order)')}, ${ui('Recording time')}, and ${ui('Progress')} (not started first, done last); sorting by progress saves that order as the manual order.</p>
-<p>The header has ${ui('Undo')}, ${ui('Open Folder')}, ${ui('Copy for Agent')}, ${ui('Send to GitHub / GitLab')}, ${ui('Organize')}, and ${ui('Send to Agent')}. Speech that didn't become a finding is listed under ${ui('Excluded speech')}, where ${ui('Restore as Finding')} brings it back.</p>
+<p>The header has ${ui('Undo')}, ${ui('Open Folder')}, ${ui('Copy for Agent')}, ${ui('Organize')}, and ${ui('Send to Agent')}. Speech that didn't become a finding is listed under ${ui('Excluded speech')}, where ${ui('Restore as Finding')} brings it back. Speech with no meaningful words never becomes a finding and is listed there too: phrases speech-to-text sometimes invents from silence, such as “Shh.” or “Thanks for watching”, fillers like “um”, and a bare “OK” or “yes” with no pen mark.</p>
 ${shot('findings', 'The Findings tab')}`],
     ['terminal', 'Run agents in the built-in terminal', `
 <p>When a project opens, ${APP} starts one terminal tab per agent in ${ui('Settings → Agents → Start When a Project Opens')}, in the project folder. The default is Claude Code and Codex, started without permission prompts and with Claude in Chrome turned on:</p>
@@ -478,31 +489,21 @@ ${note(`<p>Ollama 0.35.0 limits <code>/v1/systemone</code> requests to 64 KiB, s
 <p>Leave it empty to use the default. The maximum length is 2000 characters, and ${ui('Reset Instructions')} restores the default. Example:</p>
 ${code('Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.')}
 <p>The setting is stored as <code>agentPrompt</code> in <code>settings.json</code>.</p>`],
-    ['github', 'Send to GitHub or GitLab (Issue / PR or MR comment)', `
-<p>${ui('Send to GitHub')} posts the review as a new issue or as a comment on one of your open pull requests. Authentication is delegated to the <a href="https://cli.github.com/">GitHub CLI</a>. ${APP} never reads or stores a token.</p>
-<ol class="docs-steps">
-  <li>Install <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), or see <a href="https://github.com/cli/cli#installation">cli/cli</a>.</li>
-  <li>${ui('Settings → GitHub / GitLab → Sign In in Terminal')} runs <code>gh auth login --web -h github.com</code> in the built-in terminal.</li>
-  <li>Click ${ui('Send to GitHub')}, choose ${ui('Create a new issue')} or a PR, and review the ${ui('Title')} and ${ui('Body')} (editable).</li>
-  <li>Tick the confirmation checkbox, then ${ui('Create Issue')} or ${ui('Post Comment')}.</li>
-</ol>
-<p>Details:</p>
+    ['star', 'Star Ferret on GitHub', `
+<p>After your first ${ui('Send to Agent')}, and when you reach 3, 10, and 30 finished reviews, ${APP} may ask you to star it on GitHub. It asks at most 3 times, at least 3 days apart, and never while recording. ${ui('Star on GitHub')} stars it through your own <code>gh</code> login (or opens GitHub if <code>gh</code> isn't available), and ${ui("Don't Ask Again")} stops the prompts. You can also star from ${ui('Help → Star Ferret on GitHub')}.</p>`],
+    ['cli-tools', 'Service CLIs', `
+<p>${ui('Settings → Service CLIs')} lists the command-line tools of services you often use, so your agents can work with them. Installing them is optional: install only what you need, and ${APP} works without any of them. Each row shows whether the tool is installed and its version, a link to the service's website, and buttons that run the official install or sign-in command for your OS in a new terminal tab:</p>
 <ul>
-  <li>The repository comes from <code>git remote get-url origin</code>.</li>
-  <li>${APP} runs <code>gh issue create --repo … --title … --body-file -</code> or <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>.</li>
-  <li>The body is <code>feedback.md</code> without the image lines (images are not uploaded), up to 60,000 characters.</li>
-  <li>PR candidates are your own open PRs (up to 30).</li>
-</ul>
-<p>If <code>GH_TOKEN</code> or <code>GITHUB_TOKEN</code> is set, <code>gh</code> uses it first, and the settings panel warns about it.</p>
-<p><strong>GitLab.</strong> When <code>origin</code> is a GitLab project (gitlab.com or a self-managed GitLab), the same button sends to GitLab through the <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a> (<code>glab</code>): a new issue, or a comment on one of your open merge requests. Sign in with ${ui('Settings → GitHub / GitLab')}, which runs <code>glab auth login</code> (with <code>--hostname</code> for a self-managed GitLab) in the built-in terminal. ${APP} never reads or stores the token, and warns when <code>GITLAB_TOKEN</code> is set.</p>
-<p><strong>Star prompt.</strong> After your first ${ui('Send to Agent')}, and when you reach 3, 10, and 30 finished reviews, ${APP} may ask you to star it on GitHub. It asks at most 3 times, at least 3 days apart, and never while recording. ${ui('Star on GitHub')} stars it through your own <code>gh</code> login (or opens GitHub if <code>gh</code> isn't available), and ${ui("Don't Ask Again")} stops the prompts. You can also star from ${ui('Help → Star Ferret on GitHub')}.</p>`],
-    ['cli-tools', 'Install and sign in to CLI tools', `
-<p>${ui('Settings → CLI tools')} lists command-line tools your agents often need, shows which are installed and their version, and runs the official install or sign-in command for your OS in a new terminal tab:</p>
-<ul>
-  <li>Git hosting: <code>gh</code>, <code>glab</code></li>
-  <li>AI and models: Ollama, Cloudflare <code>wrangler</code></li>
-  <li>Deploy: Vercel, Netlify, Fly.io, Railway, Heroku</li>
-  <li>Cloud and services: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+  <li>Git hosting: GitHub (<code>gh</code>), GitLab (<code>glab</code>)</li>
+  <li>Hosting &amp; deploy: Vercel, Netlify, Cloudflare (<code>wrangler</code>), Firebase, Fly.io, Railway, Heroku</li>
+  <li>Cloud: AWS, Google Cloud (<code>gcloud</code>), Azure (<code>az</code>)</li>
+  <li>Databases &amp; backend: Supabase, Neon, PlanetScale, Turso</li>
+  <li>Errors &amp; monitoring: Sentry (<code>sentry-cli</code>), Datadog (<code>datadog-ci</code>)</li>
+  <li>Payments: Stripe</li>
+  <li>Containers: Docker, <code>kubectl</code></li>
+  <li>Mobile: Xcode Command Line Tools (macOS only), Android Platform Tools (<code>adb</code>), Expo EAS, fastlane</li>
+  <li>Virtual machines: UTM (macOS only), Lima, Multipass</li>
+  <li>AI &amp; models: Ollama</li>
 </ul>
 <p>Where a tool has no one-line official installer for your OS, ${ui('Docs')} opens its install page instead. The list checks again on its own once an install finishes.</p>`],
   ])
@@ -514,7 +515,7 @@ page('editor.html', `Using ${APP}`, 'Editor and preview',
 <ul>
   <li>${ui('Files')} (the file tree): ${keys('Mod+Shift+E')}, with ${ui('Filter by file name')}, ${ui('Refresh')}, and ${ui('Collapse All')}.</li>
   <li>${ui('Go to File…')}: ${keys('Mod+P')}.</li>
-  <li>Drag a file from Finder (File Explorer on Windows, your file manager on Linux) onto the tab bar or the editor to open it. Files in the project open in the editor or a viewer. To bring a file from outside the project in, drop it on ${ui('Files')}, which copies it into the project. A folder dropped here opens as a project. Files dragged from ${ui('Files')} open the same way.</li>
+  <li>Drag a file from Finder (File Explorer on Windows, your file manager on Linux) onto the tab bar or the editor to open it. Files in the project open in the editor or a viewer. To bring a file from outside the project in, drop it on ${ui('Files')}, which copies it into the project. A folder dropped here opens as a project. Files dragged from ${ui('Files')} open the same way. Images and videos dropped on an open Markdown file are embedded in it instead (see <a href="#embed-media">Embed images and videos in Markdown</a>).</li>
   <li>Save with ${keys('Mod+S')}. Closing a modified file asks <q>Save changes to &lt;name&gt;?</q> with ${ui('Save')}, ${ui("Don't Save")}, and ${ui('Cancel')}.</li>
   <li>If the file changes on disk while you have unsaved edits, choose ${ui('Reload from Disk')} or ${ui('Keep My Changes')}.</li>
 </ul>
@@ -538,21 +539,30 @@ page('editor.html', `Using ${APP}`, 'Editor and preview',
 <p>Open tabs follow a renamed or moved file and keep unsaved edits. ${APP} won't overwrite an existing file or folder with the same name, and it keeps everything inside the project folder: it refuses <code>..</code>, absolute paths, symbolic links that point outside, anything inside <code>.git</code>, moving a folder into itself, and names that some OS can't use: <code>/ \\ &lt; &gt; : " | ? *</code>, control characters, a trailing space or dot, and Windows reserved names such as <code>CON</code> or <code>NUL</code>. One copy or drop can hold up to 10,000 items and 1 GB.</p>`],
     ['preview', 'Markdown and Mermaid preview', `
 <p>Preview works for <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code>, and <code>.mermaid</code>. Mermaid is bundled with the app, so diagrams render offline.</p>
+<p>A Markdown file has two views at the top of the editor: ${ui('Source')} and ${ui('Preview')}. The preview is always editable, so you can type straight into it; click ${ui('Source')} to go back to the text. Both show the same content, and saving, the unsaved mark, and the close confirmation work the same way.</p>
+<ul>
+  <li>Type straight into headings, paragraphs, lists, checkboxes, tables, links, and bold, italic, or inline code. Typing <code>#</code>, <code>-</code>, <code>1.</code>, or <code>&gt;</code> and a space at the start of a line starts a heading, list, or quote.</li>
+  <li>Code blocks and Mermaid diagrams are edited as their source, with the language shown in the corner. To see the diagram drawn, open the file from ${ui('Files')} in the <a href="projects.html#review-targets">${ui('Review targets')}</a> panel.</li>
+  <li>Front matter (the <code>---</code> block at the top) is shown as text above the document and can be edited there.</li>
+  <li>Parts you don't change are saved exactly as written, including heading style, list markers, blank lines, table alignment, and line endings. A block you edit keeps its style where possible; otherwise that block is written in a standard Markdown form, with <code>-</code> for lists and <code>#</code> for headings.</li>
+  <li>Images and videos in the project are shown. Images from other sites are not loaded; their host name is shown instead. Other HTML in the file is shown as text.</li>
+</ul>
+<p><code>.mdx</code> files (edited as source only), <code>.mmd</code>, and <code>.mermaid</code> files have a read-only preview instead:</p>
 <ul>
   <li>${ui('Open Preview to the Side')}: next to the editor</li>
   <li>${ui('Open Preview')}: in the built-in browser (<code>ade-preview://</code>), so you can record and review it</li>
-</ul>
-<p>To edit a Markdown file as it looks in the preview, click ${ui('Edit in Preview')} at the top of the editor, and click ${ui('Source')} to go back. Both show the same content, and saving, the unsaved mark, and the close confirmation work the same way.</p>
+</ul>`],
+    ['embed-media', 'Embed images and videos in Markdown', `
+<p>Drag images (PNG, JPEG, GIF, WebP, SVG, AVIF) or videos (MP4, WebM, MOV) onto a Markdown file, in ${ui('Source')} or ${ui('Preview')}, to embed them where you drop them.</p>
 <ul>
-  <li>Type straight into headings, paragraphs, lists, checkboxes, tables, links, and bold, italic, or inline code. Typing <code>#</code>, <code>-</code>, <code>1.</code>, or <code>&gt;</code> and a space at the start of a line starts a heading, list, or quote.</li>
-  <li>Code blocks and Mermaid diagrams are edited as their source, with the language shown in the corner. The diagram renders in ${ui('Open Preview to the Side')} or ${ui('Open Preview')}.</li>
-  <li>Front matter (the <code>---</code> block at the top) is shown as text above the document and can be edited there.</li>
-  <li>Parts you don't change are saved exactly as written, including heading style, list markers, blank lines, table alignment, and line endings. A block you edit keeps its style where possible; otherwise that block is written in a standard Markdown form, with <code>-</code> for lists and <code>#</code> for headings.</li>
-  <li>Images in the project are shown. Images from other sites are not loaded; their host name is shown instead. HTML in the file is shown as text.</li>
+  <li>Files already in the project, including ones dragged from ${ui('Files')}, are linked with a path relative to the Markdown file. Nothing is copied.</li>
+  <li>Files from outside the project (Finder, the desktop, File Explorer on Windows) are first copied into a folder next to the Markdown file: <code>assets</code>, <code>images</code>, <code>media</code>, or <code>img</code> if one is already there, otherwise a new <code>assets</code> folder. Spaces in the name become <code>-</code>, and if the name is taken the copy is named <code>name-2</code>. The originals stay where they were.</li>
+  <li>Images are written as <code>![name](assets/name.png)</code> and videos as <code>&lt;video&#32;src="assets/name.mp4" controls&gt;&lt;/video&gt;</code>, which GitHub also plays. Both are shown in ${ui('Preview')}.</li>
+  <li>An image can be up to 50 MB and a video up to 500 MB, and one drop copies up to 50 files and 1 GB. Other files dropped with them open in the editor as usual.</li>
 </ul>`],
     ['review-docs', 'Review docs by recording', `
 <ol class="docs-steps">
-  <li>Open a Markdown file and click ${ui('Open Preview')}.</li>
+  <li>In the <a href="projects.html#review-targets">${ui('Review targets')}</a> panel, open the Markdown file from ${ui('Files')}. It opens as a preview in the built-in browser.</li>
   <li>Record as usual. Talk through the spec or design doc and circle what's wrong.</li>
   <li>Stop. Findings reference the file's project-relative path instead of a URL.</li>
   <li>${ui('Send to Agent')} to have the doc fixed.</li>
@@ -747,11 +757,10 @@ page('settings.html', 'Configure', 'Settings reference',
   </tbody>
 </table>
 <p>In ${ui('Settings → Accounts')}. Work is handed over through <code>.ferret/handoff.md</code> in the project. See <a href="accounts.html#failover">Keep working at usage limits</a>.</p>`],
-    ['other', 'Accounts, GitHub, appearance, language', `
+    ['other', 'Accounts, service CLIs, appearance, language', `
 <ul>
   <li>${ui('Accounts')}: see <a href="accounts.html">Accounts and usage</a>.</li>
-  <li>${ui('GitHub / GitLab')}: <code>gh</code> and <code>glab</code> sign-in. See <a href="agents.html#github">Send to GitHub or GitLab</a>.</li>
-  <li>${ui('CLI tools')}: install and sign in to service CLIs. See <a href="agents.html#cli-tools">CLI tools</a>.</li>
+  <li>${ui('Service CLIs')}: install and sign in to service CLIs. See <a href="agents.html#cli-tools">Service CLIs</a>.</li>
   <li>${ui('Appearance → Theme')}: ${ui('System')} (default), ${ui('Light')}, ${ui('Dark')}.</li>
   <li>${ui('Language → Interface')}: ${ui('System')} (default; follows the OS language when ${APP} has it, English otherwise) or one of 14 languages: English, 日本語, 简体中文, 繁體中文, 한국어, Español, Français, Deutsch, Italiano, Português (Brasil), Русский, हिन्दी, Bahasa Indonesia, Tiếng Việt.</li>
 </ul>
@@ -950,7 +959,6 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
     <tr><td>${ui('Organize')}</td><td>your Claude Code / Codex CLI, or the LLM endpoint you set in <code>organizer</code></td><td>text and action log only (no images, audio, or video)</td></tr>
     <tr><td>Acceptance check (decision model, off by default)</td><td>your agent, through the local relay, to Ollama / Cloudflare / AI Gateway / TypeSafe / your URL</td><td>what the agent sends: finding text, "Done when", and BEFORE/AFTER screenshots (image models only)</td></tr>
     <tr><td>${ui('Send to Agent')}</td><td>the agent in your terminal</td><td>one instruction pointing at <code>feedback.md</code></td></tr>
-    <tr><td>${ui('Send to GitHub')}</td><td>GitHub via <code>gh</code></td><td>body text only (no images)</td></tr>
     <tr><td>Footer usage (Claude Code and Codex only)</td><td>Anthropic, ChatGPT</td><td>usage request with your own login</td></tr>
     <tr><td>GitHub star prompt</td><td>GitHub via your <code>gh</code></td><td>checks whether you starred the repo, and stars it only if you click ${ui('Star on GitHub')}</td></tr>
     <tr><td>Updates (when ${APP} starts, every 6 hours, and ${ui('Check for Updates')})</td><td>download server (Cloudflare R2)</td><td>requests for <code>latest.json</code> and that version's <code>SHA256SUMS</code> (on macOS also <code>UPDATE-SHA256SUMS</code>); when a newer version is found, the update file for your computer (only when you click ${ui('Download')} if ${ui('Update automatically')} is off)</td></tr>
@@ -1182,7 +1190,7 @@ ${code('pnpm rebuild:native')}`],
     ['github', 'GitHub errors', `
 <ul>
   <li><q>GitHub CLI (gh) not found.</q> Install <code>gh</code>.</li>
-  <li><q>Not signed in to GitHub.</q> ${ui('Settings → GitHub / GitLab → Sign In in Terminal')}.</li>
+  <li><q>Not signed in to GitHub.</q> ${ui('Settings → Service CLIs')}.</li>
   <li><q>No origin remote.</q> or <q>origin isn't a GitHub repository.</q> Check <code>git remote -v</code>.</li>
   <li><q>Repository not found, or you don't have access.</q> Check <code>gh auth status</code> and <code>GH_TOKEN</code>.</li>
 </ul>`],

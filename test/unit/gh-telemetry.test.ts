@@ -52,7 +52,7 @@ describe('gh の失敗', () => {
   it('IPC の包みは gh の失敗を Sentry へ報告しない（画面にだけ返す）', async () => {
     const report = vi.fn()
     for (const line of SENSITIVE) {
-      const handler = wrapIpcHandler('github:postReview', async () => { throw ghError(result(line)) }, report)
+      const handler = wrapIpcHandler('project:githubRepos', async () => { throw ghError(result(line)) }, report)
       await expect(handler()).rejects.toBeInstanceOf(GhCommandError)
     }
     expect(report).not.toHaveBeenCalled()

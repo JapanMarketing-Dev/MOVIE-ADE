@@ -21,7 +21,7 @@
 ## 保留期間
 <p><span class="docs-ui">保留錄影</span>（預設 7 天，可選 30 天或 <span class="docs-ui">永久</span>）：啟動時，超過該期間的已完成審查會刪除 <code>recording.webm</code> 與 <code>work/</code>。<code>feedback.md</code> 與意見的圖片會保留。未完成的審查絕不會被清除。清除作業在啟動時針對最後開啟的專案執行。</p>
 
-<!-- @network cab5d43d47 -->
+<!-- @network e41bf8a43d -->
 ## 哪些資料會離開你的電腦
 <table>
   <thead><tr><th>時機</th><th>傳送目的地</th><th>資料</th></tr></thead>
@@ -32,7 +32,6 @@
     <tr><td><span class="docs-ui">整理</span></td><td>你的 Claude Code / Codex CLI，或你在 <code>organizer</code> 中設定的 LLM 端點</td><td>僅文字與操作記錄（不含圖片、音訊或影片）</td></tr>
     <tr><td>驗收檢查（判定模型，預設關閉）</td><td>你的 Agent 經由本機中繼送到 Ollama / Cloudflare / AI Gateway / TypeSafe / 你的 URL</td><td>Agent 送出的內容：意見文字、「完成條件」，以及 BEFORE/AFTER 螢幕截圖（僅限圖片模型）</td></tr>
     <tr><td><span class="docs-ui">傳送給 Agent</span></td><td>你終端機中的 Agent</td><td>一則指向 <code>feedback.md</code> 的指示</td></tr>
-    <tr><td><span class="docs-ui">傳送到 GitHub</span></td><td>透過 <code>gh</code> 送到 GitHub</td><td>僅內文（不含圖片）</td></tr>
     <tr><td>頁尾的用量（僅限 Claude Code 與 Codex）</td><td>Anthropic、ChatGPT</td><td>以你自己的登入發出的用量請求</td></tr>
     <tr><td>GitHub 加星提示</td><td>透過你的 <code>gh</code> 送到 GitHub</td><td>檢查你是否已為儲存庫加星，只有在你按下 <span class="docs-ui">在 GitHub 上加星</span> 時才會加星</td></tr>
     <tr><td>更新（Ferret 啟動時、每 6 小時、<span class="docs-ui">檢查更新</span>）</td><td>下載伺服器（Cloudflare R2）</td><td><code>latest.json</code> 與該版本 <code>SHA256SUMS</code>（在 macOS 上還有 <code>UPDATE-SHA256SUMS</code>）的請求；發現新版本時，下載適用於你電腦的更新檔案（關閉 <span class="docs-ui">自動更新</span> 時，只在按一下 <span class="docs-ui">下載</span> 時下載）</td></tr>

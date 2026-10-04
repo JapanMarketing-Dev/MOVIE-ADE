@@ -2,21 +2,21 @@
 <!-- @title a7a0afdf19 -->
 发送给 Agent
 
-<!-- @lead 14c9151ac0 -->
-在内置终端中运行你的编码 Agent，一键把审查交给它。Claude Code 和 Codex 是常见的例子，但下面列表中的任何 Agent 都可以使用，你自己添加的 CLI 也可以。你也可以为在其他地方运行的 Agent 复制指令，或者把审查发布到 GitHub。
+<!-- @lead 5567d6b158 -->
+在内置终端中运行你的编码 Agent，一键把审查交给它。Claude Code 和 Codex 是常见的例子，但下面列表中的任何 Agent 都可以使用，你自己添加的 CLI 也可以。你也可以为在其他地方运行的 Agent 复制指令。
 
-<!-- @findings 3f601cd2f3 -->
+<!-- @findings 5cd787aa9a -->
 ## 审查反馈
 <p><span class="docs-ui">反馈</span> 标签页中的每张卡片支持：</p>
 <ul>
   <li>直接编辑标题和请求</li>
   <li>切换 <span class="docs-ui">发送</span> / <span class="docs-ui">不发送</span></li>
   <li><span class="docs-ui">观看录制</span>（跳转到对应时间）和 <span class="docs-ui">替换图片</span>（选择另一帧）</li>
-  <li><span class="docs-ui">确认</span> / <span class="docs-ui">标记为需确认</span>、<span class="docs-ui">与下一条合并</span>、<span class="docs-ui">删除</span></li>
+  <li><span class="docs-ui">确认</span>、<span class="docs-ui">删除</span></li>
 </ul>
 <p><span class="docs-ui">按进度筛选</span> 按状态显示或隐藏反馈（例如 <span class="docs-ui">仅显示</span> 等待你检查的反馈）；<span class="docs-ui">全部显示</span> 会清除筛选。</p>
 <p>要调整反馈的顺序，可以拖动卡片标题左侧的手柄，或选中手柄后按 <kbd>↑</kbd> / <kbd>↓</kbd>。编号、<code>feedback.md</code> 以及发送给 Agent 的内容都会按新顺序排列。启用筛选时，只在可见的反馈之间调整顺序，隐藏的反馈保持原位。一次评审涉及多个页面或文件时，反馈只在各自的分组内移动。顶部的 <span class="docs-ui">反馈排序</span> 可在 <span class="docs-ui">手动（拖动顺序）</span>、<span class="docs-ui">录制时间</span> 和 <span class="docs-ui">进度</span>（未处理在前，已完成在后）之间切换；按进度排序时，该顺序会保存为手动顺序。</p>
-<p>顶部有 <span class="docs-ui">撤销</span>、<span class="docs-ui">打开文件夹</span>、<span class="docs-ui">拷贝给 Agent</span>、<span class="docs-ui">发送到 GitHub / GitLab</span>、<span class="docs-ui">整理</span> 和 <span class="docs-ui">发送给 Agent</span>。没有成为反馈的语音列在 <span class="docs-ui">已排除的语音</span> 下，点击 <span class="docs-ui">恢复为反馈</span> 可以把它找回来。</p>
+<p>顶部有 <span class="docs-ui">撤销</span>、<span class="docs-ui">打开文件夹</span>、<span class="docs-ui">拷贝给 Agent</span>、<span class="docs-ui">整理</span> 和 <span class="docs-ui">发送给 Agent</span>。没有成为反馈的语音列在 <span class="docs-ui">已排除的语音</span> 下，点击 <span class="docs-ui">恢复为反馈</span> 可以把它找回来。没有实际意义的话语也不会成为反馈，同样列在这里：语音识别有时会从静音中凭空生成的句子（例如“Shh.”或“谢谢观看”）、只有“嗯”之类语气词的话语，以及没有笔迹标注时单独的“好”或“OK”。</p>
 {{shot:findings|反馈标签页}}
 
 <!-- @terminal fe13fc4b52 -->
@@ -118,33 +118,23 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <pre><code>阅读 {{relpath}} 及其旁边的 PNG。只修复标记为发送的反馈，每条反馈一个 commit，然后运行测试。</code></pre>
 <p>该设置以 <code>agentPrompt</code> 保存在 <code>settings.json</code> 中。</p>
 
-<!-- @github aba5332ec5 -->
-## 发送到 GitHub 或 GitLab（Issue / PR 或 MR 评论）
-<p><span class="docs-ui">发送到 GitHub</span> 会把审查发布为一个新 Issue，或发布为你某个打开的 pull request 上的评论。认证交给 <a href="https://cli.github.com/">GitHub CLI</a> 处理。Ferret 从不读取或保存令牌。</p>
-<ol class="docs-steps">
-  <li>安装 <code>gh</code>：<code>brew install gh</code>（macOS）、<code>winget install --id GitHub.cli</code>（Windows），或参阅 <a href="https://github.com/cli/cli#installation">cli/cli</a>。</li>
-  <li><span class="docs-ui">设置 → GitHub / GitLab → 在终端中登录</span> 会在内置终端中运行 <code>gh auth login --web -h github.com</code>。</li>
-  <li>点击 <span class="docs-ui">发送到 GitHub</span>，选择 <span class="docs-ui">新建 Issue</span> 或某个 PR，然后检查 <span class="docs-ui">标题</span> 和 <span class="docs-ui">正文</span>（可编辑）。</li>
-  <li>勾选确认复选框，然后点击 <span class="docs-ui">创建 Issue</span> 或 <span class="docs-ui">发表评论</span>。</li>
-</ol>
-<p>细节：</p>
-<ul>
-  <li>仓库取自 <code>git remote get-url origin</code>。</li>
-  <li>Ferret 会运行 <code>gh issue create --repo … --title … --body-file -</code> 或 <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>。</li>
-  <li>正文是去掉图片行的 <code>feedback.md</code>（不上传图片），最多 60,000 个字符。</li>
-  <li>候选 PR 是你自己打开的 PR（最多 30 个）。</li>
-</ul>
-<p>如果设置了 <code>GH_TOKEN</code> 或 <code>GITHUB_TOKEN</code>，<code>gh</code> 会优先使用它，设置面板会对此发出警告。</p>
-<p><strong>GitLab。</strong>当 <code>origin</code> 是 GitLab 项目（gitlab.com 或自托管的 GitLab）时，同一个按钮会通过 <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a>（<code>glab</code>）发送到 GitLab：新建 Issue，或在你某个打开的 merge request 上发表评论。通过 <span class="docs-ui">设置 → GitHub / GitLab</span> 登录，它会在内置终端中运行 <code>glab auth login</code>（自托管 GitLab 会带上 <code>--hostname</code>）。Ferret 从不读取或保存令牌，并会在设置了 <code>GITLAB_TOKEN</code> 时发出警告。</p>
-<p><strong>点星提示。</strong>在你第一次 <span class="docs-ui">发送给 Agent</span> 之后，以及完成的审查达到 3、10 和 30 次时，Ferret 可能会请你在 GitHub 上为它点星。它最多询问 3 次，每次至少间隔 3 天，并且录制时从不询问。<span class="docs-ui">在 GitHub 上点星</span> 会通过你自己的 <code>gh</code> 登录点星（如果没有 <code>gh</code>，则打开 GitHub），<span class="docs-ui">不再询问</span> 会停止提示。你也可以通过 <span class="docs-ui">帮助 → 在 GitHub 上为 Ferret 点星</span> 点星。</p>
+<!-- @star 68ccf733da -->
+## 在 GitHub 上为 Ferret 点星
+<p>在你第一次 <span class="docs-ui">发送给 Agent</span> 之后，以及完成的审查达到 3、10 和 30 次时，Ferret 可能会请你在 GitHub 上为它点星。它最多询问 3 次，每次至少间隔 3 天，并且录制时从不询问。<span class="docs-ui">在 GitHub 上点星</span> 会通过你自己的 <code>gh</code> 登录点星（如果没有 <code>gh</code>，则打开 GitHub），<span class="docs-ui">不再询问</span> 会停止提示。你也可以通过 <span class="docs-ui">帮助 → 在 GitHub 上为 Ferret 点星</span> 点星。</p>
 
-<!-- @cli-tools 01bc2517bf -->
-## 安装并登录 CLI 工具
-<p><span class="docs-ui">设置 → CLI 工具</span> 列出你的 Agent 经常需要的命令行工具，显示哪些已安装及其版本，并在新的终端标签页中运行适用于你的操作系统的官方安装或登录命令：</p>
+<!-- @cli-tools 3d47130f13 -->
+## 常用服务的 CLI
+<p><span class="docs-ui">设置 → 常用服务的 CLI</span> 列出常用服务的命令行工具，安装后智能体就能操作这些服务。安装是可选的：只装需要的即可，一个都不装也能使用 Ferret。每一行显示是否已安装及版本、服务网站的链接，以及在新的终端标签页中运行适用于你的操作系统的官方安装或登录命令的按钮：</p>
 <ul>
-  <li>Git 托管：<code>gh</code>、<code>glab</code></li>
-  <li>AI 与模型：Ollama、Cloudflare <code>wrangler</code></li>
-  <li>部署：Vercel、Netlify、Fly.io、Railway、Heroku</li>
-  <li>云与服务：Supabase、Firebase、Stripe、Google Cloud（<code>gcloud</code>）、AWS、Azure、Docker</li>
+  <li>Git 托管：GitHub（<code>gh</code>）、GitLab（<code>glab</code>）</li>
+  <li>托管与部署：Vercel、Netlify、Cloudflare（<code>wrangler</code>）、Firebase、Fly.io、Railway、Heroku</li>
+  <li>云：AWS、Google Cloud（<code>gcloud</code>）、Azure（<code>az</code>）</li>
+  <li>数据库与后端：Supabase、Neon、PlanetScale、Turso</li>
+  <li>错误与监控：Sentry（<code>sentry-cli</code>）、Datadog（<code>datadog-ci</code>）</li>
+  <li>支付：Stripe</li>
+  <li>容器：Docker、<code>kubectl</code></li>
+  <li>移动：Xcode Command Line Tools（仅限 macOS）、Android Platform Tools（<code>adb</code>）、Expo EAS、fastlane</li>
+  <li>虚拟机：UTM（仅限 macOS）、Lima、Multipass</li>
+  <li>AI 与模型：Ollama</li>
 </ul>
 <p>如果某个工具在你的操作系统上没有一行式的官方安装命令，<span class="docs-ui">文档</span> 会改为打开它的安装页面。安装完成后，列表会自动重新检查。</p>

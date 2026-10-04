@@ -167,7 +167,7 @@
         <ul>
   <li><span class="docs-ui">फ़ाइलें</span> (फ़ाइल ट्री): <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></span></span>, जिसमें <span class="docs-ui">फ़ाइल नाम से फ़िल्टर करें</span>, <span class="docs-ui">रिफ़्रेश करें</span> और <span class="docs-ui">सब छोटा करें</span> हैं।</li>
   <li><span class="docs-ui">फ़ाइल पर जाएँ…</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></span></span>।</li>
-  <li>किसी फ़ाइल को खोलने के लिए उसे Finder (Windows पर File Explorer, Linux पर आपका file manager) से टैब बार या editor पर drag करें। प्रोजेक्ट की फ़ाइलें editor या viewer में खुलती हैं। प्रोजेक्ट के बाहर की किसी फ़ाइल को अंदर लाने के लिए उसे <span class="docs-ui">फ़ाइलें</span> पर drop करें, जो उसे प्रोजेक्ट में कॉपी कर देता है। यहाँ drop किया गया फ़ोल्डर प्रोजेक्ट के रूप में खुलता है। <span class="docs-ui">फ़ाइलें</span> से drag की गई फ़ाइलें भी इसी तरह खुलती हैं।</li>
+  <li>किसी फ़ाइल को खोलने के लिए उसे Finder (Windows पर File Explorer, Linux पर आपका file manager) से टैब बार या editor पर drag करें। प्रोजेक्ट की फ़ाइलें editor या viewer में खुलती हैं। प्रोजेक्ट के बाहर की किसी फ़ाइल को अंदर लाने के लिए उसे <span class="docs-ui">फ़ाइलें</span> पर drop करें, जो उसे प्रोजेक्ट में कॉपी कर देता है। यहाँ drop किया गया फ़ोल्डर प्रोजेक्ट के रूप में खुलता है। <span class="docs-ui">फ़ाइलें</span> से drag की गई फ़ाइलें भी इसी तरह खुलती हैं। किसी खुली Markdown फ़ाइल पर drop की गई इमेज और वीडियो इसके बजाय उसमें embed हो जाते हैं (देखें <a href="#embed-media">Markdown में इमेज और वीडियो embed करें</a>)।</li>
   <li><span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></span></span> से सेव करें। बदली हुई फ़ाइल बंद करने पर <q>&lt;name&gt; में बदलाव सेव करें?</q> पूछा जाता है, जिसमें <span class="docs-ui">सेव करें</span>, <span class="docs-ui">सेव न करें</span> और <span class="docs-ui">रद्द करें</span> होते हैं।</li>
   <li>अगर बिना सेव किए बदलावों के दौरान फ़ाइल डिस्क पर बदल जाए, तो <span class="docs-ui">डिस्क से रीलोड करें</span> या <span class="docs-ui">मेरे बदलाव रखें</span> चुनें।</li>
 </ul>
@@ -196,24 +196,36 @@
       <section class="docs-section" aria-labelledby="preview">
         <h2 id="preview"><a class="docs-anchor" href="#preview" aria-label="Markdown और Mermaid प्रीव्यू का लिंक">#</a>Markdown और Mermaid प्रीव्यू</h2>
         <p>प्रीव्यू <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> और <code>.mermaid</code> के लिए काम करता है। Mermaid ऐप के साथ ही आता है, इसलिए diagrams offline render होते हैं।</p>
+<p>Markdown फ़ाइल में editor के ऊपर दो views होते हैं: <span class="docs-ui">सोर्स</span> और <span class="docs-ui">प्रीव्यू</span>। प्रीव्यू हमेशा संपादित किया जा सकता है, इसलिए आप उसमें सीधे टाइप कर सकते हैं; text पर वापस जाने के लिए <span class="docs-ui">सोर्स</span> पर क्लिक करें। दोनों एक ही content दिखाते हैं, और सेव करना, बिना सेव किए बदलाव का निशान और बंद करते समय की पुष्टि एक ही तरह काम करते हैं।</p>
+<ul>
+  <li>Headings, paragraphs, lists, checkboxes, tables, links और bold, italic या inline code में सीधे टाइप करें। किसी लाइन की शुरुआत में <code>#</code>, <code>-</code>, <code>1.</code> या <code>&gt;</code> और एक space टाइप करने से heading, list या quote शुरू होता है।</li>
+  <li>Code blocks और Mermaid diagrams उनके source के रूप में संपादित होते हैं, और भाषा कोने में दिखती है। Diagram को बना हुआ देखने के लिए, <a href="projects.html#review-targets"><span class="docs-ui">Review targets</span></a> पैनल में <span class="docs-ui">फ़ाइलें</span> से फ़ाइल खोलें।</li>
+  <li>Front matter (सबसे ऊपर का <code>---</code> block) document के ऊपर text के रूप में दिखता है और वहीं संपादित किया जा सकता है।</li>
+  <li>जिन हिस्सों को आप नहीं बदलते, वे ठीक वैसे ही सेव होते हैं जैसे लिखे गए थे, जिसमें heading style, list markers, खाली लाइनें, table alignment और line endings शामिल हैं। आप जिस block को संपादित करते हैं, उसका style जहाँ तक हो सके बना रहता है; नहीं तो वह block मानक Markdown रूप में लिखा जाता है, lists के लिए <code>-</code> और headings के लिए <code>#</code> के साथ।</li>
+  <li>प्रोजेक्ट की इमेज और वीडियो दिखाए जाते हैं। दूसरी sites की इमेज load नहीं होतीं; उनकी जगह उनका host name दिखता है। फ़ाइल में मौजूद बाकी HTML text के रूप में दिखता है।</li>
+</ul>
+<p><code>.mdx</code> फ़ाइलों (जो सिर्फ़ source के रूप में संपादित होती हैं), <code>.mmd</code> और <code>.mermaid</code> फ़ाइलों में इसके बजाय सिर्फ़ पढ़ने वाला प्रीव्यू होता है:</p>
 <ul>
   <li><span class="docs-ui">प्रीव्यू बगल में खोलें</span>: editor के बगल में</li>
   <li><span class="docs-ui">प्रीव्यू खोलें</span>: बिल्ट-इन ब्राउज़र (<code>ade-preview://</code>) में, ताकि आप उसे रिकॉर्ड और review कर सकें</li>
 </ul>
-<p>किसी Markdown फ़ाइल को वैसे ही संपादित करने के लिए जैसी वह प्रीव्यू में दिखती है, editor के ऊपर <span class="docs-ui">प्रीव्यू में संपादित करें</span> पर क्लिक करें, और वापस जाने के लिए <span class="docs-ui">सोर्स</span> पर क्लिक करें। दोनों एक ही content दिखाते हैं, और सेव करना, बिना सेव किए बदलाव का निशान और बंद करते समय की पुष्टि एक ही तरह काम करते हैं।</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="embed-media">
+        <h2 id="embed-media"><a class="docs-anchor" href="#embed-media" aria-label="Markdown में इमेज और वीडियो embed करें का लिंक">#</a>Markdown में इमेज और वीडियो embed करें</h2>
+        <p>इमेज (PNG, JPEG, GIF, WebP, SVG, AVIF) या वीडियो (MP4, WebM, MOV) को किसी Markdown फ़ाइल पर, <span class="docs-ui">सोर्स</span> या <span class="docs-ui">प्रीव्यू</span> में, drag करें, ताकि वे वहीं embed हो जाएँ जहाँ आप उन्हें drop करते हैं।</p>
 <ul>
-  <li>Headings, paragraphs, lists, checkboxes, tables, links और bold, italic या inline code में सीधे टाइप करें। किसी लाइन की शुरुआत में <code>#</code>, <code>-</code>, <code>1.</code> या <code>&gt;</code> और एक space टाइप करने से heading, list या quote शुरू होता है।</li>
-  <li>Code blocks और Mermaid diagrams उनके source के रूप में संपादित होते हैं, और भाषा कोने में दिखती है। Diagram <span class="docs-ui">प्रीव्यू बगल में खोलें</span> या <span class="docs-ui">प्रीव्यू खोलें</span> में render होता है।</li>
-  <li>Front matter (सबसे ऊपर का <code>---</code> block) document के ऊपर text के रूप में दिखता है और वहीं संपादित किया जा सकता है।</li>
-  <li>जिन हिस्सों को आप नहीं बदलते, वे ठीक वैसे ही सेव होते हैं जैसे लिखे गए थे, जिसमें heading style, list markers, खाली लाइनें, table alignment और line endings शामिल हैं। आप जिस block को संपादित करते हैं, उसका style जहाँ तक हो सके बना रहता है; नहीं तो वह block मानक Markdown रूप में लिखा जाता है, lists के लिए <code>-</code> और headings के लिए <code>#</code> के साथ।</li>
-  <li>प्रोजेक्ट की इमेज दिखाई जाती हैं। दूसरी sites की इमेज load नहीं होतीं; उनकी जगह उनका host name दिखता है। फ़ाइल में मौजूद HTML text के रूप में दिखता है।</li>
+  <li>जो फ़ाइलें पहले से प्रोजेक्ट में हैं, जिनमें <span class="docs-ui">फ़ाइलें</span> से drag की गई फ़ाइलें भी शामिल हैं, वे Markdown फ़ाइल के सापेक्ष path से link होती हैं। कुछ भी कॉपी नहीं होता।</li>
+  <li>प्रोजेक्ट के बाहर की फ़ाइलें (Finder, desktop, Windows पर File Explorer) पहले Markdown फ़ाइल के बगल के एक फ़ोल्डर में कॉपी होती हैं: <code>assets</code>, <code>images</code>, <code>media</code> या <code>img</code>, अगर इनमें से कोई पहले से मौजूद हो, नहीं तो एक नया <code>assets</code> फ़ोल्डर। नाम में spaces <code>-</code> बन जाते हैं, और अगर नाम पहले से लिया हुआ हो तो कॉपी का नाम <code>name-2</code> होता है। मूल फ़ाइलें जहाँ थीं वहीं रहती हैं।</li>
+  <li>इमेज <code>![name](assets/name.png)</code> के रूप में और वीडियो <code>&lt;video&#32;src="assets/name.mp4" controls&gt;&lt;/video&gt;</code> के रूप में लिखे जाते हैं, जिसे GitHub भी चलाता है। दोनों <span class="docs-ui">प्रीव्यू</span> में दिखते हैं।</li>
+  <li>एक इमेज 50 MB तक और एक वीडियो 500 MB तक हो सकता है, और एक drop में ज़्यादा से ज़्यादा 50 फ़ाइलें और 1 GB कॉपी होते हैं। उनके साथ drop की गई दूसरी फ़ाइलें हमेशा की तरह editor में खुलती हैं।</li>
 </ul>
       </section>
 
       <section class="docs-section" aria-labelledby="review-docs">
         <h2 id="review-docs"><a class="docs-anchor" href="#review-docs" aria-label="रिकॉर्ड करके दस्तावेज़ों का review करें का लिंक">#</a>रिकॉर्ड करके दस्तावेज़ों का review करें</h2>
         <ol class="docs-steps">
-  <li>एक Markdown फ़ाइल खोलें और <span class="docs-ui">प्रीव्यू खोलें</span> पर क्लिक करें।</li>
+  <li><a href="projects.html#review-targets"><span class="docs-ui">Review targets</span></a> पैनल में, <span class="docs-ui">फ़ाइलें</span> से Markdown फ़ाइल खोलें। यह बिल्ट-इन ब्राउज़र में प्रीव्यू के रूप में खुलती है।</li>
   <li>हमेशा की तरह रिकॉर्ड करें। spec या design doc पर बोलते जाएँ और जो गलत है उसे घेरें।</li>
   <li>रोकें। Findings में URL की जगह फ़ाइल का प्रोजेक्ट-सापेक्ष path होता है।</li>
   <li>दस्तावेज़ ठीक करवाने के लिए <span class="docs-ui">Agent को भेजें</span>।</li>
@@ -235,6 +247,7 @@
         <li><a href="#files">फ़ाइलें खोलें और संपादित करें</a></li>
         <li><a href="#file-tree">फ़ाइल ट्री में फ़ाइलों पर काम करें</a></li>
         <li><a href="#preview">Markdown और Mermaid प्रीव्यू</a></li>
+        <li><a href="#embed-media">Markdown में इमेज और वीडियो embed करें</a></li>
         <li><a href="#review-docs">रिकॉर्ड करके दस्तावेज़ों का review करें</a></li>
       </ul>
     </aside>

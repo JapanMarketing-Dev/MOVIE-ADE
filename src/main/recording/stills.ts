@@ -40,6 +40,24 @@ export function webContentsStillSource(contents: WebContents): StillSource {
 }
 
 /**
+ * 画面全体・別のウインドウの静止画。映したビュー（browser.ts の showMirror）が見えていればそれを撮る
+ * （書き込みが写り、枠の座標もそのビューのものと合う）。見えていない（別のタブを開いている）ときは録画中の映像から切り出す
+ */
+export function mirrorStillSource(mirror: () => WebContents | null, fallback: StillSource): StillSource {
+  return {
+    capture: async () => {
+      const wc = mirror()
+      if (wc && !wc.isDestroyed()) {
+        const image = await wc.capturePage().catch(() => null)
+        if (image && !image.isEmpty()) return image
+      }
+      return fallback.capture()
+    },
+    get gone() { return fallback.gone }
+  }
+}
+
+/**
  * 1回の録画の静止画の上限（CWE-400 への備え）。超えたら保存をやめて1度だけ知らせる（声と動画は続ける）。
  * 0.5秒ごとの撮影は画面が変わったときだけ保存するので、ふつうの録画ではまず届かない。
  */

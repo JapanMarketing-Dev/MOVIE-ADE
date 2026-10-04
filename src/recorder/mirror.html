@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; media-src 'self' blob: mediastream:" />
+    <title>Ferret mirror</title>
+    <link rel="stylesheet" href="./mirror.css" />
+  </head>
+  <body>
+    <!-- 録画中の画面・ウインドウを内蔵ブラウザの場所に映す。上に書き込みの注入スクリプト（preload/review）が重なる -->
+    <video id="mirror" autoplay muted playsinline></video>
+    <p id="note" hidden></p>
+    <script src="./mirror.js"></script>
+  </body>
+</html>

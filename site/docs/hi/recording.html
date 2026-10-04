@@ -210,7 +210,18 @@
   <li><strong><span class="docs-ui">पेन</span></strong>: इसे चुनें, या सिर्फ़ दबाए रखने तक ड्रॉ करने के लिए <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Alt</kbd></span></span> दबाए रखें (किसी field में टाइप करते समय अनदेखा किया जाता है)।</li>
   <li><strong><span class="docs-ui">साफ़ करें</span></strong>: मौजूदा निशान हटा देता है।</li>
 </ul>
-<p>जिस जगह के बारे में बोल रहे हैं, उसे बोलते-बोलते घेरें: शब्द और निशान एक ही finding में पहुँचते हैं। पेन सिर्फ़ रिकॉर्डिंग के दौरान उपलब्ध है। कोई टेक्स्ट टूल नहीं है। उसकी जगह बोलकर बताएँ। पेन, बॉक्स और रंगों की keys <a href="keyboard.html#drawing">कीबोर्ड शॉर्टकट</a> में दी गई हैं।</p>
+<p>जिस जगह के बारे में बोल रहे हैं, उसे बोलते-बोलते घेरें: शब्द और निशान एक ही finding में पहुँचते हैं। पेन सिर्फ़ रिकॉर्डिंग के दौरान उपलब्ध है, और रिकॉर्डिंग के दौरान कोई टेक्स्ट टूल नहीं है: बोलकर बताएँ, या बाद में <a href="#type">लिखकर फ़ीडबैक</a> से लिखें। पेन, बॉक्स और रंगों की keys <a href="keyboard.html#drawing">कीबोर्ड शॉर्टकट</a> में दी गई हैं।</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="type">
+        <h2 id="type"><a class="docs-anchor" href="#type" aria-label="बोलने के बजाय लिखकर फ़ीडबैक दें का लिंक">#</a>बोलने के बजाय लिखकर फ़ीडबैक दें</h2>
+        <p>जब बोलना सुविधाजनक न हो, तो finding लिख दें। यह सिर्फ़ Editor मोड में, <span class="docs-ui">Browser</span> टैब पर, और रिकॉर्डिंग न चल रही हो तभी काम करता है।</p>
+<ol class="docs-steps">
+  <li>ब्राउज़र टूलबार में <span class="docs-ui">लिखकर फ़ीडबैक</span> पर क्लिक करें।</li>
+  <li>पेज पर उस जगह के चारों ओर बॉक्स खींचें, या किसी element पर क्लिक करके उसे बॉक्स में घेरें।</li>
+  <li>लिखें कि क्या बदलना है। <kbd>Enter</kbd> जोड़ता है, <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd><kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Enter</kbd></span></span> नई पंक्ति शुरू करता है, और <kbd>Esc</kbd> बॉक्स रद्द करता है। इनपुट मेथड में रूपांतरण पक्का करने वाला Enter इसे नहीं जोड़ता।</li>
+</ol>
+<p>हर एक, पेज और बॉक्स की इमेज, URL और घेरे गए element के साथ एक finding बनता है, बिल्कुल रिकॉर्ड की गई finding की तरह। यह <span class="docs-ui">Findings</span> में खुले review में जुड़ता है, या कोई खुला न हो तो नया review बनता है। ब्राउज़र सामने ही रहता है, इसलिए आप लगातार कई जोड़ सकते हैं; कोई बॉक्स खुला न हो तब <kbd>Esc</kbd>, या बटन दोबारा दबाने से यह बंद होता है। ब्राउज़र की जगह दिखाई गई डेस्कटॉप ऐप या सिम्युलेटर की विंडो पर भी यह इसी तरह काम करता है, बस URL के बिना।</p>
       </section>
 
       <section class="docs-section" aria-labelledby="annotations-clear">
@@ -226,6 +237,12 @@
       <section class="docs-section" aria-labelledby="mic">
         <h2 id="mic"><a class="docs-anchor" href="#mic" aria-label="माइक्रोफ़ोन का लिंक">#</a>माइक्रोफ़ोन</h2>
         <p>माइक्रोफ़ोन डिफ़ॉल्ट रूप से चालू रहता है। इसे फ़ुटर से (<span class="docs-ui">माइक्रोफ़ोन बंद करें</span> / <span class="docs-ui">माइक्रोफ़ोन चालू करें</span>) या Settings में <span class="docs-ui">मेरी आवाज़ रिकॉर्ड करें</span> से टॉगल करें। डिवाइस <span class="docs-ui">माइक्रोफ़ोन</span> में चुनें।</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="live-transcript">
+        <h2 id="live-transcript"><a class="docs-anchor" href="#live-transcript" aria-label="देखें कि क्या ट्रांसक्राइब हो रहा है का लिंक">#</a>देखें कि क्या ट्रांसक्राइब हो रहा है</h2>
+        <p>रिकॉर्ड करते समय, फ़ीडबैक मोड के दाएँ पैनल के ऊपर <span class="docs-ui">ट्रांसक्रिप्ट</span> टैब खोलें, ताकि आपकी बातें टेक्स्ट के रूप में, बोले जाने के समय के साथ पढ़ सकें (मीटिंग का दूसरा पक्ष भी रिकॉर्ड हो रहा हो तो किसने कहा, यह भी)। रुकने के कुछ सेकंड बाद टेक्स्ट दिखता है, इसलिए आप जल्दी जाँच सकते हैं कि आपकी बात रिकॉर्ड हो रही है। ऊपर की पंक्ति में <span class="docs-ui">ट्रांसक्राइब हो रहा है</span>, कितने हिस्से प्रतीक्षा में हैं, या ट्रांसक्रिप्शन रुकने का कारण दिखता है।</p>
+<p>अगर ट्रांसक्रिप्शन विफल हो, कोई मॉडल या कुंजी सेट न हो, लगभग 2 मिनट की आवाज़ से कोई टेक्स्ट न बने, या माइक्रोफ़ोन तक कोई आवाज़ न पहुँचे, तो टैब बंद होने पर भी Ferret एक बार चेतावनी देता है और दाएँ पैनल के बटन पर निशान लगाता है। रिकॉर्डिंग जारी रहती है और ऑडियो रखा जाता है। टैब छिपाने के लिए <span class="docs-ui">Settings → ट्रांसक्रिप्शन</span> में <span class="docs-ui">रिकॉर्डिंग के दौरान लाइव ट्रांसक्रिप्ट दिखाएँ (फ़ीडबैक मोड का दायाँ पैनल)</span> बंद करें। चेतावनियाँ फिर भी दिखती हैं।</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other-side">
@@ -278,8 +295,10 @@
         <li><a href="#desktop-mobile">Desktop apps, games और mobile apps</a></li>
         <li><a href="#record">शुरू करें, विराम दें, रोकें</a></li>
         <li><a href="#pen">पेन</a></li>
+        <li><a href="#type">बोलने के बजाय लिखकर फ़ीडबैक दें</a></li>
         <li><a href="#annotations-clear">निशान कब गायब होते हैं</a></li>
         <li><a href="#mic">माइक्रोफ़ोन</a></li>
+        <li><a href="#live-transcript">देखें कि क्या ट्रांसक्राइब हो रहा है</a></li>
         <li><a href="#other-side">मीटिंग में सामने वालों को भी रिकॉर्ड करें</a></li>
         <li><a href="#other-side-os">OS के हिसाब से सिस्टम ऑडियो</a></li>
         <li><a href="#other-side-tips">मीटिंग के लिए सुझाव</a></li>

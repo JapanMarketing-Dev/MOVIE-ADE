@@ -41,13 +41,23 @@ Ghi trình duyệt tích hợp, toàn màn hình, một cửa sổ khác, ứng 
 <p>Mỗi bản ghi dài tối đa 90 phút. Bạn sẽ nhận cảnh báo khi gần đến giới hạn, và khi đạt giới hạn, việc ghi tự động dừng và được lưu.</p>
 {{shot:feedback-toolbar|Toolbar chế độ Feedback}}
 
-<!-- @pen 0232dc7983 -->
+<!-- @pen 09c2eba894 -->
 ## Bút
 <ul>
   <li><strong><span class="docs-ui">Bút</span></strong>: chọn công cụ này, hoặc giữ {{keys:Alt}} để chỉ vẽ trong lúc giữ phím (bị bỏ qua khi đang gõ trong một ô nhập).</li>
   <li><strong><span class="docs-ui">Xóa</span></strong>: xóa các nét đang có.</li>
 </ul>
-<p>Hãy khoanh vùng chỗ bạn đang nói tới: lời nói và nét bút sẽ nằm trong cùng một góp ý. Bút chỉ dùng được trong lúc ghi. Không có công cụ văn bản; hãy nói ra thay vì gõ. Phím tắt cho bút, khung và màu có trong <a href="keyboard.html#drawing">Phím tắt</a>.</p>
+<p>Hãy khoanh vùng chỗ bạn đang nói tới: lời nói và nét bút sẽ nằm trong cùng một góp ý. Bút chỉ dùng được trong lúc ghi, và trong lúc ghi không có công cụ văn bản: hãy nói ra, hoặc gõ sau bằng <a href="#type">Góp ý bằng chữ</a>. Phím tắt cho bút, khung và màu có trong <a href="keyboard.html#drawing">Phím tắt</a>.</p>
+
+<!-- @type 20180cf30c -->
+## Gõ thay vì nói
+<p>Khi không tiện nói, hãy gõ góp ý. Chỉ dùng được ở chế độ Editor, trên tab <span class="docs-ui">Trình duyệt</span>, khi không đang ghi.</p>
+<ol class="docs-steps">
+  <li>Bấm <span class="docs-ui">Góp ý bằng chữ</span> trên thanh công cụ của trình duyệt.</li>
+  <li>Kéo một khung quanh chỗ cần sửa trên trang, hoặc bấm vào một phần tử để đóng khung nó.</li>
+  <li>Gõ điều cần sửa. {{keys:Enter}} để thêm, {{keys:Shift+Enter}} để xuống dòng, {{keys:Esc}} để hủy khung. Phím Enter dùng để xác nhận chuyển đổi của bộ gõ sẽ không thêm góp ý.</li>
+</ol>
+<p>Mỗi lần gõ thành một góp ý kèm ảnh trang và khung, cùng URL và phần tử được đóng khung, giống như góp ý ghi hình. Góp ý được thêm vào bản review đang mở ở <span class="docs-ui">Góp ý</span>, hoặc vào một bản review mới nếu chưa mở bản nào. Trình duyệt vẫn ở phía trước nên bạn có thể thêm nhiều góp ý liên tiếp; nhấn {{keys:Esc}} khi không có khung nào, hoặc bấm lại nút để dừng. Cách này cũng dùng được trên cửa sổ ứng dụng desktop hay trình giả lập hiển thị thay cho trình duyệt, khi đó không có URL.</p>
 
 <!-- @annotations-clear ea2e57b47b -->
 ## Khi nào nét bút biến mất
@@ -61,6 +71,11 @@ Ghi trình duyệt tích hợp, toàn màn hình, một cửa sổ khác, ứng 
 <!-- @mic 38bffa5e34 -->
 ## Microphone
 <p>Microphone được bật theo mặc định. Bật/tắt từ footer (<span class="docs-ui">Tắt microphone</span> / <span class="docs-ui">Bật microphone</span>) hoặc bằng <span class="docs-ui">Ghi giọng của tôi</span> trong Cài đặt. Chọn thiết bị trong <span class="docs-ui">Microphone</span>.</p>
+
+<!-- @live-transcript 3523e2aad4 -->
+## Xem nội dung đang được chuyển thành văn bản
+<p>Trong khi ghi, hãy mở tab <span class="docs-ui">Chuyển văn bản</span> ở trên cùng của bảng bên phải trong chế độ phản hồi để đọc lời bạn nói dưới dạng chữ, kèm thời điểm nói (và ai đã nói khi bạn ghi cả phía bên kia của cuộc họp). Chữ hiện ra vài giây sau khi bạn ngừng nói, nên bạn có thể sớm kiểm tra rằng lời mình nói đang được ghi lại. Dòng trên cùng hiện <span class="docs-ui">Đang chuyển văn bản</span>, số đoạn đang chờ, hoặc lý do việc chuyển văn bản dừng lại.</p>
+<p>Nếu chuyển văn bản thất bại, chưa có mô hình hoặc khóa, khoảng 2 phút giọng nói không thành chữ, hoặc không có âm thanh nào đến micro, Ferret sẽ cảnh báo một lần và đánh dấu nút của bảng bên phải, kể cả khi tab đang đóng. Việc ghi vẫn tiếp tục và âm thanh được giữ lại. Để ẩn tab, hãy tắt <span class="docs-ui">Hiện văn bản trực tiếp khi ghi (bảng bên phải của chế độ phản hồi)</span> trong <span class="docs-ui">Cài đặt → Chuyển văn bản</span>. Cảnh báo vẫn hiện.</p>
 
 <!-- @other-side bf51c46448 -->
 ## Ghi cả phía bên kia của cuộc họp

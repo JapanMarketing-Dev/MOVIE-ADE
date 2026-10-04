@@ -196,12 +196,14 @@ describe('security-5 [1] capture needs a fresh one-use grant from a native gestu
     const allowed: Record<string, RegExp> = {
       'src/main/index.ts': /capturePage/,
       'src/main/recording/stills.ts': /capturePage/,
-      'src/main/recording/sources.ts': /desktopCapturer/
+      'src/main/recording/sources.ts': /desktopCapturer/,
+      // 一覧のサムネイル（手前に出すウインドウ）。listCaptureSources からだけ呼ぶ
+      'src/main/recording/devices.ts': /screencapture/
     }
     for (const file of walk('src/main', /\.ts$/)) {
       // コメントの中の名前は数えない
       const code = read(file).split('\n').filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line)).join('\n')
-      if (!/\.capturePage\(|desktopCapturer\.getSources\(/.test(code)) continue
+      if (!/\.capturePage\(|desktopCapturer\.getSources\(|\/usr\/sbin\/screencapture/.test(code)) continue
       expect(allowed[file], `${file} が画面を撮っています。同意（captureConsent.ts）を通してから許可の一覧に足してください`).toBeDefined()
     }
   })

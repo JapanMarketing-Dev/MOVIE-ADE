@@ -1,8 +1,8 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useState, type DragEvent } from 'react'
 import { AppWindow, Link2, Pencil, Plus, X } from 'lucide-react'
 import type { Project, ProjectTarget } from '@shared/types'
 import { defaultUrlLabel, isPresetableUrl, matchPresetUrl, presetTarget } from '@shared/projectUrl'
-import { addTarget, groupTargetsByPurpose, guessTargetPurpose, hasTargetContent, purposeOf, removeTarget, sanitizeProjectKind, targetAction, updateTarget, urlTargets } from '@shared/projectTargets'
+import { addTarget, groupTargetsByPurpose, guessTargetPurpose, hasTargetContent, dropTarget, purposeOf, removeTarget, sanitizeProjectKind, targetAction, updateTarget, urlTargets } from '@shared/projectTargets'
 import { errorMessage } from '../lib/errors'
 import { useT } from '../lib/i18n'
 import { requestTerminalCommand } from '../lib/terminalCommand'
@@ -51,6 +51,8 @@ export function UrlPresets({
     // onOverlayChange は呼び出し側の setState なので変わらない
   }, [projectId])
 
+  // フックは早い return より前に置く（描画ごとにフックの数を変えない）
+  const [drag, setDrag] = useState<{ id: string; over?: string; before?: boolean } | null>(null)
   if (!project) return null
   const kind = sanitizeProjectKind(project.kind)
   const selected = matchPresetUrl(project.urls, currentUrl)
@@ -103,6 +105,37 @@ export function UrlPresets({
     if (action.windowMatch) onSelectWindow?.(action.windowMatch, launched)
   }
 
+  // ボタンのドラッグでの並べ替え（同じ区分の中だけ）。落とした位置がボタンの左半分なら前、右半分なら後ろ
+  const dropSide = (e: DragEvent<HTMLElement>): boolean => {
+    const box = e.currentTarget.getBoundingClientRect()
+    return e.clientX < box.left + box.width / 2
+  }
+  const dragProps = (target: ProjectTarget) => ({
+    draggable: true,
+    onDragStart: (e: DragEvent<HTMLElement>) => {
+      e.dataTransfer.effectAllowed = 'move'
+      e.dataTransfer.setData('application/x-ferret-target', target.id)
+      setDrag({ id: target.id })
+    },
+    onDragOver: (e: DragEvent<HTMLElement>) => {
+      if (!drag || drag.id === target.id) return
+      const from = project.urls.find((u) => u.id === drag.id)
+      if (!from || purposeOf(from) !== purposeOf(target)) return
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      const before = dropSide(e)
+      if (drag.over !== target.id || drag.before !== before) setDrag({ ...drag, over: target.id, before })
+    },
+    onDrop: (e: DragEvent<HTMLElement>) => {
+      if (!drag) return
+      e.preventDefault()
+      const next = dropTarget(project.urls, drag.id, target.id, dropSide(e))
+      setDrag(null)
+      if (next.some((u, i) => u.id !== project.urls[i]?.id)) save(next)
+    },
+    onDragEnd: () => setDrag(null)
+  })
+
   const tooltip = (target: ProjectTarget): string => {
     const action = targetAction(target, kind)
     const purpose = purposeOf(target)
@@ -128,7 +161,8 @@ export function UrlPresets({
         const isWindow = targetAction(target, kind).kind === 'window'
         return (
           <Tooltip key={target.id} label={tooltip(target)} side="top">
-            <span className={`url-chip${selected?.id === target.id ? ' is-selected' : ''}`}>
+            <span className={`url-chip${selected?.id === target.id ? ' is-selected' : ''}${drag?.id === target.id ? ' is-dragging' : ''}${drag?.over === target.id ? (drag.before ? ' is-drop-before' : ' is-drop-after') : ''}`}
+              {...dragProps(target)} data-testid="url-chip-item">
               <button
                 type="button"
                 className="url-chip__main"

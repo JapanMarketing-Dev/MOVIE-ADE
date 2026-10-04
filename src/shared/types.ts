@@ -641,6 +641,8 @@ export interface CapturePreferences { captureMic: boolean; captureSystemAudio: b
   trimIdle?: boolean
   /** 何も起きていない時間がこの秒数以上続いたら削る（省略時 3 秒） */
   trimIdleSeconds?: number
+  /** 録画中に文字起こしの途中経過を右パネルの「文字起こし」タブに出す（省略時は出す。止まったときの警告は切っても出す） */
+  showLiveTranscript?: boolean
   /** 以前の compatible の接続先。読み込むときに sttEndpoints.compatible へ移し、以後は書かない */
   baseUrl?: string
   model?: string

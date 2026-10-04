@@ -5,12 +5,12 @@ Editor und Vorschau
 <!-- @lead 97cbc36c8d -->
 Öffnen und bearbeiten Sie Projektdateien und zeigen Sie eine Vorschau von Markdown und Mermaid an. Eine im integrierten Browser geöffnete Vorschau lässt sich wie jede Webseite aufnehmen und prüfen.
 
-<!-- @files c2eff8e24c -->
+<!-- @files 542bb5ee81 -->
 ## Dateien öffnen und bearbeiten
 <ul>
   <li><span class="docs-ui">Dateien</span> (der Dateibaum): {{keys:Mod+Shift+E}}, mit <span class="docs-ui">Nach Dateiname filtern</span>, <span class="docs-ui">Aktualisieren</span> und <span class="docs-ui">Alle einklappen</span>.</li>
   <li><span class="docs-ui">Gehe zu Datei …</span>: {{keys:Mod+P}}.</li>
-  <li>Ziehen Sie eine Datei aus dem Finder (unter Windows aus dem Datei-Explorer, unter Linux aus Ihrem Dateimanager) auf die Tableiste oder den Editor, um sie zu öffnen. Dateien im Projekt öffnen sich im Editor oder in einem Viewer. Um eine Datei von außerhalb ins Projekt zu holen, legen Sie sie auf <span class="docs-ui">Dateien</span> ab; sie wird dann ins Projekt kopiert. Ein hier abgelegter Ordner wird als Projekt geöffnet. Aus <span class="docs-ui">Dateien</span> gezogene Dateien öffnen sich auf dieselbe Weise.</li>
+  <li>Ziehen Sie eine Datei aus dem Finder (unter Windows aus dem Datei-Explorer, unter Linux aus Ihrem Dateimanager) auf die Tableiste oder den Editor, um sie zu öffnen. Dateien im Projekt öffnen sich im Editor oder in einem Viewer. Um eine Datei von außerhalb ins Projekt zu holen, legen Sie sie auf <span class="docs-ui">Dateien</span> ab; sie wird dann ins Projekt kopiert. Ein hier abgelegter Ordner wird als Projekt geöffnet. Aus <span class="docs-ui">Dateien</span> gezogene Dateien öffnen sich auf dieselbe Weise. Bilder und Videos, die Sie auf einer geöffneten Markdown-Datei ablegen, werden stattdessen darin eingebettet (siehe <a href="#embed-media">Bilder und Videos in Markdown einbetten</a>).</li>
   <li>Speichern mit {{keys:Mod+S}}. Beim Schließen einer geänderten Datei fragt Ferret <q>Änderungen an &lt;name&gt; sichern?</q> mit <span class="docs-ui">Speichern</span>, <span class="docs-ui">Nicht sichern</span> und <span class="docs-ui">Abbrechen</span>.</li>
   <li>Ändert sich die Datei auf der Festplatte, während Sie ungesicherte Änderungen haben, wählen Sie <span class="docs-ui">Von Festplatte neu laden</span> oder <span class="docs-ui">Meine Änderungen behalten</span>.</li>
 </ul>
@@ -34,26 +34,37 @@ Editor und Vorschau
 </ul>
 <p>Geöffnete Tabs folgen einer umbenannten oder verschobenen Datei und behalten ungesicherte Änderungen. Ferret überschreibt keine vorhandene Datei und keinen vorhandenen Ordner mit demselben Namen und hält alles innerhalb des Projektordners: Abgelehnt werden <code>..</code>, absolute Pfade, symbolische Links, die nach außen zeigen, alles innerhalb von <code>.git</code>, das Verschieben eines Ordners in sich selbst sowie Namen, die ein Betriebssystem nicht verwenden kann: <code>/ \ &lt; &gt; : " | ? *</code>, Steuerzeichen, ein Leerzeichen oder Punkt am Ende und unter Windows reservierte Namen wie <code>CON</code> oder <code>NUL</code>. Ein einzelner Kopier- oder Ablegevorgang kann bis zu 10.000 Elemente und 1 GB umfassen.</p>
 
-<!-- @preview cb127d2292 -->
+<!-- @preview 8cf744371d -->
 ## Markdown- und Mermaid-Vorschau
 <p>Die Vorschau funktioniert für <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> und <code>.mermaid</code>. Mermaid ist in die App eingebaut, daher werden Diagramme auch offline gerendert.</p>
+<p>Eine Markdown-Datei hat oben im Editor zwei Ansichten: <span class="docs-ui">Quelltext</span> und <span class="docs-ui">Vorschau</span>. Die Vorschau ist immer bearbeitbar, Sie können also direkt darin tippen; mit <span class="docs-ui">Quelltext</span> kehren Sie zum Text zurück. Beide zeigen denselben Inhalt, und Speichern, die Markierung für ungesicherte Änderungen und die Rückfrage beim Schließen funktionieren gleich.</p>
+<ul>
+  <li>Tippen Sie direkt in Überschriften, Absätze, Listen, Kontrollkästchen, Tabellen, Links sowie fetten, kursiven oder Inline-Code. Wenn Sie am Zeilenanfang <code>#</code>, <code>-</code>, <code>1.</code> oder <code>&gt;</code> und ein Leerzeichen eingeben, beginnt eine Überschrift, eine Liste oder ein Zitat.</li>
+  <li>Codeblöcke und Mermaid-Diagramme bearbeiten Sie als Quelltext; die Sprache wird in der Ecke angezeigt. Um das Diagramm gezeichnet zu sehen, öffnen Sie die Datei unter <span class="docs-ui">Dateien</span> im Bereich <a href="projects.html#review-targets"><span class="docs-ui">Review-Ziele</span></a>.</li>
+  <li>Front Matter (der <code>---</code>-Block am Anfang) wird als Text über dem Dokument angezeigt und kann dort bearbeitet werden.</li>
+  <li>Teile, die Sie nicht ändern, werden genau so gespeichert, wie sie geschrieben sind, einschließlich Überschriftenstil, Listenzeichen, Leerzeilen, Tabellenausrichtung und Zeilenenden. Ein bearbeiteter Block behält seinen Stil, wo möglich; andernfalls wird dieser Block in einer Standard-Markdown-Form geschrieben, mit <code>-</code> für Listen und <code>#</code> für Überschriften.</li>
+  <li>Bilder und Videos im Projekt werden angezeigt. Bilder von anderen Websites werden nicht geladen; stattdessen wird ihr Hostname angezeigt. Anderes HTML in der Datei wird als Text angezeigt.</li>
+</ul>
+<p><code>.mdx</code>-Dateien (nur als Quelltext bearbeitet) sowie <code>.mmd</code>- und <code>.mermaid</code>-Dateien haben stattdessen eine schreibgeschützte Vorschau:</p>
 <ul>
   <li><span class="docs-ui">Vorschau seitlich öffnen</span>: neben dem Editor</li>
   <li><span class="docs-ui">Vorschau öffnen</span>: im integrierten Browser (<code>ade-preview://</code>), sodass Sie sie aufnehmen und prüfen können</li>
 </ul>
-<p>Um eine Markdown-Datei so zu bearbeiten, wie sie in der Vorschau aussieht, klicken Sie oben im Editor auf <span class="docs-ui">In der Vorschau bearbeiten</span>; mit <span class="docs-ui">Quelltext</span> kehren Sie zurück. Beide zeigen denselben Inhalt, und Speichern, die Markierung für ungesicherte Änderungen und die Rückfrage beim Schließen funktionieren gleich.</p>
+
+<!-- @embed-media d24ca87d61 -->
+## Bilder und Videos in Markdown einbetten
+<p>Ziehen Sie Bilder (PNG, JPEG, GIF, WebP, SVG, AVIF) oder Videos (MP4, WebM, MOV) auf eine Markdown-Datei, in <span class="docs-ui">Quelltext</span> oder <span class="docs-ui">Vorschau</span>, um sie an der Ablagestelle einzubetten.</p>
 <ul>
-  <li>Tippen Sie direkt in Überschriften, Absätze, Listen, Kontrollkästchen, Tabellen, Links sowie fetten, kursiven oder Inline-Code. Wenn Sie am Zeilenanfang <code>#</code>, <code>-</code>, <code>1.</code> oder <code>&gt;</code> und ein Leerzeichen eingeben, beginnt eine Überschrift, eine Liste oder ein Zitat.</li>
-  <li>Codeblöcke und Mermaid-Diagramme bearbeiten Sie als Quelltext; die Sprache wird in der Ecke angezeigt. Das Diagramm wird in <span class="docs-ui">Vorschau seitlich öffnen</span> oder <span class="docs-ui">Vorschau öffnen</span> gerendert.</li>
-  <li>Front Matter (der <code>---</code>-Block am Anfang) wird als Text über dem Dokument angezeigt und kann dort bearbeitet werden.</li>
-  <li>Teile, die Sie nicht ändern, werden genau so gespeichert, wie sie geschrieben sind, einschließlich Überschriftenstil, Listenzeichen, Leerzeilen, Tabellenausrichtung und Zeilenenden. Ein bearbeiteter Block behält seinen Stil, wo möglich; andernfalls wird dieser Block in einer Standard-Markdown-Form geschrieben, mit <code>-</code> für Listen und <code>#</code> für Überschriften.</li>
-  <li>Bilder im Projekt werden angezeigt. Bilder von anderen Websites werden nicht geladen; stattdessen wird ihr Hostname angezeigt. HTML in der Datei wird als Text angezeigt.</li>
+  <li>Dateien, die bereits im Projekt liegen, auch solche, die aus <span class="docs-ui">Dateien</span> gezogen werden, werden mit einem Pfad relativ zur Markdown-Datei verlinkt. Es wird nichts kopiert.</li>
+  <li>Dateien von außerhalb des Projekts (Finder, Schreibtisch, unter Windows der Datei-Explorer) werden zuerst in einen Ordner neben der Markdown-Datei kopiert: <code>assets</code>, <code>images</code>, <code>media</code> oder <code>img</code>, falls einer davon schon existiert, sonst in einen neuen Ordner <code>assets</code>. Leerzeichen im Namen werden zu <code>-</code>, und ist der Name schon vergeben, heißt die Kopie <code>name-2</code>. Die Originale bleiben, wo sie waren.</li>
+  <li>Bilder werden als <code>![name](assets/name.png)</code> geschrieben und Videos als <code>&lt;video&#32;src="assets/name.mp4" controls&gt;&lt;/video&gt;</code>, was auch GitHub abspielt. Beides wird in <span class="docs-ui">Vorschau</span> angezeigt.</li>
+  <li>Ein Bild darf bis zu 50 MB und ein Video bis zu 500 MB groß sein, und eine Ablage kopiert bis zu 50 Dateien und 1 GB. Andere Dateien, die zusammen mit ihnen abgelegt werden, öffnen sich wie gewohnt im Editor.</li>
 </ul>
 
-<!-- @review-docs 4b5c6316ba -->
+<!-- @review-docs 4ff22f4a6c -->
 ## Dokumentation per Aufnahme prüfen
 <ol class="docs-steps">
-  <li>Öffnen Sie eine Markdown-Datei und klicken Sie auf <span class="docs-ui">Vorschau öffnen</span>.</li>
+  <li>Öffnen Sie im Bereich <a href="projects.html#review-targets"><span class="docs-ui">Review-Ziele</span></a> die Markdown-Datei unter <span class="docs-ui">Dateien</span>. Sie öffnet sich als Vorschau im integrierten Browser.</li>
   <li>Nehmen Sie wie gewohnt auf. Gehen Sie die Spezifikation oder das Design-Dokument sprechend durch und kreisen Sie ein, was falsch ist.</li>
   <li>Stoppen Sie. Die Befunde verweisen statt auf eine URL auf den projektrelativen Pfad der Datei.</li>
   <li>Mit <span class="docs-ui">An Agent senden</span> lassen Sie das Dokument korrigieren.</li>

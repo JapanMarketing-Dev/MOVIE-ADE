@@ -21,7 +21,7 @@
 ## 保管期間
 <p><span class="docs-ui">録画の保管</span>（最初の設定は7日。30日か <span class="docs-ui">ずっと</span> も選べます）: 起動したとき、その期間より古い完了済みのレビューから <code>recording.webm</code> と <code>work/</code> を消します。<code>feedback.md</code> と指摘の画像は残ります。完了していないレビューは消しません。消す処理は起動時に、最後に開いたプロジェクトに対して行います。</p>
 
-<!-- @network cab5d43d47 -->
+<!-- @network e41bf8a43d -->
 ## 外に出るデータ
 <table>
   <thead><tr><th>いつ</th><th>送り先</th><th>データ</th></tr></thead>
@@ -32,7 +32,6 @@
     <tr><td><span class="docs-ui">整理</span></td><td>自分の Claude Code / Codex CLI か、<code>organizer</code> で設定した LLM のエンドポイント</td><td>文字と操作の記録だけ（画像・音声・動画は送らない）</td></tr>
     <tr><td>受け入れの判定（判定モデル。最初はオフ）</td><td>自分のエージェントから、ローカルの中継を通って Ollama / Cloudflare / AI Gateway / TypeSafe / 自分の URL へ</td><td>エージェントが送るもの: 指摘の文、「完了の条件」、BEFORE/AFTER のスクリーンショット（画像を扱えるモデルのときだけ）</td></tr>
     <tr><td><span class="docs-ui">Agentへ送信</span></td><td>ターミナルのエージェント</td><td><code>feedback.md</code> を指す指示1つ</td></tr>
-    <tr><td><span class="docs-ui">GitHub に送る</span></td><td><code>gh</code> 経由で GitHub</td><td>本文だけ（画像は送らない）</td></tr>
     <tr><td>フッターの使用量（Claude Code と Codex だけ）</td><td>Anthropic、ChatGPT</td><td>自分のログインで使用量を問い合わせる</td></tr>
     <tr><td>GitHub の star のお願い</td><td>自分の <code>gh</code> 経由で GitHub</td><td>リポジトリに star 済みかを確かめ、<span class="docs-ui">GitHub で star</span> を押したときだけ star する</td></tr>
     <tr><td>アップデート（Ferret の起動時・6時間ごと・<span class="docs-ui">更新を確認</span>）</td><td>ダウンロードのサーバー（Cloudflare R2）</td><td><code>latest.json</code> とその版の <code>SHA256SUMS</code>（macOS では <code>UPDATE-SHA256SUMS</code> も）の要求。新しい版があれば、自分のパソコン用の更新ファイル（<span class="docs-ui">新しい版を自動で入れる</span> をオフにしているときは <span class="docs-ui">ダウンロード</span> を押したときだけ）</td></tr>

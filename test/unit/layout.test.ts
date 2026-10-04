@@ -266,6 +266,6 @@ describe('pickFooterTier（フッターが狭いときに隠す順）', () => {
   })
   it('常に出すのは録画時間・使用量・設定、最初に隠すのはページ名・整理・ターミナルの配置', () => {
     expect(FOOTER_ITEMS.filter((id) => FOOTER_PRIORITY[id] === 0)).toEqual(['usage', 'recording', 'settings'])
-    expect(FOOTER_ITEMS.filter((id) => FOOTER_PRIORITY[id] === 3)).toEqual(['organizer', 'page', 'layout'])
+    expect(FOOTER_ITEMS.filter((id) => FOOTER_PRIORITY[id] === 3)).toEqual(['page', 'layout'])
   })
 })

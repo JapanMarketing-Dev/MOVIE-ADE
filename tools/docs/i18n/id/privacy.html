@@ -21,7 +21,7 @@ Tinjauan berada di folder proyek Anda. Pengaturan berada di <code>~/.ferret/</co
 ## Masa simpan
 <p><span class="docs-ui">Simpan rekaman</span> (7 hari secara bawaan, 30 hari, atau <span class="docs-ui">Selamanya</span>): saat aplikasi dimulai, tinjauan selesai yang lebih lama dari itu kehilangan <code>recording.webm</code> dan <code>work/</code>. <code>feedback.md</code> dan gambar temuan tetap disimpan. Tinjauan yang belum selesai tidak pernah dipangkas. Pemangkasan berjalan saat peluncuran, untuk proyek yang terakhir dibuka.</p>
 
-<!-- @network cab5d43d47 -->
+<!-- @network e41bf8a43d -->
 ## Apa yang keluar dari mesin Anda
 <table>
   <thead><tr><th>Kapan</th><th>Tujuan</th><th>Data</th></tr></thead>
@@ -32,7 +32,6 @@ Tinjauan berada di folder proyek Anda. Pengaturan berada di <code>~/.ferret/</co
     <tr><td><span class="docs-ui">Rapikan</span></td><td>CLI Claude Code / Codex Anda, atau endpoint LLM yang Anda atur di <code>organizer</code></td><td>hanya teks dan log tindakan (tanpa gambar, audio, atau video)</td></tr>
     <tr><td>Pemeriksaan penerimaan (model keputusan, nonaktif secara bawaan)</td><td>agent Anda, melalui relay lokal, ke Ollama / Cloudflare / AI Gateway / TypeSafe / URL Anda</td><td>yang dikirim agent: teks temuan, "Selesai jika", dan screenshot BEFORE/AFTER (hanya model gambar)</td></tr>
     <tr><td><span class="docs-ui">Kirim ke Agent</span></td><td>agent di terminal Anda</td><td>satu instruksi yang menunjuk ke <code>feedback.md</code></td></tr>
-    <tr><td><span class="docs-ui">Kirim ke GitHub</span></td><td>GitHub melalui <code>gh</code></td><td>hanya teks isi (tanpa gambar)</td></tr>
     <tr><td>Penggunaan di footer (hanya Claude Code dan Codex)</td><td>Anthropic, ChatGPT</td><td>permintaan data penggunaan dengan login Anda sendiri</td></tr>
     <tr><td>Ajakan memberi bintang di GitHub</td><td>GitHub melalui <code>gh</code> Anda</td><td>memeriksa apakah Anda sudah memberi bintang pada repo, dan memberi bintang hanya jika Anda mengklik <span class="docs-ui">Beri bintang di GitHub</span></td></tr>
     <tr><td>Pembaruan (saat Ferret dimulai, setiap 6 jam, dan dengan <span class="docs-ui">Periksa Pembaruan</span>)</td><td>server unduhan (Cloudflare R2)</td><td>permintaan untuk <code>latest.json</code> dan <code>SHA256SUMS</code> versi tersebut (di macOS juga <code>UPDATE-SHA256SUMS</code>); jika ada versi baru, file pembaruan untuk komputer Anda (hanya saat Anda mengklik <span class="docs-ui">Unduh</span> jika <span class="docs-ui">Perbarui secara otomatis</span> dimatikan)</td></tr>

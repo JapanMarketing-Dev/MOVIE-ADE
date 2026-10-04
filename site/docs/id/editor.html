@@ -167,7 +167,7 @@
         <ul>
   <li><span class="docs-ui">File</span> (pohon file): <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></span></span>, dengan <span class="docs-ui">Filter berdasarkan nama file</span>, <span class="docs-ui">Segarkan</span>, dan <span class="docs-ui">Ciutkan Semua</span>.</li>
   <li><span class="docs-ui">Buka File…</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></span></span>.</li>
-  <li>Seret file dari Finder (File Explorer di Windows, pengelola file Anda di Linux) ke bilah tab atau editor untuk membukanya. File di dalam proyek terbuka di editor atau penampil. Untuk memasukkan file dari luar proyek, lepaskan di <span class="docs-ui">File</span>, yang akan menyalinnya ke dalam proyek. Folder yang dilepaskan di sini dibuka sebagai proyek. File yang diseret dari <span class="docs-ui">File</span> terbuka dengan cara yang sama.</li>
+  <li>Seret file dari Finder (File Explorer di Windows, pengelola file Anda di Linux) ke bilah tab atau editor untuk membukanya. File di dalam proyek terbuka di editor atau penampil. Untuk memasukkan file dari luar proyek, lepaskan di <span class="docs-ui">File</span>, yang akan menyalinnya ke dalam proyek. Folder yang dilepaskan di sini dibuka sebagai proyek. File yang diseret dari <span class="docs-ui">File</span> terbuka dengan cara yang sama. Gambar dan video yang dilepaskan pada file Markdown yang sedang terbuka akan disematkan ke dalamnya (lihat <a href="#embed-media">Menyematkan gambar dan video di Markdown</a>).</li>
   <li>Simpan dengan <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></span></span>. Menutup file yang diubah akan menanyakan <q>Simpan perubahan pada &lt;name&gt;?</q> dengan <span class="docs-ui">Simpan</span>, <span class="docs-ui">Jangan Simpan</span>, dan <span class="docs-ui">Batal</span>.</li>
   <li>Jika file berubah di disk saat Anda memiliki edit yang belum disimpan, pilih <span class="docs-ui">Muat Ulang dari Disk</span> atau <span class="docs-ui">Pertahankan Perubahan Saya</span>.</li>
 </ul>
@@ -196,24 +196,36 @@
       <section class="docs-section" aria-labelledby="preview">
         <h2 id="preview"><a class="docs-anchor" href="#preview" aria-label="Tautan ke Pratinjau Markdown dan Mermaid">#</a>Pratinjau Markdown dan Mermaid</h2>
         <p>Pratinjau berfungsi untuk <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code>, dan <code>.mermaid</code>. Mermaid sudah dibundel dengan aplikasi, sehingga diagram dirender secara offline.</p>
+<p>File Markdown memiliki dua tampilan di bagian atas editor: <span class="docs-ui">Sumber</span> dan <span class="docs-ui">Pratinjau</span>. Pratinjau selalu bisa diedit, sehingga Anda bisa mengetik langsung di dalamnya; klik <span class="docs-ui">Sumber</span> untuk kembali ke teks. Keduanya menampilkan konten yang sama, dan penyimpanan, tanda belum disimpan, serta konfirmasi saat menutup bekerja dengan cara yang sama.</p>
+<ul>
+  <li>Ketik langsung di judul, paragraf, daftar, kotak centang, tabel, tautan, serta teks tebal, miring, atau kode sebaris. Mengetik <code>#</code>, <code>-</code>, <code>1.</code>, atau <code>&gt;</code> diikuti spasi di awal baris akan memulai judul, daftar, atau kutipan.</li>
+  <li>Blok kode dan diagram Mermaid diedit sebagai sumbernya, dengan bahasanya ditampilkan di pojok. Untuk melihat diagram digambar, buka file dari <span class="docs-ui">File</span> di panel <a href="projects.html#review-targets"><span class="docs-ui">Target tinjauan</span></a>.</li>
+  <li>Front matter (blok <code>---</code> di bagian atas) ditampilkan sebagai teks di atas dokumen dan bisa diedit di sana.</li>
+  <li>Bagian yang tidak Anda ubah disimpan persis seperti yang ditulis, termasuk gaya judul, penanda daftar, baris kosong, perataan tabel, dan akhir baris. Blok yang Anda edit mempertahankan gayanya jika memungkinkan; jika tidak, blok tersebut ditulis dalam bentuk Markdown standar, dengan <code>-</code> untuk daftar dan <code>#</code> untuk judul.</li>
+  <li>Gambar dan video di dalam proyek ditampilkan. Gambar dari situs lain tidak dimuat; nama host-nya yang ditampilkan. HTML lain di dalam file ditampilkan sebagai teks.</li>
+</ul>
+<p>File <code>.mdx</code> (hanya diedit sebagai sumber), <code>.mmd</code>, dan <code>.mermaid</code> memiliki pratinjau hanya-baca sebagai gantinya:</p>
 <ul>
   <li><span class="docs-ui">Buka Pratinjau di Samping</span>: di sebelah editor</li>
   <li><span class="docs-ui">Buka Pratinjau</span>: di browser bawaan (<code>ade-preview://</code>), sehingga Anda bisa merekam dan meninjaunya</li>
 </ul>
-<p>Untuk mengedit file Markdown sebagaimana tampilannya di pratinjau, klik <span class="docs-ui">Edit di Pratinjau</span> di bagian atas editor, dan klik <span class="docs-ui">Sumber</span> untuk kembali. Keduanya menampilkan konten yang sama, dan penyimpanan, tanda belum disimpan, serta konfirmasi saat menutup bekerja dengan cara yang sama.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="embed-media">
+        <h2 id="embed-media"><a class="docs-anchor" href="#embed-media" aria-label="Tautan ke Menyematkan gambar dan video di Markdown">#</a>Menyematkan gambar dan video di Markdown</h2>
+        <p>Seret gambar (PNG, JPEG, GIF, WebP, SVG, AVIF) atau video (MP4, WebM, MOV) ke file Markdown, di <span class="docs-ui">Sumber</span> atau <span class="docs-ui">Pratinjau</span>, untuk menyematkannya di tempat Anda melepaskannya.</p>
 <ul>
-  <li>Ketik langsung di judul, paragraf, daftar, kotak centang, tabel, tautan, serta teks tebal, miring, atau kode sebaris. Mengetik <code>#</code>, <code>-</code>, <code>1.</code>, atau <code>&gt;</code> diikuti spasi di awal baris akan memulai judul, daftar, atau kutipan.</li>
-  <li>Blok kode dan diagram Mermaid diedit sebagai sumbernya, dengan bahasanya ditampilkan di pojok. Diagram dirender di <span class="docs-ui">Buka Pratinjau di Samping</span> atau <span class="docs-ui">Buka Pratinjau</span>.</li>
-  <li>Front matter (blok <code>---</code> di bagian atas) ditampilkan sebagai teks di atas dokumen dan bisa diedit di sana.</li>
-  <li>Bagian yang tidak Anda ubah disimpan persis seperti yang ditulis, termasuk gaya judul, penanda daftar, baris kosong, perataan tabel, dan akhir baris. Blok yang Anda edit mempertahankan gayanya jika memungkinkan; jika tidak, blok tersebut ditulis dalam bentuk Markdown standar, dengan <code>-</code> untuk daftar dan <code>#</code> untuk judul.</li>
-  <li>Gambar di dalam proyek ditampilkan. Gambar dari situs lain tidak dimuat; nama host-nya yang ditampilkan. HTML di dalam file ditampilkan sebagai teks.</li>
+  <li>File yang sudah ada di dalam proyek, termasuk yang diseret dari <span class="docs-ui">File</span>, ditautkan dengan path relatif terhadap file Markdown. Tidak ada yang disalin.</li>
+  <li>File dari luar proyek (Finder, desktop, File Explorer di Windows) lebih dulu disalin ke folder di sebelah file Markdown: <code>assets</code>, <code>images</code>, <code>media</code>, atau <code>img</code> jika salah satunya sudah ada, atau folder <code>assets</code> baru jika tidak ada. Spasi dalam nama menjadi <code>-</code>, dan jika namanya sudah dipakai, salinannya diberi nama <code>name-2</code>. File aslinya tetap di tempatnya.</li>
+  <li>Gambar ditulis sebagai <code>![name](assets/name.png)</code> dan video sebagai <code>&lt;video&#32;src="assets/name.mp4" controls&gt;&lt;/video&gt;</code>, yang juga bisa diputar oleh GitHub. Keduanya ditampilkan di <span class="docs-ui">Pratinjau</span>.</li>
+  <li>Satu gambar bisa berukuran hingga 50 MB dan satu video hingga 500 MB, dan satu kali lepas bisa menyalin hingga 50 file dan 1 GB. File lain yang dilepaskan bersamanya terbuka di editor seperti biasa.</li>
 </ul>
       </section>
 
       <section class="docs-section" aria-labelledby="review-docs">
         <h2 id="review-docs"><a class="docs-anchor" href="#review-docs" aria-label="Tautan ke Meninjau dokumen dengan merekam">#</a>Meninjau dokumen dengan merekam</h2>
         <ol class="docs-steps">
-  <li>Buka file Markdown lalu klik <span class="docs-ui">Buka Pratinjau</span>.</li>
+  <li>Di panel <a href="projects.html#review-targets"><span class="docs-ui">Target tinjauan</span></a>, buka file Markdown dari <span class="docs-ui">File</span>. File tersebut terbuka sebagai pratinjau di browser bawaan.</li>
   <li>Rekam seperti biasa. Bahas spesifikasi atau dokumen desainnya dan lingkari bagian yang salah.</li>
   <li>Berhenti. Temuan merujuk ke path file relatif terhadap proyek, bukan URL.</li>
   <li>Klik <span class="docs-ui">Kirim ke Agent</span> agar dokumennya diperbaiki.</li>
@@ -235,6 +247,7 @@
         <li><a href="#files">Membuka dan mengedit file</a></li>
         <li><a href="#file-tree">Mengelola file di pohon file</a></li>
         <li><a href="#preview">Pratinjau Markdown dan Mermaid</a></li>
+        <li><a href="#embed-media">Menyematkan gambar dan video di Markdown</a></li>
         <li><a href="#review-docs">Meninjau dokumen dengan merekam</a></li>
       </ul>
     </aside>
