@@ -25,7 +25,7 @@ import { PanelGrip } from './PanelDock'
 import { GitHubStatusItem } from './GitHubStatusItem'
 import type { UpdateCheckResult } from '@shared/appVersion'
 import type { AutoUpdateStatus } from '@shared/appUpdate'
-import { Button, Progress, RecordDot, Spinner, SttLanguageSelect, ThemeToggle } from '../ui'
+import { Button, IconButton, Progress, RecordDot, Spinner, SttLanguageSelect, ThemeToggle } from '../ui'
 import type { SpeechLanguage, Transcription } from './SettingsPage'
 import { StatusPopover as Popover } from './StatusPopover'
 import { ResourceManager } from './ResourceManager'
@@ -164,6 +164,12 @@ function LevelMeter({ level, live }: { level: number; live: boolean }) {
   </div>
 }
 
+/** マイクの一覧を読み直すよう App に頼む（App が capture:devices を呼び直す） */
+export const MIC_DEVICES_REFRESH_EVENT = 'ade:refresh-mics'
+export function requestMicDevicesRefresh(): void {
+  window.dispatchEvent(new CustomEvent(MIC_DEVICES_REFRESH_EVENT))
+}
+
 export function MicPopover({ value, onChange, recording, micDevices, available, level, onOpenSettings }: {
   value: FooterCapture
   onChange: (patch: Partial<FooterCapture>) => void
@@ -175,16 +181,22 @@ export function MicPopover({ value, onChange, recording, micDevices, available, 
 }) {
   const t = useT()
   const probe = useMicLevel(!recording && value.captureMic, value.micDeviceId)
+  // 開くたびにマイクの一覧を読み直す（あとからつないだ機器を出す）
+  useEffect(() => requestMicDevicesRefresh(), [])
   const live = value.captureMic && (recording || !probe.error)
   return <div className="sb-pop__body">
     <h3 className="sb-pop__title"><Mic size={13} aria-hidden="true" />{t('statusBar.micAndTranscription')}</h3>
     {recording && <p className="st-lock"><Lock size={12} aria-hidden="true" />{t('statusBar.lockedWhileRecording')}</p>}
     <PopSwitch label={t('statusBar.recordMyVoice')} checked={value.captureMic} disabled={recording} onChange={(captureMic) => onChange({ captureMic })} />
     <PopSelect label={t('statusBar.microphone')}>
-      <select className="st-select" aria-label={t('statusBar.micToUse')} value={value.micDeviceId} disabled={recording || !value.captureMic} onChange={(e) => onChange({ micDeviceId: e.target.value })}>
-        <option value="">{t('statusBar.systemDefault')}</option>
-        {micDevices.map((device) => <option key={device.id} value={device.id}>{device.label}</option>)}
-      </select>
+      <span className="st-mic-select">
+        <select className="st-select" aria-label={t('statusBar.micToUse')} value={value.micDeviceId} disabled={recording || !value.captureMic} onChange={(e) => onChange({ micDeviceId: e.target.value })}>
+          <option value="">{t('statusBar.systemDefault')}</option>
+          {micDevices.map((device) => <option key={device.id} value={device.id}>{device.label}</option>)}
+        </select>
+        {/* あとからつないだマイク（AirPods など）を読み直す。抜き差しは App が自動でも読み直す */}
+        <IconButton size="sm" label={t('statusBar.reloadMics')} icon={<RefreshCw size={13} />} onClick={requestMicDevicesRefresh} data-testid="mic-reload" />
+      </span>
     </PopSelect>
     <div className="st-row">
       <span className="st-row__label">{t('statusBar.level')}</span>

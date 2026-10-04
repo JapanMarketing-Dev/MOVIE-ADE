@@ -30,6 +30,12 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  /*
+   * アプリ全体は決してスクロールさせない。hidden はスクロールバーを出さないだけで、フォーカスの移動や scrollIntoView は
+   * 中をスクロールさせる。録画中に右のパネル（文字起こし）が伸びたあとクリックすると、画面全体が上へずれて
+   * 録画のツールバーが見えなくなり、内蔵ブラウザがその場所に重なった。clip はどの操作でもスクロールさせない
+   */
+  overflow: clip;
 }
 
 body {
@@ -38,7 +44,7 @@ body {
   font-family: var(--font-ui);
   font-size: var(--font-size-md);
   line-height: var(--line-height-normal);
-  overflow: hidden;
+  overflow: clip;
   -webkit-font-smoothing: antialiased;
   font-synthesis-weight: none;
 }
@@ -106,6 +112,7 @@ button {
  */
 .app {
   display: grid;
+  overflow: clip;
   height: 100%;
   grid-template-rows: minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr);
@@ -114,6 +121,7 @@ button {
 
 .shell {
   display: grid;
+  overflow: clip;
   min-width: 0;
   min-height: 0;
   grid-area: 1 / 1;

@@ -544,6 +544,7 @@ export const vi: LocaleMessages = {
   'statusBar.lockedWhileRecording': 'Không thể thay đổi khi đang ghi',
   'statusBar.recordMyVoice': 'Ghi giọng của tôi',
   'statusBar.microphone': 'Microphone',
+  'statusBar.reloadMics': 'Tải lại danh sách micrô',
   'statusBar.micToUse': 'Microphone sử dụng',
   'statusBar.systemDefault': 'Mặc định hệ thống',
   'statusBar.level': 'Mức âm',

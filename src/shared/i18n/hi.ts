@@ -544,6 +544,7 @@ export const hi: LocaleMessages = {
   'statusBar.lockedWhileRecording': 'रिकॉर्डिंग के दौरान बदला नहीं जा सकता',
   'statusBar.recordMyVoice': 'मेरी आवाज़ रिकॉर्ड करें',
   'statusBar.microphone': 'माइक्रोफ़ोन',
+  'statusBar.reloadMics': 'माइक्रोफ़ोन फिर से लोड करें',
   'statusBar.micToUse': 'इस्तेमाल होने वाला माइक्रोफ़ोन',
   'statusBar.systemDefault': 'सिस्टम डिफ़ॉल्ट',
   'statusBar.level': 'लेवल',

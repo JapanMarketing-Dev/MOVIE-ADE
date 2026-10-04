@@ -544,6 +544,7 @@ export const id: LocaleMessages = {
   'statusBar.lockedWhileRecording': 'Tidak dapat diubah saat merekam',
   'statusBar.recordMyVoice': 'Rekam suara saya',
   'statusBar.microphone': 'Mikrofon',
+  'statusBar.reloadMics': 'Muat ulang mikrofon',
   'statusBar.micToUse': 'Mikrofon yang digunakan',
   'statusBar.systemDefault': 'Default sistem',
   'statusBar.level': 'Level',

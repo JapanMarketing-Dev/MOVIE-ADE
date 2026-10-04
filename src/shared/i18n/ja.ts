@@ -544,6 +544,7 @@ export const ja: Messages = {
   'statusBar.lockedWhileRecording': '録画中は変更できません',
   'statusBar.recordMyVoice': '自分の声を録る',
   'statusBar.microphone': 'マイク',
+  'statusBar.reloadMics': 'マイクの一覧を読み直す',
   'statusBar.micToUse': '使うマイク',
   'statusBar.systemDefault': 'システムの既定',
   'statusBar.level': 'レベル',

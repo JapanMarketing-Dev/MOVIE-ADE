@@ -27,7 +27,7 @@ export function useViewBounds(
   const lastRef = useRef<string>('')
   const frameRef = useRef<number | null>(null)
 
-  const schedule = useCallback(() => {
+  const schedule = useCallback((force?: unknown) => {
     if (!visible) {
       if (lastRef.current === 'hidden') return
       lastRef.current = 'hidden'
@@ -46,7 +46,8 @@ export function useViewBounds(
         height: Math.round(rect.height)
       }
       const key = `${bounds.x},${bounds.y},${bounds.width},${bounds.height}`
-      if (key === lastRef.current) return
+      // force（定期の置き直し）は同じ値でも送る。main 側のビューだけがずれたときも戻すため
+      if (key === lastRef.current && force !== true) return
       lastRef.current = key
       // トーストはビューに隠れない場所へ置く（toastPlacement.ts）ので、位置を知らせる
       setViewBoundsForToasts(bounds)
@@ -65,9 +66,19 @@ export function useViewBounds(
     window.addEventListener('resize', schedule)
     // フォント読み込みなどで後からレイアウトが動く場合に取りこぼさない
     const timer = window.setTimeout(schedule, 150)
+    /*
+     * ResizeObserver は大きさしか見ない。大きさが同じまま位置だけが動く（上のツールバーの高さが変わる・一時的に
+     * 違う位置で測った）と、ビューがツールバーに重なったまま残る（録画のツールバーが消えて見えた）。
+     * 見せている間は 1 秒ごとに測って置き直し、ずれても自分で戻す（main 側のビューだけがずれた場合も戻すため、同じ値でも送る）
+     */
+    const healer = window.setInterval(() => schedule(true), 1000)
+    const onFocus = () => schedule(true)
+    window.addEventListener('focus', onFocus)
     return () => {
       observer.disconnect()
       window.removeEventListener('resize', schedule)
+      window.removeEventListener('focus', onFocus)
+      window.clearInterval(healer)
       window.clearTimeout(timer)
       if (frameRef.current !== null) {
         cancelAnimationFrame(frameRef.current)

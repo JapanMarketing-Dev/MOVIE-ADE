@@ -3014,3 +3014,16 @@ button.sb-more__row:hover {
 .apd-remote-files {
   padding: var(--space-6) var(--space-5);
 }
+
+/* マイクの選択と［再読み込み］を並べる（フッター・録画ツールバーのマイクのメニュー） */
+.st-mic-select {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.st-mic-select .st-select {
+  min-width: 0;
+  flex: 1;
+}

@@ -37,7 +37,7 @@ import { FindingsList } from './components/FindingsList'
 import { Sidebar, toReviewSession } from './components/Sidebar'
 import { DEMO_SESSION_IDS, EMPTY_CAPTURE, demoCapture, demoFindings, demoSessions } from './demoData'
 import { Splitter } from './components/Splitter'
-import { StatusBar, type FooterCapture } from './components/StatusBar'
+import { MIC_DEVICES_REFRESH_EVENT, StatusBar, type FooterCapture } from './components/StatusBar'
 import { TerminalPane } from './components/TerminalPane'
 import { onAgentLaunchRequest } from './lib/agentLaunchRequest'
 import { TitleBar } from './components/TitleBar'
@@ -198,6 +198,22 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const [settingsFocus, setSettingsFocus] = useState<{ section: SettingsSectionId; nonce: number } | null>(null)
   const [transcription, setTranscription] = useState<SttProvider>('local')
   const [micDevices, setMicDevices] = useState<Array<{ id: string; label: string }>>([])
+  // マイクの一覧は、機器の抜き差し（AirPods をつないだ など）と、マイクのメニューを開いた・［再読み込み］のたびに読み直す
+  useEffect(() => {
+    let timer = 0
+    const refresh = () => {
+      window.clearTimeout(timer)
+      // 抜き差しの直後は名前がまだ揃っていないことがあるので少し待つ
+      timer = window.setTimeout(() => { window.ade.invoke('capture:devices').then(setMicDevices).catch(() => undefined) }, 300) // 失敗は main の IPC が送る
+    }
+    navigator.mediaDevices?.addEventListener?.('devicechange', refresh)
+    window.addEventListener(MIC_DEVICES_REFRESH_EVENT, refresh)
+    return () => {
+      window.clearTimeout(timer)
+      navigator.mediaDevices?.removeEventListener?.('devicechange', refresh)
+      window.removeEventListener(MIC_DEVICES_REFRESH_EVENT, refresh)
+    }
+  }, [])
   const [micDeviceId, setMicDeviceId] = useState('')
   const [keepDays, setKeepDays] = useState(7)
   const [stayFeedbackOnStop, setStayFeedbackOnStop] = useState(false)
@@ -842,7 +858,9 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   /** アカウントの「管理…」。設定のページのアカウント節を開く */
   const manageAccounts = useCallback(() => openSettings('accounts'), [openSettings])
 
-  const elapsed = `${Math.floor(recordStatus.elapsedMs / 60000).toString().padStart(2, '0')}:${Math.floor(recordStatus.elapsedMs / 1000 % 60).toString().padStart(2, '0')}`
+  // 録画していないときは 00:00。前回の録画の長さが残ると、フィードバック画面に来ただけで録画中に見える
+  const shownElapsedMs = recording ? recordStatus.elapsedMs : 0
+  const elapsed = `${Math.floor(shownElapsedMs / 60000).toString().padStart(2, '0')}:${Math.floor(shownElapsedMs / 1000 % 60).toString().padStart(2, '0')}`
 
   /*
    * 見本データは「部品見本」と「E2Eの撮影」でだけ出す（window.ade.demo）。

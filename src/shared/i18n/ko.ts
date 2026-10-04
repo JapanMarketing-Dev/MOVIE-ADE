@@ -544,6 +544,7 @@ export const ko: LocaleMessages = {
   'statusBar.lockedWhileRecording': '녹화 중에는 변경할 수 없습니다',
   'statusBar.recordMyVoice': '내 음성 녹음',
   'statusBar.microphone': '마이크',
+  'statusBar.reloadMics': '마이크 목록 다시 불러오기',
   'statusBar.micToUse': '사용할 마이크',
   'statusBar.systemDefault': '시스템 기본값',
   'statusBar.level': '레벨',
