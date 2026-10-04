@@ -59,6 +59,26 @@ export const HISTORY_LIMITS = {
   budgetMs: 3000
 } as const
 
+/**
+ * 起動時の自動の掃除（retention.ts。保持期間を過ぎた動画を消す）の1切れでする仕事の上限（security-5 [7]）。
+ * 細工したレビューのフォルダを大量に置かれても、窓を開く前に止まらないよう、起動を待たせずに
+ * 小さな切れに分けて、あいだに間を空けて進める
+ */
+export const RETENTION_LIMITS = {
+  /** 1切れで見るレビューの数 */
+  sessionsPerSlice: 200,
+  /** 1切れで読む session.json の大きさの合計（1つの上限 SESSION_LIMITS.sessionJsonBytes より大きくする） */
+  readBytesPerSlice: 96 * 1024 * 1024,
+  /** 1切れで消すもの（動画・削った版・中間ファイルのフォルダ）の数 */
+  deletesPerSlice: 200,
+  /** 1切れにかける時間 */
+  sliceMs: 500,
+  /** 切れと切れのあいだ（画面の操作を先に通す） */
+  idleMs: 250,
+  /** 起動してから最初の切れまで（窓を開くのを先にする） */
+  startDelayMs: 3000
+} as const
+
 /** 数の配列の最大（空なら fallback）。可変長引数を使わない */
 export function maxOf(values: Iterable<number>, fallback: number): number {
   let out = fallback

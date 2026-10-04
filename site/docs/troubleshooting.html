@@ -213,12 +213,13 @@
       <section class="docs-section" aria-labelledby="agent">
         <h2 id="agent"><a class="docs-anchor" href="#agent" aria-label="Link to Agent not found / Send to Agent doesn't send">#</a>Agent not found / Send to Agent doesn't send</h2>
         <ul>
-  <li><code>command not found: claude</code> (or <code>codex</code>, <code>gemini</code>, or another agent's command) in the terminal: the CLI is not installed or not on <code>PATH</code>. Ferret shows the shell's own error and adds no hint. Check that the command works in your normal terminal, use <span class="docs-ui">Install</span> in <span class="docs-ui">Settings → Agents</span>, or set an absolute path as that agent's <span class="docs-ui">Command</span>.</li>
+  <li><q>Claude Code: Not found</q> (or another built-in agent's name), or <code>command not found: …</code> in the terminal for an agent you added: the CLI is not installed or not on <code>PATH</code>. Ferret starts built-in agents only from an absolute path in a <code>PATH</code> folder outside the project, never from the project folder. Check that the command works in your normal terminal, use <span class="docs-ui">Install</span> in <span class="docs-ui">Settings → Agents</span>, or set an absolute path as that agent's <span class="docs-ui">Command</span>.</li>
   <li><q>The agent is waiting for confirmation. Respond in the terminal, then send.</q> Answer the agent's prompt first.</li>
   <li><q>The agent's input isn't ready yet.</q> Wait for the agent to finish starting.</li>
   <li><q>The text was entered but not sent. Press Enter in the terminal.</q></li>
   <li><q>Open a terminal first.</q></li>
   <li><q>Can't parse launch arguments: Unclosed quote.</q> Fix the quoting in the agent's arguments.</li>
+  <li><q>Put … in the launch arguments, not in the command.</q> or <q>Write … in the launch arguments without quotes or backslashes.</q> Write that flag as plain text in the agent's arguments. To start agents without permission prompts, turn on <span class="docs-ui">Start agents without permission prompts</span> in <span class="docs-ui">Settings → Agents</span>.</li>
 </ul>
       </section>
 

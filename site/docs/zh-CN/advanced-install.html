@@ -220,17 +220,18 @@ pnpm dist:linux   # AppImage + deb (x64)</code></pre>
       <section class="docs-section" aria-labelledby="update">
         <h2 id="update"><a class="docs-anchor" href="#update" aria-label="指向“更新”的链接">#</a>更新</h2>
         <p>Ferret 会在启动时、每 6 小时以及点击 <span class="docs-ui">检查更新</span> 时（页脚 → <span class="docs-ui">更新</span>）检查新版本。它从下载服务器（R2）获取 <code>latest.json</code>，并用内置在应用中的发布密钥校验该版本 <code>SHA256SUMS</code> 的签名。签名不匹配的版本不会提示。</p>
-<p>发现新版本后，Ferret 会在后台下载，并在 <span class="docs-ui">更新</span> 中显示进度。只有当下载文件的大小和 SHA-256 与已签名的列表一致时才会使用。之后 <span class="docs-ui">更新</span> 和页脚会出现 <span class="docs-ui">重新启动并更新</span>。点击后会重新启动并进入新版本。如果终端中有 Agent 正在工作或正在录制，Ferret 会先询问；到目前为止的录制会在重新启动前保存。</p>
+<p>发现新版本时，Ferret 会在后台下载，并在 <span class="docs-ui">更新</span> 中显示进度。只有当大小和 SHA-256 与已签名的列表一致时，才会使用下载的文件。准备好后，<span class="docs-ui">更新</span> 会提示将在下次关闭 Ferret 时安装：像平常一样退出 Ferret，下次打开时就是新版本。不需要自己下载或运行安装程序，Ferret 也不会自行重新启动，所以在你关闭它之前 Agent 可以一直工作。</p>
+<p>如果想立即安装，请点击 <span class="docs-ui">更新</span> 或底栏中的 <span class="docs-ui">重新启动并更新</span>。如果终端里有 Agent 正在工作或正在录制，Ferret 会先询问；到目前为止的录制会在重新启动前保存。</p>
 <table>
   <thead><tr><th>安装方式</th><th>下载的内容</th><th>安装方式</th></tr></thead>
   <tbody>
-    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>，列在 <code>UPDATE-SHA256SUMS</code> 中，并用同一发布密钥签名</td><td>交给 macOS 的更新机制（Squirrel.Mac），它还会确认新应用使用相同的 Developer ID 签名；在 Ferret 重新启动时替换</td></tr>
-    <tr><td>Windows</td><td>安装程序（<code>.exe</code>）</td><td>在 Ferret 重新启动时以无窗口方式运行，完成后打开新版本</td></tr>
-    <tr><td>Linux（AppImage）</td><td>新的 <code>.AppImage</code></td><td>替换你启动的 AppImage，然后打开新版本</td></tr>
+    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>，列在 <code>UPDATE-SHA256SUMS</code> 中，并用同一发布密钥签名</td><td>交给 macOS 的更新机制（Squirrel.Mac），它还会检查新应用是否带有相同的 Developer ID 签名；在关闭 Ferret 时（或通过 <span class="docs-ui">重新启动并更新</span>）安装</td></tr>
+    <tr><td>Windows</td><td>安装程序（<code>.exe</code>）</td><td>关闭 Ferret 后在不显示任何窗口的情况下运行；使用 <span class="docs-ui">重新启动并更新</span> 时，完成后会打开新版本</td></tr>
+    <tr><td>Linux（AppImage）</td><td>新的 <code>.AppImage</code></td><td>关闭 Ferret 时替换你启动的 AppImage；使用 <span class="docs-ui">重新启动并更新</span> 时，随后会打开新版本</td></tr>
     <tr><td>Linux（deb）</td><td><code>.deb</code></td><td><span class="docs-ui">打开安装程序</span> 会把它保存到下载文件夹，并用你的软件安装程序打开</td></tr>
   </tbody>
 </table>
-<p>如果只想在自己选择时下载，请在 <span class="docs-ui">更新</span> 中关闭 <span class="docs-ui">自动下载新版本</span>（或在 <code>settings.json</code> 中设置 <code>"autoUpdate": false</code>），出现新版本时再点击 <span class="docs-ui">下载</span>。开发版（<code>pnpm dev</code>）不会在后台下载；<span class="docs-ui">下载</span> 会把校验过的安装程序保存到下载文件夹。</p>
+<p>如果只想在自己选择时更新，请在 <span class="docs-ui">更新</span> 中关闭 <span class="docs-ui">自动更新</span>（或在 <code>settings.json</code> 中设置 <code>"autoUpdate": false</code>）。这样 Ferret 不会自行下载或安装任何内容：出现新版本时点击 <span class="docs-ui">下载</span>，然后点击 <span class="docs-ui">重新启动并更新</span>。开发版（<code>pnpm dev</code>）不会在后台下载；<span class="docs-ui">下载</span> 会把校验过的安装程序保存到下载文件夹。</p>
       </section>
 
         <nav class="docs-pager" aria-label="上一页和下一页">

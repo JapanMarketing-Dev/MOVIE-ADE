@@ -41,6 +41,8 @@ import type {
   AccountAgent,
   AgentOption,
   TerminalAttachInfo,
+  ProgramCopyResult,
+  TerminalClipboardMode,
   TerminalSessionInfo,
   ViewBounds,
   Viewport,
@@ -147,6 +149,8 @@ export interface IpcRequests {
   'project:addSsh': (target: SshTarget, name?: string) => ProjectsState
   /** 外から落としたフォルダ（drop:inspect で確かめたもの）をプロジェクトとして登録して開く。登録済みならそれに切り替える */
   'project:addDropped': (path: string) => ProjectsState
+  /** 一覧の並べ替え。ids は新しい並び（知らない ID は捨て、無いプロジェクトはその位置のまま） */
+  'project:reorder': (ids: string[]) => ProjectsState
   /**
    * 外から落としたファイル・フォルダのパスを確かめる（src/main/droppedPaths.ts）。
    * preload の inspectDrop だけが呼ぶ（IPC_REQUEST_CHANNELS には入れない＝window.ade.invoke からは呼べない）
@@ -211,8 +215,16 @@ export interface IpcRequests {
   'terminal:attach': (id: string) => TerminalAttachInfo | null
   /** クリップボードの文字列（Windows / Linux のターミナルの Ctrl+V 貼り付け。renderer には読み取りの権限を渡していない） */
   'terminal:clipboardText': () => string
-  /** ターミナルのコピー（選択・OSC 52）をクリップボードへ。窓にフォーカスが無いときも書けるよう main で書く */
+  /** ターミナルの選択範囲のコピーをクリップボードへ（キーを押した直後だけ書く。security-5 [9]） */
   'terminal:writeClipboard': (text: string) => void
+  /** 端末のプログラムのコピー（OSC 52）。main が設定とフォーカスで決め、既定では預かって帯で確かめる（src/main/terminalClipboard.ts） */
+  'terminal:programCopy': (id: string, text: string) => ProgramCopyResult
+  /** 帯の［コピー］。預かったコピーを写す（利用者の操作の直後だけ）。写せたら true */
+  'terminal:programCopyAccept': (id: string) => boolean
+  /** 帯を閉じた。預かったコピーを捨てる */
+  'terminal:programCopyDismiss': (id: string) => void
+  /** 端末のプログラムのコピーの扱い（設定の terminalClipboard） */
+  'settings:terminalClipboard': (mode: TerminalClipboardMode) => void
   /** ターミナルにフォーカスが入った・外れた。Windows / Linux でターミナルのキー（Ctrl+R など）をメニューに取らせない（terminalMenuKeys.ts） */
   'terminal:focused': (focused: boolean) => void
   /**
@@ -503,6 +515,7 @@ export const IPC_REQUEST_CHANNELS = [
   'project:cloneCancel',
   'project:addSsh',
   'project:addDropped',
+  'project:reorder',
   'settings:agents',
   'agents:list',
   'cliTools:list',
@@ -530,7 +543,7 @@ export const IPC_REQUEST_CHANNELS = [
   'terminal:write',
   'terminal:resize',
   'terminal:close',
-  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:clipboardText', 'terminal:writeClipboard', 'terminal:focused', 'review:send',
+  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:clipboardText', 'terminal:writeClipboard', 'terminal:programCopy', 'terminal:programCopyAccept', 'terminal:programCopyDismiss', 'settings:terminalClipboard', 'terminal:focused', 'review:send',
   'settings:splitRatio',
   'settings:layout',
   'settings:theme',

@@ -65,7 +65,7 @@ describe('旧設定からの移行', () => {
   it('folderPath だけを覚えていた設定は、そのフォルダを最初のプロジェクトにして開く', () => {
     const migrated = migrateLegacySettings(base({ folderPath: '/work/legacy-app' }), 'p1')
     // folderPath は絶対パスに正規化される（Windows ではドライブ名と \\ になる）
-    expect(migrated.projects).toEqual([{ id: 'p1', name: 'legacy-app', folderPath: resolve('/work/legacy-app'), urls: [] }])
+    expect(migrated.projects).toEqual([{ id: 'p1', name: 'legacy-app', folderPath: resolve('/work/legacy-app'), urls: [], addedAt: expect.any(String) }])
     expect(migrated.activeProjectId).toBe('p1')
   })
 
@@ -92,7 +92,7 @@ describe('プロジェクトの登録', () => {
     const result = upsertProjectFolder(projects, '/work/site', 'b')
     expect(result.alreadyPresent).toBe(false)
     expect(result.projects.map((p) => p.id)).toEqual(['a', 'b'])
-    expect(result.project).toEqual({ id: 'b', name: 'site', folderPath: resolve('/work/site'), urls: [] })
+    expect(result.project).toEqual({ id: 'b', name: 'site', folderPath: resolve('/work/site'), urls: [], addedAt: expect.any(String) })
   })
 })
 

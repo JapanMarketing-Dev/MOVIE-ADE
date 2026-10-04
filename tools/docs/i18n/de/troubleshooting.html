@@ -52,15 +52,16 @@ Häufige Probleme und ihre Lösungen. Die zitierten Meldungen sind die, die die 
 <p>Das passiert, wenn Sie Ferret aus dem Quellcode starten und node-pty für eine andere Node- oder Electron-ABI gebaut wurde.</p>
 <pre><code>pnpm rebuild:native</code></pre>
 
-<!-- @agent 1b8e87d730 -->
+<!-- @agent b8de3c3989 -->
 ## Agent nicht gefunden / „An Agent senden“ sendet nicht
 <ul>
-  <li><code>command not found: claude</code> (oder <code>codex</code>, <code>gemini</code> oder der Befehl eines anderen Agents) im Terminal: Die CLI ist nicht installiert oder liegt nicht im <code>PATH</code>. Ferret zeigt den Fehler der Shell selbst an und fügt keinen Hinweis hinzu. Prüfen Sie, ob der Befehl in Ihrem normalen Terminal funktioniert, verwenden Sie <span class="docs-ui">Installieren</span> unter <span class="docs-ui">Einstellungen → Agents</span> oder tragen Sie einen absoluten Pfad als <span class="docs-ui">Befehl</span> dieses Agents ein.</li>
+  <li><q>Claude Code: Nicht gefunden</q> (oder der Name eines anderen eingebauten Agents) oder <code>command not found: …</code> im Terminal bei einem selbst hinzugefügten Agent: Die CLI ist nicht installiert oder liegt nicht im <code>PATH</code>. Ferret startet eingebaute Agents nur über einen absoluten Pfad in einem <code>PATH</code>-Ordner außerhalb des Projekts, nie aus dem Projektordner. Prüfen Sie, ob der Befehl in Ihrem normalen Terminal funktioniert, verwenden Sie <span class="docs-ui">Installieren</span> unter <span class="docs-ui">Einstellungen → Agents</span> oder tragen Sie einen absoluten Pfad als <span class="docs-ui">Befehl</span> dieses Agents ein.</li>
   <li><q>Der Agent wartet auf eine Bestätigung. Antworten Sie im Terminal und senden Sie dann.</q> Beantworten Sie zuerst die Abfrage des Agents.</li>
   <li><q>Die Eingabe des Agents ist noch nicht bereit.</q> Warten Sie, bis der Agent vollständig gestartet ist.</li>
   <li><q>Der Text wurde eingegeben, aber nicht gesendet. Drücken Sie im Terminal die Eingabetaste.</q></li>
   <li><q>Öffnen Sie zuerst ein Terminal.</q></li>
   <li><q>Startargumente können nicht geparst werden: Unclosed quote.</q> Korrigieren Sie die Anführungszeichen in den Argumenten des Agents.</li>
+  <li><q>Schreiben Sie … in die Startargumente, nicht in den Befehl.</q> oder <q>Schreiben Sie … ohne Anführungszeichen oder Backslashes in die Startargumente.</q> Schreiben Sie diese Option als einfachen Text in die Argumente des Agents. Um Agents ohne Berechtigungsabfragen zu starten, aktivieren Sie <span class="docs-ui">Agents ohne Berechtigungsabfragen starten</span> unter <span class="docs-ui">Einstellungen → Agents</span>.</li>
 </ul>
 
 <!-- @cannot-record 7b2c3ffb80 -->

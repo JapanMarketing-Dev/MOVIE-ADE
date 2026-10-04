@@ -191,6 +191,9 @@ export const SETTINGS_SCHEMA: JsonSchema = {
           id: str('Stable id. Any unique string; keep it when editing.'),
           name: str('Display name. Defaults to the folder name.'),
           folderPath: str('Absolute path of the project folder.'),
+          starred: { type: 'boolean', description: 'Starred (favorite). Starred projects stay at the top of the sidebar and can be shown alone.' },
+          addedAt: str('When the project was added (ISO 8601). Used by the "Date added" sort; set by the app.'),
+          lastOpenedAt: str('When the project was last opened (ISO 8601). Used by the "Recently used" and "Active first" sorts; set by the app.'),
           kind: { type: 'string', description: 'Kind of app. Decides which target fields the UI shows; all fields are kept either way.', enum: PROJECT_KINDS, default: DEFAULT_PROJECT_KIND },
           source: { type: 'string', description: 'Where the project lives: "local" (a folder on this machine), "github" (cloned from remoteUrl) or "ssh" (a folder on a remote host, see ssh). Separate from kind.', enum: PROJECT_SOURCES, default: 'local' },
           remoteUrl: str('For source "github": the URL it was cloned from. Never include a token or user:password in the URL; credentials are dropped.', { pattern: '^(https?://|git@|ssh://)' }),
@@ -352,9 +355,10 @@ export const SETTINGS_SCHEMA: JsonSchema = {
         ...AUTH_FIELDS
       }
     },
+    terminalClipboard: { type: 'string', description: 'When a program in a terminal asks to copy text to the clipboard (OSC 52): "ask" shows a bar with a Copy button, "allow" copies right away when the terminal on this machine has focus and shows a notice (terminals on SSH hosts still ask), "off" never copies.', enum: ['ask', 'allow', 'off'], default: 'ask' },
     crashReports: bool('Send crash reports to Sentry. Reports never include API keys, file contents or recordings.', { default: true }),
     crashReportsNoticeShown: bool('The first-run crash report notice has been shown.'),
-    autoUpdate: bool('Download new versions in the background and offer Restart to update. Each download is checked against the signed SHA256SUMS before it is installed.', { default: true }),
+    autoUpdate: bool('Download new versions in the background, check each one against the signed SHA256SUMS, and install it the next time Ferret closes (Restart to update installs it right away). When off, nothing is downloaded or installed until you choose to.', { default: true }),
     onboarding: {
       type: 'object',
       description: 'First-run setup progress. Remove this object to show the setup again.',

@@ -2,10 +2,10 @@
 <!-- @title 80e8dd1a5a -->
 録画
 
-<!-- @lead 14988eae28 -->
-内蔵ブラウザ、画面全体、またはほかのウインドウを録画します。ページを操作しながら、話し、囲み、入力します。
+<!-- @lead a6afb525ba -->
+内蔵ブラウザ、画面全体、ほかのウインドウ、デスクトップアプリ、ゲーム、スマホのシミュレータを録画します。ページを操作しながら、話し、囲み、入力します。
 
-<!-- @target 133550362a -->
+<!-- @target 2ab7c5b1f7 -->
 ## 録画の対象を選ぶ
 <p>フィードバックモードで <span class="docs-ui">録画の対象を選ぶ</span> を押します。<span class="docs-ui">録画の対象</span> ダイアログでは次から選べます。</p>
 <table>
@@ -13,10 +13,20 @@
   <tbody>
     <tr><td><span class="docs-ui">内蔵ブラウザ</span>（最初の設定）</td><td>動画、声、ペンに加えて、URL、要素のセレクタ、クリック、スクロール。OS の許可は要りません。</td></tr>
     <tr><td><span class="docs-ui">画面全体</span></td><td>動画、声、ペン。URL、要素、操作の記録はありません（そのことを <code>feedback.md</code> に書きます）。</td></tr>
-    <tr><td><span class="docs-ui">ウインドウ</span></td><td>上と同じです。Ferret 自身のウインドウは一覧に出ません。</td></tr>
+    <tr><td><span class="docs-ui">ウインドウ</span></td><td>上と同じです。各ウインドウはアプリ名つきで一覧に出ます。Ferret 自身のウインドウは一覧に出ません。</td></tr>
+    <tr><td><span class="docs-ui">スマホ</span></td><td>上と同じです。一覧には iOS Simulator と Android Emulator のウインドウだけが出ます。</td></tr>
   </tbody>
 </table>
 <p>選んだものは覚えておきます。macOS では、画面とウインドウの録画に画面収録の許可が要ります（<a href="troubleshooting.html#screen-permission">許可のしかた</a>）。</p>
+
+<!-- @desktop-mobile 8d8ffcf90e -->
+## デスクトップアプリ、ゲーム、モバイルアプリ
+<p>作っているデスクトップアプリ（Electron、Tauri、ネイティブアプリ）をレビューするには、開発中いつもするようにアプリを起動し、<span class="docs-ui">ウインドウ</span> からそのウインドウを選びます。ウインドウはアプリ名つきで一覧に出るので、Electron アプリの開発ビルドは <code>Electron</code> の名前で出ます。小さなウインドウや、ほかのウインドウより手前に出続けるウインドウも一覧に出ます。macOS では、手前に出続けるウインドウはプレビューの代わりにアプリ名とタイトルで表示します。</p>
+<p>選んだものはアプリについていきます。アプリを起動し直してウインドウが戻ると、次の録画では同じタイトルのウインドウを使います。タイトルが変わっていれば、そのアプリの唯一のウインドウを使います。</p>
+<p>モバイルアプリでは、iOS Simulator（Xcode、macOS）か Android Emulator（Android Studio）を起動し、<span class="docs-ui">スマホ</span> からそのデバイスを選びます。エミュレータが Android Studio の中で動いているときは、独立したウインドウで開くと一覧に出ます（Android Studio の設定の Tools → Emulator で、Running Devices ツールウインドウ内で起動する設定をオフにします）。</p>
+<p><code>feedback.md</code> は URL の代わりに、録画したものから始まります。アプリ名とウインドウのタイトル、シミュレータやエミュレータならデバイス名と OS のバージョン、Android では手前に出ているアプリも書きます。そのアプリのソースコードを直すよう Agent に伝える文も入ります。Ferret は録画を始めるときに、<code>xcrun simctl</code> と <code>adb</code>（<code>ANDROID_HOME</code>、<code>ANDROID_SDK_ROOT</code>、または Android Studio の SDK フォルダにあるもの）でデバイスの情報を読みます。画像には選んだウインドウだけが写るので、何を指しているかを話しながら説明してください。</p>
+<p>ゲームも同じように録画できます。ゲームビューを表示した Unity、Unreal Engine、Godot のエディタのウインドウか、ビルドしたゲームのウインドウ（ボーダーレスのウインドウモードを含む）を選びます。排他的フルスクリーンのゲームは、<span class="docs-ui">画面全体</span> からそのディスプレイを選びます。ウインドウがこれらのエディタのときは、<code>feedback.md</code> にエンジン名を書き、ゲームのコード、シーン、アセットを直すよう Agent に伝えます。ファイルを小さく保つため動画は毎秒 10 フレームまでで記録し、指摘の画像も同じ動画から取り出すので、タイムライン上のその瞬間と一致します。</p>
+<p>レビュー対象の <span class="docs-ui">録画するウインドウ</span> は、ウインドウのタイトルだけでなくアプリ名にも一致します。そのため <code>Simulator</code> と書けば、どのデバイスを表示していても iOS Simulator のウインドウを選びます。</p>
 
 <!-- @record deb62ed37c -->
 ## 開始・一時停止・停止

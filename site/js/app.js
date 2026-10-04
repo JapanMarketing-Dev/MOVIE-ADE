@@ -13,8 +13,8 @@ import {
   formatBytes,
   formatDate,
   excerptNotes,
-} from './releases.js?v=50e13db2'
-import { fetchVerifiedBytes, verifyRelease } from './verify.js?v=d300e75f'
+} from './releases.js?v=4fd86d60'
+import { fetchBoundedJson, fetchVerifiedBytes, verifyRelease } from './verify.js?v=de71aa1d'
 
 const $ = (sel, root = document) => root.querySelector(sel)
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)]
@@ -85,14 +85,10 @@ async function readPlatform() {
 
 /**
  * R2 の JSON を読む。まだ置かれていない（404・403）ときは null、通信の失敗は例外。
+ * 本文は大きさと時間の上限つきで読む（res.json() は最後まで溜めるので使わない。security-5 [12]。verify.js）
  * @param {string} url
  */
-async function fetchJson(url) {
-  const res = await fetch(url, { cache: 'no-cache' })
-  if (res.status === 404 || res.status === 403) return null
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json()
-}
+const fetchJson = (url) => fetchBoundedJson(url)
 
 /** @returns {Promise<{ state: 'ok'|'empty'|'error', release?: any }>} */
 async function loadLatest() {

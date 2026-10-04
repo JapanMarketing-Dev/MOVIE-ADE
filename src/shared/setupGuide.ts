@@ -94,6 +94,8 @@ export function buildAgentSetupPrompt(guide: SetupGuide, target: SetupPromptTarg
   if (guide.local) {
     const local = { provider: guide.label, installUrl: guide.installUrl ?? '', baseUrl: guide.baseUrl.replace(/\/+$/, ''), model: guide.model || '-' }
     steps.push(t(localServerKind(guide) === 'ollama' ? 'ai.setup.prompt.ollama' : 'ai.setup.prompt.local', local))
+    // 端末内のサーバーは、選んだモデルを settings.json に書くまで「使える」に数えない（isEndpointReady）。落としたモデルを書かせる
+    if (guide.model) steps.push(t('ai.setup.prompt.model', { ...at, model: guide.model }))
   }
   if (guide.needsBaseUrl) steps.push(t('ai.setup.prompt.baseUrl', at))
   if (guide.needsAccountId) {

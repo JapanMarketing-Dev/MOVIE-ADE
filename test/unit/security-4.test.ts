@@ -29,10 +29,11 @@ function walk(dir: string, exts: RegExp, out: string[] = []): string[] {
 // ───────────────────────── [1] 実行ファイルの解決 ─────────────────────────
 
 describe('security-4 [1] built-in agents never resolve from the project folder', () => {
-  it('every built-in launch and account login goes through resolveTrustedCommand; logins run outside the project', () => {
+  it('every built-in launch and account login goes through resolveTrustedExecutable; logins run outside the project', () => {
     const terminal = read('src/main/terminal.ts')
-    expect(terminal).toMatch(/deliver\(trusted\(login\.command/)
-    expect(terminal).toMatch(/isBuiltinAgent\(agent\) \? trusted\(launch\.command/)
+    expect(terminal).toMatch(/deliver\(await trusted\(login\.argv/)
+    expect(terminal).toMatch(/launchLine = await trusted\(policy\.argv/)
+    expect(terminal).toMatch(/resolveTrustedExecutable\(argv\[0\]/)
     expect(terminal).toMatch(/const cwd = options\.accountLogin \? homedir\(\)/)
     // PTY の環境には、cmd.exe に今のフォルダを探させない印が必ず入る
     expect(terminal).toMatch(/\.\.\.windowsSearchPathEnv\(\)/)
@@ -141,7 +142,8 @@ describe('security-4 [4][8][11][12] the public feedback relay', () => {
   const relay = read('workers/feedback-relay/src/index.ts')
 
   it('checks the shared pre-parse budget before any per-source state or body read', () => {
-    const peek = relay.indexOf("askLimiter(env, 'preparse', 'peek'")
+    // security-5 [10] からは、見るだけ（peek）ではなく予約（hit）を先に取る
+    const peek = relay.indexOf("askLimiter(env, 'preparse', 'hit'")
     expect(peek).toBeGreaterThan(0)
     expect(peek).toBeLessThan(relay.indexOf("'attempt'"))
     expect(peek).toBeLessThan(relay.indexOf('await readCapped(request'))

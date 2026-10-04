@@ -1,5 +1,5 @@
 import { defaultLaunchAgent } from '@shared/sendTarget'
-import { Fragment, useEffect, useState, useRef } from 'react'
+import { Fragment, useEffect, useState, useRef, type DragEvent } from 'react'
 import {
   AlertTriangle,
   CheckCircle2,
@@ -9,6 +9,7 @@ import {
   FileText,
   Flag,
   GitPullRequest,
+  GripVertical,
   FolderOpen,
   Globe,
   Images,
@@ -44,6 +45,8 @@ import { SendTargetButton } from './SendTargetButton'
 import { NeedsHumanPanel, ProgressSummary, ProgressToggle, QueuedPanel, ReviewActions, StatusFilterBar, VerdictPanel } from './FindingProgress'
 import { countByStatus, isStatusShown, sanitizeHiddenStatuses } from '@shared/findingStatusFilter'
 import { countProgress, nextProgress, pendingIds, progressOf, type FindingProgress, type ReviewVerdict } from '@shared/findingProgress'
+import { dropPositionAt, moveAmongVisible, stepAmongVisible, type DropPosition } from '@shared/reorder'
+import { sortByStatus } from '@shared/findingStatusFilter'
 
 type FeedbackItem = ReviewData['document']['items'][number]
 
@@ -63,6 +66,12 @@ function saveHiddenStatuses(hidden: readonly FindingProgress[]): void {
     // 保存できなくても、この起動の間は効く
   }
 }
+
+/**
+ * 指摘を並べ替えるドラッグの型。外からのファイル（'Files'）・ファイルツリーの行（treeDrag.ts）とは別の型にして、
+ * 外からのドロップやターミナル・エディタへのドロップと取り違えない
+ */
+const FINDING_DRAG_TYPE = 'application/x-ferret-finding'
 
 const time = (ms: number) => `${Math.floor(ms / 60000).toString().padStart(2, '0')}:${Math.floor(ms / 1000 % 60).toString().padStart(2, '0')}`
 
@@ -221,6 +230,38 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
     // 対象の見出しは、絞り込んだあとの各対象の先頭に出す（先頭の指摘が隠れても見出しは残す）
     .map((row, i, all) => ({ ...row, group: i === 0 || all[i - 1]!.owner !== row.owner ? row.owner : null }))
   const currentRow = reviewMode ? rows[Math.min(reviewIndex, rows.length - 1)] : undefined
+  /*
+   * 並べ替え（つまみのドラッグ＆ドロップ・つまみで ↑ / ↓）。番号・feedback.md・Agent へ送る順はこの順に従う。
+   * 全体の並びは画面の並び（対象ごとにまとめた順）。絞り込み中は見えている中での相対位置で決め、見えない指摘の位置は保つ。
+   * 対象ごとにまとめているときは、同じ対象の中でだけ動かす（対象は指摘の URL で決まり、動かしても変わらないため）
+   */
+  const [dragging, setDragging] = useState<string | null>(null)
+  const [dropAt, setDropAt] = useState<{ id: string; position: DropPosition } | null>(null)
+  const refocusHandle = useRef<string | null>(null)
+  const allIds = groups.flatMap((g) => g.items.map((it) => it.id))
+  const visibleIds = rows.map((row) => row.item.id)
+  const ownerOf = (id: string) => rows.find((row) => row.item.id === id)?.owner
+  const canReorder = !reviewMode && rows.length > 1
+  const reorderTo = (next: string[] | null) => {
+    if (next) void edit({ kind: 'order', ids: next })
+  }
+  const moveFinding = (id: string, delta: -1 | 1) => {
+    const owner = ownerOf(id)
+    reorderTo(stepAmongVisible(allIds, visibleIds, id, delta, (other) => ownerOf(other) === owner))
+  }
+  const acceptsDrop = (e: DragEvent<HTMLElement>, id: string) =>
+    dragging !== null && Array.from(e.dataTransfer.types).includes(FINDING_DRAG_TYPE) && ownerOf(dragging) === ownerOf(id)
+  const endDrag = () => {
+    setDragging(null)
+    setDropAt(null)
+  }
+  // キーボードで動かしたあと、並び直したつまみへフォーカスを戻す
+  useEffect(() => {
+    const id = refocusHandle.current
+    if (!id) return
+    refocusHandle.current = null
+    document.querySelector<HTMLElement>(`[data-reorder-handle="${CSS.escape(id)}"]`)?.focus()
+  }, [review])
   /** 本文を差し替えて Agent へ送る（確認への返答・NG の送り直し）。宛先は Send to Agent のボタンと同じ */
   const sendText = async (text: string) => {
     const { agents, running } = await loadSendTargets()
@@ -297,6 +338,20 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
       <div className="rv-head__actions">
         <div className="rv-head__tools">
           <Tool side="bottom" tip={t('review.undo')} label={t('review.undoLabel')} icon={<Undo2 size={15} />} disabled={busy || !review.canUndo} onClick={() => void edit({ kind: 'undo' })} />
+          {/*
+            並び順。手動（ドラッグの順）・録画の時刻順・進み具合の順。進み具合の順は、その時点で並べ替えた順を手動の順として保存する
+            （番号・feedback.md・Agent へ送る順が並びに従うため、表示だけを並べ替えない）。元に戻す ↶ でも1手ずつ戻せる
+          */}
+          {items.length > 1 && <Tooltip side="bottom" label={t('review.sort.tip')}><span className="rv-select"><select className="rv-sort" aria-label={t('review.sort.label')} disabled={busy}
+            value={review.document.customOrder ? 'manual' : 'time'} data-testid="findings-sort"
+            onChange={(e) => {
+              if (e.target.value === 'time') void edit({ kind: 'order', ids: null })
+              else if (e.target.value === 'status') void edit({ kind: 'order', ids: sortByStatus(allIds, review.progress) })
+            }}>
+            <option value="manual" disabled={!review.document.customOrder}>{t('review.sort.manual')}</option>
+            <option value="time">{t('review.sort.time')}</option>
+            <option value="status">{t('review.sort.status')}</option>
+          </select></span></Tooltip>}
           <Tool side="bottom" tip={t('review.openFolder')} label={t('review.folder')} icon={<FolderOpen size={15} />} disabled={busy} onClick={() => void action(async () => {
             await window.ade.invoke('review:folder', review.id)
           })} />
@@ -374,7 +429,7 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
       </div>}
 
       {rows.map(({ item, n, group }) => {
-        // 隣との結合は時刻の並び（items）で判定する
+        // 隣との結合は items の並び（時刻順、並べ替えたらその順）で判定する
         const index = items.indexOf(item)
         const source = sourcesOf(item)
         const checking = item.status === 'needs_check'
@@ -389,12 +444,48 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
             <TargetName target={group.target} />
             <span className="rv-targets__count">{group.items.length}</span>
           </h3>}
-          <article className={`rv-card${item.include ? '' : ' is-excluded'}${checking ? ' is-checking' : ''}${progressOf(review.progress, item.id) === 'done' ? ' is-done' : ''}${item.include && progressOf(review.progress, item.id) === 'needs_human' ? ' is-asking' : ''}${reviewing(item) ? ' is-reviewing' : ''}${currentRow?.item === item ? ' is-current' : ''}`} data-testid={`review-item-${n}`}>
+          <article onDragOver={(e) => {
+            if (!acceptsDrop(e, item.id)) return
+            e.preventDefault()
+            e.dataTransfer.dropEffect = 'move'
+            const box = e.currentTarget.getBoundingClientRect()
+            const position = dropPositionAt(e.clientY - box.top, box.height)
+            if (dropAt?.id !== item.id || dropAt.position !== position) setDropAt({ id: item.id, position })
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null) && dropAt?.id === item.id) setDropAt(null)
+          }}
+          onDrop={(e) => {
+            if (!acceptsDrop(e, item.id) || !dragging) return
+            e.preventDefault()
+            const box = e.currentTarget.getBoundingClientRect()
+            reorderTo(moveAmongVisible(allIds, visibleIds, dragging, item.id, dropPositionAt(e.clientY - box.top, box.height)))
+            endDrag()
+          }}
+          className={`rv-card${dragging === item.id ? ' is-dragging' : ''}${dropAt?.id === item.id ? ` is-drop-${dropAt.position}` : ''}${item.include ? '' : ' is-excluded'}${checking ? ' is-checking' : ''}${progressOf(review.progress, item.id) === 'done' ? ' is-done' : ''}${item.include && progressOf(review.progress, item.id) === 'needs_human' ? ' is-asking' : ''}${reviewing(item) ? ' is-reviewing' : ''}${currentRow?.item === item ? ' is-current' : ''}`} data-testid={`review-item-${n}`}>
           {/* BEFORE（録画時の静止画）と、Agent が直したあとに撮った AFTER（progress.json の after）。ReviewShots.tsx */}
           <FindingShots review={review} item={item} n={n} onZoom={(src) => setImage({ src, n })} />
 
           <div className="rv-card__body">
             <div className="rv-card__top">
+              {canReorder && <button type="button" className="rv-card__grip" draggable={!busy} disabled={busy} data-reorder-handle={item.id} data-testid={`review-item-grip-${n}`}
+                aria-label={t('review.reorderHandle', { n })} title={t('review.reorderHandle', { n })}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(FINDING_DRAG_TYPE, item.id)
+                  e.dataTransfer.effectAllowed = 'move'
+                  const card = e.currentTarget.closest('.rv-card')
+                  if (card) e.dataTransfer.setDragImage(card, 24, 24)
+                  setDragging(item.id)
+                }}
+                onDragEnd={endDrag}
+                onKeyDown={(e) => {
+                  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+                  e.preventDefault()
+                  refocusHandle.current = item.id
+                  moveFinding(item.id, e.key === 'ArrowUp' ? -1 : 1)
+                }}>
+                <GripVertical size={14} aria-hidden="true" />
+              </button>}
               <input className="rv-card__title" aria-label={t('review.titleLabel', { n })} key={`${item.id}-title-${item.title}`} defaultValue={item.title} disabled={busy} spellCheck={false}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) e.currentTarget.blur() }}
                 onBlur={(e) => { if (e.target.value.trim() && e.target.value !== item.title) void edit({ kind: 'text', id: item.id, title: e.target.value.trim() }); else e.target.value = item.title }} />

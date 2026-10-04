@@ -18,6 +18,8 @@ import type { VerifiedDownload } from './updateCheck'
  *   - ダウンロードの進み具合を percent で出し、終わったら「再起動して更新」（update-status-types.ts）
  *   - 二重のダウンロード・二重の入れ替えを止める（updater-download-install.ts の downloadInFlight）
  *   - macOS は Squirrel.Mac が更新を受け取り終えてから「準備ができた」とする（updater-mac-install.ts）
+ *   - 準備ができたものは、アプリを閉じたときに入れる（electron-updater の autoInstallOnAppQuit。VS Code も同じ）。
+ *     ［再起動して更新］は今すぐ入れたいとき用。自動の更新がオフなら、閉じても入れない
  * 違うところ: Orca は electron-updater が配信元の latest*.yml（中の sha512）を読み直して確かめる。このアプリは
  * 更新の確認（updateCheck.ts）で署名を確かめたファイルの名前・sha256・大きさだけを使い、ダウンロードした中身が
  * それと合ったときだけ入れ替えに進む（配信元の yml や、R2 だけを書き換えた中身は信じない）。
@@ -47,6 +49,11 @@ export interface AutoUpdateDeps {
   stage(method: InstallMethod, path: string, file: VerifiedDownload): Promise<void>
   /** 入れ替える（再起動する）。deb はインストーラーを開く */
   install(method: InstallMethod, path: string, file: VerifiedDownload): Promise<void>
+  /**
+   * アプリを閉じるとき（app の quit）に入れ替える。起動し直さない。終了の途中なので同期で行う。
+   * 本物の入れ替えができない起動（E2E・開発版）では何もせず false（E2E の偽のインストーラーだけは呼ぶ）
+   */
+  installOnQuit(method: InstallMethod, path: string, file: VerifiedDownload): boolean
   getAutoDownload(): boolean
   setAutoDownload(on: boolean): void
   emit(status: AutoUpdateStatus): void
@@ -66,6 +73,8 @@ export class AutoUpdater {
   private downloadAbort: AbortController | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
   private installing = false
+  /** 入れ替えの準備（macOS は Squirrel.Mac への受け渡し）を済ませた。済ませた Squirrel.Mac は閉じたときに入れ替える */
+  private staged = false
 
   constructor(private readonly deps: AutoUpdateDeps) {}
 
@@ -75,8 +84,19 @@ export class AutoUpdater {
       checking: this.checking !== null,
       progress: this.progress,
       autoDownload: this.deps.getAutoDownload(),
-      supported: this.supported()
+      supported: this.supported(),
+      installOnQuit: this.willInstallOnQuit()
     }
+  }
+
+  /**
+   * 閉じたときに入るか。自動の更新がオンなら入る。macOS で Squirrel.Mac に渡し終えたものは、Squirrel.Mac が閉じたときに
+   * 入れ替えるので、あとでオフにしても入る（渡したものを取り下げる方法が無い。electron-updater の MacUpdater も同じ）
+   */
+  private willInstallOnQuit(): boolean {
+    const method = this.deps.method
+    if (!method || method === 'deb' || this.progress.phase !== 'ready' || this.installing) return false
+    return this.deps.getAutoDownload() || (method === 'squirrel-mac' && this.staged)
   }
 
   /** 裏のダウンロードと入れ替えができるか。新しい版があるときは、その版にこの OS 向けの入れ替えのファイルがあるか */
@@ -155,11 +175,37 @@ export class AutoUpdater {
     return this.checking
   }
 
-  /** 自動のダウンロードを切り替える（設定の autoUpdate）。オンにしたとき新しい版があれば、すぐ始める */
+  /**
+   * 自動の更新を切り替える（設定の autoUpdate）。オンにしたとき新しい版があれば、すぐ始める。
+   * 手動で落として準備ができていれば、閉じたときに入るように入れ替えの準備（macOS は Squirrel.Mac への受け渡し）をする
+   */
   setAutoDownload(on: boolean): void {
     this.deps.setAutoDownload(on)
     this.emit()
-    if (on) void this.download()
+    if (!on) return
+    if (this.progress.phase === 'ready' && this.downloaded && !this.staged) void this.stageReady()
+    else void this.download()
+  }
+
+  /** 準備のできたものを入れ替えの準備に進める（閉じたときに入るように）。失敗したら「失敗」にする */
+  private async stageReady(): Promise<boolean> {
+    const method = this.deps.method
+    const ready = this.downloaded
+    if (!method || !ready || !this.deps.canInstall || this.staged) return this.staged
+    try {
+      await this.deps.stage(method, ready.path, ready.file)
+      // 待っている間に別の版に変わっていたら、その準備は使わない
+      if (this.downloaded !== ready) return false
+      this.staged = true
+      this.emit()
+      return true
+    } catch (err) {
+      if (this.downloaded !== ready) return false
+      this.downloaded = null
+      this.deps.report(err, `auto update: ${method}`)
+      this.set({ phase: 'failed', version: ready.file.version, message: this.deps.failedMessage() })
+      return false
+    }
   }
 
   /**
@@ -177,6 +223,7 @@ export class AutoUpdater {
     const abort = new AbortController()
     this.downloadAbort = abort
     this.downloaded = null
+    this.staged = false
     this.set({ phase: 'downloading', version: file.version, percent: 0 })
     try {
       const { dir, target } = await this.deps.prepareDir(file.name)
@@ -195,13 +242,16 @@ export class AutoUpdater {
         }, abort.signal)
       }
       if (abort.signal.aborted) return false
-      // 入れ替えの準備（macOS は Squirrel.Mac に渡して受け取り終えるまで）。E2E・開発版は本物の入れ替えをしないので渡さない
-      if (this.deps.canInstall) {
+      // 入れ替えの準備（macOS は Squirrel.Mac に渡して受け取り終えるまで。渡すと閉じたときに入れ替わる）。
+      // 自動の更新がオフなら、［再起動して更新］を押したときまで渡さない（閉じても入れない）。E2E・開発版は渡さない
+      const stageNow = this.deps.canInstall && this.deps.getAutoDownload()
+      if (stageNow) {
         this.set({ phase: 'downloading', version: file.version, percent: 100 })
         await this.deps.stage(method, path, file)
       }
       if (abort.signal.aborted) return false
       this.downloaded = { path, file }
+      this.staged = stageNow
       this.set({ phase: 'ready', version: file.version, action: method === 'deb' ? 'open-installer' : 'restart' })
       return true
     } catch (err) {
@@ -211,6 +261,26 @@ export class AutoUpdater {
       return false
     } finally {
       if (this.downloadAbort === abort) this.downloadAbort = null
+    }
+  }
+
+  /**
+   * アプリを閉じるときに入れ替える（VS Code・Orca の「閉じたときに入れる」）。起動し直さない。次に開いたとき新しい版。
+   * 準備ができていて（署名で確かめ終えた）、自動の更新がオンのときだけ。［再起動して更新］で入れ替えが始まっていれば、
+   * もう一度は走らせない。macOS は Squirrel.Mac が閉じたあとに入れ替えるので、ここでは何もしない（渡してあれば true）。
+   * 終了の途中なので待たない（入れ替えそのものは同期で始める）
+   */
+  installOnQuit(): boolean {
+    const method = this.deps.method
+    if (!method || method === 'deb' || !this.downloaded || this.progress.phase !== 'ready' || this.installing) return false
+    if (!this.deps.getAutoDownload()) return false
+    const { path, file } = this.downloaded
+    this.installing = true
+    try {
+      return this.deps.installOnQuit(method, path, file)
+    } catch (err) {
+      this.deps.report(err, `auto update install on quit: ${method}`)
+      return false
     }
   }
 
@@ -226,6 +296,11 @@ export class AutoUpdater {
     // deb は開くだけなので、何度でも押せる。ほかは入れ替えが始まったら二度押さない
     if (method !== 'deb') this.installing = true
     try {
+      // 自動の更新がオフで、まだ渡していなければ、ここで渡す
+      if (!this.staged) {
+        await this.deps.stage(method, path, file)
+        this.staged = true
+      }
       await this.deps.install(method, path, file)
       return true
     } catch (err) {

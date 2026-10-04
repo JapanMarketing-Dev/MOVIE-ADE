@@ -2,6 +2,8 @@ import { BrowserWindow, desktopCapturer, screen, shell, systemPreferences } from
 import type { CaptureSourceInfo, CaptureSourceList } from '@shared/types'
 import { t } from '@shared/i18n'
 import { reportHandled } from '@shared/report'
+import { withAppWindows } from '@shared/desktopApps'
+import { listMacWindows } from './devices'
 
 /**
  * 画面全体・別のウインドウの録画対象（REC-2 の拡張 / 設計9章）。
@@ -44,6 +46,10 @@ export async function openScreenSettings(): Promise<void> {
  *
  * 自アプリのウインドウ（Ferret 本体・録画用の非表示ウインドウ）は出さない。
  * 内蔵ブラウザを録るなら「内蔵ブラウザ」を選べばよく、本体を録ると自分の録画ピルまで写るため。
+ * 除くのは自分の BrowserWindow の ID と自分のプロセスのウインドウだけ。同じ Electron で動く開発中のアプリは出す。
+ *
+ * macOS では、desktopCapturer が出さない常に手前のウインドウ（alwaysOnTop・パネル）を足し、各ウインドウにアプリ名を付ける
+ * （@shared/desktopApps の withAppWindows）。足したウインドウはサムネイルが無い（アプリ名と題名で選ぶ）。
  *
  * @param thumbnail サムネイルの大きさ。0×0 なら作らない（録画開始時の存在確認用。速い）
  */
@@ -52,15 +58,19 @@ export async function listCaptureSources(
 ): Promise<CaptureSourceInfo[]> {
   const own = new Set(BrowserWindow.getAllWindows().map((w) => w.getMediaSourceId()))
   const withThumbnail = thumbnail.width > 0 && thumbnail.height > 0
-  const sources = await desktopCapturer.getSources({
-    types: ['screen', 'window'],
-    thumbnailSize: thumbnail,
-    fetchWindowIcons: withThumbnail
-  })
+  // ウインドウの題名・アプリ名は画面収録の許可があるときだけ読める。許可が無ければ読まない
+  const [sources, macWindows] = await Promise.all([
+    desktopCapturer.getSources({
+      types: ['screen', 'window'],
+      thumbnailSize: thumbnail,
+      fetchWindowIcons: withThumbnail
+    }),
+    screenAccess() === 'granted' ? listMacWindows().catch((err: unknown) => { reportHandled(err, { area: 'recording', op: 'list mac windows' }); return [] }) : Promise.resolve([])
+  ])
   const displays = screen.getAllDisplays()
   const primaryId = String(screen.getPrimaryDisplay().id)
 
-  return sources
+  const listed = sources
     .filter((source) => !own.has(source.id))
     .map((source): CaptureSourceInfo => {
       const kind = source.id.startsWith('screen:') ? 'screen' : 'window'
@@ -74,6 +84,7 @@ export async function listCaptureSources(
         ...(source.appIcon && !source.appIcon.isEmpty() ? { appIcon: source.appIcon.toDataURL() } : {})
       }
     })
+  return withAppWindows(listed, macWindows, process.pid)
 }
 
 /** 画面の名前。OSの名前（Entire Screen など）は区別が付かないので、番号と大きさにする */

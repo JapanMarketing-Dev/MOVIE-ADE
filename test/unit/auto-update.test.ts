@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHash, generateKeyPairSync } from 'node:crypto'
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { signSshsig, sshPublicKeyLine } from '../../scripts/release-signing.mjs'
@@ -15,7 +15,7 @@ import {
   validateManifest
 } from '../../scripts/release-r2-lib.mjs'
 import { setReporter } from '../../src/shared/report'
-import { INSTALL_KIND, installMethodFor, type AutoUpdateStatus } from '../../src/shared/appUpdate'
+import { INSTALL_KIND, installMethodFor, nsisInstallerArgs, type AutoUpdateStatus } from '../../src/shared/appUpdate'
 import type { UpdateCheckResult } from '../../src/shared/appVersion'
 
 vi.mock('electron', () => ({ app: { getVersion: () => '0.0.1' }, net: { fetch: vi.fn() } }))
@@ -159,7 +159,8 @@ describe('checkForUpdate（macOS は自動更新用の zip も確かめる）', 
   it('署名の合う zip があれば、入れ替えに使うファイルとして持つ（インストーラーの案内はそのまま）', async () => {
     const r = await checkForUpdate(server((s) => signSshsig(s, key.pem)), 'darwin')
     expect(r.state).toBe('available')
-    if (process.arch === 'arm64') {
+    // verifiedFileOfKind はこのプロセスの OS と CPU で選ぶ（arm64 の Linux・Windows では mac の zip を選ばない）
+    if (process.platform === 'darwin' && process.arch === 'arm64') {
       expect(verifiedFileOfKind('zip')).toMatchObject({ name: names.zip, sha256: sha(zipBody), url: `${base}releases/99.0.0/${names.zip}` })
     }
   })
@@ -228,6 +229,7 @@ describe('AutoUpdater（裏での確認 → ダウンロード → 再起動し�
       prepareDir: async (keep) => ({ dir: '/cache', target: `/cache/${keep}` }),
       stage: async (method, path) => { calls.push(`stage ${method} ${path}`) },
       install: async (method, path) => { calls.push(`install ${method} ${path}`) },
+      installOnQuit: (method, path) => { calls.push(`quit ${method} ${path}`); return true },
       getAutoDownload: () => auto,
       setAutoDownload: (on) => { auto = on },
       emit: (s) => emitted.push(s),
@@ -370,6 +372,129 @@ describe('AutoUpdater（裏での確認 → ダウンロード → 再起動し�
     expect(updater.status().progress.phase).toBe('idle')
   })
 
+  const exe: VerifiedDownload = { ...file, name: 'Ferret-2.0.0-win-x64.exe', kind: 'exe', url: `${RELEASE_BASE_URL}releases/2.0.0/Ferret-2.0.0-win-x64.exe` }
+  const nsis = (over: Partial<AutoUpdateDeps> = {}) => setup({ method: 'nsis', verifiedFile: (kind) => (kind === 'exe' ? exe : null), ...over })
+  const ready = async (updater: InstanceType<typeof AutoUpdater>) => {
+    await updater.checkNow()
+    await settle()
+    await settle()
+  }
+
+  it('閉じたとき: 準備ができていれば、起動し直さずに入れる。次に開いたとき新しい版（NSIS は --force-run を付けない）', async () => {
+    const { updater, calls } = nsis()
+    await ready(updater)
+    expect(updater.status()).toMatchObject({ progress: { phase: 'ready', action: 'restart' }, installOnQuit: true })
+    expect(updater.installOnQuit()).toBe(true)
+    expect(calls.at(-1)).toBe('quit nsis /cache/Ferret-2.0.0-win-x64.exe')
+    expect(nsisInstallerArgs('quit')).toEqual(['--updated', '/S'])
+    expect(nsisInstallerArgs('restart')).toEqual(['--updated', '/S', '--force-run'])
+    // AppImage も同じ経路
+    const appImage = { ...file, name: 'Ferret-2.0.0-linux-x86_64.AppImage', kind: 'AppImage' as const }
+    const linux = setup({ method: 'appimage', verifiedFile: (kind) => (kind === 'AppImage' ? appImage : null) })
+    await ready(linux.updater)
+    expect(linux.updater.installOnQuit()).toBe(true)
+    expect(linux.calls.at(-1)).toBe('quit appimage /cache/Ferret-2.0.0-linux-x86_64.AppImage')
+  })
+
+  it('閉じたとき: 二重に走らない。［再起動して更新］で入れ替えが始まっていれば、閉じたときはもう走らせない', async () => {
+    const first = nsis()
+    await ready(first.updater)
+    expect(first.updater.installOnQuit()).toBe(true)
+    expect(first.updater.installOnQuit()).toBe(false)
+    expect(await first.updater.install()).toBe(false)
+    expect(first.calls.filter((c) => c.startsWith('quit') || c.startsWith('install'))).toEqual(['quit nsis /cache/Ferret-2.0.0-win-x64.exe'])
+
+    const restarted = nsis()
+    await ready(restarted.updater)
+    expect(await restarted.updater.install()).toBe(true)
+    // 再起動して更新 → app.quit → quit の順に届いても、インストーラーは1回だけ
+    expect(restarted.updater.installOnQuit()).toBe(false)
+    expect(restarted.calls.filter((c) => c.startsWith('quit'))).toEqual([])
+    expect(restarted.updater.status().installOnQuit).toBe(false)
+  })
+
+  it('閉じたとき: 自動の更新がオフなら入れない（手動で落としたものも）。macOS は［再起動して更新］まで Squirrel.Mac に渡さない', async () => {
+    const off = nsis()
+    off.updater.setAutoDownload(false)
+    await ready(off.updater)
+    expect(await off.updater.download()).toBe(true)
+    expect(off.updater.status()).toMatchObject({ progress: { phase: 'ready' }, installOnQuit: false })
+    expect(off.updater.installOnQuit()).toBe(false)
+    expect(off.calls.some((c) => c.startsWith('quit'))).toBe(false)
+
+    const mac = setup()
+    mac.updater.setAutoDownload(false)
+    await ready(mac.updater)
+    expect(await mac.updater.download()).toBe(true)
+    expect(mac.calls).toEqual(['download Ferret-2.0.0-mac-arm64.zip'])
+    expect(mac.updater.status().installOnQuit).toBe(false)
+    // 押したときに渡して、すぐ入れ替える
+    expect(await mac.updater.install()).toBe(true)
+    expect(mac.calls.slice(1)).toEqual(['stage squirrel-mac /cache/Ferret-2.0.0-mac-arm64.zip', 'install squirrel-mac /cache/Ferret-2.0.0-mac-arm64.zip'])
+  })
+
+  it('閉じたとき（macOS）: 自動の更新がオンなら Squirrel.Mac に渡しておき、閉じたあとは Squirrel.Mac が入れる。オンに戻すと、手動で落としたものも渡す', async () => {
+    const mac = setup()
+    await ready(mac.updater)
+    expect(mac.calls).toContain('stage squirrel-mac /cache/Ferret-2.0.0-mac-arm64.zip')
+    expect(mac.updater.status().installOnQuit).toBe(true)
+    expect(mac.updater.installOnQuit()).toBe(true)
+    // 渡したものは取り下げられないので、あとでオフにしても閉じたときに入る（表示もそのまま）
+    const staged = setup()
+    await ready(staged.updater)
+    staged.updater.setAutoDownload(false)
+    expect(staged.updater.status().installOnQuit).toBe(true)
+
+    const manual = setup()
+    manual.updater.setAutoDownload(false)
+    await ready(manual.updater)
+    await manual.updater.download()
+    expect(manual.calls.some((c) => c.startsWith('stage'))).toBe(false)
+    manual.updater.setAutoDownload(true)
+    await settle()
+    expect(manual.calls.filter((c) => c.startsWith('stage') || c.startsWith('download'))).toEqual([
+      'download Ferret-2.0.0-mac-arm64.zip', 'stage squirrel-mac /cache/Ferret-2.0.0-mac-arm64.zip'
+    ])
+    expect(manual.updater.status().installOnQuit).toBe(true)
+  })
+
+  it('閉じたとき: 署名と照らし終える前（確認前・ダウンロード中・照らして合わなかった）・deb・開発版では入れない', async () => {
+    // 確認前
+    const before = nsis()
+    expect(before.updater.installOnQuit()).toBe(false)
+    // ダウンロード中
+    let finish: (path: string) => void = () => undefined
+    const pending = nsis({ download: () => new Promise<string>((resolve) => { finish = resolve }) })
+    await pending.updater.checkNow()
+    await settle()
+    expect(pending.updater.status().progress.phase).toBe('downloading')
+    expect(pending.updater.installOnQuit()).toBe(false)
+    finish('/cache/Ferret-2.0.0-win-x64.exe')
+    await settle()
+    expect(pending.updater.status().progress.phase).toBe('ready')
+    // 照らして合わなかった
+    const tampered = nsis({ download: async () => { throw new UpdateDownloadError('digest') } })
+    await ready(tampered.updater)
+    expect(tampered.updater.status().progress.phase).toBe('failed')
+    expect(tampered.updater.installOnQuit()).toBe(false)
+    // deb はインストーラーを開くだけ（閉じても入れない）
+    const debFile = { ...file, name: 'Ferret-2.0.0-linux-amd64.deb', kind: 'deb' as const }
+    const deb = setup({ method: 'deb', verifiedFile: (kind) => (kind === 'deb' ? debFile : null) })
+    await ready(deb.updater)
+    expect(deb.updater.status().installOnQuit).toBe(false)
+    expect(deb.updater.installOnQuit()).toBe(false)
+    // 開発版の起動（enabled でない）
+    const dev = nsis({ enabled: false })
+    await ready(dev.updater)
+    expect(dev.updater.installOnQuit()).toBe(false)
+    for (const u of [before, pending, tampered, deb, dev]) expect(u.calls.some((c) => c.startsWith('quit'))).toBe(false)
+    // 入れ替えに失敗しても、終了の途中で落ちない（Sentry へ知らせるだけ）
+    const broken = nsis({ installOnQuit: () => { throw new Error('installer missing') } })
+    await ready(broken.updater)
+    expect(broken.updater.installOnQuit()).toBe(false)
+    expect(broken.deps.report).toHaveBeenCalled()
+  })
+
   it('起動時と一定間隔で確かめる（enabled のときだけ）', async () => {
     vi.useFakeTimers()
     try {
@@ -388,6 +513,42 @@ describe('AutoUpdater（裏での確認 → ダウンロード → 再起動し�
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('installUpdateOnQuit（閉じたときの入れ替えそのもの）', () => {
+  let dir = ''
+  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'ferret-quit-')) })
+  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+  const fileFor = (name: string, body: string): VerifiedDownload =>
+    ({ version: '2.0.0', name, sha256: sha(body), size: body.length, kind: 'AppImage', url: `${RELEASE_BASE_URL}releases/2.0.0/${name}` })
+
+  it('AppImage: 版を含む名前なら新しい名前で並べて古い方を消す。起動し直さない', async () => {
+    const { installUpdateOnQuit } = await import('../../src/main/autoUpdateInstall')
+    const current = join(dir, 'Ferret-1.0.0-linux-x86_64.AppImage')
+    writeFileSync(current, 'old')
+    const downloaded = join(dir, 'download.AppImage')
+    writeFileSync(downloaded, 'new body')
+    vi.stubEnv('APPIMAGE', current)
+    expect(installUpdateOnQuit('appimage', downloaded, fileFor('Ferret-2.0.0-linux-x86_64.AppImage', 'new body'))).toBe(true)
+    const placed = join(dir, 'Ferret-2.0.0-linux-x86_64.AppImage')
+    expect(readFileSync(placed, 'utf8')).toBe('new body')
+    // Windows のファイルには実行の権限が無い
+    if (process.platform !== 'win32') expect(statSync(placed).mode & 0o111).not.toBe(0)
+    expect(existsSync(current)).toBe(false)
+  })
+
+  it('落としてから閉じるまでに中身が変わっていれば入れない。macOS（Squirrel.Mac が入れる）・deb は何もしない', async () => {
+    const { installUpdateOnQuit } = await import('../../src/main/autoUpdateInstall')
+    const current = join(dir, 'Ferret.AppImage')
+    writeFileSync(current, 'old')
+    const downloaded = join(dir, 'download.AppImage')
+    writeFileSync(downloaded, 'swapped')
+    vi.stubEnv('APPIMAGE', current)
+    expect(() => installUpdateOnQuit('appimage', downloaded, fileFor('Ferret-2.0.0-linux-x86_64.AppImage', 'new body'))).toThrow()
+    expect(readFileSync(current, 'utf8')).toBe('old')
+    expect(installUpdateOnQuit('squirrel-mac', downloaded, fileFor('Ferret-2.0.0-mac-arm64.zip', 'swapped'))).toBe(false)
+    expect(installUpdateOnQuit('deb', downloaded, fileFor('Ferret-2.0.0-linux-amd64.deb', 'swapped'))).toBe(false)
   })
 })
 

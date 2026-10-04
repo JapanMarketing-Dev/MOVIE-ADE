@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>录制 · Ferret 文档</title>
-  <meta name="description" content="录制内置浏览器、整个屏幕或其他窗口。一边使用页面，一边说话、圈画和打字。">
+  <meta name="description" content="录制内置浏览器、整个屏幕、其他窗口、桌面应用、游戏或手机模拟器。一边使用页面，一边说话、圈画和打字。">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
   <link rel="canonical" href="https://ferretade.dev/docs/zh-CN/recording">
@@ -26,7 +26,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
   <meta property="og:title" content="录制 · Ferret 文档">
-  <meta property="og:description" content="录制内置浏览器、整个屏幕或其他窗口。一边使用页面，一边说话、圈画和打字。">
+  <meta property="og:description" content="录制内置浏览器、整个屏幕、其他窗口、桌面应用、游戏或手机模拟器。一边使用页面，一边说话、圈画和打字。">
   <meta property="og:url" content="https://ferretade.dev/docs/zh-CN/recording">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="zh_CN">
@@ -36,7 +36,7 @@
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="录制 · Ferret 文档">
-  <meta name="twitter:description" content="录制内置浏览器、整个屏幕或其他窗口。一边使用页面，一边说话、圈画和打字。">
+  <meta name="twitter:description" content="录制内置浏览器、整个屏幕、其他窗口、桌面应用、游戏或手机模拟器。一边使用页面，一边说话、圈画和打字。">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -155,7 +155,7 @@
       <article class="docs-content">
         <p class="docs-eyebrow">使用 Ferret</p>
         <h1>录制</h1>
-        <p class="docs-lead">录制内置浏览器、整个屏幕或其他窗口。一边使用页面，一边说话、圈画和打字。</p>
+        <p class="docs-lead">录制内置浏览器、整个屏幕、其他窗口、桌面应用、游戏或手机模拟器。一边使用页面，一边说话、圈画和打字。</p>
         <div class="docs-os" role="group" aria-label="快捷键显示为" data-docs-os hidden>
           <span class="docs-os-label">快捷键显示为</span>
           <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">macOS</button>
@@ -170,10 +170,21 @@
   <tbody>
     <tr><td><span class="docs-ui">内置浏览器</span>（默认）</td><td>视频、语音和画笔，以及 URL、元素选择器、点击和滚动。不需要操作系统权限。</td></tr>
     <tr><td><span class="docs-ui">整个屏幕</span></td><td>视频、语音和画笔。没有 URL、元素或操作记录（这一点会在 <code>feedback.md</code> 中注明）。</td></tr>
-    <tr><td><span class="docs-ui">窗口</span></td><td>同上。Ferret 自己的窗口不会列出。</td></tr>
+    <tr><td><span class="docs-ui">窗口</span></td><td>同上。每个窗口都会连同其应用名称一起列出。Ferret 自己的窗口不会列出。</td></tr>
+    <tr><td><span class="docs-ui">手机</span></td><td>同上，只列出 iOS Simulator 和 Android Emulator 的窗口。</td></tr>
   </tbody>
 </table>
 <p>你的选择会被记住。在 macOS 上，录制屏幕和窗口需要“屏幕录制”权限（<a href="troubleshooting.html#screen-permission">如何授予</a>）。</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="desktop-mobile">
+        <h2 id="desktop-mobile"><a class="docs-anchor" href="#desktop-mobile" aria-label="指向“桌面应用、游戏和移动应用”的链接">#</a>桌面应用、游戏和移动应用</h2>
+        <p>要审查你正在开发的桌面应用（Electron、Tauri 或原生应用），像平时开发时那样启动它，然后在 <span class="docs-ui">窗口</span> 下选择它的窗口。窗口会连同应用名称一起列出，因此 Electron 应用的开发版本会显示为 <code>Electron</code>。小窗口和始终显示在其他窗口之上的窗口也会列出；在 macOS 上，始终置顶的窗口会以应用名称和标题显示，而不是预览图。</p>
+<p>所选内容会跟随应用。重新启动应用、它的窗口再次出现后，下一次录制会使用标题相同的窗口；如果标题变了，则使用该应用唯一的窗口。</p>
+<p>对于移动应用，启动 iOS Simulator（Xcode，macOS）或 Android Emulator（Android Studio），然后在 <span class="docs-ui">手机</span> 下选择设备。如果模拟器运行在 Android Studio 内部，请让它在独立窗口中打开（在 Android Studio 的设置中，于 Tools → Emulator 下关闭在 Running Devices 工具窗口中启动），这样它就会被列出。</p>
+<p><code>feedback.md</code> 开头写的不是 URL，而是你录制的内容：应用和窗口标题；如果是模拟器，则是设备名称和操作系统版本，在 Android 上还包括前台的应用。它还会告诉 Agent 去修改该应用的源代码。Ferret 在录制开始时通过 <code>xcrun simctl</code> 和 <code>adb</code>（来自 <code>ANDROID_HOME</code>、<code>ANDROID_SDK_ROOT</code> 或 Android Studio 的 SDK 文件夹）读取设备信息。图像中只显示所选的窗口，所以请边说边讲清你指的是什么。</p>
+<p>游戏的用法相同。选择显示着游戏视图的 Unity、Unreal Engine 或 Godot 编辑器窗口，或者你构建的游戏的窗口（包括无边框窗口模式）。对于独占全屏的游戏，请在 <span class="docs-ui">整个屏幕</span> 下选择它所在的显示器。当窗口是这些编辑器之一时，<code>feedback.md</code> 会写明引擎，并让 Agent 修改游戏的代码、场景或资源。为了让文件保持较小，视频最多以每秒 10 帧录制；问题的图像也取自同一段视频，因此与时间轴上的那一刻一致。</p>
+<p>审查对象的 <span class="docs-ui">要录制的窗口</span> 既匹配窗口标题，也匹配应用名称，因此填写 <code>Simulator</code> 时，无论显示的是哪台设备，都会选中 iOS Simulator 的窗口。</p>
       </section>
 
       <section class="docs-section" aria-labelledby="record">
@@ -264,6 +275,7 @@
       <p class="docs-toc-heading">本页内容</p>
       <ul>
         <li><a href="#target">选择录制内容</a></li>
+        <li><a href="#desktop-mobile">桌面应用、游戏和移动应用</a></li>
         <li><a href="#record">开始、暂停、停止</a></li>
         <li><a href="#pen">画笔</a></li>
         <li><a href="#annotations-clear">标记何时消失</a></li>

@@ -1,4 +1,4 @@
-import { lstat, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, mkdtemp, readdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -174,10 +174,11 @@ describe('作成・名前の変更・ゴミ箱（src/main/fileOps.ts）', () => 
   })
 
   describe('trashEntries', () => {
-    it('ゴミ箱の口へ絶対パスを渡し、送った相対パスを返す。親と子を両方選んだら親だけ', async () => {
+    it('ゴミ箱の口へ絶対パス（確かめた実体のパス）を渡し、送った相対パスを返す。親と子を両方選んだら親だけ', async () => {
       const trash = vi.fn(async (_absolute: string) => {})
       await expect(trashEntries(root, ['src', 'src/a.ts', 'README.md', 'README.md'], trash)).resolves.toEqual(['src', 'README.md'])
-      expect(trash.mock.calls.map(([p]) => p)).toEqual([join(root, 'src'), join(root, 'README.md')])
+      const real = await realpath(root)
+      expect(trash.mock.calls.map(([p]) => p)).toEqual([join(real, 'src'), join(real, 'README.md')])
     })
 
     it('1つでも断るものがあれば何も送らない（外・根・.git・無いもの）', async () => {

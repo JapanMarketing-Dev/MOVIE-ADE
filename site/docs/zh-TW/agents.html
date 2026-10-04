@@ -172,6 +172,7 @@
   <li><span class="docs-ui">確認</span> / <span class="docs-ui">標記為需要確認</span>、<span class="docs-ui">與下一則合併</span>、<span class="docs-ui">刪除</span></li>
 </ul>
 <p><span class="docs-ui">依進度篩選</span> 可依狀態顯示或隱藏意見（例如 <span class="docs-ui">僅顯示</span> 等待你確認的意見）；<span class="docs-ui">全部顯示</span> 會清除篩選。</p>
+<p>要調整意見的順序，可以拖曳卡片標題左側的把手，或選取把手後按 <kbd>↑</kbd> / <kbd>↓</kbd>。編號、<code>feedback.md</code> 以及傳送給 Agent 的內容都會依新順序排列。篩選時，只會在看得到的意見之間調整順序，隱藏的意見維持原位。一次審查涵蓋多個頁面或檔案時，意見只會在各自的分組內移動。標頭的 <span class="docs-ui">意見排序</span> 可在 <span class="docs-ui">手動（拖曳順序）</span>、<span class="docs-ui">錄製時間</span> 與 <span class="docs-ui">進度</span>（未處理在前，已完成在後）之間切換；依進度排序時，該順序會儲存為手動順序。</p>
 <p>標頭有 <span class="docs-ui">還原</span>、<span class="docs-ui">開啟資料夾</span>、<span class="docs-ui">拷貝給 Agent</span>、<span class="docs-ui">傳送到 GitHub / GitLab</span>、<span class="docs-ui">整理</span> 與 <span class="docs-ui">傳送給 Agent</span>。沒有成為意見的語音會列在 <span class="docs-ui">已排除的語音</span> 中，按 <span class="docs-ui">還原為意見</span> 即可取回。</p>
 <figure class="docs-shot" data-shot="findings"><img src="../assets/findings.png?v=4fea3924" width="1600" height="972" alt="意見分頁" loading="lazy" decoding="async"><figcaption>意見分頁</figcaption></figure>
       </section>
@@ -233,7 +234,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   <li><a href="https://docs.cline.bot/cline-cli/overview" target="_blank" rel="noopener noreferrer">Cline<span class="sr-only"> （在新分頁中開啟）</span></a> <code>cline</code></li>
   <li><a href="https://www.codebuddy.ai/docs/cli/installation" target="_blank" rel="noopener noreferrer">CodeBuddy<span class="sr-only"> （在新分頁中開啟）</span></a> <code>codebuddy</code></li>
   <li><a href="https://www.codebuff.com/docs/help/quick-start" target="_blank" rel="noopener noreferrer">Codebuff<span class="sr-only"> （在新分頁中開啟）</span></a> <code>codebuff</code></li>
-  <li><a href="https://commandcode.ai/docs/quickstart" target="_blank" rel="noopener noreferrer">Command Code<span class="sr-only"> （在新分頁中開啟）</span></a> <code>command-code --trust</code></li>
+  <li><a href="https://commandcode.ai/docs/quickstart" target="_blank" rel="noopener noreferrer">Command Code<span class="sr-only"> （在新分頁中開啟）</span></a> <code>command-code</code></li>
   <li><a href="https://docs.continue.dev/cli/quickstart" target="_blank" rel="noopener noreferrer">Continue<span class="sr-only"> （在新分頁中開啟）</span></a> <code>cn</code></li>
   <li><a href="https://github.com/charmbracelet/crush" target="_blank" rel="noopener noreferrer">Charm (Crush)<span class="sr-only"> （在新分頁中開啟）</span></a> <code>crush</code></li>
   <li><a href="https://deepseek-harness.github.io/deepseek-harness/" target="_blank" rel="noopener noreferrer">DeepSeek Harness<span class="sr-only"> （在新分頁中開啟）</span></a> <code>dsh tui</code></li>
@@ -248,7 +249,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   <li><a href="https://github.com/letta-ai/letta-code" target="_blank" rel="noopener noreferrer">Letta Code<span class="sr-only"> （在新分頁中開啟）</span></a> <code>letta</code></li>
   <li><a href="https://mimo.xiaomi.com/coder" target="_blank" rel="noopener noreferrer">MiMo Code<span class="sr-only"> （在新分頁中開啟）</span></a> <code>mimo</code></li>
   <li><a href="https://github.com/mistralai/mistral-vibe" target="_blank" rel="noopener noreferrer">Mistral Vibe<span class="sr-only"> （在新分頁中開啟）</span></a> <code>vibe</code></li>
-  <li><a href="https://dev.meta.ai/docs/muse-code" target="_blank" rel="noopener noreferrer">Muse<span class="sr-only"> （在新分頁中開啟）</span></a> <code>muse --trust-workspace</code></li>
+  <li><a href="https://dev.meta.ai/docs/muse-code" target="_blank" rel="noopener noreferrer">Muse<span class="sr-only"> （在新分頁中開啟）</span></a> <code>muse</code></li>
   <li><a href="https://omp.sh/docs" target="_blank" rel="noopener noreferrer">oh-my-pi<span class="sr-only"> （在新分頁中開啟）</span></a> <code>omp</code></li>
   <li><a href="https://openclaude.gitlawb.com/" target="_blank" rel="noopener noreferrer">OpenClaude<span class="sr-only"> （在新分頁中開啟）</span></a> <code>openclaude</code></li>
   <li><a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener noreferrer">OpenClaw<span class="sr-only"> （在新分頁中開啟）</span></a> <code>openclaw chat</code></li>
@@ -311,7 +312,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>使用 Ollama 時，請先安裝（Clef / Clef Flash 需要 0.35.1 以上），並在終端機中下載模型。Ferret 不會執行安裝程式：</p>
 <pre><code>ollama pull clef-flash</code></pre>
 <p>金鑰來自金鑰欄位（與你的其他 API 金鑰一起儲存）、你指定的環境變數（App 的環境、專案的 <code>.env</code> 或 <code>~/.ferret/.env</code>），或 <code>settings.json</code> 中的 <code>apiKey</code>。額外標頭可以用 <code>${VAR}</code> 讀取環境變數的值。</p>
-<div class="docs-callout docs-callout-note"><p class="docs-callout-title">金鑰如何不出現在提示詞中</p><p>Agent 永遠看不到你的金鑰。Ferret 會在 <code>127.0.0.1</code> 上執行本機中繼，並提供每個終端機 <code>FERRET_DECISION_URL</code>（中繼的位址，附每個終端機專用的權杖）、<code>FERRET_DECISION_MODEL</code> 與 <code>FERRET_DECISION_IMAGES</code>（在一個版本內，也會同時設定舊的 <code>MOVIE_ADE_DECISION_*</code> 名稱）。中繼會加上金鑰與標頭，並原封不動地轉送請求，因此提示詞、<code>feedback.md</code> 和 Agent 的對話紀錄中都不含機密。變更設定後開啟的終端機會套用新設定。</p></div>
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">金鑰如何不出現在提示詞中</p><p>Agent 永遠看不到你的金鑰。Ferret 會在 <code>127.0.0.1</code> 上執行本機中繼，並提供每個終端機 <code>FERRET_DECISION_URL</code>（中繼的位址，附每個終端機專用的權杖）、<code>FERRET_DECISION_MODEL</code> 與 <code>FERRET_DECISION_IMAGES</code>（在一個版本內，也會同時設定舊的 <code>MOVIE_ADE_DECISION_*</code> 名稱）。中繼會加上金鑰與標頭，並原封不動地轉送請求，因此提示詞、<code>feedback.md</code> 和 Agent 的對話紀錄中都不含機密。每個終端機的權杖最多可呼叫 500 次、每分鐘 30 次、2,000 萬 token 與 5 美元（已知費用時），每個專案每天最多 2,000 次與 20 美元；達到上限時中繼會回傳 429 並附上原因，新開的終端機分頁會取得新的權杖。變更判定模型的設定後，已開啟終端機的權杖會失效，之後開啟的終端機會套用新設定。</p></div>
 <p>Cloudflare 與 System One 文件有兩點不同（已用實際 API 確認）：圖片必須是 data URI（<code>data:image/jpeg;base64,…</code>，否則會回傳 422 "image must be an embedded base64 data URI"），且回應會包裝成 <code>{ "result": { … }, "success": true }</code>（錯誤則回傳 <code>{ "success": false, "errors": [ … ] }</code>）。Cloudflare 預設組合會把 <span class="docs-ui">圖片編碼</span> 設為 data URI，Agent 會以 <code>FERRET_DECISION_IMAGE_FORMAT</code> 取得此設定，指示中也會要求它在有 <code>.result</code> 時讀取該欄位。中繼對雙向內容都原封不動地傳遞。若要改用 Global API Key 而非 API 權杖，請把 <span class="docs-ui">驗證</span> 設為 <span class="docs-ui">無金鑰</span>，並加入標頭 <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> 與 <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code>。</p>
 <p>只有 Clef 和 Clef Flash 能讀取圖片。使用僅限文字的模型時，請關閉 <span class="docs-ui">傳送 BEFORE/AFTER 圖片</span>；此時 Agent 只依文字判定，可靠度較低。</p>
 <div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama 與大型圖片</p><p>Ollama 0.35.0 將 <code>/v1/systemone</code> 請求限制在 64 KiB，因此附上螢幕截圖的請求會以 HTTP 413 失敗。指示會要求 Agent 把兩張圖片都縮小到寬度最多 1024px 的 JPEG（品質約 70）。如果仍然收到 413，請把 Ollama 更新到 0.35.1 以上，或改用 Cloudflare Workers AI。</p></div>

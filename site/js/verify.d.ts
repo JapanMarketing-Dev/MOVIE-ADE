@@ -3,6 +3,8 @@ export const RELEASE_PUBLIC_KEY: string
 export const RELEASE_SIGNING_NAMESPACE: string
 export const RELEASE_PRODUCT: string
 export const MAX_INSTALLER_BYTES: number
+export const METADATA_MAX_BYTES: number
+export const METADATA_TIMEOUT_MS: number
 
 export interface SignedArtifactInfo {
   os: 'mac' | 'win' | 'linux'
@@ -23,8 +25,17 @@ export function verifiedAssets<A extends { name: string; url: string; size: numb
 export function verifyRelease<R extends { version: string; assets: unknown[] }>(
   release: R,
   base: string,
-  fetcher?: typeof fetch
+  fetcher?: typeof fetch,
+  timeoutMs?: number
 ): Promise<R & { verified: boolean }>
+export function readBounded(res: Response, max: number, signal?: AbortSignal): Promise<Uint8Array>
+export function fetchBounded(
+  url: string,
+  max: number,
+  fetcher?: typeof fetch,
+  timeoutMs?: number
+): Promise<{ status: number; ok: boolean; bytes: Uint8Array | null }>
+export function fetchBoundedJson(url: string, fetcher?: typeof fetch): Promise<unknown>
 export function fetchVerifiedBytes(
   asset: { url: string; size: number; sha256: string },
   onProgress?: (fraction: number) => void,

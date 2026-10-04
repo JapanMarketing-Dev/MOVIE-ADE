@@ -21,7 +21,7 @@
 ## 保留期間
 <p><span class="docs-ui">保留錄影</span>（預設 7 天，可選 30 天或 <span class="docs-ui">永久</span>）：啟動時，超過該期間的已完成審查會刪除 <code>recording.webm</code> 與 <code>work/</code>。<code>feedback.md</code> 與意見的圖片會保留。未完成的審查絕不會被清除。清除作業在啟動時針對最後開啟的專案執行。</p>
 
-<!-- @network 93d136650b -->
+<!-- @network cab5d43d47 -->
 ## 哪些資料會離開你的電腦
 <table>
   <thead><tr><th>時機</th><th>傳送目的地</th><th>資料</th></tr></thead>
@@ -35,7 +35,7 @@
     <tr><td><span class="docs-ui">傳送到 GitHub</span></td><td>透過 <code>gh</code> 送到 GitHub</td><td>僅內文（不含圖片）</td></tr>
     <tr><td>頁尾的用量（僅限 Claude Code 與 Codex）</td><td>Anthropic、ChatGPT</td><td>以你自己的登入發出的用量請求</td></tr>
     <tr><td>GitHub 加星提示</td><td>透過你的 <code>gh</code> 送到 GitHub</td><td>檢查你是否已為儲存庫加星，只有在你按下 <span class="docs-ui">在 GitHub 上加星</span> 時才會加星</td></tr>
-    <tr><td>更新（Ferret 啟動時、每 6 小時、<span class="docs-ui">檢查更新</span>）</td><td>下載伺服器（Cloudflare R2）</td><td><code>latest.json</code> 與該版本 <code>SHA256SUMS</code>（在 macOS 上還有 <code>UPDATE-SHA256SUMS</code>）的請求；發現新版本時，下載適用於你電腦的更新檔案（關閉 <span class="docs-ui">自動下載新版本</span> 時，只在按一下 <span class="docs-ui">下載</span> 時下載）</td></tr>
+    <tr><td>更新（Ferret 啟動時、每 6 小時、<span class="docs-ui">檢查更新</span>）</td><td>下載伺服器（Cloudflare R2）</td><td><code>latest.json</code> 與該版本 <code>SHA256SUMS</code>（在 macOS 上還有 <code>UPDATE-SHA256SUMS</code>）的請求；發現新版本時，下載適用於你電腦的更新檔案（關閉 <span class="docs-ui">自動更新</span> 時，只在按一下 <span class="docs-ui">下載</span> 時下載）</td></tr>
     <tr><td>從 App 傳送意見回饋（僅在你傳送時）</td><td>開發者的意見回饋中繼（Cloudflare Worker），會在 <code>JapanMarketing-Dev/ferret</code> 中建立公開 issue</td><td>你的文字、屬於錯誤或想法、App / 作業系統版本與 CPU，以及你附加的最多 3 張螢幕截圖。金鑰、權杖、電子郵件地址與主資料夾路徑會被遮蔽。中繼不會儲存你的 IP 位址（請參閱<a href="#feedback">從 App 傳送意見回饋</a>）</td></tr>
     <tr><td>當機或錯誤（<span class="docs-ui">傳送當機報告</span> 開啟時）</td><td>Sentry</td><td>stack trace 與作業系統 / CPU / App 版本（請參閱<a href="#crash-reports">當機報告</a>）</td></tr>
   </tbody>

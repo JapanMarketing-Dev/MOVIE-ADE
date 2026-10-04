@@ -52,15 +52,16 @@
 <p>從原始碼執行時，如果 node-pty 是針對不同的 Node 或 Electron ABI 建置的，就會發生這種情況。</p>
 <pre><code>pnpm rebuild:native</code></pre>
 
-<!-- @agent 1b8e87d730 -->
+<!-- @agent b8de3c3989 -->
 ## 找不到 Agent / 傳送給 Agent 沒有送出
 <ul>
-  <li>終端機中出現 <code>command not found: claude</code>（或 <code>codex</code>、<code>gemini</code> 等其他 Agent 的指令）：表示 CLI 未安裝或不在 <code>PATH</code> 中。Ferret 會直接顯示 shell 本身的錯誤，不另外加上提示。請確認該指令在你平常的終端機中可以執行，使用 <span class="docs-ui">設定 → Agent</span> 中的 <span class="docs-ui">安裝</span>，或將絕對路徑設為該 Agent 的 <span class="docs-ui">指令</span>。</li>
+  <li><q>Claude Code: 找不到</q>（或其他內建 Agent 的名稱），或是你自行新增的 Agent 在終端機中出現 <code>command not found: …</code>：表示 CLI 未安裝或不在 <code>PATH</code> 中。Ferret 只會從專案以外的 <code>PATH</code> 資料夾中的絕對路徑啟動內建 Agent，絕不從專案資料夾啟動。請確認該指令在你平常的終端機中可以執行，使用 <span class="docs-ui">設定 → Agent</span> 中的 <span class="docs-ui">安裝</span>，或將絕對路徑設為該 Agent 的 <span class="docs-ui">指令</span>。</li>
   <li><q>Agent 正在等待確認。請在終端機中回應後再傳送。</q> 請先回應 Agent 的提示。</li>
   <li><q>Agent 的輸入尚未就緒。</q> 請等 Agent 啟動完成。</li>
   <li><q>文字已輸入但尚未送出。請在終端機中按下 Enter。</q></li>
   <li><q>請先開啟終端機。</q></li>
   <li><q>無法解析啟動參數：引號未閉合。</q> 請修正 Agent 參數中的引號。</li>
+  <li><q>請把 … 寫在啟動參數中，而不是指令中。</q> 或 <q>請在啟動參數中直接寫 …，不要使用引號或反斜線。</q> 請在該 Agent 的參數中以純文字寫出該旗標。若要在啟動 Agent 時略過權限確認，請在 <span class="docs-ui">設定 → Agent</span> 中開啟 <span class="docs-ui">啟動 Agent 時略過權限確認</span>。</li>
 </ul>
 
 <!-- @cannot-record 7b2c3ffb80 -->

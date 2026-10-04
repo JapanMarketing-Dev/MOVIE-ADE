@@ -235,3 +235,33 @@ export function isTabCaptureRequest(query: Pick<PermissionQuery, 'permission' | 
   const securityOrigin = typeof query.details.securityOrigin === 'string' ? query.details.securityOrigin : ''
   return query.permission === 'media' && query.request && query.mediaTypes.length === 0 && securityOrigin.startsWith('file://')
 }
+
+/** ページのコピーを許す、利用者の操作からの時間（security-5 [14]） */
+export const PAGE_CLIPBOARD_GRANT_MS = 5_000
+
+/**
+ * 内蔵ブラウザのページの「コピー」ボタン（clipboard-sanitized-write）の許可（security-5 [14]）。
+ * レビューするページは信用しないので、名前だけでは許さない。内蔵ブラウザのビューを利用者がクリック・キー入力した直後に、
+ * そのビューの本体のフレームが、そのときのオリジンのまま求めたときだけ1回許す。
+ * ポップアップ（別の webContents）・サブフレーム・別のオリジン・問い合わせ（check）・読み取りは断る
+ */
+export class PageClipboardGrant {
+  private grant: { contents: unknown; origin: string; at: number } | null = null
+
+  constructor(private readonly now: () => number = Date.now) {}
+
+  /** ビューに本物の入力（OS から届いたクリック・キー）が届いた。main だけが呼ぶ */
+  noteGesture(contents: unknown, pageUrl: string): void {
+    const origin = parse(pageUrl)?.origin
+    this.grant = origin && origin !== 'null' ? { contents, origin, at: this.now() } : null
+  }
+
+  allow(query: Pick<PermissionQuery, 'permission' | 'request' | 'isMainFrame' | 'origin' | 'webContents'>): boolean {
+    const grant = this.grant
+    if (query.permission !== 'clipboard-sanitized-write' || !query.request || query.isMainFrame !== true || !grant) return false
+    const age = this.now() - grant.at
+    if (query.webContents !== grant.contents || parse(query.origin)?.origin !== grant.origin || !(age >= 0 && age <= PAGE_CLIPBOARD_GRANT_MS)) return false
+    this.grant = null
+    return true
+  }
+}

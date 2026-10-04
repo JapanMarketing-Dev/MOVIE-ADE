@@ -2,10 +2,10 @@
 <!-- @title 80e8dd1a5a -->
 Gravação
 
-<!-- @lead 14988eae28 -->
-Grave o navegador integrado, a tela inteira ou outra janela. Fale, circule e digite enquanto usa a página.
+<!-- @lead a6afb525ba -->
+Grave o navegador integrado, a tela inteira, outra janela, um app para desktop, um jogo ou um simulador de celular. Fale, circule e digite enquanto usa a página.
 
-<!-- @target 133550362a -->
+<!-- @target 2ab7c5b1f7 -->
 ## Escolher o que gravar
 <p>No modo Feedback, clique em <span class="docs-ui">Escolher alvo da gravação</span>. A caixa de diálogo <span class="docs-ui">Alvo da gravação</span> oferece:</p>
 <table>
@@ -13,10 +13,20 @@ Grave o navegador integrado, a tela inteira ou outra janela. Fale, circule e dig
   <tbody>
     <tr><td><span class="docs-ui">Navegador integrado</span> (padrão)</td><td>Vídeo, voz e caneta, além de URL, seletores de elementos, cliques e rolagens. Não exige permissão do sistema.</td></tr>
     <tr><td><span class="docs-ui">Tela inteira</span></td><td>Vídeo, voz e caneta. Sem URL, elemento nem registro de ações (isso é anotado no <code>feedback.md</code>).</td></tr>
-    <tr><td><span class="docs-ui">Janela</span></td><td>O mesmo que acima. As janelas do próprio Ferret não aparecem na lista.</td></tr>
+    <tr><td><span class="docs-ui">Janela</span></td><td>O mesmo que acima. Cada janela aparece com o nome do seu app. As janelas do próprio Ferret não aparecem na lista.</td></tr>
+    <tr><td><span class="docs-ui">Celular</span></td><td>O mesmo que acima, listando apenas as janelas do iOS Simulator e do Android Emulator.</td></tr>
   </tbody>
 </table>
 <p>Sua escolha é lembrada. No macOS, a captura da tela e de janelas exige a permissão de Gravação de Tela (<a href="troubleshooting.html#screen-permission">como concedê-la</a>).</p>
+
+<!-- @desktop-mobile 8d8ffcf90e -->
+## Apps para desktop, jogos e apps para celular
+<p>Para revisar um app para desktop que você está desenvolvendo (Electron, Tauri ou um app nativo), inicie-o como faz normalmente no desenvolvimento e escolha a janela dele em <span class="docs-ui">Janela</span>. As janelas aparecem com o nome do app, então uma build de desenvolvimento de um app Electron aparece em <code>Electron</code>. Janelas pequenas e janelas que ficam sobre as outras também aparecem; no macOS, uma janela que fica sobre as outras é mostrada pelo nome do app e pelo título em vez de uma prévia.</p>
+<p>A escolha acompanha o app. Quando você reinicia o app e a janela dele volta, a próxima gravação usa a janela com o mesmo título, ou a única janela do app se o título mudou.</p>
+<p>Para um app de celular, inicie o iOS Simulator (Xcode, macOS) ou o Android Emulator (Android Studio) e escolha o dispositivo em <span class="docs-ui">Celular</span>. Quando o emulador roda dentro do Android Studio, abra-o em uma janela própria (nas configurações do Android Studio, em Tools → Emulator, desative a abertura na janela de ferramentas Running Devices) para que ele apareça na lista.</p>
+<p>Em vez de uma URL, o <code>feedback.md</code> começa com o que você gravou: o app e o título da janela, ou o nome do dispositivo e a versão do sistema para um simulador ou emulador, além do app em primeiro plano no Android. Ele também pede ao agente que altere o código-fonte desse app. O Ferret lê os dados do dispositivo com <code>xcrun simctl</code> e <code>adb</code> (a partir de <code>ANDROID_HOME</code>, <code>ANDROID_SDK_ROOT</code> ou da pasta do SDK do Android Studio) quando a gravação começa. As imagens mostram apenas a janela escolhida, então diga em voz alta para o que você está apontando enquanto fala.</p>
+<p>Jogos funcionam da mesma forma. Escolha a janela do editor do Unity, Unreal Engine ou Godot com a visualização do jogo aparecendo, ou a janela de um jogo que você compilou, inclusive no modo janela sem bordas. Para um jogo em tela cheia exclusiva, escolha a tela dele em <span class="docs-ui">Tela inteira</span>. Quando a janela é de um desses editores, o <code>feedback.md</code> informa a engine e pede ao agente que altere o código, as cenas ou os assets do jogo. O vídeo é gravado a no máximo 10 quadros por segundo para manter os arquivos pequenos, e as imagens dos achados vêm do mesmo vídeo, então correspondem ao momento na linha do tempo.</p>
+<p>A <span class="docs-ui">Janela a gravar</span> de um alvo de revisão corresponde tanto ao nome do app quanto ao título da janela, então <code>Simulator</code> seleciona a janela do iOS Simulator seja qual for o dispositivo exibido.</p>
 
 <!-- @record deb62ed37c -->
 ## Iniciar, pausar, parar

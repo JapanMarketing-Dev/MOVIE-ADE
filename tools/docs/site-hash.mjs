@@ -20,7 +20,7 @@ for (const [file, deps] of MODULE_IMPORTS) {
   let after = before
   for (const dep of deps) {
     const v = assetVersion(`js/${dep}`)
-    after = after.replace(new RegExp(`(from '\\./${dep.replace('.', '\\.')})(\\?v=[0-9a-f]+)?'`, 'g'), `$1?v=${v}'`)
+    after = after.replace(new RegExp(`(from '\\./${dep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(\\?v=[0-9a-f]+)?'`, 'g'), `$1?v=${v}'`)
   }
   write(path, before, after)
 }

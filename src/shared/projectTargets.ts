@@ -272,6 +272,7 @@ const norm = (s: string) => s.normalize('NFKC').toLowerCase().trim()
  * 録画の対象の一覧から、ウインドウの名前に合うものを選ぶ（画面全体は選ばない）。
  * 完全一致 → 前方一致 → 部分一致 の順に、より短い名前（＝余計な語の少ないもの）を選ぶ。
  * macOS のウインドウ名は「アプリ名 - 文書名」の形が多いので、部分一致まで見る。
+ * アプリ名（macOS で分かるとき）にも合わせる。iOS シミュレータの題名は端末名（iPhone 16 Pro）なので、「Simulator」はアプリ名で当たる。
  */
 export function matchWindowSource(sources: readonly CaptureSourceInfo[], match: string | undefined): CaptureSourceInfo | null {
   const want = norm(match ?? '')
@@ -286,8 +287,9 @@ export function matchWindowSource(sources: readonly CaptureSourceInfo[], match: 
   }
   let best: { source: CaptureSourceInfo; score: number } | null = null
   for (const source of windows) {
-    const s = score(source.name)
-    if (s < 0) continue
+    const scores = [score(source.name), source.appName ? score(source.appName) : -1].filter((v) => v >= 0)
+    if (scores.length === 0) continue
+    const s = Math.min(...scores)
     if (!best || s < best.score || (s === best.score && source.name.length < best.source.name.length)) best = { source, score: s }
   }
   return best?.source ?? null

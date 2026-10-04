@@ -2,10 +2,10 @@
  * セッションの読み書き（設計 8章）。
  * 録画中は逐次ディスクへ書き、異常終了しても残ったデータから復元できるようにする（NF-12）。
  */
-import { lstat, mkdir } from 'node:fs/promises'
+import { lstat } from 'node:fs/promises'
 import { FileTooLargeError } from '../boundedFile'
 import { readJsonLines, SESSION_LIMITS, sessionRecordProblem } from './limits'
-import { appendFileNoFollow, assertContained, readFileNoFollow, removeContained, writeFileNoFollow } from './containment'
+import { appendFileNoFollow, assertContained, mkdirContained, readFileNoFollow, removeContained, writeFileNoFollow } from './containment'
 import { dirname } from 'node:path'
 import { existsSync } from 'node:fs'
 import type {
@@ -83,19 +83,19 @@ const SESSION_VERSION = 1 as const
 /** 新しいセッションのフォルダを作る */
 export async function createSession(projectDir: string, now = new Date()): Promise<SessionPaths> {
   let paths = sessionPaths(projectDir, sessionId(now), ADE_DIR)
-  await mkdir(dirname(paths.dir), { recursive: true })
-  // 作った直後にもう一度確かめる（作るあいだに .ferret・reviews をリンクへ差し替えられていないか）
+  // 1段ずつ、親を開いて持ったまま作る（containment.ts）。作った直後にもう一度確かめる
+  await mkdirContained(dirname(paths.dir), { root: projectDir })
   assertContained(projectDir, dirname(paths.dir))
   for (let offset = 0; ; offset++) {
     paths = sessionPaths(projectDir, sessionId(new Date(now.getTime() + offset * 1000)), ADE_DIR)
     // 改名前の .ade-movie/ に同じ ID があれば避ける（一覧で片方が隠れないように）
     if (existsSync(sessionPaths(projectDir, paths.id, LEGACY_ADE_DIR).dir)) continue
-    try { await mkdir(paths.dir); break }
+    try { await mkdirContained(paths.dir, { root: projectDir, exclusive: true }); break }
     catch (err) { if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err }
   }
   // レビューのフォルダは排他で作ったばかりなので、中に先回りのリンクは無い
-  await mkdir(paths.audioDir, { recursive: true })
-  await mkdir(paths.framesDir, { recursive: true })
+  await mkdirContained(paths.audioDir, { root: projectDir })
+  await mkdirContained(paths.framesDir, { root: projectDir })
   assertContained(projectDir, paths.framesDir)
   return paths
 }
@@ -119,7 +119,7 @@ export async function readEvents(paths: SessionPaths): Promise<Event[]> {
 // ───────────────────────── session.json ─────────────────────────
 
 export async function saveSession(paths: SessionPaths, record: SessionRecord): Promise<void> {
-  await mkdir(paths.dir, { recursive: true })
+  await mkdirContained(paths.dir)
   // 書きかけで壊さないよう、一時ファイルへ書いてから差し替える（末端のリンクはたどらない）
   await writeFileNoFollow(paths.sessionJson, JSON.stringify(record, null, 2))
   // 一覧用の要約も書き直す（分解の完了・編集のたび）。書けなくても一覧を読むときに作り直す
@@ -168,6 +168,6 @@ export async function clearWork(paths: SessionPaths): Promise<void> {
 
 /** feedback.md を書く。画像は呼び出し側が保存する */
 export async function writeFeedbackMarkdown(paths: SessionPaths, markdown: string): Promise<void> {
-  await mkdir(paths.dir, { recursive: true })
+  await mkdirContained(paths.dir)
   await writeFileNoFollow(paths.feedbackMd, markdown)
 }

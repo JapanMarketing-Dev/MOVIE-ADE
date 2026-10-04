@@ -1149,6 +1149,46 @@ body[data-resizing='row'] * {
   opacity: 0.4 !important;
 }
 
+/* 端末のプログラムのコピー（OSC 52）の確認と知らせ（TerminalClipboardBar）。ペインの下端に重ね、xterm の器は動かさない */
+.terminal-clipboard-bar {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  left: var(--space-5);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: var(--size-border) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.terminal-clipboard-bar__icon {
+  flex: none;
+  color: var(--color-text-muted);
+}
+
+.terminal-clipboard-bar__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.terminal-clipboard-bar__preview {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* ドラッグ中、落とすとどうなるかの案内（Orca の .pane-drop-overlay）。マウスは下のペインに通す */
 .terminal-drop-overlay {
   position: absolute;
@@ -2109,7 +2149,34 @@ body[data-resizing='row'] * {
 }
 
 .sb-project {
+  position: relative;
   min-width: 0;
+}
+
+/* 並べ替えのドラッグ: 動かしている行は薄く、落とす位置に線を出す（行の間の gap の中ほど） */
+.sb-project.is-dragging > .sb-project__row {
+  opacity: 0.5;
+}
+
+.sb-project.is-drop-before::before,
+.sb-project.is-drop-after::after {
+  position: absolute;
+  z-index: 1;
+  right: var(--space-2);
+  left: var(--space-2);
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-accent);
+  content: '';
+  pointer-events: none;
+}
+
+.sb-project.is-drop-before::before {
+  top: -2px;
+}
+
+.sb-project.is-drop-after::after {
+  bottom: -2px;
 }
 
 .sb-project__row {
@@ -2171,6 +2238,27 @@ body[data-resizing='row'] * {
 
 .sb-project__count {
   flex: none;
+}
+
+/* ☆（お気に入り）の印と、☆ を付け外すボタン */
+.sb-project__starred {
+  display: inline-grid;
+  flex: none;
+  color: var(--color-warning);
+  place-items: center;
+}
+
+.sb-project__action.is-starred {
+  color: var(--color-warning);
+}
+
+/* 「☆ のみ」で何も出ないとき */
+.sb-tree__empty {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
 }
 
 /* Agent が動いているプロジェクトの印。ターミナルのタブの「実行中」と同じ色の3本の棒が上下する */
@@ -2355,6 +2443,12 @@ body[data-resizing='row'] * {
 .sb-menu > button:hover,
 .sb-menu > button:focus-visible {
   background: var(--color-surface-hover);
+}
+
+.sb-menu > button:disabled {
+  background: transparent;
+  cursor: default;
+  opacity: 0.45;
 }
 
 .sb-menu > button > svg {

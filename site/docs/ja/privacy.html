@@ -189,7 +189,7 @@
     <tr><td><span class="docs-ui">GitHub に送る</span></td><td><code>gh</code> 経由で GitHub</td><td>本文だけ（画像は送らない）</td></tr>
     <tr><td>フッターの使用量（Claude Code と Codex だけ）</td><td>Anthropic、ChatGPT</td><td>自分のログインで使用量を問い合わせる</td></tr>
     <tr><td>GitHub の star のお願い</td><td>自分の <code>gh</code> 経由で GitHub</td><td>リポジトリに star 済みかを確かめ、<span class="docs-ui">GitHub で star</span> を押したときだけ star する</td></tr>
-    <tr><td>アップデート（Ferret の起動時・6時間ごと・<span class="docs-ui">更新を確認</span>）</td><td>ダウンロードのサーバー（Cloudflare R2）</td><td><code>latest.json</code> とその版の <code>SHA256SUMS</code>（macOS では <code>UPDATE-SHA256SUMS</code> も）の要求。新しい版があれば、自分のパソコン用の更新ファイル（<span class="docs-ui">新しい版を自動でダウンロード</span> をオフにしているときは <span class="docs-ui">ダウンロード</span> を押したときだけ）</td></tr>
+    <tr><td>アップデート（Ferret の起動時・6時間ごと・<span class="docs-ui">更新を確認</span>）</td><td>ダウンロードのサーバー（Cloudflare R2）</td><td><code>latest.json</code> とその版の <code>SHA256SUMS</code>（macOS では <code>UPDATE-SHA256SUMS</code> も）の要求。新しい版があれば、自分のパソコン用の更新ファイル（<span class="docs-ui">新しい版を自動で入れる</span> をオフにしているときは <span class="docs-ui">ダウンロード</span> を押したときだけ）</td></tr>
     <tr><td>アプリからフィードバックを送る（送ったときだけ）</td><td>開発者のフィードバック中継（Cloudflare Worker）。ここが <code>JapanMarketing-Dev/ferret</code> に公開の issue を作る</td><td>書いた文、不具合か案か、アプリ / OS のバージョンと CPU、添えたスクリーンショット3枚まで。キー、トークン、メールアドレス、ホームフォルダのパスは伏せます。中継は IP アドレスを保存しません（<a href="#feedback">アプリからのフィードバック</a>を参照）</td></tr>
     <tr><td>クラッシュやエラー（<span class="docs-ui">クラッシュレポートを送る</span> がオン）</td><td>Sentry</td><td>スタックトレースと OS / CPU / アプリのバージョン（<a href="#crash-reports">クラッシュレポート</a>を参照）</td></tr>
   </tbody>

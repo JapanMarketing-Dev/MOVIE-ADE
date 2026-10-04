@@ -2,10 +2,10 @@
 <!-- @title 80e8dd1a5a -->
 Grabación
 
-<!-- @lead 14988eae28 -->
-Graba el navegador integrado, toda la pantalla u otra ventana. Habla, rodea y escribe mientras usas la página.
+<!-- @lead a6afb525ba -->
+Graba el navegador integrado, toda la pantalla, otra ventana, una app de escritorio, un juego o un simulador de móvil. Habla, rodea y escribe mientras usas la página.
 
-<!-- @target 133550362a -->
+<!-- @target 2ab7c5b1f7 -->
 ## Elegir qué grabar
 <p>En el modo Feedback, haz clic en <span class="docs-ui">Elegir objetivo de grabación</span>. El diálogo <span class="docs-ui">Objetivo de grabación</span> ofrece:</p>
 <table>
@@ -13,10 +13,20 @@ Graba el navegador integrado, toda la pantalla u otra ventana. Habla, rodea y es
   <tbody>
     <tr><td><span class="docs-ui">Navegador integrado</span> (predeterminado)</td><td>Vídeo, voz y lápiz, además de la URL, los selectores de elementos, los clics y los desplazamientos. No necesita permisos del sistema operativo.</td></tr>
     <tr><td><span class="docs-ui">Toda la pantalla</span></td><td>Vídeo, voz y lápiz. Sin URL, elemento ni registro de acciones (se indica en <code>feedback.md</code>).</td></tr>
-    <tr><td><span class="docs-ui">Ventana</span></td><td>Igual que lo anterior. Las ventanas de Ferret no aparecen en la lista.</td></tr>
+    <tr><td><span class="docs-ui">Ventana</span></td><td>Igual que lo anterior. Cada ventana aparece con el nombre de su app. Las ventanas de Ferret no aparecen en la lista.</td></tr>
+    <tr><td><span class="docs-ui">Móvil</span></td><td>Igual que lo anterior, pero solo se muestran las ventanas de iOS Simulator y Android Emulator.</td></tr>
   </tbody>
 </table>
 <p>Tu elección se recuerda. En macOS, la captura de pantalla y de ventana requiere el permiso de Grabación de pantalla (<a href="troubleshooting.html#screen-permission">cómo concederlo</a>).</p>
+
+<!-- @desktop-mobile 8d8ffcf90e -->
+## Apps de escritorio, juegos y apps móviles
+<p>Para revisar una app de escritorio que estás desarrollando (Electron, Tauri o una app nativa), iníciala como sueles hacerlo en desarrollo y elige su ventana en <span class="docs-ui">Ventana</span>. Las ventanas aparecen con el nombre de su app, así que una build de desarrollo de una app Electron aparece bajo <code>Electron</code>. También se muestran las ventanas pequeñas y las que se mantienen por encima de las demás; en macOS, una ventana que se mantiene por encima se muestra con el nombre de su app y su título en lugar de una vista previa.</p>
+<p>La elección sigue a la app. Cuando reinicias la app y su ventana vuelve a aparecer, la siguiente grabación usa la ventana con el mismo título, o la única ventana de la app si el título cambió.</p>
+<p>Para una app móvil, inicia iOS Simulator (Xcode, macOS) o Android Emulator (Android Studio) y elige el dispositivo en <span class="docs-ui">Móvil</span>. Cuando el emulador se ejecuta dentro de Android Studio, ábrelo en su propia ventana (en los ajustes de Android Studio, en Tools → Emulator, desactiva el inicio en la ventana de herramientas Running Devices) para que aparezca en la lista.</p>
+<p>En lugar de una URL, <code>feedback.md</code> empieza con lo que grabaste: la app y el título de la ventana, o el nombre del dispositivo y la versión del sistema operativo en un simulador o emulador, además de la app en primer plano en Android. También indica al agente que cambie el código fuente de esa app. Ferret lee los datos del dispositivo con <code>xcrun simctl</code> y <code>adb</code> (desde <code>ANDROID_HOME</code>, <code>ANDROID_SDK_ROOT</code> o la carpeta del SDK de Android Studio) al empezar la grabación. Las imágenes muestran solo la ventana elegida, así que di en voz alta a qué te refieres mientras hablas.</p>
+<p>Los juegos funcionan igual. Elige la ventana del editor de Unity, Unreal Engine o Godot con la vista del juego visible, o la ventana de un juego que hayas compilado, incluido el modo ventana sin bordes. Para un juego en pantalla completa exclusiva, elige su pantalla en <span class="docs-ui">Toda la pantalla</span>. Cuando la ventana es de uno de estos editores, <code>feedback.md</code> nombra el motor y pide al agente que cambie el código, las escenas o los recursos del juego. El vídeo se guarda a un máximo de 10 fotogramas por segundo para que los archivos sean pequeños, y las imágenes de los hallazgos salen del mismo vídeo, así que coinciden con el momento de la línea de tiempo.</p>
+<p>La <span class="docs-ui">Ventana que grabar</span> de un objetivo de revisión coincide tanto con el nombre de la app como con el título de la ventana, así que <code>Simulator</code> selecciona la ventana de iOS Simulator sea cual sea el dispositivo que muestre.</p>
 
 <!-- @record deb62ed37c -->
 ## Iniciar, pausar, detener

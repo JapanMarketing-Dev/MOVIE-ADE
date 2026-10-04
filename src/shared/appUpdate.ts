@@ -1,7 +1,7 @@
 import type { UpdateCheckResult } from './appVersion'
 
 /**
- * 裏での更新（ダウンロード → 署名の確認 → 再起動して入れ替え）の状態。main（src/main/autoUpdate.ts）が持ち、
+ * 裏での更新（ダウンロード → 署名の確認 → 閉じたとき、または［再起動して更新］で入れ替え）の状態。main（src/main/autoUpdate.ts）が持ち、
  * フッターの「アップデート」のポップオーバーとフッターの「再起動して更新」が表示に使う。
  *
  * Orca由来: ~/bench/orca/src/shared/update-status-types.ts（MIT）の UpdateStatus の段階
@@ -11,11 +11,11 @@ import type { UpdateCheckResult } from './appVersion'
 
 /** OS ごとの入れ替えの方法。null はこの起動では入れ替えられない（開発版・入れ替えの方法が無い形） */
 export type InstallMethod =
-  /** macOS: 確かめた zip を Squirrel.Mac（Electron の autoUpdater）に渡し、再起動で入れ替える */
+  /** macOS: 確かめた zip を Squirrel.Mac（Electron の autoUpdater）に渡す。閉じたとき（または再起動で）入れ替わる */
   | 'squirrel-mac'
-  /** Windows: 確かめた NSIS のインストーラーを、画面なし（/S）で走らせて入れ替え、終わったら起動し直す */
+  /** Windows: 確かめた NSIS のインストーラーを、画面なし（/S）で走らせて入れ替える。閉じたときは起動し直さない */
   | 'nsis'
-  /** Linux の AppImage: 確かめた AppImage を今のファイルの場所に置き、起動し直す */
+  /** Linux の AppImage: 確かめた AppImage を今のファイルの場所に置く。閉じたときは起動し直さない */
   | 'appimage'
   /** Linux の deb: 自動では入れ替えない。確かめた .deb を「インストール」でソフトウェアのインストーラーに開く */
   | 'deb'
@@ -40,7 +40,7 @@ export type AutoUpdateProgress =
   | { phase: 'idle' }
   /** 裏でダウンロード中（percent は 0〜100） */
   | { phase: 'downloading'; version: string; percent: number }
-  /** 署名と中身を確かめ終えた。restart … 再起動で入れ替える / open-installer … deb のインストーラーを開く */
+  /** 署名と中身を確かめ終えた。restart … 閉じたとき・再起動で入れ替える / open-installer … deb のインストーラーを開く */
   | { phase: 'ready'; version: string; action: 'restart' | 'open-installer' }
   /** ダウンロード・確認・入れ替えの準備ができなかった。［もう一度］で始め直せる */
   | { phase: 'failed'; version: string; message: string }
@@ -51,10 +51,21 @@ export interface AutoUpdateStatus {
   /** いま確認している */
   checking: boolean
   progress: AutoUpdateProgress
-  /** 新しい版を見つけたら裏でダウンロードする（設定の autoUpdate。既定はオン） */
+  /** 新しい版を見つけたら裏でダウンロードし、閉じたときに入れる（設定の autoUpdate。既定はオン） */
   autoDownload: boolean
   /** この起動で裏のダウンロードと入れ替えができる（配布版で、この OS・形に入れ替えの方法があり、その版にファイルがある） */
   supported: boolean
+  /** 準備のできた更新を、次にアプリを閉じたときに入れる（ボタンを押さなくても入る）。deb・自動の更新がオフのときは false */
+  installOnQuit: boolean
+}
+
+/**
+ * NSIS のインストーラーに渡す引数。/S … 画面なし、--updated … 「更新として入れる」の印。
+ * 今すぐ（［再起動して更新］）は終わったら新しい版を起動し（--force-run）、閉じたときは起動しない（次に開いたとき新しい版）。
+ * electron-updater由来（MIT）: NsisUpdater.doInstall の isForceRunAfter / AppUpdater の autoInstallOnAppQuit
+ */
+export function nsisInstallerArgs(when: 'restart' | 'quit'): string[] {
+  return when === 'restart' ? ['--updated', '/S', '--force-run'] : ['--updated', '/S']
 }
 
 /** 自動更新を一定間隔で確かめる間隔（6時間）。Orca は 24 時間 + 起動・復帰時（~/bench/orca/src/main/updater/updater-state.ts） */

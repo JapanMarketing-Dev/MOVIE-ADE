@@ -114,5 +114,7 @@ export type ReviewEdit =
   | { kind: 'status'; id: string; status: 'decided' | 'needs_check' }
   | { kind: 'frames'; id: string; frameTimes: number[] }
   | { kind: 'note'; note: string }
+  /** 指摘の並べ替え。ids は新しい並び（無い指摘はその位置のまま）。null で録画の時刻順に戻す */
+  | { kind: 'order'; ids: string[] | null }
 
 export interface ReviewFrame { t: number; image: string }

@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { mkdir, stat } from 'node:fs/promises'
+import { stat } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { promisify } from 'node:util'
 import { accountDisplayName } from '@shared/accounts'
@@ -18,7 +18,7 @@ import { listAgentOptions } from '../agentDetection'
 import type { TerminalManager } from '../terminal'
 import { limitOnScreen, limitedUntil, maxUsedPercent, mentionsLimit } from './detect'
 import { changedFilesFrom, ferretNote, handoffFilePath, LastInputTracker, nextAgentPrompt, updateRequest } from './handoff'
-import { appendFileNoFollow, assertContained, isWithin } from '../sessions/containment'
+import { appendFileNoFollow, assertContained, isWithin, mkdirContained } from '../sessions/containment'
 import { ensureGitExclude } from '../sessions/gitexclude'
 import {
   DEFAULT_LIMIT_COOLDOWN_MS,
@@ -372,7 +372,7 @@ async function changedFiles(projectDir: string): Promise<string[] | null> {
 async function appendFerretNote(projectDir: string, path: string, fromId: string, fromLabel: string, fileExists: boolean): Promise<void> {
   // .ferret/ の先祖にリンクが無く、プロジェクトの中にあることを確かめてから書く（sessions/containment.ts）
   assertContained(projectDir, path)
-  await mkdir(dirname(path), { recursive: true })
+  await mkdirContained(dirname(path), { root: projectDir })
   assertContained(projectDir, path)
   await ensureGitExclude(projectDir).catch(() => undefined)
   const note = ferretNote({

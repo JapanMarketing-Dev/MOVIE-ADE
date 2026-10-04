@@ -2,6 +2,8 @@ import { ExternalDropOverlay, useExternalDrop } from '../hooks/useExternalDrop'
 import { readDrop } from '../lib/externalDrop'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import {
+  ArrowDown,
+  ArrowUp,
   Check,
   ChevronDown,
   Ellipsis,
@@ -12,6 +14,7 @@ import {
   Pencil,
   Plus,
   Settings2,
+  Star,
   Trash2
 } from 'lucide-react'
 import type { Project, ProjectsState } from '@shared/types'
@@ -30,6 +33,8 @@ import { ReviewFilterBar, ReviewList, loadReviewFilter, saveReviewFilter, toRevi
 import { SetupProgressLink } from '../onboarding/SetupChecklist'
 import { FeedbackLink } from './FeedbackDialog'
 import { useProjectActivity } from '../terminal/agentActivity'
+import { dropPositionAt, moveAmongVisible, stepAmongVisible, type DropPosition } from '@shared/reorder'
+import { PROJECT_SORTS, filterProjects, sanitizeProjectView, sortProjects, type ProjectListView } from '@shared/projectOrder'
 
 export { toReviewSession, type ReviewSession }
 
@@ -43,7 +48,9 @@ export { toReviewSession, type ReviewSession }
  *   - 子の行を1段（18px）字下げして並べる（worktree-list/rows/indentation.ts の SIDEBAR_TREE_INDENT）
  *   - 右クリック／… のメニュー（repo-header-project-actions.tsx）。名前の変更と登録解除だけ
  * Orca で worktree が並ぶ位置に、このアプリではレビュー履歴を置く。
- * 動画フィードバックに集中するため、並べ替え・色・グループ・Finder連携は持ち込まない。
+ * プロジェクトの行はドラッグ＆ドロップ・Alt+↑↓・メニューの「上へ」「下へ」で並べ替えられる（順は settings の projects の並び）。
+ * 並び順（手動・動いている順・最近使った順・名前順・追加した順）と「☆ のみ」は絞り込みのパネルで選ぶ。☆ は上にまとめる。
+ * 色・グループ・Finder連携は持ち込まない。
  *
  * レビュー履歴の一覧（フィルタ・1件の行・名前の変更／アーカイブ／削除）は ReviewList.tsx。
  */
@@ -67,8 +74,47 @@ function saveOpen(open: Record<string, boolean>): void {
   }
 }
 
+/** プロジェクトの並び順と「☆ のみ」。この端末だけの好み（@shared/projectOrder） */
+const VIEW_KEY = 'ade.sidebar.projectView'
+function loadView(): ProjectListView {
+  try {
+    return sanitizeProjectView(JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}'))
+  } catch {
+    // ストレージが使えない・壊れた値（想定内。手動の順で続ける）
+    return sanitizeProjectView(null)
+  }
+}
+function saveView(view: ProjectListView): void {
+  try {
+    localStorage.setItem(VIEW_KEY, JSON.stringify(view))
+  } catch {
+    // 保存できなくても、この起動の間は効く
+  }
+}
+
+/** Agent が最後に動いた（作業中・確認待ちになった）時刻。「最近使った順」「動いている順」に使う */
+const AGENT_AT_KEY = 'ade.sidebar.agentActiveAt'
+function loadAgentActiveAt(): Record<string, number> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(AGENT_AT_KEY) ?? '{}') as unknown
+    if (!raw || typeof raw !== 'object') return {}
+    return Object.fromEntries(Object.entries(raw).filter(([, v]) => typeof v === 'number' && Number.isFinite(v))) as Record<string, number>
+  } catch {
+    // ストレージが使えない・壊れた値（想定内）
+    return {}
+  }
+}
+
 /** 右クリック／… で開くメニュー。サイドバーの中に収める（右へはみ出すとネイティブのビューに隠れる） */
 const MENU_WIDTH = 188
+/** メニューのおよその高さ（下端で上へ寄せるのに使う） */
+const MENU_HEIGHT = 208
+
+/**
+ * プロジェクトの行を並べ替えるドラッグの型。外からのファイル（'Files'）・ファイルツリーの行（treeDrag.ts）とは別の型にして、
+ * 外からのドロップ（プロジェクトの追加）やターミナル・エディタへのドロップと取り違えない
+ */
+const PROJECT_DRAG_TYPE = 'application/x-ferret-project'
 
 export function Sidebar({
   projects,
@@ -111,6 +157,11 @@ export function Sidebar({
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
   /** 「プロジェクトを編集」で開いているプロジェクト */
   const [editingId, setEditingId] = useState<string | null>(null)
+  /** 並べ替えのドラッグ中のプロジェクトと、落とす位置（線を出す行と、その上か下か） */
+  const [dragging, setDragging] = useState<string | null>(null)
+  const [dropAt, setDropAt] = useState<{ id: string; position: DropPosition } | null>(null)
+  /** キーボードで動かしたあと、並び直した行へフォーカスを戻す */
+  const refocus = useRef<string | null>(null)
   const openEdit = (id: string | null) => {
     setEditingId(id)
     onOverlayChange?.(id !== null)
@@ -215,9 +266,59 @@ export function Sidebar({
     const box = rootRef.current?.getBoundingClientRect()
     if (!box) return
     const x = Math.max(4, Math.min(clientX - box.left, box.width - MENU_WIDTH - 4))
-    // 下端では上へ寄せる（メニューの高さはおよそ 110px）
-    setMenu({ id, x, y: Math.max(4, Math.min(clientY - box.top, box.height - 116)) })
+    // 下端では上へ寄せる
+    setMenu({ id, x, y: Math.max(4, Math.min(clientY - box.top, box.height - MENU_HEIGHT)) })
   }
+
+  /** 並び順と「☆ のみ」。☆ はどの並び順でも上にまとめる */
+  const [view, setViewState] = useState<ProjectListView>(loadView)
+  const setView = (next: ProjectListView) => {
+    setViewState(next)
+    saveView(next)
+  }
+  const [agentActiveAt, setAgentActiveAt] = useState<Record<string, number>>(loadAgentActiveAt)
+  useEffect(() => {
+    const busy = Object.entries(projectActivity).filter(([, state]) => state === 'working' || state === 'blocked').map(([id]) => id)
+    if (busy.length === 0) return
+    setAgentActiveAt((prev) => {
+      const next = { ...prev, ...Object.fromEntries(busy.map((id) => [id, Date.now()])) }
+      try { localStorage.setItem(AGENT_AT_KEY, JSON.stringify(next)) } catch { /* 保存できなくても、この起動の間は効く */ }
+      return next
+    })
+  }, [projectActivity])
+  const displayed = sortProjects(projects.projects, view.sort, { activity: projectActivity, agentActiveAt })
+  const shown = filterProjects(displayed, view)
+
+  /**
+   * 並べ替え。全体の並びは今の表示の順で、☆ の中・外のそれぞれの中で動かす（☆ は上にまとめるため）。
+   * 手動以外の並び順で動かしたら、その時点の並びを手動の順として保存して「手動」に切り替える。
+   * 並びは main が settings に保存し、projects:changed で一覧が届く
+   */
+  const projectIds = displayed.map((p) => p.id)
+  const shownIds = shown.map((p) => p.id)
+  const starredOf = (id: string) => !!projects.projects.find((p) => p.id === id)?.starred
+  const sameGroup = (id: string) => (other: string) => starredOf(other) === starredOf(id)
+  const reorder = (next: string[] | null) => {
+    if (!next) return
+    run(() => window.ade.invoke('project:reorder', next))
+    if (view.sort !== 'manual') {
+      setView({ ...view, sort: 'manual' })
+      toast({ tone: 'info', message: t('sidebar.sort.switchedToManual') })
+    }
+  }
+  const stepOf = (id: string, delta: -1 | 1) => stepAmongVisible(projectIds, shownIds, id, delta, sameGroup(id))
+  const moveProject = (id: string, delta: -1 | 1) => reorder(stepOf(id, delta))
+  const toggleStar = (project: Project) => run(() => window.ade.invoke('project:update', { id: project.id, starred: !project.starred }))
+  const endDrag = () => {
+    setDragging(null)
+    setDropAt(null)
+  }
+  useEffect(() => {
+    const id = refocus.current
+    if (!id) return
+    refocus.current = null
+    rootRef.current?.querySelector<HTMLElement>(`[data-project-row="${CSS.escape(id)}"]`)?.focus()
+  }, [projects])
 
   // 足したら、種類と確認先を決めてもらうため「プロジェクトを編集」を開く
   // 「プロジェクトを追加」は、自分の PC / GitHub から取得 / SSH を選ぶダイアログ（AddProjectDialog）
@@ -299,6 +400,18 @@ export function Sidebar({
             hosts={reviewHosts(loaded)}
             emptyDraftCount={loaded.filter(isEmptyDraft).length}
             onDeleteEmpty={deleteEmptyDrafts}
+            projectFiltering={view.starredOnly}
+            projectSection={<>
+              <div className="rv-filter__label">{t('sidebar.sort.label')}</div>
+              <select className="rv-filter__select" aria-label={t('sidebar.sort.label')} value={view.sort} data-testid="sidebar-project-sort"
+                onChange={(e) => setView({ ...view, sort: sanitizeProjectView({ sort: e.target.value }).sort })}>
+                {PROJECT_SORTS.map((sort) => <option key={sort} value={sort}>{t(`sidebar.sort.${sort}`)}</option>)}
+              </select>
+              <label className="rv-filter__check">
+                <input type="checkbox" checked={view.starredOnly} onChange={(e) => setView({ ...view, starredOnly: e.target.checked })} data-testid="sidebar-starred-only" />
+                <span>{t('sidebar.starredOnly')}</span>
+              </label>
+            </>}
           />
         )}
 
@@ -313,12 +426,37 @@ export function Sidebar({
           />
         ) : (
           <div className="sb-tree" role="tree" aria-label={t('sidebar.projects')}>
-            {projects.projects.map((project) => {
+            {shown.length === 0 && <p className="sb-tree__empty" data-testid="sidebar-no-starred">{t('sidebar.noStarred')}</p>}
+            {shown.map((project) => {
               const active = project.id === activeProjectId
               const expanded = isOpen(project.id)
               const items = active ? sessions : others[project.id]
               return (
-                <div key={project.id} className={`sb-project${active ? ' is-active' : ''}`} data-testid="sidebar-project">
+                <div
+                  key={project.id}
+                  className={`sb-project${active ? ' is-active' : ''}${dragging === project.id ? ' is-dragging' : ''}${dropAt?.id === project.id ? ` is-drop-${dropAt.position}` : ''}`}
+                  data-testid="sidebar-project"
+                  onDragOver={(e) => {
+                    if (!dragging || !Array.from(e.dataTransfer.types).includes(PROJECT_DRAG_TYPE) || starredOf(dragging) !== !!project.starred) return
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                    // 上か下かは見出しの行で決める（展開した履歴の上は「下」）
+                    const row = (e.currentTarget.firstElementChild as HTMLElement | null)?.getBoundingClientRect()
+                    const position = row ? dropPositionAt(e.clientY - row.top, row.height) : 'after'
+                    if (dropAt?.id !== project.id || dropAt.position !== position) setDropAt({ id: project.id, position })
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node | null) && dropAt?.id === project.id) setDropAt(null)
+                  }}
+                  onDrop={(e) => {
+                    if (!dragging || !Array.from(e.dataTransfer.types).includes(PROJECT_DRAG_TYPE) || starredOf(dragging) !== !!project.starred) return
+                    e.preventDefault()
+                    const row = (e.currentTarget.firstElementChild as HTMLElement | null)?.getBoundingClientRect()
+                    const position = row ? dropPositionAt(e.clientY - row.top, row.height) : 'after'
+                    reorder(moveAmongVisible(projectIds, shownIds, dragging, project.id, position))
+                    endDrag()
+                  }}
+                >
                   {renaming?.id === project.id ? (
                     <div className="sb-project__row is-editing">
                       <Field
@@ -341,9 +479,24 @@ export function Sidebar({
                       aria-expanded={expanded}
                       className="sb-project__row"
                       title={project.source === 'ssh' && project.ssh ? sshTargetLabel(project.ssh) : project.folderPath}
+                      draggable
+                      data-project-row={project.id}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData(PROJECT_DRAG_TYPE, project.id)
+                        e.dataTransfer.effectAllowed = 'move'
+                        setDragging(project.id)
+                      }}
+                      onDragEnd={endDrag}
                       onClick={() => (active ? setProjectOpen(project.id, !expanded) : switchTo(project))}
                       onKeyDown={(e) => {
                         if (e.target !== e.currentTarget) return
+                        // Alt+↑ / Alt+↓ で1つ上・下へ並べ替える
+                        if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                          e.preventDefault()
+                          refocus.current = project.id
+                          moveProject(project.id, e.key === 'ArrowUp' ? -1 : 1)
+                          return
+                        }
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
                           if (active) setProjectOpen(project.id, !expanded)
@@ -364,6 +517,11 @@ export function Sidebar({
                           : active ? <FolderOpen size={14} strokeWidth={1.5} /> : <Folder size={14} strokeWidth={1.5} />}
                       </span>
                       <span className="sb-project__name" title={project.name}>{project.name}</span>
+                      {project.starred && (
+                        <span className="sb-project__starred" role="img" aria-label={t('sidebar.starred')} title={t('sidebar.starred')} data-testid="sidebar-project-starred">
+                          <Star size={11} strokeWidth={2} fill="currentColor" />
+                        </span>
+                      )}
                       {projectActivity[project.id] === 'working' && (
                         <span className="sb-project__working" role="img" aria-label={t('sidebar.agentWorking')} title={t('sidebar.agentWorking')} data-testid="sidebar-project-working">
                           <span /><span /><span />
@@ -401,6 +559,17 @@ export function Sidebar({
                           data-testid="sidebar-project-new-review"
                         >
                           <Plus size={14} strokeWidth={1.5} />
+                        </button>
+                        <button
+                          type="button"
+                          className={`sb-project__action${project.starred ? ' is-starred' : ''}`}
+                          aria-label={project.starred ? t('sidebar.unstar') : t('sidebar.star')}
+                          title={project.starred ? t('sidebar.unstar') : t('sidebar.star')}
+                          aria-pressed={!!project.starred}
+                          onClick={() => toggleStar(project)}
+                          data-testid="sidebar-project-star"
+                        >
+                          <Star size={14} strokeWidth={1.5} fill={project.starred ? 'currentColor' : 'none'} />
                         </button>
                         <button
                           type="button"
@@ -488,6 +657,15 @@ export function Sidebar({
           </button>
           <button type="button" role="menuitem" onClick={() => { setMenu(null); openEdit(menuProject.id) }} data-testid="sidebar-project-edit">
             <Settings2 size={13} strokeWidth={1.75} />{t('projectTargets.edit')}
+          </button>
+          <button type="button" role="menuitem" onClick={() => { setMenu(null); toggleStar(menuProject) }} data-testid="sidebar-project-star-menu">
+            <Star size={13} strokeWidth={1.75} />{menuProject.starred ? t('sidebar.unstar') : t('sidebar.star')}
+          </button>
+          <button type="button" role="menuitem" disabled={!stepOf(menuProject.id, -1)} onClick={() => { setMenu(null); moveProject(menuProject.id, -1) }} data-testid="sidebar-project-move-up">
+            <ArrowUp size={13} strokeWidth={1.75} />{t('sidebar.moveUp')}
+          </button>
+          <button type="button" role="menuitem" disabled={!stepOf(menuProject.id, 1)} onClick={() => { setMenu(null); moveProject(menuProject.id, 1) }} data-testid="sidebar-project-move-down">
+            <ArrowDown size={13} strokeWidth={1.75} />{t('sidebar.moveDown')}
           </button>
           <div className="sb-menu__sep" role="separator" />
           <button type="button" role="menuitem" className="is-danger" onClick={() => { setMenu(null); setConfirmRemove(menuProject.id) }}>

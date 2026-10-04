@@ -33,8 +33,16 @@ interface AgentCatalogEntry {
   detectCmd: string
   /** 同じエージェントを指す別名（Orca の detectCmdAliases。旧名を含む） */
   aliases?: readonly string[]
-  /** 起動コマンド（Orca の launchCmd。対話の画面を開くサブコマンドが要るもの。省略時は detectCmd） */
+  /**
+   * 起動コマンド（Orca の launchCmd。対話の画面を開くサブコマンドが要るもの。省略時は detectCmd）。
+   * 実行ファイルとサブコマンドだけを書き、権限やフォルダの信頼に関わるフラグは入れない（security-5 [2]。trustArgs / yoloArgs へ）
+   */
   launchCmd?: string
+  /**
+   * そのフォルダを信頼して開く引数（Muse の --trust-workspace など）。起動の決まり（agentPolicy.ts）が、
+   * 設定の skipPermissions が入で登録したプロジェクトのフォルダのときだけ付ける
+   */
+  trustArgs?: string
   /** 権限確認を省く引数（Orca の YOLO_TUI_AGENT_ARGS を公式の資料で確かめ直したもの）。無い・確かめられないものは空 */
   yoloArgs: string
   /** 公式の入れ方（1つ）。公式が手順を出していないものは空 */
@@ -289,7 +297,7 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
     label: 'Command Code',
     detectCmd: 'command-code',
     aliases: ['cmdc'],
-    launchCmd: 'command-code --trust',
+    trustArgs: '--trust',
     yoloArgs: '--yolo',
     install: 'npm i -g command-code@latest',
     homepageUrl: 'https://commandcode.ai/docs/quickstart',
@@ -426,7 +434,7 @@ export const AGENT_CATALOG: Record<BuiltinAgent, AgentCatalogEntry> = {
   muse: {
     label: 'Muse',
     detectCmd: 'muse',
-    launchCmd: 'muse --trust-workspace',
+    trustArgs: '--trust-workspace',
     yoloArgs: '--yolo',
     install: 'curl -fsSL https://dev.meta.ai/install.sh | sh',
     homepageUrl: 'https://dev.meta.ai/docs/muse-code',
@@ -620,34 +628,26 @@ export function bypassArgUnits(agent: BuiltinAgent): string[][] {
   return [...argUnits(AGENT_CATALOG[agent].yoloArgs), ...(EXTRA_BYPASS_UNITS[agent] ?? []).flatMap(argUnits)]
 }
 
-/** 引数に、権限確認を省く引数か、確認の仕方を選ぶフラグが既にあるか（`--flag value` と `--flag=value` の両方） */
-function choosesPermissionMode(agent: BuiltinAgent, args: string): boolean {
-  const tokens = args.trim().split(/\s+/).filter(Boolean)
-  const flags = MODE_FLAGS[agent] ?? []
-  return tokens.some((token, i) =>
-    flags.some((flag) => token === flag || token.startsWith(`${flag}=`)) ||
-    bypassArgUnits(agent).some((unit) => unit.every((part, k) => tokens[i + k] === part) || (unit.length === 2 && token === `${unit[0]}=${unit[1]}`)))
+/** 名前に関係なく、どの Agent でも権限確認を省く引数とみなすフラグの頭 */
+export const BYPASS_FLAG_PREFIXES: readonly string[] = ['--dangerously-', '--allow-dangerously-']
+
+/** その Agent の、フォルダを信頼して開く引数の単位 */
+export function trustArgUnits(agent: BuiltinAgent): string[][] {
+  return argUnits(AGENT_CATALOG[agent].trustArgs ?? '')
+}
+
+/** その Agent の、確認の仕方を選ぶフラグ（引数にあれば、権限確認を省く引数を足さない） */
+export function permissionModeFlags(agent: BuiltinAgent): readonly string[] {
+  return MODE_FLAGS[agent] ?? []
 }
 
 /**
- * Agent を起動するときの決まり（main の terminal.ts が使う）。
- *   - 引数は利用者が設定に書いたものをそのまま使う（消さない）
- *   - skipPermissions が入なら、SKIP_PERMISSION_AGENTS に権限確認を省く引数を前に足す。
- *     引数で確認の仕方を選んでいれば足さない。自動起動も手で開くのも同じ
- *   - そのとき、登録したプロジェクトのフォルダそのものなら、Claude Code / Codex のフォルダの信頼も先に書く
- * カスタムの Agent は利用者が書いたコマンドそのままなので触らない（builtin だけ）
+ * 以前の版の既定の起動コマンド（フォルダの信頼の引数をコマンドの欄に入れていた）。
+ * 保存された設定がこれのままなら、今の既定に戻す（security-5 [2]）
  */
-export function resolveAgentLaunchPolicy(input: {
-  agent: BuiltinAgent
-  args: string
-  /** cwd が登録済みのプロジェクトのフォルダそのものならその id。それ以外（サブフォルダ・ホーム）は null */
-  projectId: string | null
-  skipPermissions: boolean
-}): { args: string; trustFolder: boolean } {
-  const args = input.args.trim()
-  if (!input.skipPermissions || !SKIP_PERMISSION_AGENTS.includes(input.agent)) return { args, trustFolder: false }
-  const added = choosesPermissionMode(input.agent, args) ? args : [AGENT_CATALOG[input.agent].yoloArgs, args].filter(Boolean).join(' ')
-  return { args: added, trustFolder: input.projectId !== null }
+const LEGACY_LAUNCH_COMMANDS: Partial<Record<BuiltinAgent, readonly string[]>> = {
+  'command-code': ['command-code --trust'],
+  muse: ['muse --trust-workspace']
 }
 
 export function isBuiltinAgent(value: unknown): value is BuiltinAgent {
@@ -827,6 +827,8 @@ export function sanitizeAgentPreferences(raw: unknown): AgentPreferences {
     const c = rawLaunch[agent] as Partial<AgentLaunchConfig> | undefined
     // 空白だけのコマンドも未設定とみなして既定に戻す。引数は利用者が書いたまま
     if (c && text(c.command)) launch[agent] = { command: text(c.command), args: text(c.args) }
+    // 以前の既定のコマンド（信頼の引数入り）は今の既定へ。信頼は起動の決まりが skipPermissions を見て付ける
+    if (LEGACY_LAUNCH_COMMANDS[agent]?.includes(launch[agent].command)) launch[agent] = { ...launch[agent], command: defaultLaunchConfig(agent).command }
   }
   // skipPermissions の無い以前の設定は、引数が以前の既定（空）のままなら今の既定（Claude Code の --chrome）にする
   const skipPermissions = typeof r.skipPermissions === 'boolean' ? r.skipPermissions : DEFAULT_AGENT_PREFERENCES.skipPermissions

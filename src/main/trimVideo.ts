@@ -10,7 +10,8 @@
  * （出どころが違うと、canvas が汚れて録れず、音声も無音になる）。
  */
 import { BrowserWindow } from 'electron'
-import { open, rm } from 'node:fs/promises'
+import { dirname } from 'node:path'
+import { openNewFileContained, removeContained } from './sessions/containment'
 import type { TrimCut } from '@shared/trim'
 
 /** 非表示ウィンドウのページ（index.ts の ade-media が返す） */
@@ -54,8 +55,8 @@ async function renderOnce(sourceUrl: string, outPath: string, kept: TrimCut[], o
     const work = window.webContents.executeJavaScript(`(${PAGE_SCRIPT})(${JSON.stringify(sourceUrl)}, ${JSON.stringify(kept)})`, true) as Promise<number>
     const size = await Promise.race([work, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('trim timed out')), timeoutMs) })])
     if (!Number.isFinite(size) || size <= 0) throw new Error('trim produced no data')
-    // 排他で作る（既にある名前・リンクには書かない）
-    const file = await open(outPath, 'wx')
+    // 排他で作る（既にある名前・リンクには書かない）。親を開いて持ったまま作る
+    const file = await openNewFileContained(outPath)
     try {
       for (let at = 0; at < size; at += PULL_BYTES) {
         const base64 = await window.webContents.executeJavaScript(`window.__trimPull(${at}, ${Math.min(size, at + PULL_BYTES)})`, true) as string
@@ -63,7 +64,7 @@ async function renderOnce(sourceUrl: string, outPath: string, kept: TrimCut[], o
       }
     } finally { await file.close() }
   } catch (err) {
-    await rm(outPath, { force: true })
+    await removeContained(dirname(outPath), outPath).catch(() => undefined)
     // ページから来た失敗が Error でなければ包む（記録に理由が残るように）
     throw err instanceof Error ? err : new Error(`trim failed: ${describeValue(err)}`)
   } finally {

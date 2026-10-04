@@ -34,7 +34,7 @@ export function oneLine(text: string | undefined, max = 2000): string {
  * 見出し・要望・発話・コメントなど、feedback.md の「- 要望: …」のような行の中に入れる値に使う
  */
 export function mdText(text: string | undefined, max = 2000): string {
-  return oneLine(text, max).replace(/\\(?=[`<])/g, '\\\\').replace(/`/g, '\\`').replace(/</g, '\\<')
+  return oneLine(text, max).replace(/[\\`<]/g, (ch) => `\\${ch}`)
 }
 
 /**

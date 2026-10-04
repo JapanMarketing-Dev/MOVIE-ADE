@@ -85,7 +85,8 @@ describe('feedback-relay のポリシー', () => {
       if ([...text.matchAll(TOKEN)].some((m) => !obviouslyFake(m[1]))) offenders.push(f)
     }
     expect(offenders).toEqual([])
-  })
+    // リポジトリの全ファイルを読むので、git の無い写し（関門）と遅い Windows では 10 秒を超えることがある
+  }, 60_000)
 
   it('wrangler の設定に秘密を書かない（GITHUB_TOKEN・RATE_LIMIT_SALT は secret で入れる）', () => {
     const config = read(`${relay}/wrangler.jsonc`)

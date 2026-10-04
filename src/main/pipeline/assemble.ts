@@ -52,20 +52,21 @@ export interface PendingItem {
 
 /**
  * 番号・画像名・文脈を確定する。
- * - 時刻の順に並べ替えて 1 から番号を振る
+ * - 時刻の順に並べ替えて 1 から番号を振る（並べ替えた一覧は keepOrder でその順のまま）
  * - 使われた静止画の時刻に `01.png` から連番を割り当てる（同じ時刻は同じファイル）
  * - URL・要素・直前の操作は**画像の時刻**から引く（画像と説明が同じ瞬間を指すように。設計5章④）
  */
 export function finalizeItems(
   pending: PendingItem[],
   events: Event[],
-  options: Partial<AssembleOptions> = {}
+  options: Partial<AssembleOptions> = {},
+  /** 並べ替えた一覧（FeedbackDocument.customOrder）。時刻順に並べ直さず、渡した順に番号を振る */
+  keepOrder = false
 ): FeedbackItem[] {
   const opt = { ...defaultAssembleOptions, ...options }
   const namer = new ImageNamer(opt.imageExt)
 
-  return [...pending]
-    .sort((a, b) => a.t - b.t)
+  return (keepOrder ? [...pending] : [...pending].sort((a, b) => a.t - b.t))
     .map((it, i) => {
       const ctxTime = it.frameTimes[0] ?? it.t
       return {

@@ -268,7 +268,7 @@ function UpdatePopover({ version, packaged, status }: { version: string; package
       <Progress value={step.percent / 100} label={t('statusBar.updateDownloading', { version: shown.latest, percent: step.percent })} />
     </div>}
     {shown?.state === 'available' && step?.phase === 'ready' && <div className="st-note st-note--action st-note--ok" data-testid="statusbar-update-ready">
-      <span><CircleCheck size={12} aria-hidden="true" />{t(step.action === 'restart' ? 'statusBar.updateReady' : 'statusBar.updateReadyInstaller', { version: shown.latest })}</span>
+      <span><CircleCheck size={12} aria-hidden="true" />{t(step.action !== 'restart' ? 'statusBar.updateReadyInstaller' : status?.installOnQuit ? 'statusBar.updateReadyOnQuit' : 'statusBar.updateReady', { version: shown.latest })}</span>
       <Button variant="primary" busy={installing} onClick={install} data-testid="statusbar-update-restart">{t(step.action === 'restart' ? 'statusBar.restartToUpdate' : 'statusBar.openInstaller')}</Button>
     </div>}
     {shown?.state === 'available' && step?.phase === 'failed' && <div className="st-note st-note--progress" data-testid="statusbar-update-failed">

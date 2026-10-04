@@ -393,6 +393,14 @@ describe('整形', () => {
     expect(excerptNotes(body, 2)).toHaveLength(2)
     expect(excerptNotes(undefined as unknown as string)).toEqual([])
   })
+
+  it('excerptNotes は複数行・閉じていない HTML のコメントと、外すと新しくできるタグも残さない', () => {
+    expect(excerptNotes('a\n<!-- one\ntwo -->\nb')).toEqual(['a', 'b'])
+    expect(excerptNotes('a\n<!-- x --!>b')).toEqual(['a', 'b'])
+    expect(excerptNotes('a\n<!-- never closed\nb')).toEqual(['a'])
+    expect(excerptNotes('<!<!--- -->-- x -->y')).toEqual(['y'])
+    expect(excerptNotes('<<b>script>alert(1)<</b>/script>ok')).toEqual(['script>alert(1)/script>ok'])
+  })
 })
 
 it('ビルド手順へのリンクは英語の README の見出し「Install and run」', () => {

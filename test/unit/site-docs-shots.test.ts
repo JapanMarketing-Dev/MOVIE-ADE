@@ -1,3 +1,4 @@
+import { withoutScripts } from './textHelpers'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -21,7 +22,7 @@ describe('site/docs のスクリーンショット', () => {
     // 各言語で「近日」「準備中」に当たる言い方（_site の clip.soon・shot の枠・soon() の見出しに使っていた訳）
     const WORDS = /coming soon|\bbeta\b|準備中|即将推出|준비 중|próximamente|bientôt disponible|folgt in Kürze|in arrivo|em breve|скоро появится|जल्द आ रहा है|segera hadir|sắp có|docs-callout-wip|docs-shot-slot/i
     const hits = all.flatMap((p) => {
-      const body = readFileSync(p, 'utf8').replace(/<script[\s\S]*?<\/script>/g, '')
+      const body = withoutScripts(readFileSync(p, 'utf8'))
       const m = WORDS.exec(body)
       return m ? [`${p.slice(DOCS.length + 1)}: ${m[0]}`] : []
     })

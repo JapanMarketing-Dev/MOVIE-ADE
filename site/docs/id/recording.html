@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Perekaman · Dokumentasi Ferret</title>
-  <meta name="description" content="Rekam browser bawaan, seluruh layar, atau jendela lain. Bicaralah, lingkari, dan ketik sambil menggunakan halaman.">
+  <meta name="description" content="Rekam browser bawaan, seluruh layar, jendela lain, aplikasi desktop, game, atau simulator ponsel. Bicaralah, lingkari, dan ketik sambil menggunakan halaman.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
   <link rel="canonical" href="https://ferretade.dev/docs/id/recording">
@@ -26,7 +26,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
   <meta property="og:title" content="Perekaman · Dokumentasi Ferret">
-  <meta property="og:description" content="Rekam browser bawaan, seluruh layar, atau jendela lain. Bicaralah, lingkari, dan ketik sambil menggunakan halaman.">
+  <meta property="og:description" content="Rekam browser bawaan, seluruh layar, jendela lain, aplikasi desktop, game, atau simulator ponsel. Bicaralah, lingkari, dan ketik sambil menggunakan halaman.">
   <meta property="og:url" content="https://ferretade.dev/docs/id/recording">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="id_ID">
@@ -36,7 +36,7 @@
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Perekaman · Dokumentasi Ferret">
-  <meta name="twitter:description" content="Rekam browser bawaan, seluruh layar, atau jendela lain. Bicaralah, lingkari, dan ketik sambil menggunakan halaman.">
+  <meta name="twitter:description" content="Rekam browser bawaan, seluruh layar, jendela lain, aplikasi desktop, game, atau simulator ponsel. Bicaralah, lingkari, dan ketik sambil menggunakan halaman.">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -155,7 +155,7 @@
       <article class="docs-content">
         <p class="docs-eyebrow">Menggunakan Ferret</p>
         <h1>Perekaman</h1>
-        <p class="docs-lead">Rekam browser bawaan, seluruh layar, atau jendela lain. Bicaralah, lingkari, dan ketik sambil menggunakan halaman.</p>
+        <p class="docs-lead">Rekam browser bawaan, seluruh layar, jendela lain, aplikasi desktop, game, atau simulator ponsel. Bicaralah, lingkari, dan ketik sambil menggunakan halaman.</p>
         <div class="docs-os" role="group" aria-label="Pintasan untuk" data-docs-os hidden>
           <span class="docs-os-label">Pintasan untuk</span>
           <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">macOS</button>
@@ -170,10 +170,21 @@
   <tbody>
     <tr><td><span class="docs-ui">Browser Bawaan</span> (bawaan)</td><td>Video, suara, dan pena, ditambah URL, selector elemen, klik, dan scroll. Tidak memerlukan izin OS.</td></tr>
     <tr><td><span class="docs-ui">Seluruh Layar</span></td><td>Video, suara, dan pena. Tanpa URL, elemen, atau log tindakan (hal ini dicatat di <code>feedback.md</code>).</td></tr>
-    <tr><td><span class="docs-ui">Jendela</span></td><td>Sama seperti di atas. Jendela milik Ferret sendiri tidak dicantumkan.</td></tr>
+    <tr><td><span class="docs-ui">Jendela</span></td><td>Sama seperti di atas. Setiap jendela dicantumkan bersama nama aplikasinya. Jendela milik Ferret sendiri tidak dicantumkan.</td></tr>
+    <tr><td><span class="docs-ui">Ponsel</span></td><td>Sama seperti di atas, hanya mencantumkan jendela iOS Simulator dan Android Emulator.</td></tr>
   </tbody>
 </table>
 <p>Pilihan Anda diingat. Di macOS, perekaman layar dan jendela memerlukan izin Perekaman Layar (<a href="troubleshooting.html#screen-permission">cara memberikannya</a>).</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="desktop-mobile">
+        <h2 id="desktop-mobile"><a class="docs-anchor" href="#desktop-mobile" aria-label="Tautan ke Aplikasi desktop, game, dan aplikasi seluler">#</a>Aplikasi desktop, game, dan aplikasi seluler</h2>
+        <p>Untuk meninjau aplikasi desktop yang sedang Anda bangun (Electron, Tauri, atau aplikasi native), jalankan seperti biasa saat pengembangan, lalu pilih jendelanya di <span class="docs-ui">Jendela</span>. Jendela dicantumkan bersama nama aplikasinya, sehingga build pengembangan aplikasi Electron muncul sebagai <code>Electron</code>. Jendela kecil dan jendela yang selalu berada di atas jendela lain juga dicantumkan; di macOS, jendela yang selalu di atas ditampilkan dengan nama aplikasi dan judulnya, bukan pratinjau.</p>
+<p>Pilihan mengikuti aplikasi. Saat Anda memulai ulang aplikasi dan jendelanya muncul kembali, perekaman berikutnya memakai jendela dengan judul yang sama, atau satu-satunya jendela aplikasi itu jika judulnya berubah.</p>
+<p>Untuk aplikasi seluler, jalankan iOS Simulator (Xcode, macOS) atau Android Emulator (Android Studio), lalu pilih perangkatnya di <span class="docs-ui">Ponsel</span>. Jika emulator berjalan di dalam Android Studio, buka di jendelanya sendiri (di pengaturan Android Studio, pada Tools → Emulator, matikan peluncuran di jendela alat Running Devices) agar tercantum.</p>
+<p>Alih-alih URL, <code>feedback.md</code> diawali dengan apa yang Anda rekam: nama aplikasi dan judul jendela, atau nama perangkat dan versi OS untuk simulator atau emulator, ditambah aplikasi yang sedang di latar depan di Android. Berkas ini juga meminta agent mengubah kode sumber aplikasi tersebut. Ferret membaca detail perangkat dengan <code>xcrun simctl</code> dan <code>adb</code> (dari <code>ANDROID_HOME</code>, <code>ANDROID_SDK_ROOT</code>, atau folder SDK Android Studio) saat perekaman dimulai. Gambar hanya menampilkan jendela yang dipilih, jadi sebutkan apa yang Anda tunjuk sambil berbicara.</p>
+<p>Game bekerja dengan cara yang sama. Pilih jendela editor Unity, Unreal Engine, atau Godot yang menampilkan tampilan game, atau jendela game yang Anda buat, termasuk mode jendela tanpa bingkai (borderless windowed). Untuk game dalam layar penuh eksklusif, pilih layarnya di <span class="docs-ui">Seluruh Layar</span>. Jika jendelanya adalah salah satu editor tersebut, <code>feedback.md</code> menyebutkan engine-nya dan meminta agent mengubah kode, scene, atau aset game. Video disimpan hingga 10 frame per detik agar ukuran berkas tetap kecil, dan gambar untuk temuan diambil dari video yang sama, sehingga cocok dengan momen di timeline.</p>
+<p><span class="docs-ui">Jendela untuk direkam</span> pada target tinjauan dicocokkan dengan nama aplikasi maupun judul jendela, sehingga <code>Simulator</code> memilih jendela iOS Simulator apa pun perangkat yang ditampilkannya.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="record">
@@ -264,6 +275,7 @@
       <p class="docs-toc-heading">Di halaman ini</p>
       <ul>
         <li><a href="#target">Memilih yang direkam</a></li>
+        <li><a href="#desktop-mobile">Aplikasi desktop, game, dan aplikasi seluler</a></li>
         <li><a href="#record">Mulai, jeda, berhenti</a></li>
         <li><a href="#pen">Pena</a></li>
         <li><a href="#annotations-clear">Kapan coretan menghilang</a></li>

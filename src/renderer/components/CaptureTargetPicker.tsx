@@ -1,26 +1,43 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AppWindow, CircleCheck, Globe, Monitor, RefreshCw, ScreenShare, ShieldAlert, X } from 'lucide-react'
+import { AppWindow, CircleCheck, Globe, Monitor, RefreshCw, ScreenShare, ShieldAlert, Smartphone, X } from 'lucide-react'
 import type { CaptureSourceList, CaptureTarget } from '@shared/types'
 import { captureTargetLabel, targetFromSource } from '@shared/captureTarget'
+import { deviceKindOf, groupByApp } from '@shared/desktopApps'
 import { Button, IconButton, Modal, Segmented, Spinner } from '../ui'
 import { useT } from '../lib/i18n'
 
 /**
  * 録画の対象を選ぶ小さな画面（REC-2 の拡張）。
  *
- * 内蔵ブラウザ（既定）／画面全体（ディスプレイを選ぶ）／別のウインドウ（一覧から選ぶ）。
- * 画面とウインドウはサムネイルで選ぶ。選んだ対象は次回の既定として覚える（Settings.capture）。
+ * 内蔵ブラウザ（既定）／画面全体（ディスプレイを選ぶ）／別のウインドウ（デスクトップアプリ。一覧から選ぶ）／
+ * スマホ（iOS シミュレータ・Android Emulator のウインドウだけを出す。録る対象としてはウインドウ）。
+ * 画面とウインドウはサムネイルで選ぶ。ウインドウはアプリ名を添え、同じアプリのものを並べる。
+ * 選んだ対象は次回の既定として覚える（Settings.capture）。
  *
  * ⚠ 内蔵ブラウザのビューはDOMの上に重なるので、開いている間は App 側でビューを隠す。
  */
 
-type Kind = CaptureTarget['kind']
+/** 選択画面のタブ。mobile は録る対象としては window（スマホのシミュレータ／エミュレータのウインドウ） */
+type Kind = CaptureTarget['kind'] | 'mobile'
 
 const KIND_OPTIONS = [
   { value: 'browser' as const, label: 'capture.kind.browser' as const, icon: <Globe size={14} />, testId: 'capture-kind-browser' },
   { value: 'screen' as const, label: 'capture.kind.screen' as const, icon: <Monitor size={14} />, testId: 'capture-kind-screen' },
-  { value: 'window' as const, label: 'capture.kind.window' as const, icon: <AppWindow size={14} />, testId: 'capture-kind-window' }
+  { value: 'window' as const, label: 'capture.kind.window' as const, icon: <AppWindow size={14} />, testId: 'capture-kind-window' },
+  { value: 'mobile' as const, label: 'capture.kind.mobile' as const, icon: <Smartphone size={14} />, testId: 'capture-kind-mobile' }
 ]
+
+/** いまの対象を開いたときのタブ（スマホのウインドウならスマホ） */
+function kindOf(target: CaptureTarget): Kind {
+  return target.kind === 'window' && (target.device || deviceKindOf(target.appName, target.name)) ? 'mobile' : target.kind
+}
+
+/** そのタブで選べる対象か（スマホのウインドウは「ウインドウ」のタブでも選べる） */
+function fits(target: CaptureTarget, kind: Kind): boolean {
+  if (kind === 'window') return target.kind === 'window'
+  if (kind === 'mobile') return kindOf(target) === 'mobile'
+  return target.kind === kind
+}
 
 export function CaptureTargetPicker({
   value,
@@ -39,7 +56,7 @@ export function CaptureTargetPicker({
   onClose: () => void
 }) {
   const t = useT()
-  const [kind, setKind] = useState<Kind>(value.kind)
+  const [kind, setKind] = useState<Kind>(kindOf(value))
   const [selected, setSelected] = useState<CaptureTarget | null>(value)
   const [list, setList] = useState<CaptureSourceList | null>(null)
   const [loading, setLoading] = useState(false)
@@ -63,12 +80,16 @@ export function CaptureTargetPicker({
   const pickKind = (next: Kind) => {
     setKind(next)
     if (next === 'browser') setSelected({ kind: 'browser' })
-    else if (selected?.kind !== next) setSelected(value.kind === next ? value : null)
+    else if (!selected || !fits(selected, next)) setSelected(fits(value, next) ? value : null)
   }
 
-  const sources = (list?.sources ?? []).filter((source) => source.kind === kind)
+  const all = list?.sources ?? []
+  // ウインドウは同じアプリのものを並べる。スマホはシミュレータ／エミュレータのウインドウだけ
+  const sources = kind === 'mobile' ? all.filter((source) => source.kind === 'window' && source.device)
+    : kind === 'window' ? groupByApp(all.filter((source) => source.kind === 'window')).flatMap((group) => group.windows)
+      : all.filter((source) => source.kind === kind)
   const needsAccess = !!list && list.screenAccess !== 'granted' && window.ade.platform === 'darwin'
-  const ready = selected !== null && selected.kind === kind
+  const ready = selected !== null && fits(selected, kind)
 
   return (
     <Modal className="rv-modal" label={t('capture.title')} onClose={onClose}>
@@ -105,7 +126,7 @@ export function CaptureTargetPicker({
             )}
             <div className="capture-picker__bar">
               <span className="capture-picker__hint">
-                {kind === 'screen' ? t('capture.pickDisplay') : t('capture.pickWindow')}
+                {kind === 'screen' ? t('capture.pickDisplay') : kind === 'mobile' ? t('capture.pickDevice') : t('capture.pickWindow')}
                 {' '}{t('capture.noBrowserLog')}
               </span>
               <IconButton label={t('capture.refreshList')} size="sm" icon={<RefreshCw size={14} />} disabled={loading} onClick={() => void load()} />
@@ -113,7 +134,7 @@ export function CaptureTargetPicker({
             {loading && !list ? (
               <div className="capture-picker__loading"><Spinner size={18} label={t('capture.loading')} /></div>
             ) : sources.length === 0 ? (
-              <p className="rv-modal__empty">{kind === 'screen' ? t('capture.noScreens') : t('capture.noWindows')}</p>
+              <p className="rv-modal__empty">{kind === 'screen' ? t('capture.noScreens') : kind === 'mobile' ? t('capture.noDevices') : t('capture.noWindows')}</p>
             ) : (
               <div className="capture-grid" role="list">
                 {sources.map((source) => {
@@ -125,16 +146,21 @@ export function CaptureTargetPicker({
                       key={source.id}
                       className={`capture-card${isSelected ? ' is-selected' : ''}`}
                       aria-pressed={isSelected}
-                      title={source.name}
+                      title={source.appName ? `${source.appName} — ${source.name}` : source.name}
                       onClick={() => setSelected(targetFromSource(source))}
                     >
                       <span className="capture-card__thumb">
-                        {source.thumbnail ? <img src={source.thumbnail} alt="" /> : <Monitor size={24} aria-hidden="true" />}
+                        {source.thumbnail ? <img src={source.thumbnail} alt="" />
+                          : source.device ? <Smartphone size={24} aria-hidden="true" />
+                            : source.kind === 'window' ? <AppWindow size={24} aria-hidden="true" /> : <Monitor size={24} aria-hidden="true" />}
                         {isSelected && <span className="capture-card__check"><CircleCheck size={16} aria-hidden="true" /></span>}
                       </span>
                       <span className="capture-card__label">
                         {source.appIcon && <img className="capture-card__app" src={source.appIcon} alt="" />}
-                        <span className="capture-card__name">{source.name}</span>
+                        <span className="capture-card__names">
+                          {source.appName && source.appName !== source.name && <span className="capture-card__app-name">{source.appName}</span>}
+                          <span className="capture-card__name">{source.name}</span>
+                        </span>
                       </span>
                     </button>
                   )

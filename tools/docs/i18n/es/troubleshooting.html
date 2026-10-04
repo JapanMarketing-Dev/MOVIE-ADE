@@ -52,15 +52,16 @@ Problemas habituales y cómo resolverlos. Los mensajes citados son los que muest
 <p>Ocurre al ejecutar desde el código fuente cuando node-pty se compiló para otra ABI de Node o de Electron.</p>
 <pre><code>pnpm rebuild:native</code></pre>
 
-<!-- @agent 1b8e87d730 -->
+<!-- @agent b8de3c3989 -->
 ## No se encuentra el agente / Enviar al agente no envía
 <ul>
-  <li><code>command not found: claude</code> (o <code>codex</code>, <code>gemini</code> u otro comando de agente) en la terminal: el CLI no está instalado o no está en el <code>PATH</code>. Ferret muestra el error propio de la shell y no añade ninguna pista. Comprueba que el comando funciona en tu terminal habitual, usa <span class="docs-ui">Instalar</span> en <span class="docs-ui">Ajustes → Agentes</span> o pon una ruta absoluta como <span class="docs-ui">Comando</span> de ese agente.</li>
+  <li><q>Claude Code: No encontrado</q> (o el nombre de otro agente integrado), o <code>command not found: …</code> en la terminal para un agente que añadiste tú: el CLI no está instalado o no está en el <code>PATH</code>. Ferret inicia los agentes integrados solo desde una ruta absoluta en una carpeta del <code>PATH</code> fuera del proyecto, nunca desde la carpeta del proyecto. Comprueba que el comando funciona en tu terminal habitual, usa <span class="docs-ui">Instalar</span> en <span class="docs-ui">Ajustes → Agentes</span> o pon una ruta absoluta como <span class="docs-ui">Comando</span> de ese agente.</li>
   <li><q>El agente está esperando confirmación. Responde en la terminal y luego envía.</q> Responde primero a la pregunta del agente.</li>
   <li><q>La entrada del agente aún no está lista.</q> Espera a que el agente termine de iniciarse.</li>
   <li><q>El texto se introdujo pero no se envió. Pulsa Intro en la terminal.</q></li>
   <li><q>Primero abre una terminal.</q></li>
   <li><q>No se pueden analizar los argumentos de inicio: Comilla sin cerrar.</q> Corrige las comillas en los argumentos del agente.</li>
+  <li><q>Pon … en los argumentos de inicio, no en el comando.</q> o <q>Escribe … en los argumentos de inicio sin comillas ni barras invertidas.</q> Escribe esa opción como texto simple en los argumentos del agente. Para iniciar los agentes sin solicitudes de permiso, activa <span class="docs-ui">Iniciar los agentes sin solicitudes de permiso</span> en <span class="docs-ui">Ajustes → Agentes</span>.</li>
 </ul>
 
 <!-- @cannot-record 7b2c3ffb80 -->

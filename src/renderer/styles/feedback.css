@@ -585,6 +585,20 @@
   white-space: nowrap;
 }
 
+.capture-card__names {
+  display: grid;
+  min-width: 0;
+}
+
+/* ウインドウのアプリ名（題名の上に小さく） */
+.capture-card__app-name {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .capture-card--browser {
   display: flex;
   align-items: center;

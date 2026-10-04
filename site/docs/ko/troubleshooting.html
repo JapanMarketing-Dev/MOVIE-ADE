@@ -213,12 +213,13 @@
       <section class="docs-section" aria-labelledby="agent">
         <h2 id="agent"><a class="docs-anchor" href="#agent" aria-label="&quot;에이전트를 찾을 수 없음 / 에이전트에게 보내기가 전송되지 않음&quot;(으)로 가는 링크">#</a>에이전트를 찾을 수 없음 / 에이전트에게 보내기가 전송되지 않음</h2>
         <ul>
-  <li>터미널에 <code>command not found: claude</code>(또는 <code>codex</code>, <code>gemini</code>, 다른 에이전트의 명령)가 표시됨: CLI가 설치되어 있지 않거나 <code>PATH</code>에 없습니다. Ferret은 셸의 오류를 그대로 보여 주며 힌트를 덧붙이지 않습니다. 평소 쓰는 터미널에서 명령이 동작하는지 확인하거나, <span class="docs-ui">설정 → 에이전트</span>의 <span class="docs-ui">설치</span>를 사용하거나, 해당 에이전트의 <span class="docs-ui">명령</span>에 절대 경로를 지정하세요.</li>
+  <li><q>Claude Code: 찾을 수 없음</q>(또는 다른 기본 제공 에이전트의 이름)이 표시되거나, 직접 추가한 에이전트에서 터미널에 <code>command not found: …</code>가 표시됨: CLI가 설치되어 있지 않거나 <code>PATH</code>에 없습니다. Ferret은 기본 제공 에이전트를 프로젝트 밖에 있는 <code>PATH</code> 폴더의 절대 경로에서만 실행하며, 프로젝트 폴더에서는 실행하지 않습니다. 평소 쓰는 터미널에서 명령이 동작하는지 확인하거나, <span class="docs-ui">설정 → 에이전트</span>의 <span class="docs-ui">설치</span>를 사용하거나, 해당 에이전트의 <span class="docs-ui">명령</span>에 절대 경로를 지정하세요.</li>
   <li><q>에이전트가 확인을 기다리고 있습니다. 터미널에서 응답한 후 보내세요.</q> 먼저 에이전트의 확인 요청에 답하세요.</li>
   <li><q>에이전트의 입력이 아직 준비되지 않았습니다.</q> 에이전트가 시작을 마칠 때까지 기다리세요.</li>
   <li><q>텍스트는 입력되었지만 전송되지 않았습니다. 터미널에서 Enter를 누르세요.</q></li>
   <li><q>먼저 터미널을 여세요.</q></li>
   <li><q>실행 인수를 해석할 수 없습니다: 따옴표가 닫히지 않았습니다.</q> 에이전트 인수의 따옴표를 고치세요.</li>
+  <li><q>…은(는) 명령 칸이 아니라 실행 인수 칸에 적어 주세요.</q> 또는 <q>…은(는) 따옴표나 백슬래시 없이 실행 인수 칸에 적어 주세요.</q> 그 플래그를 에이전트 인수에 그대로의 문자로 적으세요. 권한 확인 없이 에이전트를 시작하려면 <span class="docs-ui">설정 → 에이전트</span>에서 <span class="docs-ui">권한 확인 없이 에이전트 시작</span>을 켜세요.</li>
 </ul>
       </section>
 
