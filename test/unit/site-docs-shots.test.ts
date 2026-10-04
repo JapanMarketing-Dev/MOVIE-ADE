@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
@@ -38,7 +38,7 @@ describe('site/docs のスクリーンショット', () => {
     }
     expect([...shots.keys()].sort()).toEqual(['feedback-toolbar', 'findings', 'preview', 'url-presets', 'usage'])
     // 英語と訳の全言語のページに出る
-    const langs = all.filter((p) => p.endsWith('/accounts.html')).length
+    const langs = all.filter((p) => basename(p) === 'accounts.html').length
     for (const count of shots.values()) expect(count).toBe(langs)
     for (const name of shots.keys()) expect(statSync(join(DOCS, 'assets', `${name}.png`)).size).toBeLessThan(500 * 1024)
   })

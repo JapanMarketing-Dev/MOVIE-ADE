@@ -43,6 +43,13 @@ export class LinuxTreeWatcher {
     return this
   }
 
+  /** fs.watch（FSWatcher）と同じ形でエラーを知らせる。プロジェクトの監視の張り直しのテストが、どの OS でも同じ手で止められるように */
+  emit(event: 'error', err: unknown): boolean {
+    if (event !== 'error') return false
+    for (const listener of this.errorListeners) listener(err)
+    return this.errorListeners.length > 0
+  }
+
   close(): void {
     this.closed = true
     for (const watcher of this.watchers.values()) watcher.close()
