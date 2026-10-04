@@ -60,7 +60,7 @@ Un projet est un dossier (en général la racine de votre dépôt). Chaque proje
 <p>La puce correspondant à la page actuelle (préfixe le plus long) est mise en évidence. Faites un clic droit sur une puce ou utilisez son icône de crayon pour la modifier ou la <span class="docs-ui">Supprimer</span>. À l'ouverture d'un projet sans URL précédente, sa première URL enregistrée se charge.</p>
 <p>Les puces sont regroupées par type : d'abord les URL d'application, puis les designs, puis les documents, avec un séparateur et une icône pour chaque type. Passer à un design ou à un document, ou en revenir, ouvre son URL enregistrée telle quelle, sans reporter le chemin.</p>
 
-<!-- @design-docs b11ff7ba55 -->
+<!-- @design-docs 674aff9ed3 -->
 ## Relire des designs et des documents, pas seulement du code
 <p>Les retours ne portent pas forcément sur du code. Tout ce qui s'ouvre dans le navigateur intégré peut être enregistré et annoté au stylo de la même façon : un design Figma ou Penpot, un prototype, une spécification dans Google Docs ou Notion, un document de conception sur GitHub, un PDF. Enregistrez ces URL dans le projet avant la relecture, à côté de <code>local</code> et <code>dev</code>.</p>
 <ol class="docs-steps">
@@ -72,7 +72,7 @@ Un projet est un dossier (en général la racine de votre dépôt). Chaque proje
 <p>Les remarques enregistrées sur un design ou un document sont étiquetées avec ce type dans l'onglet Remarques et dans <code>feedback.md</code>, et l'instruction envoyée à l'agent le précise. L'agent modifie alors le design ou le document plutôt que le code :</p>
 <ul>
   <li>Si le document se trouve dans le projet (une spécification Markdown, un ADR), l'agent modifie ce fichier.</li>
-  <li>S'il ne peut pas le modifier (un fichier Figma, un Google Doc), l'agent marque la remarque <span class="docs-ui">Question de l’agent</span> en indiquant la modification exacte à faire, pour que vous l'appliquiez ou la transmettiez.</li>
+  <li>S'il ne peut pas le modifier (un fichier Figma, un Google Doc), l'agent ne s'arrête pas pour vous poser la question : il passe la remarque à <span class="docs-ui">À vérifier</span> avec une note d'une ligne indiquant la modification exacte à faire, pour que vous l'appliquiez ou la transmettiez.</li>
 </ul>
 <p>Exemple : en lisant la spécification des tarifs dans Google Docs, vous entourez le tableau des formules et dites « la formule Pro est maintenant à 9 800 yens, pas 8 800 ». <code>feedback.md</code> liste la remarque sous la cible <code>Spec</code> avec <code>Kind: document</code>, et l'agent répond avec la phrase corrigée pour la spécification au lieu de toucher au code de la page des tarifs. Enregistrez la spécification et l'application en cours d'exécution dans le même enregistrement : les remarques sont séparées par cible, et l'agent peut mettre à jour la spécification d'abord, puis le code qui l'implémente.</p>
 <p>Les pages non enregistrées sur <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> et des hôtes similaires sont aussi reconnues. Les fichiers du dossier du projet (Markdown, Mermaid) se relisent depuis la liste <span class="docs-ui">Fichiers</span> du panneau <span class="docs-ui">Cibles de relecture</span>.</p>

@@ -336,17 +336,59 @@ export function useOpenFiles({
     return () => window.removeEventListener(CLOSE_REQUEST_EVENT, onCloseRequest)
   }, [activeId, requestClose])
 
-  // ウィンドウを閉じるときの確認のため、未保存のファイルを main へ知らせる（別のプロジェクトのタブも含める）
-  const unsavedKey = allFiles.filter((f) => f.dirty).map((f) => f.id).join('\n')
+  // ウィンドウを閉じるときの確認のため、未保存のファイルを main へ知らせる（別のプロジェクトのタブも含める）。
+  // main はプロジェクトの名前と相対パスで示すので、開いたときのプロジェクトのフォルダと相対パスを分けて送る
+  const unsavedRefs = useMemo(() => allFiles.filter((f) => f.dirty).map((f) => ({ root: f.root, path: f.path })), [allFiles])
+  const unsavedKey = unsavedRefs.map((f) => `${f.root}\n${f.path}`).join('\n\n')
+  const unsavedRefsRef = useRef(unsavedRefs)
+  unsavedRefsRef.current = unsavedRefs
   useEffect(() => {
     // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
-    void window.ade.invoke('editor:unsaved', unsavedKey ? unsavedKey.split('\n') : []).catch(() => undefined)
+    void window.ade.invoke('editor:unsaved', unsavedRefsRef.current).catch(() => undefined)
   }, [unsavedKey])
+
+  /*
+   * 終了の確認で「保存して終了」を選んだ。未保存のファイルを（別のプロジェクトのものも）全部、中身ごと main へ返す。
+   * main は確認で示したファイルだけを、そのプロジェクトの中へ書く。書けたものは保存済みにする（書けなければ終了しない）
+   */
+  useEffect(() => window.ade.on('editor:saveForQuit', (requestId) => {
+    const dirty = filesRef.current.filter((f) => f.dirty && f.status === 'ready' && !f.viewer)
+    const entries = dirty.map((file) => {
+      draftFlushers.get(file.id)?.()
+      return { id: file.id, root: file.root, path: file.path, content: drafts.current.get(file.id) ?? file.saved }
+    })
+    void window.ade.invoke('editor:quitSave', requestId, entries.map(({ root: r, path, content }) => ({ root: r, path, content }))).then((outcomes) => {
+      for (const outcome of outcomes) {
+        if (!outcome.ok) continue
+        const entry = entries.find((e) => e.root === outcome.root && e.path === outcome.path)
+        if (!entry) continue
+        // 書いている間に打った分は変更ありのまま残す
+        patch(entry.id, { saved: entry.content, dirty: (drafts.current.get(entry.id) ?? entry.content) !== entry.content, external: undefined })
+      }
+    }).catch((err) => onError(t('editor.saveFailed', { error: errorMessage(err) })))
+  }), [patch, onError])
+
+  /*
+   * 終了の確認で「プロジェクトを開く」を選んだ。main がプロジェクトとエディタへ切り替えたあとに届くので、
+   * そのファイルが今のプロジェクトのタブに出たところで選ぶ（root が変わるのは次の描画）
+   */
+  const [revealId, setRevealId] = useState<string | null>(null)
+  useEffect(() => window.ade.on('editor:revealUnsaved', (target) => {
+    if (target.error) { onError(target.error); return }
+    setRevealId(fileId(target.root, target.path))
+  }), [onError])
 
   // プロジェクトを切り替えて選択中のファイルが見えなくなったら、ブラウザへ戻す
   useEffect(() => {
     if (activeTab.startsWith('file:') && !files.some((f) => fileTabId(f.id) === activeTab)) setActiveTab('browser')
   }, [activeTab, files, setActiveTab])
+
+  // 上の「ブラウザへ戻す」より後に置く（切り替えた直後でも、開きたいファイルを選んだままにする）
+  useEffect(() => {
+    if (!revealId || !files.some((f) => f.id === revealId)) return
+    setActiveTab(fileTabId(revealId))
+    setRevealId(null)
+  }, [revealId, files, setActiveTab])
 
   const followRename = useCallback((from: string, to: string) => {
     if (!root) return

@@ -1,13 +1,13 @@
 /**
- * Findings を進み具合（未対応・対応中・Agent からの確認・確認待ち・完了）で絞り込む。
+ * Findings を進み具合（未対応・対応中・確認待ち・完了）で絞り込む。
  *
  * 持つのは「隠す進み具合」の一覧。空ならすべて出す。チップを押すとその進み具合の表示と非表示が切り替わり、
  * 「〜だけ表示」でそれ以外をすべて隠す。選んだものはこの端末に保存して、次に開いたときも残す。
  */
 import { progressOf, type FindingProgress, type ProgressMap } from './findingProgress'
 
-/** チップの並び。流れの順（未対応 → 対応中 → Agent からの確認 → 確認待ち → 完了） */
-export const FINDING_STATUSES: readonly FindingProgress[] = ['todo', 'in_progress', 'needs_human', 'human_review', 'done']
+/** チップの並び。流れの順（未対応 → 対応中 → 確認待ち → 完了） */
+export const FINDING_STATUSES: readonly FindingProgress[] = ['todo', 'in_progress', 'human_review', 'done']
 
 export type HiddenStatuses = readonly FindingProgress[]
 
@@ -35,13 +35,13 @@ export function onlyStatus(status: FindingProgress): FindingProgress[] {
 
 /** 進み具合ごとの件数（送らない指摘も含め、一覧に並ぶものすべて） */
 export function countByStatus(items: ReadonlyArray<{ id: string }>, map: ProgressMap | undefined): Record<FindingProgress, number> {
-  const count: Record<FindingProgress, number> = { todo: 0, in_progress: 0, needs_human: 0, human_review: 0, done: 0 }
+  const count: Record<FindingProgress, number> = { todo: 0, in_progress: 0, human_review: 0, done: 0 }
   for (const item of items) count[progressOf(map, item.id)]++
   return count
 }
 
 /**
- * 進み具合の順（未対応 → 対応中 → Agent からの確認 → 確認待ち → 完了）に並べた ID。同じ進み具合の中は今の並びのまま。
+ * 進み具合の順（未対応 → 対応中 → 確認待ち → 完了）に並べた ID。同じ進み具合の中は今の並びのまま。
  * 指摘の並び順「進み具合の順」で、この並びを手動の順として保存する
  */
 export function sortByStatus(ids: readonly string[], map: ProgressMap | undefined): string[] {

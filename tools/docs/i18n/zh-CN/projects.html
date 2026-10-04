@@ -60,7 +60,7 @@
 <p>与当前页面匹配（最长前缀）的标签会高亮显示。右键点击标签或使用其铅笔图标，可以编辑或 <span class="docs-ui">删除</span> 它。项目打开时如果没有上次的 URL，会载入它的第一个已保存 URL。</p>
 <p>标签按类型分组：先是应用 URL，然后是设计，最后是文档，每种类型之间有分隔线和图标。切换到设计或文档（或从它们切换回来）时，会按原样打开保存的 URL，不会沿用路径。</p>
 
-<!-- @design-docs b11ff7ba55 -->
+<!-- @design-docs 674aff9ed3 -->
 ## 不只审查代码，也审查设计和文档
 <p>反馈不一定针对代码。任何能在内置浏览器中打开的内容，都可以用同样的方式录制并用画笔标注：Figma 或 Penpot 设计、原型、Google Docs 或 Notion 中的规格、GitHub 上的设计文档、PDF。在审查之前，把这些 URL 保存到项目中，和 <code>local</code>、<code>dev</code> 放在一起。</p>
 <ol class="docs-steps">
@@ -72,7 +72,7 @@
 <p>在设计或文档上录制的反馈，会在 <span class="docs-ui">反馈</span> 标签页和 <code>feedback.md</code> 中标上对应的类型，发送给 Agent 的指令也会说明这一点。于是 Agent 会修改设计或文档，而不是代码：</p>
 <ul>
   <li>如果文档就在项目中（Markdown 规格、ADR），Agent 会编辑该文件。</li>
-  <li>如果 Agent 无法编辑它（Figma 文件、Google 文档），Agent 会把这条反馈标为 <span class="docs-ui">Agent 提问</span>，并写明需要做的具体修改，由你来应用或转交给他人。</li>
+  <li>如果 Agent 无法编辑它（Figma 文件、Google 文档），Agent 不会停下来问你：它会把这条反馈设为 <span class="docs-ui">待检查</span>，并用一行说明写明需要做的具体修改，由你来应用或转交给他人。</li>
 </ul>
 <p>示例：在 Google Docs 中阅读价格规格时，你圈出套餐表并说“Pro 套餐现在是 9,800 日元，不是 8,800”。<code>feedback.md</code> 会把这条反馈列在 <code>Spec</code> 目标下，并标注 <code>Kind: document</code>；Agent 会给出规格中修正后的句子，而不会去改价格页面的代码。如果在同一次录制中同时录下规格和运行中的应用，反馈会按目标分开，Agent 就可以先更新规格，再更新实现它的代码。</p>
 <p><code>figma.com</code>、<code>docs.google.com</code>、<code>notion.so</code> 等主机上未保存的页面同样能被识别。项目文件夹中的文件（Markdown、Mermaid）可以在 <span class="docs-ui">审查对象</span> 面板的 <span class="docs-ui">文件</span> 列表中审查。</p>

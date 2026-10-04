@@ -60,7 +60,7 @@ Un progetto è una cartella (di solito la radice del tuo repository). Ogni proge
 <p>Il chip corrispondente alla pagina attuale (il prefisso più lungo) è evidenziato. Fai clic destro su un chip o usa la sua icona a forma di matita per modificarlo, oppure per rimuoverlo con <span class="docs-ui">Elimina</span>. Quando un progetto si apre e non c'è un URL precedente, viene caricato il suo primo URL salvato.</p>
 <p>I chip sono raggruppati per tipo: prima gli URL delle app, poi i design, poi i documenti, con un separatore e un'icona per ogni tipo. Passando a un design o a un documento, o lasciandolo, si apre il suo URL salvato così com'è, senza riportare il percorso.</p>
 
-<!-- @design-docs b11ff7ba55 -->
+<!-- @design-docs 674aff9ed3 -->
 ## Rivedere design e documenti, non solo il codice
 <p>Il feedback non deve riguardare per forza il codice. Tutto ciò che si apre nel browser integrato si può registrare e annotare con la penna allo stesso modo: un design su Figma o Penpot, un prototipo, una specifica su Google Docs o Notion, un documento di design su GitHub, un PDF. Salva questi URL nel progetto prima della revisione, accanto a <code>local</code> e <code>dev</code>.</p>
 <ol class="docs-steps">
@@ -72,7 +72,7 @@ Un progetto è una cartella (di solito la radice del tuo repository). Ogni proge
 <p>Le segnalazioni registrate su un design o su un documento sono contrassegnate con quel tipo nelle segnalazioni e in <code>feedback.md</code>, e l'istruzione inviata all'agent lo indica. L'agent modifica quindi il design o il documento invece del codice:</p>
 <ul>
   <li>Se il documento si trova nel progetto (una specifica Markdown, un ADR), l'agent modifica quel file.</li>
-  <li>Se non può modificarlo (un file Figma, un Google Doc), l'agent contrassegna la segnalazione come <span class="docs-ui">Domanda dell’agent</span> indicando la modifica esatta da fare, così puoi applicarla tu o passarla a qualcun altro.</li>
+  <li>Se non può modificarlo (un file Figma, un Google Doc), l'agent non si ferma a chiederti nulla: imposta la segnalazione su <span class="docs-ui">Da controllare</span> con una nota di una riga sulla modifica esatta da fare, così puoi applicarla tu o passarla a qualcun altro.</li>
 </ul>
 <p>Esempio: mentre leggi la specifica dei prezzi su Google Docs cerchi la tabella dei piani e dici "il piano Pro ora costa 9.800 yen, non 8.800". <code>feedback.md</code> elenca la segnalazione sotto il target <code>Spec</code> con <code>Kind: document</code>, e l'agent risponde con la frase corretta per la specifica invece di toccare il codice della pagina dei prezzi. Registra la specifica e l'app in esecuzione nella stessa registrazione: le segnalazioni vengono separate per target, così l'agent può aggiornare prima la specifica e poi il codice che la implementa.</p>
 <p>Vengono riconosciute anche le pagine non salvate su <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> e host simili. I file nella cartella del progetto (Markdown, Mermaid) si rivedono dall'elenco <span class="docs-ui">File</span> nel pannello <span class="docs-ui">Target di revisione</span>.</p>

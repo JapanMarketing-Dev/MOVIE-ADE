@@ -7,6 +7,7 @@ import type { AgentSkillAgent, AgentSkillStatus } from './agentSkill'
 import type { SendRequest } from './sendTarget'
 import type { CloneFailureKind, CloneProgress, GitHubRepoList, SshConfigHost } from './projectSource'
 import type { SshTarget } from './sshCommand'
+import type { QuitSaveEntry, QuitSaveOutcome, UnsavedFileRef, UnsavedReveal } from './quitUnsaved'
 import type {
   AnnotationHistory,
   AnnotationShortcut,
@@ -289,7 +290,6 @@ export interface IpcRequests {
   /** 指摘の進み具合（progress.json）を変えて、今の値を返す。patch を省くと読むだけ（Agent が書いたあとの読み直し） */
   'review:progress': (sessionId: string, patch?: ReviewProgressPatch) => ProgressMap
   /** 「Agent から確認があります」への返答を送る1行を作る。renderer が review:send の text（差し替えの本文）として送る */
-  'review:replyPrompt': (sessionId: string, itemId: string, reply: string) => string
   /** 人の判断（OK / NG / Comment）を記録して、今の進み具合を返す。NG と Comment は本文が必須 */
   'review:verdict': (sessionId: string, itemId: string, verdict: ReviewVerdict, text?: string) => ProgressMap
   /** NG の指摘をコメントつきで送り直す1行を作る（itemIds を省くと送り直し待ちすべて）。renderer が review:send の text として送る */
@@ -369,8 +369,13 @@ export interface IpcRequests {
   'fs:reveal': (relPath: string) => void
   /** OS の既定のアプリで開く。実行されうる種類は断る（@shared/fileViewer の isRiskyToOpenExternally） */
   'fs:openExternal': (relPath: string) => void
-  /** エディタで未保存のファイル（パス）。ウィンドウを閉じるときの確認に使う */
-  'editor:unsaved': (paths: string[]) => void
+  /** エディタで未保存のファイル（開いたときのプロジェクトのフォルダと相対パス）。終了するときの確認に使う（別のプロジェクトのタブも含む） */
+  'editor:unsaved': (files: UnsavedFileRef[]) => void
+  /**
+   * 終了の確認で「保存して終了」を選んだ: editor:saveForQuit で頼まれた requestId と、未保存のファイルの中身を返す。
+   * main は確認で示したファイルだけを、登録済みのプロジェクトの中へ書き、ファイルごとの結果を返す
+   */
+  'editor:quitSave': (requestId: string, entries: QuitSaveEntry[]) => QuitSaveOutcome[]
   /** 編集中（未保存）の内容をプレビューの中身（HTML）にする。横に並べたプレビューを打鍵に追従させる */
   'preview:render': (path: string, source: string) => string
 
@@ -465,6 +470,10 @@ export interface IpcEvents {
   'settingsFile:error': (error: SettingsFileError | null) => void
   /** 裏での更新の状態が変わった（確認・ダウンロードの進み具合・準備ができた・失敗） */
   'update:status': (status: AutoUpdateStatus) => void
+  /** 終了の確認で「保存して終了」: 未保存のファイルの中身を editor:quitSave で返して */
+  'editor:saveForQuit': (requestId: string) => void
+  /** 終了の確認で「プロジェクトを開く」: main がプロジェクトとエディタへ切り替えたので、このファイルのタブを開いて（error なら知らせるだけ） */
+  'editor:revealUnsaved': (target: UnsavedReveal) => void
 }
 
 export type IpcRequestChannel = keyof IpcRequests
@@ -574,9 +583,9 @@ export const IPC_REQUEST_CHANNELS = [
   'note:setMode',
   'annotation:undo',
   'annotation:redo',
-  'review:list', 'review:activity', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:replyPrompt', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
+  'review:list', 'review:activity', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
   'capture:screenAccess', 'capture:sources', 'capture:setTarget', 'capture:openScreenSettings',
-  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:create', 'fs:copy', 'fs:move', 'fs:import', 'fs:importMedia', 'fs:copyPath', 'fs:terminalDir', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'preview:render',
+  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:create', 'fs:copy', 'fs:move', 'fs:import', 'fs:importMedia', 'fs:copyPath', 'fs:terminalDir', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'editor:quitSave', 'preview:render',
   'github:open', 'github:repoStatus',
   'star:star', 'star:openWeb', 'star:later', 'star:never', 'star:fromMenu',
   'feedback:environment', 'feedback:account', 'feedback:submit', 'feedback:captureWindow'
@@ -605,5 +614,6 @@ export const IPC_EVENT_CHANNELS = [
   'star:show',
   'feedback:ask',
   'settings:changed', 'settingsFile:error',
-  'update:status'
+  'update:status',
+  'editor:saveForQuit', 'editor:revealUnsaved'
 ] as const satisfies readonly IpcEventChannel[]

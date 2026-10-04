@@ -70,15 +70,16 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>अगर कोई agent नहीं चल रहा, तो Ferret पहले एक शुरू करता है और तैयार होते ही भेज देता है। जब agent किसी अनुमति के जवाब का इंतज़ार कर रहा हो, तब कुछ नहीं भेजा जाता। पहले टर्मिनल में जवाब दें।</p>
 <p><span class="docs-ui">Agent के लिए कॉपी करें</span> वही निर्देश कहीं और (दूसरे टर्मिनल, IDE या ऐप में) चल रहे agent के लिए clipboard पर रख देता है। सिर्फ़ <span class="docs-ui">भेजें</span> पर टॉगल किए गए findings ही शामिल होते हैं। वीडियो कभी शामिल नहीं होता।</p>
 
-<!-- @verify f6f903b43a -->
+<!-- @verify b8434eb181 -->
 ## Decision model से स्वीकृति जाँच
-{{clip:verify|Agent findings ठीक करता है और हर एक को decision model से तब तक जाँचता है जब तक सभी पास न हो जाएँ।}}
-<p>इसे चालू करने पर आपका coding agent "पूरा" बताने से पहले हर finding के सामने अपने काम की जाँच करता है। Ferret खुद कुछ भी तय नहीं करता: यह agent को एक <em>decision model</em> (कोई भी System One compatible API) देता है और <code>feedback.md</code> में उसे बताता है कि जब तक हर finding पास न हो, तब तक दोहराता रहे।</p>
+{{clip:verify|Agent findings ठीक करता है और आपके देखने से पहले हर एक को decision model से जाँचता है।}}
+<p>इसे चालू करने पर आपका coding agent हर finding के सामने अपने काम की जाँच करता है और आपके देखने से पहले उसे बेहतर करता रहता है। Ferret खुद कुछ भी तय नहीं करता: यह agent को एक <em>decision model</em> (कोई भी System One compatible API) देता है और <code>feedback.md</code> में उसे बताता है कि इसका इस्तेमाल कैसे करे। Decision model agent की अपनी जाँच है, आपसे सवाल कभी नहीं: agent आपसे कुछ नहीं पूछता। आप सिर्फ़ BEFORE और AFTER की तुलना करके <span class="docs-ui">OK</span> या <span class="docs-ui">NG</span> दबाते हैं।</p>
 <ol class="docs-steps">
   <li>Agent findings लागू करता है।</li>
   <li>हर finding के लिए वह एक AFTER screenshot लेता है (BEFORE still जैसा ही viewport और पेज की स्थिति) और finding का टेक्स्ट, उसकी "Done when" लाइन और BEFORE/AFTER इमेज के साथ decision model को एक request भेजता है।</li>
-  <li>कोई finding तब पास होता है जब P(done) कम से कम threshold (डिफ़ॉल्ट 0.7) हो और choice <code>done</code> हो। Agent बाकी को ठीक करता है और हर round में <strong>सभी</strong> findings को फिर से जाँचता है, और सिर्फ़ तब रुकता है जब एक ही round में हर finding पास हो जाए, या किसी ईमानदार कारण से जो उसे बताना होगा: API तक पहुँच नहीं हो पा रही, कोई finding दायरे से बाहर है, या कोई finding बिना बदले scores के अटका हुआ है।</li>
-  <li>अंतिम "पूरा / पूरा नहीं" सूची में हर finding के scores और rounds की संख्या होती है।</li>
+  <li>कोई finding तब पास होता है जब P(done) कम से कम threshold (डिफ़ॉल्ट 0.7) हो और choice <code>done</code> हो। बाकी के लिए agent सुधार (या screenshot) को बेहतर करता है और हर round में <strong>सभी</strong> findings को फिर से जाँचता है, जब तक एक ही round में हर finding पास न हो जाए।</li>
+  <li>कुछ rounds के बाद भी fail होने वाला finding (बिना बदले scores के 3 rounds, या कुल 5), दायरे से बाहर का finding, या ऐसा decision API जिस तक पहुँचा न जा सके, काम नहीं रोकता: agent फिर भी finding को <span class="docs-ui">जाँच बाकी</span> पर सेट करता है, उसके AFTER, आखिरी score और ज़्यादा से ज़्यादा एक पंक्ति के note के साथ।</li>
+  <li><span class="docs-ui">Findings</span> में, आपका इंतज़ार कर रहा हर finding BEFORE, AFTER और score को सामग्री के रूप में दिखाता है। <span class="docs-ui">OK</span> उसे पूरा मार्क करता है; comment के साथ <span class="docs-ui">NG</span> उसे agent को वापस भेजता है। Terminal में agent की अंतिम "पूरा / पूरा नहीं" सूची में हर finding के scores और rounds की संख्या होती है।</li>
 </ol>
 <p>इसे <span class="docs-ui">Settings → Decision model</span> में सेट करें और <span class="docs-ui">Agent निर्देशों में decision model जाँच जोड़ें</span> चालू करें। Presets सिर्फ़ fields भरते हैं; हर field संपादित किया जा सकता है, और <span class="docs-ui">Custom</span> किसी भी compatible API के साथ काम करता है।</p>
 <table>

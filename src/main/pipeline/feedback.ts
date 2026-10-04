@@ -106,7 +106,7 @@ export function renderFeedbackMarkdown(doc: FeedbackDocument, options: Partial<R
   // NF-14 プロンプトインジェクションへの手当て。画面由来の文字列を指示として扱わせない
   lines.push(tr('feedbackMd.injectionNote'))
   lines.push(tr('feedbackMd.acceptanceNote'))
-  // デザイン・設計書で撮った指摘は、コードではなくデザイン・文書を直させる（直せないものは needs_human で戻させる）
+  // デザイン・設計書で撮った指摘は、コードではなくデザイン・文書を直させる（直せないものは、具体的な変更案を note に書いて human_review にさせる。人には質問させない）
   if (groups.some((g) => g.target.purpose && g.items.some(inFocus))) lines.push(tr('feedbackMd.nonCodeNote'))
   if (!doc.organizedByLlm) {
     lines.push(tr('feedbackMd.ruleOnly'))
@@ -192,7 +192,11 @@ export const DECISION_QUESTIONS_JSON = JSON.stringify({
  */
 export const DECISION_NODE_LINE = `node -e 'const f=require("fs"),e=process.env,b={model:e.FERRET_DECISION_MODEL,state:e.STATE_FILE?f.readFileSync(e.STATE_FILE,"utf8").trim():e.STATE,questions:JSON.parse(e.Q)};if(e.FERRET_DECISION_IMAGES==="1")b.images=[e.BEFORE,e.AFTER].map(p=>{const s=f.readFileSync(p).toString("base64");return e.FERRET_DECISION_IMAGE_FORMAT==="data-uri"?"data:image/"+(/\\.png$/i.test(p)?"png":"jpeg")+";base64,"+s:s});f.writeFileSync(e.REQ_FILE,JSON.stringify(b))'`
 
-/** feedback.md の末尾の受け入れ確認の節。全件が同じ回で合格するまで、判定と修正を繰り返させる */
+/**
+ * feedback.md の末尾の受け入れ確認の節。判定モデルは Agent 自身の確認で、人への問いにはしない。
+ * 全件が同じ回で合格するまで判定と修正を繰り返させ、決まった回数で合格しない指摘もスコアをつけて human_review にさせる
+ * （人は BEFORE / AFTER で決める）
+ */
 function renderDecisionCheck(threshold: number, tr: Tr): string[] {
   const p = { threshold: String(threshold) }
   const marker = `FERRET_STATE_${randomBytes(6).toString('hex')}`
@@ -243,7 +247,6 @@ const otherStateKey: Record<FindingProgress, TranslationKey> = {
   todo: 'feedbackMd.others.state.todo',
   in_progress: 'feedbackMd.others.state.inProgress',
   done: 'feedbackMd.others.state.done',
-  needs_human: 'feedbackMd.others.state.needsHuman',
   human_review: 'feedbackMd.others.state.humanReview'
 }
 
@@ -263,7 +266,7 @@ function renderOthers(others: Array<{ it: FeedbackItem; n: number }>, opt: Rende
 
 /**
  * 進み具合の節。Ferret は直ったかを判定しないので、Agent に指摘のIDごとに progress.json へ書かせる。
- * 受け入れ確認（判定モデル）が有効なら、合格してから done にさせる（受け入れ確認の節と食い違わないように）
+ * 書かせる状態は in_progress と human_review だけ。受け入れ確認（判定モデル）が有効なら、それで直しを詰めてから human_review にさせる
  */
 function renderProgress(opt: RenderOptions, tr: Tr): string[] {
   const path = opt.progressFile ?? tr('feedbackMd.progress.sameFolder')
@@ -273,12 +276,12 @@ function renderProgress(opt: RenderOptions, tr: Tr): string[] {
     tr('feedbackMd.progress.intro', { path }),
     tr('feedbackMd.progress.format'),
     tr('feedbackMd.progress.when'),
-    // 未完了の指摘はサブエージェントなどで並列に。前提が合わない指摘は直さずに人間へ戻させる（needs_human）
+    // 未完了の指摘はサブエージェントなどで並列に。前提が合わない指摘も人に質問させず、意図に沿って直し、仮定を note に1行書かせる
     tr('feedbackMd.progress.parallel'),
-    tr('feedbackMd.progress.needsHuman'),
+    tr('feedbackMd.progress.assume'),
     // 人の確認（OK で done・NG とコメントで差し戻し）。done にできるのは人だけ
     tr('feedbackMd.progress.feedback'),
-    ...(opt.decision ? [tr('feedbackMd.progress.decision'), tr('feedbackMd.progress.decisionNeedsHuman')] : [])
+    ...(opt.decision ? [tr('feedbackMd.progress.decision')] : [])
   ]
 }
 

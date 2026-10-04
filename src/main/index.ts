@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto'
+import { MAX_TEXT_FILE_SIZE } from '@shared/files'
+import { UNSAVED_LIST_LIMIT, describeUnsavedFile, planUnsavedQuit, quitActionFor, sanitizeUnsavedRefs, screenQuitSaveEntries, type QuitAction, type QuitSaveOutcome, type UnsavedFileRef, type UnsavedQuitItem } from '@shared/quitUnsaved'
 import { CAPTURE_INDICATOR, UserGestures, ViewInputGrant, appMediaAllowed, captureRequestProblem, indicatorTitle, isGestureInput, isRecorderContents, isTrustedIpcSender, nextAudioConsent, type CaptureConsentState } from './captureConsent'
 import { ProgramCopies, normalizeTerminalClipboardMode, programCopyDecision } from './terminalClipboard'
 import { showAgentNotification } from './agentNotify'
@@ -180,31 +183,163 @@ let workspace: WorkspaceState = { folderPath: null, folderName: null }
  * 破棄済みのオブジェクトを触らないよう、ここで入口をふさぐ。
  */
 let shuttingDown = false
-/** エディタで未保存のファイル（renderer が editor:unsaved で知らせる） */
-let unsavedFiles: string[] = []
-/** 「保存せずに終了」を選んだ。before-quit とウィンドウの close の両方で聞き直さない */
+/** エディタで未保存のファイル（renderer が editor:unsaved で知らせる。別のプロジェクトのタブも含む） */
+let unsavedFiles: UnsavedFileRef[] = []
+/** 「保存せずに終了」を選んだ／「保存して終了」で全部書けた。before-quit とウィンドウの close の両方で聞き直さない */
 let discardUnsavedConfirmed = false
+/** 未保存の確認を出している間（2つ目の終了の入口では出し直さない） */
+let unsavedPromptOpen = false
+/** 「保存して終了」で renderer に中身を頼んでいる最中のもの。requestId が合う返事だけを受ける */
+let pendingQuitSave: { id: string; expected: UnsavedFileRef[]; resolve: (outcomes: QuitSaveOutcome[] | null) => void } | null = null
+/** 「保存して終了」で renderer の返事を待つ上限 */
+const QUIT_SAVE_REPLY_MS = 15_000
+/** 「保存して終了」で書く1ファイルと全体の上限（エディタで開けるのは MAX_TEXT_FILE_SIZE まで。編集で少し増えても書ける幅） */
+const QUIT_SAVE_MAX_BYTES = MAX_TEXT_FILE_SIZE * 4
+const QUIT_SAVE_MAX_TOTAL_BYTES = 64 * 1024 * 1024
+
+async function showQuitMessageBox(options: Electron.MessageBoxOptions): Promise<number> {
+  const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+  const { response } = window ? await dialog.showMessageBox(window, options) : await dialog.showMessageBox(options)
+  return response
+}
 
 /**
  * 未保存のファイルがあれば、終了してよいかを聞く（ネイティブのダイアログ。内蔵ブラウザに隠れない）。
  * Orca由来: ~/bench/orca/src/renderer/src/components/use-terminal-editor-close-foundation.ts（MIT）の
- * 「ウィンドウを閉じる前に未保存を確かめる」。保存はエディタで行ってもらい、ここでは捨てるかやめるかだけを聞く。
+ * 「ウィンドウを閉じる前に未保存を確かめる」。
+ * 各ファイルはプロジェクト名とその中の相対パスで示し（プロジェクトが複数あると絶対パスだけでは分からない）、
+ * 「保存して終了」（既定）・「保存せずに終了」・「プロジェクトを開く」・「キャンセル」（Esc）を選べる（src/shared/quitUnsaved.ts）。
  * @returns 終了してよいなら true
  */
-function confirmQuitWithUnsaved(): boolean {
+async function resolveUnsavedBeforeQuit(): Promise<boolean> {
   if (unsavedFiles.length === 0 || discardUnsavedConfirmed || IS_E2E) return true
-  const options = {
-    type: 'warning' as const,
-    buttons: [t('dialog.unsaved.quitWithoutSaving'), t('common.cancel')],
-    defaultId: 1,
-    cancelId: 1,
-    message: t('dialog.unsaved.message', { count: unsavedFiles.length }),
-    detail: `${unsavedFiles.slice(0, 10).join('\n')}${unsavedFiles.length > 10 ? '\n…' : ''}\n\n${t('dialog.unsaved.detail')}`
+  const snapshot = unsavedFiles
+  const plan = planUnsavedQuit(snapshot, currentSettings().projects)
+  const labels: Record<QuitAction, string> = {
+    save: t('dialog.unsaved.saveAndQuit'),
+    discard: t('dialog.unsaved.quitWithoutSaving'),
+    openProject: t('dialog.unsaved.openProject', { name: plan.openTarget?.projectName ?? '' }),
+    cancel: t('common.cancel')
   }
-  const choice = mainWindow && !mainWindow.isDestroyed() ? dialog.showMessageBoxSync(mainWindow, options) : dialog.showMessageBoxSync(options)
-  if (choice !== 0) return false
-  discardUnsavedConfirmed = true
-  return true
+  const lines = plan.listed.map((item) => item.label)
+  if (plan.more > 0) lines.push(t('dialog.unsaved.more', { count: plan.more }))
+  const response = await showQuitMessageBox({
+    type: 'warning',
+    buttons: plan.actions.map((action) => labels[action]),
+    defaultId: plan.defaultId,
+    cancelId: plan.cancelId,
+    noLink: true,
+    message: t('dialog.unsaved.message', { count: plan.items.length }),
+    detail: `${lines.join('\n')}\n\n${t('dialog.unsaved.detail')}`
+  })
+  const action = quitActionFor(response, plan.actions)
+  if (action === 'cancel') return false
+  if (action === 'discard') {
+    discardUnsavedConfirmed = true
+    return true
+  }
+  if (action === 'openProject') {
+    if (plan.openTarget) revealUnsavedFile(plan.openTarget)
+    return false
+  }
+  const failures = await saveUnsavedForQuit(snapshot)
+  if (failures.length === 0) {
+    discardUnsavedConfirmed = true
+    return true
+  }
+  // 1つでも書けなければ終了しない（内容を失わない）。どれがなぜ書けなかったかを示す
+  const failed = failures.map((f) => `${describeUnsavedFile(f, currentSettings().projects).label}: ${f.error ?? ''}`)
+  await showQuitMessageBox({
+    type: 'error',
+    buttons: [t('common.close')],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+    message: t('dialog.unsaved.saveFailed', { count: failures.length }),
+    detail: `${failed.slice(0, UNSAVED_LIST_LIMIT).join('\n')}${failed.length > UNSAVED_LIST_LIMIT ? `\n${t('dialog.unsaved.more', { count: failed.length - UNSAVED_LIST_LIMIT })}` : ''}\n\n${t('dialog.unsaved.saveFailedDetail')}`
+  })
+  return false
+}
+
+/**
+ * 「保存して終了」。未保存の内容は renderer が持っているので、editor:saveForQuit で頼み、editor:quitSave の返事で書く。
+ * 書けなかったファイル（返事が来ない・上限を超えた・書き込みの失敗）を返す。空なら全部書けた。
+ */
+async function saveUnsavedForQuit(expected: UnsavedFileRef[]): Promise<QuitSaveOutcome[]> {
+  const window = mainWindow
+  if (!window || window.isDestroyed() || window.webContents.isDestroyed()) {
+    return expected.map((file) => ({ ...file, ok: false, error: t('dialog.unsaved.noReply') }))
+  }
+  pendingQuitSave?.resolve(null)
+  const id = randomUUID()
+  const outcomes = await new Promise<QuitSaveOutcome[] | null>((resolve) => {
+    const timer = setTimeout(() => { if (pendingQuitSave?.id === id) { pendingQuitSave = null; resolve(null) } }, QUIT_SAVE_REPLY_MS)
+    pendingQuitSave = { id, expected, resolve: (value) => { clearTimeout(timer); resolve(value) } }
+    send('editor:saveForQuit', id)
+  })
+  if (!outcomes) return expected.map((file) => ({ ...file, ok: false, error: t('dialog.unsaved.noReply') }))
+  return outcomes.filter((outcome) => !outcome.ok)
+}
+
+/**
+ * editor:quitSave。頼んだ requestId の返事だけを受け、確認で示したファイルだけを書く。
+ * 書き先は、登録済みのプロジェクトのフォルダ（root と一致するもの）の中に限る。書くのはエディタの保存と同じ
+ * writeTextFile（プロジェクトの中に閉じ、リンクをたどらず、開いた fd が中の実体かを確かめる）。
+ */
+async function receiveQuitSave(requestId: unknown, entries: unknown): Promise<QuitSaveOutcome[]> {
+  const pending = pendingQuitSave
+  if (!pending || typeof requestId !== 'string' || requestId !== pending.id) throw new UserFacingError(t('dialog.unsaved.noReply'))
+  pendingQuitSave = null
+  const screened = screenQuitSaveEntries(entries, pending.expected, {
+    maxBytes: QUIT_SAVE_MAX_BYTES,
+    maxTotalBytes: QUIT_SAVE_MAX_TOTAL_BYTES,
+    byteLength: (text) => Buffer.byteLength(text, 'utf8')
+  })
+  const outcomes: QuitSaveOutcome[] = []
+  const projects = currentSettings().projects
+  for (const entry of screened.accepted) {
+    const project = findProjectByFolder(projects, entry.root)
+    if (!project) { outcomes.push({ root: entry.root, path: entry.path, ok: false, error: t('errors.folderNotRegistered') }); continue }
+    try {
+      await writeTextFile(project.folderPath, entry.path, entry.content)
+      outcomes.push({ root: entry.root, path: entry.path, ok: true })
+    } catch (err) {
+      outcomes.push({ root: entry.root, path: entry.path, ok: false, error: err instanceof Error ? err.message : String(err) })
+    }
+  }
+  for (const r of screened.rejected) {
+    if (r.reason === 'tooLarge') outcomes.push({ root: r.root, path: r.path, ok: false, error: t('dialog.unsaved.tooLarge', { limit: QUIT_SAVE_MAX_BYTES / 1024 / 1024 }) })
+  }
+  for (const m of screened.missing) outcomes.push({ ...m, ok: false, error: t('dialog.unsaved.noReply') })
+  pending.resolve(outcomes)
+  return outcomes
+}
+
+/**
+ * 「プロジェクトを開く」。終了をやめ、そのファイルのプロジェクトへ切り替え（project:switch と同じ）、エディタにしてタブを開かせる。
+ * 録画中はプロジェクトを切り替えない（assertNotRecording と同じ）。アプリを前に出して、理由を知らせるだけにする。
+ */
+function revealUnsavedFile(target: UnsavedQuitItem): void {
+  const window = mainWindow
+  if (window && !window.isDestroyed()) {
+    if (window.isMinimized()) window.restore()
+    if (!window.isVisible() && !HIDE_WINDOW) window.show()
+    window.focus()
+  }
+  try {
+    assertNotRecording()
+  } catch (err) {
+    send('editor:revealUnsaved', { root: target.root, path: target.path, error: err instanceof Error ? err.message : String(err) })
+    return
+  }
+  const project = currentSettings().projects.find((p) => p.id === target.projectId)
+  if (project && workspace.projectId !== project.id) openProject(project)
+  if (mode !== 'editor') {
+    mode = 'editor'
+    setTelemetryContext({ mode })
+    send('mode:changed', mode)
+  }
+  send('editor:revealUnsaved', { root: target.root, path: target.path })
 }
 /** 録画エンジン。起動を軽くするため、録画を始める時点で初めて読み込む（NF-5） */
 let recording: RecordingController | null = null
@@ -1060,7 +1195,7 @@ function autoUpdater(): AutoUpdater {
 
 /**
  * 「再起動して更新」の前に、作業中の Agent（処理中・確認待ち）と録画を数えて、あれば確かめる。
- * 未保存のファイルは、続く終了の処理（confirmQuitWithUnsaved）が聞く。E2E では聞かない
+ * 未保存のファイルは、その後に同じ確認（resolveUnsavedBeforeQuit）で聞く（update:install）。E2E では聞かない
  * Orca由来: ~/bench/orca/src/main/updater/updater-install-execution.ts の「終了の前の後始末」（Orca は確認を出さずに PTY を閉じる）
  */
 async function confirmRestartForUpdate(): Promise<boolean> {
@@ -1133,8 +1268,21 @@ function registerIpc(): void {
       const progress = updates.status().progress
       if (progress.phase !== 'ready') return false
       // 再起動するときだけ確かめる（deb はインストーラーを開くだけで、アプリは閉じない）
-      if (progress.action === 'restart' && !(await confirmRestartForUpdate())) return false
-      return updates.install()
+      if (progress.action === 'restart') {
+        if (!(await confirmRestartForUpdate())) return false
+        // 未保存のファイルは、終了のときと同じ確認で聞く（保存して再起動・保存せずに再起動・プロジェクトを開く・キャンセル）
+        if (unsavedPromptOpen) return false
+        unsavedPromptOpen = true
+        try {
+          if (!(await resolveUnsavedBeforeQuit())) return false
+        } finally {
+          unsavedPromptOpen = false
+        }
+      }
+      const installed = await updates.install()
+      // 入れられなかった（終了しない）なら、次の終了でまた聞く
+      if (!installed) discardUnsavedConfirmed = false
+      return installed
     },
     'update:setAutoDownload': (on) => {
       autoUpdater().setAutoDownload(on === true)
@@ -1378,7 +1526,7 @@ function registerIpc(): void {
       const data = await loadReviewAt(paths)
       if (!data.document.items.some((it) => it.include)) return { ok: false, message: t('errors.nothingToSend') }
       // 判定モデルの受け入れ確認の節を今の設定に合わせる。
-      // 既定の送信は未対応の指摘だけを送る（done・in_progress・needs_human は送らない）。feedback.md もその指摘だけを詳しく書く。
+      // 既定の送信は未対応の指摘だけを送る（done・in_progress・human_review は送らない）。feedback.md もその指摘だけを詳しく書く。
       // 本文を差し替えた送信（確認への返答）は1件だけを指すので、全件の feedback.md のまま
       if (request.text) await refreshFeedbackMarkdown(paths)
       else if (!(await prepareSendFeedback(paths)).length) return { ok: false, message: t('review.nothingPending') }
@@ -1661,11 +1809,6 @@ function registerIpc(): void {
       const r = await import('./review')
       return r.setReviewProgress(r.checkedPaths(workspace.folderPath, id), patch ?? {})
     },
-    'review:replyPrompt': async (id, itemId, reply) => {
-      const r = await import('./review')
-      if (typeof itemId !== 'string' || typeof reply !== 'string' || !reply.trim()) throw new UserFacingError(t('review.errors.findingNotFound'))
-      return r.replyInstruction(r.checkedPaths(workspace.folderPath, id), itemId, reply)
-    },
     'review:verdict': async (id, itemId, verdict, text) => {
       const r = await import('./review')
       if (typeof itemId !== 'string' || (verdict !== 'ok' && verdict !== 'ng' && verdict !== 'comment')) throw new UserFacingError(t('review.errors.findingNotFound'))
@@ -1859,9 +2002,10 @@ function registerIpc(): void {
       if (failure) throw new UserFacingError(failure)
     },
     'preview:render': (path, source) => renderPreviewSource(path, source),
-    'editor:unsaved': (paths) => {
-      unsavedFiles = Array.isArray(paths) ? paths.filter((p): p is string => typeof p === 'string') : []
+    'editor:unsaved': (files) => {
+      unsavedFiles = sanitizeUnsavedRefs(files)
     },
+    'editor:quitSave': (requestId, entries) => receiveQuitSave(requestId, entries),
 
     'star:star': async () => (await starPrompt()).star(),
     'star:openWeb': async () => (await starPrompt()).openWeb(),
@@ -2196,6 +2340,25 @@ const QUIT_WATCHDOG_MS = 3000
 /** 終了処理の状態。入口が複数あるので1か所で持つ */
 let shutdownPhase: 'running' | 'draining' | 'ready' = 'running'
 
+/** 終了の前に未保存の確認が要るか（E2E では聞かない） */
+function needsUnsavedPrompt(): boolean {
+  return unsavedFiles.length > 0 && !discardUnsavedConfirmed && !IS_E2E
+}
+
+/**
+ * 未保存の確認を出し（出している間は出し直さない）、終了してよいと答えたら改めて app.quit() する。
+ * 入口（ウィンドウの close・⌘Q・メニューの終了）はどれも、ここからは app.quit() で続ければよい
+ * （ウィンドウを閉じる＝終了。準備のできた更新は quit のときに入る）。
+ */
+function askUnsavedThenQuit(): void {
+  if (unsavedPromptOpen) return
+  unsavedPromptOpen = true
+  void resolveUnsavedBeforeQuit()
+    .then((ok) => { if (ok) app.quit() })
+    .catch((err: unknown) => reportHandled(err, { area: 'editor', op: 'unsaved on quit' }))
+    .finally(() => { unsavedPromptOpen = false })
+}
+
 /**
  * 終了の入口（ウィンドウの close / before-quit）を1つにまとめたもの。
  *
@@ -2209,8 +2372,11 @@ let shutdownPhase: 'running' | 'draining' | 'ready' = 'running'
 function beginShutdown(): boolean {
   console.log('[STEP] beginShutdown phase=' + shutdownPhase)
   if (shutdownPhase === 'ready') return false
-  // 未保存のファイルがあって、やめると答えたら終了しない（true を返して呼び出し側に見送らせる）
-  if (shutdownPhase === 'running' && !confirmQuitWithUnsaved()) return true
+  // 未保存のファイルがあれば、今回の終了は見送り（true）、確認の答えを待つ。保存して終了・保存せずに終了なら改めて終了する
+  if (shutdownPhase === 'running' && needsUnsavedPrompt()) {
+    askUnsavedThenQuit()
+    return true
+  }
   shuttingDown = true
 
   if (shutdownPhase === 'draining') {

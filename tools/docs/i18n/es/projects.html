@@ -60,7 +60,7 @@ Un proyecto es una carpeta (normalmente la raíz de tu repositorio). Cada proyec
 <p>Se resalta la etiqueta que corresponde a la página actual (el prefijo más largo). Haz clic derecho en una etiqueta o usa su icono de lápiz para editarla o eliminarla (<span class="docs-ui">Eliminar</span>). Cuando se abre un proyecto y no hay URL anterior, se carga su primera URL guardada.</p>
 <p>Las etiquetas se agrupan por tipo: primero las URL de la app, luego los diseños y después los documentos, con un separador y un icono para cada tipo. Al cambiar a un diseño o a un documento, o desde uno de ellos, se abre su URL guardada tal cual, sin conservar la ruta.</p>
 
-<!-- @design-docs b11ff7ba55 -->
+<!-- @design-docs 674aff9ed3 -->
 ## Revisar diseños y documentos, no solo código
 <p>El feedback no tiene por qué ser sobre código. Todo lo que se abre en el navegador integrado se puede grabar y marcar con el lápiz de la misma manera: un diseño de Figma o Penpot, un prototipo, una especificación en Google Docs o Notion, un documento de diseño en GitHub, un PDF. Guarda esas URL en el proyecto antes de la revisión, junto a <code>local</code> y <code>dev</code>.</p>
 <ol class="docs-steps">
@@ -72,7 +72,7 @@ Un proyecto es una carpeta (normalmente la raíz de tu repositorio). Cada proyec
 <p>Los hallazgos grabados sobre un diseño o un documento llevan ese tipo en Hallazgos y en <code>feedback.md</code>, y la instrucción que se envía al agente lo indica. Así el agente cambia el diseño o el documento en lugar del código:</p>
 <ul>
   <li>Si el documento está en el proyecto (una especificación en Markdown, un ADR), el agente edita ese archivo.</li>
-  <li>Si no puede editarlo (un archivo de Figma, un documento de Google Docs), el agente marca el hallazgo como <span class="docs-ui">Pregunta del agente</span> con el cambio exacto que hay que hacer, para que lo apliques tú o se lo pases a quien corresponda.</li>
+  <li>Si no puede editarlo (un archivo de Figma, un documento de Google Docs), el agente no se detiene a preguntarte: pone el hallazgo en <span class="docs-ui">Por revisar</span> con una nota de una línea con el cambio exacto que hay que hacer, para que lo apliques tú o se lo pases a quien corresponda.</li>
 </ul>
 <p>Ejemplo: mientras lees la especificación de precios en Google Docs, rodeas la tabla de planes y dices «el plan Pro ahora cuesta 9.800 yenes, no 8.800». <code>feedback.md</code> incluye el hallazgo bajo el objetivo <code>Spec</code> con <code>Tipo: documento</code>, y el agente responde con la frase corregida para la especificación en lugar de tocar el código de la página de precios. Si grabas la especificación y la app en ejecución en la misma grabación, los hallazgos se separan por objetivo, así que el agente puede actualizar primero la especificación y después el código que la implementa.</p>
 <p>También se reconocen las páginas no guardadas de <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> y hosts similares. Los archivos de la carpeta del proyecto (Markdown, Mermaid) se revisan desde la lista <span class="docs-ui">Archivos</span> del panel <span class="docs-ui">Objetivos de revisión</span>.</p>

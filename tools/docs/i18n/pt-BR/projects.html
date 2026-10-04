@@ -60,7 +60,7 @@ Um projeto é uma pasta (normalmente a raiz do seu repositório). Cada projeto g
 <p>Os chips são agrupados por tipo: primeiro as URLs de app, depois os designs e então os documentos, com um divisor e um ícone para cada tipo. Ao trocar para um design ou documento, ou sair dele, a URL salva é aberta como está, sem levar o caminho junto.</p>
 <p>O chip que corresponde à página atual (o prefixo mais longo) fica destacado. Clique com o botão direito em um chip ou use o ícone de lápis para editá-lo ou usar <span class="docs-ui">Excluir</span>. Quando um projeto abre e não há URL anterior, a primeira URL salva dele é carregada.</p>
 
-<!-- @design-docs b11ff7ba55 -->
+<!-- @design-docs 674aff9ed3 -->
 ## Revisar designs e documentos, não só código
 <p>O feedback não precisa ser sobre código. Tudo o que abre no navegador integrado pode ser gravado e marcado com a caneta do mesmo jeito: um design no Figma ou no Penpot, um protótipo, uma especificação no Google Docs ou no Notion, um documento de design no GitHub, um PDF. Salve essas URLs no projeto antes da revisão, ao lado de <code>local</code> e <code>dev</code>.</p>
 <ol class="docs-steps">
@@ -72,7 +72,7 @@ Um projeto é uma pasta (normalmente a raiz do seu repositório). Cada projeto g
 <p>Os apontamentos gravados sobre um design ou um documento recebem esse tipo em Apontamentos e no <code>feedback.md</code>, e a instrução enviada ao agente informa isso. O agente então altera o design ou o documento em vez do código:</p>
 <ul>
   <li>Se o documento está no projeto (uma especificação em Markdown, um ADR), o agente edita esse arquivo.</li>
-  <li>Se não puder editá-lo (um arquivo do Figma, um Google Doc), o agente marca o apontamento como <span class="docs-ui">Pergunta do agent</span> com a alteração exata a fazer, para que você a aplique ou repasse.</li>
+  <li>Se não puder editá-lo (um arquivo do Figma, um Google Doc), o agente não para para perguntar a você: marca o apontamento como <span class="docs-ui">Para revisar</span> com uma nota de uma linha com a alteração exata a fazer, para que você a aplique ou repasse.</li>
 </ul>
 <p>Exemplo: lendo a especificação de preços no Google Docs, você circula a tabela de planos e diz "o plano Pro agora custa 9.800 ienes, não 8.800". O <code>feedback.md</code> lista o apontamento sob o alvo <code>Spec</code> com <code>Kind: document</code>, e o agente responde com a frase corrigida para a especificação, sem mexer no código da página de preços. Grave a especificação e o app em execução na mesma gravação, e os apontamentos são separados por alvo, para que o agente possa atualizar primeiro a especificação e depois o código que a implementa.</p>
 <p>Páginas não salvas em <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> e hosts parecidos também são reconhecidas. Os arquivos da pasta do projeto (Markdown, Mermaid) são revisados pela lista <span class="docs-ui">Arquivos</span> no painel <span class="docs-ui">Alvos de revisão</span>.</p>

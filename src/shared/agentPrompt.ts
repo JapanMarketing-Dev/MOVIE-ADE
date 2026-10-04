@@ -12,7 +12,7 @@ import { getLocale, translate, type SupportedLocale } from './i18n'
  *                       書かなければ、有効なときは文末に足す
  *   {{threshold}} … 合格のしきい値（設定の decision.passThreshold、既定 0.7）
  *   {{progress}} … 進み具合を書く progress.json のパス（feedback.md と同じフォルダ。@shared/findingProgress）。
- *                  既定文はこれを使って、指摘ごとに in_progress / done を書かせる。利用者の文に無くても feedback.md の「進み具合」の節で伝わる
+ *                  既定文はこれを使って、指摘ごとに in_progress / human_review を書かせる。利用者の文に無くても feedback.md の「進み具合」の節で伝わる
  * キーなどの秘密は指示文に入れない（判定モデルの URL・モデルは環境変数で Agent に渡る。src/main/decision/）
  */
 
@@ -61,34 +61,8 @@ export function renderAgentPrompt(target: AgentPromptTarget, template?: string |
   return body.replace(/\{\{path\}\}/g, path).replace(/\{\{relpath\}\}/g, relpath).replace(/\{\{threshold\}\}/g, threshold).replace(/\{\{progress\}\}/g, progress)
 }
 
-/** 返答の長さの上限。ターミナルへ1回で書き込める長さに収める（agent/sanitize.ts の fitsSingleWrite） */
+/** 人のコメント（NG・Comment）の1件の長さの上限。ターミナルへ1回で書き込める長さに収める（agent/sanitize.ts の fitsSingleWrite） */
 export const REPLY_MAX = 1200
-
-/** Agent が人間へ戻した指摘（progress.json の needs_human）への返答 */
-interface AgentReply {
-  /** 画面の通し番号（feedback.md の見出しの番号） */
-  n: number
-  /** 指摘のID（progress.json のキー） */
-  id: string
-  reply: string
-}
-
-/**
- * 「返答を送る」で Agent へ送る1行。その指摘だけを返答つきで進めさせる。
- * 返答の改行は空白にまとめる（貼り付けが複数行の入力にならないように）。文面は設定のテンプレートに依らず固定
- */
-export function renderReplyPrompt(target: AgentPromptTarget, reply: AgentReply, locale?: SupportedLocale, decision?: AgentPromptDecision | null): string {
-  const lang = locale ?? getLocale()
-  const path = target.feedbackMd ?? `${target.relativeDir.replace(/\/+$/, '')}/feedback.md`
-  const body = translate(lang, 'agentPrompt.reply', {
-    n: reply.n,
-    id: reply.id,
-    reply: reply.reply.replace(/\s+/g, ' ').trim().slice(0, REPLY_MAX),
-    path,
-    progress: path.replace(/feedback\.md$/, 'progress.json')
-  })
-  return decision ? `${body}${translate(lang, 'agentPrompt.replyDecision')}` : body
-}
 
 /** まとめて送るときのコメントの合計の上限（文面の残りの分を空けて、送信の上限 20,000 字に収める） */
 export const NG_TOTAL_MAX = 15_000

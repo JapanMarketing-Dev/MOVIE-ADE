@@ -30,8 +30,6 @@ interface SessionSummary {
   includedCount: number
   /** そのうち完了した件数（progress.json） */
   doneCount: number
-  /** Agent が人間へ戻した（確認待ち）件数 */
-  needsHumanCount: number
   /** Agent が直して人の確認を待っている（human_review）件数 */
   humanReviewCount: number
   targetUrl?: string
@@ -158,7 +156,6 @@ function pendingSummary(paths: SessionPaths): SessionSummary {
     needsCheckCount: 0,
     includedCount: 0,
     doneCount: 0,
-    needsHumanCount: 0,
     humanReviewCount: 0,
     hasFeedback: existsSync(paths.feedbackMd),
     hasRecording: existsSync(paths.recording),
@@ -195,7 +192,6 @@ export async function summarize(paths: SessionPaths, budget: ListBudget = new Li
         needsCheckCount: 0,
         includedCount: 0,
         doneCount: 0,
-        needsHumanCount: 0,
         humanReviewCount: 0,
         hasFeedback,
         hasRecording,
@@ -223,7 +219,6 @@ export async function summarize(paths: SessionPaths, budget: ListBudget = new Li
     needsCheckCount: stored.needsCheckCount,
     includedCount: progress.total,
     doneCount: progress.done,
-    needsHumanCount: progress.needsHuman,
     humanReviewCount: progress.humanReview,
     ...(stored.targetUrl ? { targetUrl: stored.targetUrl } : {}),
     hasFeedback,

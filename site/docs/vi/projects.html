@@ -236,7 +236,7 @@
 <p>Góp ý ghi trên một thiết kế hay tài liệu được gắn nhãn loại đó trong tab Góp ý và trong <code>feedback.md</code>, và chỉ dẫn gửi tới agent cũng nói rõ điều này. Khi đó agent sửa thiết kế hoặc tài liệu thay vì sửa code:</p>
 <ul>
   <li>Nếu tài liệu nằm trong dự án (một đặc tả Markdown, một ADR), agent sửa trực tiếp tệp đó.</li>
-  <li>Nếu agent không sửa được (một tệp Figma, một Google Doc), agent đánh dấu góp ý là <span class="docs-ui">Agent hỏi</span> kèm chính xác thay đổi cần làm, để bạn tự áp dụng hoặc chuyển cho người khác.</li>
+  <li>Nếu agent không sửa được (một tệp Figma, một Google Doc), agent không dừng lại để hỏi bạn: nó đặt góp ý thành <span class="docs-ui">Chờ kiểm tra</span> kèm một ghi chú một dòng nêu chính xác thay đổi cần làm, để bạn tự áp dụng hoặc chuyển cho người khác.</li>
 </ul>
 <p>Ví dụ: khi đọc đặc tả bảng giá trên Google Docs, bạn khoanh bảng các gói và nói "gói Pro bây giờ là 9.800 yên, không phải 8.800". <code>feedback.md</code> liệt kê góp ý dưới đích <code>Spec</code> với <code>Kind: document</code>, và agent trả lời bằng câu đã sửa cho đặc tả thay vì động vào code của trang bảng giá. Ghi đặc tả và ứng dụng đang chạy trong cùng một lần ghi, góp ý sẽ được tách theo đích, nên agent có thể cập nhật đặc tả trước rồi đến code hiện thực nó.</p>
 <p>Các trang chưa lưu trên <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> và các host tương tự cũng được nhận ra. Tệp trong thư mục dự án (Markdown, Mermaid) được review từ danh sách <span class="docs-ui">Tệp</span> trong panel <span class="docs-ui">Mục tiêu review</span>.</p>
