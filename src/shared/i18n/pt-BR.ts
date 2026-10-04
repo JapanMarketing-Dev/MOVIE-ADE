@@ -544,6 +544,7 @@ export const ptBR: LocaleMessages = {
   'statusBar.lockedWhileRecording': 'Não pode ser alterado durante a gravação',
   'statusBar.recordMyVoice': 'Gravar minha voz',
   'statusBar.microphone': 'Microfone',
+  'statusBar.reloadMics': 'Recarregar microfones',
   'statusBar.micToUse': 'Microfone a usar',
   'statusBar.systemDefault': 'Padrão do sistema',
   'statusBar.level': 'Nível',

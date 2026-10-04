@@ -544,6 +544,7 @@ export const de: LocaleMessages = {
   'statusBar.lockedWhileRecording': 'Während der Aufnahme nicht änderbar',
   'statusBar.recordMyVoice': 'Meine Stimme aufnehmen',
   'statusBar.microphone': 'Mikrofon',
+  'statusBar.reloadMics': 'Mikrofone neu laden',
   'statusBar.micToUse': 'Zu verwendendes Mikrofon',
   'statusBar.systemDefault': 'Systemstandard',
   'statusBar.level': 'Pegel',

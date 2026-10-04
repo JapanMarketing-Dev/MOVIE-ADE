@@ -544,6 +544,7 @@ export const zhTW: LocaleMessages = {
   'statusBar.lockedWhileRecording': '錄製中無法變更',
   'statusBar.recordMyVoice': '錄下我的聲音',
   'statusBar.microphone': '麥克風',
+  'statusBar.reloadMics': '重新載入麥克風',
   'statusBar.micToUse': '要使用的麥克風',
   'statusBar.systemDefault': '系統預設',
   'statusBar.level': '音量',

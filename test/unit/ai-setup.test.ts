@@ -127,7 +127,8 @@ describe('出し方', () => {
   })
 })
 
-describe('描画（静的な HTML）', () => {
+// 最初のテストが画面の部品を読み込む。Windows ARM の VM は、Mac 側でビルドや E2E が動いていると 10 秒を超えた
+describe('描画（静的な HTML）', { timeout: 60_000 }, () => {
   const available: SttAvailability = { localReady: false, keyStorage: 'dev', keys: {} as SttAvailability['keys'], stt: {} as SttAvailability['stt'], llm: {} as SttAvailability['llm'] }
   // 型を追わせない（テストの tsconfig は renderer を含まないため）
   const modulePath = '../../src/renderer/components/AiProviderFields'

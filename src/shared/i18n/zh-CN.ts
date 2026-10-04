@@ -544,6 +544,7 @@ export const zhCN: LocaleMessages = {
   'statusBar.lockedWhileRecording': '录制期间无法更改',
   'statusBar.recordMyVoice': '录制我的语音',
   'statusBar.microphone': '麦克风',
+  'statusBar.reloadMics': '重新加载麦克风',
   'statusBar.micToUse': '使用的麦克风',
   'statusBar.systemDefault': '系统默认',
   'statusBar.level': '电平',

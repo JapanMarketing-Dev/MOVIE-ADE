@@ -544,6 +544,7 @@ export const ru: LocaleMessages = {
   'statusBar.lockedWhileRecording': 'Нельзя изменить во время записи',
   'statusBar.recordMyVoice': 'Записывать мой голос',
   'statusBar.microphone': 'Микрофон',
+  'statusBar.reloadMics': 'Обновить список микрофонов',
   'statusBar.micToUse': 'Используемый микрофон',
   'statusBar.systemDefault': 'Системный по умолчанию',
   'statusBar.level': 'Уровень',

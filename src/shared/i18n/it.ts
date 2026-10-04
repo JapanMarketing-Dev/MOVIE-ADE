@@ -544,6 +544,7 @@ export const it: LocaleMessages = {
   'statusBar.lockedWhileRecording': 'Non modificabile durante la registrazione',
   'statusBar.recordMyVoice': 'Registra la mia voce',
   'statusBar.microphone': 'Microfono',
+  'statusBar.reloadMics': 'Ricarica i microfoni',
   'statusBar.micToUse': 'Microfono da usare',
   'statusBar.systemDefault': 'Predefinito di sistema',
   'statusBar.level': 'Livello',

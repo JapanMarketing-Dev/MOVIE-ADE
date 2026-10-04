@@ -549,6 +549,7 @@ export const en = {
   'statusBar.lockedWhileRecording': 'Can\'t be changed while recording',
   'statusBar.recordMyVoice': 'Record my voice',
   'statusBar.microphone': 'Microphone',
+  'statusBar.reloadMics': 'Reload microphones',
   'statusBar.micToUse': 'Microphone to use',
   'statusBar.systemDefault': 'System default',
   'statusBar.level': 'Level',
