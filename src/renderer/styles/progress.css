@@ -101,106 +101,6 @@
   color: var(--color-success);
 }
 
-/* Agent から確認があります（needs_human）。人間が決めるまで目立たせる（琥珀色） */
-.rv-progress--needs_human {
-  border-color: var(--color-warning-border);
-  background: var(--color-warning-quiet);
-  color: var(--color-warning);
-}
-
-.rv-card.is-asking {
-  box-shadow: inset 3px 0 0 var(--color-warning);
-}
-
-.rv-ask {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-4);
-  border: 1px solid var(--color-warning-border);
-  border-radius: var(--radius-md);
-  background: var(--color-warning-quiet);
-  gap: var(--space-3);
-}
-
-.rv-ask__title {
-  display: inline-flex;
-  align-items: center;
-  margin: 0;
-  color: var(--color-warning);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  gap: var(--space-2);
-}
-
-.rv-ask__note {
-  margin: 0;
-  color: var(--color-text);
-  font-size: var(--font-size-sm);
-  white-space: pre-wrap;
-}
-
-.rv-ask__last {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-}
-
-.rv-ask__reply {
-  box-sizing: border-box;
-  min-height: calc(3lh + var(--space-2) * 2);
-  max-height: calc(16lh + var(--space-2) * 2);
-  field-sizing: content;
-  line-height: var(--line-height-normal);
-  width: 100%;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-panel);
-  color: var(--color-text);
-  font-family: var(--font-ui);
-  font-size: var(--font-size-sm);
-  resize: vertical;
-}
-
-.rv-ask__reply:focus {
-  border-color: var(--color-border-focus);
-  outline: none;
-}
-
-.rv-ask__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.rv-progress-sum__ask {
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-warning);
-  font-weight: var(--font-weight-bold);
-  gap: var(--space-1);
-}
-
-.rv-progress-sum__ask-bar {
-  background: var(--color-warning);
-  transition: width var(--motion-fast) var(--ease-out);
-}
-
-/* サイドバー: 確認待ちがあれば琥珀色の印 */
-.session__ask {
-  display: inline-flex;
-  flex: none;
-  margin-right: var(--space-2);
-  margin-left: auto;
-  align-items: center;
-  color: var(--color-warning);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-  font-variant-numeric: tabular-nums;
-  gap: 2px;
-}
-
 /* 進み具合のボタンはカードの右端にある。説明は右に寄せて内側（左）へ開く（一覧は横にはみ出すと切れる。review.css の rv-card__tools と同じ） */
 .rv-card__top > .tooltip-anchor:has(> .rv-progress) .tooltip {
   right: 0;
@@ -212,7 +112,7 @@
   transform: none;
 }
 
-/* Agent が直して人の確認を待っている（human_review）。Agent からの確認（琥珀色）と分けて青 */
+/* Agent が直して人の確認を待っている（human_review） */
 .rv-progress--human_review {
   border-color: var(--color-accent-line);
   background: var(--color-accent-wash, var(--color-accent-quiet));
@@ -351,10 +251,6 @@
   gap: 2px;
 }
 
-.session__review + .session__ask {
-  margin-left: 0;
-}
-
 /*
  * 送信ボタンの名前は件数つき（「4 件を Agent へ送信」）で長くなる。窓が狭いときは名前を省略して縮め、
  * ヘッダーが中央の列からはみ出さないようにする（ボタンの文字は .btn__label が … で切る）
@@ -401,7 +297,6 @@
   }
 
   .rv-verdict__actions,
-  .rv-ask__actions,
   .rv-review-actions {
     min-width: 0;
   }
@@ -485,10 +380,6 @@
 
 .rv-status-filter__item--done .rv-status-filter__chip[aria-pressed='true'] > svg {
   color: var(--color-success);
-}
-
-.rv-status-filter__item--needs_human .rv-status-filter__chip[aria-pressed='true'] > svg {
-  color: var(--color-warning);
 }
 
 /* 隠している進み具合 */

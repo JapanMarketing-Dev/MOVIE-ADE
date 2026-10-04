@@ -9,7 +9,6 @@ import {
   ListChecks,
   ListFilter,
   Eye,
-  MessageCircleQuestion,
   PenLine,
   Pencil,
   Search,
@@ -68,7 +67,7 @@ export function toReviewSession(h: ReviewSummary): ReviewSession {
     label: formatTime(new Date(h.startedAt)),
     target: h.targetUrl ?? tNow('app.reviewFallbackTitle'),
     findings: h.itemCount,
-    ...(h.includedCount ? { progress: { done: Math.min(h.doneCount ?? 0, h.includedCount), total: h.includedCount, ...(h.needsHumanCount ? { needsHuman: h.needsHumanCount } : {}), ...(h.humanReviewCount ? { humanReview: h.humanReviewCount } : {}) } } : {}),
+    ...(h.includedCount ? { progress: { done: Math.min(h.doneCount ?? 0, h.includedCount), total: h.includedCount, ...(h.humanReviewCount ? { humanReview: h.humanReviewCount } : {}) } } : {}),
     status: h.broken ? 'broken' : h.incomplete ? 'incomplete' : h.sentAt ? 'sent' : 'draft',
     group: formatDate(new Date(h.startedAt)),
     startedAt: h.startedAt,
@@ -187,15 +186,10 @@ function SessionCard({
               {session.label}
               {duration && <span title={t('sidebar.duration', { value: duration })}> · {duration}</span>}
             </span>
-            {/* Agent が人間へ戻した指摘（needs_human）があれば琥珀色の印と件数 */}
             {/* Agent が直して人の確認を待っている指摘（human_review）があれば青の印と件数 */}
             {session.progress?.humanReview ? <span className="session__review" data-testid={`session-human-review-${session.id}`}
               title={t('sidebar.progressHumanReview', { count: session.progress.humanReview })} role="img" aria-label={t('sidebar.progressHumanReview', { count: session.progress.humanReview })}>
               <Eye size={11} strokeWidth={2.25} aria-hidden="true" />{session.progress.humanReview}
-            </span> : null}
-            {session.progress?.needsHuman ? <span className="session__ask" data-testid={`session-needs-human-${session.id}`}
-              title={t('sidebar.progressNeedsHuman', { count: session.progress.needsHuman })} role="img" aria-label={t('sidebar.progressNeedsHuman', { count: session.progress.needsHuman })}>
-              <MessageCircleQuestion size={11} strokeWidth={2.25} aria-hidden="true" />{session.progress.needsHuman}
             </span> : null}
             {/* 幅が足りないので札はアイコンだけ。状態の名前は title と読み上げで出す（フィルタの札には文字がある） */}
             <span className={`session__status session__status--${session.status} session__status--icon`} title={t(status.label)} role="img" aria-label={t(status.label)}>

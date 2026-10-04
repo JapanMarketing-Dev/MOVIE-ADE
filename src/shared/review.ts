@@ -11,8 +11,6 @@ export interface ReviewSummary {
   includedCount?: number
   /** そのうち完了した件数（progress.json。@shared/findingProgress） */
   doneCount?: number
-  /** Agent が人間へ戻した（確認待ち。needs_human）件数 */
-  needsHumanCount?: number
   /** Agent が直して人の確認を待っている（human_review）件数 */
   humanReviewCount?: number
   targetUrl?: string

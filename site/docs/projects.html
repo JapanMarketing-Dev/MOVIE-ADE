@@ -236,7 +236,7 @@
 <p>Findings recorded on a design or a doc are labeled with that kind in Findings and in <code>feedback.md</code>, and the instruction sent to the agent says so. The agent then changes the design or the document instead of the code:</p>
 <ul>
   <li>If the document lives in the project (a Markdown spec, an ADR), the agent edits that file.</li>
-  <li>If it can't edit it (a Figma file, a Google Doc), the agent marks the finding <span class="docs-ui">Needs you</span> with the exact change to make, so you can apply it or pass it on.</li>
+  <li>If it can't edit it (a Figma file, a Google Doc), the agent doesn't stop to ask you: it sets the finding to <span class="docs-ui">To review</span> with a one-line note of the exact change to make, so you can apply it or pass it on.</li>
 </ul>
 <p>Example: while reading the pricing spec in Google Docs you circle the plan table and say "the Pro plan is 9,800 yen now, not 8,800". <code>feedback.md</code> lists the finding under the <code>Spec</code> target with <code>Kind: document</code>, and the agent answers with the corrected sentence for the spec rather than touching the pricing page code. Record the spec and the running app in the same recording, and the findings are split by target, so the agent can update the spec first and then the code that implements it.</p>
 <p>Unsaved pages on <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> and similar hosts are recognized too. Files in the project folder (Markdown, Mermaid) are reviewed from the <span class="docs-ui">Files</span> list in the <span class="docs-ui">Review targets</span> panel.</p>

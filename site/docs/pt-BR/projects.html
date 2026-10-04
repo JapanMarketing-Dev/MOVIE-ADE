@@ -236,7 +236,7 @@
 <p>Os apontamentos gravados sobre um design ou um documento recebem esse tipo em Apontamentos e no <code>feedback.md</code>, e a instrução enviada ao agente informa isso. O agente então altera o design ou o documento em vez do código:</p>
 <ul>
   <li>Se o documento está no projeto (uma especificação em Markdown, um ADR), o agente edita esse arquivo.</li>
-  <li>Se não puder editá-lo (um arquivo do Figma, um Google Doc), o agente marca o apontamento como <span class="docs-ui">Pergunta do agent</span> com a alteração exata a fazer, para que você a aplique ou repasse.</li>
+  <li>Se não puder editá-lo (um arquivo do Figma, um Google Doc), o agente não para para perguntar a você: marca o apontamento como <span class="docs-ui">Para revisar</span> com uma nota de uma linha com a alteração exata a fazer, para que você a aplique ou repasse.</li>
 </ul>
 <p>Exemplo: lendo a especificação de preços no Google Docs, você circula a tabela de planos e diz "o plano Pro agora custa 9.800 ienes, não 8.800". O <code>feedback.md</code> lista o apontamento sob o alvo <code>Spec</code> com <code>Kind: document</code>, e o agente responde com a frase corrigida para a especificação, sem mexer no código da página de preços. Grave a especificação e o app em execução na mesma gravação, e os apontamentos são separados por alvo, para que o agente possa atualizar primeiro a especificação e depois o código que a implementa.</p>
 <p>Páginas não salvas em <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> e hosts parecidos também são reconhecidas. Os arquivos da pasta do projeto (Markdown, Mermaid) são revisados pela lista <span class="docs-ui">Arquivos</span> no painel <span class="docs-ui">Alvos de revisão</span>.</p>

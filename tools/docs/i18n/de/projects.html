@@ -60,7 +60,7 @@ Ein Projekt ist ein Ordner (meist das Stammverzeichnis Ihres Repositorys). Jedes
 <p>Der Chip, der zur aktuellen Seite passt (längstes Präfix), ist hervorgehoben. Klicken Sie mit der rechten Maustaste auf einen Chip oder verwenden Sie sein Stiftsymbol, um ihn zu bearbeiten oder zu <span class="docs-ui">Löschen</span>. Wird ein Projekt geöffnet und gibt es keine vorherige URL, wird seine erste gespeicherte URL geladen.</p>
 <p>Die Chips sind nach Art gruppiert: zuerst App-URLs, dann Designs, dann Dokumente, mit einer Trennlinie und einem Symbol für jede Art. Beim Wechsel zu oder von einem Design oder Dokument wird dessen gespeicherte URL unverändert geöffnet, ohne den Pfad zu übernehmen.</p>
 
-<!-- @design-docs b11ff7ba55 -->
+<!-- @design-docs 674aff9ed3 -->
 ## Designs und Dokumente prüfen, nicht nur Code
 <p>Feedback muss sich nicht auf Code beziehen. Alles, was sich im integrierten Browser öffnen lässt, können Sie auf dieselbe Weise aufnehmen und mit dem Stift markieren: ein Design in Figma oder Penpot, einen Prototyp, eine Spezifikation in Google Docs oder Notion, ein Design-Dokument auf GitHub, ein PDF. Speichern Sie diese URLs vor dem Review im Projekt, neben <code>local</code> und <code>dev</code>.</p>
 <ol class="docs-steps">
@@ -72,7 +72,7 @@ Ein Projekt ist ein Ordner (meist das Stammverzeichnis Ihres Repositorys). Jedes
 <p>Befunde, die auf einem Design oder einem Dokument aufgenommen wurden, sind in <span class="docs-ui">Befunde</span> und in <code>feedback.md</code> mit dieser Art gekennzeichnet, und die an den Agent gesendete Anweisung weist darauf hin. Der Agent ändert dann das Design oder das Dokument statt des Codes:</p>
 <ul>
   <li>Liegt das Dokument im Projekt (eine Markdown-Spezifikation, ein ADR), bearbeitet der Agent diese Datei.</li>
-  <li>Kann er es nicht bearbeiten (eine Figma-Datei, ein Google-Dokument), markiert der Agent den Befund als <span class="docs-ui">Frage vom Agent</span> und nennt die genaue Änderung, damit Sie sie übernehmen oder weitergeben können.</li>
+  <li>Kann er es nicht bearbeiten (eine Figma-Datei, ein Google-Dokument), hält der Agent nicht an, um Sie zu fragen: Er setzt den Befund auf <span class="docs-ui">Zu prüfen</span> mit einer einzeiligen Notiz zur genauen Änderung, damit Sie sie übernehmen oder weitergeben können.</li>
 </ul>
 <p>Beispiel: Beim Lesen der Preisspezifikation in Google Docs kreisen Sie die Tarif-Tabelle ein und sagen „der Pro-Tarif kostet jetzt 9.800 Yen, nicht 8.800“. <code>feedback.md</code> führt den Befund unter dem Ziel <code>Spec</code> mit <code>Kind: document</code>, und der Agent antwortet mit dem korrigierten Satz für die Spezifikation, statt den Code der Preisseite anzufassen. Nehmen Sie die Spezifikation und die laufende App in derselben Aufnahme auf, werden die Befunde nach Ziel getrennt, sodass der Agent zuerst die Spezifikation und danach den Code aktualisieren kann, der sie umsetzt.</p>
 <p>Nicht gespeicherte Seiten auf <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> und ähnlichen Hosts werden ebenfalls erkannt. Dateien im Projektordner (Markdown, Mermaid) prüfen Sie über die Liste <span class="docs-ui">Dateien</span> im Bereich <span class="docs-ui">Review-Ziele</span>.</p>

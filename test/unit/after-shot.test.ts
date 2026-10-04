@@ -106,7 +106,9 @@ describe('feedback.md の AFTER', () => {
     expect(md).toContain('Start the dev server once and share it')
     expect(md).toContain('AFTER files are named by finding ID')
     expect(md).toContain(`npx --yes playwright screenshot --viewport-size=1280,800 "http://localhost:3000/pricing" "${after}"`)
-    expect(md).toContain('set `needs_human`')
+    // 撮れなくても人には頼まず、after なしで human_review にして理由を note に1行
+    expect(md).toContain('still set `human_review`, without `after`')
+    expect(md).not.toContain('needs_human')
     expect(md).not.toContain('{{')
   })
 

@@ -288,15 +288,16 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
       <section class="docs-section" aria-labelledby="verify">
         <h2 id="verify"><a class="docs-anchor" href="#verify" aria-label="Liên kết tới Kiểm tra nghiệm thu bằng model quyết định">#</a>Kiểm tra nghiệm thu bằng model quyết định</h2>
         <figure class="docs-clip" data-clip="verify">
-  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/verify.webp" data-src="../assets/clips/verify.mp4" aria-label="Agent sửa các góp ý và kiểm tra từng góp ý bằng model quyết định cho tới khi tất cả đều đạt."></video>
-  <figcaption>Agent sửa các góp ý và kiểm tra từng góp ý bằng model quyết định cho tới khi tất cả đều đạt.</figcaption>
+  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/verify.webp" data-src="../assets/clips/verify.mp4" aria-label="Agent sửa các góp ý và kiểm tra từng góp ý bằng model quyết định trước khi bạn xem chúng."></video>
+  <figcaption>Agent sửa các góp ý và kiểm tra từng góp ý bằng model quyết định trước khi bạn xem chúng.</figcaption>
 </figure>
-<p>Bật tính năng này và coding agent của bạn sẽ tự kiểm tra công việc của mình theo từng góp ý trước khi báo Xong. Ferret không tự đánh giá gì cả: nó cung cấp cho agent một <em>model quyết định</em> (bất kỳ API nào tương thích System One) và yêu cầu agent, trong <code>feedback.md</code>, lặp lại cho tới khi mọi góp ý đều đạt.</p>
+<p>Bật tính năng này và coding agent của bạn sẽ tự kiểm tra công việc của mình theo từng góp ý và tiếp tục cải thiện nó trước khi bạn xem. Ferret không tự đánh giá gì cả: nó cung cấp cho agent một <em>model quyết định</em> (bất kỳ API nào tương thích System One) và hướng dẫn agent cách dùng nó trong <code>feedback.md</code>. Model quyết định là bước tự kiểm tra của chính agent, không bao giờ là câu hỏi cho bạn: agent không hỏi bạn điều gì. Bạn chỉ so sánh BEFORE và AFTER rồi bấm <span class="docs-ui">OK</span> hoặc <span class="docs-ui">NG</span>.</p>
 <ol class="docs-steps">
   <li>Agent triển khai các góp ý.</li>
   <li>Với mỗi góp ý, agent chụp ảnh màn hình AFTER (cùng viewport và trạng thái trang như ảnh BEFORE) và gửi một request gồm nội dung góp ý, dòng "Done when" của nó và ảnh BEFORE/AFTER tới model quyết định.</li>
-  <li>Một góp ý đạt khi P(done) ít nhất bằng ngưỡng (mặc định 0.7) và lựa chọn là <code>done</code>. Agent sửa những góp ý còn lại và đánh giá lại <strong>tất cả</strong> góp ý ở mỗi vòng, và chỉ dừng khi mọi góp ý đều đạt trong cùng một vòng, hoặc vì một lý do chính đáng mà nó phải nêu rõ: không truy cập được API, góp ý nằm ngoài phạm vi, hoặc góp ý bị kẹt với điểm số không đổi.</li>
-  <li>Danh sách Xong / Chưa xong cuối cùng có điểm số của từng góp ý và số vòng.</li>
+  <li>Một góp ý đạt khi P(done) ít nhất bằng ngưỡng (mặc định 0.7) và lựa chọn là <code>done</code>. Với những góp ý còn lại, agent cải thiện bản sửa (hoặc ảnh chụp màn hình) và đánh giá lại <strong>tất cả</strong> góp ý ở mỗi vòng, cho tới khi mọi góp ý đều đạt trong cùng một vòng.</li>
+  <li>Một góp ý vẫn chưa đạt sau vài vòng (3 vòng với điểm số không đổi, hoặc tổng cộng 5 vòng), một góp ý nằm ngoài phạm vi, hoặc API quyết định không truy cập được đều không làm dừng công việc: agent vẫn đặt góp ý thành <span class="docs-ui">Chờ kiểm tra</span>, kèm AFTER, điểm số cuối cùng và tối đa một ghi chú một dòng.</li>
+  <li>Trong <span class="docs-ui">Góp ý</span>, mỗi góp ý đang chờ bạn hiển thị BEFORE, AFTER và điểm số làm tư liệu. <span class="docs-ui">OK</span> đánh dấu nó là xong; <span class="docs-ui">NG</span> kèm nhận xét sẽ gửi nó lại cho agent. Danh sách Xong / Chưa xong cuối cùng của agent trong terminal có điểm số của từng góp ý và số vòng.</li>
 </ol>
 <p>Thiết lập trong <span class="docs-ui">Cài đặt → Model quyết định</span> và bật <span class="docs-ui">Thêm bước kiểm tra bằng model quyết định vào chỉ dẫn cho agent</span>. Preset chỉ điền sẵn các trường; mọi trường vẫn sửa được, và <span class="docs-ui">Tùy chỉnh</span> dùng được với bất kỳ API tương thích nào.</p>
 <table>

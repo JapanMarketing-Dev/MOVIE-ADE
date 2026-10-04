@@ -288,15 +288,16 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
       <section class="docs-section" aria-labelledby="verify">
         <h2 id="verify"><a class="docs-anchor" href="#verify" aria-label="指向“用判定模型做验收检查”的链接">#</a>用判定模型做验收检查</h2>
         <figure class="docs-clip" data-clip="verify">
-  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/verify.webp" data-src="../assets/clips/verify.mp4" aria-label="Agent 修复反馈，并用判定模型逐条检查，直到全部通过。"></video>
-  <figcaption>Agent 修复反馈，并用判定模型逐条检查，直到全部通过。</figcaption>
+  <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/verify.webp" data-src="../assets/clips/verify.mp4" aria-label="Agent 修复反馈，并在你查看之前用判定模型逐条检查。"></video>
+  <figcaption>Agent 修复反馈，并在你查看之前用判定模型逐条检查。</figcaption>
 </figure>
-<p>开启后，你的编码 Agent 会在报告完成前，逐条对照反馈检查自己的工作。Ferret 本身不做任何判断：它给 Agent 提供一个<em>判定模型</em>（任何兼容 System One 的 API），并在 <code>feedback.md</code> 中要求它循环执行，直到每条反馈都通过。</p>
+<p>开启后，你的编码 Agent 会逐条对照反馈检查自己的工作，并在你查看之前不断改进。Ferret 本身不做任何判断：它给 Agent 提供一个<em>判定模型</em>（任何兼容 System One 的 API），并在 <code>feedback.md</code> 中告诉它如何使用。判定模型是 Agent 自己的检查，绝不是向你提问：Agent 不会问你任何问题。你只需比较 BEFORE 和 AFTER，然后按 <span class="docs-ui">OK</span> 或 <span class="docs-ui">NG</span>。</p>
 <ol class="docs-steps">
   <li>Agent 实现这些反馈。</li>
   <li>对每条反馈，它截取一张 AFTER 截图（与 BEFORE 静帧相同的视口和页面状态），然后向判定模型发送一个请求，包含反馈文本、“完成条件”一行以及 BEFORE/AFTER 图片。</li>
-  <li>当 P(done) 不低于阈值（默认 0.7）且选择为 <code>done</code> 时，该反馈通过。Agent 修复其余反馈，并在每一轮重新判定<strong>所有</strong>反馈；只有当所有反馈在同一轮中都通过时才停止，或者因为必须说明的正当理由而停止：API 无法访问、某条反馈超出范围，或某条反馈卡住且分数不再变化。</li>
-  <li>最终的“已完成 / 未完成”列表包含每条反馈的分数和轮数。</li>
+  <li>当 P(done) 不低于阈值（默认 0.7）且选择为 <code>done</code> 时，该反馈通过。对其余反馈，Agent 会改进修复（或截图），并在每一轮重新判定<strong>所有</strong>反馈，直到所有反馈在同一轮中都通过。</li>
+  <li>几轮之后仍未通过的反馈（连续 3 轮分数不变，或总共 5 轮）、超出范围的反馈，或无法访问的判定 API，都不会让工作停下来：Agent 照样把该反馈设为 <span class="docs-ui">待检查</span>，附上它的 AFTER、最后的分数，以及最多一行说明。</li>
+  <li>在 <span class="docs-ui">反馈</span> 中，每条等你处理的反馈都会把 BEFORE、AFTER 和分数作为参考材料展示出来。<span class="docs-ui">OK</span> 会把它标为完成；<span class="docs-ui">NG</span> 加上评论会把它发回给 Agent。Agent 在终端中给出的最终“已完成 / 未完成”列表包含每条反馈的分数和轮数。</li>
 </ol>
 <p>在 <span class="docs-ui">设置 → 判定模型</span> 中进行设置，并开启 <span class="docs-ui">在 Agent 指令中加入判定模型检查</span>。预设只会填写字段；每个字段都可以编辑，<span class="docs-ui">自定义</span> 可用于任何兼容的 API。</p>
 <table>

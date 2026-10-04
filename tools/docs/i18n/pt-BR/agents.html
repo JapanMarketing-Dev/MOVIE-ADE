@@ -70,15 +70,16 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>Se nenhum agente estiver em execução, o Ferret inicia um primeiro e envia assim que ele estiver pronto. Nada é enviado enquanto o agente aguarda uma resposta a um pedido de permissão. Responda no terminal primeiro.</p>
 <p><span class="docs-ui">Copiar para o Agent</span> coloca a mesma instrução na área de transferência para um agente que roda em outro lugar (outro terminal, IDE ou app). Só os apontamentos marcados como <span class="docs-ui">Enviar</span> são incluídos. O vídeo nunca é incluído.</p>
 
-<!-- @verify f6f903b43a -->
+<!-- @verify b8434eb181 -->
 ## Verificação de aceitação com um modelo de decisão
-{{clip:verify|O agente corrige os apontamentos e verifica cada um com o modelo de decisão até que todos sejam aprovados.}}
-<p>Ative isso e o seu agente de programação confere o próprio trabalho em relação a cada apontamento antes de informar que terminou. O Ferret não julga nada por conta própria: ele dá ao agente um <em>modelo de decisão</em> (qualquer API compatível com System One) e, no <code>feedback.md</code>, diz a ele para repetir até que todos os apontamentos sejam aprovados.</p>
+{{clip:verify|O agente corrige os apontamentos e verifica cada um com o modelo de decisão antes que você os veja.}}
+<p>Ative isso e o seu agente de programação confere o próprio trabalho em relação a cada apontamento e continua melhorando-o antes que você olhe. O Ferret não julga nada por conta própria: ele dá ao agente um <em>modelo de decisão</em> (qualquer API compatível com System One) e, no <code>feedback.md</code>, diz a ele como usá-lo. O modelo de decisão é a verificação do próprio agente, nunca uma pergunta para você: o agente não pergunta nada a você. Você só compara ANTES e DEPOIS e aperta <span class="docs-ui">OK</span> ou <span class="docs-ui">NG</span>.</p>
 <ol class="docs-steps">
   <li>O agente implementa os apontamentos.</li>
   <li>Para cada apontamento, ele faz uma captura de tela DEPOIS (com a mesma viewport e o mesmo estado da página da imagem ANTES) e envia ao modelo de decisão uma requisição com o texto do apontamento, a linha "Done when" dele e as imagens ANTES/DEPOIS.</li>
-  <li>Um apontamento é aprovado quando P(done) é pelo menos o limiar (padrão 0.7) e a escolha é <code>done</code>. O agente corrige o restante e reavalia <strong>todos</strong> os apontamentos a cada rodada, e só para quando todos são aprovados na mesma rodada ou por um motivo honesto que ele precisa declarar: a API está inacessível, um apontamento está fora do escopo ou um apontamento está travado com as pontuações inalteradas.</li>
-  <li>A lista final de Concluído / Não concluído inclui as pontuações de cada apontamento e o número de rodadas.</li>
+  <li>Um apontamento é aprovado quando P(done) é pelo menos o limiar (padrão 0.7) e a escolha é <code>done</code>. O agente melhora a correção (ou a captura de tela) dos demais e reavalia <strong>todos</strong> os apontamentos a cada rodada, até que todos sejam aprovados na mesma rodada.</li>
+  <li>Um apontamento que ainda falha depois de algumas rodadas (3 rodadas com as pontuações inalteradas, ou 5 no total), um apontamento fora do escopo ou uma API de decisão inacessível não interrompem o trabalho: o agente marca o apontamento como <span class="docs-ui">Para revisar</span> mesmo assim, com a captura DEPOIS, a última pontuação e no máximo uma nota de uma linha.</li>
+  <li>Em <span class="docs-ui">Apontamentos</span>, cada apontamento que aguarda você mostra ANTES, DEPOIS e a pontuação como material. <span class="docs-ui">OK</span> o marca como concluído; <span class="docs-ui">NG</span> com um comentário o devolve ao agente. A lista final de Concluído / Não concluído do agente no terminal inclui as pontuações de cada apontamento e o número de rodadas.</li>
 </ol>
 <p>Configure em <span class="docs-ui">Configurações → Modelo de decisão</span> e ative <span class="docs-ui">Adicionar a verificação do modelo de decisão às instruções do agent</span>. As predefinições só preenchem os campos; todos os campos continuam editáveis, e <span class="docs-ui">Personalizado</span> funciona com qualquer API compatível.</p>
 <table>

@@ -37,7 +37,7 @@ import { agentLabel } from '@shared/agentCatalog'
 import type { TuiAgent } from '@shared/types'
 import { loadSendTargets, rememberedSendTarget, resolveRememberedTarget, sendReviewToAgent } from '../lib/sendReview'
 import { SendTargetButton } from './SendTargetButton'
-import { NeedsHumanPanel, ProgressSummary, ProgressToggle, QueuedPanel, ReviewActions, StatusFilterBar, VerdictPanel } from './FindingProgress'
+import { ProgressSummary, ProgressToggle, QueuedPanel, ReviewActions, StatusFilterBar, VerdictPanel } from './FindingProgress'
 import { countByStatus, isStatusShown, sanitizeHiddenStatuses } from '@shared/findingStatusFilter'
 import { countProgress, nextProgress, pendingIds, progressOf, type FindingProgress, type ReviewVerdict } from '@shared/findingProgress'
 import { dropPositionAt, moveAmongVisible, stepAmongVisible, type DropPosition } from '@shared/reorder'
@@ -449,7 +449,7 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
             reorderTo(moveAmongVisible(allIds, visibleIds, dragging, item.id, dropPositionAt(e.clientY - box.top, box.height)))
             endDrag()
           }}
-          className={`rv-card${dragging === item.id ? ' is-dragging' : ''}${dropAt?.id === item.id ? ` is-drop-${dropAt.position}` : ''}${item.include ? '' : ' is-excluded'}${checking ? ' is-checking' : ''}${progressOf(review.progress, item.id) === 'done' ? ' is-done' : ''}${item.include && progressOf(review.progress, item.id) === 'needs_human' ? ' is-asking' : ''}${reviewing(item) ? ' is-reviewing' : ''}${currentRow?.item === item ? ' is-current' : ''}`} data-testid={`review-item-${n}`}>
+          className={`rv-card${dragging === item.id ? ' is-dragging' : ''}${dropAt?.id === item.id ? ` is-drop-${dropAt.position}` : ''}${item.include ? '' : ' is-excluded'}${checking ? ' is-checking' : ''}${progressOf(review.progress, item.id) === 'done' ? ' is-done' : ''}${reviewing(item) ? ' is-reviewing' : ''}${currentRow?.item === item ? ' is-current' : ''}`} data-testid={`review-item-${n}`}>
           {/* BEFORE（録画時の静止画）と、Agent が直したあとに撮った AFTER（progress.json の after）。ReviewShots.tsx */}
           <FindingShots review={review} item={item} n={n} onZoom={(src) => setImage({ src, n })} />
 
@@ -487,32 +487,6 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
               {take?.addedAt && <span className={`rv-added${unsent ? ' is-unsent' : ''}`} data-testid="review-item-added"
                 title={t(unsent ? 'review.addedUnsentTip' : 'review.addedTip', { n: take.n })}>{t('review.addedBadge')}</span>}
             </div>
-            {/* Agent が前提違いで人間へ戻した指摘（needs_human）。返答して送り直す／取り下げる／撮り直す */}
-            {item.include && review.progress?.[item.id]?.status === 'needs_human' && <NeedsHumanPanel n={n} entry={review.progress[item.id]!} busy={busy}
-              onReply={async (reply) => {
-                let ok = false
-                await action(async () => {
-                  // 宛先は Send to Agent のボタンと同じ（最後に選んだ宛先を今の Agent・タブに合わせる。居なければ起動してから送る）
-                  const text = await window.ade.invoke('review:replyPrompt', review.id, item.id, reply)
-                  const { agents, running } = await loadSendTargets()
-                  const target = resolveRememberedTarget(rememberedSendTarget(projectKey), agents, running)
-                  const result = await sendReviewToAgent({ reviewId: review.id, target, focusedTerminalId: terminalId, defaultAgent, text,
-                    onStarting: (agent) => toast({ tone: 'info', message: t('review.startingAgent', { agent: agentLabel(agent) }) }) })
-                  if (result.ok) {
-                    ok = true
-                    onUpdate({ ...review, progress: await window.ade.invoke('review:progress', review.id, { [item.id]: { status: 'in_progress', reply } }) })
-                  }
-                  // submitted === false は貼り付けただけ（利用者が Enter を押す）。その案内は result.message に入っている
-                  toast({ tone: result.ok && result.submitted !== false ? 'success' : 'warning', message: result.ok && result.submitted !== false ? t('review.needsHuman.sent') : result.message })
-                })
-                return ok
-              }}
-              onWithdraw={() => void action(async () => {
-                // Send to Agent から外し、進み具合も未対応へ戻す（完了扱いにしない）
-                const next = await window.ade.invoke('review:edit', review.id, { kind: 'include', id: item.id, include: false })
-                onUpdate({ ...next, progress: await window.ade.invoke('review:progress', review.id, { [item.id]: 'todo' }) })
-              })}
-              {...(onRecord ? { onRerecord: () => onRecord('append') } : {})} />}
             {/* Agent が直した指摘（human_review）。人が OK / NG / Comment を付ける。done にできるのは人だけ */}
             {reviewing(item) && <VerdictPanel n={n} entry={review.progress![item.id]!} busy={busy} onVerdict={(kind, body) => verdict(item.id, kind, body)} />}
             {/* NG を付けて、まだ送り直していない。1件だけ送る操作（まとめて送るのはヘッダー） */}

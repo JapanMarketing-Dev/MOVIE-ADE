@@ -2,12 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { FINDING_STATUSES, countByStatus, isStatusShown, onlyStatus, sanitizeHiddenStatuses, toggleStatus } from '../../src/shared/findingStatusFilter'
 import type { ProgressMap } from '../../src/shared/findingProgress'
 
-const items = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }, { id: 'e' }]
+const items = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }]
 const progress: ProgressMap = {
   b: { status: 'in_progress' },
   c: { status: 'done' },
-  d: { status: 'human_review' },
-  e: { status: 'needs_human' }
+  d: { status: 'human_review' }
 }
 
 describe('進み具合の絞り込み', () => {
@@ -34,8 +33,13 @@ describe('進み具合の絞り込み', () => {
     expect(sanitizeHiddenStatuses(['done', 'todo'])).toEqual(['todo', 'done'])
   })
 
+  it('チップは未対応・対応中・確認待ち・完了だけ。Agent からの質問（needs_human）のチップは無い', () => {
+    expect(FINDING_STATUSES).toEqual(['todo', 'in_progress', 'human_review', 'done'])
+    expect(sanitizeHiddenStatuses(['needs_human', 'done'])).toEqual(['done'])
+  })
+
   it('進み具合ごとの件数', () => {
-    expect(countByStatus(items, progress)).toEqual({ todo: 1, in_progress: 1, needs_human: 1, human_review: 1, done: 1 })
-    expect(countByStatus(items, undefined).todo).toBe(5)
+    expect(countByStatus(items, progress)).toEqual({ todo: 1, in_progress: 1, human_review: 1, done: 1 })
+    expect(countByStatus(items, undefined).todo).toBe(4)
   })
 })

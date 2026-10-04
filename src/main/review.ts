@@ -2,7 +2,7 @@ import { captureTargetGap, sanitizeCaptureTarget } from '@shared/captureTarget'
 import { sanitizeLimitFailover } from '@shared/failover'
 import { handoffFilePath } from './failover/handoff'
 import { clipboard, nativeImage, shell } from 'electron'
-import { renderAgentPrompt, renderNgPrompt, renderReplyPrompt } from '@shared/agentPrompt'
+import { renderAgentPrompt, renderNgPrompt } from '@shared/agentPrompt'
 import { groupByTarget } from '@shared/reviewTarget'
 import { purposeOf } from '@shared/projectTargets'
 import { buildRemoteFeedbackPrompt } from '@shared/projectSource'
@@ -363,7 +363,7 @@ export async function refreshFeedbackMarkdown(paths: SessionPaths): Promise<void
 }
 
 /**
- * 「Agentへ送信」の直前。送るのは未対応（todo）で送る対象の指摘だけ（done・in_progress・needs_human は送らない）。
+ * 「Agentへ送信」の直前。送るのは未対応（todo）で送る対象の指摘だけ（done・in_progress・human_review は送らない）。
  * feedback.md をその指摘だけを詳しく書いた形で書き直し、残りは「今回の依頼に含まない（やり直さない）」の節に載せる。
  * 送る指摘のIDを返す。0件なら feedback.md は書き換えない（呼び出し側が送らずに理由を返す）
  */
@@ -406,20 +406,6 @@ export async function reviewInstruction(paths: SessionPaths, template?: string |
   return renderAgentPrompt({ relativeDir: paths.relativeDir, feedbackMd: paths.feedbackMd, ...(nonCode ? { nonCode } : {}), ...(handoff ? { handoff } : {}) }, template, undefined, decisionPromptOptions())
 }
 
-/**
- * 「Agent から確認があります」（needs_human）への返答を送る1行。renderer が review:send の差し替えの本文として送り、
- * 送れたら review:progress でその指摘を対応中へ戻して返答を残す。番号は feedback.md の見出しと同じ数え方（送る指摘だけを対象ごとの節の順に）。送る指摘でなければ投げる
- */
-export async function replyInstruction(paths: SessionPaths, itemId: string, reply: string): Promise<string> {
-  const record = await loadSession(paths)
-  if (!record) throw new UserFacingError(t('review.errors.notFound'))
-  const included = record.document.items.filter((it) => it.include)
-  const ordered = groupByTarget(included, (it) => it.context.url, record.document.meta.urlPresets ?? []).flatMap((g) => g.items)
-  const n = ordered.findIndex((it) => it.id === itemId) + 1
-  if (n === 0) throw new UserFacingError(t('review.errors.findingNotFound'))
-  await refreshFeedbackMarkdown(paths)
-  return renderReplyPrompt({ relativeDir: paths.relativeDir, feedbackMd: paths.feedbackMd }, { n, id: itemId, reply }, undefined, decisionPromptOptions())
-}
 export async function previewFrames(paths: SessionPaths, itemId: string): Promise<import('@shared/review').ReviewFrame[]> {
   const record = await loadSession(paths)
   const item = record?.document.items.find((it) => it.id === itemId)

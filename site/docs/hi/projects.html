@@ -236,7 +236,7 @@
 <p>किसी design या दस्तावेज़ पर रिकॉर्ड किए गए findings पर Findings और <code>feedback.md</code> में उसी प्रकार का label लगता है, और agent को भेजा गया निर्देश भी यह बताता है। तब agent code के बजाय design या दस्तावेज़ बदलता है:</p>
 <ul>
   <li>अगर दस्तावेज़ प्रोजेक्ट में है (कोई Markdown spec, कोई ADR), तो agent उस फ़ाइल को संपादित करता है।</li>
-  <li>अगर वह उसे संपादित नहीं कर सकता (कोई Figma फ़ाइल, कोई Google Doc), तो agent उस finding को करने वाले सटीक बदलाव के साथ <span class="docs-ui">Agent का सवाल</span> के रूप में चिह्नित करता है, ताकि आप उसे लागू कर सकें या आगे भेज सकें।</li>
+  <li>अगर वह उसे संपादित नहीं कर सकता (कोई Figma फ़ाइल, कोई Google Doc), तो agent आपसे पूछने के लिए नहीं रुकता: वह finding को करने वाले सटीक बदलाव के एक पंक्ति के note के साथ <span class="docs-ui">जाँच बाकी</span> पर सेट करता है, ताकि आप उसे लागू कर सकें या आगे भेज सकें।</li>
 </ul>
 <p>उदाहरण: Google Docs में pricing spec पढ़ते हुए आप plan table पर गोला बनाते हैं और कहते हैं "Pro plan अब 8,800 नहीं, 9,800 yen है"। <code>feedback.md</code> उस finding को <code>Spec</code> target के अंतर्गत <code>Kind: document</code> के साथ सूचीबद्ध करता है, और agent pricing पेज के code को छूने के बजाय spec के लिए सुधरा हुआ वाक्य देता है। Spec और चलते हुए ऐप को एक ही रिकॉर्डिंग में रिकॉर्ड करें, तो findings target के हिसाब से बँट जाते हैं, ताकि agent पहले spec और फिर उसे लागू करने वाला code अपडेट कर सके।</p>
 <p><code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> और ऐसे ही hosts के बिना सेव किए पेज भी पहचाने जाते हैं। प्रोजेक्ट फ़ोल्डर की फ़ाइलों (Markdown, Mermaid) का review <span class="docs-ui">Review targets</span> पैनल की <span class="docs-ui">फ़ाइलें</span> सूची से होता है।</p>

@@ -236,7 +236,7 @@
 <p>在设计或文档上录制的反馈，会在 <span class="docs-ui">反馈</span> 标签页和 <code>feedback.md</code> 中标上对应的类型，发送给 Agent 的指令也会说明这一点。于是 Agent 会修改设计或文档，而不是代码：</p>
 <ul>
   <li>如果文档就在项目中（Markdown 规格、ADR），Agent 会编辑该文件。</li>
-  <li>如果 Agent 无法编辑它（Figma 文件、Google 文档），Agent 会把这条反馈标为 <span class="docs-ui">Agent 提问</span>，并写明需要做的具体修改，由你来应用或转交给他人。</li>
+  <li>如果 Agent 无法编辑它（Figma 文件、Google 文档），Agent 不会停下来问你：它会把这条反馈设为 <span class="docs-ui">待检查</span>，并用一行说明写明需要做的具体修改，由你来应用或转交给他人。</li>
 </ul>
 <p>示例：在 Google Docs 中阅读价格规格时，你圈出套餐表并说“Pro 套餐现在是 9,800 日元，不是 8,800”。<code>feedback.md</code> 会把这条反馈列在 <code>Spec</code> 目标下，并标注 <code>Kind: document</code>；Agent 会给出规格中修正后的句子，而不会去改价格页面的代码。如果在同一次录制中同时录下规格和运行中的应用，反馈会按目标分开，Agent 就可以先更新规格，再更新实现它的代码。</p>
 <p><code>figma.com</code>、<code>docs.google.com</code>、<code>notion.so</code> 等主机上未保存的页面同样能被识别。项目文件夹中的文件（Markdown、Mermaid）可以在 <span class="docs-ui">审查对象</span> 面板的 <span class="docs-ui">文件</span> 列表中审查。</p>

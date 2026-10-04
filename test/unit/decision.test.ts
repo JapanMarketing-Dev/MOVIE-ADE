@@ -18,7 +18,7 @@ import {
   sanitizeDecisionPreferences,
   type DecisionPreferences
 } from '@shared/decision'
-import { defaultAgentPrompt, renderAgentPrompt, renderReplyPrompt } from '@shared/agentPrompt'
+import { defaultAgentPrompt, renderAgentPrompt } from '@shared/agentPrompt'
 import { formatHeaderLines, parseHeaderLines } from '@shared/aiProviders'
 import type { FeedbackDocument, FeedbackItem } from '../../src/main/pipeline/types'
 import { DECISION_NODE_LINE, DECISION_QUESTIONS_JSON, renderFeedbackMarkdown } from '../../src/main/pipeline/feedback'
@@ -125,8 +125,8 @@ describe('Agent への指示文', () => {
     expect(on).toContain('you decide')
     expect(on).toContain('install and start it and pull the model yourself')
     expect(renderAgentPrompt(target, null, 'ja', { threshold: 0.7 })).toContain('判定モデルに送らなくてかまいません')
-    const reply = renderReplyPrompt(target, { n: 1, id: 'i1', reply: 'OK' }, 'en', { threshold: 0.7 })
-    expect(reply).toContain('you do not have to send it to the decision model')
+    // 届かないままでも人には聞かず、判定モデルなしで続ける
+    expect(on).toContain('if it still cannot be reached, go on without it')
     // 無効なら付けない
     expect(renderAgentPrompt(target, null, 'en', null)).not.toContain('explicitly approved')
   })

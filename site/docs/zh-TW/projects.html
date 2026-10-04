@@ -236,7 +236,7 @@
 <p>在設計或文件上錄下的意見，會在「意見」分頁與 <code>feedback.md</code> 中標上該種類，傳送給 Agent 的指示也會說明這一點。Agent 便會修改設計或文件，而不是程式碼：</p>
 <ul>
   <li>如果文件位於專案中（Markdown 規格、ADR），Agent 會編輯該檔案。</li>
-  <li>如果無法編輯（Figma 檔案、Google 文件），Agent 會將該意見標為 <span class="docs-ui">Agent 提問</span>，並寫明要做的具體修改，讓你自行套用或轉交他人。</li>
+  <li>如果無法編輯（Figma 檔案、Google 文件），Agent 不會停下來問你：它會將該意見設為 <span class="docs-ui">待檢查</span>，並用一行說明寫明要做的具體修改，讓你自行套用或轉交他人。</li>
 </ul>
 <p>範例：在 Google Docs 中閱讀價格規格時，你圈起方案表並說「Pro 方案現在是 9,800 日圓，不是 8,800」。<code>feedback.md</code> 會把這則意見列在 <code>Spec</code> 目標底下，並標示 <code>Kind: document</code>，Agent 會回覆規格中修正後的句子，而不會去動價格頁面的程式碼。把規格和執行中的 App 錄在同一段錄影中，意見會依目標分開，因此 Agent 可以先更新規格，再更新實作它的程式碼。</p>
 <p><code>figma.com</code>、<code>docs.google.com</code>、<code>notion.so</code> 等主機上未儲存的頁面也會被辨識出來。專案資料夾中的檔案（Markdown、Mermaid）可從 <span class="docs-ui">審查目標</span> 面板的 <span class="docs-ui">檔案</span> 清單中審查。</p>

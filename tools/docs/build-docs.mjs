@@ -297,7 +297,7 @@ ${clip('targets', 'Switching review targets and pages without stopping the recor
 <p>Findings recorded on a design or a doc are labeled with that kind in Findings and in <code>feedback.md</code>, and the instruction sent to the agent says so. The agent then changes the design or the document instead of the code:</p>
 <ul>
   <li>If the document lives in the project (a Markdown spec, an ADR), the agent edits that file.</li>
-  <li>If it can't edit it (a Figma file, a Google Doc), the agent marks the finding ${ui('Needs you')} with the exact change to make, so you can apply it or pass it on.</li>
+  <li>If it can't edit it (a Figma file, a Google Doc), the agent doesn't stop to ask you: it sets the finding to ${ui('To review')} with a one-line note of the exact change to make, so you can apply it or pass it on.</li>
 </ul>
 <p>Example: while reading the pricing spec in Google Docs you circle the plan table and say "the Pro plan is 9,800 yen now, not 8,800". <code>feedback.md</code> lists the finding under the <code>Spec</code> target with <code>Kind: document</code>, and the agent answers with the corrected sentence for the spec rather than touching the pricing page code. Record the spec and the running app in the same recording, and the findings are split by target, so the agent can update the spec first and then the code that implements it.</p>
 <p>Unsaved pages on <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> and similar hosts are recognized too. Files in the project folder (Markdown, Mermaid) are reviewed from the ${ui('Files')} list in the ${ui('Review targets')} panel.</p>`],
@@ -448,13 +448,14 @@ ${clip('send', 'From the Findings tab to the agent in the built-in terminal with
 <p>If no agent is running, ${APP} starts one first and sends as soon as it is ready. Nothing is sent while the agent is waiting for a permission answer. Answer in the terminal first.</p>
 <p>${ui('Copy for Agent')} puts the same instruction on the clipboard for an agent running elsewhere (another terminal, IDE, or app). Only findings toggled to ${ui('Send')} are addressed. The video is never included.</p>`],
     ['verify', 'Acceptance check with a decision model', `
-${clip('verify', 'The agent fixes the findings and checks each one with the decision model until all pass.')}
-<p>Turn this on and your coding agent checks its own work against each finding before it reports Done. ${APP} does not judge anything itself: it gives the agent a <em>decision model</em> (any System One compatible API) and tells it, in <code>feedback.md</code>, to loop until every finding passes.</p>
+${clip('verify', 'The agent fixes the findings and checks each one with the decision model before you look at them.')}
+<p>Turn this on and your coding agent checks its own work against each finding and keeps improving it before you look. ${APP} does not judge anything itself: it gives the agent a <em>decision model</em> (any System One compatible API) and tells it, in <code>feedback.md</code>, how to use it. The decision model is the agent's own check, never a question for you: the agent does not ask you anything. You only compare BEFORE and AFTER and press ${ui('OK')} or ${ui('NG')}.</p>
 <ol class="docs-steps">
   <li>The agent implements the findings.</li>
   <li>For each finding it captures an AFTER screenshot (same viewport and page state as the BEFORE still) and sends one request with the finding text, its "Done when" line and the BEFORE/AFTER images to the decision model.</li>
-  <li>A finding passes when P(done) is at least the threshold (default 0.7) and the choice is <code>done</code>. The agent fixes the rest and re-judges <strong>all</strong> findings every round, and stops only when every finding passes in the same round, or for an honest reason it must state: the API is unreachable, a finding is out of scope, or a finding is stuck with unchanged scores.</li>
-  <li>The final Done / Not done list includes each finding's scores and the number of rounds.</li>
+  <li>A finding passes when P(done) is at least the threshold (default 0.7) and the choice is <code>done</code>. The agent improves the fix (or the screenshot) for the rest and re-judges <strong>all</strong> findings every round, until every finding passes in the same round.</li>
+  <li>A finding that still fails after a few rounds (3 rounds with unchanged scores, or 5 in all), a finding that is out of scope, or a decision API that cannot be reached does not stop the work: the agent sets the finding to ${ui('To review')} anyway, with its AFTER, its last score and at most a one-line note.</li>
+  <li>In ${ui('Findings')}, each finding waiting for you shows BEFORE, AFTER and the score as material. ${ui('OK')} marks it done; ${ui('NG')} with a comment sends it back to the agent. The agent's final Done / Not done list in the terminal includes each finding's scores and the number of rounds.</li>
 </ol>
 <p>Set it up in ${ui('Settings → Decision model')} and turn on ${ui('Add the decision-model check to agent instructions')}. Presets only fill in the fields; every field stays editable, and ${ui('Custom')} works with any compatible API.</p>
 <table>
