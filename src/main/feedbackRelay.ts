@@ -42,7 +42,7 @@ export interface RelaySubmission {
 }
 
 /** 中継の code に、アプリの側で分かる失敗を足したもの */
-export type RelayFailure = ErrorCode | 'network' | 'timeout' | 'bad_response' | 'disabled'
+type RelayFailure = ErrorCode | 'network' | 'timeout' | 'bad_response' | 'disabled'
 
 export type RelayResult =
   | { ok: true; issue: number; url: string }
@@ -141,7 +141,10 @@ export async function sendToRelay(
   }
 }
 
-/** 中継が使えない（落ちている・つながらない）とみなして、ブラウザの issues/new へ切り替える失敗か */
+/**
+ * 中継が使えない（落ちている・つながらない）とみなして、ブラウザの issues/new へ切り替える失敗か。
+ * upstream_pending（GitHub が作ったか分からない）は切り替えない。Issue ができていれば2件目になる（security-4 [12]）
+ */
 export function shouldFallBackToBrowser(code: RelayFailure): boolean {
   return code === 'network' || code === 'timeout' || code === 'bad_response' || code === 'disabled' ||
     code === 'internal' || code === 'upstream_failed' || code === 'not_found' || code === 'method_not_allowed' ||

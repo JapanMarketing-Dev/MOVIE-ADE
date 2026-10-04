@@ -7,7 +7,7 @@
 import type { TranscriptSegment } from './types'
 import { similarity, containsNormalized } from './text'
 
-export interface MergeOptions {
+interface MergeOptions {
   /** 二重取りと見なす時間の重なり比（マイク側の長さに対する重なりの割合） */
   minOverlapRatio: number;
   /** 二重取りと見なすテキスト類似度 */
@@ -16,13 +16,13 @@ export interface MergeOptions {
   toleranceMs: number
 }
 
-export const defaultMergeOptions: MergeOptions = {
+const defaultMergeOptions: MergeOptions = {
   minOverlapRatio: 0.5,
   minSimilarity: 0.6,
   toleranceMs: 700,
 }
 
-export interface MergeResult {
+interface MergeResult {
   segments: TranscriptSegment[];
   /** 二重取りとして捨てたマイク側の発話（検証・デバッグ用） */
   removed: Array<{ segment: TranscriptSegment; matchedText: string; similarity: number }>

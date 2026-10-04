@@ -63,7 +63,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
 </ol>
 <p>Modelnya tetap <code>gpt-transcribe</code>. Hanya saat pengembangan (<code>pnpm dev</code>), <code>OPENAI_API_KEY</code> dari file <code>.env</code> yang diabaikan git juga dibaca. Build yang dipaketkan tidak pernah membaca <code>.env</code>.</p>
 
-<!-- @compatible 8c200e00b1 -->
+<!-- @compatible 2ccbf4537c -->
 ## Endpoint yang kompatibel dengan OpenAI
 <p>Ferret mengirim <code>POST &lt;base&gt;/v1/audio/transcriptions</code> (multipart: <code>file</code>, <code>model</code>, <code>response_format=json</code>, <code>language</code>, <code>prompt</code>), sehingga dirancang untuk server yang mengimplementasikan rute transkripsi OpenAI.</p>
 <ol class="docs-steps">
@@ -80,7 +80,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
     <tr><td><a href="https://console.groq.com/docs/speech-to-text">Groq</a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
   </tbody>
 </table>
-<div class="docs-callout docs-callout-warn"><p>Ferret dirancang untuk server yang kompatibel dengan OpenAI seperti ini, tetapi server-server tersebut belum diuji dengan Ferret. URL dan nama model di atas adalah nilai bawaan yang didokumentasikan oleh masing-masing server.</p></div>
+<div class="docs-callout docs-callout-note"><p>Ferret berkomunikasi dengan server-server ini melalui API transkripsi standar OpenAI (<code>/v1/audio/transcriptions</code>), sehingga server apa pun yang menyediakannya bisa digunakan. URL dan nama model di atas adalah nilai bawaan yang didokumentasikan oleh masing-masing server.</p></div>
 <ul>
   <li><code>/v1</code> di akhir atau <code>/v1/audio/transcriptions</code> yang ikut ditempel akan dibuang saat disimpan, jadi kedua bentuk bisa dipakai.</li>
   <li>URL yang mengandung nama pengguna atau kata sandi ditolak, sehingga key tidak pernah berakhir di <code>settings.json</code>.</li>

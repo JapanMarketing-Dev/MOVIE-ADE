@@ -33,7 +33,7 @@ export type CliToolId =
 
 export type CliToolCategory = 'git' | 'ai' | 'cloud' | 'deploy'
 
-export interface CliToolEntry {
+interface CliToolEntry {
   label: string
   category: CliToolCategory
   /** PATH 上にあればインストール済みとみなすコマンド */
@@ -235,10 +235,6 @@ export const CLI_TOOLS: Record<CliToolId, CliToolEntry> = {
     install: { linux: 'curl -fsSL https://get.docker.com -o get-docker.sh && sudo sh get-docker.sh' },
     homepageUrl: 'https://docs.docker.com/get-started/get-docker/'
   }
-}
-
-export function isCliToolId(value: unknown): value is CliToolId {
-  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(CLI_TOOLS, value)
 }
 
 function osKey(platform: PlatformName): 'darwin' | 'linux' | 'win32' {

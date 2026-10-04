@@ -8,7 +8,7 @@
  * - 読んでいる間に伸びても、上限を超えた時点でやめる
  */
 import { constants, fstatSync, lstatSync, openSync, closeSync, readSync, statSync } from 'node:fs'
-import { lstat, open, stat } from 'node:fs/promises'
+import { lstat, open, stat, type FileHandle } from 'node:fs/promises'
 
 /** ファイルが上限より大きい */
 export class FileTooLargeError extends Error {
@@ -26,9 +26,11 @@ export class NotRegularFileError extends Error {
   }
 }
 
-export interface BoundedReadOptions {
+interface BoundedReadOptions {
   /** 末端がリンクなら断る（O_NOFOLLOW のある OS では開くときにも断る） */
   noFollow?: boolean
+  /** 開いた直後に呼ぶ。開いたものが確かめたものと同じかを見る（containedFile.ts。security-4 [5]）。投げれば読まない */
+  afterOpen?: (handle: FileHandle) => Promise<void>
 }
 
 const flagsFor = (options: BoundedReadOptions) =>
@@ -44,6 +46,7 @@ export async function readFileBounded(path: string, maxBytes: number, options: B
   if (before.size > maxBytes) throw new FileTooLargeError(path, maxBytes, before.size)
   const handle = await open(path, flagsFor(options))
   try {
+    await options.afterOpen?.(handle)
     const info = await handle.stat()
     if (!info.isFile()) throw new NotRegularFileError(path)
     if (info.size > maxBytes) throw new FileTooLargeError(path, maxBytes, info.size)

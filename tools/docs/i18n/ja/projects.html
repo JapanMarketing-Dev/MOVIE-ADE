@@ -20,14 +20,15 @@
 <p>名前は最初はフォルダ名になります。すでに登録してあるフォルダを追加すると、追加せずにそれを開きます（macOS と Windows ではパスの大文字・小文字を区別せずに比べます）。サイドバーのメニューから、プロジェクトの <span class="docs-ui">名前を変更</span> や <span class="docs-ui">登録を外す</span> ができます。登録を外してもフォルダは消えません。</p>
 <p>ターミナルはプロジェクトのフォルダで開き、レビューは <code>&lt;project&gt;/.ferret/</code> の下に保存します。</p>
 
-<!-- @save-url 8914160725 -->
+<!-- @save-url 553542e405 -->
 ## URL を登録する
 <ol class="docs-steps">
   <li>内蔵ブラウザでページを開きます。</li>
   <li>ブラウザのツールバーの <span class="docs-ui">+</span>（<span class="docs-ui">表示中のURLを登録</span>）を押します。いまの URL が入った状態で開きます。</li>
   <li><span class="docs-ui">名前</span> を入れて <span class="docs-ui">保存</span> を押します。</li>
 </ol>
-<p>使える URL は <code>http://</code> と <code>https://</code> だけです。名前を提案のまま残すと、ホストから次のように決まります。</p>
+<p>登録した URL には、<span class="docs-ui">確認するもの</span> で種類が付きます。<span class="docs-ui">アプリ</span>（作っているアプリ）、<span class="docs-ui">デザイン</span>（Figma、Penpot、Canva、プロトタイプ）、<span class="docs-ui">設計書・文書</span>（Google Docs、Notion、Confluence、GitHub 上の Markdown の仕様書、PDF）のどれかです。種類は URL から推測し、あとから変えられます。<a href="#design-docs">コードだけでなく、デザインや文書もレビューする</a>を見てください。</p>
+<p>使える URL は <code>http://</code> と <code>https://</code> だけです。アプリの URL では、名前を提案のまま残すと、ホストから次のように決まります。</p>
 <table>
   <thead><tr><th>ホスト</th><th>名前</th></tr></thead>
   <tbody>
@@ -37,9 +38,9 @@
     <tr><td>それ以外</td><td><code>prd</code></td></tr>
   </tbody>
 </table>
-<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="ブラウザのツールバーに並ぶ登録済みの URL（スクリーンショットは準備中）"><span>スクリーンショットは準備中です</span></div><figcaption>ブラウザのツールバーに並ぶ登録済みの URL</figcaption></figure>
+{{shot:url-presets|ブラウザのツールバーに並ぶ登録済みの URL}}
 
-<!-- @review-targets 351621051d -->
+<!-- @review-targets 7edd1985ee -->
 ## レビュー対象のパネル
 {{clip:targets|録画を止めずに、レビューの対象やページを切り替える。}}
 <p>フィードバックモードでは、右の <span class="docs-ui">レビュー対象</span> パネルに、いまのプロジェクトでレビューできるものが並びます。対象を切り替えても録画は止まりません。パネルは <span class="docs-ui">表示 → レビュー対象の表示を切り替える</span>（{{keys:Mod+Shift+K}}）か <span class="docs-ui">パネルを隠す</span> で出し入れします。</p>
@@ -48,9 +49,27 @@
   <li><strong><span class="docs-ui">ファイル</span></strong>: プロジェクトのフォルダ。ファイルはプレビューで開く（Markdown と Mermaid は描画し、ほかのテキストは読み取り専用）ので、ドキュメントもレビューできます。鉛筆（<span class="docs-ui">エディタで開く</span>）でエディタで開きます。</li>
 </ul>
 <p><span class="docs-ui">対象を絞り込む</span> は、確認先・ページ・ファイルをまとめて絞り込みます。あいまい一致の仕方は <span class="docs-ui">ファイルを名前で開く…</span> と同じです。一覧では <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> か <kbd>1</kbd>〜<kbd>9</kbd> で対象を切り替えます。<span class="docs-ui">URL を開く…</span> はその場限りの URL を開き、<span class="docs-ui">プロジェクトの URL に登録</span> で残せます。</p>
-<p>確認先は <code>settings.json</code> の <code>projects[].urls</code> から読みます（<a href="settings-json.html#example">例</a>を参照）。各項目には <code>url</code>、<code>launchCommand</code>（ターミナルで実行します。たとえばデスクトップアプリの起動）、<code>windowMatch</code>（録画するウインドウ）のどれかが要ります。ウインドウの対象を選ぶとそれが録画の対象になるので、録画中は選べません。開いたページはプロジェクトごとに、この端末にだけ覚えます（200件まで）。</p>
+<p>確認先は <code>settings.json</code> の <code>projects[].urls</code> から読みます（<a href="settings-json.html#example">例</a>を参照）。各項目には <code>url</code>、<code>launchCommand</code>（ターミナルで実行します。たとえばデスクトップアプリの起動）、<code>windowMatch</code>（録画するウインドウ）のどれかが要り、<code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code>）も付けられます。ウインドウの対象を選ぶとそれが録画の対象になるので、録画中は選べません。開いたページはプロジェクトごとに、この端末にだけ覚えます（200件まで）。</p>
 
-<!-- @switch-env 5103621352 -->
+<!-- @switch-env 3d0b21e6f6 -->
 ## 開く・環境を切り替える
 <p>登録した URL を押すと開きます。いまのページが別の登録 URL の下にあるときは、Ferret はパス・クエリ・ハッシュを保ったまま、オリジンだけを入れ替えます。たとえば <code>http://localhost:3000/pricing?plan=pro</code> で <code>prd</code> を押すと、<code>https://example.com/pricing?plan=pro</code> が開きます。</p>
 <p>いまのページに合うチップ（前方一致が最も長いもの）が強調されます。チップを右クリックするか鉛筆のアイコンで、編集や <span class="docs-ui">削除</span> ができます。プロジェクトを開いたときに前回の URL が無ければ、最初に登録した URL を読み込みます。</p>
+<p>チップは種類ごとにまとまります。アプリの URL が先で、そのあとにデザイン、文書が続き、種類ごとに区切り線とアイコンが付きます。デザインや文書へ（またはそこから）切り替えるときは、パスを引き継がず、登録した URL をそのまま開きます。</p>
+
+<!-- @design-docs b11ff7ba55 -->
+## コードだけでなく、デザインや文書もレビューする
+<p>フィードバックの対象はコードに限りません。内蔵ブラウザで開けるものなら、同じように録画してペンで書き込めます。Figma や Penpot のデザイン、プロトタイプ、Google Docs や Notion の仕様書、GitHub 上の設計書、PDF などです。レビューの前に、こうした URL を <code>local</code> や <code>dev</code> と並べてプロジェクトに登録しておきます。</p>
+<ol class="docs-steps">
+  <li>サイドバーのメニューから <span class="docs-ui">プロジェクトを編集…</span> を開き（またはブラウザのツールバーの <span class="docs-ui">+</span> を押し）、<span class="docs-ui">確認先を追加</span> を押します。</li>
+  <li>URL を貼り付けます。<code>figma.com</code> のリンクは <span class="docs-ui">デザイン</span>、<code>docs.google.com</code> や <code>notion.so</code> のリンクは <span class="docs-ui">設計書・文書</span> になり、名前は <code>Figma</code> や <code>Spec</code> になります。推測が違うとき（自前のサーバー上のプロトタイプなど）は、<span class="docs-ui">確認するもの</span> で種類を変えます。</li>
+  <li>確認先を開き、サイトがログインを求めるなら内蔵ブラウザで一度ログインします。ブラウザは起動をまたいで Cookie を残すので、ログインしたままになります。</li>
+  <li>いつもどおり録画します。話し、指し示し、デザインや文書にペンで書き込みます。</li>
+</ol>
+<p>デザインや文書の上で録った指摘には、指摘の一覧と <code>feedback.md</code> でその種類が付き、エージェントへ送る指示にもそう書かれます。エージェントはコードではなく、デザインや文書のほうを直します。</p>
+<ul>
+  <li>文書がプロジェクトの中にある（Markdown の仕様書、ADR など）なら、エージェントがそのファイルを書き換えます。</li>
+  <li>書き換えられないもの（Figma のファイル、Google ドキュメントなど）なら、エージェントはその指摘を <span class="docs-ui">要確認（あなた）</span> にし、どう直すかを具体的に書きます。自分で反映するか、担当者に渡してください。</li>
+</ul>
+<p>例: Google Docs で料金の仕様書を読みながら、プランの表を丸で囲んで「Pro プランはいま 8,800 円ではなく 9,800 円」と話したとします。<code>feedback.md</code> ではこの指摘が <code>Spec</code> の確認先の下に <code>Kind: document</code> で並び、エージェントは料金ページのコードには触らず、仕様書の直した文を返します。仕様書と動いているアプリを同じ録画で録ると、指摘は確認先ごとに分かれるので、エージェントは先に仕様書を、次にそれを実装するコードを直せます。</p>
+<p>登録していないページでも、<code>figma.com</code>、<code>docs.google.com</code>、<code>notion.so</code> などのホストなら見分けます。プロジェクトのフォルダの中のファイル（Markdown、Mermaid）は、<span class="docs-ui">レビュー対象</span> パネルの <span class="docs-ui">ファイル</span> の一覧からレビューします。</p>

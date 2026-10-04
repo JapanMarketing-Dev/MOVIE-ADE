@@ -16,12 +16,12 @@ import type { ChunkedOptions, OrganizeOptions, OrganizeResult } from './organize
 import type { Draft, FeedbackDocument, Material, OrganizeInput } from './types'
 import { resolveAnnotationEdits } from './types'
 
-export interface DecomposeOptions {
+interface DecomposeOptions {
   draft?: Partial<DraftOptions>
   assemble?: Partial<AssembleOptions>
 }
 
-export interface DraftStage {
+interface DraftStage {
   draft: Draft
   document: FeedbackDocument
   organizeInput: OrganizeInput
@@ -42,7 +42,7 @@ export function buildDraftDocument(material: Material, options: DecomposeOptions
   return { draft, document, organizeInput }
 }
 
-export interface RefineResult {
+interface RefineResult {
   /** 整理に成功すれば LLM 版、失敗すれば下書き版 */
   document: FeedbackDocument
   organize: OrganizeResult;

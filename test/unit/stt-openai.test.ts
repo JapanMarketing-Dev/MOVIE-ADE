@@ -1,6 +1,6 @@
 /** OpenAI STT エンジンのテスト（APIを呼ばない。リクエストの組み立てと応答のパースだけ） */
 import { describe, expect, it } from 'vitest'
-import { OpenAiSttEngine, estimateHourlyCostUsd, openAiSttPricePerMinuteUsd } from '../../src/main/pipeline/stt/openai'
+import { OpenAiSttEngine, openAiSttPricePerMinuteUsd, type OpenAiSttModel } from '../../src/main/pipeline/stt/openai'
 import type { TranscribeChunkInput } from '../../src/main/pipeline/stt/engine'
 
 // 期待値は日本語の文言。画面の言語を日本語に固定する（既定は英語）
@@ -15,7 +15,7 @@ const input: TranscribeChunkInput = {
   durationMs: 12_000,
 }
 
-const engine = (model: Parameters<typeof estimateHourlyCostUsd>[0], extra = {}) =>
+const engine = (model: OpenAiSttModel, extra = {}) =>
   new OpenAiSttEngine({ model, apiKey: 'test-key', language: 'ja', ...extra })
 
 /** FormData の値を取り出す（`entries()` は DOM.Iterable が必要なので使わない） */
@@ -165,12 +165,8 @@ describe('応答のパース', () => {
 })
 
 describe('料金の概算', () => {
-  it('公開価格から録画1時間あたりを出す', () => {
+  it('公開価格の表', () => {
     expect(openAiSttPricePerMinuteUsd['gpt-transcribe']).toBe(0.0045)
-    expect(estimateHourlyCostUsd('gpt-transcribe')).toBeCloseTo(0.27);
-    // MTGで2系統（マイク＋PC音声）を別々に送ると2倍かかる
-    expect(estimateHourlyCostUsd('gpt-transcribe', 2)).toBeCloseTo(0.54)
-    expect(estimateHourlyCostUsd('gpt-4o-transcribe-diarize')).toBeCloseTo(0.36)
   })
 })
 

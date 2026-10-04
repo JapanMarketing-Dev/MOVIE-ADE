@@ -14,7 +14,7 @@ import { shouldIncludePath } from '@shared/files'
  */
 
 /** 張るフォルダの数の上限。超えた分は見張らない（上限に当たってほかのアプリの見張りまで止めないため） */
-export const MAX_WATCHED_DIRS = 8000
+const MAX_WATCHED_DIRS = 8000
 
 /** このフォルダ（`/` 区切りの相対パス。'' はプロジェクトの直下）に降りて見張るか */
 export function shouldWatchDir(rel: string): boolean {

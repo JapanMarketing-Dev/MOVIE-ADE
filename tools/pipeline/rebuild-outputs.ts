@@ -2,7 +2,7 @@
  * 保存済みの LLM 生出力（llm-raw.json）から feedback.md を作り直す。
  * LLM を呼ばずに、検証・組み立て・出力の変更を既存の実測結果へ反映できる。
  *
- *   npx tsx tools/rebuild-outputs.ts <materialDir> [<materialDir> ...]
+ *   npx tsx tools/pipeline/rebuild-outputs.ts <materialDir> [<materialDir> ...]
  */
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';

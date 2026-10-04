@@ -26,7 +26,7 @@ function hostFromUrl(url: URL): string {
  *
  * Orca由来: ~/bench/orca/src/main/github/github-remote-identity-parsing.ts の parseGitHubRemoteIdentity（MIT）
  */
-export function parseRemoteLocation(remoteUrl: string): { host: string; path: string } | null {
+function parseRemoteLocation(remoteUrl: string): { host: string; path: string } | null {
   const trimmed = remoteUrl.trim()
   const scp = trimmed.match(/^(?:[^@/\s]+@)?([^:/\s]+):([^\s]+)$/i)
   // scp 形式は「://」を含まない。C:\ のような Windows のパスも弾く
@@ -171,7 +171,7 @@ export function mapPullRequests(json: unknown): GitHubPullRequest[] {
 
 // ─── git status --porcelain=v2 --branch ─────────────────
 
-export interface GitStatusSummary {
+interface GitStatusSummary {
   branch: string | null
   shortOid: string | null
   changes: number

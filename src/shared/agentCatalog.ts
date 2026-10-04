@@ -27,7 +27,7 @@ import type {
  * 足すときは BuiltinAgent（types.ts）と下の表に1行ずつ足す。
  */
 
-export interface AgentCatalogEntry {
+interface AgentCatalogEntry {
   label: string
   /** PATH 上にあればインストール済みとみなすコマンド（Orca の detectCmd） */
   detectCmd: string
@@ -548,9 +548,6 @@ export const ORCA_SUPPORTED_AGENTS: readonly BuiltinAgent[] = [
   'kiro', 'mistral-vibe', 'qwen-code', 'rovo'
 ]
 
-/** アカウント切り替え・使用量の対象（設定フォルダを分けられるもの） */
-export const ACCOUNT_AGENTS: readonly AccountAgent[] = ['claude', 'codex']
-
 export const TUI_AGENT_LABEL: Record<BuiltinAgent, string> = Object.fromEntries(
   BUILTIN_AGENTS.map((agent) => [agent, AGENT_CATALOG[agent].label])
 ) as Record<BuiltinAgent, string>
@@ -632,7 +629,7 @@ export function stripBypassArgs(agent: BuiltinAgent, args: string): string {
 }
 
 /** 権限確認を省く引数を足す（既に付いていれば足さない） */
-export function withBypassArgs(agent: BuiltinAgent, args: string): string {
+function withBypassArgs(agent: BuiltinAgent, args: string): string {
   const base = stripBypassArgs(agent, args)
   return [AGENT_CATALOG[agent].yoloArgs, base].filter(Boolean).join(' ')
 }
@@ -662,7 +659,7 @@ export function isBuiltinAgent(value: unknown): value is BuiltinAgent {
   return typeof value === 'string' && Object.hasOwn(AGENT_CATALOG, value)
 }
 
-export function isCustomAgentId(value: unknown): value is CustomAgentId {
+function isCustomAgentId(value: unknown): value is CustomAgentId {
   return typeof value === 'string' && /^custom:[a-z0-9][a-z0-9-]{0,47}$/.test(value)
 }
 

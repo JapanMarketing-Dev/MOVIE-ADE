@@ -1,0 +1,40 @@
+# Issue に OS のラベル（os:macos / os:windows / os:linux）を付ける。Orca の issue-os-labeler.yaml を元にした。
+# 本文の「### Environment」の「- OS: …」を .github/scripts/issue-os-label.mjs が読む（単体テスト: test/unit/issue-os-label.test.ts）。
+# issues のイベントは既定のブランチの workflow とスクリプトで動くので、Issue を書いた人のコードは動かない。
+# 本文は式（${{ }}）に埋め込まず、スクリプトの中で値として読むだけ。secrets は使わない。
+name: Issue labels
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: issue-labels-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  os-label:
+    name: label by operating system
+    # フォークでは動かさない
+    if: github.repository == 'JapanMarketing-Dev/ferret'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github/scripts/issue-os-label.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { pathToFileURL } = await import('node:url')
+            const { applyOsLabel } = await import(pathToFileURL(`${process.env.GITHUB_WORKSPACE}/.github/scripts/issue-os-label.mjs`).href)
+            await applyOsLabel({ github, context, core })

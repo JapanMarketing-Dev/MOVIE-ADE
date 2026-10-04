@@ -25,7 +25,7 @@ Ferret की हर सेटिंग एक JSON फ़ाइल में �
 <p><code>settings.json</code> की पहली लाइन <code>"$schema": "./settings.schema.json"</code> है। VS Code जैसे editors और Claude Code जैसे agents इसे completion, validation और हर field के विवरण के लिए इस्तेमाल करते हैं। Schema ऐप के अंदर ही आता है और हर launch पर फ़ाइल के बगल में लिखा जाता है, इसलिए यह हमेशा इंस्टॉल किए गए version से मेल खाता है।</p>
 <p>जिन keys को Ferret नहीं जानता, वे ऐप के सेव करते समय वैसी ही रखी जाती हैं। खुले टैब, आख़िरी URL और session की बाकी स्थिति यहाँ नहीं, <code>state.json</code> में रखी जाती है।</p>
 
-<!-- @example fece1b6b16 -->
+<!-- @example 8f2ce86189 -->
 ## टिप्पणियों के साथ उदाहरण
 <p>JSON में comments नहीं होते, इसलिए टिप्पणियाँ उदाहरण के नीचे दी गई हैं। हर field वैकल्पिक है; जो ज़रूरी नहीं, उसे छोड़ दें।</p>
 <pre><code>{
@@ -40,7 +40,9 @@ Ferret की हर सेटिंग एक JSON फ़ाइल में �
       "kind": "web",
       "urls": [
         { "id": "local", "label": "local", "url": "http://localhost:3000" },
-        { "id": "prd", "label": "prd", "url": "https://shop.example.com" }
+        { "id": "prd", "label": "prd", "url": "https://shop.example.com" },
+        { "id": "figma", "label": "Figma", "url": "https://www.figma.com/design/…", "purpose": "design" },
+        { "id": "spec", "label": "Spec", "url": "https://docs.google.com/document/d/…", "purpose": "doc" }
       ]
     }
   ],
@@ -83,7 +85,7 @@ Ferret की हर सेटिंग एक JSON फ़ाइल में �
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>: URL मेन्यू के लिए review targets। प्रोजेक्ट खुलने पर पहला वाला खुलता है। <code>id</code> कोई भी unique string हो सकती है।</li>
+  <li><code>projects[].urls</code>: URL मेन्यू के लिए review targets। प्रोजेक्ट खुलने पर पहला वाला खुलता है। <code>id</code> कोई भी unique string हो सकती है। <code>purpose</code> किसी design या दस्तावेज़ को चिह्नित करता है (<a href="projects.html#design-docs">design और दस्तावेज़ों का review करें</a> देखें); ऐप के लिए इसे छोड़ दें।</li>
   <li><code>agents.customAgents</code>: कोई भी CLI या wrapper script। <code>startupAgents</code> उन agent टैब की क्रम से सूची है जो प्रोजेक्ट के साथ खुलते हैं।</li>
   <li><code>capture.sttEndpoints.compatible</code>: कोई भी server जो OpenAI का <code>/v1/audio/transcriptions</code> लागू करता है (speaches, vLLM, LocalAI…)। <code>costLimitUsd: null</code> खर्च की सीमा बंद करता है, जो आपकी अपनी GPU के लिए ठीक रहता है। <a href="transcription.html">ट्रांसक्रिप्शन और खर्च</a> देखें।</li>
   <li><code>organizer</code>: <span class="docs-ui">Findings व्यवस्थित करें</span> को सीधे किसी OpenAI-compatible <code>/v1/chat/completions</code> server (यहाँ Ollama) पर भेजता है। इसके बजाय अपना CLI login इस्तेमाल करने के लिए <code>"runner": "claude-code"</code> या <code>"codex"</code>, और उनका मॉडल चुनने के लिए <code>organizer.cliModels</code> इस्तेमाल करें।</li>

@@ -32,7 +32,7 @@ export type TerminalDropTarget =
   /** タブ列。beforeTabKey の前に置く（null なら最後） */
   | { kind: 'tabbar'; beforeTabKey: string | null }
 
-export interface DropResult<T extends DropTab> {
+interface DropResult<T extends DropTab> {
   tabs: T[]
   /** 選択するタブとフォーカスするペイン */
   activeTab: string

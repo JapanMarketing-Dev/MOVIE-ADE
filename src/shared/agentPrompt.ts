@@ -24,15 +24,20 @@ export function defaultAgentPrompt(locale: SupportedLocale = getLocale()): strin
   return translate(locale, 'agentPrompt.default')
 }
 
-export interface AgentPromptTarget {
+interface AgentPromptTarget {
   /** レビューのフォルダ（プロジェクトからの相対。例: .ferret/reviews/20261003-101500） */
   relativeDir: string
   /** feedback.md の絶対パス。分からない呼び出し元では省略でき、そのときは相対パスで代える */
   feedbackMd?: string
+  /**
+   * デザイン・設計書の確認先で撮った指摘を含むか（@shared/reviewTarget の purpose）。
+   * true なら「コードではなくデザイン・文書を直す」1文を文末に足す（利用者が書き換えた文でも足す）
+   */
+  nonCode?: boolean
 }
 
 /** 判定モデルでの受け入れ確認（有効なときだけ渡す） */
-export interface AgentPromptDecision {
+interface AgentPromptDecision {
   /** 合格のしきい値（P(done)） */
   threshold: number
 }
@@ -44,6 +49,7 @@ export function renderAgentPrompt(target: AgentPromptTarget, template?: string |
   const check = decision ? translate(locale ?? getLocale(), 'agentPrompt.decisionCheck') : ''
   if (body.includes('{{decisionCheck}}')) body = body.replace(/\{\{decisionCheck\}\}/g, check).replace(/[ \t]+$/gm, '').trim()
   else if (check) body = `${body} ${check}`
+  if (target.nonCode) body = `${body} ${translate(locale ?? getLocale(), 'agentPrompt.nonCode')}`
   const threshold = String(decision?.threshold ?? 0.7)
   const progress = path.replace(/feedback\.md$/, 'progress.json')
   return body.replace(/\{\{path\}\}/g, path).replace(/\{\{relpath\}\}/g, relpath).replace(/\{\{threshold\}\}/g, threshold).replace(/\{\{progress\}\}/g, progress)
@@ -53,7 +59,7 @@ export function renderAgentPrompt(target: AgentPromptTarget, template?: string |
 export const REPLY_MAX = 1200
 
 /** Agent が人間へ戻した指摘（progress.json の needs_human）への返答 */
-export interface AgentReply {
+interface AgentReply {
   /** 画面の通し番号（feedback.md の見出しの番号） */
   n: number
   /** 指摘のID（progress.json のキー） */
@@ -82,7 +88,7 @@ export function renderReplyPrompt(target: AgentPromptTarget, reply: AgentReply, 
 export const NG_TOTAL_MAX = 15_000
 
 /** 人が NG を付けた指摘（Findings の確認で、コメントが必須） */
-export interface AgentNg {
+interface AgentNg {
   n: number
   id: string
   comment: string

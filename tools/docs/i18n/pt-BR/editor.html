@@ -5,7 +5,7 @@ Editor e prévia
 <!-- @lead 97cbc36c8d -->
 Abra e edite os arquivos do projeto e veja a prévia de Markdown e Mermaid. Uma prévia aberta no navegador integrado pode ser gravada e revisada como qualquer página web.
 
-<!-- @files f1e2c27cca -->
+<!-- @files d29f6a2107 -->
 ## Abrir e editar arquivos
 <ul>
   <li><span class="docs-ui">Arquivos</span> (a árvore de arquivos): {{keys:Mod+Shift+E}}, com <span class="docs-ui">Filtrar por nome de arquivo</span>, <span class="docs-ui">Atualizar</span> e <span class="docs-ui">Recolher tudo</span>.</li>
@@ -14,7 +14,18 @@ Abra e edite os arquivos do projeto e veja a prévia de Markdown e Mermaid. Uma 
   <li>Se o arquivo mudar no disco enquanto você tem edições não salvas, escolha <span class="docs-ui">Recarregar do disco</span> ou <span class="docs-ui">Manter minhas alterações</span>.</li>
 </ul>
 <p>O editor é o Monaco. Arquivos que não são texto abrem em um visualizador: imagens (com zoom; SVG também pode ser exibido como código), vídeo e áudio com barra de busca, PDF e, para qualquer outro arquivo binário, o tamanho e uma visualização hexadecimal dos primeiros bytes. Os visualizadores são somente leitura, e arquivos fora da pasta do projeto ou acessados por um link simbólico que sai dela não são exibidos.</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Em breve</p><p>Criar, renomear e excluir arquivos pela árvore de arquivos.</p></div>
+
+<!-- @file-tree 4bec72e9f4 -->
+## Criar, renomear e excluir arquivos
+<p>Trabalhe com os arquivos direto em <span class="docs-ui">Arquivos</span>, como você faria no VS Code. Os nomes são digitados no próprio lugar, na árvore.</p>
+<ul>
+  <li><span class="docs-ui">Novo arquivo</span> / <span class="docs-ui">Nova pasta</span>: os botões acima da árvore, ou clique com o botão direito em uma pasta (ou no espaço vazio abaixo da árvore). Um item novo vai para a pasta selecionada, ao lado do arquivo selecionado ou para a raiz do projeto. Um arquivo novo abre no editor.</li>
+  <li><span class="docs-ui">Renomear</span>: {{keys:F2 / Enter|F2}}, ou clique com o botão direito. As abas abertas acompanham o novo nome e mantêm as edições não salvas.</li>
+  <li><span class="docs-ui">Excluir</span>: {{keys:Mod+Backspace / Delete|Delete}}, ou clique com o botão direito. O Ferret pede confirmação e depois move o item para a Lixeira, então você pode restaurá-lo. As abas dos arquivos excluídos são fechadas; se alguma tinha edições não salvas, a confirmação avisa.</li>
+  <li>Selecione vários itens com {{keys:Mod}}-clique ou {{keys:Shift}}-clique para excluí-los juntos.</li>
+  <li>{{keys:Esc}} cancela um nome que você está digitando.</li>
+</ul>
+<p>O Ferret não sobrescreve um arquivo ou pasta existente com o mesmo nome e recusa tudo o que sairia da pasta do projeto (<code>..</code>, caminhos absolutos, links simbólicos que apontam para fora), qualquer coisa dentro de <code>.git</code> e nomes que algum sistema operacional não aceita: <code>/ \ &lt; &gt; : " | ? *</code>, caracteres de controle, espaço ou ponto no final e nomes reservados do Windows, como <code>CON</code> ou <code>NUL</code>.</p>
 
 <!-- @preview b8c0baaad4 -->
 ## Prévia de Markdown e Mermaid
@@ -24,7 +35,7 @@ Abra e edite os arquivos do projeto e veja a prévia de Markdown e Mermaid. Uma 
   <li><span class="docs-ui">Abrir prévia</span>: no navegador integrado (<code>ade-preview://</code>), para que você possa gravá-la e revisá-la</li>
 </ul>
 
-<!-- @review-docs 3956ed6f10 -->
+<!-- @review-docs 4b5c6316ba -->
 ## Revisar documentos gravando
 <ol class="docs-steps">
   <li>Abra um arquivo Markdown e clique em <span class="docs-ui">Abrir prévia</span>.</li>
@@ -32,4 +43,4 @@ Abra e edite os arquivos do projeto e veja a prévia de Markdown e Mermaid. Uma 
   <li>Pare. Os apontamentos fazem referência ao caminho do arquivo relativo ao projeto, em vez de uma URL.</li>
   <li>Use <span class="docs-ui">Enviar ao Agent</span> para que o documento seja corrigido.</li>
 </ol>
-<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="Prévia de Markdown no navegador integrado (captura de tela em breve)"><span>Captura de tela em breve</span></div><figcaption>Prévia de Markdown no navegador integrado</figcaption></figure>
+{{shot:preview|Prévia de Markdown no navegador integrado}}

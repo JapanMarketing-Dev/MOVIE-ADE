@@ -27,7 +27,7 @@ export function isValidSshHost(host: string): boolean {
 }
 
 /** リモートのパスとして受け付けるか。/ か ~ で始まり、改行や NUL を含まない */
-export function isValidRemotePath(path: string): boolean {
+function isValidRemotePath(path: string): boolean {
   return (path.startsWith('/') || path === '~' || path.startsWith('~/')) && !/[\0\r\n]/.test(path) && path.length <= 4096
 }
 
@@ -35,7 +35,7 @@ export function isValidRemotePath(path: string): boolean {
  * リモートのシェルに渡すパスの式。~ はリモートの $HOME に置き換え（引用符の中では ~ が展開されないため）、
  * 残りは単一引用符で囲む。
  */
-export function remotePathExpression(path: string): string {
+function remotePathExpression(path: string): string {
   if (path === '~') return '"$HOME"'
   if (path.startsWith('~/')) return `"$HOME"/${shellQuote(path.slice(2))}`
   return shellQuote(path)
@@ -46,7 +46,7 @@ export function remoteShellCommand(path: string): string {
   return `cd ${remotePathExpression(path)} && exec "$SHELL" -l`
 }
 
-export type SshTargetCheck = { ok: true; target: SshTarget } | { ok: false; reason: 'host' | 'path' }
+type SshTargetCheck = { ok: true; target: SshTarget } | { ok: false; reason: 'host' | 'path' }
 
 /** 入力を整えて確かめる（前後の空白は落とす。末尾の / は1つにまとめない＝そのまま渡す） */
 export function checkSshTarget(input: { host: string; path: string }): SshTargetCheck {

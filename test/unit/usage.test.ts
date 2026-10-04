@@ -11,6 +11,7 @@ import {
   soonestResetLabel,
   tightestUsageSection,
   usageSections,
+  usageStatusLabel,
   usageTone,
   type ProviderRateLimits
 } from '../../src/shared/usage'
@@ -115,6 +116,22 @@ describe('Codex の応答の読み取り', () => {
     expect(p.weekly).toEqual({ usedPercent: 0, windowMinutes: 10080, resetsAt: 1_800_000_000_000 })
     expect(p.session?.usedPercent).toBe(12)
     expect(p.planType).toBe('plus')
+  })
+
+  it('Business のメンバーごとの利用額の上限を「$」の枠として出す（Orca #8664）', () => {
+    const p = mapCodexUsageResponse({ plan_type: 'business', rate_limit: null, spend_control: { individual_limit: { used_percent: 39 } } })!
+    expect(p.spendLimit).toEqual({ usedPercent: 39, windowMinutes: 0, resetsAt: null })
+    expect(usageSections(p)).toEqual([{ key: 'spend', label: '$', window: p.spendLimit }])
+    expect(formatWindowChipLabel(p.spendLimit!)).toBe('$')
+    expect(p.unlimited).toBeUndefined()
+  })
+
+  it('Business の上限なし（枠が null・credits.unlimited）は失敗ではなく ∞（Orca #15764）', () => {
+    const p = mapCodexUsageResponse({ plan_type: 'business', rate_limit: { primary_window: null, secondary_window: null }, credits: { unlimited: true } })!
+    expect(p.status).toBe('ok')
+    expect(p.unlimited).toBe(true)
+    expect(usageSections(p)).toEqual([])
+    expect(usageStatusLabel(p)).toBe('∞')
   })
 
   it('週の枠しか無いプランは週だけ', () => {

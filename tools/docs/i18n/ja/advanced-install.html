@@ -1,0 +1,66 @@
+<!-- Ferret docs translation: ja / advanced-install. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title c768532509 -->
+インストールの詳細
+
+<!-- @lead c298f9e477 -->
+ダウンロードの署名の確認、ソースからのビルド、古い版の入手、アップデートの仕組みをまとめています。Ferret を入れるだけなら、どれも要りません。
+
+<!-- @files 8d91113a43 -->
+## すべてのダウンロード
+<p>ファイルは GitHub Releases ではなく Cloudflare R2 から配っており、残すのは新しい10版だけです。<a href="../download.html#versions">ダウンロードページ</a>にそのすべてが並んでいます。</p>
+<table>
+  <thead><tr><th>OS</th><th>ファイル</th></tr></thead>
+  <tbody>
+    <tr><td>macOS（Apple silicon / Intel）</td><td><code>Ferret-&lt;version&gt;-mac-arm64.dmg</code>、<code>Ferret-&lt;version&gt;-mac-x64.dmg</code></td></tr>
+    <tr><td>Windows（x64 / arm64）</td><td><code>Ferret-&lt;version&gt;-win-x64.exe</code>、<code>Ferret-&lt;version&gt;-win-arm64.exe</code>（インストーラー）</td></tr>
+    <tr><td>Linux（x64）</td><td><code>Ferret-&lt;version&gt;-linux-x86_64.AppImage</code>、<code>Ferret-&lt;version&gt;-linux-amd64.deb</code></td></tr>
+  </tbody>
+</table>
+<p>0.1.x までは旧名で、<code>MOVIE-ADE-&lt;version&gt;-…</code> として公開していました。<code>Ferret-…</code> の名前は 0.2.0 からです。</p>
+
+<!-- @verify 9ccf455542 -->
+## ダウンロードを検証する（署名付き SHA256SUMS）
+<p>どの版にも <code>SHA256SUMS</code> ファイルと、その署名 <code>SHA256SUMS.sig</code> が付いています。署名には Ferret のリリース鍵を使い、この鍵はダウンロードサーバーとは別に保管しています。そのため、ダウンロードサーバー上でインストーラーが書き換えられても、正しい署名は付けられません。公開鍵はダウンロードサーバーから取ら<em>ない</em>でください。リポジトリ（<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers"><code>build/release-signing/allowed_signers</code></a>）から取るか、ここからコピーします。</p>
+<pre><code>release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9</code></pre>
+<p>フィンガープリントは <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code> です。同じファイルは GitHub の各リリースにも添付しています。<code>ssh-keygen</code>（macOS、Windows 10 以降、Linux に入っています）で署名を確かめ、ダウンロードしたファイルのハッシュを署名済みの一覧と比べます。</p>
+<pre><code># the download server (currently the R2 public URL; it may move to a custom domain)
+BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
+VERSION=$(curl -s $BASE/latest.json | jq -r .version)
+curl -sO $BASE/releases/$VERSION/SHA256SUMS
+curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
+
+# save the public key above as allowed_signers, then:
+ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
+# → Good "ferret-release" signature for release@ferretade.dev …
+
+# macOS
+shasum -a 256 -c SHA256SUMS --ignore-missing
+# Linux
+sha256sum -c SHA256SUMS --ignore-missing</code></pre>
+<pre><code># Windows (PowerShell): compare with the line for your file in SHA256SUMS
+Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
+<p><code>ssh-keygen</code> が <q>Good "ferret-release" signature</q> と出さないとき、またはハッシュが一覧に無いときは、使わずに止めてください。Ferret の <span class="docs-ui">更新を確認</span> も、アプリに組み込んだ鍵で同じ確認をし、署名が合わない版は案内しません。macOS では <code>spctl -a -vv /Applications/Ferret.app</code> で Developer ID の署名と公証も確かめられます。0.3.0 までの版は、<code>releases/&lt;version&gt;/manifest.json</code> にあるハッシュと比べてください。</p>
+
+<!-- @older-macos c7f7a00c02 -->
+## 古い版の macOS
+<p>0.2.0 build 2 までの版で、macOS が「開発元を検証できません」と出したときは、ダイアログを閉じて <span class="docs-ui">システム設定 → プライバシーとセキュリティ</span> を開き、Ferret のメッセージの横の <span class="docs-ui">このまま開く</span> を押し、<span class="docs-ui">開く</span> で確定します。「壊れている」と出るときは、検疫属性を外します。</p>
+<pre><code>xattr -dr com.apple.quarantine /Applications/Ferret.app</code></pre>
+
+<!-- @source 06a127ac19 -->
+## ソースからビルドする
+<p>Node.js 20 以上（CI と手元の開発では 22）、pnpm、git が必要です。</p>
+<pre><code>git clone https://github.com/JapanMarketing-Dev/ferret.git
+cd ferret
+pnpm install          # postinstall prepares node-pty for Electron
+pnpm dev              # run in development mode</code></pre>
+<p>インストーラーを作るには次を使います（出力は <code>dist/release/</code>、設定は <code>electron-builder.config.cjs</code>）。Linux 版のビルドは Linux でしか動きません。</p>
+<pre><code>pnpm dist:mac     # dmg (arm64, x64)
+pnpm dist:win     # NSIS installers (x64, arm64)
+pnpm dist:linux   # AppImage + deb (x64)</code></pre>
+<p><code>build:&lt;os&gt;:dev</code> スクリプトは展開済みのアプリだけ（<code>--dir</code>）を作るので、手元での確認には速く済みます。</p>
+<p>Windows では、<code>pnpm install</code> は再ビルドせず、node-pty に同梱のビルド済みバイナリを使います（再ビルドには Visual Studio の C++ ビルドツールが要るため）。再ビルドさせたいときは <code>ADE_FORCE_NATIVE_REBUILD=1</code> を設定します。</p>
+<p>ターミナルに node-pty を読み込めなかったと出るときは、<code>pnpm rebuild:native</code> を実行してください。</p>
+
+<!-- @update 142015ddda -->
+## アップデート
+<p>Ferret は自動ではアップデートしません。フッターの <span class="docs-ui">アップデート</span> を開き、<span class="docs-ui">更新を確認</span> を押します。ダウンロードサーバー（R2）から <code>latest.json</code> を取って版を比べ、その版の <code>SHA256SUMS</code> の署名をアプリに組み込んだリリース鍵で確かめます。新しい版があれば <span class="docs-ui">ダウンロード</span> を押します。Ferret は自分のパソコン用のインストーラーをダウンロードし、その SHA-256 が署名済みの <code>SHA256SUMS</code> と合うかを確かめてから、ダウンロードフォルダに保存してそこで表示します。ダウンロードページも、ファイルを保存する前にブラウザの中で同じ確認をします。押すまでは何も確認せず、自動で入れることもありません。</p>

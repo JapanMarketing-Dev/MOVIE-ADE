@@ -65,7 +65,7 @@ function addAll(collector: Collector, items: ReturnType<typeof sanitizeMcpServer
 // ───────────────────────── Claude Code ─────────────────────────
 
 /** Claude Code の全体設定（.claude.json）の場所。CLAUDE_CONFIG_DIR があればその中、無ければ ~/.claude.json */
-export function claudeGlobalConfigPath(configDir: string, inherited: boolean): string {
+function claudeGlobalConfigPath(configDir: string, inherited: boolean): string {
   if (inherited) return join(configDir, '.claude.json')
   const colocated = join(configDir, '.claude.json')
   return existsSync(colocated) ? colocated : join(homedir(), '.claude.json')

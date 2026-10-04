@@ -18,7 +18,7 @@ Nehmen Sie den integrierten Browser, einen ganzen Bildschirm oder ein anderes Fe
 </table>
 <p>Ihre Auswahl wird gespeichert. Unter macOS erfordert die Aufnahme von Bildschirm und Fenstern die Berechtigung „Bildschirmaufnahme“ (<a href="troubleshooting.html#screen-permission">so erteilen Sie sie</a>).</p>
 
-<!-- @record 0d1af48c7a -->
+<!-- @record deb62ed37c -->
 ## Starten, pausieren, stoppen
 {{clip:record|Aufnahme: über die Seite sprechen und die Stelle mit dem Stift einkreisen.}}
 <ol class="docs-steps">
@@ -29,7 +29,7 @@ Nehmen Sie den integrierten Browser, einen ganzen Bildschirm oder ein anderes Fe
 </ol>
 <p>In der Seitenleiste hat jedes Projekt sein eigenes <span class="docs-ui">Neues Review</span> (oder das <span class="docs-ui">+</span> in seiner Zeile, <span class="docs-ui">Neues Review in &lt;name&gt;</span>). Bei einem anderen Projekt wird zuerst zu diesem Projekt gewechselt und dann die Aufnahme gestartet. Solange eine andere Aufnahme läuft, startet es nicht.</p>
 <p>Eine Aufnahme ist auf 90 Minuten begrenzt. Kurz vor dem Limit erhalten Sie eine Warnung, und beim Erreichen wird die Aufnahme automatisch gestoppt und gespeichert.</p>
-<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="Werkzeugleiste im Feedback-Modus (Screenshot folgt)"><span>Screenshot folgt</span></div><figcaption>Werkzeugleiste im Feedback-Modus</figcaption></figure>
+{{shot:feedback-toolbar|Werkzeugleiste im Feedback-Modus}}
 
 <!-- @pen 0232dc7983 -->
 ## Stift
@@ -48,7 +48,38 @@ Nehmen Sie den integrierten Browser, einen ganzen Bildschirm oder ein anderes Fe
   <li>ein gesprochener Abschnitt endet</li>
 </ul>
 
-<!-- @mic 3540329978 -->
+<!-- @mic 38bffa5e34 -->
 ## Mikrofon
 <p>Das Mikrofon ist standardmäßig eingeschaltet. Schalten Sie es in der Fußleiste um (<span class="docs-ui">Mikrofon ausschalten</span> / <span class="docs-ui">Mikrofon einschalten</span>) oder mit <span class="docs-ui">Meine Stimme aufnehmen</span> in den Einstellungen. Ein Gerät wählen Sie unter <span class="docs-ui">Mikrofon</span>.</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Demnächst</p><p><span class="docs-ui">Auch die Gegenseite aufnehmen</span> (andere Teilnehmende in einem Meeting über das Systemaudio erfassen) ist in der Beta. Mit Meeting-Apps wurde es noch nicht geprüft.</p></div>
+
+<!-- @other-side bf51c46448 -->
+## Die Gegenseite eines Meetings aufnehmen
+<p>Um eine Seite gemeinsam in einem Anruf zu prüfen, lassen Sie Ferret neben Ihrem Mikrofon auch aufnehmen, was Sie von Ihrem Computer hören. Das funktioniert mit jeder Meeting-App (Zoom, Google Meet, Microsoft Teams und anderen), weil Ferret den Ton Ihres Computers aufnimmt, nicht die App. Beides bleibt getrennt: Ihr Mikrofon wird als <strong>Ich</strong> transkribiert und der Ton Ihres Computers als <strong>Andere</strong>, sodass jeder Befund zeigt, wer was verlangt hat. Es funktioniert auch bei ausgeschaltetem Mikrofon.</p>
+<ol class="docs-steps">
+  <li>Treten Sie dem Anruf wie gewohnt in Ihrer Meeting-App bei. Verwenden Sie weiter deren eigene Mikrofon- und Lautsprechereinstellungen.</li>
+  <li>Schalten Sie <span class="docs-ui">Auch die Gegenseite aufnehmen</span> in den Einstellungen ein oder <span class="docs-ui">Auch andere Stimmen aufnehmen</span> im Mikrofonmenü der Fußleiste. Während einer Aufnahme lässt sich das nicht ändern.</li>
+  <li>Wählen Sie, was aufgenommen wird: den <span class="docs-ui">Integrierter Browser</span> für die zu prüfende Seite oder <span class="docs-ui">Ganzer Bildschirm</span> / <span class="docs-ui">Fenster</span>, wenn Sie einen geteilten Bildschirm ansehen.</li>
+  <li><span class="docs-ui">Aufnehmen</span>, dann gehen Sie die Seite mit den anderen durch und kreisen die Stellen mit dem Stift ein.</li>
+  <li><span class="docs-ui">Stopp</span>. Beide Seiten werden transkribiert und in Befunde umgewandelt.</li>
+</ol>
+<p>Sagen Sie den anderen Teilnehmenden, dass Sie aufnehmen. Bei einem Cloud-Transkriptionsanbieter werden auch deren Stimmen an diesen Anbieter gesendet.</p>
+
+<!-- @other-side-os cb39949418 -->
+## Systemaudio je Betriebssystem
+<table>
+  <thead><tr><th>Betriebssystem</th><th>Voraussetzung</th><th>Berechtigung</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td>macOS 14.2 oder neuer. Bei älteren Versionen wird nur Ihr Mikrofon aufgenommen.</td><td>Wenn Sie die Gegenseite zum ersten Mal aufnehmen, fragt macOS, ob Ferret Systemaudio aufnehmen darf. Haben Sie abgelehnt, aktivieren Sie Ferret unter <span class="docs-ui">Systemeinstellungen → Datenschutz &amp; Sicherheit → Bildschirm- &amp; Systemaudioaufnahme</span>, beenden Sie Ferret und öffnen Sie es erneut. Ihr Bildschirm wird dafür nicht aufgenommen.</td></tr>
+    <tr><td>Windows</td><td>Ein aktiviertes Wiedergabegerät (Lautsprecher oder Kopfhörer) unter <span class="docs-ui">Einstellungen → System → Sound</span>.</td><td>Keine. Aufgenommen wird das Standard-Wiedergabegerät.</td></tr>
+    <tr><td>Linux</td><td>PulseAudio oder PipeWire mit <code>pipewire-pulse</code> (auf den meisten Desktops der Standard).</td><td>Keine. Aufgenommen wird die Standardausgabe.</td></tr>
+  </tbody>
+</table>
+<p>Kann die Gegenseite nicht aufgenommen werden, nennt Ferret den Grund in einer Warnung und nimmt Ihr Mikrofon, das Video und den Stift weiter auf. Siehe <a href="troubleshooting.html#system-audio">Fehlerbehebung</a>.</p>
+
+<!-- @other-side-tips 2881bdb5c2 -->
+## Tipps für Meetings
+<ul>
+  <li><strong>Verwenden Sie Kopfhörer.</strong> Mit Lautsprechern nimmt Ihr Mikrofon auch die Gegenseite auf. Ferret schaltet für das Mikrofon die Echounterdrückung ein, wenn es die Gegenseite aufnimmt, und verwirft Zeilen, die von beiden Seiten gehört wurden, aber mit Kopfhörern wird das Transkript am saubersten.</li>
+  <li><strong>Alles, was Ihr Computer abspielt, wird aufgenommen</strong>, auch Benachrichtigungstöne und Videos. Schalten Sie während des Reviews stumm, was Sie nicht brauchen.</li>
+  <li><strong>Wechseln Sie während einer Aufnahme nicht das Audiogerät.</strong> Wird das Ausgabegerät gewechselt oder getrennt, endet die Aufnahme der Gegenseite mit einer Warnung. Mikrofon, Video und Stift laufen weiter. Nehmen Sie den Rest danach mit <span class="docs-ui">Weiter aufnehmen</span> auf.</li>
+</ul>

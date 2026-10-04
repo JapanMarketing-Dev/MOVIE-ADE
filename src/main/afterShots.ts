@@ -15,7 +15,7 @@ import { sanitizeAfterPath } from '@shared/afterShot'
 import { assertContained } from './sessions/containment'
 
 /** 画面に出す AFTER の大きさの上限。これより大きいファイルは出さない（Agent の撮り間違いで巨大な画像になることがある） */
-export const AFTER_MAX_BYTES = 20 * 1024 * 1024
+const AFTER_MAX_BYTES = 20 * 1024 * 1024
 
 const CONTENT_TYPES: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' }
 

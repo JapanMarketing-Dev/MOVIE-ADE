@@ -1,0 +1,42 @@
+# Adapted from Orca's .github/dependabot.yml (MIT, Copyright 2026 Lovecast Inc.).
+# 依存の更新の PR を develop へ出す（main はリリース専用）。
+# - GitHub Actions: 週1回、まとめて1つの PR。uses は SHA 固定のまま、版のコメントも Dependabot が書き換える
+#   （test/unit/release-policy.test.ts が形を確かめる）
+# - npm（pnpm-lock.yaml）: 月1回、minor / patch をまとめて1つの PR。major（Electron など）は手で上げる
+# - cooldown: 出たばかりの版は数日待ってから提案する（乗っ取られた版を取り込む前に気づける時間を置く）
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns:
+          - '*'
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: ci
+
+  - package-ecosystem: npm
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: '*'
+        update-types:
+          - version-update:semver-major
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: deps

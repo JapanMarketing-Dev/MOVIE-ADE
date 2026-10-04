@@ -1,6 +1,6 @@
 /**
  * LLM整理の実測。
- *   npx tsx tools/bench-llm.ts <materialDir> --runner claude|codex [--model haiku] [--out <dir>]
+ *   npx tsx tools/pipeline/bench-llm.ts <materialDir> --runner claude|codex [--model haiku] [--out <dir>]
  *
  * 子プロセスの作業フォルダはセッションフォルダ（出力先）に限定する。
  */

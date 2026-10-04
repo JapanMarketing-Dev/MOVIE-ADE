@@ -5,6 +5,10 @@ Fehlerbehebung
 <!-- @lead eabdc6539a -->
 Häufige Probleme und ihre Lösungen. Die zitierten Meldungen sind die, die die App auf Deutsch anzeigt.
 
+<!-- @install 2d5deeaa6d -->
+## Installation und erster Start
+<p>Linux: Unter Ubuntu 23.10 und neuer kann das AppImage beim Start mit einem Sandbox-Fehler abbrechen, weil AppArmor die User Namespaces einschränkt, die die Sandbox von Electron nutzt. Installieren Sie stattdessen das <code>.deb</code>.</p>
+
 <!-- @screen-permission 45fa22d7c7 -->
 ## Aufnahme des Bildschirms oder eines Fensters schlägt fehl (macOS)
 <p>Meldung: <q>Für die Aufnahme des ganzen Bildschirms oder eines anderen Fensters ist die macOS-Berechtigung „Bildschirmaufnahme“ nötig.</q></p>
@@ -24,6 +28,18 @@ Häufige Probleme und ihre Lösungen. Die zitierten Meldungen sind die, die die 
   <li>Windows: <span class="docs-ui">Einstellungen → Datenschutz und Sicherheit → Mikrofon</span>, dann Desktop-Apps den Zugriff erlauben.</li>
 </ul>
 <p>Ohne Mikrofon erzeugen Stiftkreise trotzdem Befunde, sie enthalten aber keine gesprochene Anfrage.</p>
+
+<!-- @system-audio 62d76ef7c4 -->
+## Die Gegenseite eines Meetings wird nicht aufgenommen
+<p>Wenn <span class="docs-ui">Auch die Gegenseite aufnehmen</span> eingeschaltet ist und der Ton Ihres Computers nicht aufgenommen werden kann, zeigt Ferret eine dieser Warnungen und nimmt Ihr Mikrofon, das Video und den Stift weiter auf.</p>
+<ul>
+  <li><q>Ferret darf kein Systemaudio aufnehmen.</q> (macOS): Aktivieren Sie Ferret unter <span class="docs-ui">Systemeinstellungen → Datenschutz &amp; Sicherheit → Bildschirm- &amp; Systemaudioaufnahme</span>, beenden Sie Ferret, öffnen Sie es erneut und starten Sie dann eine neue Aufnahme.</li>
+  <li><q>Für die Aufnahme der Gegenseite ist macOS 14.2 oder neuer nötig.</q>: Aktualisieren Sie macOS. Bis dahin wird nur Ihr Mikrofon aufgenommen.</li>
+  <li><q>Windows hat den Zugriff auf das Systemaudio nicht erlaubt.</q> oder <q>Es wurde kein Audioausgabegerät gefunden.</q>: Aktivieren Sie Lautsprecher oder Kopfhörer unter <span class="docs-ui">Einstellungen → System → Sound</span> (Windows) oder schließen Sie sie an und starten Sie dann eine neue Aufnahme.</li>
+  <li><q>Systemaudio ist nicht verfügbar.</q> (Linux): Installieren Sie PulseAudio oder, wenn Sie PipeWire verwenden, <code>pipewire-pulse</code>.</li>
+  <li><q>Die Aufnahme der Gegenseite wurde beendet: Das Audioausgabegerät wurde gewechselt oder getrennt.</q>: Der Rest der Aufnahme läuft ohne die Gegenseite weiter. Nehmen Sie den Rest mit <span class="docs-ui">Weiter aufnehmen</span> auf.</li>
+</ul>
+<p>Erscheinen die Worte der Gegenseite auch als Ihre, nimmt Ihr Mikrofon Ihre Lautsprecher auf. Verwenden Sie Kopfhörer.</p>
 
 <!-- @whisper ec2a54a0ef -->
 ## Kein lokales Modell / whisper-cli nicht gefunden

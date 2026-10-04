@@ -5,7 +5,7 @@ Editor và xem trước
 <!-- @lead 97cbc36c8d -->
 Mở và sửa tệp trong dự án, xem trước Markdown và Mermaid. Bản xem trước mở trong trình duyệt tích hợp có thể được ghi và review như mọi trang web.
 
-<!-- @files f1e2c27cca -->
+<!-- @files d29f6a2107 -->
 ## Mở và sửa tệp
 <ul>
   <li><span class="docs-ui">Tệp</span> (cây tệp): {{keys:Mod+Shift+E}}, với <span class="docs-ui">Lọc theo tên tệp</span>, <span class="docs-ui">Làm mới</span> và <span class="docs-ui">Thu gọn tất cả</span>.</li>
@@ -14,7 +14,18 @@ Mở và sửa tệp trong dự án, xem trước Markdown và Mermaid. Bản xe
   <li>Nếu tệp thay đổi trên đĩa trong khi bạn còn chỉnh sửa chưa lưu, chọn <span class="docs-ui">Tải lại từ đĩa</span> hoặc <span class="docs-ui">Giữ thay đổi của tôi</span>.</li>
 </ul>
 <p>Editor là Monaco. Các tệp không phải văn bản sẽ mở trong trình xem: hình ảnh (phóng to, thu nhỏ; SVG cũng có thể hiển thị dưới dạng mã), video và âm thanh có thanh tua, PDF, và với mọi tệp nhị phân khác là kích thước cùng dạng hex của các byte đầu. Trình xem chỉ đọc, và các tệp nằm ngoài thư mục dự án hoặc được truy cập qua symbolic link trỏ ra ngoài thư mục đó sẽ không được hiển thị.</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Sắp có</p><p>Tạo, đổi tên và xóa tệp từ cây tệp.</p></div>
+
+<!-- @file-tree 4bec72e9f4 -->
+## Tạo, đổi tên và xóa tệp
+<p>Thao tác với tệp ngay trong <span class="docs-ui">Tệp</span>, giống như trong VS Code. Tên được nhập trực tiếp trong cây.</p>
+<ul>
+  <li><span class="docs-ui">Tệp mới</span> / <span class="docs-ui">Thư mục mới</span>: các nút phía trên cây, hoặc nhấp chuột phải vào một thư mục (hoặc vùng trống bên dưới cây). Mục mới được tạo trong thư mục đang chọn, cạnh tệp đang chọn, hoặc ở cấp cao nhất của dự án. Tệp mới được mở trong editor.</li>
+  <li><span class="docs-ui">Đổi tên</span>: {{keys:F2 / Enter|F2}}, hoặc nhấp chuột phải. Các tab đang mở đi theo tên mới và giữ nguyên chỉnh sửa chưa lưu.</li>
+  <li><span class="docs-ui">Xóa</span>: {{keys:Mod+Backspace / Delete|Delete}}, hoặc nhấp chuột phải. Ferret hỏi trước, rồi chuyển mục vào Thùng rác (Recycle Bin trên Windows), nên bạn có thể khôi phục. Tab của các tệp đã xóa sẽ đóng; nếu có tab còn chỉnh sửa chưa lưu, hộp xác nhận sẽ báo.</li>
+  <li>Chọn nhiều mục bằng {{keys:Mod}}-click hoặc {{keys:Shift}}-click để xóa cùng lúc.</li>
+  <li>{{keys:Esc}} hủy tên bạn đang nhập.</li>
+</ul>
+<p>Ferret không ghi đè lên tệp hoặc thư mục đã có cùng tên, và từ chối mọi thứ dẫn ra ngoài thư mục dự án (<code>..</code>, đường dẫn tuyệt đối, symbolic link trỏ ra ngoài), mọi thứ bên trong <code>.git</code>, và những tên mà một số hệ điều hành không dùng được: <code>/ \ &lt; &gt; : " | ? *</code>, ký tự điều khiển, khoảng trắng hoặc dấu chấm ở cuối, và các tên dành riêng của Windows như <code>CON</code> hay <code>NUL</code>.</p>
 
 <!-- @preview b8c0baaad4 -->
 ## Xem trước Markdown và Mermaid
@@ -24,7 +35,7 @@ Mở và sửa tệp trong dự án, xem trước Markdown và Mermaid. Bản xe
   <li><span class="docs-ui">Mở xem trước</span>: trong trình duyệt tích hợp (<code>ade-preview://</code>), để bạn có thể ghi và review nó</li>
 </ul>
 
-<!-- @review-docs 3956ed6f10 -->
+<!-- @review-docs 4b5c6316ba -->
 ## Review tài liệu bằng cách ghi
 <ol class="docs-steps">
   <li>Mở một tệp Markdown và bấm <span class="docs-ui">Mở xem trước</span>.</li>
@@ -32,4 +43,4 @@ Mở và sửa tệp trong dự án, xem trước Markdown và Mermaid. Bản xe
   <li>Dừng. Các góp ý tham chiếu đường dẫn của tệp tính từ thư mục dự án thay vì URL.</li>
   <li>Bấm <span class="docs-ui">Gửi cho Agent</span> để nhờ sửa tài liệu.</li>
 </ol>
-<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="Xem trước Markdown trong trình duyệt tích hợp (ảnh chụp màn hình sắp có)"><span>Ảnh chụp màn hình sắp có</span></div><figcaption>Xem trước Markdown trong trình duyệt tích hợp</figcaption></figure>
+{{shot:preview|Xem trước Markdown trong trình duyệt tích hợp}}

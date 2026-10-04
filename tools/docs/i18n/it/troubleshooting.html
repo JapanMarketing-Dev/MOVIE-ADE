@@ -5,6 +5,10 @@ Risoluzione dei problemi
 <!-- @lead eabdc6539a -->
 Problemi comuni e come risolverli. I messaggi citati sono quelli che l'app mostra in italiano.
 
+<!-- @install 2d5deeaa6d -->
+## Installazione e primo avvio
+<p>Linux: su Ubuntu 23.10 e successivi, l'AppImage può bloccarsi all'avvio con un errore della sandbox, perché AppArmor limita gli user namespace usati dalla sandbox di Electron. Installa invece il <code>.deb</code>.</p>
+
 <!-- @screen-permission 45fa22d7c7 -->
 ## La cattura dello schermo o della finestra non funziona (macOS)
 <p>Messaggio: <q>Per registrare l'intero schermo o un'altra finestra serve il permesso Registrazione schermo di macOS.</q></p>
@@ -24,6 +28,18 @@ Problemi comuni e come risolverli. I messaggi citati sono quelli che l'app mostr
   <li>Windows: <span class="docs-ui">Impostazioni → Privacy e sicurezza → Microfono</span>, poi consenti l'accesso alle app desktop.</li>
 </ul>
 <p>Senza microfono, i cerchi della penna creano comunque segnalazioni, ma senza una richiesta a voce.</p>
+
+<!-- @system-audio 62d76ef7c4 -->
+## L'altra parte di una riunione non viene registrata
+<p>Quando <span class="docs-ui">Registra anche l'interlocutore</span> è attivo e l'audio del computer non può essere registrato, Ferret mostra uno di questi avvisi e continua a registrare il microfono, il video e la penna.</p>
+<ul>
+  <li><q>Ferret non ha il permesso di registrare l'audio di sistema.</q> (macOS): attiva Ferret in <span class="docs-ui">Impostazioni di Sistema → Privacy e sicurezza → Registrazione schermo e audio di sistema</span>, chiudi e riapri Ferret, poi avvia una nuova registrazione.</li>
+  <li><q>Per registrare l'altra parte serve macOS 14.2 o successivo.</q>: aggiorna macOS. Fino ad allora viene registrato solo il microfono.</li>
+  <li><q>Windows non ha consentito l'accesso all'audio di sistema.</q> oppure <q>non è stato trovato nessun dispositivo di uscita audio.</q>: attiva altoparlanti o cuffie in <span class="docs-ui">Impostazioni → Sistema → Audio</span> (Windows) oppure collegali, poi avvia una nuova registrazione.</li>
+  <li><q>l'audio di sistema non è disponibile.</q> (Linux): installa PulseAudio, oppure <code>pipewire-pulse</code> se usi PipeWire.</li>
+  <li><q>La registrazione dell'altra parte si è interrotta: il dispositivo di uscita audio è cambiato o è stato scollegato.</q>: il resto della registrazione continua senza l'altra parte. Usa <span class="docs-ui">Registra ancora</span> per acquisire il resto.</li>
+</ul>
+<p>Se le parole dell'altra parte compaiono anche come tue, il microfono sta captando gli altoparlanti. Usa le cuffie.</p>
 
 <!-- @whisper ec2a54a0ef -->
 ## Nessun modello sul dispositivo / whisper-cli non trovato

@@ -1,3 +1,4 @@
+import { delay } from '@shared/delay'
 import { agentLabel } from '@shared/agentCatalog'
 import { t } from '@shared/i18n'
 import { AUTO_TARGET, buildSendTargetOptions, parseSendTarget, resolveRememberedTarget, type RunningAgentTerminal, type SendTarget, type SendTargetOption } from '@shared/sendTarget'
@@ -15,13 +16,13 @@ const AGENT_START_TIMEOUT_MS = 45_000
 const GENERIC_SETTLE_MS = 3000
 
 /** その Agent のタブを開き、入力を受け付ける（待機中・確認待ち）まで待つ。ターミナルの id を返す */
-export async function launchAgentAndWait(agent: TuiAgent): Promise<string | null> {
+async function launchAgentAndWait(agent: TuiAgent): Promise<string | null> {
   const before = new Set((await window.ade.invoke('terminal:list')).map((x) => x.id))
   requestAgentLaunch(agent)
   const deadline = Date.now() + AGENT_START_TIMEOUT_MS
   let seenAt: number | null = null
   while (Date.now() < deadline) {
-    await new Promise((done) => setTimeout(done, 500))
+    await delay(500)
     const created = (await window.ade.invoke('terminal:list')).find((x) => !before.has(x.id) && x.agent === agent)
     if (!created) continue
     const state = await window.ade.invoke('terminal:agentState', created.id)
@@ -34,7 +35,7 @@ export async function launchAgentAndWait(agent: TuiAgent): Promise<string | null
   return null
 }
 
-export interface SendReviewOptions {
+interface SendReviewOptions {
   reviewId: string
   target: SendTarget
   /** いまフォーカスしているターミナル（auto の最初の候補） */

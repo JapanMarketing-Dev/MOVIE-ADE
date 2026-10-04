@@ -53,7 +53,7 @@ export function crashReportsEnabled(settings: { crashReports?: boolean }): boole
   return settings.crashReports !== false
 }
 
-export interface CrashReportConditions {
+interface CrashReportConditions {
   /** E2E（ADE_E2E=1） */
   e2e: boolean
   /**
@@ -76,7 +76,7 @@ export function shouldSendCrashReports(c: CrashReportConditions): boolean {
   return Boolean(c.dsn) && c.enabled && (!c.e2e || c.forced === true) && !c.unitTest
 }
 
-export interface TelemetryProfile {
+interface TelemetryProfile {
   environment: 'production' | 'development'
   /** JS の例外を送る割合（ネイティブのクラッシュは常に全部） */
   sampleRate: number
@@ -103,7 +103,7 @@ export interface ScrubContext {
 }
 
 /** 例外のメッセージなど、1つの文字列の上限。長い文には画面の中身が入りやすい */
-export const MAX_STRING_LENGTH = 300
+const MAX_STRING_LENGTH = 300
 
 const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
@@ -203,7 +203,7 @@ function scrubPath(value: string, ctx: ScrubContext): string {
 const BREADCRUMB_CATEGORIES = new Set(['electron', 'child-process', 'startup', 'flow'])
 /** flow（主要な流れの区切り。src/shared/report.ts）の data に残してよい値：数と、短い識別子（agent 名・種類）だけ */
 const FLOW_VALUE = /^[A-Za-z0-9_.:-]{1,40}$/
-export const MAX_BREADCRUMBS = 30
+const MAX_BREADCRUMBS = 30
 
 type Breadcrumb = { category?: string; message?: string; data?: { [key: string]: unknown } }
 
@@ -290,7 +290,7 @@ export function scrubEvent<T extends EventLike>(event: T, ctx: ScrubContext = {}
  * 同じエラーを何度も送らないための鍵。例外の種類・メッセージ・一番上のフレームで決める。
  * 1回の起動で同じ鍵は1度だけ送る（無料の上限の中に収める）。
  */
-export function eventFingerprint(event: EventLike): string {
+function eventFingerprint(event: EventLike): string {
   const values = (event.exception as { values?: Array<Record<string, unknown>> } | undefined)?.values ?? []
   const last = values[values.length - 1]
   if (!last) return `msg:${String(event.message ?? '')}`
@@ -302,7 +302,7 @@ export function eventFingerprint(event: EventLike): string {
 /** 1回の起動で送る数の上限。暴走しているときに無料の枠を使い切らない */
 export const MAX_EVENTS_PER_RUN = 10
 /** dev 起動の上限。開発者の手元だけなので多めに集める（重複の抑止は同じ） */
-export const MAX_DEV_EVENTS_PER_RUN = 50
+const MAX_DEV_EVENTS_PER_RUN = 50
 
 /** 起動ごとの送信の抑え（重複と上限）。テストのため状態を外に持てる形にする */
 export function createEventLimiter(max = MAX_EVENTS_PER_RUN): (event: EventLike) => boolean {
@@ -322,7 +322,7 @@ export function createEventLimiter(max = MAX_EVENTS_PER_RUN): (event: EventLike)
  * JS の例外は半分だけ送る（同じ不具合は多くの人で起きるので、半分でも気づける）。
  * ネイティブのクラッシュ（minidump）は数が少なく重いので、全部送る。
  */
-export const JS_ERROR_SAMPLE_RATE = 0.5
+const JS_ERROR_SAMPLE_RATE = 0.5
 
 export function sampleEvent(isNativeCrash: boolean, random: () => number = Math.random, rate = JS_ERROR_SAMPLE_RATE): boolean {
   return isNativeCrash || random() < rate
@@ -356,7 +356,7 @@ export function shouldReportProcessGone(reason: string): boolean {
 }
 
 /** 確認用（FERRET_SENTRY_TEST。以前の MOVIE_ADE_SENTRY_TEST も可）。`1`/`all` は全部、`main,renderer` のように選べる */
-export const SENTRY_TEST_KINDS = ['main', 'renderer', 'boundary', 'ipc', 'handled'] as const
+const SENTRY_TEST_KINDS = ['main', 'renderer', 'boundary', 'ipc', 'handled'] as const
 /**
  * アプリを落とす・止める確認（ネイティブのクラッシュ、main の未処理の例外、長い停止）。
  * `1` / `all` には含めず、名前を書いたときだけ起こす（うっかり落とさない）
@@ -467,7 +467,7 @@ export function classifyStaleBuild<E extends { exception?: unknown; tags?: Recor
 }
 
 /** 添付する main のログの行数と、1行の長さの上限 */
-export const LOG_RING_LINES = 50
+const LOG_RING_LINES = 50
 export const LOG_LINE_MAX = 160
 
 /**
@@ -702,7 +702,7 @@ export function createInflightTracker(now: () => number = Date.now) {
  *   heapUsedMb / rssMb … 大きいと GC（ゴミ集め）で止まりやすい
  *   axEnabled / axChangedMsAgo … 補助技術（画面の読み上げ・他のアプリの操作）が有効になると、Chromium が画面の木を作り直して main が止まることがある
  */
-export interface BlockEnvironment {
+interface BlockEnvironment {
   heapUsedMb: number
   rssMb: number
   axEnabled: boolean

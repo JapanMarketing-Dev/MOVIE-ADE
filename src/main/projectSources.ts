@@ -1,4 +1,5 @@
-import { spawn, type ChildProcess } from 'node:child_process'
+import { execFile, spawn, type ChildProcess } from 'node:child_process'
+import { promisify } from 'node:util'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { mkdir, rm } from 'node:fs/promises'
 import { homedir } from 'node:os'
@@ -61,7 +62,7 @@ export function defaultCloneParent(home: string = homedir()): string {
   return join(home, 'Projects')
 }
 
-export type CloneOutcome = { ok: true; path: string; url: string } | { ok: false; kind: CloneFailureKind; detail: string }
+type CloneOutcome = { ok: true; path: string; url: string } | { ok: false; kind: CloneFailureKind; detail: string }
 
 let active: { child: ChildProcess; cancelled: boolean } | null = null
 
@@ -70,6 +71,31 @@ export function cancelClone(): void {
   if (!active) return
   active.cancelled = true
   active.child.kill()
+}
+
+/**
+ * clone の ssh を、確認を出さない（BatchMode）ようにする環境変数。利用者が選んでいる ssh
+ * （GIT_SSH_COMMAND・GIT_SSH・git config の core.sshCommand。鍵やアカウントの切り替えに使う）は置き換えず、
+ * 後ろに -o BatchMode=yes を足すだけにする。置き換えると、その鍵が使われず Permission denied になる（Orca #21985）
+ */
+export function cloneSshEnv(env: Record<string, string | undefined>, configuredSshCommand: string | null): Record<string, string> {
+  const fromEnv = env.GIT_SSH_COMMAND?.trim()
+  if (fromEnv) return { GIT_SSH_COMMAND: `${fromEnv} -o BatchMode=yes` }
+  // GIT_SSH は実行ファイルのパスだけで、引数を足せない。そのまま使わせる
+  if (env.GIT_SSH?.trim()) return {}
+  const configured = configuredSshCommand?.trim()
+  return { GIT_SSH_COMMAND: `${configured || 'ssh'} -o BatchMode=yes` }
+}
+
+/** git config の core.sshCommand（無ければ null） */
+async function configuredSshCommand(cwd: string, env: NodeJS.ProcessEnv): Promise<string | null> {
+  try {
+    const { stdout } = await promisify(execFile)('git', ['config', '--get', 'core.sshCommand'], { cwd, env, timeout: 3000 })
+    return stdout.trim() || null
+  } catch {
+    // 未設定（終了コード 1）や git が無い（clone も失敗して理由を出す）
+    return null
+  }
 }
 
 /**
@@ -90,11 +116,13 @@ export async function cloneRepository(
   if (existsSync(dest) && readdirSync(dest).length > 0) return { ok: false, kind: 'exists', detail: dest }
   await mkdir(input.parent, { recursive: true })
   const created = !existsSync(dest)
+  const env = toolEnv()
+  const sshEnv = cloneSshEnv(env, await configuredSshCommand(input.parent, env))
 
   return new Promise<CloneOutcome>((resolve) => {
     let stderr = ''
     const child = spawnGit('git', ['clone', '--progress', '--', checked.url, dest], {
-      env: { ...toolEnv(), GIT_TERMINAL_PROMPT: '0', GIT_SSH_COMMAND: 'ssh -o BatchMode=yes', GCM_INTERACTIVE: 'never' },
+      env: { ...env, GIT_TERMINAL_PROMPT: '0', ...sshEnv, GCM_INTERACTIVE: 'never' },
       stdio: ['ignore', 'ignore', 'pipe']
     })
     const job = { child, cancelled: false }

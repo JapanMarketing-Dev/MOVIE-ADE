@@ -275,8 +275,7 @@ kbd {
   margin-bottom: 0;
 }
 
-.docs-callout-warn,
-.docs-callout-wip {
+.docs-callout-warn {
   border-left-color: var(--warning);
   background: color-mix(in srgb, var(--warning) 8%, transparent);
 }
@@ -284,18 +283,6 @@ kbd {
 .docs-callout-title {
   font-weight: 600;
   margin-bottom: 4px !important;
-}
-
-/* Screenshot placeholders */
-.docs-shot-slot {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 16 / 9;
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-lg);
-  background: var(--bg-sunken);
-  color: var(--text-faint);
-  font-size: 13px;
 }
 
 .docs-shot img,

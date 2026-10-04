@@ -17,7 +17,7 @@ import path from 'node:path'
 import { readFileBounded } from '../boundedFile'
 
 /** レビューの保存先のファイルを読むときの上限（session.json などの JSON・JSONL。長い録画でも数十 MB に収まる） */
-export const MAX_STORAGE_FILE_BYTES = 64 * 1024 * 1024
+const MAX_STORAGE_FILE_BYTES = 64 * 1024 * 1024
 
 export class UnsafeStoragePathError extends Error {
   constructor(message: string) {

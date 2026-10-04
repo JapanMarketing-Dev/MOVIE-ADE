@@ -20,14 +20,15 @@
 <p>名稱預設為資料夾名稱。新增已經登錄過的資料夾時，會直接開啟它（在 macOS 與 Windows 上，路徑比對不分大小寫）。你可以從側邊欄選單 <span class="docs-ui">重新命名</span> 專案，或 <span class="docs-ui">從清單中移除</span>。移除絕不會刪除資料夾。</p>
 <p>終端機會在專案資料夾中開啟，審查則儲存在 <code>&lt;project&gt;/.ferret/</code> 底下。</p>
 
-<!-- @save-url 8914160725 -->
+<!-- @save-url 553542e405 -->
 ## 儲存 URL
 <ol class="docs-steps">
   <li>在內建瀏覽器中開啟頁面。</li>
   <li>按一下瀏覽器工具列中的 <span class="docs-ui">+</span>（<span class="docs-ui">儲存目前的 URL</span>）。目前的 URL 會預先填入。</li>
   <li>輸入 <span class="docs-ui">名稱</span>，然後按一下 <span class="docs-ui">儲存</span>。</li>
 </ol>
-<p>只接受 <code>http://</code> 與 <code>https://</code> 的 URL。如果保留建議的名稱，會根據主機推測名稱：</p>
+<p>每個儲存的 URL 在 <span class="docs-ui">審查內容</span> 底下都有一個種類：<span class="docs-ui">應用程式</span>（你正在開發的 App）、<span class="docs-ui">設計</span>（Figma、Penpot、Canva、原型）或 <span class="docs-ui">文件 / 規格</span>（Google Docs、Notion、Confluence、GitHub 上的 Markdown 規格、PDF）。種類會根據 URL 推測，你也可以變更。請參閱<a href="#design-docs">不只審查程式碼，也審查設計與文件</a>。</p>
+<p>只接受 <code>http://</code> 與 <code>https://</code> 的 URL。對於 App 的 URL，如果保留建議的名稱，會根據主機推測名稱：</p>
 <table>
   <thead><tr><th>主機</th><th>名稱</th></tr></thead>
   <tbody>
@@ -37,9 +38,9 @@
     <tr><td>其他</td><td><code>prd</code></td></tr>
   </tbody>
 </table>
-<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="瀏覽器工具列中儲存的 URL（螢幕截圖即將推出）"><span>螢幕截圖即將推出</span></div><figcaption>瀏覽器工具列中儲存的 URL</figcaption></figure>
+{{shot:url-presets|瀏覽器工具列中儲存的 URL}}
 
-<!-- @review-targets 351621051d -->
+<!-- @review-targets 7edd1985ee -->
 ## 審查目標面板
 {{clip:targets|在不停止錄製的情況下切換審查目標與頁面。}}
 <p>在意見模式中，右側的 <span class="docs-ui">審查目標</span> 面板會列出目前專案中所有可以審查的項目。切換目標不會停止錄製。可用 <span class="docs-ui">顯示方式 → 切換審查目標</span>（{{keys:Mod+Shift+K}}）或 <span class="docs-ui">隱藏面板</span> 切換面板顯示。</p>
@@ -48,9 +49,27 @@
   <li><strong><span class="docs-ui">檔案</span></strong>：專案資料夾。檔案會以預覽開啟（Markdown 與 Mermaid 會轉譯顯示，其他文字為唯讀），因此也能審查文件。鉛筆圖示（<span class="docs-ui">在編輯器中開啟</span>）會在編輯器中開啟檔案。</li>
 </ul>
 <p><span class="docs-ui">篩選目標</span> 會同時篩選目標、頁面與檔案，使用與 <span class="docs-ui">前往檔案…</span> 相同的模糊比對。在清單中，可用 <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> 或 <kbd>1</kbd>–<kbd>9</kbd> 切換目標。<span class="docs-ui">開啟 URL…</span> 可開啟一次性的 URL，<span class="docs-ui">儲存到專案 URL</span> 則會保留它。</p>
-<p>目標來自 <code>settings.json</code> 中的 <code>projects[].urls</code>（請參閱<a href="settings-json.html#example">範例</a>）。每個項目都需要 <code>url</code>、<code>launchCommand</code>（在終端機中執行，例如啟動桌面 App）或 <code>windowMatch</code>（要錄製的視窗）其中之一。選擇視窗目標會將它設為錄製來源，因此錄製期間無法這麼做。造訪過的頁面會依專案記住，只保存在這台電腦上（最多 200 個）。</p>
+<p>目標來自 <code>settings.json</code> 中的 <code>projects[].urls</code>（請參閱<a href="settings-json.html#example">範例</a>）。每個項目都需要 <code>url</code>、<code>launchCommand</code>（在終端機中執行，例如啟動桌面 App）或 <code>windowMatch</code>（要錄製的視窗）其中之一，並可加上 <code>purpose</code>（<code>app</code>、<code>design</code> 或 <code>doc</code>）。選擇視窗目標會將它設為錄製來源，因此錄製期間無法這麼做。造訪過的頁面會依專案記住，只保存在這台電腦上（最多 200 個）。</p>
 
-<!-- @switch-env 5103621352 -->
+<!-- @switch-env 3d0b21e6f6 -->
 ## 開啟與切換環境
 <p>按一下儲存的 URL 即可開啟。如果目前的頁面位於另一個儲存的 URL 之下，Ferret 會保留路徑、查詢字串與雜湊，只替換來源（origin）。例如在 <code>http://localhost:3000/pricing?plan=pro</code> 上按一下 <code>prd</code>，會開啟 <code>https://example.com/pricing?plan=pro</code>。</p>
 <p>與目前頁面相符（最長前綴）的標籤會反白顯示。在標籤上按右鍵，或使用其鉛筆圖示，即可編輯或 <span class="docs-ui">刪除</span> 它。開啟專案時若沒有上次的 URL，會載入第一個儲存的 URL。</p>
+<p>標籤會依種類分組：先是 App 的 URL，接著是設計，然後是文件，各種類之間有分隔線，並各有圖示。切換到設計或文件，或從設計或文件切換出去時，會直接開啟它儲存的 URL，不會沿用路徑。</p>
+
+<!-- @design-docs b11ff7ba55 -->
+## 不只審查程式碼，也審查設計與文件
+<p>意見不一定要針對程式碼。任何能在內建瀏覽器中開啟的內容，都能以同樣的方式錄製並用畫筆標註：Figma 或 Penpot 的設計、原型、Google Docs 或 Notion 上的規格、GitHub 上的設計文件、PDF。請在審查前把這些 URL 儲存到專案中，和 <code>local</code>、<code>dev</code> 放在一起。</p>
+<ol class="docs-steps">
+  <li>從側邊欄選單開啟 <span class="docs-ui">編輯專案…</span>（或按一下瀏覽器工具列中的 <span class="docs-ui">+</span>），然後按 <span class="docs-ui">新增目標</span>。</li>
+  <li>貼上 URL。<code>figma.com</code> 的連結會成為 <span class="docs-ui">設計</span>，<code>docs.google.com</code> 或 <code>notion.so</code> 的連結會成為 <span class="docs-ui">文件 / 規格</span>，名稱分別為 <code>Figma</code> 或 <code>Spec</code>。如果推測錯誤（例如放在你自己伺服器上的原型），請在 <span class="docs-ui">審查內容</span> 底下變更種類。</li>
+  <li>開啟目標，如果網站需要登入，請在內建瀏覽器中登入一次。內建瀏覽器會在每次啟動之間保留 Cookie，因此你會維持登入狀態。</li>
+  <li>照常錄製：一邊說話、一邊指出位置，並在設計或文件上畫圖標註。</li>
+</ol>
+<p>在設計或文件上錄下的意見，會在「意見」分頁與 <code>feedback.md</code> 中標上該種類，傳送給 Agent 的指示也會說明這一點。Agent 便會修改設計或文件，而不是程式碼：</p>
+<ul>
+  <li>如果文件位於專案中（Markdown 規格、ADR），Agent 會編輯該檔案。</li>
+  <li>如果無法編輯（Figma 檔案、Google 文件），Agent 會將該意見標為 <span class="docs-ui">Agent 提問</span>，並寫明要做的具體修改，讓你自行套用或轉交他人。</li>
+</ul>
+<p>範例：在 Google Docs 中閱讀價格規格時，你圈起方案表並說「Pro 方案現在是 9,800 日圓，不是 8,800」。<code>feedback.md</code> 會把這則意見列在 <code>Spec</code> 目標底下，並標示 <code>Kind: document</code>，Agent 會回覆規格中修正後的句子，而不會去動價格頁面的程式碼。把規格和執行中的 App 錄在同一段錄影中，意見會依目標分開，因此 Agent 可以先更新規格，再更新實作它的程式碼。</p>
+<p><code>figma.com</code>、<code>docs.google.com</code>、<code>notion.so</code> 等主機上未儲存的頁面也會被辨識出來。專案資料夾中的檔案（Markdown、Mermaid）可從 <span class="docs-ui">審查目標</span> 面板的 <span class="docs-ui">檔案</span> 清單中審查。</p>

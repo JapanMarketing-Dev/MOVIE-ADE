@@ -5,7 +5,7 @@ import { version } from '../../package.json'
 import { t } from '@shared/i18n'
 import { reportHandled } from '@shared/report'
 import { SMALL_JSON_MAX_BYTES, readBoundedBytes, readBoundedJson, readBoundedText } from './boundedResponse'
-import { SIGNED_SUMS_MAX_BYTES, releaseFilesAreSigned } from './releaseSignature'
+import { SIGNED_SUMS_MAX_BYTES, verifiedReleaseFiles, type SignedReleaseFile } from './releaseSignature'
 
 /**
  * 更新の確認（フッターの「更新を確認」）。
@@ -18,6 +18,8 @@ import { SIGNED_SUMS_MAX_BYTES, releaseFilesAreSigned } from './releaseSignature
  * latest.json は Cache-Control: max-age=300 で配られ、GitHub API のような回数の上限も認証も要らない。
  * 新しい版を案内する前に、releases/<版>/SHA256SUMS の署名を同梱の公開鍵で確かめ、latest.json のファイルの sha256 が
  * それに載っていることを確かめる（security-3 [2]。R2 だけを書き換えられても、偽の版へ案内しない。src/main/releaseSignature.ts）。
+ * 確かめた版・名前・sha256 は main に持ったまま、「ダウンロード」でアプリが落として sha256 を確かめてから保存する
+ * （security-4 [7]。ブラウザでサイトを開き直すと、確かめたあとに書き換えられた R2 の中身を選びうる。updateDownload.ts）。
  */
 
 /** 配信元。独自ドメインへ移すときはここだけ変える（今は r2.dev の開発用 URL） */
@@ -124,9 +126,9 @@ function reportCheckFailure(reason: 'http' | 'bad-manifest' | 'bad-version' | 'n
 
 /**
  * releases/<版>/SHA256SUMS(.sig) を取り、署名と latest.json のファイルを突き合わせる。
- * 'signed' / 'unsigned'（無い・合わない。恒久的）/ 一時的な HTTP の失敗（5xx・429）はその状態の数。ネットワークの失敗は例外のまま
+ * 確かめたファイル / 'unsigned'（無い・合わない。恒久的）/ 一時的な HTTP の失敗（5xx・429）はその状態の数。ネットワークの失敗は例外のまま
  */
-async function releaseSignature(fetcher: typeof net.fetch, manifest: ReleaseManifest, latest: string, signal: AbortSignal): Promise<'signed' | 'unsigned' | number> {
+async function releaseSignature(fetcher: typeof net.fetch, manifest: ReleaseManifest, latest: string, signal: AbortSignal): Promise<SignedReleaseFile[] | 'unsigned' | number> {
   // latest は judgeManifest が版の形を確かめたもの。配信元の下の固定の名前だけを読む
   const base = new URL(`releases/${latest}/`, RELEASE_BASE_URL)
   const responses = await Promise.all(['SHA256SUMS', 'SHA256SUMS.sig'].map((name) => fetcher(new URL(name, base).toString(), { signal })))
@@ -136,11 +138,38 @@ async function releaseSignature(fetcher: typeof net.fetch, manifest: ReleaseMani
   if (!sumsRes.ok || !sigRes.ok) return 'unsigned'
   const sums = await readBoundedBytes(sumsRes, SIGNED_SUMS_MAX_BYTES)
   const signature = await readBoundedText(sigRes, SIGNED_SUMS_MAX_BYTES)
-  return releaseFilesAreSigned(manifest.files, sums, signature) ? 'signed' : 'unsigned'
+  // 版・製品・OS・CPU・種類・置き場所は、署名した名前と版から作る（manifest の値は使わない。security-4 [3]）
+  return verifiedReleaseFiles(latest, manifest.files, sums, signature) ?? 'unsigned'
+}
+
+/** 署名で確かめた、この OS・CPU 向けのファイル（アプリが落とすもの）。確かめるたびに置き換える */
+export interface VerifiedDownload {
+  version: string
+  name: string
+  sha256: string
+  size: number
+  kind: SignedReleaseFile['kind']
+  url: string
+}
+let verified: VerifiedDownload | null = null
+
+/** 最後の更新の確認で確かめた、この OS・CPU 向けのファイル。無ければ null */
+export function verifiedDownload(): VerifiedDownload | null {
+  return verified
+}
+
+/** 確かめたファイルから、この OS・CPU 向けのものを選ぶ。URL は配信元の下の、署名した名前の置き場所 */
+export function pickVerifiedDownload(version: string, files: readonly SignedReleaseFile[], platform: NodeJS.Platform = process.platform, arch: string = process.arch): VerifiedDownload | null {
+  const file = pickReleaseFile(files, platform, arch)
+  if (!file) return null
+  const url = new URL(file.path, RELEASE_BASE_URL).toString()
+  if (!url.startsWith(RELEASE_BASE_URL)) return null
+  return { version, name: file.name, sha256: file.sha256, size: file.size, kind: file.kind, url }
 }
 
 export async function checkForUpdate(fetcher: typeof net.fetch = net.fetch): Promise<UpdateCheckResult> {
   const current = appVersion()
+  verified = null
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
@@ -169,6 +198,7 @@ export async function checkForUpdate(fetcher: typeof net.fetch = net.fetch): Pro
       reportCheckFailure('unsigned')
       return { state: 'unverified', current, latest: result.latest }
     }
+    verified = pickVerifiedDownload(result.latest, signed)
     return result
   } catch (err) {
     const aborted = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')

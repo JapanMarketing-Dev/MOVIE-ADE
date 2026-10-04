@@ -8,7 +8,7 @@ import { applyOnboardingPatch, type OnboardingPatch, type OnboardingState } from
  * いまは押した時点で画面の状態を変えて閉じ、保存の結果では閉じた画面を開き直さない。
  * 保存の失敗は onError（トースト・reportHandled）で知らせるだけにする。
  */
-export interface OnboardingStoreDeps {
+interface OnboardingStoreDeps {
   save: (patch: OnboardingPatch) => Promise<unknown>
   onChange: (state: OnboardingState | null) => void
   onError: (err: unknown, patch: OnboardingPatch) => void

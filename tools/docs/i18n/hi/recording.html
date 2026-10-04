@@ -18,7 +18,7 @@
 </table>
 <p>आपका चुनाव याद रखा जाता है। macOS पर स्क्रीन और विंडो रिकॉर्ड करने के लिए Screen Recording की अनुमति चाहिए (<a href="troubleshooting.html#screen-permission">अनुमति कैसे दें</a>)।</p>
 
-<!-- @record 0d1af48c7a -->
+<!-- @record deb62ed37c -->
 ## शुरू करें, विराम दें, रोकें
 {{clip:record|रिकॉर्डिंग: पेज के बारे में बोलें और पेन से जगह को घेरें।}}
 <ol class="docs-steps">
@@ -29,7 +29,7 @@
 </ol>
 <p>साइडबार में हर प्रोजेक्ट का अपना <span class="docs-ui">नया Review</span> होता है (या उसकी row पर <span class="docs-ui">+</span>, <span class="docs-ui">&lt;name&gt; में नया review</span>)। किसी दूसरे प्रोजेक्ट पर यह पहले उस प्रोजेक्ट पर जाता है और फिर रिकॉर्डिंग शुरू करता है। कोई दूसरी रिकॉर्डिंग चल रही हो तो यह शुरू नहीं होता।</p>
 <p>एक रिकॉर्डिंग अधिकतम 90 मिनट की हो सकती है। सीमा के पास आपको चेतावनी मिलती है, और सीमा पर पहुँचते ही रिकॉर्डिंग अपने-आप रुककर सेव हो जाती है।</p>
-<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="Feedback मोड का टूलबार (screenshot जल्द आ रहा है)"><span>Screenshot जल्द आ रहा है</span></div><figcaption>Feedback मोड का टूलबार</figcaption></figure>
+{{shot:feedback-toolbar|Feedback मोड का टूलबार}}
 
 <!-- @pen 0232dc7983 -->
 ## पेन
@@ -48,7 +48,38 @@
   <li>बोला गया एक हिस्सा (segment) खत्म होता है</li>
 </ul>
 
-<!-- @mic 3540329978 -->
+<!-- @mic 38bffa5e34 -->
 ## माइक्रोफ़ोन
 <p>माइक्रोफ़ोन डिफ़ॉल्ट रूप से चालू रहता है। इसे फ़ुटर से (<span class="docs-ui">माइक्रोफ़ोन बंद करें</span> / <span class="docs-ui">माइक्रोफ़ोन चालू करें</span>) या Settings में <span class="docs-ui">मेरी आवाज़ रिकॉर्ड करें</span> से टॉगल करें। डिवाइस <span class="docs-ui">माइक्रोफ़ोन</span> में चुनें।</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">जल्द आ रहा है</p><p><span class="docs-ui">सामने वाले को भी रिकॉर्ड करें</span> (system audio के ज़रिए मीटिंग के दूसरे प्रतिभागियों को रिकॉर्ड करना) beta में है। इसे अभी meeting apps के साथ परखा नहीं गया है।</p></div>
+
+<!-- @other-side bf51c46448 -->
+## मीटिंग में सामने वालों को भी रिकॉर्ड करें
+<p>किसी call पर साथ मिलकर किसी पेज का review करने के लिए, Ferret को अपने माइक्रोफ़ोन के साथ-साथ वह भी रिकॉर्ड करने दें जो आप अपने कंप्यूटर से सुनते हैं। यह किसी भी मीटिंग ऐप (Zoom, Google Meet, Microsoft Teams और दूसरे) के साथ काम करता है, क्योंकि Ferret ऐप को नहीं, आपके कंप्यूटर के ऑडियो को रिकॉर्ड करता है। दोनों अलग रखे जाते हैं: आपके माइक्रोफ़ोन का ट्रांसक्रिप्शन <strong>मैं</strong> के रूप में और कंप्यूटर के ऑडियो का <strong>दूसरा</strong> के रूप में होता है, ताकि हर finding में दिखे कि किसने क्या माँगा। यह माइक्रोफ़ोन बंद होने पर भी काम करता है।</p>
+<ol class="docs-steps">
+  <li>हमेशा की तरह अपने मीटिंग ऐप में call से जुड़ें। उसकी अपनी माइक्रोफ़ोन और स्पीकर सेटिंग्स इस्तेमाल करते रहें।</li>
+  <li>Settings में <span class="docs-ui">सामने वाले को भी रिकॉर्ड करें</span>, या फ़ुटर के माइक्रोफ़ोन मेन्यू में <span class="docs-ui">दूसरों की आवाज़ भी रिकॉर्ड करें</span> चालू करें। रिकॉर्डिंग के दौरान इसे बदला नहीं जा सकता।</li>
+  <li>चुनें कि क्या रिकॉर्ड करना है: review वाले पेज के लिए <span class="docs-ui">बिल्ट-इन Browser</span>, या अगर आप कोई शेयर की गई स्क्रीन देख रहे हैं तो <span class="docs-ui">पूरी स्क्रीन</span> / <span class="docs-ui">विंडो</span>।</li>
+  <li><span class="docs-ui">रिकॉर्ड</span> करें, फिर दूसरों के साथ पेज पर बात करें और pen से जगहों पर गोला बनाएँ।</li>
+  <li><span class="docs-ui">रोकें</span>। दोनों तरफ़ का ट्रांसक्रिप्शन होता है और वे findings में बदल जाते हैं।</li>
+</ol>
+<p>दूसरे प्रतिभागियों को बताएँ कि आप रिकॉर्ड कर रहे हैं। Cloud ट्रांसक्रिप्शन provider के साथ उनकी आवाज़ें भी उस provider को भेजी जाती हैं।</p>
+
+<!-- @other-side-os cb39949418 -->
+## OS के हिसाब से सिस्टम ऑडियो
+<table>
+  <thead><tr><th>OS</th><th>ज़रूरत</th><th>अनुमति</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td>macOS 14.2 या नया। पुराने versions पर सिर्फ़ आपका माइक्रोफ़ोन रिकॉर्ड होता है।</td><td>जब आप पहली बार सामने वालों को रिकॉर्ड करते हैं, macOS पूछता है कि क्या Ferret सिस्टम ऑडियो रिकॉर्ड कर सकता है। अगर आपने मना किया था, तो <span class="docs-ui">System Settings → Privacy &amp; Security → Screen &amp; System Audio Recording</span> में Ferret चालू करें, फिर Ferret बंद करके दोबारा खोलें। इसके लिए आपकी स्क्रीन रिकॉर्ड नहीं होती।</td></tr>
+    <tr><td>Windows</td><td><span class="docs-ui">Settings → System → Sound</span> में एक चालू playback device (स्पीकर या हेडफ़ोन)।</td><td>कोई नहीं। डिफ़ॉल्ट playback device रिकॉर्ड होता है।</td></tr>
+    <tr><td>Linux</td><td>PulseAudio, या <code>pipewire-pulse</code> वाला PipeWire (ज़्यादातर desktops पर डिफ़ॉल्ट)।</td><td>कोई नहीं। डिफ़ॉल्ट output रिकॉर्ड होता है।</td></tr>
+  </tbody>
+</table>
+<p>अगर सामने वालों को रिकॉर्ड नहीं किया जा सकता, तो Ferret एक चेतावनी में कारण बताता है और आपका माइक्रोफ़ोन, वीडियो और pen रिकॉर्ड करता रहता है। <a href="troubleshooting.html#system-audio">समस्या निवारण</a> देखें।</p>
+
+<!-- @other-side-tips 2881bdb5c2 -->
+## मीटिंग के लिए सुझाव
+<ul>
+  <li><strong>हेडफ़ोन इस्तेमाल करें।</strong> स्पीकर के साथ आपका माइक्रोफ़ोन सामने वालों की आवाज़ भी पकड़ लेता है। सामने वालों को रिकॉर्ड करते समय Ferret माइक्रोफ़ोन के लिए echo cancellation चालू करता है, और दोनों में सुनी गई lines हटा देता है, पर सबसे साफ़ transcript हेडफ़ोन से मिलता है।</li>
+  <li><strong>आपका कंप्यूटर जो कुछ भी चलाता है, सब रिकॉर्ड होता है</strong>, जिसमें notification की आवाज़ें और वीडियो भी शामिल हैं। Review के दौरान जो ज़रूरी नहीं, उसे mute कर दें।</li>
+  <li><strong>रिकॉर्डिंग के बीच में ऑडियो डिवाइस न बदलें।</strong> अगर output device बदल जाए या निकाल दिया जाए, तो सामने वालों की रिकॉर्डिंग एक चेतावनी के साथ रुक जाती है। आपका माइक्रोफ़ोन, वीडियो और pen चलते रहते हैं। बाकी हिस्सा रिकॉर्ड करने के लिए बाद में <span class="docs-ui">और रिकॉर्ड करें</span> इस्तेमाल करें।</li>
+</ul>

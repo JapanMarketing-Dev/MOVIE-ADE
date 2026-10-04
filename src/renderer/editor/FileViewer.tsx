@@ -14,7 +14,7 @@ import { fitZoom, stepZoom, wheelZoom } from './imageZoom'
  * 中身は main が ade-media://project/ で返す（プロジェクトの外・リンク・パイプは src/main/projectMedia.ts が断る）。
  * 表示に失敗したら（対応していない形式など）、大きさと16進数の表示に切り替える。
  */
-export interface FileViewerProps {
+interface FileViewerProps {
   path: string
   name: string
   viewer: FileViewerKind

@@ -125,7 +125,7 @@ export default function SettingsJsonEditor({ path }: { path: string }) {
     <div className="st-json__editor">
       {text !== null && <Editor path={MODEL_URI} defaultLanguage="json" defaultValue={text} theme={themeName} onMount={onMount}
         onChange={(value) => setDirty((value ?? '') !== baselineRef.current)}
-        options={{ minimap: { enabled: false }, fontSize: 12, tabSize: 2, scrollBeyondLastLine: false, automaticLayout: true, wordWrap: 'on' }} />}
+        options={{ minimap: { enabled: false }, fontSize: 12, tabSize: 2, scrollBeyondLastLine: false, automaticLayout: true, wordWrap: 'on', editContext: false /* IME の候補窓のため（FileEditor.tsx と同じ） */ }} />}
     </div>
   </div>
 }

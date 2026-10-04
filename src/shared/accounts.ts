@@ -53,7 +53,7 @@ export interface AgentAccountSummary extends AgentAccount {
  * システムの既定アカウント（~/.claude・~/.codex）の読み取り結果。
  * Orca の CodexSystemDefaultIdentity と同じく、表示のために読むだけで書き換えない。
  */
-export interface SystemDefaultAccount {
+interface SystemDefaultAccount {
   signedIn: boolean
   email: string | null
 }

@@ -72,6 +72,26 @@ export class FeedbackLimiter {
   }
 }
 
+/**
+ * 送り主の識別子（security-4 [8]）。IPv6 は1つの回線に /64 が割り当てられ、その中のアドレスは自由に変えられるので、
+ * 上位 64 ビット（/64）にまとめる。IPv4（IPv4 射影の IPv6 を含む）はそのまま。読めなければ 'unknown'（みなで1つ）
+ */
+export function sourceIdentity(ip: string): string {
+  const raw = ip.trim().toLowerCase()
+  const v4 = /^(?:::ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/.exec(raw)
+  if (v4) return v4[1]!.split('.').every((n) => Number(n) <= 255) ? v4[1]! : 'unknown'
+  if (!/^[0-9a-f:]+$/.test(raw) || !raw.includes(':')) return 'unknown'
+  const halves = raw.split('::')
+  if (halves.length > 2) return 'unknown'
+  const head = halves[0] ? halves[0].split(':') : []
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : []
+  const missing = 8 - head.length - tail.length
+  if ((halves.length === 2 ? missing < 1 : missing !== 0)) return 'unknown'
+  const groups = [...head, ...Array<string>(missing).fill('0'), ...tail]
+  if (groups.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return 'unknown'
+  return `${groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, '')).join(':')}::/64`
+}
+
 /** IP・インストール ID・内容から、秘密の鍵の HMAC-SHA256 で鍵の名前を作る（元の値は残さない） */
 export async function limiterKey(salt: string, kind: string, value: string): Promise<string> {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(salt), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])

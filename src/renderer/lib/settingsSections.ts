@@ -28,7 +28,7 @@ export const SETTINGS_SECTIONS = [
 
 export type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]
 
-export const SECTION_KEYWORDS: Record<SettingsSectionId, readonly string[]> = {
+const SECTION_KEYWORDS: Record<SettingsSectionId, readonly string[]> = {
   setup: ['setup', 'checklist', 'onboarding', 'getting started', 'progress', 'セットアップ', 'チェックリスト', '初期設定', '進み具合'],
   general: ['storage', 'keep', 'retention', 'days', 'delete', 'feedback screen', 'stop', 'crash', 'report', 'privacy', 'sentry',
     '保管', '保存期間', '削除', '日', '停止', 'フィードバック画面', 'クラッシュ', 'プライバシー'],
@@ -53,7 +53,7 @@ export const SECTION_KEYWORDS: Record<SettingsSectionId, readonly string[]> = {
 }
 
 /** 全角・大文字小文字の揺れをならす */
-export function normalizeSearch(text: string): string {
+function normalizeSearch(text: string): string {
   return text.normalize('NFKC').toLowerCase().trim()
 }
 

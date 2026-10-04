@@ -80,6 +80,8 @@ export declare function isValidVersion(version: unknown): version is string
 export declare function assertValidVersion(version: unknown): string
 export declare function releaseDir(version: string, build?: number): string
 export declare function validateManifest(manifest: unknown, version: string): ReleaseManifest
+/** 公開済みの manifest のリリースノートだけを差し替える（形を確かめて返す） */
+export declare function withNotes(manifest: ReleaseManifest, notes: string): ReleaseManifest
 export declare function validateIndex(index: unknown): VersionsIndex
 export declare function parseSha256Sums(text: string): Map<string, string>
 export declare function formatSha256Sums(files: Array<{ name: string; sha256: string }>): string

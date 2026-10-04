@@ -5,7 +5,7 @@
  */
 import { open } from 'node:fs/promises'
 
-export interface WavInfo {
+interface WavInfo {
   sampleRate: number
   channels: number
   bitsPerSample: number

@@ -25,13 +25,13 @@ export interface DecisionPricing {
 /** 画像の渡し方。base64 はそのままの base64（Ollama）、data-uri は data:image/jpeg;base64,…（Cloudflare Workers AI は必須） */
 export type DecisionImageFormat = 'base64' | 'data-uri'
 
-export interface DecisionModelOption {
+interface DecisionModelOption {
   id: string
   /** 画像（before / after）を読めるか */
   images: boolean
 }
 
-export interface DecisionPresetDef {
+interface DecisionPresetDef {
   id: DecisionPreset
   /** 画面に出す名前（固有名詞なので翻訳しない。custom だけ訳す） */
   label: string
@@ -120,7 +120,7 @@ export interface DecisionPreferences {
 
 export const DEFAULT_DECISION_PREFERENCES: DecisionPreferences = { enabled: false, preset: 'ollama' }
 
-export function isDecisionPreset(v: unknown): v is DecisionPreset {
+function isDecisionPreset(v: unknown): v is DecisionPreset {
   return typeof v === 'string' && Object.prototype.hasOwnProperty.call(DECISION_PRESETS, v)
 }
 
@@ -192,7 +192,7 @@ export function applyDecisionPreset(prefs: DecisionPreferences, preset: Decision
   })
 }
 
-export interface ResolvedDecision {
+interface ResolvedDecision {
   preset: DecisionPreset
   /** {account_id} / {model} を置き換えた完全な URL。置き換えられなければ missing に名前が入る */
   url: string

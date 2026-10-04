@@ -26,7 +26,7 @@ import {
 
 type GlabRunner = (args: string[], options?: { input?: string; timeoutMs?: number }) => Promise<ExecResult>
 
-export type GlabErrorKind = 'missing' | 'timeout' | 'not-logged-in' | 'repo-not-found' | 'network' | 'failed'
+type GlabErrorKind = 'missing' | 'timeout' | 'not-logged-in' | 'repo-not-found' | 'network' | 'failed'
 
 /** glab の失敗を、決まった種類と画面に出せる短い文にする（トークンらしきものは伏せる） */
 export function classifyGlabError(result: ExecResult): { kind: GlabErrorKind; message: string } {

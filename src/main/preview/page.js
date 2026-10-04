@@ -91,7 +91,7 @@
 
   /**
    * 外部の画像（render.ts が span.remote-image にしたもの）。既定は読まず、行き先のホストと「読み込む」ボタンを出す。
-   * 押すと ?remote-images=1 を付けて読み直し、main がそのページだけ CSP で https を許す（security-3 [5]）。
+   * 押すと main から合言葉をもらって ?remote-images=<合言葉> で読み直し、main がそのページだけ CSP で https を許す（security-3 [5] / security-4 [6]）。
    * 許されたページでは https の画像だけを <img> に戻す（http やほかのスキームは印のまま）。
    */
   function applyRemoteImages() {
@@ -127,9 +127,20 @@
       button.type = 'button'
       button.textContent = root.dataset.msgRemoteLoad || 'Load remote images'
       button.addEventListener('click', function () {
+        button.disabled = true
         var url = new URL(window.location.href)
-        url.searchParams.set('remote-images', '1')
-        window.location.replace(url.href)
+        url.searchParams.delete('remote-images')
+        url.hash = ''
+        // main からこの文書に1回だけ使える合言葉をもらって読み直す（security-4 [6]。リンクの遷移では合言葉を出さない）
+        fetch(url.href, { method: 'POST', headers: { 'X-Ferret-Remote-Images': 'grant' } })
+          .then(function (res) { return res.ok ? res.json() : null })
+          .then(function (data) {
+            if (!data || typeof data.token !== 'string') throw new Error('no grant')
+            var next = new URL(window.location.href)
+            next.searchParams.set('remote-images', data.token)
+            window.location.replace(next.href)
+          })
+          .catch(function () { button.disabled = false })
       })
       banner.appendChild(text)
       banner.appendChild(button)

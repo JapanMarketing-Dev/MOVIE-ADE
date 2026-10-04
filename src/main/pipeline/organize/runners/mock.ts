@@ -1,4 +1,5 @@
 /** テスト用の runner。固定の出力を返すので CLI を呼ばずに整理の経路を試せる。 */
+import { delay } from '@shared/delay'
 import type { LlmRunner, RunnerRequest, RunnerResult } from '../runner'
 import { RunnerError } from '../runner'
 
@@ -22,7 +23,7 @@ export class MockRunner implements LlmRunner {
     this.calls.push(req)
     if (this.behavior.kind === 'error') throw this.behavior.error
     if (this.behavior.kind === 'hang') {
-      await new Promise((r) => setTimeout(r, req.timeoutMs + 50))
+      await delay(req.timeoutMs + 50)
       throw new RunnerError('タイムアウト', 'timeout')
     }
     return { raw: this.behavior.raw, elapsedMs: 1, commandLine: 'mock' }

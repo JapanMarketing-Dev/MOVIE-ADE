@@ -24,7 +24,7 @@ function walk(dir: string, out: string[] = []): string[] {
   }
   return out
 }
-const scriptFiles = [...walk('scripts'), ...walk('tools')]
+const scriptFiles = [...walk('scripts'), ...walk('tools'), ...walk('.github/scripts')]
 
 /** トップレベルの jobs: の下を、ジョブごとの行に分ける（インデント 2 のキーがジョブ名） */
 function jobsOf(text: string): Map<string, string[]> {
@@ -119,6 +119,96 @@ describe('GitHub Actions の固定', () => {
       const runs = lines.join('\n').split(/\n\s+(?=- |[\w-]+:)/).filter((b) => /^\s*run:/.test(b))
       for (const r of runs) expect(r, name).not.toMatch(/\$\{\{\s*(inputs|vars|github\.event)\./)
     }
+  })
+})
+
+describe('workflow 全体の決まり（Orca を参考に足した workflow にも効かせる）', () => {
+  /** - で始まる step ごとの行（インデントで区切る） */
+  function steps(text: string): string[] {
+    const out: string[] = []
+    let current: string[] | null = null
+    let indent = -1
+    for (const line of text.split('\n')) {
+      const m = /^(\s*)- /.exec(line)
+      if (m && /^\s*- (uses|name|run|id|if|env|with):?/.test(line) && (indent < 0 || m[1].length <= indent)) {
+        if (current) out.push(current.join('\n'))
+        current = [line]
+        indent = m[1].length
+      } else if (current) {
+        if (/^\S/.test(line) || (/\S/.test(line) && line.search(/\S/) <= indent && !/^\s*- /.test(line))) {
+          out.push(current.join('\n'))
+          current = null
+          indent = -1
+        } else current.push(line)
+      }
+    }
+    if (current) out.push(current.join('\n'))
+    return out
+  }
+
+  it.each(workflows)('%s は最上位の permissions を読むだけにし、書く権限はジョブごとに付ける', (file) => {
+    const text = read(file)
+    const top = /^permissions:\n((?: {2}.*\n)*)/m.exec(text)
+    expect(top, file).not.toBeNull()
+    expect(top![1]).not.toMatch(/write/)
+    expect(text).not.toMatch(/\b(write-all|read-all)\b/)
+  })
+
+  it.each(workflows)('%s のジョブはすべて timeout-minutes を持つ', (file) => {
+    for (const [name, lines] of jobsOf(read(file))) {
+      expect(lines.some((l) => /^ {4}timeout-minutes:\s*\d+/.test(l)), `${file} の ${name}`).toBe(true)
+    }
+  })
+
+  it.each(workflows)('%s の ubuntu は 24.04 に固定し、macOS は cross-platform と release だけで使う', (file) => {
+    const text = read(file)
+    const runners = [...text.matchAll(/^\s*(?:runs-on|runner):\s*(\S+)/gm)].map((m) => m[1])
+    expect(runners.length).toBeGreaterThan(0)
+    for (const r of runners) {
+      if (/^ubuntu/.test(r)) expect(r, file).toBe('ubuntu-24.04')
+      if (/^macos/.test(r)) expect([`${workflowDir}/cross-platform.yml`, `${workflowDir}/release.yml`]).toContain(file)
+    }
+  })
+
+  it.each(workflows)('%s は E2E を参照しない（公開リポジトリには e2e/ を出さない）', (file) => {
+    // 説明のコメント（「E2E は流さない」など）は除いて、実際に動く行だけを見る
+    const code = read(file).split('\n').filter((l) => !/^\s*#/.test(l)).map((l) => l.replace(/\s#\s.*$/, '')).join('\n')
+    expect(code).not.toMatch(/\be2e\b|playwright/i)
+  })
+
+  it.each(workflows)('%s の checkout は資格情報を残さない', (file) => {
+    for (const step of steps(read(file)).filter((s) => /uses:\s+actions\/checkout@/.test(s))) {
+      expect(step, file).toMatch(/persist-credentials:\s*false/)
+    }
+  })
+
+  it.each(workflows)('%s の run の中へ入力・vars・イベントの値を式で直接埋め込まない（env を通す）', (file) => {
+    for (const step of steps(read(file)).filter((s) => /^\s*-?\s*run:|\n\s+run:/.test(s))) {
+      const run = step.slice(step.search(/run:/))
+      expect(run, file).not.toMatch(/\$\{\{\s*(inputs|vars|github\.event|github\.head_ref)\b/)
+    }
+  })
+
+  it.each(workflows)('%s が pull_request_target なら、PR のコードを取らず secrets も使わない', (file) => {
+    const text = read(file)
+    if (!/^\s+pull_request_target:/m.test(text)) return
+    expect(text).not.toMatch(/actions\/checkout@/)
+    expect(text).not.toMatch(/secrets\./)
+    expect(text).not.toMatch(/github\.event\.pull_request\.head|github\.head_ref/)
+  })
+
+  it('Dependabot は develop へ出し、actions と npm を見て、出たばかりの版は待つ', () => {
+    const text = read('.github/dependabot.yml')
+    const updates = text.split(/\n(?= {2}- package-ecosystem:)/).slice(1)
+    expect(updates.map((u) => /package-ecosystem:\s*(\S+)/.exec(u)![1]).sort()).toEqual(['github-actions', 'npm'])
+    for (const u of updates) {
+      expect(u).toMatch(/target-branch:\s*develop/)
+      expect(u).toMatch(/cooldown:\n\s+default-days:\s*[1-9]\d*/)
+    }
+  })
+
+  it('Orca を参考に足した workflow が実際にある（パスの書き間違いで素通りしない）', () => {
+    expect(workflows).toEqual(expect.arrayContaining(['codeql.yml', 'dependency-review.yml', 'issue-labels.yml', 'pr-labels.yml', 'pr-caches.yml'].map((f) => `${workflowDir}/${f}`)))
   })
 })
 

@@ -25,7 +25,7 @@ Todas as configurações do Ferret ficam em um único arquivo JSON com um JSON S
 <p>A primeira linha do <code>settings.json</code> é <code>"$schema": "./settings.schema.json"</code>. Editores como o VS Code e agentes como o Claude Code o usam para autocompletar, validar e descrever cada campo. O schema vem dentro do app e é gravado ao lado do arquivo a cada execução, então sempre corresponde à versão instalada.</p>
 <p>Chaves que o Ferret não conhece são mantidas como estão quando o app salva. Abas abertas, a última URL e outros estados da sessão ficam no <code>state.json</code>, não aqui.</p>
 
-<!-- @example fece1b6b16 -->
+<!-- @example 8f2ce86189 -->
 ## Exemplo comentado
 <p>JSON não tem comentários, então as observações ficam abaixo do exemplo. Todos os campos são opcionais; deixe de fora o que você não precisa.</p>
 <pre><code>{
@@ -40,7 +40,9 @@ Todas as configurações do Ferret ficam em um único arquivo JSON com um JSON S
       "kind": "web",
       "urls": [
         { "id": "local", "label": "local", "url": "http://localhost:3000" },
-        { "id": "prd", "label": "prd", "url": "https://shop.example.com" }
+        { "id": "prd", "label": "prd", "url": "https://shop.example.com" },
+        { "id": "figma", "label": "Figma", "url": "https://www.figma.com/design/…", "purpose": "design" },
+        { "id": "spec", "label": "Spec", "url": "https://docs.google.com/document/d/…", "purpose": "doc" }
       ]
     }
   ],
@@ -83,7 +85,7 @@ Todas as configurações do Ferret ficam em um único arquivo JSON com um JSON S
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>: alvos de revisão para o menu de URLs. O primeiro abre quando o projeto abre. <code>id</code> pode ser qualquer string única.</li>
+  <li><code>projects[].urls</code>: alvos de revisão para o menu de URLs. O primeiro abre quando o projeto abre. <code>id</code> pode ser qualquer string única. <code>purpose</code> marca um design ou um documento (veja <a href="projects.html#design-docs">Revisar designs e documentos</a>); deixe de fora para o app.</li>
   <li><code>agents.customAgents</code>: qualquer CLI ou script wrapper. <code>startupAgents</code> lista, em ordem, as abas de agentes abertas com um projeto.</li>
   <li><code>capture.sttEndpoints.compatible</code>: qualquer servidor que implemente o <code>/v1/audio/transcriptions</code> da OpenAI (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> desativa o limite de custo, o que faz sentido para a sua própria GPU. Veja <a href="transcription.html">Transcrição e custos</a>.</li>
   <li><code>organizer</code>: <span class="docs-ui">Organizar apontamentos</span> enviado direto a um servidor <code>/v1/chat/completions</code> compatível com OpenAI (aqui, o Ollama). Use <code>"runner": "claude-code"</code> ou <code>"codex"</code> para usar o seu próprio login da CLI, e <code>organizer.cliModels</code> para escolher o modelo deles.</li>

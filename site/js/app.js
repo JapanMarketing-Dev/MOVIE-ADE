@@ -13,7 +13,8 @@ import {
   formatBytes,
   formatDate,
   excerptNotes,
-} from './releases.js?v=cf49ede6'
+} from './releases.js?v=50e13db2'
+import { fetchVerifiedBytes, verifyRelease } from './verify.js?v=d300e75f'
 
 const $ = (sel, root = document) => root.querySelector(sel)
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)]
@@ -40,8 +41,6 @@ function icon(id, extra = '') {
   svg.append(use)
   return svg
 }
-
-const previewBadge = () => el('span', { class: 'badge badge-warn', title: 'Not yet tested on real hardware', text: 'Preview' })
 
 /* ── スクロールで現れる演出 ───────────────────────── */
 
@@ -100,7 +99,8 @@ async function loadLatest() {
   try {
     const data = await fetchJson(`${DOWNLOAD_BASE}/latest.json`)
     const release = normalizeManifest(data, DOWNLOAD_BASE)
-    return release ? { state: 'ok', release } : { state: 'empty' }
+    // 署名で確かめたファイルだけを出す（security-4 [2]。verify.js）
+    return release ? { state: 'ok', release: await verifyRelease(release, DOWNLOAD_BASE) } : { state: 'empty' }
   } catch {
     return { state: 'error' }
   }
@@ -114,7 +114,7 @@ async function loadIndex() {
     if (!latest) return { state: 'empty' }
     const release = normalizeManifest(await fetchJson(latest.manifestUrl), DOWNLOAD_BASE)
     if (!release) return { state: 'error' }
-    return { state: 'ok', latest: release, all }
+    return { state: 'ok', latest: await verifyRelease(release, DOWNLOAD_BASE), all }
   } catch {
     return { state: 'error' }
   }
@@ -125,6 +125,44 @@ const newTabNote = () => el('span', { class: 'sr-only', text: ' (opens in a new 
 
 function externalLink(props, ...children) {
   return el('a', { ...props, target: '_blank', rel: 'noopener noreferrer' }, ...children, newTabNote())
+}
+
+/* ── 確かめてから保存するダウンロード ─────────────────── */
+
+/**
+ * リンクを、署名で確かめたファイルのダウンロードにする（security-4 [2]）。
+ * href にはインストーラーの URL を置かない。クリックで中身を取り、SHA-256 が署名の値と同じときだけ保存する。
+ * 取っている間は label に進み具合を出す
+ * @param {HTMLAnchorElement} anchor
+ * @param {{ name: string, url: string, size: number, sha256: string }} asset
+ * @param {Element} [label]
+ */
+function bindDownload(anchor, asset, label = anchor) {
+  anchor.href = '#'
+  anchor.removeAttribute('target')
+  anchor.onclick = async (event) => {
+    event.preventDefault()
+    if (anchor.getAttribute('aria-busy') === 'true') return
+    const original = label.textContent
+    anchor.setAttribute('aria-busy', 'true')
+    try {
+      const blob = await fetchVerifiedBytes(asset, (fraction) => {
+        label.textContent = `Downloading… ${Math.floor(fraction * 100)}%`
+      })
+      const url = URL.createObjectURL(blob)
+      const save = el('a', { href: url, download: asset.name, hidden: true })
+      document.body.append(save)
+      save.click()
+      save.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      label.textContent = original
+    } catch {
+      label.textContent = 'Couldn’t download. Try again.'
+      setTimeout(() => { label.textContent = original }, 4000)
+    } finally {
+      anchor.removeAttribute('aria-busy')
+    }
+  }
 }
 
 /* ── トップ: ヒーローのボタン ───────────────────────── */
@@ -142,7 +180,7 @@ function renderHero(result, platform) {
     button.querySelector('use')?.setAttribute('href', '#i-code')
     label.textContent = 'Build from source'
     if (!button.querySelector('.sr-only')) button.append(newTabNote())
-    meta.textContent = 'Downloads are coming soon. You can build it from source on GitHub today.'
+    meta.textContent = 'Build it from source on GitHub.'
     return
   }
   if (result.state === 'error') {
@@ -156,9 +194,9 @@ function renderHero(result, platform) {
   const slot = recommendedSlot(platform)
   const asset = slot ? assetForSlot(release.assets, slot) : null
   if (slot && asset) {
-    button.href = asset.url
     label.textContent = `Download for ${slot.label}`
-    meta.textContent = [release.tag, slot.detail, formatBytes(asset.size), asset.preview ? 'Preview' : ''].filter(Boolean).join(' · ')
+    bindDownload(button, asset, label)
+    meta.textContent = [release.tag, slot.detail, formatBytes(asset.size)].filter(Boolean).join(' · ')
   } else {
     button.href = 'download.html'
     label.textContent = 'Download'
@@ -176,8 +214,8 @@ function showStatus(kind, platform) {
     box.append(
       icon('i-info'),
       el('div', {},
-        el('p', {}, el('strong', { text: 'Coming soon. You can build from source on GitHub.' })),
-        el('p', {}, 'No builds have been published yet. See the ', externalLink({ href: BUILD_DOC_URL }, 'build instructions'), ' in the README (Node.js 22 and pnpm required).'),
+        el('p', {}, el('strong', { text: 'Build Ferret from source on GitHub.' })),
+        el('p', {}, 'See the ', externalLink({ href: BUILD_DOC_URL }, 'build instructions'), ' in the README (Node.js 22 and pnpm required).'),
         el('pre', {}, el('code', { text: `git clone ${REPO_URL}.git\ncd ferret\npnpm install\npnpm dev` })),
       ),
     )
@@ -198,7 +236,31 @@ function showStatus(kind, platform) {
   box.hidden = false
 }
 
-function renderSlots(release, platform, missingText = 'Coming soon') {
+/** 大きなボタンの横に添える、開き方の1行 */
+const OPEN_HINT = {
+  mac: 'Open the .dmg and drag Ferret to Applications.',
+  win: 'Run it. Ferret installs and opens.',
+  linux: 'Double-click it to install, then open Ferret from your app menu.',
+}
+
+/** 見ている OS に合う1つの大きなボタン。OS が分からない・その版に無いときは出さない（下の一覧から選ぶ） */
+function renderPrimary(release, platform) {
+  const box = $('[data-primary]')
+  if (!box) return
+  const slot = recommendedSlot(platform)
+  const asset = release && slot ? assetForSlot(release.assets, slot) : null
+  if (!slot || !asset) {
+    box.hidden = true
+    return
+  }
+  $('[data-primary-label]').textContent = `Download for ${slot.label}`
+  bindDownload($('[data-primary-download]'), asset, $('[data-primary-label]'))
+  $('[data-primary-meta]').textContent = [release.tag, slot.detail, formatBytes(asset.size)].filter(Boolean).join(' · ')
+  $('[data-primary-hint]').textContent = OPEN_HINT[slot.os] ?? ''
+  box.hidden = false
+}
+
+function renderSlots(release, platform, missingText = '—') {
   const recommended = recommendedSlot(platform)
   for (const slot of SLOTS) {
     const node = $(`[data-slot="${slot.id}"]`)
@@ -210,13 +272,24 @@ function renderSlots(release, platform, missingText = 'Coming soon') {
       ? [asset.name, formatBytes(asset.size)].filter(Boolean).join(' · ')
       : release === undefined ? 'Loading…' : release ? 'Not in this release' : missingText
     node.replaceChildren(
-      el('span', { class: 'slot-name' }, slot.detail, isRecommended ? el('span', { class: 'badge badge-accent', text: 'Your device' }) : null, asset?.preview ? previewBadge() : null),
+      el('span', { class: 'slot-name' }, slot.detail, isRecommended ? el('span', { class: 'badge badge-accent', text: 'Your device' }) : null),
       el('span', { class: 'slot-file', text: fileText }),
-      asset
-        ? el('a', { class: `btn btn-sm${isRecommended ? ' btn-primary' : ''}`, href: asset.url, 'aria-label': `Download for ${slot.label} ${slot.detail}` }, icon('i-download'), 'Download')
-        : el('span', { class: 'unavailable', text: '—' }),
+      asset ? slotLink(asset, slot, isRecommended) : el('span', { class: 'unavailable', text: '—' }),
     )
   }
+}
+
+function slotLink(asset, slot, isRecommended) {
+  const text = el('span', { text: 'Download' })
+  const link = el('a', { class: `btn btn-sm${isRecommended ? ' btn-primary' : ''}`, 'aria-label': `Download for ${slot.label} ${slot.detail}` }, icon('i-download'), text)
+  bindDownload(link, asset, text)
+  return link
+}
+
+function fileLink(asset) {
+  const link = el('a', { text: asset.name })
+  bindDownload(link, asset)
+  return link
 }
 
 const OS_ORDER = { mac: 0, win: 1, linux: 2 }
@@ -239,8 +312,8 @@ function versionBody(release) {
       el('h4', { text: 'Files' }),
       files.length
         ? el('ul', { class: 'files' }, files.map((f) => el('li', {},
-            el('span', { class: 'os' }, fileLabel(f.info), f.preview ? el('span', { class: 'preview-mark', text: ' · Preview' }) : null),
-            el('a', { href: f.url, text: f.name }),
+            el('span', { class: 'os' }, fileLabel(f.info)),
+            fileLink(f),
             el('span', { class: 'size', text: formatBytes(f.size) }),
           )))
         : el('p', { class: 'muted', text: 'No downloadable files.' }),
@@ -280,7 +353,8 @@ function renderVersions(all, latest) {
           if (!details.open || loaded) return
           loaded = true
           try {
-            const release = normalizeManifest(await fetchJson(entry.manifestUrl), DOWNLOAD_BASE)
+            const parsed = normalizeManifest(await fetchJson(entry.manifestUrl), DOWNLOAD_BASE)
+            const release = parsed ? await verifyRelease(parsed, DOWNLOAD_BASE) : null
             body.replaceChildren(...(release ? versionBody(release) : [el('p', { class: 'muted', text: 'This version’s details aren’t available.' })]))
           } catch {
             loaded = false
@@ -299,10 +373,11 @@ function renderDownloadPage(result, platform) {
     const { latest } = result
     meta.textContent = [latest.tag, formatDate(latest.date)].filter(Boolean).join(' · ')
     showStatus(null, platform)
+    renderPrimary(latest, platform)
     renderSlots(latest, platform)
     renderVersions(result.all, latest)
   } else if (result.state === 'empty') {
-    meta.textContent = 'Coming soon'
+    meta.textContent = ''
     showStatus('empty', platform)
     renderSlots(null, platform)
     renderVersions([], null)

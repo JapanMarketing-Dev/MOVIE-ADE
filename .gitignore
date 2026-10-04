@@ -22,3 +22,7 @@ out-*/
 
 # Windows の区切り（\）で組み立てたパスを macOS / Linux で作ってしまった一時ファイル（path.win32 で試したときなど）
 /\\*
+
+# 判定モデルの受け入れ確認を手で試したときにできるファイル（commit しない）
+/req.json
+/state.txt

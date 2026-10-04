@@ -39,9 +39,3 @@ export function countByStatus(items: ReadonlyArray<{ id: string }>, map: Progres
   for (const item of items) count[progressOf(map, item.id)]++
   return count
 }
-
-/** 絞り込みに合う指摘 */
-export function filterByStatus<T extends { id: string }>(items: readonly T[], map: ProgressMap | undefined, hidden: HiddenStatuses): T[] {
-  if (hidden.length === 0) return [...items]
-  return items.filter((item) => isStatusShown(hidden, progressOf(map, item.id)))
-}

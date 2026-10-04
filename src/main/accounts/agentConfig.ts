@@ -25,9 +25,11 @@ const SEED_FILES: Record<AccountAgent, string[]> = {
  * （指示ファイル・スキル・自作コマンド・プラグイン・フックがアカウントを替えても使えるように）。
  * 認証情報（.credentials.json・auth.json）と、会話の履歴・アカウントごとの状態は含めない。
  * プラグインの追加・削除はリンク先（既定アカウント側）に入る。どのアカウントでも同じプラグインを使うため。
+ * Codex の rules（コマンドの許可・禁止）も共有する。無いと追加アカウントでは ~/.codex/rules が効かない（Orca #24431）。
+ * 項目を足したときも、既存のアカウントには起動のたびに足りないリンクだけを張る（linkSharedEntries）。
  */
 const SHARED_ENTRIES: Record<AccountAgent, string[]> = {
-  codex: ['AGENTS.md', 'prompts', 'skills'],
+  codex: ['AGENTS.md', 'prompts', 'skills', 'rules'],
   claude: ['CLAUDE.md', 'commands', 'agents', 'skills', 'plugins', 'hooks']
 }
 
@@ -36,7 +38,7 @@ const SHARED_ENTRIES: Record<AccountAgent, string[]> = {
  * MCP サーバーと、初回の案内・お知らせを抑える既読の印だけ。
  * oauthAccount・userID・API キーの応答（customApiKeyResponses）・会話の履歴（projects の中身）は写さない。
  */
-export const CLAUDE_GLOBAL_CONFIG_KEYS = [
+const CLAUDE_GLOBAL_CONFIG_KEYS = [
   'mcpServers',
   // 古い Claude Code が権限確認を省くモードの同意を全体設定に置いていた項目名
   'bypassPermissionsModeAccepted',
@@ -76,7 +78,7 @@ export function pickClaudeGlobalConfig(source: Record<string, unknown>): Record<
 }
 
 /** 既定アカウントの .claude.json の場所。CLAUDE_CONFIG_DIR が無ければ ~/.claude.json（Claude Code と同じ） */
-export function systemClaudeGlobalConfigPath(systemDir: string, env: NodeJS.ProcessEnv = process.env): string {
+function systemClaudeGlobalConfigPath(systemDir: string, env: NodeJS.ProcessEnv = process.env): string {
   const inherited = env.CLAUDE_CONFIG_DIR?.trim()
   if (inherited) return join(inherited, '.claude.json')
   const colocated = join(systemDir, '.claude.json')
@@ -103,7 +105,7 @@ function seedClaudeGlobalConfig(managedDir: string, sourcePath: string): void {
  * skipDangerousModePermissionPrompt は「権限確認を省くモードを使いますか」に同意済みの印
  * （起動引数の --dangerously-skip-permissions のたびに確認が出ないようにする）。
  */
-export const CLAUDE_SETTINGS_CARRY_KEYS = ['skipDangerousModePermissionPrompt'] as const
+const CLAUDE_SETTINGS_CARRY_KEYS = ['skipDangerousModePermissionPrompt'] as const
 
 function readJsonObject(path: string): Record<string, unknown> | null {
   try {
@@ -169,17 +171,7 @@ export function seedManagedAccountDir(agent: AccountAgent, managedDir: string, s
       reportHandled(err, { area: 'accounts', op: 'copy account file' })
     }
   }
-  for (const name of SHARED_ENTRIES[agent]) {
-    const source = join(systemDir, name)
-    const target = join(managedDir, name)
-    try {
-      if (!existsSync(source) || lstatExists(target)) continue
-      symlinkSync(realpathSync(source), target)
-    } catch (err) {
-      console.warn(`[accounts] ${name} を共有できませんでした`, err)
-      reportHandled(err, { area: 'accounts', op: 'link account file' })
-    }
-  }
+  linkSharedEntries(agent, managedDir, systemDir)
   if (agent === 'claude') {
     // settings.json を写せなかった（既にあった）ときも、同意の印だけは引き継ぐ。以後の手直しは不要と記録する
     try {
@@ -191,6 +183,24 @@ export function seedManagedAccountDir(agent: AccountAgent, managedDir: string, s
     migrateManagedClaudeDir(managedDir, systemDir)
   }
   if (agent === 'codex') ensureCodexDaemonSocketGuard(managedDir)
+}
+
+/**
+ * 既定アカウントの共有する置き場所を、管理フォルダにリンクで見せる。既にある名前（利用者が置いたものも）には触らない。
+ * 何度呼んでもよい（起動のたびに、あとから足した共有の項目を既存のアカウントにも張る）
+ */
+export function linkSharedEntries(agent: AccountAgent, managedDir: string, systemDir: string): void {
+  for (const name of SHARED_ENTRIES[agent]) {
+    const source = join(systemDir, name)
+    const target = join(managedDir, name)
+    try {
+      if (!existsSync(source) || lstatExists(target)) continue
+      symlinkSync(realpathSync(source), target)
+    } catch (err) {
+      console.warn(`[accounts] ${name} を共有できませんでした`, err)
+      reportHandled(err, { area: 'accounts', op: 'link account file' })
+    }
+  }
 }
 
 function lstatExists(path: string): boolean {
@@ -213,7 +223,7 @@ function lstatExists(path: string): boolean {
 const DAEMON_SOCKET_SEGMENTS = ['app-server-control', 'app-server-control.sock']
 export const CODEX_DAEMON_OVERRIDE_MARKER = '# ade: CODEX_HOME too long for the daemon socket'
 
-export function codexDaemonSocketPathExceedsLimit(homePath: string, platform: NodeJS.Platform = process.platform): boolean {
+function codexDaemonSocketPathExceedsLimit(homePath: string, platform: NodeJS.Platform = process.platform): boolean {
   let canonical = homePath
   try {
     canonical = realpathSync.native(homePath)

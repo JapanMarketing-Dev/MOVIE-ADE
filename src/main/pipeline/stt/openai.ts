@@ -24,7 +24,7 @@ import { readFile } from 'node:fs/promises'
 import { basename } from 'node:path'
 import type { Speaker, TranscriptSegment } from '../types'
 import { SttHttpError, type SttEngine, type TranscribeChunkInput, type TranscribeResult } from './engine'
-import { encodeWav, wavDurationMs } from './wav'
+import { wavDurationMs } from './wav'
 import { DEFAULT_COST_LIMIT_USD, exceedsCostLimit, normalizeBaseUrl } from './endpoint'
 import { authHeaders } from '@shared/aiProviders'
 import { recordedSttFetch } from './usage'
@@ -53,7 +53,7 @@ export const openAiSttPricePerMinuteUsd: Record<OpenAiSttModel, number> = {
   'whisper-1': 0.006,
 }
 
-export interface OpenAiSttOptions {
+interface OpenAiSttOptions {
   /** 互換サーバーでは任意のモデル名（例: Systran/faster-whisper-small, whisper-large-v3） */
   model: OpenAiSttModel | (string & {});
   /**
@@ -110,13 +110,8 @@ export { DEFAULT_COST_LIMIT_USD, exceedsCostLimit, normalizeBaseUrl }
 /** 表にないモデル（互換サーバー）の概算に使う $/分。whisper-1 と同じ値で多めに見積もる */
 export const UNKNOWN_PRICE_PER_MINUTE_USD = 0.006
 
-/** 表にあるモデルは公開価格、ないモデルは多めの概算 */
-export function sttPricePerMinuteUsd(model: string): number {
-  return knownSttPricePerMinuteUsd(model) ?? UNKNOWN_PRICE_PER_MINUTE_USD
-}
-
 /** 表にあるモデルの公開価格。無ければ undefined（推測しない） */
-export function knownSttPricePerMinuteUsd(model: string): number | undefined {
+function knownSttPricePerMinuteUsd(model: string): number | undefined {
   return (openAiSttPricePerMinuteUsd as Record<string, number>)[model]
 }
 const DEFAULT_BASE_URL = 'https://api.openai.com'
@@ -325,56 +320,6 @@ export class OpenAiSttEngine implements SttEngine {
 export function redact(s: string, key = ''): string {
   const out = s.replace(/sk-[A-Za-z0-9_\-]{10,}/g, 'sk-***').replace(/gsk_[A-Za-z0-9]{10,}/g, 'gsk_***')
   return key.length >= 8 ? out.split(key).join('***') : out
-}
-
-/** 録画1時間あたりの概算料金(USD) */
-export function estimateHourlyCostUsd(model: OpenAiSttModel, channels = 1): number {
-  return openAiSttPricePerMinuteUsd[model] * 60 * channels
-}
-
-export interface SttConnectionCheck {
-  ok: boolean
-  /** 画面にそのまま出す日本語の結果 */
-  message: string
-}
-
-/**
- * 「接続を確認」。1秒の無音（16kHz モノラル WAV）を送り、届くかどうかだけを見る。
- * 認証・URL・モデル名の誤りを、HTTP の状態と本文から日本語で言い分ける。
- * 応答本文やキーは返さない（メッセージに出すのは状態コードまで）。
- */
-export async function checkSttConnection(opt: {
-  baseUrl: string | undefined
-  model: string
-  apiKey?: string
-  label?: string
-  timeoutMs?: number
-}): Promise<SttConnectionCheck> {
-  const label = opt.label ?? 'OpenAI'
-  const base = normalizeBaseUrl(opt.baseUrl)
-  if (!base) return { ok: false, message: t('stt.check.badBaseUrl') }
-  if (!opt.model.trim()) return { ok: false, message: t('stt.check.noModel') }
-  const form = new FormData()
-  form.append('file', new Blob([new Uint8Array(encodeWav(new Int16Array(16_000), 16_000))], { type: 'audio/wav' }), 'ade-check.wav')
-  form.append('model', opt.model.trim())
-  form.append('response_format', 'json')
-  let res: Response
-  try {
-    res = await fetch(`${base}${ENDPOINT}`, {
-      method: 'POST',
-      headers: opt.apiKey ? { Authorization: `Bearer ${opt.apiKey}` } : {},
-      body: form,
-      signal: AbortSignal.timeout(opt.timeoutMs ?? 15_000),
-    })
-  } catch (e) {
-    const name = e instanceof Error ? e.name : ''
-    if (name === 'TimeoutError' || name === 'AbortError') return { ok: false, message: sentence(t('stt.check.timeout', { label })) }
-    return { ok: false, message: t('stt.check.unreachable', { base }) }
-  }
-  if (res.ok) return { ok: true, message: sentence(t('stt.check.ok', { label, model: opt.model.trim() })) }
-  // 失敗の本文は説明に使うだけ（想定内）
-  const body = (await readErrorText(res)).slice(0, 2000)
-  return { ok: false, message: describeHttpFailure(res.status, body, label) }
 }
 
 /** 接続の確認で返ってきた失敗を、利用者が直せる言葉にする（単体テストから使うため export） */

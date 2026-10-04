@@ -13,9 +13,6 @@ import type { Collector } from './read'
  * 開いたときと再読み込みのときだけ読む（非同期・上限つき）。どのファイルも書き換えない。
  */
 
-/** 読み方が分かっている CLI */
-export const SUPPORTED_RESOURCE_AGENTS: readonly TuiAgent[] = ['claude', 'codex', 'gemini']
-
 /**
  * その CLI が実際に使う設定フォルダ。選択中のアカウント（追加したアカウントなら CLAUDE_CONFIG_DIR / CODEX_HOME）を優先し、
  * 無ければ環境変数、それも無ければ既定の場所。

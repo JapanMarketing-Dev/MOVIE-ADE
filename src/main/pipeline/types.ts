@@ -57,7 +57,7 @@ export interface NavEvent {
  * 表示幅を切り替える（WS-3）ため、ピクセル座標だけでは後から解釈できない。
  * これと併記することで 0〜1 の相対座標に直せる（04_benchmark.md 3.9）。
  */
-export interface ViewSize {
+interface ViewSize {
   width: number
   height: number
 }
@@ -186,9 +186,9 @@ export interface SessionMeta {
   twoSpeakers: boolean
   /**
    * 録画を始めた時点のプロジェクトの登録URL（local / dev / prd）。
-   * 指摘を対象ごとにまとめるとき、URL に環境のラベルを付けるのに使う（shared/reviewTarget.ts）
+   * 指摘を対象ごとにまとめるとき、URL に環境のラベルと区分（デザイン・設計書）を付けるのに使う（shared/reviewTarget.ts）
    */
-  urlPresets?: Array<{ id: string; label: string; url: string }>
+  urlPresets?: Array<{ id: string; label: string; url: string; purpose?: import('@shared/types').TargetPurpose }>
 }
 
 /** 分解の入力一式（①素材化の結果） */
@@ -256,7 +256,7 @@ export interface OrganizedItem {
   annotation_ids: string[]
 }
 
-export interface DroppedUtterance {
+interface DroppedUtterance {
   t: number
   text: string
   reason: string
@@ -323,13 +323,4 @@ export interface FeedbackDocument {
    * 整理していない・指摘を足した後は無い（ルールで作った名前を使う）
    */
   reviewTitle?: string
-}
-
-/** ピクセル座標を 0〜1 の相対座標に直す（表示幅を切り替えても解釈できる形。NF-14 の隣の課題） */
-export function toRelativePoint(
-  point: { x: number; y: number },
-  view: ViewSize | undefined
-): { x: number; y: number } | undefined {
-  if (!view || view.width <= 0 || view.height <= 0) return undefined
-  return { x: point.x / view.width, y: point.y / view.height }
 }

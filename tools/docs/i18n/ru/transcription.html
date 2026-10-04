@@ -63,7 +63,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
 </ol>
 <p>Модель зафиксирована: <code>gpt-transcribe</code>. Только при разработке (<code>pnpm dev</code>) также читается <code>OPENAI_API_KEY</code> из игнорируемого файла <code>.env</code>. Собранные версии никогда не читают <code>.env</code>.</p>
 
-<!-- @compatible 8c200e00b1 -->
+<!-- @compatible 2ccbf4537c -->
 ## OpenAI-совместимые эндпоинты
 <p>Ferret отправляет <code>POST &lt;base&gt;/v1/audio/transcriptions</code> (multipart: <code>file</code>, <code>model</code>, <code>response_format=json</code>, <code>language</code>, <code>prompt</code>), поэтому он рассчитан на серверы, реализующие маршрут распознавания OpenAI.</p>
 <ol class="docs-steps">
@@ -80,7 +80,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
     <tr><td><a href="https://console.groq.com/docs/speech-to-text">Groq</a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
   </tbody>
 </table>
-<div class="docs-callout docs-callout-warn"><p>Ferret рассчитан на OpenAI-совместимые серверы вроде этих, но с Ferret они ещё не тестировались. URL и имена моделей — это значения по умолчанию из документации самих серверов.</p></div>
+<div class="docs-callout docs-callout-note"><p>Ferret работает с этими серверами через стандартный API распознавания OpenAI (<code>/v1/audio/transcriptions</code>), поэтому подойдёт любой сервер, который его предоставляет. URL и имена моделей выше — значения по умолчанию из документации каждого сервера.</p></div>
 <ul>
   <li>Завершающий <code>/v1</code> или вставленный целиком <code>/v1/audio/transcriptions</code> при сохранении отбрасывается, поэтому подходит любой вариант.</li>
   <li>URL с именем пользователя или паролем отклоняются, чтобы ключи никогда не попали в <code>settings.json</code>.</li>

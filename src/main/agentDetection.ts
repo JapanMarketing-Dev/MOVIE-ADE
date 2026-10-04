@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process'
+import { errorKind, reportHandled } from '@shared/report'
 import { accessSync, constants, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { delimiter, join } from 'node:path'
@@ -46,16 +47,31 @@ function extraInstallDirs(): string[] {
 }
 
 let shellPathPromise: Promise<string> | null = null
+/** 取れなかった時刻。重い rc で毎回待たせないよう、取り直すのは1分あけてから */
+let shellPathFailedAt = 0
+let shellPathReported = false
+const SHELL_PATH_RETRY_MS = 60_000
 
 /** ログインシェルが持つ PATH（取れなければ空） */
 function loginShellPath(): Promise<string> {
   if (process.platform === 'win32') return Promise.resolve('')
+  if (!shellPathPromise && Date.now() - shellPathFailedAt < SHELL_PATH_RETRY_MS) return Promise.resolve('')
   shellPathPromise ??= new Promise<string>((resolve) => {
     const shell = process.env.SHELL || (process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash')
     execFile(shell, ['-ilc', 'printf "__ADE_PATH__%s" "$PATH"'], { timeout: SHELL_PATH_TIMEOUT_MS, encoding: 'utf8' }, (error, stdout) => {
-      if (error) return resolve('')
-      const marker = stdout.lastIndexOf('__ADE_PATH__')
-      resolve(marker >= 0 ? stdout.slice(marker + '__ADE_PATH__'.length).trim() : '')
+      const marker = error ? -1 : stdout.lastIndexOf('__ADE_PATH__')
+      if (marker < 0) {
+        // 取れなかった（rc が重くて時間切れ・nushell など）。失敗を使い回さず、次に探すときに取り直す。
+        // 使い回すと、ログインシェルの PATH にだけある Agent が＋メニューから消えたままになる（Orca #16340）
+        shellPathPromise = null
+        shellPathFailedAt = Date.now()
+        if (!shellPathReported) {
+          shellPathReported = true
+          reportHandled(error ? errorKind(error) : new Error('login shell PATH marker missing'), { area: 'agent-launch', op: 'read login shell PATH' })
+        }
+        return resolve('')
+      }
+      resolve(stdout.slice(marker + '__ADE_PATH__'.length).trim())
     })
   })
   return shellPathPromise

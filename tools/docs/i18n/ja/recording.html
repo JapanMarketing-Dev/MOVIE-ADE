@@ -18,7 +18,7 @@
 </table>
 <p>選んだものは覚えておきます。macOS では、画面とウインドウの録画に画面収録の許可が要ります（<a href="troubleshooting.html#screen-permission">許可のしかた</a>）。</p>
 
-<!-- @record 0d1af48c7a -->
+<!-- @record deb62ed37c -->
 ## 開始・一時停止・停止
 {{clip:record|録画: ページについて話しながら、ペンでその場所を囲む。}}
 <ol class="docs-steps">
@@ -29,7 +29,7 @@
 </ol>
 <p>サイドバーでは、プロジェクトごとに <span class="docs-ui">新しいレビュー</span> があります（その行の <span class="docs-ui">+</span>、<span class="docs-ui">「&lt;name&gt;」で新しいレビュー</span> でも同じです）。別のプロジェクトのものを押すと、先にそのプロジェクトに切り替えてから録画を始めます。ほかの録画が動いている間は始まりません。</p>
 <p>1回の録画は90分までです。上限が近づくと警告が出て、上限に達すると録画は自動で止まり、保存されます。</p>
-<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="フィードバックモードのツールバー（スクリーンショットは準備中）"><span>スクリーンショットは準備中です</span></div><figcaption>フィードバックモードのツールバー</figcaption></figure>
+{{shot:feedback-toolbar|フィードバックモードのツールバー}}
 
 <!-- @pen 0232dc7983 -->
 ## ペン
@@ -48,7 +48,38 @@
   <li>話したひとまとまりが終わったとき</li>
 </ul>
 
-<!-- @mic 3540329978 -->
+<!-- @mic 38bffa5e34 -->
 ## マイク
 <p>マイクは最初の設定で ON です。フッター（<span class="docs-ui">マイクをオフにする</span> / <span class="docs-ui">マイクをオンにする</span>）か、設定の <span class="docs-ui">自分の声を録る</span> で切り替えます。使う機器は <span class="docs-ui">マイク</span> で選びます。</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">準備中</p><p><span class="docs-ui">相手の声も録る</span>（会議のほかの参加者の声をシステム音声から録る）はベータ版です。会議アプリでの動作はまだ確かめていません。</p></div>
+
+<!-- @other-side bf51c46448 -->
+## 会議の相手の声も録る
+<p>通話をしながら一緒にページをレビューするときは、マイクに加えて、パソコンから聞こえる音も Ferret に録らせます。Ferret が録るのはアプリではなくパソコンの音声なので、どの会議アプリ（Zoom、Google Meet、Microsoft Teams など）でも使えます。2つは分けて扱い、マイクは <strong>自分</strong>、パソコンの音声は <strong>相手</strong> として文字起こしするので、どの指摘を誰が求めたかが分かります。マイクをオフにしていても使えます。</p>
+<ol class="docs-steps">
+  <li>いつもどおり会議アプリで通話に入ります。マイクとスピーカーの設定は、その会議アプリのものをそのまま使います。</li>
+  <li>設定の <span class="docs-ui">相手の声も録る</span> か、フッターのマイクのメニューの <span class="docs-ui">相手の声も録る</span> をオンにします。録画中は変えられません。</li>
+  <li>録るものを選びます。レビューするページなら <span class="docs-ui">内蔵ブラウザ</span>、共有された画面を見ているなら <span class="docs-ui">画面全体</span> / <span class="docs-ui">ウインドウ</span> です。</li>
+  <li><span class="docs-ui">録画</span> を押し、相手と話しながらページを見て、気になる所をペンで囲みます。</li>
+  <li><span class="docs-ui">停止</span> を押します。両方の声が文字起こしされ、指摘になります。</li>
+</ol>
+<p>ほかの参加者には録画していることを伝えてください。クラウドの文字起こしを使っている場合は、相手の声もその事業者に送られます。</p>
+
+<!-- @other-side-os cb39949418 -->
+## OS ごとのシステム音声
+<table>
+  <thead><tr><th>OS</th><th>必要なもの</th><th>許可</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td>macOS 14.2 以降。それより前の版では、マイクだけを録ります。</td><td>初めて相手の声を録るときに、Ferret にシステムの音声の録音を許すか macOS が尋ねます。断った場合は、<span class="docs-ui">システム設定 → プライバシーとセキュリティ → 画面収録とシステムオーディオ録音</span> で Ferret をオンにし、Ferret を終了して開き直します。このために画面が録られることはありません。</td></tr>
+    <tr><td>Windows</td><td><span class="docs-ui">設定 → システム → サウンド</span> で有効になっている再生デバイス（スピーカーかヘッドホン）。</td><td>不要。既定の再生デバイスの音を録ります。</td></tr>
+    <tr><td>Linux</td><td>PulseAudio、または <code>pipewire-pulse</code> を入れた PipeWire（多くのデスクトップの既定）。</td><td>不要。既定の出力の音を録ります。</td></tr>
+  </tbody>
+</table>
+<p>相手の声を録れないときは、Ferret が警告で理由を示し、マイク・映像・ペンの記録は続けます。<a href="troubleshooting.html#system-audio">トラブルシューティング</a>を見てください。</p>
+
+<!-- @other-side-tips 2881bdb5c2 -->
+## 会議で使うときのコツ
+<ul>
+  <li><strong>ヘッドホンを使う。</strong> スピーカーだと、マイクが相手の声も拾います。Ferret は相手の声を録るときにマイクのエコーキャンセルをオンにし、両方で聞こえた発言を除きますが、いちばんきれいに文字起こしできるのはヘッドホンです。</li>
+  <li><strong>パソコンで鳴る音はすべて録られます。</strong> 通知音や動画も含みます。レビューの間は、要らないものを消音してください。</li>
+  <li><strong>録画の途中で音声の機器を切り替えない。</strong> 出力の機器が変わったり外れたりすると、相手の声の録音は警告を出して止まります。マイク・映像・ペンの記録は続きます。残りはあとで <span class="docs-ui">追加で録る</span> で録ってください。</li>
+</ul>

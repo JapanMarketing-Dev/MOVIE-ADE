@@ -15,14 +15,14 @@ import { isAnnotation } from './types'
 // 直前の操作は feedback.md に入る。時刻を t と呼ぶ関数があるので別名にする
 import { t as translateMessage } from '@shared/i18n'
 
-export interface ContextOptions {
+interface ContextOptions {
   /** 直前のクリックを要素として採用する許容幅(ms) */
   clickWindowMs: number;
   /** 「直前の操作」として拾う遡り幅(ms) */
   priorOpsWindowMs: number
 }
 
-export const defaultContextOptions: ContextOptions = {
+const defaultContextOptions: ContextOptions = {
   clickWindowMs: 15_000,
   priorOpsWindowMs: 60_000,
 };
@@ -81,7 +81,7 @@ function elementFor(
  *   トップ →「料金」をクリック
  * クリックが無ければ遷移だけを書く。
  */
-export function describeRecentOps(sorted: Event[], t: number, windowMs: number): string | undefined {
+function describeRecentOps(sorted: Event[], t: number, windowMs: number): string | undefined {
   const click = lastOfType(sorted, 'click', t) as ClickEvent | undefined
   const nav = lastOfType(sorted, 'nav', t) as NavEvent | undefined
 

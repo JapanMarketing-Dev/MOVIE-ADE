@@ -3,8 +3,9 @@ import type { Env, LimiterStorage } from '../../workers/feedback-relay/src/env'
 import { ISSUE_HEADING } from '../../workers/feedback-relay/src/github'
 import { sanitizeImage } from '../../workers/feedback-relay/src/images'
 import { handle } from '../../workers/feedback-relay/src/index'
-import { decide, FeedbackLimiter, KEEP_MS } from '../../workers/feedback-relay/src/limiter'
-import { neutralizeMentions, redact } from '../../workers/feedback-relay/src/redact'
+import { decide, FeedbackLimiter, KEEP_MS, sourceIdentity } from '../../workers/feedback-relay/src/limiter'
+import { PREPARSE_LIMITS } from '../../workers/feedback-relay/src/limits'
+import { literalBlock, neutralizeMentions, redact } from '../../workers/feedback-relay/src/redact'
 
 /**
  * 匿名フィードバックの中継（workers/feedback-relay）。偽の env（R2・Durable Object・fetch）で動かし、
@@ -227,9 +228,9 @@ describe('feedback-relay: Issue を作る', () => {
     for (const k of keys) expect(body).toContain(`${BASE}/v1/media/${k.slice(3)}`)
   })
 
-  it('GitHub が失敗したら 502 upstream_failed。置いた画像は消し、同じ内容をあとで送り直せる', async () => {
+  it('GitHub が作らなかった（4xx）ら 502 upstream_failed。置いた画像は消し、同じ内容をあとで送り直せる', async () => {
     const { env, media } = fakeEnv()
-    const bad = fakeGithub(500)
+    const bad = fakeGithub(422)
     const first = await send(env, bad, post(form({}, [{ bytes: png() }])))
     expect(first.res.status).toBe(502)
     expect(first.json).toEqual({ ok: false, code: 'upstream_failed' })
@@ -416,7 +417,8 @@ describe('feedback-relay: 伏せ字', () => {
     const r = redact(`x ${GH_TOKEN_LIKE} y`)
     expect(r.hits).toEqual(['github'])
     expect(r.text).toBe('x [REDACTED token] y')
-    expect(neutralizeMentions('a@b.c email@x and `@code`')).toBe('a@b.c email@x and `@code`')
+    // 前の文字を問わず崩す（owner/repo@sha・octo#1 も参照になるため。security-4 [11]）。見た目は同じ
+    expect(neutralizeMentions('a@b octo#1 GH-2 GitHub.com')).toBe('a@\u200bb octo#\u200b1 GH-\u200b2 GitHub\u200b.com')
   })
 })
 
@@ -486,11 +488,11 @@ describe('feedback-relay: 頻度の上限と連投', () => {
     const { env, limiters } = fakeEnv()
     await send(env, fakeGithub(), post(form()))
     const names = [...limiters.keys()]
-    expect(names.length).toBe(5) // attempt・ip・install・global・dup
+    expect(names.length).toBe(6) // preparse・attempt・ip・install・global・dup
     for (const name of names) {
       expect(name).not.toContain(IP)
       expect(name).not.toContain(INSTALL)
-      expect(name).toMatch(/^(attempt|ip|install|dup):[0-9a-f]{64}$|^global$/)
+      expect(name).toMatch(/^(attempt|ip|install|dup):[0-9a-f]{64}$|^(global|preparse)$/)
     }
     for (const { storage } of limiters.values()) {
       for (const [k, v] of storage.data) {
@@ -628,7 +630,7 @@ describe('security-3 [3][4][7] 中継の上限は、重い処理・副作用・�
   it('security-3 [7] Issue を作れなかったら内容の鍵を戻し、同じ内容を送り直せる', async () => {
     const { env } = fakeEnv()
     const t0 = 1_800_000_000_000
-    expect((await send(env, fakeGithub(500), post(form()), t0)).res.status).toBe(502)
+    expect((await send(env, fakeGithub(403), post(form()), t0)).res.status).toBe(502)
     expect((await send(env, fakeGithub(), post(form()), t0 + 1000)).res.status).toBe(201)
   })
 
@@ -636,5 +638,216 @@ describe('security-3 [3][4][7] 中継の上限は、重い処理・副作用・�
     const now = 1_800_000_000_000
     expect(decide([now - 5, now, now], 'release', [], now).times).toEqual([now - 5, now])
     expect(decide([now - 5], 'release', [], now).times).toEqual([now - 5])
+  })
+})
+
+/* ── security-4（Codex の4回目のスキャン）[4][8][11][12] ─────────────────── */
+
+describe('security-4 [4] 全体の枠（global）は Issue を作った分だけ数える', () => {
+  const count = (limiters: ReturnType<typeof fakeEnv>['limiters'], name: string) => ((limiters.get(name)?.storage.data.get('times') as number[] | undefined) ?? []).length
+
+  it('security-4 [4] 別々の送り主からの重複は、全体の枠を作った1件分しか減らさない', async () => {
+    const { env, limiters } = fakeEnv()
+    const gh = fakeGithub()
+    const t0 = 1_800_000_000_000
+    expect((await send(env, gh, post(form()), t0)).res.status).toBe(201)
+    for (let i = 0; i < 30; i++) {
+      const r = await send(env, gh, post(form({ installId: `0000000${i % 10}-0000-4000-8000-00000000000${Math.floor(i / 10)}` }), { 'cf-connecting-ip': `198.51.100.${i + 1}` }), t0 + 10 + i)
+      expect(r.res.status).toBe(409)
+    }
+    expect(count(limiters, 'global')).toBe(1)
+    expect(gh.calls).toHaveLength(1)
+  })
+
+  it('security-4 [4] 重複で断った要求は、送り主（IP・インストール ID）の枠も戻す', async () => {
+    const { env, limiters } = fakeEnv()
+    const gh = fakeGithub()
+    const t0 = 1_800_000_000_000
+    expect((await send(env, gh, post(form(), { 'cf-connecting-ip': '192.0.2.200' }), t0)).res.status).toBe(201)
+    expect((await send(env, gh, post(form({ installId: INSTALL2 })), t0 + 1)).res.status).toBe(409)
+    for (const [name, { storage }] of limiters) {
+      if (/^(ip|install):/.test(name) && (storage.data.get('times') as number[] | undefined)?.includes(t0 + 1)) throw new Error(`${name} still holds the duplicate`)
+    }
+  })
+
+  it('security-4 [4] 全体の枠で断ったら、取った内容の鍵も戻す（あとで同じ内容を送れる）', async () => {
+    const { env, limiters } = fakeEnv()
+    const gh = fakeGithub()
+    const t0 = 1_800_000_000_000
+    const storage = Object.assign(new MemoryStorage(), { data: new Map<string, unknown>([['times', Array.from({ length: 200 }, (_, i) => t0 - 1000 + i)]]) })
+    limiters.set('global', { storage, obj: new FeedbackLimiter({ storage }) })
+    expect((await send(env, gh, post(form()), t0)).res.status).toBe(429)
+    for (const [name, { storage: s }] of limiters) if (name.startsWith('dup:')) expect((s.data.get('times') as number[] | undefined) ?? []).toEqual([])
+    // 全体の枠が空いたら、同じ内容が通る
+    storage.data.set('times', [])
+    expect((await send(env, gh, post(form(), { 'cf-connecting-ip': '192.0.2.201' }), t0 + 2000)).res.status).toBe(201)
+  })
+
+  it('security-4 [4] GitHub が作らなかった（4xx）ときは、全体の枠と内容の鍵を戻す', async () => {
+    const { env, limiters } = fakeEnv()
+    const t0 = 1_800_000_000_000
+    expect((await send(env, fakeGithub(422), post(form()), t0)).res.status).toBe(502)
+    expect(count(limiters, 'global')).toBe(0)
+    expect((await send(env, fakeGithub(), post(form()), t0 + 1000)).res.status).toBe(201)
+  })
+})
+
+describe('security-4 [8] 送信元を増やしても、本文を読む前の上限と limiter の数は全体で決まった数まで', () => {
+  const v6 = (i: number) => `2001:db8:${(i + 1).toString(16)}::1`
+
+  it('security-4 [8] IPv6 は /64 にまとめる（同じ /64 の別のアドレスは同じ送り主）。IPv4 はそのまま', () => {
+    expect(sourceIdentity('2001:db8:1:2:aaaa::1')).toBe(sourceIdentity('2001:0DB8:0001:0002:ffff:ffff:ffff:fffe'))
+    expect(sourceIdentity('2001:db8:1:2::1')).not.toBe(sourceIdentity('2001:db8:1:3::1'))
+    expect(sourceIdentity('2001:db8::1')).toBe('2001:db8:0:0::/64')
+    expect(sourceIdentity('203.0.113.7')).toBe('203.0.113.7')
+    expect(sourceIdentity('::ffff:203.0.113.7')).toBe('203.0.113.7')
+    expect(sourceIdentity('not an ip')).toBe('unknown')
+  })
+
+  it('security-4 [8] 同じ /64 からアドレスを変えて送っても、試みの上限は1つの送り主として数える', async () => {
+    const { env } = fakeEnv()
+    const gh = fakeGithub()
+    const statuses: number[] = []
+    for (let i = 0; i < 31; i++) statuses.push((await send(env, gh, post('x', { 'content-type': 'text/plain', 'cf-connecting-ip': `2001:db8:5:6::${(i + 1).toString(16)}` }), 1_800_000_000_000 + i)).res.status)
+    expect(statuses.slice(0, 30).every((s) => s === 415)).toBe(true)
+    expect(statuses[30]).toBe(429)
+  })
+
+  it('security-4 [8] 全体の前処理の枠が尽きたら、本文を読まずに断り、送り主ごとの limiter も作らない', async () => {
+    const { env, limiters } = fakeEnv()
+    const gh = fakeGithub()
+    const t0 = 1_800_000_000_000
+    const max = Math.min(...PREPARSE_LIMITS.map((w) => w.max))
+    for (let i = 0; i < max; i++) await send(env, gh, post('x', { 'content-type': 'text/plain', 'cf-connecting-ip': v6(i) }), t0 + i)
+    // 送り主ごとの limiter（試みの数・送信の数）は、どちらの種類も全体の前処理の枠の数まで
+    const perSource = () => [...limiters.keys()].filter((n) => /^(attempt|ip):/.test(n)).length
+    for (const kind of ['attempt', 'ip']) expect([...limiters.keys()].filter((n) => n.startsWith(`${kind}:`)).length).toBeLessThanOrEqual(max)
+    const before = perSource()
+    let pulled = 0
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled++
+        controller.enqueue(new Uint8Array(1024 * 1024))
+        if (pulled >= 8) controller.close()
+      }
+    })
+    const req = new Request(`${BASE}/v1/issues`, {
+      method: 'POST', body, duplex: 'half',
+      headers: { 'cf-connecting-ip': '2001:db8:ffff::1', 'content-type': 'multipart/form-data; boundary=x' }
+    } as RequestInit)
+    const r = await send(env, gh, req, t0 + max + 1)
+    expect(r.res.status).toBe(429)
+    expect(pulled).toBeLessThanOrEqual(1)
+    expect(perSource()).toBe(before)
+  })
+
+  it('security-4 [8] 送信元を際限なく変えても、limiter の数は全体の前処理の枠の分までしか増えない', async () => {
+    const { env, limiters } = fakeEnv()
+    const gh = fakeGithub()
+    const t0 = 1_800_000_000_000
+    const max = Math.min(...PREPARSE_LIMITS.map((w) => w.max))
+    for (let i = 0; i < max + 200; i++) await send(env, gh, post('x', { 'content-type': 'text/plain', 'cf-connecting-ip': v6(i) }), t0 + i)
+    expect([...limiters.keys()].filter((n) => n.startsWith('attempt:')).length).toBeLessThanOrEqual(max)
+  })
+})
+
+describe('security-4 [11] 送られた本文は GitHub の相互参照・メンション・リンクにならない', () => {
+  const attacks = [
+    'see octo/repo#123 and octo#77',
+    'GH-123 and gh-45',
+    'https://github.com/octo/repo/issues/5',
+    '[click](https://github.com/octo/repo/pull/6)',
+    '<a href="https://github&#46;com/octo/repo/issues/7">x</a>',
+    '[rel](../../issues/8)',
+    'www.github.com/octo/repo/issues/9',
+    'cc @octocat and #12 and octo/repo@abcdef1',
+    '```\nbreak out\n```\n@octocat #13',
+    '~~~\n@octocat\n~~~',
+    '````` five backticks ````` #14'
+  ]
+
+  /** 本文のうち、コードブロックの外（GitHub が参照・リンクとして読む部分）。フェンスは開きと同じ長さ以上の閉じでだけ閉じる */
+  function liveText(markdown: string): string {
+    const live: string[] = []
+    let fence: string | null = null
+    for (const line of markdown.split('\n')) {
+      if (fence) {
+        if (new RegExp(`^ {0,3}${fence[0] === '`' ? '`' : '~'}{${fence.length},}\\s*$`).test(line)) fence = null
+        continue
+      }
+      const open = /^ {0,3}(`{3,}|~{3,})/.exec(line)
+      if (open) {
+        fence = open[1]!
+        continue
+      }
+      live.push(line)
+    }
+    // 閉じていないフェンスは文書の終わりまでコード（CommonMark）。外の部分だけを返す
+    return live.join('\n')
+  }
+
+  it('security-4 [11] 本文はコードブロック（中の最長のバッククォートより長いフェンス）に入れ、外には参照の形が残らない', async () => {
+    const { env } = fakeEnv()
+    const gh = fakeGithub()
+    const body = attacks.join('\n\n')
+    expect((await send(env, gh, post(form({ body }))).then((r) => r.res.status))).toBe(201)
+    const sent = JSON.parse(String(gh.calls[0].init.body)) as { title: string; body: string }
+    const live = liveText(sent.body)
+    for (const pattern of [/#\d/, /GH-\d/i, /github\.com/i, /github&#/i, /@octocat/, /\]\(/, /<a /i, /\/issues\//]) expect(live).not.toMatch(pattern)
+    // 本文そのものは読める形でコードブロックの中にある
+    expect(sent.body).toContain('GH-')
+    expect(sent.body).toContain('octo/repo')
+  })
+
+  it('security-4 [11] literalBlock: フェンスは中のいちばん長いバッククォートより長い', () => {
+    expect(literalBlock('plain')).toBe('```text\nplain\n```')
+    expect(literalBlock('a ```` b')).toBe('`````text\na ```` b\n`````')
+  })
+
+  it('security-4 [11] 題名の相互参照（owner/repo#1・GH-1・github.com の URL・@）も崩す', async () => {
+    const { env } = fakeEnv()
+    const gh = fakeGithub()
+    await send(env, gh, post(form({ title: 'crash octo/repo#123 GH-9 https://github.com/octo/repo/issues/1 @octocat' })))
+    const { title } = JSON.parse(String(gh.calls[0].init.body)) as { title: string }
+    for (const pattern of [/#\d/, /GH-\d/i, /github\.com/i, /@octocat/]) expect(title).not.toMatch(pattern)
+  })
+})
+
+describe('security-4 [12] GitHub が作ったか分からない失敗では、内容の鍵と画像を残し、2件目を作らない', () => {
+  /** POST は GitHub に届いて Issue ができたが、応答が失われる */
+  function lostResponse(kind: 'throw' | 'garbled' | '5xx') {
+    const calls: GhCall[] = []
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init: init ?? {} })
+      if (kind === 'throw') throw new TypeError('Network connection lost.')
+      if (kind === 'garbled') return new Response('{"number": 5, "html_url": ', { status: 201 })
+      return new Response('upstream timeout', { status: 504 })
+    }) as unknown as typeof fetch
+    return { calls, fetchImpl }
+  }
+
+  for (const kind of ['throw', 'garbled', '5xx'] as const) {
+    it(`security-4 [12] 送ったあとの失敗（${kind}）は upstream_pending。画像と内容の鍵を残し、送り直しは 409 duplicate`, async () => {
+      const { env, media } = fakeEnv()
+      const gh = lostResponse(kind)
+      const t0 = 1_800_000_000_000
+      const first = await send(env, gh as unknown as ReturnType<typeof fakeGithub>, post(form({}, [{ bytes: png() }])), t0)
+      expect(first.json).toEqual({ ok: false, code: 'upstream_pending' })
+      // Issue に貼られたかもしれない画像は消さない
+      expect(media.size).toBe(1)
+      const retry = await send(env, fakeGithub(), post(form({}, [{ bytes: png() }]), { 'cf-connecting-ip': '192.0.2.77' }), t0 + 1000)
+      expect(retry.res.status).toBe(409)
+      expect(gh.calls).toHaveLength(1)
+    })
+  }
+
+  it('security-4 [12] 送る前の失敗（画像を置けない）は upstream_failed で、内容の鍵を戻す', async () => {
+    const { env } = fakeEnv()
+    const t0 = 1_800_000_000_000
+    const put = env.MEDIA.put
+    env.MEDIA.put = async () => { throw new Error('r2 down') }
+    expect((await send(env, fakeGithub(), post(form({}, [{ bytes: png() }])), t0)).json).toEqual({ ok: false, code: 'upstream_failed' })
+    env.MEDIA.put = put
+    expect((await send(env, fakeGithub(), post(form({}, [{ bytes: png() }])), t0 + 1000)).res.status).toBe(201)
   })
 })

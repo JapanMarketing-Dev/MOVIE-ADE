@@ -1,3 +1,4 @@
+import { errorMessage } from '../lib/errors'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import {
   AudioLines,
@@ -191,7 +192,7 @@ function MicPopover({ value, onChange, recording, micDevices, available, level, 
       <LevelMeter level={recording ? level : probe.level} live={live} />
     </div>
     {value.captureMic && probe.error && !recording && <p className="st-note st-note--warn"><CircleAlert size={12} aria-hidden="true" />{t('statusBar.micOpenFailed')}</p>}
-    <PopSwitch label={t('statusBar.recordOtherVoice')} hint={<span className="st-beta">β</span>} checked={value.captureSystemAudio} disabled={recording} onChange={(captureSystemAudio) => onChange({ captureSystemAudio })} />
+    <PopSwitch label={t('statusBar.recordOtherVoice')} checked={value.captureSystemAudio} disabled={recording} onChange={(captureSystemAudio) => onChange({ captureSystemAudio })} />
     <PopSelect label={t('statusBar.transcription')}>
       <select className="st-select" aria-label={t('statusBar.transcriptionMethod')} value={value.transcription} disabled={recording} onChange={(e) => onChange({ transcription: e.target.value as Transcription })}>
         <option value="local">{available.localReady ? t('statusBar.sttLocal') : t('statusBar.sttLocalMissing')}</option>
@@ -215,6 +216,16 @@ function UpdatePopover({ version, packaged }: { version: string; packaged: boole
   const t = useT()
   const [checking, setChecking] = useState(false)
   const [result, setResult] = useState<UpdateCheckResult | null>(null)
+  // 新しい版は、アプリが署名を確かめたファイルを落として sha256 を確かめてから、置いた場所を開く（security-4 [7]）
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+  const download = () => {
+    setDownloading(true)
+    setDownloadError(null)
+    void window.ade.invoke('app:openUpdate')
+      .catch((err: unknown) => setDownloadError(errorMessage(err) || t('update.errors.download')))
+      .finally(() => setDownloading(false))
+  }
   const check = () => {
     setChecking(true)
     void window.ade.invoke('app:checkUpdate')
@@ -228,8 +239,9 @@ function UpdatePopover({ version, packaged }: { version: string; packaged: boole
     {result?.state === 'latest' && <p className="st-note st-note--ok"><CircleCheck size={12} aria-hidden="true" />{t('statusBar.upToDate', { version: result.latest })}</p>}
     {result?.state === 'available' && <div className="st-note st-note--action">
       <span><Download size={12} aria-hidden="true" />{t('statusBar.updateAvailable', { version: result.latest })}</span>
-      <Button onClick={() => void window.ade.invoke('app:openUpdate')}>{t('statusBar.open')}</Button>
+      <Button busy={downloading} onClick={download} data-testid="statusbar-update-download">{t('statusBar.download')}</Button>
     </div>}
+    {downloadError && <p className="st-note" data-testid="statusbar-update-download-error">{downloadError}</p>}
     {result?.state === 'no-release' && <p className="st-note">{t('statusBar.noRelease')}</p>}
     {/* 署名が無い・合わない版は案内しない（security-3 [2]）。待っても直らないので「もう一度」は言わない */}
     {result?.state === 'unverified' && <p className="st-note st-note--warn" data-testid="statusbar-update-unverified"><CircleAlert size={12} aria-hidden="true" />{t('statusBar.updateUnverified', { version: result.latest })}</p>}

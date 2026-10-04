@@ -162,10 +162,42 @@ describe('配布の設定（electron-builder.config.cjs）', () => {
     expect(config.win.executableName).toBe('Ferret')
   })
 
+  it('macOS: 内蔵ブラウザで LAN の開発サーバーを開けるよう、ローカルネットワークの利用目的を書く（Orca #18900）', () => {
+    expect(config.mac.extendInfo.NSLocalNetworkUsageDescription).toMatch(/local network/)
+    expect(config.mac.extendInfo.NSMicrophoneUsageDescription).toBeTruthy()
+  })
+
   it('旧名 MOVIE-ADE の入った環境を置き換える（Windows はインストーラの GUID、Linux は deb の replaces）', () => {
     // electron-builder が旧 appId（com.japanmarketing.movieade）から作った GUID
     expect(config.nsis.guid).toBe('a380747a-7ef6-5f56-83af-53845ee2cb83')
     expect(config.deb.fpm).toEqual(['--replaces=movie-ade', '--conflicts=movie-ade'])
+  })
+
+  it('Windows のインストーラは実行すれば入って起動する（選択の画面・管理者の確認なし。旧版と同じユーザーごとの入れ方）', () => {
+    expect(config.nsis.oneClick).toBe(true)
+    expect(config.nsis.perMachine).toBe(false)
+    expect(config.nsis.runAfterFinish).toBe(true)
+    // oneClick では electron-builder が受け付けない
+    expect(config.nsis.allowToChangeInstallationDirectory).toBeUndefined()
+  })
+
+  it('旧版を「すべてのユーザー」（HKLM）で入れた人は、先にその旧版のアンインストーラを走らせ、残ったら1行で案内する（build/installer.nsh）', () => {
+    expect(config.nsis.include).toBe('build/installer.nsh')
+    const nsh = readFileSync(join(__dirname, '../../build/installer.nsh'), 'utf8')
+    const body = nsh.split('\n').filter((l) => !l.trimStart().startsWith(';')).join('\n')
+    expect(body).toMatch(/^!macro customInit\n[\s\S]*\n!macroend\s*$/m)
+    // HKLM の登録だけを見る（HKCU の旧版は electron-builder の uninstallOldVersion が消す）
+    expect(body).toContain('ReadRegStr $R0 HKLM "${UNINSTALL_REGISTRY_KEY}" UninstallString')
+    expect(body).not.toMatch(/HKCU|HKEY_CURRENT_USER|SHELL_CONTEXT/)
+    // 一時フォルダへ写して、元の場所を _?= で渡し、終わるまで待つ。/allusers で旧版が自分で管理者に上がる。データは消さない
+    expect(body).toContain('CopyFiles /SILENT "$R1" "$PLUGINSDIR\\old-machine-uninstaller.exe"')
+    expect(body).toContain(`ExecWait '"$PLUGINSDIR\\old-machine-uninstaller.exe" /S /KEEP_APP_DATA /allusers --updated _?=$R2' $R3`)
+    expect(body).not.toMatch(/--delete-app-data|DeleteRegKey|RMDir|Delete /)
+    // 残ったときはインストールを止めず、1行のメッセージだけ（サイレントでは出さない）
+    const box = body.match(/MessageBox [^\n]*/g) ?? []
+    expect(box).toHaveLength(1)
+    expect(box[0]).toMatch(/^MessageBox MB_OK\|MB_ICONINFORMATION "[^"\n]+" \/SD IDOK$/)
+    expect(body).not.toMatch(/\bAbort\b|\bQuit\b/)
   })
 
   it('3つのOSの配布物を用意している（Windows は1本に両方入らないよう既定を1つにする）', () => {

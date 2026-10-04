@@ -1626,6 +1626,25 @@ p {
   font-size: 13px;
 }
 
+/* 見ている OS に合わせた1つの大きなボタン（ダウンロードページの見出しの下） */
+.primary-download {
+  margin-top: 28px;
+}
+
+.primary-download[hidden] {
+  display: none;
+}
+
+.page-head .primary-meta {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.page-head .primary-hint {
+  margin-top: 4px;
+  font-size: 14px;
+}
+
 /* All versions */
 .versions {
   display: grid;

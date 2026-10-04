@@ -1,4 +1,5 @@
-import { sshShellSpec, type SshTarget } from '@shared/sshCommand'
+import { delay } from '@shared/delay'
+import { shellQuote, sshShellSpec, type SshTarget } from '@shared/sshCommand'
 import { execFile, execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { promisify } from 'node:util'
@@ -12,11 +13,15 @@ import { planStartupDelivery } from './shellStartup'
 import { buildAccountLoginLaunch, resolveAgentEnv } from './accounts'
 import { resolveProcessCwd } from './processCwd'
 import { isInheritedAgentSessionEnv } from './inheritedAgentEnv'
+import { resolveTrustedCommand, windowsSearchPathEnv } from './agentExecutable'
 import { TerminalHistory } from './terminalHistory'
+import { defaultLocaleEnv, isHostTerminalEnv, stripAppImagePaths } from './terminalEnv'
+import { windowsTreeKillCommand } from './platform/windowsTreeKill'
 import { applyAgentWorkspaceTrust, registeredProjectIdFor } from './agentWorkspaceTrust'
 import { detectState, parseTitle, stripAnsi } from './agent/state'
 import type { AgentKind } from './agent/protocol'
 import { ComposerReadiness } from './agent/readiness'
+import { nextLaunchAgentPhase, type LaunchAgentPhase } from './agent/launchPhase'
 import { sendToAgent } from './agent/send'
 import { chooseSendTarget } from './agent/sendTarget'
 import { agentSubmitsPaste } from '@shared/sendTarget'
@@ -37,7 +42,7 @@ import { DECISION_ENV_PREFIXES } from '@shared/decision'
 function oneShotCommand(command: string): string {
   if (process.env.ADE_E2E !== '1') return command.trim()
   const mock = process.env.ADE_E2E_INSTALL_COMMAND?.trim()
-  return mock || `echo '[E2E] ${command.trim().replace(/'/g, `'\\''`)}'`
+  return mock || `echo ${shellQuote(`[E2E] ${command.trim()}`)}`
 }
 
 /**
@@ -70,7 +75,7 @@ export interface ShellSpec {
  * - macOS / Linux: $SHELL をログインシェル（-l）として起動し、
  *   .zprofile / .bash_profile で入るPATH（nvm、Homebrew など）を反映させる
  */
-export function resolveShell(platform: NodeJS.Platform = process.platform): ShellSpec {
+function resolveShell(platform: NodeJS.Platform = process.platform): ShellSpec {
   if (platform === 'win32') {
     return { file: process.env.COMSPEC ?? 'cmd.exe', args: [] }
   }
@@ -89,11 +94,16 @@ function ptyEnv(extra: Record<string, string> = {}): Record<string, string> {
     if (isInheritedAgentSessionEnv(key, value)) continue
     // 別の Ferret（親）の判定モデルの中継の URL は古い合言葉なので受け継がない（旧名も）。このアプリの値は extra で渡す
     if (DECISION_ENV_PREFIXES.some((prefix) => key.startsWith(prefix))) continue
+    // Ferret を起動した端末・AppImage・Crashpad・開発起動の変数は渡さない（terminalEnv.ts）
+    if (isHostTerminalEnv(key)) continue
     env[key] = value
   }
+  if (process.platform === 'linux') stripAppImagePaths(env, process.env.APPDIR)
+  Object.assign(env, defaultLocaleEnv(env, process.platform))
   env.TERM = 'xterm-256color'
   env.COLORTERM = 'truecolor'
-  return { ...env, ...extra }
+  // Windows の cmd.exe に、素の名前を今のフォルダ（プロジェクト）から探させない（security-4 [1]）
+  return { ...env, ...extra, ...windowsSearchPathEnv() }
 }
 
 /**
@@ -130,7 +140,8 @@ function processRows(): Promise<ProcessRow[]> {
 
 /**
  * Windows のプロセス一覧（ps が無いので PowerShell の Win32_Process）。PowerShell の起動は重く、
- * ARM64 のエミュレーションでは数秒かかるので、前の結果をすぐ返しつつ裏で取り直す（3秒に1回まで）
+ * ARM64 のエミュレーションでは数秒かかるので、前の結果をすぐ返しつつ裏で取り直す（5秒に1回まで。
+ * 起動のたびに CPU を使い、マウスの砂時計も点滅させるため間を空ける。Orca #10857 #12288）
  */
 const WINDOWS_PROCESS_QUERY =
   "$ProgressPreference = 'SilentlyContinue'; Get-CimInstance Win32_Process -Property ProcessId,ParentProcessId,Name,CommandLine | " +
@@ -138,7 +149,7 @@ const WINDOWS_PROCESS_QUERY =
 let windowsProcessCache: { at: number; rows: ProcessRow[] | null; pending: Promise<ProcessRow[]> | null } = { at: 0, rows: null, pending: null }
 function windowsProcessRows(): Promise<ProcessRow[]> {
   const cache = windowsProcessCache
-  if (!cache.pending && Date.now() - cache.at > 3000) {
+  if (!cache.pending && Date.now() - cache.at > 5000) {
     cache.pending = promisify(execFile)('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', WINDOWS_PROCESS_QUERY], { timeout: 15_000, maxBuffer: 10 * 1024 * 1024, windowsHide: true })
       .then(({ stdout }) => {
         const rows = parseWindowsProcessRows(stdout)
@@ -169,6 +180,8 @@ interface Session {
   info: TerminalSessionInfo
   /** 直近の出力。画面を読み込み直したあと、つなぎ直したタブに流し直す */
   history: TerminalHistory
+  /** 起動時の Agent の推定の段階（agent/launchPhase.ts） */
+  launchAgent?: LaunchAgentPhase
 }
 
 export type { TerminalSessionInfo } from '@shared/types'
@@ -230,7 +243,8 @@ export class TerminalManager {
   async create(options: TerminalCreateOptions): Promise<TerminalTabInfo> {
     const { size, agent } = options
     const nodePty = await loadNodePty()
-    const cwd = options.cwd && existsSync(options.cwd) ? options.cwd : this.cwd
+    // アカウントのログインは、プロジェクトではないフォルダで動かす（プロジェクトに置かれた同じ名前のコマンドを拾わない。security-4 [1]）
+    const cwd = options.accountLogin ? homedir() : options.cwd && existsSync(options.cwd) ? options.cwd : this.cwd
     let shell = resolveShell()
     // SSH のプロジェクト：ssh -t -- <host> 'cd <path> && exec "$SHELL" -l'。Agent の起動はリモートの最初のプロンプトで打ち込む
     if (this.remote) shell = sshShellSpec(this.remote)
@@ -245,10 +259,16 @@ export class TerminalManager {
       extraEnv = { ...env, ...delivery.env }
       if (delivery.kind === 'write') pendingWrite = command
     }
+    // 組み込みの Agent とログインは、信頼できる絶対パスで起動する。見つからなければ起動しない（security-4 [1]）
+    const trusted = (command: string, label: string): string => {
+      const resolved = resolveTrustedCommand(command, { env: ptyEnv(), cwd, shell: startupShellForPath(shell.file) })
+      if (!resolved.ok) throw new UserFacingError(t('terminal.errors.launch', { agent: label, error: t('settings.agents.notFound') }))
+      return resolved.command
+    }
     if (options.accountLogin) {
       const login = buildAccountLoginLaunch(options.accountLogin, startupShellForPath(shell.file))
       loginTitle = login.title
-      deliver(login.command, login.env)
+      deliver(trusted(login.command, login.title), login.env)
     } else if (agent) {
       const settings = currentSettings()
       const prefs = settings.agents
@@ -277,7 +297,7 @@ export class TerminalManager {
           env: ptyEnv(accountEnv)
         })
       }
-      deliver(launch.command, accountEnv)
+      deliver(isBuiltinAgent(agent) ? trusted(launch.command, agentLabel(agent, prefs)) : launch.command, accountEnv)
     } else if (options.command?.trim()) {
       // CLI のインストール（設定の「CLI」の一覧から）は E2E では本物を走らせない（oneShotCommand が差し替える）
       const line = options.exitWhenDone || isKnownCliInstallCommand(options.command) ? oneShotCommand(options.command) : options.command.trim()
@@ -457,8 +477,10 @@ export class TerminalManager {
       } catch { /* ps が使えなければ下の起動時の Agent で判断する */ }
     }
     // Agent として開いたタブで、シェルではない何かが前面で動いていれば、その Agent とみなす
-    // （独自のラッパーや、名前を変えて動く版でも送れるように。シェルに戻っていれば送らない）
-    if (!agent && foreground && session.info.agent) agent = session.info.agent
+    // （独自のラッパーや、名前を変えて動く版でも送れるように。シェルに戻っていれば送らない）。
+    // いちど Agent が終わってシェルに戻ったら、以後はこの推定をしない（agent/launchPhase.ts。Orca #6355）
+    if (session.info.agent) session.launchAgent = nextLaunchAgentPhase(session.launchAgent, foreground)
+    if (!agent && foreground && session.info.agent && session.launchAgent !== 'ended') agent = session.info.agent
     const kind: AgentKind = agent === 'claude' ? 'claude-code' : agent === 'codex' ? 'codex' : agent ? 'generic' : 'unknown'
     return { kind, agent, state: kind === 'unknown' ? 'unknown' : detectState(kind, { title: session.title, tail: session.screen?.text ?? session.tail }) }
   }
@@ -500,7 +522,7 @@ export class TerminalManager {
       const quiet = session.screen && Date.now() - session.screen.at >= 1500
       if (quiet && (state.state === 'idle' || (generic && state.state === 'unknown'))) break
       if (Date.now() >= deadline) return { ok: false, message: t('terminal.send.notReady') }
-      await new Promise((done) => setTimeout(done, 100))
+      await delay(100)
     }
     session.sending = true
     try {
@@ -663,18 +685,25 @@ function descendantPids(root: number): number[] {
  * Agentが動き続けている」状態になり、PTYのスレーブ側も掴まれたままになる。
  *
  * そこで、シェルの子孫を先に落としてから、シェル自身のプロセスグループを落とす。
- * Windows には同じ概念が無く、node-pty がコンソールのプロセスツリーを畳むので
- * `kill()` をそのまま使う。
+ * Windows には同じ概念が無い。node-pty の `kill()` はコンソールに付いたものしか畳まないので、
+ * 先に taskkill /T でシェルの子孫ごと終わらせてから `kill()` する（windowsTreeKill.ts）。
  *
  * @param known 以前に列挙した子孫。シェルが先に死んで辿れなくなった場合に使う
  */
 function killPtyTree(pty: IPty, signal: NodeJS.Signals, known: readonly number[] = []): number[] {
   if (process.platform === 'win32') {
-    try {
-      pty.kill()
-    } catch {
-      /* すでに終了している */
+    const killPty = () => {
+      try {
+        pty.kill()
+      } catch {
+        /* すでに終了している */
+      }
     }
+    // 強制終了（終了時の切り替え）は待たずに閉じる。taskkill は最初の1回だけ
+    const command = signal === 'SIGKILL' ? null : windowsTreeKillCommand(pty.pid, process.env.SystemRoot)
+    if (!command) killPty()
+    // 子孫が無い・すでに終わっているときも taskkill は失敗で返るだけ。どちらでも ConPTY を閉じる
+    else execFile(command.file, command.args, { timeout: 3000, windowsHide: true }, killPty)
     return []
   }
 

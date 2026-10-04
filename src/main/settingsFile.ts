@@ -16,22 +16,22 @@ import { LEGACY_KEYS, SETTINGS_SCHEMA, STATE_KEYS, knownSettingsKeys, settingsSc
  * - 自分の書き込みは中身で見分け、取り込み直さない（読み込みのループを起こさない）
  */
 
-export const SETTINGS_FILE = 'settings.json'
+const SETTINGS_FILE = 'settings.json'
 export const STATE_FILE = 'state.json'
-export const SCHEMA_FILE = 'settings.schema.json'
-export const SCHEMA_REF = `./${SCHEMA_FILE}`
-export const CONFIG_DIR_ENV = 'FERRET_CONFIG_DIR'
+const SCHEMA_FILE = 'settings.schema.json'
+const SCHEMA_REF = `./${SCHEMA_FILE}`
+const CONFIG_DIR_ENV = 'FERRET_CONFIG_DIR'
 /** @deprecated 改名前の名前。FERRET_CONFIG_DIR が無いときだけ読む */
-export const LEGACY_CONFIG_DIR_ENV = 'MOVIE_ADE_CONFIG_DIR'
-export const CONFIG_DIR_NAME = '.ferret'
+const LEGACY_CONFIG_DIR_ENV = 'MOVIE_ADE_CONFIG_DIR'
+const CONFIG_DIR_NAME = '.ferret'
 /** 改名前（MOVIE-ADE）の設定フォルダ。読むだけで書かない（写したあともバックアップとして残す） */
-export const LEGACY_CONFIG_DIR_NAME = '.movie-ade'
+const LEGACY_CONFIG_DIR_NAME = '.movie-ade'
 /** 写し終えた印。旧フォルダに置く（これがあれば、新しいフォルダを消しても写し直さない） */
 export const MIGRATED_MARKER = 'MIGRATED-TO-FERRET.txt'
 /** 改名のときに写すもの（settings.schema.json はアプリが書き直すので写さない） */
-export const MIGRATED_ENTRIES = [SETTINGS_FILE, STATE_FILE, 'usage', '.env'] as const
+const MIGRATED_ENTRIES = [SETTINGS_FILE, STATE_FILE, 'usage', '.env'] as const
 
-export type BuildKind = 'dev' | 'packaged'
+type BuildKind = 'dev' | 'packaged'
 
 /**
  * 1度だけの片付け: 開発版の判定を誤っていた版（bd1d49b）の dev 起動は ~/.movie-ade 直下に書いた。
@@ -121,7 +121,7 @@ export function migrateLegacyConfigDir(opt: { from: string; to: string; now?: Da
 }
 
 /** 作業の状態（state.json）。設定ではないので利用者が書き換える前提にしない */
-export interface PersistedState {
+interface PersistedState {
   version: 1
   folderPath: string | null
   url: string
@@ -199,7 +199,7 @@ function lineOfPath(text: string, path: string): number | undefined {
  * JSON の最初の誤りの位置（0 始まり）。V8 の JSON.parse は位置を出さないことがあるので、小さな読み取りで探す。
  * 正しい JSON なら -1。
  */
-export function jsonErrorPosition(text: string): number {
+function jsonErrorPosition(text: string): number {
   let i = 0
   const ws = () => { while (i < text.length && ' \t\n\r'.includes(text[i]!)) i++ }
   const fail = (): never => { throw i }
@@ -259,7 +259,7 @@ export function jsonErrorPosition(text: string): number {
   }
 }
 
-export type ParsedSettings = { ok: true; value: Record<string, unknown> } | { ok: false; error: SettingsFileError }
+type ParsedSettings = { ok: true; value: Record<string, unknown> } | { ok: false; error: SettingsFileError }
 
 /** settings.json の文字列を読む。JSON の誤り・スキーマの違反は、行つきのエラーにする */
 export function parseSettingsText(text: string): ParsedSettings {
@@ -306,7 +306,7 @@ export function plaintextKeyPaths(config: unknown, path = ''): string[] {
     key === 'apiKey' && typeof value === 'string' && value ? [`${path}/${key}`] : plaintextKeyPaths(value, `${path}/${key}`))
 }
 
-export interface SettingsFileStoreOptions {
+interface SettingsFileStoreOptions {
   dir: string
   /** 以前の置き場所（userData/settings.json）。新しいファイルが無いときだけ1度読む。消さない */
   legacyFile?: string | null
@@ -321,7 +321,7 @@ export interface SettingsFileStoreOptions {
   writtenBy?: BuildKind
 }
 
-export interface LoadResult {
+interface LoadResult {
   settings: Settings
   error: SettingsFileError | null
   /** 以前の置き場所から移した */
@@ -446,16 +446,29 @@ export class SettingsFileStore {
     if (!this.errorValue) {
       const text = this.configText(settings)
       if (text !== this.lastText) {
-        // 先に覚えてから書く（監視が書き込みに先に気づいても、自分の書き込みと分かる）
+        // 先に覚えてから書く（監視が書き込みに先に気づいても、自分の書き込みと分かる）。
+        // 書けなければ元に戻す。戻さないと「書いた」扱いのままになり、同じ内容では終了時にも書き直さない（Orca #18271）
+        const previous = this.lastText
         this.lastText = text
-        writeFileAtomicSync(this.settingsPath, text)
+        try {
+          writeFileAtomicSync(this.settingsPath, text)
+        } catch (err) {
+          this.lastText = previous
+          throw err
+        }
       }
     }
     const state = splitSettings(settings).state
     const stateText = `${JSON.stringify(this.opt.writtenBy ? { ...state, writtenBy: this.opt.writtenBy } : state, null, 2)}\n`
     if (stateText !== this.lastStateText) {
+      const previous = this.lastStateText
       this.lastStateText = stateText
-      writeFileAtomicSync(this.statePath, stateText)
+      try {
+        writeFileAtomicSync(this.statePath, stateText)
+      } catch (err) {
+        this.lastStateText = previous
+        throw err
+      }
     }
   }
 

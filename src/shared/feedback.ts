@@ -11,9 +11,9 @@ import { STAR_REPO } from './starPrompt'
  * ここは純粋な関数だけ（本文の組み立て・環境情報の伏せ字・URL の切り詰め・gh の引数）。単体テストの対象。
  */
 
-export const FEEDBACK_REPO = STAR_REPO
+const FEEDBACK_REPO = STAR_REPO
 export const FEEDBACK_REPO_SLUG = `${FEEDBACK_REPO.owner}/${FEEDBACK_REPO.repo}`
-export const FEEDBACK_NEW_ISSUE_URL = `https://github.com/${FEEDBACK_REPO_SLUG}/issues/new`
+const FEEDBACK_NEW_ISSUE_URL = `https://github.com/${FEEDBACK_REPO_SLUG}/issues/new`
 
 export type FeedbackKind = 'bug' | 'idea'
 
@@ -89,7 +89,7 @@ const HEADINGS: Record<FeedbackKind, { summary: string; details: [string, string
   bug: { summary: 'What happened?', details: ['What did you do?', 'What did you expect?', 'What actually happened?'] },
   idea: { summary: 'What would you like?', details: ['Problem or use case', 'Proposed solution', 'Alternatives or additional context'] }
 }
-export const ENVIRONMENT_HEADING = 'Environment'
+const ENVIRONMENT_HEADING = 'Environment'
 
 export const TITLE_MAX = 200
 export const BODY_MAX = 60_000
@@ -127,7 +127,7 @@ export function sanitizeEnvironment(env: FeedbackEnvironment, secrets: readonly 
   }
 }
 
-export function formatEnvironment(env: FeedbackEnvironment, product: string): string {
+function formatEnvironment(env: FeedbackEnvironment, product: string): string {
   return [
     `- ${product}: ${env.appVersion} (${env.build})`,
     `- OS: ${env.os} ${env.osVersion} (${env.arch})`,
@@ -161,7 +161,7 @@ export function buildIssueBody(draft: FeedbackDraft, env: FeedbackEnvironment | 
  * ひな形（Issue のフォーム）の欄ごとの値。GitHub のフォームは `body` を受け付けず、欄の id（what など）で値を入れる。
  * id は .github/ISSUE_TEMPLATE/*.yml と同じ
  */
-export interface IssueFormFields {
+interface IssueFormFields {
   summary: string
   what: string
   expected: string

@@ -26,20 +26,17 @@ export type FindingProgress = 'todo' | 'in_progress' | 'human_review' | 'done' |
 /** 人の判断。OK で完了、NG で直し直し、Comment は判断せずに残す */
 export type ReviewVerdict = 'ok' | 'ng' | 'comment'
 
-export interface ReviewEvent {
+interface ReviewEvent {
   /** ISO8601 */
   at: string
   verdict: ReviewVerdict
   text?: string
 }
 
-/** レビューのフォルダに置くファイル名 */
-export const PROGRESS_FILE = 'progress.json'
-
 /** 理由・返答の長さの上限。一覧のたびに読むので抑える */
 export const PROGRESS_NOTE_MAX = 2000
 /** 判断の記録を残す件数（古いものから捨てる） */
-export const HISTORY_MAX = 50
+const HISTORY_MAX = 50
 
 export interface ProgressEntry {
   status: FindingProgress
@@ -193,7 +190,7 @@ export function recentComments(entry: ProgressEntry | undefined, count = 3): Rev
   return (entry?.history ?? []).filter((e) => e.verdict !== 'ok' && e.text).slice(-count).reverse()
 }
 
-export interface ProgressCount {
+interface ProgressCount {
   /** 人が OK したもの */
   done: number
   inProgress: number

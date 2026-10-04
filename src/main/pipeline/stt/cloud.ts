@@ -66,14 +66,14 @@ export interface CloudSttOptions {
   timeoutMs?: number
 }
 
-export interface SttHttpRequest {
+interface SttHttpRequest {
   url: string
   headers: Record<string, string>
   body: FormData | Blob | string
 }
 
 /** 1区間分の読み取り結果。start/end は秒 */
-export interface ParsedTranscript {
+interface ParsedTranscript {
   text: string
   segments?: Array<{ start: number; end: number; text: string }>
   durationSec?: number
@@ -254,7 +254,7 @@ export function toSegments(parsed: ParsedTranscript, input: TranscribeChunkInput
   return text ? [{ t0: input.offsetMs, t1: input.offsetMs + durationMs, speaker: input.speaker, text, source: input.source }] : []
 }
 
-export interface SttEngineSpec {
+interface SttEngineSpec {
   provider: SttRemoteProvider
   endpoint?: AiEndpointConfig
   apiKey?: string

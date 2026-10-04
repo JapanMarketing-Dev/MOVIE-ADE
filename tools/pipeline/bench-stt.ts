@@ -1,6 +1,6 @@
 /**
  * whisper.cpp のモデル比較。
- *   npx tsx tools/bench-stt.ts <materialDir> [--models a,b,c] [--chunked] [--nogpu] [--greedy]
+ *   npx tsx tools/pipeline/bench-stt.ts <materialDir> [--models a,b,c] [--chunked] [--nogpu] [--greedy]
  *
  * 計測: 実時間、音声長に対する比（×RT）、文字誤り率、重要語の再現率。
  */

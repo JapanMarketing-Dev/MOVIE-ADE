@@ -153,7 +153,7 @@ export function buildWindowsCmdShimCommandLine(program: string, args: readonly s
   return `/d /v:off /s /c "${[program, ...args].map(quoteWindowsCmdArgument).join(' ')}"`
 }
 
-export function isCmdInterpretedProgram(program: string): boolean {
+function isCmdInterpretedProgram(program: string): boolean {
   const lower = program.toLowerCase()
   return lower.endsWith('.cmd') || lower.endsWith('.bat')
 }
@@ -185,7 +185,7 @@ const PNPM_DIRECT_SHIM = new RegExp(String.raw`^(?:@SETLOCAL\n)?@?${dp0Path('tar
 /** 読み違いの印。`:` はドライブ指定（D:evil.js）で .cmd のフォルダの外へ出られるので拒む（Orca の注記） */
 const UNSAFE_SHIM_PATH = /[%^&|<>":\r\n]/
 
-export type ParsedWindowsCmdShim =
+type ParsedWindowsCmdShim =
   | { kind: 'node'; script: string; nodePathPrefix?: string }
   | { kind: 'direct'; target: string }
 
@@ -243,14 +243,14 @@ function resolveShimNode(directory: string, env: NodeJS.ProcessEnv, fs: WindowsF
 /** 本物の .cmd は 2KB 未満。これより大きいものは生成されたものではない */
 const MAX_SHIM_BYTES = 64 * 1024
 
-export interface WindowsCmdShimResolution {
+interface WindowsCmdShimResolution {
   program: string
   prefixArgs: string[]
   /** pnpm の .cmd が NODE_PATH を足すときだけ */
   env?: NodeJS.ProcessEnv
 }
 
-export function resolveWindowsCmdShim(program: string, env: NodeJS.ProcessEnv, fs: WindowsFs = nodeFs): WindowsCmdShimResolution | null {
+function resolveWindowsCmdShim(program: string, env: NodeJS.ProcessEnv, fs: WindowsFs = nodeFs): WindowsCmdShimResolution | null {
   if (!win32.isAbsolute(program)) return null
   const size = fs.fileSize(program)
   if (size === null || size > MAX_SHIM_BYTES) return null
@@ -278,7 +278,7 @@ export function resolveWindowsCmdShim(program: string, env: NodeJS.ProcessEnv, f
 
 // ───────────────────────── まとめ ─────────────────────────
 
-export interface ResolvedSpawn {
+interface ResolvedSpawn {
   file: string
   args: string[]
   env: NodeJS.ProcessEnv

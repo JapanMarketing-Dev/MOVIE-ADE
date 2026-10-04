@@ -2,92 +2,33 @@
 <!-- @title 569ca49f4a -->
 Установка
 
-<!-- @lead 1947d59ea4 -->
-Ferret — настольное приложение для macOS, Windows и Linux. Сборка для macOS подписана Developer ID и нотаризована Apple. Сборки для Windows и Linux пока не подписаны, поэтому эти ОС просят подтвердить первый запуск.
+<!-- @lead a7ae9a04f0 -->
+Скачайте Ferret для своего компьютера и откройте его. Он работает на macOS, Windows и Linux.
 
-<!-- @download 91a49c9274 -->
+<!-- @download 57d4dd8f14 -->
 ## Скачивание
-<p>Скачайте файл для своей ОС и процессора на <a href="../download.html">странице загрузки</a>. Файлы раздаются из Cloudflare R2, а не из GitHub Releases, и хранятся только 10 последних версий.</p>
-<table>
-  <thead><tr><th>ОС</th><th>Файлы</th></tr></thead>
-  <tbody>
-    <tr><td>macOS (Apple silicon / Intel)</td><td><code>Ferret-&lt;version&gt;-mac-arm64.dmg</code>, <code>Ferret-&lt;version&gt;-mac-x64.dmg</code></td></tr>
-    <tr><td>Windows (x64 / arm64)</td><td><code>Ferret-&lt;version&gt;-win-x64.exe</code>, <code>Ferret-&lt;version&gt;-win-arm64.exe</code> (установщик NSIS)</td></tr>
-    <tr><td>Linux (x64)</td><td><code>Ferret-&lt;version&gt;-linux-x86_64.AppImage</code>, <code>Ferret-&lt;version&gt;-linux-amd64.deb</code></td></tr>
-  </tbody>
-</table>
-<p>Выпуски до 0.1.x публиковались под старым названием, как <code>MOVIE-ADE-&lt;version&gt;-…</code>. Имена <code>Ferret-…</code> используются начиная с 0.2.0.</p>
-<div class="docs-callout docs-callout-warn"><p>Ferret поддерживает macOS, Windows и Linux. Сборки для Windows и Linux пока не подписаны, поэтому при первом запуске потребуется подтверждение (см. шаги ниже).</p></div>
+<p>На <a href="../download.html">странице загрузки</a> предлагается подходящий файл для вашего компьютера. Нажмите кнопку загрузки.</p>
 
-<!-- @verify 14ef497c52 -->
-## Проверка загрузки (подписанный SHA256SUMS)
-<p>У каждого выпуска есть файл <code>SHA256SUMS</code> и его подпись <code>SHA256SUMS.sig</code>. Подпись делается ключом выпусков Ferret, который хранится отдельно от сервера загрузки, поэтому подменённый на сервере установщик не может получить действительную подпись. Открытый ключ <em>не</em> берётся с сервера загрузки: возьмите его из репозитория (<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers"><code>build/release-signing/allowed_signers</code></a>) или скопируйте отсюда:</p>
-<pre><code>release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9</code></pre>
-<p>Его отпечаток — <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code>. Те же файлы приложены к каждому выпуску на GitHub. Проверьте подпись с помощью <code>ssh-keygen</code> (входит в macOS, Windows 10 и новее и Linux), затем сравните хеш загруженного файла с подписанным списком:</p>
-<pre><code># the download server (currently the R2 public URL; it may move to a custom domain)
-BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
-VERSION=$(curl -s $BASE/latest.json | jq -r .version)
-curl -sO $BASE/releases/$VERSION/SHA256SUMS
-curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
-
-# save the public key above as allowed_signers, then:
-ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
-# → Good "ferret-release" signature for release@ferretade.dev …
-
-# macOS
-shasum -a 256 -c SHA256SUMS --ignore-missing
-# Linux
-sha256sum -c SHA256SUMS --ignore-missing</code></pre>
-<pre><code># Windows (PowerShell): compare with the line for your file in SHA256SUMS
-Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
-<p>Остановитесь, если <code>ssh-keygen</code> не выводит <q>Good "ferret-release" signature</q> или хеша нет в списке. <span class="docs-ui">Проверить обновления</span> в Ferret выполняет ту же проверку с ключом, встроенным в приложение, и не предлагает версию, подпись которой не совпадает. На macOS можно также проверить подпись Developer ID и нотаризацию командой <code>spctl -a -vv /Applications/Ferret.app</code>. Установщики для Windows и Linux пока не подписаны ни Microsoft, ни каким-либо дистрибутивом Linux. Выпуски до 0.3.0 вышли до начала подписывания, и для них есть только неподписанные хеши в <code>releases/&lt;version&gt;/manifest.json</code>.</p>
-
-<!-- @macos 1aa07136fd -->
+<!-- @macos b0d1e6945a -->
 ## macOS
-<ol class="docs-steps">
-  <li>Откройте <code>.dmg</code> и перетащите <code>Ferret.app</code> в <code>/Applications</code>.</li>
-  <li>Запустите приложение. Оно подписано Developer ID и нотаризовано Apple (тикет прикреплён), поэтому открывается без предупреждения.</li>
-</ol>
-<p>Чтобы проверить подпись самостоятельно:</p>
-<pre><code>spctl -a -vv /Applications/Ferret.app
-# accepted
-# source=Notarized Developer ID</code></pre>
-<p><strong>Только старые версии (0.2.0 build 2 и раньше)</strong> не были подписаны. Для них macOS сообщает, что не удаётся проверить разработчика: закройте диалог, откройте <span class="docs-ui">Системные настройки → Конфиденциальность и безопасность</span>, нажмите <span class="docs-ui">Всё равно открыть</span> рядом с сообщением о Ferret и подтвердите кнопкой <span class="docs-ui">Открыть</span>. Если система сообщает, что приложение «повреждено», снимите атрибут карантина:</p>
-<pre><code>xattr -dr com.apple.quarantine /Applications/Ferret.app</code></pre>
+<p>Откройте <code>.dmg</code>, перетащите Ferret в <code>Applications</code> и запустите его оттуда.</p>
 
-<!-- @windows b5761835f1 -->
+<!-- @windows 18a1422bb6 -->
 ## Windows
-<ol class="docs-steps">
-  <li>Запустите <code>Ferret-&lt;version&gt;-win-&lt;arch&gt;.exe</code>.</li>
-  <li>Когда SmartScreen покажет «Система Windows защитила ваш компьютер», нажмите <span class="docs-ui">Подробнее</span>, затем <span class="docs-ui">Выполнить в любом случае</span>.</li>
-  <li>Выберите папку установки. Установщик создаст ярлык на рабочем столе.</li>
-</ol>
+<p>Запустите скачанный <code>.exe</code>. Ferret установится и откроется, ничего выбирать не нужно. В следующий раз открывайте его из меню «Пуск» или ярлыком на рабочем столе.</p>
+<p>Если Windows покажет <q>Система Windows защитила ваш компьютер</q>, нажмите <span class="docs-ui">Подробнее</span>, затем <span class="docs-ui">Выполнить в любом случае</span>.</p>
 
-<!-- @linux c46965a0c5 -->
+<!-- @linux 58ceb4839c -->
 ## Linux
-<p>AppImage:</p>
-<pre><code>chmod +x Ferret-&lt;version&gt;-linux-x86_64.AppImage
-./Ferret-&lt;version&gt;-linux-x86_64.AppImage</code></pre>
-<p>Debian / Ubuntu:</p>
+<p><strong>Ubuntu / Debian</strong>: дважды щёлкните <code>.deb</code>, чтобы установить его через центр приложений, или выполните:</p>
 <pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
-<p>Пакет deb устанавливает пакет и команду <code>ferret</code>.</p>
-<p>В Ubuntu 23.10 и новее AppImage может остановиться при запуске с ошибкой песочницы, потому что AppArmor ограничивает пространства имён пользователей, которые использует песочница Electron. Установите вместо этого <code>.deb</code>: он настраивает вспомогательный модуль песочницы.</p>
+<p>Затем откройте Ferret из меню приложений или выполните <code>ferret</code>.</p>
+<p><strong>Другие дистрибутивы</strong>: используйте <code>.AppImage</code>. Разрешите запускать его как программу (щелчок правой кнопкой → Свойства или <code>chmod +x</code>), затем откройте.</p>
 
-<!-- @source 06a127ac19 -->
-## Сборка из исходного кода
-<p>Нужны Node.js 20+ (в CI и при локальной разработке используется 22), pnpm и git.</p>
-<pre><code>git clone https://github.com/JapanMarketing-Dev/ferret.git
-cd ferret
-pnpm install          # postinstall prepares node-pty for Electron
-pnpm dev              # run in development mode</code></pre>
-<p>Чтобы собрать установщики (результат в <code>dist/release/</code>, конфигурация в <code>electron-builder.config.cjs</code>). Сборка для Linux выполняется только в Linux.</p>
-<pre><code>pnpm dist:mac     # dmg (arm64, x64)
-pnpm dist:win     # NSIS installers (x64, arm64)
-pnpm dist:linux   # AppImage + deb (x64)</code></pre>
-<p>Скрипты <code>build:&lt;os&gt;:dev</code> собирают только распакованное приложение (<code>--dir</code>), что быстрее для локального тестирования.</p>
-<p>В Windows <code>pnpm install</code> использует готовые бинарные файлы, поставляемые с node-pty, вместо пересборки (для неё понадобились бы инструменты сборки Visual Studio C++). Чтобы принудительно пересобрать, задайте <code>ADE_FORCE_NATIVE_REBUILD=1</code>.</p>
-<p>Если терминал сообщает, что не удалось загрузить node-pty, выполните <code>pnpm rebuild:native</code>.</p>
-
-<!-- @update 7f4d958687 -->
-## Обновления
-<p>Ferret не обновляется автоматически. В нижней панели откройте <span class="docs-ui">Обновления</span> и нажмите <span class="docs-ui">Проверить обновления</span>. Ferret загрузит <code>latest.json</code> с сервера загрузки (R2), сравнит версии и даст ссылку на страницу загрузки. Начиная с 0.4.0 он также проверяет подпись <code>SHA256SUMS</code> этой версии ключом выпусков, встроенным в приложение, и не предлагает версию, подпись которой не удаётся проверить. Пока вы не нажмёте кнопку, ничего не проверяется, и ничего не устанавливается автоматически.</p>
+<!-- @more 75e55cbce4 -->
+## Дальше
+<ul>
+  <li><a href="quick-start.html#open">Быстрый старт</a>: откройте проект и запишите первый фидбэк.</li>
+  <li>Что-то пошло не так? См. <a href="troubleshooting.html#install">Устранение неполадок</a>.</li>
+  <li>Как проверить подпись загрузки, собрать из исходного кода или получить старую версию, см. в разделе <a href="advanced-install.html">Расширенная установка</a>.</li>
+</ul>

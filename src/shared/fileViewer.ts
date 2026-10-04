@@ -9,10 +9,10 @@
  * 中身を返す前の検査（プロジェクトの外・外を指すリンク・普通のファイルでないもの）は main が行う。
  */
 
-export const MEDIA_SCHEME = 'ade-media'
-export const PROJECT_MEDIA_HOST = 'project'
+const MEDIA_SCHEME = 'ade-media'
+const PROJECT_MEDIA_HOST = 'project'
 
-export type MediaViewerKind = 'image' | 'video' | 'audio' | 'pdf'
+type MediaViewerKind = 'image' | 'video' | 'audio' | 'pdf'
 /** エディタの中の見せ方。binary は大きさと先頭の16進数だけ */
 export type FileViewerKind = MediaViewerKind | 'binary'
 

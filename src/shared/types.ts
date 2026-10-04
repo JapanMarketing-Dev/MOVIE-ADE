@@ -103,7 +103,17 @@ export interface ProjectUrl {
   launchCommand?: string
   /** 録画するウインドウを選ぶための名前（アプリ名やウインドウ名の一部。例: Simulator） */
   windowMatch?: string
+  /** 何の確認先か（src/shared/projectTargets.ts の TARGET_PURPOSES）。未設定は app（開発中のアプリ） */
+  purpose?: TargetPurpose
 }
+
+/**
+ * 確認先の区分。指摘を Agent がコードで直すか、デザイン・文書を直すかの手がかりになる。
+ *   app    … 開発中のアプリ（local / dev / prd など）
+ *   design … デザイン（Figma・Penpot・Canva・プロトタイプなど）
+ *   doc    … 設計書・仕様・文書（Google Docs・Notion・Confluence・GitHub の設計 md・PDF など）
+ */
+export type TargetPurpose = 'app' | 'design' | 'doc'
 
 /** 確認先。ProjectUrl と同じもの（新しいコードはこちらの名前を使う） */
 export type ProjectTarget = ProjectUrl
@@ -504,7 +514,7 @@ export interface CaptureSourceList {
 
 export const DEFAULT_URL = 'about:blank'
 /** 以前のターミナルの置き場所（右か下）。今は layout.panels.terminal.dock（左・右・上・下）が正本 */
-export type TerminalDock = 'right' | 'bottom'
+type TerminalDock = 'right' | 'bottom'
 
 /** 配色の設定。system は OS のライト／ダークに追従する */
 export type ThemePreference = 'system' | 'light' | 'dark'

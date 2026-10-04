@@ -9,6 +9,10 @@
  *   2. 確認が済んだら公開する
  *      node scripts/release-r2.mjs promote --version 0.1.0 [--expect-sums SHA256SUMS] [--replace] [--yes] [--dry-run]
  *
+ *   公開済みの版のリリースノートだけを差し替える（ファイルと sha256 は変えない。サイトの更新履歴に出る文）
+ *      node scripts/release-r2.mjs notes --version 0.4.0 --notes docs/release-notes/0.4.0.md [--dry-run]
+ *      → releases/<version>/manifest.json の notes を書き換え、その版が最新なら latest.json も同じにする
+ *
  *   公開しないことにした staging の版を片付ける
  *      node scripts/release-r2.mjs discard --version 0.1.2 [--yes] [--dry-run]
  *      → staging/<version>/ のファイルと manifest.json を、表示して確認を求めてから消す（releases/ には触らない）
@@ -56,6 +60,7 @@ import {
   buildManifest,
   emptyIndex,
   obsoleteFiles,
+  withNotes,
   parseArtifactName,
   parseSha256Sums,
   replaceVersionInIndex,
@@ -75,7 +80,7 @@ const root = resolve(import.meta.dirname, '..')
 function parseArgs(argv) {
   const args = { command: 'stage', dir: 'dist/release', preview: [], prerelease: false, dryRun: false, replace: false, yes: false }
   let i = 0
-  if (argv[0] === 'stage' || argv[0] === 'promote' || argv[0] === 'discard') args.command = argv[i++]
+  if (['stage', 'promote', 'discard', 'notes'].includes(argv[0])) args.command = argv[i++]
   for (; i < argv.length; i++) {
     const key = argv[i]
     const value = () => argv[++i]
@@ -244,7 +249,7 @@ async function stage(args, work) {
     version: args.version,
     date: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
     prerelease: args.prerelease,
-    notes: args.notes ? readFileSync(resolve(root, args.notes), 'utf8') : `${product} ${args.version}. These builds are not code-signed yet.`,
+    notes: args.notes ? readFileSync(resolve(root, args.notes), 'utf8') : `${product} ${args.version}`,
     notesUrl: args.notesUrl,
     files: files.map(({ name, os, arch, kind, size, sha256: hash }) => ({ name, os, arch, kind, size, sha256: hash })),
     previewOs: args.preview,
@@ -273,6 +278,19 @@ async function discard(args) {
   await confirm('消しますか', args)
   for (const key of keys) remove(key, args.dryRun)
   console.log(args.dryRun ? '確認だけ' : '片付けました')
+}
+
+async function replaceNotes(args, work) {
+  if (!args.notes) throw new Error('--notes <ファイル> を渡してください')
+  const key = `releases/${args.version}/manifest.json`
+  const manifest = getManifest(key, args.version)
+  if (!manifest) throw new Error(`${key} がありません（公開済みの版だけを直せます）`)
+  const next = withNotes(manifest, readFileSync(resolve(root, args.notes), 'utf8'))
+  console.log(`${args.version} のリリースノートを差し替えます（ファイルと sha256 は変えません）`)
+  putJson(key, next, MANIFEST_CACHE, args.dryRun, work)
+  // latest.json は最新版の manifest と同じ中身なので、直す版が最新ならそちらも同じにする
+  if (getIndex().latest === args.version) putJson('latest.json', next, INDEX_CACHE, args.dryRun, work)
+  console.log(args.dryRun ? '確認だけ' : `差し替えました: ${PUBLIC_BASE}/${key}`)
 }
 
 async function promote(args, work) {
@@ -367,6 +385,7 @@ const work = mkdtempSync(join(tmpdir(), 'ferret-r2-'))
 try {
   if (args.command === 'promote') await promote(args, work)
   else if (args.command === 'discard') await discard(args)
+  else if (args.command === 'notes') await replaceNotes(args, work)
   else await stage(args, work)
 } finally {
   rmSync(work, { recursive: true, force: true })

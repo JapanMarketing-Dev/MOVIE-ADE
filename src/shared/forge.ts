@@ -8,7 +8,7 @@
 import { cliLoginCommand as catalogLogin } from './cliTools'
 
 export type Forge = 'github' | 'gitlab'
-export type ForgeCli = 'gh' | 'glab'
+type ForgeCli = 'gh' | 'glab'
 
 export const GITLAB_COM = 'gitlab.com'
 

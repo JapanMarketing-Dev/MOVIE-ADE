@@ -20,7 +20,7 @@ const evidence = (text: string | undefined, max = EVIDENCE_MAX): string => oneLi
 const speech = (text: string): string => oneLine(text, 4000)
 
 /** LLM に渡す圧縮した入力。キーを短くしてトークンを節約する */
-export interface PromptPayload {
+interface PromptPayload {
   duration_ms: number
   two_speakers: boolean
   /**

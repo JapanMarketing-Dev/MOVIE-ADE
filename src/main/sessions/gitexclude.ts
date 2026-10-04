@@ -19,7 +19,7 @@ import { assertContained, writeFileNoFollow } from './containment'
 const DIRS = [ADE_DIR, LEGACY_ADE_DIR]
 const HEADER = '# Ferret が追記（録画と分解結果をgit管理対象外にする）'
 
-export type GitExcludeResult = 'added' | 'already' | 'no-git'
+type GitExcludeResult = 'added' | 'already' | 'no-git'
 
 /**
  * `.git/info/exclude` に `.ferret/` と `.ade-movie/` を追記する。
@@ -64,7 +64,7 @@ function hasEntry(text: string, dir: string): boolean {
  * 通常はフォルダだが、worktree や submodule では `gitdir: <path>` と書かれたファイルになる。
  * `.git` 自体がリンクなら null
  */
-export async function resolveGitDir(projectDir: string): Promise<string | null> {
+async function resolveGitDir(projectDir: string): Promise<string | null> {
   const dotGit = join(projectDir, '.git')
   // Git で管理していないフォルダ（想定内）
   const s = await lstat(dotGit).catch(() => null)
@@ -98,7 +98,7 @@ function gitRevParse(projectDir: string, args: string[]): Promise<string[] | nul
  * - git に聞いた git のフォルダが `.git`（ファイルなら gitdir: の書く先）と一致しなければ null
  * - 除外ファイル（git の info/exclude）の先祖にリンクがあれば null
  */
-export async function resolveExcludeFile(projectDir: string): Promise<{ excludePath: string; root: string } | null> {
+async function resolveExcludeFile(projectDir: string): Promise<{ excludePath: string; root: string } | null> {
   const declared = await resolveGitDir(projectDir)
   if (!declared) return null
   const answer = await gitRevParse(projectDir, ['--show-toplevel', '--absolute-git-dir', '--git-common-dir', '--git-path', 'info/exclude'])

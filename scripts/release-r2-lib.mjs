@@ -200,6 +200,16 @@ export function releaseDir(version, build = 1) {
  * @param {string} version 期待する版
  * @returns {import('./release-r2-lib.d.mts').ReleaseManifest}
  */
+/**
+ * 公開済みの manifest のリリースノートだけを差し替えた manifest（ファイル・sha256・日付は変えない）。形を確かめて返す
+ * @param {any} manifest R2 から読んで validateManifest を通したもの
+ * @param {string} notes
+ */
+export function withNotes(manifest, notes) {
+  if (typeof notes !== 'string' || !notes.trim()) throw new Error('リリースノートが空です')
+  return validateManifest({ ...manifest, notes }, manifest.version)
+}
+
 export function validateManifest(manifest, version) {
   assertValidVersion(version)
   const fail = (why) => {
@@ -379,7 +389,7 @@ export function ghReleaseNotes(version, downloadUrl = 'https://ferretade.dev/dow
     'ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig < SHA256SUMS',
     '```',
     '',
-    'The macOS app is signed with a Developer ID and notarized by Apple. **The Windows and Linux installers are not code-signed yet.** A matching hash in a correctly signed `SHA256SUMS` shows the file is the one the Ferret release key published.',
+    'The macOS app is signed with a Developer ID and notarized by Apple. A matching hash in a correctly signed `SHA256SUMS` shows the file is the one the Ferret release key published.',
     ''
   ].join('\n')
 }

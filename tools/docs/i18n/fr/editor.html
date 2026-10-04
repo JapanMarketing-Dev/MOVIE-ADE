@@ -5,7 +5,7 @@
 <!-- @lead 97cbc36c8d -->
 Ouvrez et modifiez les fichiers du projet, et prévisualisez le Markdown et Mermaid. Un aperçu ouvert dans le navigateur intégré peut être enregistré et relu comme n'importe quelle page web.
 
-<!-- @files f1e2c27cca -->
+<!-- @files d29f6a2107 -->
 ## Ouvrir et modifier des fichiers
 <ul>
   <li><span class="docs-ui">Fichiers</span> (l'arborescence) : {{keys:Mod+Shift+E}}, avec <span class="docs-ui">Filtrer par nom de fichier</span>, <span class="docs-ui">Actualiser</span> et <span class="docs-ui">Tout réduire</span>.</li>
@@ -14,7 +14,18 @@ Ouvrez et modifiez les fichiers du projet, et prévisualisez le Markdown et Merm
   <li>Si le fichier change sur le disque alors que vous avez des modifications non enregistrées, choisissez <span class="docs-ui">Recharger depuis le disque</span> ou <span class="docs-ui">Garder mes modifications</span>.</li>
 </ul>
 <p>L'éditeur est Monaco. Les fichiers qui ne sont pas du texte s'ouvrent dans une visionneuse : images (zoom avant et arrière ; un SVG peut aussi s'afficher sous forme de code), vidéo et audio avec une barre de lecture, PDF et, pour tout autre fichier binaire, sa taille et une vue hexadécimale des premiers octets. Les visionneuses sont en lecture seule, et les fichiers situés hors du dossier du projet, ou atteints par un lien symbolique qui en sort, ne sont pas affichés.</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Bientôt disponible</p><p>Créer, renommer et supprimer des fichiers depuis l'arborescence.</p></div>
+
+<!-- @file-tree 4bec72e9f4 -->
+## Créer, renommer et supprimer des fichiers
+<p>Travaillez sur les fichiers directement dans <span class="docs-ui">Fichiers</span>, comme dans VS Code. Les noms se saisissent sur place, dans l'arborescence.</p>
+<ul>
+  <li><span class="docs-ui">Nouveau fichier</span> / <span class="docs-ui">Nouveau dossier</span> : les boutons au-dessus de l'arborescence, ou un clic droit sur un dossier (ou sur l'espace vide sous l'arborescence). Le nouvel élément est créé dans le dossier sélectionné, à côté du fichier sélectionné, ou à la racine du projet. Un nouveau fichier s'ouvre dans l'éditeur.</li>
+  <li><span class="docs-ui">Renommer</span> : {{keys:F2 / Enter|F2}}, ou clic droit. Les onglets ouverts suivent le nouveau nom et gardent les modifications non enregistrées.</li>
+  <li><span class="docs-ui">Supprimer</span> : {{keys:Mod+Backspace / Delete|Delete}}, ou clic droit. Ferret demande d'abord confirmation, puis place l'élément dans la Corbeille, d'où vous pouvez le restaurer. Les onglets des fichiers supprimés se ferment ; si certains avaient des modifications non enregistrées, la confirmation le signale.</li>
+  <li>Sélectionnez plusieurs éléments avec {{keys:Mod}}-clic ou {{keys:Shift}}-clic pour les supprimer ensemble.</li>
+  <li>{{keys:Esc}} annule le nom en cours de saisie.</li>
+</ul>
+<p>Ferret n'écrase pas un fichier ou un dossier existant du même nom, et refuse tout ce qui sortirait du dossier du projet (<code>..</code>, chemins absolus, liens symboliques qui pointent à l'extérieur), tout ce qui se trouve dans <code>.git</code>, et les noms qu'un OS ne peut pas utiliser : <code>/ \ &lt; &gt; : " | ? *</code>, caractères de contrôle, espace ou point final, et noms réservés de Windows comme <code>CON</code> ou <code>NUL</code>.</p>
 
 <!-- @preview b8c0baaad4 -->
 ## Aperçu Markdown et Mermaid
@@ -24,7 +35,7 @@ Ouvrez et modifiez les fichiers du projet, et prévisualisez le Markdown et Merm
   <li><span class="docs-ui">Ouvrir l'aperçu</span> : dans le navigateur intégré (<code>ade-preview://</code>), pour pouvoir l'enregistrer et le relire</li>
 </ul>
 
-<!-- @review-docs 3956ed6f10 -->
+<!-- @review-docs 4b5c6316ba -->
 ## Relire de la documentation en l'enregistrant
 <ol class="docs-steps">
   <li>Ouvrez un fichier Markdown et cliquez sur <span class="docs-ui">Ouvrir l'aperçu</span>.</li>
@@ -32,4 +43,4 @@ Ouvrez et modifiez les fichiers du projet, et prévisualisez le Markdown et Merm
   <li>Arrêtez. Les remarques font référence au chemin du fichier relatif au projet au lieu d'une URL.</li>
   <li><span class="docs-ui">Envoyer à l'agent</span> pour faire corriger le document.</li>
 </ol>
-<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="Aperçu Markdown dans le navigateur intégré (capture d'écran bientôt disponible)"><span>Capture d'écran bientôt disponible</span></div><figcaption>Aperçu Markdown dans le navigateur intégré</figcaption></figure>
+{{shot:preview|Aperçu Markdown dans le navigateur intégré}}

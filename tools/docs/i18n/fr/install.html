@@ -2,92 +2,33 @@
 <!-- @title 569ca49f4a -->
 Installation
 
-<!-- @lead 1947d59ea4 -->
-Ferret est une application de bureau pour macOS, Windows et Linux. La version macOS est signée avec un Developer ID et notariée par Apple. Les versions Windows et Linux ne sont pas encore signées : ces systèmes vous demandent donc de confirmer le premier lancement.
+<!-- @lead a7ae9a04f0 -->
+Téléchargez Ferret pour votre ordinateur et ouvrez-le. Il fonctionne sous macOS, Windows et Linux.
 
-<!-- @download 91a49c9274 -->
+<!-- @download 57d4dd8f14 -->
 ## Téléchargement
-<p>Récupérez le fichier correspondant à votre OS et à votre processeur sur la <a href="../download.html">page de téléchargement</a>. Les fichiers sont servis depuis Cloudflare R2, et non depuis GitHub Releases, et seules les 10 versions les plus récentes sont conservées.</p>
-<table>
-  <thead><tr><th>OS</th><th>Fichiers</th></tr></thead>
-  <tbody>
-    <tr><td>macOS (Apple silicon / Intel)</td><td><code>Ferret-&lt;version&gt;-mac-arm64.dmg</code>, <code>Ferret-&lt;version&gt;-mac-x64.dmg</code></td></tr>
-    <tr><td>Windows (x64 / arm64)</td><td><code>Ferret-&lt;version&gt;-win-x64.exe</code>, <code>Ferret-&lt;version&gt;-win-arm64.exe</code> (installeur NSIS)</td></tr>
-    <tr><td>Linux (x64)</td><td><code>Ferret-&lt;version&gt;-linux-x86_64.AppImage</code>, <code>Ferret-&lt;version&gt;-linux-amd64.deb</code></td></tr>
-  </tbody>
-</table>
-<p>Les versions jusqu'à 0.1.x ont été publiées sous l'ancien nom, en <code>MOVIE-ADE-&lt;version&gt;-…</code>. Les noms <code>Ferret-…</code> commencent avec la 0.2.0.</p>
-<div class="docs-callout docs-callout-warn"><p>Ferret prend en charge macOS, Windows et Linux. Les versions Windows et Linux ne sont pas encore signées : le premier lancement vous demande donc une confirmation (voir les étapes ci-dessous).</p></div>
+<p>La <a href="../download.html">page de téléchargement</a> propose le fichier adapté à votre ordinateur. Cliquez sur le bouton de téléchargement.</p>
 
-<!-- @verify 14ef497c52 -->
-## Vérifier le téléchargement (SHA256SUMS signé)
-<p>Chaque version est accompagnée d'un fichier <code>SHA256SUMS</code> et de sa signature <code>SHA256SUMS.sig</code>. La signature est faite avec la clé de publication de Ferret, conservée à l'écart du serveur de téléchargement : un installeur modifié sur ce serveur ne peut donc pas être accompagné d'une signature valide. La clé publique n'est <em>pas</em> récupérée depuis le serveur de téléchargement : prenez-la dans le dépôt (<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers"><code>build/release-signing/allowed_signers</code></a>) ou copiez-la ici :</p>
-<pre><code>release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9</code></pre>
-<p>Son empreinte est <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code>. Les mêmes fichiers sont joints à chaque version sur GitHub. Vérifiez la signature avec <code>ssh-keygen</code> (inclus dans macOS, Windows 10 et versions ultérieures, et Linux), puis comparez l'empreinte de votre téléchargement avec la liste signée :</p>
-<pre><code># the download server (currently the R2 public URL; it may move to a custom domain)
-BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
-VERSION=$(curl -s $BASE/latest.json | jq -r .version)
-curl -sO $BASE/releases/$VERSION/SHA256SUMS
-curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
-
-# save the public key above as allowed_signers, then:
-ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
-# → Good "ferret-release" signature for release@ferretade.dev …
-
-# macOS
-shasum -a 256 -c SHA256SUMS --ignore-missing
-# Linux
-sha256sum -c SHA256SUMS --ignore-missing</code></pre>
-<pre><code># Windows (PowerShell): compare with the line for your file in SHA256SUMS
-Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
-<p>Arrêtez-vous si <code>ssh-keygen</code> n'affiche pas <q>Good "ferret-release" signature</q> ou si l'empreinte ne figure pas dans la liste. La fonction <span class="docs-ui">Rechercher des mises à jour</span> de Ferret fait la même vérification avec la clé intégrée à l'application et ne propose pas une version dont la signature ne correspond pas. Sur macOS, vous pouvez aussi vérifier la signature Developer ID et la notarisation avec <code>spctl -a -vv /Applications/Ferret.app</code>. Les installeurs Windows et Linux ne sont pas encore signés par Microsoft ni par une distribution Linux. Les versions jusqu'à 0.3.0 ont été publiées avant la mise en place de la signature et n'ont que les empreintes non signées de <code>releases/&lt;version&gt;/manifest.json</code>.</p>
-
-<!-- @macos 1aa07136fd -->
+<!-- @macos b0d1e6945a -->
 ## macOS
-<ol class="docs-steps">
-  <li>Ouvrez le <code>.dmg</code> et faites glisser <code>Ferret.app</code> dans <code>/Applications</code>.</li>
-  <li>Lancez-la. L'application est signée avec un Developer ID et notariée par Apple (le ticket est agrafé) : elle s'ouvre donc sans avertissement.</li>
-</ol>
-<p>Pour vérifier vous-même la signature :</p>
-<pre><code>spctl -a -vv /Applications/Ferret.app
-# accepted
-# source=Notarized Developer ID</code></pre>
-<p><strong>Anciennes versions uniquement (0.2.0 build 2 et antérieures)</strong> : elles n'étaient pas signées. Pour celles-ci, macOS indique que le développeur ne peut pas être vérifié : fermez la boîte de dialogue, ouvrez <span class="docs-ui">Réglages Système → Confidentialité et sécurité</span>, cliquez sur <span class="docs-ui">Ouvrir quand même</span> à côté du message concernant Ferret, puis confirmez avec <span class="docs-ui">Ouvrir</span>. Si macOS indique que l'application « est endommagée », supprimez l'attribut de quarantaine :</p>
-<pre><code>xattr -dr com.apple.quarantine /Applications/Ferret.app</code></pre>
+<p>Ouvrez le <code>.dmg</code>, faites glisser Ferret dans <code>Applications</code>, puis ouvrez-le depuis ce dossier.</p>
 
-<!-- @windows b5761835f1 -->
+<!-- @windows 18a1422bb6 -->
 ## Windows
-<ol class="docs-steps">
-  <li>Exécutez <code>Ferret-&lt;version&gt;-win-&lt;arch&gt;.exe</code>.</li>
-  <li>Quand SmartScreen affiche « Windows a protégé votre ordinateur », cliquez sur <span class="docs-ui">Informations complémentaires</span>, puis sur <span class="docs-ui">Exécuter quand même</span>.</li>
-  <li>Choisissez le dossier d'installation. L'installeur crée un raccourci sur le bureau.</li>
-</ol>
+<p>Exécutez le <code>.exe</code> téléchargé. Ferret s'installe et s'ouvre, sans rien à choisir. Les fois suivantes, ouvrez-le depuis le menu Démarrer ou le raccourci du bureau.</p>
+<p>Si Windows affiche <q>Windows a protégé votre ordinateur</q>, cliquez sur <span class="docs-ui">Informations complémentaires</span>, puis sur <span class="docs-ui">Exécuter quand même</span>.</p>
 
-<!-- @linux c46965a0c5 -->
+<!-- @linux 58ceb4839c -->
 ## Linux
-<p>AppImage :</p>
-<pre><code>chmod +x Ferret-&lt;version&gt;-linux-x86_64.AppImage
-./Ferret-&lt;version&gt;-linux-x86_64.AppImage</code></pre>
-<p>Debian / Ubuntu :</p>
+<p><strong>Ubuntu / Debian</strong> : double-cliquez sur le <code>.deb</code> pour l'installer avec votre logithèque, ou exécutez :</p>
 <pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
-<p>Le paquet deb installe le paquet et la commande <code>ferret</code>.</p>
-<p>Sur Ubuntu 23.10 et versions ultérieures, l'AppImage peut s'arrêter au lancement avec une erreur de sandbox, car AppArmor restreint les espaces de noms utilisateur dont se sert la sandbox d'Electron. Installez plutôt le <code>.deb</code>, qui configure l'outil d'aide de la sandbox.</p>
+<p>Ouvrez ensuite Ferret depuis le menu des applications, ou exécutez <code>ferret</code>.</p>
+<p><strong>Autres distributions</strong> : utilisez le <code>.AppImage</code>. Autorisez son exécution comme programme (clic droit → Propriétés, ou <code>chmod +x</code>), puis ouvrez-le.</p>
 
-<!-- @source 06a127ac19 -->
-## Compiler depuis les sources
-<p>Nécessite Node.js 20+ (la CI et le développement local utilisent la 22), pnpm et git.</p>
-<pre><code>git clone https://github.com/JapanMarketing-Dev/ferret.git
-cd ferret
-pnpm install          # postinstall prepares node-pty for Electron
-pnpm dev              # run in development mode</code></pre>
-<p>Pour produire les installeurs (sortie dans <code>dist/release/</code>, configuration dans <code>electron-builder.config.cjs</code>). La version Linux ne se compile que sous Linux.</p>
-<pre><code>pnpm dist:mac     # dmg (arm64, x64)
-pnpm dist:win     # NSIS installers (x64, arm64)
-pnpm dist:linux   # AppImage + deb (x64)</code></pre>
-<p>Les scripts <code>build:&lt;os&gt;:dev</code> produisent uniquement une application non empaquetée (<code>--dir</code>), plus rapide pour les tests en local.</p>
-<p>Sous Windows, <code>pnpm install</code> utilise les binaires précompilés fournis avec node-pty au lieu de les recompiler (ce qui exigerait les outils de compilation C++ de Visual Studio). Définissez <code>ADE_FORCE_NATIVE_REBUILD=1</code> pour forcer la recompilation.</p>
-<p>Si le terminal indique que node-pty n'a pas pu être chargé, exécutez <code>pnpm rebuild:native</code>.</p>
-
-<!-- @update 7f4d958687 -->
-## Mises à jour
-<p>Ferret ne se met pas à jour automatiquement. Dans le pied de page, ouvrez <span class="docs-ui">Mises à jour</span> et cliquez sur <span class="docs-ui">Rechercher des mises à jour</span>. Ferret récupère <code>latest.json</code> sur le serveur de téléchargement (R2), compare les versions et renvoie vers la page de téléchargement. Depuis la 0.4.0, il vérifie aussi la signature du <code>SHA256SUMS</code> de cette version avec la clé de publication intégrée à l'application, et ne propose pas une version dont la signature ne peut pas être vérifiée. Rien n'est vérifié tant que vous ne cliquez pas, et rien n'est installé automatiquement.</p>
+<!-- @more 75e55cbce4 -->
+## Et ensuite
+<ul>
+  <li><a href="quick-start.html#open">Démarrage rapide</a> : ouvrez un projet et enregistrez votre premier retour.</li>
+  <li>Un problème ? Consultez <a href="troubleshooting.html#install">Dépannage</a>.</li>
+  <li>Pour vérifier la signature d'un téléchargement, compiler depuis les sources ou obtenir une version plus ancienne, consultez <a href="advanced-install.html">Installation avancée</a>.</li>
+</ul>

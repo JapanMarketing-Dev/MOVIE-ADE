@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { cloneRepository, defaultCloneParent, listGitHubRepos, listSshHosts } from '../../src/main/projectSources'
+import { cloneRepository, cloneSshEnv, defaultCloneParent, listGitHubRepos, listSshHosts } from '../../src/main/projectSources'
 
 /** mkdtemp の中に、1コミットだけの bare リポジトリを作る（本物の GitHub には触れない） */
 function makeBareRepo(root: string): string {
@@ -89,5 +89,20 @@ describe('~/.ssh/config と既定の保存先（一時フォルダの HOME で�
     } finally {
       rmSync(home, { recursive: true, force: true })
     }
+  })
+})
+
+describe('clone の ssh（Orca #21985）', () => {
+  it('何も選ばれていなければ ssh に BatchMode を付ける', () => {
+    expect(cloneSshEnv({}, null)).toEqual({ GIT_SSH_COMMAND: 'ssh -o BatchMode=yes' })
+  })
+
+  it('利用者の GIT_SSH_COMMAND・core.sshCommand は置き換えず、後ろに足す', () => {
+    expect(cloneSshEnv({ GIT_SSH_COMMAND: 'ssh -i ~/.ssh/id_work' }, 'ssh -i ~/.ssh/other')).toEqual({ GIT_SSH_COMMAND: 'ssh -i ~/.ssh/id_work -o BatchMode=yes' })
+    expect(cloneSshEnv({}, 'ssh -i ~/.ssh/id_work -o IdentitiesOnly=yes\n')).toEqual({ GIT_SSH_COMMAND: 'ssh -i ~/.ssh/id_work -o IdentitiesOnly=yes -o BatchMode=yes' })
+  })
+
+  it('GIT_SSH（実行ファイル）が選ばれていれば触らない', () => {
+    expect(cloneSshEnv({ GIT_SSH: '/usr/local/bin/my-ssh' }, null)).toEqual({})
   })
 })

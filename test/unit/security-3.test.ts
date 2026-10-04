@@ -20,7 +20,7 @@ import {
   RELEASE_PUBLIC_KEY,
   RELEASE_SIGNER_IDENTITY,
   RELEASE_SIGNING_NAMESPACE,
-  releaseFilesAreSigned,
+  verifiedReleaseFiles,
   verifySshSignature
 } from '../../src/main/releaseSignature'
 import {
@@ -188,11 +188,15 @@ describe('security-3 [2] 配布物の真正性を、R2 とは別の鍵の署名�
   it('security-3 [2] latest.json のファイルが、署名の合う SHA256SUMS に同じ値で載っているときだけ案内する', () => {
     const key = tempKey()
     const sig = signSshsig(sums, key.pem)
-    const files = [{ name: 'Ferret-9.9.9-mac-arm64.dmg', sha256: 'a'.repeat(64) }]
-    expect(releaseFilesAreSigned(files, sums, sig, key.line)).toBe(true)
-    expect(releaseFilesAreSigned([{ ...files[0]!, sha256: 'd'.repeat(64) }], sums, sig, key.line)).toBe(false)
-    expect(releaseFilesAreSigned([{ name: 'Ferret-9.9.9-linux-x86_64.AppImage', sha256: 'a'.repeat(64) }], sums, sig, key.line)).toBe(false)
-    expect(releaseFilesAreSigned([], sums, sig, key.line)).toBe(false)
+    // security-4 [3] から、manifest のファイルは SHA256SUMS と過不足なく一致しなければならない
+    const files = [
+      { name: 'Ferret-9.9.9-mac-arm64.dmg', sha256: 'a'.repeat(64), path: 'releases/9.9.9/Ferret-9.9.9-mac-arm64.dmg', size: 1 },
+      { name: 'Ferret-9.9.9-win-x64.exe', sha256: 'b'.repeat(64), path: 'releases/9.9.9/Ferret-9.9.9-win-x64.exe', size: 1 }
+    ]
+    expect(verifiedReleaseFiles('9.9.9', files, sums, sig, key.line)).toHaveLength(2)
+    expect(verifiedReleaseFiles('9.9.9', [{ ...files[0]!, sha256: 'd'.repeat(64) }, files[1]!], sums, sig, key.line)).toBeNull()
+    expect(verifiedReleaseFiles('9.9.9', [{ ...files[0]!, name: 'Ferret-9.9.9-linux-x86_64.AppImage' }, files[1]!], sums, sig, key.line)).toBeNull()
+    expect(verifiedReleaseFiles('9.9.9', [], sums, sig, key.line)).toBeNull()
   })
 
   it('security-3 [2] 署名の無い新しい版は、更新の確認で案内しない（R2 だけを書き換えても偽の版へ誘わない）', async () => {
@@ -225,7 +229,7 @@ describe('security-3 [2] 配布物の真正性を、R2 とは別の鍵の署名�
     const allowed = read('build/release-signing/allowed_signers')
     expect(trustedPublicKey(allowed)).toBe(RELEASE_PUBLIC_KEY)
     expect(read('SECURITY.md')).toContain(RELEASE_PUBLIC_KEY)
-    expect(read('site/docs/install.html')).toContain(RELEASE_PUBLIC_KEY)
+    expect(read('site/docs/advanced-install.html')).toContain(RELEASE_PUBLIC_KEY)
     expect(SIGNER_IDENTITY).toBe(RELEASE_SIGNER_IDENTITY)
     expect(SIGNING_NAMESPACE).toBe(RELEASE_SIGNING_NAMESPACE)
     // 公開鍵として読めること
@@ -249,7 +253,7 @@ describe('security-3 [2] 配布物の真正性を、R2 とは別の鍵の署名�
     expect(r2).toMatch(/assertSignedSums\(/)
     expect(read('scripts/release-github.mjs')).toMatch(/assertSignedSums\(/)
     // サイトの手順は、署名した SHA256SUMS を R2 の外の公開鍵で確かめる形
-    const install = read('site/docs/install.html')
+    const install = read('site/docs/advanced-install.html')
     expect(install).toContain('ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig')
     expect(install).not.toContain('There is no <code>SHA256SUMS</code> file')
   })

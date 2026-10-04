@@ -84,10 +84,8 @@ export const organizeOutputSchema = {
   },
 } as const
 
-export type OrganizeOutputSchema = typeof organizeOutputSchema;
-
 /** LLM が実際に返す形（本文を含まない） */
-export interface RawOrganizeItem {
+interface RawOrganizeItem {
   title: string
   request: string
   status: 'decided' | 'needs_check'

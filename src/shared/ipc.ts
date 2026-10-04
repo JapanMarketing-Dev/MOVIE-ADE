@@ -185,6 +185,12 @@ export interface IpcRequests {
   'terminal:list': () => TerminalSessionInfo[]
   /** 生きているターミナルにつなぎ直す（新しくは作らない）。終了していれば null */
   'terminal:attach': (id: string) => TerminalAttachInfo | null
+  /** クリップボードの文字列（Windows / Linux のターミナルの Ctrl+V 貼り付け。renderer には読み取りの権限を渡していない） */
+  'terminal:clipboardText': () => string
+  /** ターミナルのコピー（選択・OSC 52）をクリップボードへ。窓にフォーカスが無いときも書けるよう main で書く */
+  'terminal:writeClipboard': (text: string) => void
+  /** ターミナルにフォーカスが入った・外れた。Windows / Linux でターミナルのキー（Ctrl+R など）をメニューに取らせない（terminalMenuKeys.ts） */
+  'terminal:focused': (focused: boolean) => void
   /**
    * 指摘を Agent へ送る。request は宛先と差し替える本文（@shared/sendTarget の SendRequest。古い形のターミナルの id も受ける）。
    * noAgent: 宛先に Agent が居ない（launchAgent があればそれを、無ければ既定の Agent を renderer が起動して送り直す）。
@@ -227,6 +233,8 @@ export interface IpcRequests {
   'annotation:redo': () => void
   /** 省略時は開いているフォルダ。指定できるのは登録済みプロジェクトのフォルダだけ（サイドバーの入れ子表示用） */
   'review:list': (folderPath?: string) => ReviewSummary[]
+  /** セットアップの確認用。録画したことがあるか・送ったことがあるか（新しい数件だけを見る。全部の履歴は読まない） */
+  'review:activity': (folderPath: string) => { recorded: boolean; sent: boolean }
   /** レビューの名前・アーカイブを変える（folderPath は登録済みプロジェクトに限る。省略時は開いているプロジェクト） */
   'review:label': (id: string, patch: ReviewLabelPatch, folderPath?: string) => void
   /** レビューを消す（.ferret/reviews/<日時>/ ごと。古いものは .ade-movie/）。消せた ID を返す */
@@ -294,6 +302,12 @@ export interface IpcRequests {
   'fs:search': (query: string, mode: FsSearchMode) => FsSearchResult
   /** 文字として開けないファイルの大きさと先頭のバイト（画像・動画・バイナリの表示） */
   'fs:inspect': (relPath: string) => FsFileInfo
+  /** ファイルツリーから空のファイル・フォルダを作る。作ったものの相対パスを返す（既にあれば断る。src/main/fileOps.ts） */
+  'fs:create': (parentRel: string, name: string, kind: 'file' | 'directory') => string
+  /** 同じフォルダの中で名前を変える。新しい相対パスを返す（既にある名前には上書きしない） */
+  'fs:rename': (relPath: string, newName: string) => string
+  /** ゴミ箱へ送る（shell.trashItem）。送った相対パスを返す */
+  'fs:trash': (relPaths: string[]) => string[]
   /** Finder（エクスプローラ）でファイルを選んで見せる */
   'fs:reveal': (relPath: string) => void
   /** OS の既定のアプリで開く。実行されうる種類は断る（@shared/fileViewer の isRiskyToOpenExternally） */
@@ -466,7 +480,7 @@ export const IPC_REQUEST_CHANNELS = [
   'terminal:write',
   'terminal:resize',
   'terminal:close',
-  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'review:send',
+  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:clipboardText', 'terminal:writeClipboard', 'terminal:focused', 'review:send',
   'settings:splitRatio',
   'settings:layout',
   'settings:theme',
@@ -483,9 +497,9 @@ export const IPC_REQUEST_CHANNELS = [
   'annotation:clear',
   'annotation:undo',
   'annotation:redo',
-  'review:list', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:replyPrompt', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
+  'review:list', 'review:activity', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:replyPrompt', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
   'capture:screenAccess', 'capture:sources', 'capture:setTarget', 'capture:openScreenSettings',
-  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'preview:render',
+  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:create', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'preview:render',
   'github:status', 'github:repo', 'github:reviewDraft', 'github:postReview', 'github:open', 'github:repoStatus', 'gitlab:status',
   'star:star', 'star:openWeb', 'star:later', 'star:never', 'star:fromMenu',
   'feedback:environment', 'feedback:account', 'feedback:submit', 'feedback:captureWindow'

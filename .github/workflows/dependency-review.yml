@@ -1,0 +1,28 @@
+# PR で増える・変わる依存（pnpm-lock.yaml と workflow の actions）に、既知の脆弱性や使えないライセンスが無いかを見る。
+# 公開リポジトリなので無料。依存を入れず、PR のコードも動かさない（GitHub の依存グラフを比べるだけ）。
+name: Dependency review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: dependency review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      # checkout は要らない（PR の前後の依存を API で比べる）
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          # MIT のアプリに入れられないもの（コピーレフト）。CONTRIBUTING.md の決まりと同じ
+          deny-licenses: GPL-2.0-only, GPL-2.0-or-later, GPL-3.0-only, GPL-3.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later

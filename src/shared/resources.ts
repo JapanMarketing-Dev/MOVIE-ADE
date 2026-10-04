@@ -21,7 +21,7 @@ export interface ResourceTerminal {
   memory: number
 }
 
-export interface ResourcePage {
+interface ResourcePage {
   title: string
   url: string
   cpu: number

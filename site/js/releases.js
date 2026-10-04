@@ -150,8 +150,8 @@ export const SLOTS = [
   { id: 'mac-x64', os: 'mac', arch: 'x64', kinds: ['dmg', 'zip'], label: 'macOS', detail: 'Intel', preview: false },
   { id: 'win-x64', os: 'win', arch: 'x64', kinds: ['exe', 'msi', 'zip'], label: 'Windows', detail: 'x64', preview: false },
   { id: 'win-arm64', os: 'win', arch: 'arm64', kinds: ['exe', 'msi', 'zip'], label: 'Windows', detail: 'Arm64', preview: false },
-  { id: 'linux-appimage', os: 'linux', arch: 'x64', kinds: ['AppImage'], label: 'Linux', detail: 'AppImage (x64)', preview: false },
-  { id: 'linux-deb', os: 'linux', arch: 'x64', kinds: ['deb'], label: 'Linux', detail: '.deb (x64)', preview: false },
+  { id: 'linux-deb', os: 'linux', arch: 'x64', kinds: ['deb'], label: 'Linux', detail: '.deb · Ubuntu / Debian', preview: false },
+  { id: 'linux-appimage', os: 'linux', arch: 'x64', kinds: ['AppImage'], label: 'Linux', detail: 'AppImage · other distros', preview: false },
 ]
 
 /** 正式に対応している OS。manifest に preview が無いとき、これ以外を Preview と表示する */
@@ -288,13 +288,14 @@ export function detectPlatform(env = {}) {
 
 /**
  * 推定した端末に一番合う枠。mac の CPU が分からない時は Apple silicon を選ぶ（2020年以降の Mac の大半）。
+ * Linux は .deb（Ubuntu / Debian でダブルクリックで入る。AppImage は Ubuntu 23.10 以降の AppArmor で止まることがある）。
  * @param {{ os: string|null, arch: string|null } | null} platform
  */
 export function recommendedSlot(platform) {
   if (!platform?.os) return null
   if (platform.os === 'mac') return SLOTS.find((s) => s.id === (platform.arch === 'x64' ? 'mac-x64' : 'mac-arm64')) ?? null
   if (platform.os === 'win') return SLOTS.find((s) => s.id === (platform.arch === 'arm64' ? 'win-arm64' : 'win-x64')) ?? null
-  return SLOTS.find((s) => s.id === 'linux-appimage') ?? null
+  return SLOTS.find((s) => s.id === 'linux-deb') ?? null
 }
 
 export const OS_LABEL = { mac: 'macOS', win: 'Windows', linux: 'Linux' }

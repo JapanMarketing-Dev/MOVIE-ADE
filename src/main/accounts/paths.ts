@@ -1,9 +1,10 @@
 import { lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { join, resolve } from 'node:path'
 import type { AccountAgent } from '@shared/types'
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
+import { isWithin } from '../sessions/containment'
 
 /**
  * アカウントごとの設定フォルダの置き場所と、本システムの物であることの確認。
@@ -45,11 +46,6 @@ export function systemConfigDir(agent: AccountAgent, env: NodeJS.ProcessEnv = pr
   return env.CLAUDE_CONFIG_DIR?.trim() || join(homedir(), '.claude')
 }
 
-function pathIsInsideOrEqual(rootPath: string, candidatePath: string): boolean {
-  const rel = relative(rootPath, candidatePath)
-  return rel === '' || (!isAbsolute(rel) && rel !== '..' && !rel.startsWith(`..${sep}`))
-}
-
 function realpathIfPresent(path: string): string {
   try {
     return realpathSync(path)
@@ -59,7 +55,7 @@ function realpathIfPresent(path: string): string {
   }
 }
 
-export type ManagedDirVerdict = { kind: 'owned'; dir: string } | { kind: 'untrusted'; reason: string }
+type ManagedDirVerdict = { kind: 'owned'; dir: string } | { kind: 'untrusted'; reason: string }
 
 /** 設定フォルダが本システムの物かを調べる（投げない版）。理由は利用者向けの文 */
 export function verifyManagedAccountDir(options: {
@@ -82,7 +78,7 @@ export function verifyManagedAccountDir(options: {
   }
   // 置き場所のフォルダが差し替えられて、本物の ~/.codex・~/.claude を指していないこと（Orca と同じ確認）
   const systemDir = realpathIfPresent(options.systemDir ?? systemConfigDir(agent))
-  if (pathIsInsideOrEqual(systemDir, canonical) || pathIsInsideOrEqual(canonical, systemDir)) {
+  if (isWithin(systemDir, canonical) || isWithin(canonical, systemDir)) {
     return { kind: 'untrusted', reason: t('accounts.errors.pointsToDefault') }
   }
   if (canonical !== join(canonicalRoot, accountId)) {

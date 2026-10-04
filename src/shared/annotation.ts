@@ -4,7 +4,7 @@
  */
 
 /** 書き込みの道具。pen は手書きの線、rect はドラッグで囲む四角の枠 */
-export type AnnotationShape = 'pen' | 'rect'
+type AnnotationShape = 'pen' | 'rect'
 
 /**
  * 書き込みの色。商談や社外の会議でも使えるよう、目立つ色に加えて落ち着いた色（青・黒）も置く。

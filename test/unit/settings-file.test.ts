@@ -152,6 +152,22 @@ describe('保存', () => {
   })
 })
 
+describe('書き込みに失敗したとき（Orca #18271）', () => {
+  it('同じ内容でも次の保存で書き直す（「書いた」扱いのまま残さない）', () => {
+    const dir = join(root, 'cfg-fail')
+    mkdirSync(dir)
+    const store = newStore(dir)
+    const { settings } = store.load()
+    // settings.json の場所を中身のあるフォルダでふさぎ、rename を失敗させる
+    rmSync(join(dir, 'settings.json'), { force: true })
+    mkdirSync(join(dir, 'settings.json', 'blocker'), { recursive: true })
+    expect(() => store.saveSync({ ...settings, theme: 'dark' })).toThrow()
+    rmSync(join(dir, 'settings.json'), { recursive: true, force: true })
+    store.saveSync({ ...settings, theme: 'dark' })
+    expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).theme).toBe('dark')
+  })
+})
+
 describe('外部の変更の取り込み', () => {
   it('自分の書き込みは取り込み直さない', () => {
     const dir = join(root, 'cfg')

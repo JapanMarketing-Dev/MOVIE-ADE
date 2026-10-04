@@ -1,7 +1,7 @@
 /**
  * OpenAI STT API の実測。ローカル whisper.cpp と同じ指標で比べる。
  *
- *   npx tsx tools/bench-stt-openai.ts <materialDir> --model gpt-transcribe [--channel mic|system|mixed]
+ *   npx tsx tools/pipeline/bench-stt-openai.ts <materialDir> --model gpt-transcribe [--channel mic|system|mixed]
  *       [--chunked] [--diarized-speakers]
  *
  * APIキーは環境変数 OPENAI_API_KEY から読む。**値は一切出力しない。**

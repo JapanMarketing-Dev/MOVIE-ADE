@@ -1,3 +1,4 @@
+import { defaultLaunchAgent } from '@shared/sendTarget'
 import { Fragment, useEffect, useState, useRef } from 'react'
 import {
   AlertTriangle,
@@ -31,6 +32,7 @@ import { FindingsEmptyArt } from './reviewArt'
 import { FindingShots } from './ReviewShots'
 import { errorMessage } from '../lib/errors'
 import { GitHubSendDialog } from './GitHubSendDialog'
+import { TargetPurposeIcon } from './TargetPurposeIcon'
 import { useT } from '../lib/i18n'
 import { groupByTarget, targetHeading, type ReviewTarget } from '@shared/reviewTarget'
 import { reportHandled } from '@shared/report'
@@ -108,8 +110,10 @@ function TargetName({ target }: { target: ReviewTarget }) {
   const t = useT()
   if (target.kind === 'none') return <span className="rv-target__name">{t('review.targets.none')}</span>
   const Icon = target.kind === 'file' ? FileText : Globe
+  // デザイン・設計書で撮った指摘は、区分のアイコンと名前を出す（Agent にもコードではなくそれらを直すよう伝わる）
   return <>
-    <Icon size={12} aria-hidden="true" />
+    {target.purpose ? <TargetPurposeIcon purpose={target.purpose} size={12} /> : <Icon size={12} aria-hidden="true" />}
+    {target.purpose && <span className="rv-target__env" data-testid="review-target-purpose">{t(`projectTargets.purpose.${target.purpose}`)}</span>}
     {target.label && <span className="rv-target__env">{target.label}</span>}
     <span className="rv-target__name">{target.kind === 'file' ? target.name : targetHeading({ ...target, label: undefined })}</span>
   </>
@@ -140,8 +144,7 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
   useEffect(() => {
     void Promise.all([window.ade.invoke('app:settings'), window.ade.invoke('capture:availability')]).then(([s, a]) => {
       if (isOrganizeRunnerId(s.organizer?.runner)) setRunner(s.organizer.runner)
-      const first = s.agents?.startupAgents?.find((a) => !s.agents.disabledAgents?.includes(a))
-      if (first) setDefaultAgent(first)
+      setDefaultAgent(defaultLaunchAgent(s.agents?.startupAgents ?? [], s.agents?.disabledAgents ?? []))
       if (s.activeProjectId) setProjectKey(s.activeProjectId)
       setApiReady(LLM_API_PROVIDERS.filter((p) => a.llm[p]))
     }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
@@ -381,7 +384,8 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
         // 要望と同じ原文は引用に出さない（下書きでは要望＝話した全文。原文は保存されている）
         const quotes = same(item.quotes.map((q) => q.text).join(''), item.request) ? [] : item.quotes.filter((q) => !same(q.text, item.request))
         return <Fragment key={item.id}>
-          {grouped && group && <h3 className="rv-target" title={group.target.url ?? group.target.name}>
+          {/* 対象が1つでも、デザイン・設計書で撮った指摘なら見出しを出す（コードではなくそれらへの指摘だと分かるように） */}
+          {(grouped || group?.target.purpose) && group && <h3 className="rv-target" title={group.target.url ?? group.target.name}>
             <TargetName target={group.target} />
             <span className="rv-targets__count">{group.items.length}</span>
           </h3>}
@@ -392,7 +396,7 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
           <div className="rv-card__body">
             <div className="rv-card__top">
               <input className="rv-card__title" aria-label={t('review.titleLabel', { n })} key={`${item.id}-title-${item.title}`} defaultValue={item.title} disabled={busy} spellCheck={false}
-                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) e.currentTarget.blur() }}
                 onBlur={(e) => { if (e.target.value.trim() && e.target.value !== item.title) void edit({ kind: 'text', id: item.id, title: e.target.value.trim() }); else e.target.value = item.title }} />
               {/* 進み具合（未対応 → 対応中 → 完了）。Agent と同じ progress.json に書く */}
               <ProgressToggle n={n} progress={progressOf(review.progress, item.id)} disabled={busy}

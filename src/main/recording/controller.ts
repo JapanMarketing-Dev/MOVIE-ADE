@@ -1,3 +1,4 @@
+import { delay } from '@shared/delay'
 import { ipcMain, type WebContents } from 'electron'
 import { mkdir } from 'node:fs/promises'
 import { appendFileNoFollow } from '../sessions/containment'
@@ -57,7 +58,7 @@ const REVIEW_CHANNELS = {
 export type AnnotationMode = 'off' | 'pen' | 'rect'
 
 /** 画面収録の許可が無いときの案内。選択画面の案内（CaptureTargetPicker）と同じ手順を書く */
-export function screenAccessMessage(): string {
+function screenAccessMessage(): string {
   return t('recording.errors.screenPermission')
 }
 
@@ -183,7 +184,7 @@ export class RecordingController {
     await this.stills?.settle()
     this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'clear', page: true })
     // 遷移直後の1枚に消し残りが写らないよう、注入側の描画が反映されるのを待つ
-    await new Promise((done) => setTimeout(done, 60))
+    await delay(60)
     this.recordNav(url)
   }
 

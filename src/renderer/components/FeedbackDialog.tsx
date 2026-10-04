@@ -84,6 +84,8 @@ function FeedbackAskToast({ onClose }: { onClose: () => void }) {
 function rejectedMessage(t: TFunction, result: Extract<FeedbackSubmitResult, { kind: 'rejected' }>): string {
   if (result.code === 'rate_limited') return t('feedback.rejected.rate_limited', { minutes: Math.max(1, Math.ceil((result.retryAfterSec ?? 3600) / 60)) })
   if (result.code === 'duplicate') return t('feedback.rejected.duplicate')
+  // 中継が GitHub へ送ったが、作られたかが分からない。送り直す前に確かめてもらう（security-4 [12]）
+  if (result.code === 'upstream_pending') return t('feedback.rejected.pending')
   if (result.code === 'too_large' || result.code === 'image_too_large' || result.code === 'too_many_images' || result.code === 'bad_image') return t('feedback.rejected.too_large')
   return t('feedback.rejected.other', { code: result.code })
 }

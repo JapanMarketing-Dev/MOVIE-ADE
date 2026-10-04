@@ -15,7 +15,7 @@ import { getLocale, translate, type MessageParams, type SupportedLocale, type Tr
 import { progressOf, recentComments, type FindingProgress, type ProgressMap } from '@shared/findingProgress'
 import { afterCaptureSpec, afterCommand, afterRelPath } from '@shared/afterShot'
 
-export interface RenderOptions {
+interface RenderOptions {
   /** 「要確認」の指摘も書き出すか（既定: false。設計7章4で送信対象から外す） */
   includeNeedsCheck: boolean;
   /** 話者名を出すか。マイク1本に複数人（AUD-2後段）では false */
@@ -88,12 +88,17 @@ export function renderFeedbackMarkdown(doc: FeedbackDocument, options: Partial<R
   const sectioned = groups.length > 1
   if (sectioned) lines.push(tr('feedbackMd.targets', { count: groups.length }))
   else if (doc.meta.targetUrl) lines.push(`- ${tr('feedbackMd.label.target')}: ${describeTargetUrl(doc.meta.targetUrl) ?? shellSafeUrl(redactUrl(doc.meta.targetUrl))}`)
+  // 対象が1つなら、その区分（デザイン・設計書）を対象の行のすぐ下に書く（節に分けるときは各節の見出しの下）
+  const single = !sectioned ? groups[0]?.target.purpose : undefined
+  if (single) lines.push(tr(`feedbackMd.kind.${single}`))
   lines.push(tr('feedbackMd.recorded', { at: formatRecordedAt(doc.meta.startedAt), duration: recordedDuration(doc.meta.durationMs, opt.videoDuration, opt.locale, tr) }))
   lines.push(tr('feedbackMd.penNote'))
   lines.push(tr('feedbackMd.sttNote'))
   // NF-14 プロンプトインジェクションへの手当て。画面由来の文字列を指示として扱わせない
   lines.push(tr('feedbackMd.injectionNote'))
   lines.push(tr('feedbackMd.acceptanceNote'))
+  // デザイン・設計書で撮った指摘は、コードではなくデザイン・文書を直させる（直せないものは needs_human で戻させる）
+  if (groups.some((g) => g.target.purpose && g.items.some(inFocus))) lines.push(tr('feedbackMd.nonCodeNote'))
   if (!doc.organizedByLlm) {
     lines.push(tr('feedbackMd.ruleOnly'))
   } else {
@@ -174,8 +179,9 @@ export const DECISION_QUESTIONS_JSON = JSON.stringify({
 /**
  * 依頼の本文を作る node の1行（macOS / Linux / Windows で同じ）。画像は FERRET_DECISION_IMAGES=1 のときだけ。
  * FERRET_DECISION_IMAGE_FORMAT=data-uri なら data:image/…;base64, を付ける（Cloudflare Workers AI は data URI でないと 422）
+ * 書き出し先は REQ_FILE（OS の一時フォルダ。利用者のプロジェクトに req.json を残さない）
  */
-export const DECISION_NODE_LINE = `node -e 'const f=require("fs"),e=process.env,b={model:e.FERRET_DECISION_MODEL,state:e.STATE_FILE?f.readFileSync(e.STATE_FILE,"utf8").trim():e.STATE,questions:JSON.parse(e.Q)};if(e.FERRET_DECISION_IMAGES==="1")b.images=[e.BEFORE,e.AFTER].map(p=>{const s=f.readFileSync(p).toString("base64");return e.FERRET_DECISION_IMAGE_FORMAT==="data-uri"?"data:image/"+(/\\.png$/i.test(p)?"png":"jpeg")+";base64,"+s:s});f.writeFileSync("req.json",JSON.stringify(b))'`
+export const DECISION_NODE_LINE = `node -e 'const f=require("fs"),e=process.env,b={model:e.FERRET_DECISION_MODEL,state:e.STATE_FILE?f.readFileSync(e.STATE_FILE,"utf8").trim():e.STATE,questions:JSON.parse(e.Q)};if(e.FERRET_DECISION_IMAGES==="1")b.images=[e.BEFORE,e.AFTER].map(p=>{const s=f.readFileSync(p).toString("base64");return e.FERRET_DECISION_IMAGE_FORMAT==="data-uri"?"data:image/"+(/\\.png$/i.test(p)?"png":"jpeg")+";base64,"+s:s});f.writeFileSync(e.REQ_FILE,JSON.stringify(b))'`
 
 /** feedback.md の末尾の受け入れ確認の節。全件が同じ回で合格するまで、判定と修正を繰り返させる */
 function renderDecisionCheck(threshold: number, tr: Tr): string[] {
@@ -205,13 +211,16 @@ function renderDecisionCheck(threshold: number, tr: Tr): string[] {
     '```sh',
     // 指摘の文は引用符を含みうるので、シェルの1行に埋め込まず、引用したヒアドキュメントでファイルに書かせる
     // 終わりの印は書き出すたびに乱数入りの語にする（本文にその行が出てきて途中で切れることが無いように）
-    `cat > state.txt <<'${marker}'`,
+    // state.txt と req.json は OS の一時フォルダに置き、使い終わったら消す（利用者のプロジェクト直下に残さない）
+    'T="$(mktemp -d)"',
+    `cat > "$T/state.txt" <<'${marker}'`,
     '<title> / <request> / Done when: <...>',
     marker,
     // パスは単一引用符で囲む（Windows の C:\… の \ や、空白を含むフォルダを bash が崩さない）
-    `export STATE_FILE=state.txt BEFORE='/abs/path/01.png' AFTER='/abs/path/after/i1.png' Q='${DECISION_QUESTIONS_JSON}'`,
+    `export STATE_FILE="$T/state.txt" REQ_FILE="$T/req.json" BEFORE='/abs/path/01.png' AFTER='/abs/path/after/i1.png' Q='${DECISION_QUESTIONS_JSON}'`,
     DECISION_NODE_LINE,
-    'curl -sS -X POST "$FERRET_DECISION_URL" -H \'content-type: application/json\' --data-binary @req.json',
+    'curl -sS -X POST "$FERRET_DECISION_URL" -H \'content-type: application/json\' --data-binary @"$REQ_FILE"',
+    'rm -rf "$T"',
     '```',
     tr('feedbackMd.check.windows'),
     '',
@@ -273,6 +282,7 @@ function renderSection(target: ReviewTarget, n: number, tr: Tr): string[] {
   if (target.kind === 'file') out.push(tr('feedbackMd.sectionFile', { path: mdText(target.name, 500) }))
   else {
     if (target.label) out.push(tr('feedbackMd.sectionEnv', { label: mdText(target.label, 100) }))
+    if (target.purpose) out.push(tr(`feedbackMd.kind.${target.purpose}`))
     if (target.url) out.push(`- URL: ${shellSafeUrl(redactUrl(target.url))}`)
   }
   return out

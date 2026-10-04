@@ -184,7 +184,7 @@ export function QuickLaunchButton({
   // 無いときは上下キーで項目へ焦点を移す（Tab で抜けられるよう、ほかのキーは触らない）
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (search) {
-      if (event.key === 'Enter' && event.target === inputRef.current) {
+      if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.target === inputRef.current) {
         event.preventDefault()
         const entry = entries[highlight]
         if (entry) runEntry(entry)

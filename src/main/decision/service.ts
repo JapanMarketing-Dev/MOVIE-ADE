@@ -16,7 +16,7 @@ import { t } from '@shared/i18n'
 import { checkDecision, type DecisionTestResult } from './check'
 import { DecisionRelay, RelayConfigError, type RelayTokenMeta, type RelayUpstream } from './relay'
 
-export interface DecisionServiceDeps {
+interface DecisionServiceDeps {
   prefs: () => DecisionPreferences | undefined
   /** キーの解決（settings.json の apiKey > apiKeyEnv > 保存したキー）。値はログに出さない */
   readKey: (prefs: DecisionPreferences) => Promise<string | undefined>

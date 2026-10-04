@@ -27,7 +27,7 @@ export type ItemEdit =
   /** 全体への補足コメント（REV-5） */
   | { kind: 'note'; note: string }
 
-export interface ApplyEditsInput {
+interface ApplyEditsInput {
   /** 分解直後の指摘一覧（編集前の正本） */
   document: FeedbackDocument
   edits: ItemEdit[]
@@ -38,7 +38,7 @@ export interface ApplyEditsInput {
   options?: Partial<AssembleOptions>
 }
 
-export interface ApplyEditsResult {
+interface ApplyEditsResult {
   document: FeedbackDocument
   /** 適用できなかった編集（IDが見つからないなど）。UIで知らせる */
   skipped: Array<{ edit: ItemEdit; reason: string }>

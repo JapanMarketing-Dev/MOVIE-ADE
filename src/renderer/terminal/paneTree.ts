@@ -25,7 +25,7 @@ export const DIVIDER_THICKNESS_PX = 3
 /** 区切り線の掴める幅。見える線の両側に足す余白（Orca の HIT_PADDING） */
 export const DIVIDER_HIT_PADDING_PX = 3
 /** ドラッグで縮められる最小のペインの大きさ（px） */
-export const MIN_PANE_SIZE_PX = 50
+const MIN_PANE_SIZE_PX = 50
 
 /** 子の位置。'' が根、'0' が根の first、'01' が根の first の second */
 export type PanePath = string
@@ -117,9 +117,9 @@ interface DropRect {
 }
 
 /** 辺から内側へこの割合までが分割（辺）の範囲。残りの中央はタブとして置く */
-export const PANE_DROP_EDGE_FRACTION = 0.25
+const PANE_DROP_EDGE_FRACTION = 0.25
 /** ターミナルの領域全体の外周のこの幅に落とすと、いちばん外側で分割する（ペインが2枚以上のとき） */
-export const ROOT_DROP_BAND_PX = 18
+const ROOT_DROP_BAND_PX = 18
 
 /**
  * ペインの中のどこに落とすか。Orca のタブの落とし先（VS Code に合わせた）と同じく中央を残し、

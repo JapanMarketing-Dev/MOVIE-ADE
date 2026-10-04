@@ -10,10 +10,11 @@ MOVIE-ADE is released under the MIT License ([LICENSE](LICENSE)). This file list
 - Commits referenced: `7577366` (1.4.214, 2026-10-01) and later `main`
 - License: MIT License, Copyright (c) 2026 Lovecast Inc.
 
-The following files contain code ported or adapted from Orca. Each file names its source in an `Orca由来:` ("derived from Orca") comment near the top. Regenerate this list with `grep -rl "Orca由来" src scripts tools` (snapshot as of 2026-10-03).
+The following files contain code ported or adapted from Orca. Each file names its source in an `Orca由来:` ("derived from Orca") comment near the top. Regenerate this list with `grep -rl "Orca由来" src scripts tools .github` (snapshot as of 2026-10-03).
 
 | MOVIE-ADE file | Orca source file (path in `stablyai/orca`) |
 |---|---|
+| `.github/scripts/issue-os-label.mjs` | `.github/workflows/issue-os-labeler.yaml` |
 | `src/main/accounts/agentConfig.ts` | `src/main/codex-accounts/codex-config-mirror.ts`<br>`src/main/codex/codex-daemon-socket-path-guard.ts` |
 | `src/main/accounts/env.ts` | `src/main/claude-accounts/environment.ts`<br>`src/main/codex-accounts/runtime-home-service-launch.ts` |
 | `src/main/accounts/identity.ts` | `src/main/claude-accounts/claude-auth-capture.ts`<br>`src/main/claude-accounts/keychain.ts`<br>`src/main/codex-accounts/codex-auth-identity.ts`<br>`src/main/codex-accounts/managed-codex-auth-readiness.ts` |

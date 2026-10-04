@@ -12,6 +12,7 @@
  * 配布版は環境変数のキーを読まない（キーは呼び出し側が pipeline/stt/keys.ts から渡す）。
  * Anthropic の SDK は入れず fetch で送る（ほかの提供元と同じ形にし、Base URL・ヘッダーを利用者が変えられるようにするため）。
  */
+import { mainFetch } from '../../../netFetch'
 import { LLM_PROVIDER_PRESETS, authHeaders, providerLabel, resolveEndpoint, type AiEndpointConfig, type LlmApiProvider } from '@shared/aiProviders'
 import { t } from '@shared/i18n'
 import { normalizeBaseUrl } from '../../stt/endpoint'
@@ -26,13 +27,13 @@ import { ResponseTooLargeError, readBoundedJson, readErrorText } from '../../../
 const MAX_OUTPUT_TOKENS = 16_000
 const ANTHROPIC_VERSION = '2023-06-01'
 
-export interface ApiRunnerOptions {
+interface ApiRunnerOptions {
   provider: LlmApiProvider
   endpoint?: AiEndpointConfig
   apiKey?: string
 }
 
-export interface LlmHttpRequest {
+interface LlmHttpRequest {
   url: string
   headers: Record<string, string>
   body: string
@@ -159,7 +160,7 @@ export class ApiLlmRunner implements LlmRunner {
       status, latencyMs: Date.now() - started, requestBytes: Buffer.byteLength(http.body), ...(json === undefined ? {} : llmUsage(json)) })
     let res: Response
     try {
-      res = await fetch(http.url, { method: 'POST', headers: http.headers, body: http.body,
+      res = await mainFetch(http.url, { method: 'POST', headers: http.headers, body: http.body,
         signal: AbortSignal.timeout(this.ep.timeoutMs ?? req.timeoutMs) })
     } catch (e) {
       record(0)
@@ -201,7 +202,7 @@ export class ApiLlmRunner implements LlmRunner {
  * 応答からトークン数と、提供元が返した費用を取り出す（使用量の記録用）。
  * Anthropic・OpenAI 系は extractUsage、Gemini は usageMetadata、OpenRouter は usage.cost。費用は推測しない
  */
-export function llmUsage(json: unknown): { inputTokens?: number; outputTokens?: number; costUsd?: number; costSource?: 'provider' } {
+function llmUsage(json: unknown): { inputTokens?: number; outputTokens?: number; costUsd?: number; costSource?: 'provider' } {
   const r = rec(json)
   const base = extractUsage(json)
   const meta = rec(r.usageMetadata)
@@ -214,7 +215,7 @@ export function llmUsage(json: unknown): { inputTokens?: number; outputTokens?: 
 }
 
 /** HTTP の失敗を、利用者が直せる言葉にする */
-export function describeLlmFailure(status: number, body: string, label: string): string {
+function describeLlmFailure(status: number, body: string, label: string): string {
   if (status === 401 || status === 403) return t('stt.check.auth', { label, status })
   if ((status === 400 || status === 404 || status === 422) && /model/i.test(body)) return t('stt.check.model', { label, status })
   if (status === 404 || status === 405) return t('organize.api.notFound', { label, status })

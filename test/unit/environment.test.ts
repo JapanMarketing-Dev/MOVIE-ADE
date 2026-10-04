@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   chooseWhisperModel,
   detectGpu,
-  detectLlmAvailability,
   detectLlmRuntime,
-  isWhisperModelReady,
   resolveWhisperBinary,
   resolveWhisperRuntime,
   whisperModelPath
@@ -72,12 +70,6 @@ describe('モデルの置き場所', () => {
       '/userdata/models/ggml-large-v3-turbo.bin'
     )
     expect(whisperModelPath(paths, 'small')).toBe('/userdata/models/ggml-small.bin')
-  })
-
-  it('ダウンロード済みかを判定できる', () => {
-    const p = probes({ exists: (x) => x === '/userdata/models/ggml-small.bin' })
-    expect(isWhisperModelReady(paths, 'small', p)).toBe(true)
-    expect(isWhisperModelReady(paths, 'large-v3-turbo', p)).toBe(false)
   })
 })
 
@@ -208,10 +200,5 @@ describe('LLM CLI の検出（設計6章）', () => {
 
   it('どちらも無ければ null（下書きだけで進める。EXT-11）', async () => {
     expect(await detectLlmRuntime(probes())).toBeNull()
-  })
-
-  it('一覧表示のために両方の有無を返す', async () => {
-    expect(await detectLlmAvailability(both)).toEqual({ codex: true, claudeCode: true })
-    expect(await detectLlmAvailability(probes())).toEqual({ codex: false, claudeCode: false })
   })
 })

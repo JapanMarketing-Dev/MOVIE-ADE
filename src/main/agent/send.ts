@@ -10,6 +10,7 @@
  *
  * `working`（処理中）は通す。Agent 側で順番待ちになるため。
  */
+import { delay as wait } from '@shared/delay'
 import {
   BRACKETED_PASTE_END,
   BRACKETED_PASTE_START,
@@ -21,7 +22,7 @@ import { fitsSingleWrite, sanitizePastePayload, splitForWrite } from './sanitize
 import { t, type MessageKey } from '@shared/i18n'
 
 /** 送信をやめた理由 */
-export type SendFailure =
+type SendFailure =
   /** 権限の確認待ち。答えてもらう必要がある */
   | 'permission'
   /** 入力欄の準備ができない（起動直後のまま） */
@@ -33,12 +34,12 @@ export type SendFailure =
   /** PTY への書き込みが失敗した */
   | 'write-failed'
 
-export type SendResult =
+type SendResult =
   /** submitted: Enter まで送った。false なら貼り付けただけ（利用者が Enter を押す） */
   | { ok: true; bytes: number; writes: number; submitted: boolean }
   | { ok: false; failure: SendFailure; message: string; bodyWritten: boolean }
 
-export interface SendOptions {
+interface SendOptions {
   terminal: AgentTerminal
   /** 送る本文（1行の指示） */
   text: string
@@ -57,6 +58,16 @@ export interface SendOptions {
 
 const DEFAULT_SUBMIT_DELAY_MS = 50
 
+/**
+ * 貼り付けから Enter までの待ち。長い本文ほど Agent が読み込むのに時間がかかり、早すぎる Enter は貼り付けの途中に
+ * 届いて改行として入るか、途中までで送信される。Windows の ConPTY は特に遅い（Orca #16680。Orca の
+ * getTerminalPasteIngestMs と同じ考え方: 1ms あたり macOS / Linux は 4KB、Windows は 64B）。上限は 3 秒
+ */
+export function submitDelayFor(bytes: number, platform: NodeJS.Platform = process.platform): number {
+  const perMs = platform === 'win32' ? 64 : 4096
+  return Math.min(3000, DEFAULT_SUBMIT_DELAY_MS + Math.floor(Math.max(0, bytes) / perMs))
+}
+
 const MESSAGE_KEYS = {
   permission: 'agent.send.permission',
   'not-ready': 'agent.send.notReady',
@@ -67,11 +78,10 @@ const MESSAGE_KEYS = {
 
 export async function sendToAgent(options: SendOptions): Promise<SendResult> {
   const { terminal, getState } = options
-  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)))
-  const delay = options.submitDelayMs ?? DEFAULT_SUBMIT_DELAY_MS
-
+  const sleep = options.sleep ?? wait
   const payload = sanitizePastePayload(options.text).trim()
   if (payload.length === 0) return fail('empty', false)
+  const delay = options.submitDelayMs ?? submitDelayFor(Buffer.byteLength(payload, 'utf8'))
 
   // ① 送れる状態か
   const before = await getState()

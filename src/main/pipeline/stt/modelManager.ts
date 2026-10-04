@@ -14,7 +14,7 @@ import type { WhisperModelStatus, WhisperModelProgress } from '@shared/types'
 import { ModelDownloadError, downloadWhisperModel, partialDownloadSize, type DownloadOptions } from './download'
 import { defaultWhisperModel, downloadedWhisperModelPath, selectableWhisperModels, whisperModels, type WhisperModelId } from './models'
 
-export type ModelDownloadResult =
+type ModelDownloadResult =
   | { ok: true; path: string }
   | { ok: false; reason: 'aborted' | 'failed'; message: string; resumable: boolean }
 

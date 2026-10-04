@@ -1,15 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Plus, Trash2, X } from 'lucide-react'
-import type { Project, ProjectKind, ProjectTarget } from '@shared/types'
+import type { Project, ProjectKind, ProjectTarget, TargetPurpose } from '@shared/types'
 import { isPresetableUrl } from '@shared/projectUrl'
 import {
   KIND_FIELDS,
   KIND_PLACEHOLDERS,
   PROJECT_KINDS,
+  PURPOSE_LABELS,
+  PURPOSE_URL_PLACEHOLDERS,
   SUGGESTED_LABELS,
+  TARGET_PURPOSES,
   addTarget,
+  followPurpose,
   hasTargetContent,
   moveTarget,
+  purposeOf,
   removeTarget,
   sanitizeProjectKind,
   updateTarget
@@ -18,6 +23,7 @@ import type { TranslationKey } from '@shared/i18n'
 import { errorMessage } from '../lib/errors'
 import { useT } from '../lib/i18n'
 import { Button, Field, IconButton, Modal, Segmented, useToast } from '../ui'
+import { TargetPurposeIcon } from './TargetPurposeIcon'
 
 /**
  * プロジェクトの種類（web / mobile / desktop / other）と、確認先（ターゲット）の一覧の編集。
@@ -29,38 +35,57 @@ import { Button, Field, IconButton, Modal, Segmented, useToast } from '../ui'
  */
 const SAVE_DELAY_MS = 400
 
-/** 1件分の欄。ツールバーのチップの編集ダイアログでも使う */
-export function TargetFields({ target, kind, onChange, autoFocus }: {
+/**
+ * 1件分の欄。ツールバーのチップの編集ダイアログでも使う。
+ * 区分（アプリ・デザイン・設計書）を選べ、URL を変えると区分と名前の候補が追従する（projectTargets.ts の followPurpose）。
+ * デザイン・設計書は URL で開くものなので、起動コマンドとウインドウの欄は出さない（値は保つ）
+ */
+export function TargetFields({ target, kind, onChange, autoFocus, siblings }: {
   target: ProjectTarget
   kind: ProjectKind
   onChange: (patch: Partial<Omit<ProjectTarget, 'id'>>) => void
   autoFocus?: boolean
+  /** 同じプロジェクトの確認先（区分を変えたときの名前の候補が重ならないように） */
+  siblings?: readonly ProjectTarget[]
 }) {
   const t = useT()
-  const fields = KIND_FIELDS[kind]
+  const purpose = purposeOf(target)
+  const app = purpose === 'app'
+  const fields = app ? KIND_FIELDS[kind] : { url: true, launchCommand: false, windowMatch: false }
   const placeholder = KIND_PLACEHOLDERS[kind]
   const url = target.url ?? ''
   const urlInvalid = url.trim() !== '' && !isPresetableUrl(url.trim())
-  return <div className="pt-fields">
+  const change = (patch: Partial<Omit<ProjectTarget, 'id'>>) => onChange(followPurpose(target, patch, kind, siblings))
+  const purposeOptions = TARGET_PURPOSES.map((value) => ({ value, label: t(`projectTargets.purpose.${value}`), icon: <TargetPurposeIcon purpose={value} size={13} />, testId: `target-purpose-${value}` }))
+  return <div className="pt-fields" data-purpose={purpose}>
+    <div className="pt-field">
+      <span>{t('projectTargets.purposeLabel')}</span>
+      <Segmented<TargetPurpose> options={purposeOptions} value={purpose} ariaLabel={t('projectTargets.purposeLabel')}
+        onChange={(next) => change({ purpose: next })} />
+    </div>
     <label className="pt-field">
       <span>{t('projectTargets.label')}</span>
-      <Field autoFocus={autoFocus} placeholder={SUGGESTED_LABELS[kind].join(' / ')} value={target.label}
-        onChange={(e) => onChange({ label: e.target.value })} data-testid="target-label" />
+      <Field autoFocus={autoFocus} placeholder={(app ? SUGGESTED_LABELS[kind] : PURPOSE_LABELS[purpose]).join(' / ')} value={target.label}
+        onChange={(e) => change({ label: e.target.value })} data-testid="target-label" />
     </label>
     {fields.url && <label className="pt-field">
       <span>URL</span>
-      <Field mono placeholder={placeholder.url} value={url} invalid={urlInvalid} autoComplete="off" spellCheck={false}
-        onChange={(e) => onChange({ url: e.target.value })} data-testid="target-url" />
+      <Field mono placeholder={app ? placeholder.url : PURPOSE_URL_PLACEHOLDERS[purpose]} value={url} invalid={urlInvalid} autoComplete="off" spellCheck={false}
+        onChange={(e) => change({ url: e.target.value })} data-testid="target-url" />
     </label>}
+    {!app && <p className="st-note pt-purpose-hint" data-testid="target-purpose-hint">
+      <TargetPurposeIcon purpose={purpose} size={12} />
+      <span>{t(`projectTargets.purposeHint.${purpose}`)} {t('projectTargets.signInKept')}</span>
+    </p>}
     {fields.launchCommand && <label className="pt-field">
       <span>{t('projectTargets.launchCommand')}</span>
       <Field mono placeholder={placeholder.launchCommand} value={target.launchCommand ?? ''} autoComplete="off" spellCheck={false}
-        onChange={(e) => onChange({ launchCommand: e.target.value })} data-testid="target-command" />
+        onChange={(e) => change({ launchCommand: e.target.value })} data-testid="target-command" />
     </label>}
     {fields.windowMatch && <label className="pt-field">
       <span>{t('projectTargets.windowMatch')}</span>
       <Field placeholder={placeholder.windowMatch} value={target.windowMatch ?? ''} autoComplete="off" spellCheck={false}
-        onChange={(e) => onChange({ windowMatch: e.target.value })} data-testid="target-window" />
+        onChange={(e) => change({ windowMatch: e.target.value })} data-testid="target-window" />
     </label>}
     {urlInvalid && <p className="st-note st-note--warn">{t('urlPresets.invalid')}</p>}
     {!hasTargetContent({ url: url.trim(), launchCommand: target.launchCommand?.trim(), windowMatch: target.windowMatch?.trim() }) &&
@@ -104,9 +129,12 @@ export function ProjectTargetsEditor({ project }: { project: Project }) {
     <p className="st-note">{t(kind === 'web' ? 'projectTargets.hintWeb' : 'projectTargets.hintApp')}</p>
     <span className="pt-editor__caption">{t('projectTargets.targets')}</span>
     {targets.length === 0 && <p className="st-note">{t('projectTargets.empty')}</p>}
+    {/* デザイン・設計書の確認先がまだ無ければ、登録できることだけを短く知らせる（空の枠や実在しない URL は入れない） */}
+    {!targets.some((target) => purposeOf(target) !== 'app') &&
+      <p className="st-note" data-testid="target-more-than-code">{t('projectTargets.moreThanCode')}</p>}
     <ol className="pt-list">
       {targets.map((target, index) => <li key={target.id} className="pt-item" data-testid="project-target">
-        <TargetFields target={target} kind={kind} onChange={(patch) => change(updateTarget(targets, target.id, patch))} />
+        <TargetFields target={target} kind={kind} siblings={targets} onChange={(patch) => change(updateTarget(targets, target.id, patch))} />
         <div className="pt-item__actions">
           <IconButton size="sm" label={t('projectTargets.moveUp')} title={t('projectTargets.moveUp')} icon={<ArrowUp size={13} strokeWidth={1.5} />}
             disabled={index === 0} onClick={() => change(moveTarget(targets, index, index - 1))} data-testid="target-up" />

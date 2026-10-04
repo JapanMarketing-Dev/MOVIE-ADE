@@ -1,3 +1,4 @@
+import { stripPreviewGrant } from './preview'
 import { DEFAULT_URL, type Project, type ProjectSession } from './types'
 
 /**
@@ -23,7 +24,8 @@ export function sanitizeProjectSession(raw: unknown): ProjectSession | undefined
   if (!raw || typeof raw !== 'object') return undefined
   const r = raw as Partial<ProjectSession>
   const session: ProjectSession = {}
-  if (isText(r.url) && r.url !== DEFAULT_URL) session.url = r.url
+  // プレビューの外部の画像の許可は保存も復元もしない（security-4 [6]）
+  if (isText(r.url) && r.url !== DEFAULT_URL) session.url = stripPreviewGrant(r.url)
   if (isText(r.centerTab)) session.centerTab = r.centerTab
   if (Array.isArray(r.openFiles)) {
     const files = [...new Set(r.openFiles.filter((p): p is string => isText(p) && isRelativePath(p)))].slice(0, MAX_SESSION_FILES)

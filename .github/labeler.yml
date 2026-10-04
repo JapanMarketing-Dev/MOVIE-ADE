@@ -1,0 +1,37 @@
+# PR の変更したパスから付けるラベル（.github/workflows/pr-labels.yml の actions/labeler が読む）。
+# ラベルが無ければ、最初に付けたときに作られる。
+app:
+  - changed-files:
+      - any-glob-to-any-file: ['src/main/**', 'src/preload/**', 'src/renderer/**', 'src/shared/**']
+
+recorder:
+  - changed-files:
+      - any-glob-to-any-file: ['src/recorder/**', 'src/main/recording/**', 'src/main/pipeline/**']
+
+i18n:
+  - changed-files:
+      - any-glob-to-any-file: ['src/shared/i18n/**']
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: ['docs/**', '*.md']
+
+site:
+  - changed-files:
+      - any-glob-to-any-file: ['site/**', 'tools/docs/**']
+
+relay:
+  - changed-files:
+      - any-glob-to-any-file: ['workers/**']
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: ['.github/**']
+
+release:
+  - changed-files:
+      - any-glob-to-any-file: ['scripts/release-*', 'scripts/build-release.sh', 'electron-builder*.cjs', 'build/**', '.github/workflows/release.yml']
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: ['test/**']

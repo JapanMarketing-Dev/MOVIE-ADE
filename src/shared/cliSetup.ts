@@ -7,7 +7,7 @@
 import { cliToolForInstallUrl, type CliToolId } from './cliTools'
 
 /** 案内に使う CLI を選ぶのに要る、提供元の情報（SetupGuide の一部） */
-export interface CliSetupGuide {
+interface CliSetupGuide {
   needsAccountId?: boolean
   local?: boolean
   installUrl?: string

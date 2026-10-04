@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FINDING_STATUSES, countByStatus, filterByStatus, isStatusShown, onlyStatus, sanitizeHiddenStatuses, toggleStatus } from '../../src/shared/findingStatusFilter'
+import { FINDING_STATUSES, countByStatus, isStatusShown, onlyStatus, sanitizeHiddenStatuses, toggleStatus } from '../../src/shared/findingStatusFilter'
 import type { ProgressMap } from '../../src/shared/findingProgress'
 
 const items = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }, { id: 'e' }]
@@ -11,17 +11,7 @@ const progress: ProgressMap = {
 }
 
 describe('進み具合の絞り込み', () => {
-  it('何も隠していなければすべて出す（progress.json に無い指摘は未対応）', () => {
-    expect(filterByStatus(items, progress, []).map((i) => i.id)).toEqual(['a', 'b', 'c', 'd', 'e'])
-    expect(filterByStatus(items, undefined, ['done']).map((i) => i.id)).toEqual(['a', 'b', 'c', 'd', 'e'])
-  })
-
-  it('隠した進み具合の指摘だけを外す', () => {
-    expect(filterByStatus(items, progress, ['done', 'todo']).map((i) => i.id)).toEqual(['b', 'd', 'e'])
-  })
-
-  it('「だけ表示」は選んだ進み具合の指摘だけを出す', () => {
-    expect(filterByStatus(items, progress, onlyStatus('in_progress')).map((i) => i.id)).toEqual(['b'])
+  it('「だけ表示」は選んだ進み具合のほかをすべて隠す', () => {
     expect(onlyStatus('done')).toHaveLength(FINDING_STATUSES.length - 1)
   })
 

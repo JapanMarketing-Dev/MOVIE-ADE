@@ -26,7 +26,7 @@ import { UserFacingError } from '@shared/errors'
 import { errorKind, reportHandled } from '@shared/report'
 
 /** キーを保存する単位。提供元（vendor）ごとに1つで、文字起こしと整理で共有する */
-export type SttKeyProvider = AiVendor
+type SttKeyProvider = AiVendor
 
 /** safeStorage の必要な部分だけ */
 export interface KeyCipher {

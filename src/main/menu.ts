@@ -180,6 +180,22 @@ function buildMenu(handlers: Parameters<typeof installMenu>[0]): void {
             }
       ]
     },
+    // macOS のウインドウメニュー（⌘M でしまう・拡大/縮小・ウインドウの一覧）。無いと ⌘M が効かない（Orca #21281 #20837）。
+    // Windows / Linux には置かない（Ctrl+M をターミナルから奪わない）
+    ...(isMac
+      ? ([
+          {
+            label: t('menu.window'),
+            role: 'window',
+            submenu: [
+              { role: 'minimize', label: t('menu.minimize') },
+              { role: 'zoom', label: t('menu.zoom') },
+              { type: 'separator' },
+              { role: 'front', label: t('menu.bringAllToFront') }
+            ]
+          }
+        ] satisfies MenuItemConstructorOptions[])
+      : []),
     {
       // ヘルプ。初回起動のセットアップ（オンボーディング）を開き直す（Orca の「Setup guide」に相当）
       label: t('menu.help'),

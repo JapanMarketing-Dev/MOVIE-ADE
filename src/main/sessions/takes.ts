@@ -41,7 +41,7 @@ export interface TakeMaterial {
   warnings: string[]
 }
 
-export interface AppendTakeResult {
+interface AppendTakeResult {
   record: SessionRecord
   /** レビューの events.jsonl へ足す操作ログ（レビューの時間軸へずらしたもの） */
   events: Event[]

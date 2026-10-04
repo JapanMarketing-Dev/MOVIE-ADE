@@ -5,7 +5,7 @@
 <!-- @lead 97cbc36c8d -->
 프로젝트 파일을 열고 편집하며, Markdown과 Mermaid를 미리 봅니다. 내장 브라우저에서 연 미리 보기는 일반 웹 페이지처럼 녹화하고 리뷰할 수 있습니다.
 
-<!-- @files f1e2c27cca -->
+<!-- @files d29f6a2107 -->
 ## 파일 열기와 편집
 <ul>
   <li><span class="docs-ui">파일</span>(파일 트리): {{keys:Mod+Shift+E}}. <span class="docs-ui">파일 이름으로 필터</span>, <span class="docs-ui">새로고침</span>, <span class="docs-ui">모두 접기</span>가 있습니다.</li>
@@ -14,7 +14,18 @@
   <li>저장하지 않은 편집이 있는 동안 디스크의 파일이 바뀌면 <span class="docs-ui">디스크에서 다시 불러오기</span> 또는 <span class="docs-ui">내 변경 사항 유지</span>를 고릅니다.</li>
 </ul>
 <p>에디터는 Monaco입니다. 텍스트가 아닌 파일은 대신 뷰어로 열립니다. 이미지(확대와 축소. SVG는 코드로도 표시 가능), 탐색 막대가 있는 동영상과 오디오, PDF, 그리고 그 밖의 바이너리 파일은 크기와 앞부분 바이트의 16진수 보기를 보여 줍니다. 뷰어는 읽기 전용이며, 프로젝트 폴더 밖의 파일이나 폴더 밖으로 나가는 심볼릭 링크를 통해 닿는 파일은 표시되지 않습니다.</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">곧 제공 예정</p><p>파일 트리에서 파일 만들기, 이름 바꾸기, 삭제.</p></div>
+
+<!-- @file-tree 4bec72e9f4 -->
+## 파일 만들기, 이름 바꾸기, 삭제
+<p>VS Code에서처럼 <span class="docs-ui">파일</span>에서 바로 파일을 다룹니다. 이름은 트리 안에서 직접 입력합니다.</p>
+<ul>
+  <li><span class="docs-ui">새 파일</span> / <span class="docs-ui">새 폴더</span>: 트리 위의 버튼을 누르거나, 폴더(또는 트리 아래의 빈 공간)를 마우스 오른쪽 버튼으로 클릭합니다. 새 항목은 선택한 폴더 안, 선택한 파일 옆, 또는 프로젝트의 맨 위에 만들어집니다. 새 파일은 에디터에서 열립니다.</li>
+  <li><span class="docs-ui">이름 바꾸기</span>: {{keys:F2 / Enter|F2}} 또는 마우스 오른쪽 버튼 클릭. 열린 탭은 새 이름을 따라가며 저장하지 않은 편집도 유지됩니다.</li>
+  <li><span class="docs-ui">삭제</span>: {{keys:Mod+Backspace / Delete|Delete}} 또는 마우스 오른쪽 버튼 클릭. Ferret이 먼저 확인한 뒤 항목을 휴지통으로 옮기므로 복원할 수 있습니다. 삭제한 파일의 탭은 닫히며, 저장하지 않은 편집이 있던 탭이 있으면 확인 화면에 그렇게 표시됩니다.</li>
+  <li>{{keys:Mod}}-클릭이나 {{keys:Shift}}-클릭으로 여러 항목을 선택해 한꺼번에 삭제할 수 있습니다.</li>
+  <li>{{keys:Esc}}는 입력 중인 이름을 취소합니다.</li>
+</ul>
+<p>Ferret은 같은 이름의 기존 파일이나 폴더를 덮어쓰지 않으며, 프로젝트 폴더 밖으로 나가는 것(<code>..</code>, 절대 경로, 밖을 가리키는 심볼릭 링크), <code>.git</code> 안의 것, 그리고 일부 OS에서 쓸 수 없는 이름을 거부합니다. <code>/ \ &lt; &gt; : " | ? *</code>, 제어 문자, 끝의 공백이나 점, <code>CON</code>이나 <code>NUL</code> 같은 Windows 예약 이름이 여기에 해당합니다.</p>
 
 <!-- @preview b8c0baaad4 -->
 ## Markdown과 Mermaid 미리 보기
@@ -24,7 +35,7 @@
   <li><span class="docs-ui">미리 보기 열기</span>: 내장 브라우저(<code>ade-preview://</code>)에서 열리므로 녹화하고 리뷰할 수 있습니다</li>
 </ul>
 
-<!-- @review-docs 3956ed6f10 -->
+<!-- @review-docs 4b5c6316ba -->
 ## 녹화로 문서 리뷰하기
 <ol class="docs-steps">
   <li>Markdown 파일을 열고 <span class="docs-ui">미리 보기 열기</span>를 클릭합니다.</li>
@@ -32,4 +43,4 @@
   <li>중지합니다. 지적 사항에는 URL 대신 프로젝트 기준의 파일 상대 경로가 들어갑니다.</li>
   <li><span class="docs-ui">에이전트에게 보내기</span>로 문서를 고치게 합니다.</li>
 </ol>
-<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="내장 브라우저의 Markdown 미리 보기(스크린샷 준비 중)"><span>스크린샷 준비 중</span></div><figcaption>내장 브라우저의 Markdown 미리 보기</figcaption></figure>
+{{shot:preview|내장 브라우저의 Markdown 미리 보기}}

@@ -23,7 +23,7 @@ export interface HardwareInfo {
   gpuVramBytes?: number
 }
 
-export type DecisionLocalModel = 'clef' | 'clef-flash'
+type DecisionLocalModel = 'clef' | 'clef-flash'
 
 export interface LocalModelRecommendation {
   /** 判定モデル（System One 互換。画像を読む） */
@@ -35,16 +35,16 @@ export interface LocalModelRecommendation {
 const GiB = 1024 ** 3
 
 /** clef を選ぶ下限。Apple Silicon の物理メモリ（約2/3の24GB に 18GB＋文脈が収まり、ほかに 12GB 残る） */
-export const CLEF_MIN_UNIFIED_GIB = 36
+const CLEF_MIN_UNIFIED_GIB = 36
 /** clef を選ぶ下限。NVIDIA の VRAM（24GB の板は 23.99GiB と出るので少し下げる） */
-export const CLEF_MIN_VRAM_GIB = 22
+const CLEF_MIN_VRAM_GIB = 22
 /** gpt-oss:20b を選ぶ下限（Apple Silicon・VRAM・CPU）。MoE で動く部分が小さいので CPU でも使える速さ */
-export const GPT_OSS_20B_MIN_UNIFIED_GIB = 32
-export const GPT_OSS_20B_MIN_VRAM_GIB = 15
-export const GPT_OSS_20B_MIN_CPU_RAM_GIB = 32
+const GPT_OSS_20B_MIN_UNIFIED_GIB = 32
+const GPT_OSS_20B_MIN_VRAM_GIB = 15
+const GPT_OSS_20B_MIN_CPU_RAM_GIB = 32
 /** gpt-oss:120b を選ぶ下限（65GB） */
-export const GPT_OSS_120B_MIN_UNIFIED_GIB = 128
-export const GPT_OSS_120B_MIN_VRAM_GIB = 78
+const GPT_OSS_120B_MIN_UNIFIED_GIB = 128
+const GPT_OSS_120B_MIN_VRAM_GIB = 78
 
 export function isAppleSilicon(hw: Pick<HardwareInfo, 'platform' | 'arch' | 'cpuModel'>): boolean {
   return hw.platform === 'darwin' && (hw.arch === 'arm64' || /^Apple M\d/i.test(hw.cpuModel ?? ''))

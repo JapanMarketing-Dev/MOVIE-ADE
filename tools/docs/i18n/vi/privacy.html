@@ -21,7 +21,7 @@ Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong
 ## Thời gian lưu giữ
 <p><span class="docs-ui">Giữ bản ghi</span> (mặc định 7 ngày, 30 ngày, hoặc <span class="docs-ui">Vĩnh viễn</span>): khi khởi động, các review đã hoàn tất cũ hơn mức đó sẽ bị xóa <code>recording.webm</code> và <code>work/</code>. <code>feedback.md</code> và ảnh của các góp ý được giữ lại. Review chưa hoàn tất không bao giờ bị dọn. Việc dọn chạy khi khởi động, cho dự án được mở gần nhất.</p>
 
-<!-- @network 8886bf9546 -->
+<!-- @network 1eadb8b937 -->
 ## Dữ liệu nào rời khỏi máy của bạn
 <table>
   <thead><tr><th>Khi nào</th><th>Đích đến</th><th>Dữ liệu</th></tr></thead>
@@ -35,8 +35,8 @@ Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong
     <tr><td><span class="docs-ui">Gửi lên GitHub</span></td><td>GitHub qua <code>gh</code></td><td>chỉ phần nội dung văn bản (không có ảnh)</td></tr>
     <tr><td>Mức sử dụng ở footer (chỉ Claude Code và Codex)</td><td>Anthropic, ChatGPT</td><td>yêu cầu xem mức sử dụng bằng chính thông tin đăng nhập của bạn</td></tr>
     <tr><td>Lời mời gắn sao GitHub</td><td>GitHub qua <code>gh</code> của bạn</td><td>kiểm tra xem bạn đã gắn sao repo chưa, và chỉ gắn sao khi bạn nhấn <span class="docs-ui">Gắn sao trên GitHub</span></td></tr>
-    <tr><td><span class="docs-ui">Kiểm tra cập nhật</span> (thủ công)</td><td>server tải xuống (Cloudflare R2)</td><td>yêu cầu tải <code>latest.json</code></td></tr>
-    <tr><td>Gửi feedback từ ứng dụng (chỉ khi bạn gửi; sắp ra mắt)</td><td>relay feedback của nhà phát triển (một Cloudflare Worker), relay này mở một issue công khai trong <code>JapanMarketing-Dev/ferret</code></td><td>văn bản của bạn, loại lỗi hay ý tưởng, phiên bản ứng dụng / hệ điều hành và CPU, cùng tối đa 3 ảnh chụp màn hình bạn đính kèm. Key, token, địa chỉ email và đường dẫn thư mục home được che đi. Relay không lưu địa chỉ IP của bạn (xem <a href="#feedback">Feedback từ ứng dụng</a>)</td></tr>
+    <tr><td><span class="docs-ui">Kiểm tra cập nhật</span> (thủ công)</td><td>server tải xuống (Cloudflare R2)</td><td>yêu cầu tải <code>latest.json</code> và <code>SHA256SUMS</code> của phiên bản đó; trình cài đặt khi bạn bấm <span class="docs-ui">Tải xuống</span></td></tr>
+    <tr><td>Gửi feedback từ ứng dụng (chỉ khi bạn gửi)</td><td>relay feedback của nhà phát triển (một Cloudflare Worker), relay này mở một issue công khai trong <code>JapanMarketing-Dev/ferret</code></td><td>văn bản của bạn, loại lỗi hay ý tưởng, phiên bản ứng dụng / hệ điều hành và CPU, cùng tối đa 3 ảnh chụp màn hình bạn đính kèm. Key, token, địa chỉ email và đường dẫn thư mục home được che đi. Relay không lưu địa chỉ IP của bạn (xem <a href="#feedback">Feedback từ ứng dụng</a>)</td></tr>
     <tr><td>Khi có crash hoặc lỗi (<span class="docs-ui">Gửi báo cáo crash</span> đang bật)</td><td>Sentry</td><td>stack trace và phiên bản hệ điều hành / CPU / ứng dụng (xem <a href="#crash-reports">Báo cáo crash</a>)</td></tr>
   </tbody>
 </table>
@@ -47,10 +47,9 @@ Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong
   <li>Website này (không phải ứng dụng) đếm lượt xem trang bằng Cloudflare Web Analytics: không dùng cookie, không theo dõi chéo giữa các trang web và không thu thập dữ liệu cá nhân.</li>
 </ul>
 
-<!-- @feedback ba5f3fb0a3 -->
+<!-- @feedback 34fc2ebccc -->
 ## Feedback từ ứng dụng
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Sắp ra mắt</p><p>Biểu mẫu feedback trong ứng dụng và relay của nó chưa được phát hành. Phần này mô tả cách chúng sẽ hoạt động.</p></div>
-<p>Bạn sẽ có thể gửi báo cáo lỗi hoặc ý tưởng ngay trong Ferret mà không cần tài khoản GitHub. Nội dung chỉ được gửi khi bạn gửi, và sẽ trở thành một issue <strong>công khai</strong> trong <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a>, gắn nhãn <code>from-app</code>. Đừng đưa vào bất cứ thứ gì bạn không muốn đăng công khai.</p>
+<p>Bạn có thể gửi báo cáo lỗi hoặc ý tưởng ngay trong Ferret mà không cần tài khoản GitHub (<span class="docs-ui">Gửi góp ý</span> ở cuối thanh bên). Nội dung chỉ được gửi khi bạn gửi, và sẽ trở thành một issue <strong>công khai</strong> trong <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a>, gắn nhãn <code>from-app</code>. Đừng đưa vào bất cứ thứ gì bạn không muốn đăng công khai.</p>
 <ul>
   <li>Ứng dụng gửi nội dung từ máy tính của bạn đến một relay nhỏ (một Cloudflare Worker do nhà phát triển vận hành), relay này mở issue bằng GitHub token của chính nó. Relay này là server duy nhất của nhà phát triển nhận bất cứ thứ gì bạn viết.</li>
   <li>Được gửi: tiêu đề và nội dung của bạn, đó là lỗi hay ý tưởng, phiên bản ứng dụng, và tối đa 3 ảnh chụp màn hình PNG hoặc JPEG bạn đính kèm. Tên và phiên bản hệ điều hành, kiến trúc CPU và ID cài đặt ngẫu nhiên chỉ được gửi nếu bạn để chúng được đính kèm. Không được gửi: tên, email, tài khoản GitHub, tệp dự án, bản ghi hay góp ý của bạn.</li>

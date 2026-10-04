@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildTargetEntries,
-  filterTargetEntries,
   groupByTarget,
   isCurrentEntry,
   moveSelection,
@@ -78,13 +77,6 @@ describe('右パネルの候補', () => {
 
   it('最近のURLにも、登録URLの下ならラベルが付く', () => {
     expect(entries.find((e) => e.detail === 'https://dev.example.com/pricing')?.label).toBe('dev')
-  })
-
-  it('検索で絞る（タイトル・URL・ラベル）', () => {
-    expect(filterTargetEntries(entries, 'prd').map((e) => e.title)).toEqual(['prd'])
-    expect(filterTargetEntries(entries, 'DOCS').map((e) => e.title)).toEqual(['flow.mmd', 'old.md'])
-    expect(filterTargetEntries(entries, 'dev pricing').map((e) => e.title)).toEqual(['dev.example.com/pricing'])
-    expect(filterTargetEntries(entries, '')).toHaveLength(entries.length)
   })
 })
 

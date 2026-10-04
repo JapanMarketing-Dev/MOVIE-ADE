@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { AppWindow, Link2, Pencil, Plus, X } from 'lucide-react'
 import type { Project, ProjectTarget } from '@shared/types'
 import { defaultUrlLabel, isPresetableUrl, matchPresetUrl, presetTarget } from '@shared/projectUrl'
-import { addTarget, hasTargetContent, removeTarget, sanitizeProjectKind, targetAction, updateTarget, urlTargets } from '@shared/projectTargets'
+import { addTarget, groupTargetsByPurpose, guessTargetPurpose, hasTargetContent, purposeOf, removeTarget, sanitizeProjectKind, targetAction, updateTarget, urlTargets } from '@shared/projectTargets'
 import { errorMessage } from '../lib/errors'
 import { useT } from '../lib/i18n'
 import { requestTerminalCommand } from '../lib/terminalCommand'
 import { Button, IconButton, Modal, Tooltip, useToast } from '../ui'
 import { TargetFields } from './ProjectTargetsEditor'
+import { TargetPurposeIcon } from './TargetPurposeIcon'
 
 /**
  * ブラウザのツールバーに並べる、プロジェクトの確認先（ターゲット）のボタン。名前は自由で、件数の上限なし。
@@ -20,6 +21,8 @@ import { TargetFields } from './ProjectTargetsEditor'
  * Orca由来: ~/bench/orca/src/renderer/src/components/browser-pane/ のアドレスバー周りの
  * 「よく開くURLをワンクリックで開く」使い心地（MIT）。履歴・検索・候補は持ち込まない。
  *
+ * 確認先は区分（アプリ → デザイン → 設計書）ごとにまとめて並べ、区切り線とアイコンで分ける。
+ * デザイン・設計書へ切り替えるときはパスを引き継がない（登録した URL をそのまま開く）。
  * ツールチップは上向き（真下はネイティブのビュー）。
  * 編集ダイアログを開いている間は、呼び出し側がビューを隠す（onOverlayChange）。
  */
@@ -58,9 +61,11 @@ export function UrlPresets({
   }
 
   const startAdd = () => {
-    // web は表示中の URL をそのまま登録できるようにする。ほかの種類は空から
-    const url = kind === 'web' && isPresetableUrl(currentUrl) ? currentUrl : ''
-    const target = addTarget(project.urls, kind, url ? { url, label: defaultUrlLabel(url) } : {}).at(-1)!
+    // web は表示中の URL をそのまま登録できるようにする（デザイン・設計書のページなら種類を問わず）。ほかは空から
+    const purpose = isPresetableUrl(currentUrl) ? guessTargetPurpose(currentUrl) : 'app'
+    const url = (kind === 'web' || purpose !== 'app') && isPresetableUrl(currentUrl) ? currentUrl : ''
+    // デザイン・設計書の名前は区分の候補（Figma・Spec など）から付ける
+    const target = addTarget(project.urls, kind, url ? { url, ...(purpose === 'app' ? { label: defaultUrlLabel(url) } : { purpose }) } : {}).at(-1)!
     openEditor({ target, isNew: true })
   }
 
@@ -100,7 +105,9 @@ export function UrlPresets({
 
   const tooltip = (target: ProjectTarget): string => {
     const action = targetAction(target, kind)
-    if (action.kind === 'url') return selected && selected.id !== target.id ? t('urlPresets.samePath', { url: action.url }) : action.url
+    const purpose = purposeOf(target)
+    if (purpose !== 'app' && action.kind === 'url') return `${t(`projectTargets.purpose.${purpose}`)} · ${action.url}`
+    if (action.kind === 'url') return selected && selected.id !== target.id && purposeOf(selected) === 'app' ? t('urlPresets.samePath', { url: action.url }) : action.url
     if (action.kind === 'window') {
       return [action.url, action.launchCommand && t('projectTargets.tooltipCommand', { command: action.launchCommand }),
         action.windowMatch && t('projectTargets.tooltipWindow', { window: action.windowMatch })].filter(Boolean).join(' · ')
@@ -115,7 +122,9 @@ export function UrlPresets({
 
   return (
     <div className="url-presets" role="toolbar" aria-label={t('urlPresets.toolbar')} data-testid="url-presets">
-      {project.urls.map((target) => {
+      {groupTargetsByPurpose(project.urls).map((group, groupIndex) => <Fragment key={group.purpose}>
+        {groupIndex > 0 && <span className="url-presets__sep" aria-hidden="true" />}
+        {group.targets.map((target) => {
         const isWindow = targetAction(target, kind).kind === 'window'
         return (
           <Tooltip key={target.id} label={tooltip(target)} side="top">
@@ -131,8 +140,10 @@ export function UrlPresets({
                 }}
                 data-testid="url-chip"
                 data-target-kind={isWindow ? 'window' : 'url'}
+                data-purpose={group.purpose}
+                aria-label={group.purpose !== 'app' ? `${t(`projectTargets.purpose.${group.purpose}`)}: ${target.label}` : undefined}
               >
-                {isWindow && <AppWindow size={11} strokeWidth={1.75} aria-hidden="true" />}
+                {group.purpose !== 'app' ? <TargetPurposeIcon purpose={group.purpose} /> : isWindow && <AppWindow size={11} strokeWidth={1.75} aria-hidden="true" />}
                 {target.label}
               </button>
               <button
@@ -147,6 +158,7 @@ export function UrlPresets({
           </Tooltip>
         )
       })}
+      </Fragment>)}
       <Tooltip label={project.urls.length ? t('urlPresets.addCurrent') : t('urlPresets.addCurrentHint')} side="top">
         <IconButton
           size="sm"
@@ -172,10 +184,11 @@ export function UrlPresets({
               <IconButton label={t('common.close')} icon={<X size={16} />} onClick={() => openEditor(null)} />
             </header>
             <p className="url-preset-dialog__project">{project.name}</p>
-            <TargetFields autoFocus target={draft} kind={kind} onChange={(patch) => {
+            <TargetFields autoFocus target={draft} kind={kind} siblings={project.urls} onChange={(patch) => {
               const next = updateTarget([draft], draft.id, patch)[0]!
-              // 名前を触っていなければ、URL に合わせて既定の名前を付け直す（web のときだけ）
-              if (kind === 'web' && patch.url !== undefined && (draft.label === '' || draft.label === defaultUrlLabel(draft.url ?? ''))) next.label = defaultUrlLabel(patch.url.trim())
+              // 名前を触っていなければ、URL に合わせて既定の名前を付け直す（web のアプリのときだけ。デザイン・設計書は区分の候補が付く）
+              if (kind === 'web' && patch.url !== undefined && patch.label === undefined && purposeOf(next) === 'app' &&
+                (draft.label === '' || draft.label === defaultUrlLabel(draft.url ?? ''))) next.label = defaultUrlLabel(patch.url.trim())
               setEditing({ ...editing, target: next })
             }} />
             <div className="url-preset-dialog__actions">

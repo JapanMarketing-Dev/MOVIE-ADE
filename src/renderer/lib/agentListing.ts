@@ -12,7 +12,7 @@ import type { AgentOption, TuiAgent } from '@shared/types'
  * - 検索欄に入れたら、たたんだものも含めて名前・id・コマンドで絞り込む
  */
 
-export interface AgentListing<T extends AgentOption> {
+interface AgentListing<T extends AgentOption> {
   visible: T[]
   /** たたんでいる数（「すべて表示（N）」の N）。検索中・すべて表示中は 0 */
   hiddenCount: number

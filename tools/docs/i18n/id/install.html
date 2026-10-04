@@ -2,92 +2,33 @@
 <!-- @title 569ca49f4a -->
 Instalasi
 
-<!-- @lead 1947d59ea4 -->
-Ferret adalah aplikasi desktop untuk macOS, Windows, dan Linux. Build macOS ditandatangani dengan Developer ID dan dinotarisasi oleh Apple. Build Windows dan Linux belum memiliki tanda tangan kode, sehingga OS tersebut meminta Anda mengonfirmasi peluncuran pertama.
+<!-- @lead a7ae9a04f0 -->
+Unduh Ferret untuk komputer Anda, lalu buka. Ferret berjalan di macOS, Windows, dan Linux.
 
-<!-- @download 91a49c9274 -->
+<!-- @download 57d4dd8f14 -->
 ## Unduh
-<p>Ambil file untuk OS dan CPU Anda dari <a href="../download.html">halaman Unduh</a>. File disajikan dari Cloudflare R2, bukan GitHub Releases, dan hanya 10 versi terbaru yang disimpan.</p>
-<table>
-  <thead><tr><th>OS</th><th>File</th></tr></thead>
-  <tbody>
-    <tr><td>macOS (Apple silicon / Intel)</td><td><code>Ferret-&lt;version&gt;-mac-arm64.dmg</code>, <code>Ferret-&lt;version&gt;-mac-x64.dmg</code></td></tr>
-    <tr><td>Windows (x64 / arm64)</td><td><code>Ferret-&lt;version&gt;-win-x64.exe</code>, <code>Ferret-&lt;version&gt;-win-arm64.exe</code> (installer NSIS)</td></tr>
-    <tr><td>Linux (x64)</td><td><code>Ferret-&lt;version&gt;-linux-x86_64.AppImage</code>, <code>Ferret-&lt;version&gt;-linux-amd64.deb</code></td></tr>
-  </tbody>
-</table>
-<p>Rilis hingga 0.1.x diterbitkan dengan nama lama, sebagai <code>MOVIE-ADE-&lt;version&gt;-…</code>. Nama <code>Ferret-…</code> dimulai sejak 0.2.0.</p>
-<div class="docs-callout docs-callout-warn"><p>Ferret mendukung macOS, Windows, dan Linux. Build Windows dan Linux belum memiliki tanda tangan kode, sehingga peluncuran pertama meminta konfirmasi Anda (lihat langkah-langkah di bawah).</p></div>
+<p><a href="../download.html">Halaman unduhan</a> menyediakan file yang sesuai untuk komputer Anda. Klik tombol unduh.</p>
 
-<!-- @verify 14ef497c52 -->
-## Memverifikasi unduhan (SHA256SUMS bertanda tangan)
-<p>Setiap rilis memiliki file <code>SHA256SUMS</code> beserta tanda tangannya, <code>SHA256SUMS.sig</code>. Tanda tangan dibuat dengan kunci rilis Ferret, yang disimpan terpisah dari server unduhan, sehingga installer yang diubah di server unduhan tidak mungkin disertai tanda tangan yang valid. Kunci publiknya <em>tidak</em> diambil dari server unduhan: ambil dari repositori (<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers"><code>build/release-signing/allowed_signers</code></a>) atau salin dari sini:</p>
-<pre><code>release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9</code></pre>
-<p>Fingerprint-nya adalah <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code>. File yang sama juga dilampirkan pada setiap rilis di GitHub. Periksa tanda tangannya dengan <code>ssh-keygen</code> (sudah tersedia di macOS, Windows 10 ke atas, dan Linux), lalu bandingkan hash unduhan Anda dengan daftar yang ditandatangani:</p>
-<pre><code># the download server (currently the R2 public URL; it may move to a custom domain)
-BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
-VERSION=$(curl -s $BASE/latest.json | jq -r .version)
-curl -sO $BASE/releases/$VERSION/SHA256SUMS
-curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
-
-# save the public key above as allowed_signers, then:
-ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
-# → Good "ferret-release" signature for release@ferretade.dev …
-
-# macOS
-shasum -a 256 -c SHA256SUMS --ignore-missing
-# Linux
-sha256sum -c SHA256SUMS --ignore-missing</code></pre>
-<pre><code># Windows (PowerShell): compare with the line for your file in SHA256SUMS
-Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
-<p>Hentikan jika <code>ssh-keygen</code> tidak mencetak <q>Good "ferret-release" signature</q> atau hash-nya tidak ada di daftar. <span class="docs-ui">Periksa Pembaruan</span> di Ferret melakukan pemeriksaan yang sama dengan kunci yang tertanam di aplikasi dan tidak menawarkan versi yang tanda tangannya tidak cocok. Di macOS, Anda juga bisa memeriksa tanda tangan Developer ID dan notarisasi dengan <code>spctl -a -vv /Applications/Ferret.app</code>. Installer Windows dan Linux belum ditandatangani kodenya oleh Microsoft maupun distribusi Linux. Rilis hingga 0.3.0 diterbitkan sebelum penandatanganan dimulai dan hanya memiliki hash tanpa tanda tangan di <code>releases/&lt;version&gt;/manifest.json</code>.</p>
-
-<!-- @macos 1aa07136fd -->
+<!-- @macos b0d1e6945a -->
 ## macOS
-<ol class="docs-steps">
-  <li>Buka file <code>.dmg</code> lalu seret <code>Ferret.app</code> ke <code>/Applications</code>.</li>
-  <li>Jalankan. Aplikasi ini ditandatangani dengan Developer ID dan dinotarisasi oleh Apple (tiketnya sudah di-staple), sehingga terbuka tanpa peringatan.</li>
-</ol>
-<p>Untuk memeriksa tanda tangannya sendiri:</p>
-<pre><code>spctl -a -vv /Applications/Ferret.app
-# accepted
-# source=Notarized Developer ID</code></pre>
-<p><strong>Khusus versi lama (0.2.0 build 2 dan sebelumnya)</strong> yang belum ditandatangani. Untuk versi tersebut, macOS menyatakan bahwa pengembangnya tidak dapat diverifikasi: tutup dialognya, buka <span class="docs-ui">Pengaturan Sistem → Privasi &amp; Keamanan</span>, klik <span class="docs-ui">Tetap Buka</span> di samping pesan tentang Ferret, lalu konfirmasi dengan <span class="docs-ui">Buka</span>. Jika muncul pesan bahwa aplikasi "rusak", hapus atribut karantinanya:</p>
-<pre><code>xattr -dr com.apple.quarantine /Applications/Ferret.app</code></pre>
+<p>Buka file <code>.dmg</code>, seret Ferret ke <code>Applications</code>, lalu buka dari sana.</p>
 
-<!-- @windows b5761835f1 -->
+<!-- @windows 18a1422bb6 -->
 ## Windows
-<ol class="docs-steps">
-  <li>Jalankan <code>Ferret-&lt;version&gt;-win-&lt;arch&gt;.exe</code>.</li>
-  <li>Saat SmartScreen menampilkan "Windows melindungi PC Anda", klik <span class="docs-ui">Info selengkapnya</span>, lalu <span class="docs-ui">Tetap jalankan</span>.</li>
-  <li>Pilih folder instalasi. Installer membuat pintasan di desktop.</li>
-</ol>
+<p>Jalankan file <code>.exe</code> yang sudah diunduh. Ferret langsung terpasang dan terbuka, tanpa ada yang perlu dipilih. Selanjutnya, buka dari menu Start atau pintasan di desktop.</p>
+<p>Jika Windows menampilkan <q>Windows melindungi PC Anda</q>, klik <span class="docs-ui">Info selengkapnya</span>, lalu <span class="docs-ui">Tetap jalankan</span>.</p>
 
-<!-- @linux c46965a0c5 -->
+<!-- @linux 58ceb4839c -->
 ## Linux
-<p>AppImage:</p>
-<pre><code>chmod +x Ferret-&lt;version&gt;-linux-x86_64.AppImage
-./Ferret-&lt;version&gt;-linux-x86_64.AppImage</code></pre>
-<p>Debian / Ubuntu:</p>
+<p><strong>Ubuntu / Debian</strong>: klik dua kali file <code>.deb</code> untuk memasangnya lewat pusat perangkat lunak, atau jalankan:</p>
 <pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
-<p>Paket deb memasang paket dan perintah <code>ferret</code>.</p>
-<p>Di Ubuntu 23.10 ke atas, AppImage bisa berhenti saat diluncurkan dengan error sandbox, karena AppArmor membatasi user namespace yang dipakai sandbox Electron. Gunakan <code>.deb</code> sebagai gantinya; paket ini menyiapkan helper sandbox.</p>
+<p>Setelah itu, buka Ferret dari menu aplikasi, atau jalankan <code>ferret</code>.</p>
+<p><strong>Distribusi lain</strong>: gunakan <code>.AppImage</code>. Izinkan file itu dijalankan sebagai program (klik kanan → Properti, atau <code>chmod +x</code>), lalu buka.</p>
 
-<!-- @source 06a127ac19 -->
-## Build dari kode sumber
-<p>Memerlukan Node.js 20+ (CI dan pengembangan lokal memakai 22), pnpm, dan git.</p>
-<pre><code>git clone https://github.com/JapanMarketing-Dev/ferret.git
-cd ferret
-pnpm install          # postinstall prepares node-pty for Electron
-pnpm dev              # run in development mode</code></pre>
-<p>Untuk membuat paket installer (hasilnya di <code>dist/release/</code>, konfigurasinya di <code>electron-builder.config.cjs</code>). Build Linux hanya berjalan di Linux.</p>
-<pre><code>pnpm dist:mac     # dmg (arm64, x64)
-pnpm dist:win     # NSIS installers (x64, arm64)
-pnpm dist:linux   # AppImage + deb (x64)</code></pre>
-<p>Skrip <code>build:&lt;os&gt;:dev</code> hanya menghasilkan aplikasi yang belum dipaketkan (<code>--dir</code>), yang lebih cepat untuk pengujian lokal.</p>
-<p>Di Windows, <code>pnpm install</code> memakai binary prebuilt bawaan node-pty alih-alih membangun ulang (yang memerlukan Visual Studio C++ build tools). Atur <code>ADE_FORCE_NATIVE_REBUILD=1</code> untuk memaksa build ulang.</p>
-<p>Jika terminal melaporkan bahwa node-pty tidak dapat dimuat, jalankan <code>pnpm rebuild:native</code>.</p>
-
-<!-- @update 7f4d958687 -->
-## Pembaruan
-<p>Ferret tidak memperbarui dirinya secara otomatis. Di footer, buka <span class="docs-ui">Pembaruan</span> lalu klik <span class="docs-ui">Periksa Pembaruan</span>. Ferret mengambil <code>latest.json</code> dari server unduhan (R2), membandingkan versinya, dan menautkan ke halaman unduhan. Sejak 0.4.0, Ferret juga memeriksa tanda tangan <code>SHA256SUMS</code> versi tersebut dengan kunci rilis yang tertanam di aplikasi, dan tidak menawarkan versi yang tanda tangannya tidak dapat diverifikasi. Tidak ada yang diperiksa sampai Anda mengklik, dan tidak ada yang dipasang secara otomatis.</p>
+<!-- @more 75e55cbce4 -->
+## Selanjutnya
+<ul>
+  <li><a href="quick-start.html#open">Mulai cepat</a>: buka proyek dan rekam umpan balik pertama Anda.</li>
+  <li>Ada yang tidak berjalan? Lihat <a href="troubleshooting.html#install">Pemecahan masalah</a>.</li>
+  <li>Untuk memeriksa tanda tangan file unduhan, membangun dari kode sumber, atau mendapatkan versi lama, lihat <a href="advanced-install.html">Instalasi lanjutan</a>.</li>
+</ul>

@@ -13,7 +13,7 @@ import { resolveDecision, type DecisionPreferences, type DecisionPreset } from '
  */
 
 /** 何も設定しなくても先へ進めてよい手順（フッターに「この手順を飛ばす」を出す） */
-export const SKIPPABLE_STEPS: ReadonlySet<OnboardingStepId> = new Set<OnboardingStepId>(['decision', 'project', 'voice'])
+const SKIPPABLE_STEPS: ReadonlySet<OnboardingStepId> = new Set<OnboardingStepId>(['decision', 'project', 'voice'])
 
 export const LAST_STEP_INDEX = ONBOARDING_STEPS.length - 1
 
@@ -105,7 +105,7 @@ export function recommendedAgent(options: ReadonlyArray<{ id: string; installed:
  *   noneInstalled … インストール済みが1つも無い（インストールの案内を出したうえで進ませる。行き止まりにしない）
  *   detecting     … 探している途中（待たせずに進ませる）
  */
-export type AgentsGate = 'ok' | 'needSelection' | 'noneInstalled' | 'detecting'
+type AgentsGate = 'ok' | 'needSelection' | 'noneInstalled' | 'detecting'
 
 export function agentsStepGate(options: ReadonlyArray<{ installed: boolean; custom?: boolean }> | null, startupAgents: readonly string[]): AgentsGate {
   if (startupAgents.length > 0) return 'ok'

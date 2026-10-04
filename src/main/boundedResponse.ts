@@ -15,7 +15,7 @@ import { UserFacingError } from '@shared/errors'
 /** STT・整理・判定の応答の上限（文字起こしの JSON は語ごとの時刻を含めても数 MB に収まる） */
 export const AI_RESPONSE_MAX_BYTES = 16 * 1024 * 1024
 /** 失敗の応答の本文は説明に先頭を使うだけ。ここまで読んで残りは捨てる */
-export const ERROR_BODY_MAX_BYTES = 64 * 1024
+const ERROR_BODY_MAX_BYTES = 64 * 1024
 /** 小さな JSON（更新の確認・使用量）の上限 */
 export const SMALL_JSON_MAX_BYTES = 1024 * 1024
 
@@ -30,7 +30,7 @@ export class ResponseTooLargeError extends UserFacingError {
 }
 
 /** Content-Length の値。無い・読めないときは undefined */
-export function declaredLength(res: Pick<Response, 'headers'>): number | undefined {
+function declaredLength(res: Pick<Response, 'headers'>): number | undefined {
   const raw = res.headers.get('content-length')
   if (raw === null || !/^\d+$/.test(raw.trim())) return undefined
   const n = Number(raw.trim())

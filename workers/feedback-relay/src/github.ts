@@ -3,7 +3,7 @@
  * トークンは Authorization ヘッダーにだけ入れ、ログ・応答・例外の文には出さない。
  */
 import { FROM_APP_LABEL } from './limits'
-import { neutralizeMentions, redact } from './redact'
+import { literalBlock, neutralizeMentions, redact } from './redact'
 
 export type IssueInput = {
   kind: 'bug' | 'enhancement'
@@ -18,7 +18,10 @@ export type IssueInput = {
 
 export const ISSUE_HEADING = '## Anonymous feedback from the Ferret app'
 
-/** 題名・本文を伏せ字にし、メンションを崩して、Issue の題名・本文・ラベルにする */
+/**
+ * 題名・本文を伏せ字にし、メンションを崩して、Issue の題名・本文・ラベルにする。
+ * 本文は送り主が決める文字なので、コードブロックに入れて、そのままの文字として表示させる（参照・リンク・HTML にならない。security-4 [11]）
+ */
 export function buildIssue(input: IssueInput): { title: string; body: string; labels: string[] } {
   const title = neutralizeMentions(redact(input.title).text)
   const text = neutralizeMentions(redact(input.body).text)
@@ -34,7 +37,7 @@ export function buildIssue(input: IssueInput): { title: string; body: string; la
     '',
     '---',
     '',
-    text
+    literalBlock(text)
   ]
   if (input.imageUrls.length > 0) {
     lines.push('', '### Screenshots', '', ...input.imageUrls.map((url, i) => `![screenshot ${i + 1}](${url})`))
@@ -42,28 +45,48 @@ export function buildIssue(input: IssueInput): { title: string; body: string; la
   return { title, body: `${lines.join('\n')}\n`, labels: [input.kind, FROM_APP_LABEL] }
 }
 
-/** Issue を作る。成功なら番号と URL、失敗なら null（理由は呼ぶ側で upstream_failed にする） */
+/**
+ * Issue を作った結果（security-4 [12]）。
+ * created: 作った / not_created: GitHub が断った（4xx。作られていない）/ unknown: 送ったが作られたかが分からない
+ * （通信が切れた・5xx・201 の応答が読めない）。GitHub の Issue の作成は冪等でないので、unknown を「作られていない」と扱わない
+ */
+export type CreateIssueResult = { status: 'created'; number: number; url: string } | { status: 'not_created' } | { status: 'unknown' }
+
+/** Issue を作る。トークンは Authorization にだけ入れる */
 export async function createIssue(
   fetchImpl: typeof fetch,
   token: string,
   repo: string,
   issue: { title: string; body: string; labels: string[] }
-): Promise<{ number: number; url: string } | null> {
-  const res = await fetchImpl(`https://api.github.com/repos/${repo}/issues`, {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${token}`,
-      accept: 'application/vnd.github+json',
-      'content-type': 'application/json',
-      'user-agent': 'ferret-feedback-relay',
-      'x-github-api-version': '2022-11-28'
-    },
-    body: JSON.stringify(issue)
-  })
-  if (res.status !== 201) return null
-  const text = await res.text()
-  if (text.length > 1024 * 1024) return null
-  const data = JSON.parse(text) as { number?: unknown; html_url?: unknown }
-  if (typeof data.number !== 'number' || typeof data.html_url !== 'string' || !data.html_url.startsWith(`https://github.com/${repo}/issues/`)) return null
-  return { number: data.number, url: data.html_url }
+): Promise<CreateIssueResult> {
+  let res: Response
+  try {
+    res = await fetchImpl(`https://api.github.com/repos/${repo}/issues`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        accept: 'application/vnd.github+json',
+        'content-type': 'application/json',
+        'user-agent': 'ferret-feedback-relay',
+        'x-github-api-version': '2022-11-28'
+      },
+      body: JSON.stringify(issue)
+    })
+  } catch {
+    // 要求が GitHub に届いたかどうかは分からない
+    return { status: 'unknown' }
+  }
+  // 4xx は GitHub が受け付けなかった（検証・権限・頻度の上限）。作られていない
+  if (res.status >= 400 && res.status < 500) return { status: 'not_created' }
+  if (res.status !== 201) return { status: 'unknown' }
+  try {
+    const text = await res.text()
+    if (text.length > 1024 * 1024) return { status: 'unknown' }
+    const data = JSON.parse(text) as { number?: unknown; html_url?: unknown }
+    if (typeof data.number !== 'number' || typeof data.html_url !== 'string' || !data.html_url.startsWith(`https://github.com/${repo}/issues/`)) return { status: 'unknown' }
+    return { status: 'created', number: data.number, url: data.html_url }
+  } catch {
+    // 201（作った）のあとで応答が読めない
+    return { status: 'unknown' }
+  }
 }

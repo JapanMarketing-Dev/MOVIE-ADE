@@ -63,7 +63,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
 </ol>
 <p>モデルは <code>gpt-transcribe</code> に固定です。開発時（<code>pnpm dev</code>）に限り、git で無視される <code>.env</code> ファイルの <code>OPENAI_API_KEY</code> も読みます。配布用のビルドは <code>.env</code> を読みません。</p>
 
-<!-- @compatible 8c200e00b1 -->
+<!-- @compatible 2ccbf4537c -->
 ## OpenAI 互換のエンドポイント
 <p>Ferret は <code>POST &lt;base&gt;/v1/audio/transcriptions</code>（multipart: <code>file</code>、<code>model</code>、<code>response_format=json</code>、<code>language</code>、<code>prompt</code>）を送ります。OpenAI の文字起こしのルートを実装したサーバー向けの作りです。</p>
 <ol class="docs-steps">
@@ -80,7 +80,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
     <tr><td><a href="https://console.groq.com/docs/speech-to-text">Groq</a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
   </tbody>
 </table>
-<div class="docs-callout docs-callout-warn"><p>Ferret はこうした OpenAI 互換のサーバー向けに作っていますが、まだ Ferret との組み合わせでは試していません。URL とモデル名は、各サーバーのドキュメントにある既定値です。</p></div>
+<div class="docs-callout docs-callout-note"><p>Ferret はこうしたサーバーと、OpenAI の標準の文字起こし API（<code>/v1/audio/transcriptions</code>）でやり取りするので、この API を備えたサーバーならどれでも使えます。上の URL とモデル名は、各サーバーのドキュメントにある既定値です。</p></div>
 <ul>
   <li>末尾の <code>/v1</code> や、貼り付けた <code>/v1/audio/transcriptions</code> は保存時に取り除くので、どちらの形でも動きます。</li>
   <li>ユーザー名やパスワードを含む URL は受け付けません。キーが <code>settings.json</code> に入ることはありません。</li>

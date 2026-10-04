@@ -36,6 +36,15 @@ export const ATTEMPT_LIMITS = [
   { windowMs: 60 * 60 * 1000, max: 30 },
   { windowMs: 24 * 60 * 60 * 1000, max: 100 }
 ] as const
+/**
+ * 本文を読む前に全体で数える、送信の試みの上限（security-4 [8]）。
+ * IP（IPv6 は /64）を次々に変えても、本文の読み込み・解析と、送り主ごとの limiter（Durable Object）の数がこれを超えない。
+ * 送り主ごとの試みの枠（ATTEMPT_LIMITS）で断られた要求は数えない（1つの送り主が全体の枠を使い切れない）
+ */
+export const PREPARSE_LIMITS = [
+  { windowMs: 60 * 60 * 1000, max: 300 },
+  { windowMs: 24 * 60 * 60 * 1000, max: 2000 }
+] as const
 /** 全体の上限（大量の IP から来ても、Issue が際限なく増えないように） */
 export const GLOBAL_LIMITS = [{ windowMs: 24 * 60 * 60 * 1000, max: 200 }] as const
 /** 同じ題名と本文を弾く期間 */

@@ -1,0 +1,18 @@
+# Adapted from Orca's .github/ISSUE_TEMPLATE/other.yml (MIT, Copyright 2026 Lovecast Inc.).
+name: Other
+description: Something that is not a bug or a feature request
+title: '[Other]: '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For questions and tips, the Discord community is usually the quickest place to ask.
+        Please do not include API keys, tokens, private URLs or file paths.
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What would you like to share or ask?
+    validations:
+      required: true

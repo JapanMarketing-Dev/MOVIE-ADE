@@ -22,7 +22,7 @@ export interface DecisionTestResult {
 }
 
 /** 確かめるために送る本文（どのプロバイダでも読める最小の問い） */
-export const DECISION_TEST_BODY = (model: string) => ({
+const DECISION_TEST_BODY = (model: string) => ({
   model,
   state: 'The sky is blue on a clear day.',
   questions: { ok: { type: 'noul', instructions: 'Is this statement true?' } }

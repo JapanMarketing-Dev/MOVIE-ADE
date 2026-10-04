@@ -8,6 +8,7 @@ import pageStyle from './page.css?raw'
 import { PREVIEW_ASSET_HOST, PREVIEW_PROJECT_HOST, PREVIEW_SCHEME, previewKind, previewPathFromUrl } from '@shared/preview'
 import { readTextFile } from '../files'
 import { previewImageType, readPreviewImage } from './image'
+import { consumeRemoteImagesGrant, isRemoteImagesGrantRequest, issueRemoteImagesGrant } from './remoteGrant'
 import { previewCsp, REMOTE_IMAGES_PARAM, renderPreviewBody, renderPreviewMessage, renderPreviewPage } from './render'
 import { t } from '@shared/i18n'
 import { reportHandled } from '@shared/report'
@@ -50,6 +51,15 @@ async function handle(request: Request, getRoot: () => string | null): Promise<R
   const path = previewPathFromUrl(request.url)
   if (url.hostname !== PREVIEW_PROJECT_HOST || !root || !path) return respond('Not found', 'text/plain', 404)
 
+  // 「外部の画像を読み込む」のボタン（page.js）だけが、この文書に1回使える合言葉を受け取る（security-4 [6]。remoteGrant.ts）
+  if (isRemoteImagesGrantRequest(request.method, request.headers)) {
+    return new Response(JSON.stringify({ token: issueRemoteImagesGrant(path) }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Content-Security-Policy': previewCsp(), 'Cache-Control': 'no-store' }
+    })
+  }
+  if (request.method.toUpperCase() !== 'GET' && request.method.toUpperCase() !== 'HEAD') return respond('Not found', 'text/plain', 404)
+
   // 画像は生のまま返す（markdown から参照される）。md / Mermaid 以外のテキストは読み取り専用のコードのページ
   const imageType = previewImageType(path)
   if (imageType) {
@@ -70,7 +80,8 @@ async function handle(request: Request, getRoot: () => string | null): Promise<R
   }
   // ?fragment=1 は保存のたびに page.js が取り直す中身だけ
   if (url.searchParams.get('fragment') === '1') return respond(body, HTML)
-  const remoteImages = url.searchParams.get(REMOTE_IMAGES_PARAM) === '1'
+  // URL の値そのものは権限にしない。main が出した、この文書の使い切りの合言葉のときだけ https の画像を許す
+  const remoteImages = consumeRemoteImagesGrant(url.searchParams.get(REMOTE_IMAGES_PARAM), path)
   return respond(renderPreviewPage({ path, kind, body, remoteImages }), HTML, 200, remoteImages)
 }
 

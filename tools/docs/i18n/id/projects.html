@@ -20,14 +20,15 @@ Proyek adalah sebuah folder (biasanya root repo Anda). Setiap proyek menyimpan U
 <p>Nama bawaannya adalah nama folder. Menambahkan folder yang sudah terdaftar akan membukanya (path dibandingkan tanpa membedakan huruf besar-kecil di macOS dan Windows). Dari menu sidebar, Anda bisa memilih <span class="docs-ui">Ganti Nama</span> untuk proyek atau <span class="docs-ui">Hapus dari Daftar</span>. Menghapus dari daftar tidak pernah menghapus foldernya.</p>
 <p>Terminal dibuka di folder proyek, dan tinjauan disimpan di bawah <code>&lt;project&gt;/.ferret/</code>.</p>
 
-<!-- @save-url 8914160725 -->
+<!-- @save-url 553542e405 -->
 ## Menyimpan URL
 <ol class="docs-steps">
   <li>Buka halamannya di browser bawaan.</li>
   <li>Klik <span class="docs-ui">+</span> (<span class="docs-ui">Simpan URL saat ini</span>) di toolbar browser. URL saat ini sudah terisi.</li>
   <li>Masukkan <span class="docs-ui">Nama</span> lalu klik <span class="docs-ui">Simpan</span>.</li>
 </ol>
-<p>Hanya URL <code>http://</code> dan <code>https://</code> yang diterima. Jika Anda membiarkan nama sesuai saran, nama ditebak dari host-nya:</p>
+<p>Setiap URL tersimpan memiliki jenis di <span class="docs-ui">Yang ditinjau</span>: <span class="docs-ui">Aplikasi</span> (aplikasi yang sedang Anda bangun), <span class="docs-ui">Desain</span> (Figma, Penpot, Canva, prototipe) atau <span class="docs-ui">Dokumen / spesifikasi</span> (Google Docs, Notion, Confluence, spesifikasi Markdown di GitHub, PDF). Jenisnya ditebak dari URL dan bisa Anda ubah. Lihat <a href="#design-docs">Meninjau desain dan dokumen, bukan hanya kode</a>.</p>
+<p>Hanya URL <code>http://</code> dan <code>https://</code> yang diterima. Untuk URL aplikasi, jika Anda membiarkan nama sesuai saran, nama ditebak dari host-nya:</p>
 <table>
   <thead><tr><th>Host</th><th>Nama</th></tr></thead>
   <tbody>
@@ -37,9 +38,9 @@ Proyek adalah sebuah folder (biasanya root repo Anda). Setiap proyek menyimpan U
     <tr><td>lainnya</td><td><code>prd</code></td></tr>
   </tbody>
 </table>
-<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="URL tersimpan di toolbar browser (screenshot segera hadir)"><span>Screenshot segera hadir</span></div><figcaption>URL tersimpan di toolbar browser</figcaption></figure>
+{{shot:url-presets|URL tersimpan di toolbar browser}}
 
-<!-- @review-targets 351621051d -->
+<!-- @review-targets 7edd1985ee -->
 ## Panel target tinjauan
 {{clip:targets|Berpindah target tinjauan dan halaman tanpa menghentikan rekaman.}}
 <p>Dalam mode Umpan Balik, panel <span class="docs-ui">Target tinjauan</span> di kanan mencantumkan semua yang bisa Anda tinjau untuk proyek saat ini. Berpindah target tidak menghentikan rekaman. Tampilkan atau sembunyikan panel dengan <span class="docs-ui">Tampilan → Tampilkan/Sembunyikan Target Tinjauan</span> ({{keys:Mod+Shift+K}}) atau <span class="docs-ui">Sembunyikan panel</span>.</p>
@@ -48,9 +49,27 @@ Proyek adalah sebuah folder (biasanya root repo Anda). Setiap proyek menyimpan U
   <li><strong><span class="docs-ui">File</span></strong>: folder proyek. File dibuka sebagai pratinjau (Markdown dan Mermaid dirender, teks lain hanya-baca), sehingga Anda juga bisa meninjau dokumen. Ikon pensil (<span class="docs-ui">Buka di editor</span>) membukanya di editor.</li>
 </ul>
 <p><span class="docs-ui">Filter target</span> menyaring target, halaman, dan file sekaligus, dengan pencocokan fuzzy yang sama seperti <span class="docs-ui">Buka File…</span>. Di dalam daftar, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> atau <kbd>1</kbd>–<kbd>9</kbd> berpindah target. <span class="docs-ui">Buka URL…</span> membuka URL sekali pakai, dan <span class="docs-ui">Simpan ke URL proyek</span> menyimpannya.</p>
-<p>Target berasal dari <code>projects[].urls</code> di <code>settings.json</code> (lihat <a href="settings-json.html#example">contohnya</a>). Setiap entri memerlukan <code>url</code>, <code>launchCommand</code> (dijalankan di terminal, misalnya untuk memulai aplikasi desktop), atau <code>windowMatch</code> (jendela yang direkam). Memilih target jendela akan menjadikannya sumber perekaman, jadi tidak bisa dilakukan saat sedang merekam. Halaman yang dikunjungi diingat per proyek, hanya di mesin ini (hingga 200).</p>
+<p>Target berasal dari <code>projects[].urls</code> di <code>settings.json</code> (lihat <a href="settings-json.html#example">contohnya</a>). Setiap entri memerlukan <code>url</code>, <code>launchCommand</code> (dijalankan di terminal, misalnya untuk memulai aplikasi desktop), atau <code>windowMatch</code> (jendela yang direkam), dan dapat memiliki <code>purpose</code> (<code>app</code>, <code>design</code> atau <code>doc</code>). Memilih target jendela akan menjadikannya sumber perekaman, jadi tidak bisa dilakukan saat sedang merekam. Halaman yang dikunjungi diingat per proyek, hanya di mesin ini (hingga 200).</p>
 
-<!-- @switch-env 5103621352 -->
+<!-- @switch-env 3d0b21e6f6 -->
 ## Membuka dan berpindah lingkungan
 <p>Klik URL tersimpan untuk membukanya. Jika halaman saat ini berada di bawah URL tersimpan lain, Ferret mempertahankan path, query, dan hash, lalu hanya mengganti origin-nya. Misalnya, di <code>http://localhost:3000/pricing?plan=pro</code>, mengklik <code>prd</code> akan membuka <code>https://example.com/pricing?plan=pro</code>.</p>
 <p>Chip yang cocok dengan halaman saat ini (prefiks terpanjang) disorot. Klik kanan chip atau gunakan ikon pensilnya untuk mengedit atau <span class="docs-ui">Hapus</span>. Saat proyek dibuka dan belum ada URL sebelumnya, URL tersimpan pertamanya akan dimuat.</p>
+<p>Chip dikelompokkan menurut jenis: URL aplikasi lebih dulu, lalu desain, lalu dokumen, dengan pemisah dan ikon untuk setiap jenis. Berpindah ke atau dari desain atau dokumen akan membuka URL tersimpannya apa adanya, tanpa membawa path.</p>
+
+<!-- @design-docs b11ff7ba55 -->
+## Meninjau desain dan dokumen, bukan hanya kode
+<p>Umpan balik tidak harus tentang kode. Apa pun yang terbuka di browser bawaan bisa direkam dan ditandai dengan pena dengan cara yang sama: desain Figma atau Penpot, prototipe, spesifikasi di Google Docs atau Notion, dokumen desain di GitHub, PDF. Simpan URL tersebut ke proyek sebelum tinjauan, di samping <code>local</code> dan <code>dev</code>.</p>
+<ol class="docs-steps">
+  <li>Buka <span class="docs-ui">Edit Proyek…</span> dari menu sidebar (atau klik <span class="docs-ui">+</span> di toolbar browser), lalu <span class="docs-ui">Tambah Target</span>.</li>
+  <li>Tempel URL-nya. Tautan <code>figma.com</code> menjadi <span class="docs-ui">Desain</span>, dan tautan <code>docs.google.com</code> atau <code>notion.so</code> menjadi <span class="docs-ui">Dokumen / spesifikasi</span>, dengan nama <code>Figma</code> atau <code>Spec</code>. Ubah jenisnya di <span class="docs-ui">Yang ditinjau</span> jika tebakannya salah (misalnya prototipe di server Anda sendiri).</li>
+  <li>Buka target tersebut dan masuk sekali di browser bawaan jika situsnya memerlukannya. Browser menyimpan cookie-nya antar peluncuran, sehingga Anda tetap masuk.</li>
+  <li>Rekam seperti biasa: bicara, tunjuk, dan gambar di atas desain atau dokumen.</li>
+</ol>
+<p>Temuan yang direkam pada desain atau dokumen diberi label jenis tersebut di Temuan dan di <code>feedback.md</code>, dan instruksi yang dikirim ke agent juga menyebutkannya. Agent lalu mengubah desain atau dokumen, bukan kode:</p>
+<ul>
+  <li>Jika dokumennya ada di dalam proyek (spesifikasi Markdown, ADR), agent mengedit file tersebut.</li>
+  <li>Jika agent tidak bisa mengeditnya (file Figma, Google Doc), agent menandai temuan itu sebagai <span class="docs-ui">Pertanyaan agent</span> beserta perubahan persis yang perlu dibuat, sehingga Anda bisa menerapkannya atau meneruskannya.</li>
+</ul>
+<p>Contoh: saat membaca spesifikasi harga di Google Docs, Anda melingkari tabel paket dan berkata "paket Pro sekarang 9.800 yen, bukan 8.800". <code>feedback.md</code> mencantumkan temuan tersebut di bawah target <code>Spec</code> dengan <code>Kind: document</code>, dan agent menjawab dengan kalimat yang sudah dikoreksi untuk spesifikasi, alih-alih menyentuh kode halaman harga. Rekam spesifikasi dan aplikasi yang berjalan dalam rekaman yang sama, maka temuan dipisahkan per target, sehingga agent bisa memperbarui spesifikasi lebih dulu, lalu kode yang mengimplementasikannya.</p>
+<p>Halaman yang tidak tersimpan di <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> dan host serupa juga dikenali. File di folder proyek (Markdown, Mermaid) ditinjau dari daftar <span class="docs-ui">File</span> di panel <span class="docs-ui">Target tinjauan</span>.</p>

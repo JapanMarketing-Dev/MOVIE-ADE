@@ -4,7 +4,7 @@
  * Range を見て 206 と Content-Range を返し、指摘の時刻へ飛べるようにする。
  */
 import { createReadStream } from 'node:fs'
-import { stat } from 'node:fs/promises'
+import { stat, type FileHandle } from 'node:fs/promises'
 import { Readable } from 'node:stream'
 
 /** `bytes=start-end` を読む。読めない・範囲外は null（全体を返す）、満たせない範囲は 'unsatisfiable' */
@@ -34,6 +34,25 @@ export async function mediaResponse(file: string, rangeHeader: string | null, co
   const { start, end } = range ?? { start: 0, end: size - 1 }
   const body = size > 0 ? Readable.toWeb(createReadStream(file, { start, end })) as ReadableStream<Uint8Array> : null
   const headers: Record<string, string> = { 'Content-Type': contentType, 'Accept-Ranges': 'bytes', 'Content-Length': String(size > 0 ? end - start + 1 : 0) }
+  if (range) headers['Content-Range'] = `bytes ${start}-${end}/${size}`
+  return new Response(body, { status: range ? 206 : 200, headers })
+}
+
+/**
+ * 確かめて開いた FileHandle から返す（パスを開き直さない。security-4 [5]）。
+ * handle は返した Response の本文を読み終えるか中断したときに閉じる（本文が無ければすぐ閉じる）
+ */
+export async function mediaResponseFromHandle(handle: FileHandle, rangeHeader: string | null, contentType: string): Promise<Response> {
+  const { size } = await handle.stat()
+  const range = parseByteRange(rangeHeader, size)
+  if (range === 'unsatisfiable' || size <= 0) {
+    await handle.close()
+    if (range === 'unsatisfiable') return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}`, 'Accept-Ranges': 'bytes' } })
+    return new Response(null, { status: 200, headers: { 'Content-Type': contentType, 'Accept-Ranges': 'bytes', 'Content-Length': '0' } })
+  }
+  const { start, end } = range ?? { start: 0, end: size - 1 }
+  const body = Readable.toWeb(handle.createReadStream({ start, end, autoClose: true })) as ReadableStream<Uint8Array>
+  const headers: Record<string, string> = { 'Content-Type': contentType, 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1) }
   if (range) headers['Content-Range'] = `bytes ${start}-${end}/${size}`
   return new Response(body, { status: range ? 206 : 200, headers })
 }

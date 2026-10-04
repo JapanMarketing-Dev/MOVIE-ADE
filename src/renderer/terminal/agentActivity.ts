@@ -9,7 +9,7 @@ import { useSyncExternalStore } from 'react'
  */
 
 /** ペイン1枚の状態。projectId は未登録のフォルダなら null */
-export interface PaneActivity {
+interface PaneActivity {
   projectId: string | null
   state: string
 }
@@ -19,6 +19,11 @@ export function workingProjectIds(panes: readonly PaneActivity[]): string[] {
   const ids = new Set<string>()
   for (const pane of panes) if (pane.projectId && pane.state === 'working') ids.add(pane.projectId)
   return [...ids].sort()
+}
+
+/** 閉じる前に確かめるべきか: Agent が作業中（working）か確認待ち（blocked）のペインがある（Orca #14817 #24426） */
+export function hasBusyAgent(states: ReadonlyArray<string | undefined>): boolean {
+  return states.some((state) => state === 'working' || state === 'blocked')
 }
 
 let working: readonly string[] = []

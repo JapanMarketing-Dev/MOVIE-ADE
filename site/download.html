@@ -29,8 +29,8 @@
   <link rel="icon" href="favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="apple-touch-icon.png?v=5434b34e">
   <script src="js/theme.js?v=28aec166"></script>
-  <link rel="stylesheet" href="style.css?v=a8bc0e67">
-  <script type="module" src="js/app.js?v=e3a25155"></script>
+  <link rel="stylesheet" href="style.css?v=f7689cba">
+  <script type="module" src="js/app.js?v=97345adf"></script>
 </head>
 <body data-page="download">
   <svg class="sprite" width="0" height="0" aria-hidden="true">
@@ -87,6 +87,13 @@
       <div class="wrap">
         <h1>Download Ferret</h1>
         <p>Free and open source under the MIT License. English by default, Japanese available in Settings.</p>
+        <div class="primary-download" data-primary hidden>
+          <a class="btn btn-lg btn-primary" href="#latest" data-primary-download>
+            <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span data-primary-label>Download</span>
+          </a>
+          <p class="primary-meta" data-primary-meta></p>
+          <p class="primary-hint" data-primary-hint></p>
+        </div>
       </div>
     </section>
 
@@ -99,9 +106,9 @@
       <div class="slots">
         <div class="os-col"><h3><svg class="icon"><use href="#i-monitor"/></svg>macOS</h3><div class="slot" data-slot="mac-arm64"></div><div class="slot" data-slot="mac-x64"></div></div>
         <div class="os-col"><h3><svg class="icon"><use href="#i-monitor"/></svg>Windows</h3><div class="slot" data-slot="win-x64"></div><div class="slot" data-slot="win-arm64"></div></div>
-        <div class="os-col"><h3><svg class="icon"><use href="#i-monitor"/></svg>Linux</h3><div class="slot" data-slot="linux-appimage"></div><div class="slot" data-slot="linux-deb"></div></div>
+        <div class="os-col"><h3><svg class="icon"><use href="#i-monitor"/></svg>Linux</h3><div class="slot" data-slot="linux-deb"></div><div class="slot" data-slot="linux-appimage"></div></div>
       </div>
-      <p class="help">Not sure which Mac you have? Open Apple menu → About This Mac. “Chip: Apple M1” or later means Apple silicon. The Windows and Linux builds are not code-signed yet; <a href="docs/install.html">Install</a> shows the first-launch step.</p>
+      <p class="help">Not sure which Mac you have? Open Apple menu → About This Mac. “Chip: Apple M1” or later means Apple silicon. Steps for each OS: <a href="docs/install.html">Install</a>.</p>
     </section>
 
     <section class="section" id="versions">

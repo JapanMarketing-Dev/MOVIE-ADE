@@ -7,7 +7,7 @@
  * 名前は「その言語自身の表記」と「英語名」。どの画面の言語でも同じ並びで出す（検索しやすいように）。
  */
 
-export interface SttLanguageInfo {
+interface SttLanguageInfo {
   code: string
   /** 英語名 */
   english: string
@@ -174,7 +174,7 @@ const PROVIDER_LANGUAGES: Record<string, readonly string[]> = {
   mistral: ['en', 'es', 'fr', 'pt', 'hi', 'de', 'nl', 'it']
 }
 
-export type SttLanguageSupport = 'supported' | 'unsupported'
+type SttLanguageSupport = 'supported' | 'unsupported'
 
 /** presetId は aiProviders.ts の STT のプリセットの id（'local' は端末内の whisper） */
 export function sttLanguageSupport(presetId: string, code: SttLanguageCode): SttLanguageSupport {

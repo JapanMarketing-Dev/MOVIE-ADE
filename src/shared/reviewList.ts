@@ -6,10 +6,10 @@
  * 既定では指摘0件の下書きとアーカイブを隠し、検索・状態・対象のホストで絞れるようにする。
  */
 
-export type ReviewStatus = 'draft' | 'sent' | 'incomplete' | 'broken'
+type ReviewStatus = 'draft' | 'sent' | 'incomplete' | 'broken'
 
 /** フィルタで選べる状態。開けない（broken）は「未完了」に含める */
-export type ReviewStatusFilter = 'draft' | 'sent' | 'incomplete'
+type ReviewStatusFilter = 'draft' | 'sent' | 'incomplete'
 export const REVIEW_STATUS_FILTERS: readonly ReviewStatusFilter[] = ['draft', 'sent', 'incomplete']
 
 /** 一覧の1件のうち、フィルタと並び替えに使うところ */
@@ -64,7 +64,7 @@ export function isFilterActive(filter: ReviewFilter): boolean {
   return filter.statuses.length > 0 || !filter.hideEmpty || filter.showArchived || filter.host !== null
 }
 
-export function statusGroup(status: ReviewStatus): ReviewStatusFilter {
+function statusGroup(status: ReviewStatus): ReviewStatusFilter {
   return status === 'broken' ? 'incomplete' : status
 }
 

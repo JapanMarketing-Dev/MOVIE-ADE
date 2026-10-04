@@ -1,4 +1,5 @@
-import { WebContentsView, dialog, session, shell, type BaseWindow, type Session, type WebContents } from 'electron'
+import { cleanElectronUserAgent } from './browserUserAgent'
+import { WebContentsView, dialog, session, shell, type BaseWindow, type BrowserWindow, type Session, type WebContents } from 'electron'
 import { join } from 'node:path'
 import { MOBILE_PRESET, type BrowserState, type ViewBounds, type Viewport } from '@shared/types'
 import { t } from '@shared/i18n'
@@ -12,8 +13,9 @@ import {
   isAllowedExternalUrl,
   isPageNavigationAllowed,
   isTabCaptureRequest,
+  isPopupUrlAllowed,
   isTypedNavigationAllowed,
-  windowOpenAction,
+  popupWindowAction,
   type PermissionSessionLike
 } from './webPolicy'
 
@@ -48,12 +50,39 @@ export function browserSession(confirmWindow?: () => BaseWindow | null): Session
     installPermissionPolicy(ses as unknown as PermissionSessionLike,
       (query) => BROWSER_ALLOWED_PERMISSIONS.has(query.permission) || isTabCaptureRequest(query),
       (url, origin) => void openExternalFromPage(url, origin))
+    // Google などのログインに断られないよう、Chrome と同じ形の UA にする（browserUserAgent.ts）
+    ses.setUserAgent(cleanElectronUserAgent(ses.getUserAgent()))
   }
   if (confirmWindow) confirmWindowOf = confirmWindow
   return ses
 }
 
 let confirmWindowOf: () => BaseWindow | null = () => null
+
+/** E2E の非表示実行（ADE_E2E=1 で ADE_E2E_SHOW が無い）ではポップアップを画面に出さない */
+const HIDE_POPUPS = process.env.ADE_E2E === '1' && process.env.ADE_E2E_SHOW !== '1'
+
+/**
+ * ログインのポップアップの子ウインドウ。内蔵ブラウザと同じ永続の session（ログインがそのまま残る）で、
+ * ページのスクリプトに Node は渡さない（sandbox・contextIsolation・nodeIntegration なし）
+ */
+function popupWindowOptions(): Electron.BrowserWindowConstructorOptions {
+  return {
+    width: 520,
+    height: 680,
+    show: false,
+    autoHideMenuBar: true,
+    webPreferences: {
+      partition: PARTITION,
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+      nodeIntegrationInSubFrames: false,
+      webSecurity: true,
+      webviewTag: false
+    }
+  }
+}
 
 /** 表示中のページが別のアプリ（mailto など）を開こうとした。許可リストのものだけ、確認してから渡す */
 const openExternalFromPage = createExternalOpener({
@@ -151,14 +180,18 @@ export class EmbeddedBrowser {
 
     const wc = view.webContents
 
-    // 新規ウィンドウは開かず、同じビューで遷移させる。別のアプリへは mailto だけを、確認してから渡す。
+    // ログインのポップアップ（window.open に大きさを指定したもの。Google でログインなど）だけは、同じセッションの子ウインドウで開く。
+    // opener を保つので、ログインが終わってポップアップが閉じれば元のページに結果が届く（webPolicy.ts の popupWindowAction）。
+    // それ以外の新規ウィンドウ（target=_blank のリンクなど）は開かず、同じビューで遷移させる。別のアプリへは mailto だけを、確認してから渡す。
     // file: data: javascript: や独自スキームは何もしない（ページから OS の URL ハンドラを呼ばせない）
-    wc.setWindowOpenHandler(({ url }) => {
-      const action = windowOpenAction(url)
-      if (action === 'in-app') void wc.loadURL(url).catch(() => undefined)
-      else if (action === 'external') void openExternalFromPage(url, wc.getURL())
+    wc.setWindowOpenHandler((details) => {
+      const action = popupWindowAction(details)
+      if (action === 'popup') return { action: 'allow', overrideBrowserWindowOptions: popupWindowOptions() }
+      if (action === 'in-app') void wc.loadURL(details.url).catch(() => undefined)
+      else if (action === 'external') void openExternalFromPage(details.url, wc.getURL())
       return { action: 'deny' }
     })
+    wc.on('did-create-window', (child) => this.guardPopup(child))
     // ページが始めた遷移（リンク・location の書き換え）。行けない先は止め、mailto は確認へ回す
     wc.on('will-navigate', (event) => {
       if (isPageNavigationAllowed(event.url, wc.getURL())) return
@@ -374,7 +407,34 @@ export class EmbeddedBrowser {
    * `removeChildView` + `webContents.close()` が重なると二重破棄になりうる。
    * 終了時のビューの後始末は Electron に任せる。
    */
+  /** 開いているログインのポップアップ。ビューを破棄するときに閉じる */
+  private popups = new Set<BrowserWindow>()
+
+  /**
+   * ログインのポップアップに決まりを当てる。行けるのは https と手元の開発サーバーだけ（isPopupUrlAllowed）。
+   * ポップアップの中からさらに開こうとしたものは、行ける先ならポップアップの中で開き、ほかは断る
+   */
+  private guardPopup(child: BrowserWindow): void {
+    this.popups.add(child)
+    child.once('closed', () => this.popups.delete(child))
+    child.setMenuBarVisibility(false)
+    const pwc = child.webContents
+    pwc.setWindowOpenHandler(({ url }) => {
+      if (isPopupUrlAllowed(url)) void pwc.loadURL(url).catch(() => undefined)
+      return { action: 'deny' }
+    })
+    const guard = (event: { url: string; preventDefault: () => void }) => {
+      if (!isPopupUrlAllowed(event.url)) event.preventDefault()
+    }
+    pwc.on('will-navigate', guard)
+    pwc.on('will-redirect', guard)
+    // E2E の非表示実行では出さない（Playwright からは見える）
+    if (!HIDE_POPUPS) child.once('ready-to-show', () => { if (!child.isDestroyed()) child.show() })
+  }
+
   dispose(): void {
+    for (const popup of this.popups) if (!popup.isDestroyed()) popup.close()
+    this.popups.clear()
     const view = this.view
     this.view = null
     this.rendererReady = false
@@ -394,7 +454,7 @@ export class EmbeddedBrowser {
 }
 
 /** スキームを補ったあとも URL として読めるか（ホスト名に空白を含む入力などを弾く） */
-export function isNavigableUrl(url: string): boolean {
+function isNavigableUrl(url: string): boolean {
   try {
     new URL(url)
     return true
@@ -405,7 +465,7 @@ export function isNavigableUrl(url: string): boolean {
 }
 
 /** Chromium のエラー番号を、利用者向けの短い文にする */
-export function loadErrorMessage(code: number): string {
+function loadErrorMessage(code: number): string {
   // -102 接続拒否 / -105 名前解決失敗 / -106 オフライン / -118 タイムアウト / -109 到達不可 / -312 禁止ポート
   if (code === -102 || code === -109 || code === -118) {
     return t('browser.errors.connectionRefused')

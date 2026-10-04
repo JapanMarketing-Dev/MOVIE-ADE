@@ -113,7 +113,7 @@ export function buildDraft(material: Material, options: Partial<DraftOptions> = 
  * その時刻に開いていたページ（直前の遷移の pageKey）を返す関数。遷移が無ければ ''。
  * ハッシュのアンカーだけの移動は同じページ（page.ts）。
  */
-export function pageLookup(events: Event[]): (t: number) => string {
+function pageLookup(events: Event[]): (t: number) => string {
   const navs = events.filter((e): e is NavEvent => e.type === 'nav').sort((a, b) => a.t - b.t)
   return (t) => {
     let key = ''

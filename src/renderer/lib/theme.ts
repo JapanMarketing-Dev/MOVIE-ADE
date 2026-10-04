@@ -83,7 +83,7 @@ function emit(): void {
   for (const listener of listeners) listener()
 }
 
-export function setThemePreference(next: ThemePreference): void {
+function setThemePreference(next: ThemePreference): void {
   preference = next
   emit()
   // ライト／ダークは即座に反映する。system は main が themeSource を戻したあと、

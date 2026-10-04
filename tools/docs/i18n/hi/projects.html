@@ -20,14 +20,15 @@
 <p>डिफ़ॉल्ट नाम फ़ोल्डर का नाम होता है। पहले से रजिस्टर किया गया फ़ोल्डर जोड़ने पर वही खुल जाता है (macOS और Windows पर paths की तुलना बड़े-छोटे अक्षरों का फ़र्क किए बिना होती है)। साइडबार मेन्यू से आप किसी प्रोजेक्ट का <span class="docs-ui">नाम बदलें</span> या उसे <span class="docs-ui">सूची से हटाएँ</span> कर सकते हैं। हटाने से फ़ोल्डर कभी डिलीट नहीं होता।</p>
 <p>टर्मिनल प्रोजेक्ट फ़ोल्डर में खुलते हैं, और reviews <code>&lt;project&gt;/.ferret/</code> के अंदर सेव होते हैं।</p>
 
-<!-- @save-url 8914160725 -->
+<!-- @save-url 553542e405 -->
 ## URL सेव करें
 <ol class="docs-steps">
   <li>बिल्ट-इन ब्राउज़र में पेज खोलें।</li>
   <li>ब्राउज़र टूलबार में <span class="docs-ui">+</span> (<span class="docs-ui">मौजूदा URL सेव करें</span>) पर क्लिक करें। मौजूदा URL पहले से भरा होता है।</li>
   <li><span class="docs-ui">नाम</span> डालें और <span class="docs-ui">सेव करें</span> पर क्लिक करें।</li>
 </ol>
-<p>सिर्फ़ <code>http://</code> और <code>https://</code> URL स्वीकार किए जाते हैं। अगर आप सुझाया गया नाम ही रहने दें, तो नाम host से अनुमान लगाया जाता है:</p>
+<p>हर सेव किए गए URL का <span class="docs-ui">क्या review कर रहे हैं</span> में एक प्रकार होता है: <span class="docs-ui">ऐप</span> (जो ऐप आप बना रहे हैं), <span class="docs-ui">डिज़ाइन</span> (Figma, Penpot, Canva, कोई prototype) या <span class="docs-ui">दस्तावेज़ / spec</span> (Google Docs, Notion, Confluence, GitHub पर Markdown spec, PDF)। प्रकार URL से अनुमान लगाया जाता है और आप उसे बदल सकते हैं। <a href="#design-docs">सिर्फ़ code नहीं, design और दस्तावेज़ों का भी review करें</a> देखें।</p>
+<p>सिर्फ़ <code>http://</code> और <code>https://</code> URL स्वीकार किए जाते हैं। ऐप वाले URL के लिए, अगर आप सुझाया गया नाम ही रहने दें, तो नाम host से अनुमान लगाया जाता है:</p>
 <table>
   <thead><tr><th>Host</th><th>नाम</th></tr></thead>
   <tbody>
@@ -37,9 +38,9 @@
     <tr><td>बाकी सब</td><td><code>prd</code></td></tr>
   </tbody>
 </table>
-<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="ब्राउज़र टूलबार में सेव किए गए URL (screenshot जल्द आ रहा है)"><span>Screenshot जल्द आ रहा है</span></div><figcaption>ब्राउज़र टूलबार में सेव किए गए URL</figcaption></figure>
+{{shot:url-presets|ब्राउज़र टूलबार में सेव किए गए URL}}
 
-<!-- @review-targets 351621051d -->
+<!-- @review-targets 7edd1985ee -->
 ## Review targets पैनल
 {{clip:targets|रिकॉर्डिंग रोके बिना review targets और पेज बदलना।}}
 <p>Feedback मोड में, दाईं ओर का <span class="docs-ui">Review targets</span> पैनल मौजूदा प्रोजेक्ट में review की जा सकने वाली हर चीज़ की सूची दिखाता है। Target बदलने से रिकॉर्डिंग नहीं रुकती। पैनल को <span class="docs-ui">दृश्य → Review targets टॉगल करें</span> ({{keys:Mod+Shift+K}}) या <span class="docs-ui">पैनल छिपाएँ</span> से टॉगल करें।</p>
@@ -48,9 +49,27 @@
   <li><strong><span class="docs-ui">फ़ाइलें</span></strong>: प्रोजेक्ट फ़ोल्डर। फ़ाइल प्रीव्यू के रूप में खुलती है (Markdown और Mermaid render होकर, बाकी टेक्स्ट सिर्फ़ पढ़ने के लिए), ताकि आप दस्तावेज़ों का भी review कर सकें। पेंसिल (<span class="docs-ui">editor में खोलें</span>) उसे editor में खोलती है।</li>
 </ul>
 <p><span class="docs-ui">targets फ़िल्टर करें</span> targets, पेज और फ़ाइलें, तीनों को एक साथ फ़िल्टर करता है, <span class="docs-ui">फ़ाइल पर जाएँ…</span> जैसी ही fuzzy matching के साथ। सूची में <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> या <kbd>1</kbd>–<kbd>9</kbd> से targets बदलते हैं। <span class="docs-ui">URL खोलें…</span> एक बार के लिए कोई URL खोलता है, और <span class="docs-ui">प्रोजेक्ट URL में सहेजें</span> उसे रख लेता है।</p>
-<p>Targets <code>settings.json</code> के <code>projects[].urls</code> से आते हैं (<a href="settings-json.html#example">उदाहरण</a> देखें)। हर entry में एक <code>url</code>, एक <code>launchCommand</code> (टर्मिनल में चलता है, जैसे कोई डेस्कटॉप ऐप शुरू करने के लिए), या एक <code>windowMatch</code> (रिकॉर्ड की जाने वाली विंडो) होना चाहिए। विंडो वाला target चुनने पर वह रिकॉर्डिंग का source बन जाता है, इसलिए यह रिकॉर्डिंग के दौरान नहीं किया जा सकता। देखे गए पेज हर प्रोजेक्ट के लिए सिर्फ़ इसी मशीन पर याद रखे जाते हैं (अधिकतम 200)।</p>
+<p>Targets <code>settings.json</code> के <code>projects[].urls</code> से आते हैं (<a href="settings-json.html#example">उदाहरण</a> देखें)। हर entry में एक <code>url</code>, एक <code>launchCommand</code> (टर्मिनल में चलता है, जैसे कोई डेस्कटॉप ऐप शुरू करने के लिए), या एक <code>windowMatch</code> (रिकॉर्ड की जाने वाली विंडो) होना चाहिए, और उसमें एक <code>purpose</code> (<code>app</code>, <code>design</code> या <code>doc</code>) भी हो सकता है। विंडो वाला target चुनने पर वह रिकॉर्डिंग का source बन जाता है, इसलिए यह रिकॉर्डिंग के दौरान नहीं किया जा सकता। देखे गए पेज हर प्रोजेक्ट के लिए सिर्फ़ इसी मशीन पर याद रखे जाते हैं (अधिकतम 200)।</p>
 
-<!-- @switch-env 5103621352 -->
+<!-- @switch-env 3d0b21e6f6 -->
 ## Environments खोलें और बदलें
 <p>सेव किए गए URL को खोलने के लिए उस पर क्लिक करें। अगर मौजूदा पेज किसी दूसरे सेव किए गए URL के अंतर्गत है, तो Ferret path, query और hash वैसे ही रखता है और सिर्फ़ origin बदलता है। उदाहरण के लिए, <code>http://localhost:3000/pricing?plan=pro</code> पर <code>prd</code> क्लिक करने से <code>https://example.com/pricing?plan=pro</code> खुलता है।</p>
 <p>मौजूदा पेज से मेल खाने वाला chip (सबसे लंबा prefix) हाइलाइट होता है। किसी chip को संपादित करने या <span class="docs-ui">हटाएँ</span> के लिए उस पर right-click करें या उसका पेंसिल आइकन इस्तेमाल करें। जब कोई प्रोजेक्ट खुलता है और पिछला कोई URL नहीं होता, तो उसका पहला सेव किया गया URL लोड होता है।</p>
+<p>Chips प्रकार के हिसाब से समूहों में दिखते हैं: पहले ऐप URL, फिर design, फिर दस्तावेज़, हर प्रकार के लिए एक divider और एक आइकन के साथ। किसी design या दस्तावेज़ पर जाने या वहाँ से लौटने पर उसका सेव किया गया URL जैसा है वैसा ही खुलता है, path साथ नहीं ले जाया जाता।</p>
+
+<!-- @design-docs b11ff7ba55 -->
+## सिर्फ़ code नहीं, design और दस्तावेज़ों का भी review करें
+<p>Feedback का code के बारे में होना ज़रूरी नहीं है। बिल्ट-इन ब्राउज़र में खुलने वाली हर चीज़ को इसी तरह रिकॉर्ड किया जा सकता है और pen से चिह्नित किया जा सकता है: Figma या Penpot का design, कोई prototype, Google Docs या Notion में कोई spec, GitHub पर कोई design doc, कोई PDF। Review से पहले इन URLs को <code>local</code> और <code>dev</code> के साथ प्रोजेक्ट में सेव करें।</p>
+<ol class="docs-steps">
+  <li>साइडबार मेन्यू से <span class="docs-ui">प्रोजेक्ट संपादित करें…</span> खोलें (या ब्राउज़र टूलबार में <span class="docs-ui">+</span> पर क्लिक करें) और <span class="docs-ui">Target जोड़ें</span> चुनें।</li>
+  <li>URL paste करें। <code>figma.com</code> का link <span class="docs-ui">डिज़ाइन</span> बनता है और <code>docs.google.com</code> या <code>notion.so</code> का link <span class="docs-ui">दस्तावेज़ / spec</span>, जिनके नाम <code>Figma</code> या <code>Spec</code> होते हैं। अगर अनुमान गलत हो (जैसे आपके अपने server पर कोई prototype), तो <span class="docs-ui">क्या review कर रहे हैं</span> में प्रकार बदलें।</li>
+  <li>Target खोलें और अगर साइट को ज़रूरत हो तो बिल्ट-इन ब्राउज़र में एक बार साइन इन करें। ब्राउज़र launches के बीच अपनी cookies रखता है, इसलिए आप साइन इन रहते हैं।</li>
+  <li>हमेशा की तरह रिकॉर्ड करें: बोलें, इशारा करें, design या दस्तावेज़ पर draw करें।</li>
+</ol>
+<p>किसी design या दस्तावेज़ पर रिकॉर्ड किए गए findings पर Findings और <code>feedback.md</code> में उसी प्रकार का label लगता है, और agent को भेजा गया निर्देश भी यह बताता है। तब agent code के बजाय design या दस्तावेज़ बदलता है:</p>
+<ul>
+  <li>अगर दस्तावेज़ प्रोजेक्ट में है (कोई Markdown spec, कोई ADR), तो agent उस फ़ाइल को संपादित करता है।</li>
+  <li>अगर वह उसे संपादित नहीं कर सकता (कोई Figma फ़ाइल, कोई Google Doc), तो agent उस finding को करने वाले सटीक बदलाव के साथ <span class="docs-ui">Agent का सवाल</span> के रूप में चिह्नित करता है, ताकि आप उसे लागू कर सकें या आगे भेज सकें।</li>
+</ul>
+<p>उदाहरण: Google Docs में pricing spec पढ़ते हुए आप plan table पर गोला बनाते हैं और कहते हैं "Pro plan अब 8,800 नहीं, 9,800 yen है"। <code>feedback.md</code> उस finding को <code>Spec</code> target के अंतर्गत <code>Kind: document</code> के साथ सूचीबद्ध करता है, और agent pricing पेज के code को छूने के बजाय spec के लिए सुधरा हुआ वाक्य देता है। Spec और चलते हुए ऐप को एक ही रिकॉर्डिंग में रिकॉर्ड करें, तो findings target के हिसाब से बँट जाते हैं, ताकि agent पहले spec और फिर उसे लागू करने वाला code अपडेट कर सके।</p>
+<p><code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> और ऐसे ही hosts के बिना सेव किए पेज भी पहचाने जाते हैं। प्रोजेक्ट फ़ोल्डर की फ़ाइलों (Markdown, Mermaid) का review <span class="docs-ui">Review targets</span> पैनल की <span class="docs-ui">फ़ाइलें</span> सूची से होता है।</p>

@@ -1,8 +1,9 @@
 import { LinuxTreeWatcher } from './linuxTreeWatch'
 import { spawn } from 'node:child_process'
 import { FileTooLargeError, NotRegularFileError, readFileBounded } from './boundedFile'
-import { constants, existsSync, watch, type FSWatcher } from 'node:fs'
-import { readdir, realpath, stat, writeFile } from 'node:fs/promises'
+import { assertHandleInside, createContained, openContained } from './containedFile'
+import { existsSync, watch, type FSWatcher } from 'node:fs'
+import { opendir, readdir, realpath, stat, type FileHandle } from 'node:fs/promises'
 import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import {
   MAX_LISTED_FILES,
@@ -39,6 +40,12 @@ import { progressChangedIds } from '@shared/findingProgress'
 function outsideMessage(): string {
   return t('files.errors.outside')
 }
+
+/**
+ * 1つのフォルダで一覧に出す項目の上限（security-4 [9]）。プロジェクトを開くと根の一覧は自動で読むので、
+ * 項目が極端に多いフォルダでも読む・並べる・送る量をここで止める（Quick Open の MAX_LISTED_FILES と同じ考え）
+ */
+export const MAX_DIRECTORY_ENTRIES = 5000
 
 /** ファイル名の検索で返す上限 */
 const MAX_NAME_MATCHES = 500
@@ -96,9 +103,13 @@ function toRel(root: string, absolute: string): string {
 
 export async function listDirectory(root: string, relDir: string): Promise<FsEntry[]> {
   const dir = await resolveInside(root, relDir)
-  const dirents = await readdir(dir, { withFileTypes: true })
+  // 全部を一度に読まず、上限まで順に読む（readdir は全項目の配列を作る）
+  const handle = await opendir(dir)
   const entries: FsEntry[] = []
-  for (const dirent of dirents) {
+  let seen = 0
+  for await (const dirent of handle) {
+    // for await を抜けると opendir の Dir は閉じる
+    if (++seen > MAX_DIRECTORY_ENTRIES) break
     const absolute = join(dir, dirent.name)
     let kind: FsEntry['kind'] | null = dirent.isDirectory() ? 'directory' : dirent.isFile() ? 'file' : null
     if (dirent.isSymbolicLink()) {
@@ -144,7 +155,8 @@ export async function readTextFile(root: string, relPath: string): Promise<FsRea
   // 普通のファイルだけを、上限までしか読まない（パイプを開いて止まらない・読んでいる間に伸びても止まる。boundedFile.ts）
   let buffer: Buffer
   try {
-    buffer = await readFileBounded(file, MAX_TEXT_FILE_SIZE)
+    // 開いたものが確かめたプロジェクトの中の実体かを見る（security-4 [5]）
+    buffer = await readFileBounded(file, MAX_TEXT_FILE_SIZE, { afterOpen: (handle) => assertHandleInside(handle, root, file) })
   } catch (err) {
     if (err instanceof FileTooLargeError) {
       return { kind: 'tooLarge', path, size: err.sizeBytes ?? info.size, reason: t('files.errors.tooLarge', { size: ((err.sizeBytes ?? info.size) / 1024 / 1024).toFixed(1), limit: MAX_TEXT_FILE_SIZE / 1024 / 1024 }) }
@@ -164,10 +176,37 @@ export async function writeTextFile(root: string, relPath: string, content: stri
   const existing = await stat(file).catch((err: NodeJS.ErrnoException) => { if (err.code === 'ENOENT') return null; throw err })
   if (existing?.isDirectory()) throw new UserFacingError(t('files.errors.folder'))
   if (existing && !existing.isFile()) throw new UserFacingError(t('files.errors.notRegular'))
-  // 上書きで中身を差し替える（rename で置き換えるとリンクや権限が変わり、監視も途切れる）。
-  // O_NONBLOCK: 確かめたあとにパイプへ差し替えられても、開くところで止まらない
-  await writeFile(file, content, { encoding: 'utf8', flag: constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | ((constants as { O_NONBLOCK?: number }).O_NONBLOCK ?? 0) })
-  return { mtimeMs: (await stat(file)).mtimeMs }
+  // 開いたものがプロジェクトの中の実体かを確かめてから書く（確かめたあとでリンクに差し替えられても外へ書かない。security-4 [5]）。
+  // 上書きで中身を差し替える（rename で置き換えるとリンクや権限が変わり、監視も途切れる）
+  const handle = await openForWrite(root, file)
+  try {
+    const info = await handle.stat()
+    if (!info.isFile()) throw new UserFacingError(t('files.errors.notRegular'))
+    await handle.truncate(0)
+    // 開いたばかりの fd の位置は 0。writeFile は全部を書き切るまで続ける
+    await handle.writeFile(content, 'utf8')
+    return { mtimeMs: (await handle.stat()).mtimeMs }
+  } finally {
+    await handle.close()
+  }
+}
+
+/** 既にあれば確かめて開き、無ければ確かめた親の下に作る（作るあいだに作られたら、もう一度開く） */
+async function openForWrite(root: string, file: string): Promise<FileHandle> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await openContained(root, file, 'write')
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      if (code === 'EISDIR') throw new UserFacingError(t('files.errors.folder'))
+      if (code !== 'ENOENT' || attempt > 0) throw err
+    }
+    try {
+      return await createContained(root, file)
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
+    }
+  }
 }
 
 // ─── rg ─────────────────────────────────────────────
@@ -290,6 +329,9 @@ const CHANGE_BATCH_MS = 150
 const MAX_PENDING_PATHS = 1000
 /** これを超える通知が1回のまとまりで来たら、通知の嵐として控える */
 const WATCH_BURST_EVENTS = 2000
+/** 監視がエラーで止まったとき、張り直すまでの待ち（回を追うごとに倍）と回数の上限 */
+const REWATCH_DELAY_MS = 2000
+const REWATCH_MAX_ATTEMPTS = 5
 
 export class ProjectWatcher {
   private watcher: FSWatcher | LinuxTreeWatcher | null = null
@@ -299,13 +341,16 @@ export class ProjectWatcher {
   private timer: NodeJS.Timeout | null = null
   /** このまとまりで届いた通知の数と、最初の通知の時刻（ビルドや npm install の通知の嵐を、main の停止の手がかりに残す） */
   private burst = { events: 0, since: 0 }
+  /** 監視がエラーで止まったあとの張り直し（Orca #17878 #24044: 止まったまま外部の変更が届かなくなる） */
+  private rewatch: { timer: NodeJS.Timeout | null; attempts: number } = { timer: null, attempts: 0 }
 
   constructor(private readonly onChange: (event: FsChangedEvent) => void,
     /** Agent が .ferret/reviews/<id>/progress.json を書いたとき（指摘の進み具合。@shared/findingProgress） */
     private readonly onReviewProgress?: (ids: string[]) => void) {}
 
-  watch(root: string | null): void {
+  watch(root: string | null, attempt = 0): void {
     this.close()
+    this.rewatch.attempts = attempt
     if (!root) return
     try {
       const onEvent = (_event: string, filename: string | Buffer | null): void => {
@@ -326,8 +371,17 @@ export class ProjectWatcher {
       this.watcher = process.platform === 'linux'
         ? new LinuxTreeWatcher(root, onEvent, (err) => reportHandled(err, { area: 'files', op: 'watch project folder (limit)' }))
         : watch(root, { recursive: true }, onEvent)
-      // 監視できなくなっても（フォルダの削除など）アプリは止めない
-      this.watcher.on('error', () => this.close())
+      // 監視できなくなっても（フォルダの削除など）アプリは止めない。フォルダがまだあれば、間を空けて張り直す
+      this.watcher.on('error', (err: unknown) => {
+        this.close()
+        reportHandled(err, { area: 'files', op: 'project watcher stopped' })
+        if (attempt >= REWATCH_MAX_ATTEMPTS) return
+        this.rewatch.timer = setTimeout(() => {
+          this.rewatch.timer = null
+          if (existsSync(root)) this.watch(root, attempt + 1)
+        }, REWATCH_DELAY_MS * 2 ** attempt)
+        this.rewatch.timer.unref?.()
+      })
     } catch (err) {
       console.warn('[files] フォルダの変更を見張れません', err)
       reportHandled(err, { area: 'files', op: 'watch project folder' })
@@ -338,6 +392,8 @@ export class ProjectWatcher {
   close(): void {
     this.watcher?.close()
     this.watcher = null
+    if (this.rewatch.timer) clearTimeout(this.rewatch.timer)
+    this.rewatch.timer = null
     if (this.timer) clearTimeout(this.timer)
     this.timer = null
     this.pending.clear()

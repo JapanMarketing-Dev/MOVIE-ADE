@@ -3,8 +3,8 @@ import { Columns2, Plus, Rows2, SquareTerminal, X } from 'lucide-react'
 import { TUI_AGENT_LABEL, type AccountLoginRequest, type AgentOption, type Project, type TuiAgent } from '@shared/types'
 import { SHORTCUTS, formatShortcut } from '../lib/shortcut'
 import { Button, EmptyState, IconTile } from '../ui'
-import { acquireTerminal, getTerminal, releaseTerminal } from '../terminal/terminalClient'
-import { publishAgentActivity } from '../terminal/agentActivity'
+import { acquireTerminal, getTerminal, holdPtyResize, releaseTerminal } from '../terminal/terminalClient'
+import { hasBusyAgent, publishAgentActivity } from '../terminal/agentActivity'
 import { onAccountLoginRequest } from '../lib/accountLogin'
 import { onTerminalCommandRequest } from '../lib/terminalCommand'
 import { onAgentLaunchRequest } from '../lib/agentLaunchRequest'
@@ -393,6 +393,14 @@ export function TerminalPane({
     [tabs, releasePane]
   )
 
+  /**
+   * 利用者が閉じる（× や ⌘W）とき、Agent が作業中・確認待ちのペインがあれば確かめる。
+   * 確認なしに閉じると、動いている Agent ごと止まり作業が失われる（Orca #14817 #24426）
+   */
+  const confirmCloseRunning = useCallback((keys: string[]) => {
+    return !hasBusyAgent(keys.map((key) => panes[key]?.state)) || window.confirm(tNow('terminal.confirmCloseRunning'))
+  }, [panes])
+
   /** ペインを閉じる。最後の1枚ならタブごと閉じる（Orca の closeActivePane と同じ） */
   const closePane = useCallback(
     (tabKey: string, paneKey: string) => {
@@ -670,9 +678,14 @@ export function TerminalPane({
   useEffect(() => {
     let stopped = false
     const update = async () => {
+      // 最小化・裏に隠れている間は問い合わせない。Windows ではそのたびに PowerShell でプロセス一覧を取るので、
+      // ほかのアプリを使っている間（フォーカスが無い間）も止める（Orca #10686 #12288。戻れば1秒以内に取り直す）
+      if (document.visibilityState === 'hidden' || (window.ade.platform === 'win32' && !document.hasFocus())) return
       const states = await Promise.all(Object.keys(panesRef.current).map(async (key) => {
-        const id = getTerminal(key)?.ptyId
+        const handle = getTerminal(key)
+        const id = handle?.ptyId
         const result = id ? await window.ade.invoke('terminal:agentState', id).catch(() => null /* 終了済み（想定内） */) : null
+        if (handle) handle.agentForeground = !!result && result.kind !== 'unknown'
         return [key, (result?.state ?? 'unknown') as AgentState] as const
       }))
       if (stopped) return
@@ -725,13 +738,13 @@ export function TerminalPane({
       close: () => {
         const focused = sectionRef.current?.contains(document.activeElement) ?? false
         if (!focused && !window.dispatchEvent(new CustomEvent(CLOSE_REQUEST_EVENT, { cancelable: true }))) return
-        if (activeTab) closePane(activeTab.key, activeTab.activePane)
+        if (activeTab && confirmCloseRunning([activeTab.activePane])) closePane(activeTab.key, activeTab.activePane)
       }
     }
     return () => {
       commandRef.current = null
     }
-  }, [commandRef, addTab, closePane, activeTab])
+  }, [commandRef, addTab, closePane, activeTab, confirmCloseRunning])
 
   // アンマウント時（＝アプリ終了）にPTYを残さない
   useEffect(
@@ -999,7 +1012,8 @@ export function TerminalPane({
                 </span>
               )}
               {/* 通し番号は main が title に含めている（例「1: zsh」）。ここでは足さない */}
-              <span className="terminal-tab__title">{title}</span>
+              {/* 省略されても全体を読めるように（Orca #2966） */}
+              <span className="terminal-tab__title" title={title}>{title}</span>
               {ids.length > 1 && (
                 <span className="terminal-tab__count" title={t('terminal.splitInto', { count: ids.length })}>
                   {ids.length}
@@ -1012,7 +1026,7 @@ export function TerminalPane({
                 title={t('terminal.closeTab')}
                 onClick={(event) => {
                   event.stopPropagation()
-                  closeTab(tab.key)
+                  if (confirmCloseRunning(leafIds(tab.layout))) closeTab(tab.key)
                 }}
               >
                 <X size={12} strokeWidth={2} />
@@ -1139,6 +1153,7 @@ function PaneDivider({ vertical, onRatio }: { vertical: boolean; onRatio: (ratio
     let frame = 0
     divider.setPointerCapture(event.pointerId)
     setDragging(true)
+    holdPtyResize(true)
     const onMove = (move: PointerEvent) => {
       const offset = (vertical ? move.clientX : move.clientY) - start - DIVIDER_HIT_SIZE / 2
       cancelAnimationFrame(frame)
@@ -1149,6 +1164,7 @@ function PaneDivider({ vertical, onRatio }: { vertical: boolean; onRatio: (ratio
       divider.removeEventListener('pointerup', onEnd)
       divider.removeEventListener('pointercancel', onEnd)
       setDragging(false)
+      holdPtyResize(false)
     }
     divider.addEventListener('pointermove', onMove)
     divider.addEventListener('pointerup', onEnd)
@@ -1166,6 +1182,8 @@ function PaneDivider({ vertical, onRatio }: { vertical: boolean; onRatio: (ratio
         ['--divider-extension' as string]: `${DIVIDER_HIT_SIZE / 2}px`
       }}
       onPointerDown={onPointerDown}
+      // ダブルクリックで半分ずつに戻す（Orca #9644）
+      onDoubleClick={() => onRatio(0.5)}
       data-testid="terminal-divider"
     />
   )

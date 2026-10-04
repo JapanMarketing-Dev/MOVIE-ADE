@@ -19,7 +19,7 @@ export const STAR_PROMPT_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000
 /** 生涯で出す回数の上限 */
 export const STAR_PROMPT_MAX_SHOWS = 3
 /** 完成したレビューの数がこの値に達したときに出す（Orca の「しきい値を倍にしていく」を固定の段にしたもの） */
-export const STAR_PROMPT_REVIEW_MILESTONES: readonly number[] = [3, 10, 30]
+const STAR_PROMPT_REVIEW_MILESTONES: readonly number[] = [3, 10, 30]
 
 /** state.json に置く状態。設定ではないので settings.json には出さない */
 export interface StarPromptState {

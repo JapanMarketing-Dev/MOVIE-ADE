@@ -1,11 +1,11 @@
-import { BrowserWindow, ipcMain, nativeImage, type NativeImage, type WebContents } from 'electron'
+import { BrowserWindow, ipcMain, nativeImage, type NativeImage, type Streams, type WebContents } from 'electron'
 import { constants, createWriteStream, type WriteStream } from 'node:fs'
 import { open } from 'node:fs/promises'
-import { join } from 'node:path'
 import type { AudioLevel, PcmBlock, RecordingOptions } from './types'
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import { reportHandled } from '@shared/report'
+import { systemAudioUnsupported } from '@shared/systemAudio'
 
 /**
  * 録画用の非表示ウィンドウ（設計4章）。
@@ -20,7 +20,7 @@ import { reportHandled } from '@shared/report'
  */
 
 /** main ⇄ 録画ウィンドウ のチャネル。アプリ本体のIPCとは混ぜない */
-export const RECORDER_CHANNELS = {
+const RECORDER_CHANNELS = {
   start: 'ade-recorder:start',
   pause: 'ade-recorder:pause',
   resume: 'ade-recorder:resume',
@@ -43,27 +43,51 @@ export const RECORDER_CHANNELS = {
  */
 export type VideoSource = { kind: 'tab'; contents: WebContents } | { kind: 'desktop'; sourceId: string }
 
-export interface RecorderWindowHandlers {
+interface RecorderWindowHandlers {
   onPcm(block: PcmBlock): void
   onLevel(level: AudioLevel): void
   onError(message: string): void
 }
 
+type RecorderMessageKey = 'videoEnded' | 'videoFailed' | 'micFailed' | 'systemAudioFailed' | 'systemAudioDenied' | 'systemAudioNoDevice' | 'systemAudioEnded' | 'noAudioTrack'
+
 interface StartPayload {
   sourceKind: 'tab' | 'desktop'
   sourceId: string
   startedAtEpoch: number
+  /** process.platform。相手の声を取り込む方法を OS で変える */
+  platform: string
   captureMic: boolean
   syntheticMicWavBase64?: string
   syntheticMic: boolean
   captureSystemAudio: boolean
+  /** 検証用（ADE_E2E=1 のときだけ）。相手の声の取り込みをこの時間(ms)で止める */
+  systemAudioEndAfterMs?: number
+  /** 検証用。OS の取り込み（ループバック）を使わない。古い取り込み方に逃げない */
+  systemAudioSynthetic: boolean
   micDeviceId?: string
   videoBitsPerSecond: number
   videoMaxWidth: number
   videoMaxFrameRate: number
   videoTimesliceMs: number
   /** 録画ウィンドウが出すエラーの文。画面の言語で main が組み立てて渡す（録画ウィンドウは辞書を持たない） */
-  messages: Record<'videoEnded' | 'videoFailed' | 'micFailed' | 'systemAudioFailed' | 'noAudioTrack', string>
+  messages: Record<RecorderMessageKey, string>
+}
+
+/**
+ * 相手の声を何から取るか（getDisplayMedia への答え）。
+ * - loopback: PC の音声（OS のループバック）
+ * - page: 内蔵ブラウザのページの音（検証用。OS の許可が要らない）
+ * - deny: 断る（検証用。OS が許可しなかったとき）
+ * - silent: 音声を付けない（検証用。音声の出力先が無いとき）
+ */
+type SystemAudioPlan = { kind: 'loopback' } | { kind: 'page'; contents: WebContents } | { kind: 'deny' } | { kind: 'silent' }
+
+/** 相手の声の文（画面の言語）。許可の案内は OS ごとに違う */
+function systemAudioDeniedMessage(platform: string): string {
+  if (platform === 'darwin') return t('recorder.systemAudioDeniedMac')
+  if (platform === 'linux') return t('recorder.systemAudioDeniedLinux')
+  return t('recorder.systemAudioDeniedWindows')
 }
 
 export class RecorderWindow {
@@ -73,6 +97,8 @@ export class RecorderWindow {
   private stoppedResolve: (() => void) | null = null
   private startedResolve: (() => void) | null = null
   private grabSeq = 0
+  /** 録画ウインドウが getDisplayMedia を呼んだときに返すもの。録画を始めるときに決める */
+  private systemAudioPlan: SystemAudioPlan | null = null
   private readonly grabs = new Map<number, (png: ArrayBuffer | null) => void>()
   private readonly listeners: Array<
     [string, (event: Electron.IpcMainEvent, ...args: unknown[]) => void]
@@ -105,6 +131,25 @@ export class RecorderWindow {
       }
     })
     this.window = window
+    /*
+     * 相手の声は getDisplayMedia で取る。映像はこのウインドウ自身（画面収録の許可が要らない）、音声は PC のループバック。
+     * 同じ session のほかのページ（アプリの画面・プレビュー）の getDisplayMedia は、これまでどおり断る
+     */
+    window.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
+      const plan = this.systemAudioPlan
+      const own = this.window && !this.window.isDestroyed() ? this.window.webContents.mainFrame : null
+      const fromRecorder = !!own && !!request.frame && request.frame.processId === own.processId && request.frame.routingId === own.routingId
+      if (!own || !fromRecorder || !plan || plan.kind === 'deny') return callback({})
+      const streams: Streams = { video: own }
+      if (plan.kind === 'loopback') streams.audio = 'loopback'
+      else if (plan.kind === 'page' && !plan.contents.isDestroyed()) streams.audio = plan.contents.mainFrame
+      try {
+        callback(streams)
+      } catch (err) {
+        // 求めたフレームがもう無い（録画を止めた直後など）
+        reportHandled(err, { area: 'recording', op: 'display media handler' })
+      }
+    })
     window.webContents.on('console-message', (_event, level, message) => {
       if (level >= 2) console.warn('[recorder]', message)
       // 録画ウインドウには Sentry を入れていないので、console のエラーをここで知らせる（文は scrub される）
@@ -179,14 +224,32 @@ export class RecorderWindow {
 
     // tab は自アプリ内の webContents を指す「タブ録画」のID。OSの画面収録権限は要らない
     const sourceId = source.kind === 'tab' ? source.contents.getMediaSourceId(window.webContents) : source.sourceId
+    const synthetic = options.syntheticSystemAudio
+    let captureSystemAudio = options.captureSystemAudio
+    this.systemAudioPlan = null
+    if (captureSystemAudio && synthetic) {
+      // 検証用: 内蔵ブラウザのページの音を PC の音声の代わりにする（画面全体・別のウインドウのときは鳴らす元が無い）
+      if (synthetic === 'denied') this.systemAudioPlan = { kind: 'deny' }
+      else if (synthetic === 'no-device') this.systemAudioPlan = { kind: 'silent' }
+      else this.systemAudioPlan = source.kind === 'tab' ? { kind: 'page', contents: source.contents } : { kind: 'silent' }
+    } else if (captureSystemAudio) {
+      // macOS 14.2 より前は取れない。試さずに案内する（映像とマイクは続ける）
+      if (systemAudioUnsupported(process.platform, typeof process.getSystemVersion === 'function' ? process.getSystemVersion() : '') === 'macosTooOld') {
+        this.handlers.onError(t('recorder.systemAudioMacTooOld'))
+        captureSystemAudio = false
+      } else this.systemAudioPlan = { kind: 'loopback' }
+    }
     const payload: StartPayload = {
       sourceKind: source.kind,
       sourceId,
       startedAtEpoch,
+      platform: process.platform,
       captureMic: options.captureMic,
       syntheticMic: options.syntheticMic === true,
       syntheticMicWavBase64: options.syntheticMicWavBase64,
-      captureSystemAudio: options.captureSystemAudio,
+      captureSystemAudio,
+      systemAudioSynthetic: !!synthetic,
+      ...(synthetic === 'ends' ? { systemAudioEndAfterMs: 2500 } : {}),
       micDeviceId: options.micDeviceId,
       videoBitsPerSecond: options.videoBitsPerSecond,
       videoMaxWidth: options.videoMaxWidth,
@@ -198,6 +261,9 @@ export class RecorderWindow {
         videoFailed: t('recorder.videoFailed'),
         micFailed: t('recorder.micFailed'),
         systemAudioFailed: t('recorder.systemAudioFailed'),
+        systemAudioDenied: systemAudioDeniedMessage(process.platform),
+        systemAudioNoDevice: t('recorder.systemAudioNoDevice'),
+        systemAudioEnded: t('recorder.systemAudioEnded'),
         noAudioTrack: t('recorder.noAudioTrack')
       }
     }
@@ -251,6 +317,7 @@ export class RecorderWindow {
     })
     window.webContents.send(RECORDER_CHANNELS.stop)
     await stopped
+    this.systemAudioPlan = null
     await new Promise<void>((resolve) => {
       if (!this.videoStream) return resolve()
       this.videoStream.end(() => resolve())
@@ -259,6 +326,8 @@ export class RecorderWindow {
   }
 
   dispose(): void {
+    this.systemAudioPlan = null
+    if (this.window && !this.window.isDestroyed()) this.window.webContents.session.setDisplayMediaRequestHandler(null)
     for (const [channel, handler] of this.listeners) ipcMain.off(channel, handler)
     this.listeners.length = 0
     for (const resolve of this.grabs.values()) resolve(null)
@@ -268,13 +337,5 @@ export class RecorderWindow {
     const window = this.window
     this.window = null
     if (window && !window.isDestroyed()) window.destroy()
-  }
-}
-
-/** 既定の配置（electron-vite の out/ を前提にした相対パス） */
-export function defaultRecorderAssets(dirname: string): { html: string; preload: string } {
-  return {
-    html: join(dirname, '../recorder/index.html'),
-    preload: join(dirname, '../preload/recorder.js')
   }
 }

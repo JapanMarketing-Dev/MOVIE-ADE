@@ -2,92 +2,33 @@
 <!-- @title 569ca49f4a -->
 安装
 
-<!-- @lead 1947d59ea4 -->
-Ferret 是一款适用于 macOS、Windows 和 Linux 的桌面应用。macOS 版使用 Developer ID 签名，并经过 Apple 公证。Windows 版和 Linux 版尚未进行代码签名，因此这些系统会在首次启动时要求你确认。
+<!-- @lead a7ae9a04f0 -->
+下载适合你电脑的 Ferret 并打开。它可在 macOS、Windows 和 Linux 上运行。
 
-<!-- @download 91a49c9274 -->
+<!-- @download 57d4dd8f14 -->
 ## 下载
-<p>从<a href="../download.html">下载页面</a>获取适合你的操作系统和 CPU 的文件。文件由 Cloudflare R2 提供，而不是 GitHub Releases，并且只保留最近的 10 个版本。</p>
-<table>
-  <thead><tr><th>操作系统</th><th>文件</th></tr></thead>
-  <tbody>
-    <tr><td>macOS (Apple silicon / Intel)</td><td><code>Ferret-&lt;version&gt;-mac-arm64.dmg</code>, <code>Ferret-&lt;version&gt;-mac-x64.dmg</code></td></tr>
-    <tr><td>Windows (x64 / arm64)</td><td><code>Ferret-&lt;version&gt;-win-x64.exe</code>, <code>Ferret-&lt;version&gt;-win-arm64.exe</code> （NSIS 安装程序）</td></tr>
-    <tr><td>Linux (x64)</td><td><code>Ferret-&lt;version&gt;-linux-x86_64.AppImage</code>, <code>Ferret-&lt;version&gt;-linux-amd64.deb</code></td></tr>
-  </tbody>
-</table>
-<p>0.1.x 及更早的版本以旧名称 <code>MOVIE-ADE-&lt;version&gt;-…</code> 发布。从 0.2.0 开始使用 <code>Ferret-…</code> 名称。</p>
-<div class="docs-callout docs-callout-warn"><p>Ferret 支持 macOS、Windows 和 Linux。Windows 版和 Linux 版尚未进行代码签名，因此首次启动时需要你确认（参见下面的步骤）。</p></div>
+<p><a href="../download.html">下载页面</a>会提供适合你电脑的文件。点击下载按钮即可。</p>
 
-<!-- @verify 14ef497c52 -->
-## 验证下载（已签名的 SHA256SUMS）
-<p>每个版本都附有 <code>SHA256SUMS</code> 文件及其签名 <code>SHA256SUMS.sig</code>。签名使用 Ferret 发布密钥生成，该密钥与下载服务器分开保管，因此即使下载服务器上的安装程序被篡改，也无法附带有效的签名。公钥<em>不</em>从下载服务器获取：请从代码仓库获取（<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers"><code>build/release-signing/allowed_signers</code></a>），或从这里复制：</p>
-<pre><code>release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9</code></pre>
-<p>其指纹为 <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code>。GitHub 上的每个版本也附有相同的文件。先用 <code>ssh-keygen</code>（macOS、Windows 10 及更高版本和 Linux 均自带）验证签名，再将下载文件的哈希值与已签名的列表进行比对：</p>
-<pre><code># the download server (currently the R2 public URL; it may move to a custom domain)
-BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
-VERSION=$(curl -s $BASE/latest.json | jq -r .version)
-curl -sO $BASE/releases/$VERSION/SHA256SUMS
-curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
-
-# save the public key above as allowed_signers, then:
-ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
-# → Good "ferret-release" signature for release@ferretade.dev …
-
-# macOS
-shasum -a 256 -c SHA256SUMS --ignore-missing
-# Linux
-sha256sum -c SHA256SUMS --ignore-missing</code></pre>
-<pre><code># Windows (PowerShell): compare with the line for your file in SHA256SUMS
-Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
-<p>如果 <code>ssh-keygen</code> 没有输出 <q>Good "ferret-release" signature</q>，或者哈希值不在列表中，请停止使用该文件。Ferret 的 <span class="docs-ui">检查更新</span> 会使用内置于应用中的密钥执行同样的检查，不会提供签名不匹配的版本。在 macOS 上，你还可以用 <code>spctl -a -vv /Applications/Ferret.app</code> 检查 Developer ID 签名和公证。Windows 和 Linux 的安装程序尚未获得 Microsoft 或 Linux 发行版的代码签名。0.3.0 及更早的版本发布于开始签名之前，只有 <code>releases/&lt;version&gt;/manifest.json</code> 中未签名的哈希值。</p>
-
-<!-- @macos 1aa07136fd -->
+<!-- @macos b0d1e6945a -->
 ## macOS
-<ol class="docs-steps">
-  <li>打开 <code>.dmg</code>，将 <code>Ferret.app</code> 拖到 <code>/Applications</code>。</li>
-  <li>启动应用。该应用使用 Developer ID 签名并经过 Apple 公证（已附加公证票据），因此打开时不会出现警告。</li>
-</ol>
-<p>自行检查签名：</p>
-<pre><code>spctl -a -vv /Applications/Ferret.app
-# accepted
-# source=Notarized Developer ID</code></pre>
-<p><strong>仅旧版本（0.2.0 build 2 及更早）</strong>未经签名。对于这些版本，macOS 会提示无法验证开发者：关闭对话框，打开 <span class="docs-ui">系统设置 → 隐私与安全性</span>，点击 Ferret 提示旁边的 <span class="docs-ui">仍要打开</span>，然后点击 <span class="docs-ui">打开</span> 确认。如果提示应用“已损坏”，请移除隔离属性：</p>
-<pre><code>xattr -dr com.apple.quarantine /Applications/Ferret.app</code></pre>
+<p>打开 <code>.dmg</code>，将 Ferret 拖到 <code>Applications</code>，然后从那里打开。</p>
 
-<!-- @windows b5761835f1 -->
+<!-- @windows 18a1422bb6 -->
 ## Windows
-<ol class="docs-steps">
-  <li>运行 <code>Ferret-&lt;version&gt;-win-&lt;arch&gt;.exe</code>。</li>
-  <li>当 SmartScreen 显示“Windows 已保护你的电脑”时，点击 <span class="docs-ui">更多信息</span>，然后点击 <span class="docs-ui">仍要运行</span>。</li>
-  <li>选择安装文件夹。安装程序会创建桌面快捷方式。</li>
-</ol>
+<p>运行下载的 <code>.exe</code>。Ferret 会自动安装并打开，无需做任何选择。之后可以从开始菜单或桌面快捷方式打开它。</p>
+<p>如果 Windows 显示 <q>Windows 已保护你的电脑</q>，请点击 <span class="docs-ui">更多信息</span>，然后点击 <span class="docs-ui">仍要运行</span>。</p>
 
-<!-- @linux c46965a0c5 -->
+<!-- @linux 58ceb4839c -->
 ## Linux
-<p>AppImage:</p>
-<pre><code>chmod +x Ferret-&lt;version&gt;-linux-x86_64.AppImage
-./Ferret-&lt;version&gt;-linux-x86_64.AppImage</code></pre>
-<p>Debian / Ubuntu:</p>
+<p><strong>Ubuntu / Debian</strong>：双击 <code>.deb</code>，用软件中心安装；或者运行：</p>
 <pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
-<p>deb 会安装 <code>ferret</code> 软件包和命令。</p>
-<p>在 Ubuntu 23.10 及更高版本上，AppImage 可能在启动时因沙盒错误而停止，这是因为 AppArmor 限制了 Electron 沙盒所使用的用户命名空间。请改为安装 <code>.deb</code>，它会配置好沙盒辅助程序。</p>
+<p>然后从应用菜单打开 Ferret，或运行 <code>ferret</code>。</p>
+<p><strong>其他发行版</strong>：使用 <code>.AppImage</code>。允许它作为程序运行（右键 → 属性，或 <code>chmod +x</code>），然后打开它。</p>
 
-<!-- @source 06a127ac19 -->
-## 从源码构建
-<p>需要 Node.js 20+（CI 和本地开发使用 22）、pnpm 和 git。</p>
-<pre><code>git clone https://github.com/JapanMarketing-Dev/ferret.git
-cd ferret
-pnpm install          # postinstall prepares node-pty for Electron
-pnpm dev              # run in development mode</code></pre>
-<p>打包安装程序（输出到 <code>dist/release/</code>，配置在 <code>electron-builder.config.cjs</code> 中）。Linux 版只能在 Linux 上构建。</p>
-<pre><code>pnpm dist:mac     # dmg (arm64, x64)
-pnpm dist:win     # NSIS installers (x64, arm64)
-pnpm dist:linux   # AppImage + deb (x64)</code></pre>
-<p><code>build:&lt;os&gt;:dev</code> 脚本只生成未打包的应用（<code>--dir</code>），用于本地测试时更快。</p>
-<p>在 Windows 上，<code>pnpm install</code> 会使用 node-pty 自带的预编译二进制文件，而不是重新构建（重新构建需要 Visual Studio C++ 生成工具）。设置 <code>ADE_FORCE_NATIVE_REBUILD=1</code> 可强制重新构建。</p>
-<p>如果终端提示无法加载 node-pty，请运行 <code>pnpm rebuild:native</code>。</p>
-
-<!-- @update 7f4d958687 -->
-## 更新
-<p>Ferret 不会自动更新。在底部状态栏中打开 <span class="docs-ui">更新</span>，然后点击 <span class="docs-ui">检查更新</span>。它会从下载服务器（R2）获取 <code>latest.json</code>，比较版本，并提供下载页面的链接。从 0.4.0 开始，它还会使用内置于应用中的发布密钥验证该版本 <code>SHA256SUMS</code> 的签名，不会提供无法验证签名的版本。在你点击之前不会进行任何检查，也不会自动安装任何内容。</p>
+<!-- @more 75e55cbce4 -->
+## 下一步
+<ul>
+  <li><a href="quick-start.html#open">快速入门</a>：打开项目并录制你的第一条反馈。</li>
+  <li>遇到问题？请参阅<a href="troubleshooting.html#install">故障排除</a>。</li>
+  <li>如需验证下载文件的签名、从源码构建或获取旧版本，请参阅<a href="advanced-install.html">高级安装</a>。</li>
+</ul>

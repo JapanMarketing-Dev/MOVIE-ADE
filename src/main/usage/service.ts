@@ -248,9 +248,3 @@ export function attachUsageWindow(window: BrowserWindow, send: (state: UsageStat
   // 起動直後には読まない。フッターに使用量が出たとき（renderer の usage:refresh）に初めて読む
   // （Claude の認証情報は Keychain にあり、使わないなら触れないため）
 }
-
-export function stopUsagePolling(): void {
-  if (timer) clearInterval(timer)
-  timer = null
-  for (const agent of AGENTS) cancelFailureRetry(agent)
-}

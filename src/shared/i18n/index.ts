@@ -227,13 +227,3 @@ export function formatDateTime(value: number | Date, options?: Intl.DateTimeForm
 export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
   return new Intl.NumberFormat(intlLocale(), options).format(value)
 }
-
-/** 符号付きのミリ秒差（未来が正）を「3分前」「in 2 hours」の形にする */
-export function formatRelativeTime(diffMs: number): string {
-  const formatter = new Intl.RelativeTimeFormat(intlLocale(), { numeric: 'auto' })
-  const minutes = Math.round(diffMs / 60_000)
-  if (Math.abs(minutes) < 60) return formatter.format(minutes, 'minute')
-  const hours = Math.round(minutes / 60)
-  if (Math.abs(hours) < 24) return formatter.format(hours, 'hour')
-  return formatter.format(Math.round(hours / 24), 'day')
-}

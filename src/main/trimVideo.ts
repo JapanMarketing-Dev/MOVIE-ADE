@@ -14,7 +14,7 @@ import { open, rm } from 'node:fs/promises'
 import type { TrimCut } from '@shared/trim'
 
 /** 非表示ウィンドウのページ（index.ts の ade-media が返す） */
-export const TRIM_HOST_URL = 'ade-media://review/trim-host'
+const TRIM_HOST_URL = 'ade-media://review/trim-host'
 export const TRIM_HOST_HTML = '<!doctype html><meta charset="utf-8"><title>trim</title>'
 
 /** ページから一度に受け取る大きさ（base64 にする前のバイト数） */

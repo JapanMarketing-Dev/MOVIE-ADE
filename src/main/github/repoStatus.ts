@@ -56,8 +56,3 @@ export async function watchGitHead(folderPath: string | null, onChange: () => vo
     // 見張れなくても、定期の読み直しとウインドウを前に出したときの読み直しで追いつく
   }
 }
-
-export function stopWatchingGitHead(): void {
-  watched?.watcher?.close()
-  watched = null
-}

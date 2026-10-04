@@ -1,6 +1,6 @@
 import type { AgentAccountsSettings } from '@shared/accounts'
 import type { AccountAgent } from '@shared/types'
-import { ensureCodexDaemonSocketGuard, migrateManagedClaudeDir } from './agentConfig'
+import { ensureCodexDaemonSocketGuard, linkSharedEntries, migrateManagedClaudeDir } from './agentConfig'
 import { assertManagedAccountDir, systemConfigDir } from './paths'
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
@@ -19,14 +19,14 @@ import { UserFacingError } from '@shared/errors'
  *   （別のアカウントで動いて請求先を取り違えないため）
  */
 
-export const CLAUDE_AUTH_ENV_VARS = [
+const CLAUDE_AUTH_ENV_VARS = [
   'ANTHROPIC_API_KEY',
   'ANTHROPIC_AUTH_TOKEN',
   'CLAUDE_CODE_OAUTH_TOKEN',
   'AWS_BEARER_TOKEN_BEDROCK'
 ] as const
 
-export const AGENT_ACCOUNT_ENV_KEY: Record<AccountAgent, 'CLAUDE_CONFIG_DIR' | 'CODEX_HOME'> = {
+const AGENT_ACCOUNT_ENV_KEY: Record<AccountAgent, 'CLAUDE_CONFIG_DIR' | 'CODEX_HOME'> = {
   claude: 'CLAUDE_CONFIG_DIR',
   codex: 'CODEX_HOME'
 }
@@ -61,6 +61,8 @@ export function resolveAgentEnvFrom(options: {
   } else {
     // 管理フォルダのパスが長いと Codex のデーモン用ソケットが作れない。起動のたびに確かめる
     ensureCodexDaemonSocketGuard(dir)
+    // あとから共有に足した項目（rules など）を、以前に追加したアカウントにも張る
+    linkSharedEntries('codex', dir, options.systemDir ?? systemConfigDir('codex'))
   }
   return env
 }

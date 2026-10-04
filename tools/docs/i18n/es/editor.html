@@ -5,7 +5,7 @@ Editor y vista previa
 <!-- @lead 97cbc36c8d -->
 Abre y edita los archivos del proyecto, y previsualiza Markdown y Mermaid. Una vista previa abierta en el navegador integrado se puede grabar y revisar como cualquier página web.
 
-<!-- @files f1e2c27cca -->
+<!-- @files d29f6a2107 -->
 ## Abrir y editar archivos
 <ul>
   <li><span class="docs-ui">Archivos</span> (el árbol de archivos): {{keys:Mod+Shift+E}}, con <span class="docs-ui">Filtrar por nombre de archivo</span>, <span class="docs-ui">Actualizar</span> y <span class="docs-ui">Contraer todo</span>.</li>
@@ -14,7 +14,18 @@ Abre y edita los archivos del proyecto, y previsualiza Markdown y Mermaid. Una v
   <li>Si el archivo cambia en el disco mientras tienes ediciones sin guardar, elige <span class="docs-ui">Recargar desde el disco</span> o <span class="docs-ui">Conservar mis cambios</span>.</li>
 </ul>
 <p>El editor es Monaco. Los archivos que no son de texto se abren en un visor: imágenes (con zoom; los SVG también se pueden ver como código), vídeo y audio con barra de reproducción, PDF y, para cualquier otro archivo binario, su tamaño y una vista hexadecimal de los primeros bytes. Los visores son de solo lectura, y no se muestran los archivos fuera de la carpeta del proyecto ni los que se alcanzan mediante un enlace simbólico que sale de ella.</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Próximamente</p><p>Crear, renombrar y eliminar archivos desde el árbol de archivos.</p></div>
+
+<!-- @file-tree 4bec72e9f4 -->
+## Crear, renombrar y eliminar archivos
+<p>Trabaja con los archivos directamente en <span class="docs-ui">Archivos</span>, como lo harías en VS Code. Los nombres se escriben en el propio árbol.</p>
+<ul>
+  <li><span class="docs-ui">Nuevo archivo</span> / <span class="docs-ui">Nueva carpeta</span>: los botones sobre el árbol, o clic derecho en una carpeta (o en el espacio vacío bajo el árbol). El nuevo elemento se crea dentro de la carpeta seleccionada, junto al archivo seleccionado o en la raíz del proyecto. Un archivo nuevo se abre en el editor.</li>
+  <li><span class="docs-ui">Cambiar nombre</span>: {{keys:F2 / Enter|F2}}, o clic derecho. Las pestañas abiertas siguen al nuevo nombre y conservan las ediciones sin guardar.</li>
+  <li><span class="docs-ui">Eliminar</span>: {{keys:Mod+Backspace / Delete|Delete}}, o clic derecho. Ferret pregunta primero y luego mueve el elemento a la Papelera (la Papelera de reciclaje en Windows), así que puedes restaurarlo. Las pestañas de los archivos eliminados se cierran; si alguna tenía ediciones sin guardar, la confirmación lo indica.</li>
+  <li>Selecciona varios elementos con {{keys:Mod}}-clic o {{keys:Shift}}-clic para eliminarlos a la vez.</li>
+  <li>{{keys:Esc}} cancela el nombre que estás escribiendo.</li>
+</ul>
+<p>Ferret no sobrescribe un archivo o una carpeta existente con el mismo nombre, y rechaza todo lo que saldría de la carpeta del proyecto (<code>..</code>, rutas absolutas, enlaces simbólicos que apuntan fuera), todo lo que esté dentro de <code>.git</code> y los nombres que algún sistema operativo no admite: <code>/ \ &lt; &gt; : " | ? *</code>, caracteres de control, un espacio o un punto al final, y nombres reservados de Windows como <code>CON</code> o <code>NUL</code>.</p>
 
 <!-- @preview b8c0baaad4 -->
 ## Vista previa de Markdown y Mermaid
@@ -24,7 +35,7 @@ Abre y edita los archivos del proyecto, y previsualiza Markdown y Mermaid. Una v
   <li><span class="docs-ui">Abrir vista previa</span>: en el navegador integrado (<code>ade-preview://</code>), para que puedas grabarla y revisarla</li>
 </ul>
 
-<!-- @review-docs 3956ed6f10 -->
+<!-- @review-docs 4b5c6316ba -->
 ## Revisar documentación grabando
 <ol class="docs-steps">
   <li>Abre un archivo Markdown y haz clic en <span class="docs-ui">Abrir vista previa</span>.</li>
@@ -32,4 +43,4 @@ Abre y edita los archivos del proyecto, y previsualiza Markdown y Mermaid. Una v
   <li>Detén. Los hallazgos hacen referencia a la ruta del archivo relativa al proyecto en lugar de a una URL.</li>
   <li><span class="docs-ui">Enviar al agente</span> para que corrija el documento.</li>
 </ol>
-<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="Vista previa de Markdown en el navegador integrado (captura disponible próximamente)"><span>Captura disponible próximamente</span></div><figcaption>Vista previa de Markdown en el navegador integrado</figcaption></figure>
+{{shot:preview|Vista previa de Markdown en el navegador integrado}}

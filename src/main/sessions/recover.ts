@@ -10,7 +10,7 @@ import { join } from 'node:path'
 import type { SessionPaths } from './paths'
 import { listSessionIds, sessionPaths } from './paths'
 
-export interface RecoverableSession {
+interface RecoverableSession {
   paths: SessionPaths
   /** 操作ログの行数（0 なら復元してもほぼ空になる） */
   eventCount: number

@@ -16,5 +16,5 @@ export function assetVersion(rel) {
 /** モジュールが import するファイル。版を付けた import を書き込んでから、そのファイル自身の版を取る（葉から順に） */
 export const MODULE_IMPORTS = [
   ['js/releases.js', ['config.js']],
-  ['js/app.js', ['config.js', 'releases.js']],
+  ['js/app.js', ['config.js', 'releases.js', 'verify.js']],
 ]

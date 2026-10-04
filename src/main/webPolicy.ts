@@ -9,6 +9,7 @@
  * Electron に依存させない（単体テストで偽の session を渡して確かめるため）。
  */
 import { PREVIEW_SCHEME } from '@shared/preview'
+import { isPresetableUrl } from '@shared/projectUrl'
 
 /** session の権限ハンドラの最小の形（Electron の Session の一部） */
 export interface PermissionSessionLike {
@@ -24,7 +25,7 @@ export interface PermissionDetails {
   [key: string]: unknown
 }
 
-export interface PermissionQuery {
+interface PermissionQuery {
   permission: string
   /** 求めたページ（フレーム）の URL かオリジン */
   origin: string
@@ -81,12 +82,6 @@ function parse(url: string): URL | null {
   }
 }
 
-/** 内蔵ブラウザの中で開くもの（http / https） */
-export function isWebUrl(url: string): boolean {
-  const u = parse(url)
-  return u !== null && (u.protocol === 'http:' || u.protocol === 'https:')
-}
-
 /**
  * 別のアプリ（OS の URL ハンドラ）へ渡してよいか。http / https / mailto だけ。
  * 認証情報付き（https://user:pass@…）・長すぎるものは断る
@@ -106,8 +101,47 @@ export function isAllowedExternalUrl(url: string): boolean {
  * - deny: 何もしない（file: data: javascript: 独自スキームなど）
  */
 export function windowOpenAction(url: string): 'in-app' | 'external' | 'deny' {
-  if (isWebUrl(url)) return 'in-app'
+  // 内蔵ブラウザの中で開くもの（http / https）
+  if (isPresetableUrl(url)) return 'in-app'
   return isAllowedExternalUrl(url) ? 'external' : 'deny'
+}
+
+/** 手元のマシンのホスト（開発サーバー・題材サイト） */
+function isLoopbackHost(hostname: string): boolean {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  return h === 'localhost' || h.endsWith('.localhost') || h === '::1' || /^127(\.\d{1,3}){3}$/.test(h)
+}
+
+/**
+ * ログインのポップアップ（子ウインドウ）が開いてよい・遷移してよい先。
+ * https（認証情報付きは除く）と、手元の開発サーバー（localhost / 127.* の http）と about:blank だけ。
+ * file: data: javascript: プレビュー（ade-preview:）・独自スキームは断る
+ */
+export function isPopupUrlAllowed(url: string): boolean {
+  if (url === 'about:blank') return true
+  if (typeof url !== 'string' || url.length > 8000) return false
+  const u = parse(url)
+  if (!u || u.username || u.password || !u.hostname) return false
+  if (u.protocol === 'https:') return true
+  return u.protocol === 'http:' && isLoopbackHost(u.hostname)
+}
+
+/** setWindowOpenHandler の details の要るところ（Electron の HandlerDetails の一部） */
+interface WindowOpenRequest {
+  url: string
+  /** new-window … window.open に大きさや popup を指定した（ログインのポップアップ）。foreground-tab 等 … 別タブ（target=_blank） */
+  disposition?: string
+}
+
+/**
+ * 内蔵ブラウザのページの window.open / target=_blank の扱い。
+ * - popup: ログインのポップアップ（Google でログインなど）。同じセッションの子ウインドウで開き、opener を保つ
+ *          （ログインが終わってポップアップが閉じれば、元のページに結果が届く）
+ * - in-app / external / deny: windowOpenAction と同じ（普通の別タブのリンクは今までどおり同じビューで開く）
+ */
+export function popupWindowAction(request: WindowOpenRequest): 'popup' | 'in-app' | 'external' | 'deny' {
+  if (request.disposition === 'new-window' && isPopupUrlAllowed(request.url)) return 'popup'
+  return windowOpenAction(request.url)
 }
 
 /**
@@ -133,7 +167,7 @@ export function isPageNavigationAllowed(url: string, currentUrl: string): boolea
   return u.protocol === 'file:' && parse(currentUrl)?.protocol === 'file:'
 }
 
-export interface ExternalOpenerDeps {
+interface ExternalOpenerDeps {
   /** 利用者に確認する。開くなら true */
   confirm: (request: { url: string; origin: string }) => Promise<boolean>
   open: (url: string) => Promise<void>

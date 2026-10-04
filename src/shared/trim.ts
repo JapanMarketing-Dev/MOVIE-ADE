@@ -19,7 +19,7 @@ export interface IdleOptions {
   padMs: number
 }
 
-export const DEFAULT_IDLE_OPTIONS: IdleOptions = { minIdleMs: 3000, padMs: 500 }
+const DEFAULT_IDLE_OPTIONS: IdleOptions = { minIdleMs: 3000, padMs: 500 }
 
 /** 削った合計がこれ未満なら、削った版は作らない（作り直す手間に見合わない） */
 export const MIN_TOTAL_CUT_MS = 1000

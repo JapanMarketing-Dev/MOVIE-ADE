@@ -79,10 +79,12 @@ export function matchPresetUrl(urls: ProjectUrl[], current: string): ProjectUrl 
  * プリセットを押したときに開くURL。
  * 別のプリセット（例: local）の下を見ているなら、同じパスのまま押した環境（例: dev）へ切り替える。
  * 押したプリセット自身を見ているとき・どれにも当たらないときは、登録したURLそのものを開く。
+ * デザイン・設計書の確認先（purpose が app 以外）はパスに意味の共通点が無いので、行き来でも登録したURLそのものを開く。
  */
 export function presetTarget(urls: ProjectUrl[], current: string, target: ProjectUrl & { url: string }): string {
   const from = matchPresetUrl(urls, current)
   if (!from?.url || from.id === target.id) return target.url
+  if ((from.purpose ?? 'app') !== 'app' || (target.purpose ?? 'app') !== 'app') return target.url
   const now = parse(current)
   const fromUrl = parse(from.url)
   const to = parse(target.url)

@@ -1241,15 +1241,6 @@ div.rv-card__shot {
   opacity: 0.45;
 }
 
-.st-beta {
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-pill);
-  color: var(--color-text-faint);
-  font-size: var(--font-size-2xs);
-  line-height: 14px;
-}
-
 .st-note {
   display: flex;
   align-items: center;

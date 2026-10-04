@@ -5,7 +5,7 @@ Editor और प्रीव्यू
 <!-- @lead 97cbc36c8d -->
 प्रोजेक्ट की फ़ाइलें खोलें और संपादित करें, और Markdown व Mermaid का प्रीव्यू देखें। बिल्ट-इन ब्राउज़र में खोला गया प्रीव्यू किसी भी वेब पेज की तरह रिकॉर्ड और review किया जा सकता है।
 
-<!-- @files f1e2c27cca -->
+<!-- @files d29f6a2107 -->
 ## फ़ाइलें खोलें और संपादित करें
 <ul>
   <li><span class="docs-ui">फ़ाइलें</span> (फ़ाइल ट्री): {{keys:Mod+Shift+E}}, जिसमें <span class="docs-ui">फ़ाइल नाम से फ़िल्टर करें</span>, <span class="docs-ui">रिफ़्रेश करें</span> और <span class="docs-ui">सब छोटा करें</span> हैं।</li>
@@ -14,7 +14,18 @@ Editor और प्रीव्यू
   <li>अगर बिना सेव किए बदलावों के दौरान फ़ाइल डिस्क पर बदल जाए, तो <span class="docs-ui">डिस्क से रीलोड करें</span> या <span class="docs-ui">मेरे बदलाव रखें</span> चुनें।</li>
 </ul>
 <p>Editor Monaco है। जो फ़ाइलें टेक्स्ट नहीं हैं, वे इसकी जगह एक viewer में खुलती हैं: इमेज (zoom in और out; SVG को code के रूप में भी दिखाया जा सकता है), seek bar के साथ वीडियो और ऑडियो, PDF, और किसी भी दूसरी binary फ़ाइल के लिए उसका size और शुरुआती bytes का hex view। Viewers सिर्फ़ पढ़ने के लिए हैं, और प्रोजेक्ट फ़ोल्डर के बाहर की फ़ाइलें या फ़ोल्डर से बाहर ले जाने वाले symbolic link से पहुँची फ़ाइलें नहीं दिखाई जातीं।</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">जल्द आ रहा है</p><p>फ़ाइल ट्री से फ़ाइलें बनाना, उनका नाम बदलना और उन्हें डिलीट करना।</p></div>
+
+<!-- @file-tree 4bec72e9f4 -->
+## फ़ाइलें बनाएँ, नाम बदलें और हटाएँ
+<p>VS Code की तरह सीधे <span class="docs-ui">फ़ाइलें</span> में फ़ाइलों पर काम करें। नाम ट्री में ही टाइप किए जाते हैं।</p>
+<ul>
+  <li><span class="docs-ui">नई फ़ाइल</span> / <span class="docs-ui">नया फ़ोल्डर</span>: ट्री के ऊपर के बटन, या किसी फ़ोल्डर पर (या ट्री के नीचे की खाली जगह पर) right-click करें। नया आइटम चुने गए फ़ोल्डर में, चुनी गई फ़ाइल के बगल में, या प्रोजेक्ट के सबसे ऊपर बनता है। नई फ़ाइल editor में खुलती है।</li>
+  <li><span class="docs-ui">नाम बदलें</span>: {{keys:F2 / Enter|F2}}, या right-click करें। खुले टैब नए नाम के साथ चलते हैं और बिना सेव किए बदलाव बने रहते हैं।</li>
+  <li><span class="docs-ui">हटाएँ</span>: {{keys:Mod+Backspace / Delete|Delete}}, या right-click करें। Ferret पहले पूछता है, फिर आइटम को ट्रैश (Windows पर रीसायकल बिन) में ले जाता है, ताकि आप उसे वापस ला सकें। हटाई गई फ़ाइलों के टैब बंद हो जाते हैं; अगर किसी में बिना सेव किए बदलाव थे, तो पुष्टि वाला संदेश यह बताता है।</li>
+  <li>कई आइटम एक साथ हटाने के लिए उन्हें {{keys:Mod}}-click या {{keys:Shift}}-click से चुनें।</li>
+  <li>{{keys:Esc}} टाइप किया जा रहा नाम रद्द करता है।</li>
+</ul>
+<p>Ferret उसी नाम वाली मौजूदा फ़ाइल या फ़ोल्डर को overwrite नहीं करता, और ऐसी हर चीज़ को अस्वीकार करता है जो प्रोजेक्ट फ़ोल्डर से बाहर ले जाए (<code>..</code>, absolute paths, बाहर की ओर इशारा करने वाले symbolic links), <code>.git</code> के अंदर की हर चीज़, और ऐसे नाम जिन्हें कोई OS इस्तेमाल नहीं कर सकता: <code>/ \ &lt; &gt; : " | ? *</code>, control characters, आख़िर में space या dot, और Windows के आरक्षित नाम जैसे <code>CON</code> या <code>NUL</code>।</p>
 
 <!-- @preview b8c0baaad4 -->
 ## Markdown और Mermaid प्रीव्यू
@@ -24,7 +35,7 @@ Editor और प्रीव्यू
   <li><span class="docs-ui">प्रीव्यू खोलें</span>: बिल्ट-इन ब्राउज़र (<code>ade-preview://</code>) में, ताकि आप उसे रिकॉर्ड और review कर सकें</li>
 </ul>
 
-<!-- @review-docs 3956ed6f10 -->
+<!-- @review-docs 4b5c6316ba -->
 ## रिकॉर्ड करके दस्तावेज़ों का review करें
 <ol class="docs-steps">
   <li>एक Markdown फ़ाइल खोलें और <span class="docs-ui">प्रीव्यू खोलें</span> पर क्लिक करें।</li>
@@ -32,4 +43,4 @@ Editor और प्रीव्यू
   <li>रोकें। Findings में URL की जगह फ़ाइल का प्रोजेक्ट-सापेक्ष path होता है।</li>
   <li>दस्तावेज़ ठीक करवाने के लिए <span class="docs-ui">Agent को भेजें</span>।</li>
 </ol>
-<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="बिल्ट-इन ब्राउज़र में Markdown प्रीव्यू (screenshot जल्द आ रहा है)"><span>Screenshot जल्द आ रहा है</span></div><figcaption>बिल्ट-इन ब्राउज़र में Markdown प्रीव्यू</figcaption></figure>
+{{shot:preview|बिल्ट-इन ब्राउज़र में Markdown प्रीव्यू}}

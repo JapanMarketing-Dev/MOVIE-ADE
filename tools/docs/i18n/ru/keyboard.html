@@ -46,7 +46,7 @@
   </tbody>
 </table>
 
-<!-- @files 5e0093248b -->
+<!-- @files 77be8e758a -->
 ## Файлы
 <table class="docs-keys">
   <thead><tr><th>Действие</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
@@ -54,10 +54,12 @@
     <tr><td>Открыть папку проекта…</td><td class="os-mac">{{keys-mac:Mod+O}}</td><td class="os-win">{{keys-win:Mod+O}}</td></tr>
     <tr><td>Перейти к файлу…</td><td class="os-mac">{{keys-mac:Mod+P}}</td><td class="os-win">{{keys-win:Mod+P}}</td></tr>
     <tr><td>Сохранить</td><td class="os-mac">{{keys-mac:Mod+S}}</td><td class="os-win">{{keys-win:Mod+S}}</td></tr>
+    <tr><td>Переименовать в дереве файлов</td><td class="os-mac">{{keys-mac:F2 / Enter|F2}}</td><td class="os-win">{{keys-win:F2 / Enter|F2}}</td></tr>
+    <tr><td>Удалить в дереве файлов</td><td class="os-mac">{{keys-mac:Mod+Backspace / Delete|Delete}}</td><td class="os-win">{{keys-win:Mod+Backspace / Delete|Delete}}</td></tr>
   </tbody>
 </table>
 
-<!-- @terminal a714e034c2 -->
+<!-- @terminal ed55aaf976 -->
 ## Терминал
 <table class="docs-keys">
   <thead><tr><th>Действие</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
@@ -66,15 +68,21 @@
     <tr><td>Закрыть панель / вкладку</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
     <tr><td>Разделить вправо</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
     <tr><td>Разделить вниз</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+    <tr><td>Копировать выделенное</td><td class="os-mac">{{keys-mac:Mod+C|Ctrl+Shift+C / Ctrl+C}}</td><td class="os-win">{{keys-win:Mod+C|Ctrl+Shift+C / Ctrl+C}}</td></tr>
+    <tr><td>Вставить</td><td class="os-mac">{{keys-mac:Mod+V|Ctrl+V / Ctrl+Shift+V / Shift+Insert}}</td><td class="os-win">{{keys-win:Mod+V|Ctrl+V / Ctrl+Shift+V / Shift+Insert}}</td></tr>
+    <tr><td>Новая строка в запросе агенту</td><td class="os-mac">{{keys-mac:Shift+Enter}}</td><td class="os-win">{{keys-win:Shift+Enter}}</td></tr>
+    <tr><td>Начало / конец строки</td><td class="os-mac">{{keys-mac:Mod+Left / Mod+Right|}}</td><td class="os-win">{{keys-win:Mod+Left / Mod+Right|}}</td></tr>
+    <tr><td>Удалить до начала строки</td><td class="os-mac">{{keys-mac:Mod+Backspace|}}</td><td class="os-win">{{keys-win:Mod+Backspace|}}</td></tr>
   </tbody>
-</table><p>Сочетания для разделения работают, когда фокус находится в терминале.</p>
+</table><p>Эти сочетания работают, когда фокус находится в терминале. В Windows и Linux Ctrl+C копирует, если выделен текст, и останавливает выполняемую команду, если ничего не выделено. {{keys:Shift+Enter}} начинает новую строку, пока работает агент, например Claude Code или Codex; в обычной оболочке он выполняет команду, как Enter. В полноэкранной программе, которая использует мышь (vim, tmux, агент), на macOS удерживайте Option при перетаскивании, чтобы выделить текст.</p>
 
-<!-- @window 84ff87d3b5 -->
+<!-- @window 115b0e6afb -->
 ## Окно и настройки
 <table class="docs-keys">
   <thead><tr><th>Действие</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
   <tbody>
     <tr><td>Настройки…</td><td class="os-mac">{{keys-mac:Mod+,}}</td><td class="os-win">{{keys-win:Mod+,}}</td></tr>
     <tr><td>Закрыть окно</td><td class="os-mac">{{keys-mac:Mod+Shift+W|}}</td><td class="os-win">{{keys-win:Mod+Shift+W|}}</td></tr>
+    <tr><td>Свернуть</td><td class="os-mac">{{keys-mac:Mod+M|}}</td><td class="os-win">{{keys-win:Mod+M|}}</td></tr>
   </tbody>
 </table><p>В Windows и Linux нет сочетания для закрытия окна: <span class="docs-ui">Файл → Выход</span> завершает приложение.</p>

@@ -14,7 +14,7 @@ export type FooterDock = 'top' | 'bottom'
 
 export const PANEL_IDS: readonly PanelId[] = ['projects', 'terminal', 'files']
 /** 開閉できるパネル。ターミナルは常に表示する（ユーザーの指示：閉じる・隠す手段を持たない） */
-export const CLOSABLE_PANELS: readonly PanelId[] = ['projects', 'files']
+const CLOSABLE_PANELS: readonly PanelId[] = ['projects', 'files']
 export const DOCKS: readonly Dock[] = ['left', 'right', 'top', 'bottom']
 
 /** フッターの項目。並びはフッターでの左からの順 */
@@ -35,7 +35,7 @@ export const FOOTER_ITEMS = [
 ] as const
 export type FooterItemId = (typeof FOOTER_ITEMS)[number]
 
-export interface PanelPlacement {
+interface PanelPlacement {
   dock: Dock
   visible: boolean
 }
@@ -91,7 +91,7 @@ export function withPanel(layout: LayoutPrefs, id: PanelId, patch: Partial<Panel
   return { ...layout, panels: { ...layout.panels, [id]: { ...layout.panels[id], ...patch } } }
 }
 
-export interface GridTemplate {
+interface GridTemplate {
   columns: string
   rows: string
   areas: string
@@ -106,9 +106,9 @@ export interface GridTemplate {
  */
 export const CENTER_MIN_WIDTH = 360
 export const TERMINAL_MIN_WIDTH = 240
-export const TERMINAL_MIN_HEIGHT = 160
+const TERMINAL_MIN_HEIGHT = 160
 export const SIDE_MIN_WIDTH = 140
-export const SPLITTER_SIZE = 6
+const SPLITTER_SIZE = 6
 /** 窓の最小幅（src/main/index.ts の BrowserWindow の minWidth と同じ値） */
 export const WINDOW_MIN_WIDTH = 900
 
@@ -226,7 +226,7 @@ export interface Rect {
 }
 
 /** 端からこの割合より内側（中央寄り）で離したら、動かさない（VS Code と同じく中央は「取りやめ」） */
-export const DROP_EDGE_RATIO = 0.35
+const DROP_EDGE_RATIO = 0.35
 
 /**
  * ドラッグ中のポインターの位置から、落とす先（上下左右）を決める。

@@ -8,8 +8,9 @@
  *   - codex の `›`
  * 時刻は注入できるようにして、実時間に依存しないテストにする。
  */
+import { delay } from '@shared/delay'
 
-export type ComposerStatus =
+type ComposerStatus =
   /** 送れる */
   | 'ready'
   /** しるしは出たが、まだ出力が動いている */
@@ -19,7 +20,7 @@ export type ComposerStatus =
   /** 上限まで待ったが準備できなかった */
   | 'timeout'
 
-export interface ComposerOptions {
+interface ComposerOptions {
   /** 出力が止まってから準備完了とみなすまで(ms) */
   quietMs: number
   /** これを超えたら諦める(ms) */
@@ -27,7 +28,7 @@ export interface ComposerOptions {
   now: () => number
 }
 
-export const defaultComposerOptions: ComposerOptions = {
+const defaultComposerOptions: ComposerOptions = {
   quietMs: 1500,
   timeoutMs: 8000,
   now: () => Date.now()
@@ -84,7 +85,7 @@ export async function waitForComposer(
   readiness: ComposerReadiness,
   options: { sleep?: (ms: number) => Promise<void>; pollMs?: number } = {}
 ): Promise<ComposerStatus> {
-  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)))
+  const sleep = options.sleep ?? delay
   const pollMs = options.pollMs ?? 100
   for (;;) {
     const status = readiness.status()

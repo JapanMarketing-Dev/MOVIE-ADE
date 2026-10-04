@@ -22,7 +22,7 @@ export interface AudioChunk {
   cutMidSpeech: boolean
 }
 
-export interface SegmenterOptions {
+interface SegmenterOptions {
   sampleRate: number
   /** 区切りと見なす無音の長さ(ms) */
   silenceMs: number
@@ -68,7 +68,7 @@ export const defaultSegmenterOptions: SegmenterOptions = {
 /** 1フレームの長さ(ms)。無音判定の粒度 */
 const FRAME_MS = 20
 
-export type SttEngineKind = 'local-gpu' | 'local-cpu' | 'openai'
+type SttEngineKind = 'local-gpu' | 'local-cpu' | 'openai'
 
 /**
  * エンジン別のチャンク上限。

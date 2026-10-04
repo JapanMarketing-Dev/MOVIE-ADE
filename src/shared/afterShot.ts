@@ -13,10 +13,10 @@ import { previewPathFromUrl } from './preview'
  */
 
 /** レビューのフォルダの中の、AFTER を置くフォルダ */
-export const AFTER_DIR = 'after'
+const AFTER_DIR = 'after'
 
 /** 撮る画面の大きさの既定値（録画時の幅が分からないとき） */
-export const DEFAULT_AFTER_VIEWPORT = { width: 1280, height: 800 } as const
+const DEFAULT_AFTER_VIEWPORT = { width: 1280, height: 800 } as const
 
 const IMAGE_EXT = /\.(png|jpe?g|webp)$/i
 
@@ -70,7 +70,7 @@ export function localTargetUrl(url: string, presets: ReadonlyArray<{ label: stri
   return `${localBase.origin}${prefix}${rest.startsWith('/') ? rest : `/${rest}`}`
 }
 
-export interface AfterCaptureSpec {
+interface AfterCaptureSpec {
   /** 撮る URL（local に置き換えたもの）。local が分からなければ null */
   url: string | null
   /** 録画したときの URL（local が分からないとき、このパスを開発サーバーで開く） */
@@ -130,7 +130,7 @@ export function sanitizeDecisionScore(raw: unknown): DecisionScore | undefined {
 }
 
 /** カードに出す短い形（例「0.92 · done · conf 0.66 · 2 rounds」の材料）。数は小数2桁 */
-export function scoreParts(score: DecisionScore): { noul: string; choice?: string; confidence?: string; rounds?: number } {
+function scoreParts(score: DecisionScore): { noul: string; choice?: string; confidence?: string; rounds?: number } {
   return { noul: score.noul.toFixed(2), ...(score.choice ? { choice: score.choice } : {}), ...(score.confidence !== undefined ? { confidence: score.confidence.toFixed(2) } : {}), ...(score.rounds ? { rounds: score.rounds } : {}) }
 }
 

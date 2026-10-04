@@ -5,6 +5,10 @@ Solução de problemas
 <!-- @lead eabdc6539a -->
 Problemas comuns e como resolvê-los. As mensagens entre aspas são as que o app mostra em português.
 
+<!-- @install 2d5deeaa6d -->
+## Instalação e primeira execução
+<p>Linux: no Ubuntu 23.10 e posteriores, o AppImage pode parar ao iniciar com um erro de sandbox, porque o AppArmor restringe os user namespaces que o sandbox do Electron usa. Instale o <code>.deb</code> em vez dele.</p>
+
 <!-- @screen-permission 45fa22d7c7 -->
 ## A captura da tela ou de janelas falha (macOS)
 <p>Mensagem: <q>Gravar a tela inteira ou outra janela exige a permissão de Gravação de tela do macOS.</q></p>
@@ -24,6 +28,18 @@ Problemas comuns e como resolvê-los. As mensagens entre aspas são as que o app
   <li>Windows: <span class="docs-ui">Configurações → Privacidade e segurança → Microfone</span> e permita os aplicativos da área de trabalho.</li>
 </ul>
 <p>Sem microfone, os círculos da caneta ainda criam apontamentos, mas sem pedido falado.</p>
+
+<!-- @system-audio 62d76ef7c4 -->
+## O outro lado da reunião não é gravado
+<p>Quando <span class="docs-ui">Gravar também o outro lado</span> está ativado e o áudio do computador não pode ser gravado, o Ferret mostra um destes avisos e continua gravando o seu microfone, o vídeo e a caneta.</p>
+<ul>
+  <li><q>o Ferret não tem permissão para gravar o áudio do sistema.</q> (macOS): ative o Ferret em <span class="docs-ui">Ajustes do Sistema → Privacidade e Segurança → Gravação de Tela e Áudio do Sistema</span>, feche e abra o Ferret de novo e inicie uma nova gravação.</li>
+  <li><q>Para gravar o outro lado é preciso macOS 14.2 ou posterior.</q>: atualize o macOS. Até lá, só o seu microfone é gravado.</li>
+  <li><q>o Windows não permitiu acesso ao áudio do sistema.</q> ou <q>nenhum dispositivo de saída de áudio foi encontrado.</q>: ative alto-falantes ou fones de ouvido em <span class="docs-ui">Configurações → Sistema → Som</span> (Windows) ou conecte-os e inicie uma nova gravação.</li>
+  <li><q>o áudio do sistema não está disponível.</q> (Linux): instale o PulseAudio, ou o <code>pipewire-pulse</code> se você usa PipeWire.</li>
+  <li><q>A gravação do outro lado parou: o dispositivo de saída de áudio mudou ou foi desconectado.</q>: o resto da gravação continua sem o outro lado. Use <span class="docs-ui">Gravar mais</span> para capturar o restante.</li>
+</ul>
+<p>Se as falas do outro lado também aparecerem como suas, o seu microfone está captando os alto-falantes. Use fones de ouvido.</p>
 
 <!-- @whisper ec2a54a0ef -->
 ## Sem modelo no dispositivo / whisper-cli não encontrado

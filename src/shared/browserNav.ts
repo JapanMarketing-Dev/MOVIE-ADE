@@ -4,7 +4,7 @@ import type { BrowserState, CaptureTarget } from './types'
  * フィードバックモードのツールバーの「戻る／進む」（内蔵ブラウザの履歴）。
  * main（menu.ts のショートカット）と renderer（ボタンと案内）の両方から使うので Electron に依存しない。
  */
-export type BrowserNavDirection = 'back' | 'forward'
+type BrowserNavDirection = 'back' | 'forward'
 
 /** 戻る・進むを出すか。画面全体・ウインドウを録るときは内蔵ブラウザを操作しないので出さない */
 export function showsBrowserNav(target: CaptureTarget): boolean {

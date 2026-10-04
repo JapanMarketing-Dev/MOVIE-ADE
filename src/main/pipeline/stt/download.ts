@@ -307,12 +307,6 @@ export async function sha256File(path: string, signal?: AbortSignal): Promise<st
   return hash.digest('hex')
 }
 
-/** 途中までのデータを捨てる（やり直したいとき） */
-export async function discardPartialDownload(destPath: string): Promise<void> {
-  // 途中のファイルが無いこともある（想定内）
-  await unlink(`${destPath}.part`).catch(() => undefined)
-}
-
 /** 再開できる途中データがあるか、とその大きさ */
 export async function partialDownloadSize(destPath: string): Promise<number> {
   return sizeOf(`${destPath}.part`)

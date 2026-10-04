@@ -32,7 +32,7 @@ export interface ValidationResult {
   value?: OrganizeOutput
 }
 
-export interface ValidateOptions {
+interface ValidateOptions {
   /** 引用の時刻が文字起こしの区間と一致していると見なす許容幅(ms) */
   quoteToleranceMs: number;
   /** 1指摘あたりの画像の最大枚数 */
@@ -231,7 +231,7 @@ export function validateOrganizeOutput(
  * - 根拠が複数の対象にまたがれば、対象ごとの指摘に分ける（違う対象の指摘はまとめない）
  * 画像の時刻も、その対象を開いていた時刻のものだけにする（無ければ、その対象の中で根拠に最も近い静止画）。
  */
-export function enforceTarget(
+function enforceTarget(
   item: OrganizedItem,
   declared: string | undefined,
   ctx: { targets: TargetIndex; annotationTimes: Map<string, number>; frameTimes: number[]; maxFrames: number },

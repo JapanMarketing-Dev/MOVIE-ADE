@@ -35,7 +35,7 @@ const CIM_RETRY_AFTER_MS = 30_000
 const CIM_RETRY_MAX_MS = 10 * 60_000
 const MAX_LINE_CHARS = 1024 * 1024
 
-export const TYPEPERF_COUNTERS = [
+const TYPEPERF_COUNTERS = [
   '\\Process(*)\\ID Process',
   '\\Process(*)\\Creating Process ID',
   '\\Process(*)\\Working Set'
@@ -46,14 +46,14 @@ const CIM_COMMAND =
   'Get-CimInstance Win32_Process -Property ProcessId,ParentProcessId,WorkingSetSize,KernelModeTime,UserModeTime,CreationDate | ' +
   'ForEach-Object { try { [string]::Join([char]9, @($_.ProcessId, $_.ParentProcessId, $_.WorkingSetSize, [string]$_.KernelModeTime, [string]$_.UserModeTime, $_.CreationDate.ToUniversalTime().Ticks)) } catch {} }'
 
-export interface WindowsCpuTimes {
+interface WindowsCpuTimes {
   /** カーネル＋ユーザーの累積CPU時間（100ns 単位） */
   cpuTicks: bigint
   /** 起動時刻。PIDの使い回しで別プロセスの累積時間を引き継がないための印 */
   startTimeId: string
 }
 
-export interface WindowsProcessSample {
+interface WindowsProcessSample {
   rows: ProcRow[]
   cpuByPid: Map<number, WindowsCpuTimes>
 }
@@ -162,7 +162,7 @@ export function parseTypeperfProcessOutput(stdout: string): ProcRow[] {
 }
 
 /** 実行関数（コマンドと引数を受けて標準出力を返す）。単体テストでは差し替える */
-export type ExecText = (file: string, args: string[], options?: { timeoutMs?: number }) => Promise<string>
+type ExecText = (file: string, args: string[], options?: { timeoutMs?: number }) => Promise<string>
 
 const defaultExec: ExecText = async (file, args, options) => {
   const { stdout } = await promisify(execFile)(file, args, {
@@ -189,7 +189,7 @@ export function execFailureKind(err: unknown): 'timeout' | 'not-found' | 'output
 }
 
 /** 取得の失敗を Sentry へ送る形。題名は種類だけ（コマンドも出力も入れない） */
-export class ResourceProbeError extends Error {
+class ResourceProbeError extends Error {
   constructor(readonly backend: 'powershell' | 'typeperf', readonly kind: ReturnType<typeof execFailureKind>) {
     super(`${backend} process sampling failed: ${kind}`)
     this.name = 'ResourceProbeError'

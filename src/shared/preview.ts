@@ -46,6 +46,26 @@ export function previewPathFromUrl(url: string): string | null {
   }
 }
 
+/** 「外部の画像を読み込む」の合言葉を入れるクエリの名前（main の src/main/preview/remoteGrant.ts が出す。使い切り） */
+export const REMOTE_IMAGES_QUERY = 'remote-images'
+
+/**
+ * 保存・復元する URL から、外部の画像の許可の印を剥がす（security-4 [6]）。
+ * 許可はその表示の間だけのもので、設定ファイル・プロジェクトの状態には残さない。プレビュー以外の URL はそのまま
+ */
+export function stripPreviewGrant(url: string): string {
+  if (!url.startsWith(`${PREVIEW_SCHEME}:`)) return url
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return url
+  }
+  if (!parsed.searchParams.has(REMOTE_IMAGES_QUERY)) return url
+  parsed.searchParams.delete(REMOTE_IMAGES_QUERY)
+  return parsed.toString()
+}
+
 /** feedback.md の「対象」「URL」欄に出す形。プレビューならファイルの相対パスにする */
 export function describeTargetUrl(url: string): string | null {
   const path = previewPathFromUrl(url)

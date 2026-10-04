@@ -6,7 +6,6 @@ import {
   cliInstallCommand,
   cliLoginCommand,
   cliToolForInstallUrl,
-  isCliToolId,
   isKnownCliInstallCommand,
   parseCliVersion
 } from '@shared/cliTools'
@@ -29,13 +28,6 @@ describe('CLI の一覧', () => {
         expect(command).not.toMatch(/\{\{|\$\{|`/)
       }
     }
-  })
-
-  it('isCliToolId は表にあるものだけ', () => {
-    expect(isCliToolId('gh')).toBe(true)
-    expect(isCliToolId('toString')).toBe(false)
-    expect(isCliToolId('rm -rf /')).toBe(false)
-    expect(isCliToolId(undefined)).toBe(false)
   })
 })
 

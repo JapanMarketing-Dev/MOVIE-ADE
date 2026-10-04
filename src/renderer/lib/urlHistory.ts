@@ -9,10 +9,10 @@ import { readLocal, writeLocal } from './localPref'
  */
 
 /** 覚えておく件数の上限。URL ツリーはこの中からパスの木を作る */
-export const URL_HISTORY_MAX = 200
+const URL_HISTORY_MAX = 200
 
 /** 以前「最近の URL」として 8 件だけ覚えていた鍵をそのまま使い、上限だけ広げる */
-export function urlHistoryKey(projectId: string): string {
+function urlHistoryKey(projectId: string): string {
   return `ade.feedback.recent.${projectId}`
 }
 

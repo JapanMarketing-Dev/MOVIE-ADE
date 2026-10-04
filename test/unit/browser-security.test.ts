@@ -14,17 +14,19 @@ const state = vi.hoisted(() => ({
   openExternal: [] as string[],
   dialogs: [] as string[],
   dialogResponse: 1,
-  windowOpen: null as null | ((d: { url: string }) => { action: string }),
+  windowOpen: null as null | ((d: { url: string; disposition?: string }) => { action: string; overrideBrowserWindowOptions?: { webPreferences?: Record<string, unknown> } }),
   events: new Map<string, (...args: unknown[]) => void>(),
   loaded: [] as string[],
-  currentUrl: 'https://evil.example/page'
+  currentUrl: 'https://evil.example/page',
+  partitions: [] as string[]
 }))
 
 vi.mock('electron', () => {
   const fakeSession = {
     setPermissionRequestHandler: (h: typeof state.requestHandler) => { state.order.push('request-handler'); state.requestHandler = h },
     setPermissionCheckHandler: (h: typeof state.checkHandler) => { state.order.push('check-handler'); state.checkHandler = h },
-    getUserAgent: () => 'UA'
+    getUserAgent: () => 'UA',
+    setUserAgent: () => undefined
   }
   class WebContentsView {
     webContents = {
@@ -46,13 +48,13 @@ vi.mock('electron', () => {
   }
   return {
     WebContentsView,
-    session: { fromPartition: () => fakeSession },
+    session: { fromPartition: (name: string) => { state.partitions.push(name); return fakeSession } },
     shell: { openExternal: async (url: string) => { state.openExternal.push(url) } },
     dialog: { showMessageBox: async (...args: unknown[]) => { state.dialogs.push(String((args.at(-1) as { detail?: string }).detail)); return { response: state.dialogResponse } } }
   }
 })
 
-const { EmbeddedBrowser, browserSession } = await import('../../src/main/browser')
+const { EmbeddedBrowser, browserSession, PARTITION } = await import('../../src/main/browser')
 
 const flush = () => new Promise((r) => setTimeout(r, 0))
 const request = (permission: string, details: Record<string, unknown>) => new Promise<boolean>((resolve) => state.requestHandler!({}, permission, resolve, details))
@@ -89,6 +91,68 @@ describe('security-2 [4] 内蔵ブラウザの権限', () => {
       expect(state.checkHandler!({}, p, 'https://evil.example', page), p).toBe(false)
     }
     expect(state.checkHandler!({}, 'media', 'https://evil.example', { ...page, mediaType: 'audio' })).toBe(false)
+  })
+})
+
+describe('ログインのポップアップ', () => {
+  it('大きさを指定した window.open は、同じ永続セッション・sandbox の子ウインドウで開く（opener を保つ）', () => {
+    attach()
+    const result = state.windowOpen!({ url: 'https://accounts.example/login', disposition: 'new-window' })
+    expect(result.action).toBe('allow')
+    expect(result.overrideBrowserWindowOptions?.webPreferences).toMatchObject({ partition: PARTITION, sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true })
+  })
+
+  it('子ウインドウでは、外の http・ファイル・独自スキームへの遷移と転送を止め、さらに開くものは中で開くか断る', () => {
+    attach()
+    const child = new FakePopup()
+    state.events.get('did-create-window')!(child)
+    const nav = (name: string, url: string) => {
+      let stopped = false
+      child.wcEvents.get(name)!({ url, preventDefault: () => { stopped = true } })
+      return stopped
+    }
+    for (const name of ['will-navigate', 'will-redirect']) {
+      expect(nav(name, 'https://accounts.example/consent')).toBe(false)
+      expect(nav(name, 'http://127.0.0.1:4100/callback')).toBe(false)
+      expect(nav(name, 'file:///etc/passwd')).toBe(true)
+      expect(nav(name, 'zoommtg://zoom.us/join')).toBe(true)
+      expect(nav(name, 'http://evil.example/')).toBe(true)
+    }
+    expect(child.openHandler!({ url: 'https://accounts.example/next' }).action).toBe('deny')
+    expect(child.loaded).toEqual(['https://accounts.example/next'])
+    expect(child.openHandler!({ url: 'file:///etc/passwd' }).action).toBe('deny')
+    expect(child.loaded).toEqual(['https://accounts.example/next'])
+  })
+
+  it('普通の別タブ（target=_blank）は子ウインドウにせず、同じビューで開く', () => {
+    attach()
+    state.loaded.length = 0
+    expect(state.windowOpen!({ url: 'https://example.com/tab', disposition: 'foreground-tab' }).action).toBe('deny')
+    expect(state.loaded).toContain('https://example.com/tab')
+  })
+})
+
+class FakePopup {
+  wcEvents = new Map<string, (...args: unknown[]) => void>()
+  openHandler: null | ((d: { url: string }) => { action: string }) = null
+  loaded: string[] = []
+  webContents = {
+    setWindowOpenHandler: (h: (d: { url: string }) => { action: string }) => { this.openHandler = h },
+    on: (name: string, fn: (...args: unknown[]) => void) => { this.wcEvents.set(name, fn) },
+    loadURL: async (url: string) => { this.loaded.push(url) }
+  }
+  once(): void {}
+  setMenuBarVisibility(): void {}
+  isDestroyed(): boolean { return false }
+  close(): void {}
+}
+
+describe('内蔵ブラウザのログインの保持', () => {
+  it('セッションは永続の partition（persist:）なので、Figma や Google ドキュメントへのログインは再起動後も残る', () => {
+    attach()
+    expect(PARTITION).toMatch(/^persist:/)
+    expect(state.partitions.length).toBeGreaterThan(0)
+    expect(new Set(state.partitions)).toEqual(new Set([PARTITION]))
   })
 })
 
