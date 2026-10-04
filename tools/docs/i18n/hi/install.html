@@ -18,12 +18,12 @@
 <p>डाउनलोड की गई <code>.exe</code> चलाएँ। Ferret इंस्टॉल होकर खुल जाता है, कुछ भी चुनना नहीं पड़ता। अगली बार इसे Start menu या डेस्कटॉप shortcut से खोलें।</p>
 <p>अगर Windows <q>Windows protected your PC</q> दिखाए, तो <span class="docs-ui">More info</span> पर क्लिक करें, फिर <span class="docs-ui">Run anyway</span> पर।</p>
 
-<!-- @linux 58ceb4839c -->
+<!-- @linux 3c62a59460 -->
 ## Linux
 <p><strong>Ubuntu / Debian</strong>: <code>.deb</code> पर double-click करके उसे अपने software center से इंस्टॉल करें, या यह चलाएँ:</p>
 <pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
 <p>फिर Ferret को अपने ऐप मेन्यू से खोलें, या <code>ferret</code> चलाएँ।</p>
-<p><strong>दूसरे distributions</strong>: <code>.AppImage</code> इस्तेमाल करें। उसे program के रूप में चलने की अनुमति दें (right-click → Properties, या <code>chmod +x</code>), फिर उसे खोलें।</p>
+<p><strong>दूसरे distributions</strong>: <code>.AppImage</code> इस्तेमाल करें। AppImage FUSE 2 के साथ चलते हैं, इसलिए अगर आपके system में यह नहीं है तो पहले इसका package install करें: Fedora पर <code>fuse-libs</code>, Arch पर <code>fuse2</code>, openSUSE और Debian-आधारित systems पर <code>libfuse2</code>। फिर <code>.AppImage</code> को program के रूप में चलने की अनुमति दें (right-click → Properties, या <code>chmod +x</code>) और उसे खोलें।</p>
 
 <!-- @more 75e55cbce4 -->
 ## आगे

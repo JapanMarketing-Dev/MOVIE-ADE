@@ -44,7 +44,7 @@ import { UserFacingError, isStaleChunkError, toUserFacingFileError } from '@shar
 import { IS_PACKAGED } from './runtime'
 import { configDir, currentSettings, flushSettingsSync, loadSettings, readSettingsText, settingsFileInfo, updateSettings, watchSettings, writeSettingsText } from './settings'
 import { envGetter, keepKeyRefs, redactKeys, resolveApiKey, resolveConfiguredKey, resolveEndpointRefs, type KeyRef } from './settingsKeys'
-import { elapsedMs, mark, reportInteractive, setStartupTags } from './startup'
+import { elapsedMs, mark, markOnce, reportInteractive, setStartupTags } from './startup'
 import { emulationKind } from './emulation'
 import { TerminalManager } from './terminal'
 import { listAgentOptions } from './agentDetection'
@@ -1307,7 +1307,7 @@ function registerIpc(): void {
       const downloads = await whisperModelDownloads()
       const models = await downloads.list()
       const current = localModel()
-      return { models, binaryFound: !!resolveWhisperBinary({ modelDir: '' }, nodeProbes()), installHint: whisperInstallHint(process.platform),
+      return { models, binaryFound: !!(await resolveWhisperBinary({ modelDir: '' }, nodeProbes())), installHint: whisperInstallHint(process.platform),
         downloading: downloads.downloading(), selected: models.find((m) => m.downloaded && downloads.pathOf(m.id) === current)?.id ?? null }
     },
     'capture:downloadModel': async (id) => {
@@ -1333,7 +1333,7 @@ function registerIpc(): void {
       const configured = new Map<AiVendor, SttKeySource>()
       for (const p of ai.STT_REMOTE_PROVIDERS) { const found = sttRef(p); if (found) configured.set(ai.STT_PROVIDER_PRESETS[p].vendor, found.source) }
       for (const p of ai.LLM_API_PROVIDERS) { const found = llmRef(p); if (found) configured.set(ai.LLM_PROVIDER_PRESETS[p].vendor, found.source) }
-      return { localReady: !!resolveWhisperBinary({ modelDir: '' }, nodeProbes()) && existsSync(localModel()),
+      return { localReady: !!(await resolveWhisperBinary({ modelDir: '' }, nodeProbes())) && existsSync(localModel()),
         // 復号しない（起動直後にも呼ばれるため）。dev 版は保存しないことを画面に出す
         keyStorage: IS_PACKAGED ? keys.storage() : 'dev' as const,
         keys: Object.fromEntries(ai.AI_VENDORS.map((v) => [v, configured.get(v) ?? keys.source(v)])) as Record<AiVendor, SttKeySource>,
@@ -1472,7 +1472,7 @@ function registerIpc(): void {
             }
           } else {
             const { nodeProbes, resolveWhisperBinary } = await import('./pipeline/environment')
-            const binary = resolveWhisperBinary({ modelDir: '' }, nodeProbes())
+            const binary = await resolveWhisperBinary({ modelDir: '' }, nodeProbes())
             const { WhisperCppEngine } = await import('./pipeline/stt/whisper')
             if (binary && existsSync(localModel())) transcriber = new IncrementalTranscriber(
               new WhisperCppEngine({ binary, model: localModel(), language: options.language ?? 'auto', greedy: true }), onSegments)
@@ -1657,7 +1657,11 @@ function registerIpc(): void {
     ipcMain.handle(channel, async (_event, ...args: unknown[]) => {
       // 終了処理に入った後は、破棄途中のオブジェクトを触らない
       if (shuttingDown) return null
+      // 起動の内訳: renderer の最初の呼び出し（renderer の JS が動き始めた）と、画面の最初のデータを返し終えた時刻。
+      // renderer:loaded → interactive のどこで遅れたか（renderer・main の順番待ち・描画）を分ける
+      markOnce('renderer:firstIpc')
       const result = await run(...args)
+      if (channel === 'browser:state') markOnce('renderer:initialData')
       // void を返すハンドラの戻り値は undefined に正規化する（構造化クローンの失敗を避ける）
       return result === undefined ? null : result
     })

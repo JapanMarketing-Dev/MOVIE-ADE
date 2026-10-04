@@ -18,12 +18,12 @@
 <p>執行下載的 <code>.exe</code>。Ferret 會完成安裝並開啟，過程中不需要做任何選擇。之後請從「開始」功能表或桌面捷徑開啟。</p>
 <p>如果 Windows 顯示 <q>Windows 已保護您的電腦</q>，請按一下 <span class="docs-ui">其他資訊</span>，再按 <span class="docs-ui">仍要執行</span>。</p>
 
-<!-- @linux 58ceb4839c -->
+<!-- @linux 3c62a59460 -->
 ## Linux
 <p><strong>Ubuntu / Debian</strong>：按兩下 <code>.deb</code>，用軟體中心安裝，或執行：</p>
 <pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
 <p>接著從應用程式選單開啟 Ferret，或執行 <code>ferret</code>。</p>
-<p><strong>其他發行版</strong>：請使用 <code>.AppImage</code>。允許它以程式執行（按右鍵 → 內容，或使用 <code>chmod +x</code>），然後開啟。</p>
+<p><strong>其他發行版</strong>：請使用 <code>.AppImage</code>。AppImage 需要 FUSE 2 才能執行，若系統尚未安裝，請先安裝對應的套件：Fedora 為 <code>fuse-libs</code>，Arch 為 <code>fuse2</code>，openSUSE 與以 Debian 為基礎的系統為 <code>libfuse2</code>。接著允許 <code>.AppImage</code> 以程式執行（按右鍵 → 內容，或使用 <code>chmod +x</code>），然後開啟。</p>
 
 <!-- @more 75e55cbce4 -->
 ## 下一步

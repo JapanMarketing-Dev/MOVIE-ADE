@@ -261,8 +261,9 @@ export function scrubEvent<T extends EventLike>(event: T, ctx: ScrubContext = {}
   // 利用者は、端末ごとに作ったランダムな ID（インストール ID）だけを残す（「影響を受けた人数」を数えるため）。
   // 名前・メール・IP は持たない
   const userId = (copy.user as { id?: unknown } | undefined)?.id
-  delete copy.user
-  if (isInstallId(userId)) copy.user = { id: userId }
+  // 空の geo も必ず置く。Sentry は IP を送らなくても（infer_ip: never・ip_address: null でも）接続元の IP から
+  // 市区町村を推定して user.geo に入れるが、geo が既にあれば推定しない（2026-10-04 に verification へ送って確かめた）
+  copy.user = isInstallId(userId) ? { id: userId, geo: {} } : { geo: {} }
   delete copy.request
   delete copy.extra
   delete copy.server_name

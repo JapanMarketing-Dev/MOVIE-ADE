@@ -2,15 +2,16 @@ import { describe, expect, it, vi } from 'vitest'
 
 /**
  * which は capture:availability（指摘の画面を開くたび）などで何度も呼ばれる。結果を30秒覚える（src/main/pipeline/environment.ts）。
- * macOS / Linux は which を起動せず PATH のフォルダを見る（プロセスを同期で起動して main を止めない。FERRET-M）
+ * macOS / Linux は which を起動せず PATH のフォルダを見る。Windows の where は非同期で起動する（プロセスを同期で起動して main を止めない。FERRET-M）
  */
 const isWindows = process.platform === 'win32'
 const found = (cmd: string) => (isWindows ? `C:\\tools\\${cmd}.exe` : `/usr/local/bin/${cmd}`)
-const execFileSync = vi.fn((_cmd: string, args: string[]) => {
-  if (args[0] === 'missing-cmd') throw new Error('not found')
-  return `${found(args[0]!)}\r\n`
+const execFile = vi.fn((_cmd: string, args: string[], _opts: unknown, done: (err: Error | null, stdout: string) => void) => {
+  if (args[0] === 'missing-cmd') done(new Error('not found'), '')
+  else done(null, `${found(args[0]!)}\r\n`)
 })
-vi.mock('node:child_process', async (importOriginal) => ({ ...(await importOriginal<typeof import('node:child_process')>()), execFileSync }))
+const execFileSync = vi.fn()
+vi.mock('node:child_process', async (importOriginal) => ({ ...(await importOriginal<typeof import('node:child_process')>()), execFile, execFileSync }))
 const statSync = vi.fn((path: string) => {
   if (path !== found('whisper-cli')) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
   return { isFile: () => true }
@@ -25,21 +26,43 @@ describe('which の結果を覚える', () => {
     try {
       const { nodeProbes } = await import('../../src/main/pipeline/environment')
       // 探した回数（Windows は where の起動、macOS / Linux は PATH の2つのフォルダを見る）
-      const searches = () => (isWindows ? execFileSync.mock.calls.length : statSync.mock.calls.length / 2)
+      const searches = () => (isWindows ? execFile.mock.calls.length : statSync.mock.calls.length / 2)
       const probes = nodeProbes()
-      expect(probes.which('whisper-cli')).toBe(found('whisper-cli'))
-      expect(nodeProbes().which('whisper-cli')).toBe(found('whisper-cli'))
-      expect(probes.which('missing-cmd')).toBeNull()
-      expect(probes.which('missing-cmd')).toBeNull()
+      expect(await probes.which('whisper-cli')).toBe(found('whisper-cli'))
+      expect(await nodeProbes().which('whisper-cli')).toBe(found('whisper-cli'))
+      expect(await probes.which('missing-cmd')).toBeNull()
+      expect(await probes.which('missing-cmd')).toBeNull()
       expect(searches()).toBe(2)
       vi.setSystemTime(1_000_000 + 31_000)
-      probes.which('whisper-cli')
+      await probes.which('whisper-cli')
       expect(searches()).toBe(3)
-      // macOS / Linux では which のプロセスを起動しない
-      if (!isWindows) expect(execFileSync).not.toHaveBeenCalled()
+      // 同期でプロセスを起動しない（macOS / Linux は which も起動しない）
+      expect(execFileSync).not.toHaveBeenCalled()
+      if (!isWindows) expect(execFile).not.toHaveBeenCalled()
     } finally {
       process.env.PATH = savedPath
       vi.useRealTimers()
+    }
+  })
+})
+
+describe('Windows の where', () => {
+  it('非同期で起動し、探している途中の呼び出しも1回にまとめる', async () => {
+    const original = Object.getOwnPropertyDescriptor(process, 'platform')!
+    Object.defineProperty(process, 'platform', { value: 'win32' })
+    vi.resetModules()
+    execFile.mockClear()
+    execFileSync.mockClear()
+    try {
+      const { nodeProbes } = await import('../../src/main/pipeline/environment')
+      const probes = nodeProbes()
+      const [a, b] = await Promise.all([probes.which('codex'), probes.which('codex')])
+      expect(a).toBe(b)
+      expect(execFile).toHaveBeenCalledTimes(1)
+      expect(execFile.mock.calls[0]![0]).toBe('where')
+      expect(execFileSync).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(process, 'platform', original)
     }
   })
 })

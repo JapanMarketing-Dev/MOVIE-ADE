@@ -18,12 +18,12 @@
 <p>내려받은 <code>.exe</code>를 실행합니다. 따로 선택할 것 없이 Ferret이 설치되고 열립니다. 다음부터는 시작 메뉴나 바탕 화면 바로 가기에서 엽니다.</p>
 <p>Windows에 <q>Windows의 PC 보호</q>가 표시되면 <span class="docs-ui">추가 정보</span>를 클릭한 다음 <span class="docs-ui">실행</span>을 클릭합니다.</p>
 
-<!-- @linux 58ceb4839c -->
+<!-- @linux 3c62a59460 -->
 ## Linux
 <p><strong>Ubuntu / Debian</strong>: <code>.deb</code>를 더블 클릭해 소프트웨어 센터로 설치하거나, 다음을 실행합니다.</p>
 <pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
 <p>그런 다음 앱 메뉴에서 Ferret을 열거나 <code>ferret</code>을 실행합니다.</p>
-<p><strong>그 밖의 배포판</strong>: <code>.AppImage</code>를 사용합니다. 프로그램으로 실행할 수 있게 허용한 뒤(마우스 오른쪽 버튼 → 속성, 또는 <code>chmod +x</code>) 엽니다.</p>
+<p><strong>그 밖의 배포판</strong>: <code>.AppImage</code>를 사용합니다. AppImage는 FUSE 2로 실행되므로, 시스템에 없다면 먼저 해당 패키지를 설치합니다: Fedora는 <code>fuse-libs</code>, Arch는 <code>fuse2</code>, openSUSE와 Debian 계열은 <code>libfuse2</code>. 그런 다음 <code>.AppImage</code>를 프로그램으로 실행할 수 있게 허용하고(마우스 오른쪽 버튼 → 속성, 또는 <code>chmod +x</code>) 엽니다.</p>
 
 <!-- @more 75e55cbce4 -->
 ## 다음 단계

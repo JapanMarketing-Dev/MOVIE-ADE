@@ -18,12 +18,12 @@ Laden Sie Ferret für Ihren Computer herunter und öffnen Sie es. Es läuft unte
 <p>Führen Sie die heruntergeladene <code>.exe</code> aus. Ferret wird installiert und geöffnet, ohne dass Sie etwas auswählen müssen. Beim nächsten Mal öffnen Sie es über das Startmenü oder die Verknüpfung auf dem Desktop.</p>
 <p>Wenn Windows <q>Der Computer wurde durch Windows geschützt</q> anzeigt, klicken Sie auf <span class="docs-ui">Weitere Informationen</span> und dann auf <span class="docs-ui">Trotzdem ausführen</span>.</p>
 
-<!-- @linux 58ceb4839c -->
+<!-- @linux 3c62a59460 -->
 ## Linux
 <p><strong>Ubuntu / Debian</strong>: Doppelklicken Sie auf das <code>.deb</code>, um es mit Ihrer Softwareverwaltung zu installieren, oder führen Sie aus:</p>
 <pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
 <p>Öffnen Sie Ferret dann über Ihr Anwendungsmenü oder führen Sie <code>ferret</code> aus.</p>
-<p><strong>Andere Distributionen</strong>: Verwenden Sie das <code>.AppImage</code>. Erlauben Sie, es als Programm auszuführen (Rechtsklick → Eigenschaften oder <code>chmod +x</code>), und öffnen Sie es dann.</p>
+<p><strong>Andere Distributionen</strong>: Verwenden Sie das <code>.AppImage</code>. AppImages laufen mit FUSE 2. Installieren Sie daher zuerst dessen Paket, falls es auf Ihrem System fehlt: <code>fuse-libs</code> unter Fedora, <code>fuse2</code> unter Arch, <code>libfuse2</code> unter openSUSE und Debian-basierten Systemen. Erlauben Sie dann, das <code>.AppImage</code> als Programm auszuführen (Rechtsklick → Eigenschaften oder <code>chmod +x</code>), und öffnen Sie es.</p>
 
 <!-- @more 75e55cbce4 -->
 ## Weiter

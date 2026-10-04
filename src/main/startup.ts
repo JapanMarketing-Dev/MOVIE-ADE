@@ -31,6 +31,11 @@ export function mark(name: string): number {
   return elapsed
 }
 
+/** まだ無い節目だけ記録する（何度も通る場所の「最初の1回」） */
+export function markOnce(name: string): void {
+  if (!(name in marks)) mark(name)
+}
+
 function marksSnapshot(): Record<string, number> {
   return { ...marks }
 }

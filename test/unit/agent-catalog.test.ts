@@ -20,7 +20,7 @@ import {
 } from '@shared/agentCatalog'
 import { buildAgentLaunchCommand } from '@shared/agentLaunch'
 import type { AgentPreferences } from '@shared/types'
-import { isCommandInDirs, listAgentOptions } from '../../src/main/agentDetection'
+import { listAgentOptions, resolveCommandsInDirs } from '../../src/main/agentDetection'
 import { detectState } from '../../src/main/agent/state'
 
 const prefsWithCustom: AgentPreferences = {
@@ -254,13 +254,31 @@ describe('インストールの検出', () => {
   make('not-executable', 0o644)
   afterAll(() => rmSync(dir, { recursive: true, force: true }))
 
-  it.skipIf(process.platform === 'win32')('PATH のフォルダにある実行ファイルだけを見つける', () => {
-    expect(isCommandInDirs('gemini', [dir])).toBe(true)
-    expect(isCommandInDirs('not-executable', [dir])).toBe(false)
-    expect(isCommandInDirs('amp', [dir])).toBe(false)
-    // 無いフォルダ・空の一覧でも投げずに false
-    expect(isCommandInDirs('gemini', [join(dir, 'missing'), ''])).toBe(false)
-    expect(isCommandInDirs('gemini', [])).toBe(false)
+  it.skipIf(process.platform === 'win32')('PATH のフォルダにある実行ファイルだけを見つける', async () => {
+    const found = await resolveCommandsInDirs(['gemini', 'not-executable', 'amp'], [dir])
+    expect([...found]).toEqual([['gemini', join(dir, 'gemini')]])
+    // 無いフォルダ・空の名前・空の一覧でも投げずに見つからない
+    expect((await resolveCommandsInDirs(['gemini'], [join(dir, 'missing'), ''])).size).toBe(0)
+    expect((await resolveCommandsInDirs(['gemini'], [])).size).toBe(0)
+  })
+
+  it('前のフォルダを先に見る。Windows は PATHEXT の拡張子を大文字小文字を区別せずに試す', async () => {
+    const second = mkdtempSync(join(tmpdir(), 'ade-agent-detect-2-'))
+    try {
+      writeFileSync(join(second, 'gemini'), '')
+      writeFileSync(join(second, 'Codex.CMD'), '')
+      expect((await resolveCommandsInDirs(['gemini'], [dir, second], 'darwin')).get('gemini')).toBe(join(dir, 'gemini'))
+      const original = process.env.PATHEXT
+      process.env.PATHEXT = '.EXE;.CMD'
+      try {
+        expect((await resolveCommandsInDirs(['codex'], [dir, second], 'win32')).get('codex')).toBe(join(second, 'Codex.CMD'))
+      } finally {
+        if (original === undefined) delete process.env.PATHEXT
+        else process.env.PATHEXT = original
+      }
+    } finally {
+      rmSync(second, { recursive: true, force: true })
+    }
   })
 
   it.skipIf(process.platform === 'win32')('一覧は組み込み → カスタムの順で、検出と無効を合わせる', async () => {

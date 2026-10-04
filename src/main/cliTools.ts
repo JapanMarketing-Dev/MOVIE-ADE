@@ -1,9 +1,8 @@
 import { execFile } from 'node:child_process'
-import { statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { CLI_TOOL_IDS, CLI_TOOLS, cliDetectCommands, parseCliVersion, type CliToolId, type CliToolStatus } from '@shared/cliTools'
-import { isCommandInDirs, searchDirs } from './agentDetection'
+import { resolveCommandsInDirs, searchDirs } from './agentDetection'
 
 /**
  * 設定の「CLI」の一覧に出す、よく使うサービスの CLI の検出（入っているか・版）。
@@ -17,22 +16,6 @@ const CACHE_TTL_MS = 30_000
 
 function toolDirs(id: CliToolId): string[] {
   return (CLI_TOOLS[id].homeBinDirs ?? []).map((dir) => join(homedir(), ...dir.split('/')))
-}
-
-/** dirs の中で最初に見つかった実行ファイルのパス */
-function resolveInDirs(command: string, dirs: readonly string[]): string | null {
-  const exts = process.platform === 'win32' ? ['', ...(process.env.PATHEXT ?? '.EXE;.CMD;.BAT').toLowerCase().split(';')] : ['']
-  for (const dir of dirs) {
-    for (const ext of exts) {
-      const path = join(dir, command + ext)
-      try {
-        if (statSync(path).isFile() && isCommandInDirs(command + ext, [dir])) return path
-      } catch {
-        // 無い候補（想定内）
-      }
-    }
-  }
-  return null
 }
 
 function readVersion(path: string, arg: string, dirs: readonly string[]): Promise<string | null> {
@@ -60,7 +43,9 @@ export async function listCliTools(refresh = false): Promise<CliToolStatus[]> {
   const base = await searchDirs()
   const result = await Promise.all(CLI_TOOL_IDS.map(async (id): Promise<CliToolStatus> => {
     const dirs = [...base, ...toolDirs(id)]
-    const path = cliDetectCommands(id).map((command) => resolveInDirs(command, dirs)).find((p): p is string => p !== null) ?? null
+    const commands = cliDetectCommands(id)
+    const resolved = await resolveCommandsInDirs(commands, dirs)
+    const path = commands.map((command) => resolved.get(command)).find((p): p is string => p !== undefined) ?? null
     if (!path) return { id, installed: false, version: null }
     return { id, installed: true, version: await readVersion(path, CLI_TOOLS[id].versionArg, dirs) }
   }))
