@@ -33,6 +33,14 @@ const option = (name, fallback) => {
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback
 }
 
+// 知らない引数（--help など）は上げずに止める。読み違えたまま本番の Sentry へ上げない（2026-10-04、--help で上げてしまった）
+for (let i = 0; i < args.length; i += 1) {
+  if (args[i] === '--dry-run') continue
+  if (args[i] === '--dir' && args[i + 1]) { i += 1; continue }
+  console.error(`[sentry-sourcemaps] 知らない引数です: ${args[i]}\n使い方: node scripts/sentry-sourcemaps.mjs [--dir <dir>] [--dry-run]`)
+  process.exit(2)
+}
+
 const dir = resolve(root, option('--dir', 'out'))
 const dryRun = flag('--dry-run')
 const required = process.env.SENTRY_SOURCEMAPS === 'required'

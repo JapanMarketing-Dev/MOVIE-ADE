@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { constants } from 'node:fs'
-import { copyFile, link, open, unlink } from 'node:fs/promises'
+import { copyFile, link, open, rename, unlink } from 'node:fs/promises'
 import { extname, join } from 'node:path'
 import type { VerifiedDownload } from './updateCheck'
 
@@ -44,11 +44,30 @@ async function placeUnique(temp: string, dir: string, name: string): Promise<str
   throw new Error('no free file name')
 }
 
+/** ダウンロードの進み具合（受け取ったバイト数と、署名で確かめた大きさ） */
+export type DownloadProgress = (received: number, total: number) => void
+
 /**
  * file を dir に落とし、確かめた sha256 と大きさが合えば置いたパスを返す。
  * name は署名した SHA256SUMS の、決まった形（Ferret-<版>-<os>-<arch>.<ext>）の名前なのでパスの区切りを含まない
  */
-export async function downloadVerifiedUpdate(file: VerifiedDownload, dir: string, fetcher: typeof fetch, signal?: AbortSignal): Promise<string> {
+export async function downloadVerifiedUpdate(file: VerifiedDownload, dir: string, fetcher: typeof fetch, signal?: AbortSignal, onProgress?: DownloadProgress): Promise<string> {
+  return fetchVerified(file, dir, fetcher, (temp) => placeUnique(temp, dir, file.name), signal, onProgress)
+}
+
+/**
+ * 自動更新（autoUpdate.ts）用。file を dir/<名前> に落とす（同じ名前があれば置き換える）。確かめ方は downloadVerifiedUpdate と同じで、
+ * 大きさと sha256 が合ったものだけが dir/<名前> になる
+ */
+export async function downloadVerifiedTo(file: VerifiedDownload, dir: string, fetcher: typeof fetch, signal?: AbortSignal, onProgress?: DownloadProgress): Promise<string> {
+  const target = join(dir, file.name)
+  return fetchVerified(file, dir, fetcher, async (temp) => {
+    await rename(temp, target)
+    return target
+  }, signal, onProgress)
+}
+
+async function fetchVerified(file: VerifiedDownload, dir: string, fetcher: typeof fetch, place: (temp: string) => Promise<string>, signal?: AbortSignal, onProgress?: DownloadProgress): Promise<string> {
   const res = await fetcher(file.url, { signal })
   if (!res.ok || !res.body) throw new UpdateDownloadError('http')
   const declared = Number(res.headers.get('content-length') ?? NaN)
@@ -71,11 +90,12 @@ export async function downloadVerifiedUpdate(file: VerifiedDownload, dir: string
       }
       hash.update(value)
       await handle.write(value)
+      onProgress?.(total, file.size)
     }
     if (total !== file.size) throw new UpdateDownloadError('size')
     if (hash.digest('hex') !== file.sha256) throw new UpdateDownloadError('digest')
     await handle.close()
-    const placed = await placeUnique(temp, dir, file.name)
+    const placed = await place(temp)
     ok = true
     return placed
   } finally {

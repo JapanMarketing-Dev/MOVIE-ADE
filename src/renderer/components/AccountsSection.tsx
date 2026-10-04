@@ -5,6 +5,7 @@ import { TUI_AGENT_LABEL, type AccountAgent } from '@shared/types'
 import { Badge, Button, Field, IconButton } from '../ui'
 import { useAgentAccounts, type AccountAction } from '../hooks/useAgentAccounts'
 import { AgentIcon } from './AgentIcon'
+import { FailoverSettings } from './FailoverSettings'
 import { formatDateTime } from '@shared/i18n'
 import { useT } from '../lib/i18n'
 import '../styles/accounts.css'
@@ -237,6 +238,7 @@ export function AccountsSection() {
         {AGENTS.map((agent) => (
           <AgentAccounts key={agent} agent={agent} view={state?.[agent]} accounts={accounts} />
         ))}
+        <FailoverSettings />
       </div>
     </section>
   )

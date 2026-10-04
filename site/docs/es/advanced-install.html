@@ -219,7 +219,18 @@ pnpm dist:linux   # AppImage + deb (x64)</code></pre>
 
       <section class="docs-section" aria-labelledby="update">
         <h2 id="update"><a class="docs-anchor" href="#update" aria-label="Enlace a Actualizaciones">#</a>Actualizaciones</h2>
-        <p>Ferret no se actualiza automáticamente. En el pie de la ventana, abre <span class="docs-ui">Actualizaciones</span> y haz clic en <span class="docs-ui">Buscar actualizaciones</span>. Descarga <code>latest.json</code> del servidor de descarga (R2), compara las versiones y comprueba la firma del <code>SHA256SUMS</code> de esa versión con la clave de publicación integrada en la app. Cuando hay una versión más reciente, haz clic en <span class="docs-ui">Descargar</span>: Ferret descarga el instalador para tu ordenador, comprueba que su SHA-256 coincide con el <code>SHA256SUMS</code> firmado, lo guarda en tu carpeta de Descargas y te lo muestra allí. La página de descarga hace la misma comprobación en tu navegador antes de guardar un archivo. No se comprueba nada hasta que haces clic, y nada se instala automáticamente.</p>
+        <p>Ferret busca una versión nueva al iniciarse, cada 6 horas y cuando haces clic en <span class="docs-ui">Buscar actualizaciones</span> (pie de página → <span class="docs-ui">Actualizaciones</span>). Obtiene <code>latest.json</code> del servidor de descarga (R2) y comprueba la firma del <code>SHA256SUMS</code> de esa versión con la clave de publicación integrada en la app. No ofrece una versión cuya firma no coincida.</p>
+<p>Cuando encuentra una versión nueva, Ferret la descarga en segundo plano y muestra el progreso en <span class="docs-ui">Actualizaciones</span>. La descarga solo se usa si su tamaño y su SHA-256 coinciden con la lista firmada. Después aparece <span class="docs-ui">Reiniciar y actualizar</span> en <span class="docs-ui">Actualizaciones</span> y en el pie de página. Haz clic para reiniciar con la versión nueva. Si un agente está trabajando en un terminal o hay una grabación en curso, Ferret pregunta primero; la grabación hasta ese momento se guarda antes de reiniciar.</p>
+<table>
+  <thead><tr><th>Tipo de instalación</th><th>Qué se descarga</th><th>Cómo se instala</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>, que figura en <code>UPDATE-SHA256SUMS</code> y está firmado con la misma clave de publicación</td><td>se entrega al actualizador de macOS (Squirrel.Mac), que también comprueba que la app nueva tenga la misma firma Developer ID; se reemplaza al reiniciar Ferret</td></tr>
+    <tr><td>Windows</td><td>el instalador (<code>.exe</code>)</td><td>se ejecuta sin ventanas al reiniciar Ferret y luego abre la versión nueva</td></tr>
+    <tr><td>Linux (AppImage)</td><td>el nuevo <code>.AppImage</code></td><td>reemplaza el AppImage que iniciaste y luego abre la versión nueva</td></tr>
+    <tr><td>Linux (deb)</td><td>el <code>.deb</code></td><td><span class="docs-ui">Abrir instalador</span> lo guarda en tu carpeta de descargas y lo abre en tu instalador de software</td></tr>
+  </tbody>
+</table>
+<p>Para descargar solo cuando tú lo elijas, desactiva <span class="docs-ui">Descargar nuevas versiones automáticamente</span> en <span class="docs-ui">Actualizaciones</span> (o pon <code>"autoUpdate": false</code> en <code>settings.json</code>) y haz clic en <span class="docs-ui">Descargar</span> cuando aparezca una versión nueva. Las builds de desarrollo (<code>pnpm dev</code>) no descargan en segundo plano; <span class="docs-ui">Descargar</span> guarda el instalador comprobado en tu carpeta de descargas.</p>
       </section>
 
         <nav class="docs-pager" aria-label="Página anterior y siguiente">

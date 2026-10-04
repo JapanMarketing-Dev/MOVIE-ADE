@@ -22,3 +22,26 @@
 <p>顯示多少內容取決於頁尾的空間。空間足夠時，會顯示長條、時段名稱與百分比。頁尾越窄，就會先省略較不重要的部分，最少只顯示每個 Agent 一個百分比。按一下用量，即可在彈出視窗中查看所有內容。</p>
 <p>用量是以已登入帳號本身的憑證，直接向 Anthropic（<code>api.anthropic.com/api/oauth/usage</code>）與 ChatGPT（<code>chatgpt.com/backend-api/wham/usage</code>）取得。</p>
 {{shot:usage|頁尾的用量}}
+
+<!-- @failover 4e121e0f4c -->
+## 達到用量上限時繼續工作
+<p>當 Agent 達到用量上限時，Ferret 會在同一個專案資料夾中繼續同一項工作，因此長時間的工作不會因上限而停下。此功能預設開啟，可在 <span class="docs-ui">設定 → 帳號 → 達到用量上限時自動切換</span> 中設定。</p>
+<p>工作會透過專案中的一個檔案 <code>.ferret/handoff.md</code> 交接，因此在帳號之間與不同 Agent 之間都同樣適用。<span class="docs-ui">傳送給 Agent</span> 的指示會要求 Agent 在每個階段以及接近用量上限時更新這個檔案：目標、已完成的部分、以檢查清單列出的剩餘工作、變更過的檔案、下一步、相關的 <code>feedback.md</code> 與審查路徑，以及需要注意的事項。<code>.ferret/</code> 不會進入 git（它會加入 <code>.git/info/exclude</code>，而不是 <code>.gitignore</code>）。</p>
+<ol class="docs-steps">
+  <li>Ferret 會根據終端機中 Agent 本身的訊息（例如 Claude Code 的 <code>5-hour limit reached ∙ resets 3pm</code>、Codex 的 <code>You've hit your usage limit</code>），或頁尾的用量達到門檻（預設 95%；取 5 小時、每週與各模型額度中最高者）來判斷已達上限。</li>
+  <li>切換之前，Ferret 會請目前的 Agent 更新 <code>.ferret/handoff.md</code>。如果 Agent 沒有開始處理（例如它已經達到上限），Ferret 會把它知道的資訊加入該檔案：最後的要求、<code>feedback.md</code> 的位置，以及 <code>git status</code> 中顯示的變更檔案。</li>
+  <li>接著 Ferret 會切換到同一個 Agent 已登入的其他帳號中用量最低的那個。當該 Agent 的所有帳號都達到上限時，工作會移到 <span class="docs-ui">Agent 順序</span>（預設：Claude Code → Codex → Gemini CLI）中的下一個 Agent。</li>
+  <li>新的 Agent 會在同一個專案的新分頁中開啟，並以 App 顯示語言收到提示：先閱讀 <code>.ferret/handoff.md</code>，再繼續剩餘的工作。</li>
+  <li>頁尾會顯示 <span class="docs-ui">目前使用 &lt;agent&gt;</span>，並有通知說明有什麼改變（例如 <span class="docs-ui">Codex 已達到用量上限，已切換到 Claude Code。</span>）。達到上限的分頁會被關閉，因此在其上限恢復時不會再次接手同一項工作。</li>
+</ol>
+<table>
+  <thead><tr><th>設定</th><th>預設值</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">達到用量上限時自動切換</span></td><td>開啟</td></tr>
+    <tr><td><span class="docs-ui">帳號用量達到此值即視為上限</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">先切換到同一個 Agent 的其他帳號</span></td><td>開啟</td></tr>
+    <tr><td><span class="docs-ui">Agent 順序</span></td><td>Claude Code、Codex、Gemini CLI。不在清單中的 Agent 不會被使用。</td></tr>
+    <tr><td><span class="docs-ui">上限恢復後切回順序較前的 Agent</span></td><td>關閉（繼續使用目前的 Agent 工作）。開啟時，會在分頁等待輸入時把工作切回去。</td></tr>
+  </tbody>
+</table>
+<p>切換只會在專案內進行，每小時最多 6 次，且間隔至少 1 分鐘。憑證保留在各帳號自己的設定目錄中，絕不會被複製。在 <code>settings.json</code> 中，這些設定位於 <code>limitFailover</code> 底下。</p>

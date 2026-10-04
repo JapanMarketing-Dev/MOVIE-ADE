@@ -203,12 +203,28 @@
   <tbody>
     <tr><td><span class="docs-ui">Khởi chạy khi mở dự án</span></td><td>Claude Code, Codex (chọn bất kỳ <a href="agents.html#supported">agent được hỗ trợ</a> nào, hoặc không chọn)</td></tr>
     <tr><td><span class="docs-ui">Hiện &lt;agent&gt; trong menu</span></td><td>Bật cho mọi agent</td></tr>
-    <tr><td><span class="docs-ui">Lệnh</span> / <span class="docs-ui">tham số</span> (theo từng agent)</td><td>Lệnh của chính agent đó (ví dụ <code>claude</code>, <code>codex</code>, <code>gemini</code>) / không có</td></tr>
+    <tr><td><span class="docs-ui">Khởi chạy Agent mà không hỏi cấp quyền</span></td><td>Bật: Claude Code khởi động với <code>--dangerously-skip-permissions</code>, Codex với <code>--dangerously-bypass-approvals-and-sandbox</code> (<a href="agents.html#terminal">chi tiết</a>)</td></tr>
+    <tr><td><span class="docs-ui">Thông báo khi agent làm xong hoặc cần tôi</span></td><td>Tắt (<a href="agents.html#terminal">chi tiết</a>)</td></tr>
+    <tr><td><span class="docs-ui">Lệnh</span> / <span class="docs-ui">tham số</span> (theo từng agent)</td><td>Lệnh của chính agent đó (ví dụ <code>claude</code>, <code>codex</code>, <code>gemini</code>) / <code>--chrome</code> cho Claude Code, không có cho các agent khác</td></tr>
     <tr><td><span class="docs-ui">Agent tùy chỉnh</span></td><td>Không có (<span class="docs-ui">Thêm agent tùy chỉnh</span> để đăng ký bất kỳ CLI nào)</td></tr>
-    <tr><td><span class="docs-ui">Bỏ qua yêu cầu cấp quyền</span> (theo dự án)</td><td>Tắt cho mọi dự án (<a href="agents.html#terminal">chi tiết</a>)</td></tr>
     <tr><td><span class="docs-ui">Chỉ dẫn cho Agent</span></td><td>Văn bản có sẵn (<a href="agents.html#prompt">biến</a>)</td></tr>
   </tbody>
 </table>
+      </section>
+
+      <section class="docs-section" aria-labelledby="failover">
+        <h2 id="failover"><a class="docs-anchor" href="#failover" aria-label="Liên kết tới Chuyển đổi khi chạm giới hạn sử dụng">#</a>Chuyển đổi khi chạm giới hạn sử dụng</h2>
+        <table>
+  <thead><tr><th>Cài đặt</th><th>Mặc định</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Tự động chuyển khi chạm giới hạn sử dụng</span></td><td>Bật</td></tr>
+    <tr><td><span class="docs-ui">Coi tài khoản đã chạm giới hạn từ</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">Thử trước một tài khoản khác của cùng Agent</span></td><td>Bật</td></tr>
+    <tr><td><span class="docs-ui">Thứ tự Agent</span></td><td>Claude Code, Codex, Gemini CLI</td></tr>
+    <tr><td><span class="docs-ui">Quay lại Agent xếp trên khi giới hạn của nó được khôi phục</span></td><td>Tắt</td></tr>
+  </tbody>
+</table>
+<p>Trong <span class="docs-ui">Cài đặt → Tài khoản</span>. Công việc được bàn giao qua <code>.ferret/handoff.md</code> trong dự án. Xem <a href="accounts.html#failover">Tiếp tục làm việc khi chạm giới hạn sử dụng</a>.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other">
@@ -243,6 +259,7 @@
         <li><a href="#transcription">Chuyển văn bản</a></li>
         <li><a href="#storage">Lưu trữ</a></li>
         <li><a href="#agent">Agent</a></li>
+        <li><a href="#failover">Chuyển đổi khi chạm giới hạn sử dụng</a></li>
         <li><a href="#other">Tài khoản, GitHub, giao diện, ngôn ngữ</a></li>
         <li><a href="#settings-json">settings.json</a></li>
       </ul>

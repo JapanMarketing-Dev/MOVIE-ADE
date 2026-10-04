@@ -1,10 +1,12 @@
+import { sanitizeLimitFailover } from '@shared/failover'
+import { handoffFilePath } from './failover/handoff'
 import { clipboard, nativeImage, shell } from 'electron'
 import { renderAgentPrompt, renderNgPrompt, renderReplyPrompt } from '@shared/agentPrompt'
 import { groupByTarget } from '@shared/reviewTarget'
 import { purposeOf } from '@shared/projectTargets'
 import { buildRemoteFeedbackPrompt } from '@shared/projectSource'
 import { cursorRing } from './pipeline/cursor-ring'
-import { basename, join, sep } from 'node:path'
+import { basename, join, relative, resolve, sep } from 'node:path'
 import type { ReviewData, ReviewEdit } from '@shared/review'
 import type { RecordingResult } from './recording/types'
 import type { Material, TranscriptSegment } from './pipeline/types'
@@ -392,7 +394,9 @@ export async function reviewInstruction(paths: SessionPaths, template?: string |
   const record = await loadSession(paths)
   const included = record?.document.items.filter((it) => it.include) ?? []
   const nonCode = groupByTarget(included, (it) => it.context.url, record?.document.meta.urlPresets ?? []).some((g) => !!g.target.purpose)
-  return renderAgentPrompt({ relativeDir: paths.relativeDir, feedbackMd: paths.feedbackMd, ...(nonCode ? { nonCode } : {}) }, template, undefined, decisionPromptOptions())
+  // 上限での自動切り替えが入なら、引き継ぎのファイル（.ferret/handoff.md）を区切りごとに更新させる（src/main/failover）
+  const handoff = sanitizeLimitFailover(currentSettings().limitFailover).enabled ? handoffFilePath(resolve(paths.dir, relative(paths.relativeDir, '.'))) : undefined
+  return renderAgentPrompt({ relativeDir: paths.relativeDir, feedbackMd: paths.feedbackMd, ...(nonCode ? { nonCode } : {}), ...(handoff ? { handoff } : {}) }, template, undefined, decisionPromptOptions())
 }
 
 /**

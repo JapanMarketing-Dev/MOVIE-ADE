@@ -210,7 +210,12 @@ page('keyboard.html', 'Start here', 'Keyboard shortcuts',
       keyRow('Save', 'Mod+S'),
       keyRow('Rename in File Tree', 'F2 / Enter|F2'),
       keyRow('Delete in File Tree', 'Mod+Backspace / Delete|Delete'),
-    ])],
+      keyRow('Cut / Copy / Paste in File Tree', 'Mod+X / Mod+C / Mod+V'),
+      keyRow('Undo in File Tree', 'Mod+Z'),
+      keyRow('Copy Path', 'Alt+Mod+C|Shift+Alt+C'),
+      keyRow('Copy Relative Path', 'Alt+Shift+Mod+C|Ctrl+Shift+Alt+C'),
+      keyRow('Reveal in Finder / File Explorer', 'Alt+Mod+R|Shift+Alt+R'),
+    ]) + `<p>The file tree keys work while an item in ${ui('Files')} has focus.</p>`],
     ['terminal', 'Terminal', keyTable([
       keyRow('New Terminal', 'Mod+T'),
       keyRow('Close Pane / Tab', 'Mod+W'),
@@ -245,6 +250,7 @@ page('projects.html', `Using ${APP}`, 'Projects and URLs',
     </ul>
   </li>
 </ol>
+<p>You can also drag a folder from Finder (File Explorer on Windows, your file manager on Linux) and drop it on the project list in the sidebar. The list is highlighted while you drag. Drop a folder, not a file; dropping several folders adds each of them and opens the last one.</p>
 <p>The name defaults to the folder name. Adding a folder that is already registered opens it instead (paths are compared case-insensitively on macOS and Windows). From the sidebar menu you can ${ui('Rename')} a project or ${ui('Remove from List')}. Removing never deletes the folder.</p>
 <p>Terminals open in the project folder, and reviews are saved under <code>&lt;project&gt;/.ferret/</code>.</p>`],
     ['save-url', 'Save URLs', `
@@ -378,13 +384,15 @@ page('agents.html', `Using ${APP}`, 'Sending to agents',
 <p>The header has ${ui('Undo')}, ${ui('Open Folder')}, ${ui('Copy for Agent')}, ${ui('Send to GitHub / GitLab')}, ${ui('Organize')}, and ${ui('Send to Agent')}. Speech that didn't become a finding is listed under ${ui('Excluded speech')}, where ${ui('Restore as Finding')} brings it back.</p>
 ${shot('findings', 'The Findings tab')}`],
     ['terminal', 'Run agents in the built-in terminal', `
-<p>When a project opens, ${APP} starts one terminal tab per agent in ${ui('Settings → Agents → Start When a Project Opens')}, in the project folder and in the agent's normal mode. The default is Claude Code and Codex:</p>
-${code(`claude
-codex`)}
+<p>When a project opens, ${APP} starts one terminal tab per agent in ${ui('Settings → Agents → Start When a Project Opens')}, in the project folder. The default is Claude Code and Codex, started without permission prompts and with Claude in Chrome turned on:</p>
+${code(`claude --dangerously-skip-permissions --chrome
+codex --dangerously-bypass-approvals-and-sandbox`)}
 <p>Pick any agents from the <a href="#supported">supported list</a> instead (they start in the order you pick them), or none.</p>
-${note(`<p>Registering or cloning a project does not make Ferret trust it. Agents such as Claude Code and Codex ask whether you trust the folder the first time, and keep asking before they edit files or run commands. To let agents skip permission prompts, approvals and the sandbox in one project you trust, turn it on for that project under ${ui('Settings → Agents → Skip permission prompts')} and confirm. ${APP} adds each agent's own skip flag where one is known; agents without a known flag keep their prompts. It then applies only to agents you open yourself in that project folder; agents started when the project opens always keep their prompts. Skip-permission flags typed into the arguments are ignored.</p>`, 'warn', 'Permission prompts stay on')}
+<p>Agents you open yourself start the same way. ${APP} also marks the project folder as trusted for Claude Code and Codex, so they don't ask about the folder. To start them in their normal mode, where they ask before trusting a folder, editing files or running commands, turn off ${ui('Settings → Agents → Start agents without permission prompts')}. Each agent's command and arguments are under ${ui('Settings → Agents')} (${ui('Command')}) and in <code>settings.json</code> (<code>agents.launch</code>), and are used as you write them. Remove <code>--chrome</code> there to start Claude Code without Claude in Chrome. If the arguments already choose a permission mode (for example <code>--permission-mode plan</code>, or <code>--sandbox workspace-write</code> for Codex), the skip flag is not added.</p>
 <p>If no agent is selected, a plain shell opens. The ${ui('+')} menu opens ${ui('New Terminal')}, launches any of your agents in a new tab, or jumps to ${ui('Agent settings…')}. Its search box also finds tabs, saved URLs, and files.</p>
-<p>Tabs show the agent state: ${ui('Running')}, ${ui('Waiting for input')}, ${ui('Done (unread)')}, ${ui('Idle')}. In the sidebar, a project where an agent is running is marked, so you can see it without switching projects.</p>
+<p><strong>Drop files into the terminal.</strong> Drag files, folders, or images from Finder (File Explorer on Windows, your file manager on Linux) onto a terminal pane, and their paths are typed into that pane, separated by spaces, without pressing Enter. This works the same while an agent is running: Claude Code reads a dropped image path as an image. Rows dragged from ${ui('Files')} (several at once if you select them) work the same way: the path is relative to the project folder while the terminal is in it, and absolute after you <code>cd</code> elsewhere. Paths with spaces or other special characters are quoted for the shell: <code>'…'</code> in zsh and bash, <code>"…"</code> in Command Prompt, and <code>'…'</code> in PowerShell.</p>
+<p>Tabs show the agent state: ${ui('Running')}, ${ui('Waiting for input')}, ${ui('Done (unread)')}, ${ui('Idle')}. ${ui('Done (unread)')} means the agent finished while you were looking at another tab; it turns into ${ui('Idle')} once you open that tab. The sidebar marks each project the same way, so you can see it without switching projects: moving bars while an agent is running, a question mark while one is waiting for you, and a check mark when the agents there have finished and you have not opened the tab yet.</p>
+<p><strong>Notifications.</strong> Turn on ${ui('Settings → Agents → Notify me when agents finish or need me')} to get a system notification when all agents in a project have finished, or when an agent is waiting for a permission or an answer. Nothing is shown for the tab you are looking at. Click the notification to switch to that project and open the tab.</p>
 ${clip('terminals', 'Dragging terminal tabs and panes to split, move, and turn them back into tabs.')}
 <p><strong>Drag to split.</strong> Drag a tab, or a pane by its handle (shown once a tab is split), and drop it:</p>
 <ul>
@@ -495,26 +503,41 @@ page('editor.html', `Using ${APP}`, 'Editor and preview',
 <ul>
   <li>${ui('Files')} (the file tree): ${keys('Mod+Shift+E')}, with ${ui('Filter by file name')}, ${ui('Refresh')}, and ${ui('Collapse All')}.</li>
   <li>${ui('Go to File…')}: ${keys('Mod+P')}.</li>
+  <li>Drag a file from Finder (File Explorer on Windows, your file manager on Linux) onto the tab bar or the editor to open it. Files in the project open in the editor or a viewer. To bring a file from outside the project in, drop it on ${ui('Files')}, which copies it into the project. A folder dropped here opens as a project. Files dragged from ${ui('Files')} open the same way.</li>
   <li>Save with ${keys('Mod+S')}. Closing a modified file asks <q>Save changes to &lt;name&gt;?</q> with ${ui('Save')}, ${ui("Don't Save")}, and ${ui('Cancel')}.</li>
   <li>If the file changes on disk while you have unsaved edits, choose ${ui('Reload from Disk')} or ${ui('Keep My Changes')}.</li>
 </ul>
 <p>The editor is Monaco. Files that aren't text open in a viewer instead: images (zoom in and out; SVG can also be shown as code), video and audio with a seek bar, PDF, and, for any other binary file, its size and a hex view of the first bytes. Viewers are read-only, and files outside the project folder or reached through a symbolic link that leaves it are not shown.</p>
 `],
-    ['file-tree', 'Create, rename, and delete files', `
-<p>Work on files right in ${ui('Files')}, the way you would in VS Code. Names are typed in place in the tree.</p>
+    ['file-tree', 'Work with files in the file tree', `
+<p>Work on files right in ${ui('Files')}, the way you would in VS Code. Right-click an item, or the empty space below the tree to work at the top of the project. Names are typed in place in the tree.</p>
 <ul>
-  <li>${ui('New File')} / ${ui('New Folder')}: the buttons above the tree, or right-click a folder (or the empty space below the tree). A new item goes into the selected folder, next to the selected file, or at the top of the project. A new file opens in the editor.</li>
-  <li>${ui('Rename')}: ${keys('F2 / Enter|F2')}, or right-click. Open tabs follow the new name and keep unsaved edits.</li>
+  <li>${ui('New File')} / ${ui('New Folder')}: the buttons above the tree, or right-click. A new item goes into the selected folder, next to the selected file, or at the top of the project. Type a name with slashes, such as <code>src/routes/index.ts</code>, to create the folders along the way. A new file opens in the editor. In an empty folder, ${ui('Files')} shows ${ui('This folder is empty')} with ${ui('New File')} and ${ui('New Folder')} buttons.</li>
+  <li>${ui('Cut')}, ${ui('Copy')}, and ${ui('Paste')}: ${keys('Mod+X')}, ${keys('Mod+C')}, ${keys('Mod+V')}, or right-click. Folders are copied with everything inside. ${ui('Duplicate')} makes a copy next to the original. If the name is taken, the copy is named <code>name copy</code>, then <code>name copy 2</code>.</li>
+  <li>Drag items onto a folder (or the empty space for the top of the project) to move them. Hold ${keys('Alt|Ctrl')} while dropping to copy instead. Files and folders dragged in from Finder (File Explorer on Windows) are copied into the project; the originals stay where they were.</li>
+  <li>${ui('Rename')}: ${keys('F2 / Enter|F2')}, or right-click.</li>
   <li>${ui('Delete')}: ${keys('Mod+Backspace / Delete|Delete')}, or right-click. ${APP} asks first, then moves the item to the Trash (the Recycle Bin on Windows), so you can restore it. Tabs of deleted files close; if any had unsaved edits, the confirmation says so.</li>
-  <li>Select several items with ${keys('Mod')}-click or ${keys('Shift')}-click to delete them together.</li>
+  <li>${ui('Undo')}: ${keys('Mod+Z')} reverses the last new item, rename, move, paste, or duplicate. Deleted items are restored from the Trash.</li>
+  <li>${ui('Copy Path')} (${keys('Alt+Mod+C|Shift+Alt+C')}) and ${ui('Copy Relative Path')} (${keys('Alt+Shift+Mod+C|Ctrl+Shift+Alt+C')}) put the path on the clipboard.</li>
+  <li>${ui('Reveal in Finder')} (${ui('Reveal in File Explorer')} on Windows, ${ui('Open Containing Folder')} on Linux): ${keys('Alt+Mod+R|Shift+Alt+R')}. ${ui('Open in Terminal')} opens a new terminal tab in that folder (for a file, its folder).</li>
+  <li>For a file, ${ui('Open')} opens it in the editor and ${ui('Open in Default App')} opens it in the app your OS uses for that type.</li>
+  <li>Select several items with ${keys('Mod')}-click or ${keys('Shift')}-click to cut, copy, move, or delete them together.</li>
   <li>${keys('Esc')} cancels a name you are typing.</li>
 </ul>
-<p>${APP} won't overwrite an existing file or folder with the same name, and it refuses anything that would leave the project folder (<code>..</code>, absolute paths, symbolic links that point outside), anything inside <code>.git</code>, and names that some OS can't use: <code>/ \\ &lt; &gt; : " | ? *</code>, control characters, a trailing space or dot, and Windows reserved names such as <code>CON</code> or <code>NUL</code>.</p>`],
+<p>Open tabs follow a renamed or moved file and keep unsaved edits. ${APP} won't overwrite an existing file or folder with the same name, and it keeps everything inside the project folder: it refuses <code>..</code>, absolute paths, symbolic links that point outside, anything inside <code>.git</code>, moving a folder into itself, and names that some OS can't use: <code>/ \\ &lt; &gt; : " | ? *</code>, control characters, a trailing space or dot, and Windows reserved names such as <code>CON</code> or <code>NUL</code>. One copy or drop can hold up to 10,000 items and 1 GB.</p>`],
     ['preview', 'Markdown and Mermaid preview', `
 <p>Preview works for <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code>, and <code>.mermaid</code>. Mermaid is bundled with the app, so diagrams render offline.</p>
 <ul>
   <li>${ui('Open Preview to the Side')}: next to the editor</li>
   <li>${ui('Open Preview')}: in the built-in browser (<code>ade-preview://</code>), so you can record and review it</li>
+</ul>
+<p>To edit a Markdown file as it looks in the preview, click ${ui('Edit in Preview')} at the top of the editor, and click ${ui('Source')} to go back. Both show the same content, and saving, the unsaved mark, and the close confirmation work the same way.</p>
+<ul>
+  <li>Type straight into headings, paragraphs, lists, checkboxes, tables, links, and bold, italic, or inline code. Typing <code>#</code>, <code>-</code>, <code>1.</code>, or <code>&gt;</code> and a space at the start of a line starts a heading, list, or quote.</li>
+  <li>Code blocks and Mermaid diagrams are edited as their source, with the language shown in the corner. The diagram renders in ${ui('Open Preview to the Side')} or ${ui('Open Preview')}.</li>
+  <li>Front matter (the <code>---</code> block at the top) is shown as text above the document and can be edited there.</li>
+  <li>Parts you don't change are saved exactly as written, including heading style, list markers, blank lines, table alignment, and line endings. A block you edit keeps its style where possible; otherwise that block is written in a standard Markdown form, with <code>-</code> for lists and <code>#</code> for headings.</li>
+  <li>Images in the project are shown. Images from other sites are not loaded; their host name is shown instead. HTML in the file is shown as text.</li>
 </ul>`],
     ['review-docs', 'Review docs by recording', `
 <ol class="docs-steps">
@@ -632,6 +655,27 @@ page('accounts.html', 'Configure', 'Accounts and usage',
 <p>How much is shown depends on the space in the footer. With room it shows bars, window names, and percentages. As the footer gets narrower it drops the less useful parts first, down to one percentage per agent. Click the usage to see everything in a popover.</p>
 <p>Usage is fetched directly from Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) and ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) with the signed-in account's own credentials.</p>
 ${shot('usage', 'Usage in the footer')}`],
+    ['failover', 'Keep working at usage limits', `
+<p>When an agent reaches its usage limit, ${APP} continues the same work in the same project folder, so a long task does not stop at the limit. It is on by default and set in ${ui('Settings → Accounts → Switch on usage limits')}.</p>
+<p>The work is handed over through one file in the project, <code>.ferret/handoff.md</code>, so it works between accounts and between different agents alike. The ${ui('Send to Agent')} instructions ask the agent to keep that file up to date at each milestone and when it gets close to a usage limit: the goal, what is done, the remaining work as a checklist, the files it changed, the next step, the related <code>feedback.md</code> and review paths, and anything to watch out for. <code>.ferret/</code> stays out of git (it is added to <code>.git/info/exclude</code>, not to <code>.gitignore</code>).</p>
+<ol class="docs-steps">
+  <li>${APP} notices the limit from the agent's own message in the terminal (for example <code>5-hour limit reached ∙ resets 3pm</code> in Claude Code, <code>You've hit your usage limit</code> in Codex) or from the footer usage reaching the threshold (95% by default; the highest of the 5-hour, weekly and per-model windows).</li>
+  <li>Before switching, ${APP} asks the current agent to update <code>.ferret/handoff.md</code>. If the agent does not start working on it (for example because it is already at its limit), ${APP} adds what it knows to the file: the last request, where <code>feedback.md</code> is, and the changed files from <code>git status</code>.</li>
+  <li>${APP} then switches to another signed-in account of the same agent, the one with the lowest usage. When every account of the agent is at its limit, the work moves to the next agent in ${ui('Agent order')} (default: Claude Code → Codex → Gemini CLI).</li>
+  <li>The new agent opens in a new tab in the same project and is told, in the app language, to read <code>.ferret/handoff.md</code> first and continue with the remaining work.</li>
+  <li>The footer shows ${ui('Now on &lt;agent&gt;')} and a notice says what changed, for example ${ui('Codex reached its usage limit, so Claude Code took over the work.')} The tab that hit the limit is closed, so it does not pick the same task up again when its limit resets.</li>
+</ol>
+<table>
+  <thead><tr><th>Setting</th><th>Default</th></tr></thead>
+  <tbody>
+    <tr><td>${ui('Switch automatically when a usage limit is reached')}</td><td>On</td></tr>
+    <tr><td>${ui('Count an account as at its limit from')}</td><td>95%</td></tr>
+    <tr><td>${ui('Try another account of the same agent first')}</td><td>On</td></tr>
+    <tr><td>${ui('Agent order')}</td><td>Claude Code, Codex, Gemini CLI. Agents not in the list are not used.</td></tr>
+    <tr><td>${ui('Move back to a higher agent when its limit resets')}</td><td>Off (keep working with the current agent). On moves the work back while the tab is waiting for input.</td></tr>
+  </tbody>
+</table>
+<p>Switching stays inside the project, at most 6 times an hour and at least a minute apart. Credentials stay in each account's own config directory and are never copied. In <code>settings.json</code> these are under <code>limitFailover</code>.</p>`],
   ])
 
 page('settings.html', 'Configure', 'Settings reference',
@@ -673,12 +717,25 @@ page('settings.html', 'Configure', 'Settings reference',
   <tbody>
     <tr><td>${ui('Start When a Project Opens')}</td><td>Claude Code, Codex (pick any <a href="agents.html#supported">supported agents</a>, or none)</td></tr>
     <tr><td>${ui('Show &lt;agent&gt; in menus')}</td><td>On for every agent</td></tr>
-    <tr><td>${ui('Command')} / ${ui('arguments')} (per agent)</td><td>The agent's own command (for example <code>claude</code>, <code>codex</code>, <code>gemini</code>) / none</td></tr>
+    <tr><td>${ui('Start agents without permission prompts')}</td><td>On: Claude Code starts with <code>--dangerously-skip-permissions</code>, Codex with <code>--dangerously-bypass-approvals-and-sandbox</code> (<a href="agents.html#terminal">details</a>)</td></tr>
+    <tr><td>${ui('Notify me when agents finish or need me')}</td><td>Off (<a href="agents.html#terminal">details</a>)</td></tr>
+    <tr><td>${ui('Command')} / ${ui('arguments')} (per agent)</td><td>The agent's own command (for example <code>claude</code>, <code>codex</code>, <code>gemini</code>) / <code>--chrome</code> for Claude Code, none for the others</td></tr>
     <tr><td>${ui('Custom Agents')}</td><td>None (${ui('Add Custom Agent')} registers any CLI)</td></tr>
-    <tr><td>${ui('Skip permission prompts')} (per project)</td><td>Off for every project (<a href="agents.html#terminal">details</a>)</td></tr>
     <tr><td>${ui('Instructions for Agent')}</td><td>Built-in text (<a href="agents.html#prompt">variables</a>)</td></tr>
   </tbody>
 </table>`],
+    ['failover', 'Switch on usage limits', `
+<table>
+  <thead><tr><th>Setting</th><th>Default</th></tr></thead>
+  <tbody>
+    <tr><td>${ui('Switch automatically when a usage limit is reached')}</td><td>On</td></tr>
+    <tr><td>${ui('Count an account as at its limit from')}</td><td>95%</td></tr>
+    <tr><td>${ui('Try another account of the same agent first')}</td><td>On</td></tr>
+    <tr><td>${ui('Agent order')}</td><td>Claude Code, Codex, Gemini CLI</td></tr>
+    <tr><td>${ui('Move back to a higher agent when its limit resets')}</td><td>Off</td></tr>
+  </tbody>
+</table>
+<p>In ${ui('Settings → Accounts')}. Work is handed over through <code>.ferret/handoff.md</code> in the project. See <a href="accounts.html#failover">Keep working at usage limits</a>.</p>`],
     ['other', 'Accounts, GitHub, appearance, language', `
 <ul>
   <li>${ui('Accounts')}: see <a href="accounts.html">Accounts and usage</a>.</li>
@@ -885,7 +942,7 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
     <tr><td>${ui('Send to GitHub')}</td><td>GitHub via <code>gh</code></td><td>body text only (no images)</td></tr>
     <tr><td>Footer usage (Claude Code and Codex only)</td><td>Anthropic, ChatGPT</td><td>usage request with your own login</td></tr>
     <tr><td>GitHub star prompt</td><td>GitHub via your <code>gh</code></td><td>checks whether you starred the repo, and stars it only if you click ${ui('Star on GitHub')}</td></tr>
-    <tr><td>${ui('Check for Updates')} (manual)</td><td>download server (Cloudflare R2)</td><td>requests for <code>latest.json</code> and that version's <code>SHA256SUMS</code>; the installer when you click ${ui('Download')}</td></tr>
+    <tr><td>Updates (when ${APP} starts, every 6 hours, and ${ui('Check for Updates')})</td><td>download server (Cloudflare R2)</td><td>requests for <code>latest.json</code> and that version's <code>SHA256SUMS</code> (on macOS also <code>UPDATE-SHA256SUMS</code>); when a newer version is found, the update file for your computer (only when you click ${ui('Download')} if ${ui('Download new versions automatically')} is off)</td></tr>
     <tr><td>Sending feedback from the app (only when you send it)</td><td>the developer's feedback relay (a Cloudflare Worker), which opens a public issue in <code>JapanMarketing-Dev/ferret</code></td><td>your text, bug or idea, app / OS version and CPU, and up to 3 screenshots you attach. Keys, tokens, email addresses, and home-folder paths are masked. The relay does not store your IP address (see <a href="#feedback">Feedback from the app</a>)</td></tr>
     <tr><td>A crash or error (${ui('Send crash reports')} on)</td><td>Sentry</td><td>stack trace and OS / CPU / app versions (see <a href="#crash-reports">Crash reports</a>)</td></tr>
   </tbody>
@@ -1038,7 +1095,18 @@ pnpm dist:linux   # AppImage + deb (x64)`)}
 <p>On Windows, <code>pnpm install</code> uses node-pty's bundled prebuilt binaries instead of rebuilding (that would need the Visual Studio C++ build tools). Set <code>ADE_FORCE_NATIVE_REBUILD=1</code> to force a rebuild.</p>
 <p>If the terminal reports that node-pty could not be loaded, run <code>pnpm rebuild:native</code>.</p>`],
     ['update', 'Updates', `
-<p>${APP} does not auto-update. In the footer, open ${ui('Updates')} and click ${ui('Check for Updates')}. It fetches <code>latest.json</code> from the download server (R2), compares versions, and checks the signature of that version's <code>SHA256SUMS</code> with the release key built into the app. When a newer version is available, click ${ui('Download')}: ${APP} downloads the installer for your computer, checks that its SHA-256 matches the signed <code>SHA256SUMS</code>, saves it to your Downloads folder and shows it there. The download page does the same check in your browser before it saves a file. Nothing is checked until you click, and nothing is installed automatically.</p>`],
+<p>${APP} checks for a new version when it starts, every 6 hours, and when you click ${ui('Check for Updates')} (footer → ${ui('Updates')}). It fetches <code>latest.json</code> from the download server (R2) and checks the signature of that version's <code>SHA256SUMS</code> with the release key built into the app. A version whose signature doesn't match is not offered.</p>
+<p>When a newer version is found, ${APP} downloads it in the background and shows the progress in ${ui('Updates')}. The download is used only if its size and SHA-256 match the signed list. Then ${ui('Restart to Update')} appears in ${ui('Updates')} and in the footer. Click it to restart into the new version. If an agent is working in a terminal or a recording is running, ${APP} asks first; the recording so far is saved before the restart.</p>
+<table>
+  <thead><tr><th>Install type</th><th>What is downloaded</th><th>How it is installed</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>, listed in <code>UPDATE-SHA256SUMS</code> and signed with the same release key</td><td>handed to the macOS updater (Squirrel.Mac), which also checks that the new app has the same Developer ID signature; replaced when ${APP} restarts</td></tr>
+    <tr><td>Windows</td><td>the installer (<code>.exe</code>)</td><td>runs without any windows when ${APP} restarts, then opens the new version</td></tr>
+    <tr><td>Linux (AppImage)</td><td>the new <code>.AppImage</code></td><td>replaces the AppImage you started, then opens the new version</td></tr>
+    <tr><td>Linux (deb)</td><td>the <code>.deb</code></td><td>${ui('Open Installer')} saves it to your Downloads folder and opens it in your software installer</td></tr>
+  </tbody>
+</table>
+<p>To download only when you choose, turn off ${ui('Download new versions automatically')} in ${ui('Updates')} (or set <code>"autoUpdate": false</code> in <code>settings.json</code>), then click ${ui('Download')} when a new version is shown. Development builds (<code>pnpm dev</code>) don't download in the background; ${ui('Download')} saves the checked installer to your Downloads folder.</p>`],
   ])
 
 /* ───────────── Help ───────────── */

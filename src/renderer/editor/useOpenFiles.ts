@@ -72,6 +72,16 @@ export function registerModelDisposer(dispose: (id: string) => void): void {
   modelDisposer = dispose
 }
 
+/*
+ * プレビューで編集しているときの、まだ写していない編集を drafts へ写す口（RichMarkdownEditor が登録する）。
+ * 保存はこれを先に呼んでから drafts を読む（打ってすぐ ⌘S でも最後の打鍵まで書く）。
+ */
+const draftFlushers = new Map<string, () => void>()
+export function registerDraftFlush(id: string, flush: () => void): () => void {
+  draftFlushers.set(id, flush)
+  return () => { if (draftFlushers.get(id) === flush) draftFlushers.delete(id) }
+}
+
 function baseName(path: string): string {
   return path.slice(path.lastIndexOf('/') + 1)
 }
@@ -202,6 +212,7 @@ export function useOpenFiles({
     const file = filesRef.current.find((f) => f.id === id)
     // ビューアで開いたファイルは書かない（空の内容で上書きして壊さない）
     if (!file || file.status !== 'ready' || file.root !== root || file.viewer) return false
+    draftFlushers.get(id)?.()
     const content = drafts.current.get(id) ?? file.saved
     try {
       await window.ade.invoke('fs:write', file.path, content)

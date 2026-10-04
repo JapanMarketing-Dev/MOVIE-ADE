@@ -1,3 +1,4 @@
+import { sanitizeLimitFailover } from '@shared/failover'
 import { app } from 'electron'
 import { dirname, join } from 'node:path'
 import { IS_PACKAGED } from './runtime'
@@ -169,11 +170,15 @@ export function sanitize(raw: unknown): Settings {
     // 未設定は ON のまま書かない。明示の OFF だけを残す
     ...(r.crashReports === false ? { crashReports: false } : {}),
     ...(r.crashReportsNoticeShown === true ? { crashReportsNoticeShown: true } : {}),
+    // 自動更新のダウンロード。未設定は ON のまま書かない。明示の OFF だけを残す
+    ...(r.autoUpdate === false ? { autoUpdate: false } : {}),
     ...(() => {
       const onboarding = sanitizeOnboarding(r.onboarding)
       return onboarding ? { onboarding } : {}
     })(),
     ...(r.agentAccounts ? { agentAccounts: sanitizeAgentAccounts(r.agentAccounts) } : {}),
+    // 上限での自動切り替え。未設定は既定（入）のまま書かない
+    ...(r.limitFailover && typeof r.limitFailover === 'object' ? { limitFailover: sanitizeLimitFailover(r.limitFailover) } : {}),
     // 空・空白だけは「未設定」（既定文を使う）。長すぎる値は切り詰める
     ...(typeof r.agentPrompt === 'string' && r.agentPrompt.trim() ? { agentPrompt: r.agentPrompt.trim().slice(0, 2000) } : {}),
     // 判定モデルの接続先。未設定は書かない（既定は Ollama + clef-flash、無効）。キー本体は入れない

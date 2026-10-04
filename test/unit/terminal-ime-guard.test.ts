@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { IME_DUPLICATE_WINDOW_MS, ImeInputGuard } from '../../src/renderer/terminal/imeInputGuard'
 
 /** xterm の onData に届く順をそのまま流し、PTY へ送られる文字列をつなげて返す */
-function run(steps: Array<['start'] | ['end', number] | ['key', number, boolean?] | ['data', string, number]>): string {
+function run(steps: Array<['start'] | ['end', number, string?] | ['key', number, boolean?] | ['data', string, number]>): string {
   const guard = new ImeInputGuard()
   let out = ''
   for (const step of steps) {
     if (step[0] === 'start') guard.compositionStart()
-    else if (step[0] === 'end') guard.compositionEnd(step[1])
+    else if (step[0] === 'end') guard.compositionEnd(step[1], step[2])
     else if (step[0] === 'key') guard.keyDown({ keyCode: step[1], isComposing: step[2] ?? false })
     else out += guard.filter(step[1], step[2])
   }
@@ -53,6 +53,27 @@ describe('ImeInputGuard（IME の確定文字を2回送らない）', () => {
 
   it('前の変換の確定が、次の変換の最中にもう一度届いたら1回', () => {
     expect(run([['start'], ['end', 10], ['data', '한', 11], ['start'], ['data', '한', 12], ['end', 20], ['data', '글', 21]])).toBe('한글')
+  })
+
+  it('macOS のライブ変換の部分確定: 変換中の残りが付いて届いても、確定した頭だけを送り、文が重ならない', () => {
+    // 「人材紹介ないことを」を変換中に頭の「人材紹介」だけ確定し、残りの変換を続ける。xterm は前の変換の長さ（9文字）で
+    // 入力欄を切り出すので、確定の頭に変換中の残りの頭が付いて届く（「ないことを」が2回、途中の候補も入っていた）
+    expect(run([
+      ['key', 229, true], ['start'], ['end', 10, '人材紹介'], ['start'], ['data', '人材紹介ないことを', 11],
+      ['end', 20, 'ないことを'], ['start'], ['data', 'ないことを再度確認し', 21],
+      ['end', 30, '再度確認してから'], ['data', '再度確認してから', 31]
+    ])).toBe('人材紹介ないことを再度確認してから')
+    // 途中の候補（「再度書く」）が付いて届いても送らない
+    expect(run([['start'], ['end', 10, 'ok'], ['start'], ['data', 'ok再度書く', 11], ['end', 20, '再度確認'], ['data', '再度確認', 21]])).toBe('ok再度確認')
+  })
+
+  it('部分確定: 確定文字が遅れて2回届いても1回、確定のあと続けて変換しても後の確定は送る', () => {
+    expect(run([['start'], ['end', 10, '日本'], ['start'], ['data', '日本語', 11], ['data', '日本', 12], ['end', 20, '語'], ['data', '語', 21]])).toBe('日本語')
+  })
+
+  it('compositionend の確定文字が分からない・取り消しのときは、届いたものをそのまま送る', () => {
+    expect(run([['start'], ['end', 10], ['start'], ['data', 'かな', 11], ['end', 20], ['data', 'カナ', 21]])).toBe('かなカナ')
+    expect(run([['start'], ['end', 10, ''], ['start'], ['data', 'かな漢', 11], ['end', 20, '漢字'], ['data', '漢字', 21]])).toBe('かな漢漢字')
   })
 
   it('変換と関係のない打鍵・貼り付けには触らない', () => {

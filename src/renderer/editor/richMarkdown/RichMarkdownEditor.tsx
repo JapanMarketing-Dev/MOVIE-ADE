@@ -1,0 +1,195 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Editor, type JSONContent } from '@tiptap/core'
+import Image from '@tiptap/extension-image'
+import { createMarkdownCodec, richMarkdownExtensions } from './codec'
+import { buildSourceModel, reconcileEdit, type SourceModel } from './reconcile'
+import { resolveRichImage } from './images'
+import { registerDraftFlush, type OpenFile, type OpenFilesApi } from '../useOpenFiles'
+import { useT } from '../../lib/i18n'
+import { reportHandled } from '@shared/report'
+import './richMarkdown.css'
+
+/** この大きさまでは打鍵のたびにすぐファイルの文字列へ写す（未保存の印・閉じる確認がすぐ正しくなる） */
+const SYNC_COMMIT_LIMIT = 60_000
+/** それより大きい文書は、打鍵が止まってから写す（保存の前には必ず写す） */
+const COMMIT_DELAY_MS = 200
+
+/**
+ * 画像の表示。プロジェクトの中の画像は ade-media://project/ から読み、外の画像は読まずに行き先のホストだけを出す
+ * （プレビューのページと同じ決まり。images.ts）。src・alt はそのまま持つので、保存すると元の記法に戻る。
+ */
+function imageExtension(markdownPath: string) {
+  return Image.extend({
+    addNodeView() {
+      return ({ node }) => {
+        const dom = document.createElement('span')
+        dom.className = 'rich-md__image'
+        const src = typeof node.attrs.src === 'string' ? node.attrs.src : ''
+        const alt = typeof node.attrs.alt === 'string' ? node.attrs.alt : ''
+        const resolved = resolveRichImage(src, markdownPath)
+        if (resolved.kind === 'local' || resolved.kind === 'data') {
+          const img = document.createElement('img')
+          img.src = resolved.url
+          img.alt = alt
+          img.draggable = false
+          dom.appendChild(img)
+        } else {
+          dom.classList.add('rich-md__image--blocked')
+          dom.dataset.testid = 'rich-md-remote-image'
+          dom.textContent = resolved.kind === 'remote' ? (alt.trim() ? `${alt.trim()} · ${resolved.host}` : resolved.host) : alt || src
+          dom.title = src
+        }
+        return { dom }
+      }
+    }
+  })
+}
+
+/** 文書の中の外の画像のホスト（帯に出す） */
+function remoteHosts(nodes: JSONContent[], markdownPath: string): string[] {
+  const hosts = new Set<string>()
+  const walk = (node: JSONContent) => {
+    if (node.type === 'image' && typeof node.attrs?.src === 'string') {
+      const resolved = resolveRichImage(node.attrs.src, markdownPath)
+      if (resolved.kind === 'remote') hosts.add(resolved.host)
+    }
+    node.content?.forEach(walk)
+  }
+  nodes.forEach(walk)
+  return [...hosts]
+}
+
+/** 空の文書は段落1つで開く（ProseMirror の文書は塊が1つ以上要る）。戻すときは空に戻す */
+function contentOf(nodes: JSONContent[]): JSONContent {
+  return { type: 'doc', content: nodes.length > 0 ? nodes : [{ type: 'paragraph' }] }
+}
+function editedNodes(editor: Editor): JSONContent[] {
+  const nodes = editor.getJSON().content ?? []
+  return nodes.length === 1 && nodes[0]!.type === 'paragraph' && !nodes[0]!.content?.length ? [] : nodes
+}
+
+/**
+ * Markdown をプレビューの見た目のまま編集する（FileEditor の「プレビューで編集」）。
+ *
+ * Orca由来: ~/bench/orca/src/renderer/src/components/editor/RichMarkdownEditor.tsx・useRichMarkdownEditorInstance.ts（MIT）
+ *   - TipTap の編集した文書を Markdown に戻すとき、変えていない部分は元の文字列のまま残す（reconcile.ts）
+ *   - 未保存の印・保存（⌘S / Ctrl+S）・閉じる確認は、ソースの編集と同じ drafts を通す
+ *   - frontmatter は文書の外に出して、文字のまま編集する
+ * 生の HTML は文字として出す（プレビューのページと同じく、ファイルの中のスクリプトを動かさない）。
+ * tiptap を含むので、FileEditor からは React.lazy で、このモードを開いたときだけ読む。
+ */
+export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFile; editor: OpenFilesApi }) {
+  const t = useT()
+  const hostRef = useRef<HTMLDivElement>(null)
+  const editorRef = useRef<Editor | null>(null)
+  const modelRef = useRef<SourceModel | null>(null)
+  const frontmatterRef = useRef('')
+  const timer = useRef<number | undefined>(undefined)
+  /** ディスクの内容を読んだもの（打鍵のたびに読み直さない） */
+  const savedRef = useRef<{ text: string; model: SourceModel } | null>(null)
+  const [frontmatter, setFrontmatter] = useState('')
+  const [hosts, setHosts] = useState<string[]>([])
+  const extensions = useMemo(() => richMarkdownExtensions(imageExtension(file.path) as typeof Image), [file.path])
+  const codec = useMemo(() => createMarkdownCodec(extensions), [extensions])
+  const fileRef = useRef(file)
+  fileRef.current = file
+
+  /** 編集中の文書を、元の書き方に合わせた文字列にして drafts へ写す */
+  const commit = () => {
+    window.clearTimeout(timer.current)
+    timer.current = undefined
+    const editor = editorRef.current
+    const model = modelRef.current
+    if (!editor || !model) return
+    const current = fileRef.current
+    try {
+      const nodes = editedNodes(editor)
+      // 開いたときの内容に戻った（undo など）なら、ディスクの文字列をそのまま使う（未保存の印も消える）
+      if (savedRef.current?.text !== current.saved) savedRef.current = { text: current.saved, model: buildSourceModel(current.saved, codec) }
+      // （reconcileEdit は、ディスクの内容と同じ文書ならディスクの文字列をそのまま返す）
+      const text = reconcileEdit(savedRef.current, model, nodes, codec, frontmatterRef.current)
+      if (text === (api.getDraft(current.id) ?? current.saved)) return
+      api.setDraft(current.id, text)
+      modelRef.current = buildSourceModel(text, codec)
+      setHosts(remoteHosts(nodes, current.path))
+    } catch (err) {
+      reportHandled(err, { area: 'editor', op: 'reconcile markdown' })
+    }
+  }
+  const commitRef = useRef(commit)
+  commitRef.current = commit
+
+  const schedule = () => {
+    const size = (api.getDraft(fileRef.current.id) ?? fileRef.current.saved).length
+    if (size <= SYNC_COMMIT_LIMIT) { commitRef.current(); return }
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => commitRef.current(), COMMIT_DELAY_MS)
+  }
+
+  // エディタを作る（ファイル・拡張が変わったら作り直す）
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host) return
+    const source = api.getDraft(file.id) ?? file.saved
+    const model = buildSourceModel(source, codec)
+    modelRef.current = model
+    frontmatterRef.current = model.frontmatter
+    setFrontmatter(model.frontmatter)
+    setHosts(remoteHosts(model.nodes, file.path))
+    const editor = new Editor({
+      element: host,
+      extensions,
+      content: contentOf(model.nodes),
+      editorProps: { attributes: { class: 'rich-md markdown-body', spellcheck: 'false', 'data-testid': 'rich-md-editor' } },
+      onUpdate: ({ transaction }) => { if (transaction.docChanged) schedule() }
+    })
+    editorRef.current = editor
+    // チェックボックスにフォーカスを取らせない（取ると、次にクリックした箇所へカーソルが移らない）。切り替えはそのまま効く
+    const keepFocus = (event: MouseEvent) => {
+      if (event.target instanceof HTMLInputElement && event.target.type === 'checkbox') event.preventDefault()
+    }
+    host.addEventListener('mousedown', keepFocus, true)
+    const unregister = registerDraftFlush(file.id, () => { if (timer.current !== undefined) commitRef.current() })
+    return () => {
+      if (timer.current !== undefined) commitRef.current()
+      unregister()
+      host.removeEventListener('mousedown', keepFocus, true)
+      editorRef.current = null
+      editor.destroy()
+    }
+    // revision はディスクの内容で差し替えたとき（外部の変更の取り込み・読み直し）に増える
+  }, [file.id, file.revision, extensions, codec])
+
+  const onFrontmatter = (value: string) => {
+    // 区切りの行と末尾の改行は保つ（消したら frontmatter ごと無くす）
+    const next = value.trim() === '' ? '' : value.endsWith('\n') ? value : `${value}\n`
+    setFrontmatter(value)
+    frontmatterRef.current = next
+    schedule()
+  }
+
+  return (
+    <div className="rich-md-host" data-testid="rich-md">
+      {hosts.length > 0 && (
+        <div className="rich-md__banner" data-testid="rich-md-remote-banner">
+          {t('preview.remoteImagesBlocked', { hosts: hosts.join(', ') })}
+        </div>
+      )}
+      <div className="rich-md__page">
+        {frontmatter !== '' && (
+          <label className="rich-md__frontmatter">
+            <span>{t('editor.frontmatter')}</span>
+            <textarea
+              value={frontmatter.replace(/\n$/, '')}
+              rows={Math.min(12, frontmatter.split('\n').length)}
+              spellCheck={false}
+              onChange={(event) => onFrontmatter(event.target.value)}
+              data-testid="rich-md-frontmatter"
+            />
+          </label>
+        )}
+        <div ref={hostRef} />
+      </div>
+    </div>
+  )
+}

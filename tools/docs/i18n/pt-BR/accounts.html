@@ -22,3 +22,26 @@ Alterne entre vários logins do Claude Code ou do Codex e acompanhe as janelas d
 <p>O quanto é exibido depende do espaço no rodapé. Com espaço, ele mostra barras, nomes das janelas e porcentagens. À medida que o rodapé fica mais estreito, ele remove primeiro as partes menos úteis, até sobrar uma porcentagem por agente. Clique no uso para ver tudo em um popover.</p>
 <p>O uso é obtido diretamente da Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) e do ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) com as próprias credenciais da conta conectada.</p>
 {{shot:usage|Uso no rodapé}}
+
+<!-- @failover 4e121e0f4c -->
+## Continuar trabalhando nos limites de uso
+<p>Quando um agente atinge o limite de uso, o Ferret continua o mesmo trabalho na mesma pasta do projeto, então uma tarefa longa não para no limite. Isso vem ativado por padrão e é configurado em <span class="docs-ui">Configurações → Contas → Troca ao atingir o limite de uso</span>.</p>
+<p>O trabalho é passado adiante por um único arquivo no projeto, <code>.ferret/handoff.md</code>, então funciona tanto entre contas quanto entre agentes diferentes. As instruções de <span class="docs-ui">Enviar ao Agent</span> pedem ao agente que mantenha esse arquivo atualizado a cada marco e quando estiver perto de um limite de uso: o objetivo, o que já foi feito, o trabalho restante como checklist, os arquivos que alterou, o próximo passo, os caminhos do <code>feedback.md</code> e da revisão relacionados, e qualquer ponto de atenção. A pasta <code>.ferret/</code> fica fora do git (ela é adicionada a <code>.git/info/exclude</code>, não ao <code>.gitignore</code>).</p>
+<ol class="docs-steps">
+  <li>O Ferret percebe o limite pela própria mensagem do agente no terminal (por exemplo <code>5-hour limit reached ∙ resets 3pm</code> no Claude Code, <code>You've hit your usage limit</code> no Codex) ou quando o uso mostrado no rodapé chega ao limiar (95% por padrão; o maior entre as janelas de 5 horas, semanal e por modelo).</li>
+  <li>Antes de trocar, o Ferret pede ao agente atual que atualize o <code>.ferret/handoff.md</code>. Se o agente não começar a fazer isso (por exemplo, porque já está no limite), o Ferret adiciona ao arquivo o que sabe: o último pedido, onde está o <code>feedback.md</code> e os arquivos alterados segundo o <code>git status</code>.</li>
+  <li>Em seguida, o Ferret troca para outra conta conectada do mesmo agente, a que tem o menor uso. Quando todas as contas do agente estão no limite, o trabalho passa para o próximo agente em <span class="docs-ui">Ordem dos agentes</span> (padrão: Claude Code → Codex → Gemini CLI).</li>
+  <li>O novo agente abre em uma nova aba no mesmo projeto e recebe, no idioma do app, a orientação de ler primeiro o <code>.ferret/handoff.md</code> e continuar com o trabalho restante.</li>
+  <li>O rodapé mostra <span class="docs-ui">Agora com &lt;agent&gt;</span> e um aviso diz o que mudou, por exemplo <span class="docs-ui">Codex atingiu o limite de uso, então Claude Code assumiu o trabalho.</span> A aba que atingiu o limite é fechada, para que não retome a mesma tarefa quando o limite dela for restabelecido.</li>
+</ol>
+<table>
+  <thead><tr><th>Configuração</th><th>Padrão</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Trocar automaticamente ao atingir um limite de uso</span></td><td>Ativado</td></tr>
+    <tr><td><span class="docs-ui">Considerar uma conta no limite a partir de</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">Tentar primeiro outra conta do mesmo agente</span></td><td>Ativado</td></tr>
+    <tr><td><span class="docs-ui">Ordem dos agentes</span></td><td>Claude Code, Codex, Gemini CLI. Agentes fora da lista não são usados.</td></tr>
+    <tr><td><span class="docs-ui">Voltar para um agente acima quando o limite dele for restabelecido</span></td><td>Desativado (continua trabalhando com o agente atual). Ativado devolve o trabalho enquanto a aba aguarda entrada.</td></tr>
+  </tbody>
+</table>
+<p>As trocas ficam dentro do projeto, no máximo 6 vezes por hora e com pelo menos um minuto de intervalo. As credenciais ficam no diretório de configuração de cada conta e nunca são copiadas. No <code>settings.json</code>, essas opções ficam em <code>limitFailover</code>.</p>

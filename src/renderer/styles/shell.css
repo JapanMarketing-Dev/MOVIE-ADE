@@ -1359,6 +1359,14 @@ body[data-resizing='row'] * {
   font-size: var(--font-size-2xs);
 }
 
+/* 新しい版の準備ができたときだけ出る「再起動して更新」（src/main/autoUpdate.ts）。押せることが分かるよう強調の色にする */
+.statusbar__btn.statusbar__update-ready {
+  flex: none;
+  gap: var(--space-1);
+  color: var(--color-accent);
+  font-weight: var(--font-weight-bold);
+}
+
 /* 押せる項目。帯の高さに収まる小さな面で、ホバーしたときだけ地が出る */
 .statusbar__group {
   display: inline-flex;
@@ -2189,6 +2197,21 @@ body[data-resizing='row'] * {
 
 .sb-project__working > span:nth-child(3) {
   animation-delay: -600ms;
+}
+
+/* Agent が確認を待っている・終わった（まだ見ていない）プロジェクトの印。ターミナルのタブの印と同じ色 */
+.sb-project__agent {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.sb-project__agent--blocked {
+  color: var(--agent-blocked);
+}
+
+.sb-project__agent--done {
+  color: var(--agent-done);
 }
 
 @keyframes sb-agent-working {

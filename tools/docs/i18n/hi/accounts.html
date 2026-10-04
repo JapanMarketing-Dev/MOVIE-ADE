@@ -22,3 +22,26 @@
 <p>कितना दिखता है, यह फ़ुटर में उपलब्ध जगह पर निर्भर करता है। जगह हो तो यह bars, window के नाम और प्रतिशत दिखाता है। फ़ुटर जितना संकरा होता है, यह कम काम के हिस्से पहले हटाता जाता है, यहाँ तक कि हर agent के लिए सिर्फ़ एक प्रतिशत बचता है। सब कुछ एक popover में देखने के लिए usage पर क्लिक करें।</p>
 <p>Usage सीधे Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) और ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) से, साइन इन किए गए अकाउंट के अपने credentials के साथ लाया जाता है।</p>
 {{shot:usage|फ़ुटर में usage}}
+
+<!-- @failover 4e121e0f4c -->
+## उपयोग सीमा पर भी काम जारी रखें
+<p>जब कोई agent अपनी उपयोग सीमा पर पहुँचता है, तो Ferret उसी प्रोजेक्ट फ़ोल्डर में वही काम जारी रखता है, ताकि लंबा काम सीमा पर न रुके। यह डिफ़ॉल्ट रूप से चालू है और <span class="docs-ui">Settings → अकाउंट → उपयोग सीमा पर बदलाव</span> में सेट होता है।</p>
+<p>काम प्रोजेक्ट की एक ही फ़ाइल, <code>.ferret/handoff.md</code>, के ज़रिए सौंपा जाता है, इसलिए यह अकाउंट्स के बीच और अलग-अलग agents के बीच एक जैसा काम करता है। <span class="docs-ui">Agent को भेजें</span> के निर्देश agent से कहते हैं कि वह हर पड़ाव पर और उपयोग सीमा के क़रीब पहुँचने पर इस फ़ाइल को अपडेट रखे: लक्ष्य, क्या हो चुका है, बाक़ी काम checklist के रूप में, उसने कौन-सी फ़ाइलें बदलीं, अगला कदम, संबंधित <code>feedback.md</code> और review के paths, और ध्यान रखने वाली बातें। <code>.ferret/</code> git से बाहर रहता है (यह <code>.gitignore</code> में नहीं, <code>.git/info/exclude</code> में जोड़ा जाता है)।</p>
+<ol class="docs-steps">
+  <li>Ferret सीमा को टर्मिनल में agent के अपने संदेश से पहचानता है (जैसे Claude Code में <code>5-hour limit reached ∙ resets 3pm</code>, Codex में <code>You've hit your usage limit</code>), या फ़ुटर के usage के threshold तक पहुँचने से (डिफ़ॉल्ट 95%; 5 घंटे, साप्ताहिक और हर मॉडल की windows में से सबसे ऊँचा)।</li>
+  <li>बदलने से पहले Ferret मौजूदा agent से <code>.ferret/handoff.md</code> अपडेट करने को कहता है। अगर agent उस पर काम शुरू नहीं करता (जैसे इसलिए कि वह पहले से सीमा पर है), तो Ferret जो जानता है वह फ़ाइल में जोड़ देता है: आख़िरी अनुरोध, <code>feedback.md</code> कहाँ है, और <code>git status</code> से बदली हुई फ़ाइलें।</li>
+  <li>फिर Ferret उसी agent के किसी दूसरे साइन इन किए गए अकाउंट पर जाता है, जिसका usage सबसे कम हो। जब agent के सभी अकाउंट अपनी सीमा पर हों, तो काम <span class="docs-ui">Agent का क्रम</span> में अगले agent पर चला जाता है (डिफ़ॉल्ट: Claude Code → Codex → Gemini CLI)।</li>
+  <li>नया agent उसी प्रोजेक्ट में नए टैब में खुलता है और उसे ऐप की भाषा में कहा जाता है कि पहले <code>.ferret/handoff.md</code> पढ़े और बाक़ी काम जारी रखे।</li>
+  <li>फ़ुटर <span class="docs-ui">अभी &lt;agent&gt; पर</span> दिखाता है और एक सूचना बताती है कि क्या बदला, जैसे <span class="docs-ui">Codex अपनी उपयोग सीमा पर पहुँच गया, इसलिए काम Claude Code ने संभाल लिया।</span> जिस टैब की सीमा पूरी हुई थी वह बंद हो जाता है, ताकि सीमा रीसेट होने पर वह वही काम फिर से न उठाए।</li>
+</ol>
+<table>
+  <thead><tr><th>सेटिंग</th><th>डिफ़ॉल्ट</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">उपयोग सीमा पर पहुँचने पर अपने-आप बदलें</span></td><td>चालू</td></tr>
+    <tr><td><span class="docs-ui">अकाउंट को सीमा पर मानें, जब उपयोग हो</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">पहले उसी Agent का कोई दूसरा अकाउंट आज़माएँ</span></td><td>चालू</td></tr>
+    <tr><td><span class="docs-ui">Agent का क्रम</span></td><td>Claude Code, Codex, Gemini CLI। जो agents सूची में नहीं हैं, वे इस्तेमाल नहीं होते।</td></tr>
+    <tr><td><span class="docs-ui">सीमा लौटने पर ऊपर वाले Agent पर वापस जाएँ</span></td><td>बंद (मौजूदा agent के साथ काम जारी रखें)। चालू होने पर टैब के इनपुट का इंतज़ार करते समय काम वापस ले जाया जाता है।</td></tr>
+  </tbody>
+</table>
+<p>बदलाव प्रोजेक्ट के अंदर ही रहता है, एक घंटे में ज़्यादा से ज़्यादा 6 बार और कम से कम एक मिनट के अंतर पर। Credentials हर अकाउंट की अपनी config directory में रहते हैं और कभी कॉपी नहीं होते। <code>settings.json</code> में ये <code>limitFailover</code> के अंदर हैं।</p>

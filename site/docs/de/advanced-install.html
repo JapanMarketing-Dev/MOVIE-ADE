@@ -219,7 +219,18 @@ pnpm dist:linux   # AppImage + deb (x64)</code></pre>
 
       <section class="docs-section" aria-labelledby="update">
         <h2 id="update"><a class="docs-anchor" href="#update" aria-label="Link zu „Updates“">#</a>Updates</h2>
-        <p>Ferret aktualisiert sich nicht automatisch. Öffnen Sie in der Fußzeile <span class="docs-ui">Updates</span> und klicken Sie auf <span class="docs-ui">Nach Updates suchen</span>. Die App lädt <code>latest.json</code> vom Download-Server (R2), vergleicht die Versionen und prüft die Signatur der <code>SHA256SUMS</code> dieser Version mit dem in die App eingebauten Release-Schlüssel. Ist eine neuere Version verfügbar, klicken Sie auf <span class="docs-ui">Herunterladen</span>: Ferret lädt den Installer für Ihren Computer herunter, prüft, ob sein SHA-256 mit den signierten <code>SHA256SUMS</code> übereinstimmt, speichert ihn in Ihrem Download-Ordner und zeigt ihn dort an. Die Download-Seite führt dieselbe Prüfung in Ihrem Browser durch, bevor sie eine Datei speichert. Vor Ihrem Klick wird nichts geprüft, und nichts wird automatisch installiert.</p>
+        <p>Ferret sucht beim Start, alle 6 Stunden und beim Klick auf <span class="docs-ui">Nach Updates suchen</span> (Fußzeile → <span class="docs-ui">Updates</span>) nach einer neuen Version. Es lädt <code>latest.json</code> vom Download-Server (R2) und prüft die Signatur der <code>SHA256SUMS</code> dieser Version mit dem in die App eingebauten Release-Schlüssel. Eine Version mit nicht passender Signatur wird nicht angeboten.</p>
+<p>Wird eine neue Version gefunden, lädt Ferret sie im Hintergrund herunter und zeigt den Fortschritt unter <span class="docs-ui">Updates</span>. Der Download wird nur verwendet, wenn Größe und SHA-256 zur signierten Liste passen. Danach erscheint <span class="docs-ui">Neu starten und aktualisieren</span> unter <span class="docs-ui">Updates</span> und in der Fußzeile. Ein Klick startet Ferret in der neuen Version neu. Arbeitet ein Agent in einem Terminal oder läuft eine Aufnahme, fragt Ferret vorher nach; die bisherige Aufnahme wird vor dem Neustart gespeichert.</p>
+<table>
+  <thead><tr><th>Installationsart</th><th>Was heruntergeladen wird</th><th>Wie es installiert wird</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>, aufgeführt in <code>UPDATE-SHA256SUMS</code> und mit demselben Release-Schlüssel signiert</td><td>wird an den macOS-Updater (Squirrel.Mac) übergeben, der auch prüft, dass die neue App dieselbe Developer-ID-Signatur hat; ersetzt beim Neustart von Ferret</td></tr>
+    <tr><td>Windows</td><td>das Installationsprogramm (<code>.exe</code>)</td><td>läuft beim Neustart von Ferret ohne Fenster und öffnet danach die neue Version</td></tr>
+    <tr><td>Linux (AppImage)</td><td>das neue <code>.AppImage</code></td><td>ersetzt das gestartete AppImage und öffnet danach die neue Version</td></tr>
+    <tr><td>Linux (deb)</td><td>das <code>.deb</code></td><td><span class="docs-ui">Installationsprogramm öffnen</span> speichert es in Ihrem Download-Ordner und öffnet es in Ihrer Softwareinstallation</td></tr>
+  </tbody>
+</table>
+<p>Um nur dann herunterzuladen, wenn Sie es wählen, schalten Sie <span class="docs-ui">Neue Versionen automatisch herunterladen</span> unter <span class="docs-ui">Updates</span> aus (oder setzen Sie <code>"autoUpdate": false</code> in <code>settings.json</code>) und klicken Sie auf <span class="docs-ui">Herunterladen</span>, wenn eine neue Version angezeigt wird. Entwicklungs-Builds (<code>pnpm dev</code>) laden nicht im Hintergrund; <span class="docs-ui">Herunterladen</span> speichert das geprüfte Installationsprogramm in Ihrem Download-Ordner.</p>
       </section>
 
         <nav class="docs-pager" aria-label="Vorherige und nächste Seite">

@@ -293,14 +293,6 @@
   gap: var(--space-4);
 }
 
-/* 「権限確認を省く」の各プロジェクトのフォルダ（長いパスも行の中で折り返す） */
-.st-bypass-path {
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-2xs);
-  overflow-wrap: anywhere;
-}
-
 .st-agent-row__name {
   flex: 1;
   min-width: 0;

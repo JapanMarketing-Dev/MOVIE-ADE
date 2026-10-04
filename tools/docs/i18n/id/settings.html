@@ -41,19 +41,34 @@ Buka <span class="docs-ui">Pengaturan</span> dari ikon roda gigi di bilah judul.
   </tbody>
 </table>
 
-<!-- @agent e6bb38101d -->
+<!-- @agent 669056f066 -->
 ## Agent
 <table>
   <thead><tr><th>Pengaturan</th><th>Bawaan</th></tr></thead>
   <tbody>
     <tr><td><span class="docs-ui">Jalankan Saat Proyek Dibuka</span></td><td>Claude Code, Codex (pilih <a href="agents.html#supported">agent yang didukung</a> mana pun, atau tidak sama sekali)</td></tr>
     <tr><td><span class="docs-ui">Tampilkan &lt;agent&gt; di menu</span></td><td>Aktif untuk setiap agent</td></tr>
-    <tr><td><span class="docs-ui">Perintah</span> / <span class="docs-ui">argumen</span> (per agent)</td><td>Perintah milik agent itu sendiri (misalnya <code>claude</code>, <code>codex</code>, <code>gemini</code>) / tidak ada</td></tr>
+    <tr><td><span class="docs-ui">Jalankan Agent tanpa permintaan izin</span></td><td>Aktif: Claude Code dimulai dengan <code>--dangerously-skip-permissions</code>, Codex dengan <code>--dangerously-bypass-approvals-and-sandbox</code> (<a href="agents.html#terminal">detail</a>)</td></tr>
+    <tr><td><span class="docs-ui">Beri tahu saya saat agen selesai atau membutuhkan saya</span></td><td>Nonaktif (<a href="agents.html#terminal">detail</a>)</td></tr>
+    <tr><td><span class="docs-ui">Perintah</span> / <span class="docs-ui">argumen</span> (per agent)</td><td>Perintah milik agent itu sendiri (misalnya <code>claude</code>, <code>codex</code>, <code>gemini</code>) / <code>--chrome</code> untuk Claude Code, tidak ada untuk yang lain</td></tr>
     <tr><td><span class="docs-ui">Agent Kustom</span></td><td>Tidak ada (<span class="docs-ui">Tambah Agent Kustom</span> mendaftarkan CLI apa pun)</td></tr>
-    <tr><td><span class="docs-ui">Lewati permintaan izin</span> (per proyek)</td><td>Nonaktif untuk setiap proyek (<a href="agents.html#terminal">detail</a>)</td></tr>
     <tr><td><span class="docs-ui">Instruksi untuk Agent</span></td><td>Teks bawaan (<a href="agents.html#prompt">variabel</a>)</td></tr>
   </tbody>
 </table>
+
+<!-- @failover 93ea424573 -->
+## Beralih saat batas penggunaan
+<table>
+  <thead><tr><th>Pengaturan</th><th>Bawaan</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Beralih otomatis saat batas penggunaan tercapai</span></td><td>Aktif</td></tr>
+    <tr><td><span class="docs-ui">Anggap akun sudah mencapai batas mulai</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">Coba akun lain dari agen yang sama lebih dulu</span></td><td>Aktif</td></tr>
+    <tr><td><span class="docs-ui">Urutan agen</span></td><td>Claude Code, Codex, Gemini CLI</td></tr>
+    <tr><td><span class="docs-ui">Kembali ke agen yang lebih atas saat batasnya pulih</span></td><td>Nonaktif</td></tr>
+  </tbody>
+</table>
+<p>Di <span class="docs-ui">Pengaturan → Akun</span>. Pekerjaan diserahterimakan melalui <code>.ferret/handoff.md</code> di proyek. Lihat <a href="accounts.html#failover">Tetap bekerja saat mencapai batas penggunaan</a>.</p>
 
 <!-- @other 37b81ab14b -->
 ## Akun, GitHub, tampilan, bahasa

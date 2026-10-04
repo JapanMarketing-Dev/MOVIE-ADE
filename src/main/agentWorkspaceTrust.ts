@@ -24,9 +24,8 @@ import { errorKind, reportHandled } from '@shared/report'
  * - 一時ファイルに書いて名前を変える（原子的に置き換える）。元の権限を保つ
  * - 待つのは短い時間だけ。間に合わなければそのまま起動する（そのときはエージェントが確認を出す）
  *
- * 書くのは、利用者が設定で確認して「権限確認を省く」を許したプロジェクトのフォルダだけ（agents.bypassProjects）。
- * 登録しただけ（clone しただけ）のプロジェクトには書かない。そのときはエージェント自身が「信頼しますか」を聞く（security-3 [1]）。
- * ホームなどには書かない。
+ * 書くのは、設定の「権限確認を省いて起動する」（agents.skipPermissions）が入のときの、登録したプロジェクトのフォルダそのものだけ。
+ * 切なら書かず、エージェント自身が「信頼しますか」を聞く。ホームやサブフォルダには書かない。
  */
 
 type TrustOutcome = 'granted' | 'unchanged' | 'missing-config' | 'locked' | 'unreadable' | 'skipped'

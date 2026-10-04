@@ -7,12 +7,10 @@ import {
   AGENT_CATALOG,
   BUILTIN_AGENTS,
   DEFAULT_AGENT_PREFERENCES,
-  bypassArgUnits,
+  SKIP_PERMISSION_AGENTS,
   resolveAgentLaunchPolicy,
-  sanitizeAgentPreferences,
-  stripBypassArgs
+  sanitizeAgentPreferences
 } from '../../src/shared/agentCatalog'
-import { setProjectBypass } from '../../src/renderer/lib/agentPrefs'
 import { applyAgentWorkspaceTrust, registeredProjectIdFor } from '../../src/main/agentWorkspaceTrust'
 import { isRemoteImageSource, previewCsp, renderPreviewBody, renderPreviewPage } from '../../src/main/preview/render'
 import { scrubBreadcrumb, scrubEvent, scrubString } from '../../src/shared/telemetry'
@@ -55,64 +53,75 @@ function walk(dir: string, exts: RegExp, out: string[] = []): string[] {
 
 // ───────────────────────── [1] ─────────────────────────
 
-describe('security-3 [1] 登録しただけのプロジェクトで、Agent を権限確認なしに動かさない', () => {
-  it('security-3 [1] 既定の起動引数に、どの組み込みの Agent の権限確認を省く引数も入らない', () => {
+/**
+ * security-3 [1] は、利用者の判断（2026-10-04）で既定を「権限確認を省いて起動する」に変えた。
+ * 決まりは SECURITY.md の Agent permissions。ここでは、その既定・設定で切れること・利用者の引数を消さないことを確かめる
+ */
+describe('security-3 [1] Agent の権限確認は設定の skipPermissions で決まる（既定は省く）', () => {
+  it('security-3 [1] 既定は権限確認を省く。既定の引数には省く引数を入れず、起動のときに足す', () => {
+    expect(DEFAULT_AGENT_PREFERENCES.skipPermissions).toBe(true)
     for (const agent of BUILTIN_AGENTS) {
-      const args = DEFAULT_AGENT_PREFERENCES.launch[agent].args
-      expect(stripBypassArgs(agent, args), agent).toBe(args)
-      if (AGENT_CATALOG[agent].yoloArgs) expect(args, agent).not.toContain(AGENT_CATALOG[agent].yoloArgs)
+      if (AGENT_CATALOG[agent].yoloArgs) expect(DEFAULT_AGENT_PREFERENCES.launch[agent].args, agent).not.toContain(AGENT_CATALOG[agent].yoloArgs)
     }
-    expect(DEFAULT_AGENT_PREFERENCES.bypassProjects).toEqual([])
+    expect(SKIP_PERMISSION_AGENTS).toEqual(['claude', 'codex'])
   })
 
-  it('security-3 [1] 以前の既定（Orca の YOLO 引数）で保存された設定も、読み込むと権限確認を省く引数を外す', () => {
+  it('security-3 [1] 保存された引数は書いたまま読む（--dangerously-* や --chrome を外さない）', () => {
     const prefs = sanitizeAgentPreferences({
+      skipPermissions: false,
       launch: {
         claude: { command: 'claude', args: '--dangerously-skip-permissions --model opus' },
         codex: { command: 'codex', args: '--dangerously-bypass-approvals-and-sandbox' },
-        devin: { command: 'devin', args: '--permission-mode bypass --respect-workspace-trust false' },
         gemini: { command: 'gemini', args: '--approval-mode=yolo' }
       }
     })
-    expect(prefs.launch.claude.args).toBe('--model opus')
-    expect(prefs.launch.codex.args).toBe('')
-    expect(prefs.launch.devin.args).toBe('')
-    expect(prefs.launch.gemini.args).toBe('')
+    expect(prefs.skipPermissions).toBe(false)
+    expect(prefs.launch.claude.args).toBe('--dangerously-skip-permissions --model opus')
+    expect(prefs.launch.codex.args).toBe('--dangerously-bypass-approvals-and-sandbox')
+    expect(prefs.launch.gemini.args).toBe('--approval-mode=yolo')
+    expect(sanitizeAgentPreferences({ skipPermissions: true, launch: { claude: { command: 'claude', args: '' } } }).launch.claude.args).toBe('')
   })
 
-  it('security-3 [1] 同じ意味の別の書き方（=・短いフラグ・サンドボックスを外す指定）も外す。ほかの引数と引用符は残す', () => {
-    expect(stripBypassArgs('claude', '--permission-mode=bypassPermissions --add-dir "a  b"')).toBe('--add-dir "a b"')
-    expect(stripBypassArgs('claude', '--permission-mode plan')).toBe('--permission-mode plan')
-    expect(stripBypassArgs('codex', '-s danger-full-access -a never --model o4')).toBe('--model o4')
-    expect(stripBypassArgs('codex', '--sandbox=danger-full-access --yolo')).toBe('')
-    expect(stripBypassArgs('codex', '--sandbox workspace-write')).toBe('--sandbox workspace-write')
-    expect(stripBypassArgs('claude', '--add-dir "a  b"')).toBe('--add-dir "a  b"')
-    for (const agent of BUILTIN_AGENTS) for (const unit of bypassArgUnits(agent)) expect(stripBypassArgs(agent, unit.join(' ')), `${agent} ${unit.join(' ')}`).toBe('')
+  it('security-3 [1] skipPermissions の無い以前の設定は既定（入）になり、以前の既定の空の引数は今の既定（--chrome）になる', () => {
+    const old = sanitizeAgentPreferences({ launch: { claude: { command: 'claude', args: '' }, codex: { command: 'codex', args: '' } }, bypassProjects: ['p1'] })
+    expect(old.skipPermissions).toBe(true)
+    expect(old.launch.claude.args).toBe('--chrome')
+    expect(old.launch.codex.args).toBe('')
+    expect('bypassProjects' in old).toBe(false)
+    // 利用者が変えた引数・コマンドはそのまま
+    const custom = sanitizeAgentPreferences({ launch: { claude: { command: 'claude', args: '--model opus' }, codex: { command: '/opt/codex', args: '' } } })
+    expect(custom.launch.claude.args).toBe('--model opus')
+    expect(custom.launch.codex).toEqual({ command: '/opt/codex', args: '' })
+    expect(sanitizeAgentPreferences({ skipPermissions: 'yes' }).skipPermissions).toBe(true)
   })
 
-  it('security-3 [1] main の起動の決まり: 許していないプロジェクトでは省かず、信頼も書かない。許しても自動起動では省かない', () => {
-    const base = { agent: 'claude' as const, args: '--dangerously-skip-permissions --model opus', bypassProjects: ['p-trusted'] }
-    expect(resolveAgentLaunchPolicy({ ...base, projectId: 'p-cloned', autoStart: true })).toEqual({ args: '--model opus', bypass: false, trustFolder: false })
-    expect(resolveAgentLaunchPolicy({ ...base, projectId: 'p-cloned', autoStart: false })).toEqual({ args: '--model opus', bypass: false, trustFolder: false })
-    expect(resolveAgentLaunchPolicy({ ...base, projectId: null, autoStart: false })).toEqual({ args: '--model opus', bypass: false, trustFolder: false })
-    expect(resolveAgentLaunchPolicy({ ...base, projectId: 'p-trusted', autoStart: true })).toEqual({ args: '--model opus', bypass: false, trustFolder: true })
-    expect(resolveAgentLaunchPolicy({ ...base, projectId: 'p-trusted', autoStart: false })).toEqual({ args: '--dangerously-skip-permissions --model opus', bypass: true, trustFolder: true })
-    expect(resolveAgentLaunchPolicy({ agent: 'codex', args: '', bypassProjects: ['p-trusted'], projectId: 'p-trusted', autoStart: false }).args)
-      .toBe('--dangerously-bypass-approvals-and-sandbox')
+  it('security-3 [1] main の起動の決まり: 入なら Claude Code / Codex に省く引数を前に足し、登録したプロジェクトのフォルダだけ信頼を書く', () => {
+    const on = { skipPermissions: true, projectId: 'p1' }
+    expect(resolveAgentLaunchPolicy({ ...on, agent: 'claude', args: '--chrome' })).toEqual({ args: '--dangerously-skip-permissions --chrome', trustFolder: true })
+    expect(resolveAgentLaunchPolicy({ ...on, agent: 'codex', args: '' })).toEqual({ args: '--dangerously-bypass-approvals-and-sandbox', trustFolder: true })
+    // サブフォルダ・ホーム（登録したプロジェクトのフォルダそのものでない）では引数だけ足し、信頼は書かない
+    expect(resolveAgentLaunchPolicy({ ...on, projectId: null, agent: 'claude', args: '' })).toEqual({ args: '--dangerously-skip-permissions', trustFolder: false })
+    // 確かめていない Agent には足さない
+    expect(resolveAgentLaunchPolicy({ ...on, agent: 'gemini', args: '' })).toEqual({ args: '', trustFolder: false })
   })
 
-  it('security-3 [1] 権限確認を省く許可は、パスを見せた確認が通ったときだけ、そのプロジェクトにだけ付く', () => {
-    const confirmNo = vi.fn(() => false)
-    const confirmYes = vi.fn(() => true)
-    const prefs = { ...DEFAULT_AGENT_PREFERENCES, bypassProjects: ['a'] }
-    expect(setProjectBypass(prefs, 'b', true, confirmNo).bypassProjects).toEqual(['a'])
-    expect(confirmNo).toHaveBeenCalledOnce()
-    expect(setProjectBypass(prefs, 'b', true, confirmYes).bypassProjects).toEqual(['a', 'b'])
-    // 外すときは確認しない・ほかのプロジェクトはそのまま
-    const off = vi.fn(() => true)
-    expect(setProjectBypass(prefs, 'a', false, off).bypassProjects).toEqual([])
-    expect(off).not.toHaveBeenCalled()
-    expect(sanitizeAgentPreferences({ bypassProjects: ['a', 'a', '', 3, ' '] }).bypassProjects).toEqual(['a'])
+  it('security-3 [1] 切なら何も足さず信頼も書かない。利用者が書いた引数はどちらでもそのまま', () => {
+    const off = { skipPermissions: false, projectId: 'p1' }
+    expect(resolveAgentLaunchPolicy({ ...off, agent: 'claude', args: '--chrome' })).toEqual({ args: '--chrome', trustFolder: false })
+    expect(resolveAgentLaunchPolicy({ ...off, agent: 'codex', args: '' })).toEqual({ args: '', trustFolder: false })
+    expect(resolveAgentLaunchPolicy({ ...off, agent: 'claude', args: '--dangerously-skip-permissions --add-dir "a  b"' }).args).toBe('--dangerously-skip-permissions --add-dir "a  b"')
+  })
+
+  it('security-3 [1] 引数で確認の仕方を選んでいれば、省く引数を二重に足さない・混ぜない', () => {
+    const on = { skipPermissions: true, projectId: null }
+    for (const args of ['--dangerously-skip-permissions --chrome', '--permission-mode plan', '--permission-mode=acceptEdits', '--allow-dangerously-skip-permissions']) {
+      expect(resolveAgentLaunchPolicy({ ...on, agent: 'claude', args }).args, args).toBe(args)
+    }
+    for (const args of ['--yolo --model o4', '-s workspace-write', '--sandbox=read-only', '-a on-request', '--full-auto', '-c approval_policy=never']) {
+      expect(resolveAgentLaunchPolicy({ ...on, agent: 'codex', args }).args, args).toBe(args)
+    }
+    // 似ているが別の引数には足す
+    expect(resolveAgentLaunchPolicy({ ...on, agent: 'codex', args: '--search' }).args).toBe('--dangerously-bypass-approvals-and-sandbox --search')
   })
 
   it('security-3 [1] プロジェクトの id はフォルダそのものでだけ決まる（サブフォルダ・ほかのプロジェクトに許可を引き継がない）', () => {
@@ -129,7 +138,7 @@ describe('security-3 [1] 登録しただけのプロジェクトで、Agent を�
     }
   })
 
-  it('security-3 [1] 許していないプロジェクトでは、Claude Code / Codex の信頼の設定ファイルを変えない', async () => {
+  it('security-3 [1] 登録したプロジェクトのフォルダでなければ、Claude Code / Codex の信頼の設定ファイルを変えない', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'ferret-sec3-'))
     try {
       const home = join(dir, 'home')
@@ -137,7 +146,7 @@ describe('security-3 [1] 登録しただけのプロジェクトで、Agent を�
       mkdirSync(home)
       mkdirSync(project)
       writeFileSync(join(home, '.claude.json'), '{"projects":{}}\n')
-      // main は許したプロジェクトのフォルダだけを渡す（terminal.ts）。許していなければ空
+      // main は登録したプロジェクトのフォルダを渡す（terminal.ts）。そのフォルダでなければ書かない
       expect(await applyAgentWorkspaceTrust({ agent: 'claude', cwd: project, projectFolders: [], env: {}, homeDir: home })).toBe('skipped')
       expect(await applyAgentWorkspaceTrust({ agent: 'codex', cwd: project, projectFolders: [], env: {}, homeDir: home })).toBe('skipped')
       expect(readFileSync(join(home, '.claude.json'), 'utf8')).toBe('{"projects":{}}\n')
@@ -147,7 +156,7 @@ describe('security-3 [1] 登録しただけのプロジェクトで、Agent を�
     }
   })
 
-  it('security-3 [1] 不変条件: 権限確認を省くフラグを書いてよいのはカタログだけ。起動は main の決まりを通し、信頼は許可のときだけ書く', () => {
+  it('security-3 [1] 不変条件: 権限確認を省くフラグを書いてよいのはカタログだけ。起動は main の決まりを通し、信頼は skipPermissions のときだけ書く', () => {
     const flags = ['--dangerously-skip-permissions', '--dangerously-bypass-approvals-and-sandbox', 'danger-full-access']
     // コメントは除いて見る（説明に名前を書くのはよい）
     const code = (f: string) => read(f).split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n')
@@ -158,8 +167,8 @@ describe('security-3 [1] 登録しただけのプロジェクトで、Agent を�
     expect(terminal).toMatch(/resolveAgentLaunchPolicy\(/)
     expect(terminal).toMatch(/if \(policy\?\.trustFolder\) \{\s*await applyAgentWorkspaceTrust\(/)
     expect(terminal.match(/applyAgentWorkspaceTrust\(/g)).toHaveLength(1)
-    // プロジェクトを開いたときの自動起動は autoStart を付けて頼む
-    expect(read('src/renderer/components/TerminalPane.tsx')).toMatch(/newPane\(\{ launch, cwd, autoStart: launch !== null \}\)/)
+    // 自動起動も手で開くのも同じ決まり（skipPermissions だけを見る）
+    expect(terminal).toMatch(/resolveAgentLaunchPolicy\(\{ agent, args: configured\.args, projectId, skipPermissions: prefs\.skipPermissions \}\)/)
   })
 })
 
@@ -359,7 +368,7 @@ describe('security-3 [6] Sentry へ送る前に、素の IP アドレスを落�
 describe('security-3 再発防止: 方針を SECURITY.md に書き、テストで固定する', () => {
   it('security-3 SECURITY.md に、今回の種類の問題を作らないための決まりがある', () => {
     const md = read('SECURITY.md')
-    for (const phrase of ['Agent trust', 'Release authenticity', 'Project-driven network requests', 'Public endpoints']) expect(md).toContain(phrase)
+    for (const phrase of ['Agent permissions', 'Release authenticity', 'Project-driven network requests', 'Public endpoints']) expect(md).toContain(phrase)
     expect(relative(root, join(root, 'test/unit/security-3.test.ts')).split(sep).join('/')).toBe('test/unit/security-3.test.ts')
   })
 })

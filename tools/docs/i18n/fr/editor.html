@@ -5,34 +5,49 @@
 <!-- @lead 97cbc36c8d -->
 Ouvrez et modifiez les fichiers du projet, et prévisualisez le Markdown et Mermaid. Un aperçu ouvert dans le navigateur intégré peut être enregistré et relu comme n'importe quelle page web.
 
-<!-- @files d29f6a2107 -->
+<!-- @files c2eff8e24c -->
 ## Ouvrir et modifier des fichiers
 <ul>
   <li><span class="docs-ui">Fichiers</span> (l'arborescence) : {{keys:Mod+Shift+E}}, avec <span class="docs-ui">Filtrer par nom de fichier</span>, <span class="docs-ui">Actualiser</span> et <span class="docs-ui">Tout réduire</span>.</li>
   <li><span class="docs-ui">Aller au fichier…</span> : {{keys:Mod+P}}.</li>
+  <li>Faites glisser un fichier depuis le Finder (l'Explorateur de fichiers sous Windows, votre gestionnaire de fichiers sous Linux) sur la barre d'onglets ou sur l'éditeur pour l'ouvrir. Les fichiers du projet s'ouvrent dans l'éditeur ou dans une visionneuse. Pour faire entrer dans le projet un fichier situé ailleurs, déposez-le sur <span class="docs-ui">Fichiers</span> : il y est copié. Un dossier déposé ici s'ouvre comme projet. Les fichiers glissés depuis <span class="docs-ui">Fichiers</span> s'ouvrent de la même façon.</li>
   <li>Enregistrez avec {{keys:Mod+S}}. Fermer un fichier modifié demande <q>Enregistrer les modifications de &lt;name&gt; ?</q> avec <span class="docs-ui">Enregistrer</span>, <span class="docs-ui">Ne pas enregistrer</span> et <span class="docs-ui">Annuler</span>.</li>
   <li>Si le fichier change sur le disque alors que vous avez des modifications non enregistrées, choisissez <span class="docs-ui">Recharger depuis le disque</span> ou <span class="docs-ui">Garder mes modifications</span>.</li>
 </ul>
 <p>L'éditeur est Monaco. Les fichiers qui ne sont pas du texte s'ouvrent dans une visionneuse : images (zoom avant et arrière ; un SVG peut aussi s'afficher sous forme de code), vidéo et audio avec une barre de lecture, PDF et, pour tout autre fichier binaire, sa taille et une vue hexadécimale des premiers octets. Les visionneuses sont en lecture seule, et les fichiers situés hors du dossier du projet, ou atteints par un lien symbolique qui en sort, ne sont pas affichés.</p>
 
-<!-- @file-tree 4bec72e9f4 -->
-## Créer, renommer et supprimer des fichiers
-<p>Travaillez sur les fichiers directement dans <span class="docs-ui">Fichiers</span>, comme dans VS Code. Les noms se saisissent sur place, dans l'arborescence.</p>
+<!-- @file-tree 6020ab04cd -->
+## Travailler sur les fichiers dans l'arborescence
+<p>Travaillez sur les fichiers directement dans <span class="docs-ui">Fichiers</span>, comme dans VS Code. Faites un clic droit sur un élément, ou sur l'espace vide sous l'arborescence pour agir à la racine du projet. Les noms se saisissent sur place, dans l'arborescence.</p>
 <ul>
-  <li><span class="docs-ui">Nouveau fichier</span> / <span class="docs-ui">Nouveau dossier</span> : les boutons au-dessus de l'arborescence, ou un clic droit sur un dossier (ou sur l'espace vide sous l'arborescence). Le nouvel élément est créé dans le dossier sélectionné, à côté du fichier sélectionné, ou à la racine du projet. Un nouveau fichier s'ouvre dans l'éditeur.</li>
-  <li><span class="docs-ui">Renommer</span> : {{keys:F2 / Enter|F2}}, ou clic droit. Les onglets ouverts suivent le nouveau nom et gardent les modifications non enregistrées.</li>
+  <li><span class="docs-ui">Nouveau fichier</span> / <span class="docs-ui">Nouveau dossier</span> : les boutons au-dessus de l'arborescence, ou clic droit. Le nouvel élément est créé dans le dossier sélectionné, à côté du fichier sélectionné, ou à la racine du projet. Saisissez un nom avec des barres obliques, comme <code>src/routes/index.ts</code>, pour créer au passage les dossiers intermédiaires. Un nouveau fichier s'ouvre dans l'éditeur. Dans un dossier vide, <span class="docs-ui">Fichiers</span> affiche <span class="docs-ui">Ce dossier est vide</span> avec les boutons <span class="docs-ui">Nouveau fichier</span> et <span class="docs-ui">Nouveau dossier</span>.</li>
+  <li><span class="docs-ui">Couper</span>, <span class="docs-ui">Copier</span> et <span class="docs-ui">Coller</span> : {{keys:Mod+X}}, {{keys:Mod+C}}, {{keys:Mod+V}}, ou clic droit. Les dossiers sont copiés avec tout leur contenu. <span class="docs-ui">Dupliquer</span> crée une copie à côté de l'original. Si le nom est déjà pris, la copie s'appelle <code>name copy</code>, puis <code>name copy 2</code>.</li>
+  <li>Faites glisser des éléments sur un dossier (ou sur l'espace vide pour la racine du projet) pour les déplacer. Maintenez {{keys:Alt|Ctrl}} en déposant pour copier à la place. Les fichiers et dossiers glissés depuis le Finder (l'Explorateur de fichiers sous Windows) sont copiés dans le projet ; les originaux restent où ils étaient.</li>
+  <li><span class="docs-ui">Renommer</span> : {{keys:F2 / Enter|F2}}, ou clic droit.</li>
   <li><span class="docs-ui">Supprimer</span> : {{keys:Mod+Backspace / Delete|Delete}}, ou clic droit. Ferret demande d'abord confirmation, puis place l'élément dans la Corbeille, d'où vous pouvez le restaurer. Les onglets des fichiers supprimés se ferment ; si certains avaient des modifications non enregistrées, la confirmation le signale.</li>
-  <li>Sélectionnez plusieurs éléments avec {{keys:Mod}}-clic ou {{keys:Shift}}-clic pour les supprimer ensemble.</li>
+  <li><span class="docs-ui">Annuler</span> : {{keys:Mod+Z}} annule la dernière création, le dernier renommage, déplacement, collage ou la dernière duplication. Les éléments supprimés sont restaurés depuis la Corbeille.</li>
+  <li><span class="docs-ui">Copier le chemin</span> ({{keys:Alt+Mod+C|Shift+Alt+C}}) et <span class="docs-ui">Copier le chemin relatif</span> ({{keys:Alt+Shift+Mod+C|Ctrl+Shift+Alt+C}}) placent le chemin dans le presse-papiers.</li>
+  <li><span class="docs-ui">Afficher dans le Finder</span> (<span class="docs-ui">Afficher dans l’Explorateur de fichiers</span> sous Windows, <span class="docs-ui">Ouvrir le dossier parent</span> sous Linux) : {{keys:Alt+Mod+R|Shift+Alt+R}}. <span class="docs-ui">Ouvrir dans le terminal</span> ouvre un nouvel onglet de terminal dans ce dossier (pour un fichier, dans son dossier).</li>
+  <li>Pour un fichier, <span class="docs-ui">Ouvrir</span> l'ouvre dans l'éditeur et <span class="docs-ui">Ouvrir avec l’app par défaut</span> l'ouvre dans l'application que votre OS utilise pour ce type.</li>
+  <li>Sélectionnez plusieurs éléments avec {{keys:Mod}}-clic ou {{keys:Shift}}-clic pour les couper, copier, déplacer ou supprimer ensemble.</li>
   <li>{{keys:Esc}} annule le nom en cours de saisie.</li>
 </ul>
-<p>Ferret n'écrase pas un fichier ou un dossier existant du même nom, et refuse tout ce qui sortirait du dossier du projet (<code>..</code>, chemins absolus, liens symboliques qui pointent à l'extérieur), tout ce qui se trouve dans <code>.git</code>, et les noms qu'un OS ne peut pas utiliser : <code>/ \ &lt; &gt; : " | ? *</code>, caractères de contrôle, espace ou point final, et noms réservés de Windows comme <code>CON</code> ou <code>NUL</code>.</p>
+<p>Les onglets ouverts suivent un fichier renommé ou déplacé et gardent les modifications non enregistrées. Ferret n'écrase pas un fichier ou un dossier existant du même nom, et garde tout à l'intérieur du dossier du projet : il refuse <code>..</code>, les chemins absolus, les liens symboliques qui pointent à l'extérieur, tout ce qui se trouve dans <code>.git</code>, le déplacement d'un dossier dans lui-même, et les noms qu'un OS ne peut pas utiliser : <code>/ \ &lt; &gt; : " | ? *</code>, caractères de contrôle, espace ou point final, et noms réservés de Windows comme <code>CON</code> ou <code>NUL</code>. Une copie ou un dépôt peut contenir jusqu'à 10 000 éléments et 1 Go.</p>
 
-<!-- @preview b8c0baaad4 -->
+<!-- @preview cb127d2292 -->
 ## Aperçu Markdown et Mermaid
 <p>L'aperçu fonctionne pour <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> et <code>.mermaid</code>. Mermaid est intégré à l'application : les diagrammes s'affichent donc hors ligne.</p>
 <ul>
   <li><span class="docs-ui">Ouvrir l'aperçu sur le côté</span> : à côté de l'éditeur</li>
   <li><span class="docs-ui">Ouvrir l'aperçu</span> : dans le navigateur intégré (<code>ade-preview://</code>), pour pouvoir l'enregistrer et le relire</li>
+</ul>
+<p>Pour modifier un fichier Markdown tel qu'il apparaît dans l'aperçu, cliquez sur <span class="docs-ui">Modifier dans l'aperçu</span> en haut de l'éditeur, puis sur <span class="docs-ui">Source</span> pour revenir. Les deux affichent le même contenu, et l'enregistrement, la marque de modifications non enregistrées et la confirmation à la fermeture fonctionnent de la même façon.</p>
+<ul>
+  <li>Saisissez directement dans les titres, paragraphes, listes, cases à cocher, tableaux, liens, et le texte en gras, en italique ou en code en ligne. Taper <code>#</code>, <code>-</code>, <code>1.</code> ou <code>&gt;</code> suivi d'une espace en début de ligne commence un titre, une liste ou une citation.</li>
+  <li>Les blocs de code et les diagrammes Mermaid se modifient sous forme de source, avec le langage indiqué dans le coin. Le diagramme s'affiche dans <span class="docs-ui">Ouvrir l'aperçu sur le côté</span> ou <span class="docs-ui">Ouvrir l'aperçu</span>.</li>
+  <li>Le front matter (le bloc <code>---</code> en haut) s'affiche sous forme de texte au-dessus du document et peut y être modifié.</li>
+  <li>Les parties que vous ne modifiez pas sont enregistrées exactement telles qu'elles sont écrites, y compris le style des titres, les marqueurs de liste, les lignes vides, l'alignement des tableaux et les fins de ligne. Un bloc modifié garde son style si possible ; sinon, ce bloc est écrit sous une forme Markdown standard, avec <code>-</code> pour les listes et <code>#</code> pour les titres.</li>
+  <li>Les images du projet sont affichées. Les images d'autres sites ne sont pas chargées ; leur nom d'hôte s'affiche à la place. Le HTML du fichier s'affiche sous forme de texte.</li>
 </ul>
 
 <!-- @review-docs 4b5c6316ba -->

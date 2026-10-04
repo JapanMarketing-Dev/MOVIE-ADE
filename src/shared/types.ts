@@ -1,3 +1,4 @@
+import type { LimitFailoverPrefs } from './failover'
 import type { AnnotationColor } from './annotation'
 import type { LayoutPrefs } from './layout'
 import type { DecisionPreferences } from './decision'
@@ -235,7 +236,7 @@ export interface CustomAgent extends AgentLaunchConfig {
 }
 
 export interface AgentPreferences {
-  /** 組み込みのエージェントの起動コマンド。権限確認を省くフラグは持たない（security-3 [1]。bypassProjects で決める） */
+  /** 組み込みのエージェントの起動コマンド。利用者が書いた引数をそのまま使う */
   launch: Record<BuiltinAgent, AgentLaunchConfig>
   customAgents: CustomAgent[]
   /** メニューに出さないエージェント（Orca の disabledTuiAgents） */
@@ -243,10 +244,15 @@ export interface AgentPreferences {
   /** プロジェクトを開いたとき自動で開くAgentタブ（順序どおり）。空なら素のシェル1つ */
   startupAgents: TuiAgent[]
   /**
-   * 利用者が確認のうえ「権限確認を省く」を許したプロジェクトの id。登録しただけのプロジェクトは入らない。
-   * ここにあるプロジェクトだけ、Claude Code / Codex のフォルダの信頼を先に書き、手で開いた Agent に権限確認を省く引数を付ける
+   * 権限確認を省いて起動する（既定は入）。入なら Claude Code / Codex に権限確認を省く引数を足し、
+   * 登録したプロジェクトのフォルダを信頼済みとして書く（main の resolveAgentLaunchPolicy）
    */
-  bypassProjects: string[]
+  skipPermissions: boolean
+  /**
+   * Agent の作業がプロジェクトで全部終わったとき・確認（許可・質問）を待っているときに OS の通知を出す（既定は切）。
+   * 見ているタブのことは出さない（renderer の terminal/agentAttention.ts、main の agentNotify.ts）
+   */
+  notify: boolean
 }
 
 /** 設定画面・メニューに出す1件（main が検出結果と設定を合わせて返す） */
@@ -284,8 +290,10 @@ export interface TerminalCreateOptions {
   exitWhenDone?: boolean
   /** タブ名。省略時は Agent 名やシェル名 */
   title?: string | null
-  /** プロジェクトを開いたときの自動起動（startupAgents）。権限確認を省く引数は付けない（security-3 [1]） */
+  /** プロジェクトを開いたときの自動起動（startupAgents）。起動の引数は手で開くときと同じ */
   autoStart?: boolean
+  /** 上限での自動切り替えで開くタブ（main の failover:launch の token）。会話の再開と引き継ぎの指示文は main が行う */
+  failoverToken?: string | null
 }
 
 /** 復元対象の設定（WS-1 ＋ 分割幅） */
@@ -309,6 +317,8 @@ export interface Settings {
   agents: AgentPreferences
   /** Claude Code / Codex のアカウント切り替え。省略時はどちらもシステムの既定アカウント */
   agentAccounts?: AgentAccountsSettings
+  /** 上限での自動切り替え（src/shared/failover.ts）。省略時は既定（入・95%・Claude Code → Codex → Gemini CLI） */
+  limitFailover?: LimitFailoverPrefs
   /** Agentへ渡す1行の指示のテンプレート（{{path}} = feedback.md の絶対パス、{{relpath}} = 相対パス）。未設定・空なら既定文 */
   agentPrompt?: string
   /** 「指摘を整理」の実行方法と、API の接続先 */
@@ -319,6 +329,8 @@ export interface Settings {
   crashReports?: boolean
   /** 初回起動の「クラッシュレポートを送ります」の案内を出し終えたか */
   crashReportsNoticeShown?: boolean
+  /** 新しい版を見つけたら裏でダウンロードし、「再起動して更新」を出すか。未設定は ON（src/main/autoUpdate.ts） */
+  autoUpdate?: boolean
   /** 初回起動のセットアップの進み具合（src/shared/onboarding.ts）。未設定なら出す */
   onboarding?: OnboardingState
   /** GitHub の star のお願いの状態（state.json に置く。src/shared/starPrompt.ts）。省略時はまだ一度も出していない */

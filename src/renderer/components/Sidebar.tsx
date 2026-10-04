@@ -1,10 +1,14 @@
+import { ExternalDropOverlay, useExternalDrop } from '../hooks/useExternalDrop'
+import { readDrop } from '../lib/externalDrop'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import {
+  Check,
   ChevronDown,
   Ellipsis,
   Folder,
   FolderOpen,
   FolderPlus,
+  MessageCircleQuestionMark,
   Pencil,
   Plus,
   Settings2,
@@ -25,7 +29,7 @@ import type { TranslationKey } from '@shared/i18n'
 import { ReviewFilterBar, ReviewList, loadReviewFilter, saveReviewFilter, toReviewSession, type ReviewSession } from './ReviewList'
 import { SetupProgressLink } from '../onboarding/SetupChecklist'
 import { FeedbackLink } from './FeedbackDialog'
-import { useWorkingProjects } from '../terminal/agentActivity'
+import { useProjectActivity } from '../terminal/agentActivity'
 
 export { toReviewSession, type ReviewSession }
 
@@ -97,7 +101,7 @@ export function Sidebar({
   const t = useT()
   const rootRef = useRef<HTMLElement | null>(null)
   /** ターミナルで Agent が動いているプロジェクト（行に「実行中」の印を出す） */
-  const workingProjects = useWorkingProjects()
+  const projectActivity = useProjectActivity()
   const [open, setOpen] = useState<Record<string, boolean>>(loadOpen)
   /** 開いていないプロジェクトの履歴。開いた（展開した）ときに読み込む */
   const [others, setOthers] = useState<Record<string, ReviewSession[]>>({})
@@ -250,11 +254,26 @@ export function Sidebar({
     run(() => window.ade.invoke('project:update', { ...project, name }))
   }
 
+  // 外からフォルダを落とすと、プロジェクトとして追加して開く（登録済みならそれに切り替える）。
+  // ファイルだけのときは、どこを足すかを推し量らずにフォルダを落とすよう案内する
+  const projectDrop = useExternalDrop((dataTransfer) => run(async () => {
+    const entries = await readDrop(dataTransfer)
+    const folders = entries.filter((entry) => entry.kind === 'dir')
+    if (folders.length === 0) {
+      toast({ tone: 'warning', message: t(entries.length > 0 ? 'drop.errors.notFolder' : 'drop.errors.unreadable') })
+      return
+    }
+    let state: ProjectsState | null = null
+    for (const folder of folders) state = await window.ade.invoke('project:addDropped', folder.path)
+    if (state?.activeProjectId) setProjectOpen(state.activeProjectId, true)
+  }))
+
   const menuProject = menu ? projects.projects.find((p) => p.id === menu.id) : undefined
   const editingProject = editingId ? projects.projects.find((p) => p.id === editingId) : undefined
 
   return (
-    <aside className="sidebar" aria-label={t('sidebar.projects')} data-testid="sidebar" ref={rootRef}>
+    <aside className="sidebar" aria-label={t('sidebar.projects')} data-testid="sidebar" ref={rootRef} data-file-drop={projectDrop.over || undefined} {...projectDrop.props}>
+      {projectDrop.over && <ExternalDropOverlay label={t('drop.sidebar.hint')} testId="sidebar-file-drop" />}
       <div className="sidebar__list">
         <div className="sb-head">
           <span className="sb-head__title">{t('sidebar.projects')}</span>
@@ -345,9 +364,21 @@ export function Sidebar({
                           : active ? <FolderOpen size={14} strokeWidth={1.5} /> : <Folder size={14} strokeWidth={1.5} />}
                       </span>
                       <span className="sb-project__name" title={project.name}>{project.name}</span>
-                      {workingProjects.includes(project.id) && (
+                      {projectActivity[project.id] === 'working' && (
                         <span className="sb-project__working" role="img" aria-label={t('sidebar.agentWorking')} title={t('sidebar.agentWorking')} data-testid="sidebar-project-working">
                           <span /><span /><span />
+                        </span>
+                      )}
+                      {/* Agent が確認（許可・質問）を待っている */}
+                      {projectActivity[project.id] === 'blocked' && (
+                        <span className="sb-project__agent sb-project__agent--blocked" role="img" aria-label={t('sidebar.agentBlocked')} title={t('sidebar.agentBlocked')} data-testid="sidebar-project-blocked">
+                          <MessageCircleQuestionMark size={12} strokeWidth={2} />
+                        </span>
+                      )}
+                      {/* Agent の作業が終わり、まだそのタブを見ていない（見ると消える） */}
+                      {projectActivity[project.id] === 'done' && (
+                        <span className="sb-project__agent sb-project__agent--done" role="img" aria-label={t('sidebar.agentDone')} title={t('sidebar.agentDone')} data-testid="sidebar-project-done">
+                          <Check size={12} strokeWidth={2.5} />
                         </span>
                       )}
                       {items && items.length > 0 && (() => {

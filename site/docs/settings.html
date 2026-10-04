@@ -203,12 +203,28 @@
   <tbody>
     <tr><td><span class="docs-ui">Start When a Project Opens</span></td><td>Claude Code, Codex (pick any <a href="agents.html#supported">supported agents</a>, or none)</td></tr>
     <tr><td><span class="docs-ui">Show &lt;agent&gt; in menus</span></td><td>On for every agent</td></tr>
-    <tr><td><span class="docs-ui">Command</span> / <span class="docs-ui">arguments</span> (per agent)</td><td>The agent's own command (for example <code>claude</code>, <code>codex</code>, <code>gemini</code>) / none</td></tr>
+    <tr><td><span class="docs-ui">Start agents without permission prompts</span></td><td>On: Claude Code starts with <code>--dangerously-skip-permissions</code>, Codex with <code>--dangerously-bypass-approvals-and-sandbox</code> (<a href="agents.html#terminal">details</a>)</td></tr>
+    <tr><td><span class="docs-ui">Notify me when agents finish or need me</span></td><td>Off (<a href="agents.html#terminal">details</a>)</td></tr>
+    <tr><td><span class="docs-ui">Command</span> / <span class="docs-ui">arguments</span> (per agent)</td><td>The agent's own command (for example <code>claude</code>, <code>codex</code>, <code>gemini</code>) / <code>--chrome</code> for Claude Code, none for the others</td></tr>
     <tr><td><span class="docs-ui">Custom Agents</span></td><td>None (<span class="docs-ui">Add Custom Agent</span> registers any CLI)</td></tr>
-    <tr><td><span class="docs-ui">Skip permission prompts</span> (per project)</td><td>Off for every project (<a href="agents.html#terminal">details</a>)</td></tr>
     <tr><td><span class="docs-ui">Instructions for Agent</span></td><td>Built-in text (<a href="agents.html#prompt">variables</a>)</td></tr>
   </tbody>
 </table>
+      </section>
+
+      <section class="docs-section" aria-labelledby="failover">
+        <h2 id="failover"><a class="docs-anchor" href="#failover" aria-label="Link to Switch on usage limits">#</a>Switch on usage limits</h2>
+        <table>
+  <thead><tr><th>Setting</th><th>Default</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Switch automatically when a usage limit is reached</span></td><td>On</td></tr>
+    <tr><td><span class="docs-ui">Count an account as at its limit from</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">Try another account of the same agent first</span></td><td>On</td></tr>
+    <tr><td><span class="docs-ui">Agent order</span></td><td>Claude Code, Codex, Gemini CLI</td></tr>
+    <tr><td><span class="docs-ui">Move back to a higher agent when its limit resets</span></td><td>Off</td></tr>
+  </tbody>
+</table>
+<p>In <span class="docs-ui">Settings → Accounts</span>. Work is handed over through <code>.ferret/handoff.md</code> in the project. See <a href="accounts.html#failover">Keep working at usage limits</a>.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other">
@@ -243,6 +259,7 @@
         <li><a href="#transcription">Transcription</a></li>
         <li><a href="#storage">Storage</a></li>
         <li><a href="#agent">Agents</a></li>
+        <li><a href="#failover">Switch on usage limits</a></li>
         <li><a href="#other">Accounts, GitHub, appearance, language</a></li>
         <li><a href="#settings-json">settings.json</a></li>
       </ul>

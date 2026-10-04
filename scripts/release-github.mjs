@@ -7,9 +7,11 @@
  *   2. node scripts/release-github.mjs create --version <v> [--target <public main の commit>] [--dry-run]
  *        → staging の manifest から SHA256SUMS を作り、それだけを付けた GitHub Release の下書きを作る
  *        SHA256SUMS には R2 とは別の鍵で署名し（scripts/release-signing.mjs。鍵は ~/.ferret-signing か RELEASE_SIGNING_KEY）、
- *        SHA256SUMS.sig も付ける（security-3 [2]）
- *   3. gh release download v<v> --repo <repo> --pattern 'SHA256SUMS*' --dir <フォルダ>
- *      node scripts/release-r2.mjs promote --version <v> --expect-sums <フォルダ>/SHA256SUMS --sums-sig <フォルダ>/SHA256SUMS.sig
+ *        SHA256SUMS.sig も付ける（security-3 [2]）。自動更新用のファイル（manifest の updates。macOS の zip）があれば、
+ *        その sha256 を UPDATE-SHA256SUMS に分けて書き、同じ鍵で署名して UPDATE-SHA256SUMS.sig と並べて付ける
+ *   3. gh release download v<v> --repo <repo> --pattern 'SHA256SUMS*' --pattern 'UPDATE-SHA256SUMS*' --dir <フォルダ>
+ *      node scripts/release-r2.mjs promote --version <v> --expect-sums <フォルダ>/SHA256SUMS --sums-sig <フォルダ>/SHA256SUMS.sig \
+ *        --expect-update-sums <フォルダ>/UPDATE-SHA256SUMS --update-sums-sig <フォルダ>/UPDATE-SHA256SUMS.sig
  *        → 署名が合わない・R2 の manifest が GitHub の SHA256SUMS と一致しなければ公開しない
  *   4. node scripts/release-github.mjs publish --version <v> [--dry-run]   … 下書きを公開する
  *
@@ -27,6 +29,7 @@ import {
   ghReleaseCreateArgs,
   ghReleaseNotes,
   ghReleasePublishArgs,
+  UPDATE_SUMS,
   validateManifest,
   workPath
 } from './release-r2-lib.mjs'
@@ -91,12 +94,26 @@ if (args.command === 'publish') {
     const signature = signSshsig(Buffer.from(sums), loadSigningKey())
     assertSignedSums(Buffer.from(sums), signature)
     writeFileSync(sigFile, signature, { flag: 'wx' })
+    // 自動更新用のファイル（macOS の zip）は別の SHA256SUMS に分ける（0.4.x のアプリが SHA256SUMS と files の一致を求めるため。release-r2-lib.mjs）
+    const extraFiles = []
+    if (manifest.updates?.length) {
+      const updateSums = formatSha256Sums(manifest.updates)
+      console.log(`${UPDATE_SUMS}（${manifest.updates.length} 件。自動更新用）:\n${updateSums}`)
+      const updateSumsFile = workPath(work, UPDATE_SUMS, nodePath)
+      const updateSigFile = workPath(work, `${UPDATE_SUMS}.sig`, nodePath)
+      const updateSignature = signSshsig(Buffer.from(updateSums), loadSigningKey())
+      assertSignedSums(Buffer.from(updateSums), updateSignature)
+      writeFileSync(updateSumsFile, updateSums, { flag: 'wx' })
+      writeFileSync(updateSigFile, updateSignature, { flag: 'wx' })
+      extraFiles.push(updateSumsFile, updateSigFile)
+    }
     gh(
       ghReleaseCreateArgs({
         version: args.version,
         repo: args.repo,
         sumsFile,
         sigFile,
+        extraFiles,
         notes: ghReleaseNotes(args.version),
         target: args.target,
         prerelease: manifest.prerelease,

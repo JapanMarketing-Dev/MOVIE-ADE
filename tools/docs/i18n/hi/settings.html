@@ -41,19 +41,34 @@
   </tbody>
 </table>
 
-<!-- @agent e6bb38101d -->
+<!-- @agent 669056f066 -->
 ## Agents
 <table>
   <thead><tr><th>सेटिंग</th><th>डिफ़ॉल्ट</th></tr></thead>
   <tbody>
     <tr><td><span class="docs-ui">प्रोजेक्ट खुलने पर शुरू करें</span></td><td>Claude Code, Codex (कोई भी <a href="agents.html#supported">समर्थित agents</a> चुनें, या कोई नहीं)</td></tr>
     <tr><td><span class="docs-ui">मेन्यू में &lt;agent&gt; दिखाएँ</span></td><td>हर agent के लिए चालू</td></tr>
-    <tr><td><span class="docs-ui">कमांड</span> / <span class="docs-ui">आर्ग्युमेंट्स</span> (हर agent के लिए)</td><td>agent का अपना command (जैसे <code>claude</code>, <code>codex</code>, <code>gemini</code>) / कोई नहीं</td></tr>
+    <tr><td><span class="docs-ui">अनुमति पूछे बिना Agents शुरू करें</span></td><td>चालू: Claude Code <code>--dangerously-skip-permissions</code> के साथ, Codex <code>--dangerously-bypass-approvals-and-sandbox</code> के साथ शुरू होता है (<a href="agents.html#terminal">विवरण</a>)</td></tr>
+    <tr><td><span class="docs-ui">एजेंट का काम पूरा होने या मेरी ज़रूरत होने पर सूचना दें</span></td><td>बंद (<a href="agents.html#terminal">विवरण</a>)</td></tr>
+    <tr><td><span class="docs-ui">कमांड</span> / <span class="docs-ui">आर्ग्युमेंट्स</span> (हर agent के लिए)</td><td>agent का अपना command (जैसे <code>claude</code>, <code>codex</code>, <code>gemini</code>) / Claude Code के लिए <code>--chrome</code>, बाक़ी के लिए कोई नहीं</td></tr>
     <tr><td><span class="docs-ui">Custom Agents</span></td><td>कोई नहीं (<span class="docs-ui">Custom Agent जोड़ें</span> कोई भी CLI रजिस्टर करता है)</td></tr>
-    <tr><td><span class="docs-ui">अनुमति पूछना छोड़ें</span> (प्रति प्रोजेक्ट)</td><td>हर प्रोजेक्ट के लिए बंद (<a href="agents.html#terminal">विवरण</a>)</td></tr>
     <tr><td><span class="docs-ui">Agent के लिए निर्देश</span></td><td>बिल्ट-इन टेक्स्ट (<a href="agents.html#prompt">variables</a>)</td></tr>
   </tbody>
 </table>
+
+<!-- @failover 93ea424573 -->
+## उपयोग सीमा पर बदलाव
+<table>
+  <thead><tr><th>सेटिंग</th><th>डिफ़ॉल्ट</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">उपयोग सीमा पर पहुँचने पर अपने-आप बदलें</span></td><td>चालू</td></tr>
+    <tr><td><span class="docs-ui">अकाउंट को सीमा पर मानें, जब उपयोग हो</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">पहले उसी Agent का कोई दूसरा अकाउंट आज़माएँ</span></td><td>चालू</td></tr>
+    <tr><td><span class="docs-ui">Agent का क्रम</span></td><td>Claude Code, Codex, Gemini CLI</td></tr>
+    <tr><td><span class="docs-ui">सीमा लौटने पर ऊपर वाले Agent पर वापस जाएँ</span></td><td>बंद</td></tr>
+  </tbody>
+</table>
+<p><span class="docs-ui">Settings → अकाउंट</span> में। काम प्रोजेक्ट की <code>.ferret/handoff.md</code> के ज़रिए सौंपा जाता है। <a href="accounts.html#failover">उपयोग सीमा पर भी काम जारी रखें</a> देखें।</p>
 
 <!-- @other 37b81ab14b -->
 ## अकाउंट, GitHub, रूप-रंग, भाषा

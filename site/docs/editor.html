@@ -167,6 +167,7 @@
         <ul>
   <li><span class="docs-ui">Files</span> (the file tree): <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></span></span>, with <span class="docs-ui">Filter by file name</span>, <span class="docs-ui">Refresh</span>, and <span class="docs-ui">Collapse All</span>.</li>
   <li><span class="docs-ui">Go to File…</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></span></span>.</li>
+  <li>Drag a file from Finder (File Explorer on Windows, your file manager on Linux) onto the tab bar or the editor to open it. Files in the project open in the editor or a viewer. To bring a file from outside the project in, drop it on <span class="docs-ui">Files</span>, which copies it into the project. A folder dropped here opens as a project. Files dragged from <span class="docs-ui">Files</span> open the same way.</li>
   <li>Save with <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></span></span>. Closing a modified file asks <q>Save changes to &lt;name&gt;?</q> with <span class="docs-ui">Save</span>, <span class="docs-ui">Don't Save</span>, and <span class="docs-ui">Cancel</span>.</li>
   <li>If the file changes on disk while you have unsaved edits, choose <span class="docs-ui">Reload from Disk</span> or <span class="docs-ui">Keep My Changes</span>.</li>
 </ul>
@@ -174,16 +175,22 @@
       </section>
 
       <section class="docs-section" aria-labelledby="file-tree">
-        <h2 id="file-tree"><a class="docs-anchor" href="#file-tree" aria-label="Link to Create, rename, and delete files">#</a>Create, rename, and delete files</h2>
-        <p>Work on files right in <span class="docs-ui">Files</span>, the way you would in VS Code. Names are typed in place in the tree.</p>
+        <h2 id="file-tree"><a class="docs-anchor" href="#file-tree" aria-label="Link to Work with files in the file tree">#</a>Work with files in the file tree</h2>
+        <p>Work on files right in <span class="docs-ui">Files</span>, the way you would in VS Code. Right-click an item, or the empty space below the tree to work at the top of the project. Names are typed in place in the tree.</p>
 <ul>
-  <li><span class="docs-ui">New File</span> / <span class="docs-ui">New Folder</span>: the buttons above the tree, or right-click a folder (or the empty space below the tree). A new item goes into the selected folder, next to the selected file, or at the top of the project. A new file opens in the editor.</li>
-  <li><span class="docs-ui">Rename</span>: <span class="docs-kbd"><span class="os-mac"><kbd>F2</kbd> / <kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>F2</kbd></span></span>, or right-click. Open tabs follow the new name and keep unsaved edits.</li>
+  <li><span class="docs-ui">New File</span> / <span class="docs-ui">New Folder</span>: the buttons above the tree, or right-click. A new item goes into the selected folder, next to the selected file, or at the top of the project. Type a name with slashes, such as <code>src/routes/index.ts</code>, to create the folders along the way. A new file opens in the editor. In an empty folder, <span class="docs-ui">Files</span> shows <span class="docs-ui">This folder is empty</span> with <span class="docs-ui">New File</span> and <span class="docs-ui">New Folder</span> buttons.</li>
+  <li><span class="docs-ui">Cut</span>, <span class="docs-ui">Copy</span>, and <span class="docs-ui">Paste</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>X</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>X</kbd></span></span>, <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>C</kbd></span></span>, <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>V</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>V</kbd></span></span>, or right-click. Folders are copied with everything inside. <span class="docs-ui">Duplicate</span> makes a copy next to the original. If the name is taken, the copy is named <code>name copy</code>, then <code>name copy 2</code>.</li>
+  <li>Drag items onto a folder (or the empty space for the top of the project) to move them. Hold <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span> while dropping to copy instead. Files and folders dragged in from Finder (File Explorer on Windows) are copied into the project; the originals stay where they were.</li>
+  <li><span class="docs-ui">Rename</span>: <span class="docs-kbd"><span class="os-mac"><kbd>F2</kbd> / <kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>F2</kbd></span></span>, or right-click.</li>
   <li><span class="docs-ui">Delete</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⌫</kbd> / <kbd>Delete</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Delete</kbd></span></span>, or right-click. Ferret asks first, then moves the item to the Trash (the Recycle Bin on Windows), so you can restore it. Tabs of deleted files close; if any had unsaved edits, the confirmation says so.</li>
-  <li>Select several items with <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span>-click or <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd></span></span>-click to delete them together.</li>
+  <li><span class="docs-ui">Undo</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>Z</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Z</kbd></span></span> reverses the last new item, rename, move, paste, or duplicate. Deleted items are restored from the Trash.</li>
+  <li><span class="docs-ui">Copy Path</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>C</kbd></span></span>) and <span class="docs-ui">Copy Relative Path</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⇧</kbd><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Alt</kbd><kbd>C</kbd></span></span>) put the path on the clipboard.</li>
+  <li><span class="docs-ui">Reveal in Finder</span> (<span class="docs-ui">Reveal in File Explorer</span> on Windows, <span class="docs-ui">Open Containing Folder</span> on Linux): <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>R</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>R</kbd></span></span>. <span class="docs-ui">Open in Terminal</span> opens a new terminal tab in that folder (for a file, its folder).</li>
+  <li>For a file, <span class="docs-ui">Open</span> opens it in the editor and <span class="docs-ui">Open in Default App</span> opens it in the app your OS uses for that type.</li>
+  <li>Select several items with <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span>-click or <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd></span></span>-click to cut, copy, move, or delete them together.</li>
   <li><kbd>Esc</kbd> cancels a name you are typing.</li>
 </ul>
-<p>Ferret won't overwrite an existing file or folder with the same name, and it refuses anything that would leave the project folder (<code>..</code>, absolute paths, symbolic links that point outside), anything inside <code>.git</code>, and names that some OS can't use: <code>/ \ &lt; &gt; : " | ? *</code>, control characters, a trailing space or dot, and Windows reserved names such as <code>CON</code> or <code>NUL</code>.</p>
+<p>Open tabs follow a renamed or moved file and keep unsaved edits. Ferret won't overwrite an existing file or folder with the same name, and it keeps everything inside the project folder: it refuses <code>..</code>, absolute paths, symbolic links that point outside, anything inside <code>.git</code>, moving a folder into itself, and names that some OS can't use: <code>/ \ &lt; &gt; : " | ? *</code>, control characters, a trailing space or dot, and Windows reserved names such as <code>CON</code> or <code>NUL</code>. One copy or drop can hold up to 10,000 items and 1 GB.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="preview">
@@ -192,6 +199,14 @@
 <ul>
   <li><span class="docs-ui">Open Preview to the Side</span>: next to the editor</li>
   <li><span class="docs-ui">Open Preview</span>: in the built-in browser (<code>ade-preview://</code>), so you can record and review it</li>
+</ul>
+<p>To edit a Markdown file as it looks in the preview, click <span class="docs-ui">Edit in Preview</span> at the top of the editor, and click <span class="docs-ui">Source</span> to go back. Both show the same content, and saving, the unsaved mark, and the close confirmation work the same way.</p>
+<ul>
+  <li>Type straight into headings, paragraphs, lists, checkboxes, tables, links, and bold, italic, or inline code. Typing <code>#</code>, <code>-</code>, <code>1.</code>, or <code>&gt;</code> and a space at the start of a line starts a heading, list, or quote.</li>
+  <li>Code blocks and Mermaid diagrams are edited as their source, with the language shown in the corner. The diagram renders in <span class="docs-ui">Open Preview to the Side</span> or <span class="docs-ui">Open Preview</span>.</li>
+  <li>Front matter (the <code>---</code> block at the top) is shown as text above the document and can be edited there.</li>
+  <li>Parts you don't change are saved exactly as written, including heading style, list markers, blank lines, table alignment, and line endings. A block you edit keeps its style where possible; otherwise that block is written in a standard Markdown form, with <code>-</code> for lists and <code>#</code> for headings.</li>
+  <li>Images in the project are shown. Images from other sites are not loaded; their host name is shown instead. HTML in the file is shown as text.</li>
 </ul>
       </section>
 
@@ -218,7 +233,7 @@
       <p class="docs-toc-heading">On this page</p>
       <ul>
         <li><a href="#files">Open and edit files</a></li>
-        <li><a href="#file-tree">Create, rename, and delete files</a></li>
+        <li><a href="#file-tree">Work with files in the file tree</a></li>
         <li><a href="#preview">Markdown and Mermaid preview</a></li>
         <li><a href="#review-docs">Review docs by recording</a></li>
       </ul>

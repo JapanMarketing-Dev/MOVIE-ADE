@@ -11,7 +11,6 @@ import { starFromMenu } from './StarPrompt'
 import { useLocale, useT } from '../lib/i18n'
 import { AccountsSection } from './AccountsSection'
 import { AgentIcon } from './AgentIcon'
-import { AgentBypassProjects } from './AgentBypassProjects'
 import { AgentResourcesSection } from './AgentResourcesSection'
 import { GitHubSection } from './GitHubSection'
 import { CliToolsSection } from './CliToolsSection'
@@ -118,6 +117,18 @@ function AgentSection({ value, onChange, prompt, onPromptChange }: {
   return <div id="settings-agent" className="st-page__group">
     <p className="st-note">{t('settings.agents.intro')}</p>
 
+    {/* 権限確認を省いて起動する（既定は入）。付ける引数は main の resolveAgentLaunchPolicy が決める */}
+    <div data-testid="agent-skip-permissions">
+      <Switch label={t('settings.agents.skipPermissions')} checked={value.skipPermissions} onChange={(skipPermissions) => onChange({ ...value, skipPermissions })} />
+      <p className="st-note">{t('settings.agents.skipPermissionsNote', { claude: AGENT_CATALOG.claude.yoloArgs, codex: AGENT_CATALOG.codex.yoloArgs })}</p>
+    </div>
+
+    {/* Agent が終わった・確認を待っているときの OS 通知（既定は切）。出すかは renderer の terminal/agentAttention.ts */}
+    <div data-testid="agent-notify">
+      <Switch label={t('settings.agents.notify')} checked={value.notify} onChange={(notify) => onChange({ ...value, notify })} />
+      <p className="st-note">{t('settings.agents.notifyNote')}</p>
+    </div>
+
     <h3 className="st-page__subheading">{t('settings.agents.startupTitle')}</h3>
     <div className="st-agent-startup" role="group" aria-label={t('settings.agents.startupTitle')}>
       {startable.map((id) => {
@@ -207,9 +218,6 @@ function AgentSection({ value, onChange, prompt, onPromptChange }: {
       <Button variant="ghost" onClick={() => setShowAll((v) => !v)} data-testid="agent-show-all">
         {showAll ? t('agents.showLess') : t('agents.showAll', { count: listing.hiddenCount })}</Button>
     </div>}
-
-    {/* プロジェクトごとの「権限確認を省く」。既定は切、入れるときはパスを見せて確認する（security-3 [1]） */}
-    <AgentBypassProjects value={value} onChange={onChange} />
 
     <label className="st-prompt">
       <span className="st-row__label">{t('settings.agents.prompt')}</span>

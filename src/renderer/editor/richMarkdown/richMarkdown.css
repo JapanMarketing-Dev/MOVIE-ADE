@@ -1,0 +1,241 @@
+/*
+ * プレビューで編集（RichMarkdownEditor）の見た目。プレビューのページ（src/main/preview/page.css）に合わせ、
+ * 色はアプリの tokens.css の変数を使う（ライト／ダークはアプリに追従）。
+ */
+
+.rich-md-host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--color-bg-panel);
+}
+
+.rich-md__banner {
+  flex: none;
+  padding: 6px 16px;
+  border-bottom: var(--size-border) solid var(--color-warning-border);
+  background: var(--color-warning-quiet);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.rich-md__page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.rich-md__frontmatter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 880px;
+  box-sizing: border-box;
+  margin: 24px auto 0;
+  padding: 0 40px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.rich-md__frontmatter textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 12px;
+  border: var(--size-border) solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.rich-md {
+  max-width: 880px;
+  box-sizing: border-box;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 24px 40px 64px;
+  outline: none;
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+  caret-color: var(--color-accent);
+}
+
+.rich-md > :first-child {
+  margin-top: 0;
+}
+
+.rich-md h1,
+.rich-md h2,
+.rich-md h3,
+.rich-md h4,
+.rich-md h5,
+.rich-md h6 {
+  margin: 1.5em 0 0.5em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.rich-md h1 {
+  padding-bottom: 0.3em;
+  border-bottom: var(--size-border) solid var(--color-border);
+  font-size: 1.85em;
+  font-weight: 700;
+}
+
+.rich-md h2 {
+  padding-bottom: 0.3em;
+  border-bottom: var(--size-border) solid var(--color-border);
+  font-size: 1.45em;
+}
+
+.rich-md h3 {
+  font-size: 1.2em;
+}
+
+.rich-md p,
+.rich-md ul,
+.rich-md ol,
+.rich-md blockquote,
+.rich-md pre,
+.rich-md table {
+  margin: 0 0 1em;
+}
+
+.rich-md ul,
+.rich-md ol {
+  padding-left: 1.8em;
+}
+
+.rich-md li > p {
+  margin: 0.15em 0;
+}
+
+.rich-md ul[data-type='taskList'] {
+  padding-left: 0.4em;
+  list-style: none;
+}
+
+.rich-md ul[data-type='taskList'] li {
+  display: flex;
+  gap: 0.5em;
+  align-items: flex-start;
+}
+
+.rich-md ul[data-type='taskList'] li > label {
+  flex: none;
+  margin-top: 0.3em;
+}
+
+.rich-md ul[data-type='taskList'] li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.rich-md a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rich-md code {
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  background: var(--color-surface-hover);
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+.rich-md pre {
+  position: relative;
+  padding: 12px 16px;
+  border: var(--size-border) solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface-hover);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.rich-md pre code {
+  padding: 0;
+  background: none;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+/* コードブロックの言語（mermaid など）を右上に出す。図はソースのまま編集し、横のプレビューで描かれる */
+.rich-md pre[data-language]::before {
+  content: attr(data-language);
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.rich-md blockquote {
+  padding: 0 1em;
+  border-left: 3px solid var(--color-border-strong);
+  color: var(--color-text-muted);
+}
+
+.rich-md hr {
+  height: 0;
+  margin: 1.5em 0;
+  border: 0;
+  border-top: var(--size-border) solid var(--color-border);
+}
+
+.rich-md table {
+  border-collapse: collapse;
+  white-space: normal;
+}
+
+.rich-md th,
+.rich-md td {
+  min-width: 3em;
+  padding: 6px 12px;
+  border: var(--size-border) solid var(--color-border);
+  vertical-align: top;
+}
+
+.rich-md th {
+  background: var(--color-surface-hover);
+  font-weight: 600;
+}
+
+.rich-md th > p,
+.rich-md td > p {
+  margin: 0;
+}
+
+.rich-md .selectedCell {
+  background: var(--color-accent-wash);
+}
+
+.rich-md__image img {
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.rich-md__image--blocked {
+  display: inline-block;
+  padding: 1px 8px;
+  border: var(--size-border) dashed var(--color-border-strong);
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.rich-md .ProseMirror-selectednode {
+  outline: 2px solid var(--color-border-focus);
+}

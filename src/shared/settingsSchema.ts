@@ -1,5 +1,6 @@
+import { DEFAULT_LIMIT_FAILOVER, MAX_FAILOVER_THRESHOLD, MIN_FAILOVER_THRESHOLD } from './failover'
 import { ANNOTATION_COLOR_IDS, DEFAULT_ANNOTATION_COLOR } from './annotation'
-import { BUILTIN_AGENTS, DEFAULT_AGENT_PREFERENCES } from './agentCatalog'
+import { AGENT_CATALOG, BUILTIN_AGENTS, DEFAULT_AGENT_PREFERENCES } from './agentCatalog'
 import { DECISION_PRESET_IDS } from './decision'
 import { LLM_API_PROVIDERS, STT_REMOTE_PROVIDERS } from './aiProviders'
 import { LOCALE_PREFERENCES } from './i18n'
@@ -256,18 +257,26 @@ export const SETTINGS_SCHEMA: JsonSchema = {
           }
         },
         disabledAgents: { type: 'array', description: 'Agents hidden from menus.', items: agentId },
-        startupAgents: { type: 'array', description: 'Agent tabs opened automatically when a project opens, in order. Empty means one plain shell. They always start in the agent\'s normal mode (permission prompts on).', items: agentId },
-        bypassProjects: {
-          type: 'array',
-          description: 'DANGEROUS. Ids of projects (see projects[].id) where you confirmed that agents may skip permission prompts, approvals and the sandbox. Only in these project folders does Ferret pre-trust the folder for Claude Code / Codex and add each agent\'s skip-permissions flag, and only to agents you open yourself (never to agents started when the project opens). Skip-permissions flags typed into launch args are ignored. Empty by default: registering or cloning a project does not trust it.',
-          items: { type: 'string', description: 'A project id.' }
-        }
+        startupAgents: { type: 'array', description: 'Agent tabs opened automatically when a project opens, in order. Empty means one plain shell. They start with the same arguments as agents you open yourself.', items: agentId },
+        skipPermissions: bool(`Start Claude Code with ${AGENT_CATALOG.claude.yoloArgs} and Codex with ${AGENT_CATALOG.codex.yoloArgs}, added before your launch args, and mark registered project folders as trusted for both. Not added when your args already choose a permission mode. Turn off to start them in their normal mode.`, { default: true }),
+        notify: bool('Show a system notification when all agents in a project have finished, or when an agent is waiting for a permission or an answer. Nothing is shown for the tab you are looking at. Clicking the notification opens that tab.', { default: false })
       }
     },
     agentAccounts: {
       type: 'object',
       description: 'Account switching for Claude Code and Codex.',
       properties: { claude: accountList, codex: accountList }
+    },
+    limitFailover: {
+      type: 'object',
+      description: 'Keep working when an agent reaches its usage limit: switch to another signed-in account of the same agent, then hand the work to the next agent in agentOrder, in the same project folder.',
+      properties: {
+        enabled: bool('Switch automatically when a usage limit is reached.', { default: DEFAULT_LIMIT_FAILOVER.enabled }),
+        thresholdPercent: { type: 'integer', description: 'An account counts as at its limit when its highest usage (5-hour, weekly or per-model) reaches this percentage.', minimum: MIN_FAILOVER_THRESHOLD, maximum: MAX_FAILOVER_THRESHOLD, default: DEFAULT_LIMIT_FAILOVER.thresholdPercent },
+        switchAccounts: bool('Try another signed-in account of the same agent (Claude Code, Codex) before moving to the next agent. Between accounts that Ferret manages, the same conversation is resumed.', { default: DEFAULT_LIMIT_FAILOVER.switchAccounts }),
+        agentOrder: { type: 'array', description: 'Agents to hand the work to, highest priority first. Agents not listed are never used.', items: agentId, default: DEFAULT_LIMIT_FAILOVER.agentOrder },
+        returnToPreferred: bool('When a higher agent in agentOrder is available again, move idle switched tabs back to it. Off keeps working with the current agent.', { default: DEFAULT_LIMIT_FAILOVER.returnToPreferred })
+      }
     },
     agentPrompt: str('One-line instruction sent to the agent with a review. {{path}} is the absolute path of feedback.md, {{relpath}} the project-relative path. Omit for the default.', { maxLength: 2000 }),
     whisperModel: str('Absolute path of the local whisper.cpp model (ggml .bin) used for local transcription.'),
@@ -345,6 +354,7 @@ export const SETTINGS_SCHEMA: JsonSchema = {
     },
     crashReports: bool('Send crash reports to Sentry. Reports never include API keys, file contents or recordings.', { default: true }),
     crashReportsNoticeShown: bool('The first-run crash report notice has been shown.'),
+    autoUpdate: bool('Download new versions in the background and offer Restart to update. Each download is checked against the signed SHA256SUMS before it is installed.', { default: true }),
     onboarding: {
       type: 'object',
       description: 'First-run setup progress. Remove this object to show the setup again.',

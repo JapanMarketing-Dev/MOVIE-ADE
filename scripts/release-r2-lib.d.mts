@@ -23,6 +23,8 @@ export interface ReleaseManifest {
   notes: string
   notesUrl?: string
   files: ReleaseFile[]
+  /** 自動更新だけが使うファイル（macOS の zip）。UPDATE-SHA256SUMS に載せて署名する */
+  updates?: ReleaseFile[]
 }
 
 export interface VersionsIndexEntry {
@@ -48,6 +50,14 @@ export declare const INDEX_CACHE: string
 export declare const MANIFEST_CACHE: string
 export declare const STAGING_CACHE: string
 export declare const CONTENT_TYPES: Record<string, string>
+export declare const UPDATE_SUMS: 'UPDATE-SHA256SUMS'
+
+export declare function parseUpdateArtifactName(
+  name: string,
+  version: string
+): { name: string; product: string; os: 'mac'; arch: string; kind: 'zip' } | null
+export declare function allFiles(manifest: ReleaseManifest | null): ReleaseFile[]
+export declare function assertUpdatesMatchSums(manifest: { updates?: Array<{ name: string; sha256: string }> }, sums: Map<string, string> | null): void
 
 export declare function parseArtifactName(
   name: string,
@@ -61,6 +71,7 @@ export declare function buildManifest(input: {
   notes: string
   notesUrl?: string
   files: Array<{ name: string; os: ReleaseOs; arch: string; kind: string; size: number; sha256: string }>
+  updates?: Array<{ name: string; os: ReleaseOs; arch: string; kind: string; size: number; sha256: string }>
   previewOs?: string[]
   build?: number
   product?: string
@@ -96,6 +107,8 @@ export declare function ghReleaseCreateArgs(input: {
   version: string
   repo: string
   sumsFile: string
+  sigFile?: string
+  extraFiles?: string[]
   notes: string
   target?: string
   prerelease?: boolean

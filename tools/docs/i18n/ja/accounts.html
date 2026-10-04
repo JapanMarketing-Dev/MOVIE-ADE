@@ -22,3 +22,26 @@ Claude Code や Codex の複数のログインを切り替え、レート制限�
 <p>どこまで表示するかは、フッターの空きで変わります。余裕があればバー、枠の名前、割合を出します。フッターが狭くなるにつれて重要度の低いものから省き、最後はエージェントごとに割合1つだけになります。使用量を押すと、ポップオーバーですべてを見られます。</p>
 <p>使用量は、ログインしているアカウント自身の認証情報で、Anthropic（<code>api.anthropic.com/api/oauth/usage</code>）と ChatGPT（<code>chatgpt.com/backend-api/wham/usage</code>）から直接取得します。</p>
 {{shot:usage|フッターの使用量}}
+
+<!-- @failover 4e121e0f4c -->
+## 利用上限に達しても作業を続ける
+<p>エージェントが利用上限に達すると、Ferret は同じプロジェクトのフォルダで同じ作業を続けます。長い作業が上限で止まりません。最初からオンになっていて、<span class="docs-ui">設定 → アカウント → 上限での自動切り替え</span> で設定します。</p>
+<p>作業はプロジェクト内の1つのファイル <code>.ferret/handoff.md</code> を通して引き継ぐので、アカウントの間でも、別のエージェントの間でも同じように働きます。<span class="docs-ui">Agentへ送信</span> の指示は、区切りごとと利用上限が近づいたときに、このファイルを更新するようエージェントに頼みます。書くのは、目的、終わったこと、残りの作業のチェックリスト、変更したファイル、次の一歩、関係する <code>feedback.md</code> とレビューのパス、注意すべきことです。<code>.ferret/</code> は git に入りません（<code>.gitignore</code> ではなく <code>.git/info/exclude</code> に追加します）。</p>
+<ol class="docs-steps">
+  <li>Ferret は、ターミナルに出るエージェント自身のメッセージ（たとえば Claude Code の <code>5-hour limit reached ∙ resets 3pm</code>、Codex の <code>You've hit your usage limit</code>）か、フッターの使用量がしきい値（既定は 95%。5時間・週・モデルごとの枠のうち最も高いもの）に達したことから、上限に気づきます。</li>
+  <li>切り替える前に、Ferret は今のエージェントに <code>.ferret/handoff.md</code> を更新するよう頼みます。エージェントがそれに取りかからないとき（たとえばすでに上限に達しているとき）は、Ferret が分かっていることをファイルに書き足します。最後の依頼、<code>feedback.md</code> の場所、<code>git status</code> から分かる変更したファイルです。</li>
+  <li>そのあと Ferret は、同じエージェントでサインインしている別のアカウントのうち、使用量が最も少ないものに切り替えます。そのエージェントのアカウントがすべて上限に達しているときは、<span class="docs-ui">Agent の順番</span>（既定: Claude Code → Codex → Gemini CLI）の次のエージェントへ作業を移します。</li>
+  <li>新しいエージェントは同じプロジェクトの新しいタブで開き、アプリの表示言語で、まず <code>.ferret/handoff.md</code> を読んで残りの作業を続けるよう伝えられます。</li>
+  <li>フッターに <span class="docs-ui">&lt;agent&gt; で作業中</span> と出て、何が変わったかを通知で知らせます（たとえば <span class="docs-ui">Codex の利用上限のため、Claude Code に切り替えました。</span>）。上限に達したタブは閉じるので、その上限が戻ったときに同じ作業をまた始めることはありません。</li>
+</ol>
+<table>
+  <thead><tr><th>設定</th><th>既定値</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">上限に達したら自動で切り替える</span></td><td>オン</td></tr>
+    <tr><td><span class="docs-ui">上限とみなす使用量</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">先に同じ Agent の別のアカウントへ切り替える</span></td><td>オン</td></tr>
+    <tr><td><span class="docs-ui">Agent の順番</span></td><td>Claude Code、Codex、Gemini CLI。一覧にないエージェントは使いません。</td></tr>
+    <tr><td><span class="docs-ui">上限が戻ったら、順番が上の Agent に戻す</span></td><td>オフ（今のエージェントで作業を続けます）。オンにすると、タブが入力待ちの間に作業を戻します。</td></tr>
+  </tbody>
+</table>
+<p>切り替えはプロジェクトの中だけで行い、1時間に6回まで、間隔は1分以上あけます。認証情報はそれぞれのアカウントの設定ディレクトリに置いたままで、コピーしません。<code>settings.json</code> では <code>limitFailover</code> の下にあります。</p>

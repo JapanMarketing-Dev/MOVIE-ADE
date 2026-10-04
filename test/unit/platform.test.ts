@@ -173,6 +173,11 @@ describe('配布の設定（electron-builder.config.cjs）', () => {
     expect(config.deb.fpm).toEqual(['--replaces=movie-ade', '--conflicts=movie-ade'])
   })
 
+  it('deb は Electron が直接リンクする ALSA を入れる（Ubuntu 24.04 の t64 を先に。デスクトップの無い環境で起動できなかった）', () => {
+    expect(config.deb.depends).toContain('libasound2t64 | libasound2')
+    expect(config.deb.depends).toContain('libgtk-3-0')
+  })
+
   it('Windows のインストーラは実行すれば入って起動する（選択の画面・管理者の確認なし。旧版と同じユーザーごとの入れ方）', () => {
     expect(config.nsis.oneClick).toBe(true)
     expect(config.nsis.perMachine).toBe(false)
@@ -201,7 +206,8 @@ describe('配布の設定（electron-builder.config.cjs）', () => {
   })
 
   it('3つのOSの配布物を用意している（Windows は1本に両方入らないよう既定を1つにする）', () => {
-    expect(config.mac.target).toEqual([{ target: 'dmg', arch: ['arm64', 'x64'] }])
+    // zip はアプリの自動更新（Squirrel.Mac）用。サイトには dmg だけを出す
+    expect(config.mac.target).toEqual([{ target: 'dmg', arch: ['arm64', 'x64'] }, { target: 'zip', arch: ['arm64', 'x64'] }])
     expect(config.win.target).toEqual([{ target: 'nsis', arch: ['x64'] }])
     expect(config.linux.target).toEqual([
       { target: 'AppImage', arch: ['x64'] },

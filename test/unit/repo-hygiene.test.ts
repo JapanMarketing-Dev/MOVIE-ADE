@@ -32,3 +32,21 @@ describe('リポジトリの直下', () => {
     expect(rootFiles().filter((f) => !ROOT_FILES.has(f) && !f.startsWith('.'))).toEqual([])
   })
 })
+
+/**
+ * 公開版（scripts/publish-squash.sh）が止める文字列を、ここでも先に見つける。リリースの直前に止まらないように
+ * （2026-10-04、テストの架空のパス acme・u のホームで 0.4.2 の公開が止まった）。許す名前は publish-squash.sh と同じ
+ */
+const FORBIDDEN = /\/Users\/[A-Za-z0-9._-]+\/|\/home\/[A-Za-z0-9._-]+\/|@[A-Za-z0-9-]+\.co\.jp/
+const ALLOWED = /\/Users\/(me|you|someone|name|taro|hanako)\/|\/home\/(me|you|someone|user|name|linuxbrew|taro|hanako)\/|@example\.co\.jp/g
+
+describe('公開版に出す中身', () => {
+  it('実名や自宅のパスに見える文字列を置かない（架空の名前は taro・hanako などを使う）', () => {
+    let out = ''
+    try {
+      out = execFileSync('git', ['grep', '-nE', FORBIDDEN.source, '--', '.', ':!e2e', ':!docs/qa', ':!playwright.config.ts'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+    } catch { return } // 該当なし（git grep は 1 で終わる）か、git の無い複製
+    const hits = out.split('\n').filter((line) => line && FORBIDDEN.test(line.replace(ALLOWED, '')))
+    expect(hits).toEqual([])
+  })
+})

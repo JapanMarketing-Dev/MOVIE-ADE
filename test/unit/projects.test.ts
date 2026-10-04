@@ -37,11 +37,11 @@ describe('設定の読み込み: プロジェクト', () => {
 })
 
 describe('設定の読み込み: Agent', () => {
-  it('未設定なら Claude と Codex を普通のモードで起動する（権限確認を省く引数なし・省くプロジェクトなし。security-3 [1]）', () => {
+  it('未設定なら Claude Code は --chrome 付き、権限確認を省いて起動する（引数は起動のときに足す）', () => {
     expect(sanitize({}).agents).toEqual(DEFAULT_AGENT_PREFERENCES)
-    expect(DEFAULT_AGENT_PREFERENCES.launch.claude.args).toBe('')
+    expect(DEFAULT_AGENT_PREFERENCES.launch.claude.args).toBe('--chrome')
     expect(DEFAULT_AGENT_PREFERENCES.launch.codex.args).toBe('')
-    expect(DEFAULT_AGENT_PREFERENCES.bypassProjects).toEqual([])
+    expect(DEFAULT_AGENT_PREFERENCES.skipPermissions).toBe(true)
   })
 
   it('空のコマンドは既定へ戻し、未知のAgentと重複は捨てる', () => {

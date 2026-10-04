@@ -218,6 +218,17 @@ export class TerminalManager {
   onSessionClosed: ((sessionId: string) => void) | null = null
 
   /**
+   * 上限での自動切り替え（src/main/failover/service.ts）。入力・出力・送った指示と、開いた Agent のタブを渡す
+   */
+  failover: {
+    input(id: string, data: string): void
+    output(id: string, text: string): void
+    sent(id: string, text: string): void
+    launched(id: string, agent: TuiAgent, token: string | null): void
+    closed(id: string): void
+  } | null = null
+
+  /**
    * 後始末が残っているPTYの数。
    * 生きているものと、kill 済みで終了通知待ちのものの両方を数える。
    */
@@ -275,10 +286,10 @@ export class TerminalManager {
       // 組み込みは launch の設定、カスタムは登録した command / args
       const configured = isBuiltinAgent(agent) ? prefs.launch[agent] : findCustomAgent(prefs, agent)
       if (!configured) throw new UserFacingError(t('terminal.errors.unknownAgent', { agent: agentLabel(agent, prefs) }))
-      // 権限確認を省くか・フォルダの信頼を書くかは、ここ（main）で決める。登録しただけのプロジェクトでは省かない（security-3 [1]）
+      // 権限確認を省くか・フォルダの信頼を書くかは、ここ（main）で決める（設定の skipPermissions）
       const projectId = registeredProjectIdFor(cwd, settings.projects)
       const policy = isBuiltinAgent(agent)
-        ? resolveAgentLaunchPolicy({ agent, args: configured.args, projectId, bypassProjects: prefs.bypassProjects, autoStart: options.autoStart === true })
+        ? resolveAgentLaunchPolicy({ agent, args: configured.args, projectId, skipPermissions: prefs.skipPermissions })
         : null
       const config = policy ? { ...configured, args: policy.args } : configured
       const launch = buildAgentLaunchCommand(agent, config, startupShellForPath(shell.file))
@@ -286,14 +297,14 @@ export class TerminalManager {
       // パンくず：自作の Agent は名前を出さない（利用者が付けた名前を送らない）
       flow('agent launch', { agent: isBuiltinAgent(agent) ? agent : 'custom' })
       const accountEnv = resolveAgentEnv(agent)
-      // 利用者が権限確認を省くと決めたプロジェクトでだけ、Claude Code / Codex の「このフォルダを信頼しますか」を先に書いておく
+      // 権限確認を省いて起動するときは、登録したプロジェクトのフォルダについて Claude Code / Codex の「このフォルダを信頼しますか」も先に書いておく
       // （書く先はアカウント切り替えの CLAUDE_CONFIG_DIR / CODEX_HOME を含む、起動する環境のもの）。
-      // 登録しただけのプロジェクトでは書かず、エージェント自身にフォルダのパスを見せて聞かせる
+      // 切にしていれば書かず、エージェント自身にフォルダのパスを見せて聞かせる
       if (policy?.trustFolder) {
         await applyAgentWorkspaceTrust({
           agent,
           cwd,
-          projectFolders: settings.projects.filter((project) => prefs.bypassProjects.includes(project.id)).map((project) => project.folderPath),
+          projectFolders: settings.projects.map((project) => project.folderPath),
           env: ptyEnv(accountEnv)
         })
       }
@@ -332,6 +343,7 @@ export class TerminalManager {
       tail: '', readiness: new ComposerReadiness(), sending: false,
       info: { id, pid: pty.pid, cwd, title, agent: launched }, history: new TerminalHistory() }
     this.sessions.set(id, session)
+    if (agent) this.failover?.launched(id, agent, options.failoverToken ?? null)
 
     const stopStartupWrite = pendingWrite ? this.scheduleStartupWrite(session, pendingWrite) : null
     pty.onData((data) => {
@@ -347,6 +359,7 @@ export class TerminalManager {
       this.sessions.delete(id)
       this.awaitingExit.delete(id)
       this.onSessionClosed?.(id)
+      this.failover?.closed(id)
       this.onExit(id, exitCode)
       this.notifyExitWaiters()
     })
@@ -411,6 +424,7 @@ export class TerminalManager {
 
   private enqueue(session: Session, data: string): void {
     session.history.push(data)
+    this.failover?.output(session.id, stripAnsi(data))
     session.tail = (session.tail + stripAnsi(data)).slice(-8000)
     session.title = parseTitle(data) ?? session.title
     session.readiness.push(data)
@@ -444,7 +458,16 @@ export class TerminalManager {
   }
 
   write(id: string, data: string): void {
-    this.sessions.get(id)?.pty.write(data)
+    const session = this.sessions.get(id)
+    if (!session) return
+    this.failover?.input(id, data)
+    session.pty.write(data)
+  }
+
+  /** 画面の末尾のテキスト（renderer が送った表示、無ければ出力の末尾）。上限の確かめと引き継ぎの指示文に使う */
+  screenText(id: string): string {
+    const session = this.sessions.get(id)
+    return session ? (session.screen?.text ?? session.tail) : ''
   }
 
   updateScreen(id: string, text: string): void {
@@ -456,7 +479,8 @@ export class TerminalManager {
     const session = this.sessions.get(id)
     if (!session) return { kind: 'unknown', state: 'unknown', agent: null }
     const prefs = currentSettings().agents
-    const command = session.pty.process
+    // PTY が終わったあとは process が undefined になる（node-pty。前面には何も居ない扱い）
+    const command = session.pty.process ?? ''
     const windows = process.platform === 'win32'
     // node-pty の Windows 版の process は端末名（xterm-256color）で、前面のプロセスを表さない
     let agent = windows ? null : agentForProcess(command, prefs)
@@ -533,6 +557,7 @@ export class TerminalManager {
           if (state === 'blocked' || state === 'idle' || state === 'working') return state
           return generic ? 'idle' : 'unknown'
         } })
+      if (result.ok) this.failover?.sent(id, text)
       if (result.ok && !result.submitted) return { ok: true, submitted: false, message: t('terminal.send.pastedNoEnter', { agent: agentLabel(agent, currentSettings().agents) }) }
       return { ok: result.ok, submitted: result.ok, message: result.ok ? t(generic ? 'terminal.send.doneUnverified' : 'terminal.send.done') : result.message }
     } finally { session.sending = false }
@@ -556,6 +581,7 @@ export class TerminalManager {
     this.sessions.delete(id)
     // 閉じた時点で、このタブに渡した合言葉などを無効にする（SIGHUP を無視するシェルや残った子プロセスに使わせない）
     this.onSessionClosed?.(id)
+    this.failover?.closed(id)
     // kill してから onExit が届くまでを「後始末中」として数える。
     // 子孫PIDは、シェルが死んで辿れなくなる前のものを控えておく。
     const descendants = killPtyTree(session.pty, 'SIGHUP')

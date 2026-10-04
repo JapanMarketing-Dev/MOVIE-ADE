@@ -1,3 +1,6 @@
+import { showAgentNotification } from './agentNotify'
+import { failoverPrefs, initFailover, onUsageChanged, setFailoverPrefs } from './failover/service'
+import { droppedFolder, inspectDropped } from './droppedPaths'
 import { terminalOwnsMenuKey } from '@shared/terminalMenuKeys'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile } from 'node:fs/promises'
@@ -5,7 +8,7 @@ import { homedir } from 'node:os'
 import type { SessionPaths } from './sessions/paths'
 import type { IncrementalTranscriber } from './pipeline/stt/engine'
 import { loadDevDotEnv, type SttKeyStore } from './pipeline/stt/keys'
-import { BrowserWindow, app, clipboard, dialog, ipcMain, nativeTheme, safeStorage, shell, protocol, session } from 'electron'
+import { BrowserWindow, Notification, app, clipboard, dialog, ipcMain, nativeTheme, safeStorage, shell, protocol, session } from 'electron'
 import { basename, dirname, join } from 'node:path'
 import type { IpcEventChannel, IpcEvents, IpcRequests } from '@shared/ipc'
 import type { AiVendor, LlmApiProvider, SttRemoteProvider } from '@shared/aiProviders'
@@ -57,11 +60,13 @@ import {
 } from './accounts'
 import { attachUsageWindow, getAccountUsage, getUsageState, refreshUsage } from './usage/service'
 import { listAgentResources } from './agentResources'
-import { appVersion, checkForUpdate, verifiedDownload } from './updateCheck'
+import { appVersion, checkForUpdate, usingE2eReleaseServer, verifiedDownload, verifiedFileOfKind } from './updateCheck'
+import { AutoUpdater } from './autoUpdate'
+import { installMethodFor } from '@shared/appUpdate'
 import { sanitizeLayout } from '@shared/layout'
 import { ResourceCollector } from './resources'
 import { ProjectWatcher, listDirectory, listFiles, readTextFile, resolveInside, searchFiles, writeTextFile } from './files'
-import { createEntry, renameEntry, trashEntries, trashFor } from './fileOps'
+import { copyEntries, createEntry, importEntries, moveEntries, pathsForClipboard, renameEntry, terminalDirFor, trashEntries, trashFor } from './fileOps'
 import { inspectProjectFile, projectMediaResponse } from './projectMedia'
 import { isRiskyToOpenExternally } from '@shared/fileViewer'
 import { refreshPreviewIn, registerPreviewProtocol, renderPreviewSource } from './preview'
@@ -803,6 +808,67 @@ async function stopReview(): Promise<RecordingStatus> {
 let latestReleaseUrl: string | null = null
 
 /**
+ * 裏での更新（src/main/autoUpdate.ts）。起動時・6時間ごと・［更新を確認］で確かめ、新しい版を裏でダウンロードして、
+ * 署名した SHA256SUMS で確かめてから「再起動して更新」を出す。
+ * 配布版だけで動かす。E2E は偽の配信元（FERRET_E2E_RELEASE_BASE_URL。updateCheck.ts）のときだけ流れを通し、本物の入れ替えはしない
+ */
+let autoUpdates: AutoUpdater | null = null
+function autoUpdater(): AutoUpdater {
+  if (autoUpdates) return autoUpdates
+  const e2eServer = IS_E2E && usingE2eReleaseServer()
+  const install = () => import('./autoUpdateInstall')
+  autoUpdates = new AutoUpdater({
+    method: installMethodFor(process.platform, process.env),
+    enabled: (IS_PACKAGED && !IS_E2E) || e2eServer,
+    canInstall: IS_PACKAGED && !IS_E2E,
+    check: async () => {
+      const result = await checkForUpdate()
+      // 開くURLは main が覚えておく。renderer から任意のURLを開かせない
+      latestReleaseUrl = result.state === 'available' ? result.url : null
+      return result
+    },
+    verifiedFile: (kind) => verifiedFileOfKind(kind),
+    download: async (file, dir, onProgress, signal) => {
+      const [{ downloadVerifiedTo }, { net }] = await Promise.all([import('./updateDownload'), import('electron')])
+      return downloadVerifiedTo(file, dir, ((url, init) => net.fetch(url as string, init)) as typeof fetch, signal, onProgress)
+    },
+    hashFile: async (path) => (await install()).hashFile(path),
+    prepareDir: async (keep) => (await install()).prepareUpdateDir(app.getPath('userData'), keep),
+    stage: async (method, path, file) => (await install()).stageUpdate(method, path, file),
+    install: async (method, path, file) => (await install()).installUpdate(method, path, file),
+    getAutoDownload: () => currentSettings().autoUpdate !== false,
+    setAutoDownload: (on) => updateSettings({ autoUpdate: on ? undefined : false }),
+    emit: (status) => send('update:status', status),
+    report: (err, op) => reportHandled(err, { area: 'update', op }),
+    failedMessage: () => t('update.errors.download')
+  })
+  return autoUpdates
+}
+
+/**
+ * 「再起動して更新」の前に、作業中の Agent（処理中・確認待ち）と録画を数えて、あれば確かめる。
+ * 未保存のファイルは、続く終了の処理（confirmQuitWithUnsaved）が聞く。E2E では聞かない
+ * Orca由来: ~/bench/orca/src/main/updater/updater-install-execution.ts の「終了の前の後始末」（Orca は確認を出さずに PTY を閉じる）
+ */
+async function confirmRestartForUpdate(): Promise<boolean> {
+  if (IS_E2E) return true
+  const states = await Promise.all((terminals?.list() ?? []).map((info) => terminals!.agentState(info.id).catch(() => null)))
+  const busy = states.filter((s) => s && (s.state === 'working' || s.state === 'blocked')).length
+  const recordingNow = !!recording && recording.status.state !== 'idle'
+  if (busy === 0 && !recordingNow) return true
+  const options = {
+    type: 'question' as const,
+    buttons: [t('update.restart.confirm'), t('common.cancel')],
+    defaultId: 1,
+    cancelId: 1,
+    message: t('update.restart.title'),
+    detail: [busy > 0 ? t('update.restart.agents', { count: busy }) : '', recordingNow ? t('update.restart.recording') : ''].filter(Boolean).join('\n')
+  }
+  const { response } = mainWindow && !mainWindow.isDestroyed() ? await dialog.showMessageBox(mainWindow, options) : await dialog.showMessageBox(options)
+  return response === 0
+}
+
+/**
  * レビュー履歴を読む・整理するフォルダ。省略時は開いているプロジェクト。
  * 別フォルダは登録済みプロジェクトに限る（renderer から任意のパスを読ませない・消させない）。
  */
@@ -818,7 +884,7 @@ function historyFolder(folderPath: unknown): string | null {
  * 設定の保存はどの節かだけ、パネルの移動と開閉は settings:layout / settings:splitRatio。
  */
 const FLOW_CHANNELS: Partial<Record<string, string>> = {
-  'project:switch': 'project switch', 'project:add': 'project add', 'project:remove': 'project remove', 'workspace:open': 'project open folder',
+  'project:switch': 'project switch', 'project:add': 'project add', 'project:remove': 'project remove', 'workspace:open': 'project open folder', 'project:addDropped': 'project add dropped',
   'recording:start': 'recording start', 'recording:stop': 'recording stop', 'recording:pause': 'recording pause', 'recording:resume': 'recording resume',
   'review:organize': 'organize', 'review:send': 'send to agent', 'terminal:close': 'terminal close',
   'app:checkUpdate': 'update check', 'settings:layout': 'layout change', 'settings:splitRatio': 'layout resize'
@@ -845,11 +911,21 @@ function registerIpc(): void {
     'settingsFile:reveal': () => shell.showItemInFolder(settingsFileInfo().path),
     'settings:feedbackTargets': (prefs) => updateSettings({ feedbackTargets: { ...currentSettings().feedbackTargets, ...prefs } }),
     'app:version': () => ({ version: appVersion(), packaged: IS_PACKAGED }),
-    'app:checkUpdate': async () => {
-      const result = await checkForUpdate()
-      // 開くURLは main が覚えておく。renderer から任意のURLを開かせない
-      latestReleaseUrl = result.state === 'available' ? result.url : null
-      return result
+    // 確かめた結果を返す。新しい版があり自動のダウンロードがオンなら、続けて裏でダウンロードする（autoUpdate.ts）
+    'app:checkUpdate': () => autoUpdater().checkNow(),
+    'update:status': () => autoUpdater().status(),
+    'update:download': () => autoUpdater().download(),
+    'update:install': async () => {
+      const updates = autoUpdater()
+      const progress = updates.status().progress
+      if (progress.phase !== 'ready') return false
+      // 再起動するときだけ確かめる（deb はインストーラーを開くだけで、アプリは閉じない）
+      if (progress.action === 'restart' && !(await confirmRestartForUpdate())) return false
+      return updates.install()
+    },
+    'update:setAutoDownload': (on) => {
+      autoUpdater().setAutoDownload(on === true)
+      return autoUpdater().status()
     },
     'resources:snapshot': () => resources.collect(),
     'resources:kill': (target) => {
@@ -942,6 +1018,15 @@ function registerIpc(): void {
     },
     'project:cloneCancel': async () => (await import('./projectSources')).cancelClone(),
     'project:addSsh': (target, name) => addSshProject(target, typeof name === 'string' ? name : undefined),
+    'project:addDropped': async (path) => {
+      // 落とされて drop:inspect で確かめたフォルダだけ（renderer から任意のフォルダを登録させない）
+      const folder = await droppedFolder(path)
+      if (!folder) throw new UserFacingError(t('drop.errors.notFolder'))
+      assertNotRecording()
+      openFolderAsProject(folder)
+      return projectsState()
+    },
+    'drop:inspect': (paths) => inspectDropped(paths, workspace.folderPath),
     'project:saveSession': (id, session) => {
       const { projects } = currentSettings()
       if (!projects.some((p) => p.id === id) || !session || typeof session !== 'object') return
@@ -972,6 +1057,23 @@ function registerIpc(): void {
     'accounts:relogin': (agent, accountId) => reloginAgentAccount(requireTuiAgent(agent), String(accountId)),
     'usage:get': () => getUsageState(),
     'usage:refresh': (force) => refreshUsage(force === true),
+    'failover:get': () => failoverPrefs(),
+    'failover:set': (prefs) => setFailoverPrefs(prefs),
+    'agentNotify:show': (request) => showAgentNotification(request, {
+      enabled: () => currentSettings().agents.notify,
+      projects: () => currentSettings().projects,
+      supported: () => Notification.isSupported(),
+      create: (options) => new Notification(options),
+      open: (target) => {
+        const window = mainWindow
+        if (window && !window.isDestroyed()) {
+          if (window.isMinimized()) window.restore()
+          if (!window.isVisible() && !HIDE_WINDOW) window.show()
+          window.focus()
+        }
+        send('agentNotify:open', target)
+      }
+    }),
     'usage:accounts': (agent, force) => getAccountUsage(requireTuiAgent(agent), force === true),
 
     'mode:set': (next) => {
@@ -1434,6 +1536,15 @@ function registerIpc(): void {
     'fs:search': (query, mode) => searchFiles(projectRoot(), query, mode),
     'fs:inspect': (relPath) => inspectProjectFile(projectRoot(), relPath),
     'fs:create': (parentRel, name, kind) => createEntry(projectRoot(), parentRel, name, kind),
+    'fs:copy': (relPaths, destRel) => copyEntries(projectRoot(), relPaths, destRel),
+    'fs:move': (relPaths, destRel) => moveEntries(projectRoot(), relPaths, destRel),
+    'fs:import': (absolutePaths, destRel) => importEntries(projectRoot(), absolutePaths, destRel),
+    'fs:copyPath': async (relPaths, kind) => {
+      const text = await pathsForClipboard(projectRoot(), relPaths, kind === 'relative' ? 'relative' : 'absolute')
+      clipboard.writeText(text)
+      return text
+    },
+    'fs:terminalDir': (relPath) => terminalDirFor(projectRoot(), relPath),
     'fs:rename': (relPath, newName) => renameEntry(projectRoot(), relPath, newName),
     'fs:trash': (relPaths) => trashEntries(projectRoot(), relPaths, trashFor((absolute) => shell.trashItem(absolute))),
     'fs:reveal': async (relPath) => shell.showItemInFolder(await resolveInside(projectRoot(), relPath)),
@@ -1706,17 +1817,25 @@ async function main(): Promise<void> {
     : {}
   // タブが閉じたら、そのタブに渡した中継の合言葉を無効にする（残った子プロセスが使い続けられないように）
   terminals.onSessionClosed = (sessionId) => decisionService?.revokeSession(sessionId)
+  // 上限での自動切り替え。新しいタブは renderer が開き、引き継ぎは main が行う
+  initFailover({ terminals, launch: (request) => send('failover:launch', request), notice: (notice) => send('failover:notice', notice) })
   // 文字起こし・整理の API 呼び出しも同じ記録へ（src/main/decision/callLog.ts の recordApiCall）
   void import('./decision/callLog').then(({ setApiCallSink }) => setApiCallSink(recordCall))
   syncDecision()
 
   mainWindow = createWindow()
   // 使用量（フッター左下）。窓が前にあるときだけ取りに行く
-  attachUsageWindow(mainWindow, (state) => send('usage:changed', state))
+  attachUsageWindow(mainWindow, (state) => {
+    send('usage:changed', state)
+    // 選択中のアカウントが上限に近ければ、新しく開く Agent のアカウントを切り替える（src/main/failover）
+    onUsageChanged(state)
+  })
   // 読み込み直し（⌘R・開発時の再読込）より前のターミナルは、どのタブにも付かずに残る
   mainWindow.webContents.on('did-start-loading', () => resources.markRendererLoad())
   setWorkspace(loadedSettings.folderPath, startupProject)
   registerIpc()
+  // 裏での更新。配布版だけ、起動から少し待って確かめ、あとは6時間ごと（開発版・E2E では動かさない）
+  autoUpdater().start()
   // settings.json の外部の変更（利用者のエディタ・Claude Code など）をその場で反映する。壊れていれば画面に知らせるだけ
   watchSettings(applyExternalSettings, (error) => send('settingsFile:error', error))
   installMenu({

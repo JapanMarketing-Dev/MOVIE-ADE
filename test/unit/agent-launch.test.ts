@@ -87,8 +87,8 @@ describe('startupShellForPath', () => {
 })
 
 describe('buildAgentLaunchCommand', () => {
-  it('既定の設定は権限確認を省く引数なしで起動する（security-3 [1]。Orca と違う）', () => {
-    expect(buildAgentLaunchCommand('claude', DEFAULT_AGENT_PREFERENCES.launch.claude, 'posix')).toEqual({ ok: true, command: 'claude' })
+  it('既定の設定の引数は Claude Code の --chrome だけ（権限確認を省く引数は main が起動のときに足す）', () => {
+    expect(buildAgentLaunchCommand('claude', DEFAULT_AGENT_PREFERENCES.launch.claude, 'posix')).toEqual({ ok: true, command: 'claude --chrome' })
     expect(buildAgentLaunchCommand('codex', DEFAULT_AGENT_PREFERENCES.launch.codex, 'posix')).toEqual({ ok: true, command: 'codex' })
   })
 

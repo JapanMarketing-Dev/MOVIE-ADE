@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { app, net, type BrowserWindow } from 'electron'
 import { accountDisplayName, EMPTY_AGENT_ACCOUNTS } from '@shared/accounts'
 import type { AccountUsage, ProviderRateLimits, UsageState } from '@shared/usage'
@@ -73,8 +74,26 @@ function demoUsage(agent: AccountAgent): ProviderRateLimits {
     : { provider: 'codex', session: null, weekly: window(1, 10080, 10020), planType: 'plus', updatedAt: now, error: null, status: 'ok' }
 }
 
+/**
+ * E2E 用の偽の使用量（ADE_E2E=1 と ADE_E2E_FAKE_USAGE のときだけ）。ファイルの JSON は { "codex:system": 99, "codex:<id>": 10 } の形で、
+ * 書かれていないアカウントは「取れない」にする。取得先（Anthropic・OpenAI）にもキーチェーンにも触れない
+ */
+function fakeUsage(agent: AccountAgent, target: Target | null): ProviderRateLimits {
+  const now = Date.now()
+  let table: Record<string, unknown> = {}
+  try {
+    table = JSON.parse(readFileSync(process.env.ADE_E2E_FAKE_USAGE!, 'utf8')) as Record<string, unknown>
+  } catch {
+    // 無い・壊れたファイルは「どれも取れない」（想定内）
+  }
+  const used = table[`${agent}:${target?.key ?? 'broken'}`]
+  if (typeof used !== 'number') return { provider: agent, session: null, weekly: null, updatedAt: now, error: null, status: 'unavailable' }
+  return { provider: agent, session: { usedPercent: used, windowMinutes: 300, resetsAt: now + 60 * 60_000 }, weekly: null, updatedAt: now, error: null, status: 'ok' }
+}
+
 function fetchFor(agent: AccountAgent, target: Target | null, force = false): Promise<ProviderRateLimits> {
   if (process.env.ADE_DEMO === '1') return Promise.resolve(demoUsage(agent))
+  if (process.env.ADE_E2E === '1' && process.env.ADE_E2E_FAKE_USAGE) return Promise.resolve(fakeUsage(agent, target))
   if (!target) {
     return Promise.resolve({
       provider: agent,

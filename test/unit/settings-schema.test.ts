@@ -26,6 +26,7 @@ const FULL = {
     { id: 'p4', name: 'broken', folderPath: '/work/b', source: 'ssh', urls: [] }],
   agents: { ...DEFAULT_AGENT_PREFERENCES, customAgents: [{ id: 'custom:mine', name: 'Mine', command: 'mine', args: '' }] },
   agentAccounts: { claude: { accounts: [], activeAccountId: null }, codex: { accounts: [], activeAccountId: null } },
+  limitFailover: { enabled: true, thresholdPercent: 90, switchAccounts: true, agentOrder: ['claude', 'codex', 'gemini'], returnToPreferred: false },
   agentPrompt: 'Read {{path}}',
   whisperModel: '/models/ggml-small.bin',
   capture: { captureMic: true, captureSystemAudio: false, transcription: 'compatible', language: 'en', keepDays: 7, stayFeedbackOnStop: true,
@@ -34,6 +35,7 @@ const FULL = {
   decision: { enabled: true, preset: 'cloudflare', model: 'clef-flash', accountId: 'abc', headers: { 'cf-aig-authorization': { env: 'CF_AIG_TOKEN' }, 'X-Team': 'ui' }, apiKeyEnv: 'CLOUDFLARE_API_TOKEN' },
   crashReports: false,
   crashReportsNoticeShown: true,
+  autoUpdate: false,
   onboarding: { completedAt: '2026-10-03T00:00:00.000Z' }
 }
 

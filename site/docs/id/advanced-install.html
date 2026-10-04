@@ -219,7 +219,18 @@ pnpm dist:linux   # AppImage + deb (x64)</code></pre>
 
       <section class="docs-section" aria-labelledby="update">
         <h2 id="update"><a class="docs-anchor" href="#update" aria-label="Tautan ke Pembaruan">#</a>Pembaruan</h2>
-        <p>Ferret tidak memperbarui dirinya secara otomatis. Di footer, buka <span class="docs-ui">Pembaruan</span> lalu klik <span class="docs-ui">Periksa Pembaruan</span>. Ferret mengambil <code>latest.json</code> dari server unduhan (R2), membandingkan versinya, dan memeriksa tanda tangan <code>SHA256SUMS</code> versi tersebut dengan kunci rilis yang tertanam di aplikasi. Jika versi yang lebih baru tersedia, klik <span class="docs-ui">Unduh</span>: Ferret mengunduh installer untuk komputer Anda, memeriksa bahwa SHA-256-nya cocok dengan <code>SHA256SUMS</code> yang ditandatangani, menyimpannya ke folder Unduhan, lalu menampilkannya di sana. Halaman unduhan melakukan pemeriksaan yang sama di browser Anda sebelum menyimpan file. Tidak ada yang diperiksa sampai Anda mengklik, dan tidak ada yang dipasang secara otomatis.</p>
+        <p>Ferret memeriksa versi baru saat dimulai, setiap 6 jam, dan saat Anda mengklik <span class="docs-ui">Periksa Pembaruan</span> (footer → <span class="docs-ui">Pembaruan</span>). Ferret mengambil <code>latest.json</code> dari server unduhan (R2) dan memeriksa tanda tangan <code>SHA256SUMS</code> versi tersebut dengan kunci rilis yang tertanam di aplikasi. Versi yang tanda tangannya tidak cocok tidak ditawarkan.</p>
+<p>Saat versi baru ditemukan, Ferret mengunduhnya di latar belakang dan menampilkan kemajuannya di <span class="docs-ui">Pembaruan</span>. Unduhan hanya dipakai jika ukuran dan SHA-256-nya cocok dengan daftar yang ditandatangani. Setelah itu <span class="docs-ui">Mulai Ulang untuk Memperbarui</span> muncul di <span class="docs-ui">Pembaruan</span> dan di footer. Klik untuk memulai ulang ke versi baru. Jika ada Agent yang sedang bekerja di terminal atau rekaman sedang berjalan, Ferret bertanya dulu; rekaman sejauh ini disimpan sebelum memulai ulang.</p>
+<table>
+  <thead><tr><th>Jenis instalasi</th><th>Yang diunduh</th><th>Cara memasangnya</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>, tercantum di <code>UPDATE-SHA256SUMS</code> dan ditandatangani dengan kunci rilis yang sama</td><td>diserahkan ke pembaru macOS (Squirrel.Mac), yang juga memeriksa bahwa aplikasi baru memiliki tanda tangan Developer ID yang sama; diganti saat Ferret dimulai ulang</td></tr>
+    <tr><td>Windows</td><td>penginstal (<code>.exe</code>)</td><td>berjalan tanpa jendela saat Ferret dimulai ulang, lalu membuka versi baru</td></tr>
+    <tr><td>Linux (AppImage)</td><td><code>.AppImage</code> yang baru</td><td>mengganti AppImage yang Anda jalankan, lalu membuka versi baru</td></tr>
+    <tr><td>Linux (deb)</td><td><code>.deb</code></td><td><span class="docs-ui">Buka Penginstal</span> menyimpannya ke folder Unduhan dan membukanya di penginstal perangkat lunak Anda</td></tr>
+  </tbody>
+</table>
+<p>Untuk mengunduh hanya saat Anda memilih, matikan <span class="docs-ui">Unduh versi baru secara otomatis</span> di <span class="docs-ui">Pembaruan</span> (atau atur <code>"autoUpdate": false</code> di <code>settings.json</code>), lalu klik <span class="docs-ui">Unduh</span> saat versi baru ditampilkan. Build pengembangan (<code>pnpm dev</code>) tidak mengunduh di latar belakang; <span class="docs-ui">Unduh</span> menyimpan penginstal yang sudah diperiksa ke folder Unduhan.</p>
       </section>
 
         <nav class="docs-pager" aria-label="Halaman sebelumnya dan berikutnya">

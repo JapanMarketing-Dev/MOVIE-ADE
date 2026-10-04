@@ -167,6 +167,7 @@
         <ul>
   <li><span class="docs-ui">파일</span>(파일 트리): <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></span></span>. <span class="docs-ui">파일 이름으로 필터</span>, <span class="docs-ui">새로고침</span>, <span class="docs-ui">모두 접기</span>가 있습니다.</li>
   <li><span class="docs-ui">파일로 이동…</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></span></span>.</li>
+  <li>Finder(Windows에서는 파일 탐색기, Linux에서는 파일 관리자)에서 파일을 탭 표시줄이나 에디터로 드래그하면 열립니다. 프로젝트 안의 파일은 에디터나 뷰어에서 열립니다. 프로젝트 밖의 파일을 가져오려면 <span class="docs-ui">파일</span>에 놓으세요. 프로젝트로 복사됩니다. 여기에 놓은 폴더는 프로젝트로 열립니다. <span class="docs-ui">파일</span>에서 드래그한 파일도 같은 방식으로 열립니다.</li>
   <li><span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></span></span>로 저장합니다. 수정한 파일을 닫으면 <q>&lt;name&gt;의 변경 사항을 저장할까요?</q>라고 묻고 <span class="docs-ui">저장</span>, <span class="docs-ui">저장 안 함</span>, <span class="docs-ui">취소</span> 중에서 고릅니다.</li>
   <li>저장하지 않은 편집이 있는 동안 디스크의 파일이 바뀌면 <span class="docs-ui">디스크에서 다시 불러오기</span> 또는 <span class="docs-ui">내 변경 사항 유지</span>를 고릅니다.</li>
 </ul>
@@ -174,16 +175,22 @@
       </section>
 
       <section class="docs-section" aria-labelledby="file-tree">
-        <h2 id="file-tree"><a class="docs-anchor" href="#file-tree" aria-label="&quot;파일 만들기, 이름 바꾸기, 삭제&quot;(으)로 가는 링크">#</a>파일 만들기, 이름 바꾸기, 삭제</h2>
-        <p>VS Code에서처럼 <span class="docs-ui">파일</span>에서 바로 파일을 다룹니다. 이름은 트리 안에서 직접 입력합니다.</p>
+        <h2 id="file-tree"><a class="docs-anchor" href="#file-tree" aria-label="&quot;파일 트리에서 파일 다루기&quot;(으)로 가는 링크">#</a>파일 트리에서 파일 다루기</h2>
+        <p>VS Code에서처럼 <span class="docs-ui">파일</span>에서 바로 파일을 다룹니다. 항목을 마우스 오른쪽 버튼으로 클릭하세요. 프로젝트 맨 위에서 작업하려면 트리 아래의 빈 공간을 마우스 오른쪽 버튼으로 클릭합니다. 이름은 트리 안에서 직접 입력합니다.</p>
 <ul>
-  <li><span class="docs-ui">새 파일</span> / <span class="docs-ui">새 폴더</span>: 트리 위의 버튼을 누르거나, 폴더(또는 트리 아래의 빈 공간)를 마우스 오른쪽 버튼으로 클릭합니다. 새 항목은 선택한 폴더 안, 선택한 파일 옆, 또는 프로젝트의 맨 위에 만들어집니다. 새 파일은 에디터에서 열립니다.</li>
-  <li><span class="docs-ui">이름 바꾸기</span>: <span class="docs-kbd"><span class="os-mac"><kbd>F2</kbd> / <kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>F2</kbd></span></span> 또는 마우스 오른쪽 버튼 클릭. 열린 탭은 새 이름을 따라가며 저장하지 않은 편집도 유지됩니다.</li>
+  <li><span class="docs-ui">새 파일</span> / <span class="docs-ui">새 폴더</span>: 트리 위의 버튼 또는 마우스 오른쪽 버튼 클릭. 새 항목은 선택한 폴더 안, 선택한 파일 옆, 또는 프로젝트의 맨 위에 만들어집니다. <code>src/routes/index.ts</code>처럼 슬래시가 들어간 이름을 입력하면 중간의 폴더도 함께 만들어집니다. 새 파일은 에디터에서 열립니다. 빈 폴더에서는 <span class="docs-ui">파일</span>에 <span class="docs-ui">이 폴더는 비어 있습니다</span>와 <span class="docs-ui">새 파일</span>, <span class="docs-ui">새 폴더</span> 버튼이 표시됩니다.</li>
+  <li><span class="docs-ui">잘라내기</span>, <span class="docs-ui">복사</span>, <span class="docs-ui">붙여넣기</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>X</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>X</kbd></span></span>, <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>C</kbd></span></span>, <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>V</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>V</kbd></span></span> 또는 마우스 오른쪽 버튼 클릭. 폴더는 안의 내용까지 모두 복사됩니다. <span class="docs-ui">복제</span>는 원본 옆에 사본을 만듭니다. 이름이 이미 있으면 사본의 이름은 <code>name copy</code>, 그다음은 <code>name copy 2</code>가 됩니다.</li>
+  <li>항목을 폴더 위(프로젝트 맨 위로 옮기려면 빈 공간)로 드래그하면 이동합니다. 놓을 때 <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span>를 누르고 있으면 대신 복사합니다. Finder(Windows에서는 파일 탐색기)에서 드래그해 온 파일과 폴더는 프로젝트로 복사되며, 원본은 원래 자리에 그대로 남습니다.</li>
+  <li><span class="docs-ui">이름 바꾸기</span>: <span class="docs-kbd"><span class="os-mac"><kbd>F2</kbd> / <kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>F2</kbd></span></span> 또는 마우스 오른쪽 버튼 클릭.</li>
   <li><span class="docs-ui">삭제</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⌫</kbd> / <kbd>Delete</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Delete</kbd></span></span> 또는 마우스 오른쪽 버튼 클릭. Ferret이 먼저 확인한 뒤 항목을 휴지통으로 옮기므로 복원할 수 있습니다. 삭제한 파일의 탭은 닫히며, 저장하지 않은 편집이 있던 탭이 있으면 확인 화면에 그렇게 표시됩니다.</li>
-  <li><span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span>-클릭이나 <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd></span></span>-클릭으로 여러 항목을 선택해 한꺼번에 삭제할 수 있습니다.</li>
+  <li><span class="docs-ui">실행 취소</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>Z</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Z</kbd></span></span>로 마지막 새 항목 만들기, 이름 바꾸기, 이동, 붙여넣기, 복제를 되돌립니다. 삭제한 항목은 휴지통에서 복원됩니다.</li>
+  <li><span class="docs-ui">경로 복사</span>(<span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>C</kbd></span></span>)와 <span class="docs-ui">상대 경로 복사</span>(<span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⇧</kbd><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Alt</kbd><kbd>C</kbd></span></span>)는 경로를 클립보드에 넣습니다.</li>
+  <li><span class="docs-ui">Finder에서 보기</span>(Windows에서는 <span class="docs-ui">파일 탐색기에서 보기</span>, Linux에서는 <span class="docs-ui">포함된 폴더 열기</span>): <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>R</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>R</kbd></span></span>. <span class="docs-ui">터미널에서 열기</span>는 그 폴더(파일이면 그 파일이 있는 폴더)에서 새 터미널 탭을 엽니다.</li>
+  <li>파일의 경우 <span class="docs-ui">열기</span>는 에디터에서 열고, <span class="docs-ui">기본 앱으로 열기</span>는 OS가 그 유형의 파일에 사용하는 앱에서 엽니다.</li>
+  <li><span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span>-클릭이나 <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd></span></span>-클릭으로 여러 항목을 선택해 한꺼번에 잘라내기, 복사, 이동, 삭제를 할 수 있습니다.</li>
   <li><kbd>Esc</kbd>는 입력 중인 이름을 취소합니다.</li>
 </ul>
-<p>Ferret은 같은 이름의 기존 파일이나 폴더를 덮어쓰지 않으며, 프로젝트 폴더 밖으로 나가는 것(<code>..</code>, 절대 경로, 밖을 가리키는 심볼릭 링크), <code>.git</code> 안의 것, 그리고 일부 OS에서 쓸 수 없는 이름을 거부합니다. <code>/ \ &lt; &gt; : " | ? *</code>, 제어 문자, 끝의 공백이나 점, <code>CON</code>이나 <code>NUL</code> 같은 Windows 예약 이름이 여기에 해당합니다.</p>
+<p>열린 탭은 이름을 바꾸거나 이동한 파일을 따라가며 저장하지 않은 편집도 유지됩니다. Ferret은 같은 이름의 기존 파일이나 폴더를 덮어쓰지 않으며, 모든 것을 프로젝트 폴더 안에 둡니다. <code>..</code>, 절대 경로, 밖을 가리키는 심볼릭 링크, <code>.git</code> 안의 것, 폴더를 자기 자신 안으로 옮기는 것, 그리고 일부 OS에서 쓸 수 없는 이름(<code>/ \ &lt; &gt; : " | ? *</code>, 제어 문자, 끝의 공백이나 점, <code>CON</code>이나 <code>NUL</code> 같은 Windows 예약 이름)은 거부합니다. 한 번의 복사나 놓기로 다룰 수 있는 것은 최대 10,000개 항목, 1 GB입니다.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="preview">
@@ -192,6 +199,14 @@
 <ul>
   <li><span class="docs-ui">옆에 미리 보기 열기</span>: 에디터 옆에 엽니다</li>
   <li><span class="docs-ui">미리 보기 열기</span>: 내장 브라우저(<code>ade-preview://</code>)에서 열리므로 녹화하고 리뷰할 수 있습니다</li>
+</ul>
+<p>Markdown 파일을 미리 보기에서 보이는 모습 그대로 편집하려면 에디터 위쪽의 <span class="docs-ui">미리보기에서 편집</span>을 클릭하고, 돌아가려면 <span class="docs-ui">소스</span>를 클릭합니다. 둘 다 같은 내용을 보여 주며, 저장, 저장하지 않음 표시, 닫을 때의 확인도 똑같이 작동합니다.</p>
+<ul>
+  <li>제목, 단락, 목록, 체크박스, 표, 링크, 굵게, 기울임꼴, 인라인 코드에 바로 입력할 수 있습니다. 줄 처음에 <code>#</code>, <code>-</code>, <code>1.</code>, <code>&gt;</code>와 공백을 입력하면 제목, 목록, 인용이 시작됩니다.</li>
+  <li>코드 블록과 Mermaid 다이어그램은 소스 그대로 편집하며, 모서리에 언어가 표시됩니다. 다이어그램은 <span class="docs-ui">옆에 미리 보기 열기</span>나 <span class="docs-ui">미리 보기 열기</span>에서 렌더링됩니다.</li>
+  <li>프런트 매터(맨 위의 <code>---</code> 블록)는 문서 위에 텍스트로 표시되며 그곳에서 편집할 수 있습니다.</li>
+  <li>바꾸지 않은 부분은 제목 스타일, 목록 기호, 빈 줄, 표 정렬, 줄 끝 문자까지 쓰인 그대로 저장됩니다. 편집한 블록은 가능한 한 원래 스타일을 유지하며, 그럴 수 없으면 그 블록은 표준 Markdown 형식(목록은 <code>-</code>, 제목은 <code>#</code>)으로 쓰입니다.</li>
+  <li>프로젝트 안의 이미지는 표시됩니다. 다른 사이트의 이미지는 불러오지 않고 대신 호스트 이름을 표시합니다. 파일 안의 HTML은 텍스트로 표시됩니다.</li>
 </ul>
       </section>
 
@@ -218,7 +233,7 @@
       <p class="docs-toc-heading">이 페이지의 내용</p>
       <ul>
         <li><a href="#files">파일 열기와 편집</a></li>
-        <li><a href="#file-tree">파일 만들기, 이름 바꾸기, 삭제</a></li>
+        <li><a href="#file-tree">파일 트리에서 파일 다루기</a></li>
         <li><a href="#preview">Markdown과 Mermaid 미리 보기</a></li>
         <li><a href="#review-docs">녹화로 문서 리뷰하기</a></li>
       </ul>

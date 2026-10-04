@@ -167,6 +167,7 @@
         <ul>
   <li><span class="docs-ui">文件</span>（文件树）：<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></span></span>，提供 <span class="docs-ui">按文件名筛选</span>、<span class="docs-ui">刷新</span> 和 <span class="docs-ui">全部折叠</span>。</li>
   <li><span class="docs-ui">转到文件…</span>：<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></span></span>。</li>
+  <li>从访达（Windows 上为文件资源管理器，Linux 上为文件管理器）把文件拖到标签栏或编辑器上即可打开。项目中的文件会在编辑器或查看器中打开。要把项目外的文件带进来，请把它放到 <span class="docs-ui">文件</span> 上，它会被复制到项目中。放到这里的文件夹会作为项目打开。从 <span class="docs-ui">文件</span> 拖出的文件也以同样方式打开。</li>
   <li>用 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></span></span> 保存。关闭已修改的文件时会询问 <q>要保存对 &lt;name&gt; 的更改吗？</q>，可选 <span class="docs-ui">保存</span>、<span class="docs-ui">不保存</span> 和 <span class="docs-ui">取消</span>。</li>
   <li>如果你有未保存的编辑时文件在磁盘上被更改，可选择 <span class="docs-ui">从磁盘重新载入</span> 或 <span class="docs-ui">保留我的更改</span>。</li>
 </ul>
@@ -174,16 +175,22 @@
       </section>
 
       <section class="docs-section" aria-labelledby="file-tree">
-        <h2 id="file-tree"><a class="docs-anchor" href="#file-tree" aria-label="指向“新建、重命名和删除文件”的链接">#</a>新建、重命名和删除文件</h2>
-        <p>可以像在 VS Code 中一样，直接在 <span class="docs-ui">文件</span> 中处理文件。名称直接在树中输入。</p>
+        <h2 id="file-tree"><a class="docs-anchor" href="#file-tree" aria-label="指向“在文件树中处理文件”的链接">#</a>在文件树中处理文件</h2>
+        <p>可以像在 VS Code 中一样，直接在 <span class="docs-ui">文件</span> 中处理文件。右键点击某一项即可；要在项目顶层操作，请右键点击树下方的空白处。名称直接在树中输入。</p>
 <ul>
-  <li><span class="docs-ui">新建文件</span> / <span class="docs-ui">新建文件夹</span>：使用树上方的按钮，或右键点击文件夹（或树下方的空白处）。新项目会放在所选文件夹中、所选文件旁边，或项目的顶层。新建的文件会在编辑器中打开。</li>
-  <li><span class="docs-ui">重命名</span>：<span class="docs-kbd"><span class="os-mac"><kbd>F2</kbd> / <kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>F2</kbd></span></span>，或右键点击。已打开的标签页会跟随新名称，并保留未保存的编辑。</li>
+  <li><span class="docs-ui">新建文件</span> / <span class="docs-ui">新建文件夹</span>：使用树上方的按钮，或右键点击。新项目会放在所选文件夹中、所选文件旁边，或项目的顶层。输入带斜杠的名称（例如 <code>src/routes/index.ts</code>）会一并创建途中的文件夹。新建的文件会在编辑器中打开。在空文件夹中，<span class="docs-ui">文件</span> 会显示 <span class="docs-ui">此文件夹为空</span>，以及 <span class="docs-ui">新建文件</span> 和 <span class="docs-ui">新建文件夹</span> 按钮。</li>
+  <li><span class="docs-ui">剪切</span>、<span class="docs-ui">复制</span> 和 <span class="docs-ui">粘贴</span>：<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>X</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>X</kbd></span></span>、<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>C</kbd></span></span>、<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>V</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>V</kbd></span></span>，或右键点击。文件夹会连同其中的所有内容一起复制。<span class="docs-ui">创建副本</span> 会在原项目旁边创建一个副本。如果名称已被占用，副本会命名为 <code>name copy</code>，然后是 <code>name copy 2</code>。</li>
+  <li>把项目拖到某个文件夹上（拖到空白处则移到项目顶层）即可移动。放下时按住 <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span> 则改为复制。从访达（Windows 上为文件资源管理器）拖入的文件和文件夹会被复制到项目中，原文件保留在原处。</li>
+  <li><span class="docs-ui">重命名</span>：<span class="docs-kbd"><span class="os-mac"><kbd>F2</kbd> / <kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>F2</kbd></span></span>，或右键点击。</li>
   <li><span class="docs-ui">删除</span>：<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⌫</kbd> / <kbd>Delete</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Delete</kbd></span></span>，或右键点击。Ferret 会先确认，然后把项目移到废纸篓（Windows 上为回收站），因此可以恢复。已删除文件的标签页会关闭；如果其中有未保存的编辑，确认对话框会提示。</li>
-  <li>用 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span>-点击或 <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd></span></span>-点击选择多个项目，可以一起删除。</li>
+  <li><span class="docs-ui">撤销</span>：<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>Z</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Z</kbd></span></span> 撤销上一次新建、重命名、移动、粘贴或创建副本。已删除的项目会从废纸篓中恢复。</li>
+  <li><span class="docs-ui">复制路径</span>（<span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>C</kbd></span></span>）和 <span class="docs-ui">复制相对路径</span>（<span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⇧</kbd><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Alt</kbd><kbd>C</kbd></span></span>）会把路径放到剪贴板上。</li>
+  <li><span class="docs-ui">在访达中显示</span>（Windows 上为 <span class="docs-ui">在文件资源管理器中显示</span>，Linux 上为 <span class="docs-ui">打开所在的文件夹</span>）：<span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>R</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>R</kbd></span></span>。<span class="docs-ui">在终端中打开</span> 会在该文件夹（如果是文件，则为其所在文件夹）中打开一个新的终端标签页。</li>
+  <li>对于文件，<span class="docs-ui">打开</span> 会在编辑器中打开它，<span class="docs-ui">用默认应用打开</span> 会用操作系统为该类型文件指定的应用打开它。</li>
+  <li>用 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span>-点击或 <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd></span></span>-点击选择多个项目，可以一起剪切、复制、移动或删除。</li>
   <li><kbd>Esc</kbd> 取消正在输入的名称。</li>
 </ul>
-<p>Ferret 不会覆盖已存在的同名文件或文件夹，并且会拒绝以下操作：离开项目文件夹的路径（<code>..</code>、绝对路径、指向外部的符号链接）、<code>.git</code> 内的任何内容，以及某些操作系统无法使用的名称：<code>/ \ &lt; &gt; : " | ? *</code>、控制字符、末尾的空格或句点，以及 <code>CON</code>、<code>NUL</code> 等 Windows 保留名称。</p>
+<p>已打开的标签页会跟随被重命名或移动的文件，并保留未保存的编辑。Ferret 不会覆盖已存在的同名文件或文件夹，并且会把一切都限制在项目文件夹内：它会拒绝 <code>..</code>、绝对路径、指向外部的符号链接、<code>.git</code> 内的任何内容、把文件夹移到其自身内部，以及某些操作系统无法使用的名称：<code>/ \ &lt; &gt; : " | ? *</code>、控制字符、末尾的空格或句点，以及 <code>CON</code>、<code>NUL</code> 等 Windows 保留名称。一次复制或拖放最多可包含 10,000 个项目、1 GB。</p>
       </section>
 
       <section class="docs-section" aria-labelledby="preview">
@@ -192,6 +199,14 @@
 <ul>
   <li><span class="docs-ui">在侧边打开预览</span>：在编辑器旁边打开</li>
   <li><span class="docs-ui">打开预览</span>：在内置浏览器（<code>ade-preview://</code>）中打开，因此可以录制和审查</li>
+</ul>
+<p>要按预览中的样子编辑 Markdown 文件，请点击编辑器顶部的 <span class="docs-ui">在预览中编辑</span>，点击 <span class="docs-ui">源代码</span> 即可返回。两者显示相同的内容，保存、未保存标记和关闭时的确认也都一样。</p>
+<ul>
+  <li>可以直接在标题、段落、列表、复选框、表格、链接以及粗体、斜体或行内代码中输入。在行首输入 <code>#</code>、<code>-</code>、<code>1.</code> 或 <code>&gt;</code> 加一个空格，即可开始标题、列表或引用。</li>
+  <li>代码块和 Mermaid 图表以源代码形式编辑，角落里会显示语言。图表在 <span class="docs-ui">在侧边打开预览</span> 或 <span class="docs-ui">打开预览</span> 中渲染。</li>
+  <li>前置元数据（顶部的 <code>---</code> 块）以文本形式显示在文档上方，可以在那里编辑。</li>
+  <li>未修改的部分会按原样保存，包括标题样式、列表标记、空行、表格对齐和换行符。编辑过的块会尽量保留原有样式；无法保留时，该块会以标准 Markdown 形式写出，列表用 <code>-</code>，标题用 <code>#</code>。</li>
+  <li>项目中的图片会显示。不会加载其他网站的图片，而是显示其主机名。文件中的 HTML 会以文本形式显示。</li>
 </ul>
       </section>
 
@@ -218,7 +233,7 @@
       <p class="docs-toc-heading">本页内容</p>
       <ul>
         <li><a href="#files">打开和编辑文件</a></li>
-        <li><a href="#file-tree">新建、重命名和删除文件</a></li>
+        <li><a href="#file-tree">在文件树中处理文件</a></li>
         <li><a href="#preview">Markdown 和 Mermaid 预览</a></li>
         <li><a href="#review-docs">通过录制审查文档</a></li>
       </ul>

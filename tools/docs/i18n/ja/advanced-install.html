@@ -61,6 +61,17 @@ pnpm dist:linux   # AppImage + deb (x64)</code></pre>
 <p>Windows では、<code>pnpm install</code> は再ビルドせず、node-pty に同梱のビルド済みバイナリを使います（再ビルドには Visual Studio の C++ ビルドツールが要るため）。再ビルドさせたいときは <code>ADE_FORCE_NATIVE_REBUILD=1</code> を設定します。</p>
 <p>ターミナルに node-pty を読み込めなかったと出るときは、<code>pnpm rebuild:native</code> を実行してください。</p>
 
-<!-- @update 142015ddda -->
+<!-- @update d0e883a95e -->
 ## アップデート
-<p>Ferret は自動ではアップデートしません。フッターの <span class="docs-ui">アップデート</span> を開き、<span class="docs-ui">更新を確認</span> を押します。ダウンロードサーバー（R2）から <code>latest.json</code> を取って版を比べ、その版の <code>SHA256SUMS</code> の署名をアプリに組み込んだリリース鍵で確かめます。新しい版があれば <span class="docs-ui">ダウンロード</span> を押します。Ferret は自分のパソコン用のインストーラーをダウンロードし、その SHA-256 が署名済みの <code>SHA256SUMS</code> と合うかを確かめてから、ダウンロードフォルダに保存してそこで表示します。ダウンロードページも、ファイルを保存する前にブラウザの中で同じ確認をします。押すまでは何も確認せず、自動で入れることもありません。</p>
+<p>Ferret は、起動したとき・6時間ごと・<span class="docs-ui">更新を確認</span> を押したとき（フッター → <span class="docs-ui">アップデート</span>）に新しい版を確かめます。ダウンロードサーバー（R2）から <code>latest.json</code> を取り、その版の <code>SHA256SUMS</code> の署名をアプリに組み込んだリリース鍵で確かめます。署名の合わない版は案内しません。</p>
+<p>新しい版が見つかると、Ferret は裏でダウンロードし、進み具合を <span class="docs-ui">アップデート</span> に出します。ダウンロードしたものは、大きさと SHA-256 が署名済みの一覧と合うときだけ使います。そのあと <span class="docs-ui">アップデート</span> とフッターに <span class="docs-ui">再起動して更新</span> が出ます。押すと再起動して新しい版になります。ターミナルで Agent が作業中のときや録画中のときは、先に確認します。ここまでの録画は再起動の前に保存します。</p>
+<table>
+  <thead><tr><th>入れ方</th><th>ダウンロードするもの</th><th>入れ替え方</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>（<code>UPDATE-SHA256SUMS</code> に載り、同じリリース鍵で署名済み）</td><td>macOS の更新の仕組み（Squirrel.Mac）に渡します。新しいアプリが同じ Developer ID で署名されていることもそこで確かめ、Ferret の再起動で入れ替えます</td></tr>
+    <tr><td>Windows</td><td>インストーラー（<code>.exe</code>）</td><td>Ferret の再起動のときに画面を出さずに実行し、終わったら新しい版を開きます</td></tr>
+    <tr><td>Linux（AppImage）</td><td>新しい <code>.AppImage</code></td><td>起動した AppImage を置き換え、新しい版を開きます</td></tr>
+    <tr><td>Linux（deb）</td><td><code>.deb</code></td><td><span class="docs-ui">インストーラーを開く</span> でダウンロードフォルダに保存し、ソフトウェアのインストーラーで開きます</td></tr>
+  </tbody>
+</table>
+<p>自分で選んだときだけダウンロードするには、<span class="docs-ui">アップデート</span> の <span class="docs-ui">新しい版を自動でダウンロード</span> をオフにし（または <code>settings.json</code> に <code>"autoUpdate": false</code>）、新しい版が出たら <span class="docs-ui">ダウンロード</span> を押します。開発版（<code>pnpm dev</code>）は裏でダウンロードしません。<span class="docs-ui">ダウンロード</span> で、確かめたインストーラーをダウンロードフォルダに保存します。</p>

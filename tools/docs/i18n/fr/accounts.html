@@ -22,3 +22,26 @@ Passez d'une connexion Claude Code ou Codex à une autre, et suivez vos fenêtre
 <p>Le niveau de détail dépend de la place disponible dans le pied de page. S'il y a de la place, il affiche des barres, les noms des fenêtres et les pourcentages. À mesure que le pied de page se rétrécit, il retire d'abord les éléments les moins utiles, jusqu'à ne garder qu'un pourcentage par agent. Cliquez sur l'utilisation pour tout voir dans une fenêtre contextuelle.</p>
 <p>L'utilisation est récupérée directement auprès d'Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) et de ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) avec les identifiants du compte connecté.</p>
 {{shot:usage|Utilisation dans le pied de page}}
+
+<!-- @failover 4e121e0f4c -->
+## Continuer à travailler aux limites d'utilisation
+<p>Quand un agent atteint sa limite d'utilisation, Ferret poursuit le même travail dans le même dossier de projet, pour qu'une longue tâche ne s'arrête pas à la limite. C'est activé par défaut et se règle dans <span class="docs-ui">Réglages → Comptes → Changement à la limite d’utilisation</span>.</p>
+<p>Le travail est transmis par un seul fichier du projet, <code>.ferret/handoff.md</code> ; cela fonctionne donc aussi bien entre comptes qu'entre agents différents. Les instructions de <span class="docs-ui">Envoyer à l'agent</span> demandent à l'agent de tenir ce fichier à jour à chaque étape importante et lorsqu'il approche d'une limite d'utilisation : l'objectif, ce qui est fait, le travail restant sous forme de liste de contrôle, les fichiers modifiés, la prochaine étape, les chemins de <code>feedback.md</code> et des relectures concernées, et tout point d'attention. <code>.ferret/</code> reste hors de git (il est ajouté à <code>.git/info/exclude</code>, pas à <code>.gitignore</code>).</p>
+<ol class="docs-steps">
+  <li>Ferret détecte la limite à partir du message de l'agent lui-même dans le terminal (par exemple <code>5-hour limit reached ∙ resets 3pm</code> dans Claude Code, <code>You've hit your usage limit</code> dans Codex) ou lorsque l'utilisation affichée dans le pied de page atteint le seuil (95 % par défaut ; la plus élevée des fenêtres de 5 heures, hebdomadaire et par modèle).</li>
+  <li>Avant de changer, Ferret demande à l'agent actuel de mettre à jour <code>.ferret/handoff.md</code>. Si l'agent ne s'y met pas (par exemple parce qu'il est déjà à sa limite), Ferret ajoute au fichier ce qu'il sait : la dernière demande, l'emplacement de <code>feedback.md</code> et les fichiers modifiés d'après <code>git status</code>.</li>
+  <li>Ferret passe ensuite à un autre compte connecté du même agent, celui dont l'utilisation est la plus faible. Quand tous les comptes de l'agent sont à leur limite, le travail passe à l'agent suivant dans <span class="docs-ui">Ordre des agents</span> (par défaut : Claude Code → Codex → Gemini CLI).</li>
+  <li>Le nouvel agent s'ouvre dans un nouvel onglet du même projet et reçoit, dans la langue de l'application, la consigne de lire d'abord <code>.ferret/handoff.md</code> puis de poursuivre le travail restant.</li>
+  <li>Le pied de page affiche <span class="docs-ui">Maintenant avec &lt;agent&gt;</span> et une notification indique ce qui a changé, par exemple <span class="docs-ui">Codex a atteint sa limite d’utilisation, donc Claude Code a repris le travail.</span> L'onglet qui a atteint la limite est fermé, pour qu'il ne reprenne pas la même tâche quand sa limite est réinitialisée.</li>
+</ol>
+<table>
+  <thead><tr><th>Réglage</th><th>Par défaut</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Changer automatiquement quand une limite d’utilisation est atteinte</span></td><td>Activé</td></tr>
+    <tr><td><span class="docs-ui">Considérer un compte à sa limite à partir de</span></td><td>95 %</td></tr>
+    <tr><td><span class="docs-ui">Essayer d’abord un autre compte du même agent</span></td><td>Activé</td></tr>
+    <tr><td><span class="docs-ui">Ordre des agents</span></td><td>Claude Code, Codex, Gemini CLI. Les agents absents de la liste ne sont pas utilisés.</td></tr>
+    <tr><td><span class="docs-ui">Revenir à un agent mieux placé quand sa limite est réinitialisée</span></td><td>Désactivé (on continue avec l'agent actuel). Activé, le travail revient pendant que l'onglet attend une saisie.</td></tr>
+  </tbody>
+</table>
+<p>Le changement reste à l'intérieur du projet, au plus 6 fois par heure et à au moins une minute d'intervalle. Les identifiants restent dans le dossier de configuration propre à chaque compte et ne sont jamais copiés. Dans <code>settings.json</code>, ces réglages se trouvent sous <code>limitFailover</code>.</p>

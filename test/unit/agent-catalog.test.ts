@@ -104,7 +104,8 @@ describe('sanitizeAgentPreferences', () => {
       launch: { claude: { command: 'claude', args: '' }, codex: { command: '/opt/codex', args: '--foo' } },
       startupAgents: ['codex']
     })
-    expect(prefs.launch.claude).toEqual({ command: 'claude', args: '' })
+    // 以前の既定（空の引数）のままなら今の既定にする
+    expect(prefs.launch.claude).toEqual({ command: 'claude', args: '--chrome' })
     expect(prefs.launch.codex).toEqual({ command: '/opt/codex', args: '--foo' })
     expect(prefs.launch.gemini).toEqual({ command: 'gemini', args: '' })
     expect(prefs.customAgents).toEqual([])

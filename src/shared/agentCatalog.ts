@@ -553,15 +553,18 @@ export const TUI_AGENT_LABEL: Record<BuiltinAgent, string> = Object.fromEntries(
 ) as Record<BuiltinAgent, string>
 
 /**
- * 既定の起動。権限確認・承認・サンドボックスを外す引数（yoloArgs）は付けない（security-3 [1]）。
- * Orca は付けるが、登録しただけの（clone した他人の）プロジェクトで、確認なしに Agent が動いてしまう
+ * 既定で起動の引数に入れるもの（設定の Launch で消せる）。
+ * Claude Code の --chrome は Claude in Chrome の連携を使えるようにする（`claude --help`、2.1.289 で確認）
  */
+const DEFAULT_LAUNCH_ARGS: Partial<Record<BuiltinAgent, string>> = { claude: '--chrome' }
+
+/** 既定の起動。権限確認を省く引数は、ここではなく起動のとき（resolveAgentLaunchPolicy）に skipPermissions を見て付ける */
 export function defaultLaunchConfig(agent: BuiltinAgent): AgentLaunchConfig {
   const entry = AGENT_CATALOG[agent]
-  return { command: entry.launchCmd ?? entry.detectCmd, args: '' }
+  return { command: entry.launchCmd ?? entry.detectCmd, args: DEFAULT_LAUNCH_ARGS[agent] ?? '' }
 }
 
-/** 既定の設定。権限確認を省くプロジェクトは無い（利用者がプロジェクトごとに確認して許す） */
+/** 既定の設定。権限確認を省いて起動する（利用者が設定で切れる） */
 export const DEFAULT_AGENT_PREFERENCES: AgentPreferences = {
   launch: Object.fromEntries(BUILTIN_AGENTS.map((agent) => [agent, defaultLaunchConfig(agent)])) as Record<
     BuiltinAgent,
@@ -570,10 +573,17 @@ export const DEFAULT_AGENT_PREFERENCES: AgentPreferences = {
   customAgents: [],
   disabledAgents: [],
   startupAgents: ['claude', 'codex'],
-  bypassProjects: []
+  skipPermissions: true,
+  notify: false
 }
 
-// ───────────────────────── 権限確認を省く引数（security-3 [1]） ─────────────────────────
+// ───────────────────────── 権限確認を省く引数 ─────────────────────────
+
+/**
+ * skipPermissions で権限確認を省く引数を付ける Agent。フラグを `--help` で確かめたものだけ
+ * （Claude Code 2.1.289 の --dangerously-skip-permissions、Codex 0.160.0 の --dangerously-bypass-approvals-and-sandbox。2026-10 確認）
+ */
+export const SKIP_PERMISSION_AGENTS: readonly BuiltinAgent[] = ['claude', 'codex']
 
 /**
  * yoloArgs のほかに、同じ意味になる既知の書き方（Claude Code / Codex の公式の資料、2026-10 確認）。
@@ -583,6 +593,15 @@ const EXTRA_BYPASS_UNITS: Partial<Record<BuiltinAgent, readonly string[]>> = {
   claude: ['--dangerously-skip-permissions', '--allow-dangerously-skip-permissions', '--permission-mode bypassPermissions'],
   codex: ['--dangerously-bypass-approvals-and-sandbox', '--yolo', '--sandbox danger-full-access', '-s danger-full-access',
     '--ask-for-approval never', '-a never', '-c sandbox_mode=danger-full-access', '-c approval_policy=never']
+}
+
+/**
+ * 利用者が確認の仕方を自分で選んだ印のフラグ。引数にあれば、権限確認を省く引数を足さない
+ * （Codex は --sandbox などと --dangerously-bypass-approvals-and-sandbox を一緒に渡せない）
+ */
+const MODE_FLAGS: Partial<Record<BuiltinAgent, readonly string[]>> = {
+  claude: ['--permission-mode'],
+  codex: ['--sandbox', '-s', '--ask-for-approval', '-a', '--full-auto', '--approve-for-me']
 }
 
 /** 引数の並びを単位に分ける（フラグと、そのあとに続くフラグでない値） */
@@ -601,44 +620,21 @@ export function bypassArgUnits(agent: BuiltinAgent): string[][] {
   return [...argUnits(AGENT_CATALOG[agent].yoloArgs), ...(EXTRA_BYPASS_UNITS[agent] ?? []).flatMap(argUnits)]
 }
 
-/**
- * 引数から、権限確認・承認・サンドボックスを外すものを除く。`--flag value` と `--flag=value` の両方。
- * 何も除かなければ元の文字列のまま返す（引用符の中の空白を変えない）
- */
-export function stripBypassArgs(agent: BuiltinAgent, args: string): string {
-  const units = bypassArgUnits(agent)
+/** 引数に、権限確認を省く引数か、確認の仕方を選ぶフラグが既にあるか（`--flag value` と `--flag=value` の両方） */
+function choosesPermissionMode(agent: BuiltinAgent, args: string): boolean {
   const tokens = args.trim().split(/\s+/).filter(Boolean)
-  const out: string[] = []
-  let removed = false
-  for (let i = 0; i < tokens.length; ) {
-    const token = tokens[i]!
-    const match = units.find((unit) => {
-      if (unit.every((part, k) => tokens[i + k] === part)) return true
-      // --flag=value（値が1つの単位だけ）
-      return unit.length === 2 && token === `${unit[0]}=${unit[1]}`
-    })
-    if (match) {
-      removed = true
-      i += token.includes('=') && match.length === 2 && token === `${match[0]}=${match[1]}` ? 1 : match.length
-      continue
-    }
-    out.push(token)
-    i++
-  }
-  return removed ? out.join(' ') : args.trim()
-}
-
-/** 権限確認を省く引数を足す（既に付いていれば足さない） */
-function withBypassArgs(agent: BuiltinAgent, args: string): string {
-  const base = stripBypassArgs(agent, args)
-  return [AGENT_CATALOG[agent].yoloArgs, base].filter(Boolean).join(' ')
+  const flags = MODE_FLAGS[agent] ?? []
+  return tokens.some((token, i) =>
+    flags.some((flag) => token === flag || token.startsWith(`${flag}=`)) ||
+    bypassArgUnits(agent).some((unit) => unit.every((part, k) => tokens[i + k] === part) || (unit.length === 2 && token === `${unit[0]}=${unit[1]}`)))
 }
 
 /**
- * Agent を起動するときの決まり（main の terminal.ts が使う。renderer の既定に頼らない）。
- *   - 権限確認を省く引数は、設定に書かれていても外す
- *   - 利用者が確認して許したプロジェクト（bypassProjects）のフォルダそのものでだけ、フォルダの信頼を先に書く
- *   - そのうえ手で開いたときだけ、権限確認を省く引数を付ける。プロジェクトを開いたときの自動起動では付けない
+ * Agent を起動するときの決まり（main の terminal.ts が使う）。
+ *   - 引数は利用者が設定に書いたものをそのまま使う（消さない）
+ *   - skipPermissions が入なら、SKIP_PERMISSION_AGENTS に権限確認を省く引数を前に足す。
+ *     引数で確認の仕方を選んでいれば足さない。自動起動も手で開くのも同じ
+ *   - そのとき、登録したプロジェクトのフォルダそのものなら、Claude Code / Codex のフォルダの信頼も先に書く
  * カスタムの Agent は利用者が書いたコマンドそのままなので触らない（builtin だけ）
  */
 export function resolveAgentLaunchPolicy(input: {
@@ -646,13 +642,12 @@ export function resolveAgentLaunchPolicy(input: {
   args: string
   /** cwd が登録済みのプロジェクトのフォルダそのものならその id。それ以外（サブフォルダ・ホーム）は null */
   projectId: string | null
-  bypassProjects: readonly string[]
-  autoStart: boolean
-}): { args: string; bypass: boolean; trustFolder: boolean } {
-  const allowed = input.projectId !== null && input.bypassProjects.includes(input.projectId)
-  const bypass = allowed && !input.autoStart
-  const args = bypass ? withBypassArgs(input.agent, input.args) : stripBypassArgs(input.agent, input.args)
-  return { args, bypass, trustFolder: allowed }
+  skipPermissions: boolean
+}): { args: string; trustFolder: boolean } {
+  const args = input.args.trim()
+  if (!input.skipPermissions || !SKIP_PERMISSION_AGENTS.includes(input.agent)) return { args, trustFolder: false }
+  const added = choosesPermissionMode(input.agent, args) ? args : [AGENT_CATALOG[input.agent].yoloArgs, args].filter(Boolean).join(' ')
+  return { args: added, trustFolder: input.projectId !== null }
 }
 
 export function isBuiltinAgent(value: unknown): value is BuiltinAgent {
@@ -830,8 +825,16 @@ export function sanitizeAgentPreferences(raw: unknown): AgentPreferences {
   }
   for (const agent of BUILTIN_AGENTS) {
     const c = rawLaunch[agent] as Partial<AgentLaunchConfig> | undefined
-    // 空白だけのコマンドも未設定とみなして既定に戻す。権限確認を省く引数は持たない（以前の既定に入っていたものも外す。security-3 [1]）
-    if (c && text(c.command)) launch[agent] = { command: text(c.command), args: stripBypassArgs(agent, text(c.args)) }
+    // 空白だけのコマンドも未設定とみなして既定に戻す。引数は利用者が書いたまま
+    if (c && text(c.command)) launch[agent] = { command: text(c.command), args: text(c.args) }
+  }
+  // skipPermissions の無い以前の設定は、引数が以前の既定（空）のままなら今の既定（Claude Code の --chrome）にする
+  const skipPermissions = typeof r.skipPermissions === 'boolean' ? r.skipPermissions : DEFAULT_AGENT_PREFERENCES.skipPermissions
+  if (typeof r.skipPermissions !== 'boolean') {
+    for (const agent of BUILTIN_AGENTS) {
+      const fallback = DEFAULT_AGENT_PREFERENCES.launch[agent]
+      if (launch[agent].command === fallback.command && launch[agent].args === '') launch[agent] = { ...fallback }
+    }
   }
 
   const customAgents: CustomAgent[] = []
@@ -867,9 +870,7 @@ export function sanitizeAgentPreferences(raw: unknown): AgentPreferences {
     customAgents,
     disabledAgents,
     startupAgents: list(r.startupAgents, DEFAULT_AGENT_PREFERENCES.startupAgents).filter(launchable),
-    // プロジェクトの id（空でない文字列）だけ。消したプロジェクトの id が残っても、そのフォルダには当たらない
-    bypassProjects: Array.isArray(r.bypassProjects)
-      ? [...new Set(r.bypassProjects.filter((id): id is string => typeof id === 'string' && id.trim().length > 0 && id.length <= 200))]
-      : []
+    skipPermissions,
+    notify: typeof r.notify === 'boolean' ? r.notify : DEFAULT_AGENT_PREFERENCES.notify
   }
 }

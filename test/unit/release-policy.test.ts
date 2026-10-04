@@ -108,12 +108,18 @@ describe('GitHub Actions の固定', () => {
     const text = read(`${workflowDir}/release.yml`)
     expect(text).toMatch(/sha256sum Ferret-\* > \.\.\/SHA256SUMS/)
     // GitHub Release に付けるのは SHA256SUMS だけ（インストーラーは R2 だけ。attestation は入れない決定）
-    expect(text).toMatch(/gh release create "\$\{GITHUB_REF_NAME\}" SHA256SUMS SHA256SUMS\.sig --repo/)
-    expect(text).not.toMatch(/gh release (create|upload)[^\n]*\.(dmg|exe|AppImage|deb)/)
+    // 自動更新用の zip の sha256 と署名（UPDATE-SHA256SUMS(.sig)）も並べる。zip そのものは付けない
+    expect(text).toMatch(/gh release create "\$\{GITHUB_REF_NAME\}" SHA256SUMS SHA256SUMS\.sig UPDATE-SHA256SUMS UPDATE-SHA256SUMS\.sig --repo/)
+    expect(text).not.toMatch(/gh release (create|upload)[^\n]*\.(dmg|exe|AppImage|deb|zip)\b/)
+    // zip はインストーラーの SHA256SUMS に混ぜない（0.4.x のアプリが SHA256SUMS と latest.json の files の一致を求める）
+    expect(text).toMatch(/sha256sum Ferret-\*\.zip > \.\.\/UPDATE-SHA256SUMS/)
+    expect(text).toMatch(/node scripts\/release-signing\.mjs sign --sums UPDATE-SHA256SUMS --out UPDATE-SHA256SUMS\.sig/)
     expect(text).not.toMatch(/attest-build-provenance|id-token:/)
     const jobs = jobsOf(text)
     expect(jobs.get('stage')!.join('\n')).toMatch(/--expect-sums release-meta\/SHA256SUMS/)
     expect(jobs.get('promote')!.join('\n')).toMatch(/--expect-sums release-meta\/SHA256SUMS/)
+    expect(jobs.get('stage')!.join('\n')).toMatch(/--expect-update-sums release-meta\/UPDATE-SHA256SUMS\s+--update-sums-sig release-meta\/UPDATE-SHA256SUMS\.sig/)
+    expect(jobs.get('promote')!.join('\n')).toMatch(/--expect-update-sums release-meta\/UPDATE-SHA256SUMS\s+--update-sums-sig release-meta\/UPDATE-SHA256SUMS\.sig/)
     // workflow の入力や vars を run の中へ式で直接埋め込まない（env を通す）
     for (const [name, lines] of jobs) {
       const runs = lines.join('\n').split(/\n\s+(?=- |[\w-]+:)/).filter((b) => /^\s*run:/.test(b))

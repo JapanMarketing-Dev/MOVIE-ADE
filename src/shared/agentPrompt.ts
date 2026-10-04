@@ -34,6 +34,11 @@ interface AgentPromptTarget {
    * true なら「コードではなくデザイン・文書を直す」1文を文末に足す（利用者が書き換えた文でも足す）
    */
   nonCode?: boolean
+  /**
+   * 引き継ぎのファイル（プロジェクトの .ferret/handoff.md の絶対パス）。渡すと「区切りごと・上限が近づいたら更新する」1文を
+   * 文末に足す（利用者が書き換えた文でも足す）。上限での自動切り替え（src/main/failover）が次の Agent に読ませる
+   */
+  handoff?: string
 }
 
 /** 判定モデルでの受け入れ確認（有効なときだけ渡す） */
@@ -50,6 +55,7 @@ export function renderAgentPrompt(target: AgentPromptTarget, template?: string |
   if (body.includes('{{decisionCheck}}')) body = body.replace(/\{\{decisionCheck\}\}/g, check).replace(/[ \t]+$/gm, '').trim()
   else if (check) body = `${body} ${check}`
   if (target.nonCode) body = `${body} ${translate(locale ?? getLocale(), 'agentPrompt.nonCode')}`
+  if (target.handoff) body = `${body} ${translate(locale ?? getLocale(), 'agentPrompt.handoff', { handoff: target.handoff })}`
   const threshold = String(decision?.threshold ?? 0.7)
   const progress = path.replace(/feedback\.md$/, 'progress.json')
   return body.replace(/\{\{path\}\}/g, path).replace(/\{\{relpath\}\}/g, relpath).replace(/\{\{threshold\}\}/g, threshold).replace(/\{\{progress\}\}/g, progress)

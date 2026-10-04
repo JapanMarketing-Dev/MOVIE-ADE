@@ -2,7 +2,7 @@
  * electron-builder の設定（Ferret。旧名 MOVIE-ADE。当面は署名・公証しない）。
  *
  * 3つのOSの配布物（ファイル名は download-site と合意した Ferret-<version>-<os>-<arch>.<ext>。0.1.x は MOVIE-ADE-…）：
- *   macOS   … dmg（arm64・x64）
+ *   macOS   … dmg（arm64・x64。サイトから入れる）と zip（arm64・x64。アプリの自動更新が Squirrel.Mac で入れ替えに使う。サイトには出さない）
  *   Windows … nsis（x64・arm64。1つのインストーラに両方入らないよう、CPU ごとに別々に走らせる）
  *   Linux   … AppImage / deb（x64。Linux の上でだけ作れる）
  * `pnpm build:<os>:dev` は --dir で展開済みのアプリだけを作る（速い確認用）。
@@ -54,8 +54,12 @@ function pruneNodePty(ptyDir, platform, arch) {
 /** electron-builder の Arch の番号（ia32=0, x64=1, armv7l=2, arm64=3, universal=4） */
 const ARCH_NAME = { 0: 'ia32', 1: 'x64', 2: 'armv7l', 3: 'arm64', 4: 'universal' }
 
-// deb の depends を書くと electron-builder の既定が置き換わるので、Electron が必要とするものを並べる（Orca と同じ一覧）
+// deb の depends を書くと electron-builder の既定が置き換わるので、Electron が必要とするものを並べる（Orca と同じ一覧）。
+// ALSA（libasound.so.2）は既定の一覧に無いが、Electron の実行ファイルが直接リンクしている。デスクトップの無い Ubuntu 24.04 に
+// apt で入れると入らず、起動できなかった。24.04 以降は libasound2t64、22.04・Debian 12 は libasound2。
+// libasound2 だけを書くと、24.04 の apt は同じ名前を提供する別物（liboss4-salsa-asound2）を選ぶことがあるので、t64 を先に書く
 const debElectronRuntimeDependencies = [
+  'libasound2t64 | libasound2',
   'libgtk-3-0',
   'libnotify4',
   'libnss3',
@@ -177,7 +181,11 @@ module.exports = {
       // 内蔵ブラウザで同じ LAN の開発サーバー（http://192.168.…:3000 など）を開くため。macOS 15 以降のローカルネットワークの許可の確認に使う（Orca #18900）
       NSLocalNetworkUsageDescription: 'Ferret opens development servers on your local network in its built-in browser.'
     },
-    target: [{ target: 'dmg', arch: ['arm64', 'x64'] }]
+    // zip は自動更新用（src/main/autoUpdate.ts。Squirrel.Mac は zip しか読めない）。名前は上の artifactName（Ferret-<版>-mac-<arch>.zip）
+    target: [
+      { target: 'dmg', arch: ['arm64', 'x64'] },
+      { target: 'zip', arch: ['arm64', 'x64'] }
+    ]
   },
   dmg: {
     artifactName: 'Ferret-${version}-mac-${arch}.${ext}',
@@ -243,6 +251,7 @@ module.exports = {
     artifactName: 'Ferret-${version}-linux-${arch}.${ext}',
     depends: debElectronRuntimeDependencies
   },
-  // 配布は R2 に scripts/release-r2.mjs で上げる。electron-builder からは公開しない（latest*.yml も作らない）
+  // 配布は R2 に scripts/release-r2.mjs で上げる。electron-builder からは公開しない（latest*.yml も作らない）。
+  // 自動更新は electron-updater ではなく、署名した SHA256SUMS で確かめたファイルを使う（src/main/autoUpdate.ts）
   publish: null
 }

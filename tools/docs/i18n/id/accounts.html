@@ -22,3 +22,26 @@ Berpindah antara beberapa login Claude Code atau Codex, dan pantau jendela batas
 <p>Seberapa banyak yang ditampilkan bergantung pada ruang di footer. Jika ruangnya cukup, footer menampilkan bar, nama jendela, dan persentase. Saat footer makin sempit, bagian yang kurang berguna dihilangkan lebih dulu, hingga tersisa satu persentase per agent. Klik penggunaan untuk melihat semuanya di popover.</p>
 <p>Data penggunaan diambil langsung dari Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) dan ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) dengan kredensial milik akun yang sedang masuk.</p>
 {{shot:usage|Penggunaan di footer}}
+
+<!-- @failover 4e121e0f4c -->
+## Tetap bekerja saat mencapai batas penggunaan
+<p>Saat agent mencapai batas penggunaannya, Ferret melanjutkan pekerjaan yang sama di folder proyek yang sama, sehingga tugas panjang tidak berhenti di batas tersebut. Fitur ini aktif secara bawaan dan diatur di <span class="docs-ui">Pengaturan → Akun → Beralih saat batas penggunaan</span>.</p>
+<p>Pekerjaan diserahterimakan melalui satu file di proyek, <code>.ferret/handoff.md</code>, sehingga cara ini berfungsi sama baiknya antar-akun maupun antar-agent yang berbeda. Instruksi <span class="docs-ui">Kirim ke Agent</span> meminta agent untuk terus memperbarui file tersebut di setiap tahap penting dan saat mendekati batas penggunaan: tujuan, apa yang sudah selesai, sisa pekerjaan sebagai checklist, file yang diubahnya, langkah berikutnya, path <code>feedback.md</code> dan tinjauan yang terkait, serta hal-hal yang perlu diperhatikan. <code>.ferret/</code> tetap di luar git (ditambahkan ke <code>.git/info/exclude</code>, bukan ke <code>.gitignore</code>).</p>
+<ol class="docs-steps">
+  <li>Ferret mendeteksi batas dari pesan agent itu sendiri di terminal (misalnya <code>5-hour limit reached ∙ resets 3pm</code> di Claude Code, <code>You've hit your usage limit</code> di Codex) atau dari penggunaan di footer yang mencapai ambang (95% secara bawaan; nilai tertinggi dari jendela 5 jam, mingguan, dan per model).</li>
+  <li>Sebelum beralih, Ferret meminta agent saat ini untuk memperbarui <code>.ferret/handoff.md</code>. Jika agent tidak mulai mengerjakannya (misalnya karena sudah mencapai batas), Ferret menambahkan apa yang diketahuinya ke file tersebut: permintaan terakhir, lokasi <code>feedback.md</code>, dan file yang berubah menurut <code>git status</code>.</li>
+  <li>Ferret lalu beralih ke akun lain yang sudah masuk untuk agent yang sama, yaitu yang penggunaannya paling rendah. Jika semua akun agent tersebut sudah mencapai batas, pekerjaan berpindah ke agent berikutnya dalam <span class="docs-ui">Urutan agen</span> (bawaan: Claude Code → Codex → Gemini CLI).</li>
+  <li>Agent baru terbuka di tab baru di proyek yang sama dan diberi tahu, dalam bahasa aplikasi, untuk membaca <code>.ferret/handoff.md</code> lebih dulu lalu melanjutkan sisa pekerjaan.</li>
+  <li>Footer menampilkan <span class="docs-ui">Sekarang dengan &lt;agent&gt;</span> dan sebuah pemberitahuan menjelaskan apa yang berubah, misalnya <span class="docs-ui">Codex mencapai batas penggunaannya, jadi Claude Code mengambil alih pekerjaan.</span> Tab yang mencapai batas ditutup, sehingga tidak mengerjakan tugas yang sama lagi saat batasnya pulih.</li>
+</ol>
+<table>
+  <thead><tr><th>Pengaturan</th><th>Bawaan</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Beralih otomatis saat batas penggunaan tercapai</span></td><td>Aktif</td></tr>
+    <tr><td><span class="docs-ui">Anggap akun sudah mencapai batas mulai</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">Coba akun lain dari agen yang sama lebih dulu</span></td><td>Aktif</td></tr>
+    <tr><td><span class="docs-ui">Urutan agen</span></td><td>Claude Code, Codex, Gemini CLI. Agent yang tidak ada di daftar tidak dipakai.</td></tr>
+    <tr><td><span class="docs-ui">Kembali ke agen yang lebih atas saat batasnya pulih</span></td><td>Nonaktif (tetap bekerja dengan agent saat ini). Jika aktif, pekerjaan dipindahkan kembali saat tab sedang menunggu input.</td></tr>
+  </tbody>
+</table>
+<p>Peralihan tetap berada di dalam proyek, paling banyak 6 kali per jam dan berjarak minimal satu menit. Kredensial tetap berada di direktori config masing-masing akun dan tidak pernah disalin. Di <code>settings.json</code>, pengaturan ini berada di bawah <code>limitFailover</code>.</p>
