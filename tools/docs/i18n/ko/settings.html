@@ -41,19 +41,34 @@
   </tbody>
 </table>
 
-<!-- @agent e6bb38101d -->
+<!-- @agent 669056f066 -->
 ## 에이전트
 <table>
   <thead><tr><th>설정</th><th>기본값</th></tr></thead>
   <tbody>
     <tr><td><span class="docs-ui">프로젝트를 열 때 시작</span></td><td>Claude Code, Codex(<a href="agents.html#supported">지원하는 에이전트</a> 중 원하는 것을 고르거나 고르지 않을 수 있음)</td></tr>
     <tr><td><span class="docs-ui">메뉴에 &lt;agent&gt; 표시</span></td><td>모든 에이전트에서 켜짐</td></tr>
-    <tr><td><span class="docs-ui">명령</span> / <span class="docs-ui">인수</span>(에이전트별)</td><td>에이전트 자체의 명령(예: <code>claude</code>, <code>codex</code>, <code>gemini</code>) / 없음</td></tr>
+    <tr><td><span class="docs-ui">권한 확인 없이 에이전트 시작</span></td><td>켜짐: Claude Code는 <code>--dangerously-skip-permissions</code>, Codex는 <code>--dangerously-bypass-approvals-and-sandbox</code>로 시작(<a href="agents.html#terminal">자세히</a>)</td></tr>
+    <tr><td><span class="docs-ui">에이전트 작업이 끝나거나 확인이 필요할 때 알림 받기</span></td><td>꺼짐(<a href="agents.html#terminal">자세히</a>)</td></tr>
+    <tr><td><span class="docs-ui">명령</span> / <span class="docs-ui">인수</span>(에이전트별)</td><td>에이전트 자체의 명령(예: <code>claude</code>, <code>codex</code>, <code>gemini</code>) / Claude Code는 <code>--chrome</code>, 나머지는 없음</td></tr>
     <tr><td><span class="docs-ui">사용자 지정 에이전트</span></td><td>없음(<span class="docs-ui">사용자 지정 에이전트 추가</span>로 어떤 CLI든 등록)</td></tr>
-    <tr><td><span class="docs-ui">권한 확인 건너뛰기</span>(프로젝트별)</td><td>모든 프로젝트에서 꺼짐(<a href="agents.html#terminal">자세히</a>)</td></tr>
     <tr><td><span class="docs-ui">에이전트에게 보낼 지시</span></td><td>기본 제공 텍스트(<a href="agents.html#prompt">변수</a>)</td></tr>
   </tbody>
 </table>
+
+<!-- @failover 93ea424573 -->
+## 사용 한도에서 자동 전환
+<table>
+  <thead><tr><th>설정</th><th>기본값</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">사용 한도에 도달하면 자동으로 전환</span></td><td>켜짐</td></tr>
+    <tr><td><span class="docs-ui">계정을 한도로 보는 사용량</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">먼저 같은 에이전트의 다른 계정으로 전환</span></td><td>켜짐</td></tr>
+    <tr><td><span class="docs-ui">에이전트 순서</span></td><td>Claude Code, Codex, Gemini CLI</td></tr>
+    <tr><td><span class="docs-ui">한도가 돌아오면 순서가 위인 에이전트로 되돌리기</span></td><td>꺼짐</td></tr>
+  </tbody>
+</table>
+<p><span class="docs-ui">설정 → 계정</span>에 있습니다. 작업은 프로젝트의 <code>.ferret/handoff.md</code>를 통해 인계됩니다. <a href="accounts.html#failover">사용 한도에 도달해도 작업 계속하기</a>를 참고하세요.</p>
 
 <!-- @other 37b81ab14b -->
 ## 계정, GitHub, 모양, 언어

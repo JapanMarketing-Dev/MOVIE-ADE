@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import { AlertTriangle, Columns2, ExternalLink, FileCode, FolderOpen, Globe, Save } from 'lucide-react'
 import { previewKind, previewUrl } from '@shared/preview'
@@ -24,6 +24,11 @@ function modelPath(file: OpenFile): string {
 
 registerModelDisposer((id) => monaco.editor.getModel(monaco.Uri.file(id))?.dispose())
 
+/** プレビューで編集（tiptap を含むので、開いたときだけ読む） */
+const RichMarkdownEditor = lazy(() => import('./richMarkdown/RichMarkdownEditor'))
+/** プレビューで編集しているファイル（タブを切り替えても残す） */
+const richFiles = new Set<string>()
+
 /**
  * 開いたファイルを Monaco で編集する（中央のファイルタブの中身）。
  *
@@ -42,6 +47,7 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
   const frameRef = useRef<HTMLIFrameElement>(null)
   const editorRef = useRef<CodeEditor | null>(null)
   const liveTimer = useRef<number | undefined>(undefined)
+  const [, setRichVersion] = useState(0)
 
   useEffect(() => setThemeName(applyEditorTheme(monaco, theme)), [theme])
 
@@ -104,6 +110,15 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
   }, [file.preview])
 
   const markdown = isMarkdownLanguage(file.language)
+  // Markdown は「ソース」と「プレビューで編集」を切り替えられる。内容はどちらも同じ drafts を通す
+  // （MDX は JSX を含むので、ソースだけで編集する）
+  const richable = file.language === 'markdown' && file.status === 'ready' && !file.viewer
+  const rich = richable && richFiles.has(file.id)
+  const setRich = (on: boolean) => {
+    if (on) richFiles.add(file.id)
+    else richFiles.delete(file.id)
+    setRichVersion((v) => v + 1)
+  }
   const previewable = previewKind(file.path) !== null && file.status === 'ready' && !file.viewer
   const segments = file.path.split('/')
 
@@ -119,9 +134,19 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
         </span>
         {file.dirty && <span className="editor-head__dirty" title={t('editor.dirtyTitle')}>{t('editor.dirty')}</span>}
         <span className="editor-head__spacer" />
+        {richable && (
+          <span className="editor-head__modes" role="group" aria-label={t('editor.viewMode')}>
+            <Button variant="ghost" selected={!rich} onClick={() => setRich(false)} data-testid="editor-mode-source">
+              {t('editor.viewSource')}
+            </Button>
+            <Button variant="ghost" selected={rich} title={t('editor.viewRichTitle')} onClick={() => setRich(true)} data-testid="editor-mode-rich">
+              {t('editor.viewRich')}
+            </Button>
+          </span>
+        )}
         {previewable && (
           <>
-            <Button
+            {!rich && <Button
               variant="ghost"
               icon={<Columns2 size={13} />}
               aria-pressed={file.preview}
@@ -129,7 +154,7 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
               data-testid="editor-preview-toggle"
             >
               {file.preview ? t('editor.closePreview') : t('editor.previewToSide')}
-            </Button>
+            </Button>}
             <Button variant="ghost" icon={<Globe size={13} />} title={t('editor.openPreviewTitle')} onClick={() => api.openPreviewInBrowser(file.id)} data-testid="editor-preview-browser">
               {t('editor.openPreview')}
             </Button>
@@ -179,13 +204,17 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
         </div>
       )}
 
-      <div className={`editor-body${previewable && file.preview ? ' editor-body--split' : ''}`}>
+      <div className={`editor-body${previewable && file.preview && !rich ? ' editor-body--split' : ''}`}>
         {file.status === 'loading' ? (
           <div className="editor-body__center"><Spinner size={18} /></div>
         ) : file.status === 'unavailable' ? (
           <EmptyState size="sm" title={t('editor.cannotOpen')} description={file.message ?? ''} testId="editor-unavailable" />
         ) : file.viewer ? (
           <FileViewer path={file.path} name={file.name} viewer={file.viewer} info={file.info} message={file.message} revision={file.revision} />
+        ) : rich ? (
+          <Suspense fallback={<div className="editor-body__center"><Spinner size={18} /></div>}>
+            <RichMarkdownEditor key={file.id} file={file} editor={api} />
+          </Suspense>
         ) : (
           <>
             <Editor
@@ -195,7 +224,13 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
               language={file.language}
               theme={themeName}
               loading={<Spinner size={18} />}
-              onMount={(editor) => { editorRef.current = editor }}
+              onMount={(editor) => {
+                editorRef.current = editor
+                // プレビューで編集した後に戻ってきたとき、モデルを編集中の内容に合わせる（undo で戻れるよう編集として入れる）
+                const model = editor.getModel()
+                const next = api.getDraft(file.id) ?? file.saved
+                if (model && model.getValue() !== next) model.pushEditOperations([], [{ range: model.getFullModelRange(), text: next }], () => null)
+              }}
               onChange={(value) => {
                 api.setDraft(file.id, value ?? '')
                 if (file.preview) sendLivePreview(LIVE_PREVIEW_DELAY_MS)

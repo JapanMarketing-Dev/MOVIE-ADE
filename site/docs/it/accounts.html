@@ -177,6 +177,30 @@
 <figure class="docs-shot" data-shot="usage"><img src="../assets/usage.png?v=2d4a5fc6" width="1440" height="474" alt="Utilizzo nel footer" loading="lazy" decoding="async"><figcaption>Utilizzo nel footer</figcaption></figure>
       </section>
 
+      <section class="docs-section" aria-labelledby="failover">
+        <h2 id="failover"><a class="docs-anchor" href="#failover" aria-label="Link a Continuare a lavorare ai limiti di utilizzo">#</a>Continuare a lavorare ai limiti di utilizzo</h2>
+        <p>Quando un agent raggiunge il suo limite di utilizzo, Ferret prosegue lo stesso lavoro nella stessa cartella del progetto, così un'attività lunga non si ferma al limite. È attivo per impostazione predefinita e si configura in <span class="docs-ui">Impostazioni → Account → Cambio al limite di utilizzo</span>.</p>
+<p>Il lavoro viene passato tramite un unico file nel progetto, <code>.ferret/handoff.md</code>, quindi funziona allo stesso modo tra account e tra agent diversi. Le istruzioni di <span class="docs-ui">Invia all'Agent</span> chiedono all'agent di tenere aggiornato quel file a ogni traguardo intermedio e quando si avvicina a un limite di utilizzo: l'obiettivo, cosa è fatto, il lavoro rimanente come checklist, i file modificati, il passo successivo, i percorsi di <code>feedback.md</code> e delle revisioni correlate, e qualsiasi cosa a cui prestare attenzione. <code>.ferret/</code> resta fuori da git (viene aggiunto a <code>.git/info/exclude</code>, non a <code>.gitignore</code>).</p>
+<ol class="docs-steps">
+  <li>Ferret rileva il limite dal messaggio dell'agent stesso nel terminale (per esempio <code>5-hour limit reached ∙ resets 3pm</code> in Claude Code, <code>You've hit your usage limit</code> in Codex) oppure quando l'utilizzo mostrato nel piè di pagina raggiunge la soglia (95% per impostazione predefinita; il valore più alto tra le finestre di 5 ore, settimanale e per modello).</li>
+  <li>Prima del cambio, Ferret chiede all'agent attuale di aggiornare <code>.ferret/handoff.md</code>. Se l'agent non inizia a farlo (per esempio perché è già al limite), Ferret aggiunge al file ciò che sa: l'ultima richiesta, dove si trova <code>feedback.md</code> e i file modificati secondo <code>git status</code>.</li>
+  <li>Poi Ferret passa a un altro account connesso dello stesso agent, quello con l'utilizzo più basso. Quando tutti gli account dell'agent sono al limite, il lavoro passa all'agent successivo in <span class="docs-ui">Ordine degli agenti</span> (predefinito: Claude Code → Codex → Gemini CLI).</li>
+  <li>Il nuovo agent si apre in una nuova scheda nello stesso progetto e riceve, nella lingua dell'app, l'indicazione di leggere prima <code>.ferret/handoff.md</code> e di proseguire con il lavoro rimanente.</li>
+  <li>Il piè di pagina mostra <span class="docs-ui">Ora con &lt;agent&gt;</span> e un avviso indica cosa è cambiato, per esempio <span class="docs-ui">Codex ha raggiunto il limite di utilizzo, quindi Claude Code ha preso in carico il lavoro.</span> La scheda che ha raggiunto il limite viene chiusa, così non riprende la stessa attività quando il suo limite si azzera.</li>
+</ol>
+<table>
+  <thead><tr><th>Impostazione</th><th>Predefinito</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Cambia automaticamente quando si raggiunge un limite di utilizzo</span></td><td>Attivo</td></tr>
+    <tr><td><span class="docs-ui">Considera un account al limite da</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">Prova prima un altro account dello stesso agente</span></td><td>Attivo</td></tr>
+    <tr><td><span class="docs-ui">Ordine degli agenti</span></td><td>Claude Code, Codex, Gemini CLI. Gli agent che non sono nell'elenco non vengono usati.</td></tr>
+    <tr><td><span class="docs-ui">Torna a un agente più in alto quando il suo limite si azzera</span></td><td>Disattivato (si continua con l'agent attuale). Se attivo, il lavoro torna indietro mentre la scheda è in attesa di input.</td></tr>
+  </tbody>
+</table>
+<p>Il cambio avviene solo all'interno del progetto, al massimo 6 volte all'ora e ad almeno un minuto di distanza. Le credenziali restano nella cartella di configurazione di ciascun account e non vengono mai copiate. In <code>settings.json</code> queste impostazioni si trovano sotto <code>limitFailover</code>.</p>
+      </section>
+
         <nav class="docs-pager" aria-label="Pagina precedente e successiva">
           <a class="docs-pager-prev" href="transcription.html"><span>Precedente</span>Trascrizione e costi</a>
           <a class="docs-pager-next" href="settings.html"><span>Successiva</span>Riferimento delle impostazioni</a>
@@ -190,6 +214,7 @@
       <ul>
         <li><a href="#accounts">Più account</a></li>
         <li><a href="#usage">Utilizzo nel footer</a></li>
+        <li><a href="#failover">Continuare a lavorare ai limiti di utilizzo</a></li>
       </ul>
     </aside>
   </div>

@@ -25,11 +25,13 @@ import { DEFAULT_LAYOUT, FOOTER_ITEMS, FOOTER_PRIORITY, pickFooterTier, type Doc
 import { PanelGrip } from './PanelDock'
 import { GitHubStatusItem } from './GitHubStatusItem'
 import type { UpdateCheckResult } from '@shared/appVersion'
-import { Button, RecordDot, Spinner, SttLanguageSelect, ThemeToggle } from '../ui'
+import type { AutoUpdateStatus } from '@shared/appUpdate'
+import { Button, Progress, RecordDot, Spinner, SttLanguageSelect, ThemeToggle } from '../ui'
 import type { SpeechLanguage, Transcription } from './SettingsPage'
 import { StatusPopover as Popover } from './StatusPopover'
 import { ResourceManager } from './ResourceManager'
 import { UsageMeter } from './UsageMeter'
+import { FailoverStatus } from './FailoverStatus'
 import { ApiUsageMeter } from './ApiUsageMeter'
 import { useT, type TFunction } from '../lib/i18n'
 
@@ -212,19 +214,37 @@ function MicPopover({ value, onChange, recording, micDevices, available, level, 
   </div>
 }
 
-function UpdatePopover({ version, packaged }: { version: string; packaged: boolean }) {
+/**
+ * フッターの「アップデート」。新しい版は裏でダウンロードし（src/main/autoUpdate.ts）、署名した SHA256SUMS で確かめてから
+ * 「再起動して更新」を出す。流れは Orca の更新カード（~/bench/orca/src/renderer/src/components/UpdateCard.tsx）と同じく
+ * 新しい版がある → ダウンロード中 nn% → 再起動して更新。
+ * 裏で入れ替えられない起動（開発版・この OS 向けの入れ替えのファイルが無い版）は、確かめたインストーラーを保存する［ダウンロード］だけ。
+ */
+function UpdatePopover({ version, packaged, status }: { version: string; packaged: boolean; status: AutoUpdateStatus | null }) {
   const t = useT()
   const [checking, setChecking] = useState(false)
   const [result, setResult] = useState<UpdateCheckResult | null>(null)
-  // 新しい版は、アプリが署名を確かめたファイルを落として sha256 を確かめてから、置いた場所を開く（security-4 [7]）
+  // 入れ替えられないときは、アプリが署名を確かめたファイルを落として sha256 を確かめてから、置いた場所を開く（security-4 [7]）
   const [downloading, setDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
-  const download = () => {
+  const [installing, setInstalling] = useState(false)
+  const saveInstaller = () => {
     setDownloading(true)
     setDownloadError(null)
     void window.ade.invoke('app:openUpdate')
       .catch((err: unknown) => setDownloadError(errorMessage(err) || t('update.errors.download')))
       .finally(() => setDownloading(false))
+  }
+  // 裏でダウンロードを始める（自動のダウンロードがオフのとき・失敗したあと）。進み具合は update:status で届く
+  const startDownload = () => {
+    setDownloadError(null)
+    void window.ade.invoke('update:download').catch((err: unknown) => setDownloadError(errorMessage(err) || t('update.errors.download')))
+  }
+  const install = () => {
+    setInstalling(true)
+    void window.ade.invoke('update:install')
+      .catch((err: unknown) => setDownloadError(errorMessage(err) || t('update.errors.download')))
+      .finally(() => setInstalling(false))
   }
   const check = () => {
     setChecking(true)
@@ -233,24 +253,53 @@ function UpdatePopover({ version, packaged }: { version: string; packaged: boole
       .catch(() => setResult({ state: 'error', current: version, message: t('statusBar.checkFailed') }))
       .finally(() => setChecking(false))
   }
+  // 最後の確認の結果は main が持つ（起動時・一定間隔の確認も含む）。届く前は、このポップオーバーで押した結果
+  const shown = status?.check ?? result
+  const progress = status?.progress
+  const auto = !!status?.supported && shown?.state === 'available'
+  const forThis = (p: AutoUpdateStatus['progress'] | undefined) => p && p.phase !== 'idle' && shown?.state === 'available' && p.version === shown.latest ? p : null
+  const step = auto ? forThis(progress) : null
   return <div className="sb-pop__body" data-testid="statusbar-update">
     <h3 className="sb-pop__title"><RefreshCw size={13} aria-hidden="true" />{t('statusBar.update')}</h3>
     <div className="st-row"><span className="st-row__label">{t('statusBar.currentVersion')}</span><span className="sb-pop__mono">v{version}</span></div>
-    {result?.state === 'latest' && <p className="st-note st-note--ok"><CircleCheck size={12} aria-hidden="true" />{t('statusBar.upToDate', { version: result.latest })}</p>}
-    {result?.state === 'available' && <div className="st-note st-note--action">
-      <span><Download size={12} aria-hidden="true" />{t('statusBar.updateAvailable', { version: result.latest })}</span>
-      <Button busy={downloading} onClick={download} data-testid="statusbar-update-download">{t('statusBar.download')}</Button>
+    {shown?.state === 'latest' && <p className="st-note st-note--ok"><CircleCheck size={12} aria-hidden="true" />{t('statusBar.upToDate', { version: shown.latest })}</p>}
+    {shown?.state === 'available' && step?.phase === 'downloading' && <div className="st-note st-note--progress" data-testid="statusbar-update-progress">
+      <span><Download size={12} aria-hidden="true" />{t('statusBar.updateDownloading', { version: shown.latest, percent: step.percent })}</span>
+      <Progress value={step.percent / 100} label={t('statusBar.updateDownloading', { version: shown.latest, percent: step.percent })} />
+    </div>}
+    {shown?.state === 'available' && step?.phase === 'ready' && <div className="st-note st-note--action st-note--ok" data-testid="statusbar-update-ready">
+      <span><CircleCheck size={12} aria-hidden="true" />{t(step.action === 'restart' ? 'statusBar.updateReady' : 'statusBar.updateReadyInstaller', { version: shown.latest })}</span>
+      <Button variant="primary" busy={installing} onClick={install} data-testid="statusbar-update-restart">{t(step.action === 'restart' ? 'statusBar.restartToUpdate' : 'statusBar.openInstaller')}</Button>
+    </div>}
+    {shown?.state === 'available' && step?.phase === 'failed' && <div className="st-note st-note--progress" data-testid="statusbar-update-failed">
+      <span><CircleAlert size={12} aria-hidden="true" />{step.message}</span>
+      <span className="st-note__buttons">
+        <Button onClick={startDownload} data-testid="statusbar-update-retry-download">{t('statusBar.retryDownload')}</Button>
+        <Button variant="ghost" busy={downloading} onClick={saveInstaller} data-testid="statusbar-update-download">{t('statusBar.download')}</Button>
+      </span>
+    </div>}
+    {shown?.state === 'available' && !step && <div className="st-note st-note--action">
+      <span><Download size={12} aria-hidden="true" />{t('statusBar.updateAvailable', { version: shown.latest })}</span>
+      <Button busy={downloading} onClick={auto ? startDownload : saveInstaller} data-testid="statusbar-update-download">{t('statusBar.download')}</Button>
     </div>}
     {downloadError && <p className="st-note" data-testid="statusbar-update-download-error">{downloadError}</p>}
-    {result?.state === 'no-release' && <p className="st-note">{t('statusBar.noRelease')}</p>}
+    {shown?.state === 'no-release' && <p className="st-note">{t('statusBar.noRelease')}</p>}
     {/* 署名が無い・合わない版は案内しない（security-3 [2]）。待っても直らないので「もう一度」は言わない */}
-    {result?.state === 'unverified' && <p className="st-note st-note--warn" data-testid="statusbar-update-unverified"><CircleAlert size={12} aria-hidden="true" />{t('statusBar.updateUnverified', { version: result.latest })}</p>}
-    {result?.state === 'no-source' && <p className="st-note st-note--warn"><CircleAlert size={12} aria-hidden="true" />{t('statusBar.noSource')}</p>}
+    {shown?.state === 'unverified' && <p className="st-note st-note--warn" data-testid="statusbar-update-unverified"><CircleAlert size={12} aria-hidden="true" />{t('statusBar.updateUnverified', { version: shown.latest })}</p>}
+    {shown?.state === 'no-source' && <p className="st-note st-note--warn"><CircleAlert size={12} aria-hidden="true" />{t('statusBar.noSource')}</p>}
     {/* 確認できなかったのは一時的なことが多い。警告の色にせず、下のボタンでもう一度試せることを伝える */}
-    {result?.state === 'error' && <p className="st-note" data-testid="statusbar-update-retry">{t('statusBar.checkRetry', { message: result.message })}</p>}
-    {!packaged && <p className="st-note">{t('statusBar.devBuild')}</p>}
+    {shown?.state === 'error' && <p className="st-note" data-testid="statusbar-update-retry">{t('statusBar.checkRetry', { message: shown.message })}</p>}
+    {status && (packaged || status.supported) && <>
+      <label className="st-row st-row--switch" data-testid="statusbar-update-auto">
+        <span className="st-row__label">{t('statusBar.autoDownload')}</span>
+        <input type="checkbox" role="switch" className="st-switch" checked={status.autoDownload}
+          onChange={(e) => void window.ade.invoke('update:setAutoDownload', e.target.checked).catch(() => undefined)} />
+      </label>
+      <p className="st-note">{t('statusBar.autoDownloadHint')}</p>
+    </>}
+    {!packaged && !status?.supported && <p className="st-note">{t('statusBar.devBuild')}</p>}
     <div className="sb-pop__foot">
-      <Button busy={checking} icon={<RefreshCw size={14} />} onClick={check} data-testid="statusbar-check-update">{t('statusBar.checkForUpdates')}</Button>
+      <Button busy={checking || !!status?.checking} icon={<RefreshCw size={14} />} onClick={check} data-testid="statusbar-check-update">{t('statusBar.checkForUpdates')}</Button>
     </div>
   </div>
 }
@@ -313,6 +362,14 @@ export function StatusBar({
     // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
     void window.ade.invoke('app:version').then(setVersion).catch(() => undefined)
   }, [])
+  // 裏での更新の状態（src/main/autoUpdate.ts）。準備ができたら、フッターにも「再起動して更新」を出す
+  const [updateStatus, setUpdateStatus] = useState<AutoUpdateStatus | null>(null)
+  useEffect(() => {
+    void window.ade.invoke('update:status').then(setUpdateStatus).catch(() => undefined)
+    return window.ade.on('update:status', setUpdateStatus)
+  }, [])
+  const updateReady = updateStatus?.progress.phase === 'ready' ? updateStatus.progress : null
+  const installUpdate = () => { void window.ade.invoke('update:install').catch(() => undefined) }
 
   /** 使用量表示のポップオーバー（UsageMeter が自分で開閉する）。これもビューを隠す対象に入れる */
   const [usageOpen, setUsageOpen] = useState(false)
@@ -394,6 +451,7 @@ export function StatusBar({
       {/* Agent の使用量とアカウント切り替え（Orca の左下と同じ位置） */}
       {slot('usage', <>
         <UsageMeter onManageAccounts={onManageAccounts} onOpenChange={setUsageOpen} shrink={usageMayShrink} />
+        <FailoverStatus />
         {divider}
       </>, ' statusbar__slot--shrink')}
       {/* 従量課金の API（判定モデル・文字起こし・整理）の今日の使用量。判定モデルが無効で記録も無ければ出さない */}
@@ -481,7 +539,16 @@ export function StatusBar({
       >
         {terminalDock === 'right' ? <PanelRight size={13} strokeWidth={2} aria-hidden="true" /> : <PanelBottom size={13} strokeWidth={2} aria-hidden="true" />}
       </button>)}
-      {slot('version', <button
+      {slot('version', <>{updateReady && <button
+        type="button"
+        className="statusbar__btn statusbar__update-ready"
+        title={updateReady.action === 'restart' ? t('statusBar.restartToUpdateTitle', { version: updateReady.version }) : t('statusBar.updateReadyInstaller', { version: updateReady.version })}
+        onClick={installUpdate}
+        data-testid="statusbar-restart-update"
+      >
+        <RefreshCw size={12} strokeWidth={2} aria-hidden="true" />
+        <span>{t(updateReady.action === 'restart' ? 'statusBar.restartToUpdate' : 'statusBar.openInstaller')}</span>
+      </button>}<button
         ref={updateRef}
         type="button"
         className="statusbar__btn statusbar__version"
@@ -492,7 +559,7 @@ export function StatusBar({
         data-testid="statusbar-version"
       >
         {checkingLabel(version.version)}
-      </button>)}
+      </button></>)}
       {slot('theme', <ThemeToggle />)}
       {slot('settings', <button
         type="button"
@@ -556,7 +623,7 @@ export function StatusBar({
           available={available} level={level} onOpenSettings={openSettings} />
       </Popover>}
       {open === 'update' && <Popover anchor={updateRef.current} fallback={moreRef.current} label={t('statusBar.update')} onClose={close}>
-        <UpdatePopover version={version.version} packaged={version.packaged} />
+        <UpdatePopover version={version.version} packaged={version.packaged} status={updateStatus} />
       </Popover>}
     </footer>
   )

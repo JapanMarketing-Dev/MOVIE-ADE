@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 3つのOSの配布物（6本）を、この Mac で作り直して dist/release/ に集める。R2 へは上げない。
+# 3つのOSの配布物（6本）と、macOS の自動更新用の zip（2本）を、この Mac で作り直して dist/release/ に集める。R2 へは上げない。
 #
 #   pnpm release:build            # package.json の version で作る
 #   SKIP_LINUX=1 pnpm release:build   # Linux を飛ばす（コンテナが使えないとき）
@@ -11,7 +11,7 @@
 #      動いている dev サーバーが使う out/ を上書きしないため、ビルドはすべて複製の中で行う
 #   2. 複製の中で pnpm typecheck と pnpm test:unit を流す。1件でも落ちたら止める。
 #      続けて pnpm build:release（ビルド＋ソースマップの送信。scripts/sentry-sourcemaps.mjs）
-#   3. macOS: dmg（arm64 / x64）
+#   3. macOS: dmg（arm64 / x64）と、自動更新用の zip（arm64 / x64。Squirrel.Mac が入れ替えに使う。サイトには出さない）
 #   4. Windows: 展開済みのアプリ（x64 / arm64）を作り、NSIS だけは /tmp の下の短いフォルダの複製から作る
 #      （Mac の makensis は、テンプレートのパスが長いと落ちる。scripts/check-nsis-paths.mjs で先に確かめる）。
 #      できたインストーラは scripts/check-nsis-archive.mjs（古い 7-Zip での検査）を通らなければ止める
@@ -58,8 +58,8 @@ pnpm test:unit
 # ビルドのあと、ソースマップを Sentry へ上げ、out/ の JS に debug ID を書き込む（electron-builder より前）
 pnpm build:release
 
-echo "== macOS（dmg arm64 / x64）"
-pnpm exec electron-builder --config electron-builder.config.cjs --mac dmg --arm64 --x64
+echo "== macOS（dmg と自動更新用の zip。arm64 / x64）"
+pnpm exec electron-builder --config electron-builder.config.cjs --mac dmg zip --arm64 --x64
 
 echo "== Windows（x64 / arm64）"
 pnpm exec electron-builder --config electron-builder.config.cjs --win --dir --x64
@@ -86,7 +86,7 @@ cd "${REPO}"
 # インストーラの中のアーカイブを、インストーラと同じ世代の古い 7-Zip（p7zip 17）で検査する。
 # 読めないメソッド（ARM64 の分岐フィルタなど）があると、インストールで黙ってファイルが抜けるので、ここで止める
 node scripts/check-nsis-archive.mjs "${OUT}"/Ferret-"${VERSION}"-win-*.exe
-cp -c "${SRC}"/dist/release/Ferret-"${VERSION}"-mac-*.dmg "${OUT}/"
+cp -c "${SRC}"/dist/release/Ferret-"${VERSION}"-mac-*.dmg "${SRC}"/dist/release/Ferret-"${VERSION}"-mac-*.zip "${OUT}/"
 
 if [[ "${SKIP_LINUX:-}" == "1" ]]; then
   echo "== Linux は飛ばしました（SKIP_LINUX=1）"

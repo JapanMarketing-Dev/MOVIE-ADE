@@ -28,6 +28,9 @@
  *     （確認なしで進めるときは --yes。CI 用）
  * --sums-sig は SHA256SUMS の署名（scripts/release-signing.mjs。R2 の書き込みとは別の鍵）。promote は署名が無い・合わなければ止め、
  * 合えば releases/<version>/SHA256SUMS(.sig) も置く（アプリの更新確認が確かめる。security-3 [2]）。
+ * 自動更新用のファイル（macOS の zip。scripts/release-r2-lib.mjs の parseUpdateArtifactName）は、--dir にあれば一緒に上げ、
+ * manifest の updates に載せる（サイトには出ない）。その sha256 はインストーラーとは別の UPDATE-SHA256SUMS に載せて署名する
+ * （--expect-update-sums / --update-sums-sig。promote は updates があるのに無ければ止め、合えば releases/<version>/ に置く）。
  * --expect-sums は、R2 とは別の場所（GitHub Release）に置いた SHA256SUMS。渡すと、manifest の各ファイルの sha256 が
  * それと過不足なく一致しなければ止める（R2 だけを書き換えられても公開しない）。CI の stage / promote は必ず渡す。
  * 手元から公開するときは、stage のあとに scripts/release-github.mjs create で SHA256SUMS だけの GitHub Release の下書きを作り、
@@ -56,15 +59,19 @@ import {
   STAGING_CACHE,
   addVersionToIndex,
   assertManifestMatchesSums,
+  assertUpdatesMatchSums,
   assertValidVersion,
+  allFiles,
   buildManifest,
   emptyIndex,
   obsoleteFiles,
   withNotes,
   parseArtifactName,
   parseSha256Sums,
+  parseUpdateArtifactName,
   replaceVersionInIndex,
   stagingKey,
+  UPDATE_SUMS,
   validateIndex,
   validateManifest,
   workPath
@@ -95,6 +102,8 @@ function parseArgs(argv) {
     else if (key === '--yes') args.yes = true
     else if (key === '--expect-sums') args.expectSums = value()
     else if (key === '--sums-sig') args.sumsSig = value()
+    else if (key === '--expect-update-sums') args.expectUpdateSums = value()
+    else if (key === '--update-sums-sig') args.updateSumsSig = value()
     else throw new Error(`知らない引数です: ${key}`)
   }
   args.version ??= JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
@@ -169,6 +178,29 @@ function checkExpectedSums(manifest, args, requireSigned = false) {
   }
   assertManifestMatchesSums(manifest, parseSha256Sums(sums.toString('utf8')))
   console.log(`SHA256SUMS（${args.expectSums}）と manifest の ${manifest.files.length} 件が一致しました`)
+  checkExpectedUpdateSums(manifest, args, requireSigned)
+}
+
+/**
+ * 自動更新用のファイル（manifest の updates）を、署名した UPDATE-SHA256SUMS と突き合わせる。
+ * updates がある版の公開（requireSigned）は、--expect-update-sums と --update-sums-sig が無ければ止める
+ */
+function checkExpectedUpdateSums(manifest, args, requireSigned) {
+  const count = manifest.updates?.length ?? 0
+  if (requireSigned && !args.dryRun && count > 0 && (!args.expectUpdateSums || !args.updateSumsSig)) {
+    throw new Error(`自動更新のファイルがあるので、署名した ${UPDATE_SUMS} が要ります（--expect-update-sums ${UPDATE_SUMS} --update-sums-sig ${UPDATE_SUMS}.sig）`)
+  }
+  if (!args.expectUpdateSums) {
+    if (count > 0) console.log(`（${UPDATE_SUMS} を渡していないので、自動更新のファイル ${count} 件は突き合わせていません）`)
+    return
+  }
+  const sums = readFileSync(resolve(root, args.expectUpdateSums))
+  if (args.updateSumsSig) {
+    assertSignedSums(sums, readFileSync(resolve(root, args.updateSumsSig), 'utf8'))
+    console.log(`${UPDATE_SUMS} の署名（${args.updateSumsSig}）をリポジトリの公開鍵で確かめました`)
+  }
+  assertUpdatesMatchSums(manifest, parseSha256Sums(sums.toString('utf8')))
+  console.log(`${UPDATE_SUMS}（${args.expectUpdateSums}）と manifest の自動更新のファイル ${count} 件が一致しました`)
 }
 
 function putJson(key, value, cacheControl, dryRun, work) {
@@ -213,7 +245,9 @@ function assertNotReleased(version, index) {
 async function stage(args, work) {
   const dir = resolve(root, args.dir)
   if (!existsSync(dir)) throw new Error(`フォルダがありません: ${dir}（先に pnpm dist:<os> で作る）`)
-  const found = readdirSync(dir).map((name) => parseArtifactName(name, args.version)).filter(Boolean)
+  const entries = readdirSync(dir)
+  const found = entries.map((name) => parseArtifactName(name, args.version)).filter(Boolean)
+  const foundUpdates = entries.map((name) => parseUpdateArtifactName(name, args.version)).filter(Boolean)
   if (found.length === 0) throw new Error(`${dir} に Ferret-${args.version}-*.{dmg,exe,AppImage,deb} がありません`)
   // 1つの版に製品名を混ぜない（Ferret と MOVIE-ADE のファイルが同じ版で並ぶと、サイトの表示がおかしくなる）
   const products = [...new Set(found.map((f) => f.product))]
@@ -227,6 +261,15 @@ async function stage(args, work) {
     const size = statSync(path).size
     if (size > PUT_LIMIT_BYTES) throw new Error(`${f.name} は ${mib(size)} で、wrangler で1回に上げられる 300 MiB を超えています`)
     files.push({ ...f, size, sha256: await sha256(path), local: path })
+    console.log(`  ${f.name}  ${mib(size)}`)
+  }
+  const updates = []
+  if (foundUpdates.length > 0) console.log(`自動更新用のファイル（${foundUpdates.length} 件。サイトには出さない）:`)
+  for (const f of foundUpdates) {
+    const path = join(dir, f.name)
+    const size = statSync(path).size
+    if (size > PUT_LIMIT_BYTES) throw new Error(`${f.name} は ${mib(size)} で、wrangler で1回に上げられる 300 MiB を超えています`)
+    updates.push({ ...f, size, sha256: await sha256(path), local: path })
     console.log(`  ${f.name}  ${mib(size)}`)
   }
   let build = 1
@@ -252,6 +295,7 @@ async function stage(args, work) {
     notes: args.notes ? readFileSync(resolve(root, args.notes), 'utf8') : `${product} ${args.version}`,
     notesUrl: args.notesUrl,
     files: files.map(({ name, os, arch, kind, size, sha256: hash }) => ({ name, os, arch, kind, size, sha256: hash })),
+    updates: updates.map(({ name, os, arch, kind, size, sha256: hash }) => ({ name, os, arch, kind, size, sha256: hash })),
     previewOs: args.preview,
     product,
     build
@@ -259,20 +303,20 @@ async function stage(args, work) {
   checkExpectedSums(manifest, args)
 
   console.log(args.dryRun ? '\n（--dry-run: 実際には書き込みません）' : '\n公開前の置き場（staging）へ上げます:')
-  for (const f of manifest.files) {
-    const local = files.find((x) => x.name === f.name).local
+  for (const f of allFiles(manifest)) {
+    const local = [...files, ...updates].find((x) => x.name === f.name).local
     put(stagingKey(f.path), local, CONTENT_TYPES[f.kind], STAGING_CACHE, args.dryRun)
   }
   putJson(`staging/${args.version}/manifest.json`, manifest, STAGING_CACHE, args.dryRun, work)
   console.log(`\n確認用: ${PUBLIC_BASE}/staging/${args.version}/manifest.json`)
   console.log(`公開するには: node scripts/release-r2.mjs promote --version ${args.version}${args.replace ? ' --replace' : ''}`)
-  console.log(`合計 ${mib(files.reduce((n, f) => n + f.size, 0))}`)
+  console.log(`合計 ${mib([...files, ...updates].reduce((n, f) => n + f.size, 0))}`)
 }
 
 async function discard(args) {
   const manifest = getManifest(`staging/${args.version}/manifest.json`, args.version)
   if (!manifest) throw new Error(`staging/${args.version}/manifest.json がありません（片付けるものがない）`)
-  const keys = [...manifest.files.map((f) => stagingKey(f.path)), `staging/${args.version}/manifest.json`]
+  const keys = [...allFiles(manifest).map((f) => stagingKey(f.path)), `staging/${args.version}/manifest.json`]
   console.log(`公開しない ${args.version} を staging から消します:`)
   for (const key of keys) console.log(`  ${key}`)
   await confirm('消しますか', args)
@@ -324,7 +368,7 @@ async function promote(args, work) {
   const latest = nextIndex.latest === args.version ? manifest : nextIndex.latest ? getManifest(`releases/${nextIndex.latest}/manifest.json`, nextIndex.latest) : null
 
   console.log(args.dryRun ? '（--dry-run: 実際には書き込みません）' : `${args.version} を公開します:`)
-  for (const f of manifest.files) {
+  for (const f of allFiles(manifest)) {
     // 一時ファイルの名前はこちらで付ける（manifest の name は使わない）。まだ無いことを確かめ、作ったものだけを消す
     const local = tempFile(work, 'bin')
     if (existsSync(local)) throw new Error(`一時ファイルがすでにあります: ${local}`)
@@ -341,6 +385,11 @@ async function promote(args, work) {
   if (args.expectSums && args.sumsSig) {
     put(`releases/${args.version}/SHA256SUMS`, resolve(root, args.expectSums), 'text/plain; charset=utf-8', MANIFEST_CACHE, args.dryRun)
     put(`releases/${args.version}/SHA256SUMS.sig`, resolve(root, args.sumsSig), 'text/plain; charset=utf-8', MANIFEST_CACHE, args.dryRun)
+  }
+  // 自動更新用のファイルの sha256 と署名。アプリは署名を確かめた zip だけを入れ替えに使う（src/main/releaseSignature.ts の verifiedUpdateFiles）
+  if (manifest.updates?.length && args.expectUpdateSums && args.updateSumsSig) {
+    put(`releases/${args.version}/${UPDATE_SUMS}`, resolve(root, args.expectUpdateSums), 'text/plain; charset=utf-8', MANIFEST_CACHE, args.dryRun)
+    put(`releases/${args.version}/${UPDATE_SUMS}.sig`, resolve(root, args.updateSumsSig), 'text/plain; charset=utf-8', MANIFEST_CACHE, args.dryRun)
   }
 
   // 古い版を消すときに使うので、外れる版の manifest を先に読んでおく
@@ -364,13 +413,14 @@ async function promote(args, work) {
   if (removedManifests.length > 0) {
     console.log(`\n最新 ${nextIndex.versions.length} 版を超えた古い版を消します: ${removedManifests.map((v) => v.version).join(', ')}`)
     for (const v of removedManifests) {
-      for (const f of v.manifest?.files ?? []) remove(f.path, args.dryRun)
+      for (const f of allFiles(v.manifest)) remove(f.path, args.dryRun)
+      if (v.manifest) for (const name of ['SHA256SUMS', 'SHA256SUMS.sig', UPDATE_SUMS, `${UPDATE_SUMS}.sig`]) remove(`releases/${v.version}/${name}`, args.dryRun)
       remove(v.key, args.dryRun)
     }
   }
 
   console.log(`\n公開前の置き場を片付けます:`)
-  for (const f of manifest.files) remove(stagingKey(f.path), args.dryRun)
+  for (const f of allFiles(manifest)) remove(stagingKey(f.path), args.dryRun)
   remove(`staging/${args.version}/manifest.json`, args.dryRun)
   console.log(`\n${args.dryRun ? '確認だけ' : '公開しました'}: ${PUBLIC_BASE}/releases/${args.version}/manifest.json`)
 

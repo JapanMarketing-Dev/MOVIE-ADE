@@ -189,7 +189,7 @@
     <tr><td><span class="docs-ui">发送到 GitHub</span></td><td>通过 <code>gh</code> 发送到 GitHub</td><td>仅正文文本（不含图片）</td></tr>
     <tr><td>底部栏用量显示（仅 Claude Code 和 Codex）</td><td>Anthropic、ChatGPT</td><td>使用你自己的登录发出的用量请求</td></tr>
     <tr><td>GitHub 点星提示</td><td>通过你的 <code>gh</code> 发送到 GitHub</td><td>检查你是否已为仓库点星，只有在你点击 <span class="docs-ui">在 GitHub 上点星</span> 时才会点星</td></tr>
-    <tr><td><span class="docs-ui">检查更新</span>（手动）</td><td>下载服务器（Cloudflare R2）</td><td>对 <code>latest.json</code> 及该版本 <code>SHA256SUMS</code> 的请求；点击 <span class="docs-ui">下载</span> 时还会下载安装程序</td></tr>
+    <tr><td>更新（Ferret 启动时、每 6 小时、<span class="docs-ui">检查更新</span>）</td><td>下载服务器（Cloudflare R2）</td><td>对 <code>latest.json</code> 及该版本 <code>SHA256SUMS</code>（在 macOS 上还有 <code>UPDATE-SHA256SUMS</code>）的请求；发现新版本时，下载适用于你电脑的更新文件（关闭 <span class="docs-ui">自动下载新版本</span> 时，只在点击 <span class="docs-ui">下载</span> 时下载）</td></tr>
     <tr><td>从应用发送反馈（仅在你发送时）</td><td>开发者的反馈中继（一个 Cloudflare Worker），它会在 <code>JapanMarketing-Dev/ferret</code> 中创建一个公开 issue</td><td>你的文字、问题或想法、应用 / 操作系统版本和 CPU，以及你附加的最多 3 张截图。密钥、令牌、电子邮件地址和主文件夹路径会被遮盖。中继不会保存你的 IP 地址（参见<a href="#feedback">从应用发送反馈</a>）</td></tr>
     <tr><td>崩溃或错误（<span class="docs-ui">发送崩溃报告</span> 开启时）</td><td>Sentry</td><td>堆栈跟踪以及操作系统 / CPU / 应用版本（参见<a href="#crash-reports">崩溃报告</a>）</td></tr>
   </tbody>

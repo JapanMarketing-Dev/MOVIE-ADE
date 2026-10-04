@@ -5,34 +5,49 @@
 <!-- @lead 97cbc36c8d -->
 プロジェクトのファイルを開いて編集し、Markdown と Mermaid をプレビューします。内蔵のブラウザで開いたプレビューは、ほかの Web ページと同じように録画してレビューできます。
 
-<!-- @files d29f6a2107 -->
+<!-- @files c2eff8e24c -->
 ## ファイルを開いて編集する
 <ul>
   <li><span class="docs-ui">ファイル</span>（ファイルツリー）: {{keys:Mod+Shift+E}}。<span class="docs-ui">ファイル名で絞り込む</span>、<span class="docs-ui">再読込</span>、<span class="docs-ui">すべて畳む</span> があります。</li>
   <li><span class="docs-ui">ファイルを名前で開く…</span>: {{keys:Mod+P}}。</li>
+  <li>Finder（Windows ではエクスプローラー、Linux ではファイルマネージャー）からファイルをタブバーかエディタにドラッグすると開きます。プロジェクト内のファイルはエディタかビューアで開きます。プロジェクトの外のファイルを取り込むには、<span class="docs-ui">ファイル</span> にドロップします。プロジェクトにコピーされます。ここにドロップしたフォルダはプロジェクトとして開きます。<span class="docs-ui">ファイル</span> からドラッグしたファイルも同じように開きます。</li>
   <li>{{keys:Mod+S}} で保存します。変更したファイルを閉じると <q>&lt;name&gt; の変更を保存しますか？</q> と尋ねられ、<span class="docs-ui">保存</span>、<span class="docs-ui">保存しない</span>、<span class="docs-ui">キャンセル</span> を選べます。</li>
   <li>保存していない編集がある間にディスク上のファイルが変わったときは、<span class="docs-ui">ディスクの内容を読み込む</span> か <span class="docs-ui">自分の変更を残す</span> を選びます。</li>
 </ul>
 <p>エディタは Monaco です。テキストでないファイルは代わりにビューアで開きます。画像（拡大・縮小でき、SVG はコードとしても表示可能）、シークバー付きの動画と音声、PDF、そのほかのバイナリファイルはサイズと先頭のバイトの 16 進表示です。ビューアは読み取り専用で、プロジェクトのフォルダの外にあるファイルや、フォルダの外へ出るシンボリックリンクの先にあるファイルは表示しません。</p>
 
-<!-- @file-tree 4bec72e9f4 -->
-## ファイルを作る・名前を変える・削除する
-<p>VS Code と同じように、<span class="docs-ui">ファイル</span> の中でそのままファイルを扱えます。名前はツリーの中で直接入力します。</p>
+<!-- @file-tree 6020ab04cd -->
+## ファイルツリーでファイルを扱う
+<p>VS Code と同じように、<span class="docs-ui">ファイル</span> の中でそのままファイルを扱えます。項目を右クリックします。プロジェクトの一番上で操作するときは、ツリーの下の空いた所を右クリックします。名前はツリーの中で直接入力します。</p>
 <ul>
-  <li><span class="docs-ui">新しいファイル</span> / <span class="docs-ui">新しいフォルダ</span>: ツリーの上のボタンか、フォルダ（またはツリーの下の空いた所）の右クリック。新しい項目は、選んでいるフォルダの中、選んでいるファイルの隣、またはプロジェクトの一番上にできます。新しいファイルはエディタで開きます。</li>
-  <li><span class="docs-ui">名前を変更</span>: {{keys:F2 / Enter|F2}} か右クリック。開いているタブは新しい名前に付いていき、保存していない編集も残ります。</li>
+  <li><span class="docs-ui">新しいファイル</span> / <span class="docs-ui">新しいフォルダ</span>: ツリーの上のボタンか右クリック。新しい項目は、選んでいるフォルダの中、選んでいるファイルの隣、またはプロジェクトの一番上にできます。<code>src/routes/index.ts</code> のようにスラッシュを含む名前を入力すると、途中のフォルダも作ります。新しいファイルはエディタで開きます。空のフォルダでは、<span class="docs-ui">ファイル</span> に <span class="docs-ui">このフォルダは空です</span> と、<span class="docs-ui">新しいファイル</span> と <span class="docs-ui">新しいフォルダ</span> のボタンが出ます。</li>
+  <li><span class="docs-ui">切り取り</span>、<span class="docs-ui">コピー</span>、<span class="docs-ui">貼り付け</span>: {{keys:Mod+X}}、{{keys:Mod+C}}、{{keys:Mod+V}} か右クリック。フォルダは中身ごとコピーします。<span class="docs-ui">複製</span> は元の隣にコピーを作ります。名前がすでに使われているときは、コピーの名前は <code>name copy</code>、その次は <code>name copy 2</code> になります。</li>
+  <li>項目をフォルダの上（プロジェクトの一番上なら空いた所）にドラッグすると移動します。ドロップするときに {{keys:Alt|Ctrl}} を押していると、移動ではなくコピーします。Finder（Windows ではエクスプローラー）からドラッグしてきたファイルやフォルダはプロジェクトにコピーされ、元のものはそのまま残ります。</li>
+  <li><span class="docs-ui">名前を変更</span>: {{keys:F2 / Enter|F2}} か右クリック。</li>
   <li><span class="docs-ui">削除</span>: {{keys:Mod+Backspace / Delete|Delete}} か右クリック。Ferret は先に確認してから、項目をゴミ箱（Windows ではごみ箱）へ移すので、元に戻せます。削除したファイルのタブは閉じます。保存していない編集があったときは、確認の画面にそう出ます。</li>
-  <li>{{keys:Mod}}-クリックか {{keys:Shift}}-クリックで複数の項目を選ぶと、まとめて削除できます。</li>
+  <li><span class="docs-ui">元に戻す</span>: {{keys:Mod+Z}} で、直前の新規作成、名前の変更、移動、貼り付け、複製を取り消します。削除した項目はゴミ箱から戻します。</li>
+  <li><span class="docs-ui">パスをコピー</span>（{{keys:Alt+Mod+C|Shift+Alt+C}}）と <span class="docs-ui">相対パスをコピー</span>（{{keys:Alt+Shift+Mod+C|Ctrl+Shift+Alt+C}}）は、パスをクリップボードに入れます。</li>
+  <li><span class="docs-ui">Finder で表示</span>（Windows では <span class="docs-ui">エクスプローラーで表示</span>、Linux では <span class="docs-ui">含まれているフォルダを開く</span>）: {{keys:Alt+Mod+R|Shift+Alt+R}}。<span class="docs-ui">ターミナルで開く</span> は、そのフォルダ（ファイルならそのファイルがあるフォルダ）で新しいターミナルのタブを開きます。</li>
+  <li>ファイルでは、<span class="docs-ui">開く</span> でエディタで開き、<span class="docs-ui">既定のアプリで開く</span> で OS がその種類のファイルに使うアプリで開きます。</li>
+  <li>{{keys:Mod}}-クリックか {{keys:Shift}}-クリックで複数の項目を選ぶと、まとめて切り取り、コピー、移動、削除できます。</li>
   <li>{{keys:Esc}} で入力中の名前を取り消します。</li>
 </ul>
-<p>Ferret は同じ名前の既存のファイルやフォルダを上書きしません。また、プロジェクトのフォルダの外に出るもの（<code>..</code>、絶対パス、外を指すシンボリックリンク）、<code>.git</code> の中のもの、どれかの OS で使えない名前（<code>/ \ &lt; &gt; : " | ? *</code>、制御文字、末尾の空白やドット、<code>CON</code> や <code>NUL</code> などの Windows の予約名）は受け付けません。</p>
+<p>開いているタブは、名前を変えたり移動したりしたファイルに付いていき、保存していない編集も残ります。Ferret は同じ名前の既存のファイルやフォルダを上書きせず、すべてをプロジェクトのフォルダの中に収めます。<code>..</code>、絶対パス、外を指すシンボリックリンク、<code>.git</code> の中のもの、フォルダをそれ自身の中へ移すこと、どれかの OS で使えない名前（<code>/ \ &lt; &gt; : " | ? *</code>、制御文字、末尾の空白やドット、<code>CON</code> や <code>NUL</code> などの Windows の予約名）は受け付けません。1回のコピーやドロップで扱えるのは 10,000 項目、1 GB までです。</p>
 
-<!-- @preview b8c0baaad4 -->
+<!-- @preview cb127d2292 -->
 ## Markdown と Mermaid のプレビュー
 <p>プレビューできるのは <code>.md</code>、<code>.markdown</code>、<code>.mdx</code>、<code>.mmd</code>、<code>.mermaid</code> です。Mermaid はアプリに同梱しているので、オフラインでも図を描けます。</p>
 <ul>
   <li><span class="docs-ui">プレビューを横に並べる</span>: エディタの隣に表示</li>
   <li><span class="docs-ui">プレビューを開く</span>: 内蔵のブラウザ（<code>ade-preview://</code>）で表示。録画してレビューできます</li>
+</ul>
+<p>Markdown ファイルをプレビューの見た目のまま編集するには、エディタの上の <span class="docs-ui">プレビューで編集</span> を押します。戻るには <span class="docs-ui">ソース</span> を押します。どちらも同じ内容を表示し、保存、未保存の印、閉じるときの確認も同じように働きます。</p>
+<ul>
+  <li>見出し、段落、リスト、チェックボックス、表、リンク、太字、斜体、インラインコードにそのまま入力できます。行の先頭で <code>#</code>、<code>-</code>、<code>1.</code>、<code>&gt;</code> に続けて空白を入力すると、見出し、リスト、引用になります。</li>
+  <li>コードブロックと Mermaid の図はソースのまま編集し、隅に言語が出ます。図は <span class="docs-ui">プレビューを横に並べる</span> か <span class="docs-ui">プレビューを開く</span> で描かれます。</li>
+  <li>フロントマター（先頭の <code>---</code> のブロック）は文書の上にテキストとして出て、そこで編集できます。</li>
+  <li>変更していない部分は、見出しの書き方、リストの記号、空行、表の揃え、改行コードも含めて、書かれたとおりに保存します。編集したブロックはできるだけ元の書き方を保ち、保てないときはそのブロックを標準的な Markdown の形（リストは <code>-</code>、見出しは <code>#</code>）で書きます。</li>
+  <li>プロジェクト内の画像は表示します。ほかのサイトの画像は読み込まず、代わりにホスト名を表示します。ファイル内の HTML はテキストとして表示します。</li>
 </ul>
 
 <!-- @review-docs 4b5c6316ba -->

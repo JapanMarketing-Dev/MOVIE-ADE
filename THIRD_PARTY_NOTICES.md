@@ -57,6 +57,9 @@ The following files contain code ported or adapted from Orca. Each file names it
 | `src/renderer/editor/FileEditor.tsx` | `src/renderer/src/components/editor/EditorPanel.tsx` |
 | `src/renderer/editor/language.ts` | `src/renderer/src/lib/language-detect.ts` |
 | `src/renderer/editor/monacoSetup.ts` | `src/renderer/src/lib/monaco-setup.ts` |
+| `src/renderer/editor/richMarkdown/RichMarkdownEditor.tsx` | `src/renderer/src/components/editor/RichMarkdownEditor.tsx`<br>`src/renderer/src/components/editor/useRichMarkdownEditorInstance.ts` |
+| `src/renderer/editor/richMarkdown/codec.ts` | `src/renderer/src/components/editor/rich-markdown-extensions.ts` |
+| `src/renderer/editor/richMarkdown/reconcile.ts` | `src/renderer/src/components/editor/rich-markdown-source-reconcile.ts`<br>`src/renderer/src/components/editor/rich-markdown-block-source.ts`<br>`src/renderer/src/components/editor/markdown-frontmatter.ts` |
 | `src/renderer/editor/useOpenFiles.ts` | `src/renderer/src/components/editor/editor-content-dirty-state.ts` |
 | `src/renderer/hooks/useAgentAccounts.ts` | `src/renderer/src/components/settings/accounts-pane-account-actions.ts`<br>`src/renderer/src/components/status-bar/ClaudeSwitcherMenu.tsx` |
 | `src/renderer/lib/theme.ts` | `src/renderer/src/lib/document-theme.ts` |
@@ -128,6 +131,7 @@ The built app includes the following packages (versions as pinned in `pnpm-lock.
 | @monaco-editor/react | MIT | Suren Atoyan |
 | mermaid | MIT | Knut Sveidqvist and contributors |
 | marked | MIT | Christopher Jeffrey / MarkedJS |
+| @tiptap/core, @tiptap/pm, @tiptap/starter-kit, @tiptap/markdown, @tiptap/extension-* (and the prosemirror-* packages they use) | MIT | Tiptap GmbH; ProseMirror: Marijn Haverbeke and others |
 | react, react-dom | MIT | Meta Platforms, Inc. and affiliates |
 | lucide-react | ISC | Lucide Contributors |
 | ajv | MIT | Evgeny Poberezkin |

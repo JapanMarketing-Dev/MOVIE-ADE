@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import {
   ADE_API_KEY,
   IPC_EVENT_CHANNELS,
@@ -16,6 +16,28 @@ import { normalizeSystemLocale } from '@shared/i18n'
  * contextIsolation 有効・nodeIntegration 無効のまま、宣言済みのチャネルだけを通す橋。
  * 許可リストは src/shared/ipc.ts が正本で、未宣言のチャネルは呼べない。
  */
+
+/**
+ * 落とした File の実パス。JS で作った File（new File）は空になる。
+ * E2E（ADE_E2E=1）だけは、合成した drop イベントのために File の名前に置いたパス（`ade-e2e-path:` ＋ encodeURIComponent）を使う
+ */
+const E2E_PATH_PREFIX = 'ade-e2e-path:'
+function droppedFilePath(file: File): string {
+  let path = ''
+  try {
+    path = webUtils.getPathForFile(file)
+  } catch {
+    // File でないものが渡された（想定内。そのものだけ除く）
+  }
+  if (!path && process.env.ADE_E2E === '1' && typeof file?.name === 'string' && file.name.startsWith(E2E_PATH_PREFIX)) {
+    try {
+      path = decodeURIComponent(file.name.slice(E2E_PATH_PREFIX.length))
+    } catch {
+      // 壊れた書き方（想定内。そのものだけ除く）
+    }
+  }
+  return path
+}
 
 const requestChannels = new Set<string>(IPC_REQUEST_CHANNELS)
 const eventChannels = new Set<string>(IPC_EVENT_CHANNELS)
@@ -54,7 +76,14 @@ const api: AdeApi = {
   initialTheme: process.argv.includes('--ade-theme=light') ? 'light' : 'dark',
 
   // main が additionalArguments で渡す（--ade-locale=en|ja）。無ければ英語
-  initialLocale: normalizeSystemLocale(process.argv.find((a) => a.startsWith('--ade-locale='))?.slice('--ade-locale='.length))
+  initialLocale: normalizeSystemLocale(process.argv.find((a) => a.startsWith('--ade-locale='))?.slice('--ade-locale='.length)),
+
+  // 外から落とした File の実パス。パスは renderer に作らせず、ここで File から取り出して main で確かめる（src/main/droppedPaths.ts）
+  inspectDrop: async (files) => {
+    const paths = Array.from(files ?? [], droppedFilePath).filter((p) => p.length > 0)
+    if (paths.length === 0) return []
+    return (await ipcRenderer.invoke('drop:inspect', paths)) as IpcResult<'drop:inspect'>
+  }
 }
 
 contextBridge.exposeInMainWorld(ADE_API_KEY, api)

@@ -21,7 +21,7 @@ Le revisioni si trovano nella cartella del progetto. Le impostazioni sono in <co
 ## Conservazione
 <p><span class="docs-ui">Conserva registrazioni</span> (7 giorni per impostazione predefinita, 30 giorni oppure <span class="docs-ui">Per sempre</span>): all'avvio, le revisioni completate più vecchie di così perdono <code>recording.webm</code> e <code>work/</code>. <code>feedback.md</code> e le immagini delle segnalazioni vengono conservati. Le revisioni incomplete non vengono mai ripulite. La pulizia avviene all'avvio, per l'ultimo progetto aperto.</p>
 
-<!-- @network 1eadb8b937 -->
+<!-- @network 93d136650b -->
 ## Cosa lascia la tua macchina
 <table>
   <thead><tr><th>Quando</th><th>Destinazione</th><th>Dati</th></tr></thead>
@@ -35,7 +35,7 @@ Le revisioni si trovano nella cartella del progetto. Le impostazioni sono in <co
     <tr><td><span class="docs-ui">Invia a GitHub</span></td><td>GitHub tramite <code>gh</code></td><td>solo il testo del corpo (niente immagini)</td></tr>
     <tr><td>Utilizzo nel footer (solo Claude Code e Codex)</td><td>Anthropic, ChatGPT</td><td>richiesta di utilizzo con il tuo accesso</td></tr>
     <tr><td>Richiesta di stella su GitHub</td><td>GitHub tramite il tuo <code>gh</code></td><td>controlla se hai aggiunto una stella al repository, e la aggiunge solo se fai clic su <span class="docs-ui">Aggiungi stella su GitHub</span></td></tr>
-    <tr><td><span class="docs-ui">Verifica aggiornamenti</span> (manuale)</td><td>server di download (Cloudflare R2)</td><td>richieste di <code>latest.json</code> e del file <code>SHA256SUMS</code> di quella versione; il programma di installazione quando fai clic su <span class="docs-ui">Scarica</span></td></tr>
+    <tr><td>Aggiornamenti (all’avvio di Ferret, ogni 6 ore e con <span class="docs-ui">Verifica aggiornamenti</span>)</td><td>server di download (Cloudflare R2)</td><td>richieste di <code>latest.json</code> e del file <code>SHA256SUMS</code> di quella versione (su macOS anche <code>UPDATE-SHA256SUMS</code>); quando c’è una nuova versione, il file di aggiornamento per il tuo computer (solo quando fai clic su <span class="docs-ui">Scarica</span> se <span class="docs-ui">Scarica automaticamente le nuove versioni</span> è disattivato)</td></tr>
     <tr><td>Invio di feedback dall'app (solo quando lo invii)</td><td>il relay di feedback dello sviluppatore (un Cloudflare Worker), che apre una issue pubblica in <code>JapanMarketing-Dev/ferret</code></td><td>il tuo testo, bug o idea, versione dell'app / del sistema operativo e CPU, e fino a 3 screenshot che alleghi. Chiavi, token, indirizzi email e percorsi della cartella home vengono mascherati. Il relay non memorizza il tuo indirizzo IP (vedi <a href="#feedback">Feedback dall'app</a>)</td></tr>
     <tr><td>Un arresto anomalo o un errore (<span class="docs-ui">Invia report sugli arresti anomali</span> attivo)</td><td>Sentry</td><td>stack trace e versioni di sistema operativo / CPU / app (vedi <a href="#crash-reports">Report sugli arresti anomali</a>)</td></tr>
   </tbody>

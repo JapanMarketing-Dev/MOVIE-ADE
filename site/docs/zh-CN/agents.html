@@ -178,13 +178,15 @@
 
       <section class="docs-section" aria-labelledby="terminal">
         <h2 id="terminal"><a class="docs-anchor" href="#terminal" aria-label="指向“在内置终端中运行 Agent”的链接">#</a>在内置终端中运行 Agent</h2>
-        <p>打开项目时，Ferret 会为 <span class="docs-ui">设置 → Agent → 打开项目时启动</span> 中的每个 Agent 各启动一个终端标签页，位于项目文件夹中，并以该 Agent 的普通模式运行。默认是 Claude Code 和 Codex：</p>
-<pre><code>claude
-codex</code></pre>
+        <p>打开项目时，Ferret 会为 <span class="docs-ui">设置 → Agent → 打开项目时启动</span> 中的每个 Agent 各启动一个终端标签页，位于项目文件夹中。默认是 Claude Code 和 Codex，启动时跳过权限确认，并开启 Claude in Chrome：</p>
+<pre><code>claude --dangerously-skip-permissions --chrome
+codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>你也可以改为从<a href="#supported">支持列表</a>中任选 Agent（按你选择的顺序启动），或者一个都不选。</p>
-<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">权限确认保持开启</p><p>登记或克隆项目并不会让 Ferret 信任它。Claude Code 和 Codex 等 Agent 第一次会询问你是否信任该文件夹，并且在编辑文件或运行命令前仍会继续询问。若要在你信任的某个项目中让 Agent 跳过权限确认、审批和沙盒，请在 <span class="docs-ui">设置 → Agent → 跳过权限确认</span> 中为该项目开启并确认。对于已知跳过参数的 Agent，Ferret 会添加该 Agent 自己的跳过参数；没有已知参数的 Agent 仍会保留确认。此设置只对你自己在该项目文件夹中打开的 Agent 生效；打开项目时自动启动的 Agent 始终保留确认。在参数中手动输入的跳过权限参数会被忽略。</p></div>
+<p>你自己打开的 Agent 也以同样的方式启动。Ferret 还会为 Claude Code 和 Codex 把项目文件夹标记为受信任，因此它们不会询问该文件夹。若要以普通模式启动（在信任文件夹、编辑文件或运行命令之前都会询问），请关闭 <span class="docs-ui">设置 → Agent → 启动 Agent 时跳过权限确认</span>。每个 Agent 的命令和参数位于 <span class="docs-ui">设置 → Agent</span>（<span class="docs-ui">命令</span>）和 <code>settings.json</code>（<code>agents.launch</code>）中，并按你写的原样使用。要在不使用 Claude in Chrome 的情况下启动 Claude Code，请在那里删除 <code>--chrome</code>。如果参数中已经选择了权限模式（例如 <code>--permission-mode plan</code>，或 Codex 的 <code>--sandbox workspace-write</code>），就不会再添加跳过确认的参数。</p>
 <p>如果没有选择任何 Agent，则会打开普通的 shell。<span class="docs-ui">+</span> 菜单可以打开 <span class="docs-ui">新建终端</span>、在新标签页中启动你的任意 Agent，或跳转到 <span class="docs-ui">Agent 设置…</span>。它的搜索框还能查找标签页、已保存的 URL 和文件。</p>
-<p>标签页会显示 Agent 的状态：<span class="docs-ui">运行中</span>、<span class="docs-ui">等待输入</span>、<span class="docs-ui">完成（未读）</span>、<span class="docs-ui">空闲</span>。在侧边栏中，有 Agent 正在运行的项目会带有标记，无需切换项目就能看到。</p>
+<p><strong>把文件拖放到终端。</strong>从访达（Windows 上为文件资源管理器，Linux 上为文件管理器）把文件、文件夹或图片拖到终端窗格上，它们的路径会以空格分隔输入到该窗格中，不会按 Enter。Agent 运行时也是如此：Claude Code 会把拖入的图片路径当作图片读取。从 <span class="docs-ui">文件</span> 拖出的行（选中后可一次拖多个）也同样处理：终端位于项目文件夹中时，路径相对于项目文件夹；用 <code>cd</code> 切换到其他位置后则为绝对路径。包含空格或其他特殊字符的路径会按 shell 加上引号：zsh 和 bash 中为 <code>'…'</code>，命令提示符中为 <code>"…"</code>，PowerShell 中为 <code>'…'</code>。</p>
+<p>标签页会显示 Agent 的状态：<span class="docs-ui">运行中</span>、<span class="docs-ui">等待输入</span>、<span class="docs-ui">完成（未读）</span>、<span class="docs-ui">空闲</span>。<span class="docs-ui">完成（未读）</span> 表示在你查看其他标签页时 Agent 已完成；打开该标签页后会变为 <span class="docs-ui">空闲</span>。侧边栏也会以同样的方式标记每个项目，无需切换项目就能看到：Agent 运行时显示移动的条形，有 Agent 在等你时显示问号，该项目的 Agent 都已完成而你还没打开标签页时显示对勾。</p>
+<p><strong>通知。</strong>打开 <span class="docs-ui">设置 → Agent → Agent 完成或需要我确认时通知我</span> 后，当项目中的所有 Agent 都已完成，或某个 Agent 正在等待授权或回答时，会收到系统通知。正在查看的标签页不会显示任何通知。点击通知即可切换到该项目并打开该标签页。</p>
 <figure class="docs-clip" data-clip="terminals">
   <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/terminals.webp" data-src="../assets/clips/terminals.mp4" data-src-webm="../assets/clips/terminals.webm" aria-label="拖动终端标签页和窗格来拆分、移动，并把它们还原为标签页。"></video>
   <figcaption>拖动终端标签页和窗格来拆分、移动，并把它们还原为标签页。</figcaption>

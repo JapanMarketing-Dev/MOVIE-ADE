@@ -1,14 +1,16 @@
-import { terminalKeyAction, windowsAgentPasteData } from './terminalKeys'
+import { agentNewlineData, freshForegroundAgent, terminalKeyAction, windowsAgentPasteData } from './terminalKeys'
+import { InputHold } from './inputHold'
 import { parseOsc52 } from './terminalOsc52'
 import { minimumContrastFor } from './terminalContrast'
 import { windowsPtyOption } from './windowsPty'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import type { TerminalSize } from '@shared/types'
+import type { TerminalSize, TuiAgent } from '@shared/types'
 import { THEME_CHANGE_EVENT } from '../lib/theme'
 import { t } from '@shared/i18n'
 import { reportAnomaly, reportHandled } from '@shared/report'
 import { ImeInputGuard } from './imeInputGuard'
+import { isWebglUnavailable } from './rendererFallback'
 
 /**
  * renderer 側のターミナル実体（xterm.js）を管理する。
@@ -70,8 +72,16 @@ export class TerminalHandle {
   private replaying = false
 
   ptyId: string | null = null
-  /** 前面で Agent が動いているか（TerminalPane が1秒ごとの状態の問い合わせで更新する。Shift+Enter の扱いに使う） */
-  agentForeground = false
+  /** 前面で動いている Agent（TerminalPane が1秒ごとの状態の問い合わせで更新する。Shift+Enter の扱いに使う） */
+  foregroundAgent: TuiAgent | null = null
+  get agentForeground(): boolean {
+    return this.foregroundAgent !== null
+  }
+  /** PTY へ送る入力（Shift+Enter のキー列をその場で決めている間の打鍵を、順番どおりに後から送る。inputHold.ts） */
+  private readonly input = new InputHold((data) => {
+    if (this.ptyId) void window.ade.invoke('terminal:write', this.ptyId, data)
+    else this.pending.push(data)
+  })
   renderer: RendererKind = 'dom'
 
   constructor(readonly key: string) {
@@ -106,7 +116,7 @@ export class TerminalHandle {
     // 器の capture で受けるので、xterm の textarea の処理より先に変換の始まり・終わりが分かる
     const imeGuard = new ImeInputGuard()
     const onCompositionStart = () => imeGuard.compositionStart()
-    const onCompositionEnd = () => imeGuard.compositionEnd(performance.now())
+    const onCompositionEnd = (event: CompositionEvent) => imeGuard.compositionEnd(performance.now(), event.data)
     const onKeyDown = (event: KeyboardEvent) => imeGuard.keyDown(event)
     this.host.addEventListener('compositionstart', onCompositionStart, true)
     this.host.addEventListener('compositionend', onCompositionEnd, true)
@@ -119,11 +129,12 @@ export class TerminalHandle {
     // Shift+Enter の改行、Windows / Linux のコピー・貼り付け、macOS の ⌘← などを xterm より先に受ける（terminalKeys.ts）。
     // keydown のときだけ実行し、同じキーの keypress / keyup も xterm に渡さない（渡すと Enter の CR などが重ねて送られる）
     this.term.attachCustomKeyEventHandler((event) => {
-      const action = terminalKeyAction(event, window.ade.platform, { hasSelection: this.term.hasSelection(), agentForeground: this.agentForeground })
+      const action = terminalKeyAction(event, window.ade.platform, { hasSelection: this.term.hasSelection() })
       if (!action) return true
       if (event.type !== 'keydown') return false
       event.preventDefault()
       if (action.kind === 'send') this.sendInput(action.data)
+      else if (action.kind === 'newline') this.sendNewline()
       else if (action.kind === 'copy') this.copySelection()
       else void this.pasteClipboard()
       return false
@@ -163,8 +174,7 @@ export class TerminalHandle {
       if (this.replaying) return
       const data = imeGuard.filter(raw, performance.now())
       if (data.length === 0) return
-      if (this.ptyId) void window.ade.invoke('terminal:write', this.ptyId, data)
-      else this.pending.push(data)
+      this.sendInput(data)
     })
     this.disposers.push(() => onData.dispose())
     // 器の大きさが変わるたびに（分割・ドラッグ・ウィンドウ・ターミナルの配置の変更・表示の切り替え）、
@@ -216,7 +226,8 @@ export class TerminalHandle {
       return
     } catch (err) {
       console.warn('[terminal] WebGL描画を使えません。Canvasへ切り替えます', err)
-      reportHandled(err, { area: 'terminal', op: 'load webgl renderer' })
+      // GPU が無い環境で WebGL2 を取れないのは想定内（rendererFallback.ts）。それ以外の失敗だけ送る
+      if (!isWebglUnavailable(err)) reportHandled(err, { area: 'terminal', op: 'load webgl renderer' })
     }
     await this.loadCanvas()
   }
@@ -299,8 +310,25 @@ export class TerminalHandle {
 
   /** キーの代わりに送る文字列。PTY ができる前なら打鍵と同じく pending にためる */
   private sendInput(data: string): void {
-    if (this.ptyId) void window.ade.invoke('terminal:write', this.ptyId, data)
-    else this.pending.push(data)
+    this.input.send(data)
+  }
+
+  /**
+   * Shift+Enter。前面の Agent の改行のキー列を送る（terminalKeys.ts の agentNewlineData）。1秒ごとの問い合わせの間に
+   * Agent を起動した・終えた直後でも取り違えないよう、その場で問い合わせ直してから決める（その間の打鍵は後に順に送る）。
+   * 返事が来なければ最後に分かった状態で送る
+   */
+  private sendNewline(): void {
+    const known = this.foregroundAgent
+    const ptyId = this.ptyId
+    if (!ptyId) {
+      this.sendInput(agentNewlineData(known))
+      return
+    }
+    this.input.send(freshForegroundAgent(() => window.ade.invoke('terminal:agentState', ptyId), known, 1500).then((agent) => {
+      if (this.ptyId === ptyId) this.foregroundAgent = agent
+      return agentNewlineData(agent)
+    }))
   }
 
   private copySelection(): void {
@@ -320,6 +348,13 @@ export class TerminalHandle {
   /** Windows で Agent へ複数行を貼るときに PTY へ直接書く文字列（terminalKeys.ts）。null なら xterm に任せる */
   private agentPasteData(text: string): string | null {
     return windowsAgentPasteData(text, window.ade.platform, { agentForeground: this.agentForeground, bracketedPasteMode: this.term.modes.bracketedPasteMode })
+  }
+
+  /** 外から落としたファイルのパスなどを入力として貼る（実行はしない）。貼ったペインにフォーカスを移す */
+  insertText(text: string): void {
+    if (!text) return
+    this.pasteText(text)
+    this.term.focus()
   }
 
   /** term.paste はブラケットペーストのモードに従って包んで送る（複数行が1行ずつ実行されない） */

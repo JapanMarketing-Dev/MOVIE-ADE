@@ -61,6 +61,17 @@ pnpm dist:linux   # AppImage + deb (x64)</code></pre>
 <p>在 Windows 上，<code>pnpm install</code> 会使用 node-pty 自带的预编译二进制文件，而不是重新构建（重新构建需要 Visual Studio C++ 生成工具）。设置 <code>ADE_FORCE_NATIVE_REBUILD=1</code> 可强制重新构建。</p>
 <p>如果终端提示无法加载 node-pty，请运行 <code>pnpm rebuild:native</code>。</p>
 
-<!-- @update 142015ddda -->
+<!-- @update d0e883a95e -->
 ## 更新
-<p>Ferret 不会自动更新。在底部状态栏中打开 <span class="docs-ui">更新</span>，然后点击 <span class="docs-ui">检查更新</span>。它会从下载服务器（R2）获取 <code>latest.json</code>，比较版本，并使用内置于应用中的发布密钥验证该版本 <code>SHA256SUMS</code> 的签名。有新版本时，点击 <span class="docs-ui">下载</span>：Ferret 会下载适合你电脑的安装程序，确认其 SHA-256 与已签名的 <code>SHA256SUMS</code> 一致，然后保存到“下载”文件夹并在其中显示。下载页面在保存文件之前，也会在浏览器中进行同样的检查。在你点击之前不会进行任何检查，也不会自动安装任何内容。</p>
+<p>Ferret 会在启动时、每 6 小时以及点击 <span class="docs-ui">检查更新</span> 时（页脚 → <span class="docs-ui">更新</span>）检查新版本。它从下载服务器（R2）获取 <code>latest.json</code>，并用内置在应用中的发布密钥校验该版本 <code>SHA256SUMS</code> 的签名。签名不匹配的版本不会提示。</p>
+<p>发现新版本后，Ferret 会在后台下载，并在 <span class="docs-ui">更新</span> 中显示进度。只有当下载文件的大小和 SHA-256 与已签名的列表一致时才会使用。之后 <span class="docs-ui">更新</span> 和页脚会出现 <span class="docs-ui">重新启动并更新</span>。点击后会重新启动并进入新版本。如果终端中有 Agent 正在工作或正在录制，Ferret 会先询问；到目前为止的录制会在重新启动前保存。</p>
+<table>
+  <thead><tr><th>安装方式</th><th>下载的内容</th><th>安装方式</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>，列在 <code>UPDATE-SHA256SUMS</code> 中，并用同一发布密钥签名</td><td>交给 macOS 的更新机制（Squirrel.Mac），它还会确认新应用使用相同的 Developer ID 签名；在 Ferret 重新启动时替换</td></tr>
+    <tr><td>Windows</td><td>安装程序（<code>.exe</code>）</td><td>在 Ferret 重新启动时以无窗口方式运行，完成后打开新版本</td></tr>
+    <tr><td>Linux（AppImage）</td><td>新的 <code>.AppImage</code></td><td>替换你启动的 AppImage，然后打开新版本</td></tr>
+    <tr><td>Linux（deb）</td><td><code>.deb</code></td><td><span class="docs-ui">打开安装程序</span> 会把它保存到下载文件夹，并用你的软件安装程序打开</td></tr>
+  </tbody>
+</table>
+<p>如果只想在自己选择时下载，请在 <span class="docs-ui">更新</span> 中关闭 <span class="docs-ui">自动下载新版本</span>（或在 <code>settings.json</code> 中设置 <code>"autoUpdate": false</code>），出现新版本时再点击 <span class="docs-ui">下载</span>。开发版（<code>pnpm dev</code>）不会在后台下载；<span class="docs-ui">下载</span> 会把校验过的安装程序保存到下载文件夹。</p>

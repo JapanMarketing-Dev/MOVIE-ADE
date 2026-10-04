@@ -87,9 +87,9 @@ describe('作成・名前の変更・ゴミ箱（src/main/fileOps.ts）', () => 
 
   describe('createEntry', () => {
     it('空のファイルとフォルダを作り、相対パスを返す', async () => {
-      await expect(createEntry(root, 'src', 'b.ts', 'file')).resolves.toBe('src/b.ts')
+      await expect(createEntry(root, 'src', 'b.ts', 'file')).resolves.toEqual({ path: 'src/b.ts', top: 'src/b.ts' })
       expect(await readFile(join(root, 'src', 'b.ts'), 'utf8')).toBe('')
-      await expect(createEntry(root, '', 'docs', 'directory')).resolves.toBe('docs')
+      await expect(createEntry(root, '', 'docs', 'directory')).resolves.toEqual({ path: 'docs', top: 'docs' })
       expect((await lstat(join(root, 'docs'))).isDirectory()).toBe(true)
     })
 
@@ -109,7 +109,11 @@ describe('作成・名前の変更・ゴミ箱（src/main/fileOps.ts）', () => 
     })
 
     it('名前で外へ出ようとするもの・使えない名前は断る', async () => {
-      await expect(createEntry(root, 'src', '../x.txt', 'file')).rejects.toThrow('/ \\ < > : " | ? *')
+      // 「/」は途中のフォルダの区切りとして読む。「..」の階層は断る
+      await expect(createEntry(root, 'src', '../x.txt', 'file')).rejects.toThrow('「.」と「..」')
+      await expect(createEntry(root, 'src', '..\\x.txt', 'file')).rejects.toThrow('/ \\ < > : " | ? *')
+      await expect(createEntry(root, 'src', 'a//b.ts', 'file')).rejects.toThrow('名前を入力')
+      await expect(createEntry(root, 'src', '/etc/x', 'file')).rejects.toThrow('名前を入力')
       await expect(createEntry(root, 'src', '..', 'directory')).rejects.toThrow('「.」と「..」')
       await expect(createEntry(root, 'src', 'NUL', 'file')).rejects.toThrow('Windows で予約')
       await expect(createEntry(root, 'src', 'x.', 'file')).rejects.toThrow('空白やドット')

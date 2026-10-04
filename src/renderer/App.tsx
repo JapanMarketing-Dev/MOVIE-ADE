@@ -1,3 +1,5 @@
+import { ExternalDropOverlay, useExternalDrop } from './hooks/useExternalDrop'
+import { planEditorDrop, readDrop } from './lib/externalDrop'
 import { delay } from '@shared/delay'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -237,6 +239,19 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   })
   const fileError = useCallback((message: string) => toast({ tone: 'danger', message }), [toast])
   const files = useOpenFiles({ root: workspace.folderPath, activeTab: centerTab, setActiveTab: setCenterTab, onError: fileError })
+  // 外からエディタの領域へ落としたファイルを開く。プロジェクトの外はファイルツリーへの取り込みを案内し、フォルダはプロジェクトとして開く
+  const editorDrop = useExternalDrop((dataTransfer) => void readDrop(dataTransfer).then(async (entries) => {
+    const plan = planEditorDrop(entries)
+    for (const path of plan.open) files.open(path)
+    if (plan.outside) toast({ tone: 'info', message: t('drop.editor.outside', { name: plan.outside }) })
+    else if (plan.unreadable) toast({ tone: 'warning', message: t('drop.errors.unreadable') })
+    if (plan.folder) await window.ade.invoke('project:addDropped', plan.folder)
+  }).catch((err) => toast({ tone: 'warning', message: errorMessage(err) })), true, (relPaths) => void (async () => {
+    // ファイルツリーの行: ファイルだけを開く（フォルダは fs:inspect が断る）
+    for (const path of relPaths) {
+      if (await window.ade.invoke('fs:inspect', path).then(() => true, () => false)) files.open(path)
+    }
+  })())
   // プロジェクトごとに、中央のタブ・開いていたファイル・表示中のレビューを覚えて戻す（URL は main が戻す）
   useProjectSession({
     projectId: workspace.projectId ?? null,
@@ -810,7 +825,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
               gridTemplateAreas: splitGrid.areas
             } as React.CSSProperties}
           >
-            <section className="pane pane--browser" aria-label={t('app.reviewTarget')}>
+            <section className="pane pane--browser external-drop-host" aria-label={t('app.reviewTarget')} data-testid="center-pane" {...editorDrop.props}>
+              {editorDrop.over && <ExternalDropOverlay label={t('drop.editor.hint')} testId="editor-file-drop" align="top" />}
               <ErrorBoundary name="center">
               <CenterTabs
                 active={centerTab}
@@ -897,6 +913,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                 projectId={workspace.projectId ?? null}
                 cwd={workspace.folderPath}
                 startupAgents={agents.startupAgents}
+                notify={agents.notify}
                 onOpenFile={files.open}
                 onOpenAgentSettings={() => openSettings('agents')}
               />

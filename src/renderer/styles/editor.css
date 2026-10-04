@@ -167,6 +167,15 @@
   flex: 1;
 }
 
+/* Markdown の「ソース」「プレビューで編集」の切り替え */
+.editor-head__modes {
+  display: inline-flex;
+  gap: 2px;
+  padding-right: 6px;
+  margin-right: 2px;
+  border-right: var(--size-border) solid var(--color-divider);
+}
+
 .editor-banner {
   display: flex;
   flex: none;
@@ -370,6 +379,14 @@
   color: var(--color-danger);
 }
 
+/* 操作の結果（失敗・知らせ）は、長い一覧でも見えるよう下に留める */
+.explorer__note--sticky {
+  position: sticky;
+  bottom: 0;
+  border-top: var(--size-border) solid var(--color-border);
+  background: var(--color-bg-sidebar);
+}
+
 /* 選択（⌘ / Ctrl・Shift で複数）。開いているファイル（is-active）とは別の、控えめな面 */
 .explorer__row.is-selected {
   background: var(--color-surface-hover);
@@ -382,6 +399,51 @@
 
 .explorer__list--tree {
   min-height: 100%;
+}
+
+/* 一覧の下の空いた所も右クリック・ドロップを受ける。フォーカスの枠は出さない（行に出る） */
+.explorer__body:focus {
+  outline: none;
+}
+
+/* ドロップの先（フォルダとその中、根なら一覧全体） */
+.explorer__body.is-drop,
+.explorer__row.is-drop {
+  background: var(--color-surface-selected);
+}
+
+/* 切り取ったもの（貼り付けるまで薄く） */
+.explorer__row.is-cut {
+  opacity: 0.5;
+}
+
+/* 空のフォルダの案内 */
+.explorer__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--space-4) var(--space-5);
+  gap: var(--space-2);
+}
+
+.explorer__empty-title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.explorer__empty-hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.explorer__empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+  gap: var(--space-2);
 }
 
 /* ツリーの中のその場の名前の欄（作成・名前の変更） */
@@ -440,7 +502,9 @@
 /* 右クリックのメニュー（見た目は .sb-menu。位置は窓に対して） */
 .explorer-menu {
   position: fixed;
-  min-width: 200px;
+  min-width: 220px;
+  max-height: calc(100vh - 8px);
+  overflow-y: auto;
 }
 
 .explorer-menu > button:disabled {

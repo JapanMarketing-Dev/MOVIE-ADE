@@ -203,12 +203,28 @@
   <tbody>
     <tr><td><span class="docs-ui">打开项目时启动</span></td><td>Claude Code、Codex（可选择任意<a href="agents.html#supported">支持的 Agent</a>，也可以都不选）</td></tr>
     <tr><td><span class="docs-ui">在菜单中显示 &lt;agent&gt;</span></td><td>所有 Agent 均为开</td></tr>
-    <tr><td><span class="docs-ui">命令</span> / <span class="docs-ui">参数</span>（每个 Agent）</td><td>该 Agent 自己的命令（例如 <code>claude</code>、<code>codex</code>、<code>gemini</code>）/ 无</td></tr>
+    <tr><td><span class="docs-ui">启动 Agent 时跳过权限确认</span></td><td>开：Claude Code 以 <code>--dangerously-skip-permissions</code> 启动，Codex 以 <code>--dangerously-bypass-approvals-and-sandbox</code> 启动（<a href="agents.html#terminal">详情</a>）</td></tr>
+    <tr><td><span class="docs-ui">Agent 完成或需要我确认时通知我</span></td><td>关（<a href="agents.html#terminal">详情</a>）</td></tr>
+    <tr><td><span class="docs-ui">命令</span> / <span class="docs-ui">参数</span>（每个 Agent）</td><td>该 Agent 自己的命令（例如 <code>claude</code>、<code>codex</code>、<code>gemini</code>）/ Claude Code 为 <code>--chrome</code>，其他为无</td></tr>
     <tr><td><span class="docs-ui">自定义 Agent</span></td><td>无（<span class="docs-ui">添加自定义 Agent</span> 可登记任意 CLI）</td></tr>
-    <tr><td><span class="docs-ui">跳过权限确认</span>（按项目）</td><td>所有项目均为关（<a href="agents.html#terminal">详情</a>）</td></tr>
     <tr><td><span class="docs-ui">给 Agent 的指令</span></td><td>内置文本（<a href="agents.html#prompt">变量</a>）</td></tr>
   </tbody>
 </table>
+      </section>
+
+      <section class="docs-section" aria-labelledby="failover">
+        <h2 id="failover"><a class="docs-anchor" href="#failover" aria-label="指向“达到用量上限时自动切换”的链接">#</a>达到用量上限时自动切换</h2>
+        <table>
+  <thead><tr><th>设置</th><th>默认值</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">达到用量上限时自动切换</span></td><td>开</td></tr>
+    <tr><td><span class="docs-ui">账户用量达到此值即视为上限</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">先切换到同一 Agent 的其他账户</span></td><td>开</td></tr>
+    <tr><td><span class="docs-ui">Agent 顺序</span></td><td>Claude Code、Codex、Gemini CLI</td></tr>
+    <tr><td><span class="docs-ui">上限恢复后切回顺序更靠前的 Agent</span></td><td>关</td></tr>
+  </tbody>
+</table>
+<p>位于 <span class="docs-ui">设置 → 账户</span>。工作通过项目中的 <code>.ferret/handoff.md</code> 交接。参见<a href="accounts.html#failover">达到用量上限时继续工作</a>。</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other">
@@ -243,6 +259,7 @@
         <li><a href="#transcription">转写</a></li>
         <li><a href="#storage">存储</a></li>
         <li><a href="#agent">Agent</a></li>
+        <li><a href="#failover">达到用量上限时自动切换</a></li>
         <li><a href="#other">账户、GitHub、外观、语言</a></li>
         <li><a href="#settings-json">settings.json</a></li>
       </ul>

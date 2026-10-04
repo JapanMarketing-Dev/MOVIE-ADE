@@ -203,12 +203,28 @@
   <tbody>
     <tr><td><span class="docs-ui">Avvia all'apertura di un progetto</span></td><td>Claude Code, Codex (scegli qualsiasi <a href="agents.html#supported">agent supportato</a>, oppure nessuno)</td></tr>
     <tr><td><span class="docs-ui">Mostra &lt;agent&gt; nei menu</span></td><td>Attivo per ogni agent</td></tr>
-    <tr><td><span class="docs-ui">Comando</span> / <span class="docs-ui">Argomenti</span> (per agent)</td><td>Il comando proprio dell'agent (per esempio <code>claude</code>, <code>codex</code>, <code>gemini</code>) / nessuno</td></tr>
+    <tr><td><span class="docs-ui">Avvia gli Agent senza richieste di autorizzazione</span></td><td>Attivo: Claude Code si avvia con <code>--dangerously-skip-permissions</code>, Codex con <code>--dangerously-bypass-approvals-and-sandbox</code> (<a href="agents.html#terminal">dettagli</a>)</td></tr>
+    <tr><td><span class="docs-ui">Avvisami quando gli agenti finiscono o hanno bisogno di me</span></td><td>Disattivato (<a href="agents.html#terminal">dettagli</a>)</td></tr>
+    <tr><td><span class="docs-ui">Comando</span> / <span class="docs-ui">Argomenti</span> (per agent)</td><td>Il comando proprio dell'agent (per esempio <code>claude</code>, <code>codex</code>, <code>gemini</code>) / <code>--chrome</code> per Claude Code, nessuno per gli altri</td></tr>
     <tr><td><span class="docs-ui">Agent personalizzati</span></td><td>Nessuno (<span class="docs-ui">Aggiungi agent personalizzato</span> registra qualsiasi CLI)</td></tr>
-    <tr><td><span class="docs-ui">Salta le richieste di autorizzazione</span> (per progetto)</td><td>Disattivato per ogni progetto (<a href="agents.html#terminal">dettagli</a>)</td></tr>
     <tr><td><span class="docs-ui">Istruzioni per l'Agent</span></td><td>Testo integrato (<a href="agents.html#prompt">variabili</a>)</td></tr>
   </tbody>
 </table>
+      </section>
+
+      <section class="docs-section" aria-labelledby="failover">
+        <h2 id="failover"><a class="docs-anchor" href="#failover" aria-label="Link a Cambio al limite di utilizzo">#</a>Cambio al limite di utilizzo</h2>
+        <table>
+  <thead><tr><th>Impostazione</th><th>Predefinito</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Cambia automaticamente quando si raggiunge un limite di utilizzo</span></td><td>Attivo</td></tr>
+    <tr><td><span class="docs-ui">Considera un account al limite da</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">Prova prima un altro account dello stesso agente</span></td><td>Attivo</td></tr>
+    <tr><td><span class="docs-ui">Ordine degli agenti</span></td><td>Claude Code, Codex, Gemini CLI</td></tr>
+    <tr><td><span class="docs-ui">Torna a un agente più in alto quando il suo limite si azzera</span></td><td>Disattivato</td></tr>
+  </tbody>
+</table>
+<p>In <span class="docs-ui">Impostazioni → Account</span>. Il lavoro viene passato tramite <code>.ferret/handoff.md</code> nel progetto. Vedi <a href="accounts.html#failover">Continuare a lavorare ai limiti di utilizzo</a>.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other">
@@ -243,6 +259,7 @@
         <li><a href="#transcription">Trascrizione</a></li>
         <li><a href="#storage">Archiviazione</a></li>
         <li><a href="#agent">Agent</a></li>
+        <li><a href="#failover">Cambio al limite di utilizzo</a></li>
         <li><a href="#other">Account, GitHub, aspetto, lingua</a></li>
         <li><a href="#settings-json">settings.json</a></li>
       </ul>

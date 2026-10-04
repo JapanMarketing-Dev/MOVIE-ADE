@@ -5,34 +5,49 @@
 <!-- @lead 97cbc36c8d -->
 開啟並編輯專案檔案，以及預覽 Markdown 與 Mermaid。在內建瀏覽器中開啟的預覽，可以像任何網頁一樣錄製並審查。
 
-<!-- @files d29f6a2107 -->
+<!-- @files c2eff8e24c -->
 ## 開啟並編輯檔案
 <ul>
   <li><span class="docs-ui">檔案</span>（檔案樹）：{{keys:Mod+Shift+E}}，提供 <span class="docs-ui">依檔名篩選</span>、<span class="docs-ui">重新整理</span> 與 <span class="docs-ui">全部收合</span>。</li>
   <li><span class="docs-ui">前往檔案…</span>：{{keys:Mod+P}}。</li>
+  <li>從 Finder（Windows 上為檔案總管，Linux 上為檔案管理員）把檔案拖到分頁列或編輯器上即可開啟。專案中的檔案會在編輯器或檢視器中開啟。若要把專案外的檔案帶進來，請把它放到 <span class="docs-ui">檔案</span> 上，它會被複製到專案中。放到這裡的資料夾會以專案開啟。從 <span class="docs-ui">檔案</span> 拖出的檔案也以相同方式開啟。</li>
   <li>按 {{keys:Mod+S}} 儲存。關閉已修改的檔案時，會詢問 <q>要儲存對 &lt;name&gt; 的變更嗎？</q>，並提供 <span class="docs-ui">儲存</span>、<span class="docs-ui">不儲存</span> 與 <span class="docs-ui">取消</span>。</li>
   <li>如果在你有未儲存的編輯時，檔案在磁碟上被變更，請選擇 <span class="docs-ui">從磁碟重新載入</span> 或 <span class="docs-ui">保留我的變更</span>。</li>
 </ul>
 <p>編輯器使用 Monaco。非文字檔案會改用檢視器開啟：圖片（可放大縮小；SVG 也能以程式碼顯示）、附播放進度列的影片與音訊、PDF，其他二進位檔案則顯示檔案大小與開頭位元組的十六進位檢視。檢視器為唯讀，專案資料夾外的檔案，或經由指向資料夾外的符號連結才能到達的檔案，都不會顯示。</p>
 
-<!-- @file-tree 4bec72e9f4 -->
-## 建立、重新命名與刪除檔案
-<p>可以直接在 <span class="docs-ui">檔案</span> 中操作檔案，就像在 VS Code 中一樣。名稱直接在樹狀結構中輸入。</p>
+<!-- @file-tree 6020ab04cd -->
+## 在檔案樹中操作檔案
+<p>可以直接在 <span class="docs-ui">檔案</span> 中操作檔案，就像在 VS Code 中一樣。在項目上按右鍵；若要在專案最上層操作，請在樹狀結構下方的空白處按右鍵。名稱直接在樹狀結構中輸入。</p>
 <ul>
-  <li><span class="docs-ui">新增檔案</span> / <span class="docs-ui">新增資料夾</span>：使用樹狀結構上方的按鈕，或在資料夾（或樹狀結構下方的空白處）按右鍵。新項目會建立在選取的資料夾中、選取的檔案旁，或專案的最上層。新檔案會在編輯器中開啟。</li>
-  <li><span class="docs-ui">重新命名</span>：{{keys:F2 / Enter|F2}}，或按右鍵。已開啟的分頁會跟著新名稱，並保留未儲存的編輯。</li>
+  <li><span class="docs-ui">新增檔案</span> / <span class="docs-ui">新增資料夾</span>：使用樹狀結構上方的按鈕，或按右鍵。新項目會建立在選取的資料夾中、選取的檔案旁，或專案的最上層。輸入含斜線的名稱（例如 <code>src/routes/index.ts</code>）會一併建立途中的資料夾。新檔案會在編輯器中開啟。在空的資料夾中，<span class="docs-ui">檔案</span> 會顯示 <span class="docs-ui">此資料夾是空的</span>，以及 <span class="docs-ui">新增檔案</span> 和 <span class="docs-ui">新增資料夾</span> 按鈕。</li>
+  <li><span class="docs-ui">剪下</span>、<span class="docs-ui">複製</span> 與 <span class="docs-ui">貼上</span>：{{keys:Mod+X}}、{{keys:Mod+C}}、{{keys:Mod+V}}，或按右鍵。資料夾會連同其中的所有內容一起複製。<span class="docs-ui">製作副本</span> 會在原項目旁建立一份副本。如果名稱已被使用，副本會命名為 <code>name copy</code>，接著是 <code>name copy 2</code>。</li>
+  <li>把項目拖到資料夾上（拖到空白處則移到專案最上層）即可移動。放下時按住 {{keys:Alt|Ctrl}} 則改為複製。從 Finder（Windows 上為檔案總管）拖入的檔案和資料夾會被複製到專案中，原始檔案保留在原處。</li>
+  <li><span class="docs-ui">重新命名</span>：{{keys:F2 / Enter|F2}}，或按右鍵。</li>
   <li><span class="docs-ui">刪除</span>：{{keys:Mod+Backspace / Delete|Delete}}，或按右鍵。Ferret 會先詢問，再把項目移到垃圾桶（Windows 上為資源回收筒），因此可以復原。已刪除檔案的分頁會關閉；如果其中有未儲存的編輯，確認訊息會提到這點。</li>
-  <li>用 {{keys:Mod}}-按一下或 {{keys:Shift}}-按一下選取多個項目，即可一起刪除。</li>
+  <li><span class="docs-ui">復原</span>：{{keys:Mod+Z}} 會復原上一次的新增、重新命名、移動、貼上或製作副本。已刪除的項目會從垃圾桶還原。</li>
+  <li><span class="docs-ui">複製路徑</span>（{{keys:Alt+Mod+C|Shift+Alt+C}}）與 <span class="docs-ui">複製相對路徑</span>（{{keys:Alt+Shift+Mod+C|Ctrl+Shift+Alt+C}}）會把路徑放到剪貼簿。</li>
+  <li><span class="docs-ui">在 Finder 中顯示</span>（Windows 上為 <span class="docs-ui">在檔案總管中顯示</span>，Linux 上為 <span class="docs-ui">開啟所在的資料夾</span>）：{{keys:Alt+Mod+R|Shift+Alt+R}}。<span class="docs-ui">在終端機中開啟</span> 會在該資料夾（若是檔案，則為其所在資料夾）開啟新的終端機分頁。</li>
+  <li>對於檔案，<span class="docs-ui">開啟</span> 會在編輯器中開啟，<span class="docs-ui">用預設應用程式開啟</span> 會以作業系統為該類型檔案指定的 App 開啟。</li>
+  <li>用 {{keys:Mod}}-按一下或 {{keys:Shift}}-按一下選取多個項目，即可一起剪下、複製、移動或刪除。</li>
   <li>{{keys:Esc}} 會取消正在輸入的名稱。</li>
 </ul>
-<p>Ferret 不會覆寫同名的現有檔案或資料夾，並會拒絕任何會離開專案資料夾的操作（<code>..</code>、絕對路徑、指向外部的符號連結）、<code>.git</code> 內的任何項目，以及某些作業系統無法使用的名稱：<code>/ \ &lt; &gt; : " | ? *</code>、控制字元、結尾的空格或句點，以及 <code>CON</code> 或 <code>NUL</code> 等 Windows 保留名稱。</p>
+<p>已開啟的分頁會跟著重新命名或移動的檔案，並保留未儲存的編輯。Ferret 不會覆寫同名的現有檔案或資料夾，並會把一切都限制在專案資料夾內：它會拒絕 <code>..</code>、絕對路徑、指向外部的符號連結、<code>.git</code> 內的任何項目、把資料夾移到自身之中，以及某些作業系統無法使用的名稱：<code>/ \ &lt; &gt; : " | ? *</code>、控制字元、結尾的空格或句點，以及 <code>CON</code> 或 <code>NUL</code> 等 Windows 保留名稱。一次複製或拖放最多可包含 10,000 個項目、1 GB。</p>
 
-<!-- @preview b8c0baaad4 -->
+<!-- @preview cb127d2292 -->
 ## Markdown 與 Mermaid 預覽
 <p>預覽支援 <code>.md</code>、<code>.markdown</code>、<code>.mdx</code>、<code>.mmd</code> 與 <code>.mermaid</code>。Mermaid 已內建於 App 中，因此離線也能繪製圖表。</p>
 <ul>
   <li><span class="docs-ui">在側邊開啟預覽</span>：在編輯器旁邊</li>
   <li><span class="docs-ui">開啟預覽</span>：在內建瀏覽器中（<code>ade-preview://</code>），因此可以錄製並審查</li>
+</ul>
+<p>若要以預覽中的樣子編輯 Markdown 檔案，請按一下編輯器上方的 <span class="docs-ui">在預覽中編輯</span>，按一下 <span class="docs-ui">原始碼</span> 即可返回。兩者顯示相同的內容，儲存、未儲存標記與關閉時的確認也都相同。</p>
+<ul>
+  <li>可以直接在標題、段落、清單、核取方塊、表格、連結，以及粗體、斜體或行內程式碼中輸入。在行首輸入 <code>#</code>、<code>-</code>、<code>1.</code> 或 <code>&gt;</code> 再加一個空格，即可開始標題、清單或引言。</li>
+  <li>程式碼區塊和 Mermaid 圖表以原始碼形式編輯，角落會顯示語言。圖表會在 <span class="docs-ui">在側邊開啟預覽</span> 或 <span class="docs-ui">開啟預覽</span> 中繪製。</li>
+  <li>前置資料（最上方的 <code>---</code> 區塊）會以文字顯示在文件上方，並可在那裡編輯。</li>
+  <li>未變更的部分會照原樣儲存，包括標題樣式、清單符號、空行、表格對齊與換行字元。編輯過的區塊會盡量保留原本的樣式；無法保留時，該區塊會以標準 Markdown 形式寫出，清單用 <code>-</code>，標題用 <code>#</code>。</li>
+  <li>專案中的圖片會顯示。不會載入其他網站的圖片，而是改為顯示其主機名稱。檔案中的 HTML 會以文字顯示。</li>
 </ul>
 
 <!-- @review-docs 4b5c6316ba -->

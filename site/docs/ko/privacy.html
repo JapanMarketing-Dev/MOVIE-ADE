@@ -189,7 +189,7 @@
     <tr><td><span class="docs-ui">GitHub로 보내기</span></td><td><code>gh</code>를 통해 GitHub</td><td>본문 텍스트만(이미지 없음)</td></tr>
     <tr><td>푸터의 사용량 표시(Claude Code와 Codex만)</td><td>Anthropic, ChatGPT</td><td>사용자 본인의 로그인으로 보내는 사용량 요청</td></tr>
     <tr><td>GitHub 스타 요청</td><td>사용자의 <code>gh</code>를 통해 GitHub</td><td>저장소에 스타를 줬는지 확인하고, <span class="docs-ui">GitHub에서 스타</span>를 눌렀을 때만 스타를 줌</td></tr>
-    <tr><td><span class="docs-ui">업데이트 확인</span>(수동)</td><td>다운로드 서버(Cloudflare R2)</td><td><code>latest.json</code>과 해당 버전의 <code>SHA256SUMS</code> 요청. <span class="docs-ui">다운로드</span>를 클릭하면 설치 프로그램</td></tr>
+    <tr><td>업데이트(Ferret 시작 시, 6시간마다, <span class="docs-ui">업데이트 확인</span>)</td><td>다운로드 서버(Cloudflare R2)</td><td><code>latest.json</code>과 해당 버전의 <code>SHA256SUMS</code>(macOS에서는 <code>UPDATE-SHA256SUMS</code>도) 요청. 새 버전이 있으면 내 컴퓨터용 업데이트 파일(<span class="docs-ui">새 버전을 자동으로 다운로드</span>을 끄면 <span class="docs-ui">다운로드</span>를 클릭할 때만)</td></tr>
     <tr><td>앱에서 피드백 보내기(직접 보낼 때만)</td><td>개발자의 피드백 중계 서버(Cloudflare Worker). <code>JapanMarketing-Dev/ferret</code>에 공개 Issue를 엶</td><td>작성한 텍스트, 버그인지 아이디어인지, 앱 / OS 버전과 CPU, 첨부한 스크린샷 최대 3장. 키, 토큰, 이메일 주소, 홈 폴더 경로는 가려집니다. 중계 서버는 IP 주소를 저장하지 않습니다(<a href="#feedback">앱에서 보내는 피드백</a> 참고)</td></tr>
     <tr><td>충돌 또는 오류(<span class="docs-ui">충돌 보고서 보내기</span>가 켜져 있을 때)</td><td>Sentry</td><td>스택 트레이스와 OS / CPU / 앱 버전(<a href="#crash-reports">충돌 보고서</a> 참고)</td></tr>
   </tbody>

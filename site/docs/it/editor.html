@@ -167,6 +167,7 @@
         <ul>
   <li><span class="docs-ui">File</span> (l'albero dei file): <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></span></span>, con <span class="docs-ui">Filtra per nome file</span>, <span class="docs-ui">Aggiorna</span> e <span class="docs-ui">Comprimi tutto</span>.</li>
   <li><span class="docs-ui">Vai al file…</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></span></span>.</li>
+  <li>Trascina un file dal Finder (da Esplora file su Windows, dal tuo file manager su Linux) sulla barra delle schede o sull'editor per aprirlo. I file del progetto si aprono nell'editor o in un visualizzatore. Per portare nel progetto un file che si trova fuori, rilascialo su <span class="docs-ui">File</span>, che lo copia nel progetto. Una cartella rilasciata qui si apre come progetto. I file trascinati da <span class="docs-ui">File</span> si aprono allo stesso modo.</li>
   <li>Salva con <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></span></span>. Chiudendo un file modificato compare <q>Salvare le modifiche a &lt;name&gt;?</q> con <span class="docs-ui">Salva</span>, <span class="docs-ui">Non salvare</span> e <span class="docs-ui">Annulla</span>.</li>
   <li>Se il file cambia sul disco mentre hai modifiche non salvate, scegli <span class="docs-ui">Ricarica dal disco</span> oppure <span class="docs-ui">Mantieni le mie modifiche</span>.</li>
 </ul>
@@ -174,16 +175,22 @@
       </section>
 
       <section class="docs-section" aria-labelledby="file-tree">
-        <h2 id="file-tree"><a class="docs-anchor" href="#file-tree" aria-label="Link a Creare, rinominare ed eliminare file">#</a>Creare, rinominare ed eliminare file</h2>
-        <p>Lavora sui file direttamente in <span class="docs-ui">File</span>, come faresti in VS Code. I nomi si digitano direttamente nell'albero.</p>
+        <h2 id="file-tree"><a class="docs-anchor" href="#file-tree" aria-label="Link a Lavorare con i file nell'albero dei file">#</a>Lavorare con i file nell'albero dei file</h2>
+        <p>Lavora sui file direttamente in <span class="docs-ui">File</span>, come faresti in VS Code. Fai clic destro su un elemento, oppure sullo spazio vuoto sotto l'albero per lavorare al primo livello del progetto. I nomi si digitano direttamente nell'albero.</p>
 <ul>
-  <li><span class="docs-ui">Nuovo file</span> / <span class="docs-ui">Nuova cartella</span>: i pulsanti sopra l'albero, oppure fai clic destro su una cartella (o sullo spazio vuoto sotto l'albero). Il nuovo elemento va nella cartella selezionata, accanto al file selezionato, oppure al primo livello del progetto. Un nuovo file si apre nell'editor.</li>
-  <li><span class="docs-ui">Rinomina</span>: <span class="docs-kbd"><span class="os-mac"><kbd>F2</kbd> / <kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>F2</kbd></span></span>, oppure clic destro. Le schede aperte seguono il nuovo nome e mantengono le modifiche non salvate.</li>
+  <li><span class="docs-ui">Nuovo file</span> / <span class="docs-ui">Nuova cartella</span>: i pulsanti sopra l'albero, oppure clic destro. Il nuovo elemento va nella cartella selezionata, accanto al file selezionato, oppure al primo livello del progetto. Digita un nome con barre, come <code>src/routes/index.ts</code>, per creare anche le cartelle lungo il percorso. Un nuovo file si apre nell'editor. In una cartella vuota, <span class="docs-ui">File</span> mostra <span class="docs-ui">Questa cartella è vuota</span> con i pulsanti <span class="docs-ui">Nuovo file</span> e <span class="docs-ui">Nuova cartella</span>.</li>
+  <li><span class="docs-ui">Taglia</span>, <span class="docs-ui">Copia</span> e <span class="docs-ui">Incolla</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>X</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>X</kbd></span></span>, <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>C</kbd></span></span>, <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>V</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>V</kbd></span></span>, oppure clic destro. Le cartelle vengono copiate con tutto il contenuto. <span class="docs-ui">Duplica</span> crea una copia accanto all'originale. Se il nome è già usato, la copia si chiama <code>name copy</code>, poi <code>name copy 2</code>.</li>
+  <li>Trascina gli elementi su una cartella (o sullo spazio vuoto per il primo livello del progetto) per spostarli. Tieni premuto <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span> mentre rilasci per copiarli invece. File e cartelle trascinati dal Finder (da Esplora file su Windows) vengono copiati nel progetto; gli originali restano dov'erano.</li>
+  <li><span class="docs-ui">Rinomina</span>: <span class="docs-kbd"><span class="os-mac"><kbd>F2</kbd> / <kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>F2</kbd></span></span>, oppure clic destro.</li>
   <li><span class="docs-ui">Elimina</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⌫</kbd> / <kbd>Delete</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Delete</kbd></span></span>, oppure clic destro. Ferret chiede prima conferma, poi sposta l'elemento nel Cestino, così puoi ripristinarlo. Le schede dei file eliminati si chiudono; se qualcuna aveva modifiche non salvate, la conferma lo indica.</li>
-  <li>Seleziona più elementi con <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span>-clic o <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd></span></span>-clic per eliminarli insieme.</li>
+  <li><span class="docs-ui">Annulla</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>Z</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Z</kbd></span></span> annulla l'ultima creazione, ridenominazione, spostamento, incolla o duplicazione. Gli elementi eliminati vengono ripristinati dal Cestino.</li>
+  <li><span class="docs-ui">Copia percorso</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>C</kbd></span></span>) e <span class="docs-ui">Copia percorso relativo</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⇧</kbd><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Alt</kbd><kbd>C</kbd></span></span>) copiano il percorso negli appunti.</li>
+  <li><span class="docs-ui">Mostra nel Finder</span> (<span class="docs-ui">Mostra in Esplora file</span> su Windows, <span class="docs-ui">Apri la cartella superiore</span> su Linux): <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>R</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>R</kbd></span></span>. <span class="docs-ui">Apri nel terminale</span> apre una nuova scheda del terminale in quella cartella (per un file, nella sua cartella).</li>
+  <li>Per un file, <span class="docs-ui">Apri</span> lo apre nell'editor e <span class="docs-ui">Apri con l’app predefinita</span> lo apre nell'app che il sistema operativo usa per quel tipo.</li>
+  <li>Seleziona più elementi con <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span>-clic o <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd></span></span>-clic per tagliarli, copiarli, spostarli o eliminarli insieme.</li>
   <li><kbd>Esc</kbd> annulla un nome che stai digitando.</li>
 </ul>
-<p>Ferret non sovrascrive un file o una cartella esistente con lo stesso nome, e rifiuta tutto ciò che uscirebbe dalla cartella del progetto (<code>..</code>, percorsi assoluti, collegamenti simbolici che puntano all'esterno), tutto ciò che si trova dentro <code>.git</code> e i nomi che qualche sistema operativo non può usare: <code>/ \ &lt; &gt; : " | ? *</code>, caratteri di controllo, uno spazio o un punto finale e i nomi riservati di Windows come <code>CON</code> o <code>NUL</code>.</p>
+<p>Le schede aperte seguono un file rinominato o spostato e mantengono le modifiche non salvate. Ferret non sovrascrive un file o una cartella esistente con lo stesso nome e mantiene tutto all'interno della cartella del progetto: rifiuta <code>..</code>, i percorsi assoluti, i collegamenti simbolici che puntano all'esterno, tutto ciò che si trova dentro <code>.git</code>, lo spostamento di una cartella dentro sé stessa e i nomi che qualche sistema operativo non può usare: <code>/ \ &lt; &gt; : " | ? *</code>, caratteri di controllo, uno spazio o un punto finale e i nomi riservati di Windows come <code>CON</code> o <code>NUL</code>. Una singola copia o un singolo rilascio può contenere fino a 10.000 elementi e 1 GB.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="preview">
@@ -192,6 +199,14 @@
 <ul>
   <li><span class="docs-ui">Apri anteprima a lato</span>: accanto all'editor</li>
   <li><span class="docs-ui">Apri anteprima</span>: nel browser integrato (<code>ade-preview://</code>), così puoi registrarla e rivederla</li>
+</ul>
+<p>Per modificare un file Markdown così come appare nell'anteprima, fai clic su <span class="docs-ui">Modifica nell'anteprima</span> in alto nell'editor, e su <span class="docs-ui">Sorgente</span> per tornare indietro. Entrambe le viste mostrano lo stesso contenuto, e il salvataggio, il segno di modifiche non salvate e la conferma alla chiusura funzionano allo stesso modo.</p>
+<ul>
+  <li>Scrivi direttamente in titoli, paragrafi, elenchi, caselle di controllo, tabelle, link e testo in grassetto, corsivo o codice inline. Digitando <code>#</code>, <code>-</code>, <code>1.</code> o <code>&gt;</code> seguiti da uno spazio all'inizio di una riga si inizia un titolo, un elenco o una citazione.</li>
+  <li>I blocchi di codice e i diagrammi Mermaid si modificano come sorgente, con il linguaggio indicato nell'angolo. Il diagramma viene renderizzato in <span class="docs-ui">Apri anteprima a lato</span> o <span class="docs-ui">Apri anteprima</span>.</li>
+  <li>Il front matter (il blocco <code>---</code> in cima) viene mostrato come testo sopra il documento e si può modificare lì.</li>
+  <li>Le parti che non modifichi vengono salvate esattamente come sono scritte, compresi lo stile dei titoli, i marcatori degli elenchi, le righe vuote, l'allineamento delle tabelle e i fine riga. Un blocco che modifichi mantiene il suo stile quando possibile; altrimenti quel blocco viene scritto in una forma Markdown standard, con <code>-</code> per gli elenchi e <code>#</code> per i titoli.</li>
+  <li>Le immagini del progetto vengono mostrate. Le immagini di altri siti non vengono caricate; al loro posto viene mostrato il nome host. L'HTML nel file viene mostrato come testo.</li>
 </ul>
       </section>
 
@@ -218,7 +233,7 @@
       <p class="docs-toc-heading">In questa pagina</p>
       <ul>
         <li><a href="#files">Aprire e modificare i file</a></li>
-        <li><a href="#file-tree">Creare, rinominare ed eliminare file</a></li>
+        <li><a href="#file-tree">Lavorare con i file nell'albero dei file</a></li>
         <li><a href="#preview">Anteprima di Markdown e Mermaid</a></li>
         <li><a href="#review-docs">Rivedere la documentazione registrando</a></li>
       </ul>

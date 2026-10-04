@@ -6,6 +6,8 @@
  *   latest.json                   … 最新の正式版の manifest.json と同じ中身
  *   releases/<version>/manifest.json
  *   releases/<version>/<ファイル名>
+ *   releases/<version>/SHA256SUMS(.sig)          … インストーラーの sha256 と署名（scripts/release-signing.mjs）
+ *   releases/<version>/UPDATE-SHA256SUMS(.sig)   … アプリの自動更新だけが使うファイル（macOS の zip）の sha256 と署名
  *   staging/<version>/…          … 公開前の置き場（manifest の path は公開後の releases/ を指す）
  */
 
@@ -28,8 +30,18 @@ export const CONTENT_TYPES = {
   dmg: 'application/x-apple-diskimage',
   exe: 'application/vnd.microsoft.portable-executable',
   AppImage: 'application/vnd.appimage',
-  deb: 'application/vnd.debian.binary-package'
+  deb: 'application/vnd.debian.binary-package',
+  zip: 'application/zip'
 }
+
+/**
+ * アプリの自動更新だけが使うファイル（manifest の updates）。今は macOS の zip（Squirrel.Mac が入れ替えに使う）だけ。
+ * インストーラー（files）とは別の SHA256SUMS（UPDATE_SUMS）に載せて署名する。
+ * 0.4.x までのアプリは SHA256SUMS の名前と latest.json の files が過不足なく同じで、名前が dmg / exe / AppImage / deb の
+ * どれかであることを求める（src/main/releaseSignature.ts の verifiedReleaseFiles）。zip を SHA256SUMS や files に足すと、
+ * 入っているアプリが新しい版を案内できなくなるので、分けて置く
+ */
+export const UPDATE_SUMS = 'UPDATE-SHA256SUMS'
 
 /** 製品名。0.2.0 から Ferret（それまでは MOVIE-ADE）。ファイル名の先頭でもある */
 export const PRODUCTS = ['Ferret', 'MOVIE-ADE']
@@ -45,6 +57,17 @@ export function parseArtifactName(name, version) {
   const arch = ARCH_ALIASES[match[3]]
   if (!arch) return null
   return { name, product: match[1], os: match[2], arch, kind: KIND_BY_EXT[match[4]] }
+}
+
+/**
+ * 自動更新用のファイル名を読む。Ferret-<version>-mac-<arch>.zip 以外は null（.blockmap・別の版・別の OS）。
+ * @returns {{ name: string, product: string, os: 'mac', arch: string, kind: 'zip' } | null}
+ */
+export function parseUpdateArtifactName(name, version) {
+  const escaped = version.replace(/[.+]/g, (c) => `\\${c}`)
+  const match = new RegExp(`^Ferret-${escaped}-mac-(arm64|x64)\\.zip$`).exec(name)
+  if (!match) return null
+  return { name, product: 'Ferret', os: 'mac', arch: match[1], kind: 'zip' }
 }
 
 /** 版の大小を比べる（1.2.10 > 1.2.9、1.0.0 > 1.0.0-beta.1）。新しい方が前に来るよう sort に使う */
@@ -69,7 +92,10 @@ export function compareVersionsDesc(a, b) {
  * 各版の manifest.json を作る。
  * @param {{ version: string, date: string, prerelease: boolean, notes: string, notesUrl?: string,
  *           files: Array<{ name: string, os: string, arch: string, kind: string, size: number, sha256: string }>,
+ *           updates?: Array<{ name: string, os: string, arch: string, kind: string, size: number, sha256: string }>,
  *           previewOs?: string[], build?: number, product?: string }} input
+ *
+ * updates は自動更新だけが使うファイル（macOS の zip）。files と同じフォルダに置き、サイトには出さない
  *
  * product は製品名（Ferret / MOVIE-ADE）。サイトが版ごとの名前を出すのに使う。
  *
@@ -94,6 +120,9 @@ export function buildManifest(input) {
       kind: f.kind,
       ...(preview.has(f.os) ? { preview: true } : {})
     }))
+  const updates = [...(input.updates ?? [])]
+    .sort((a, b) => a.arch.localeCompare(b.arch))
+    .map((f) => ({ name: f.name, path: `${dir}/${f.name}`, size: f.size, sha256: f.sha256, os: f.os, arch: f.arch, kind: f.kind }))
   return {
     schema: SCHEMA,
     version: input.version,
@@ -103,7 +132,8 @@ export function buildManifest(input) {
     prerelease: input.prerelease,
     notes: input.notes,
     ...(input.notesUrl ? { notesUrl: input.notesUrl } : {}),
-    files
+    files,
+    ...(updates.length > 0 ? { updates } : {})
   }
 }
 
@@ -160,10 +190,15 @@ export function replaceVersionInIndex(index, manifest) {
   return { schema: SCHEMA, latest, versions }
 }
 
-/** 差し替えで消す古いファイル（新しい manifest に同じ path が無いもの） */
+/** manifest の置くファイルすべて（インストーラーと、自動更新用のファイル） */
+export function allFiles(manifest) {
+  return [...(manifest?.files ?? []), ...(manifest?.updates ?? [])]
+}
+
+/** 差し替えで消す古いファイル（新しい manifest に同じ path が無いもの。自動更新用のファイルも含む） */
 export function obsoleteFiles(oldManifest, newManifest) {
-  const keep = new Set(newManifest.files.map((f) => f.path))
-  return (oldManifest?.files ?? []).map((f) => f.path).filter((p) => !keep.has(p))
+  const keep = new Set(allFiles(newManifest).map((f) => f.path))
+  return allFiles(oldManifest).map((f) => f.path).filter((p) => !keep.has(p))
 }
 
 /* ── 外から来た値（R2 の JSON・引数）の検証 ─────────────────────────
@@ -174,6 +209,8 @@ export function obsoleteFiles(oldManifest, newManifest) {
 export const PUT_LIMIT_BYTES = 300 * 1024 * 1024
 /** 1つの版に置くファイルの数の上限（今は6件。余裕を見て） */
 const MAX_FILES = 32
+/** 自動更新用のファイルの数の上限（今は mac の arm64 / x64 の2件） */
+const MAX_UPDATES = 8
 const VERSION_RE = /^\d{1,4}\.\d{1,4}\.\d{1,4}(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/
 const SHA256_RE = /^[0-9a-f]{64}$/
 
@@ -241,6 +278,22 @@ export function validateManifest(manifest, version) {
     if (!Number.isInteger(file.size) || /** @type {number} */ (file.size) <= 0 || /** @type {number} */ (file.size) > PUT_LIMIT_BYTES) fail(`${parsed.name} の size が正しくない`)
     if (typeof file.sha256 !== 'string' || !SHA256_RE.test(file.sha256)) fail(`${parsed.name} の sha256 が 64 桁の16進ではない`)
     if (file.preview !== undefined && file.preview !== true) fail(`${parsed.name} の preview が true ではない`)
+  }
+  if (m.updates !== undefined) {
+    if (!Array.isArray(m.updates) || m.updates.length === 0 || m.updates.length > MAX_UPDATES) fail('updates が空か多すぎる')
+    for (const f of /** @type {unknown[]} */ (m.updates)) {
+      if (!f || typeof f !== 'object') fail('updates の要素がオブジェクトではない')
+      const file = /** @type {Record<string, unknown>} */ (f)
+      const parsed = typeof file.name === 'string' ? parseUpdateArtifactName(file.name, version) : null
+      if (!parsed) fail(`自動更新のファイル名が規則に合わない: ${JSON.stringify(file.name)}`)
+      if (names.has(parsed.name)) fail(`ファイル名が重なっている: ${parsed.name}`)
+      names.add(parsed.name)
+      if (m.product !== undefined && m.product !== parsed.product) fail(`${parsed.name} の製品名が manifest と違う`)
+      if (file.path !== `${dir}/${parsed.name}`) fail(`${parsed.name} の path が ${dir}/ の下ではない: ${JSON.stringify(file.path)}`)
+      if (file.os !== parsed.os || file.arch !== parsed.arch || file.kind !== parsed.kind) fail(`${parsed.name} の os / arch / kind が名前と合わない`)
+      if (!Number.isInteger(file.size) || /** @type {number} */ (file.size) <= 0 || /** @type {number} */ (file.size) > PUT_LIMIT_BYTES) fail(`${parsed.name} の size が正しくない`)
+      if (typeof file.sha256 !== 'string' || !SHA256_RE.test(file.sha256)) fail(`${parsed.name} の sha256 が 64 桁の16進ではない`)
+    }
   }
   return /** @type {any} */ (manifest)
 }
@@ -313,6 +366,22 @@ export function assertManifestMatchesSums(manifest, sums) {
 }
 
 /**
+ * manifest の自動更新用のファイル（updates）と UPDATE-SHA256SUMS が過不足なく一致するかを確かめる。違えば例外。
+ * updates が無い版は、UPDATE-SHA256SUMS も無い（null）ことを求める
+ * @param {{ updates?: Array<{ name: string, sha256: string }> }} manifest
+ * @param {Map<string, string> | null} sums
+ */
+export function assertUpdatesMatchSums(manifest, sums) {
+  const updates = manifest.updates ?? []
+  if (updates.length === 0) {
+    if (sums && sums.size > 0) throw new Error(`${UPDATE_SUMS} があるのに、manifest に自動更新のファイルがありません`)
+    return
+  }
+  if (!sums) throw new Error(`自動更新のファイルがあるのに ${UPDATE_SUMS} がありません`)
+  assertManifestMatchesSums({ files: updates }, sums)
+}
+
+/**
  * 作業フォルダの中のパスを作る。名前は呼び出し側が作ったもの（manifest の値は使わない）に限るが、
  * 念のため区切り・.. を含むもの、フォルダの外に出るものは例外にする。
  * @param {string} work mkdtemp で作ったフォルダ
@@ -348,14 +417,18 @@ const REF_RE = /^[A-Za-z0-9][\w./-]*$/
  * SHA256SUMS だけを付けた GitHub Release の下書きを作る gh の引数。値は manifest と同じもの（formatSha256Sums）を出す。
  * shell は通さずに gh へ渡す前提だが、repo・target・版の形もここで確かめる（- で始まる値をオプションと取り違えさせない）。
  * sigFile（SHA256SUMS.sig。scripts/release-signing.mjs）を渡すと、それも並べて付ける（security-3 [2]）。
- * @param {{ version: string, repo: string, sumsFile: string, sigFile?: string, notes: string, target?: string, prerelease?: boolean, product?: string }} input
+ * extraFiles は UPDATE-SHA256SUMS(.sig)（自動更新用のファイルの sha256 と署名）。
+ * @param {{ version: string, repo: string, sumsFile: string, sigFile?: string, extraFiles?: string[], notes: string, target?: string, prerelease?: boolean, product?: string }} input
  */
 export function ghReleaseCreateArgs(input) {
+  for (const f of input.extraFiles ?? []) {
+    if (typeof f !== 'string' || f.startsWith('-')) throw new Error(`添付するファイルの名前が正しくありません: ${JSON.stringify(f)}`)
+  }
   assertValidVersion(input.version)
   if (!REPO_RE.test(input.repo ?? '')) throw new Error(`リポジトリの形が正しくありません: ${JSON.stringify(input.repo)}（owner/name）`)
   if (input.target !== undefined && !REF_RE.test(input.target)) throw new Error(`target の形が正しくありません: ${JSON.stringify(input.target)}`)
   return [
-    'release', 'create', `v${input.version}`, input.sumsFile, ...(input.sigFile ? [input.sigFile] : []),
+    'release', 'create', `v${input.version}`, input.sumsFile, ...(input.sigFile ? [input.sigFile] : []), ...(input.extraFiles ?? []),
     '--repo', input.repo,
     '--draft',
     '--title', `${input.product ?? 'Ferret'} ${input.version}`,
@@ -388,6 +461,8 @@ export function ghReleaseNotes(version, downloadUrl = 'https://ferretade.dev/dow
     '```',
     'ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig < SHA256SUMS',
     '```',
+    '',
+    '`UPDATE-SHA256SUMS` and `UPDATE-SHA256SUMS.sig` do the same for the files the app downloads to update itself (the macOS `.zip`). Check them the same way, with the file names changed.',
     '',
     'The macOS app is signed with a Developer ID and notarized by Apple. A matching hash in a correctly signed `SHA256SUMS` shows the file is the one the Ferret release key published.',
     ''

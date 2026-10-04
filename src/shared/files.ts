@@ -192,3 +192,56 @@ export function movedPath(path: string, from: string, to: string): string | null
   if (path === from) return to
   return path.startsWith(`${from}/`) ? `${to}${path.slice(from.length)}` : null
 }
+
+/** fs:create の結果。path は作ったもの、top は今回新しくできたいちばん上（「a/b/c.ts」で a が無かったなら a。元に戻すときに消す） */
+export interface FsCreated {
+  path: string
+  top: string
+}
+
+/** 移動・コピー・取り込みの1件。from は元（取り込みでは元の名前）、to は新しい相対パス。from と to が同じなら何もしていない */
+export interface FsTransfer {
+  from: string
+  to: string
+}
+
+/** 1回でコピー・取り込みできる数（ファイルとフォルダの合計）と大きさの上限。大きなフォルダを誤って落として固まらないように */
+export const MAX_COPY_ENTRIES = 10_000
+export const MAX_COPY_BYTES = 1024 * 1024 * 1024
+
+/**
+ * 新しいファイルの名前に「a/b/c.ts」のように `/` を含めたときの、1階層ずつの名前。
+ * 空の階層（`a//b`・先頭や末尾の `/`）と `\` は区切りとして認めない（entryNameProblem が断る）
+ */
+export function nestedNameParts(name: string): string[] {
+  return typeof name === 'string' ? name.split('/') : [name]
+}
+
+/** 入れ子の名前の誤り。どこか1階層でも使えなければ、その誤り */
+export function nestedNameProblem(name: string): EntryNameProblem | null {
+  for (const part of nestedNameParts(name)) {
+    const problem = entryNameProblem(part)
+    if (problem) return problem
+  }
+  return null
+}
+
+/**
+ * コピーで重ならない名前（Finder・VS Code と同じ形）。n は 1 から: 「a.ts」→「a copy.ts」→「a copy 2.ts」。
+ * 拡張子は最後のドットから（先頭のドットだけの「.env」は拡張子とみなさない）。フォルダは拡張子を分けない
+ */
+export function copyName(name: string, n: number, kind: FsEntry['kind']): string {
+  const dot = kind === 'file' ? name.lastIndexOf('.') : -1
+  const [stem, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, '']
+  return `${stem} copy${n > 1 ? ` ${n}` : ''}${ext}`
+}
+
+/** taken（同じフォルダにある名前）と重ならない名前。重ならなければそのまま。大文字小文字は区別しない（macOS・Windows） */
+export function uniqueName(name: string, kind: FsEntry['kind'], taken: Iterable<string>): string {
+  const lower = new Set([...taken].map((x) => x.toLowerCase()))
+  if (!lower.has(name.toLowerCase())) return name
+  for (let n = 1; ; n++) {
+    const candidate = copyName(name, n, kind)
+    if (!lower.has(candidate.toLowerCase())) return candidate
+  }
+}

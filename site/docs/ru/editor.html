@@ -167,6 +167,7 @@
         <ul>
   <li><span class="docs-ui">Файлы</span> (дерево файлов): <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></span></span>, с кнопками <span class="docs-ui">Фильтр по имени файла</span>, <span class="docs-ui">Обновить</span> и <span class="docs-ui">Свернуть все</span>.</li>
   <li><span class="docs-ui">Перейти к файлу…</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></span></span>.</li>
+  <li>Чтобы открыть файл, перетащите его из Finder (из проводника в Windows, из файлового менеджера в Linux) на панель вкладок или в редактор. Файлы проекта открываются в редакторе или в просмотрщике. Чтобы добавить файл извне проекта, отпустите его на разделе <span class="docs-ui">Файлы</span> — он будет скопирован в проект. Папка, отпущенная здесь, открывается как проект. Файлы, перетащенные из раздела <span class="docs-ui">Файлы</span>, открываются так же.</li>
   <li>Сохранение — <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></span></span>. При закрытии изменённого файла появится вопрос <q>Сохранить изменения в &lt;name&gt;?</q> с кнопками <span class="docs-ui">Сохранить</span>, <span class="docs-ui">Не сохранять</span> и <span class="docs-ui">Отменить</span>.</li>
   <li>Если файл изменился на диске, пока у вас есть несохранённые правки, выберите <span class="docs-ui">Загрузить с диска</span> или <span class="docs-ui">Оставить мои изменения</span>.</li>
 </ul>
@@ -174,16 +175,22 @@
       </section>
 
       <section class="docs-section" aria-labelledby="file-tree">
-        <h2 id="file-tree"><a class="docs-anchor" href="#file-tree" aria-label="Ссылка на «Создание, переименование и удаление файлов»">#</a>Создание, переименование и удаление файлов</h2>
-        <p>Работайте с файлами прямо в разделе <span class="docs-ui">Файлы</span>, как в VS Code. Имена вводятся прямо в дереве.</p>
+        <h2 id="file-tree"><a class="docs-anchor" href="#file-tree" aria-label="Ссылка на «Работа с файлами в дереве файлов»">#</a>Работа с файлами в дереве файлов</h2>
+        <p>Работайте с файлами прямо в разделе <span class="docs-ui">Файлы</span>, как в VS Code. Щёлкните правой кнопкой по элементу, а для работы в корне проекта — по пустому месту под деревом. Имена вводятся прямо в дереве.</p>
 <ul>
-  <li><span class="docs-ui">Новый файл</span> / <span class="docs-ui">Новая папка</span>: кнопки над деревом или щелчок правой кнопкой по папке (или по пустому месту под деревом). Новый элемент создаётся в выбранной папке, рядом с выбранным файлом или в корне проекта. Новый файл открывается в редакторе.</li>
-  <li><span class="docs-ui">Переименовать</span>: <span class="docs-kbd"><span class="os-mac"><kbd>F2</kbd> / <kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>F2</kbd></span></span> или щелчок правой кнопкой. Открытые вкладки получают новое имя и сохраняют несохранённые правки.</li>
+  <li><span class="docs-ui">Новый файл</span> / <span class="docs-ui">Новая папка</span>: кнопки над деревом или щелчок правой кнопкой. Новый элемент создаётся в выбранной папке, рядом с выбранным файлом или в корне проекта. Введите имя с косыми чертами, например <code>src/routes/index.ts</code>, чтобы заодно создать промежуточные папки. Новый файл открывается в редакторе. В пустой папке раздел <span class="docs-ui">Файлы</span> показывает <span class="docs-ui">Эта папка пуста</span> с кнопками <span class="docs-ui">Новый файл</span> и <span class="docs-ui">Новая папка</span>.</li>
+  <li><span class="docs-ui">Вырезать</span>, <span class="docs-ui">Копировать</span> и <span class="docs-ui">Вставить</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>X</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>X</kbd></span></span>, <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>C</kbd></span></span>, <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>V</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>V</kbd></span></span> или щелчок правой кнопкой. Папки копируются со всем содержимым. <span class="docs-ui">Дублировать</span> создаёт копию рядом с оригиналом. Если имя занято, копия получает имя <code>name copy</code>, затем <code>name copy 2</code>.</li>
+  <li>Перетащите элементы на папку (или на пустое место — для корня проекта), чтобы переместить их. Удерживайте <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span> при отпускании, чтобы скопировать их вместо перемещения. Файлы и папки, перетащенные из Finder (из проводника в Windows), копируются в проект; оригиналы остаются на месте.</li>
+  <li><span class="docs-ui">Переименовать</span>: <span class="docs-kbd"><span class="os-mac"><kbd>F2</kbd> / <kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>F2</kbd></span></span> или щелчок правой кнопкой.</li>
   <li><span class="docs-ui">Удалить</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⌫</kbd> / <kbd>Delete</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Delete</kbd></span></span> или щелчок правой кнопкой. Ferret сначала спрашивает подтверждение, затем перемещает элемент в Корзину, откуда его можно восстановить. Вкладки удалённых файлов закрываются; если в каких-то из них были несохранённые правки, об этом сказано в подтверждении.</li>
-  <li>Выберите несколько элементов с помощью <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span>-щелчка или <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd></span></span>-щелчка, чтобы удалить их вместе.</li>
+  <li><span class="docs-ui">Отменить</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>Z</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Z</kbd></span></span> отменяет последнее создание, переименование, перемещение, вставку или дублирование. Удалённые элементы восстанавливаются из Корзины.</li>
+  <li><span class="docs-ui">Копировать путь</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>C</kbd></span></span>) и <span class="docs-ui">Копировать относительный путь</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⇧</kbd><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Alt</kbd><kbd>C</kbd></span></span>) помещают путь в буфер обмена.</li>
+  <li><span class="docs-ui">Показать в Finder</span> (<span class="docs-ui">Показать в проводнике</span> в Windows, <span class="docs-ui">Открыть содержащую папку</span> в Linux): <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>R</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>R</kbd></span></span>. <span class="docs-ui">Открыть в терминале</span> открывает новую вкладку терминала в этой папке (для файла — в его папке).</li>
+  <li>Для файла <span class="docs-ui">Открыть</span> открывает его в редакторе, а <span class="docs-ui">Открыть в приложении по умолчанию</span> — в приложении, которое ваша ОС использует для этого типа.</li>
+  <li>Выберите несколько элементов с помощью <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span>-щелчка или <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd></span></span>-щелчка, чтобы вырезать, скопировать, переместить или удалить их вместе.</li>
   <li><kbd>Esc</kbd> отменяет ввод имени.</li>
 </ul>
-<p>Ferret не перезаписывает существующий файл или папку с тем же именем и отклоняет всё, что выходит за пределы папки проекта (<code>..</code>, абсолютные пути, символические ссылки, указывающие наружу), всё внутри <code>.git</code>, а также имена, которые недопустимы в какой-либо ОС: <code>/ \ &lt; &gt; : " | ? *</code>, управляющие символы, пробел или точка в конце и зарезервированные имена Windows, например <code>CON</code> или <code>NUL</code>.</p>
+<p>Открытые вкладки следуют за переименованным или перемещённым файлом и сохраняют несохранённые правки. Ferret не перезаписывает существующий файл или папку с тем же именем и держит всё внутри папки проекта: он отклоняет <code>..</code>, абсолютные пути, символические ссылки, указывающие наружу, всё внутри <code>.git</code>, перемещение папки в саму себя, а также имена, которые недопустимы в какой-либо ОС: <code>/ \ &lt; &gt; : " | ? *</code>, управляющие символы, пробел или точка в конце и зарезервированные имена Windows, например <code>CON</code> или <code>NUL</code>. За одно копирование или перетаскивание можно передать до 10 000 элементов и 1 ГБ.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="preview">
@@ -192,6 +199,14 @@
 <ul>
   <li><span class="docs-ui">Открыть предпросмотр сбоку</span>: рядом с редактором</li>
   <li><span class="docs-ui">Предпросмотр</span>: во встроенном браузере (<code>ade-preview://</code>), чтобы его можно было записать и проверить</li>
+</ul>
+<p>Чтобы редактировать Markdown-файл в том виде, в каком он выглядит в предпросмотре, нажмите <span class="docs-ui">Редактировать в предпросмотре</span> вверху редактора, а чтобы вернуться — <span class="docs-ui">Исходный текст</span>. Оба режима показывают одно и то же содержимое; сохранение, отметка о несохранённых изменениях и подтверждение при закрытии работают одинаково.</p>
+<ul>
+  <li>Печатайте прямо в заголовках, абзацах, списках, флажках, таблицах, ссылках, а также в полужирном, курсивном тексте и встроенном коде. Если в начале строки ввести <code>#</code>, <code>-</code>, <code>1.</code> или <code>&gt;</code> и пробел, начнётся заголовок, список или цитата.</li>
+  <li>Блоки кода и диаграммы Mermaid редактируются как исходный текст, язык указан в углу. Диаграмма отображается в <span class="docs-ui">Открыть предпросмотр сбоку</span> или <span class="docs-ui">Предпросмотр</span>.</li>
+  <li>Front matter (блок <code>---</code> в начале) показывается текстом над документом, и его можно редактировать там.</li>
+  <li>Части, которые вы не меняли, сохраняются ровно так, как были написаны, включая стиль заголовков, маркеры списков, пустые строки, выравнивание таблиц и окончания строк. Отредактированный блок по возможности сохраняет свой стиль; иначе он записывается в стандартной форме Markdown: <code>-</code> для списков и <code>#</code> для заголовков.</li>
+  <li>Изображения из проекта показываются. Изображения с других сайтов не загружаются — вместо них показывается имя хоста. HTML в файле показывается как текст.</li>
 </ul>
       </section>
 
@@ -218,7 +233,7 @@
       <p class="docs-toc-heading">На этой странице</p>
       <ul>
         <li><a href="#files">Открытие и редактирование файлов</a></li>
-        <li><a href="#file-tree">Создание, переименование и удаление файлов</a></li>
+        <li><a href="#file-tree">Работа с файлами в дереве файлов</a></li>
         <li><a href="#preview">Предпросмотр Markdown и Mermaid</a></li>
         <li><a href="#review-docs">Ревью документов с помощью записи</a></li>
       </ul>

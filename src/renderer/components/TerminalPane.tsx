@@ -1,3 +1,7 @@
+import { foregroundAgentOf } from '../terminal/terminalKeys'
+import { hasExternalFiles, readDrop } from '../lib/externalDrop'
+import { shellPathsText, shellQuotingFor, treePathsForTerminal } from '@shared/externalDrop'
+import { hasTreePaths, treeDragPaths } from '../lib/treeDrag'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Columns2, Plus, Rows2, SquareTerminal, X } from 'lucide-react'
 import { TUI_AGENT_LABEL, type AccountLoginRequest, type AgentOption, type Project, type TuiAgent } from '@shared/types'
@@ -5,6 +9,7 @@ import { SHORTCUTS, formatShortcut } from '../lib/shortcut'
 import { Button, EmptyState, IconTile } from '../ui'
 import { acquireTerminal, getTerminal, holdPtyResize, releaseTerminal } from '../terminal/terminalClient'
 import { hasBusyAgent, publishAgentActivity } from '../terminal/agentActivity'
+import { AttentionThrottle, INITIAL_TRACK, advancePaneState, attentionEvents, type AttentionPane, type PaneTrack } from '../terminal/agentAttention'
 import { onAccountLoginRequest } from '../lib/accountLogin'
 import { onTerminalCommandRequest } from '../lib/terminalCommand'
 import { onAgentLaunchRequest } from '../lib/agentLaunchRequest'
@@ -105,6 +110,8 @@ interface Pane {
   customTitle?: string | null
   /** プロジェクトを開いたときの自動起動。main は権限確認を省く引数を付けない（security-3 [1]） */
   autoStart?: boolean
+  /** 上限での自動切り替えで開くタブ（main の failover:launch の token） */
+  failoverToken?: string | null
 }
 
 interface Tab {
@@ -140,6 +147,8 @@ function dropLabel(target: TerminalDropTarget): TranslationKey {
 }
 /** Resource Manager（フッター）から、そのターミナルのタブへ移るよう頼むイベント。detail は { id: ptyId } */
 const FOCUS_TERMINAL_EVENT = 'ade:focus-terminal'
+/** 通知が入のとき、裏で状態を読む間隔（秒）。表では 1 秒ごと */
+const BACKGROUND_POLL_EVERY = 5
 /** 分割元のカレントを調べるのを待つ上限。macOS の lsof は初回だけ遅いことがある（Orca と同じ値） */
 const SPLIT_CWD_TIMEOUT_MS = 1000
 /** 区切り線の掴める幅（見える線 ＋ 両側の余白） */
@@ -155,13 +164,14 @@ interface PaneSpec {
   command?: string | null
   title?: string | null
   autoStart?: boolean
+  failoverToken?: string | null
 }
 
-function newPane({ launch = null, cwd, accountLogin = null, command = null, title = null, autoStart = false }: PaneSpec): Pane {
+function newPane({ launch = null, cwd, accountLogin = null, command = null, title = null, autoStart = false, failoverToken = null }: PaneSpec): Pane {
   const label =
     title ||
     (accountLogin ? tNow('terminal.loginTitle', { agent: TUI_AGENT_LABEL[accountLogin.agent] }) : launch ? agentLabel(launch) : tNow('terminal.shell'))
-  return { key: `pane${++paneSeq}`, title: label, state: 'unknown', launch, cwd, accountLogin, command, customTitle: title, autoStart }
+  return { key: `pane${++paneSeq}`, title: label, state: 'unknown', launch, cwd, accountLogin, command, customTitle: title, autoStart, failoverToken }
 }
 
 /** 読み込み直しの前に書いた記録（同じウインドウの読み込み直しでは残る sessionStorage）。読めなければ null */
@@ -225,7 +235,8 @@ export function TerminalPane({
   cwd = null,
   startupAgents = [],
   onOpenAgentSettings,
-  onOpenFile
+  onOpenFile,
+  notify = false
 }: {
   /** 分割幅など、レイアウトが変わったことを知らせる値 */
   layoutKey: string
@@ -244,6 +255,8 @@ export function TerminalPane({
   onOpenAgentSettings?: () => void
   /** 「＋」の検索でファイルを選んだとき（エディタで開く）。渡されたときだけファイルを検索する */
   onOpenFile?: (path: string) => void
+  /** Agent が終わった・確認を待っているときに OS の通知を出す（設定の agents.notify） */
+  notify?: boolean
 }) {
   const sectionRef = useRef<HTMLElement | null>(null)
   const t = useT()
@@ -325,8 +338,8 @@ export function TerminalPane({
 
   /** タブを開く。agent を渡すとそのAgentが起動した状態のタブになる */
   const addTab = useCallback(
-    (launch: TuiAgent | null = null, extra: Omit<PaneSpec, 'launch' | 'cwd'> = {}) => {
-      const pane = newPane({ ...extra, launch, cwd })
+    (launch: TuiAgent | null = null, extra: Omit<PaneSpec, 'launch' | 'cwd'> & { cwd?: string | null } = {}) => {
+      const pane = newPane({ ...extra, launch, cwd: extra.cwd ?? cwd })
       const key = `tab${++tabSeq}`
       setPanes((prev) => ({ ...prev, [pane.key]: pane }))
       setTabs((prev) => [...prev, { key, projectId, layout: leaf(pane.key), activePane: pane.key }])
@@ -434,7 +447,7 @@ export function TerminalPane({
   // 「新しいタブでこの1行を実行して」の依頼（設定の GitHub 節の `gh auth login` など）。
   // コマンドは Agent と同じく、シェルの最初のプロンプトで実行させる（main の起動ファイルの仕組み）
   useEffect(
-    () => onTerminalCommandRequest((req) => addTabRef.current(null, { command: req.command, title: req.title ?? null })),
+    () => onTerminalCommandRequest((req) => addTabRef.current(null, { command: req.command || null, title: req.title ?? null, cwd: req.cwd ?? null })),
     []
   )
   // 「Agentへ送信」でどこにも Agent が居なかったとき、既定の Agent のタブを開く（ReviewFindings）
@@ -468,6 +481,38 @@ export function TerminalPane({
     window.addEventListener(FOCUS_TERMINAL_EVENT, onFocusTerminal)
     return () => window.removeEventListener(FOCUS_TERMINAL_EVENT, onFocusTerminal)
   }, [focusPane])
+
+  // 上限での自動切り替え（main の failover/service.ts）。上限になったタブと同じプロジェクトに、引き継ぐ Agent のタブを開く。
+  // 引き継げたら古いタブを閉じて（枠が戻ったとき古い Agent が同じ作業を続けないように）、新しいタブを見せる
+  const closePaneRef = useRef(closePane)
+  closePaneRef.current = closePane
+  useEffect(() => {
+    const paneOf = (ptyId: string) => {
+      const paneKey = Object.keys(panesRef.current).find((key) => getTerminal(key)?.ptyId === ptyId)
+      const tab = paneKey ? tabsRef.current.find((t) => hasLeaf(t.layout, paneKey)) : undefined
+      return paneKey && tab ? { paneKey, tab } : null
+    }
+    const offLaunch = window.ade.on('failover:launch', (request) => {
+      const from = paneOf(request.fromTerminalId)
+      const pane = newPane({ launch: request.agent, cwd: request.cwd, failoverToken: request.token })
+      const key = `tab${++tabSeq}`
+      const tabProject = from ? from.tab.projectId : projectId
+      setPanes((prev) => ({ ...prev, [pane.key]: pane }))
+      setTabs((prev) => {
+        const tab = { key, projectId: tabProject, layout: leaf(pane.key), activePane: pane.key }
+        const at = from ? prev.findIndex((t) => t.key === from.tab.key) : -1
+        return at >= 0 ? [...prev.slice(0, at + 1), tab, ...prev.slice(at + 1)] : [...prev, tab]
+      })
+    })
+    const offNotice = window.ade.on('failover:notice', (notice) => {
+      if (notice.fromTerminalId && notice.toTerminalId) {
+        const from = paneOf(notice.fromTerminalId)
+        if (from) closePaneRef.current(from.tab.key, from.paneKey)
+      }
+      if (notice.toTerminalId) window.dispatchEvent(new CustomEvent(FOCUS_TERMINAL_EVENT, { detail: { id: notice.toTerminalId } }))
+    })
+    return () => { offLaunch(); offNotice() }
+  }, [projectId])
 
   // 「＋」の検索に出す登録URL（全プロジェクト分）
   // 「＋」と分割のメニューに出すエージェント。Orca と同じく、インストール済みか登録したもので、無効にしていないもの
@@ -640,7 +685,8 @@ export function TerminalPane({
           accountLogin: pane.accountLogin ?? null,
           command: pane.command ?? null,
           title: pane.customTitle ?? null,
-          autoStart: pane.autoStart === true
+          autoStart: pane.autoStart === true,
+          failoverToken: pane.failoverToken ?? null
         })
         .then((info) => {
           // 作っている間にペインを閉じたら、できたPTYもすぐ閉じる
@@ -674,25 +720,49 @@ export function TerminalPane({
     onActiveTerminal?.(focusedPane ? getTerminal(focusedPane)?.ptyId ?? null : null)
   }, [focusedPane, onActiveTerminal])
 
+  // 終わった（まだ見ていない）を導くための、ペインごとの経過と前回の状態（terminal/agentAttention.ts）
+  const tracksRef = useRef(new Map<string, PaneTrack>())
+  const attentionRef = useRef<AttentionPane[]>([])
+  const throttleRef = useRef(new AttentionThrottle())
+  const notifyRef = useRef(notify)
+  notifyRef.current = notify
+  /** 画面に出ているペイン（表示中のプロジェクトの選択中のタブ。分割していれば全部） */
+  const shownPanesRef = useRef<string[]>([])
+  shownPanesRef.current = activeTab ? leafIds(activeTab.layout) : []
+
   const paneKeys = Object.keys(panes).join(':')
   useEffect(() => {
     let stopped = false
+    let tick = 0
     const update = async () => {
+      tick += 1
       // 最小化・裏に隠れている間は問い合わせない。Windows ではそのたびに PowerShell でプロセス一覧を取るので、
-      // ほかのアプリを使っている間（フォーカスが無い間）も止める（Orca #10686 #12288。戻れば1秒以内に取り直す）
-      if (document.visibilityState === 'hidden' || (window.ade.platform === 'win32' && !document.hasFocus())) return
+      // ほかのアプリを使っている間（フォーカスが無い間）も止める（Orca #10686 #12288。戻れば1秒以内に取り直す）。
+      // 通知が入なら、終わった・確認待ちを知らせるため、裏でも BACKGROUND_POLL_EVERY 秒ごとに読む
+      const background = document.visibilityState === 'hidden' || (window.ade.platform === 'win32' && !document.hasFocus())
+      if (background && (!notifyRef.current || tick % BACKGROUND_POLL_EVERY !== 0)) return
       const states = await Promise.all(Object.keys(panesRef.current).map(async (key) => {
         const handle = getTerminal(key)
         const id = handle?.ptyId
         const result = id ? await window.ade.invoke('terminal:agentState', id).catch(() => null /* 終了済み（想定内） */) : null
-        if (handle) handle.agentForeground = !!result && result.kind !== 'unknown'
-        return [key, (result?.state ?? 'unknown') as AgentState] as const
+        if (handle) handle.foregroundAgent = foregroundAgentOf(result)
+        return [key, result?.state ?? 'unknown'] as const
       }))
       if (stopped) return
+      // 見ているペインは「終わった」にせず、見たら done を消す
+      const looking = document.visibilityState === 'visible' && document.hasFocus()
+      const shown = new Set(shownPanesRef.current)
+      const tracked = states.map(([key, detected]) => {
+        const seen = looking && shown.has(key)
+        const track = advancePaneState(tracksRef.current.get(key) ?? INITIAL_TRACK, detected, seen)
+        tracksRef.current.set(key, track)
+        return { key, state: track.state, seen }
+      })
+      for (const key of tracksRef.current.keys()) if (!(key in panesRef.current)) tracksRef.current.delete(key)
       setPanes((current) => {
         let changed = false
         const next = { ...current }
-        for (const [key, state] of states) {
+        for (const { key, state } of tracked) {
           const pane = next[key]
           if (pane && pane.state !== state) {
             next[key] = { ...pane, state }
@@ -701,10 +771,37 @@ export function TerminalPane({
         }
         return changed ? next : current
       })
+      // プロジェクトの Agent が全部終わった・確認待ちになったら通知する（同じ出来事は AttentionThrottle で1回に）
+      const attention = tracked.map(({ key, state, seen }) => ({
+        key, state, seen, projectId: tabsRef.current.find((tab) => hasLeaf(tab.layout, key))?.projectId ?? null
+      }))
+      const events = attentionEvents(attentionRef.current, attention)
+      attentionRef.current = attention
+      if (!notifyRef.current) return
+      for (const event of events) {
+        if (!throttleRef.current.allow(event)) continue
+        const pane = panesRef.current[event.paneKey]
+        void window.ade.invoke('agentNotify:show', {
+          kind: event.kind,
+          projectId: event.projectId,
+          terminalId: getTerminal(event.paneKey)?.ptyId ?? null,
+          tab: pane?.title ?? ''
+        }).catch((err: unknown) => reportHandled(err, { area: 'terminal', op: 'agent notification' }))
+      }
     }
     const timer = setInterval(() => void update(), 1000)
     return () => { stopped = true; clearInterval(timer) }
   }, [paneKeys])
+
+  // 通知が押されたら、そのプロジェクトへ切り替えてそのタブを開く（main の agentNotify.ts）
+  const projectIdRef = useRef(projectId)
+  projectIdRef.current = projectId
+  useEffect(() => window.ade.on('agentNotify:open', (target) => {
+    void (async () => {
+      if (target.projectId && target.projectId !== projectIdRef.current) await window.ade.invoke('project:switch', target.projectId)
+      if (target.terminalId) window.dispatchEvent(new CustomEvent(FOCUS_TERMINAL_EVENT, { detail: { id: target.terminalId } }))
+    })().catch((err: unknown) => reportHandled(err, { area: 'terminal', op: 'open from notification' }))
+  }), [])
 
   // サイドバーの「実行中」の印のため、どのプロジェクトで Agent が動いているかを知らせる（裏のプロジェクトのタブも含む）
   useEffect(() => {
@@ -773,6 +870,8 @@ export function TerminalPane({
   const [dropHint, setDropHint] = useState<DropHint | null>(null)
   const [tabDrop, setTabDrop] = useState<{ key: string; before: boolean } | null>(null)
   const [dropAnnouncement, setDropAnnouncement] = useState('')
+  /** 外（Finder など）からファイルを落とそうとしているペインと、その枠（.terminal-surfaces の中の位置） */
+  const [fileDrop, setFileDrop] = useState<{ paneKey: string; box: DropHint['box'] } | null>(null)
 
   const startDrag = (e: React.DragEvent<HTMLElement>, source: TerminalDragSource) => {
     e.stopPropagation()
@@ -887,8 +986,48 @@ export function TerminalPane({
     const target: TerminalDropTarget = { kind: 'pane', tabKey: activeTab.key, paneKey, zone }
     return previewDrop(target) ? { target, box: half(rect, zone) } : null
   }
+  // 外から落としたファイル・フォルダ・画像は、落とした先のペインの入力にパスを入れる（実行はしない。iTerm・VS Code と同じ）。
+  // Agent が前面でも同じで、Claude Code は画像のパスを貼ると画像として読む。タブ・ペインの並べ替え（'Files' を運ばない）とは別
+  const fileDropPane = (e: React.DragEvent<HTMLElement>): { paneKey: string; box: DropHint['box'] } | null => {
+    if (!activeTab) return null
+    const leafEl = (e.target as Element | null)?.closest<HTMLElement>('[data-pane]')
+    const paneKey = leafEl?.dataset.pane
+    if (!leafEl || !paneKey || !hasLeaf(activeTab.layout, paneKey)) return null
+    const surfaces = e.currentTarget.getBoundingClientRect()
+    const rect = leafEl.getBoundingClientRect()
+    return { paneKey, box: { left: rect.left - surfaces.left, top: rect.top - surfaces.top, width: rect.width, height: rect.height } }
+  }
+  // ファイルツリーの行（TREE_DRAG_TYPE）も同じ。作業フォルダがプロジェクトの根なら相対パス、ほかの場所なら絶対パスで入れる
+  const isFileDrop = (dataTransfer: DataTransfer) => hasExternalFiles(dataTransfer) || (hasTreePaths(dataTransfer) && cwd !== null)
+  const dropFilesInto = async (dataTransfer: DataTransfer, tabKey: string, paneKey: string) => {
+    // データはイベントの間しか読めないので、待つ前に読む
+    const tree = treeDragPaths(dataTransfer)
+    const pending = tree ? null : readDrop(dataTransfer)
+    const pane = panesRef.current[paneKey]
+    const ptyId = getTerminal(paneKey)?.ptyId ?? null
+    const paths = tree
+      ? treePathsForTerminal(tree, { root: cwd ?? '', cwd: ptyId ? await window.ade.invoke('terminal:cwd', ptyId).catch(() => null) : null, platform: window.ade.platform })
+      : (await pending!).map((entry) => entry.path)
+    const remote = projects.some((p) => p.id === projectId && p.source === 'ssh')
+    const text = shellPathsText(paths, shellQuotingFor(window.ade.platform, { remote, title: pane?.title }))
+    if (!text) return
+    focusPane(tabKey, paneKey)
+    getTerminal(paneKey)?.insertText(text)
+  }
+
   const surfaceDropProps = {
     onDragOver: (e: React.DragEvent<HTMLElement>) => {
+      if (!isTerminalDrag(e) && isFileDrop(e.dataTransfer)) {
+        const next = fileDropPane(e)
+        if (!next) {
+          if (fileDrop) setFileDrop(null)
+          return
+        }
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'copy'
+        if (JSON.stringify(next) !== JSON.stringify(fileDrop)) setFileDrop(next)
+        return
+      }
       if (!isTerminalDrag(e)) return
       const hint = surfaceTarget(e)
       if (!hint) {
@@ -903,9 +1042,20 @@ export function TerminalPane({
       }
     },
     onDragLeave: (e: React.DragEvent<HTMLElement>) => {
-      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropHint(null)
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+        setDropHint(null)
+        setFileDrop(null)
+      }
     },
     onDrop: (e: React.DragEvent<HTMLElement>) => {
+      if (!isTerminalDrag(e) && isFileDrop(e.dataTransfer)) {
+        const target = fileDropPane(e)
+        setFileDrop(null)
+        if (!target || !activeTab) return
+        e.preventDefault()
+        void dropFilesInto(e.dataTransfer, activeTab.key, target.paneKey).catch((err: unknown) => reportHandled(err, { area: 'terminal', op: 'drop files' }))
+        return
+      }
       if (!isTerminalDrag(e)) return
       const hint = surfaceTarget(e)
       e.preventDefault()
@@ -1115,6 +1265,16 @@ export function TerminalPane({
             style={{ left: dropHint.box.left, top: dropHint.box.top, width: dropHint.box.width, height: dropHint.box.height }}
           >
             <span className="terminal-drop-overlay__label">{t(dropLabel(dropHint.target))}</span>
+          </div>
+        )}
+        {fileDrop && (
+          <div
+            className="terminal-drop-overlay"
+            data-kind="files"
+            data-testid="terminal-file-drop"
+            style={{ left: fileDrop.box.left, top: fileDrop.box.top, width: fileDrop.box.width, height: fileDrop.box.height }}
+          >
+            <span className="terminal-drop-overlay__label">{t('drop.terminal.hint')}</span>
           </div>
         )}
         <div className="visually-hidden" aria-live="polite" data-testid="terminal-drop-live">

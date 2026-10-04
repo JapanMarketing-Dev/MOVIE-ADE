@@ -203,12 +203,28 @@
   <tbody>
     <tr><td><span class="docs-ui">プロジェクトを開いたら起動</span></td><td>Claude Code、Codex（<a href="agents.html#supported">対応しているエージェント</a>から好きなものを選べます。選ばなくてもかまいません）</td></tr>
     <tr><td><span class="docs-ui">&lt;agent&gt; をメニューに出す</span></td><td>すべてのエージェントでオン</td></tr>
-    <tr><td><span class="docs-ui">コマンド</span> / <span class="docs-ui">引数</span>（エージェントごと）</td><td>そのエージェントのコマンド（たとえば <code>claude</code>、<code>codex</code>、<code>gemini</code>）/ なし</td></tr>
+    <tr><td><span class="docs-ui">権限確認を省いて起動する</span></td><td>オン: Claude Code は <code>--dangerously-skip-permissions</code>、Codex は <code>--dangerously-bypass-approvals-and-sandbox</code> を付けて起動します（<a href="agents.html#terminal">詳細</a>）</td></tr>
+    <tr><td><span class="docs-ui">Agent の作業が終わったときと、確認が必要なときに通知する</span></td><td>オフ（<a href="agents.html#terminal">詳細</a>）</td></tr>
+    <tr><td><span class="docs-ui">コマンド</span> / <span class="docs-ui">引数</span>（エージェントごと）</td><td>そのエージェントのコマンド（たとえば <code>claude</code>、<code>codex</code>、<code>gemini</code>）/ Claude Code は <code>--chrome</code>、ほかはなし</td></tr>
     <tr><td><span class="docs-ui">カスタムエージェント</span></td><td>なし（<span class="docs-ui">カスタムエージェントを追加</span> で任意の CLI を登録できます）</td></tr>
-    <tr><td><span class="docs-ui">権限確認を省く</span>（プロジェクトごと）</td><td>すべてのプロジェクトでオフ（<a href="agents.html#terminal">詳細</a>）</td></tr>
     <tr><td><span class="docs-ui">Agentへの指示</span></td><td>組み込みの文面（<a href="agents.html#prompt">変数</a>）</td></tr>
   </tbody>
 </table>
+      </section>
+
+      <section class="docs-section" aria-labelledby="failover">
+        <h2 id="failover"><a class="docs-anchor" href="#failover" aria-label="「上限での自動切り替え」へのリンク">#</a>上限での自動切り替え</h2>
+        <table>
+  <thead><tr><th>設定</th><th>既定値</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">上限に達したら自動で切り替える</span></td><td>オン</td></tr>
+    <tr><td><span class="docs-ui">上限とみなす使用量</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">先に同じ Agent の別のアカウントへ切り替える</span></td><td>オン</td></tr>
+    <tr><td><span class="docs-ui">Agent の順番</span></td><td>Claude Code、Codex、Gemini CLI</td></tr>
+    <tr><td><span class="docs-ui">上限が戻ったら、順番が上の Agent に戻す</span></td><td>オフ</td></tr>
+  </tbody>
+</table>
+<p><span class="docs-ui">設定 → アカウント</span> にあります。作業はプロジェクトの <code>.ferret/handoff.md</code> を通して引き継ぎます。<a href="accounts.html#failover">利用上限に達しても作業を続ける</a> を参照してください。</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other">
@@ -243,6 +259,7 @@
         <li><a href="#transcription">文字起こし</a></li>
         <li><a href="#storage">保管</a></li>
         <li><a href="#agent">Agent</a></li>
+        <li><a href="#failover">上限での自動切り替え</a></li>
         <li><a href="#other">アカウント、GitHub、外観、言語</a></li>
         <li><a href="#settings-json">settings.json</a></li>
       </ul>

@@ -677,6 +677,16 @@ window.addEventListener(BEFORE_NAVIGATE, (event) => {
 window.addEventListener('popstate', (event) => { if (event.isTrusted) beforeLeave(window.location.href) })
 window.addEventListener('hashchange', (event) => { if (event.isTrusted) beforeLeave(event.newURL) })
 
+// 外（Finder など）から落としたファイルを、ページが受けなかったときは開かない（内蔵ブラウザがそのファイルへ移ってしまわないように）。
+// ページの落とし先（アップロード欄など）が受けたもの（defaultPrevented）はそのまま。window の bubble で、ページの要素の処理の後に見る
+const blockUnhandledFileDrop = (event: DragEvent): void => {
+  if (event.defaultPrevented || !event.dataTransfer || !Array.from(event.dataTransfer.types).includes('Files')) return
+  event.preventDefault()
+  if (event.type === 'dragover') event.dataTransfer.dropEffect = 'none'
+}
+window.addEventListener('dragover', blockUnhandledFileDrop)
+window.addEventListener('drop', blockUnhandledFileDrop)
+
 const MAC = process.platform === 'darwin'
 
 /**

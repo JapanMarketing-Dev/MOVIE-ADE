@@ -41,19 +41,34 @@ Abra as <span class="docs-ui">Configurações</span> pela engrenagem na barra de
   </tbody>
 </table>
 
-<!-- @agent e6bb38101d -->
+<!-- @agent 669056f066 -->
 ## Agents
 <table>
   <thead><tr><th>Configuração</th><th>Padrão</th></tr></thead>
   <tbody>
     <tr><td><span class="docs-ui">Iniciar ao abrir um projeto</span></td><td>Claude Code, Codex (escolha qualquer um dos <a href="agents.html#supported">agentes suportados</a> ou nenhum)</td></tr>
     <tr><td><span class="docs-ui">Mostrar &lt;agent&gt; nos menus</span></td><td>Ativado para todos os agentes</td></tr>
-    <tr><td><span class="docs-ui">Comando</span> / <span class="docs-ui">argumentos</span> (por agente)</td><td>O comando do próprio agente (por exemplo <code>claude</code>, <code>codex</code>, <code>gemini</code>) / nenhum</td></tr>
+    <tr><td><span class="docs-ui">Iniciar os Agents sem pedidos de permissão</span></td><td>Ativado: o Claude Code inicia com <code>--dangerously-skip-permissions</code> e o Codex com <code>--dangerously-bypass-approvals-and-sandbox</code> (<a href="agents.html#terminal">detalhes</a>)</td></tr>
+    <tr><td><span class="docs-ui">Avisar quando os agentes terminarem ou precisarem de mim</span></td><td>Desativado (<a href="agents.html#terminal">detalhes</a>)</td></tr>
+    <tr><td><span class="docs-ui">Comando</span> / <span class="docs-ui">argumentos</span> (por agente)</td><td>O comando do próprio agente (por exemplo <code>claude</code>, <code>codex</code>, <code>gemini</code>) / <code>--chrome</code> para o Claude Code, nenhum para os outros</td></tr>
     <tr><td><span class="docs-ui">Agents personalizados</span></td><td>Nenhum (<span class="docs-ui">Adicionar agent personalizado</span> registra qualquer CLI)</td></tr>
-    <tr><td><span class="docs-ui">Pular pedidos de permissão</span> (por projeto)</td><td>Desativado em todos os projetos (<a href="agents.html#terminal">detalhes</a>)</td></tr>
     <tr><td><span class="docs-ui">Instruções para o Agent</span></td><td>Texto embutido (<a href="agents.html#prompt">variáveis</a>)</td></tr>
   </tbody>
 </table>
+
+<!-- @failover 93ea424573 -->
+## Troca ao atingir o limite de uso
+<table>
+  <thead><tr><th>Configuração</th><th>Padrão</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Trocar automaticamente ao atingir um limite de uso</span></td><td>Ativado</td></tr>
+    <tr><td><span class="docs-ui">Considerar uma conta no limite a partir de</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">Tentar primeiro outra conta do mesmo agente</span></td><td>Ativado</td></tr>
+    <tr><td><span class="docs-ui">Ordem dos agentes</span></td><td>Claude Code, Codex, Gemini CLI</td></tr>
+    <tr><td><span class="docs-ui">Voltar para um agente acima quando o limite dele for restabelecido</span></td><td>Desativado</td></tr>
+  </tbody>
+</table>
+<p>Em <span class="docs-ui">Configurações → Contas</span>. O trabalho é passado adiante pelo <code>.ferret/handoff.md</code> no projeto. Veja <a href="accounts.html#failover">Continuar trabalhando nos limites de uso</a>.</p>
 
 <!-- @other 37b81ab14b -->
 ## Contas, GitHub, aparência, idioma

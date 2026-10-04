@@ -5,34 +5,49 @@ Editor und Vorschau
 <!-- @lead 97cbc36c8d -->
 Öffnen und bearbeiten Sie Projektdateien und zeigen Sie eine Vorschau von Markdown und Mermaid an. Eine im integrierten Browser geöffnete Vorschau lässt sich wie jede Webseite aufnehmen und prüfen.
 
-<!-- @files d29f6a2107 -->
+<!-- @files c2eff8e24c -->
 ## Dateien öffnen und bearbeiten
 <ul>
   <li><span class="docs-ui">Dateien</span> (der Dateibaum): {{keys:Mod+Shift+E}}, mit <span class="docs-ui">Nach Dateiname filtern</span>, <span class="docs-ui">Aktualisieren</span> und <span class="docs-ui">Alle einklappen</span>.</li>
   <li><span class="docs-ui">Gehe zu Datei …</span>: {{keys:Mod+P}}.</li>
+  <li>Ziehen Sie eine Datei aus dem Finder (unter Windows aus dem Datei-Explorer, unter Linux aus Ihrem Dateimanager) auf die Tableiste oder den Editor, um sie zu öffnen. Dateien im Projekt öffnen sich im Editor oder in einem Viewer. Um eine Datei von außerhalb ins Projekt zu holen, legen Sie sie auf <span class="docs-ui">Dateien</span> ab; sie wird dann ins Projekt kopiert. Ein hier abgelegter Ordner wird als Projekt geöffnet. Aus <span class="docs-ui">Dateien</span> gezogene Dateien öffnen sich auf dieselbe Weise.</li>
   <li>Speichern mit {{keys:Mod+S}}. Beim Schließen einer geänderten Datei fragt Ferret <q>Änderungen an &lt;name&gt; sichern?</q> mit <span class="docs-ui">Speichern</span>, <span class="docs-ui">Nicht sichern</span> und <span class="docs-ui">Abbrechen</span>.</li>
   <li>Ändert sich die Datei auf der Festplatte, während Sie ungesicherte Änderungen haben, wählen Sie <span class="docs-ui">Von Festplatte neu laden</span> oder <span class="docs-ui">Meine Änderungen behalten</span>.</li>
 </ul>
 <p>Der Editor ist Monaco. Dateien, die kein Text sind, öffnen sich stattdessen in einem Viewer: Bilder (vergrößern und verkleinern; SVG lässt sich auch als Code anzeigen), Video und Audio mit Suchleiste, PDF und bei jeder anderen Binärdatei deren Größe und eine Hex-Ansicht der ersten Bytes. Viewer sind schreibgeschützt. Dateien außerhalb des Projektordners oder solche, die über einen symbolischen Link erreicht werden, der aus dem Ordner herausführt, werden nicht angezeigt.</p>
 
-<!-- @file-tree 4bec72e9f4 -->
-## Dateien anlegen, umbenennen und löschen
-<p>Arbeiten Sie direkt in <span class="docs-ui">Dateien</span> mit Dateien, so wie in VS Code. Namen geben Sie direkt im Baum ein.</p>
+<!-- @file-tree 6020ab04cd -->
+## Mit Dateien im Dateibaum arbeiten
+<p>Arbeiten Sie direkt in <span class="docs-ui">Dateien</span> mit Dateien, so wie in VS Code. Klicken Sie mit der rechten Maustaste auf ein Element oder auf die freie Fläche unter dem Baum, um auf der obersten Ebene des Projekts zu arbeiten. Namen geben Sie direkt im Baum ein.</p>
 <ul>
-  <li><span class="docs-ui">Neue Datei</span> / <span class="docs-ui">Neuer Ordner</span>: die Schaltflächen über dem Baum oder ein Rechtsklick auf einen Ordner (oder auf die freie Fläche unter dem Baum). Ein neues Element landet im ausgewählten Ordner, neben der ausgewählten Datei oder oben im Projekt. Eine neue Datei öffnet sich im Editor.</li>
-  <li><span class="docs-ui">Umbenennen</span>: {{keys:F2 / Enter|F2}} oder Rechtsklick. Geöffnete Tabs übernehmen den neuen Namen und behalten ungesicherte Änderungen.</li>
+  <li><span class="docs-ui">Neue Datei</span> / <span class="docs-ui">Neuer Ordner</span>: die Schaltflächen über dem Baum oder Rechtsklick. Ein neues Element landet im ausgewählten Ordner, neben der ausgewählten Datei oder auf der obersten Ebene des Projekts. Geben Sie einen Namen mit Schrägstrichen ein, etwa <code>src/routes/index.ts</code>, um die Ordner auf dem Weg gleich mit anzulegen. Eine neue Datei öffnet sich im Editor. In einem leeren Ordner zeigt <span class="docs-ui">Dateien</span> <span class="docs-ui">Dieser Ordner ist leer</span> mit den Schaltflächen <span class="docs-ui">Neue Datei</span> und <span class="docs-ui">Neuer Ordner</span>.</li>
+  <li><span class="docs-ui">Ausschneiden</span>, <span class="docs-ui">Kopieren</span> und <span class="docs-ui">Einfügen</span>: {{keys:Mod+X}}, {{keys:Mod+C}}, {{keys:Mod+V}} oder Rechtsklick. Ordner werden mit ihrem gesamten Inhalt kopiert. <span class="docs-ui">Duplizieren</span> legt eine Kopie neben dem Original an. Ist der Name schon vergeben, heißt die Kopie <code>name copy</code>, dann <code>name copy 2</code>.</li>
+  <li>Ziehen Sie Elemente auf einen Ordner (oder auf die freie Fläche für die oberste Ebene des Projekts), um sie zu verschieben. Halten Sie beim Ablegen {{keys:Alt|Ctrl}} gedrückt, um stattdessen zu kopieren. Dateien und Ordner, die Sie aus dem Finder (unter Windows aus dem Datei-Explorer) hineinziehen, werden ins Projekt kopiert; die Originale bleiben, wo sie waren.</li>
+  <li><span class="docs-ui">Umbenennen</span>: {{keys:F2 / Enter|F2}} oder Rechtsklick.</li>
   <li><span class="docs-ui">Löschen</span>: {{keys:Mod+Backspace / Delete|Delete}} oder Rechtsklick. Ferret fragt zuerst nach und verschiebt das Element dann in den Papierkorb, sodass Sie es wiederherstellen können. Tabs gelöschter Dateien werden geschlossen; hatte einer davon ungesicherte Änderungen, weist die Rückfrage darauf hin.</li>
-  <li>Wählen Sie mehrere Elemente mit {{keys:Mod}}-Klick oder {{keys:Shift}}-Klick aus, um sie gemeinsam zu löschen.</li>
+  <li><span class="docs-ui">Rückgängig</span>: {{keys:Mod+Z}} macht das letzte neue Element, Umbenennen, Verschieben, Einfügen oder Duplizieren rückgängig. Gelöschte Elemente werden aus dem Papierkorb wiederhergestellt.</li>
+  <li><span class="docs-ui">Pfad kopieren</span> ({{keys:Alt+Mod+C|Shift+Alt+C}}) und <span class="docs-ui">Relativen Pfad kopieren</span> ({{keys:Alt+Shift+Mod+C|Ctrl+Shift+Alt+C}}) legen den Pfad in die Zwischenablage.</li>
+  <li><span class="docs-ui">Im Finder anzeigen</span> (<span class="docs-ui">Im Datei-Explorer anzeigen</span> unter Windows, <span class="docs-ui">Übergeordneten Ordner öffnen</span> unter Linux): {{keys:Alt+Mod+R|Shift+Alt+R}}. <span class="docs-ui">Im Terminal öffnen</span> öffnet einen neuen Terminal-Tab in diesem Ordner (bei einer Datei in ihrem Ordner).</li>
+  <li>Bei einer Datei öffnet <span class="docs-ui">Öffnen</span> sie im Editor, und <span class="docs-ui">Mit Standard-App öffnen</span> öffnet sie in der App, die Ihr Betriebssystem für diesen Typ verwendet.</li>
+  <li>Wählen Sie mehrere Elemente mit {{keys:Mod}}-Klick oder {{keys:Shift}}-Klick aus, um sie gemeinsam auszuschneiden, zu kopieren, zu verschieben oder zu löschen.</li>
   <li>{{keys:Esc}} bricht die Eingabe eines Namens ab.</li>
 </ul>
-<p>Ferret überschreibt keine vorhandene Datei und keinen vorhandenen Ordner mit demselben Namen. Abgelehnt wird alles, was aus dem Projektordner herausführen würde (<code>..</code>, absolute Pfade, symbolische Links, die nach außen zeigen), alles innerhalb von <code>.git</code> sowie Namen, die ein Betriebssystem nicht verwenden kann: <code>/ \ &lt; &gt; : " | ? *</code>, Steuerzeichen, ein Leerzeichen oder Punkt am Ende und unter Windows reservierte Namen wie <code>CON</code> oder <code>NUL</code>.</p>
+<p>Geöffnete Tabs folgen einer umbenannten oder verschobenen Datei und behalten ungesicherte Änderungen. Ferret überschreibt keine vorhandene Datei und keinen vorhandenen Ordner mit demselben Namen und hält alles innerhalb des Projektordners: Abgelehnt werden <code>..</code>, absolute Pfade, symbolische Links, die nach außen zeigen, alles innerhalb von <code>.git</code>, das Verschieben eines Ordners in sich selbst sowie Namen, die ein Betriebssystem nicht verwenden kann: <code>/ \ &lt; &gt; : " | ? *</code>, Steuerzeichen, ein Leerzeichen oder Punkt am Ende und unter Windows reservierte Namen wie <code>CON</code> oder <code>NUL</code>. Ein einzelner Kopier- oder Ablegevorgang kann bis zu 10.000 Elemente und 1 GB umfassen.</p>
 
-<!-- @preview b8c0baaad4 -->
+<!-- @preview cb127d2292 -->
 ## Markdown- und Mermaid-Vorschau
 <p>Die Vorschau funktioniert für <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> und <code>.mermaid</code>. Mermaid ist in die App eingebaut, daher werden Diagramme auch offline gerendert.</p>
 <ul>
   <li><span class="docs-ui">Vorschau seitlich öffnen</span>: neben dem Editor</li>
   <li><span class="docs-ui">Vorschau öffnen</span>: im integrierten Browser (<code>ade-preview://</code>), sodass Sie sie aufnehmen und prüfen können</li>
+</ul>
+<p>Um eine Markdown-Datei so zu bearbeiten, wie sie in der Vorschau aussieht, klicken Sie oben im Editor auf <span class="docs-ui">In der Vorschau bearbeiten</span>; mit <span class="docs-ui">Quelltext</span> kehren Sie zurück. Beide zeigen denselben Inhalt, und Speichern, die Markierung für ungesicherte Änderungen und die Rückfrage beim Schließen funktionieren gleich.</p>
+<ul>
+  <li>Tippen Sie direkt in Überschriften, Absätze, Listen, Kontrollkästchen, Tabellen, Links sowie fetten, kursiven oder Inline-Code. Wenn Sie am Zeilenanfang <code>#</code>, <code>-</code>, <code>1.</code> oder <code>&gt;</code> und ein Leerzeichen eingeben, beginnt eine Überschrift, eine Liste oder ein Zitat.</li>
+  <li>Codeblöcke und Mermaid-Diagramme bearbeiten Sie als Quelltext; die Sprache wird in der Ecke angezeigt. Das Diagramm wird in <span class="docs-ui">Vorschau seitlich öffnen</span> oder <span class="docs-ui">Vorschau öffnen</span> gerendert.</li>
+  <li>Front Matter (der <code>---</code>-Block am Anfang) wird als Text über dem Dokument angezeigt und kann dort bearbeitet werden.</li>
+  <li>Teile, die Sie nicht ändern, werden genau so gespeichert, wie sie geschrieben sind, einschließlich Überschriftenstil, Listenzeichen, Leerzeilen, Tabellenausrichtung und Zeilenenden. Ein bearbeiteter Block behält seinen Stil, wo möglich; andernfalls wird dieser Block in einer Standard-Markdown-Form geschrieben, mit <code>-</code> für Listen und <code>#</code> für Überschriften.</li>
+  <li>Bilder im Projekt werden angezeigt. Bilder von anderen Websites werden nicht geladen; stattdessen wird ihr Hostname angezeigt. HTML in der Datei wird als Text angezeigt.</li>
 </ul>
 
 <!-- @review-docs 4b5c6316ba -->

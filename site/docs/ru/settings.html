@@ -203,12 +203,28 @@
   <tbody>
     <tr><td><span class="docs-ui">Запуск при открытии проекта</span></td><td>Claude Code, Codex (можно выбрать любых <a href="agents.html#supported">поддерживаемых агентов</a> или ни одного)</td></tr>
     <tr><td><span class="docs-ui">Показывать &lt;agent&gt; в меню</span></td><td>Вкл. для всех агентов</td></tr>
-    <tr><td><span class="docs-ui">Команда</span> / <span class="docs-ui">аргументы</span> (для каждого агента)</td><td>Собственная команда агента (например, <code>claude</code>, <code>codex</code>, <code>gemini</code>) / нет</td></tr>
+    <tr><td><span class="docs-ui">Запускать агентов без запросов разрешений</span></td><td>Вкл.: Claude Code запускается с <code>--dangerously-skip-permissions</code>, Codex — с <code>--dangerously-bypass-approvals-and-sandbox</code> (<a href="agents.html#terminal">подробнее</a>)</td></tr>
+    <tr><td><span class="docs-ui">Уведомлять, когда агенты закончат или им нужен я</span></td><td>Выкл. (<a href="agents.html#terminal">подробнее</a>)</td></tr>
+    <tr><td><span class="docs-ui">Команда</span> / <span class="docs-ui">аргументы</span> (для каждого агента)</td><td>Собственная команда агента (например, <code>claude</code>, <code>codex</code>, <code>gemini</code>) / <code>--chrome</code> для Claude Code, у остальных нет</td></tr>
     <tr><td><span class="docs-ui">Свои агенты</span></td><td>Нет (<span class="docs-ui">Добавить своего агента</span> регистрирует любой CLI)</td></tr>
-    <tr><td><span class="docs-ui">Пропускать запросы разрешений</span> (для проекта)</td><td>Выкл. для всех проектов (<a href="agents.html#terminal">подробнее</a>)</td></tr>
     <tr><td><span class="docs-ui">Инструкции для агента</span></td><td>Встроенный текст (<a href="agents.html#prompt">переменные</a>)</td></tr>
   </tbody>
 </table>
+      </section>
+
+      <section class="docs-section" aria-labelledby="failover">
+        <h2 id="failover"><a class="docs-anchor" href="#failover" aria-label="Ссылка на «Переключение при лимите использования»">#</a>Переключение при лимите использования</h2>
+        <table>
+  <thead><tr><th>Параметр</th><th>По умолчанию</th></tr></thead>
+  <tbody>
+    <tr><td><span class="docs-ui">Автоматически переключаться при достижении лимита</span></td><td>Вкл.</td></tr>
+    <tr><td><span class="docs-ui">Считать аккаунт на лимите начиная с</span></td><td>95%</td></tr>
+    <tr><td><span class="docs-ui">Сначала пробовать другой аккаунт того же агента</span></td><td>Вкл.</td></tr>
+    <tr><td><span class="docs-ui">Порядок агентов</span></td><td>Claude Code, Codex, Gemini CLI</td></tr>
+    <tr><td><span class="docs-ui">Возвращаться к агенту выше, когда его лимит восстановится</span></td><td>Выкл.</td></tr>
+  </tbody>
+</table>
+<p>В разделе <span class="docs-ui">Настройки → Аккаунты</span>. Работа передаётся через <code>.ferret/handoff.md</code> в проекте. См. <a href="accounts.html#failover">Работа без остановки на лимитах использования</a>.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other">
@@ -243,6 +259,7 @@
         <li><a href="#transcription">Распознавание</a></li>
         <li><a href="#storage">Хранение</a></li>
         <li><a href="#agent">Агенты</a></li>
+        <li><a href="#failover">Переключение при лимите использования</a></li>
         <li><a href="#other">Аккаунты, GitHub, оформление, язык</a></li>
         <li><a href="#settings-json">settings.json</a></li>
       </ul>

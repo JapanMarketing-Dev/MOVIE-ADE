@@ -171,3 +171,55 @@ export function verifiedReleaseFiles(
   }
   return out
 }
+
+/** 自動更新だけが使うファイルの sha256 の一覧（releases/<版>/UPDATE-SHA256SUMS。scripts/release-r2-lib.mjs の UPDATE_SUMS） */
+export const UPDATE_SUMS_NAME = 'UPDATE-SHA256SUMS'
+
+/** 署名で確かめた、自動更新だけが使う1ファイル（今は macOS の zip。Squirrel.Mac が入れ替えに使う） */
+export interface SignedUpdateFile {
+  name: string
+  sha256: string
+  size: number
+  os: 'mac'
+  arch: 'arm64' | 'x64'
+  kind: 'zip'
+  path: string
+}
+
+/** 自動更新のファイルの名前（Ferret-<版>-mac-<arch>.zip）を読む。別の版・別の形は null */
+export function parseSignedUpdateName(name: string, version: string): Pick<SignedUpdateFile, 'os' | 'arch' | 'kind'> | null {
+  const escaped = version.replace(/[.+]/g, (c) => `\\${c}`)
+  const m = new RegExp(`^${RELEASE_PRODUCT}-${escaped}-mac-(arm64|x64)\\.zip$`).exec(name)
+  return m ? { os: 'mac', arch: m[1] as SignedUpdateFile['arch'], kind: 'zip' } : null
+}
+
+/**
+ * latest.json の updates（自動更新のファイル）を、署名の合う UPDATE-SHA256SUMS と突き合わせる。決まりは verifiedReleaseFiles と同じ:
+ * 署名が合う・名前の集まりが過不足なく同じで sha256 も同じ・名前はその版のもの・path は releases/<版>/（または b<n>/）の下。
+ * 1つでも合わなければ null（自動更新はせず、インストーラーの「ダウンロード」だけを出す）
+ */
+export function verifiedUpdateFiles(
+  version: string,
+  files: ReadonlyArray<{ name: string; sha256: string; path: string; size: number }>,
+  sums: Buffer,
+  signature: string,
+  trustedKey: string = RELEASE_PUBLIC_KEY
+): SignedUpdateFile[] | null {
+  if (!verifySshSignature(sums, signature, trustedKey)) return null
+  const table = parseSignedSums(sums.toString('utf8'))
+  if (!table || files.length === 0 || table.size !== files.length) return null
+  for (const name of table.keys()) if (!parseSignedUpdateName(name, version)) return null
+  const dir = `releases/${version}/`
+  const out: SignedUpdateFile[] = []
+  const seen = new Set<string>()
+  for (const f of files) {
+    const identity = parseSignedUpdateName(f.name, version)
+    if (!identity || seen.has(f.name) || table.get(f.name) !== f.sha256) return null
+    seen.add(f.name)
+    const rest = f.path.startsWith(dir) ? f.path.slice(dir.length) : null
+    if (rest !== f.name && !(rest !== null && /^b\d{1,3}\//.test(rest) && rest.slice(rest.indexOf('/') + 1) === f.name)) return null
+    if (!Number.isInteger(f.size) || f.size <= 0 || f.size > MAX_INSTALLER_BYTES) return null
+    out.push({ name: f.name, sha256: f.sha256, size: f.size, path: f.path, ...identity })
+  }
+  return out
+}

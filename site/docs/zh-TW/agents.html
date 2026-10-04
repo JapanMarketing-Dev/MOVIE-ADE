@@ -178,13 +178,15 @@
 
       <section class="docs-section" aria-labelledby="terminal">
         <h2 id="terminal"><a class="docs-anchor" href="#terminal" aria-label="連結至「在內建終端機中執行 Agent」">#</a>在內建終端機中執行 Agent</h2>
-        <p>開啟專案時，Ferret 會依 <span class="docs-ui">設定 → Agent → 開啟專案時啟動</span> 中選擇的 Agent，在專案資料夾中為每個 Agent 開一個終端機分頁，並以 Agent 的一般模式啟動。預設是 Claude Code 和 Codex：</p>
-<pre><code>claude
-codex</code></pre>
+        <p>開啟專案時，Ferret 會依 <span class="docs-ui">設定 → Agent → 開啟專案時啟動</span> 中選擇的 Agent，在專案資料夾中為每個 Agent 開一個終端機分頁。預設是 Claude Code 和 Codex，啟動時略過權限確認，並開啟 Claude in Chrome：</p>
+<pre><code>claude --dangerously-skip-permissions --chrome
+codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>你也可以改從<a href="#supported">支援清單</a>中挑選任何 Agent（依選取順序啟動），或都不選。</p>
-<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">權限確認維持開啟</p><p>登錄或複製專案並不會讓 Ferret 信任它。Claude Code 和 Codex 等 Agent 第一次會詢問你是否信任該資料夾，之後在修改檔案或執行指令前也會持續詢問。若要讓 Agent 在你信任的某個專案中略過權限確認、核准與沙箱，請在 <span class="docs-ui">設定 → Agent → 略過權限確認</span> 中為該專案開啟並確認。Ferret 會為已知略過參數的 Agent 加上各自的參數；沒有已知參數的 Agent 會保留確認。此設定只套用到你自己在該專案資料夾中開啟的 Agent；開啟專案時自動啟動的 Agent 一律保留確認。在參數中輸入的略過權限參數會被忽略。</p></div>
+<p>你自己開啟的 Agent 也會以相同方式啟動。Ferret 也會為 Claude Code 和 Codex 將專案資料夾標記為受信任，因此它們不會詢問這個資料夾。若要以一般模式啟動（在信任資料夾、編輯檔案或執行指令前都會詢問），請關閉 <span class="docs-ui">設定 → Agent → 啟動 Agent 時略過權限確認</span>。每個 Agent 的指令與參數位於 <span class="docs-ui">設定 → Agent</span>（<span class="docs-ui">指令</span>）以及 <code>settings.json</code>（<code>agents.launch</code>）中，並會照你寫的內容使用。若要在不使用 Claude in Chrome 的情況下啟動 Claude Code，請在那裡刪除 <code>--chrome</code>。如果參數已經選擇了權限模式（例如 <code>--permission-mode plan</code>，或 Codex 的 <code>--sandbox workspace-write</code>），就不會再加上略過確認的參數。</p>
 <p>若沒有選擇任何 Agent，會開啟一般的 shell。<span class="docs-ui">+</span> 選單可以開啟 <span class="docs-ui">新增終端機</span>、在新分頁中啟動你的任一 Agent，或跳到 <span class="docs-ui">Agent 設定…</span>。它的搜尋框也能找到分頁、已儲存的 URL 和檔案。</p>
-<p>分頁會顯示 Agent 的狀態：<span class="docs-ui">執行中</span>、<span class="docs-ui">等待輸入</span>、<span class="docs-ui">完成（未讀）</span>、<span class="docs-ui">閒置</span>。側邊欄會標示有 Agent 正在執行的專案，不必切換專案就能看到。</p>
+<p><strong>把檔案拖放到終端機。</strong>從 Finder（Windows 上為檔案總管，Linux 上為檔案管理員）把檔案、資料夾或圖片拖到終端機窗格上，它們的路徑會以空格分隔輸入到該窗格，不會按下 Enter。Agent 執行時也一樣：Claude Code 會把拖入的圖片路徑當作圖片讀取。從 <span class="docs-ui">檔案</span> 拖出的列（選取後可一次拖多個）也以相同方式處理：終端機位於專案資料夾時，路徑是相對於專案資料夾的路徑；用 <code>cd</code> 移到其他位置後則是絕對路徑。含有空格或其他特殊字元的路徑會依 shell 加上引號：zsh 和 bash 為 <code>'…'</code>，命令提示字元為 <code>"…"</code>，PowerShell 為 <code>'…'</code>。</p>
+<p>分頁會顯示 Agent 的狀態：<span class="docs-ui">執行中</span>、<span class="docs-ui">等待輸入</span>、<span class="docs-ui">完成（未讀）</span>、<span class="docs-ui">閒置</span>。<span class="docs-ui">完成（未讀）</span> 表示 Agent 在你查看其他分頁時已完成；開啟該分頁後會變成 <span class="docs-ui">閒置</span>。側邊欄也會以相同方式標示每個專案，不必切換專案就能看到：Agent 執行時顯示移動的長條，有 Agent 在等你時顯示問號，該專案的 Agent 都已完成而你尚未開啟分頁時顯示勾號。</p>
+<p><strong>通知。</strong>開啟 <span class="docs-ui">設定 → Agent → Agent 完成或需要我確認時通知我</span> 後，當專案中的所有 Agent 都已完成，或某個 Agent 正在等待授權或回答時，會收到系統通知。正在查看的分頁不會顯示任何通知。點擊通知即可切換到該專案並開啟該分頁。</p>
 <figure class="docs-clip" data-clip="terminals">
   <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/terminals.webp" data-src="../assets/clips/terminals.mp4" data-src-webm="../assets/clips/terminals.webm" aria-label="拖曳終端機分頁與窗格來分割、移動，再把它們變回分頁。"></video>
   <figcaption>拖曳終端機分頁與窗格來分割、移動，再把它們變回分頁。</figcaption>

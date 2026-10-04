@@ -178,13 +178,15 @@
 
       <section class="docs-section" aria-labelledby="terminal">
         <h2 id="terminal"><a class="docs-anchor" href="#terminal" aria-label="&quot;내장 터미널에서 에이전트 실행&quot;(으)로 가는 링크">#</a>내장 터미널에서 에이전트 실행</h2>
-        <p>프로젝트를 열면 Ferret은 <span class="docs-ui">설정 → 에이전트 → 프로젝트를 열 때 시작</span>에 있는 에이전트마다 터미널 탭을 하나씩, 프로젝트 폴더에서 에이전트의 일반 모드로 시작합니다. 기본값은 Claude Code와 Codex입니다.</p>
-<pre><code>claude
-codex</code></pre>
+        <p>프로젝트를 열면 Ferret은 <span class="docs-ui">설정 → 에이전트 → 프로젝트를 열 때 시작</span>에 있는 에이전트마다 터미널 탭을 하나씩 프로젝트 폴더에서 시작합니다. 기본값은 Claude Code와 Codex이며, 권한 확인 없이 Claude in Chrome을 켠 상태로 시작합니다.</p>
+<pre><code>claude --dangerously-skip-permissions --chrome
+codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>대신 <a href="#supported">지원 목록</a>에서 원하는 에이전트를 고를 수 있으며(고른 순서대로 시작됩니다), 아무것도 고르지 않아도 됩니다.</p>
-<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">권한 확인은 켜진 상태로 유지됩니다</p><p>프로젝트를 등록하거나 클론해도 Ferret이 그 프로젝트를 신뢰하게 되지는 않습니다. Claude Code나 Codex 같은 에이전트는 처음에 폴더를 신뢰할지 묻고, 이후에도 파일을 편집하거나 명령을 실행하기 전에 계속 확인합니다. 신뢰하는 프로젝트 하나에서 에이전트가 권한 확인, 승인, 샌드박스를 건너뛰게 하려면 <span class="docs-ui">설정 → 에이전트 → 권한 확인 건너뛰기</span>에서 그 프로젝트에 대해 켜고 확인하세요. Ferret은 알려진 경우 각 에이전트 고유의 건너뛰기 플래그를 추가하며, 알려진 플래그가 없는 에이전트는 확인을 유지합니다. 이 설정은 그 프로젝트 폴더에서 직접 연 에이전트에만 적용되며, 프로젝트를 열 때 시작되는 에이전트는 항상 확인을 유지합니다. 인수에 직접 입력한 권한 건너뛰기 플래그는 무시됩니다.</p></div>
+<p>직접 여는 에이전트도 같은 방식으로 시작됩니다. 또한 Ferret은 Claude Code와 Codex에 대해 프로젝트 폴더를 신뢰하는 폴더로 표시하므로, 폴더에 대해 묻지 않습니다. 폴더를 신뢰하기 전, 파일을 편집하기 전, 명령을 실행하기 전에 확인하는 일반 모드로 시작하려면 <span class="docs-ui">설정 → 에이전트 → 권한 확인 없이 에이전트 시작</span>을 끄세요. 각 에이전트의 명령과 인수는 <span class="docs-ui">설정 → 에이전트</span>(<span class="docs-ui">명령</span>)와 <code>settings.json</code>(<code>agents.launch</code>)에 있으며, 적은 그대로 사용됩니다. Claude in Chrome 없이 Claude Code를 시작하려면 그곳에서 <code>--chrome</code>을 지우세요. 인수에서 이미 권한 모드를 고른 경우(예: <code>--permission-mode plan</code>, Codex라면 <code>--sandbox workspace-write</code>)에는 건너뛰기 플래그를 추가하지 않습니다.</p>
 <p>선택된 에이전트가 없으면 일반 셸이 열립니다. <span class="docs-ui">+</span> 메뉴에서는 <span class="docs-ui">새 터미널</span>을 열거나, 에이전트를 새 탭에서 실행하거나, <span class="docs-ui">에이전트 설정…</span>으로 이동할 수 있습니다. 이 메뉴의 검색 상자로 탭, 저장된 URL, 파일도 찾을 수 있습니다.</p>
-<p>탭에는 에이전트 상태가 표시됩니다: <span class="docs-ui">실행 중</span>, <span class="docs-ui">입력 대기 중</span>, <span class="docs-ui">완료(읽지 않음)</span>, <span class="docs-ui">대기</span>. 사이드바에서는 에이전트가 실행 중인 프로젝트에 표시가 붙으므로 프로젝트를 전환하지 않아도 알 수 있습니다.</p>
+<p><strong>터미널에 파일 놓기.</strong> Finder(Windows에서는 파일 탐색기, Linux에서는 파일 관리자)에서 파일, 폴더, 이미지를 터미널 창으로 드래그하면 그 경로가 공백으로 구분되어 해당 창에 입력되며, Enter는 누르지 않습니다. 에이전트가 실행 중일 때도 마찬가지이며, Claude Code는 놓은 이미지 경로를 이미지로 읽습니다. <span class="docs-ui">파일</span>에서 드래그한 행(선택하면 여러 개를 한 번에)도 같은 방식으로 작동합니다. 터미널이 프로젝트 폴더에 있는 동안에는 프로젝트 폴더 기준의 상대 경로가, <code>cd</code>로 다른 곳으로 이동한 뒤에는 절대 경로가 입력됩니다. 공백이나 그 밖의 특수 문자가 들어간 경로는 셸에 맞게 따옴표로 감쌉니다. zsh와 bash에서는 <code>'…'</code>, 명령 프롬프트에서는 <code>"…"</code>, PowerShell에서는 <code>'…'</code>입니다.</p>
+<p>탭에는 에이전트 상태가 표시됩니다: <span class="docs-ui">실행 중</span>, <span class="docs-ui">입력 대기 중</span>, <span class="docs-ui">완료(읽지 않음)</span>, <span class="docs-ui">대기</span>. <span class="docs-ui">완료(읽지 않음)</span>는 다른 탭을 보고 있는 동안 에이전트가 끝났다는 뜻이며, 그 탭을 열면 <span class="docs-ui">대기</span>로 바뀝니다. 사이드바도 각 프로젝트에 같은 방식으로 표시하므로 프로젝트를 전환하지 않아도 알 수 있습니다. 에이전트가 실행 중이면 움직이는 막대, 에이전트가 사용자를 기다리고 있으면 물음표, 그곳의 에이전트가 끝났는데 아직 탭을 열지 않았으면 체크 표시가 나타납니다.</p>
+<p><strong>알림.</strong> <span class="docs-ui">설정 → 에이전트 → 에이전트 작업이 끝나거나 확인이 필요할 때 알림 받기</span>를 켜면, 프로젝트의 모든 에이전트가 끝났을 때 또는 에이전트가 권한이나 답변을 기다릴 때 시스템 알림을 받습니다. 보고 있는 탭에 대해서는 아무것도 표시되지 않습니다. 알림을 클릭하면 그 프로젝트로 전환되고 탭이 열립니다.</p>
 <figure class="docs-clip" data-clip="terminals">
   <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/terminals.webp" data-src="../assets/clips/terminals.mp4" data-src-webm="../assets/clips/terminals.webm" aria-label="터미널 탭과 창을 드래그해 분할하고, 옮기고, 다시 탭으로 되돌리는 모습."></video>
   <figcaption>터미널 탭과 창을 드래그해 분할하고, 옮기고, 다시 탭으로 되돌리는 모습.</figcaption>

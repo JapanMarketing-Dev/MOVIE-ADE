@@ -256,7 +256,7 @@ Ferret connects to outside services only for:
 - Whisper model downloads (Hugging Face)
 - agent usage in the footer (each provider's API, with your own Claude / Codex login)
 - "Send to GitHub / GitLab" (through your own `gh` or `glab` CLI)
-- "Check for Updates", only when you click it (the download server on Cloudflare R2)
+- updates: at startup, every 6 hours and on "Check for Updates" (the download server on Cloudflare R2). New versions download in the background and are installed with "Restart to Update" only if they match the signed `SHA256SUMS`; turn off "Download new versions automatically" in the footer's Updates to download only when you click
 - **feedback from the app** (coming soon), only when you send it: your text, bug or idea, app version, OS version if you include it, and up to 3 screenshots go through the developer's relay and become a public issue in `JapanMarketing-Dev/ferret`. Keys, tokens, email addresses and home-folder paths are masked, and the relay does not store your IP address. See [Data and privacy](https://ferretade.dev/docs/privacy.html#feedback).
 - **crash reports (Sentry)**: the app sends crashes and unhandled errors. It is on by default; turn it off in Settings → Privacy or from the notice at first launch. Reports contain the stack trace and OS / CPU / app versions. Paths, URLs, terminal output, transcripts, findings, email addresses, API keys and IP addresses are removed or not collected. Development builds (`pnpm dev`) also send, tagged `development`; E2E runs and unit tests never send. Forks can set `FERRET_SENTRY_DSN` (the old `MOVIE_ADE_SENTRY_DSN` still works) to their own DSN, or to an empty string to disable it. See [Data and privacy](https://ferretade.dev/docs/privacy.html#crash-reports).
 

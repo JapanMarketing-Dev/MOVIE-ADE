@@ -18,15 +18,17 @@
 <p>上部には <span class="docs-ui">元に戻す</span>、<span class="docs-ui">保存先を開く</span>、<span class="docs-ui">Agent向けにコピー</span>、<span class="docs-ui">GitHub / GitLab に送る</span>、<span class="docs-ui">整理</span>、<span class="docs-ui">Agentへ送信</span> があります。指摘にならなかった発話は <span class="docs-ui">除外した発話</span> に並び、<span class="docs-ui">発話を指摘に戻す</span> で戻せます。</p>
 {{shot:findings|指摘タブ}}
 
-<!-- @terminal 45dd9bf23b -->
+<!-- @terminal fe13fc4b52 -->
 ## 内蔵のターミナルでエージェントを動かす
-<p>プロジェクトを開くと、Ferret は <span class="docs-ui">設定 → Agent → プロジェクトを開いたら起動</span> で選んだエージェントごとにターミナルのタブを1つ開き、プロジェクトのフォルダで、そのエージェントの普通のモードで起動します。最初の設定は Claude Code と Codex です。</p>
-<pre><code>claude
-codex</code></pre>
+<p>プロジェクトを開くと、Ferret は <span class="docs-ui">設定 → Agent → プロジェクトを開いたら起動</span> で選んだエージェントごとにターミナルのタブを1つ、プロジェクトのフォルダで開きます。最初の設定は Claude Code と Codex で、権限の確認を省き、Claude in Chrome を有効にして起動します。</p>
+<pre><code>claude --dangerously-skip-permissions --chrome
+codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>代わりに<a href="#supported">対応している一覧</a>から好きなエージェントを選べます（選んだ順に起動します）。何も選ばないこともできます。</p>
-<div class="docs-callout docs-callout-warn"><p class="docs-callout-title">権限の確認は出たままです</p><p>プロジェクトを登録したりクローンしたりしても、Ferret がそれを信頼済みにすることはありません。Claude Code や Codex などのエージェントは、初回にそのフォルダを信頼するかを尋ね、その後もファイルを変える前やコマンドを実行する前に確認します。信頼できる1つのプロジェクトで、エージェントの権限確認・承認・サンドボックスを省くには、そのプロジェクトについて <span class="docs-ui">設定 → Agent → 権限確認を省く</span> を入にして確認します。Ferret は、分かっているエージェントにはそれぞれの省くための引数を付けます。引数が分からないエージェントは確認を出したままです。これが効くのは、そのプロジェクトのフォルダで自分で開いたエージェントだけで、プロジェクトを開いたときに起動するエージェントは常に確認を出します。引数の欄に書いた権限確認を省く引数は使われません。</p></div>
+<p>自分で開くエージェントも同じように起動します。また Ferret は、Claude Code と Codex に対してプロジェクトのフォルダを信頼済みにするので、フォルダについて尋ねられません。フォルダを信頼する前、ファイルを編集する前、コマンドを実行する前に確認する普通のモードで起動するには、<span class="docs-ui">設定 → Agent → 権限確認を省いて起動する</span> をオフにします。エージェントごとのコマンドと引数は <span class="docs-ui">設定 → Agent</span>（<span class="docs-ui">コマンド</span>）と <code>settings.json</code>（<code>agents.launch</code>）にあり、書いたとおりに使われます。Claude in Chrome なしで Claude Code を起動するには、そこから <code>--chrome</code> を消します。引数ですでに権限のモードを選んでいるとき（たとえば <code>--permission-mode plan</code>、Codex なら <code>--sandbox workspace-write</code>）は、確認を省く引数を付けません。</p>
 <p>エージェントを1つも選んでいなければ、普通のシェルが開きます。<span class="docs-ui">+</span> メニューからは <span class="docs-ui">新しいターミナル</span> を開いたり、自分のエージェントを新しいタブで起動したり、<span class="docs-ui">Agent設定…</span> に移ったりできます。メニューの検索欄では、タブ、登録した URL、ファイルも探せます。</p>
-<p>タブにはエージェントの状態が出ます: <span class="docs-ui">実行中</span>、<span class="docs-ui">入力待ち</span>、<span class="docs-ui">完了（未確認）</span>、<span class="docs-ui">待機中</span>。サイドバーでは、エージェントが動いているプロジェクトに印が付くので、プロジェクトを切り替えなくても分かります。</p>
+<p><strong>ターミナルにファイルをドロップする。</strong> Finder（Windows ではエクスプローラー、Linux ではファイルマネージャー）からファイル、フォルダ、画像をターミナルのペインにドラッグすると、それらのパスがスペース区切りでそのペインに入力されます。Enter は押されません。エージェントの実行中も同じで、Claude Code はドロップした画像のパスを画像として読みます。<span class="docs-ui">ファイル</span> からドラッグした行（選択すれば複数まとめて）も同じように扱います。パスは、ターミナルがプロジェクトのフォルダにいる間はそこからの相対パス、<code>cd</code> でほかの場所へ移った後は絶対パスになります。空白などの特殊な文字を含むパスは、シェルに合わせて引用符で囲みます。zsh と bash では <code>'…'</code>、コマンドプロンプトでは <code>"…"</code>、PowerShell では <code>'…'</code> です。</p>
+<p>タブにはエージェントの状態が出ます: <span class="docs-ui">実行中</span>、<span class="docs-ui">入力待ち</span>、<span class="docs-ui">完了（未確認）</span>、<span class="docs-ui">待機中</span>。<span class="docs-ui">完了（未確認）</span> は、ほかのタブを見ている間にエージェントが終わったことを表し、そのタブを開くと <span class="docs-ui">待機中</span> に変わります。サイドバーでも各プロジェクトに同じように印が付くので、プロジェクトを切り替えなくても分かります。エージェントが動いている間は動くバー、エージェントがこちらを待っている間は疑問符、そこのエージェントが終わってまだタブを開いていないときはチェックマークです。</p>
+<p><strong>通知。</strong> <span class="docs-ui">設定 → Agent → Agent の作業が終わったときと、確認が必要なときに通知する</span> をオンにすると、プロジェクトのエージェントがすべて終わったとき、またはエージェントが許可や回答を待っているときに、システムの通知が出ます。見ているタブについては何も出ません。通知を押すと、そのプロジェクトに切り替わってタブが開きます。</p>
 {{clip:terminals|ターミナルのタブやペインをドラッグして、分割し、動かし、タブに戻す。}}
 <p><strong>ドラッグで分割する。</strong> タブか、ペインのつまみ（タブを分割すると出ます）をドラッグして、次の場所で離します。</p>
 <ul>

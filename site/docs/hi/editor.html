@@ -167,6 +167,7 @@
         <ul>
   <li><span class="docs-ui">फ़ाइलें</span> (फ़ाइल ट्री): <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></span></span>, जिसमें <span class="docs-ui">फ़ाइल नाम से फ़िल्टर करें</span>, <span class="docs-ui">रिफ़्रेश करें</span> और <span class="docs-ui">सब छोटा करें</span> हैं।</li>
   <li><span class="docs-ui">फ़ाइल पर जाएँ…</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></span></span>।</li>
+  <li>किसी फ़ाइल को खोलने के लिए उसे Finder (Windows पर File Explorer, Linux पर आपका file manager) से टैब बार या editor पर drag करें। प्रोजेक्ट की फ़ाइलें editor या viewer में खुलती हैं। प्रोजेक्ट के बाहर की किसी फ़ाइल को अंदर लाने के लिए उसे <span class="docs-ui">फ़ाइलें</span> पर drop करें, जो उसे प्रोजेक्ट में कॉपी कर देता है। यहाँ drop किया गया फ़ोल्डर प्रोजेक्ट के रूप में खुलता है। <span class="docs-ui">फ़ाइलें</span> से drag की गई फ़ाइलें भी इसी तरह खुलती हैं।</li>
   <li><span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></span></span> से सेव करें। बदली हुई फ़ाइल बंद करने पर <q>&lt;name&gt; में बदलाव सेव करें?</q> पूछा जाता है, जिसमें <span class="docs-ui">सेव करें</span>, <span class="docs-ui">सेव न करें</span> और <span class="docs-ui">रद्द करें</span> होते हैं।</li>
   <li>अगर बिना सेव किए बदलावों के दौरान फ़ाइल डिस्क पर बदल जाए, तो <span class="docs-ui">डिस्क से रीलोड करें</span> या <span class="docs-ui">मेरे बदलाव रखें</span> चुनें।</li>
 </ul>
@@ -174,16 +175,22 @@
       </section>
 
       <section class="docs-section" aria-labelledby="file-tree">
-        <h2 id="file-tree"><a class="docs-anchor" href="#file-tree" aria-label="फ़ाइलें बनाएँ, नाम बदलें और हटाएँ का लिंक">#</a>फ़ाइलें बनाएँ, नाम बदलें और हटाएँ</h2>
-        <p>VS Code की तरह सीधे <span class="docs-ui">फ़ाइलें</span> में फ़ाइलों पर काम करें। नाम ट्री में ही टाइप किए जाते हैं।</p>
+        <h2 id="file-tree"><a class="docs-anchor" href="#file-tree" aria-label="फ़ाइल ट्री में फ़ाइलों पर काम करें का लिंक">#</a>फ़ाइल ट्री में फ़ाइलों पर काम करें</h2>
+        <p>VS Code की तरह सीधे <span class="docs-ui">फ़ाइलें</span> में फ़ाइलों पर काम करें। किसी आइटम पर right-click करें, या प्रोजेक्ट के सबसे ऊपर के स्तर पर काम करने के लिए ट्री के नीचे की खाली जगह पर। नाम ट्री में ही टाइप किए जाते हैं।</p>
 <ul>
-  <li><span class="docs-ui">नई फ़ाइल</span> / <span class="docs-ui">नया फ़ोल्डर</span>: ट्री के ऊपर के बटन, या किसी फ़ोल्डर पर (या ट्री के नीचे की खाली जगह पर) right-click करें। नया आइटम चुने गए फ़ोल्डर में, चुनी गई फ़ाइल के बगल में, या प्रोजेक्ट के सबसे ऊपर बनता है। नई फ़ाइल editor में खुलती है।</li>
-  <li><span class="docs-ui">नाम बदलें</span>: <span class="docs-kbd"><span class="os-mac"><kbd>F2</kbd> / <kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>F2</kbd></span></span>, या right-click करें। खुले टैब नए नाम के साथ चलते हैं और बिना सेव किए बदलाव बने रहते हैं।</li>
+  <li><span class="docs-ui">नई फ़ाइल</span> / <span class="docs-ui">नया फ़ोल्डर</span>: ट्री के ऊपर के बटन, या right-click करें। नया आइटम चुने गए फ़ोल्डर में, चुनी गई फ़ाइल के बगल में, या प्रोजेक्ट के सबसे ऊपर बनता है। रास्ते के फ़ोल्डर भी बनाने के लिए slashes वाला नाम टाइप करें, जैसे <code>src/routes/index.ts</code>। नई फ़ाइल editor में खुलती है। खाली फ़ोल्डर में <span class="docs-ui">फ़ाइलें</span> <span class="docs-ui">यह फ़ोल्डर खाली है</span> दिखाता है, साथ में <span class="docs-ui">नई फ़ाइल</span> और <span class="docs-ui">नया फ़ोल्डर</span> बटन।</li>
+  <li><span class="docs-ui">काटें</span>, <span class="docs-ui">कॉपी करें</span> और <span class="docs-ui">चिपकाएँ</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>X</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>X</kbd></span></span>, <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>C</kbd></span></span>, <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>V</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>V</kbd></span></span>, या right-click करें। फ़ोल्डर अपने अंदर की हर चीज़ के साथ कॉपी होते हैं। <span class="docs-ui">डुप्लिकेट बनाएँ</span> मूल के बगल में एक कॉपी बनाता है। अगर नाम पहले से लिया गया है, तो कॉपी का नाम <code>name copy</code>, फिर <code>name copy 2</code> रखा जाता है।</li>
+  <li>आइटम्स को हिलाने के लिए उन्हें किसी फ़ोल्डर पर (या प्रोजेक्ट के सबसे ऊपर के स्तर के लिए खाली जगह पर) drag करें। हिलाने की जगह कॉपी करने के लिए drop करते समय <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span> दबाए रखें। Finder (Windows पर File Explorer) से drag करके लाई गई फ़ाइलें और फ़ोल्डर प्रोजेक्ट में कॉपी होते हैं; मूल अपनी जगह पर रहते हैं।</li>
+  <li><span class="docs-ui">नाम बदलें</span>: <span class="docs-kbd"><span class="os-mac"><kbd>F2</kbd> / <kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>F2</kbd></span></span>, या right-click करें।</li>
   <li><span class="docs-ui">हटाएँ</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⌫</kbd> / <kbd>Delete</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Delete</kbd></span></span>, या right-click करें। Ferret पहले पूछता है, फिर आइटम को ट्रैश (Windows पर रीसायकल बिन) में ले जाता है, ताकि आप उसे वापस ला सकें। हटाई गई फ़ाइलों के टैब बंद हो जाते हैं; अगर किसी में बिना सेव किए बदलाव थे, तो पुष्टि वाला संदेश यह बताता है।</li>
-  <li>कई आइटम एक साथ हटाने के लिए उन्हें <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span>-click या <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd></span></span>-click से चुनें।</li>
+  <li><span class="docs-ui">पूर्ववत करें</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>Z</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Z</kbd></span></span> आख़िरी नया आइटम, नाम बदलना, हिलाना, चिपकाना या डुप्लिकेट बनाना उलट देता है। हटाए गए आइटम ट्रैश से वापस लाए जाते हैं।</li>
+  <li><span class="docs-ui">पाथ कॉपी करें</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>C</kbd></span></span>) और <span class="docs-ui">रिलेटिव पाथ कॉपी करें</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⇧</kbd><kbd>⌘</kbd><kbd>C</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Alt</kbd><kbd>C</kbd></span></span>) path को clipboard पर रखते हैं।</li>
+  <li><span class="docs-ui">Finder में दिखाएँ</span> (Windows पर <span class="docs-ui">फ़ाइल एक्सप्लोरर में दिखाएँ</span>, Linux पर <span class="docs-ui">मूल फ़ोल्डर खोलें</span>): <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>R</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>R</kbd></span></span>। <span class="docs-ui">टर्मिनल में खोलें</span> उस फ़ोल्डर में (फ़ाइल के लिए, उसके फ़ोल्डर में) एक नया टर्मिनल टैब खोलता है।</li>
+  <li>किसी फ़ाइल के लिए, <span class="docs-ui">खोलें</span> उसे editor में खोलता है और <span class="docs-ui">डिफ़ॉल्ट ऐप में खोलें</span> उसे उस ऐप में खोलता है जिसे आपका OS उस प्रकार के लिए इस्तेमाल करता है।</li>
+  <li>कई आइटम एक साथ काटने, कॉपी करने, हिलाने या हटाने के लिए उन्हें <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd></span></span>-click या <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd></span></span>-click से चुनें।</li>
   <li><kbd>Esc</kbd> टाइप किया जा रहा नाम रद्द करता है।</li>
 </ul>
-<p>Ferret उसी नाम वाली मौजूदा फ़ाइल या फ़ोल्डर को overwrite नहीं करता, और ऐसी हर चीज़ को अस्वीकार करता है जो प्रोजेक्ट फ़ोल्डर से बाहर ले जाए (<code>..</code>, absolute paths, बाहर की ओर इशारा करने वाले symbolic links), <code>.git</code> के अंदर की हर चीज़, और ऐसे नाम जिन्हें कोई OS इस्तेमाल नहीं कर सकता: <code>/ \ &lt; &gt; : " | ? *</code>, control characters, आख़िर में space या dot, और Windows के आरक्षित नाम जैसे <code>CON</code> या <code>NUL</code>।</p>
+<p>खुले टैब नाम बदली गई या हिलाई गई फ़ाइल के साथ चलते हैं और बिना सेव किए बदलाव बनाए रखते हैं। Ferret उसी नाम वाली मौजूदा फ़ाइल या फ़ोल्डर को overwrite नहीं करता, और हर चीज़ को प्रोजेक्ट फ़ोल्डर के अंदर रखता है: यह <code>..</code>, absolute paths, बाहर की ओर इशारा करने वाले symbolic links, <code>.git</code> के अंदर की हर चीज़, किसी फ़ोल्डर को उसी के अंदर हिलाना, और ऐसे नाम अस्वीकार करता है जिन्हें कोई OS इस्तेमाल नहीं कर सकता: <code>/ \ &lt; &gt; : " | ? *</code>, control characters, आख़िर में space या dot, और Windows के आरक्षित नाम जैसे <code>CON</code> या <code>NUL</code>। एक कॉपी या drop में 10,000 आइटम और 1 GB तक हो सकते हैं।</p>
       </section>
 
       <section class="docs-section" aria-labelledby="preview">
@@ -192,6 +199,14 @@
 <ul>
   <li><span class="docs-ui">प्रीव्यू बगल में खोलें</span>: editor के बगल में</li>
   <li><span class="docs-ui">प्रीव्यू खोलें</span>: बिल्ट-इन ब्राउज़र (<code>ade-preview://</code>) में, ताकि आप उसे रिकॉर्ड और review कर सकें</li>
+</ul>
+<p>किसी Markdown फ़ाइल को वैसे ही संपादित करने के लिए जैसी वह प्रीव्यू में दिखती है, editor के ऊपर <span class="docs-ui">प्रीव्यू में संपादित करें</span> पर क्लिक करें, और वापस जाने के लिए <span class="docs-ui">सोर्स</span> पर क्लिक करें। दोनों एक ही content दिखाते हैं, और सेव करना, बिना सेव किए बदलाव का निशान और बंद करते समय की पुष्टि एक ही तरह काम करते हैं।</p>
+<ul>
+  <li>Headings, paragraphs, lists, checkboxes, tables, links और bold, italic या inline code में सीधे टाइप करें। किसी लाइन की शुरुआत में <code>#</code>, <code>-</code>, <code>1.</code> या <code>&gt;</code> और एक space टाइप करने से heading, list या quote शुरू होता है।</li>
+  <li>Code blocks और Mermaid diagrams उनके source के रूप में संपादित होते हैं, और भाषा कोने में दिखती है। Diagram <span class="docs-ui">प्रीव्यू बगल में खोलें</span> या <span class="docs-ui">प्रीव्यू खोलें</span> में render होता है।</li>
+  <li>Front matter (सबसे ऊपर का <code>---</code> block) document के ऊपर text के रूप में दिखता है और वहीं संपादित किया जा सकता है।</li>
+  <li>जिन हिस्सों को आप नहीं बदलते, वे ठीक वैसे ही सेव होते हैं जैसे लिखे गए थे, जिसमें heading style, list markers, खाली लाइनें, table alignment और line endings शामिल हैं। आप जिस block को संपादित करते हैं, उसका style जहाँ तक हो सके बना रहता है; नहीं तो वह block मानक Markdown रूप में लिखा जाता है, lists के लिए <code>-</code> और headings के लिए <code>#</code> के साथ।</li>
+  <li>प्रोजेक्ट की इमेज दिखाई जाती हैं। दूसरी sites की इमेज load नहीं होतीं; उनकी जगह उनका host name दिखता है। फ़ाइल में मौजूद HTML text के रूप में दिखता है।</li>
 </ul>
       </section>
 
@@ -218,7 +233,7 @@
       <p class="docs-toc-heading">इस पेज पर</p>
       <ul>
         <li><a href="#files">फ़ाइलें खोलें और संपादित करें</a></li>
-        <li><a href="#file-tree">फ़ाइलें बनाएँ, नाम बदलें और हटाएँ</a></li>
+        <li><a href="#file-tree">फ़ाइल ट्री में फ़ाइलों पर काम करें</a></li>
         <li><a href="#preview">Markdown और Mermaid प्रीव्यू</a></li>
         <li><a href="#review-docs">रिकॉर्ड करके दस्तावेज़ों का review करें</a></li>
       </ul>

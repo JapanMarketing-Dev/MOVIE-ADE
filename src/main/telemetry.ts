@@ -151,9 +151,13 @@ export function reportMainError(err: unknown, tags: Record<string, string>): voi
   Sentry.captureException(err, { tags })
 }
 
-/** 例外ではない異常（プロセスの終了・応答なし・読み込み失敗）を送る */
+/**
+ * 例外ではない異常（プロセスの終了・応答なし・読み込み失敗）を送る。
+ * captureMessage は送る処理の中のスタック（Electron のイベントの発火元）を付け、Sentry の題名が
+ * `<object>.touch` のようなフレームの名前になってしまうので、スタックを付けずに送る（題名が文のまま出る）
+ */
 function reportMessage(message: string, level: 'error' | 'warning', tags: Record<string, string>): void {
-  if (active) Sentry.captureMessage(message, { level, tags })
+  if (active) Sentry.captureEvent({ message, level, tags })
 }
 
 /**

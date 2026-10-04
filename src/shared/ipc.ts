@@ -1,3 +1,5 @@
+import type { AgentNotifyOpen, AgentNotifyRequest } from './agentNotify'
+import type { FailoverLaunchRequest, FailoverNotice, LimitFailoverPrefs } from './failover'
 import type { CliToolStatus } from './cliTools'
 import type { AiEndpointConfig, AiVendor, LlmApiProvider, OrganizeRunnerId, SttRemoteProvider } from './aiProviders'
 import type { AnnotationColor } from './annotation'
@@ -53,18 +55,20 @@ import type { AccountLoginRequest, AgentAccountAddResult, AgentAccountsState } f
 import type { AgentResourceList } from './agentResources'
 import type { AccountUsage, UsageState } from './usage'
 import type { UpdateCheckResult } from './appVersion'
+import type { AutoUpdateStatus } from './appUpdate'
 import type { SentryTestKind } from './telemetry'
 import type { LayoutPrefs } from './layout'
 import type { OnboardingPatch, OnboardingState, PermissionKind, PermissionsState } from './onboarding'
 import type { ResolvedTheme } from './theme'
 import type { LocalePreference, SupportedLocale } from './i18n'
 import type { ResourceKillTarget, ResourceSnapshot } from './resources'
-import type { FsChangedEvent, FsEntry, FsFileList, FsReadResult, FsSearchMode, FsSearchResult, FsWriteResult } from './files'
+import type { FsChangedEvent, FsCreated, FsEntry, FsFileList, FsReadResult, FsSearchMode, FsSearchResult, FsTransfer, FsWriteResult } from './files'
 import type { FsFileInfo } from './fileViewer'
 import type { StarActionResult, StarPromptMode } from './starPrompt'
 import type { FeedbackEnvironment, FeedbackSubmitInput, FeedbackSubmitResult } from './feedback'
 import type { GitHubPostResult, GitHubRepoResult, GitRepoStatus, GitHubReviewDraft, GitHubReviewTarget, GitHubStatus } from './github'
 import type { GitLabStatus } from './forge'
+import type { DroppedEntry } from './externalDrop'
 
 /**
  * IPC の全チャネルを1か所で宣言する。
@@ -89,10 +93,18 @@ export interface IpcRequests {
   'settings:feedbackTargets': (prefs: FeedbackTargetsPrefs) => void
   /** package.json の version と、配布用にパッケージされた起動か（dev 起動なら false） */
   'app:version': () => { version: string; packaged: boolean }
-  /** GitHub Releases の最新と比べるだけ。自動更新はしない */
+  /** 配信元（R2）の latest.json と比べ、署名を確かめる。自動のダウンロードがオンなら、続けて裏でダウンロードを始める（src/main/autoUpdate.ts） */
   'app:checkUpdate': () => UpdateCheckResult
-  /** 直前の確認で見つかった新しい版のページを既定のブラウザで開く */
+  /** 直前の確認で署名を確かめたインストーラーを、ダウンロードのフォルダに保存して見せる（自動更新ができないとき） */
   'app:openUpdate': () => void
+  /** 裏での更新の状態（最後の確認の結果・ダウンロードの進み具合・「再起動して更新」ができるか） */
+  'update:status': () => AutoUpdateStatus
+  /** 新しい版を裏でダウンロードする（自動のダウンロードがオフのときの［ダウンロード］・失敗したときの［もう一度］） */
+  'update:download': () => boolean
+  /** 「再起動して更新」（deb はインストーラーを開く）。作業中の Agent・録画があれば確認を出し、やめたら false */
+  'update:install': () => boolean
+  /** 新しい版を自動でダウンロードするか（設定の autoUpdate） */
+  'update:setAutoDownload': (on: boolean) => AutoUpdateStatus
   /** 設定の案内のリンク（キーを作るページなど）を外部のブラウザで開く。https だけ（src/shared/setupGuide.ts） */
   'app:openExternal': (url: string) => void
   /** 文を Agent のターミナルへ送る（Agent に設定を頼む指示文）。宛先は「Agent へ送信」と同じ選び方 */
@@ -133,6 +145,13 @@ export interface IpcRequests {
   'project:cloneCancel': () => void
   /** SSH の接続先とリモートのフォルダを登録して開く（鍵やパスワードは扱わない） */
   'project:addSsh': (target: SshTarget, name?: string) => ProjectsState
+  /** 外から落としたフォルダ（drop:inspect で確かめたもの）をプロジェクトとして登録して開く。登録済みならそれに切り替える */
+  'project:addDropped': (path: string) => ProjectsState
+  /**
+   * 外から落としたファイル・フォルダのパスを確かめる（src/main/droppedPaths.ts）。
+   * preload の inspectDrop だけが呼ぶ（IPC_REQUEST_CHANNELS には入れない＝window.ade.invoke からは呼べない）
+   */
+  'drop:inspect': (paths: string[]) => DroppedEntry[]
 
   'settings:agents': (preferences: AgentPreferences) => void
   /** エージェントの一覧（設定とインストール済みかの検出を合わせたもの）。refresh で検出し直す */
@@ -162,6 +181,11 @@ export interface IpcRequests {
   'usage:refresh': (force: boolean) => UsageState
   /** アカウント別の内訳（Usage ポップオーバーの「>」）。開いたときだけ取る */
   'usage:accounts': (agent: AccountAgent, force: boolean) => AccountUsage[]
+  /** 上限での自動切り替えの設定（保存はすぐ。設定画面のアカウントの節） */
+  'failover:get': () => LimitFailoverPrefs
+  'failover:set': (prefs: LimitFailoverPrefs) => LimitFailoverPrefs
+  /** Agent が終わった・確認を待っている OS 通知（設定の agents.notify が入のときだけ main が出す）。出したら true */
+  'agentNotify:show': (request: AgentNotifyRequest) => boolean
 
   'mode:set': (mode: AppMode) => void
 
@@ -302,8 +326,18 @@ export interface IpcRequests {
   'fs:search': (query: string, mode: FsSearchMode) => FsSearchResult
   /** 文字として開けないファイルの大きさと先頭のバイト（画像・動画・バイナリの表示） */
   'fs:inspect': (relPath: string) => FsFileInfo
-  /** ファイルツリーから空のファイル・フォルダを作る。作ったものの相対パスを返す（既にあれば断る。src/main/fileOps.ts） */
-  'fs:create': (parentRel: string, name: string, kind: 'file' | 'directory') => string
+  /** ファイルツリーから空のファイル・フォルダを作る（名前の / で途中のフォルダも）。作ったものの相対パスを返す（既にあれば断る。src/main/fileOps.ts） */
+  'fs:create': (parentRel: string, name: string, kind: 'file' | 'directory') => FsCreated
+  /** 選んだものを destRel のフォルダへコピーする（貼り付け・複製。同じ名前は「名前 copy」にする） */
+  'fs:copy': (relPaths: string[], destRel: string) => FsTransfer[]
+  /** 選んだものを destRel のフォルダへ動かす（切り取り・貼り付け・ドラッグ。同じ名前があれば断る） */
+  'fs:move': (relPaths: string[], destRel: string) => FsTransfer[]
+  /** OS から落としたファイル・フォルダ（drop:inspect で確かめた絶対パスだけ）を destRel のフォルダへコピーする */
+  'fs:import': (absolutePaths: string[], destRel: string) => FsTransfer[]
+  /** パスをクリップボードへ書く（絶対パスか、プロジェクトからの相対パス）。書いた文字列を返す */
+  'fs:copyPath': (relPaths: string[], kind: 'absolute' | 'relative') => string
+  /** 「ターミナルで開く」の作業フォルダ（絶対パス）。ファイルならその親 */
+  'fs:terminalDir': (relPath: string) => string
   /** 同じフォルダの中で名前を変える。新しい相対パスを返す（既にある名前には上書きしない） */
   'fs:rename': (relPath: string, newName: string) => string
   /** ゴミ箱へ送る（shell.trashItem）。送った相対パスを返す */
@@ -382,6 +416,12 @@ export interface IpcEvents {
   'review:progressChanged': (ids: string[]) => void
   /** 使用量が変わった（取得中・成功・失敗） */
   'usage:changed': (state: UsageState) => void
+  /** 上限での自動切り替え: このタブを開いて（開いたら main が引き継ぐ） */
+  'failover:launch': (request: FailoverLaunchRequest) => void
+  /** 上限での自動切り替え: 切り替えた・できなかった（フッターとトースト） */
+  'failover:notice': (notice: FailoverNotice) => void
+  /** Agent の通知が押された: そのプロジェクトへ切り替え、そのタブを開く */
+  'agentNotify:open': (target: AgentNotifyOpen) => void
   /** プロジェクトの中のファイルが外部（Agent など）で変わった */
   'fs:changed': (event: FsChangedEvent) => void
   /** 解決済みの配色が変わった（設定の変更、または system のときの OS の切り替え） */
@@ -398,6 +438,8 @@ export interface IpcEvents {
   'settings:changed': (settings: Settings) => void
   /** settings.json が壊れた（JSON・スキーマの誤り）。null は直った。壊れている間は取り込まず、ファイルも上書きしない */
   'settingsFile:error': (error: SettingsFileError | null) => void
+  /** 裏での更新の状態が変わった（確認・ダウンロードの進み具合・準備ができた・失敗） */
+  'update:status': (status: AutoUpdateStatus) => void
 }
 
 export type IpcRequestChannel = keyof IpcRequests
@@ -423,6 +465,11 @@ export interface AdeApi {
   initialTheme: ResolvedTheme
   /** 起動時点の解決済みの画面の言語。最初の描画の文言を決めるために使う */
   initialLocale: SupportedLocale
+  /**
+   * 外から落とした File の実パスを webUtils.getPathForFile で取り、main で確かめた結果を返す。
+   * 存在しないもの・ファイルでもフォルダでもないものは入らない（src/shared/externalDrop.ts）
+   */
+  inspectDrop(files: readonly File[]): Promise<DroppedEntry[]>
 }
 
 /** contextBridge で公開するキー名 */
@@ -435,6 +482,7 @@ export const IPC_REQUEST_CHANNELS = [
   'app:version',
   'app:checkUpdate',
   'app:openUpdate', 'app:openExternal', 'agent:sendText',
+  'update:status', 'update:download', 'update:install', 'update:setAutoDownload',
   'resources:snapshot',
   'resources:kill',
   'resources:cleanup',
@@ -454,6 +502,7 @@ export const IPC_REQUEST_CHANNELS = [
   'project:clone',
   'project:cloneCancel',
   'project:addSsh',
+  'project:addDropped',
   'settings:agents',
   'agents:list',
   'cliTools:list',
@@ -468,6 +517,7 @@ export const IPC_REQUEST_CHANNELS = [
   'usage:get',
   'usage:refresh',
   'usage:accounts',
+  'failover:get', 'failover:set', 'agentNotify:show',
   'mode:set',
   'browser:setBounds',
   'browser:navigate',
@@ -499,7 +549,7 @@ export const IPC_REQUEST_CHANNELS = [
   'annotation:redo',
   'review:list', 'review:activity', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:replyPrompt', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
   'capture:screenAccess', 'capture:sources', 'capture:setTarget', 'capture:openScreenSettings',
-  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:create', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'preview:render',
+  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:create', 'fs:copy', 'fs:move', 'fs:import', 'fs:copyPath', 'fs:terminalDir', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'preview:render',
   'github:status', 'github:repo', 'github:reviewDraft', 'github:postReview', 'github:open', 'github:repoStatus', 'gitlab:status',
   'star:star', 'star:openWeb', 'star:later', 'star:never', 'star:fromMenu',
   'feedback:environment', 'feedback:account', 'feedback:submit', 'feedback:captureWindow'
@@ -522,8 +572,10 @@ export const IPC_EVENT_CHANNELS = [
   'theme:changed',
   'locale:changed',
   'usage:changed',
+  'failover:launch', 'failover:notice', 'agentNotify:open',
   'github:headChanged',
   'star:show',
   'feedback:ask',
-  'settings:changed', 'settingsFile:error'
+  'settings:changed', 'settingsFile:error',
+  'update:status'
 ] as const satisfies readonly IpcEventChannel[]

@@ -15,6 +15,13 @@
  * 韓国語の IME は、次の音節の変換が始まってから前の音節の確定を送る。変換中に届いた文字は、同じ文字の重複だけを落とし、
  * 「確定文字＋続けて打った文字」の前方一致には使わない。使うと、同じ音節が続いて句読点で確定したとき（ㅋㅋ. など）に、
  * 今の変換の確定「ㅋ.」の頭が前の音節の重複とみなされて消える（Orca #24663）。
+ *
+ * macOS の日本語 IME（ライブ変換）は、長く打ち続けると変換中の文の頭だけを確定し、残りの変換を続ける（部分確定）。
+ * ブラウザは compositionend（頭の確定）→ compositionstart → compositionupdate（残り）を1つのキーの処理で続けて届けるので、
+ * xterm の CompositionHelper が setTimeout(0) で読むときにはもう次の変換が始まっていて、入力欄を「前の変換の始まり」から
+ * 「部分確定の前の変換中の文の長さ」まで切り出す。これは確定した頭に、まだ変換中の残りの頭（「再度書く」のような途中の候補）が
+ * 付いたもので、そのあとの確定でもう一度送られ、Agent の入力欄で文が重なる。次の変換の最中に、前の変換の確定文字
+ * （compositionend の data）で始まる長い文字列が届いたら、確定文字の分だけを送る。
  */
 
 /** compositionend のあと、遅れて届く2つ目の送信を待つ時間。どちらも数ミリ秒以内に来る */
@@ -30,6 +37,8 @@ export class ImeInputGuard {
   private early: string[] = []
   /** 1つ前の変換で送った文字列。次の変換の最中に遅れて届く同じ確定を落とす */
   private previous: string[] = []
+  /** 直前の compositionend の確定文字で、まだ届いていないもの（部分確定のあと、変換中の残りが付いて届いたら切り落とす） */
+  private committed: string | null = null
 
   constructor(private readonly windowMs = IME_DUPLICATE_WINDOW_MS) {}
 
@@ -42,9 +51,11 @@ export class ImeInputGuard {
     this.early = []
   }
 
-  compositionEnd(now: number): void {
+  /** data は compositionend の確定文字（取り消しは ''）。分からなければ渡さない */
+  compositionEnd(now: number, data?: string): void {
     this.composing = false
     this.endedAt = now
+    this.committed = data ? data : null
   }
 
   /** 変換と関係のない打鍵（keyCode 229 でも変換中でもない keydown）が来たら、変換の区切りを閉じる */
@@ -63,10 +74,15 @@ export class ImeInputGuard {
       return data
     }
     if (data.length === 0) return data
+    const committed = this.committed
+    this.committed = null
     if (this.composing) {
       if (this.early.includes(data) || this.previous.includes(data)) return ''
-      this.early.push(data)
-      return data
+      // 部分確定: 前の変換の確定文字に、今変換中の残りの頭が付いて届いた。残りは今の変換の確定で届く
+      const commit = committed !== null && data.length > committed.length && data.startsWith(committed) ? committed : data
+      if (this.early.includes(commit) || this.previous.includes(commit)) return ''
+      this.early.push(commit)
+      return commit
     }
     if (this.sent.includes(data) || this.early.includes(data)) return ''
     const prefix = this.sent.find((sent) => sent.length > 0 && data.startsWith(sent))
@@ -85,5 +101,6 @@ export class ImeInputGuard {
     this.sent = []
     this.early = []
     this.previous = []
+    this.committed = null
   }
 }

@@ -61,6 +61,17 @@ pnpm dist:linux   # AppImage + deb (x64)</code></pre>
 <p>No Windows, o <code>pnpm install</code> usa os binários pré-compilados que acompanham o node-pty em vez de recompilá-lo (o que exigiria as ferramentas de build C++ do Visual Studio). Defina <code>ADE_FORCE_NATIVE_REBUILD=1</code> para forçar a recompilação.</p>
 <p>Se o terminal informar que não foi possível carregar o node-pty, execute <code>pnpm rebuild:native</code>.</p>
 
-<!-- @update 142015ddda -->
+<!-- @update d0e883a95e -->
 ## Atualizações
-<p>O Ferret não se atualiza automaticamente. No rodapé, abra <span class="docs-ui">Atualizações</span> e clique em <span class="docs-ui">Verificar atualizações</span>. Ele busca o <code>latest.json</code> no servidor de download (R2), compara as versões e verifica a assinatura do <code>SHA256SUMS</code> daquela versão com a chave de release embutida no app. Quando houver uma versão mais nova, clique em <span class="docs-ui">Baixar</span>: o Ferret baixa o instalador para o seu computador, confere se o SHA-256 dele corresponde ao <code>SHA256SUMS</code> assinado, salva-o na pasta Downloads e o mostra lá. A página de download faz a mesma verificação no navegador antes de salvar um arquivo. Nada é verificado até você clicar, e nada é instalado automaticamente.</p>
+<p>O Ferret procura uma versão nova ao iniciar, a cada 6 horas e quando você clica em <span class="docs-ui">Verificar atualizações</span> (rodapé → <span class="docs-ui">Atualizações</span>). Ele busca <code>latest.json</code> no servidor de download (R2) e confere a assinatura do <code>SHA256SUMS</code> daquela versão com a chave de publicação embutida no app. Uma versão cuja assinatura não confere não é oferecida.</p>
+<p>Quando encontra uma versão nova, o Ferret a baixa em segundo plano e mostra o progresso em <span class="docs-ui">Atualizações</span>. O download só é usado se o tamanho e o SHA-256 conferirem com a lista assinada. Em seguida aparece <span class="docs-ui">Reiniciar e atualizar</span> em <span class="docs-ui">Atualizações</span> e no rodapé. Clique para reiniciar já na versão nova. Se um agente estiver trabalhando em um terminal ou houver uma gravação em andamento, o Ferret pergunta antes; a gravação feita até ali é salva antes de reiniciar.</p>
+<table>
+  <thead><tr><th>Tipo de instalação</th><th>O que é baixado</th><th>Como é instalado</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>, listado em <code>UPDATE-SHA256SUMS</code> e assinado com a mesma chave de publicação</td><td>é entregue ao atualizador do macOS (Squirrel.Mac), que também confere se o app novo tem a mesma assinatura Developer ID; substituído quando o Ferret reinicia</td></tr>
+    <tr><td>Windows</td><td>o instalador (<code>.exe</code>)</td><td>roda sem janelas quando o Ferret reinicia e depois abre a versão nova</td></tr>
+    <tr><td>Linux (AppImage)</td><td>o novo <code>.AppImage</code></td><td>substitui o AppImage que você iniciou e depois abre a versão nova</td></tr>
+    <tr><td>Linux (deb)</td><td>o <code>.deb</code></td><td><span class="docs-ui">Abrir instalador</span> salva o arquivo na sua pasta de downloads e o abre no seu instalador de software</td></tr>
+  </tbody>
+</table>
+<p>Para baixar só quando você escolher, desligue <span class="docs-ui">Baixar novas versões automaticamente</span> em <span class="docs-ui">Atualizações</span> (ou defina <code>"autoUpdate": false</code> em <code>settings.json</code>) e clique em <span class="docs-ui">Baixar</span> quando aparecer uma versão nova. Builds de desenvolvimento (<code>pnpm dev</code>) não baixam em segundo plano; <span class="docs-ui">Baixar</span> salva o instalador conferido na sua pasta de downloads.</p>

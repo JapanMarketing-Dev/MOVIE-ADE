@@ -59,14 +59,3 @@ export function removeCustomAgent(prefs: AgentPreferences, id: CustomAgentId): A
 export function startableAgents(prefs: AgentPreferences): TuiAgent[] {
   return [...BUILTIN_AGENTS, ...prefs.customAgents.map((c) => c.id)].filter((id) => !prefs.disabledAgents.includes(id))
 }
-
-/**
- * プロジェクトごとの「権限確認を省く」（security-3 [1]）。入れるときは confirm（パスと危険を見せた確認）が true を返したときだけ。
- * 外すときは確認しない。ほかのプロジェクトの許可には触らない
- */
-export function setProjectBypass(prefs: AgentPreferences, projectId: string, on: boolean, confirm: () => boolean): AgentPreferences {
-  const rest = prefs.bypassProjects.filter((id) => id !== projectId)
-  if (!on) return rest.length === prefs.bypassProjects.length ? prefs : { ...prefs, bypassProjects: rest }
-  if (prefs.bypassProjects.includes(projectId) || !confirm()) return prefs
-  return { ...prefs, bypassProjects: [...rest, projectId] }
-}

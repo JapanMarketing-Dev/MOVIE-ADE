@@ -5,34 +5,49 @@ Editor y vista previa
 <!-- @lead 97cbc36c8d -->
 Abre y edita los archivos del proyecto, y previsualiza Markdown y Mermaid. Una vista previa abierta en el navegador integrado se puede grabar y revisar como cualquier página web.
 
-<!-- @files d29f6a2107 -->
+<!-- @files c2eff8e24c -->
 ## Abrir y editar archivos
 <ul>
   <li><span class="docs-ui">Archivos</span> (el árbol de archivos): {{keys:Mod+Shift+E}}, con <span class="docs-ui">Filtrar por nombre de archivo</span>, <span class="docs-ui">Actualizar</span> y <span class="docs-ui">Contraer todo</span>.</li>
   <li><span class="docs-ui">Ir al archivo…</span>: {{keys:Mod+P}}.</li>
+  <li>Arrastra un archivo desde Finder (el Explorador de archivos en Windows, tu gestor de archivos en Linux) a la barra de pestañas o al editor para abrirlo. Los archivos del proyecto se abren en el editor o en un visor. Para traer un archivo de fuera del proyecto, suéltalo en <span class="docs-ui">Archivos</span>, que lo copia al proyecto. Una carpeta soltada aquí se abre como proyecto. Los archivos arrastrados desde <span class="docs-ui">Archivos</span> se abren de la misma forma.</li>
   <li>Guarda con {{keys:Mod+S}}. Al cerrar un archivo modificado se pregunta <q>¿Guardar los cambios en &lt;name&gt;?</q> con <span class="docs-ui">Guardar</span>, <span class="docs-ui">No guardar</span> y <span class="docs-ui">Cancelar</span>.</li>
   <li>Si el archivo cambia en el disco mientras tienes ediciones sin guardar, elige <span class="docs-ui">Recargar desde el disco</span> o <span class="docs-ui">Conservar mis cambios</span>.</li>
 </ul>
 <p>El editor es Monaco. Los archivos que no son de texto se abren en un visor: imágenes (con zoom; los SVG también se pueden ver como código), vídeo y audio con barra de reproducción, PDF y, para cualquier otro archivo binario, su tamaño y una vista hexadecimal de los primeros bytes. Los visores son de solo lectura, y no se muestran los archivos fuera de la carpeta del proyecto ni los que se alcanzan mediante un enlace simbólico que sale de ella.</p>
 
-<!-- @file-tree 4bec72e9f4 -->
-## Crear, renombrar y eliminar archivos
-<p>Trabaja con los archivos directamente en <span class="docs-ui">Archivos</span>, como lo harías en VS Code. Los nombres se escriben en el propio árbol.</p>
+<!-- @file-tree 6020ab04cd -->
+## Trabajar con archivos en el árbol de archivos
+<p>Trabaja con los archivos directamente en <span class="docs-ui">Archivos</span>, como lo harías en VS Code. Haz clic derecho en un elemento, o en el espacio vacío bajo el árbol para trabajar en la raíz del proyecto. Los nombres se escriben en el propio árbol.</p>
 <ul>
-  <li><span class="docs-ui">Nuevo archivo</span> / <span class="docs-ui">Nueva carpeta</span>: los botones sobre el árbol, o clic derecho en una carpeta (o en el espacio vacío bajo el árbol). El nuevo elemento se crea dentro de la carpeta seleccionada, junto al archivo seleccionado o en la raíz del proyecto. Un archivo nuevo se abre en el editor.</li>
-  <li><span class="docs-ui">Cambiar nombre</span>: {{keys:F2 / Enter|F2}}, o clic derecho. Las pestañas abiertas siguen al nuevo nombre y conservan las ediciones sin guardar.</li>
+  <li><span class="docs-ui">Nuevo archivo</span> / <span class="docs-ui">Nueva carpeta</span>: los botones sobre el árbol, o clic derecho. El nuevo elemento se crea dentro de la carpeta seleccionada, junto al archivo seleccionado o en la raíz del proyecto. Escribe un nombre con barras, como <code>src/routes/index.ts</code>, para crear también las carpetas intermedias. Un archivo nuevo se abre en el editor. En una carpeta vacía, <span class="docs-ui">Archivos</span> muestra <span class="docs-ui">Esta carpeta está vacía</span> con los botones <span class="docs-ui">Nuevo archivo</span> y <span class="docs-ui">Nueva carpeta</span>.</li>
+  <li><span class="docs-ui">Cortar</span>, <span class="docs-ui">Copiar</span> y <span class="docs-ui">Pegar</span>: {{keys:Mod+X}}, {{keys:Mod+C}}, {{keys:Mod+V}}, o clic derecho. Las carpetas se copian con todo su contenido. <span class="docs-ui">Duplicar</span> crea una copia junto al original. Si el nombre ya existe, la copia se llama <code>name copy</code>, luego <code>name copy 2</code>.</li>
+  <li>Arrastra elementos sobre una carpeta (o sobre el espacio vacío para la raíz del proyecto) para moverlos. Mantén pulsada {{keys:Alt|Ctrl}} al soltar para copiarlos en su lugar. Los archivos y carpetas arrastrados desde Finder (el Explorador de archivos en Windows) se copian al proyecto; los originales se quedan donde estaban.</li>
+  <li><span class="docs-ui">Cambiar nombre</span>: {{keys:F2 / Enter|F2}}, o clic derecho.</li>
   <li><span class="docs-ui">Eliminar</span>: {{keys:Mod+Backspace / Delete|Delete}}, o clic derecho. Ferret pregunta primero y luego mueve el elemento a la Papelera (la Papelera de reciclaje en Windows), así que puedes restaurarlo. Las pestañas de los archivos eliminados se cierran; si alguna tenía ediciones sin guardar, la confirmación lo indica.</li>
-  <li>Selecciona varios elementos con {{keys:Mod}}-clic o {{keys:Shift}}-clic para eliminarlos a la vez.</li>
+  <li><span class="docs-ui">Deshacer</span>: {{keys:Mod+Z}} revierte la última creación, cambio de nombre, movimiento, pegado o duplicado. Los elementos eliminados se restauran desde la Papelera.</li>
+  <li><span class="docs-ui">Copiar ruta</span> ({{keys:Alt+Mod+C|Shift+Alt+C}}) y <span class="docs-ui">Copiar ruta relativa</span> ({{keys:Alt+Shift+Mod+C|Ctrl+Shift+Alt+C}}) ponen la ruta en el portapapeles.</li>
+  <li><span class="docs-ui">Mostrar en Finder</span> (<span class="docs-ui">Mostrar en el Explorador de archivos</span> en Windows, <span class="docs-ui">Abrir la carpeta contenedora</span> en Linux): {{keys:Alt+Mod+R|Shift+Alt+R}}. <span class="docs-ui">Abrir en la terminal</span> abre una pestaña de terminal nueva en esa carpeta (para un archivo, en su carpeta).</li>
+  <li>Para un archivo, <span class="docs-ui">Abrir</span> lo abre en el editor y <span class="docs-ui">Abrir con la app predeterminada</span> lo abre en la app que tu sistema operativo usa para ese tipo.</li>
+  <li>Selecciona varios elementos con {{keys:Mod}}-clic o {{keys:Shift}}-clic para cortarlos, copiarlos, moverlos o eliminarlos a la vez.</li>
   <li>{{keys:Esc}} cancela el nombre que estás escribiendo.</li>
 </ul>
-<p>Ferret no sobrescribe un archivo o una carpeta existente con el mismo nombre, y rechaza todo lo que saldría de la carpeta del proyecto (<code>..</code>, rutas absolutas, enlaces simbólicos que apuntan fuera), todo lo que esté dentro de <code>.git</code> y los nombres que algún sistema operativo no admite: <code>/ \ &lt; &gt; : " | ? *</code>, caracteres de control, un espacio o un punto al final, y nombres reservados de Windows como <code>CON</code> o <code>NUL</code>.</p>
+<p>Las pestañas abiertas siguen a un archivo renombrado o movido y conservan las ediciones sin guardar. Ferret no sobrescribe un archivo o una carpeta existente con el mismo nombre, y mantiene todo dentro de la carpeta del proyecto: rechaza <code>..</code>, las rutas absolutas, los enlaces simbólicos que apuntan fuera, todo lo que esté dentro de <code>.git</code>, mover una carpeta dentro de sí misma y los nombres que algún sistema operativo no admite: <code>/ \ &lt; &gt; : " | ? *</code>, caracteres de control, un espacio o un punto al final, y nombres reservados de Windows como <code>CON</code> o <code>NUL</code>. Una sola copia o un solo soltado puede incluir hasta 10.000 elementos y 1 GB.</p>
 
-<!-- @preview b8c0baaad4 -->
+<!-- @preview cb127d2292 -->
 ## Vista previa de Markdown y Mermaid
 <p>La vista previa funciona con <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> y <code>.mermaid</code>. Mermaid viene incluido en la app, así que los diagramas se renderizan sin conexión.</p>
 <ul>
   <li><span class="docs-ui">Abrir vista previa al lado</span>: junto al editor</li>
   <li><span class="docs-ui">Abrir vista previa</span>: en el navegador integrado (<code>ade-preview://</code>), para que puedas grabarla y revisarla</li>
+</ul>
+<p>Para editar un archivo Markdown tal como se ve en la vista previa, haz clic en <span class="docs-ui">Editar en la vista previa</span> en la parte superior del editor, y en <span class="docs-ui">Código fuente</span> para volver. Ambos muestran el mismo contenido, y el guardado, la marca de cambios sin guardar y la confirmación al cerrar funcionan igual.</p>
+<ul>
+  <li>Escribe directamente en títulos, párrafos, listas, casillas, tablas, enlaces y texto en negrita, cursiva o código en línea. Escribir <code>#</code>, <code>-</code>, <code>1.</code> o <code>&gt;</code> y un espacio al principio de una línea inicia un título, una lista o una cita.</li>
+  <li>Los bloques de código y los diagramas Mermaid se editan como su código fuente, con el lenguaje indicado en la esquina. El diagrama se renderiza en <span class="docs-ui">Abrir vista previa al lado</span> o en <span class="docs-ui">Abrir vista previa</span>.</li>
+  <li>El front matter (el bloque <code>---</code> del principio) se muestra como texto encima del documento y se puede editar ahí.</li>
+  <li>Las partes que no cambias se guardan exactamente como estaban escritas, incluidos el estilo de los títulos, los marcadores de lista, las líneas en blanco, la alineación de las tablas y los finales de línea. Un bloque que editas conserva su estilo cuando es posible; si no, ese bloque se escribe en una forma estándar de Markdown, con <code>-</code> para las listas y <code>#</code> para los títulos.</li>
+  <li>Se muestran las imágenes del proyecto. Las imágenes de otros sitios no se cargan; en su lugar se muestra el nombre de su host. El HTML del archivo se muestra como texto.</li>
 </ul>
 
 <!-- @review-docs 4b5c6316ba -->

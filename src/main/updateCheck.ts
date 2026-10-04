@@ -3,9 +3,10 @@ import { compareAppVersions, isValidAppVersion, pickAppVersion, type UpdateCheck
 // package.json はビルド時に埋め込む（dev 起動では app.getAppPath() がプロジェクト直下を指さないことがある）
 import { version } from '../../package.json'
 import { t } from '@shared/i18n'
+import { IS_PACKAGED } from './runtime'
 import { reportHandled } from '@shared/report'
 import { SMALL_JSON_MAX_BYTES, readBoundedBytes, readBoundedJson, readBoundedText } from './boundedResponse'
-import { SIGNED_SUMS_MAX_BYTES, verifiedReleaseFiles, type SignedReleaseFile } from './releaseSignature'
+import { RELEASE_PUBLIC_KEY, SIGNED_SUMS_MAX_BYTES, UPDATE_SUMS_NAME, verifiedReleaseFiles, verifiedUpdateFiles, type SignedReleaseFile, type SignedUpdateFile } from './releaseSignature'
 
 /**
  * 更新の確認（フッターの「更新を確認」）。
@@ -20,11 +21,43 @@ import { SIGNED_SUMS_MAX_BYTES, verifiedReleaseFiles, type SignedReleaseFile } f
  * それに載っていることを確かめる（security-3 [2]。R2 だけを書き換えられても、偽の版へ案内しない。src/main/releaseSignature.ts）。
  * 確かめた版・名前・sha256 は main に持ったまま、「ダウンロード」でアプリが落として sha256 を確かめてから保存する
  * （security-4 [7]。ブラウザでサイトを開き直すと、確かめたあとに書き換えられた R2 の中身を選びうる。updateDownload.ts）。
+ * 裏でのダウンロードと入れ替え（自動更新）は src/main/autoUpdate.ts。ここで確かめたファイルだけを使う。
  */
 
 /** 配信元。独自ドメインへ移すときはここだけ変える（今は r2.dev の開発用 URL） */
 export const RELEASE_BASE_URL = 'https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev/'
-const MANIFEST_URL = new URL('latest.json', RELEASE_BASE_URL).toString()
+
+/**
+ * E2E だけの差し替え（偽の配信元と、その配信元の署名の鍵）。配布版（IS_PACKAGED）では読まない。
+ * 配信元は手元のループバック（http://127.0.0.1:<port>/）だけを受け付ける
+ */
+export function e2eReleaseOverride(
+  name: 'FERRET_E2E_RELEASE_BASE_URL' | 'FERRET_E2E_RELEASE_KEY',
+  env: Record<string, string | undefined> = process.env,
+  packaged: boolean = IS_PACKAGED
+): string | null {
+  if (packaged || env.ADE_E2E !== '1') return null
+  const value = env[name]?.trim()
+  if (!value) return null
+  if (name === 'FERRET_E2E_RELEASE_BASE_URL') return /^http:\/\/127\.0\.0\.1:\d{2,5}\/$/.test(value) ? value : null
+  return /^ssh-ed25519 [A-Za-z0-9+/=]+$/.test(value) ? value : null
+}
+const e2eOverride = (name: Parameters<typeof e2eReleaseOverride>[0]): string | null => e2eReleaseOverride(name)
+
+/** いま使う配信元（ふだんは RELEASE_BASE_URL。E2E だけ偽の配信元） */
+export function releaseBase(): string {
+  return e2eOverride('FERRET_E2E_RELEASE_BASE_URL') ?? RELEASE_BASE_URL
+}
+
+/** 配布物の署名を確かめる公開鍵（ふだんは同梱の RELEASE_PUBLIC_KEY。E2E だけ偽の配信元の鍵） */
+function releaseTrustKey(): string {
+  return e2eOverride('FERRET_E2E_RELEASE_KEY') ?? RELEASE_PUBLIC_KEY
+}
+
+/** E2E の偽の配信元で動いているか（autoUpdate.ts が、本物の入れ替えをせずに流れだけを通すのに使う） */
+export function usingE2eReleaseServer(): boolean {
+  return e2eOverride('FERRET_E2E_RELEASE_BASE_URL') !== null && e2eOverride('FERRET_E2E_RELEASE_KEY') !== null
+}
 /** ダウンロードサイト（Workers の静的配信）。空にすると R2 上の自分の OS・CPU 向けファイルを直接開く */
 export const DOWNLOAD_PAGE_URL = 'https://ferretade.dev/download'
 
@@ -58,6 +91,8 @@ export interface ReleaseManifest {
   notes: string
   notesUrl?: string
   files: ReleaseFile[]
+  /** 自動更新だけが使うファイル（macOS の zip）。UPDATE-SHA256SUMS に載る。サイトには出さない */
+  updates?: Array<{ name: string; path: string; size: number; sha256: string }>
 }
 
 const OS_OF: Partial<Record<NodeJS.Platform, ReleaseFile['os']>> = { darwin: 'mac', win32: 'win', linux: 'linux' }
@@ -79,7 +114,11 @@ export function parseManifest(raw: unknown): ReleaseManifest | null {
     prerelease: r.prerelease === true,
     notes: typeof r.notes === 'string' ? r.notes : '',
     ...(typeof r.notesUrl === 'string' ? { notesUrl: r.notesUrl } : {}),
-    files
+    files,
+    ...(Array.isArray(r.updates)
+      ? { updates: r.updates.filter((f): f is NonNullable<ReleaseManifest['updates']>[number] =>
+        !!f && typeof f === 'object' && typeof f.name === 'string' && typeof f.path === 'string' && typeof f.size === 'number' && typeof f.sha256 === 'string') }
+      : {})
   }
 }
 
@@ -108,10 +147,11 @@ export function judgeManifest(
   if (compareAppVersions(latest, current) <= 0) return { state: 'latest', current, latest }
   const file = pickReleaseFile(manifest.files, platform, arch)
   // path に別のサイトの絶対URLが入っていても開かない（配信元の下だけ）
-  const fileUrl = file ? new URL(file.path.replace(/^\/+/, ''), RELEASE_BASE_URL).toString() : ''
+  const base = releaseBase()
+  const fileUrl = file ? new URL(file.path.replace(/^\/+/, ''), base).toString() : ''
   const url = downloadPage ||
-    (fileUrl.startsWith(RELEASE_BASE_URL) ? fileUrl : '') ||
-    (manifest.notesUrl?.startsWith('https://') ? manifest.notesUrl : RELEASE_BASE_URL)
+    (fileUrl.startsWith(base) ? fileUrl : '') ||
+    (manifest.notesUrl?.startsWith('https://') ? manifest.notesUrl : base)
   return { state: 'available', current, latest, url }
 }
 
@@ -119,7 +159,7 @@ export function judgeManifest(
  * 確認できなかったことを Sentry へ warning（area: update）で知らせる。理由の種類だけを付ける（URL・本文は付けない）。
  * 確認は利用者が押したときだけなので、件数は少ない。オフライン（network / timeout）も、配信元の不調に気づけるよう送る。
  */
-function reportCheckFailure(reason: 'http' | 'bad-manifest' | 'bad-version' | 'network' | 'timeout' | 'unsigned', err?: unknown): void {
+function reportCheckFailure(reason: 'http' | 'bad-manifest' | 'bad-version' | 'network' | 'timeout' | 'unsigned' | 'unsigned-update', err?: unknown): void {
   // net の失敗の文（net::ERR_…）は手がかりになるので残す。URL は送る前の除去で落ちる
   reportHandled(err instanceof Error ? err : new Error(`update check failed: ${reason}`), { area: 'update', op: `check update: ${reason}` })
 }
@@ -130,7 +170,7 @@ function reportCheckFailure(reason: 'http' | 'bad-manifest' | 'bad-version' | 'n
  */
 async function releaseSignature(fetcher: typeof net.fetch, manifest: ReleaseManifest, latest: string, signal: AbortSignal): Promise<SignedReleaseFile[] | 'unsigned' | number> {
   // latest は judgeManifest が版の形を確かめたもの。配信元の下の固定の名前だけを読む
-  const base = new URL(`releases/${latest}/`, RELEASE_BASE_URL)
+  const base = new URL(`releases/${latest}/`, releaseBase())
   const responses = await Promise.all(['SHA256SUMS', 'SHA256SUMS.sig'].map((name) => fetcher(new URL(name, base).toString(), { signal })))
   const transient = responses.find((r) => r.status >= 500 || r.status === 429)
   if (transient) return transient.status
@@ -139,7 +179,27 @@ async function releaseSignature(fetcher: typeof net.fetch, manifest: ReleaseMani
   const sums = await readBoundedBytes(sumsRes, SIGNED_SUMS_MAX_BYTES)
   const signature = await readBoundedText(sigRes, SIGNED_SUMS_MAX_BYTES)
   // 版・製品・OS・CPU・種類・置き場所は、署名した名前と版から作る（manifest の値は使わない。security-4 [3]）
-  return verifiedReleaseFiles(latest, manifest.files, sums, signature) ?? 'unsigned'
+  return verifiedReleaseFiles(latest, manifest.files, sums, signature, releaseTrustKey()) ?? 'unsigned'
+}
+
+/**
+ * releases/<版>/UPDATE-SHA256SUMS(.sig) を取り、latest.json の updates（macOS の zip）を突き合わせる。
+ * 無い・合わない・取れないときは空（自動更新はせず、インストーラーの「ダウンロード」を出す）。案内そのものは止めない
+ */
+async function updateSignature(fetcher: typeof net.fetch, manifest: ReleaseManifest, latest: string, signal: AbortSignal): Promise<SignedUpdateFile[]> {
+  if (!manifest.updates?.length) return []
+  try {
+    const base = new URL(`releases/${latest}/`, releaseBase())
+    const [sumsRes, sigRes] = await Promise.all([UPDATE_SUMS_NAME, `${UPDATE_SUMS_NAME}.sig`].map((name) => fetcher(new URL(name, base).toString(), { signal }))) as [Response, Response]
+    if (!sumsRes.ok || !sigRes.ok) return []
+    const sums = await readBoundedBytes(sumsRes, SIGNED_SUMS_MAX_BYTES)
+    const signature = await readBoundedText(sigRes, SIGNED_SUMS_MAX_BYTES)
+    const signed = verifiedUpdateFiles(latest, manifest.updates, sums, signature, releaseTrustKey())
+    if (!signed) reportCheckFailure('unsigned-update')
+    return signed ?? []
+  } catch {
+    return []
+  }
 }
 
 /** 署名で確かめた、この OS・CPU 向けのファイル（アプリが落とすもの）。確かめるたびに置き換える */
@@ -148,10 +208,12 @@ export interface VerifiedDownload {
   name: string
   sha256: string
   size: number
-  kind: SignedReleaseFile['kind']
+  kind: SignedReleaseFile['kind'] | SignedUpdateFile['kind']
   url: string
 }
 let verified: VerifiedDownload | null = null
+/** 最後の確認で署名を確かめた、この版のファイルすべて（インストーラーと自動更新用。autoUpdate.ts が種類で選ぶ） */
+let verifiedSet: { version: string; files: ReadonlyArray<SignedReleaseFile | SignedUpdateFile> } | null = null
 
 /** 最後の更新の確認で確かめた、この OS・CPU 向けのファイル。無ければ null */
 export function verifiedDownload(): VerifiedDownload | null {
@@ -161,19 +223,45 @@ export function verifiedDownload(): VerifiedDownload | null {
 /** 確かめたファイルから、この OS・CPU 向けのものを選ぶ。URL は配信元の下の、署名した名前の置き場所 */
 export function pickVerifiedDownload(version: string, files: readonly SignedReleaseFile[], platform: NodeJS.Platform = process.platform, arch: string = process.arch): VerifiedDownload | null {
   const file = pickReleaseFile(files, platform, arch)
-  if (!file) return null
-  const url = new URL(file.path, RELEASE_BASE_URL).toString()
-  if (!url.startsWith(RELEASE_BASE_URL)) return null
+  return file ? toVerifiedDownload(version, file) : null
+}
+
+/** 確かめたファイルを、配信元の下の URL 付きにする。配信元の外を指せば null */
+function toVerifiedDownload(version: string, file: SignedReleaseFile | SignedUpdateFile): VerifiedDownload | null {
+  const base = releaseBase()
+  const url = new URL(file.path, base).toString()
+  if (!url.startsWith(base)) return null
   return { version, name: file.name, sha256: file.sha256, size: file.size, kind: file.kind, url }
 }
 
-export async function checkForUpdate(fetcher: typeof net.fetch = net.fetch): Promise<UpdateCheckResult> {
+/**
+ * 確かめたファイルから、この OS・CPU 向けの決まった種類（zip / exe / AppImage / deb）を選ぶ。無ければ null（自動更新はしない）。
+ * 自動更新（autoUpdate.ts）が使う。種類は入れ替えの方法で決まる（mac は zip、Windows は exe、Linux は AppImage か deb）
+ */
+export function pickVerifiedOfKind(
+  set: { version: string; files: ReadonlyArray<SignedReleaseFile | SignedUpdateFile> } | null,
+  kind: VerifiedDownload['kind'],
+  platform: NodeJS.Platform = process.platform,
+  arch: string = process.arch
+): VerifiedDownload | null {
+  const os = OS_OF[platform]
+  const file = set?.files.find((f) => f.os === os && f.arch === arch && f.kind === kind)
+  return set && file ? toVerifiedDownload(set.version, file) : null
+}
+
+/** 最後の更新の確認で確かめた、この OS・CPU 向けの決まった種類のファイル */
+export function verifiedFileOfKind(kind: VerifiedDownload['kind']): VerifiedDownload | null {
+  return pickVerifiedOfKind(verifiedSet, kind)
+}
+
+export async function checkForUpdate(fetcher: typeof net.fetch = net.fetch, platform: NodeJS.Platform = process.platform): Promise<UpdateCheckResult> {
   const current = appVersion()
   verified = null
+  verifiedSet = null
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const res = await fetcher(MANIFEST_URL, { headers: { Accept: 'application/json' }, signal: controller.signal })
+    const res = await fetcher(new URL('latest.json', releaseBase()).toString(), { headers: { Accept: 'application/json' }, signal: controller.signal })
     // まだ latest.json を置いていない。失敗ではなく案内として出す
     if (res.status === 404 || res.status === 403) return { state: 'no-release', current }
     if (!res.ok) {
@@ -199,6 +287,9 @@ export async function checkForUpdate(fetcher: typeof net.fetch = net.fetch): Pro
       return { state: 'unverified', current, latest: result.latest }
     }
     verified = pickVerifiedDownload(result.latest, signed)
+    // 自動更新用のファイル（macOS の zip）は、mac のときだけ取りに行く。確かめられなければ自動更新をせずに案内だけ
+    const updates = platform === 'darwin' ? await updateSignature(fetcher, manifest, result.latest, controller.signal) : []
+    verifiedSet = { version: result.latest, files: [...signed, ...updates] }
     return result
   } catch (err) {
     const aborted = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')

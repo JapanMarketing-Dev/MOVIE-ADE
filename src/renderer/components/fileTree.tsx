@@ -31,6 +31,8 @@ interface FileTreeState {
   loading: ReadonlySet<string>
   /** 根が読めないときの理由 */
   error: string | null
+  /** 根を読み終えた（空のフォルダの案内を、読み込み中にちらつかせない） */
+  loaded: boolean
   toggleDir: (entry: FsEntry) => void
   /** 読み込み済みのフォルダをすべて読み直す */
   refresh: () => void
@@ -135,6 +137,7 @@ export function useFileTree(root: string | null, options: { expandedKey?: string
     expanded,
     loading,
     error,
+    loaded: children.has(''),
     toggleDir,
     refresh: () => { for (const dir of childrenRef.current.keys()) void loadDir(dir) },
     collapseAll: () => setExpanded(() => new Set()),
