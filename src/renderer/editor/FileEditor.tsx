@@ -8,6 +8,8 @@ import { monaco } from './monacoSetup'
 import { applyEditorTheme, useAppTheme } from './editorTheme'
 import { isMarkdownLanguage } from './language'
 import { registerModelDisposer, type OpenFilesApi, type OpenFile } from './useOpenFiles'
+import { registerMarkdownDropTarget } from './markdownDrop'
+import { markdownMediaSnippet, sourceInsertion } from '@shared/markdownMedia'
 import { Button, EmptyState, Spinner } from '../ui'
 import { useT } from '../lib/i18n'
 import { reportHandled } from '@shared/report'
@@ -24,9 +26,9 @@ function modelPath(file: OpenFile): string {
 
 registerModelDisposer((id) => monaco.editor.getModel(monaco.Uri.file(id))?.dispose())
 
-/** プレビューで編集（tiptap を含むので、開いたときだけ読む） */
+/** Markdown のプレビュー（そのまま編集できる。tiptap を含むので、開いたときだけ読む） */
 const RichMarkdownEditor = lazy(() => import('./richMarkdown/RichMarkdownEditor'))
-/** プレビューで編集しているファイル（タブを切り替えても残す） */
+/** プレビューで開いているファイル（タブを切り替えても残す） */
 const richFiles = new Set<string>()
 
 /**
@@ -34,7 +36,8 @@ const richFiles = new Set<string>()
  *
  * Orca由来: ~/bench/orca/src/renderer/src/components/editor/EditorPanel.tsx・EditorPanelHeader.tsx（MIT）
  *   - エディタは1つだけ置き、タブを切り替えるとモデルを差し替える（undo とスクロール位置がタブごとに残る）
- *   - 見出しにパスと、markdown / Mermaid ならプレビュー
+ *   - 見出しにパスと、Markdown なら「ソース」「プレビュー」の切り替え（プレビューはそのまま編集できる）、
+ *     Mermaid・MDX なら読み取り専用のプレビュー（横に並べる・内蔵ブラウザで開く）
  *   - 外部の変更で未保存の内容と食い違ったら、上書きせずに帯で知らせる
  * プレビューは renderer の DOM ではなく ade-preview://（main が描くページ）で、
  * 「横に並べる」は iframe、「内蔵ブラウザで開く」は録画でレビューできる内蔵ブラウザに出す。
@@ -45,6 +48,7 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
   const theme = useAppTheme()
   const [themeName, setThemeName] = useState(() => applyEditorTheme(monaco, theme))
   const frameRef = useRef<HTMLIFrameElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<CodeEditor | null>(null)
   const liveTimer = useRef<number | undefined>(undefined)
   const [, setRichVersion] = useState(0)
@@ -110,8 +114,9 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
   }, [file.preview])
 
   const markdown = isMarkdownLanguage(file.language)
-  // Markdown は「ソース」と「プレビューで編集」を切り替えられる。内容はどちらも同じ drafts を通す
-  // （MDX は JSX を含むので、ソースだけで編集する）
+  // Markdown は「ソース」と「プレビュー」を切り替えられる。プレビューはいつでもそのまま編集でき、内容はどちらも同じ drafts を通す。
+  // 読み取り専用のプレビュー（横に並べる・内蔵ブラウザで開く）は Markdown には出さない
+  // （MDX は JSX を含むので、ソースだけで編集し、読み取り専用のプレビューで見る）
   const richable = file.language === 'markdown' && file.status === 'ready' && !file.viewer
   const rich = richable && richFiles.has(file.id)
   const setRich = (on: boolean) => {
@@ -119,7 +124,30 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
     else richFiles.delete(file.id)
     setRichVersion((v) => v + 1)
   }
-  const previewable = previewKind(file.path) !== null && file.status === 'ready' && !file.viewer
+  const previewable = previewKind(file.path) !== null && file.language !== 'markdown' && file.status === 'ready' && !file.viewer
+  const sourceDroppable = markdown && file.status === 'ready' && !file.viewer && !rich
+
+  // ソースへ落とした画像・動画を、落とした位置に埋め込む（受けるのは App の中央のペイン。markdownDrop.ts）
+  useEffect(() => {
+    if (!sourceDroppable) return
+    return registerMarkdownDropTarget({
+      path: file.path,
+      element: () => bodyRef.current,
+      insert: (media, point) => {
+        const editor = editorRef.current
+        const model = editor?.getModel()
+        if (!editor || !model) return
+        const position = editor.getTargetAtClientPoint(point.x, point.y)?.position ?? editor.getPosition() ?? model.getFullModelRange().getEndPosition()
+        const line = model.getLineContent(position.lineNumber)
+        const text = sourceInsertion(media.map((m) => markdownMediaSnippet(m.kind, m.link)), line.slice(0, position.column - 1), line.slice(position.column - 1))
+        const range = new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column)
+        editor.pushUndoStop()
+        editor.executeEdits('drop-media', [{ range, text, forceMoveMarkers: true }])
+        editor.pushUndoStop()
+        editor.focus()
+      }
+    })
+  }, [sourceDroppable, file.path])
   const segments = file.path.split('/')
 
   return (
@@ -205,7 +233,7 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
         </div>
       )}
 
-      <div className={`editor-body${previewable && file.preview && !rich ? ' editor-body--split' : ''}`}>
+      <div ref={bodyRef} className={`editor-body${previewable && file.preview && !rich ? ' editor-body--split' : ''}`}>
         {file.status === 'loading' ? (
           <div className="editor-body__center"><Spinner size={18} /></div>
         ) : file.status === 'unavailable' ? (

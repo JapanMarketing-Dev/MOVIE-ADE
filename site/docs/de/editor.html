@@ -167,7 +167,7 @@
         <ul>
   <li><span class="docs-ui">Dateien</span> (der Dateibaum): <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></span></span>, mit <span class="docs-ui">Nach Dateiname filtern</span>, <span class="docs-ui">Aktualisieren</span> und <span class="docs-ui">Alle einklappen</span>.</li>
   <li><span class="docs-ui">Gehe zu Datei …</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></span></span>.</li>
-  <li>Ziehen Sie eine Datei aus dem Finder (unter Windows aus dem Datei-Explorer, unter Linux aus Ihrem Dateimanager) auf die Tableiste oder den Editor, um sie zu öffnen. Dateien im Projekt öffnen sich im Editor oder in einem Viewer. Um eine Datei von außerhalb ins Projekt zu holen, legen Sie sie auf <span class="docs-ui">Dateien</span> ab; sie wird dann ins Projekt kopiert. Ein hier abgelegter Ordner wird als Projekt geöffnet. Aus <span class="docs-ui">Dateien</span> gezogene Dateien öffnen sich auf dieselbe Weise.</li>
+  <li>Ziehen Sie eine Datei aus dem Finder (unter Windows aus dem Datei-Explorer, unter Linux aus Ihrem Dateimanager) auf die Tableiste oder den Editor, um sie zu öffnen. Dateien im Projekt öffnen sich im Editor oder in einem Viewer. Um eine Datei von außerhalb ins Projekt zu holen, legen Sie sie auf <span class="docs-ui">Dateien</span> ab; sie wird dann ins Projekt kopiert. Ein hier abgelegter Ordner wird als Projekt geöffnet. Aus <span class="docs-ui">Dateien</span> gezogene Dateien öffnen sich auf dieselbe Weise. Bilder und Videos, die Sie auf einer geöffneten Markdown-Datei ablegen, werden stattdessen darin eingebettet (siehe <a href="#embed-media">Bilder und Videos in Markdown einbetten</a>).</li>
   <li>Speichern mit <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></span></span>. Beim Schließen einer geänderten Datei fragt Ferret <q>Änderungen an &lt;name&gt; sichern?</q> mit <span class="docs-ui">Speichern</span>, <span class="docs-ui">Nicht sichern</span> und <span class="docs-ui">Abbrechen</span>.</li>
   <li>Ändert sich die Datei auf der Festplatte, während Sie ungesicherte Änderungen haben, wählen Sie <span class="docs-ui">Von Festplatte neu laden</span> oder <span class="docs-ui">Meine Änderungen behalten</span>.</li>
 </ul>
@@ -196,24 +196,36 @@
       <section class="docs-section" aria-labelledby="preview">
         <h2 id="preview"><a class="docs-anchor" href="#preview" aria-label="Link zu „Markdown- und Mermaid-Vorschau“">#</a>Markdown- und Mermaid-Vorschau</h2>
         <p>Die Vorschau funktioniert für <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> und <code>.mermaid</code>. Mermaid ist in die App eingebaut, daher werden Diagramme auch offline gerendert.</p>
+<p>Eine Markdown-Datei hat oben im Editor zwei Ansichten: <span class="docs-ui">Quelltext</span> und <span class="docs-ui">Vorschau</span>. Die Vorschau ist immer bearbeitbar, Sie können also direkt darin tippen; mit <span class="docs-ui">Quelltext</span> kehren Sie zum Text zurück. Beide zeigen denselben Inhalt, und Speichern, die Markierung für ungesicherte Änderungen und die Rückfrage beim Schließen funktionieren gleich.</p>
+<ul>
+  <li>Tippen Sie direkt in Überschriften, Absätze, Listen, Kontrollkästchen, Tabellen, Links sowie fetten, kursiven oder Inline-Code. Wenn Sie am Zeilenanfang <code>#</code>, <code>-</code>, <code>1.</code> oder <code>&gt;</code> und ein Leerzeichen eingeben, beginnt eine Überschrift, eine Liste oder ein Zitat.</li>
+  <li>Codeblöcke und Mermaid-Diagramme bearbeiten Sie als Quelltext; die Sprache wird in der Ecke angezeigt. Um das Diagramm gezeichnet zu sehen, öffnen Sie die Datei unter <span class="docs-ui">Dateien</span> im Bereich <a href="projects.html#review-targets"><span class="docs-ui">Review-Ziele</span></a>.</li>
+  <li>Front Matter (der <code>---</code>-Block am Anfang) wird als Text über dem Dokument angezeigt und kann dort bearbeitet werden.</li>
+  <li>Teile, die Sie nicht ändern, werden genau so gespeichert, wie sie geschrieben sind, einschließlich Überschriftenstil, Listenzeichen, Leerzeilen, Tabellenausrichtung und Zeilenenden. Ein bearbeiteter Block behält seinen Stil, wo möglich; andernfalls wird dieser Block in einer Standard-Markdown-Form geschrieben, mit <code>-</code> für Listen und <code>#</code> für Überschriften.</li>
+  <li>Bilder und Videos im Projekt werden angezeigt. Bilder von anderen Websites werden nicht geladen; stattdessen wird ihr Hostname angezeigt. Anderes HTML in der Datei wird als Text angezeigt.</li>
+</ul>
+<p><code>.mdx</code>-Dateien (nur als Quelltext bearbeitet) sowie <code>.mmd</code>- und <code>.mermaid</code>-Dateien haben stattdessen eine schreibgeschützte Vorschau:</p>
 <ul>
   <li><span class="docs-ui">Vorschau seitlich öffnen</span>: neben dem Editor</li>
   <li><span class="docs-ui">Vorschau öffnen</span>: im integrierten Browser (<code>ade-preview://</code>), sodass Sie sie aufnehmen und prüfen können</li>
 </ul>
-<p>Um eine Markdown-Datei so zu bearbeiten, wie sie in der Vorschau aussieht, klicken Sie oben im Editor auf <span class="docs-ui">In der Vorschau bearbeiten</span>; mit <span class="docs-ui">Quelltext</span> kehren Sie zurück. Beide zeigen denselben Inhalt, und Speichern, die Markierung für ungesicherte Änderungen und die Rückfrage beim Schließen funktionieren gleich.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="embed-media">
+        <h2 id="embed-media"><a class="docs-anchor" href="#embed-media" aria-label="Link zu „Bilder und Videos in Markdown einbetten“">#</a>Bilder und Videos in Markdown einbetten</h2>
+        <p>Ziehen Sie Bilder (PNG, JPEG, GIF, WebP, SVG, AVIF) oder Videos (MP4, WebM, MOV) auf eine Markdown-Datei, in <span class="docs-ui">Quelltext</span> oder <span class="docs-ui">Vorschau</span>, um sie an der Ablagestelle einzubetten.</p>
 <ul>
-  <li>Tippen Sie direkt in Überschriften, Absätze, Listen, Kontrollkästchen, Tabellen, Links sowie fetten, kursiven oder Inline-Code. Wenn Sie am Zeilenanfang <code>#</code>, <code>-</code>, <code>1.</code> oder <code>&gt;</code> und ein Leerzeichen eingeben, beginnt eine Überschrift, eine Liste oder ein Zitat.</li>
-  <li>Codeblöcke und Mermaid-Diagramme bearbeiten Sie als Quelltext; die Sprache wird in der Ecke angezeigt. Das Diagramm wird in <span class="docs-ui">Vorschau seitlich öffnen</span> oder <span class="docs-ui">Vorschau öffnen</span> gerendert.</li>
-  <li>Front Matter (der <code>---</code>-Block am Anfang) wird als Text über dem Dokument angezeigt und kann dort bearbeitet werden.</li>
-  <li>Teile, die Sie nicht ändern, werden genau so gespeichert, wie sie geschrieben sind, einschließlich Überschriftenstil, Listenzeichen, Leerzeilen, Tabellenausrichtung und Zeilenenden. Ein bearbeiteter Block behält seinen Stil, wo möglich; andernfalls wird dieser Block in einer Standard-Markdown-Form geschrieben, mit <code>-</code> für Listen und <code>#</code> für Überschriften.</li>
-  <li>Bilder im Projekt werden angezeigt. Bilder von anderen Websites werden nicht geladen; stattdessen wird ihr Hostname angezeigt. HTML in der Datei wird als Text angezeigt.</li>
+  <li>Dateien, die bereits im Projekt liegen, auch solche, die aus <span class="docs-ui">Dateien</span> gezogen werden, werden mit einem Pfad relativ zur Markdown-Datei verlinkt. Es wird nichts kopiert.</li>
+  <li>Dateien von außerhalb des Projekts (Finder, Schreibtisch, unter Windows der Datei-Explorer) werden zuerst in einen Ordner neben der Markdown-Datei kopiert: <code>assets</code>, <code>images</code>, <code>media</code> oder <code>img</code>, falls einer davon schon existiert, sonst in einen neuen Ordner <code>assets</code>. Leerzeichen im Namen werden zu <code>-</code>, und ist der Name schon vergeben, heißt die Kopie <code>name-2</code>. Die Originale bleiben, wo sie waren.</li>
+  <li>Bilder werden als <code>![name](assets/name.png)</code> geschrieben und Videos als <code>&lt;video&#32;src="assets/name.mp4" controls&gt;&lt;/video&gt;</code>, was auch GitHub abspielt. Beides wird in <span class="docs-ui">Vorschau</span> angezeigt.</li>
+  <li>Ein Bild darf bis zu 50 MB und ein Video bis zu 500 MB groß sein, und eine Ablage kopiert bis zu 50 Dateien und 1 GB. Andere Dateien, die zusammen mit ihnen abgelegt werden, öffnen sich wie gewohnt im Editor.</li>
 </ul>
       </section>
 
       <section class="docs-section" aria-labelledby="review-docs">
         <h2 id="review-docs"><a class="docs-anchor" href="#review-docs" aria-label="Link zu „Dokumentation per Aufnahme prüfen“">#</a>Dokumentation per Aufnahme prüfen</h2>
         <ol class="docs-steps">
-  <li>Öffnen Sie eine Markdown-Datei und klicken Sie auf <span class="docs-ui">Vorschau öffnen</span>.</li>
+  <li>Öffnen Sie im Bereich <a href="projects.html#review-targets"><span class="docs-ui">Review-Ziele</span></a> die Markdown-Datei unter <span class="docs-ui">Dateien</span>. Sie öffnet sich als Vorschau im integrierten Browser.</li>
   <li>Nehmen Sie wie gewohnt auf. Gehen Sie die Spezifikation oder das Design-Dokument sprechend durch und kreisen Sie ein, was falsch ist.</li>
   <li>Stoppen Sie. Die Befunde verweisen statt auf eine URL auf den projektrelativen Pfad der Datei.</li>
   <li>Mit <span class="docs-ui">An Agent senden</span> lassen Sie das Dokument korrigieren.</li>
@@ -235,6 +247,7 @@
         <li><a href="#files">Dateien öffnen und bearbeiten</a></li>
         <li><a href="#file-tree">Mit Dateien im Dateibaum arbeiten</a></li>
         <li><a href="#preview">Markdown- und Mermaid-Vorschau</a></li>
+        <li><a href="#embed-media">Bilder und Videos in Markdown einbetten</a></li>
         <li><a href="#review-docs">Dokumentation per Aufnahme prüfen</a></li>
       </ul>
     </aside>

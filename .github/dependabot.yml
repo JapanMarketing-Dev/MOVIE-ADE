@@ -37,6 +37,11 @@ updates:
       - dependency-name: '*'
         update-types:
           - version-update:semver-major
+      # xterm の addon は 0.x の minor で xterm の major に合わせて上がる（addon-webgl 0.19・addon-fit 0.11 は xterm 6 用で、
+      # xterm 5.5 では dispose が落ちた。FERRET-1J）。xterm 本体と一緒に手で上げる（test/unit/xterm-addons.test.ts）
+      - dependency-name: '@xterm/*'
+        update-types:
+          - version-update:semver-minor
     open-pull-requests-limit: 3
     commit-message:
       prefix: deps

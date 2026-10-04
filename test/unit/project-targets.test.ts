@@ -10,8 +10,7 @@ import {
   suggestTargetLabel,
   targetAction,
   updateTarget,
-  urlTargets
-} from '@shared/projectTargets'
+  urlTargets, dropTarget } from '@shared/projectTargets'
 import { matchPresetUrl, presetTarget } from '@shared/projectUrl'
 
 // settings.ts は保存先を決めるためだけに electron の app を読む。単体テストでは呼ばれない
@@ -122,5 +121,26 @@ describe('録画するウインドウの選び方', () => {
     expect(matchWindowSource(sources, 'scrcpy')).toBeNull()
     expect(matchWindowSource(sources, '  ')).toBeNull()
     expect(matchWindowSource([], 'Simulator')).toBeNull()
+  })
+})
+
+describe('確認先のボタンをドラッグで並べ替える', () => {
+  const targets = [
+    { id: 'local', label: 'local' },
+    { id: 'dev', label: 'dev' },
+    { id: 'figma', label: 'Figma', purpose: 'design' as const },
+    { id: 'prd', label: 'prd' }
+  ]
+  const ids = (list: Array<{ id: string }>) => list.map((t) => t.id)
+
+  it('落とした相手の前・後ろへ動かす', () => {
+    expect(ids(dropTarget(targets, 'prd', 'local', true))).toEqual(['prd', 'local', 'dev', 'figma'])
+    expect(ids(dropTarget(targets, 'local', 'dev', false))).toEqual(['dev', 'local', 'figma', 'prd'])
+  })
+
+  it('区分（アプリ・デザイン・設計書）をまたいでは動かさない。自分自身・知らない ID もそのまま', () => {
+    expect(ids(dropTarget(targets, 'figma', 'local', true))).toEqual(ids(targets))
+    expect(ids(dropTarget(targets, 'dev', 'dev', true))).toEqual(ids(targets))
+    expect(ids(dropTarget(targets, 'gone', 'dev', true))).toEqual(ids(targets))
   })
 })

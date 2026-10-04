@@ -12,11 +12,12 @@ export function useSetupChecklist(): { items: SetupItem[] | null; progress: Retu
 
   const refresh = useCallback(() => {
     void (async () => {
-      const [settings, agents, available, permissions] = await Promise.all([
+      const [settings, agents, available, permissions, skill] = await Promise.all([
         window.ade.invoke('app:settings'),
         window.ade.invoke('agents:list').catch(() => null),
         window.ade.invoke('capture:availability').catch(() => null),
-        window.ade.invoke('permissions:status').catch(() => null)
+        window.ade.invoke('permissions:status').catch(() => null),
+        window.ade.invoke('agentSkill:status').catch(() => null)
       ])
       // 録画した・送ったことがあるかだけを、登録済みのプロジェクトごとに聞く（全部の履歴は読まない。security-4 [10]）
       const activity = await Promise.all(settings.projects.map((p) => window.ade.invoke('review:activity', p.folderPath).catch(() => ({ recorded: false, sent: false }))))
@@ -27,6 +28,7 @@ export function useSetupChecklist(): { items: SetupItem[] | null; progress: Retu
         platform: window.ade.platform,
         startupAgents: settings.agents.startupAgents,
         installedAgents: agents ? agents.filter((o) => o.installed).map((o) => o.id) : null,
+        agentSkillInstalled: skill ? skill.some((s) => s.installed) : null,
         projectCount: settings.projects.length,
         transcriptionReady: !!available && (available.localReady || Object.values(available.stt).some(Boolean)),
         decisionReady: !!decision?.enabled && decisionReady(decision, keyPresent),

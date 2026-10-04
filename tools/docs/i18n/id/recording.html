@@ -41,13 +41,23 @@ Rekam browser bawaan, seluruh layar, jendela lain, aplikasi desktop, game, atau 
 <p>Satu rekaman dibatasi 90 menit. Anda mendapat peringatan menjelang batas, dan rekaman berhenti serta tersimpan otomatis saat batas tercapai.</p>
 {{shot:feedback-toolbar|Toolbar mode Umpan Balik}}
 
-<!-- @pen 0232dc7983 -->
+<!-- @pen 09c2eba894 -->
 ## Pena
 <ul>
   <li><strong><span class="docs-ui">Pena</span></strong>: pilih, atau tahan {{keys:Alt}} untuk menggambar hanya selama tombol ditahan (diabaikan saat mengetik di kolom input).</li>
   <li><strong><span class="docs-ui">Bersihkan</span></strong>: menghapus coretan saat ini.</li>
 </ul>
-<p>Lingkari bagian yang sedang Anda bicarakan: kata-kata dan coretan akan masuk ke temuan yang sama. Pena hanya tersedia saat merekam. Tidak ada alat teks; ucapkan saja. Tombol untuk pena, kotak, dan warna tercantum di <a href="keyboard.html#drawing">Pintasan keyboard</a>.</p>
+<p>Lingkari bagian yang sedang Anda bicarakan: kata-kata dan coretan akan masuk ke temuan yang sama. Pena hanya tersedia saat merekam, dan saat merekam tidak ada alat teks: ucapkan saja, atau ketik nanti dengan <a href="#type">Masukan teks</a>. Tombol untuk pena, kotak, dan warna tercantum di <a href="keyboard.html#drawing">Pintasan keyboard</a>.</p>
+
+<!-- @type 20180cf30c -->
+## Mengetik alih-alih berbicara
+<p>Saat berbicara tidak memungkinkan, ketik temuannya. Ini hanya berfungsi di mode Editor, pada tab <span class="docs-ui">Browser</span>, saat tidak sedang merekam.</p>
+<ol class="docs-steps">
+  <li>Klik <span class="docs-ui">Masukan teks</span> di bilah alat browser.</li>
+  <li>Seret kotak di sekitar bagian halaman, atau klik sebuah elemen untuk mengotakinya.</li>
+  <li>Ketik apa yang perlu diubah. {{keys:Enter}} menambahkannya, {{keys:Shift+Enter}} membuat baris baru, dan {{keys:Esc}} membatalkan kotak. Enter untuk mengonfirmasi konversi metode input tidak menambahkannya.</li>
+</ol>
+<p>Masing-masing menjadi temuan dengan gambar halaman dan kotaknya, beserta URL dan elemen yang dikotaki, sama seperti temuan hasil rekaman. Temuan ditambahkan ke ulasan yang terbuka di <span class="docs-ui">Temuan</span>, atau ke ulasan baru jika tidak ada yang terbuka. Browser tetap di depan, jadi Anda bisa menambahkan beberapa sekaligus; {{keys:Esc}} saat tidak ada kotak terbuka, atau menekan tombolnya lagi, akan menghentikannya. Ini juga berfungsi pada jendela aplikasi desktop atau simulator yang ditampilkan di tempat browser, tanpa URL.</p>
 
 <!-- @annotations-clear ea2e57b47b -->
 ## Kapan coretan menghilang
@@ -61,6 +71,11 @@ Rekam browser bawaan, seluruh layar, jendela lain, aplikasi desktop, game, atau 
 <!-- @mic 38bffa5e34 -->
 ## Mikrofon
 <p>Mikrofon aktif secara bawaan. Alihkan dari footer (<span class="docs-ui">Matikan mikrofon</span> / <span class="docs-ui">Nyalakan mikrofon</span>) atau dengan <span class="docs-ui">Rekam suara saya</span> di Pengaturan. Pilih perangkat di <span class="docs-ui">Mikrofon</span>.</p>
+
+<!-- @live-transcript 3523e2aad4 -->
+## Lihat apa yang sedang ditranskripsi
+<p>Saat merekam, buka tab <span class="docs-ui">Transkrip</span> di bagian atas panel kanan mode feedback untuk membaca ucapan Anda sebagai teks, beserta waktu diucapkannya (dan siapa yang mengucapkannya bila pihak lain dalam rapat juga direkam). Teks muncul beberapa detik setelah Anda jeda, jadi Anda bisa memastikan sejak awal bahwa ucapan Anda tertangkap. Baris atas menampilkan <span class="docs-ui">Mentranskripsi</span>, berapa bagian yang menunggu, atau alasan transkripsi berhenti.</p>
+<p>Jika transkripsi gagal, belum ada model atau kunci, sekitar 2 menit suara tidak menghasilkan teks, atau tidak ada suara yang sampai ke mikrofon, Ferret memperingatkan Anda sekali dan menandai tombol panel kanan, meskipun tab ditutup. Rekaman tetap berjalan dan audionya disimpan. Untuk menyembunyikan tab, matikan <span class="docs-ui">Tampilkan transkrip langsung saat merekam (panel kanan mode feedback)</span> di <span class="docs-ui">Pengaturan → Transkripsi</span>. Peringatan tetap muncul.</p>
 
 <!-- @other-side bf51c46448 -->
 ## Merekam pihak lain dalam rapat

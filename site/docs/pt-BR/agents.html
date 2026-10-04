@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Enviar a agentes · Documentação do Ferret</title>
-  <meta name="description" content="Rode seu agente de programação no terminal integrado e entregue a ele uma revisão com um clique. Claude Code e Codex são os exemplos mais comuns, mas qualquer agente da lista abaixo funciona, assim como uma CLI que você mesmo adicionar. Você também pode copiar a instrução para um agente que roda em outro lugar ou publicar a revisão no GitHub.">
+  <meta name="description" content="Rode seu agente de programação no terminal integrado e entregue a ele uma revisão com um clique. Claude Code e Codex são os exemplos mais comuns, mas qualquer agente da lista abaixo funciona, assim como uma CLI que você mesmo adicionar. Você também pode copiar a instrução para um agente que roda em outro lugar.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
   <link rel="canonical" href="https://ferretade.dev/docs/pt-BR/agents">
@@ -26,7 +26,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
   <meta property="og:title" content="Enviar a agentes · Documentação do Ferret">
-  <meta property="og:description" content="Rode seu agente de programação no terminal integrado e entregue a ele uma revisão com um clique. Claude Code e Codex são os exemplos mais comuns, mas qualquer agente da lista abaixo funciona, assim como uma CLI que você mesmo adicionar. Você também pode copiar a instrução para um agente que roda em outro lugar ou publicar a revisão no GitHub.">
+  <meta property="og:description" content="Rode seu agente de programação no terminal integrado e entregue a ele uma revisão com um clique. Claude Code e Codex são os exemplos mais comuns, mas qualquer agente da lista abaixo funciona, assim como uma CLI que você mesmo adicionar. Você também pode copiar a instrução para um agente que roda em outro lugar.">
   <meta property="og:url" content="https://ferretade.dev/docs/pt-BR/agents">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="pt_BR">
@@ -36,7 +36,7 @@
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Enviar a agentes · Documentação do Ferret">
-  <meta name="twitter:description" content="Rode seu agente de programação no terminal integrado e entregue a ele uma revisão com um clique. Claude Code e Codex são os exemplos mais comuns, mas qualquer agente da lista abaixo funciona, assim como uma CLI que você mesmo adicionar. Você também pode copiar a instrução para um agente que roda em outro lugar ou publicar a revisão no GitHub.">
+  <meta name="twitter:description" content="Rode seu agente de programação no terminal integrado e entregue a ele uma revisão com um clique. Claude Code e Codex são os exemplos mais comuns, mas qualquer agente da lista abaixo funciona, assim como uma CLI que você mesmo adicionar. Você também pode copiar a instrução para um agente que roda em outro lugar.">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -155,7 +155,7 @@
       <article class="docs-content">
         <p class="docs-eyebrow">Usando o Ferret</p>
         <h1>Enviar a agentes</h1>
-        <p class="docs-lead">Rode seu agente de programação no terminal integrado e entregue a ele uma revisão com um clique. Claude Code e Codex são os exemplos mais comuns, mas qualquer agente da lista abaixo funciona, assim como uma CLI que você mesmo adicionar. Você também pode copiar a instrução para um agente que roda em outro lugar ou publicar a revisão no GitHub.</p>
+        <p class="docs-lead">Rode seu agente de programação no terminal integrado e entregue a ele uma revisão com um clique. Claude Code e Codex são os exemplos mais comuns, mas qualquer agente da lista abaixo funciona, assim como uma CLI que você mesmo adicionar. Você também pode copiar a instrução para um agente que roda em outro lugar.</p>
         <div class="docs-os" role="group" aria-label="Atalhos para" data-docs-os hidden>
           <span class="docs-os-label">Atalhos para</span>
           <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">macOS</button>
@@ -169,11 +169,11 @@
   <li>Editar o título e o pedido ali mesmo</li>
   <li>Alternar entre <span class="docs-ui">Enviar</span> / <span class="docs-ui">Não enviar</span></li>
   <li><span class="docs-ui">Ver gravação</span> (vai até aquele momento) e <span class="docs-ui">Substituir imagem</span> (escolher outro quadro)</li>
-  <li><span class="docs-ui">Confirmar</span> / <span class="docs-ui">Marcar como Precisa de revisão</span>, <span class="docs-ui">Mesclar com o próximo</span>, <span class="docs-ui">Excluir</span></li>
+  <li><span class="docs-ui">Confirmar</span>, <span class="docs-ui">Excluir</span></li>
 </ul>
 <p><span class="docs-ui">Filtrar por progresso</span> mostra ou oculta os apontamentos por status (por exemplo, <span class="docs-ui">Somente</span> os que aguardam a sua revisão); <span class="docs-ui">Mostrar tudo</span> remove o filtro.</p>
 <p>Para reordenar os apontamentos, arraste a alça à esquerda do título de um cartão, ou selecione a alça e pressione <kbd>↑</kbd> / <kbd>↓</kbd>. Os números, o <code>feedback.md</code> e o que você envia ao Agent seguem a nova ordem. Com um filtro ativo, a ordem muda entre os apontamentos visíveis e os ocultos mantêm a posição. Quando uma revisão abrange várias páginas ou arquivos, os apontamentos se movem dentro do próprio grupo. <span class="docs-ui">Ordenar apontamentos</span>, no cabeçalho, alterna entre <span class="docs-ui">Manual (ordem de arrastar)</span>, <span class="docs-ui">Momento da gravação</span> e <span class="docs-ui">Progresso</span> (não iniciados primeiro, concluídos por último); ordenar por progresso salva essa ordem como ordem manual.</p>
-<p>O cabeçalho tem <span class="docs-ui">Desfazer</span>, <span class="docs-ui">Abrir pasta</span>, <span class="docs-ui">Copiar para o Agent</span>, <span class="docs-ui">Enviar ao GitHub / GitLab</span>, <span class="docs-ui">Organizar</span> e <span class="docs-ui">Enviar ao Agent</span>. As falas que não viraram apontamento aparecem em <span class="docs-ui">Falas excluídas</span>, onde <span class="docs-ui">Restaurar como apontamento</span> as traz de volta.</p>
+<p>O cabeçalho tem <span class="docs-ui">Desfazer</span>, <span class="docs-ui">Abrir pasta</span>, <span class="docs-ui">Copiar para o Agent</span>, <span class="docs-ui">Organizar</span> e <span class="docs-ui">Enviar ao Agent</span>. As falas que não viraram apontamento aparecem em <span class="docs-ui">Falas excluídas</span>, onde <span class="docs-ui">Restaurar como apontamento</span> as traz de volta. Falas sem palavras com sentido nunca viram apontamento e também aparecem ali: frases que a transcrição às vezes inventa a partir do silêncio, como “Shh.” ou “Obrigado por assistir”, palavras de preenchimento como “é…”, e um “OK” ou “sim” solto sem marca de caneta.</p>
 <figure class="docs-shot" data-shot="findings"><img src="../assets/findings.png?v=4fea3924" width="1600" height="972" alt="A aba Apontamentos" loading="lazy" decoding="async"><figcaption>A aba Apontamentos</figcaption></figure>
       </section>
 
@@ -339,35 +339,25 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>A configuração é armazenada como <code>agentPrompt</code> no <code>settings.json</code>.</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="github">
-        <h2 id="github"><a class="docs-anchor" href="#github" aria-label="Link para Enviar ao GitHub ou ao GitLab (issue / comentário em PR ou MR)">#</a>Enviar ao GitHub ou ao GitLab (issue / comentário em PR ou MR)</h2>
-        <p><span class="docs-ui">Enviar ao GitHub</span> publica a revisão como uma nova issue ou como um comentário em um dos seus pull requests abertos. A autenticação fica a cargo da <a href="https://cli.github.com/" target="_blank" rel="noopener noreferrer">GitHub CLI<span class="sr-only"> (abre em uma nova aba)</span></a>. O Ferret nunca lê nem armazena um token.</p>
-<ol class="docs-steps">
-  <li>Instale o <code>gh</code>: <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows) ou veja <a href="https://github.com/cli/cli#installation" target="_blank" rel="noopener noreferrer">cli/cli<span class="sr-only"> (abre em uma nova aba)</span></a>.</li>
-  <li><span class="docs-ui">Configurações → GitHub / GitLab → Fazer login no terminal</span> executa <code>gh auth login --web -h github.com</code> no terminal integrado.</li>
-  <li>Clique em <span class="docs-ui">Enviar ao GitHub</span>, escolha <span class="docs-ui">Criar uma nova Issue</span> ou um PR e revise o <span class="docs-ui">Título</span> e o <span class="docs-ui">Corpo</span> (editáveis).</li>
-  <li>Marque a caixa de confirmação e clique em <span class="docs-ui">Criar Issue</span> ou <span class="docs-ui">Publicar comentário</span>.</li>
-</ol>
-<p>Detalhes:</p>
-<ul>
-  <li>O repositório vem de <code>git remote get-url origin</code>.</li>
-  <li>O Ferret executa <code>gh issue create --repo … --title … --body-file -</code> ou <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>.</li>
-  <li>O corpo é o <code>feedback.md</code> sem as linhas de imagem (as imagens não são enviadas), com até 60.000 caracteres.</li>
-  <li>Os PRs candidatos são os seus próprios PRs abertos (até 30).</li>
-</ul>
-<p>Se <code>GH_TOKEN</code> ou <code>GITHUB_TOKEN</code> estiver definido, o <code>gh</code> o usa primeiro, e o painel de configurações avisa sobre isso.</p>
-<p><strong>GitLab.</strong> Quando o <code>origin</code> é um projeto do GitLab (gitlab.com ou um GitLab autogerenciado), o mesmo botão envia ao GitLab pela <a href="https://gitlab.com/gitlab-org/cli" target="_blank" rel="noopener noreferrer">GitLab CLI<span class="sr-only"> (abre em uma nova aba)</span></a> (<code>glab</code>): uma nova issue ou um comentário em um dos seus merge requests abertos. Faça login com <span class="docs-ui">Configurações → GitHub / GitLab</span>, que executa <code>glab auth login</code> (com <code>--hostname</code> para um GitLab autogerenciado) no terminal integrado. O Ferret nunca lê nem armazena o token e avisa quando <code>GITLAB_TOKEN</code> está definido.</p>
-<p><strong>Pedido de estrela.</strong> Depois do seu primeiro <span class="docs-ui">Enviar ao Agent</span>, e quando você chega a 3, 10 e 30 revisões concluídas, o Ferret pode pedir que você dê uma estrela a ele no GitHub. Ele pede no máximo 3 vezes, com pelo menos 3 dias de intervalo, e nunca durante uma gravação. <span class="docs-ui">Dar estrela no GitHub</span> dá a estrela pelo seu próprio login do <code>gh</code> (ou abre o GitHub se o <code>gh</code> não estiver disponível), e <span class="docs-ui">Não perguntar novamente</span> encerra os pedidos. Você também pode dar a estrela em <span class="docs-ui">Ajuda → Dar estrela ao Ferret no GitHub</span>.</p>
+      <section class="docs-section" aria-labelledby="star">
+        <h2 id="star"><a class="docs-anchor" href="#star" aria-label="Link para Dar estrela ao Ferret no GitHub">#</a>Dar estrela ao Ferret no GitHub</h2>
+        <p>Depois do seu primeiro <span class="docs-ui">Enviar ao Agent</span>, e quando você chega a 3, 10 e 30 revisões concluídas, o Ferret pode pedir que você dê uma estrela a ele no GitHub. Ele pede no máximo 3 vezes, com pelo menos 3 dias de intervalo, e nunca durante uma gravação. <span class="docs-ui">Dar estrela no GitHub</span> dá a estrela pelo seu próprio login do <code>gh</code> (ou abre o GitHub se o <code>gh</code> não estiver disponível), e <span class="docs-ui">Não perguntar novamente</span> encerra os pedidos. Você também pode dar a estrela em <span class="docs-ui">Ajuda → Dar estrela ao Ferret no GitHub</span>.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="cli-tools">
-        <h2 id="cli-tools"><a class="docs-anchor" href="#cli-tools" aria-label="Link para Instalar ferramentas CLI e fazer login nelas">#</a>Instalar ferramentas CLI e fazer login nelas</h2>
-        <p><span class="docs-ui">Configurações → Ferramentas CLI</span> lista ferramentas de linha de comando de que seus agentes costumam precisar, mostra quais estão instaladas e a versão delas, e executa o comando oficial de instalação ou de login para o seu sistema em uma nova aba de terminal:</p>
+        <h2 id="cli-tools"><a class="docs-anchor" href="#cli-tools" aria-label="Link para CLIs de serviços">#</a>CLIs de serviços</h2>
+        <p><span class="docs-ui">Configurações → CLIs de serviços</span> lista as ferramentas de linha de comando dos serviços que você usa com frequência, para que seus agentes possam trabalhar com eles. Instalar é opcional: instale só o que precisar; o Ferret funciona sem nenhuma delas. Cada linha mostra se a ferramenta está instalada e a versão, um link para o site do serviço e botões que executam o comando oficial de instalação ou de login para o seu sistema em uma nova aba do terminal:</p>
 <ul>
-  <li>Hospedagem Git: <code>gh</code>, <code>glab</code></li>
-  <li>IA e modelos: Ollama, Cloudflare <code>wrangler</code></li>
-  <li>Deploy: Vercel, Netlify, Fly.io, Railway, Heroku</li>
-  <li>Nuvem e serviços: Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+  <li>Hospedagem Git: GitHub (<code>gh</code>), GitLab (<code>glab</code>)</li>
+  <li>Hospedagem e deploy: Vercel, Netlify, Cloudflare (<code>wrangler</code>), Firebase, Fly.io, Railway, Heroku</li>
+  <li>Nuvem: AWS, Google Cloud (<code>gcloud</code>), Azure (<code>az</code>)</li>
+  <li>Bancos de dados e backend: Supabase, Neon, PlanetScale, Turso</li>
+  <li>Erros e monitoramento: Sentry (<code>sentry-cli</code>), Datadog (<code>datadog-ci</code>)</li>
+  <li>Pagamentos: Stripe</li>
+  <li>Contêineres: Docker, <code>kubectl</code></li>
+  <li>Mobile: Xcode Command Line Tools (Só macOS), Android Platform Tools (<code>adb</code>), Expo EAS, fastlane</li>
+  <li>Máquinas virtuais: UTM (Só macOS), Lima, Multipass</li>
+  <li>IA e modelos: Ollama</li>
 </ul>
 <p>Quando uma ferramenta não tem um instalador oficial de uma linha para o seu sistema, <span class="docs-ui">Documentação</span> abre a página de instalação dela. A lista verifica de novo sozinha quando uma instalação termina.</p>
       </section>
@@ -390,8 +380,8 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
         <li><a href="#verify">Verificação de aceitação com um modelo de decisão</a></li>
         <li><a href="#api-usage">Uso da API no rodapé</a></li>
         <li><a href="#prompt">Personalizar a instrução</a></li>
-        <li><a href="#github">Enviar ao GitHub ou ao GitLab (issue / comentário em PR ou MR)</a></li>
-        <li><a href="#cli-tools">Instalar ferramentas CLI e fazer login nelas</a></li>
+        <li><a href="#star">Dar estrela ao Ferret no GitHub</a></li>
+        <li><a href="#cli-tools">CLIs de serviços</a></li>
       </ul>
     </aside>
   </div>

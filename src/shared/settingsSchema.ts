@@ -295,6 +295,7 @@ export const SETTINGS_SCHEMA: JsonSchema = {
         keepDays: { type: 'integer', description: 'Days to keep recordings. 0 keeps them forever.', minimum: 0, maximum: 3650, default: 7 },
         stayFeedbackOnStop: bool('Stay in feedback mode after stopping a recording.', { default: false }),
         trimIdle: bool('After a recording stops, make a copy with idle parts removed (no voice, drawing, clicks, scrolling, navigation or screen change) and play that one. The original recording is kept.', { default: true }),
+        showLiveTranscript: bool('While recording, show the live transcript in a Transcript tab of the right panel in feedback mode. Warnings when nothing is being transcribed are shown even when this is off.', { default: true }),
         trimIdleSeconds: { type: 'integer', description: 'Idle time (seconds) that gets trimmed. 0.5 s is kept on each side of a cut.', minimum: 1, maximum: 60, default: 3 },
         annotationColor: { type: 'string', description: 'Color of pen strokes and boxes drawn while recording. Usually set from the recording toolbar.', enum: ANNOTATION_COLOR_IDS, default: DEFAULT_ANNOTATION_COLOR },
         captureTarget: {

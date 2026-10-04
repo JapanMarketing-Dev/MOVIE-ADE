@@ -210,7 +210,18 @@
   <li><strong><span class="docs-ui">Caneta</span></strong>: selecione-a, ou segure <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Alt</kbd></span></span> para desenhar só enquanto a tecla estiver pressionada (ignorado enquanto você digita em um campo).</li>
   <li><strong><span class="docs-ui">Limpar</span></strong>: remove as marcas atuais.</li>
 </ul>
-<p>Circule o ponto enquanto fala sobre ele: as palavras e as marcas ficam no mesmo apontamento. A caneta só está disponível durante a gravação. Não há ferramenta de texto: diga em voz alta. As teclas da caneta, da caixa e das cores estão em <a href="keyboard.html#drawing">Atalhos de teclado</a>.</p>
+<p>Circule o ponto enquanto fala sobre ele: as palavras e as marcas ficam no mesmo apontamento. A caneta só está disponível durante a gravação, e durante a gravação não há ferramenta de texto: diga em voz alta ou digite depois com <a href="#type">Feedback por texto</a>. As teclas da caneta, da caixa e das cores estão em <a href="keyboard.html#drawing">Atalhos de teclado</a>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="type">
+        <h2 id="type"><a class="docs-anchor" href="#type" aria-label="Link para Digitar em vez de falar">#</a>Digitar em vez de falar</h2>
+        <p>Quando falar não for prático, digite o apontamento. Funciona só no modo Editor, na aba <span class="docs-ui">Navegador</span>, quando não estiver gravando.</p>
+<ol class="docs-steps">
+  <li>Clique em <span class="docs-ui">Feedback por texto</span> na barra de ferramentas do navegador.</li>
+  <li>Arraste uma caixa em volta do ponto na página, ou clique em um elemento para enquadrá-lo.</li>
+  <li>Digite o que deve mudar. <kbd>Enter</kbd> adiciona, <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd><kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Enter</kbd></span></span> começa uma nova linha e <kbd>Esc</kbd> cancela a caixa. O Enter que confirma uma conversão do método de entrada não adiciona.</li>
+</ol>
+<p>Cada um vira um apontamento com uma imagem da página e da caixa, mais a URL e o elemento enquadrado, como um apontamento gravado. Ele é adicionado à revisão aberta em <span class="docs-ui">Apontamentos</span>, ou a uma revisão nova se nenhuma estiver aberta. O navegador continua na frente, então você pode adicionar vários seguidos; <kbd>Esc</kbd> sem caixa aberta, ou clicar no botão de novo, encerra. Também funciona na janela de um app desktop ou de um simulador mostrada no lugar do navegador, sem a URL.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="annotations-clear">
@@ -226,6 +237,12 @@
       <section class="docs-section" aria-labelledby="mic">
         <h2 id="mic"><a class="docs-anchor" href="#mic" aria-label="Link para Microfone">#</a>Microfone</h2>
         <p>O microfone fica ligado por padrão. Ligue ou desligue pelo rodapé (<span class="docs-ui">Desligar microfone</span> / <span class="docs-ui">Ligar microfone</span>) ou com <span class="docs-ui">Gravar minha voz</span> nas Configurações. Escolha um dispositivo em <span class="docs-ui">Microfone</span>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="live-transcript">
+        <h2 id="live-transcript"><a class="docs-anchor" href="#live-transcript" aria-label="Link para Ver o que está sendo transcrito">#</a>Ver o que está sendo transcrito</h2>
+        <p>Durante a gravação, abra a aba <span class="docs-ui">Transcrição</span> no topo do painel direito do modo feedback para ler suas palavras como texto, com o momento em que foram ditas (e quem as disse quando o outro lado de uma reunião também é gravado). O texto aparece alguns segundos depois de uma pausa, então você pode conferir cedo se o que diz está sendo captado. A linha do topo mostra <span class="docs-ui">Transcrevendo</span>, quantas partes estão na fila ou por que a transcrição parou.</p>
+<p>Se a transcrição falhar, não houver modelo ou chave, cerca de 2 minutos de voz não virarem texto ou nenhum som chegar ao microfone, o Ferret avisa uma vez e marca o botão do painel direito, mesmo com a aba fechada. A gravação continua e o áudio é mantido. Para ocultar a aba, desligue <span class="docs-ui">Mostrar a transcrição ao vivo durante a gravação (painel direito do modo feedback)</span> em <span class="docs-ui">Configurações → Transcrição</span>. Os avisos continuam aparecendo.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other-side">
@@ -278,8 +295,10 @@
         <li><a href="#desktop-mobile">Apps para desktop, jogos e apps para celular</a></li>
         <li><a href="#record">Iniciar, pausar, parar</a></li>
         <li><a href="#pen">Caneta</a></li>
+        <li><a href="#type">Digitar em vez de falar</a></li>
         <li><a href="#annotations-clear">Quando as marcas somem</a></li>
         <li><a href="#mic">Microfone</a></li>
+        <li><a href="#live-transcript">Ver o que está sendo transcrito</a></li>
         <li><a href="#other-side">Gravar o outro lado de uma reunião</a></li>
         <li><a href="#other-side-os">Áudio do sistema por sistema operacional</a></li>
         <li><a href="#other-side-tips">Dicas para reuniões</a></li>

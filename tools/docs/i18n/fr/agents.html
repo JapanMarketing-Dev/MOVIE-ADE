@@ -2,21 +2,21 @@
 <!-- @title a7a0afdf19 -->
 Envoyer aux agents
 
-<!-- @lead 14c9151ac0 -->
-Lancez votre agent de code dans le terminal intégré et confiez-lui une relecture en un clic. Claude Code et Codex sont les exemples habituels, mais tout agent de la liste ci-dessous fonctionne, de même qu'une CLI que vous ajoutez vous-même. Vous pouvez aussi copier l'instruction pour un agent qui tourne ailleurs, ou publier la relecture sur GitHub.
+<!-- @lead 5567d6b158 -->
+Lancez votre agent de code dans le terminal intégré et confiez-lui une relecture en un clic. Claude Code et Codex sont les exemples habituels, mais tout agent de la liste ci-dessous fonctionne, de même qu'une CLI que vous ajoutez vous-même. Vous pouvez aussi copier l'instruction pour un agent qui tourne ailleurs.
 
-<!-- @findings 3f601cd2f3 -->
+<!-- @findings 5cd787aa9a -->
 ## Relire les remarques
 <p>Chaque carte de l'onglet <span class="docs-ui">Remarques</span> permet :</p>
 <ul>
   <li>de modifier directement le titre et la demande</li>
   <li>de basculer entre <span class="docs-ui">Envoyer</span> et <span class="docs-ui">Ne pas envoyer</span></li>
   <li><span class="docs-ui">Voir l'enregistrement</span> (se place à ce moment-là) et <span class="docs-ui">Remplacer l'image</span> (choisir une autre image de la vidéo)</li>
-  <li><span class="docs-ui">Valider</span> / <span class="docs-ui">Marquer « À vérifier »</span>, <span class="docs-ui">Fusionner avec la suivante</span>, <span class="docs-ui">Supprimer</span></li>
+  <li><span class="docs-ui">Valider</span>, <span class="docs-ui">Supprimer</span></li>
 </ul>
 <p><span class="docs-ui">Filtrer par avancement</span> affiche ou masque les remarques selon leur statut (par exemple <span class="docs-ui">Seulement</span> celles qui attendent votre relecture) ; <span class="docs-ui">Tout afficher</span> retire le filtre.</p>
 <p>Pour réordonner les remarques, faites glisser la poignée à gauche du titre d'une carte, ou sélectionnez la poignée et appuyez sur <kbd>↑</kbd> / <kbd>↓</kbd>. Les numéros, <code>feedback.md</code> et ce que vous envoyez à l'agent suivent le nouvel ordre. Quand un filtre est actif, l'ordre change parmi les remarques visibles et les remarques masquées gardent leur place. Quand une revue porte sur plusieurs pages ou fichiers, les remarques se déplacent au sein de leur propre groupe. <span class="docs-ui">Trier les remarques</span>, dans l'en-tête, bascule entre <span class="docs-ui">Manuel (ordre de glisser)</span>, <span class="docs-ui">Moment de l'enregistrement</span> et <span class="docs-ui">Avancement</span> (non commencées d'abord, terminées à la fin) ; trier par avancement enregistre cet ordre comme ordre manuel.</p>
-<p>L'en-tête contient <span class="docs-ui">Annuler</span>, <span class="docs-ui">Ouvrir le dossier</span>, <span class="docs-ui">Copier pour l'agent</span>, <span class="docs-ui">Envoyer vers GitHub / GitLab</span>, <span class="docs-ui">Organiser</span> et <span class="docs-ui">Envoyer à l'agent</span>. Les paroles qui ne sont pas devenues des remarques sont listées sous <span class="docs-ui">Paroles exclues</span>, où <span class="docs-ui">Restaurer en remarque</span> les récupère.</p>
+<p>L'en-tête contient <span class="docs-ui">Annuler</span>, <span class="docs-ui">Ouvrir le dossier</span>, <span class="docs-ui">Copier pour l'agent</span>, <span class="docs-ui">Organiser</span> et <span class="docs-ui">Envoyer à l'agent</span>. Les paroles qui ne sont pas devenues des remarques sont listées sous <span class="docs-ui">Paroles exclues</span>, où <span class="docs-ui">Restaurer en remarque</span> les récupère. Les paroles sans mot porteur de sens ne deviennent jamais des remarques et figurent aussi dans cette liste : les phrases que la transcription invente parfois à partir du silence, comme « Shh. » ou « Merci d’avoir regardé », les mots de remplissage comme « euh », et un « OK » ou « oui » isolé sans trait de stylo.</p>
 {{shot:findings|L'onglet Remarques}}
 
 <!-- @terminal fe13fc4b52 -->
@@ -118,33 +118,23 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
 <p>Le réglage est stocké sous <code>agentPrompt</code> dans <code>settings.json</code>.</p>
 
-<!-- @github aba5332ec5 -->
-## Envoyer vers GitHub ou GitLab (Issue / commentaire de PR ou de MR)
-<p><span class="docs-ui">Envoyer sur GitHub</span> publie la relecture sous forme de nouvelle Issue ou de commentaire sur l'une de vos pull requests ouvertes. L'authentification est déléguée à la <a href="https://cli.github.com/">GitHub CLI</a>. Ferret ne lit ni ne stocke jamais de jeton.</p>
-<ol class="docs-steps">
-  <li>Installez <code>gh</code> : <code>brew install gh</code> (macOS), <code>winget install --id GitHub.cli</code> (Windows), ou consultez <a href="https://github.com/cli/cli#installation">cli/cli</a>.</li>
-  <li><span class="docs-ui">Réglages → GitHub / GitLab → Se connecter dans le terminal</span> exécute <code>gh auth login --web -h github.com</code> dans le terminal intégré.</li>
-  <li>Cliquez sur <span class="docs-ui">Envoyer sur GitHub</span>, choisissez <span class="docs-ui">Créer une nouvelle Issue</span> ou une PR, et relisez le <span class="docs-ui">Titre</span> et le <span class="docs-ui">Corps</span> (modifiables).</li>
-  <li>Cochez la case de confirmation, puis <span class="docs-ui">Créer l'Issue</span> ou <span class="docs-ui">Publier le commentaire</span>.</li>
-</ol>
-<p>Détails :</p>
-<ul>
-  <li>Le dépôt est déterminé par <code>git remote get-url origin</code>.</li>
-  <li>Ferret exécute <code>gh issue create --repo … --title … --body-file -</code> ou <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>.</li>
-  <li>Le corps est le <code>feedback.md</code> sans les lignes d'image (les images ne sont pas envoyées), jusqu'à 60 000 caractères.</li>
-  <li>Les PR proposées sont vos propres PR ouvertes (jusqu'à 30).</li>
-</ul>
-<p>Si <code>GH_TOKEN</code> ou <code>GITHUB_TOKEN</code> est défini, <code>gh</code> l'utilise en priorité, et le panneau des réglages vous en avertit.</p>
-<p><strong>GitLab.</strong> Lorsque <code>origin</code> est un projet GitLab (gitlab.com ou une instance GitLab autogérée), le même bouton envoie vers GitLab via la <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a> (<code>glab</code>) : une nouvelle Issue, ou un commentaire sur l'une de vos merge requests ouvertes. Connectez-vous depuis <span class="docs-ui">Réglages → GitHub / GitLab</span>, qui exécute <code>glab auth login</code> (avec <code>--hostname</code> pour une instance GitLab autogérée) dans le terminal intégré. Ferret ne lit ni ne stocke jamais le jeton, et vous avertit lorsque <code>GITLAB_TOKEN</code> est défini.</p>
-<p><strong>Demande d'étoile.</strong> Après votre premier <span class="docs-ui">Envoyer à l'agent</span>, puis lorsque vous atteignez 3, 10 et 30 relectures terminées, Ferret peut vous proposer de lui mettre une étoile sur GitHub. Il le demande au maximum 3 fois, à au moins 3 jours d'intervalle, et jamais pendant un enregistrement. <span class="docs-ui">Mettre une étoile sur GitHub</span> ajoute l'étoile via votre propre connexion <code>gh</code> (ou ouvre GitHub si <code>gh</code> n'est pas disponible), et <span class="docs-ui">Ne plus demander</span> arrête ces demandes. Vous pouvez aussi mettre une étoile depuis <span class="docs-ui">Aide → Mettre une étoile à Ferret sur GitHub</span>.</p>
+<!-- @star 68ccf733da -->
+## Mettre une étoile à Ferret sur GitHub
+<p>Après votre premier <span class="docs-ui">Envoyer à l'agent</span>, puis lorsque vous atteignez 3, 10 et 30 relectures terminées, Ferret peut vous proposer de lui mettre une étoile sur GitHub. Il le demande au maximum 3 fois, à au moins 3 jours d'intervalle, et jamais pendant un enregistrement. <span class="docs-ui">Mettre une étoile sur GitHub</span> ajoute l'étoile via votre propre connexion <code>gh</code> (ou ouvre GitHub si <code>gh</code> n'est pas disponible), et <span class="docs-ui">Ne plus demander</span> arrête ces demandes. Vous pouvez aussi mettre une étoile depuis <span class="docs-ui">Aide → Mettre une étoile à Ferret sur GitHub</span>.</p>
 
-<!-- @cli-tools 01bc2517bf -->
-## Installer les outils CLI et s'y connecter
-<p><span class="docs-ui">Réglages → Outils CLI</span> liste les outils en ligne de commande dont vos agents ont souvent besoin, indique ceux qui sont installés et leur version, et exécute dans un nouvel onglet de terminal la commande officielle d'installation ou de connexion pour votre OS :</p>
+<!-- @cli-tools 3d47130f13 -->
+## CLI des services
+<p><span class="docs-ui">Réglages → CLI des services</span> liste les outils en ligne de commande des services que vous utilisez souvent, pour que vos agents puissent s'en servir. Leur installation est facultative : installez seulement ce dont vous avez besoin ; Ferret fonctionne sans aucun d'eux. Chaque ligne indique si l'outil est installé et sa version, un lien vers le site du service, et des boutons qui lancent la commande officielle d'installation ou de connexion pour votre système dans un nouvel onglet de terminal :</p>
 <ul>
-  <li>Hébergement Git : <code>gh</code>, <code>glab</code></li>
-  <li>IA et modèles : Ollama, Cloudflare <code>wrangler</code></li>
-  <li>Déploiement : Vercel, Netlify, Fly.io, Railway, Heroku</li>
-  <li>Cloud et services : Supabase, Firebase, Stripe, Google Cloud (<code>gcloud</code>), AWS, Azure, Docker</li>
+  <li>Hébergement Git : GitHub (<code>gh</code>), GitLab (<code>glab</code>)</li>
+  <li>Hébergement et déploiement : Vercel, Netlify, Cloudflare (<code>wrangler</code>), Firebase, Fly.io, Railway, Heroku</li>
+  <li>Cloud : AWS, Google Cloud (<code>gcloud</code>), Azure (<code>az</code>)</li>
+  <li>Bases de données et backend : Supabase, Neon, PlanetScale, Turso</li>
+  <li>Erreurs et supervision : Sentry (<code>sentry-cli</code>), Datadog (<code>datadog-ci</code>)</li>
+  <li>Paiements : Stripe</li>
+  <li>Conteneurs : Docker, <code>kubectl</code></li>
+  <li>Mobile : Xcode Command Line Tools (macOS uniquement), Android Platform Tools (<code>adb</code>), Expo EAS, fastlane</li>
+  <li>Machines virtuelles : UTM (macOS uniquement), Lima, Multipass</li>
+  <li>IA et modèles : Ollama</li>
 </ul>
 <p>Lorsqu'un outil n'a pas d'installeur officiel en une ligne pour votre OS, <span class="docs-ui">Documentation</span> ouvre sa page d'installation à la place. La liste refait sa vérification d'elle-même une fois l'installation terminée.</p>

@@ -55,17 +55,39 @@ export interface SttEngine {
  * 録画中の逐次実行をまとめる。区切りを push すると順番に処理し、済んだ分を保持する。
  * 停止時は flush() で残りを待つだけでよい。
  */
+/** 区切り1つの進み具合（録画中の文字起こしの表示 src/main/pipeline/stt/liveFeed.ts へ渡す） */
+export interface TranscriberProgress {
+  /** 待っている・処理中の区切りの数 */
+  pending: number
+  /** 済んだ区切りの結果（投入を知らせるときは無い） */
+  segments?: TranscriptSegment[]
+  error?: Error
+}
+
 export class IncrementalTranscriber {
   private readonly segments: TranscriptSegment[] = []
   private queue: Promise<void> = Promise.resolve()
   private readonly errors: Error[] = []
   private billedSeconds = 0
+  private waiting = 0
 
-  constructor(private readonly engine: SttEngine, private readonly onSegments?: (segments: TranscriptSegment[]) => Promise<void>) {}
+  constructor(private readonly engine: SttEngine, private readonly onSegments?: (segments: TranscriptSegment[]) => Promise<void>,
+    private readonly onProgress?: (progress: TranscriberProgress) => void) {}
 
-  /** 区切り1つを投入する。待たずに返る */
+  /** 待っている・処理中の区切りの数 */
+  get pending(): number { return this.waiting }
+
+  /** 表示の失敗で文字起こしを止めない */
+  private notify(progress: TranscriberProgress): void {
+    try { this.onProgress?.(progress) } catch { /* 表示だけの失敗（想定内） */ }
+  }
+
+  /** 区切り1つを投入する。待たずに返る。処理は1つずつ順に行う（同時に走らせない） */
   push(input: TranscribeChunkInput): void {
+    this.waiting++
+    this.notify({ pending: this.waiting })
     this.queue = this.queue.then(async () => {
+      let done: TranscriberProgress | null = null
       try {
         const r = await this.engine.transcribeChunk(input)
         // 物音や無音に付いた効果音のタグ・決まり文句は話した言葉ではない（hallucination.ts）
@@ -76,10 +98,16 @@ export class IncrementalTranscriber {
           return wav ? segmentDbfs(wav.samples, wav.info.sampleRate, input.offsetMs, t0, t1) : undefined
         })
         this.segments.push(...segments)
-        await this.onSegments?.(segments)
         this.billedSeconds += r.billedSeconds ?? 0
+        done = { pending: 0, segments }
+        await this.onSegments?.(segments)
       } catch (e) {
-        this.errors.push(e instanceof Error ? e : new Error(String(e)))
+        const error = e instanceof Error ? e : new Error(String(e))
+        this.errors.push(error)
+        done = { pending: 0, ...done, error }
+      } finally {
+        this.waiting--
+        this.notify({ ...done, pending: this.waiting })
       }
     })
   }

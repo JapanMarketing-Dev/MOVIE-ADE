@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Editor, type JSONContent } from '@tiptap/core'
 import Image from '@tiptap/extension-image'
-import { createMarkdownCodec, richMarkdownExtensions } from './codec'
+import { Video, createMarkdownCodec, richMarkdownExtensions } from './codec'
 import { buildSourceModel, reconcileEdit, type SourceModel } from './reconcile'
 import { resolveRichImage } from './images'
 import { registerDraftFlush, type OpenFile, type OpenFilesApi } from '../useOpenFiles'
+import { registerMarkdownDropTarget, type DropPoint, type MediaEmbed } from '../markdownDrop'
+import { encodeMarkdownUrl, mediaAlt } from '@shared/markdownMedia'
 import { useT } from '../../lib/i18n'
 import { reportHandled } from '@shared/report'
 import './richMarkdown.css'
@@ -45,6 +47,54 @@ function imageExtension(markdownPath: string) {
   })
 }
 
+/** 動画の表示。画像と同じく、プロジェクトの中だけを ade-media://project/ から読む（外の動画は読まずにホストだけ） */
+function videoExtension(markdownPath: string) {
+  return Video.extend({
+    addNodeView() {
+      return ({ node }) => {
+        const dom = document.createElement('div')
+        dom.className = 'rich-md__video'
+        dom.contentEditable = 'false'
+        const src = typeof node.attrs.src === 'string' ? node.attrs.src : ''
+        const resolved = resolveRichImage(src, markdownPath)
+        if (resolved.kind === 'local') {
+          const video = document.createElement('video')
+          video.src = resolved.url
+          video.controls = true
+          video.preload = 'metadata'
+          video.draggable = false
+          dom.appendChild(video)
+        } else {
+          dom.classList.add('rich-md__image--blocked')
+          dom.dataset.testid = 'rich-md-remote-video'
+          dom.textContent = resolved.kind === 'remote' ? resolved.host : src
+          dom.title = src
+        }
+        return { dom }
+      }
+    }
+  })
+}
+
+/** 落とした画像・動画を入れる。画像は落とした位置の行の中へ、動画（塊）はその位置を含む最上位の塊の後ろへ */
+function insertMedia(editor: Editor, media: readonly MediaEmbed[], point: DropPoint): void {
+  const found = editor.view.posAtCoords({ left: point.x, top: point.y })
+  const pos = Math.min(found?.pos ?? editor.state.selection.to, editor.state.doc.content.size)
+  const $pos = editor.state.doc.resolve(pos)
+  const blockEnd = $pos.depth >= 1 ? $pos.after(1) : pos
+  const images: JSONContent[] = []
+  for (const m of media.filter((x) => x.kind === 'image')) {
+    if (images.length > 0) images.push({ type: 'text', text: ' ' })
+    images.push({ type: 'image', attrs: { src: encodeMarkdownUrl(m.link), alt: mediaAlt(m.link) } })
+  }
+  const videos: JSONContent[] = media.filter((x) => x.kind === 'video').map((m) => ({ type: 'video', attrs: { src: encodeMarkdownUrl(m.link) } }))
+  // 後ろから入れる（先に入れた分で、前の位置がずれないように）
+  let chain = editor.chain()
+  if (videos.length > 0) chain = chain.insertContentAt(blockEnd, videos)
+  if (images.length > 0) chain = chain.insertContentAt(pos, images)
+  chain.focus().run()
+}
+
 /** 文書の中の外の画像のホスト（帯に出す） */
 function remoteHosts(nodes: JSONContent[], markdownPath: string): string[] {
   const hosts = new Set<string>()
@@ -69,13 +119,14 @@ function editedNodes(editor: Editor): JSONContent[] {
 }
 
 /**
- * Markdown をプレビューの見た目のまま編集する（FileEditor の「プレビューで編集」）。
+ * Markdown をプレビューの見た目のまま編集する（FileEditor の「プレビュー」。Markdown のプレビューはいつでも編集できる）。
  *
  * Orca由来: ~/bench/orca/src/renderer/src/components/editor/RichMarkdownEditor.tsx・useRichMarkdownEditorInstance.ts（MIT）
  *   - TipTap の編集した文書を Markdown に戻すとき、変えていない部分は元の文字列のまま残す（reconcile.ts）
  *   - 未保存の印・保存（⌘S / Ctrl+S）・閉じる確認は、ソースの編集と同じ drafts を通す
  *   - frontmatter は文書の外に出して、文字のまま編集する
  * 生の HTML は文字として出す（プレビューのページと同じく、ファイルの中のスクリプトを動かさない）。
+ * ただし1行の <video src="…" controls></video> だけは動画として出す（落として埋め込んだ動画。codec.ts の Video）。
  * tiptap を含むので、FileEditor からは React.lazy で、このモードを開いたときだけ読む。
  */
 export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFile; editor: OpenFilesApi }) {
@@ -89,7 +140,7 @@ export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFi
   const savedRef = useRef<{ text: string; model: SourceModel } | null>(null)
   const [frontmatter, setFrontmatter] = useState('')
   const [hosts, setHosts] = useState<string[]>([])
-  const extensions = useMemo(() => richMarkdownExtensions(imageExtension(file.path) as typeof Image), [file.path])
+  const extensions = useMemo(() => richMarkdownExtensions(imageExtension(file.path) as typeof Image, videoExtension(file.path) as typeof Video), [file.path])
   const codec = useMemo(() => createMarkdownCodec(extensions), [extensions])
   const fileRef = useRef(file)
   fileRef.current = file
@@ -150,9 +201,16 @@ export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFi
     }
     host.addEventListener('mousedown', keepFocus, true)
     const unregister = registerDraftFlush(file.id, () => { if (timer.current !== undefined) commitRef.current() })
+    // 落とした画像・動画を、落とした位置に埋め込む（受けるのは App の中央のペイン。markdownDrop.ts）
+    const unregisterDrop = registerMarkdownDropTarget({
+      path: file.path,
+      element: () => host.closest<HTMLElement>('.rich-md-host'),
+      insert: (media, point) => { if (editorRef.current === editor) insertMedia(editor, media, point) }
+    })
     return () => {
       if (timer.current !== undefined) commitRef.current()
       unregister()
+      unregisterDrop()
       host.removeEventListener('mousedown', keepFocus, true)
       editorRef.current = null
       editor.destroy()

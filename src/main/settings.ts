@@ -144,6 +144,8 @@ export function sanitize(raw: unknown): Settings {
       stayFeedbackOnStop: r.capture.stayFeedbackOnStop === true,
       // 何もない時間を削る（既定は削る）。書かれていなければ書き足さない
       ...(typeof r.capture.trimIdle === 'boolean' ? { trimIdle: r.capture.trimIdle } : {}),
+      // 録画中の文字起こしの表示（既定は出す）。書かれていなければ書き足さない
+      ...(typeof r.capture.showLiveTranscript === 'boolean' ? { showLiveTranscript: r.capture.showLiveTranscript } : {}),
       ...(Number.isFinite(r.capture.trimIdleSeconds) ? { trimIdleSeconds: Math.min(60, Math.max(1, Math.round(r.capture.trimIdleSeconds!))) } : {}),
       captureTarget: sanitizeCaptureTarget(r.capture.captureTarget),
       ...(isAnnotationColor(r.capture.annotationColor) ? { annotationColor: r.capture.annotationColor } : {}),

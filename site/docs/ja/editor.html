@@ -167,7 +167,7 @@
         <ul>
   <li><span class="docs-ui">ファイル</span>（ファイルツリー）: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>E</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>E</kbd></span></span>。<span class="docs-ui">ファイル名で絞り込む</span>、<span class="docs-ui">再読込</span>、<span class="docs-ui">すべて畳む</span> があります。</li>
   <li><span class="docs-ui">ファイルを名前で開く…</span>: <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>P</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>P</kbd></span></span>。</li>
-  <li>Finder（Windows ではエクスプローラー、Linux ではファイルマネージャー）からファイルをタブバーかエディタにドラッグすると開きます。プロジェクト内のファイルはエディタかビューアで開きます。プロジェクトの外のファイルを取り込むには、<span class="docs-ui">ファイル</span> にドロップします。プロジェクトにコピーされます。ここにドロップしたフォルダはプロジェクトとして開きます。<span class="docs-ui">ファイル</span> からドラッグしたファイルも同じように開きます。</li>
+  <li>Finder（Windows ではエクスプローラー、Linux ではファイルマネージャー）からファイルをタブバーかエディタにドラッグすると開きます。プロジェクト内のファイルはエディタかビューアで開きます。プロジェクトの外のファイルを取り込むには、<span class="docs-ui">ファイル</span> にドロップします。プロジェクトにコピーされます。ここにドロップしたフォルダはプロジェクトとして開きます。<span class="docs-ui">ファイル</span> からドラッグしたファイルも同じように開きます。開いている Markdown ファイルに画像や動画をドロップしたときは、開く代わりにそのファイルに埋め込みます（<a href="#embed-media">Markdown に画像や動画を埋め込む</a> を参照）。</li>
   <li><span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>S</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>S</kbd></span></span> で保存します。変更したファイルを閉じると <q>&lt;name&gt; の変更を保存しますか？</q> と尋ねられ、<span class="docs-ui">保存</span>、<span class="docs-ui">保存しない</span>、<span class="docs-ui">キャンセル</span> を選べます。</li>
   <li>保存していない編集がある間にディスク上のファイルが変わったときは、<span class="docs-ui">ディスクの内容を読み込む</span> か <span class="docs-ui">自分の変更を残す</span> を選びます。</li>
 </ul>
@@ -196,24 +196,36 @@
       <section class="docs-section" aria-labelledby="preview">
         <h2 id="preview"><a class="docs-anchor" href="#preview" aria-label="「Markdown と Mermaid のプレビュー」へのリンク">#</a>Markdown と Mermaid のプレビュー</h2>
         <p>プレビューできるのは <code>.md</code>、<code>.markdown</code>、<code>.mdx</code>、<code>.mmd</code>、<code>.mermaid</code> です。Mermaid はアプリに同梱しているので、オフラインでも図を描けます。</p>
+<p>Markdown ファイルでは、エディタの上で <span class="docs-ui">ソース</span> と <span class="docs-ui">プレビュー</span> を切り替えます。プレビューはいつでも編集でき、そのまま入力できます。テキストに戻るには <span class="docs-ui">ソース</span> を押します。どちらも同じ内容を表示し、保存、未保存の印、閉じるときの確認も同じように働きます。</p>
+<ul>
+  <li>見出し、段落、リスト、チェックボックス、表、リンク、太字、斜体、インラインコードにそのまま入力できます。行の先頭で <code>#</code>、<code>-</code>、<code>1.</code>、<code>&gt;</code> に続けて空白を入力すると、見出し、リスト、引用になります。</li>
+  <li>コードブロックと Mermaid の図はソースのまま編集し、隅に言語が出ます。図を描いて見るには、<a href="projects.html#review-targets"><span class="docs-ui">レビュー対象</span></a> パネルの <span class="docs-ui">ファイル</span> からそのファイルを開きます。</li>
+  <li>フロントマター（先頭の <code>---</code> のブロック）は文書の上にテキストとして出て、そこで編集できます。</li>
+  <li>変更していない部分は、見出しの書き方、リストの記号、空行、表の揃え、改行コードも含めて、書かれたとおりに保存します。編集したブロックはできるだけ元の書き方を保ち、保てないときはそのブロックを標準的な Markdown の形（リストは <code>-</code>、見出しは <code>#</code>）で書きます。</li>
+  <li>プロジェクト内の画像と動画は表示します。ほかのサイトの画像は読み込まず、代わりにホスト名を表示します。ファイル内のそのほかの HTML はテキストとして表示します。</li>
+</ul>
+<p><code>.mdx</code> ファイル（ソースだけで編集します）、<code>.mmd</code>、<code>.mermaid</code> ファイルには、代わりに読み取り専用のプレビューがあります。</p>
 <ul>
   <li><span class="docs-ui">プレビューを横に並べる</span>: エディタの隣に表示</li>
   <li><span class="docs-ui">プレビューを開く</span>: 内蔵のブラウザ（<code>ade-preview://</code>）で表示。録画してレビューできます</li>
 </ul>
-<p>Markdown ファイルをプレビューの見た目のまま編集するには、エディタの上の <span class="docs-ui">プレビューで編集</span> を押します。戻るには <span class="docs-ui">ソース</span> を押します。どちらも同じ内容を表示し、保存、未保存の印、閉じるときの確認も同じように働きます。</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="embed-media">
+        <h2 id="embed-media"><a class="docs-anchor" href="#embed-media" aria-label="「Markdown に画像や動画を埋め込む」へのリンク">#</a>Markdown に画像や動画を埋め込む</h2>
+        <p>画像（PNG、JPEG、GIF、WebP、SVG、AVIF）や動画（MP4、WebM、MOV）を Markdown ファイルにドラッグすると、<span class="docs-ui">ソース</span> でも <span class="docs-ui">プレビュー</span> でも、ドロップした位置に埋め込みます。</p>
 <ul>
-  <li>見出し、段落、リスト、チェックボックス、表、リンク、太字、斜体、インラインコードにそのまま入力できます。行の先頭で <code>#</code>、<code>-</code>、<code>1.</code>、<code>&gt;</code> に続けて空白を入力すると、見出し、リスト、引用になります。</li>
-  <li>コードブロックと Mermaid の図はソースのまま編集し、隅に言語が出ます。図は <span class="docs-ui">プレビューを横に並べる</span> か <span class="docs-ui">プレビューを開く</span> で描かれます。</li>
-  <li>フロントマター（先頭の <code>---</code> のブロック）は文書の上にテキストとして出て、そこで編集できます。</li>
-  <li>変更していない部分は、見出しの書き方、リストの記号、空行、表の揃え、改行コードも含めて、書かれたとおりに保存します。編集したブロックはできるだけ元の書き方を保ち、保てないときはそのブロックを標準的な Markdown の形（リストは <code>-</code>、見出しは <code>#</code>）で書きます。</li>
-  <li>プロジェクト内の画像は表示します。ほかのサイトの画像は読み込まず、代わりにホスト名を表示します。ファイル内の HTML はテキストとして表示します。</li>
+  <li>すでにプロジェクト内にあるファイル（<span class="docs-ui">ファイル</span> からドラッグしたものを含む）は、Markdown ファイルからの相対パスでつなぎます。コピーはしません。</li>
+  <li>プロジェクトの外のファイル（Finder、デスクトップ、Windows ではエクスプローラー）は、先に Markdown ファイルの隣のフォルダにコピーします。<code>assets</code>、<code>images</code>、<code>media</code>、<code>img</code> のどれかがすでにあればそれを使い、なければ <code>assets</code> フォルダを新しく作ります。名前の空白は <code>-</code> になり、同じ名前があるときはコピーの名前が <code>name-2</code> になります。元のファイルはそのまま残ります。</li>
+  <li>画像は <code>![name](assets/name.png)</code>、動画は <code>&lt;video&#32;src="assets/name.mp4" controls&gt;&lt;/video&gt;</code> と書きます。GitHub でもそのまま再生できる形です。どちらも <span class="docs-ui">プレビュー</span> に表示されます。</li>
+  <li>画像は 50 MB まで、動画は 500 MB までです。1回のドロップでコピーできるのは 50 ファイル、1 GB までです。一緒にドロップしたほかのファイルは、いつもどおりエディタで開きます。</li>
 </ul>
       </section>
 
       <section class="docs-section" aria-labelledby="review-docs">
         <h2 id="review-docs"><a class="docs-anchor" href="#review-docs" aria-label="「ドキュメントを録画でレビューする」へのリンク">#</a>ドキュメントを録画でレビューする</h2>
         <ol class="docs-steps">
-  <li>Markdown のファイルを開き、<span class="docs-ui">プレビューを開く</span> を押します。</li>
+  <li><a href="projects.html#review-targets"><span class="docs-ui">レビュー対象</span></a> パネルの <span class="docs-ui">ファイル</span> から Markdown のファイルを開きます。内蔵のブラウザでプレビューとして開きます。</li>
   <li>いつもどおり録画します。仕様書や設計書を読みながら話し、おかしいところを囲みます。</li>
   <li>止めます。指摘には URL の代わりに、プロジェクトからのファイルの相対パスが入ります。</li>
   <li><span class="docs-ui">Agentへ送信</span> で、ドキュメントを直してもらいます。</li>
@@ -235,6 +247,7 @@
         <li><a href="#files">ファイルを開いて編集する</a></li>
         <li><a href="#file-tree">ファイルツリーでファイルを扱う</a></li>
         <li><a href="#preview">Markdown と Mermaid のプレビュー</a></li>
+        <li><a href="#embed-media">Markdown に画像や動画を埋め込む</a></li>
         <li><a href="#review-docs">ドキュメントを録画でレビューする</a></li>
       </ul>
     </aside>

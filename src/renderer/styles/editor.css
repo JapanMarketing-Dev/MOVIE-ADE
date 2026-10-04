@@ -679,12 +679,6 @@
   gap: var(--space-3);
 }
 
-.ctabs__end {
-  display: flex;
-  align-items: center;
-  margin-left: auto;
-  padding: 0 var(--space-3);
-}
 
 /* プレビューを横に並べる（左に Monaco、右に ade-preview:// の iframe） */
 .editor-body--split {
@@ -836,4 +830,46 @@
   line-height: 1.6;
   user-select: text;
   white-space: pre;
+}
+
+/* ターミナルの区画の右クリックのメニュー（TerminalPane の PaneContextMenu） */
+.pane-menu {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  min-width: 180px;
+  flex-direction: column;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+}
+
+.pane-menu__item {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  gap: var(--space-2);
+  text-align: left;
+}
+
+.pane-menu__item:hover,
+.pane-menu__item:focus-visible {
+  background: var(--color-surface-hover);
+  outline: none;
+}
+
+.pane-menu__key {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
 }

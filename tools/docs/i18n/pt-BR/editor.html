@@ -5,12 +5,12 @@ Editor e prévia
 <!-- @lead 97cbc36c8d -->
 Abra e edite os arquivos do projeto e veja a prévia de Markdown e Mermaid. Uma prévia aberta no navegador integrado pode ser gravada e revisada como qualquer página web.
 
-<!-- @files c2eff8e24c -->
+<!-- @files 542bb5ee81 -->
 ## Abrir e editar arquivos
 <ul>
   <li><span class="docs-ui">Arquivos</span> (a árvore de arquivos): {{keys:Mod+Shift+E}}, com <span class="docs-ui">Filtrar por nome de arquivo</span>, <span class="docs-ui">Atualizar</span> e <span class="docs-ui">Recolher tudo</span>.</li>
   <li><span class="docs-ui">Ir para arquivo…</span>: {{keys:Mod+P}}.</li>
-  <li>Arraste um arquivo do Finder (do Explorador de Arquivos no Windows, do seu gerenciador de arquivos no Linux) para a barra de abas ou para o editor para abri-lo. Arquivos do projeto abrem no editor ou em um visualizador. Para trazer um arquivo de fora do projeto, solte-o em <span class="docs-ui">Arquivos</span>, que o copia para o projeto. Uma pasta solta aqui abre como projeto. Arquivos arrastados de <span class="docs-ui">Arquivos</span> abrem da mesma forma.</li>
+  <li>Arraste um arquivo do Finder (do Explorador de Arquivos no Windows, do seu gerenciador de arquivos no Linux) para a barra de abas ou para o editor para abri-lo. Arquivos do projeto abrem no editor ou em um visualizador. Para trazer um arquivo de fora do projeto, solte-o em <span class="docs-ui">Arquivos</span>, que o copia para o projeto. Uma pasta solta aqui abre como projeto. Arquivos arrastados de <span class="docs-ui">Arquivos</span> abrem da mesma forma. Já imagens e vídeos soltos em um arquivo Markdown aberto são incorporados nele (veja <a href="#embed-media">Incorporar imagens e vídeos no Markdown</a>).</li>
   <li>Salve com {{keys:Mod+S}}. Ao fechar um arquivo modificado, aparece <q>Salvar as alterações em &lt;name&gt;?</q> com <span class="docs-ui">Salvar</span>, <span class="docs-ui">Não salvar</span> e <span class="docs-ui">Cancelar</span>.</li>
   <li>Se o arquivo mudar no disco enquanto você tem edições não salvas, escolha <span class="docs-ui">Recarregar do disco</span> ou <span class="docs-ui">Manter minhas alterações</span>.</li>
 </ul>
@@ -34,26 +34,37 @@ Abra e edite os arquivos do projeto e veja a prévia de Markdown e Mermaid. Uma 
 </ul>
 <p>As abas abertas acompanham um arquivo renomeado ou movido e mantêm as edições não salvas. O Ferret não sobrescreve um arquivo ou pasta existente com o mesmo nome e mantém tudo dentro da pasta do projeto: recusa <code>..</code>, caminhos absolutos, links simbólicos que apontam para fora, qualquer coisa dentro de <code>.git</code>, mover uma pasta para dentro dela mesma e nomes que algum sistema operacional não aceita: <code>/ \ &lt; &gt; : " | ? *</code>, caracteres de controle, espaço ou ponto no final e nomes reservados do Windows, como <code>CON</code> ou <code>NUL</code>. Uma única cópia ou um único soltar pode ter até 10.000 itens e 1 GB.</p>
 
-<!-- @preview cb127d2292 -->
+<!-- @preview 8cf744371d -->
 ## Prévia de Markdown e Mermaid
 <p>A prévia funciona para <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> e <code>.mermaid</code>. O Mermaid vem embutido no app, então os diagramas são renderizados offline.</p>
+<p>Um arquivo Markdown tem duas visualizações no topo do editor: <span class="docs-ui">Código-fonte</span> e <span class="docs-ui">Pré-visualização</span>. A prévia é sempre editável, então você pode digitar direto nela; clique em <span class="docs-ui">Código-fonte</span> para voltar ao texto. As duas mostram o mesmo conteúdo, e salvar, a marca de não salvo e a confirmação ao fechar funcionam do mesmo jeito.</p>
+<ul>
+  <li>Digite direto em títulos, parágrafos, listas, caixas de seleção, tabelas, links e texto em negrito, itálico ou código inline. Digitar <code>#</code>, <code>-</code>, <code>1.</code> ou <code>&gt;</code> e um espaço no início de uma linha inicia um título, uma lista ou uma citação.</li>
+  <li>Blocos de código e diagramas Mermaid são editados como código-fonte, com a linguagem indicada no canto. Para ver o diagrama desenhado, abra o arquivo em <span class="docs-ui">Arquivos</span> no painel <a href="projects.html#review-targets"><span class="docs-ui">Alvos de revisão</span></a>.</li>
+  <li>O front matter (o bloco <code>---</code> no topo) aparece como texto acima do documento e pode ser editado ali.</li>
+  <li>As partes que você não altera são salvas exatamente como foram escritas, incluindo o estilo dos títulos, os marcadores de lista, as linhas em branco, o alinhamento das tabelas e as quebras de linha. Um bloco que você edita mantém o estilo quando possível; caso contrário, esse bloco é escrito em uma forma padrão de Markdown, com <code>-</code> para listas e <code>#</code> para títulos.</li>
+  <li>Imagens e vídeos do projeto são exibidos. Imagens de outros sites não são carregadas; o nome do host aparece no lugar. O restante do HTML no arquivo é exibido como texto.</li>
+</ul>
+<p>Arquivos <code>.mdx</code> (editados só como código-fonte), <code>.mmd</code> e <code>.mermaid</code> têm, em vez disso, uma prévia somente leitura:</p>
 <ul>
   <li><span class="docs-ui">Abrir prévia ao lado</span>: ao lado do editor</li>
   <li><span class="docs-ui">Abrir prévia</span>: no navegador integrado (<code>ade-preview://</code>), para que você possa gravá-la e revisá-la</li>
 </ul>
-<p>Para editar um arquivo Markdown do jeito que ele aparece na prévia, clique em <span class="docs-ui">Editar na pré-visualização</span> no topo do editor, e em <span class="docs-ui">Código-fonte</span> para voltar. Os dois mostram o mesmo conteúdo, e salvar, a marca de não salvo e a confirmação ao fechar funcionam do mesmo jeito.</p>
+
+<!-- @embed-media d24ca87d61 -->
+## Incorporar imagens e vídeos no Markdown
+<p>Arraste imagens (PNG, JPEG, GIF, WebP, SVG, AVIF) ou vídeos (MP4, WebM, MOV) para um arquivo Markdown, em <span class="docs-ui">Código-fonte</span> ou <span class="docs-ui">Pré-visualização</span>, para incorporá-los onde você os soltar.</p>
 <ul>
-  <li>Digite direto em títulos, parágrafos, listas, caixas de seleção, tabelas, links e texto em negrito, itálico ou código inline. Digitar <code>#</code>, <code>-</code>, <code>1.</code> ou <code>&gt;</code> e um espaço no início de uma linha inicia um título, uma lista ou uma citação.</li>
-  <li>Blocos de código e diagramas Mermaid são editados como código-fonte, com a linguagem indicada no canto. O diagrama é renderizado em <span class="docs-ui">Abrir prévia ao lado</span> ou <span class="docs-ui">Abrir prévia</span>.</li>
-  <li>O front matter (o bloco <code>---</code> no topo) aparece como texto acima do documento e pode ser editado ali.</li>
-  <li>As partes que você não altera são salvas exatamente como foram escritas, incluindo o estilo dos títulos, os marcadores de lista, as linhas em branco, o alinhamento das tabelas e as quebras de linha. Um bloco que você edita mantém o estilo quando possível; caso contrário, esse bloco é escrito em uma forma padrão de Markdown, com <code>-</code> para listas e <code>#</code> para títulos.</li>
-  <li>Imagens do projeto são exibidas. Imagens de outros sites não são carregadas; o nome do host aparece no lugar. HTML no arquivo é exibido como texto.</li>
+  <li>Arquivos que já estão no projeto, incluindo os arrastados de <span class="docs-ui">Arquivos</span>, são vinculados com um caminho relativo ao arquivo Markdown. Nada é copiado.</li>
+  <li>Arquivos de fora do projeto (do Finder, da área de trabalho, do Explorador de Arquivos no Windows) são primeiro copiados para uma pasta ao lado do arquivo Markdown: <code>assets</code>, <code>images</code>, <code>media</code> ou <code>img</code>, se uma delas já existir; caso contrário, uma nova pasta <code>assets</code>. Espaços no nome viram <code>-</code> e, se o nome já existir, a cópia recebe o nome <code>name-2</code>. Os originais ficam onde estavam.</li>
+  <li>Imagens são escritas como <code>![name](assets/name.png)</code> e vídeos como <code>&lt;video&#32;src="assets/name.mp4" controls&gt;&lt;/video&gt;</code>, que o GitHub também reproduz. Os dois aparecem em <span class="docs-ui">Pré-visualização</span>.</li>
+  <li>Uma imagem pode ter até 50 MB e um vídeo até 500 MB, e um único soltar copia até 50 arquivos e 1 GB. Outros arquivos soltos junto com eles abrem no editor normalmente.</li>
 </ul>
 
-<!-- @review-docs 4b5c6316ba -->
+<!-- @review-docs 4ff22f4a6c -->
 ## Revisar documentos gravando
 <ol class="docs-steps">
-  <li>Abra um arquivo Markdown e clique em <span class="docs-ui">Abrir prévia</span>.</li>
+  <li>No painel <a href="projects.html#review-targets"><span class="docs-ui">Alvos de revisão</span></a>, abra o arquivo Markdown em <span class="docs-ui">Arquivos</span>. Ele abre como prévia no navegador integrado.</li>
   <li>Grave normalmente. Comente a especificação ou o documento de design e circule o que está errado.</li>
   <li>Pare. Os apontamentos fazem referência ao caminho do arquivo relativo ao projeto, em vez de uma URL.</li>
   <li>Use <span class="docs-ui">Enviar ao Agent</span> para que o documento seja corrigido.</li>

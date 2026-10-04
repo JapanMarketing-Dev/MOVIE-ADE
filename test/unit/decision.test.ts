@@ -26,7 +26,6 @@ import { isInheritedAgentSessionEnv } from '../../src/main/inheritedAgentEnv'
 import { DecisionRelay, LEGACY_RELAY_TOKEN_HEADER, RELAY_TOKEN_HEADER, RelayConfigError, type RelayUpstream } from '../../src/main/decision/relay'
 import { DecisionService } from '../../src/main/decision/service'
 import { CallLog, aggregateCalls, callLogFile, estimateCost, extractUsage, sanitizeCallRecord } from '../../src/main/decision/callLog'
-import { issueFromFeedback } from '../../src/main/github/parse'
 import { projectLabel, type ApiCallRecord } from '@shared/apiUsage'
 
 /**
@@ -273,13 +272,6 @@ describe('feedback.md の受け入れ確認の節', () => {
       }
       expect(text, locale).not.toMatch(/(^|[\s`])(state\.txt|req\.json)/)
     }
-  })
-
-  it('GitHub へは受け入れ確認の節と BEFORE の絶対パスを出さない', () => {
-    const { body } = issueFromFeedback(md)
-    expect(body).not.toContain('Acceptance check')
-    expect(body).not.toContain(reviewDir)
-    expect(body).toContain('Finding 1')
   })
 })
 

@@ -24,7 +24,6 @@ export const FOOTER_ITEMS = [
   'recording',
   'mic',
   'transcription',
-  'organizer',
   'resources',
   'github',
   'page',
@@ -302,7 +301,6 @@ export const FOOTER_PRIORITY: Record<FooterItemId, 0 | 1 | 2 | 3> = {
   version: 2,
   theme: 2,
   page: 3,
-  organizer: 3,
   layout: 3
 }
 

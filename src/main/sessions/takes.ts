@@ -55,7 +55,7 @@ export function nextTakeNumber(record: Pick<SessionRecord, 'takes'>): number {
 
 /**
  * 追記した録画の指摘を、既存のレビューの末尾に足す。
- * 既存の指摘・編集・全体への補足・dropped は消さない。指摘とペンの ID には `t<n>-` を付けてレビュー全体で重ならないようにする
+ * 既存の指摘・編集・全体への補足・dropped は消さない（追記した録画の意味の通じない発話は dropped に足す）。指摘とペンの ID には `t<n>-` を付けてレビュー全体で重ならないようにする
  */
 export function appendTake(record: SessionRecord, existingEvents: Event[], take: TakeMaterial): AppendTakeResult {
   const offset = Math.max(0, record.meta.durationMs) + TAKE_GAP_MS
@@ -101,8 +101,11 @@ export function appendTake(record: SessionRecord, existingEvents: Event[], take:
   const totalMeta = { ...record.meta, durationMs: offset + Math.max(0, take.durationMs) }
   // 足した分はまだ整理していない（LLM の整理をもう一度かけられるようにする）
   // 整理が付けた名前（reviewTitle）は足した指摘を含まないので外す（自動の名前はルールで作り直す）
+  // 追記した録画の意味の通じない発話（「Shh.」など）も「除外した発話」に足す（時刻をずらす。発話を指摘に戻せるように）
+  const droppedAdded = stage.document.dropped.map((d) => ({ ...d, t: at(d.t) }))
   const extend = ({ reviewTitle: _stale, ...doc }: FeedbackDocument): FeedbackDocument => ({ ...doc, meta: totalMeta, organizedByLlm: false,
-    items: finalizeItems([...doc.items.map(toPending), ...added], allEvents, {}, doc.customOrder === true) })
+    items: finalizeItems([...doc.items.map(toPending), ...added], allEvents, {}, doc.customOrder === true),
+    ...(droppedAdded.length > 0 ? { dropped: [...doc.dropped, ...droppedAdded] } : {}) })
 
   // 編集は正本に積み直す（元に戻すと、足した指摘は残ったまま編集だけが戻る）。
   // 正本の無い古いレビューは、今の一覧へそのまま足す（編集を二重にかけない）

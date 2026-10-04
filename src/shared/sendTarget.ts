@@ -94,6 +94,20 @@ export interface SendTargetOption {
  * 宛先の一覧。動いている Agent のタブ → 有効でインストール済みの Agent（動いていないもの）の順。
  * 同じ Agent のタブが1つなら Agent の行にまとめる（選ぶとそのタブへ送る）。2つ以上あるときだけタブごとに出す
  */
+/** ターミナルを開いたフォルダ（cwd）が、プロジェクトのフォルダかその中か。宛先はそのプロジェクトのターミナルだけにする */
+export function isInsideDir(cwd: string, dir: string): boolean {
+  const base = dir.replace(/[\\/]+$/, '')
+  return cwd === base || cwd.startsWith(`${base}/`) || cwd.startsWith(`${base}\\`)
+}
+
+/**
+ * 宛先の候補にするターミナル。開いているプロジェクトのものだけ（ほかのプロジェクトのタブは出さない）。
+ * タブの番号はこのプロジェクトの中での順。プロジェクトが無ければ全部
+ */
+export function projectTerminals<T extends { cwd: string }>(list: readonly T[], projectDir: string | null): Array<T & { index: number }> {
+  return list.filter((info) => !projectDir || isInsideDir(info.cwd, projectDir)).map((info, i) => ({ ...info, index: i + 1 }))
+}
+
 export function buildSendTargetOptions(agentOptions: readonly AgentOption[], running: readonly RunningAgentTerminal[]): SendTargetOption[] {
   const out: SendTargetOption[] = []
   const live = running.filter((r): r is RunningAgentTerminal & { agent: TuiAgent } => r.agent !== null)

@@ -1,4 +1,3 @@
-import type { GitHubPullRequest } from '@shared/github'
 import type { GitLabAccount } from '@shared/forge'
 import { isSafeGitLabPath, isSafeHost } from '@shared/forge'
 import { normalizeCloneUrl, stripUrlCredentials, type GitHubRepoItem } from '@shared/projectSource'
@@ -6,8 +5,7 @@ import { normalizeCloneUrl, stripUrlCredentials, type GitHubRepoItem } from '@sh
 /**
  * glab（GitLab CLI）の出力を読み、`glab api` の引数を組み立てる純粋な関数。単体テストの対象。
  *
- * GitLab へは `glab api` だけで話す（--hostname でセルフホストにも同じ形で届く。issue create などの
- * 高水準のコマンドは、本文を引数で渡すしかなく ps に出るため使わない）。本文は JSON にして標準入力（--input -）で渡す。
+ * GitLab へは `glab api` だけで話す（--hostname でセルフホストにも同じ形で届く）。
  */
 
 /**
@@ -53,21 +51,11 @@ export function signedInHosts(accounts: readonly GitLabAccount[]): string[] {
   return accounts.filter((a) => a.user).map((a) => a.host)
 }
 
-/** `glab api` の projects/:id。パスは group/sub/project を1つの値として符号化する（/ は %2F） */
-export function projectEndpoint(path: string): string {
-  if (!isSafeGitLabPath(path)) throw new Error('invalid GitLab project path')
-  return `projects/${encodeURIComponent(path)}`
-}
-
 /** `glab api` の引数。ホストと API のパスは形を確かめてから入れる（- で始まる値をオプションに読ませない） */
-export function glabApiArgs(host: string, method: 'GET' | 'POST', endpoint: string, withBody = false): string[] {
+export function glabApiArgs(host: string, endpoint: string): string[] {
   if (!isSafeHost(host)) throw new Error('invalid GitLab host')
   if (!/^[A-Za-z0-9][A-Za-z0-9_./%?=&-]*$/.test(endpoint)) throw new Error('invalid GitLab API path')
-  return [
-    'api', '--hostname', host, '--method', method,
-    ...(withBody ? ['--header', 'Content-Type: application/json', '--input', '-'] : []),
-    endpoint
-  ]
+  return ['api', '--hostname', host, '--method', 'GET', endpoint]
 }
 
 /** 「GitLab から取得」の一覧に出すプロジェクト（自分がメンバーのもの、新しく触った順） */
@@ -95,35 +83,4 @@ export function mapGitLabProjects(json: unknown, host: string): GitHubRepoItem[]
       host
     }]
   })
-}
-
-/** 自分が作った開いている MR（GitLab の merge_requests API）。番号は iid（画面の !12） */
-export function mapMergeRequests(json: unknown): GitHubPullRequest[] {
-  if (!Array.isArray(json)) return []
-  return json.flatMap((raw) => {
-    const r = asRecord(raw)
-    if (!r || typeof r.iid !== 'number' || !Number.isInteger(r.iid) || r.iid <= 0) return []
-    const state = typeof r.state === 'string' ? r.state : ''
-    return [{
-      number: r.iid,
-      title: typeof r.title === 'string' ? r.title : '',
-      state: state === 'merged' ? 'MERGED' : state === 'closed' ? 'CLOSED' : 'OPEN',
-      isDraft: r.draft === true || r.work_in_progress === true,
-      url: typeof r.web_url === 'string' ? r.web_url : '',
-      updatedAt: typeof r.updated_at === 'string' ? r.updated_at : '',
-      headRefName: typeof r.source_branch === 'string' ? r.source_branch : ''
-    } satisfies GitHubPullRequest]
-  })
-}
-
-/** 作った Issue・コメントのページ。同じホストの https だけを受け取る（違えば null） */
-export function webUrlFrom(json: unknown, host: string): string | null {
-  const url = asRecord(json)?.web_url
-  if (typeof url !== 'string') return null
-  try {
-    const u = new URL(url)
-    return u.protocol === 'https:' && u.host.toLowerCase() === host.toLowerCase() && !u.username && !u.password ? u.toString() : null
-  } catch {
-    return null
-  }
 }

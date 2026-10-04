@@ -12,6 +12,7 @@ import { listAgents } from '../lib/agentListing'
 import { errorMessage } from '../lib/errors'
 import { ProjectTargetsEditor } from '../components/ProjectTargetsEditor'
 import { AgentIcon } from '../components/AgentIcon'
+import { AgentSkillCard } from '../components/AgentSkillCard'
 import { TranscriptionSection, type SpeechLanguageValue } from '../components/TranscriptionSection'
 import { CrashReportsSetting } from '../components/CrashReportsSetting'
 import { agentInstallCommand } from './agentInstall'
@@ -136,6 +137,8 @@ export function AgentsStep({ agents, onAgentsChange, onDetected, warn = false }:
           {showAll ? t('agents.showLess') : t('agents.showAll', { count: hiddenCount })}</Button>
       </div>}
       </>}
+    {/* Agent に「Ferret でこうしたい」と頼めば設定してくれる skill。Agent を選んだら入れられる */}
+    {options !== null && <AgentSkillCard />}
     {warn && agents.startupAgents.length === 0 && <p className="ob-note ob-note--warn" role="alert" data-testid="onboarding-agents-pick-one">
       <CircleAlert size={12} aria-hidden="true" />{t('onboarding.agents.pickOne')}</p>}
     {noneInstalled && <p className="ob-note ob-note--warn" data-testid="onboarding-agents-none-installed">

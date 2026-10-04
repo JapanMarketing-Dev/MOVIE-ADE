@@ -1,7 +1,6 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { PRODUCT_NAME, setLocale } from '@shared/i18n'
+import { describe, expect, it } from 'vitest'
 import { branchWebUrl } from '@shared/github'
-import { issueFromFeedback, mapPullRequests, parseGitStatus, parseAuthStatus, parseGitRemote, pickActiveAccount } from '../../src/main/github/parse'
+import { parseGitStatus, parseAuthStatus, parseGitRemote, pickActiveAccount } from '../../src/main/github/parse'
 
 describe('GitHub: remote URL から owner/repo', () => {
   it.each([
@@ -76,48 +75,6 @@ describe('GitHub: gh auth status の解析', () => {
     const old = parseAuthStatus('github.com\n  ✓ Logged in to github.com as someone (/Users/me/.config/gh/hosts.yml)\n  ✓ Logged in to github.com account someone (keyring)\n')
     expect(old).toHaveLength(1)
     expect(old[0]!.active).toBe(true)
-  })
-})
-
-describe('GitHub: PR の JSON', () => {
-  it('必要な項目だけに整える。壊れた要素は捨てる', () => {
-    expect(mapPullRequests([
-      { number: 7, title: 'Fix', state: 'OPEN', isDraft: true, url: 'https://github.com/o/r/pull/7', updatedAt: '2026-10-01T00:00:00Z', headRefName: 'fix' },
-      { title: '番号なし' },
-      'x'
-    ])).toEqual([{ number: 7, title: 'Fix', state: 'OPEN', isDraft: true, url: 'https://github.com/o/r/pull/7', updatedAt: '2026-10-01T00:00:00Z', headRefName: 'fix' }])
-    expect(mapPullRequests({ not: 'array' })).toEqual([])
-  })
-})
-
-describe('GitHub: feedback.md から Issue', () => {
-  afterEach(() => setLocale('en'))
-
-  it('タイトルに見出しとホスト。画像の行は外して断り書きを付ける', () => {
-    setLocale('ja')
-    const md = [
-      '# UIフィードバック（2件）',
-      '- 対象: https://example.com/app',
-      '',
-      '## 1. [00:16] ボタン',
-      '- 要望: 大きくする',
-      '- 画像: ./01.png',
-      '## 2. [00:21] 余白',
-      '- 画像: ./02.png'
-    ].join('\n')
-    const { title, body } = issueFromFeedback(md)
-    expect(title).toBe('UIフィードバック（2件）: example.com')
-    expect(body).not.toContain('./01.png')
-    expect(body).toContain('- 要望: 大きくする')
-    expect(body).toContain(`画像 2 枚は ${PRODUCT_NAME} のローカル`)
-  })
-
-  it('英語の feedback.md も読める（書き出した時点の画面の言語に依らない）', () => {
-    const md = ['# UI Feedback (1 item)', '- Target: https://example.com/app', '## 1. [00:16] Button', '- Request: Make it bigger', '- Images: ./01.png'].join('\n')
-    const { title, body } = issueFromFeedback(md)
-    expect(title).toBe('UI Feedback (1 item): example.com')
-    expect(body).not.toContain('./01.png')
-    expect(body).toContain(`1 image is stored locally in ${PRODUCT_NAME}`)
   })
 })
 

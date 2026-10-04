@@ -16,7 +16,7 @@ import {
   type MacWindowInfo
 } from '../../../src/shared/desktopApps'
 import { captureTargetGap, captureTargetLabel, captureTargetLines, resolveCaptureTarget, sanitizeCaptureTarget, targetFromSource } from '../../../src/shared/captureTarget'
-import { adbCandidates } from '../../../src/main/recording/devices'
+import { adbCandidates, captureMacWindowImage, screencaptureWindowArgs } from '../../../src/main/recording/devices'
 import type { CaptureSourceInfo } from '../../../src/shared/types'
 import { setLocale } from '@shared/i18n'
 
@@ -259,5 +259,17 @@ describe('ゲームのエディタ・ゲームのウインドウ', () => {
     expect(captureTargetLines({ kind: 'window', sourceId: 'window:5:0', name: 'acme-shop - SampleScene - macOS - Unity 6000.0.23f1 <Metal>', appName: 'Unity' })[1])
       .toBe('- 区分: ゲーム（Unity のエディタ）。このプロジェクトのゲームのコード・シーン・アセットを直す。画像はこのウインドウだけを写したもの。')
     expect(captureTargetLines({ kind: 'window', sourceId: 'window:6:0', name: 'Acme Game', appName: 'AcmeGame' })[1]).toContain('デスクトップアプリ')
+  })
+})
+
+describe('手前に出すウインドウのサムネイル', () => {
+  it('screencapture にウインドウの ID と出力先を1つずつ渡し、音と影を付けない', () => {
+    expect(screencaptureWindowArgs(16340, '/tmp/x/window.jpg')).toEqual(['-x', '-o', '-l16340', '-t', 'jpg', '/tmp/x/window.jpg'])
+  })
+
+  it('macOS 以外・不正な ID では撮らない', async () => {
+    expect(await captureMacWindowImage(16340, 'linux')).toBeNull()
+    expect(await captureMacWindowImage(0, 'darwin')).toBeNull()
+    expect(await captureMacWindowImage(1.5, 'darwin')).toBeNull()
   })
 })

@@ -220,6 +220,8 @@ export interface DraftItem {
 
 export interface Draft {
   items: DraftItem[]
+  /** 意味の通じない発話（「Shh.」などの聞き取りの誤り・つなぎ言葉だけ。pipeline/meaningless.ts）。指摘にせず「除外した発話」に入れる */
+  meaningless?: TranscriptSegment[]
 }
 
 // ───────────────────────── ③整理（LLM） ─────────────────────────
@@ -238,8 +240,8 @@ export type ItemStatus = 'decided' | 'needs_check'
 
 export interface Quote {
   /**
-   * 'text' は廃止した「画面に置いたテキスト」から来た引用。古いレビューの session.json にだけ残っていて、
-   * 表示（確認画面・feedback.md）ではそのまま「書き込み」として出す。新しくは作らない
+   * 'text' は打った文の引用。エディタの「文字で指摘」（sessions/notes.ts）で作る。
+   * 廃止した「画面に置いたテキスト」から来た古いレビューの引用も同じ印で、表示（確認画面・feedback.md）ではどちらも「書き込み」として出す
    */
   source?: 'text'
   speaker: Speaker

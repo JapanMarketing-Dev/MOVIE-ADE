@@ -44,7 +44,6 @@ The following files contain code ported or adapted from Orca. Each file names it
 | `src/renderer/components/agentIconData.ts` | `src/renderer/src/lib/agent-favicon-assets.ts`<br>`src/shared/agent-icons/` |
 | `src/renderer/components/CenterTabs.tsx` | `src/renderer/src/components/tab-bar/` |
 | `src/renderer/components/FileExplorer.tsx` | `src/renderer/src/components/right-sidebar/` |
-| `src/renderer/components/GitHubSection.tsx` | `src/renderer/src/components/github-project/GhAuthErrorHelp.tsx`<br>`src/renderer/src/components/settings/cli-source-control-integration-cards.tsx` |
 | `src/renderer/components/QuickLaunchButton.tsx` | `src/renderer/src/components/tab-bar/QuickLaunchButton.tsx` |
 | `src/renderer/components/QuickOpen.tsx` | `src/renderer/src/components/quick-open-file-list.ts` |
 | `src/renderer/components/ResourceManager.tsx` | `src/renderer/src/components/status-bar/ResourceUsageStatusSegment.tsx` |

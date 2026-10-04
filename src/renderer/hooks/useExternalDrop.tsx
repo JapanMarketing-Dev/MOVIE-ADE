@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { hasExternalFiles } from '../lib/externalDrop'
 import { hasTreePaths, treeDragPaths } from '../lib/treeDrag'
+import type { DropPoint } from '../editor/markdownDrop'
 import '../styles/externalDrop.css'
 
 /** dragover はドラッグ中に続けて届く。これだけ途切れたら、外へ出た・止めたとみなして強調を消す */
@@ -10,9 +11,10 @@ const OVER_TIMEOUT_MS = 250
  * 外（Finder・デスクトップ・エクスプローラー）からファイル・フォルダを落とせる場所。
  * 'Files' を運ぶドラッグのときだけ受け、タブ・パネルの並べ替えのドラッグには反応しない。
  * onDrop には DataTransfer をそのまま渡す（files はイベントの間しか読めないので、受け取ったらすぐ readDrop へ）。
- * onTreeDrop を渡すと、ファイルツリーの行のドラッグ（プロジェクトの根からの相対パス）も受ける
+ * onTreeDrop を渡すと、ファイルツリーの行のドラッグ（プロジェクトの根からの相対パス）も受ける。
+ * どちらにも落とした位置（画面の座標）を添える（Markdown のエディタは、その位置へ画像・動画を埋め込む）
  */
-export function useExternalDrop(onDrop: (dataTransfer: DataTransfer) => void, enabled = true, onTreeDrop?: (relPaths: string[]) => void) {
+export function useExternalDrop(onDrop: (dataTransfer: DataTransfer, point: DropPoint) => void, enabled = true, onTreeDrop?: (relPaths: string[], point: DropPoint) => void) {
   const [over, setOver] = useState(false)
   const timer = useRef<number | null>(null)
   const clearTimer = () => {
@@ -51,9 +53,10 @@ export function useExternalDrop(onDrop: (dataTransfer: DataTransfer) => void, en
       e.preventDefault()
       e.stopPropagation()
       reset()
+      const point = { x: e.clientX, y: e.clientY }
       const tree = treeDragPaths(e.dataTransfer)
-      if (tree) onTreeDrop?.(tree)
-      else onDrop(e.dataTransfer)
+      if (tree) onTreeDrop?.(tree, point)
+      else onDrop(e.dataTransfer, point)
     }
   }
   return { over, props }

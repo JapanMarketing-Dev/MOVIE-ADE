@@ -41,13 +41,23 @@ Registra il browser integrato, un intero schermo, un'altra finestra, un'app desk
 <p>Una registrazione dura al massimo 90 minuti. Ricevi un avviso vicino al limite, e quando lo si raggiunge la registrazione si ferma e viene salvata automaticamente.</p>
 {{shot:feedback-toolbar|Barra degli strumenti della modalità Feedback}}
 
-<!-- @pen 0232dc7983 -->
+<!-- @pen 09c2eba894 -->
 ## Penna
 <ul>
   <li><strong><span class="docs-ui">Penna</span></strong>: selezionala, oppure tieni premuto {{keys:Alt}} per disegnare solo finché il tasto è premuto (ignorato mentre scrivi in un campo).</li>
   <li><strong><span class="docs-ui">Cancella</span></strong>: rimuove i segni attuali.</li>
 </ul>
-<p>Cerchia il punto mentre ne parli: le parole e i segni finiscono nella stessa segnalazione. La penna è disponibile solo durante la registrazione. Non c'è uno strumento di testo: dillo a voce. I tasti per la penna, il riquadro e i colori sono elencati in <a href="keyboard.html#drawing">Scorciatoie da tastiera</a>.</p>
+<p>Cerchia il punto mentre ne parli: le parole e i segni finiscono nella stessa segnalazione. La penna è disponibile solo durante la registrazione, e durante la registrazione non c'è uno strumento di testo: dillo a voce, oppure scrivilo dopo con <a href="#type">Feedback scritto</a>. I tasti per la penna, il riquadro e i colori sono elencati in <a href="keyboard.html#drawing">Scorciatoie da tastiera</a>.</p>
+
+<!-- @type 20180cf30c -->
+## Scrivere invece di parlare
+<p>Quando parlare non è comodo, scrivi la segnalazione. Funziona solo in modalità Editor, nella scheda <span class="docs-ui">Browser</span>, quando non stai registrando.</p>
+<ol class="docs-steps">
+  <li>Fai clic su <span class="docs-ui">Feedback scritto</span> nella barra degli strumenti del browser.</li>
+  <li>Trascina un riquadro intorno al punto della pagina, oppure fai clic su un elemento per incorniciarlo.</li>
+  <li>Scrivi cosa va cambiato. {{keys:Enter}} la aggiunge, {{keys:Shift+Enter}} va a capo e {{keys:Esc}} annulla il riquadro. L'Invio con cui confermi una conversione del metodo di input non la aggiunge.</li>
+</ol>
+<p>Ognuna diventa una segnalazione con un'immagine della pagina e del riquadro, più l'URL e l'elemento incorniciato, come una segnalazione registrata. Viene aggiunta alla revisione aperta in <span class="docs-ui">Segnalazioni</span>, o a una nuova revisione se non ce n'è una aperta. Il browser resta in primo piano, così puoi aggiungerne diverse di seguito; {{keys:Esc}} senza riquadri aperti, o un nuovo clic sul pulsante, termina. Funziona anche sulla finestra di un'app desktop o di un simulatore mostrata al posto del browser, senza l'URL.</p>
 
 <!-- @annotations-clear ea2e57b47b -->
 ## Quando i segni scompaiono
@@ -61,6 +71,11 @@ Registra il browser integrato, un intero schermo, un'altra finestra, un'app desk
 <!-- @mic 38bffa5e34 -->
 ## Microfono
 <p>Il microfono è attivo per impostazione predefinita. Puoi attivarlo o disattivarlo dal footer (<span class="docs-ui">Disattiva microfono</span> / <span class="docs-ui">Attiva microfono</span>) oppure con <span class="docs-ui">Registra la mia voce</span> nelle Impostazioni. Scegli un dispositivo in <span class="docs-ui">Microfono</span>.</p>
+
+<!-- @live-transcript 3523e2aad4 -->
+## Vedere cosa viene trascritto
+<p>Durante la registrazione, apri la scheda <span class="docs-ui">Trascrizione</span> in alto nel pannello destro della modalità feedback per leggere le tue parole come testo, con il momento in cui sono state dette (e chi le ha dette quando registri anche l'interlocutore di una riunione). Il testo appare qualche secondo dopo una pausa, così puoi verificare presto che ciò che dici venga acquisito. La riga in alto mostra <span class="docs-ui">Trascrizione in corso</span>, quante parti sono in attesa o perché la trascrizione si è fermata.</p>
+<p>Se la trascrizione non riesce, non sono impostati un modello o una chiave, circa 2 minuti di voce non producono testo o al microfono non arriva alcun suono, Ferret ti avvisa una volta e segna il pulsante del pannello destro, anche quando la scheda è chiusa. La registrazione continua e l'audio viene conservato. Per nascondere la scheda, disattiva <span class="docs-ui">Mostra la trascrizione dal vivo durante la registrazione (pannello destro della modalità feedback)</span> in <span class="docs-ui">Impostazioni → Trascrizione</span>. Gli avvisi compaiono comunque.</p>
 
 <!-- @other-side bf51c46448 -->
 ## Registrare l'altra parte di una riunione

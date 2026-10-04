@@ -10,7 +10,7 @@ import type { MediaAccessStatus } from '@shared/onboarding'
  *           「全部済むまでサイドバーに進み具合を出し、済んだら消える」使い心地（MIT）。
  */
 
-export type SetupItemId = 'agent' | 'project' | 'transcription' | 'decision' | 'permissions' | 'firstRecording' | 'firstSend'
+export type SetupItemId = 'agent' | 'agentSkill' | 'project' | 'transcription' | 'decision' | 'permissions' | 'firstRecording' | 'firstSend'
 
 export interface SetupChecklistInput {
   platform: PlatformName
@@ -18,6 +18,8 @@ export interface SetupChecklistInput {
   startupAgents: readonly string[]
   /** インストール済みの Agent の id（agents:list）。探している途中なら null */
   installedAgents: readonly string[] | null
+  /** Ferret の設定を変える skill をどれかの Agent に入れてあるか（agentSkill:status）。読めていなければ null */
+  agentSkillInstalled: boolean | null
   projectCount: number
   /** 端末内の whisper のモデルがある、または自分のキーの提供元が使える（capture:availability） */
   transcriptionReady: boolean
@@ -35,8 +37,8 @@ export interface SetupItem {
   done: boolean
 }
 
-/** 並びは使う順（Agent → プロジェクト → 文字起こし → 判定モデル → 許可 → 録る → 送る） */
-const ORDER: readonly SetupItemId[] = ['agent', 'project', 'transcription', 'decision', 'permissions', 'firstRecording', 'firstSend']
+/** 並びは使う順（Agent → 設定の skill → プロジェクト → 文字起こし → 判定モデル → 許可 → 録る → 送る） */
+const ORDER: readonly SetupItemId[] = ['agent', 'agentSkill', 'project', 'transcription', 'decision', 'permissions', 'firstRecording', 'firstSend']
 
 /**
  * 項目と済んだか。許可は macOS だけ（ほかの OS は許可が要らないので項目を出さない）。
@@ -46,6 +48,7 @@ export function setupChecklist(input: SetupChecklistInput): SetupItem[] {
   const installed = new Set(input.installedAgents ?? [])
   const done: Record<SetupItemId, boolean> = {
     agent: input.installedAgents !== null && input.startupAgents.some((id) => installed.has(id)),
+    agentSkill: input.agentSkillInstalled === true,
     project: input.projectCount > 0,
     transcription: input.transcriptionReady,
     decision: input.decisionReady,

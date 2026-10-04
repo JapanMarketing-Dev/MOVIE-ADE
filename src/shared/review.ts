@@ -109,9 +109,9 @@ export type ReviewEdit =
   | { kind: 'undo' }
   | { kind: 'text'; id: string; title?: string; request?: string }
   | { kind: 'delete'; id: string }
-  | { kind: 'merge'; ids: string[] }
   | { kind: 'include'; id: string; include: boolean }
-  | { kind: 'status'; id: string; status: 'decided' | 'needs_check' }
+  /** 整理が「要確認」にした指摘を確定する。手で要確認に戻す・次とまとめる操作は無くした（古い session.json の編集の列は main の ItemEdit で再生する） */
+  | { kind: 'status'; id: string; status: 'decided' }
   | { kind: 'frames'; id: string; frameTimes: number[] }
   | { kind: 'note'; note: string }
   /** 指摘の並べ替え。ids は新しい並び（無い指摘はその位置のまま）。null で録画の時刻順に戻す */

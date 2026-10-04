@@ -16,7 +16,6 @@ import {
   PanelRight,
   RefreshCw,
   Settings,
-  Sparkles,
   type LucideIcon
 } from 'lucide-react'
 import type { BrowserState, SttAvailability } from '@shared/types'
@@ -91,8 +90,6 @@ export interface CaptureStatus {
   microphone?: string
   /** 文字起こしの方式（EXT-1） */
   transcription?: string
-  /** 指摘へ整理するAgent（EXT-9） */
-  organizer?: string
 }
 
 /** フッターから変えられる録音の設定。App の state（＝設定ダイアログと同じ値）をそのまま受ける */
@@ -167,7 +164,7 @@ function LevelMeter({ level, live }: { level: number; live: boolean }) {
   </div>
 }
 
-function MicPopover({ value, onChange, recording, micDevices, available, level, onOpenSettings }: {
+export function MicPopover({ value, onChange, recording, micDevices, available, level, onOpenSettings }: {
   value: FooterCapture
   onChange: (patch: Partial<FooterCapture>) => void
   recording: boolean
@@ -497,12 +494,6 @@ export function StatusBar({
         value={capture.transcription ?? t('capture.summary.notSet')}
         tone={toneOf(capture.transcription, t)}
       />)}
-      {slot('organizer', <Item
-        icon={Sparkles}
-        label={t('statusBar.organizer')}
-        value={capture.organizer ?? t('capture.summary.notSet')}
-        tone={toneOf(capture.organizer, t)}
-      />)}
 
       <span className="statusbar__spacer" />
 
@@ -596,8 +587,6 @@ export function StatusBar({
                 return <button key={id} type="button" className="sb-more__row" onClick={() => openFromMore('mic')}><Mic size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{mic}</span></button>
               case 'transcription':
                 return <button key={id} type="button" className="sb-more__row" onClick={() => openFromMore('mic')}><AudioLines size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{capture.transcription ?? t('capture.summary.notSet')}</span></button>
-              case 'organizer':
-                return <div key={id} className="sb-more__row"><Sparkles size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{capture.organizer ?? t('capture.summary.notSet')}</span></div>
               case 'resources':
                 return <button key={id} type="button" className="sb-more__row" onClick={() => openFromMore('resources')}><MemoryStick size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span></button>
               case 'version':

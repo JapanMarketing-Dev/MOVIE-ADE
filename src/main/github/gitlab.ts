@@ -1,27 +1,15 @@
-import type { GitHubPostResult, GitHubPullRequest, GitHubRepoRef } from '@shared/github'
-import type { GitLabAccount, GitLabStatus } from '@shared/forge'
-import { cliInstallCommand } from '@shared/cliTools'
+import type { GitLabAccount } from '@shared/forge'
 import type { GitHubRepoList } from '@shared/projectSource'
-import { UserFacingError } from '@shared/errors'
 import { t } from '@shared/i18n'
 import { errorKind, reportHandled } from '@shared/report'
 import { glab, redactGhOutput, type ExecResult } from './gh'
-import {
-  GITLAB_PROJECTS_ENDPOINT,
-  glabApiArgs,
-  mapGitLabProjects,
-  mapMergeRequests,
-  parseGlabAuthStatus,
-  projectEndpoint,
-  signedInHosts,
-  webUrlFrom
-} from './gitlabParse'
+import { GITLAB_PROJECTS_ENDPOINT, glabApiArgs, mapGitLabProjects, parseGlabAuthStatus, signedInHosts } from './gitlabParse'
 
 /**
  * GitLab 連携（gitlab.com とセルフホスト）。GitHub の gh と同じく、認証は GitLab CLI（glab）に任せる。
  * 本システムはトークンを読まず、保存もしない。
  * - 接続状態: `glab auth status --all`（古い glab は --all が無いので付けずにもう一度）
- * - 送信・一覧: `glab api --hostname <host>`。本文は JSON にして標準入力で渡す（引数の長さ制限と、ps に本文が出るのを避ける）
+ * - 一覧（「GitLab から取得」）: `glab api --hostname <host>`
  */
 
 type GlabRunner = (args: string[], options?: { input?: string; timeoutMs?: number }) => Promise<ExecResult>
@@ -38,10 +26,6 @@ export function classifyGlabError(result: ExecResult): { kind: GlabErrorKind; me
   if (/network|dial tcp|timeout|could not connect|no such host/i.test(text)) return { kind: 'network', message: t('gitlab.errors.network') }
   const first = text.split('\n').map((l) => l.trim()).find(Boolean)
   return { kind: 'failed', message: first ? t('gitlab.errors.failedWith', { detail: first.slice(0, 200) }) : t('gitlab.errors.failed') }
-}
-
-function glabError(result: ExecResult): UserFacingError {
-  return new UserFacingError(classifyGlabError(result).message)
 }
 
 // ─── 接続状態 ─────────────────────────────────────
@@ -68,25 +52,6 @@ export async function knownGitLabHosts(run: GlabRunner = glab): Promise<string[]
   return (await gitlabAccounts(run)).accounts.map((a) => a.host)
 }
 
-function envToken(): GitLabStatus['envToken'] {
-  if (process.env.GITLAB_TOKEN) return 'GITLAB_TOKEN'
-  if (process.env.GITLAB_ACCESS_TOKEN) return 'GITLAB_ACCESS_TOKEN'
-  if (process.env.OAUTH_TOKEN) return 'OAUTH_TOKEN'
-  return null
-}
-
-export async function gitlabStatus(projectRepo: GitHubRepoRef | null, run: GlabRunner = glab): Promise<GitLabStatus> {
-  const { installed, accounts, timedOut } = await gitlabAccounts(run, true)
-  return {
-    glabInstalled: installed,
-    accounts,
-    envToken: envToken(),
-    installCommand: cliInstallCommand('glab', process.platform === 'win32' || process.platform === 'darwin' ? process.platform : 'linux') ?? null,
-    projectHost: projectRepo?.forge === 'gitlab' ? projectRepo.host : null,
-    error: timedOut ? t('gitlab.errors.timeout') : null
-  }
-}
-
 // ─── 「GitLab から取得」の一覧 ─────────────────────────
 
 /** ログイン済みのホストごとに、自分がメンバーのプロジェクト（最大 100 件ずつ）。gh の一覧と同じ形で返す */
@@ -96,7 +61,7 @@ export async function listGitLabRepos(run: GlabRunner = glab): Promise<GitHubRep
   const hosts = signedInHosts(accounts).slice(0, 5)
   if (hosts.length === 0) return { ghInstalled: true, loggedIn: false, repos: [] }
   const lists = await Promise.all(hosts.map(async (host) => {
-    const result = await run(glabApiArgs(host, 'GET', GITLAB_PROJECTS_ENDPOINT), { timeoutMs: 30_000 })
+    const result = await run(glabApiArgs(host, GITLAB_PROJECTS_ENDPOINT), { timeoutMs: 30_000 })
     if (result.failed) return { error: classifyGlabError(result).message, repos: [] }
     try {
       return { error: null, repos: mapGitLabProjects(JSON.parse(result.stdout), host) }
@@ -108,48 +73,6 @@ export async function listGitLabRepos(run: GlabRunner = glab): Promise<GitHubRep
   const repos = lists.flatMap((l) => l.repos)
   const error = repos.length === 0 ? lists.find((l) => l.error)?.error : undefined
   return { ghInstalled: true, loggedIn: true, repos, ...(error ? { error } : {}) }
-}
-
-// ─── レビュー結果の送り先 ───────────────────────────
-
-function pathOf(repo: GitHubRepoRef): string {
-  return `${repo.owner}/${repo.repo}`
-}
-
-/** コメント先の候補：自分が作った開いている MR。取れなければ空（Issue の作成はできる） */
-export async function myOpenMergeRequests(repo: GitHubRepoRef, run: GlabRunner = glab): Promise<GitHubPullRequest[]> {
-  const endpoint = `${projectEndpoint(pathOf(repo))}/merge_requests?state=opened&scope=created_by_me&order_by=updated_at&per_page=30`
-  const result = await run(glabApiArgs(repo.host, 'GET', endpoint), { timeoutMs: 15_000 })
-  if (result.failed) return []
-  try {
-    return mapMergeRequests(JSON.parse(result.stdout))
-  } catch (err) {
-    reportHandled(errorKind(err), { area: 'github', op: 'parse merge requests' })
-    return []
-  }
-}
-
-/** Issue を作る。題名と本文は JSON の値として標準入力で渡す */
-export async function createGitLabIssue(repo: GitHubRepoRef, title: string, body: string, run: GlabRunner = glab): Promise<GitHubPostResult> {
-  const result = await run(glabApiArgs(repo.host, 'POST', `${projectEndpoint(pathOf(repo))}/issues`, true), {
-    input: JSON.stringify({ title, description: body }),
-    timeoutMs: 30_000
-  })
-  if (result.failed) throw glabError(result)
-  let url: string | null = null
-  try { url = webUrlFrom(JSON.parse(result.stdout), repo.host) } catch { /* 作れたが、返事の形が違う */ }
-  return { url: url ?? `${repo.webUrl}/-/issues` }
-}
-
-/** MR にコメントする（GitLab では note）。返事に URL は無いので、MR のページを返す */
-export async function commentOnMergeRequest(repo: GitHubRepoRef, iid: number, body: string, run: GlabRunner = glab): Promise<GitHubPostResult> {
-  if (!Number.isInteger(iid) || iid <= 0) throw new UserFacingError(t('github.errors.badTarget'))
-  const result = await run(glabApiArgs(repo.host, 'POST', `${projectEndpoint(pathOf(repo))}/merge_requests/${iid}/notes`, true), {
-    input: JSON.stringify({ body }),
-    timeoutMs: 30_000
-  })
-  if (result.failed) throw glabError(result)
-  return { url: `${repo.webUrl}/-/merge_requests/${iid}` }
 }
 
 /** テスト用：覚えた状態を消す */

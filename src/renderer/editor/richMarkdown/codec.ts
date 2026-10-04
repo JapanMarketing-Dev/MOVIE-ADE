@@ -1,4 +1,4 @@
-import { getSchema, mergeAttributes, type AnyExtension, type JSONContent } from '@tiptap/core'
+import { Node, getSchema, mergeAttributes, type AnyExtension, type JSONContent } from '@tiptap/core'
 import type { Schema } from '@tiptap/pm/model'
 import { MarkdownManager } from '@tiptap/markdown'
 import StarterKit from '@tiptap/starter-kit'
@@ -6,6 +6,7 @@ import CodeBlock from '@tiptap/extension-code-block'
 import { TableKit } from '@tiptap/extension-table'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import Image from '@tiptap/extension-image'
+import { parseVideoHtml, videoHtml } from '@shared/markdownMedia'
 
 /**
  * プレビューで編集するときの Markdown ⇄ 文書（TipTap / ProseMirror の JSON）の変換。
@@ -28,8 +29,52 @@ export const LabeledCodeBlock = CodeBlock.extend({
   }
 })
 
-/** 編集と変換で共通の拡張。image には表示（nodeView）を足したものを渡せる（スキーマは変えないこと） */
-export function richMarkdownExtensions(image: typeof Image = Image): AnyExtension[] {
+/** 1行だけの <video src="…" controls></video>（前後の空行まで含めない） */
+const VIDEO_LINE_RE = /^ {0,3}(<video\b[^>\n]*>[ \t]*<\/video>)[ \t]*(?=\n|$)/i
+
+/**
+ * 動画の埋め込み（<video src="パス" controls></video> の1行）。生の HTML は文字として出すが、これだけは動画の塊として読み、
+ * 同じ形で書き戻す（src は Markdown のファイルからの相対パス。表示は RichMarkdownEditor が nodeView を足す）。
+ * 属性は src だけを持つ（それ以外の属性を付けた video は、ほかの HTML と同じく文字のまま）
+ */
+export const Video = Node.create({
+  name: 'video',
+  group: 'block',
+  atom: true,
+  selectable: true,
+  draggable: true,
+  addAttributes() {
+    return { src: { default: null } }
+  },
+  parseHTML() {
+    return [{ tag: 'video[src]' }]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['video', mergeAttributes(HTMLAttributes, { controls: 'true' })]
+  },
+  markdownTokenizer: {
+    name: 'video',
+    level: 'block',
+    // 行の頭の <video だけ（行の途中の文字で段落を切らない）
+    start: (src: string) => {
+      const match = /(?:^|\n)( {0,3}<video\b)/i.exec(src)
+      return match ? match.index + match[0].length - match[1]!.length : -1
+    },
+    tokenize: (src: string) => {
+      const match = VIDEO_LINE_RE.exec(src)
+      if (!match) return undefined
+      const video = parseVideoHtml(match[1]!)
+      // 書き戻すと同じ形になるものだけ（違う属性を落とさない）
+      if (!video || videoHtml(video.src).toLowerCase() !== match[1]!.trim().toLowerCase()) return undefined
+      return { type: 'video', raw: match[0], src: video.src }
+    }
+  },
+  parseMarkdown: (token, helpers) => helpers.createNode('video', { src: (token as { src?: string }).src ?? null }),
+  renderMarkdown: (node) => videoHtml(typeof node.attrs?.src === 'string' ? node.attrs.src : '')
+})
+
+/** 編集と変換で共通の拡張。image・video には表示（nodeView）を足したものを渡せる（スキーマは変えないこと） */
+export function richMarkdownExtensions(image: typeof Image = Image, video: typeof Video = Video): AnyExtension[] {
   return [
     StarterKit.configure({
       codeBlock: false,
@@ -42,7 +87,8 @@ export function richMarkdownExtensions(image: typeof Image = Image): AnyExtensio
     TaskList,
     TaskItem.configure({ nested: true }),
     // 段落の中の画像（![a](b)）をそのまま段落に置く
-    image.configure({ inline: true, allowBase64: true })
+    image.configure({ inline: true, allowBase64: true }),
+    video
   ]
 }
 

@@ -8,16 +8,13 @@ import {
   Code2,
   FileText,
   Flag,
-  GitPullRequest,
   GripVertical,
   FolderOpen,
   Globe,
   Images,
-  Merge,
   Mic,
   PenLine,
   Play,
-  Plus,
   RotateCcw,
   Send,
   Sparkles,
@@ -32,14 +29,12 @@ import { Button, EmptyState, IconButton, Modal, Tooltip, useToast } from '../ui'
 import { FindingsEmptyArt } from './reviewArt'
 import { FindingShots } from './ReviewShots'
 import { errorMessage } from '../lib/errors'
-import { GitHubSendDialog } from './GitHubSendDialog'
 import { TargetPurposeIcon } from './TargetPurposeIcon'
 import { useT } from '../lib/i18n'
 import { groupByTarget, targetHeading, type ReviewTarget } from '@shared/reviewTarget'
 import { reportHandled } from '@shared/report'
 import { agentLabel } from '@shared/agentCatalog'
 import type { TuiAgent } from '@shared/types'
-import { formatShortcut } from '../lib/shortcut'
 import { loadSendTargets, rememberedSendTarget, resolveRememberedTarget, sendReviewToAgent } from '../lib/sendReview'
 import { SendTargetButton } from './SendTargetButton'
 import { NeedsHumanPanel, ProgressSummary, ProgressToggle, QueuedPanel, ReviewActions, StatusFilterBar, VerdictPanel } from './FindingProgress'
@@ -164,7 +159,6 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
   /** 再生する動画と、その動画の中の開始時刻（追記した録画は takes ごとに別の動画） */
   const [playing, setPlaying] = useState<{ url: string; t: number; label: number; take: number | null } | null>(null)
   const videoTime = playing?.t ?? null
-  const [githubOpen, setGithubOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const probingDuration = useRef(false)
   const queue = useRef(Promise.resolve())
@@ -303,14 +297,12 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
     if (currentRow) document.querySelector(`[data-testid="review-item-${currentRow.n}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [currentRow?.n])
   const draft = !review.document.organizedByLlm && items.length > 0
-  // 押すとこのレビューに追記して録る（撮り忘れを同じレビューへ足す）。新しいレビューは隣の ＋（⌘⇧R と同じ）
+  // 押すとこのレビューに追記して録る（撮り忘れを同じレビューへ足す）。新しいレビューは ⌘⇧R・上の［録画］
   const recordButton = (className: string) => onRecord && <span className="rv-record-group">
     <Tooltip side="bottom" label={t('review.recordMoreTip')}>
       <Button variant="record" className={className} icon={<Circle size={10} fill="currentColor" strokeWidth={0} />} disabled={recording}
         data-testid={className === 'rv-record' ? 'findings-record' : 'findings-record-empty'} onClick={() => onRecord('append')}>{t('review.recordMore')}</Button>
     </Tooltip>
-    <Tool side="bottom" tip={t('review.recordNewReviewTip', { shortcut: formatShortcut('Mod', 'Shift', 'R') })} label={t('review.recordNewReview')} icon={<Plus size={14} />}
-      disabled={recording} data-testid="findings-record-new" onClick={() => onRecord('new')} />
   </span>
   /** 指摘の時刻から、どの録画のどの時刻を再生するか（追記していなければ最初の動画のその時刻） */
   // 削った版（何もない時間を除いたもの）なら、削った区間ぶん詰めた位置から開く
@@ -359,9 +351,6 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
             await window.ade.invoke('review:copy', review.id)
             toast({ tone: 'success', message: t('review.copied'), detail: t('review.copiedDetail') })
           })} />
-          {/* 送る前に送り先と本文の確認ダイアログを出す。押しただけでは GitHub に書き込まない */}
-          <Tool side="bottom" tip={t('review.sendToGitHubTip')} label={t('review.sendToGitHub')} icon={<GitPullRequest size={15} />} disabled={busy || sendable === 0}
-            onClick={() => setGithubOpen(true)} />
         </div>
         <div className="rv-organize" data-disabled={busy || !review.canOrganize || undefined}>
           <Tooltip side="bottom" label={t('review.organizeTip')}>
@@ -429,8 +418,6 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
       </div>}
 
       {rows.map(({ item, n, group }) => {
-        // 隣との結合は items の並び（時刻順、並べ替えたらその順）で判定する
-        const index = items.indexOf(item)
         const source = sourcesOf(item)
         const checking = item.status === 'needs_check'
         const take = takeAt(review.takes, item.t)
@@ -556,11 +543,8 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
                 {playback && <Tool tip={t('review.watchRecording')} label={t('review.watchRecordingLabel')} icon={<Play size={14} />} disabled={busy} onClick={() => setPlaying(playback)} />}
                 <Tool tip={t('review.replaceImage')} label={t('review.replaceImage')} icon={<Images size={14} />} disabled={busy}
                   onClick={() => void action(async () => setFrames({ itemId: item.id, n, current: item.frameTimes, options: await window.ade.invoke('review:frames', review.id, item.id) }))} />
-                {checking
-                  ? <Tool tip={t('review.confirm')} label={t('review.confirmLabel')} icon={<CheckCircle2 size={14} />} className="rv-tool--confirm" disabled={busy} onClick={() => void edit({ kind: 'status', id: item.id, status: 'decided' })} />
-                  : <Tool tip={t('review.markNeedsCheck')} label={t('review.markNeedsCheck')} icon={<Flag size={14} />} disabled={busy} onClick={() => void edit({ kind: 'status', id: item.id, status: 'needs_check' })} />}
-                {index < items.length - 1 && <Tool tip={t('review.mergeNext')} label={t('review.mergeNextLabel')} icon={<Merge size={14} />} disabled={busy}
-                  onClick={() => void edit({ kind: 'merge', ids: [item.id, items[index + 1]!.id] })} />}
+                {/* 整理が「要確認」にした指摘だけ確定できる（手で要確認にする・次とまとめるボタンは置かない） */}
+                {checking && <Tool tip={t('review.confirm')} label={t('review.confirmLabel')} icon={<CheckCircle2 size={14} />} className="rv-tool--confirm" disabled={busy} onClick={() => void edit({ kind: 'status', id: item.id, status: 'decided' })} />}
                 <Tool tip={t('review.delete')} label={t('review.deleteLabel', { n })} icon={<Trash2 size={14} />} className="rv-tool--danger" disabled={busy}
                   onClick={() => void edit({ kind: 'delete', id: item.id })} />
               </div>
@@ -627,7 +611,6 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
       </div>
     </Modal>}
 
-    {githubOpen && <GitHubSendDialog reviewId={review.id} onClose={() => setGithubOpen(false)} />}
 
     {image && <Modal className="rv-modal" label={t('review.findingScreen')} onClose={() => setImage(null)}>
       <div className="rv-modal__media">

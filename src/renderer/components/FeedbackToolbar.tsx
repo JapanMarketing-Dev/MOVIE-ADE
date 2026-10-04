@@ -1,6 +1,9 @@
-import { useEffect, useState, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
-import { AppWindow, ArrowLeft, ArrowRight, Eraser, Globe, MicOff, Monitor, MousePointer2, PanelRight, PanelsTopLeft, Pause, Play, PenTool, Redo2, Square, TriangleAlert, Undo2 } from 'lucide-react'
-import type { BrowserState, CaptureTarget } from '@shared/types'
+import { useCallback, useEffect, useRef, useState, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
+import { AppWindow, ArrowLeft, ArrowRight, CodeXml, Eraser, Globe, MicOff, Monitor, MousePointer2, PanelRight, Pause, Play, PenTool, Redo2, Square, TriangleAlert, Undo2 } from 'lucide-react'
+import { MicPopover, type FooterCapture } from './StatusBar'
+import { StatusPopover } from './StatusPopover'
+import { micDeviceName } from '../lib/micDevice'
+import type { BrowserState, CaptureTarget, SttAvailability } from '@shared/types'
 import { captureTargetLabel } from '@shared/captureTarget'
 import { browserNavKeys, canBrowserNav, showsBrowserNav } from '@shared/browserNav'
 import { ANNOTATION_COLORS, ANNOTATION_COLOR_IDS, DEFAULT_ANNOTATION_COLOR, annotationKeyAction, nextAnnotationColor, type AnnotationColor, type AnnotationKeyAction } from '@shared/annotation'
@@ -117,7 +120,9 @@ export function FeedbackToolbar({
   target = { kind: 'browser' },
   onPickTarget,
   targetsOpen,
-  onToggleTargets
+  targetsAlert,
+  onToggleTargets,
+  mic
 }: {
   level?: number
   captureMic?: boolean
@@ -151,6 +156,18 @@ export function FeedbackToolbar({
   targetsOpen?: boolean
   /** 右パネルの開閉。録画中も押せる */
   onToggleTargets?: () => void
+  /** 文字起こしに問題があるとき、開閉ボタンに印を付けて出す文（右パネルの文字起こしのタブを見ていない間だけ） */
+  targetsAlert?: string | null
+  /** マイクのメニュー（つながっているマイクの名前・入力レベルのテスト・選択）。フッターのものと同じ */
+  mic?: {
+    settings: FooterCapture
+    onChange: (patch: Partial<FooterCapture>) => void
+    devices: Array<{ id: string; label: string }>
+    available: SttAvailability
+    onOpenSettings: () => void
+    /** 開いている間は内蔵ブラウザのビューを隠す（ビューは DOM の上に重なる） */
+    onPopoverChange?: (open: boolean) => void
+  }
 }) {
   /* 録画中は書き込みの道具が使える。止まっている間は押せない */
   const t = useT()
@@ -158,6 +175,13 @@ export function FeedbackToolbar({
   // 画面・ウインドウを録っているときは、内蔵ブラウザのページ名ではなく録っている対象を出す
   const page = target.kind === 'browser' ? state.title || state.url.replace(/^https?:\/\//, '') : captureTargetLabel(target)
   const isPaused = recording && paused
+  // つながっているマイクの名前（録る前に確かめられるよう、帯に出す）
+  const micRef = useRef<HTMLButtonElement | null>(null)
+  const [micOpen, setMicOpen] = useState(false)
+  const onMicPopover = mic?.onPopoverChange
+  useEffect(() => onMicPopover?.(micOpen), [micOpen, onMicPopover])
+  const closeMic = useCallback(() => setMicOpen(false), [])
+  const micName = !captureMic ? t('feedback.micOff') : (mic ? micDeviceName(mic.settings.micDeviceId, mic.devices) : null) ?? t('statusBar.systemDefault')
   const toolsOff = !recording || paused || busy
 
   /*
@@ -265,6 +289,21 @@ export function FeedbackToolbar({
         onFocus={pointHint}
         onBlur={() => setHintId(null)}
       >
+        {/* エディタへ戻るのは一番左。右端はレビュー対象のパネルの開閉 */}
+        {slot(
+          'editor',
+          <IconButton
+            label={t('feedback.toEditorMode')}
+            size="sm"
+            className="fb-btn"
+            icon={<CodeXml size={18} strokeWidth={1.75} />}
+            onClick={onBackToEditor}
+            data-testid="back-to-editor"
+          />
+        )}
+
+        {divider}
+
         <span className="fb-status">
           {isPaused ? (
             <span className="fb-status__pause" aria-hidden="true">
@@ -280,13 +319,23 @@ export function FeedbackToolbar({
           {isPaused && <span className="fb-status__badge">{t('feedback.paused')}</span>}
         </span>
 
-        {captureMic ? (
+        {mic ? (
+          <button ref={micRef} type="button" className="fb-micbtn" aria-expanded={micOpen} data-testid="feedback-mic"
+            title={t('feedback.micTitle', { name: micName })} onClick={() => setMicOpen((open) => !open)}>
+            {captureMic ? <MicLevel level={level} live={recording && !paused} /> : <span className="fb-mic is-off" role="img" aria-label={t('feedback.micOff')}><MicOff size={15} strokeWidth={1.75} /></span>}
+            <span className="fb-micbtn__name" data-testid="feedback-mic-name">{micName}</span>
+          </button>
+        ) : captureMic ? (
           <MicLevel level={level} live={recording && !paused} />
         ) : (
           <span className="fb-mic is-off" role="img" aria-label={t('feedback.micOff')}>
             <MicOff size={15} strokeWidth={1.75} />
           </span>
         )}
+        {mic && micOpen && <StatusPopover anchor={micRef.current} placement="below" label={t('statusBar.micAndTranscription')} onClose={closeMic}>
+          <MicPopover value={mic.settings} onChange={mic.onChange} recording={recording} micDevices={mic.devices} available={mic.available}
+            level={level} onOpenSettings={() => { closeMic(); mic.onOpenSettings() }} />
+        </StatusPopover>}
 
         {divider}
 
@@ -481,24 +530,14 @@ export function FeedbackToolbar({
         {onToggleTargets && slot(
           'targets',
           <IconButton
-            label={t('feedbackTargets.toggle')}
+            label={targetsAlert ? `${t('feedbackTargets.toggle')} · ${targetsAlert}` : t('feedbackTargets.toggle')}
             size="sm"
-            className="fb-btn"
+            className={targetsAlert ? 'fb-btn fb-btn--alert' : 'fb-btn'}
+            title={targetsAlert ?? undefined}
             selected={targetsOpen}
             icon={<PanelRight size={18} strokeWidth={1.75} />}
             onClick={onToggleTargets}
             data-testid="feedback-targets-toggle"
-          />
-        )}
-        {slot(
-          'editor',
-          <IconButton
-            label={t('feedback.toEditorMode')}
-            size="sm"
-            className="fb-btn"
-            icon={<PanelsTopLeft size={18} strokeWidth={1.75} />}
-            onClick={onBackToEditor}
-            data-testid="back-to-editor"
           />
         )}
       </div>

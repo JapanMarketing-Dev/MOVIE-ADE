@@ -21,7 +21,7 @@ Le revisioni si trovano nella cartella del progetto. Le impostazioni sono in <co
 ## Conservazione
 <p><span class="docs-ui">Conserva registrazioni</span> (7 giorni per impostazione predefinita, 30 giorni oppure <span class="docs-ui">Per sempre</span>): all'avvio, le revisioni completate più vecchie di così perdono <code>recording.webm</code> e <code>work/</code>. <code>feedback.md</code> e le immagini delle segnalazioni vengono conservati. Le revisioni incomplete non vengono mai ripulite. La pulizia avviene all'avvio, per l'ultimo progetto aperto.</p>
 
-<!-- @network cab5d43d47 -->
+<!-- @network e41bf8a43d -->
 ## Cosa lascia la tua macchina
 <table>
   <thead><tr><th>Quando</th><th>Destinazione</th><th>Dati</th></tr></thead>
@@ -32,7 +32,6 @@ Le revisioni si trovano nella cartella del progetto. Le impostazioni sono in <co
     <tr><td><span class="docs-ui">Organizza</span></td><td>la tua CLI di Claude Code / Codex, oppure l'endpoint LLM impostato in <code>organizer</code></td><td>solo testo e registro delle azioni (niente immagini, audio o video)</td></tr>
     <tr><td>Verifica di accettazione (modello di decisione, disattivata per impostazione predefinita)</td><td>il tuo agent, tramite il relay locale, verso Ollama / Cloudflare / AI Gateway / TypeSafe / il tuo URL</td><td>ciò che invia l'agent: testo della segnalazione, "Fatto quando" e screenshot PRIMA/DOPO (solo modelli che leggono immagini)</td></tr>
     <tr><td><span class="docs-ui">Invia all'Agent</span></td><td>l'agent nel tuo terminale</td><td>un'istruzione che rimanda a <code>feedback.md</code></td></tr>
-    <tr><td><span class="docs-ui">Invia a GitHub</span></td><td>GitHub tramite <code>gh</code></td><td>solo il testo del corpo (niente immagini)</td></tr>
     <tr><td>Utilizzo nel footer (solo Claude Code e Codex)</td><td>Anthropic, ChatGPT</td><td>richiesta di utilizzo con il tuo accesso</td></tr>
     <tr><td>Richiesta di stella su GitHub</td><td>GitHub tramite il tuo <code>gh</code></td><td>controlla se hai aggiunto una stella al repository, e la aggiunge solo se fai clic su <span class="docs-ui">Aggiungi stella su GitHub</span></td></tr>
     <tr><td>Aggiornamenti (all’avvio di Ferret, ogni 6 ore e con <span class="docs-ui">Verifica aggiornamenti</span>)</td><td>server di download (Cloudflare R2)</td><td>richieste di <code>latest.json</code> e del file <code>SHA256SUMS</code> di quella versione (su macOS anche <code>UPDATE-SHA256SUMS</code>); quando c’è una nuova versione, il file di aggiornamento per il tuo computer (solo quando fai clic su <span class="docs-ui">Scarica</span> se <span class="docs-ui">Aggiorna automaticamente</span> è disattivato)</td></tr>

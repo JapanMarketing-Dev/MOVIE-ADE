@@ -210,7 +210,18 @@
   <li><strong><span class="docs-ui">Stylo</span></strong> : sélectionnez-le, ou maintenez <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Alt</kbd></span></span> pour ne dessiner que tant que la touche est enfoncée (ignoré pendant la saisie dans un champ).</li>
   <li><strong><span class="docs-ui">Effacer</span></strong> : supprime les traits actuels.</li>
 </ul>
-<p>Entourez l'endroit pendant que vous en parlez : les paroles et les traits se retrouvent dans la même remarque. Le stylo n'est disponible que pendant l'enregistrement. Il n'y a pas d'outil texte : dites-le plutôt. Les touches du stylo, du cadre et des couleurs sont listées dans <a href="keyboard.html#drawing">Raccourcis clavier</a>.</p>
+<p>Entourez l'endroit pendant que vous en parlez : les paroles et les traits se retrouvent dans la même remarque. Le stylo n'est disponible que pendant l'enregistrement, et il n'y a pas d'outil texte pendant l'enregistrement : dites-le plutôt, ou tapez-le ensuite avec <a href="#type">Retour écrit</a>. Les touches du stylo, du cadre et des couleurs sont listées dans <a href="keyboard.html#drawing">Raccourcis clavier</a>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="type">
+        <h2 id="type"><a class="docs-anchor" href="#type" aria-label="Lien vers Écrire au lieu de parler">#</a>Écrire au lieu de parler</h2>
+        <p>Quand parler n'est pas pratique, tapez la remarque. Cela ne fonctionne qu'en mode Éditeur, dans l'onglet <span class="docs-ui">Navigateur</span>, hors enregistrement.</p>
+<ol class="docs-steps">
+  <li>Cliquez sur <span class="docs-ui">Retour écrit</span> dans la barre d'outils du navigateur.</li>
+  <li>Tracez un cadre autour de l'endroit sur la page, ou cliquez sur un élément pour l'encadrer.</li>
+  <li>Tapez ce qu'il faut changer. <kbd>Enter</kbd> l'ajoute, <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd><kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Enter</kbd></span></span> passe à la ligne et <kbd>Esc</kbd> annule le cadre. La touche Entrée qui valide une conversion de la méthode de saisie ne l'ajoute pas.</li>
+</ol>
+<p>Chacune devient une remarque avec une image de la page et du cadre, ainsi que l'URL et l'élément encadré, comme une remarque enregistrée. Elle est ajoutée à la revue ouverte dans <span class="docs-ui">Remarques</span>, ou à une nouvelle revue si aucune n'est ouverte. Le navigateur reste au premier plan, vous pouvez donc en ajouter plusieurs à la suite ; <kbd>Esc</kbd> sans cadre ouvert, ou un nouveau clic sur le bouton, arrête. Cela fonctionne aussi sur la fenêtre d'une application de bureau ou d'un simulateur affichée à la place du navigateur, sans l'URL.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="annotations-clear">
@@ -226,6 +237,12 @@
       <section class="docs-section" aria-labelledby="mic">
         <h2 id="mic"><a class="docs-anchor" href="#mic" aria-label="Lien vers Microphone">#</a>Microphone</h2>
         <p>Le microphone est activé par défaut. Basculez-le depuis le pied de page (<span class="docs-ui">Désactiver le microphone</span> / <span class="docs-ui">Activer le microphone</span>) ou avec <span class="docs-ui">Enregistrer ma voix</span> dans les réglages. Choisissez un périphérique sous <span class="docs-ui">Microphone</span>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="live-transcript">
+        <h2 id="live-transcript"><a class="docs-anchor" href="#live-transcript" aria-label="Lien vers Voir ce qui est transcrit">#</a>Voir ce qui est transcrit</h2>
+        <p>Pendant l'enregistrement, ouvrez l'onglet <span class="docs-ui">Transcription</span> en haut du panneau de droite du mode feedback pour lire vos paroles sous forme de texte, avec le moment où elles ont été dites (et qui les a dites quand l'interlocuteur d'une réunion est aussi enregistré). Le texte apparaît quelques secondes après une pause, ce qui permet de vérifier tôt que ce que vous dites est bien capté. La ligne du haut indique <span class="docs-ui">Transcription en cours</span>, le nombre de segments en attente ou la raison de l'arrêt de la transcription.</p>
+<p>Si la transcription échoue, si aucun modèle ni clé n'est configuré, si environ 2 minutes de voix ne donnent aucun texte, ou si aucun son n'arrive au micro, Ferret vous prévient une fois et marque le bouton du panneau de droite, même quand l'onglet est fermé. L'enregistrement continue et l'audio est conservé. Pour masquer l'onglet, désactivez <span class="docs-ui">Afficher la transcription en direct pendant l'enregistrement (panneau de droite du mode feedback)</span> dans <span class="docs-ui">Réglages → Transcription</span>. Les alertes s'affichent quand même.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other-side">
@@ -278,8 +295,10 @@
         <li><a href="#desktop-mobile">Applications de bureau, jeux et applications mobiles</a></li>
         <li><a href="#record">Démarrer, mettre en pause, arrêter</a></li>
         <li><a href="#pen">Stylo</a></li>
+        <li><a href="#type">Écrire au lieu de parler</a></li>
         <li><a href="#annotations-clear">Quand les traits disparaissent</a></li>
         <li><a href="#mic">Microphone</a></li>
+        <li><a href="#live-transcript">Voir ce qui est transcrit</a></li>
         <li><a href="#other-side">Enregistrer l'autre partie d'une réunion</a></li>
         <li><a href="#other-side-os">Audio du système selon l'OS</a></li>
         <li><a href="#other-side-tips">Conseils pour les réunions</a></li>

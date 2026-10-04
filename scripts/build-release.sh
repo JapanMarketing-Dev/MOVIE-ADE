@@ -67,7 +67,8 @@ echo "== Ferret ${VERSION} を作ります（作業場所: ${WORK}）"
 mkdir -p "${SRC}"
 cd "${REPO}"
 for entry in $(ls -A); do
-  case "$entry" in dist|out|e2e-artifacts|test-results|.git) continue ;; esac
+  # Agent の作業ツリー（.claude）・手元のレビューの記録（.ade-movie / .ferret）・キー（.env）はビルドに要らないので写さない
+  case "$entry" in dist|out|e2e-artifacts|test-results|.git|.claude|.ade-movie|.ferret|.env|.env.*) continue ;; esac
   cp -cR "$entry" "${SRC}/"
 done
 
@@ -87,6 +88,8 @@ pnpm exec electron-builder --config electron-builder.config.cjs --win --dir --ar
 # 展開済みの中身（Ferret.exe・ffmpeg.dll・node-pty の部品が CPU ごとに正しいか）を確かめる。実機の無いところでの検査
 node scripts/check-win-unpacked.mjs dist/release/win-unpacked x64
 node scripts/check-win-unpacked.mjs dist/release/win-arm64-unpacked arm64
+# app.asar に out/・package.json・node_modules 以外（作業フォルダ・記録・キー・ソースマップ）が入っていないか（macOS と Windows の4本）
+node scripts/check-app-asar.mjs dist/release/mac*/Ferret.app/Contents/Resources/app.asar dist/release/win-unpacked/resources/app.asar dist/release/win-arm64-unpacked/resources/app.asar
 rm -rf "${OUT}"
 mkdir -p "${OUT}"
 # Mac の makensis は、electron-builder のテンプレート（node_modules の下）のパスが長いと、アンインストーラを
@@ -145,6 +148,8 @@ corepack enable && corepack prepare "${PNPM_SPEC}" --activate
 pnpm install --frozen-lockfile
 pnpm exec electron-builder --config electron-builder.config.cjs --linux AppImage deb --x64
 cp dist/release/Ferret-*.AppImage dist/release/Ferret-*.deb /out/
+# 中身の検査は Mac 側で行う（check-app-asar.mjs）。配布物には入れない
+cp dist/release/linux-unpacked/resources/app.asar /out/linux-app.asar
 # パッケージに入った node-pty で PTY を1つ開いて閉じる
 cd dist/release/linux-unpacked
 ELECTRON_RUN_AS_NODE=1 ./ferret -e "const p=require('./resources/app.asar/node_modules/node-pty');const t=p.spawn('/bin/bash',['-c','echo PTY_OK'],{});t.onData(d=>process.stdout.write(d));t.onExit(e=>process.exit(e.exitCode))"
@@ -165,7 +170,8 @@ LINUX
     -e DEBIAN_SNAPSHOT="${DEBIAN_SNAPSHOT}" -e PNPM_SPEC="${PNPM_SPEC}" \
     -v "${SRC}:/src:ro" -v "${WORK}/linux:/s:ro" -v "${WORK}/linux/out:/out" \
     "${LINUX_IMAGE}" bash /s/run.sh
-  cp "${WORK}"/linux/out/* "${OUT}/"
+  node scripts/check-app-asar.mjs "${WORK}/linux/out/linux-app.asar"
+  cp "${WORK}"/linux/out/Ferret-* "${OUT}/"
   if [[ -n "${started_podman}" ]]; then podman machine stop >/dev/null; fi
 fi
 

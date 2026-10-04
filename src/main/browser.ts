@@ -1,4 +1,4 @@
-import { isGestureInput } from './captureConsent'
+import { isGestureInput, registerRecorderContents } from './captureConsent'
 import { cleanElectronUserAgent } from './browserUserAgent'
 import { WebContentsView, dialog, session, shell, type BaseWindow, type BrowserWindow, type Session, type WebContents } from 'electron'
 import { join } from 'node:path'
@@ -134,9 +134,21 @@ export class EmbeddedBrowser {
    */
   onViewportChange?: (width: number) => void
 
+  /**
+   * 内蔵ブラウザ・映したウインドウのビューに本物の入力（クリック・キー）が届いた。
+   * 文字で指摘の静止画の許可（captureConsent.ts の ViewInputGrant）に使う
+   */
+  onPageInput?: (contents: WebContents) => void
+
   /** 録画エンジンが録る対象。破棄済みなら null */
   get contents(): WebContents | null {
     return this.webContents
+  }
+
+  /** 内蔵ブラウザの場所に映しているウインドウのビュー（showMirror）。映していなければ null */
+  get mirrorContents(): WebContents | null {
+    const wc = this.mirror?.webContents
+    return wc && !wc.isDestroyed() ? wc : null
   }
 
   /**
@@ -184,6 +196,8 @@ export class EmbeddedBrowser {
     // ページのコピーは、利用者がこのビューをクリック・キー入力した直後だけ（ポップアップの入力では許さない。security-5 [14]）
     wc.on('input-event', (_event, input) => {
       if (isGestureInput(input.type)) pageClipboard.noteGesture(wc, wc.getURL())
+      // 文字で指摘の静止画の許可（そのビューへの本物の入力だけ。captureConsent.ts の ViewInputGrant）
+      if (isGestureInput(input.type)) this.onPageInput?.(wc)
     })
 
     // ログインのポップアップ（window.open に大きさを指定したもの。Google でログインなど）だけは、同じセッションの子ウインドウで開く。
@@ -298,6 +312,69 @@ export class EmbeddedBrowser {
     for (const listener of this.listeners) listener(next)
   }
 
+  /** 録画中の画面・ウインドウを映すビュー（showMirror）。内蔵ブラウザの上に同じ大きさで重ねる */
+  private mirror: WebContentsView | null = null
+  /** 映しているもの（desktopCapturer の ID）。同じものなら作り直さない */
+  private mirrorSource: string | null = null
+
+  /**
+   * 画面全体・別のウインドウを録画している間、内蔵ブラウザの場所にその映像を映す。
+   * 何が録られているかを見ながら、内蔵ブラウザと同じ書き込み（ペン・四角の枠）をその上に引ける
+   * （書き込みの注入スクリプト preload/review を同じく読み込む）。映像を求めてよいのは録画ウインドウと同じ扱い。
+   * 映せなければ null（録画は続ける）
+   */
+  async showMirror(htmlPath: string, sourceId: string, message = ''): Promise<WebContents | null> {
+    const current = this.mirror?.webContents
+    if (this.mirrorSource === sourceId && current && !current.isDestroyed()) return current
+    this.hideMirror()
+    const window = this.window
+    if (!window || window.isDestroyed()) return null
+    const view = new WebContentsView({
+      webPreferences: {
+        preload: join(__dirname, '../preload/review.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        webSecurity: true,
+        backgroundThrottling: false
+      }
+    })
+    this.mirror = view
+    this.mirrorSource = sourceId
+    view.setBackgroundColor('#111214')
+    const wc = view.webContents
+    registerRecorderContents(wc)
+    // 映すだけのページ。ほかへは行かせず、窓も開かせない
+    wc.setWindowOpenHandler(() => ({ action: 'deny' }))
+    wc.on('will-navigate', (event) => event.preventDefault())
+    wc.on('will-redirect', (event) => event.preventDefault())
+    // 映した映像の上で文字で指摘を打ったときの許可（そのビューへの本物の入力だけ）
+    wc.on('input-event', (_event, input) => { if (isGestureInput(input.type)) this.onPageInput?.(wc) })
+    window.contentView.addChildView(view)
+    this.applyBounds()
+    try {
+      await wc.loadFile(htmlPath, { query: { source: sourceId, ...(message ? { message } : {}) } })
+    } catch (err) {
+      reportHandled(err, { area: 'browser', op: 'load capture mirror' })
+      if (this.mirror === view) this.hideMirror()
+      return null
+    }
+    return this.mirror === view && !wc.isDestroyed() ? wc : null
+  }
+
+  hideMirror(): void {
+    const view = this.mirror
+    this.mirror = null
+    this.mirrorSource = null
+    if (!view) return
+    try {
+      if (this.window && !this.window.isDestroyed()) this.window.contentView.removeChildView(view)
+      if (!view.webContents.isDestroyed()) view.webContents.close()
+    } catch (err) {
+      reportHandled(err, { area: 'browser', op: 'destroy capture mirror' })
+    }
+  }
+
   /** renderer が実測した領域。スマホ幅のときは中央に寄せて端末幅に収める */
   setBounds(bounds: ViewBounds | null): void {
     this.bounds = bounds
@@ -308,11 +385,15 @@ export class EmbeddedBrowser {
     const view = this.view
     // 破棄済みのビューに bounds を入れない（終了処理と重なるとネイティブ側で落ちる）
     if (!view || !this.webContents) return
+    const mirror = this.mirror && !this.mirror.webContents.isDestroyed() ? this.mirror : null
     if (!this.bounds || this.bounds.width <= 0 || this.bounds.height <= 0) {
       view.setBounds({ x: 0, y: 0, width: 0, height: 0 })
+      mirror?.setBounds({ x: 0, y: 0, width: 0, height: 0 })
       return
     }
     const { x, y, width, height } = this.bounds
+    // 映像は表示幅（スマホ幅）に関わらず、枠いっぱいに収める
+    mirror?.setBounds({ x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height) })
     if (this.viewport === 'mobile') {
       const w = Math.min(MOBILE_PRESET.width, width)
       view.setBounds({
@@ -439,6 +520,7 @@ export class EmbeddedBrowser {
   }
 
   dispose(): void {
+    this.hideMirror()
     for (const popup of this.popups) if (!popup.isDestroyed()) popup.close()
     this.popups.clear()
     const view = this.view

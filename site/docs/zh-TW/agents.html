@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>傳送給 Agent · Ferret 文件</title>
-  <meta name="description" content="在內建終端機中執行你的程式設計 Agent，按一下就把審查交給它。常見的例子是 Claude Code 和 Codex，但下方清單中的任何 Agent 都能使用，你自己新增的 CLI 也可以。你也可以把指示複製給在其他地方執行的 Agent，或把審查發佈到 GitHub。">
+  <meta name="description" content="在內建終端機中執行你的程式設計 Agent，按一下就把審查交給它。常見的例子是 Claude Code 和 Codex，但下方清單中的任何 Agent 都能使用，你自己新增的 CLI 也可以。你也可以把指示複製給在其他地方執行的 Agent。">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
   <link rel="canonical" href="https://ferretade.dev/docs/zh-TW/agents">
@@ -26,7 +26,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
   <meta property="og:title" content="傳送給 Agent · Ferret 文件">
-  <meta property="og:description" content="在內建終端機中執行你的程式設計 Agent，按一下就把審查交給它。常見的例子是 Claude Code 和 Codex，但下方清單中的任何 Agent 都能使用，你自己新增的 CLI 也可以。你也可以把指示複製給在其他地方執行的 Agent，或把審查發佈到 GitHub。">
+  <meta property="og:description" content="在內建終端機中執行你的程式設計 Agent，按一下就把審查交給它。常見的例子是 Claude Code 和 Codex，但下方清單中的任何 Agent 都能使用，你自己新增的 CLI 也可以。你也可以把指示複製給在其他地方執行的 Agent。">
   <meta property="og:url" content="https://ferretade.dev/docs/zh-TW/agents">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="zh_TW">
@@ -36,7 +36,7 @@
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="傳送給 Agent · Ferret 文件">
-  <meta name="twitter:description" content="在內建終端機中執行你的程式設計 Agent，按一下就把審查交給它。常見的例子是 Claude Code 和 Codex，但下方清單中的任何 Agent 都能使用，你自己新增的 CLI 也可以。你也可以把指示複製給在其他地方執行的 Agent，或把審查發佈到 GitHub。">
+  <meta name="twitter:description" content="在內建終端機中執行你的程式設計 Agent，按一下就把審查交給它。常見的例子是 Claude Code 和 Codex，但下方清單中的任何 Agent 都能使用，你自己新增的 CLI 也可以。你也可以把指示複製給在其他地方執行的 Agent。">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -155,7 +155,7 @@
       <article class="docs-content">
         <p class="docs-eyebrow">使用 Ferret</p>
         <h1>傳送給 Agent</h1>
-        <p class="docs-lead">在內建終端機中執行你的程式設計 Agent，按一下就把審查交給它。常見的例子是 Claude Code 和 Codex，但下方清單中的任何 Agent 都能使用，你自己新增的 CLI 也可以。你也可以把指示複製給在其他地方執行的 Agent，或把審查發佈到 GitHub。</p>
+        <p class="docs-lead">在內建終端機中執行你的程式設計 Agent，按一下就把審查交給它。常見的例子是 Claude Code 和 Codex，但下方清單中的任何 Agent 都能使用，你自己新增的 CLI 也可以。你也可以把指示複製給在其他地方執行的 Agent。</p>
         <div class="docs-os" role="group" aria-label="快速鍵顯示為" data-docs-os hidden>
           <span class="docs-os-label">快速鍵顯示為</span>
           <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">macOS</button>
@@ -169,11 +169,11 @@
   <li>直接編輯標題與要求</li>
   <li>切換 <span class="docs-ui">傳送</span> / <span class="docs-ui">不傳送</span></li>
   <li><span class="docs-ui">觀看錄影</span>（跳到該時間點）與 <span class="docs-ui">替換圖片</span>（改選其他影格）</li>
-  <li><span class="docs-ui">確認</span> / <span class="docs-ui">標記為需要確認</span>、<span class="docs-ui">與下一則合併</span>、<span class="docs-ui">刪除</span></li>
+  <li><span class="docs-ui">確認</span>、<span class="docs-ui">刪除</span></li>
 </ul>
 <p><span class="docs-ui">依進度篩選</span> 可依狀態顯示或隱藏意見（例如 <span class="docs-ui">僅顯示</span> 等待你確認的意見）；<span class="docs-ui">全部顯示</span> 會清除篩選。</p>
 <p>要調整意見的順序，可以拖曳卡片標題左側的把手，或選取把手後按 <kbd>↑</kbd> / <kbd>↓</kbd>。編號、<code>feedback.md</code> 以及傳送給 Agent 的內容都會依新順序排列。篩選時，只會在看得到的意見之間調整順序，隱藏的意見維持原位。一次審查涵蓋多個頁面或檔案時，意見只會在各自的分組內移動。標頭的 <span class="docs-ui">意見排序</span> 可在 <span class="docs-ui">手動（拖曳順序）</span>、<span class="docs-ui">錄製時間</span> 與 <span class="docs-ui">進度</span>（未處理在前，已完成在後）之間切換；依進度排序時，該順序會儲存為手動順序。</p>
-<p>標頭有 <span class="docs-ui">還原</span>、<span class="docs-ui">開啟資料夾</span>、<span class="docs-ui">拷貝給 Agent</span>、<span class="docs-ui">傳送到 GitHub / GitLab</span>、<span class="docs-ui">整理</span> 與 <span class="docs-ui">傳送給 Agent</span>。沒有成為意見的語音會列在 <span class="docs-ui">已排除的語音</span> 中，按 <span class="docs-ui">還原為意見</span> 即可取回。</p>
+<p>標頭有 <span class="docs-ui">還原</span>、<span class="docs-ui">開啟資料夾</span>、<span class="docs-ui">拷貝給 Agent</span>、<span class="docs-ui">整理</span> 與 <span class="docs-ui">傳送給 Agent</span>。沒有成為意見的語音會列在 <span class="docs-ui">已排除的語音</span> 中，按 <span class="docs-ui">還原為意見</span> 即可取回。沒有實際意義的話語也不會成為意見，同樣列在這裡：語音辨識有時會從靜音中憑空產生的句子（例如「Shh.」或「謝謝觀看」）、只有「嗯」之類語氣詞的話語，以及沒有筆跡標註時單獨的「好」或「OK」。</p>
 <figure class="docs-shot" data-shot="findings"><img src="../assets/findings.png?v=4fea3924" width="1600" height="972" alt="意見分頁" loading="lazy" decoding="async"><figcaption>意見分頁</figcaption></figure>
       </section>
 
@@ -339,35 +339,25 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>此設定以 <code>agentPrompt</code> 儲存在 <code>settings.json</code> 中。</p>
       </section>
 
-      <section class="docs-section" aria-labelledby="github">
-        <h2 id="github"><a class="docs-anchor" href="#github" aria-label="連結至「傳送到 GitHub 或 GitLab（Issue / PR 或 MR 留言）」">#</a>傳送到 GitHub 或 GitLab（Issue / PR 或 MR 留言）</h2>
-        <p><span class="docs-ui">傳送到 GitHub</span> 會把審查發佈為新的 Issue，或作為留言發佈到你某個開啟中的 Pull Request。驗證交由 <a href="https://cli.github.com/" target="_blank" rel="noopener noreferrer">GitHub CLI<span class="sr-only"> （在新分頁中開啟）</span></a> 處理。Ferret 絕不讀取或儲存權杖。</p>
-<ol class="docs-steps">
-  <li>安裝 <code>gh</code>：<code>brew install gh</code>（macOS）、<code>winget install --id GitHub.cli</code>（Windows），或參閱 <a href="https://github.com/cli/cli#installation" target="_blank" rel="noopener noreferrer">cli/cli<span class="sr-only"> （在新分頁中開啟）</span></a>。</li>
-  <li><span class="docs-ui">設定 → GitHub / GitLab → 在終端機中登入</span> 會在內建終端機中執行 <code>gh auth login --web -h github.com</code>。</li>
-  <li>按 <span class="docs-ui">傳送到 GitHub</span>，選擇 <span class="docs-ui">建立新的 Issue</span> 或某個 PR，並檢查 <span class="docs-ui">標題</span> 與 <span class="docs-ui">內文</span>（可編輯）。</li>
-  <li>勾選確認核取方塊，然後按 <span class="docs-ui">建立 Issue</span> 或 <span class="docs-ui">發佈留言</span>。</li>
-</ol>
-<p>詳細說明：</p>
-<ul>
-  <li>儲存庫取自 <code>git remote get-url origin</code>。</li>
-  <li>Ferret 會執行 <code>gh issue create --repo … --title … --body-file -</code> 或 <code>gh pr comment &lt;n&gt; --repo … --body-file -</code>。</li>
-  <li>內文是去掉圖片行的 <code>feedback.md</code>（不會上傳圖片），最多 60,000 個字元。</li>
-  <li>可選的 PR 是你自己開啟中的 PR（最多 30 個）。</li>
-</ul>
-<p>如果設定了 <code>GH_TOKEN</code> 或 <code>GITHUB_TOKEN</code>，<code>gh</code> 會優先使用它，設定面板也會發出警告。</p>
-<p><strong>GitLab。</strong>當 <code>origin</code> 是 GitLab 專案（gitlab.com 或自行管理的 GitLab）時，同一個按鈕會透過 <a href="https://gitlab.com/gitlab-org/cli" target="_blank" rel="noopener noreferrer">GitLab CLI<span class="sr-only"> （在新分頁中開啟）</span></a>（<code>glab</code>）傳送到 GitLab：建立新的 Issue，或在你某個開啟中的 Merge Request 上留言。請用 <span class="docs-ui">設定 → GitHub / GitLab</span> 登入，它會在內建終端機中執行 <code>glab auth login</code>（自行管理的 GitLab 會加上 <code>--hostname</code>）。Ferret 絕不讀取或儲存權杖，並會在設定了 <code>GITLAB_TOKEN</code> 時發出警告。</p>
-<p><strong>加星提示。</strong>在你第一次使用 <span class="docs-ui">傳送給 Agent</span> 後，以及完成的審查達到 3、10、30 份時，Ferret 可能會請你在 GitHub 上為它加星。最多詢問 3 次，每次至少間隔 3 天，且錄製中絕不詢問。<span class="docs-ui">在 GitHub 上加星</span> 會透過你自己的 <code>gh</code> 登入加星（若無法使用 <code>gh</code> 則開啟 GitHub），<span class="docs-ui">不再詢問</span> 會停止提示。你也可以從 <span class="docs-ui">說明 → 在 GitHub 上為 Ferret 加星</span> 加星。</p>
+      <section class="docs-section" aria-labelledby="star">
+        <h2 id="star"><a class="docs-anchor" href="#star" aria-label="連結至「在 GitHub 上為 Ferret 加星」">#</a>在 GitHub 上為 Ferret 加星</h2>
+        <p>在你第一次使用 <span class="docs-ui">傳送給 Agent</span> 後，以及完成的審查達到 3、10、30 份時，Ferret 可能會請你在 GitHub 上為它加星。最多詢問 3 次，每次至少間隔 3 天，且錄製中絕不詢問。<span class="docs-ui">在 GitHub 上加星</span> 會透過你自己的 <code>gh</code> 登入加星（若無法使用 <code>gh</code> 則開啟 GitHub），<span class="docs-ui">不再詢問</span> 會停止提示。你也可以從 <span class="docs-ui">說明 → 在 GitHub 上為 Ferret 加星</span> 加星。</p>
       </section>
 
       <section class="docs-section" aria-labelledby="cli-tools">
-        <h2 id="cli-tools"><a class="docs-anchor" href="#cli-tools" aria-label="連結至「安裝並登入 CLI 工具」">#</a>安裝並登入 CLI 工具</h2>
-        <p><span class="docs-ui">設定 → CLI 工具</span> 會列出 Agent 經常需要的命令列工具，顯示哪些已安裝及其版本，並在新的終端機分頁中執行適用於你作業系統的官方安裝或登入指令：</p>
+        <h2 id="cli-tools"><a class="docs-anchor" href="#cli-tools" aria-label="連結至「常用服務的 CLI」">#</a>常用服務的 CLI</h2>
+        <p><span class="docs-ui">設定 → 常用服務的 CLI</span> 列出常用服務的命令列工具，安裝後代理程式就能操作這些服務。安裝是選用的：只裝需要的即可，一個都不裝也能使用 Ferret。每一列會顯示是否已安裝及版本、服務網站的連結，以及在新的終端機分頁中執行適用於你的作業系統的官方安裝或登入指令的按鈕：</p>
 <ul>
-  <li>Git 代管：<code>gh</code>、<code>glab</code></li>
-  <li>AI 與模型：Ollama、Cloudflare <code>wrangler</code></li>
-  <li>部署：Vercel、Netlify、Fly.io、Railway、Heroku</li>
-  <li>雲端與服務：Supabase、Firebase、Stripe、Google Cloud（<code>gcloud</code>）、AWS、Azure、Docker</li>
+  <li>Git 代管：GitHub（<code>gh</code>）、GitLab（<code>glab</code>）</li>
+  <li>代管與部署：Vercel、Netlify、Cloudflare（<code>wrangler</code>）、Firebase、Fly.io、Railway、Heroku</li>
+  <li>雲端：AWS、Google Cloud（<code>gcloud</code>）、Azure（<code>az</code>）</li>
+  <li>資料庫與後端：Supabase、Neon、PlanetScale、Turso</li>
+  <li>錯誤與監控：Sentry（<code>sentry-cli</code>）、Datadog（<code>datadog-ci</code>）</li>
+  <li>金流：Stripe</li>
+  <li>容器：Docker、<code>kubectl</code></li>
+  <li>行動裝置：Xcode Command Line Tools（僅限 macOS）、Android Platform Tools（<code>adb</code>）、Expo EAS、fastlane</li>
+  <li>虛擬機器：UTM（僅限 macOS）、Lima、Multipass</li>
+  <li>AI 與模型：Ollama</li>
 </ul>
 <p>若某個工具沒有適用於你作業系統的官方一行安裝指令，<span class="docs-ui">文件</span> 會改為開啟它的安裝頁面。安裝完成後，清單會自動重新檢查。</p>
       </section>
@@ -390,8 +380,8 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
         <li><a href="#verify">用判定模型做驗收檢查</a></li>
         <li><a href="#api-usage">頁尾的 API 用量</a></li>
         <li><a href="#prompt">自訂指示</a></li>
-        <li><a href="#github">傳送到 GitHub 或 GitLab（Issue / PR 或 MR 留言）</a></li>
-        <li><a href="#cli-tools">安裝並登入 CLI 工具</a></li>
+        <li><a href="#star">在 GitHub 上為 Ferret 加星</a></li>
+        <li><a href="#cli-tools">常用服務的 CLI</a></li>
       </ul>
     </aside>
   </div>

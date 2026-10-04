@@ -18,6 +18,7 @@ import {
   type ShapeChange,
   type ShapeState
 } from '../shared/annotationShapes'
+import { MAX_NOTE_TEXT, NOTE_CHANNELS, noteBoxFromClick, noteEditorPosition, noteKeyAction } from '../shared/textNote'
 
 /**
  * レビュー対象のページへ入れる注入スクリプト（設計4章「ペン」）。
@@ -54,8 +55,14 @@ interface Command {
    * leave  … SPA でページが変わった。描きかけの線を確定し、left を返す
    * commit … 別のドキュメントへ移る直前。描きかけの線を確定するだけ
    */
-  type: 'mode' | 'clear' | 'enable' | 'disable' | 'config' | 'leave' | 'commit' | 'color' | 'undo' | 'redo'
+  type: 'mode' | 'clear' | 'enable' | 'disable' | 'config' | 'leave' | 'commit' | 'color' | 'undo' | 'redo' | 'note' | 'noteResult'
   mode?: PenMode
+  /** note のとき、文字で指摘の入・切（録画とは別のモード。エディタで録画していないときだけ） */
+  enable?: boolean
+  /** note のとき、欄に出す文言（main が利用者の言語で渡す） */
+  labels?: { placeholder?: string; hint?: string; add?: string }
+  /** noteResult のとき、足せたか */
+  ok?: boolean
   /** 書き込みの色（color と config のとき） */
   color?: AnnotationColor
   /** clear のとき、ページが変わったので消す（新しいページへ持ち越さない） */
@@ -326,8 +333,14 @@ function updateCursor(x?: number, y?: number): void {
 
 function applyMode(): void {
   if (!layer) return
-  layer.style.pointerEvents = enabled && mode !== 'off' ? 'auto' : 'none'
+  const drawing = enabled && mode !== 'off'
+  layer.style.pointerEvents = drawing || noteActive ? 'auto' : 'none'
   shownCursor = ''
+  if (!drawing && noteActive) {
+    shownCursor = 'crosshair'
+    layer.style.cursor = 'crosshair'
+    return
+  }
   updateCursor()
 }
 
@@ -366,6 +379,7 @@ let rectEndY = 0
 let strokeStart = 0
 
 function onPointerDown(event: PointerEvent): void {
+  if (noteActive && !enabled) return notePointerDown(event)
   // 重ねた層はページの DOM の中にあるので、ページのスクリプトが合成の pointer イベントを送れる。人の操作だけで描く
   if (!enabled || mode === 'off' || !ctx || !event.isTrusted) return
   event.preventDefault()
@@ -395,6 +409,7 @@ function onPointerDown(event: PointerEvent): void {
 
 function onPointerMove(event: PointerEvent): void {
   if (!event.isTrusted) return
+  if (noteActive && !enabled) return notePointerMove(event)
   const x = event.clientX
   const y = event.clientY
   if (grab) {
@@ -420,6 +435,7 @@ function onPointerMove(event: PointerEvent): void {
 }
 
 function onPointerUp(event: PointerEvent): void {
+  if (noteActive && !enabled) return notePointerUp(event)
   if (!event.isTrusted || (!draft && !grab)) return
   if (layer?.hasPointerCapture(event.pointerId)) layer.releasePointerCapture(event.pointerId)
   finishPointer()
@@ -499,6 +515,255 @@ function redo(): boolean {
   return true
 }
 
+// ───────────────────────── 文字で指摘（エディタ。録画しない） ─────────────────────────
+
+/*
+ * エディタの内蔵ブラウザ・映したウインドウの上で、枠を引いて（クリックだけなら指した要素を囲んで）指示を打つ。
+ * Enter で足す・Shift+Enter で改行・Esc で取り消す。IME の変換中の Enter では送らない（shared/textNote.ts の noteKeyAction）。
+ * 足すときは欄を隠してから送り、main が枠の写った画面を1枚撮る。足せたら枠を消し、続けて次の枠を引ける。
+ * 録画の書き込み（enabled・mode）とは別の状態で持ち、録画が始まったら切る。
+ */
+let noteActive = false
+let noteColor: AnnotationColor = DEFAULT_ANNOTATION_COLOR
+let noteLabels: { placeholder: string; hint: string; add: string } = { placeholder: '', hint: 'Enter ↵', add: '+' }
+/** いま開いている枠（ビューの CSS ピクセル）と、指した要素 */
+let noteRect: [number, number, number, number] | null = null
+let noteEl: ReturnType<typeof describe>
+let noteDrag: { x0: number; y0: number; x1: number; y1: number } | null = null
+/** main の返事を待っている（欄は隠してある） */
+let noteSending = false
+let noteBox: HTMLDivElement | null = null
+let noteEditor: HTMLDivElement | null = null
+let noteInput: HTMLTextAreaElement | null = null
+
+const NOTE_EDITOR_WIDTH = 300
+const NOTE_EDITOR_HEIGHT = 112
+
+function insideNoteEditor(target: EventTarget | null): boolean {
+  return !!noteEditor && target instanceof Node && noteEditor.contains(target)
+}
+
+function showNoteBox(rect: [number, number, number, number]): void {
+  const root = ensureLayer()
+  if (!noteBox) {
+    const box = document.createElement('div')
+    box.style.position = 'absolute'
+    box.style.boxSizing = 'border-box'
+    box.style.borderRadius = '4px'
+    box.style.pointerEvents = 'none'
+    box.style.margin = '0px'
+    box.style.padding = '0px'
+    root.append(box)
+    noteBox = box
+  }
+  noteBox.style.border = `3px solid ${ANNOTATION_COLORS[noteColor]}`
+  // 白いページでも暗いページでも見えるよう、白い縁を外側に敷く
+  noteBox.style.boxShadow = `0 0 0 2px ${PEN_HALO}`
+  noteBox.style.left = `${rect[0]}px`
+  noteBox.style.top = `${rect[1]}px`
+  noteBox.style.width = `${Math.max(1, rect[2])}px`
+  noteBox.style.height = `${Math.max(1, rect[3])}px`
+}
+
+/** 開いている枠と欄を片付ける（取り消し・足し終えた・モードを切った） */
+function closeNote(): void {
+  noteBox?.remove()
+  noteEditor?.remove()
+  noteBox = null
+  noteEditor = null
+  noteInput = null
+  noteRect = null
+  noteEl = undefined
+  noteDrag = null
+  noteSending = false
+}
+
+function openNoteEditor(rect: [number, number, number, number]): void {
+  const root = ensureLayer()
+  noteEditor?.remove()
+  const panel = document.createElement('div')
+  panel.style.position = 'absolute'
+  panel.style.boxSizing = 'border-box'
+  panel.style.width = `${NOTE_EDITOR_WIDTH}px`
+  panel.style.padding = '8px'
+  panel.style.margin = '0px'
+  panel.style.background = '#ffffff'
+  panel.style.color = '#1f2328'
+  panel.style.border = `2px solid ${ANNOTATION_COLORS[noteColor]}`
+  panel.style.borderRadius = '8px'
+  panel.style.boxShadow = '0 6px 24px rgba(0, 0, 0, 0.25)'
+  panel.style.font = '13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif'
+  panel.style.pointerEvents = 'auto'
+  panel.style.cursor = 'auto'
+  const pos = noteEditorPosition(rect, { width: window.innerWidth, height: window.innerHeight }, { width: NOTE_EDITOR_WIDTH, height: NOTE_EDITOR_HEIGHT })
+  panel.style.left = `${pos.left}px`
+  panel.style.top = `${pos.top}px`
+
+  const input = document.createElement('textarea')
+  input.rows = 3
+  input.maxLength = MAX_NOTE_TEXT
+  input.placeholder = noteLabels.placeholder
+  input.spellcheck = false
+  input.style.display = 'block'
+  input.style.boxSizing = 'border-box'
+  input.style.width = '100%'
+  input.style.margin = '0px'
+  input.style.padding = '6px'
+  input.style.border = '1px solid #d0d7de'
+  input.style.borderRadius = '4px'
+  input.style.background = '#ffffff'
+  input.style.color = '#1f2328'
+  input.style.font = 'inherit'
+  input.style.resize = 'vertical'
+  input.style.outline = 'none'
+
+  const footer = document.createElement('div')
+  footer.style.display = 'flex'
+  footer.style.alignItems = 'center'
+  footer.style.justifyContent = 'space-between'
+  footer.style.gap = '8px'
+  footer.style.marginTop = '6px'
+  const hint = document.createElement('span')
+  hint.textContent = noteLabels.hint
+  hint.style.fontSize = '11px'
+  hint.style.color = '#57606a'
+  const add = document.createElement('button')
+  add.type = 'button'
+  add.textContent = noteLabels.add
+  add.style.font = 'inherit'
+  add.style.fontSize = '12px'
+  add.style.padding = '3px 10px'
+  add.style.border = '0px'
+  add.style.borderRadius = '4px'
+  add.style.background = ANNOTATION_COLORS[noteColor]
+  add.style.color = '#ffffff'
+  add.style.cursor = 'pointer'
+  add.addEventListener('click', (event) => {
+    if (!event.isTrusted) return
+    event.preventDefault()
+    submitNote()
+  })
+  footer.append(hint, add)
+  panel.append(input, footer)
+
+  input.addEventListener('keydown', (event) => {
+    // ページのスクリプトが合成のキーで足したり取り消したりできないようにする
+    if (!event.isTrusted) return
+    const action = noteKeyAction(event)
+    if (action === 'submit') {
+      event.preventDefault()
+      submitNote()
+    } else if (action === 'cancel') {
+      event.preventDefault()
+      closeNote()
+    }
+  })
+  // 打っている文字・欄の操作をページのショートカットへ渡さない（バブルの段で止める）
+  for (const type of ['keydown', 'keyup', 'keypress', 'input', 'pointerdown', 'pointerup', 'click', 'wheel'] as const) {
+    panel.addEventListener(type, (event) => event.stopPropagation())
+  }
+
+  root.append(panel)
+  noteEditor = panel
+  noteInput = input
+  window.setTimeout(() => input.focus(), 0)
+}
+
+function notePointerDown(event: PointerEvent): void {
+  if (!event.isTrusted || insideNoteEditor(event.target)) return
+  event.preventDefault()
+  event.stopPropagation()
+  if (noteSending) return
+  // 打ちかけの文があれば失わない（欄へ戻す）。空なら引き直す
+  if (noteInput && noteInput.value.trim()) {
+    noteInput.focus()
+    return
+  }
+  closeNote()
+  noteDrag = { x0: event.clientX, y0: event.clientY, x1: event.clientX, y1: event.clientY }
+  showNoteBox([event.clientX, event.clientY, 0, 0])
+  layer?.setPointerCapture(event.pointerId)
+}
+
+function notePointerMove(event: PointerEvent): void {
+  if (!noteDrag || insideNoteEditor(event.target)) return
+  event.preventDefault()
+  noteDrag.x1 = event.clientX
+  noteDrag.y1 = event.clientY
+  showNoteBox(rectFromDrag(noteDrag.x0, noteDrag.y0, noteDrag.x1, noteDrag.y1, 0) ?? [noteDrag.x0, noteDrag.y0, 0, 0])
+}
+
+function notePointerUp(event: PointerEvent): void {
+  if (!event.isTrusted || !noteDrag) return
+  if (layer?.hasPointerCapture(event.pointerId)) layer.releasePointerCapture(event.pointerId)
+  const { x0, y0, x1, y1 } = noteDrag
+  noteDrag = null
+  const view = { width: window.innerWidth, height: window.innerHeight }
+  const dragged = rectFromDrag(x0, y0, x1, y1, 6)
+  // クリックだけなら、指した要素（ほどよい大きさのとき）を囲む
+  const element = dragged ? null : elementUnder(x1, y1)?.getBoundingClientRect() ?? null
+  const rect: [number, number, number, number] = dragged
+    ? [Math.round(dragged[0]), Math.round(dragged[1]), Math.round(dragged[2]), Math.round(dragged[3])]
+    : noteBoxFromClick(x1, y1, view, element)
+  noteRect = rect
+  noteEl = describe(rect[0] + rect[2] / 2, rect[1] + rect[3] / 2)
+  showNoteBox(rect)
+  openNoteEditor(rect)
+}
+
+/** 欄を隠してから送る（枠だけが写った画面を main が撮る）。返事（noteResult）まで次は送らない */
+function submitNote(): void {
+  if (noteSending || !noteInput || !noteRect) return
+  const text = noteInput.value.trim()
+  if (!text) {
+    noteInput.focus()
+    return
+  }
+  noteSending = true
+  if (noteEditor) noteEditor.style.display = 'none'
+  const rect = noteRect
+  const el = noteEl
+  // 欄を消した描画が画面に反映されてから送る
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    try {
+      ipcRenderer.send(NOTE_CHANNELS.submit, { at: Date.now(), text: text.slice(0, MAX_NOTE_TEXT), bbox: rect, ...(el ? { el } : {}),
+        view: { width: window.innerWidth, height: window.innerHeight } })
+    } catch {
+      noteSending = false
+      if (noteEditor) noteEditor.style.display = ''
+    }
+  }))
+}
+
+function noteResult(ok: boolean): void {
+  if (!noteSending) return
+  if (ok) {
+    // 足せた。枠を消して、続けて次の枠を引けるようにする（モードはそのまま）
+    closeNote()
+    return
+  }
+  // 足せなかった。打った文は残して欄を戻す
+  noteSending = false
+  if (noteEditor) noteEditor.style.display = ''
+  noteInput?.focus()
+}
+
+function setNoteMode(command: Command): void {
+  const next = command.enable === true
+  if (command.color !== undefined) noteColor = normalizeAnnotationColor(command.color)
+  if (command.labels) {
+    noteLabels = {
+      placeholder: typeof command.labels.placeholder === 'string' ? command.labels.placeholder : noteLabels.placeholder,
+      hint: typeof command.labels.hint === 'string' ? command.labels.hint : noteLabels.hint,
+      add: typeof command.labels.add === 'string' ? command.labels.add : noteLabels.add
+    }
+  }
+  if (!next) closeNote()
+  noteActive = next
+  if (next) ensureLayer()
+  applyMode()
+}
+
 // ───────────────────────── 操作ログ ─────────────────────────
 
 let lastScrollSent = 0
@@ -563,6 +828,8 @@ function install(): void {
 ipcRenderer.on(CH.command, (_event, command: Command) => {
   switch (command.type) {
     case 'enable':
+      // 録画が始まった。文字で指摘は切る（録画の書き込みと取り違えない）
+      if (noteActive) setNoteMode({ type: 'note', enable: false })
       enabled = true
       ensureLayer()
       applyMode()
@@ -608,6 +875,12 @@ ipcRenderer.on(CH.command, (_event, command: Command) => {
       if (typeof command.maxHoldMs === 'number') maxHoldMs = command.maxHoldMs
       if (command.color !== undefined) color = normalizeAnnotationColor(command.color)
       applyMode()
+      break
+    case 'note':
+      setNoteMode(command)
+      break
+    case 'noteResult':
+      noteResult(command.ok === true)
       break
     case 'color':
       // 色を変えても、もう描いた書き込みはそのまま。次に描くものから新しい色になる
@@ -713,6 +986,23 @@ window.addEventListener('keydown', (event) => {
   }
   event.preventDefault()
   event.stopPropagation()
+}, true)
+
+// 文字で指摘の最中の Esc。開いている枠があれば取り消し、無ければ文字で指摘をやめる（main が切ってツールバーへ知らせる）
+window.addEventListener('keydown', (event) => {
+  if (!noteActive || enabled || !event.isTrusted || event.isComposing || event.key !== 'Escape') return
+  if (insideNoteEditor(event.target)) return
+  event.preventDefault()
+  event.stopPropagation()
+  if (noteRect || noteDrag) {
+    if (!noteSending) closeNote()
+    return
+  }
+  try {
+    ipcRenderer.send(NOTE_CHANNELS.exit)
+  } catch {
+    /* 受け手が居ない */
+  }
 }, true)
 
 // Option/Altを押している間だけ描く。ページ側の入力欄で打っているときは文字入力を優先する。

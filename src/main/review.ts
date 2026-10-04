@@ -1,4 +1,4 @@
-import { sanitizeCaptureTarget } from '@shared/captureTarget'
+import { captureTargetGap, sanitizeCaptureTarget } from '@shared/captureTarget'
 import { sanitizeLimitFailover } from '@shared/failover'
 import { handoffFilePath } from './failover/handoff'
 import { clipboard, nativeImage, shell } from 'electron'
@@ -25,14 +25,15 @@ import { t, t as translateMessage } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import { DEFAULT_PASS_THRESHOLD } from '@shared/decision'
 import { currentSettings } from './settings'
-import { appendEvents, applyEdits, frameFilePath, isSessionId, loadSession, readEvents, readLabel, readProgress, saveSession, sessionPaths, takePaths, updateProgress, updateProgressWith,
+import { appendEvents, applyEdits, createSession, ensureGitExclude, frameFilePath, isSessionId, loadSession, readEvents, readLabel, readProgress, saveSession, sessionPaths, takePaths, updateProgress, updateProgressWith,
   writeFeedbackMarkdown, type SessionPaths, type SessionRecord } from './sessions'
 import { listTakes } from './sessions/takes'
+import { appendNote, hasRecordedItems, keepTypedItems, newNoteRecord, typedCount, withoutNotes, type NoteInput, type NotePage, type TextNote } from './sessions/notes'
 import { hasTrimFailure, videoDuration as videoDurationOf, withTrim, withTrimFailure } from './sessions/trim'
 import { keptSpans, type TrimCut } from '@shared/trim'
 import { reportHandled } from '@shared/report'
 import { randomBytes } from 'node:crypto'
-import { assertContained, mkdirContained, readFileNoFollow, removeContained, renameContained, writeFileNoFollow } from './sessions/containment'
+import { assertContained, mkdirContained, readFileNoFollow, removeContained, renameContained, writeFileNoFollow, writeNewFileContained } from './sessions/containment'
 import { applyProgress, applyVerdict, pendingIds, queuedIds, recentComments, sentPatch, type ProgressMap, type ProgressPatchValue, type ReviewVerdict } from '@shared/findingProgress'
 import type { ReviewProgressPatch } from '@shared/review'
 
@@ -41,12 +42,7 @@ export async function finishReview(paths: SessionPaths, result: RecordingResult,
   // 録画を始めた時点の登録URL（index.ts が capture.json に控える）。環境のラベルに使う
   // 古い録画には capture.json が無い（想定内）
   const capture = parseSmallJson(await readFileNoFollow(join(paths.dir, 'capture.json'), 'utf8', { maxBytes: 1024 * 1024 }).catch(() => '{}'))
-  const urlPresets = Array.isArray(capture.urlPresets)
-    ? capture.urlPresets.filter((p): p is { id: string; label: string; url: string; purpose?: unknown } =>
-      !!p && typeof p.id === 'string' && typeof p.label === 'string' && typeof p.url === 'string')
-      // 区分（デザイン・設計書）は知っている値だけ残す。app と壊れた値は持たない
-      .map(({ purpose, ...p }) => (purposeOf({ purpose }) !== 'app' ? { ...p, purpose: purposeOf({ purpose }) } : p))
-    : []
+  const urlPresets = urlPresetsOf(capture.urlPresets)
   const material: Material = {
     meta: { id: paths.id, startedAt: result.startedAt, durationMs: result.durationMs,
       targetUrl: result.events.find((e) => e.type === 'nav')?.url, twoSpeakers, ...(urlPresets.length ? { urlPresets } : {}) },
@@ -61,6 +57,16 @@ export async function finishReview(paths: SessionPaths, result: RecordingResult,
     originalDocument: stage.document, document: stage.document, edits: [], captureGaps: [...result.warnings, ...warnings] }
   await persist(paths, record)
   return loadReviewAt(paths)
+}
+
+/** capture.json に控えた登録URL。形の合うものだけ */
+function urlPresetsOf(value: unknown): NonNullable<Material['meta']['urlPresets']> {
+  return Array.isArray(value)
+    ? value.filter((p): p is { id: string; label: string; url: string; purpose?: unknown } =>
+      !!p && typeof p.id === 'string' && typeof p.label === 'string' && typeof p.url === 'string')
+      // 区分（デザイン・設計書）は知っている値だけ残す。app と壊れた値は持たない
+      .map(({ purpose, ...p }) => (purposeOf({ purpose }) !== 'app' ? { ...p, purpose: purposeOf({ purpose }) } : p))
+    : []
 }
 
 export function checkedPaths(projectDir: string | null, id: string): SessionPaths {
@@ -91,7 +97,7 @@ export async function loadReviewAt(paths: SessionPaths): Promise<ReviewData> {
   // 追記した録画があれば、録画ごとの動画と時刻の範囲を渡す（▷ で正しい録画の正しい時刻を開く）
   const takes = listTakes(record)
   const { sentAt } = await readLabel(paths)
-  return { id: paths.id, document: record.document, images, progress, canUndo: record.edits.length > 0 && !!record.originalDocument, canOrganize: record.edits.length === 0 && record.document.items.length > 0 && !record.document.organizedByLlm, ...(existsSync(paths.recording) ? { videoUrl: `ade-media://review/${paths.id}/recording.webm` } : {}), warnings: record.captureGaps ?? [],
+  return { id: paths.id, document: record.document, images, progress, canUndo: record.edits.length > 0 && !!record.originalDocument, canOrganize: record.edits.length === 0 && hasRecordedItems(record.document) && !record.document.organizedByLlm, ...(existsSync(paths.recording) ? { videoUrl: `ade-media://review/${paths.id}/recording.webm` } : {}), warnings: record.captureGaps ?? [],
     // 何もない時間を削った版ができていれば、▷ はそちらを開く（削った区間で再生位置を読み替える）。無ければ元の動画
     ...(takes.length > 1 || takes.some((take) => take.trim) ? { takes: takes.map(({ trim, ...take }) => {
       const files = takePaths(paths, take.n)
@@ -324,11 +330,9 @@ async function editReviewNow(paths: SessionPaths, edit: ReviewEdit): Promise<Rev
     await persist(paths, { ...record, document: applied.document, edits })
     return loadReviewAt(paths)
   }
-  if (edit.kind === 'merge') {
-    const positions = edit.ids.map((id) => record.document.items.findIndex((it) => it.id === id))
-    if (positions.length !== 2 || positions[0]! < 0 || positions[1] !== positions[0]! + 1)
-      throw new UserFacingError(t('review.errors.selectAdjacent'))
-  }
+  // 「要確認にする」「次とまとめる」は画面から無くした。古い session.json の編集の列に残るものは applyEdits が再生するが、新しくは受け付けない
+  const raw = edit as { kind: string; status?: unknown }
+  if (raw.kind === 'merge' || (raw.kind === 'status' && raw.status !== 'decided')) throw new Error(`unsupported review edit: ${raw.kind}`)
   const applied = applyEdits({ document: record.document, edits: [edit],
     events: await readEvents(paths), frames: record.frames })
   if (applied.skipped.length) throw new Error(applied.skipped[0]!.reason)
@@ -456,7 +460,9 @@ export async function organizeReview(paths: SessionPaths, runnerId: OrganizeRunn
       if (state === 'down') throw new UserFacingError(t('review.errors.localServerDown', { name }))
       if (state === 'noModel') throw new UserFacingError(t('review.errors.localModelMissing', { name, model: ep.model }))
     }
-    const material: Material = { meta: record.meta, transcript: record.transcript, events: await readEvents(paths), frames: record.frames }
+    const events = await readEvents(paths)
+    // 文字で指摘した指摘（枠と静止画）は整理の素材から外し、整理の後に足し直す（notes.ts。整理が打った文を発話と混ぜたり、枠だけの指摘を作り直したりしない）
+    const material: Material = withoutNotes({ meta: record.meta, transcript: record.transcript, events, frames: record.frames })
     // API は CLI より待つ（大きなモデルは1分を超えることがある。接続先ごとの timeoutMs があればそれを使う）
     const result = await refineWithLlm(material, buildDraftDocument(material), { runner, cwd: paths.dir, timeoutMs: apiProvider ? 180_000 : 60_000 })
     record.llm = { runner: runner.id, ok: result.organize.ok, elapsedMs: result.organize.elapsedMs,
@@ -466,8 +472,9 @@ export async function organizeReview(paths: SessionPaths, runnerId: OrganizeRunn
       // 理由は session.json の llm.reason に残す。画面には次の一手だけを出す
       throw new UserFacingError(t('review.errors.organizeFailed', { name }))
     }
-    record.originalDocument = result.document
-    record.document = result.document
+    const organized = keepTypedItems(record.document, result.document, events)
+    record.originalDocument = organized
+    record.document = organized
     await persist(paths, record)
     return loadReviewAt(paths)
   })
@@ -522,6 +529,74 @@ export async function restoreDropped(paths: SessionPaths, t: number): Promise<Re
   })
   queues.set(paths.dir, work)
   try { return await work } finally { if (queues.get(paths.dir) === work) queues.delete(paths.dir) }
+}
+
+/** 文字で指摘の1件（index.ts が注入スクリプトの値を確かめ、静止画を撮ってから渡す） */
+export interface TextNoteRequest {
+  /** 書き込みの ID（note- で始まる。静止画のファイル名にも使う） */
+  id: string
+  note: TextNote
+  /** 静止画（PNG）。撮れなければ null（画像の無い指摘になる） */
+  image: { png: Uint8Array; size: { width: number; height: number } } | null
+  /** 内蔵ブラウザのページ。映したウインドウなら無し */
+  page?: NotePage
+  /** 映したウインドウ（デスクトップアプリ・シミュレータ）。新しいレビューの capture.json に控える */
+  captureTarget?: import('@shared/types').CaptureTarget
+  /** 新しいレビューに控える、プロジェクトの登録URL */
+  urlPresets?: unknown
+}
+
+/**
+ * 文字で指摘を足す。開いているレビュー（reviewId。このプロジェクトのもの）があればその末尾へ、無ければ新しいレビューを作る。
+ * 足した後のレビューと、その中の打った指摘の数を返す
+ */
+export async function addTextNote(projectDir: string, reviewId: string | null, request: TextNoteRequest): Promise<{ review: ReviewData; count: number }> {
+  if (reviewId && isSessionId(reviewId)) {
+    const paths = checkedPaths(projectDir, reviewId)
+    const appended = await inReviewQueue(paths, async () => {
+      const record = await loadSession(paths)
+      // 分解の終わっていない・壊れた・消えたレビューには足さない（新しいレビューにする）
+      if (!record) return null
+      const events = await readEvents(paths)
+      // 映したウインドウの指摘は、内蔵ブラウザのページを録ったレビューへは足さない（直前のページの URL が付いてしまう）。新しいレビューにする
+      if (request.captureTarget && request.captureTarget.kind !== 'browser' && events.some((e) => e.type === 'nav')) return null
+      const input = await saveNoteFrame(paths, request)
+      const next = appendNote(record, events, input)
+      await appendEvents(paths, next.events)
+      await persist(paths, next.record)
+      return { review: await loadReviewAt(paths), count: typedCount(next.record.document) }
+    })
+    if (appended) return appended
+  }
+  await ensureGitExclude(projectDir)
+  const paths = await createSession(projectDir)
+  const startedAt = new Date().toISOString()
+  const target = request.captureTarget && request.captureTarget.kind !== 'browser' ? request.captureTarget : undefined
+  const urlPresets = urlPresetsOf(request.urlPresets)
+  await writeFileNoFollow(join(paths.dir, 'capture.json'), JSON.stringify({ startedAt, twoSpeakers: false, notes: true, ...(target ? { captureTarget: target } : {}), urlPresets }))
+  const input = await saveNoteFrame(paths, request)
+  const gap = target ? captureTargetGap(target) : null
+  const created = newNoteRecord({ id: paths.id, startedAt, ...(urlPresets.length ? { urlPresets } : {}) }, input, gap ? [gap] : [])
+  await appendEvents(paths, created.events)
+  await persist(paths, created.record)
+  return { review: await loadReviewAt(paths), count: typedCount(created.record.document) }
+}
+
+/** 文字で指摘の静止画を work/frames に置く（保存期間で work/ が消えていれば作り直す）。書けなければ画像の無い指摘にする */
+async function saveNoteFrame(paths: SessionPaths, request: TextNoteRequest): Promise<NoteInput> {
+  const base: NoteInput = { id: request.id, note: request.note, ...(request.page ? { page: request.page } : {}) }
+  if (!request.image) return base
+  const name = `${request.id}.png`
+  try {
+    await mkdirContained(paths.workDir, { root: paths.dir })
+    await mkdirContained(paths.framesDir, { root: paths.dir })
+    assertContained(paths.dir, paths.framesDir)
+    await writeNewFileContained(join(paths.framesDir, name), request.image.png)
+  } catch (err) {
+    reportHandled(err, { area: 'review', op: 'save text note still' })
+    return base
+  }
+  return { ...base, frame: { path: name, size: request.image.size } }
 }
 
 /** 小さな JSON（capture.json）を読む。壊れていれば空（想定内。古い録画には無い） */

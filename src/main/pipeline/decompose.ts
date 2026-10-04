@@ -30,7 +30,7 @@ interface DraftStage {
 /** ①→②→④。LLM を使わずに下書きの一覧と feedback.md を作れる状態にする */
 export function buildDraftDocument(material: Material, options: DecomposeOptions = {}): DraftStage {
   const draft = buildDraft(material, options.draft)
-  const document = assembleFromDraft(material, draft.items, options.assemble)
+  const document = assembleFromDraft(material, draft.items, options.assemble, draft.meaningless)
   const organizeInput: OrganizeInput = {
     meta: material.meta,
     transcript: material.transcript,

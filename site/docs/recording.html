@@ -210,7 +210,18 @@
   <li><strong><span class="docs-ui">Pen</span></strong>: select it, or hold <span class="docs-kbd"><span class="os-mac"><kbd>⌥</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Alt</kbd></span></span> to draw only while held (ignored while typing in a field).</li>
   <li><strong><span class="docs-ui">Clear</span></strong>: removes the current marks.</li>
 </ul>
-<p>Circle the spot while you talk about it: the words and the marks end up in the same finding. The pen is available only while recording. There is no text tool. Say it instead. Keys for the pen, the box, and colors are listed in <a href="keyboard.html#drawing">Keyboard shortcuts</a>.</p>
+<p>Circle the spot while you talk about it: the words and the marks end up in the same finding. The pen is available only while recording, and there is no text tool while recording: say it instead, or type it afterwards with <a href="#type">Type feedback</a>. Keys for the pen, the box, and colors are listed in <a href="keyboard.html#drawing">Keyboard shortcuts</a>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="type">
+        <h2 id="type"><a class="docs-anchor" href="#type" aria-label="Link to Type feedback instead of talking">#</a>Type feedback instead of talking</h2>
+        <p>When talking isn't convenient, type the finding instead. This works only in Editor mode, on the <span class="docs-ui">Browser</span> tab, while not recording.</p>
+<ol class="docs-steps">
+  <li>Click <span class="docs-ui">Type feedback</span> in the browser toolbar.</li>
+  <li>Drag a box around the spot on the page, or click an element to box it.</li>
+  <li>Type what should change. <kbd>Enter</kbd> adds it, <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd><kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Enter</kbd></span></span> starts a new line, and <kbd>Esc</kbd> cancels the box. Enter while converting text with an input method doesn't add it.</li>
+</ol>
+<p>Each one becomes a finding with an image of the page and the box, plus the URL and the boxed element, like a recorded finding. It is added to the review open in <span class="docs-ui">Findings</span>, or to a new review if none is open. The browser stays in front, so you can add several in a row; <kbd>Esc</kbd> with no box open, or the button again, stops. It also works on a desktop app or simulator window shown in place of the browser, without the URL.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="annotations-clear">
@@ -226,6 +237,12 @@
       <section class="docs-section" aria-labelledby="mic">
         <h2 id="mic"><a class="docs-anchor" href="#mic" aria-label="Link to Microphone">#</a>Microphone</h2>
         <p>The microphone is on by default. Toggle it from the footer (<span class="docs-ui">Turn microphone off</span> / <span class="docs-ui">Turn microphone on</span>) or with <span class="docs-ui">Record my voice</span> in Settings. Choose a device under <span class="docs-ui">Microphone</span>.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="live-transcript">
+        <h2 id="live-transcript"><a class="docs-anchor" href="#live-transcript" aria-label="Link to See what is being transcribed">#</a>See what is being transcribed</h2>
+        <p>While you record, open the <span class="docs-ui">Transcript</span> tab at the top of the right panel in feedback mode to read your words as text, with the time they were said (and who said it when the other side of a meeting is recorded). Text appears a few seconds after you pause, so you can check early that what you say is being captured. The top line shows <span class="docs-ui">Transcribing</span>, how many parts are waiting, or why transcription stopped.</p>
+<p>If transcription fails, no model or key is set, about 2 minutes of voice produce no text, or no sound reaches the microphone, Ferret warns you once and marks the right panel button, even when the tab is closed. Recording continues and the audio is kept. To hide the tab, turn off <span class="docs-ui">Show the live transcript while recording (right panel of feedback mode)</span> in <span class="docs-ui">Settings → Transcription</span>. The warnings still appear.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="other-side">
@@ -278,8 +295,10 @@
         <li><a href="#desktop-mobile">Desktop apps, games, and mobile apps</a></li>
         <li><a href="#record">Start, pause, stop</a></li>
         <li><a href="#pen">Pen</a></li>
+        <li><a href="#type">Type feedback instead of talking</a></li>
         <li><a href="#annotations-clear">When marks disappear</a></li>
         <li><a href="#mic">Microphone</a></li>
+        <li><a href="#live-transcript">See what is being transcribed</a></li>
         <li><a href="#other-side">Record the other side of a meeting</a></li>
         <li><a href="#other-side-os">System audio by OS</a></li>
         <li><a href="#other-side-tips">Tips for meetings</a></li>

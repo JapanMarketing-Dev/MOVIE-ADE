@@ -1,8 +1,7 @@
 import { useState, type DragEvent } from 'react'
-import { FileCode, FileText, FolderTree, Globe, ListChecks, Settings, X } from 'lucide-react'
+import { FileCode, FileText, Globe, ListChecks, Settings, X } from 'lucide-react'
 import { applyOrder, moveItem } from '@shared/layout'
-import { CountBadge, IconButton } from '../ui'
-import { SHORTCUTS } from '../lib/shortcut'
+import { CountBadge } from '../ui'
 import { useT } from '../lib/i18n'
 import { fileTabId, type FileTabId, type OpenFile } from '../editor/useOpenFiles'
 import '../styles/editor.css'
@@ -38,8 +37,6 @@ export function CenterTabs({
   files = [],
   onChange,
   onCloseFile,
-  explorerOpen,
-  onToggleExplorer,
   order = [],
   onReorder,
   settingsOpen = false,
@@ -53,9 +50,6 @@ export function CenterTabs({
   files?: OpenFile[]
   onChange: (tab: CenterTab) => void
   onCloseFile?: (id: string) => void
-  /** 右のファイルツリーの開閉（渡されたときだけ右端にボタンを出す） */
-  explorerOpen?: boolean
-  onToggleExplorer?: () => void
   /** タブの並び（ドラッグで並べ替えた順）。無いものは後ろに付く */
   order?: readonly string[]
   /** ドラッグで並べ替えたとき、新しい並びを返す */
@@ -191,18 +185,6 @@ export function CenterTabs({
           })}
       </div>
 
-      {onToggleExplorer && (
-        <div className="ctabs__end">
-          <IconButton
-            size="sm"
-            label={t(explorerOpen ? 'centerTabs.hideExplorer' : 'centerTabs.showExplorer', { key: SHORTCUTS.toggleExplorer() })}
-            icon={<FolderTree size={14} strokeWidth={1.75} />}
-            selected={explorerOpen}
-            onClick={onToggleExplorer}
-            data-testid="toggle-explorer"
-          />
-        </div>
-      )}
     </div>
   )
 }

@@ -44,11 +44,6 @@ export function forgeForHost(host: string, gitlabHosts: readonly string[] = []):
   return 'github'
 }
 
-/** 画面に出す名前（固有名なので訳さない） */
-export function forgeLabel(forge: Forge): string {
-  return forge === 'gitlab' ? 'GitLab' : 'GitHub'
-}
-
 /**
  * GitLab のプロジェクトのパス（group/subgroup/project）の1区切り。
  * GitLab の決まり（英数字・_・-・.、記号で始まらない）より少し狭くし、-で始まるもの（オプションに読まれる）を通さない
@@ -69,7 +64,7 @@ export function forgeBranchUrl(webUrl: string, forge: Forge, branch: string): st
 
 // ─── CLI のログイン ────────────────────────────
 // インストールのコマンド・公式ページ・既定のログインは CLI の一覧（cli-setup の src/shared/cliTools.ts）が正本。
-// ここはホスト付きのログイン・ログアウトだけを足す（セルフホストの GitLab・GitHub Enterprise のため）。
+// ここはホスト付きのログインだけを足す（セルフホストの GitLab・GitHub Enterprise のため）。
 
 /**
  * ログインのコマンド。ホストは isSafeHost を通ったものだけを入れる（ターミナルのシェルに渡る1行なので、
@@ -82,11 +77,6 @@ export function cliLoginCommand(cli: ForgeCli, host?: string): string {
   return host === GITLAB_COM ? fallback : `glab auth login --hostname ${host}`
 }
 
-export function cliLogoutCommand(cli: ForgeCli, host: string): string | null {
-  if (!isSafeHost(host)) return null
-  return cli === 'gh' ? `gh auth logout -h ${host}` : `glab auth logout --hostname ${host}`
-}
-
 // ─── GitLab の接続状態 ───────────────────────────
 
 /** `glab auth status` の1ホスト分。トークンは入れない */
@@ -94,17 +84,4 @@ export interface GitLabAccount {
   host: string
   /** ログインできていなければ null */
   user: string | null
-}
-
-export interface GitLabStatus {
-  glabInstalled: boolean
-  /** ログイン済みのホスト（user が入っているもの）を先に並べる */
-  accounts: GitLabAccount[]
-  /** GITLAB_TOKEN などの環境変数が入っていて、glab がそれを使う */
-  envToken: 'GITLAB_TOKEN' | 'GITLAB_ACCESS_TOKEN' | 'OAUTH_TOKEN' | null
-  /** glab が無いときに内蔵ターミナルへ送れるコマンド（Linux は null） */
-  installCommand: string | null
-  /** 今のプロジェクトの origin がセルフホストの GitLab なら、そのホスト（ログインのボタンに使う） */
-  projectHost: string | null
-  error: string | null
 }

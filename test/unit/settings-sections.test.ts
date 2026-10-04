@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { SETTINGS_SECTIONS, activeSectionAt, filterSettingsSections } from '../../src/renderer/lib/settingsSections'
 
-const titles: Record<string, string> = { general: '一般', appearance: '外観', language: '言語', layout: 'レイアウト', recording: '録画', transcription: '文字起こし', agents: 'Agents', accounts: 'Accounts', github: 'GitHub', about: 'MOVIE-ADE について' }
+const titles: Record<string, string> = { general: '一般', appearance: '外観', language: '言語', layout: 'レイアウト', recording: '録画', transcription: '文字起こし', agents: 'Agents', accounts: 'Accounts', cli: 'CLI', about: 'MOVIE-ADE について' }
 const titleOf = (id: string) => titles[id] ?? id
 
 describe('設定の検索', () => {
@@ -14,7 +14,7 @@ describe('設定の検索', () => {
     expect(filterSettingsSections('mic', titleOf)).toEqual(['recording'])
     expect(filterSettingsSections('テーマ', titleOf)).toEqual(['appearance'])
     expect(filterSettingsSections('WHISPER', titleOf)).toEqual(['transcription'])
-    expect(filterSettingsSections('ｇｉｔｈｕｂ', titleOf)).toEqual(['github'])
+    expect(filterSettingsSections('ｇｉｔｈｕｂ', titleOf)).toEqual(['cli'])
   })
 
   it('今の言語の節の名前でも引ける', () => {
@@ -35,7 +35,7 @@ describe('左の一覧の並び', () => {
   it('一番上にセットアップのチェックリスト、その下に一般 → Agent → 判定モデル', () => {
     expect(SETTINGS_SECTIONS.slice(0, 4)).toEqual(['setup', 'general', 'agents', 'verify'])
     expect(SETTINGS_SECTIONS).toEqual(['setup', 'general', 'agents', 'verify', 'recording', 'transcription', 'organize', 'accounts',
-      'appearance', 'language', 'layout', 'github', 'cli', 'about'])
+      'appearance', 'language', 'layout', 'cli', 'about'])
   })
 
   it('CLI の節は wrangler・ollama・インストールで引ける', () => {

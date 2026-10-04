@@ -3,6 +3,7 @@ import { Copy, FileJson, FolderOpen } from 'lucide-react'
 import type { SettingsFileInfo } from '@shared/types'
 import { Button, Spinner, useToast } from '../ui'
 import { useT } from '../lib/i18n'
+import { AgentSkillCard } from './AgentSkillCard'
 
 const SettingsJsonEditor = lazy(() => import('./SettingsJsonEditor'))
 
@@ -46,6 +47,7 @@ export function SettingsFileCard() {
       <Button icon={<FileJson size={14} strokeWidth={1.5} />} onClick={() => setOpen((v) => !v)} data-testid="settings-file-open">{t(open ? 'settings.file.close' : 'settings.file.open')}</Button>
       <Button variant="ghost" icon={<FolderOpen size={14} strokeWidth={1.5} />} onClick={() => void window.ade.invoke('settingsFile:reveal')} data-testid="settings-file-reveal">{t('settings.file.reveal')}</Button>
     </div>
+    <AgentSkillCard />
     <details className="st-key">
       <summary><span>{t('settings.file.agentTitle')}</span></summary>
       <div className="st-key__body">

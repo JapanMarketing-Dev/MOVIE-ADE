@@ -20,7 +20,6 @@ export const SETTINGS_SECTIONS = [
   'appearance',
   'language',
   'layout',
-  'github',
   // よく使うサービスの CLI（gh・wrangler・Ollama・クラウド・デプロイ先）のインストールとログイン
   'cli',
   'about'
@@ -37,7 +36,8 @@ const SECTION_KEYWORDS: Record<SettingsSectionId, readonly string[]> = {
   layout: ['layout', 'panel', 'dock', 'footer', 'terminal', 'sidebar', 'files', 'position', 'drag', '配置', 'パネル', 'フッター', 'ターミナル', 'サイドバー', 'レイアウト', 'ドラッグ', '移動'],
   recording: ['microphone', 'mic', 'audio', 'voice', 'system audio', 'device', 'マイク', '音声', '声', '録音', '録画', 'デバイス'],
   transcription: ['transcription', 'speech', 'whisper', 'model', 'openai', 'api key', 'key', 'base url', 'cost', 'limit', 'compatible', 'local',
-    '文字起こし', 'モデル', 'キー', '費用', '上限', '接続', '端末内', '言語'],
+    'live transcript', 'show', 'hide', 'warning',
+    '文字起こし', 'モデル', 'キー', '費用', '上限', '接続', '端末内', '言語', '表示', '非表示', '警告'],
   organize: ['organize', 'findings', 'llm', 'anthropic', 'claude api', 'gemini', 'openrouter', 'api key', 'model', 'split',
     '整理', '指摘', 'キー', 'モデル', '分割'],
   verify: ['decision', 'verify', 'judge', 'done', 'ollama', 'clef', 'typesafe', 'jev', 'vercel', 'gateway', 'system one', 'api key',
@@ -45,8 +45,7 @@ const SECTION_KEYWORDS: Record<SettingsSectionId, readonly string[]> = {
   agents: ['agent', 'claude', 'codex', 'gemini', 'opencode', 'cursor', 'copilot', 'aider', 'grok', 'qwen', 'amp', 'custom', 'install',
     'command', 'args', 'arguments', 'prompt', 'instruction', 'startup', 'エージェント', 'カスタム', 'インストール', 'コマンド', '引数', '指示', 'プロンプト', '起動'],
   accounts: ['account', 'login', 'sign in', 'usage', 'manage', 'limit', 'failover', 'switch', 'アカウント', 'ログイン', '使用量', '管理', '上限', '切り替え'],
-  github: ['github', 'gh', 'gitlab', 'glab', 'merge request', 'pull request', 'pr', 'issue', 'repository', 'リポジトリ', 'プルリクエスト', 'イシュー'],
-  cli: ['cli', 'command line', 'install', 'login', 'sign in', 'wrangler', 'cloudflare', 'ollama', 'gitlab', 'glab', 'gh', 'vercel', 'netlify',
+  cli: ['cli', 'command line', 'install', 'login', 'sign in', 'wrangler', 'cloudflare', 'ollama', 'github', 'gitlab', 'glab', 'gh', 'vercel', 'netlify',
     'supabase', 'firebase', 'fly', 'railway', 'heroku', 'stripe', 'gcloud', 'google cloud', 'aws', 'azure', 'docker',
     'コマンドライン', 'インストール', 'ログイン', 'ツール'],
   about: ['about', 'version', 'update', 'ferret', 'movie-ade', 'バージョン', '更新', 'について']

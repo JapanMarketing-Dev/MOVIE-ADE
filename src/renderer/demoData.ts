@@ -86,8 +86,7 @@ export function demoFindings(): Finding[] {
 export function demoCapture(): CaptureStatus {
   return {
     microphone: t('demo.capture.microphone'),
-    transcription: t('demo.capture.transcription'),
-    organizer: 'Claude Code'
+    transcription: t('demo.capture.transcription')
   }
 }
 

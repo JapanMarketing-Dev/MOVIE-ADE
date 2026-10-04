@@ -429,3 +429,32 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
 }
+
+/* Ferret の設定を変える skill（AgentSkillCard）。設定の settings.json の欄と、初回セットアップの Agent の手順 */
+.agent-skill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.agent-skill__text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.agent-skill__title {
+  font-weight: 600;
+}
+
+.agent-skill__state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-success);
+}

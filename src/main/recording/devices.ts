@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { CaptureDevice } from '@shared/types'
 import { emulatorPortOf, matchSimulator, parseAdbDevices, parseAndroidFocus, parseAvdName, parseMacWindowList, parseSimctlBooted, type MacWindowInfo } from '@shared/desktopApps'
@@ -11,6 +12,7 @@ import { resolveTrustedExecutable } from '../agentExecutable'
  *
  * - macOS のウインドウの一覧（アプリ名・常に手前のウインドウ）: /usr/bin/osascript の JXA で CGWindowListCopyWindowInfo を読む。
  *   ほかのアプリへ Apple Events を送らないので、オートメーションの許可は要らない。画素は読まない（題名・大きさ・アプリ名だけ）
+ *   手前に出すウインドウの一覧のサムネイルだけは /usr/sbin/screencapture で撮る（画面収録の許可があるとき。captureMacWindowImage）
  * - iOS シミュレータ: /usr/bin/xcrun simctl list devices booted -j
  * - Android Emulator: adb devices / adb -s <serial> emu avd name / shell getprop / shell dumpsys window
  *
@@ -20,6 +22,7 @@ import { resolveTrustedExecutable } from '../agentExecutable'
 
 const LIST_TIMEOUT_MS = 3_000
 const DEVICE_TIMEOUT_MS = 2_500
+const THUMBNAIL_TIMEOUT_MS = 3_000
 
 function run(file: string, args: readonly string[], timeout: number): Promise<string> {
   return new Promise((resolve) => {
@@ -42,6 +45,29 @@ const MAC_WINDOW_LIST_JXA = [
 export async function listMacWindows(platform: NodeJS.Platform = process.platform): Promise<MacWindowInfo[]> {
   if (platform !== 'darwin') return []
   return parseMacWindowList(await run('/usr/bin/osascript', ['-l', 'JavaScript', '-e', MAC_WINDOW_LIST_JXA], LIST_TIMEOUT_MS))
+}
+
+/**
+ * macOS のウインドウ1つの画像（JPEG）。手前に出すウインドウは desktopCapturer がサムネイルを作らないので、
+ * /usr/sbin/screencapture -l <CGWindowID> で撮る。音を出さず（-x）、影を付けない（-o）。
+ * 画面収録の許可が要る（呼ぶのは許可があるときだけ）。撮れなければ null
+ */
+export async function captureMacWindowImage(id: number, platform: NodeJS.Platform = process.platform): Promise<Buffer | null> {
+  if (platform !== 'darwin' || !Number.isInteger(id) || id <= 0) return null
+  const dir = await mkdtemp(join(tmpdir(), 'ferret-thumb-'))
+  try {
+    const file = join(dir, 'window.jpg')
+    await run('/usr/sbin/screencapture', screencaptureWindowArgs(id, file), THUMBNAIL_TIMEOUT_MS)
+    const image = await readFile(file).catch(() => null)
+    return image && image.length > 0 ? image : null
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => undefined)
+  }
+}
+
+/** screencapture の引数（シェルを通さないので、ID とパスはそのまま1つずつ渡す） */
+export function screencaptureWindowArgs(id: number, file: string): string[] {
+  return ['-x', '-o', `-l${id}`, '-t', 'jpg', file]
 }
 
 /** iOS シミュレータの端末の情報（ウインドウの題名に合う起動中の端末） */

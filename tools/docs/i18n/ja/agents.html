@@ -2,21 +2,21 @@
 <!-- @title a7a0afdf19 -->
 エージェントに送る
 
-<!-- @lead 14c9151ac0 -->
-内蔵のターミナルでコーディングエージェントを動かし、ワンクリックでレビューを渡します。よく使われるのは Claude Code と Codex ですが、下の一覧にあるエージェントならどれでも使え、自分で足した CLI も使えます。ほかの場所で動くエージェント向けに指示をコピーしたり、レビューを GitHub に投稿したりもできます。
+<!-- @lead 5567d6b158 -->
+内蔵のターミナルでコーディングエージェントを動かし、ワンクリックでレビューを渡します。よく使われるのは Claude Code と Codex ですが、下の一覧にあるエージェントならどれでも使え、自分で足した CLI も使えます。ほかの場所で動くエージェント向けに指示をコピーすることもできます。
 
-<!-- @findings 3f601cd2f3 -->
+<!-- @findings 5cd787aa9a -->
 ## 指摘を確かめる
 <p><span class="docs-ui">指摘</span> タブの各カードでできること:</p>
 <ul>
   <li>題名と依頼をその場で直す</li>
   <li><span class="docs-ui">送信する</span> / <span class="docs-ui">送信しない</span> の切り替え</li>
   <li><span class="docs-ui">録画を見る</span>（その時刻へ移動）と <span class="docs-ui">画像を差し替え</span>（別のフレームを選ぶ）</li>
-  <li><span class="docs-ui">確定する</span> / <span class="docs-ui">要確認にする</span>、<span class="docs-ui">次とまとめる</span>、<span class="docs-ui">削除</span></li>
+  <li><span class="docs-ui">確定する</span>、<span class="docs-ui">削除</span></li>
 </ul>
 <p><span class="docs-ui">進み具合で絞り込む</span> で、状態ごとに指摘を表示したり隠したりできます（たとえば、あなたの確認待ちのもの<span class="docs-ui">だけ表示</span>する）。<span class="docs-ui">すべて表示</span> で絞り込みを解除します。</p>
 <p>指摘を並べ替えるには、カードの題名の左にあるつまみをドラッグするか、つまみを選んで <kbd>↑</kbd> / <kbd>↓</kbd> を押します。番号、<code>feedback.md</code>、エージェントへ送る内容は新しい順番に従います。絞り込んでいる間は見えている指摘の中で順番が変わり、隠れている指摘はその位置のままです。1つのレビューが複数のページやファイルにまたがるときは、指摘は同じまとまりの中で動きます。上部の <span class="docs-ui">指摘の並び順</span> で <span class="docs-ui">手動（ドラッグの順）</span>・<span class="docs-ui">録画の時刻順</span>・<span class="docs-ui">進み具合の順</span>（未対応が先、完了が最後）を切り替えられます。進み具合の順に並べると、その並びが手動の順として保存されます。</p>
-<p>上部には <span class="docs-ui">元に戻す</span>、<span class="docs-ui">保存先を開く</span>、<span class="docs-ui">Agent向けにコピー</span>、<span class="docs-ui">GitHub / GitLab に送る</span>、<span class="docs-ui">整理</span>、<span class="docs-ui">Agentへ送信</span> があります。指摘にならなかった発話は <span class="docs-ui">除外した発話</span> に並び、<span class="docs-ui">発話を指摘に戻す</span> で戻せます。</p>
+<p>上部には <span class="docs-ui">元に戻す</span>、<span class="docs-ui">保存先を開く</span>、<span class="docs-ui">Agent向けにコピー</span>、<span class="docs-ui">整理</span>、<span class="docs-ui">Agentへ送信</span> があります。指摘にならなかった発話は <span class="docs-ui">除外した発話</span> に並び、<span class="docs-ui">発話を指摘に戻す</span> で戻せます。意味の通じない発話も指摘にならず、ここに並びます。無音から音声認識が作ってしまう「Shh.」「ご視聴ありがとうございました」のような文、「えー」のようなつなぎ言葉だけの発話、ペンの書き込みの無い「はい」「OK」だけの発話です。</p>
 {{shot:findings|指摘タブ}}
 
 <!-- @terminal fe13fc4b52 -->
@@ -118,33 +118,23 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <pre><code>Read {{relpath}} and the PNGs next to it. Fix only findings marked to send, one commit per finding, then run the tests.</code></pre>
 <p>この設定は <code>settings.json</code> の <code>agentPrompt</code> に保存されます。</p>
 
-<!-- @github aba5332ec5 -->
-## GitHub や GitLab に送る（Issue / PR・MR へのコメント）
-<p><span class="docs-ui">GitHub に送る</span> は、レビューを新しい Issue として、または自分の開いている Pull Request の1つへのコメントとして投稿します。認証は <a href="https://cli.github.com/">GitHub CLI</a> に任せます。Ferret がトークンを読んだり保存したりすることはありません。</p>
-<ol class="docs-steps">
-  <li><code>gh</code> を入れます: <code>brew install gh</code>（macOS）、<code>winget install --id GitHub.cli</code>（Windows）、またはほかの方法は <a href="https://github.com/cli/cli#installation">cli/cli</a> を見てください。</li>
-  <li><span class="docs-ui">設定 → GitHub / GitLab → ターミナルでログイン</span> が、内蔵のターミナルで <code>gh auth login --web -h github.com</code> を実行します。</li>
-  <li><span class="docs-ui">GitHub に送る</span> を押し、<span class="docs-ui">新しい Issue を作る</span> か PR を選び、<span class="docs-ui">タイトル</span> と <span class="docs-ui">本文</span> を確かめます（直せます）。</li>
-  <li>確認のチェックボックスに印を付け、<span class="docs-ui">Issue を作成</span> か <span class="docs-ui">コメントを投稿</span> を押します。</li>
-</ol>
-<p>詳しくは次のとおりです。</p>
-<ul>
-  <li>リポジトリは <code>git remote get-url origin</code> から決まります。</li>
-  <li>Ferret は <code>gh issue create --repo … --title … --body-file -</code> か <code>gh pr comment &lt;n&gt; --repo … --body-file -</code> を実行します。</li>
-  <li>本文は、画像の行を除いた <code>feedback.md</code> で（画像はアップロードしません）、最大 60,000 文字です。</li>
-  <li>PR の候補は、自分の開いている PR（最大30件）です。</li>
-</ul>
-<p><code>GH_TOKEN</code> か <code>GITHUB_TOKEN</code> が設定されていると、<code>gh</code> はそちらを優先して使い、設定画面に注意が出ます。</p>
-<p><strong>GitLab。</strong> <code>origin</code> が GitLab のプロジェクト（gitlab.com またはセルフマネージドの GitLab）なら、同じボタンで <a href="https://gitlab.com/gitlab-org/cli">GitLab CLI</a>（<code>glab</code>）を通して GitLab に送ります。新しい Issue か、自分の開いている Merge Request の1つへのコメントです。ログインは <span class="docs-ui">設定 → GitHub / GitLab</span> から行い、内蔵のターミナルで <code>glab auth login</code>（セルフマネージドの GitLab では <code>--hostname</code> 付き）を実行します。Ferret がトークンを読んだり保存したりすることはなく、<code>GITLAB_TOKEN</code> が設定されていると注意を出します。</p>
-<p><strong>star のお願い。</strong> 最初に <span class="docs-ui">Agentへ送信</span> した後と、終えたレビューが 3、10、30 件になったときに、Ferret が GitHub で star を付けてほしいと尋ねることがあります。尋ねるのは最大3回で、間は3日以上空け、録画中には尋ねません。<span class="docs-ui">GitHub で star</span> は自分の <code>gh</code> のログインで star を付けます（<code>gh</code> が使えなければ GitHub を開きます）。<span class="docs-ui">今後表示しない</span> を押すと、もう尋ねません。<span class="docs-ui">ヘルプ → GitHub で Ferret に star…</span> からも star を付けられます。</p>
+<!-- @star 68ccf733da -->
+## GitHub で Ferret に star
+<p>最初に <span class="docs-ui">Agentへ送信</span> した後と、終えたレビューが 3、10、30 件になったときに、Ferret が GitHub で star を付けてほしいと尋ねることがあります。尋ねるのは最大3回で、間は3日以上空け、録画中には尋ねません。<span class="docs-ui">GitHub で star</span> は自分の <code>gh</code> のログインで star を付けます（<code>gh</code> が使えなければ GitHub を開きます）。<span class="docs-ui">今後表示しない</span> を押すと、もう尋ねません。<span class="docs-ui">ヘルプ → GitHub で Ferret に star…</span> からも star を付けられます。</p>
 
-<!-- @cli-tools 01bc2517bf -->
-## CLI ツールを入れてログインする
-<p><span class="docs-ui">設定 → CLI</span> には、エージェントがよく使うコマンドラインツールが並び、インストール済みかどうかとバージョンが出ます。OS に合った公式のインストールやログインのコマンドを、新しいターミナルのタブで実行できます。</p>
+<!-- @cli-tools 3d47130f13 -->
+## よく使うサービスの CLI
+<p><span class="docs-ui">設定 → よく使うサービスの CLI</span> には、よく使うサービスのコマンドラインツールが並びます。入れておくとエージェントがそのサービスを扱えます。入れるのは任意なので、必要なものだけ入れてください。どれも入れなくても Ferret は使えます。各行には、インストール済みかどうかとバージョン、サービスのサイトへのリンク、OS に合った公式のインストールやログインのコマンドを新しいターミナルのタブで実行するボタンがあります。</p>
 <ul>
-  <li>Git のホスティング: <code>gh</code>、<code>glab</code></li>
-  <li>AI とモデル: Ollama、Cloudflare <code>wrangler</code></li>
-  <li>デプロイ: Vercel、Netlify、Fly.io、Railway、Heroku</li>
-  <li>クラウドとサービス: Supabase、Firebase、Stripe、Google Cloud（<code>gcloud</code>）、AWS、Azure、Docker</li>
+  <li>Git のホスティング: GitHub（<code>gh</code>）、GitLab（<code>glab</code>）</li>
+  <li>ホスティング・デプロイ: Vercel、Netlify、Cloudflare（<code>wrangler</code>）、Firebase、Fly.io、Railway、Heroku</li>
+  <li>クラウド: AWS、Google Cloud（<code>gcloud</code>）、Azure（<code>az</code>）</li>
+  <li>データベース・バックエンド: Supabase、Neon、PlanetScale、Turso</li>
+  <li>エラー・監視: Sentry（<code>sentry-cli</code>）、Datadog（<code>datadog-ci</code>）</li>
+  <li>決済: Stripe</li>
+  <li>コンテナ: Docker、<code>kubectl</code></li>
+  <li>モバイル: Xcode Command Line Tools（macOS のみ）、Android Platform Tools（<code>adb</code>）、Expo EAS、fastlane</li>
+  <li>仮想マシン: UTM（macOS のみ）、Lima、Multipass</li>
+  <li>AI・モデル: Ollama</li>
 </ul>
 <p>その OS 向けの1行の公式インストーラーが無いツールでは、<span class="docs-ui">ドキュメント</span> がそのインストール方法のページを開きます。インストールが終わると、一覧は自動でもう一度確かめます。</p>

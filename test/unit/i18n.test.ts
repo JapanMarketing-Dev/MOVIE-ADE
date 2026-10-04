@@ -77,7 +77,7 @@ describe('辞書', () => {
   it('製品名とコードの識別子は訳さない', () => {
     for (const [locale, dict] of Object.entries(LOCALES)) {
       const d = dict as Record<string, string>
-      if (d['github.issue.sentFrom']) expect(d['github.issue.sentFrom'], locale).toContain(PRODUCT_NAME)
+      if (d['menu.starOnGitHub']) expect(d['menu.starOnGitHub'], locale).toContain(PRODUCT_NAME)
       if (d['agentPrompt.default']) expect(d['agentPrompt.default'], locale).toContain('"{{path}}"')
     }
   })

@@ -12,7 +12,6 @@ import { useLocale, useT } from '../lib/i18n'
 import { AccountsSection } from './AccountsSection'
 import { AgentIcon } from './AgentIcon'
 import { AgentResourcesSection } from './AgentResourcesSection'
-import { GitHubSection } from './GitHubSection'
 import { CliToolsSection } from './CliToolsSection'
 import { LayoutSettings } from './LayoutSettings'
 import { TranscriptionSection } from './TranscriptionSection'
@@ -42,6 +41,8 @@ export interface CaptureSettings {
   transcription: Transcription
   keepDays: number
   stayFeedbackOnStop: boolean
+  /** 録画中の文字起こしを右パネルのタブに出す（省略時は出す） */
+  showLiveTranscript?: boolean
 }
 
 function PageSection({ id, title, bare, children }: { id: SettingsSectionId; title: string; bare?: boolean; children: ReactNode }) {
@@ -380,6 +381,9 @@ export function SettingsPage({
       <TranscriptionSection headless transcription={v.transcription} onTranscriptionChange={(transcription) => onChange({ transcription })}
         language={v.language} onLanguageChange={(language) => onChange({ language })} recording={recording} available={available}
         onAvailabilityChange={onAvailabilityChange} onPickModel={onPickModel} onModelChanged={onModelChanged} />
+      {/* 表示だけの設定なので録画中でも切り替えられる。止まったときの警告は切っても出す */}
+      <Switch label={t('settings.transcription.showLive')} checked={v.showLiveTranscript !== false} onChange={(showLiveTranscript) => onChange({ showLiveTranscript })} />
+      <p className="st-note">{t('settings.transcription.showLiveNote')}</p>
     </PageSection>,
     organize: <PageSection key="organize" id="organize" title={titleOf('organize')}>
       {/* 指摘の整理（LLM の接続先・キー）。読み込み・保存は自分で行う（src/renderer/components/OrganizeSection.tsx） */}
@@ -395,10 +399,6 @@ export function SettingsPage({
     accounts: <PageSection key="accounts" id="accounts" title={titleOf('accounts')} bare>
       {/* 外側の section・見出し・保存（IPC で即時）はアカウント欄が自分で持つ */}
       <AccountsSection />
-    </PageSection>,
-    github: <PageSection key="github" id="github" title={titleOf('github')} bare>
-      {/* 読み込み・保存も GitHub 欄が自分で行う */}
-      <GitHubSection />
     </PageSection>,
     cli: <PageSection key="cli" id="cli" title={titleOf('cli')}>
       {/* よく使うサービスの CLI。ボタンで公式のコマンドを内蔵ターミナルの新しいタブで走らせる（src/renderer/components/CliToolsSection.tsx） */}
