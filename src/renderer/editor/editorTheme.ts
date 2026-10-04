@@ -9,7 +9,7 @@ import type { monaco as Monaco } from './monacoSetup'
  * 変わると window に 'ade:themechange' が飛ぶ（src/renderer/lib/theme.ts）。
  * tokens.css の面の色を読み、エディタの地をペインの地（--color-bg-panel）と揃える。
  */
-export type AppTheme = ResolvedTheme
+type AppTheme = ResolvedTheme
 
 export function useAppTheme(): AppTheme {
   const [theme, setTheme] = useState<AppTheme>(currentTheme)

@@ -5,6 +5,10 @@ Khắc phục sự cố
 <!-- @lead eabdc6539a -->
 Các sự cố thường gặp và cách khắc phục. Các thông báo được trích dẫn là nội dung ứng dụng hiển thị bằng tiếng Việt.
 
+<!-- @install 2d5deeaa6d -->
+## Cài đặt và lần khởi động đầu tiên
+<p>Linux: trên Ubuntu 23.10 trở lên, AppImage có thể dừng khi khởi động với lỗi sandbox, vì AppArmor hạn chế các user namespace mà sandbox của Electron sử dụng. Hãy cài <code>.deb</code> thay thế.</p>
+
 <!-- @screen-permission 45fa22d7c7 -->
 ## Không ghi được màn hình hoặc cửa sổ (macOS)
 <p>Thông báo: <q>Ghi toàn màn hình hoặc cửa sổ khác cần quyền Ghi màn hình của macOS.</q></p>
@@ -24,6 +28,18 @@ Các sự cố thường gặp và cách khắc phục. Các thông báo đượ
   <li>Windows: <span class="docs-ui">Cài đặt → Quyền riêng tư và bảo mật → Micrô</span>, rồi cho phép ứng dụng desktop.</li>
 </ul>
 <p>Khi không có mic, các vòng tròn vẽ bằng bút vẫn tạo ra góp ý, nhưng không kèm yêu cầu bằng lời nói.</p>
+
+<!-- @system-audio 62d76ef7c4 -->
+## Không ghi được phía bên kia của cuộc họp
+<p>Khi <span class="docs-ui">Ghi cả phía bên kia</span> đang bật mà không ghi được âm thanh của máy tính, Ferret hiện một trong các cảnh báo sau và vẫn tiếp tục ghi microphone, video và nét bút của bạn.</p>
+<ul>
+  <li><q>Ferret chưa được phép ghi âm thanh hệ thống.</q> (macOS): bật Ferret trong <span class="docs-ui">System Settings → Privacy &amp; Security → Screen &amp; System Audio Recording</span>, thoát và mở lại Ferret, rồi bắt đầu một lần ghi mới.</li>
+  <li><q>Cần macOS 14.2 trở lên để ghi giọng phía bên kia.</q>: cập nhật macOS. Trước khi cập nhật, chỉ microphone của bạn được ghi.</li>
+  <li><q>Windows không cho phép truy cập âm thanh hệ thống.</q> hoặc <q>không tìm thấy thiết bị phát âm thanh.</q>: bật loa hoặc tai nghe trong <span class="docs-ui">Settings → System → Sound</span> (Windows) hoặc cắm chúng vào, rồi bắt đầu một lần ghi mới.</li>
+  <li><q>không có âm thanh hệ thống.</q> (Linux): cài PulseAudio, hoặc <code>pipewire-pulse</code> nếu bạn dùng PipeWire.</li>
+  <li><q>Đã ngừng ghi giọng phía bên kia: thiết bị phát âm thanh đã đổi hoặc bị ngắt.</q>: phần còn lại của bản ghi tiếp tục mà không có phía bên kia. Dùng <span class="docs-ui">Ghi thêm</span> để ghi phần còn lại.</li>
+</ul>
+<p>Nếu lời của phía bên kia cũng xuất hiện như lời của bạn, microphone của bạn đang thu âm thanh từ loa. Hãy dùng tai nghe.</p>
 
 <!-- @whisper ec2a54a0ef -->
 ## Không có model trên máy / không tìm thấy whisper-cli

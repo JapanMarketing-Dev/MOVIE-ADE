@@ -14,6 +14,7 @@ import {
   parseSha256Sums,
   validateIndex,
   validateManifest,
+  withNotes,
   workPath
 } from '../../scripts/release-r2-lib.mjs'
 import { runTool } from '../../scripts/release-tools.mjs'
@@ -197,7 +198,7 @@ describe('GitHub Release（SHA256SUMS だけ）の gh の引数', () => {
       '--repo', 'JapanMarketing-Dev/ferret', '--draft', '--title', 'Ferret 0.3.0', '--notes', notes, '--target', 'abc123', '--prerelease'
     ])
     expect(notes).toMatch(/releases\/0\.3\.0\/manifest\.json/)
-    expect(notes).toMatch(/not code-signed/)
+    expect(notes).not.toMatch(/not code-signed|not signed|unsigned|yet\b/i)
     expect(notes).toMatch(/not from GitHub/)
     expect(ghReleasePublishArgs({ version: '0.3.0', repo: 'JapanMarketing-Dev/ferret' })).toEqual(['release', 'edit', 'v0.3.0', '--repo', 'JapanMarketing-Dev/ferret', '--draft=false'])
   })
@@ -209,5 +210,22 @@ describe('GitHub Release（SHA256SUMS だけ）の gh の引数', () => {
     expect(() => ghReleaseCreateArgs({ ...base, repo: 'evil' })).toThrow()
     expect(() => ghReleaseCreateArgs({ ...base, target: '--draft=false' })).toThrow()
     expect(() => ghReleasePublishArgs({ version: '../x', repo: 'JapanMarketing-Dev/ferret' })).toThrow()
+  })
+})
+
+describe('公開済みの版のリリースノートだけを差し替える（release-r2.mjs notes）', () => {
+  it('notes だけが変わり、ファイル・sha256・日付・版はそのまま。空のノートや形の崩れた manifest は通さない', () => {
+    const m = validateManifest(good(), '0.3.0')
+    const next = withNotes(m, 'Ferret 0.3.0\n\n- Fixes')
+    expect(next).toEqual({ ...m, notes: 'Ferret 0.3.0\n\n- Fixes' })
+    expect(m.notes).toBe('Ferret 0.3.0')
+    expect(() => withNotes(m, '  ')).toThrow(/空/)
+    expect(() => withNotes({ ...m, files: 'x' } as unknown as typeof m, 'n')).toThrow()
+  })
+
+  it('0.4.0 のリリースノートに、署名や対応の不安をあおる文が無い', async () => {
+    const { readFileSync } = await import('node:fs')
+    const text = readFileSync(path.join(import.meta.dirname, '../../docs/release-notes/0.4.0.md'), 'utf8')
+    expect(text).not.toMatch(/code-signed|not signed|unsigned|SmartScreen|\bpreviews\b|\bbeta\b|not yet/i)
   })
 })

@@ -5,7 +5,7 @@ Editor e anteprima
 <!-- @lead 97cbc36c8d -->
 Apri e modifica i file del progetto, e visualizza l'anteprima di Markdown e Mermaid. Un'anteprima aperta nel browser integrato si può registrare e rivedere come qualsiasi pagina web.
 
-<!-- @files f1e2c27cca -->
+<!-- @files d29f6a2107 -->
 ## Aprire e modificare i file
 <ul>
   <li><span class="docs-ui">File</span> (l'albero dei file): {{keys:Mod+Shift+E}}, con <span class="docs-ui">Filtra per nome file</span>, <span class="docs-ui">Aggiorna</span> e <span class="docs-ui">Comprimi tutto</span>.</li>
@@ -14,7 +14,18 @@ Apri e modifica i file del progetto, e visualizza l'anteprima di Markdown e Merm
   <li>Se il file cambia sul disco mentre hai modifiche non salvate, scegli <span class="docs-ui">Ricarica dal disco</span> oppure <span class="docs-ui">Mantieni le mie modifiche</span>.</li>
 </ul>
 <p>L'editor è Monaco. I file che non sono di testo si aprono invece in un visualizzatore: immagini (con zoom; gli SVG si possono anche mostrare come codice), video e audio con una barra di avanzamento, PDF e, per qualsiasi altro file binario, la dimensione e una vista esadecimale dei primi byte. I visualizzatori sono in sola lettura, e i file fuori dalla cartella del progetto, o raggiunti tramite un collegamento simbolico che ne esce, non vengono mostrati.</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">In arrivo</p><p>Creare, rinominare ed eliminare file dall'albero dei file.</p></div>
+
+<!-- @file-tree 4bec72e9f4 -->
+## Creare, rinominare ed eliminare file
+<p>Lavora sui file direttamente in <span class="docs-ui">File</span>, come faresti in VS Code. I nomi si digitano direttamente nell'albero.</p>
+<ul>
+  <li><span class="docs-ui">Nuovo file</span> / <span class="docs-ui">Nuova cartella</span>: i pulsanti sopra l'albero, oppure fai clic destro su una cartella (o sullo spazio vuoto sotto l'albero). Il nuovo elemento va nella cartella selezionata, accanto al file selezionato, oppure al primo livello del progetto. Un nuovo file si apre nell'editor.</li>
+  <li><span class="docs-ui">Rinomina</span>: {{keys:F2 / Enter|F2}}, oppure clic destro. Le schede aperte seguono il nuovo nome e mantengono le modifiche non salvate.</li>
+  <li><span class="docs-ui">Elimina</span>: {{keys:Mod+Backspace / Delete|Delete}}, oppure clic destro. Ferret chiede prima conferma, poi sposta l'elemento nel Cestino, così puoi ripristinarlo. Le schede dei file eliminati si chiudono; se qualcuna aveva modifiche non salvate, la conferma lo indica.</li>
+  <li>Seleziona più elementi con {{keys:Mod}}-clic o {{keys:Shift}}-clic per eliminarli insieme.</li>
+  <li>{{keys:Esc}} annulla un nome che stai digitando.</li>
+</ul>
+<p>Ferret non sovrascrive un file o una cartella esistente con lo stesso nome, e rifiuta tutto ciò che uscirebbe dalla cartella del progetto (<code>..</code>, percorsi assoluti, collegamenti simbolici che puntano all'esterno), tutto ciò che si trova dentro <code>.git</code> e i nomi che qualche sistema operativo non può usare: <code>/ \ &lt; &gt; : " | ? *</code>, caratteri di controllo, uno spazio o un punto finale e i nomi riservati di Windows come <code>CON</code> o <code>NUL</code>.</p>
 
 <!-- @preview b8c0baaad4 -->
 ## Anteprima di Markdown e Mermaid
@@ -24,7 +35,7 @@ Apri e modifica i file del progetto, e visualizza l'anteprima di Markdown e Merm
   <li><span class="docs-ui">Apri anteprima</span>: nel browser integrato (<code>ade-preview://</code>), così puoi registrarla e rivederla</li>
 </ul>
 
-<!-- @review-docs 3956ed6f10 -->
+<!-- @review-docs 4b5c6316ba -->
 ## Rivedere la documentazione registrando
 <ol class="docs-steps">
   <li>Apri un file Markdown e fai clic su <span class="docs-ui">Apri anteprima</span>.</li>
@@ -32,4 +43,4 @@ Apri e modifica i file del progetto, e visualizza l'anteprima di Markdown e Merm
   <li>Ferma. Le segnalazioni fanno riferimento al percorso del file relativo al progetto invece che a un URL.</li>
   <li><span class="docs-ui">Invia all'Agent</span> per far correggere il documento.</li>
 </ol>
-<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="Anteprima Markdown nel browser integrato (screenshot in arrivo)"><span>Screenshot in arrivo</span></div><figcaption>Anteprima Markdown nel browser integrato</figcaption></figure>
+{{shot:preview|Anteprima Markdown nel browser integrato}}

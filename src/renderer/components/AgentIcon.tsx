@@ -41,7 +41,7 @@ export function AgentIcon({ agent, label, size = 14 }: { agent: TuiAgent | null 
 }
 
 /** 頭文字の印に出す1文字。名前 → id（custom: を除く）の順に使い、どちらも無ければ ? */
-export function agentInitial(id: string, label?: string | null): string {
+function agentInitial(id: string, label?: string | null): string {
   const name = (typeof label === 'string' ? label.trim() : '') || (id.startsWith('custom:') ? id.slice('custom:'.length) : id)
   return name.charAt(0).toUpperCase() || '?'
 }

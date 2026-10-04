@@ -63,7 +63,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
 </ol>
 <p>Model cố định là <code>gpt-transcribe</code>. Chỉ khi phát triển (<code>pnpm dev</code>), <code>OPENAI_API_KEY</code> trong tệp <code>.env</code> (đã bị git bỏ qua) cũng được đọc. Bản build đóng gói không bao giờ đọc <code>.env</code>.</p>
 
-<!-- @compatible 8c200e00b1 -->
+<!-- @compatible 2ccbf4537c -->
 ## Endpoint tương thích OpenAI
 <p>Ferret gửi <code>POST &lt;base&gt;/v1/audio/transcriptions</code> (multipart: <code>file</code>, <code>model</code>, <code>response_format=json</code>, <code>language</code>, <code>prompt</code>), nên được thiết kế cho các server có triển khai route chuyển văn bản của OpenAI.</p>
 <ol class="docs-steps">
@@ -80,7 +80,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
     <tr><td><a href="https://console.groq.com/docs/speech-to-text">Groq</a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
   </tbody>
 </table>
-<div class="docs-callout docs-callout-warn"><p>Ferret được thiết kế cho các server tương thích OpenAI như trên, nhưng chúng chưa được kiểm thử với Ferret. URL và tên model là giá trị mặc định do chính các server đó công bố trong tài liệu.</p></div>
+<div class="docs-callout docs-callout-note"><p>Ferret làm việc với các server này qua API chuyển văn bản chuẩn của OpenAI (<code>/v1/audio/transcriptions</code>), nên bất kỳ server nào cung cấp API đó đều dùng được. URL và tên model ở trên là giá trị mặc định do từng server công bố trong tài liệu.</p></div>
 <ul>
   <li><code>/v1</code> ở cuối hoặc <code>/v1/audio/transcriptions</code> được dán vào sẽ bị cắt bỏ khi lưu, nên dạng nào cũng dùng được.</li>
   <li>URL chứa tên người dùng hoặc mật khẩu bị từ chối, để key không bao giờ lọt vào <code>settings.json</code>.</li>

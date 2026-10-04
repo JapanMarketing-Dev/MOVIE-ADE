@@ -21,7 +21,7 @@ Las revisiones están en la carpeta de tu proyecto. Los ajustes están en <code>
 ## Conservación
 <p><span class="docs-ui">Conservar grabaciones</span> (7 días de forma predeterminada, 30 días o <span class="docs-ui">Siempre</span>): al iniciar, las revisiones completadas más antiguas que eso pierden <code>recording.webm</code> y <code>work/</code>. Se conservan <code>feedback.md</code> y las imágenes de los hallazgos. Las revisiones incompletas nunca se limpian. La limpieza se ejecuta al iniciar, para el último proyecto abierto.</p>
 
-<!-- @network 8886bf9546 -->
+<!-- @network 1eadb8b937 -->
 ## Qué sale de tu equipo
 <table>
   <thead><tr><th>Cuándo</th><th>Destino</th><th>Datos</th></tr></thead>
@@ -35,8 +35,8 @@ Las revisiones están en la carpeta de tu proyecto. Los ajustes están en <code>
     <tr><td><span class="docs-ui">Enviar a GitHub</span></td><td>GitHub mediante <code>gh</code></td><td>solo el texto del cuerpo (sin imágenes)</td></tr>
     <tr><td>Uso en el pie de la ventana (solo Claude Code y Codex)</td><td>Anthropic, ChatGPT</td><td>solicitud de uso con tu propio inicio de sesión</td></tr>
     <tr><td>Petición de estrella en GitHub</td><td>GitHub mediante tu <code>gh</code></td><td>comprueba si diste estrella al repositorio, y solo la da si haces clic en <span class="docs-ui">Dar estrella en GitHub</span></td></tr>
-    <tr><td><span class="docs-ui">Buscar actualizaciones</span> (manual)</td><td>servidor de descarga (Cloudflare R2)</td><td>solicitud de <code>latest.json</code></td></tr>
-    <tr><td>Enviar feedback desde la app (solo cuando lo envías; próximamente)</td><td>el relay de feedback del desarrollador (un Cloudflare Worker), que abre un issue público en <code>JapanMarketing-Dev/ferret</code></td><td>tu texto, si es un error o una idea, la versión de la app y del sistema operativo y la CPU, y hasta 3 capturas que adjuntes. Se ocultan las claves, los tokens, las direcciones de correo y las rutas de la carpeta personal. El relay no guarda tu dirección IP (consulta <a href="#feedback">Feedback desde la app</a>)</td></tr>
+    <tr><td><span class="docs-ui">Buscar actualizaciones</span> (manual)</td><td>servidor de descarga (Cloudflare R2)</td><td>solicitudes de <code>latest.json</code> y del <code>SHA256SUMS</code> de esa versión; el instalador cuando haces clic en <span class="docs-ui">Descargar</span></td></tr>
+    <tr><td>Enviar feedback desde la app (solo cuando lo envías)</td><td>el relay de feedback del desarrollador (un Cloudflare Worker), que abre un issue público en <code>JapanMarketing-Dev/ferret</code></td><td>tu texto, si es un error o una idea, la versión de la app y del sistema operativo y la CPU, y hasta 3 capturas que adjuntes. Se ocultan las claves, los tokens, las direcciones de correo y las rutas de la carpeta personal. El relay no guarda tu dirección IP (consulta <a href="#feedback">Feedback desde la app</a>)</td></tr>
     <tr><td>Un fallo o un error (con <span class="docs-ui">Enviar informes de fallos</span> activado)</td><td>Sentry</td><td>stack trace y versiones del sistema operativo, la CPU y la app (consulta <a href="#crash-reports">Informes de fallos</a>)</td></tr>
   </tbody>
 </table>
@@ -47,10 +47,9 @@ Las revisiones están en la carpeta de tu proyecto. Los ajustes están en <code>
   <li>Este sitio web (no la app) cuenta las visitas con Cloudflare Web Analytics: sin cookies, sin seguimiento entre sitios y sin datos personales.</li>
 </ul>
 
-<!-- @feedback ba5f3fb0a3 -->
+<!-- @feedback 34fc2ebccc -->
 ## Feedback desde la app
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Próximamente</p><p>El formulario de feedback de la app y su relay aún no se han publicado. Esta sección describe cómo funcionarán.</p></div>
-<p>Podrás enviar un informe de error o una idea desde Ferret sin cuenta de GitHub. Solo se envía cuando tú lo envías, y se convierte en un issue <strong>público</strong> en <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a>, con la etiqueta <code>from-app</code>. No incluyas nada que no publicarías en abierto.</p>
+<p>Puedes enviar un informe de error o una idea desde Ferret sin cuenta de GitHub (<span class="docs-ui">Enviar comentarios</span>, en la parte inferior de la barra lateral). Solo se envía cuando tú lo envías, y se convierte en un issue <strong>público</strong> en <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a>, con la etiqueta <code>from-app</code>. No incluyas nada que no publicarías en abierto.</p>
 <ul>
   <li>La app lo envía desde tu ordenador a un pequeño relay (un Cloudflare Worker gestionado por el desarrollador), que abre el issue con su propio token de GitHub. Este relay es el único servidor del desarrollador que recibe algo de lo que escribes.</li>
   <li>Se envía: tu título y tu texto, si es un error o una idea, la versión de la app y hasta 3 capturas PNG o JPEG que adjuntes. El nombre y la versión del sistema operativo, la arquitectura de la CPU y el ID de instalación aleatorio solo se envían si los dejas incluidos. No se envía: tu nombre, tu correo, tu cuenta de GitHub, los archivos del proyecto, las grabaciones ni los hallazgos.</li>

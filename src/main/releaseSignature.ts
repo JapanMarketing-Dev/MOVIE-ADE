@@ -105,18 +105,69 @@ export function parseSignedSums(text: string): Map<string, string> | null {
   return sums.size > 0 ? sums : null
 }
 
+/** インストーラーの大きさの上限（R2 に一度に上げられる 300 MiB に余裕を足したもの） */
+export const MAX_INSTALLER_BYTES = 400 * 1024 * 1024
+
+/** 製品名（配布物の名前の先頭）。scripts/release-r2-lib.mjs の PRODUCTS の今の名前 */
+export const RELEASE_PRODUCT = 'Ferret'
+
+const ARCH_OF: Record<string, 'arm64' | 'x64'> = { arm64: 'arm64', aarch64: 'arm64', x64: 'x64', x86_64: 'x64', amd64: 'x64' }
+const KIND_OF = { dmg: 'dmg', exe: 'exe', AppImage: 'AppImage', deb: 'deb' } as const
+
+/** 署名で確かめた1ファイル。os / arch / kind / path は署名した名前と版から作る（manifest の値は使わない） */
+export interface SignedReleaseFile {
+  name: string
+  sha256: string
+  size: number
+  os: 'mac' | 'win' | 'linux'
+  arch: 'arm64' | 'x64'
+  kind: 'dmg' | 'exe' | 'AppImage' | 'deb'
+  path: string
+}
+
 /**
- * latest.json のファイルが、署名の合う SHA256SUMS に同じ sha256 で載っているか。
- * 署名が合わない・載っていない・違う値なら false（その版は案内しない）
+ * 配布物の名前（Ferret-<版>-<os>-<arch>.<ext>）を、決まった版として読む。別の版・別の製品・別の形は null。
+ * 署名した SHA256SUMS の名前に版・OS・CPU・種類が入っているので、名前を読めば署名された身元が分かる
  */
-export function releaseFilesAreSigned(
-  files: ReadonlyArray<{ name: string; sha256: string }>,
+export function parseSignedArtifactName(name: string, version: string): Pick<SignedReleaseFile, 'os' | 'arch' | 'kind'> | null {
+  const escaped = version.replace(/[.+]/g, (c) => `\\${c}`)
+  const m = new RegExp(`^${RELEASE_PRODUCT}-${escaped}-(mac|win|linux)-([A-Za-z0-9_]+)\\.(dmg|exe|AppImage|deb)$`).exec(name)
+  const arch = m ? ARCH_OF[m[2]!] : undefined
+  if (!m || !arch) return null
+  return { os: m[1] as SignedReleaseFile['os'], arch, kind: KIND_OF[m[3] as keyof typeof KIND_OF] }
+}
+
+/**
+ * latest.json のファイルを、署名の合う SHA256SUMS と突き合わせる（security-3 [2]・security-4 [3]）。
+ * - 署名が合う
+ * - SHA256SUMS の名前の集まりと manifest のファイルが過不足なく同じで、sha256 も同じ
+ * - どの名前も、その版（SHA256SUMS を取った releases/<版>/ の版）の配布物の名前（別の版の署名を使い回させない）
+ * - path は releases/<版>/<名前>（作り直しは releases/<版>/b<n>/<名前>）だけ。OS・CPU・種類は名前から読む
+ * どれか1つでも合わなければ null（その版は案内しない）。大きさは署名に入らないので、上限としてだけ使い、
+ * 中身はダウンロードのあとで sha256 を確かめる（updateDownload.ts）
+ */
+export function verifiedReleaseFiles(
+  version: string,
+  files: ReadonlyArray<{ name: string; sha256: string; path: string; size: number }>,
   sums: Buffer,
   signature: string,
   trustedKey: string = RELEASE_PUBLIC_KEY
-): boolean {
-  if (!verifySshSignature(sums, signature, trustedKey)) return false
+): SignedReleaseFile[] | null {
+  if (!verifySshSignature(sums, signature, trustedKey)) return null
   const table = parseSignedSums(sums.toString('utf8'))
-  if (!table || files.length === 0) return false
-  return files.every((f) => table.get(f.name) === f.sha256)
+  if (!table || files.length === 0 || table.size !== files.length) return null
+  for (const name of table.keys()) if (!parseSignedArtifactName(name, version)) return null
+  const dir = `releases/${version}/`
+  const out: SignedReleaseFile[] = []
+  const seen = new Set<string>()
+  for (const f of files) {
+    const identity = parseSignedArtifactName(f.name, version)
+    if (!identity || seen.has(f.name) || table.get(f.name) !== f.sha256) return null
+    seen.add(f.name)
+    const rest = f.path.startsWith(dir) ? f.path.slice(dir.length) : null
+    if (rest !== f.name && !(rest !== null && /^b\d{1,3}\//.test(rest) && rest.slice(rest.indexOf('/') + 1) === f.name)) return null
+    if (!Number.isInteger(f.size) || f.size <= 0 || f.size > MAX_INSTALLER_BYTES) return null
+    out.push({ name: f.name, sha256: f.sha256, size: f.size, path: f.path, ...identity })
+  }
+  return out
 }

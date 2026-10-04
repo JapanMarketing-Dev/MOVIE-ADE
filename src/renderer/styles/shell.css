@@ -1097,6 +1097,12 @@ body[data-resizing='row'] * {
   left: var(--space-5);
 }
 
+/* 変換中の文字。xterm の既定は黒地に白で、ライト配色では黒い箱に見える。ターミナルの色に合わせる（Orca #12729 #19742） */
+.terminal-host .xterm .composition-view {
+  background: var(--term-bg);
+  color: var(--term-fg);
+}
+
 /*
  * 分割中のペインを動かすつまみ（Orca の .pane-drag-handle）。上端の細い帯で、ペインが1枚なら出さない。
  * 乗ったときだけ見せる（ターミナルの1行目を隠さない）
@@ -1961,6 +1967,29 @@ body[data-resizing='row'] * {
   color: var(--color-text);
 }
 
+/* 区分のアイコン（デザイン・設計書・ウインドウ）。文字の前に少し空ける */
+.url-chip__main > svg {
+  margin-right: var(--space-1);
+  vertical-align: -1px;
+}
+
+/* 確認先の編集ダイアログはツールバーの中に描かれる。狭いペインでツールバーの切替を畳んでも、区分の名前は畳まない */
+.browser-toolbar .url-preset-dialog .segmented__item > span {
+  display: inline;
+}
+
+.browser-toolbar .url-preset-dialog .segmented__item {
+  padding: 0 var(--space-5);
+}
+
+/* 区分（アプリ・デザイン・設計書）の区切り */
+.url-presets__sep {
+  width: 1px;
+  height: 14px;
+  flex: none;
+  background: var(--color-border-strong);
+}
+
 /* 編集の鉛筆は触れたときだけ。場所は取っておき、出し入れで幅が揺れないようにする */
 .url-chip__edit {
   display: grid;
@@ -2534,6 +2563,19 @@ button.sb-more__row:hover {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   gap: var(--space-2);
+}
+
+/* デザイン・設計書の確認先の説明（区分のアイコンと文） */
+.pt-purpose-hint {
+  display: flex;
+  align-items: flex-start;
+  margin: 0;
+  gap: var(--space-2);
+}
+
+.pt-purpose-hint svg {
+  flex: none;
+  margin-top: 2px;
 }
 
 .pt-dialog {

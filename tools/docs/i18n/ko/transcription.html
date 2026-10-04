@@ -63,7 +63,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
 </ol>
 <p>모델은 <code>gpt-transcribe</code>로 고정되어 있습니다. 개발 모드(<code>pnpm dev</code>)에서만 무시 목록에 있는 <code>.env</code> 파일의 <code>OPENAI_API_KEY</code>도 읽습니다. 패키징된 빌드는 <code>.env</code>를 읽지 않습니다.</p>
 
-<!-- @compatible 8c200e00b1 -->
+<!-- @compatible 2ccbf4537c -->
 ## OpenAI 호환 엔드포인트
 <p>Ferret은 <code>POST &lt;base&gt;/v1/audio/transcriptions</code>(multipart: <code>file</code>, <code>model</code>, <code>response_format=json</code>, <code>language</code>, <code>prompt</code>)를 보내므로, OpenAI 음성 인식 경로를 구현한 서버를 대상으로 설계되어 있습니다.</p>
 <ol class="docs-steps">
@@ -80,7 +80,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
     <tr><td><a href="https://console.groq.com/docs/speech-to-text">Groq</a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
   </tbody>
 </table>
-<div class="docs-callout docs-callout-warn"><p>Ferret은 이러한 OpenAI 호환 서버를 대상으로 설계되었지만, 아직 Ferret과 함께 테스트하지는 않았습니다. URL과 모델 이름은 각 서버 문서에 적힌 기본값입니다.</p></div>
+<div class="docs-callout docs-callout-note"><p>Ferret은 표준 OpenAI 음성 인식 API(<code>/v1/audio/transcriptions</code>)로 이러한 서버와 통신하므로, 이 API를 제공하는 서버라면 어떤 것이든 사용할 수 있습니다. 위의 URL과 모델 이름은 각 서버 문서에 적힌 기본값입니다.</p></div>
 <ul>
   <li>끝의 <code>/v1</code>이나 붙여 넣은 <code>/v1/audio/transcriptions</code>는 저장할 때 제거되므로 어느 형식이든 됩니다.</li>
   <li>사용자 이름이나 비밀번호가 들어 있는 URL은 거부되므로, 키가 <code>settings.json</code>에 남는 일은 없습니다.</li>

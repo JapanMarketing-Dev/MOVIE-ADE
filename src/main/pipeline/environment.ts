@@ -16,7 +16,7 @@ import { pickWindowsWhereResult } from '../platform/windowsSpawn'
 import { timedSync } from '@shared/report'
 
 /** 呼び出し側（main）が渡すパス */
-export interface EnvironmentPaths {
+interface EnvironmentPaths {
   /** 配布時のリソースフォルダ（`process.resourcesPath`）。開発時は省略 */
   resourcesDir?: string
   /** モデルの置き場所（`join(app.getPath('userData'), 'models')`） */
@@ -74,14 +74,6 @@ export function whisperModelPath(paths: EnvironmentPaths, id: WhisperModelId): s
   return joinPath([paths.modelDir, whisperModels[id].file])
 }
 
-export function isWhisperModelReady(
-  paths: EnvironmentPaths,
-  id: WhisperModelId,
-  probes: EnvironmentProbes
-): boolean {
-  return probes.exists(whisperModelPath(paths, id))
-}
-
 /**
  * GPU（Metal / CUDA / Vulkan）が使えるか。
  *
@@ -107,7 +99,7 @@ export function chooseWhisperModel(gpuAvailable: boolean): WhisperModelId {
   return gpuAvailable ? 'large-v3-turbo' : 'small'
 }
 
-export interface WhisperRuntime {
+interface WhisperRuntime {
   binary: string
   modelId: WhisperModelId
   modelPath: string
@@ -139,9 +131,9 @@ export async function resolveWhisperRuntime(
 
 // ───────────────────────── LLM CLI の検出 ─────────────────────────
 
-export type LlmRunnerKind = 'codex' | 'claude-code'
+type LlmRunnerKind = 'codex' | 'claude-code'
 
-export interface LlmRuntime {
+interface LlmRuntime {
   kind: LlmRunnerKind
   binary: string
   /** Claude Code のときだけ使う。Codex は config を無効化して既定モデルに任せる */
@@ -170,19 +162,6 @@ export async function detectLlmRuntime(
   }
   // 既定の優先順は Codex → Claude Code
   return candidates[0]!
-}
-
-/** 一覧で「使える／使えない」を出すための検出結果 */
-export interface LlmAvailability {
-  codex: boolean
-  claudeCode: boolean
-}
-
-export async function detectLlmAvailability(probes: EnvironmentProbes): Promise<LlmAvailability> {
-  return {
-    codex: probes.which('codex') !== null,
-    claudeCode: probes.which('claude') !== null
-  }
 }
 
 /** `node:path` を動的 import せずに済ませる（この関数はテストで多用するため） */

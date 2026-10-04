@@ -11,7 +11,7 @@ import type { TranscriptSegment } from '../types'
 import { dbfs } from './segmenter'
 
 /** 区間の音量がこれ未満なら、決まり文句は無音への幻覚とみなす(dBFS) */
-export const QUIET_SEGMENT_DBFS = -36
+const QUIET_SEGMENT_DBFS = -36
 
 /** 文中のどこにあっても話し言葉ではないタグ */
 const INLINE_TAGS = [/\*[^*\n]{1,40}\*/g, /\[[^\]\n]{1,40}\]/g, /♪[^♪\n]{0,80}♪?/g, /[♪♫]/g]

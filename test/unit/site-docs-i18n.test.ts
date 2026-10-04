@@ -14,7 +14,9 @@ import {
   englishUnits,
   localized,
   parseTranslation,
+  rehashUnits,
   renderDocs,
+  sourceHash,
   translationStatus,
 } from '../../tools/docs/build-docs.mjs'
 
@@ -91,9 +93,9 @@ describe('訳のファイル（tools/docs/i18n/<lang>/<page>.html）', () => {
     expect(bad).toEqual([])
   })
 
-  it('札（{{keys:…}}・{{clip:名前|…}}・{{agent-catalog}}・{{path}} など）とリンク先は訳しても同じ', () => {
+  it('札（{{keys:…}}・{{clip:名前|…}}・{{shot:名前|…}}・{{agent-catalog}}・{{path}} など）とリンク先は訳しても同じ', () => {
     const tokens = (s: string) =>
-      [...s.matchAll(/\{\{[^}]*\}\}/g)].map(([t]) => (t.startsWith('{{clip:') ? t.slice(0, t.indexOf('|')) : t)).sort()
+      [...s.matchAll(/\{\{[^}]*\}\}/g)].map(([t]) => (/^\{\{(clip|shot):/.test(t) ? t.slice(0, t.indexOf('|')) : t)).sort()
     const hrefs = (s: string) => [...s.matchAll(/\shref="([^"]*)"/g)].map((m) => m[1]).sort()
     for (const [lang, name] of files) {
       const en = englishUnits(name)
@@ -163,5 +165,40 @@ describe('対応しているエージェントの一覧', () => {
 
   it('札の正規表現は札だけを拾う', () => {
     expect('{{keys:Mod+O}} {{path}}'.match(TOKEN)).toEqual(['{{keys:Mod+O}}'])
+  })
+})
+
+describe('--rehash', () => {
+  const en = new Map([
+    ['os.mac', 'macOS'],
+    ['title', 'Concepts'],
+    ['lead', 'Ferret records your screen.'],
+  ])
+  const pending = '0000000000'
+
+  it('英語と同じ文でも、今の英語のハッシュが付いていれば保つ（未訳に戻さない）', () => {
+    const have = new Map([
+      ['os.mac', { hash: sourceHash('macOS'), text: 'macOS' }],
+      ['title', { hash: sourceHash('Concepts'), text: 'Concepts' }],
+      ['lead', { hash: pending, text: 'Ferret records your screen.' }],
+    ])
+    const out = rehashUnits(en, have)
+    expect(out.get('os.mac')!.hash).toBe(sourceHash('macOS'))
+    expect(out.get('title')!.hash).toBe(sourceHash('Concepts'))
+    // まだ訳していない単位は未訳のまま
+    expect(out.get('lead')!.hash).toBe(pending)
+  })
+
+  it('英語が変わって古いハッシュの単位は、英語と同じ文なら未訳に戻し、訳してあれば今のハッシュにする', () => {
+    const have = new Map([
+      ['os.mac', { hash: sourceHash('Mac'), text: 'macOS' }],
+      ['lead', { hash: sourceHash('old'), text: 'Ferret enregistre votre écran.' }],
+      ['gone', { hash: sourceHash('x'), text: 'x' }],
+    ])
+    const out = rehashUnits(en, have)
+    expect(out.get('os.mac')!.hash).toBe(pending)
+    expect(out.get('lead')!.hash).toBe(sourceHash('Ferret records your screen.'))
+    expect(out.has('gone')).toBe(false)
+    expect(rehashUnits(en, have, true).get('os.mac')!.hash).toBe(sourceHash('macOS'))
   })
 })

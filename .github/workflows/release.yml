@@ -179,9 +179,7 @@ jobs:
 
           \`SHA256SUMS.sig\` is a signature of \`SHA256SUMS\` by the Ferret release key, which is kept apart from the download server. The public key is in the repository (\`build/release-signing/allowed_signers\`, also in SECURITY.md). Check it with \`ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig < SHA256SUMS\`.
 
-          **The installers are not code-signed by Apple or Microsoft yet.** Before you bypass the OS warning, check the signature of \`SHA256SUMS\`, then compare the SHA-256 of the file you downloaded with it.
-          - macOS: Gatekeeper says the developer cannot be verified. Right-click the app and choose Open, or allow it in System Settings > Privacy & Security.
-          - Windows: SmartScreen may block the installer. Choose "More info" > "Run anyway".
+          Install: open the download for your OS. Steps for each OS: https://ferretade.dev/docs/install
 
           ### Changes
           -

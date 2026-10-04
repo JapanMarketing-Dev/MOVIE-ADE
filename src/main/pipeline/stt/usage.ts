@@ -3,9 +3,10 @@
  * 数だけを渡す（音声・本文・キーは渡さない）。失敗した送信（4xx・5xx、つながらなければ状態 0）も記録する。
  * 費用は、プリセットの単価が分かるときだけ見積もりとして付ける（分からなければ付けない）。
  */
+import { mainFetch } from '../../netFetch'
 import { recordApiCall } from '../../decision/callLog'
 
-export interface SttCallMeta {
+interface SttCallMeta {
   provider?: string
   model: string
   /** 送った音声の長さ(秒) */
@@ -25,7 +26,7 @@ export async function recordedSttFetch(url: string, init: RequestInit, meta: Stt
     ...(status >= 200 && status < 300 && meta.estimateUsd !== undefined ? { costUsd: meta.estimateUsd, costSource: 'estimate' as const } : {}),
   })
   try {
-    const res = await fetch(url, init)
+    const res = await mainFetch(url, init)
     record(res.status)
     return res
   } catch (e) {

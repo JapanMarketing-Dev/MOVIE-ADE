@@ -12,7 +12,7 @@ import { claudeKeychainService } from '../accounts/identity'
  *           ~/bench/orca/src/main/rate-limits/codex-backend-auth.ts（MIT, Copyright 2026 Lovecast Inc.）
  */
 
-export type CredentialRead = { token: string; accountId?: string | null } | { token: null; reason: 'missing' | 'keychain-unavailable' }
+type CredentialRead = { token: string; accountId?: string | null } | { token: null; reason: 'missing' | 'keychain-unavailable' }
 
 function keychainUser(): string {
   try {
@@ -34,9 +34,9 @@ function keychainUser(): string {
  * - 一度読めなかった項目は、このセッションの間は自動では読みに行かない（手動の再読み込みでだけ試す）
  * - 中身を読む前に、項目が「あるか」だけを属性の読み取り（-w なし。許可は要らない）で確かめる
  */
-export const KEYCHAIN_COMMAND_TIMEOUT_MS = 3000
+const KEYCHAIN_COMMAND_TIMEOUT_MS = 3000
 
-export type SecurityExec = (args: string[]) => Promise<{ ok: true; stdout: string } | { ok: false; code: unknown }>
+type SecurityExec = (args: string[]) => Promise<{ ok: true; stdout: string } | { ok: false; code: unknown }>
 
 const execSecurity: SecurityExec = (args) =>
   new Promise((resolve) => {

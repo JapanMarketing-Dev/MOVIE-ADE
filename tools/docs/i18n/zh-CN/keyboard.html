@@ -46,7 +46,7 @@
   </tbody>
 </table>
 
-<!-- @files 5e0093248b -->
+<!-- @files 77be8e758a -->
 ## 文件
 <table class="docs-keys">
   <thead><tr><th>操作</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
@@ -54,10 +54,12 @@
     <tr><td>打开项目文件夹…</td><td class="os-mac">{{keys-mac:Mod+O}}</td><td class="os-win">{{keys-win:Mod+O}}</td></tr>
     <tr><td>转到文件…</td><td class="os-mac">{{keys-mac:Mod+P}}</td><td class="os-win">{{keys-win:Mod+P}}</td></tr>
     <tr><td>保存</td><td class="os-mac">{{keys-mac:Mod+S}}</td><td class="os-win">{{keys-win:Mod+S}}</td></tr>
+    <tr><td>在文件树中重命名</td><td class="os-mac">{{keys-mac:F2 / Enter|F2}}</td><td class="os-win">{{keys-win:F2 / Enter|F2}}</td></tr>
+    <tr><td>在文件树中删除</td><td class="os-mac">{{keys-mac:Mod+Backspace / Delete|Delete}}</td><td class="os-win">{{keys-win:Mod+Backspace / Delete|Delete}}</td></tr>
   </tbody>
 </table>
 
-<!-- @terminal a714e034c2 -->
+<!-- @terminal ed55aaf976 -->
 ## 终端
 <table class="docs-keys">
   <thead><tr><th>操作</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
@@ -66,15 +68,21 @@
     <tr><td>关闭窗格 / 标签页</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
     <tr><td>向右拆分</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
     <tr><td>向下拆分</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+    <tr><td>拷贝所选内容</td><td class="os-mac">{{keys-mac:Mod+C|Ctrl+Shift+C / Ctrl+C}}</td><td class="os-win">{{keys-win:Mod+C|Ctrl+Shift+C / Ctrl+C}}</td></tr>
+    <tr><td>粘贴</td><td class="os-mac">{{keys-mac:Mod+V|Ctrl+V / Ctrl+Shift+V / Shift+Insert}}</td><td class="os-win">{{keys-win:Mod+V|Ctrl+V / Ctrl+Shift+V / Shift+Insert}}</td></tr>
+    <tr><td>在 Agent 的提示中换行</td><td class="os-mac">{{keys-mac:Shift+Enter}}</td><td class="os-win">{{keys-win:Shift+Enter}}</td></tr>
+    <tr><td>移到行首 / 行尾</td><td class="os-mac">{{keys-mac:Mod+Left / Mod+Right|}}</td><td class="os-win">{{keys-win:Mod+Left / Mod+Right|}}</td></tr>
+    <tr><td>删除到行首</td><td class="os-mac">{{keys-mac:Mod+Backspace|}}</td><td class="os-win">{{keys-win:Mod+Backspace|}}</td></tr>
   </tbody>
-</table><p>拆分快捷键在终端获得焦点时有效。</p>
+</table><p>这些快捷键在终端获得焦点时有效。在 Windows 和 Linux 上，选中文本时 Ctrl+C 会拷贝，未选中任何内容时会停止正在运行的命令。当 Claude Code 或 Codex 等 Agent 正在运行时，{{keys:Shift+Enter}} 会换行；在普通 shell 中，它和 Enter 一样会执行命令。在使用鼠标的全屏程序（vim、tmux、Agent）中，在 macOS 上按住 Option 再拖动即可选择文本。</p>
 
-<!-- @window 84ff87d3b5 -->
+<!-- @window 115b0e6afb -->
 ## 窗口与设置
 <table class="docs-keys">
   <thead><tr><th>操作</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
   <tbody>
     <tr><td>设置…</td><td class="os-mac">{{keys-mac:Mod+,}}</td><td class="os-win">{{keys-win:Mod+,}}</td></tr>
     <tr><td>关闭窗口</td><td class="os-mac">{{keys-mac:Mod+Shift+W|}}</td><td class="os-win">{{keys-win:Mod+Shift+W|}}</td></tr>
+    <tr><td>最小化</td><td class="os-mac">{{keys-mac:Mod+M|}}</td><td class="os-win">{{keys-win:Mod+M|}}</td></tr>
   </tbody>
 </table><p>Windows 和 Linux 没有关闭窗口的快捷键：<span class="docs-ui">文件 → 退出</span> 会退出应用。</p>

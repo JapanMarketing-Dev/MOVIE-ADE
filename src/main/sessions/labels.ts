@@ -10,7 +10,7 @@ import { dirname, relative, resolve, sep } from 'node:path'
 import type { ReviewLabelPatch } from '@shared/review'
 import { isSessionId, reviewsRoots, sessionPaths, type SessionPaths } from './paths'
 
-export interface SessionLabel {
+interface SessionLabel {
   name?: string
   archived?: boolean
   sentAt?: string

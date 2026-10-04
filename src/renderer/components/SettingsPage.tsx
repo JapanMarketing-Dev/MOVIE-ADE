@@ -364,7 +364,7 @@ export function SettingsPage({
             {micDevices.map((device) => <option key={device.id} value={device.id}>{device.label}</option>)}
           </select>
         </SelectRow>
-        <Switch label={t('settings.mic.captureSystemAudio')} hint={<span className="st-beta">β</span>} checked={v.captureSystemAudio} disabled={recording} onChange={(captureSystemAudio) => onChange({ captureSystemAudio })} />
+        <Switch label={t('settings.mic.captureSystemAudio')} checked={v.captureSystemAudio} disabled={recording} onChange={(captureSystemAudio) => onChange({ captureSystemAudio })} />
         {v.captureSystemAudio && <p className="st-note st-note--warn">{t('settings.mic.systemAudioWarning')}</p>}
     </PageSection>,
     transcription: <PageSection key="transcription" id="transcription" title={titleOf('transcription')}>

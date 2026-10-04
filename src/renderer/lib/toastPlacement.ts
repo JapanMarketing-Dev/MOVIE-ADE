@@ -18,7 +18,7 @@ export const TOAST_MAX_WIDTH = 380
 /** これより狭いところには置かない（本文が数文字で折り返して読めなくなる） */
 export const TOAST_MIN_WIDTH = 180
 /** 帯に重ねるときに要る高さ（1件ぶん） */
-export const TOAST_BAND_MIN_HEIGHT = 64
+const TOAST_BAND_MIN_HEIGHT = 64
 
 export type ToastPlacement =
   | { kind: 'side'; side: 'left' | 'right'; offset: number; width: number }

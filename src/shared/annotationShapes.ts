@@ -11,7 +11,7 @@ import type { AnnotationColor } from './annotation'
  */
 
 /** [x, y, w, h]（ビューの座標。CSS ピクセル） */
-export type ShapeBox = [number, number, number, number]
+type ShapeBox = [number, number, number, number]
 
 interface ShapeBase {
   /** 画面の中だけの印。動かしても戻しても変わらない（元に戻す手順がこれで形を探す） */
@@ -24,7 +24,7 @@ interface ShapeBase {
 export type Shape = ShapeBase & ({ kind: 'pen'; points: Array<[number, number]> } | { kind: 'rect'; rect: ShapeBox })
 
 /** 1手。描く・動かす・消去 */
-export type ShapeStep =
+type ShapeStep =
   | { kind: 'add'; shape: Shape }
   | { kind: 'move'; key: number; from: Shape; to: Shape }
   | { kind: 'clear'; shapes: Shape[] }
@@ -35,7 +35,7 @@ export interface ShapeState {
   redo: ShapeStep[]
 }
 
-export type ShapeRecord = { type: 'draw'; shape: Shape; replaces?: string } | { type: 'erase'; ids: string[] }
+type ShapeRecord = { type: 'draw'; shape: Shape; replaces?: string } | { type: 'erase'; ids: string[] }
 
 export interface ShapeChange {
   state: ShapeState

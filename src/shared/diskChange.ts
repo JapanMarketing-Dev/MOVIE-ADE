@@ -11,7 +11,7 @@
  *   keep     … ディスク側は整形し直しただけで、編集中の内容は別にある。基準を揃え、編集は残す（警告しない）
  *   conflict … 編集中に、外から中身が変わった。上書きせずに知らせる
  */
-export type DiskChangeAction = 'ignore' | 'adopt' | 'reload' | 'keep' | 'conflict'
+type DiskChangeAction = 'ignore' | 'adopt' | 'reload' | 'keep' | 'conflict'
 
 export function classifyDiskChange({
   disk,

@@ -6,7 +6,7 @@ import { LOCALE_PREFERENCES } from './i18n'
 import { DEFAULT_LAYOUT, DOCKS, FOOTER_ITEMS, PANEL_IDS } from './layout'
 import { ONBOARDING_STEPS } from './onboarding'
 import { STT_LANGUAGE_CODES } from './sttLanguages'
-import { DEFAULT_PROJECT_KIND, PROJECT_KINDS } from './projectTargets'
+import { DEFAULT_PROJECT_KIND, DEFAULT_TARGET_PURPOSE, PROJECT_KINDS, TARGET_PURPOSES } from './projectTargets'
 import { PROJECT_SOURCES } from './projectSource'
 import { DEFAULT_SPLIT_RATIO, MAX_SPLIT_RATIO, MIN_SPLIT_RATIO } from './types'
 
@@ -213,7 +213,8 @@ export const SETTINGS_SCHEMA: JsonSchema = {
                 label: str('Name shown in the target menu, e.g. "local", "prd" or "iOS sim".', { maxLength: 100 }),
                 url: str('URL opened in the built-in browser.'),
                 launchCommand: str('Command run in a terminal in the project folder when the target is chosen, e.g. "pnpm tauri dev".'),
-                windowMatch: str('Part of the app or window name to record, e.g. "Simulator".', { maxLength: 200 })
+                windowMatch: str('Part of the app or window name to record, e.g. "Simulator".', { maxLength: 200 }),
+                purpose: { type: 'string', description: 'What the target is: "app" (the app under development), "design" (Figma, Penpot, Canva, a prototype...) or "doc" (a spec or design doc: Google Docs, Notion, Confluence, a Markdown file on GitHub, a PDF...). Findings recorded on it are marked with it in feedback.md, so the agent updates the design or document instead of the code. Omitted means "app".', enum: TARGET_PURPOSES, default: DEFAULT_TARGET_PURPOSE }
               }
             }
           }
@@ -275,7 +276,7 @@ export const SETTINGS_SCHEMA: JsonSchema = {
       description: 'Recording and transcription.',
       properties: {
         captureMic: bool('Record the microphone.', { default: true }),
-        captureSystemAudio: bool('Also record system audio (the other side of a call). Beta.', { default: false }),
+        captureSystemAudio: bool('Also record system audio (the other side of a call) as a separate speaker.', { default: false }),
         micDeviceId: str('Microphone device id. Empty or omitted means the system default.'),
         transcription: { type: 'string', description: 'Transcription provider. "local" runs whisper.cpp on this machine for free; the others use your own API key and endpoint.', enum: ['local', ...STT_REMOTE_PROVIDERS], default: 'local' },
         language: { type: 'string', description: 'Spoken language: "auto" or an ISO 639-1 code supported by Whisper (e.g. "en", "ja", "de"; "haw" and "yue" are the only 3-letter codes). Separate from the UI language.', enum: ['auto', ...STT_LANGUAGE_CODES], default: 'auto' },
@@ -362,7 +363,7 @@ export function knownSettingsKeys(): Set<string> {
   return new Set([...Object.keys(SETTINGS_SCHEMA.properties ?? {}), ...STATE_KEYS, ...LEGACY_KEYS, 'projects'])
 }
 
-export interface SchemaIssue {
+interface SchemaIssue {
   /** JSON Pointer 風の場所（/capture/keepDays） */
   path: string
   message: string

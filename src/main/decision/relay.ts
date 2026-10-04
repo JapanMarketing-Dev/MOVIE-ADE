@@ -20,8 +20,8 @@ import { estimateCost, extractUsage } from './callLog'
 import { AI_RESPONSE_MAX_BYTES, ResponseTooLargeError, readBoundedBytes } from '../boundedResponse'
 
 /** 画像を2枚含むので大きめ */
-export const RELAY_MAX_BODY_BYTES = 32 * 1024 * 1024
-export const RELAY_PATH = '/v1/systemone'
+const RELAY_MAX_BODY_BYTES = 32 * 1024 * 1024
+const RELAY_PATH = '/v1/systemone'
 export const RELAY_TOKEN_HEADER = 'x-ferret-token'
 /** @deprecated 改名前のヘッダー名。受け付けるだけ */
 export const LEGACY_RELAY_TOKEN_HEADER = 'x-movie-ade-token'
@@ -56,7 +56,7 @@ interface IssuedToken {
 /** 接続先を決められない（URL・アカウント ID・キーが無いなど）。Agent へは 400 と理由を返す */
 export class RelayConfigError extends Error {}
 
-export interface DecisionRelayOptions {
+interface DecisionRelayOptions {
   /** 依頼のたびに呼ぶ。キーの復号は初めて呼ばれたときだけ行い、呼び出し側で覚えておく */
   upstream: () => Promise<RelayUpstream>
   onCall?: (record: ApiCallRecord) => void

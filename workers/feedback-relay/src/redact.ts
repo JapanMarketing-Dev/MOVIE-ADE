@@ -47,9 +47,26 @@ export function redact(text: string): { text: string; hits: string[] } {
 }
 
 /**
- * GitHub で通知や参照を起こさないようにする。@name のメンションと、#123 の参照を崩す（見た目はほぼ同じ）。
+ * GitHub で通知や参照を起こさないようにする（題名と、本文の保険）。見た目はほぼ同じで、間に幅の無い空白を入れる。
  * 公開の Issue に、匿名の送り主が人を呼び出したり、ほかの Issue に印を付けたりできないようにするため。
+ * GitHub の参照の書き方は多い（@name、#123、owner/repo#123、GH-123、owner/repo@sha、github.com の URL、&#46; などの文字参照）ので、
+ * 前後の文字を問わず、印になる記号のすぐあとで崩す（security-4 [11]）。本文はさらに literalBlock でコードブロックに入れる
  */
 export function neutralizeMentions(text: string): string {
-  return text.replace(/(^|[^\w`])@(?=[A-Za-z0-9])/g, '$1@\u200b').replace(/(^|[^\w&/])#(?=\d)/g, '$1#\u200b')
+  return text
+    .replace(/@(?=[A-Za-z0-9])/g, '@\u200b')
+    .replace(/#(?=[0-9xX])/g, '#\u200b')
+    .replace(/\b(GH)-(?=\d)/gi, '$1-\u200b')
+    .replace(/github\.com/gi, (m) => `${m.slice(0, 6)}\u200b${m.slice(6)}`)
+}
+
+/**
+ * 送られた本文を、そのままの文字として表示させる（security-4 [11]）。
+ * GitHub は コードブロックの中では、メンション・Issue の参照・リンク・HTML・文字参照を読まない。
+ * フェンスは本文の中のいちばん長いバッククォートの並びより長くするので、本文の中の ``` や ~~~ では閉じない
+ */
+export function literalBlock(text: string): string {
+  const longest = Math.max(0, ...[...text.matchAll(/`+/g)].map((m) => m[0].length))
+  const fence = '`'.repeat(Math.max(3, longest + 1))
+  return `${fence}text\n${text.replace(/\n+$/, '')}\n${fence}`
 }

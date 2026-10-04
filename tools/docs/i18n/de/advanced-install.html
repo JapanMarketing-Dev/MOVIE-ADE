@@ -1,0 +1,66 @@
+<!-- Ferret docs translation: de / advanced-install. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title c768532509 -->
+Erweiterte Installation
+
+<!-- @lead c298f9e477 -->
+Prüfen Sie die Signatur eines Downloads, bauen Sie Ferret aus dem Quellcode, holen Sie eine ältere Version und erfahren Sie, wie Updates funktionieren. Für die Installation von Ferret brauchen Sie nichts davon.
+
+<!-- @files 8d91113a43 -->
+## Alle Downloads
+<p>Die Dateien werden über Cloudflare R2 ausgeliefert, nicht über GitHub Releases, und nur die 10 neuesten Versionen werden aufbewahrt. Die <a href="../download.html#versions">Download-Seite</a> listet sie alle auf.</p>
+<table>
+  <thead><tr><th>Betriebssystem</th><th>Dateien</th></tr></thead>
+  <tbody>
+    <tr><td>macOS (Apple silicon / Intel)</td><td><code>Ferret-&lt;version&gt;-mac-arm64.dmg</code>, <code>Ferret-&lt;version&gt;-mac-x64.dmg</code></td></tr>
+    <tr><td>Windows (x64 / arm64)</td><td><code>Ferret-&lt;version&gt;-win-x64.exe</code>, <code>Ferret-&lt;version&gt;-win-arm64.exe</code> (Installer)</td></tr>
+    <tr><td>Linux (x64)</td><td><code>Ferret-&lt;version&gt;-linux-x86_64.AppImage</code>, <code>Ferret-&lt;version&gt;-linux-amd64.deb</code></td></tr>
+  </tbody>
+</table>
+<p>Releases bis einschließlich 0.1.x wurden unter dem alten Namen veröffentlicht, als <code>MOVIE-ADE-&lt;version&gt;-…</code>. Die Namen <code>Ferret-…</code> gibt es ab 0.2.0.</p>
+
+<!-- @verify 9ccf455542 -->
+## Download prüfen (signierte SHA256SUMS)
+<p>Jedes Release enthält eine Datei <code>SHA256SUMS</code> und deren Signatur <code>SHA256SUMS.sig</code>. Die Signatur wird mit dem Release-Schlüssel von Ferret erstellt, der getrennt vom Download-Server aufbewahrt wird. Ein auf dem Download-Server veränderter Installer kann daher keine gültige Signatur mitbringen. Der öffentliche Schlüssel wird <em>nicht</em> vom Download-Server bezogen: Holen Sie ihn aus dem Repository (<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers"><code>build/release-signing/allowed_signers</code></a>) oder kopieren Sie ihn von hier:</p>
+<pre><code>release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9</code></pre>
+<p>Sein Fingerprint ist <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code>. Dieselben Dateien sind auch an jedes Release auf GitHub angehängt. Prüfen Sie die Signatur mit <code>ssh-keygen</code> (enthalten in macOS, Windows 10 und neuer sowie Linux) und vergleichen Sie dann den Hash Ihres Downloads mit der signierten Liste:</p>
+<pre><code># the download server (currently the R2 public URL; it may move to a custom domain)
+BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
+VERSION=$(curl -s $BASE/latest.json | jq -r .version)
+curl -sO $BASE/releases/$VERSION/SHA256SUMS
+curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
+
+# save the public key above as allowed_signers, then:
+ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
+# → Good "ferret-release" signature for release@ferretade.dev …
+
+# macOS
+shasum -a 256 -c SHA256SUMS --ignore-missing
+# Linux
+sha256sum -c SHA256SUMS --ignore-missing</code></pre>
+<pre><code># Windows (PowerShell): compare with the line for your file in SHA256SUMS
+Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
+<p>Brechen Sie ab, wenn <code>ssh-keygen</code> nicht <q>Good "ferret-release" signature</q> ausgibt oder der Hash nicht in der Liste steht. <span class="docs-ui">Nach Updates suchen</span> in Ferret führt dieselbe Prüfung mit dem in die App eingebauten Schlüssel durch und bietet keine Version an, deren Signatur nicht passt. Unter macOS können Sie außerdem die Developer-ID-Signatur und die Notarisierung mit <code>spctl -a -vv /Applications/Ferret.app</code> prüfen. Bei Releases bis einschließlich 0.3.0 vergleichen Sie mit den Hashes in <code>releases/&lt;version&gt;/manifest.json</code>.</p>
+
+<!-- @older-macos c7f7a00c02 -->
+## Ältere macOS-Versionen
+<p>Für Versionen bis 0.2.0 Build 2: Wenn macOS meldet, dass der Entwickler nicht überprüft werden kann, schließen Sie den Dialog, öffnen Sie <span class="docs-ui">Systemeinstellungen → Datenschutz &amp; Sicherheit</span>, klicken Sie neben der Meldung zu Ferret auf <span class="docs-ui">Dennoch öffnen</span> und bestätigen Sie mit <span class="docs-ui">Öffnen</span>. Wenn gemeldet wird, die App sei „beschädigt“, entfernen Sie das Quarantäne-Attribut:</p>
+<pre><code>xattr -dr com.apple.quarantine /Applications/Ferret.app</code></pre>
+
+<!-- @source 06a127ac19 -->
+## Aus dem Quellcode bauen
+<p>Voraussetzungen: Node.js 20+ (CI und lokale Entwicklung verwenden 22), pnpm und git.</p>
+<pre><code>git clone https://github.com/JapanMarketing-Dev/ferret.git
+cd ferret
+pnpm install          # postinstall prepares node-pty for Electron
+pnpm dev              # run in development mode</code></pre>
+<p>So erstellen Sie Installer (Ausgabe in <code>dist/release/</code>, Konfiguration in <code>electron-builder.config.cjs</code>). Der Linux-Build läuft nur unter Linux.</p>
+<pre><code>pnpm dist:mac     # dmg (arm64, x64)
+pnpm dist:win     # NSIS installers (x64, arm64)
+pnpm dist:linux   # AppImage + deb (x64)</code></pre>
+<p>Die Skripte <code>build:&lt;os&gt;:dev</code> erzeugen nur eine entpackte App (<code>--dir</code>), was für lokale Tests schneller ist.</p>
+<p>Unter Windows verwendet <code>pnpm install</code> die mitgelieferten vorkompilierten Binärdateien von node-pty, statt sie neu zu bauen (dafür wären die Visual Studio C++ Build Tools nötig). Setzen Sie <code>ADE_FORCE_NATIVE_REBUILD=1</code>, um einen Neubau zu erzwingen.</p>
+<p>Wenn das Terminal meldet, dass node-pty nicht geladen werden konnte, führen Sie <code>pnpm rebuild:native</code> aus.</p>
+
+<!-- @update 142015ddda -->
+## Updates
+<p>Ferret aktualisiert sich nicht automatisch. Öffnen Sie in der Fußzeile <span class="docs-ui">Updates</span> und klicken Sie auf <span class="docs-ui">Nach Updates suchen</span>. Die App lädt <code>latest.json</code> vom Download-Server (R2), vergleicht die Versionen und prüft die Signatur der <code>SHA256SUMS</code> dieser Version mit dem in die App eingebauten Release-Schlüssel. Ist eine neuere Version verfügbar, klicken Sie auf <span class="docs-ui">Herunterladen</span>: Ferret lädt den Installer für Ihren Computer herunter, prüft, ob sein SHA-256 mit den signierten <code>SHA256SUMS</code> übereinstimmt, speichert ihn in Ihrem Download-Ordner und zeigt ihn dort an. Die Download-Seite führt dieselbe Prüfung in Ihrem Browser durch, bevor sie eine Datei speichert. Vor Ihrem Klick wird nichts geprüft, und nichts wird automatisch installiert.</p>

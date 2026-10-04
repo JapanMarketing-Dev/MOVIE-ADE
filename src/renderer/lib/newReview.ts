@@ -6,7 +6,7 @@
  *   - 録画中 … 始めない（⌘⇧R は録画の停止なので、＋ からは止めずに知らせる）
  *   - プロジェクトが無い … 始められない（先にプロジェクトを足してもらう）
  */
-export type NewReviewPlan =
+type NewReviewPlan =
   | { action: 'start'; projectId: string }
   | { action: 'switch-then-start'; projectId: string }
   | { action: 'busy' }

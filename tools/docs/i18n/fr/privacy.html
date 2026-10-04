@@ -21,7 +21,7 @@ Les relectures se trouvent dans le dossier de votre projet. Les réglages se tro
 ## Conservation
 <p><span class="docs-ui">Conserver les enregistrements</span> (7 jours par défaut, 30 jours ou <span class="docs-ui">Indéfiniment</span>) : au démarrage, les relectures terminées plus anciennes que ce délai perdent <code>recording.webm</code> et <code>work/</code>. <code>feedback.md</code> et les images des remarques sont conservés. Les relectures incomplètes ne sont jamais élaguées. L'élagage s'exécute au lancement, pour le dernier projet ouvert.</p>
 
-<!-- @network 8886bf9546 -->
+<!-- @network 1eadb8b937 -->
 ## Ce qui quitte votre machine
 <table>
   <thead><tr><th>Quand</th><th>Destination</th><th>Données</th></tr></thead>
@@ -35,8 +35,8 @@ Les relectures se trouvent dans le dossier de votre projet. Les réglages se tro
     <tr><td><span class="docs-ui">Envoyer sur GitHub</span></td><td>GitHub via <code>gh</code></td><td>texte du corps uniquement (pas d'images)</td></tr>
     <tr><td>Utilisation dans le pied de page (Claude Code et Codex uniquement)</td><td>Anthropic, ChatGPT</td><td>requête d'utilisation avec votre propre connexion</td></tr>
     <tr><td>Demande d'étoile GitHub</td><td>GitHub via votre <code>gh</code></td><td>vérifie si vous avez mis une étoile au dépôt, et n'en met une que si vous cliquez sur <span class="docs-ui">Mettre une étoile sur GitHub</span></td></tr>
-    <tr><td><span class="docs-ui">Rechercher des mises à jour</span> (manuel)</td><td>serveur de téléchargement (Cloudflare R2)</td><td>requête de <code>latest.json</code></td></tr>
-    <tr><td>Envoi d'un retour depuis l'application (uniquement si vous l'envoyez ; bientôt disponible)</td><td>le relais de retours du développeur (un Cloudflare Worker), qui ouvre une issue publique dans <code>JapanMarketing-Dev/ferret</code></td><td>votre texte, bug ou idée, la version de l'application et de l'OS, le processeur, et jusqu'à 3 captures d'écran jointes. Les clés, jetons, adresses e-mail et chemins du dossier personnel sont masqués. Le relais ne conserve pas votre adresse IP (voir <a href="#feedback">Retours depuis l'application</a>)</td></tr>
+    <tr><td><span class="docs-ui">Rechercher des mises à jour</span> (manuel)</td><td>serveur de téléchargement (Cloudflare R2)</td><td>requêtes de <code>latest.json</code> et du <code>SHA256SUMS</code> de cette version ; l'installeur quand vous cliquez sur <span class="docs-ui">Télécharger</span></td></tr>
+    <tr><td>Envoi d'un retour depuis l'application (uniquement si vous l'envoyez)</td><td>le relais de retours du développeur (un Cloudflare Worker), qui ouvre une issue publique dans <code>JapanMarketing-Dev/ferret</code></td><td>votre texte, bug ou idée, la version de l'application et de l'OS, le processeur, et jusqu'à 3 captures d'écran jointes. Les clés, jetons, adresses e-mail et chemins du dossier personnel sont masqués. Le relais ne conserve pas votre adresse IP (voir <a href="#feedback">Retours depuis l'application</a>)</td></tr>
     <tr><td>Plantage ou erreur (<span class="docs-ui">Envoyer les rapports de plantage</span> activé)</td><td>Sentry</td><td>stack trace et versions de l'OS / du processeur / de l'application (voir <a href="#crash-reports">Rapports de plantage</a>)</td></tr>
   </tbody>
 </table>
@@ -47,10 +47,9 @@ Les relectures se trouvent dans le dossier de votre projet. Les réglages se tro
   <li>Ce site web (et non l'application) compte les pages vues avec Cloudflare Web Analytics : sans cookie, sans pistage intersites et sans données personnelles.</li>
 </ul>
 
-<!-- @feedback ba5f3fb0a3 -->
+<!-- @feedback 34fc2ebccc -->
 ## Retours depuis l'application
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Bientôt disponible</p><p>Le formulaire de retours intégré à l'application et son relais ne sont pas encore publiés. Cette section décrit leur futur fonctionnement.</p></div>
-<p>Vous pourrez envoyer un rapport de bug ou une idée depuis Ferret, sans compte GitHub. L'envoi n'a lieu que lorsque vous le déclenchez, et il devient une issue <strong>publique</strong> dans <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a>, avec le label <code>from-app</code>. N'y mettez rien que vous ne publieriez pas.</p>
+<p>Vous pouvez envoyer un rapport de bug ou une idée depuis Ferret, sans compte GitHub (<span class="docs-ui">Envoyer un avis</span> en bas de la barre latérale). L'envoi n'a lieu que lorsque vous le déclenchez, et il devient une issue <strong>publique</strong> dans <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a>, avec le label <code>from-app</code>. N'y mettez rien que vous ne publieriez pas.</p>
 <ul>
   <li>L'application l'envoie depuis votre ordinateur vers un petit relais (un Cloudflare Worker exploité par le développeur), qui ouvre l'issue avec son propre jeton GitHub. Ce relais est le seul serveur du développeur qui reçoit ce que vous écrivez.</li>
   <li>Envoyé : votre titre et votre texte, s'il s'agit d'un bug ou d'une idée, la version de l'application, et jusqu'à 3 captures d'écran PNG ou JPEG jointes. Le nom et la version de l'OS, l'architecture du processeur et l'ID d'installation aléatoire ne sont envoyés que si vous les laissez inclus. Non envoyé : votre nom, votre e-mail, votre compte GitHub, les fichiers du projet, les enregistrements ou les remarques.</li>

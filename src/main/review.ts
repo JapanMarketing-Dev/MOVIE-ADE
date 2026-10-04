@@ -1,6 +1,7 @@
 import { clipboard, nativeImage, shell } from 'electron'
 import { renderAgentPrompt, renderNgPrompt, renderReplyPrompt } from '@shared/agentPrompt'
 import { groupByTarget } from '@shared/reviewTarget'
+import { purposeOf } from '@shared/projectTargets'
 import { buildRemoteFeedbackPrompt } from '@shared/projectSource'
 import { cursorRing } from './pipeline/cursor-ring'
 import { basename, join, sep } from 'node:path'
@@ -38,8 +39,10 @@ export async function finishReview(paths: SessionPaths, result: RecordingResult,
   // 古い録画には capture.json が無い（想定内）
   const capture = parseSmallJson(await readFileNoFollow(join(paths.dir, 'capture.json'), 'utf8', { maxBytes: 1024 * 1024 }).catch(() => '{}'))
   const urlPresets = Array.isArray(capture.urlPresets)
-    ? capture.urlPresets.filter((p): p is { id: string; label: string; url: string } =>
+    ? capture.urlPresets.filter((p): p is { id: string; label: string; url: string; purpose?: unknown } =>
       !!p && typeof p.id === 'string' && typeof p.label === 'string' && typeof p.url === 'string')
+      // 区分（デザイン・設計書）は知っている値だけ残す。app と壊れた値は持たない
+      .map(({ purpose, ...p }) => (purposeOf({ purpose }) !== 'app' ? { ...p, purpose: purposeOf({ purpose }) } : p))
     : []
   const material: Material = {
     meta: { id: paths.id, startedAt: result.startedAt, durationMs: result.durationMs,
@@ -366,7 +369,7 @@ export async function prepareSendFeedback(paths: SessionPaths): Promise<string[]
 
 export async function copyReview(paths: SessionPaths, template?: string | null, remote = false): Promise<void> {
   await refreshFeedbackMarkdown(paths)
-  clipboard.writeText(remote ? await remoteReviewInstruction(paths) : reviewInstruction(paths, template))
+  clipboard.writeText(remote ? await remoteReviewInstruction(paths) : await reviewInstruction(paths, template))
 }
 
 /**
@@ -381,9 +384,15 @@ export async function revealReview(paths: SessionPaths): Promise<void> {
   shell.showItemInFolder(paths.feedbackMd)
 }
 
-/** 「Agentへ送信」「Agent向けにコピー」の1行。文面は設定のテンプレート（空なら既定文） */
-export function reviewInstruction(paths: SessionPaths, template?: string | null): string {
-  return renderAgentPrompt({ relativeDir: paths.relativeDir, feedbackMd: paths.feedbackMd }, template, undefined, decisionPromptOptions())
+/**
+ * 「Agentへ送信」「Agent向けにコピー」の1行。文面は設定のテンプレート（空なら既定文）。
+ * デザイン・設計書の確認先で撮った指摘があれば、コードではなくそれらを直す1文を足す
+ */
+export async function reviewInstruction(paths: SessionPaths, template?: string | null): Promise<string> {
+  const record = await loadSession(paths)
+  const included = record?.document.items.filter((it) => it.include) ?? []
+  const nonCode = groupByTarget(included, (it) => it.context.url, record?.document.meta.urlPresets ?? []).some((g) => !!g.target.purpose)
+  return renderAgentPrompt({ relativeDir: paths.relativeDir, feedbackMd: paths.feedbackMd, ...(nonCode ? { nonCode } : {}) }, template, undefined, decisionPromptOptions())
 }
 
 /**

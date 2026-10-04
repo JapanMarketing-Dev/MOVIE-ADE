@@ -31,7 +31,7 @@ export function mark(name: string): number {
   return elapsed
 }
 
-export function marksSnapshot(): Record<string, number> {
+function marksSnapshot(): Record<string, number> {
   return { ...marks }
 }
 

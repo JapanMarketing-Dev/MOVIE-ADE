@@ -28,7 +28,7 @@ export interface AssembleOptions {
   includeNeedsCheck: boolean
 }
 
-export const defaultAssembleOptions: AssembleOptions = {
+const defaultAssembleOptions: AssembleOptions = {
   imageExt: 'png',
   includeNeedsCheck: false
 }

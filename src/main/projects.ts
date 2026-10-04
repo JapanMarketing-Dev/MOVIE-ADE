@@ -9,7 +9,7 @@ import type { Project, Settings } from '@shared/types'
  */
 
 /** 同じフォルダかを比べる鍵。末尾の区切りと相対表記の揺れをならす */
-export function folderKey(folderPath: string): string {
+function folderKey(folderPath: string): string {
   const resolved = resolve(folderPath)
   return process.platform === 'win32' || process.platform === 'darwin' ? resolved.toLowerCase() : resolved
 }

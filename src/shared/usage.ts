@@ -21,7 +21,7 @@ export interface RateLimitWindow {
   resetsAt: number | null
 }
 
-export type ProviderRateLimitStatus = 'idle' | 'fetching' | 'ok' | 'error' | 'unavailable'
+type ProviderRateLimitStatus = 'idle' | 'fetching' | 'ok' | 'error' | 'unavailable'
 
 /** 失敗の種類（Orca の UsageRateLimitFailureKind のうち、本システムで起きるもの） */
 export type UsageFailureKind = 'missing-credentials' | 'stale-token' | 'keychain-unavailable' | 'network' | 'server' | 'rate-limited' | 'unknown'
@@ -34,6 +34,10 @@ export interface ProviderRateLimits {
   weekly: RateLimitWindow | null
   /** Claude のモデル別（Fable）の1週間枠 */
   fableWeekly?: RateLimitWindow | null
+  /** Codex Business の、メンバーごとの利用額の上限（期間が無いので windowMinutes は 0、resetsAt は null） */
+  spendLimit?: RateLimitWindow | null
+  /** 上限の無いプラン（Codex Business の credits.unlimited）。枠が無くても取得の失敗ではない */
+  unlimited?: boolean
   /** Codex のプラン（plus など） */
   planType?: string | null
   /** 最後に取得に成功した時刻（Unix ms） */
@@ -57,14 +61,14 @@ export interface AccountUsage {
 }
 
 /** 黄色・赤にする使用率（Orca と同じ 60 / 80） */
-export const USAGE_WARNING_PERCENT = 60
-export const USAGE_URGENT_PERCENT = 80
+const USAGE_WARNING_PERCENT = 60
+const USAGE_URGENT_PERCENT = 80
 
 export function clampUsedPercent(value: number): number {
   return Math.round(Math.min(100, Math.max(0, Number.isFinite(value) ? value : 0)))
 }
 
-export type UsageTone = 'normal' | 'warning' | 'urgent'
+type UsageTone = 'normal' | 'warning' | 'urgent'
 
 export function usageTone(usedPercent: number): UsageTone {
   const used = clampUsedPercent(usedPercent)
@@ -93,7 +97,9 @@ export function formatResetCountdown(ms: number): string {
 }
 
 /** 枠の長さの短い名前（5h / wk など） */
-export function formatWindowLabel(windowMinutes: number): string {
+function formatWindowLabel(windowMinutes: number): string {
+  // 期間の無い上限（Codex Business の利用額）
+  if (windowMinutes <= 0) return '$'
   if (windowMinutes === 10080) return 'wk'
   if (windowMinutes === 300) return '5h'
   if (windowMinutes === 60) return '1h'
@@ -110,7 +116,7 @@ export function formatWindowChipLabel(window: RateLimitWindow, now: number = Dat
 }
 
 export interface UsageSection {
-  key: 'session' | 'weekly' | 'fableWeekly'
+  key: 'session' | 'weekly' | 'fableWeekly' | 'spend'
   /** 5h / wk / Fable */
   label: string
   window: RateLimitWindow
@@ -122,6 +128,7 @@ export function usageSections(p: ProviderRateLimits): UsageSection[] {
   if (p.session) sections.push({ key: 'session', label: formatWindowLabel(p.session.windowMinutes), window: p.session })
   if (p.weekly) sections.push({ key: 'weekly', label: formatWindowLabel(p.weekly.windowMinutes), window: p.weekly })
   if (p.fableWeekly) sections.push({ key: 'fableWeekly', label: 'Fable', window: p.fableWeekly })
+  if (p.spendLimit) sections.push({ key: 'spend', label: '$', window: p.spendLimit })
   return sections
 }
 
@@ -146,6 +153,7 @@ export function soonestResetLabel(p: ProviderRateLimits, now: number = Date.now(
 export function usageStatusLabel(p: ProviderRateLimits): string {
   if (p.status === 'idle' || p.status === 'fetching') return t('usage.status.loading')
   if (p.status === 'unavailable') return t('usage.status.unavailable')
+  if (p.status === 'ok' && p.unlimited) return '∞'
   switch (p.failureKind) {
     case 'missing-credentials':
       return t('usage.status.notLoggedIn')

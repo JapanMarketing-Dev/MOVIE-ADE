@@ -6,6 +6,8 @@
  * （最終的な検査は main の src/main/files.ts が行う）。
  */
 
+import type { TranslationKey } from './i18n'
+
 /** ディレクトリの1項目 */
 export interface FsEntry {
   name: string
@@ -51,7 +53,7 @@ export interface FsChangedEvent {
 
 // Orca由来: src/main/ipc/filesystem/filesystem-file-content-inspection.ts（MIT）
 // 先頭 8KB に NUL があればバイナリとみなす（git と同じ判定）
-export const BINARY_PROBE_BYTES = 8192
+const BINARY_PROBE_BYTES = 8192
 
 /**
  * 開ける大きさの上限。Monaco は数MBを超えると重くなるため、Orca（50MB）より小さく絞る。
@@ -98,7 +100,7 @@ export function hasBinaryExtension(path: string): boolean {
  * Orca由来: src/shared/quick-open-filter.ts の HIDDEN_DIR_BLOCKLIST（MIT）
  * .vscode・.idea は人が設定を編集することがあるので、ここでは外さない。
  */
-export const HEAVY_DIRS: ReadonlySet<string> = new Set([
+const HEAVY_DIRS: ReadonlySet<string> = new Set([
   '.git',
   'node_modules',
   '.next',
@@ -132,4 +134,61 @@ export function shouldIncludePath(path: string): boolean {
     start = end + 1
   }
   return true
+}
+
+// ─── ファイルツリーからの作成・名前の変更・削除 ─────────────────────
+
+/** Windows で使えない名前（拡張子が付いていても使えない）。どの OS でも断り、リポジトリを Windows で開けなくしない */
+const WINDOWS_RESERVED_NAME = /^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])(\..*)?$/i
+/** Windows で使えない文字と、パスの区切り。制御文字は別に見る */
+const FORBIDDEN_NAME_CHARS = /[<>:"/\\|?*]/
+/** 1つの名前の長さの上限（多くのファイルシステムで 255 バイト） */
+const MAX_ENTRY_NAME_BYTES = 255
+
+/** 作成・名前の変更で使う名前の誤り。null なら使える */
+type EntryNameProblem = 'empty' | 'dots' | 'chars' | 'control' | 'reserved' | 'trailing' | 'tooLong' | 'git'
+
+/**
+ * ファイル・フォルダの名前（1階層分）を確かめる。renderer は入力中の案内に、main は最終的な検査に使う。
+ * 区切り（/ \）を含む名前・`.` `..`・制御文字・Windows の予約名と使えない文字・末尾の空白やドット・.git は断る。
+ */
+export function entryNameProblem(name: string): EntryNameProblem | null {
+  if (typeof name !== 'string' || name.trim() === '') return 'empty'
+  if (name === '.' || name === '..') return 'dots'
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f]/.test(name)) return 'control'
+  if (FORBIDDEN_NAME_CHARS.test(name)) return 'chars'
+  if (/[ .]$/.test(name)) return 'trailing'
+  if (WINDOWS_RESERVED_NAME.test(name)) return 'reserved'
+  if (name.toLowerCase() === '.git') return 'git'
+  if (new TextEncoder().encode(name).length > MAX_ENTRY_NAME_BYTES) return 'tooLong'
+  return null
+}
+
+/** 名前の誤りを画面に出す文言のキー */
+export const ENTRY_NAME_PROBLEM_KEYS: Record<EntryNameProblem, TranslationKey> = {
+  empty: 'files.errors.name.empty',
+  dots: 'files.errors.name.dots',
+  chars: 'files.errors.name.chars',
+  control: 'files.errors.name.control',
+  reserved: 'files.errors.name.reserved',
+  trailing: 'files.errors.name.trailing',
+  tooLong: 'files.errors.name.tooLong',
+  git: 'files.errors.gitDir'
+}
+
+/** `/` 区切りの相対パスが .git の中（.git そのものを含む）か。大文字小文字は区別しない（macOS・Windows） */
+export function isInsideGitDir(path: string): boolean {
+  return path.split('/').some((part) => part.toLowerCase() === '.git')
+}
+
+/** path が base そのものか、その下か（`/` 区切りの相対パス） */
+export function isSameOrUnder(path: string, base: string): boolean {
+  return path === base || path.startsWith(`${base}/`)
+}
+
+/** 名前を変えたとき、base の下にあった path の新しいパス。下でなければ null */
+export function movedPath(path: string, from: string, to: string): string | null {
+  if (path === from) return to
+  return path.startsWith(`${from}/`) ? `${to}${path.slice(from.length)}` : null
 }

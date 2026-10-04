@@ -2,9 +2,11 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://ferretade.dev/</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/de/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/de/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/de/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/de/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/de/editor</loc><lastmod>2026-10-04</lastmod></url>
@@ -21,6 +23,7 @@
   <url><loc>https://ferretade.dev/docs/de/troubleshooting</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/editor</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/es/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/es/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/es/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/es/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/es/editor</loc><lastmod>2026-10-04</lastmod></url>
@@ -37,6 +40,7 @@
   <url><loc>https://ferretade.dev/docs/es/troubleshooting</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/files</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/fr/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/fr/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/fr/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/fr/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/fr/editor</loc><lastmod>2026-10-04</lastmod></url>
@@ -52,6 +56,7 @@
   <url><loc>https://ferretade.dev/docs/fr/transcription</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/fr/troubleshooting</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/hi/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/hi/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/hi/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/hi/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/hi/editor</loc><lastmod>2026-10-04</lastmod></url>
@@ -67,6 +72,7 @@
   <url><loc>https://ferretade.dev/docs/hi/transcription</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/hi/troubleshooting</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/id/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/id/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/id/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/id/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/id/editor</loc><lastmod>2026-10-04</lastmod></url>
@@ -83,6 +89,7 @@
   <url><loc>https://ferretade.dev/docs/id/troubleshooting</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/it/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/it/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/it/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/it/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/it/editor</loc><lastmod>2026-10-04</lastmod></url>
@@ -98,6 +105,7 @@
   <url><loc>https://ferretade.dev/docs/it/transcription</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/it/troubleshooting</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/ja/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/ja/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/ja/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/ja/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/ja/editor</loc><lastmod>2026-10-04</lastmod></url>
@@ -114,6 +122,7 @@
   <url><loc>https://ferretade.dev/docs/ja/troubleshooting</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/keyboard</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/ko/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/ko/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/ko/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/ko/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/ko/editor</loc><lastmod>2026-10-04</lastmod></url>
@@ -131,6 +140,7 @@
   <url><loc>https://ferretade.dev/docs/privacy</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/projects</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/pt-BR/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/pt-BR/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/pt-BR/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/pt-BR/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/pt-BR/editor</loc><lastmod>2026-10-04</lastmod></url>
@@ -148,6 +158,7 @@
   <url><loc>https://ferretade.dev/docs/quick-start</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/recording</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/ru/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/ru/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/ru/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/ru/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/ru/editor</loc><lastmod>2026-10-04</lastmod></url>
@@ -167,6 +178,7 @@
   <url><loc>https://ferretade.dev/docs/transcription</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/troubleshooting</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/vi/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/vi/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/vi/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/vi/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/vi/editor</loc><lastmod>2026-10-04</lastmod></url>
@@ -182,6 +194,7 @@
   <url><loc>https://ferretade.dev/docs/vi/transcription</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/vi/troubleshooting</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/zh-CN/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/zh-CN/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/zh-CN/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/zh-CN/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/zh-CN/editor</loc><lastmod>2026-10-04</lastmod></url>
@@ -197,6 +210,7 @@
   <url><loc>https://ferretade.dev/docs/zh-CN/transcription</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/zh-CN/troubleshooting</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/zh-TW/accounts</loc><lastmod>2026-10-04</lastmod></url>
+  <url><loc>https://ferretade.dev/docs/zh-TW/advanced-install</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/zh-TW/agents</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/zh-TW/concepts</loc><lastmod>2026-10-04</lastmod></url>
   <url><loc>https://ferretade.dev/docs/zh-TW/editor</loc><lastmod>2026-10-04</lastmod></url>

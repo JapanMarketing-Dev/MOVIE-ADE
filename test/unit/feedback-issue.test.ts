@@ -179,6 +179,12 @@ describe('フィードバック: 送り方（中継・gh はモック）', () =>
     }
   })
 
+  it('security-4 [12] 中継が「作ったか分からない」（upstream_pending）なら、ブラウザへ回さず送り直しも勧めない', async () => {
+    const d = deps({ relay: vi.fn(async (): Promise<RelayResult> => ({ ok: false, code: 'upstream_pending', retryable: false })) })
+    expect(await submitFeedback(viaRelay, d)).toEqual({ kind: 'rejected', code: 'upstream_pending', retryable: false })
+    expect(d.openExternal).not.toHaveBeenCalled()
+  })
+
   it('中継が内容で断った（頻度・重複）なら、ブラウザへは回さず理由を返す', async () => {
     const d = deps({ relay: vi.fn(async (): Promise<RelayResult> => ({ ok: false, code: 'rate_limited', retryable: true, retryAfterSec: 120 })) })
     expect(await submitFeedback(viaRelay, d)).toEqual({ kind: 'rejected', code: 'rate_limited', retryable: true, retryAfterSec: 120 })

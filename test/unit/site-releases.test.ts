@@ -338,10 +338,11 @@ describe('detectPlatform / recommendedSlot', () => {
     expect(recommendedSlot(detectPlatform({ userAgent: win, uaPlatform: 'Windows', uaArch: 'arm' }))?.id).toBe('win-arm64')
   })
 
-  it('Linux は AppImage', () => {
+  it('Linux は .deb を先に勧める（AppImage は次）', () => {
     const p = detectPlatform({ userAgent: linux, platform: 'Linux x86_64' })
     expect(p).toEqual({ os: 'linux', arch: 'x64', mobile: false })
-    expect(recommendedSlot(p)?.id).toBe('linux-appimage')
+    expect(recommendedSlot(p)?.id).toBe('linux-deb')
+    expect(SLOTS.filter((s) => s.os === 'linux').map((s) => s.id)).toEqual(['linux-deb', 'linux-appimage'])
   })
 
   it('スマホ・iPad は OS なし（ボタンはダウンロードページへ）', () => {

@@ -18,7 +18,7 @@ export type ReportArea =
   | 'browser' | 'github' | 'usage' | 'accounts' | 'update' | 'settings' | 'layout' | 'resources' | 'sessions'
   | 'preview' | 'startup' | 'ui' | 'onboarding'
 
-export interface ReportWhere {
+interface ReportWhere {
   area: ReportArea
   /** 何をしていたか（短い英語の動詞句。例: 'read settings'）。可変の値（パス・URL）は入れない */
   op: string

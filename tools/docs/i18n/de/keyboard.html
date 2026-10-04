@@ -46,7 +46,7 @@ Die Tastenkürzel werden für das Betriebssystem angezeigt, auf dem Sie lesen; m
   </tbody>
 </table>
 
-<!-- @files 5e0093248b -->
+<!-- @files 77be8e758a -->
 ## Dateien
 <table class="docs-keys">
   <thead><tr><th>Aktion</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
@@ -54,10 +54,12 @@ Die Tastenkürzel werden für das Betriebssystem angezeigt, auf dem Sie lesen; m
     <tr><td>Projektordner öffnen …</td><td class="os-mac">{{keys-mac:Mod+O}}</td><td class="os-win">{{keys-win:Mod+O}}</td></tr>
     <tr><td>Gehe zu Datei …</td><td class="os-mac">{{keys-mac:Mod+P}}</td><td class="os-win">{{keys-win:Mod+P}}</td></tr>
     <tr><td>Sichern</td><td class="os-mac">{{keys-mac:Mod+S}}</td><td class="os-win">{{keys-win:Mod+S}}</td></tr>
+    <tr><td>Im Dateibaum umbenennen</td><td class="os-mac">{{keys-mac:F2 / Enter|F2}}</td><td class="os-win">{{keys-win:F2 / Enter|F2}}</td></tr>
+    <tr><td>Im Dateibaum löschen</td><td class="os-mac">{{keys-mac:Mod+Backspace / Delete|Delete}}</td><td class="os-win">{{keys-win:Mod+Backspace / Delete|Delete}}</td></tr>
   </tbody>
 </table>
 
-<!-- @terminal a714e034c2 -->
+<!-- @terminal ed55aaf976 -->
 ## Terminal
 <table class="docs-keys">
   <thead><tr><th>Aktion</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
@@ -66,15 +68,21 @@ Die Tastenkürzel werden für das Betriebssystem angezeigt, auf dem Sie lesen; m
     <tr><td>Bereich/Tab schließen</td><td class="os-mac">{{keys-mac:Mod+W}}</td><td class="os-win">{{keys-win:Mod+W}}</td></tr>
     <tr><td>Rechts teilen</td><td class="os-mac">{{keys-mac:Mod+D|Ctrl+Shift+D}}</td><td class="os-win">{{keys-win:Mod+D|Ctrl+Shift+D}}</td></tr>
     <tr><td>Unten teilen</td><td class="os-mac">{{keys-mac:Mod+Shift+D|Alt+Shift+D}}</td><td class="os-win">{{keys-win:Mod+Shift+D|Alt+Shift+D}}</td></tr>
+    <tr><td>Auswahl kopieren</td><td class="os-mac">{{keys-mac:Mod+C|Ctrl+Shift+C / Ctrl+C}}</td><td class="os-win">{{keys-win:Mod+C|Ctrl+Shift+C / Ctrl+C}}</td></tr>
+    <tr><td>Einsetzen</td><td class="os-mac">{{keys-mac:Mod+V|Ctrl+V / Ctrl+Shift+V / Shift+Insert}}</td><td class="os-win">{{keys-win:Mod+V|Ctrl+V / Ctrl+Shift+V / Shift+Insert}}</td></tr>
+    <tr><td>Neue Zeile im Prompt eines Agents</td><td class="os-mac">{{keys-mac:Shift+Enter}}</td><td class="os-win">{{keys-win:Shift+Enter}}</td></tr>
+    <tr><td>Zeilenanfang / Zeilenende</td><td class="os-mac">{{keys-mac:Mod+Left / Mod+Right|}}</td><td class="os-win">{{keys-win:Mod+Left / Mod+Right|}}</td></tr>
+    <tr><td>Bis zum Zeilenanfang löschen</td><td class="os-mac">{{keys-mac:Mod+Backspace|}}</td><td class="os-win">{{keys-win:Mod+Backspace|}}</td></tr>
   </tbody>
-</table><p>Die Tastenkürzel zum Teilen funktionieren, während ein Terminal den Fokus hat.</p>
+</table><p>Diese Tastenkürzel funktionieren, während ein Terminal den Fokus hat. Unter Windows und Linux kopiert Ctrl+C, wenn Text markiert ist, und stoppt den laufenden Befehl, wenn nichts markiert ist. {{keys:Shift+Enter}} beginnt eine neue Zeile, während ein Agent wie Claude Code oder Codex läuft; in einer normalen Shell führt es den Befehl wie Enter aus. In einem Vollbildprogramm, das die Maus verwendet (vim, tmux, ein Agent), halten Sie unter macOS beim Ziehen die Wahltaste gedrückt, um Text zu markieren.</p>
 
-<!-- @window 84ff87d3b5 -->
+<!-- @window 115b0e6afb -->
 ## Fenster und Einstellungen
 <table class="docs-keys">
   <thead><tr><th>Aktion</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
   <tbody>
     <tr><td>Einstellungen …</td><td class="os-mac">{{keys-mac:Mod+,}}</td><td class="os-win">{{keys-win:Mod+,}}</td></tr>
     <tr><td>Fenster schließen</td><td class="os-mac">{{keys-mac:Mod+Shift+W|}}</td><td class="os-win">{{keys-win:Mod+Shift+W|}}</td></tr>
+    <tr><td>Im Dock ablegen</td><td class="os-mac">{{keys-mac:Mod+M|}}</td><td class="os-win">{{keys-win:Mod+M|}}</td></tr>
   </tbody>
 </table><p>Unter Windows und Linux gibt es kein Tastenkürzel zum Schließen des Fensters: <span class="docs-ui">Ablage → Beenden</span> beendet die App.</p>

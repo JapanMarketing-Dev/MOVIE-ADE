@@ -13,14 +13,14 @@
 
 export type ReviewInputKind = 'click' | 'scroll' | 'pen' | 'erase' | 'nav' | 'pointer' | 'shortcut' | 'history'
 
-export interface RateLimit {
+interface RateLimit {
   /** 続けて受け付けられる数 */
   capacity: number
   /** 1秒あたりに戻る数 */
   perSecond: number
 }
 
-export interface ReviewEventLimits {
+interface ReviewEventLimits {
   rates: Record<ReviewInputKind, RateLimit>
   /** 1回の録画で記録する操作ログの上限（pointer・shortcut・history は記録しないので数えない） */
   maxEvents: number

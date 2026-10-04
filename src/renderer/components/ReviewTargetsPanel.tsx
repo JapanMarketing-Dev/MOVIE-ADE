@@ -4,7 +4,8 @@ import type { Project } from '@shared/types'
 import { expandedStorageKey } from '@shared/fileTreeState'
 import { pageKey } from '@shared/page'
 import { previewPathFromUrl } from '@shared/preview'
-import { defaultUrlLabel, isPresetableUrl } from '@shared/projectUrl'
+import { isPresetableUrl } from '@shared/projectUrl'
+import { sanitizeProjectKind, urlTarget } from '@shared/projectTargets'
 import { searchReviewPanel, splitHighlight, type PanelSearchHit, type PanelSearchSource } from '@shared/reviewPanelSearch'
 import {
   buildTargetEntries,
@@ -21,6 +22,7 @@ import { useT } from '../lib/i18n'
 import { requestTerminalCommand } from '../lib/terminalCommand'
 import { Button, Field, IconButton, Spinner, useToast } from '../ui'
 import { useFileTree, VirtualRows, type FileTreeRow } from './fileTree'
+import { TargetPurposeIcon } from './TargetPurposeIcon'
 
 /**
  * フィードバックモードの右パネル（レビュー対象）。
@@ -268,7 +270,7 @@ export function ReviewTargetsPanel({
     if (!url) return
     try {
       if (adding.keep && project && isPresetableUrl(url) && !project.urls.some((u) => u.url === url)) {
-        await window.ade.invoke('project:update', { ...project, urls: [...project.urls, { id: crypto.randomUUID(), label: defaultUrlLabel(url), url }] })
+        await window.ade.invoke('project:update', { ...project, urls: [...project.urls, urlTarget(url, sanitizeProjectKind(project.kind), project.urls)] })
       }
       onOpenUrl(url)
       setAdding(null)
@@ -281,7 +283,7 @@ export function ReviewTargetsPanel({
   const saveRecent = async (url: string) => {
     if (!project || !isPresetableUrl(url) || project.urls.some((u) => u.url && pageKey(u.url) === pageKey(url))) return
     try {
-      await window.ade.invoke('project:update', { ...project, urls: [...project.urls, { id: crypto.randomUUID(), label: defaultUrlLabel(url), url }] })
+      await window.ade.invoke('project:update', { ...project, urls: [...project.urls, urlTarget(url, sanitizeProjectKind(project.kind), project.urls)] })
       toast({ tone: 'success', message: t('feedbackTargets.savedUrl', { url }) })
     } catch (err) {
       toast({ tone: 'warning', message: errorMessage(err) })
@@ -315,9 +317,11 @@ export function ReviewTargetsPanel({
 
     if (row.type === 'target') {
       const Icon = row.entry.kind === 'window' ? AppWindow : row.registered ? Link : Globe
-      return <div {...common} title={row.entry.detail}>
+      // デザイン・設計書の確認先は区分のアイコン（ツールバーと同じ）
+      const purpose = row.entry.purpose
+      return <div {...common} title={purpose ? `${t(`projectTargets.purpose.${purpose}`)} · ${row.entry.detail}` : row.entry.detail} data-purpose={purpose ?? 'app'}>
         {numCell}
-        <Icon className="fb-target__icon" size={14} strokeWidth={1.75} aria-hidden="true" />
+        {purpose ? <TargetPurposeIcon purpose={purpose} className="fb-target__icon" size={14} /> : <Icon className="fb-target__icon" size={14} strokeWidth={1.75} aria-hidden="true" />}
         <span className="fb-target__name">{row.entry.title}</span>
         <span className="fb-target__detail">{row.entry.detail}</span>
         {tail}

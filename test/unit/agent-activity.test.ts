@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { workingProjectIds } from '../../src/renderer/terminal/agentActivity'
+import { hasBusyAgent, workingProjectIds } from '../../src/renderer/terminal/agentActivity'
 
 describe('サイドバーの「実行中」の印に使うプロジェクト', () => {
   it('working のペインを持つプロジェクトだけを、重複なしで並びを固定して返す', () => {
@@ -18,5 +18,17 @@ describe('サイドバーの「実行中」の印に使うプロジェクト', (
       { projectId: 'p1', state: 'unknown' },
       { projectId: null, state: 'working' }
     ])).toEqual([])
+  })
+})
+
+describe('閉じる前に確かめるペイン（Orca #14817 #24426）', () => {
+  it('Agent が作業中・確認待ちなら確かめる', () => {
+    expect(hasBusyAgent(['idle', 'working'])).toBe(true)
+    expect(hasBusyAgent(['blocked'])).toBe(true)
+  })
+
+  it('シェルだけ・待機中・終わった Agent・状態が分からないものは確かめずに閉じる', () => {
+    expect(hasBusyAgent(['unknown', 'idle', 'done', undefined])).toBe(false)
+    expect(hasBusyAgent([])).toBe(false)
   })
 })

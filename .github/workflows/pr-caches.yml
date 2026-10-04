@@ -1,0 +1,36 @@
+# 閉じた PR の Actions のキャッシュ（pnpm の store など）を消す。Orca の ci-closed-pr-caches.yml を元にした。
+# PR ごとのキャッシュは develop / main から使われないので、残すとリポジトリの上限（10GB）を埋めて、
+# develop のキャッシュが先に追い出される。
+# pull_request_target は受け取る側の workflow で動く。PR のコードは取ってこない（checkout しない）。secrets は使わない。
+name: Clean closed PR caches
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  clean:
+    name: delete caches of the closed PR
+    if: github.repository == 'JapanMarketing-Dev/ferret'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const ref = `refs/pull/${context.payload.pull_request.number}/merge`
+            const caches = await github.paginate(github.rest.actions.getActionsCacheList, { ...context.repo, ref, per_page: 100 })
+            for (const cache of caches) {
+              if (cache.ref !== ref) throw new Error(`Unexpected cache ref: ${cache.ref}`)
+              try {
+                await github.rest.actions.deleteActionsCacheById({ ...context.repo, cache_id: cache.id })
+              } catch (error) {
+                if (error.status !== 404) throw error
+              }
+            }
+            core.info(`Removed ${caches.length} caches for ${ref}`)

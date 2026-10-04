@@ -57,7 +57,7 @@ export function SttLanguageSelect({ value, onChange, disabled = false, ariaLabel
       e.preventDefault()
       if (!open) { setOpen(true); return }
       setActive((i) => Math.max(0, Math.min(options.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1))))
-    } else if (e.key === 'Enter') {
+    } else if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
       e.preventDefault()
       const pick = options[active]
       if (open && pick) choose(pick.code)

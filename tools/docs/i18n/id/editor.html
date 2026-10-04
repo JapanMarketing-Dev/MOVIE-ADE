@@ -5,7 +5,7 @@ Editor dan pratinjau
 <!-- @lead 97cbc36c8d -->
 Buka dan edit file proyek, serta pratinjau Markdown dan Mermaid. Pratinjau yang dibuka di browser bawaan dapat direkam dan ditinjau seperti halaman web lainnya.
 
-<!-- @files f1e2c27cca -->
+<!-- @files d29f6a2107 -->
 ## Membuka dan mengedit file
 <ul>
   <li><span class="docs-ui">File</span> (pohon file): {{keys:Mod+Shift+E}}, dengan <span class="docs-ui">Filter berdasarkan nama file</span>, <span class="docs-ui">Segarkan</span>, dan <span class="docs-ui">Ciutkan Semua</span>.</li>
@@ -14,7 +14,18 @@ Buka dan edit file proyek, serta pratinjau Markdown dan Mermaid. Pratinjau yang 
   <li>Jika file berubah di disk saat Anda memiliki edit yang belum disimpan, pilih <span class="docs-ui">Muat Ulang dari Disk</span> atau <span class="docs-ui">Pertahankan Perubahan Saya</span>.</li>
 </ul>
 <p>Editornya adalah Monaco. File yang bukan teks dibuka di penampil: gambar (perbesar dan perkecil; SVG juga bisa ditampilkan sebagai kode), video dan audio dengan bilah posisi, PDF, dan untuk file biner lainnya, ukurannya serta tampilan hex dari byte-byte pertama. Penampil bersifat hanya-baca, dan file di luar folder proyek atau yang dicapai melalui symbolic link yang keluar dari folder tersebut tidak ditampilkan.</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Segera hadir</p><p>Membuat, mengganti nama, dan menghapus file dari pohon file.</p></div>
+
+<!-- @file-tree 4bec72e9f4 -->
+## Membuat, mengganti nama, dan menghapus file
+<p>Kelola file langsung di <span class="docs-ui">File</span>, seperti di VS Code. Nama diketik langsung di dalam pohon.</p>
+<ul>
+  <li><span class="docs-ui">File Baru</span> / <span class="docs-ui">Folder Baru</span>: tombol di atas pohon, atau klik kanan folder (atau ruang kosong di bawah pohon). Item baru masuk ke folder yang dipilih, di samping file yang dipilih, atau di tingkat teratas proyek. File baru terbuka di editor.</li>
+  <li><span class="docs-ui">Ganti Nama</span>: {{keys:F2 / Enter|F2}}, atau klik kanan. Tab yang terbuka mengikuti nama baru dan mempertahankan edit yang belum disimpan.</li>
+  <li><span class="docs-ui">Hapus</span>: {{keys:Mod+Backspace / Delete|Delete}}, atau klik kanan. Ferret meminta konfirmasi lebih dulu, lalu memindahkan item ke Tempat Sampah (Recycle Bin di Windows), sehingga Anda bisa memulihkannya. Tab file yang dihapus ditutup; jika ada yang memiliki edit yang belum disimpan, konfirmasinya akan menyebutkannya.</li>
+  <li>Pilih beberapa item dengan {{keys:Mod}}-klik atau {{keys:Shift}}-klik untuk menghapusnya sekaligus.</li>
+  <li>{{keys:Esc}} membatalkan nama yang sedang Anda ketik.</li>
+</ul>
+<p>Ferret tidak akan menimpa file atau folder yang sudah ada dengan nama yang sama, dan menolak apa pun yang akan keluar dari folder proyek (<code>..</code>, path absolut, symbolic link yang mengarah ke luar), apa pun di dalam <code>.git</code>, serta nama yang tidak bisa dipakai oleh sebagian OS: <code>/ \ &lt; &gt; : " | ? *</code>, karakter kontrol, spasi atau titik di akhir, dan nama yang dicadangkan Windows seperti <code>CON</code> atau <code>NUL</code>.</p>
 
 <!-- @preview b8c0baaad4 -->
 ## Pratinjau Markdown dan Mermaid
@@ -24,7 +35,7 @@ Buka dan edit file proyek, serta pratinjau Markdown dan Mermaid. Pratinjau yang 
   <li><span class="docs-ui">Buka Pratinjau</span>: di browser bawaan (<code>ade-preview://</code>), sehingga Anda bisa merekam dan meninjaunya</li>
 </ul>
 
-<!-- @review-docs 3956ed6f10 -->
+<!-- @review-docs 4b5c6316ba -->
 ## Meninjau dokumen dengan merekam
 <ol class="docs-steps">
   <li>Buka file Markdown lalu klik <span class="docs-ui">Buka Pratinjau</span>.</li>
@@ -32,4 +43,4 @@ Buka dan edit file proyek, serta pratinjau Markdown dan Mermaid. Pratinjau yang 
   <li>Berhenti. Temuan merujuk ke path file relatif terhadap proyek, bukan URL.</li>
   <li>Klik <span class="docs-ui">Kirim ke Agent</span> agar dokumennya diperbaiki.</li>
 </ol>
-<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="Pratinjau Markdown di browser bawaan (screenshot segera hadir)"><span>Screenshot segera hadir</span></div><figcaption>Pratinjau Markdown di browser bawaan</figcaption></figure>
+{{shot:preview|Pratinjau Markdown di browser bawaan}}

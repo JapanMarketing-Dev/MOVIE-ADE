@@ -12,7 +12,6 @@ import {
   buildPrompt,
   copyText,
   detectState,
-  displayPriority,
   hasVisibleIdle,
   identifyAgent,
   normalizeTail,
@@ -252,6 +251,11 @@ describe('実際の出力からの状態判定', () => {
     expect(detectState('claude-code', { title: '◐ 処理中' })).toBe('working')
   })
 
+  it('claude の選択式の質問は blocked（送った本文が選択肢の欄に入らないように。Orca #19743）', () => {
+    const tail = 'Which database should we use?\n❯ 1. Postgres\n  2. SQLite\n\n↑/↓ to navigate · Enter to select · Esc to cancel'
+    expect(detectState('claude-code', { title: '✳ acme-shop', tail })).toBe('blocked')
+  })
+
   it('codex のタイトルの Action Required は blocked', () => {
     expect(detectState('codex', { title: 'Action Required' })).toBe('blocked')
   })
@@ -421,12 +425,5 @@ describe('状態の保持と「終わったがまだ見ていない」', () => {
     t += 10
     tr.observe('idle', { visible: true })
     expect(tr.canSend()).toBe(true)
-  })
-
-  it('表示の並び順は blocked > done > working > idle > unknown', () => {
-    expect(displayPriority.blocked).toBeGreaterThan(displayPriority.done)
-    expect(displayPriority.done).toBeGreaterThan(displayPriority.working)
-    expect(displayPriority.working).toBeGreaterThan(displayPriority.idle)
-    expect(displayPriority.idle).toBeGreaterThan(displayPriority.unknown)
   })
 })

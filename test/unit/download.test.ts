@@ -7,7 +7,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   ModelDownloadError,
-  discardPartialDownload,
   isAllowedModelUrl,
   downloadWhisperModel,
   partialDownloadSize
@@ -130,13 +129,6 @@ describe('モデルのダウンロード', () => {
     })
     expect(existsSync(dest)).toBe(false)
     expect(await partialDownloadSize(dest)).toBe(5)
-  })
-
-  it('途中ファイルを捨ててやり直せる', async () => {
-    await writeFile(`${dest}.part`, '01234', 'utf8')
-    expect(await partialDownloadSize(dest)).toBe(5)
-    await discardPartialDownload(dest)
-    expect(await partialDownloadSize(dest)).toBe(0)
   })
 
   it('中断したら aborted として扱う', async () => {

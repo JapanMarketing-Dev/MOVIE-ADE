@@ -3,10 +3,7 @@
  * 定数を1か所に置く（04_benchmark.md 3.3 の最後の行）。
  */
 
-/** ブラケットペーストの開始 */
-export const BRACKETED_PASTE_START = '\x1b[200~'
-/** ブラケットペーストの終了 */
-export const BRACKETED_PASTE_END = '\x1b[201~'
+export { BRACKETED_PASTE_END, BRACKETED_PASTE_START } from '@shared/bracketedPaste'
 /** 送信（Enter）。本文とは別の write で送る */
 export const SUBMIT = '\r'
 

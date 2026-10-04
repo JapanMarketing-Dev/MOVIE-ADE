@@ -18,7 +18,7 @@ interface IndexedFile {
   inputIndex: number
 }
 
-export interface QuickOpenResult {
+interface QuickOpenResult {
   path: string
   score: number
 }

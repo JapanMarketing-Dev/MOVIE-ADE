@@ -78,7 +78,7 @@ export interface TakeRecord {
   trim?: TrimRecord
 }
 
-export const SESSION_VERSION = 1 as const
+const SESSION_VERSION = 1 as const
 
 /** 新しいセッションのフォルダを作る */
 export async function createSession(projectDir: string, now = new Date()): Promise<SessionPaths> {
@@ -159,10 +159,6 @@ export async function loadSession(paths: SessionPaths): Promise<SessionRecord | 
     reportHandled(errorKind(err), { area: 'sessions', op: 'parse session' })
     return null
   }
-}
-
-export function hasSession(paths: SessionPaths): boolean {
-  return existsSync(paths.sessionJson)
 }
 
 /** 分解が終わったら中間ファイルを消す（設計 8章 work/） */

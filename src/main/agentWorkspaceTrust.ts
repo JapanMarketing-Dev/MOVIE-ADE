@@ -1,3 +1,4 @@
+import { delay } from '@shared/delay'
 import { randomUUID } from 'node:crypto'
 import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, rmdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -28,10 +29,10 @@ import { errorKind, reportHandled } from '@shared/report'
  * ホームなどには書かない。
  */
 
-export type TrustOutcome = 'granted' | 'unchanged' | 'missing-config' | 'locked' | 'unreadable' | 'skipped'
+type TrustOutcome = 'granted' | 'unchanged' | 'missing-config' | 'locked' | 'unreadable' | 'skipped'
 
 /** 書き込みを待つ上限。Orca の SHORT_AGENT_TRUST_WRITE_DEADLINE_MS と同じ */
-export const TRUST_WRITE_DEADLINE_MS = 1500
+const TRUST_WRITE_DEADLINE_MS = 1500
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -40,12 +41,12 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 // ───────────────────────── Claude Code ─────────────────────────
 
 /** Claude は NFC にそろえて normalize したパスで探す */
-export function toClaudeTrustKey(folderPath: string): string {
+function toClaudeTrustKey(folderPath: string): string {
   return normalize(folderPath.normalize('NFC'))
 }
 
 /** フォルダの、そのままの形と realpath の形の両方をキーにする（/tmp と /private/tmp のような違い） */
-export function claudeTrustKeys(folderPath: string): string[] {
+function claudeTrustKeys(folderPath: string): string[] {
   const forms = [resolve(folderPath)]
   try {
     forms.push(realpathSync.native(folderPath))
@@ -71,7 +72,7 @@ export function resolveClaudeGlobalConfigFile(args: {
   return join(args.env.CLAUDE_CONFIG_DIR || args.homeDir, `.claude${suffix}.json`)
 }
 
-export type ClaudeFolderTrustChange =
+type ClaudeFolderTrustChange =
   | { kind: 'unchanged' }
   | { kind: 'refuse' }
   | { kind: 'changed'; config: Record<string, unknown> }
@@ -145,7 +146,7 @@ async function acquireClaudeLock(configFile: string, retries = 4): Promise<(() =
       }
     } catch {
       // ほかのプロセスがロック中（想定内）。少し待って取り直す
-      if (attempt < retries) await new Promise((done) => setTimeout(done, Math.min(250, 50 * 2 ** attempt)))
+      if (attempt < retries) await delay(Math.min(250, 50 * 2 ** attempt))
     }
   }
   return null

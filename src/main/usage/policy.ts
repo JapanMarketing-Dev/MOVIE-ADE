@@ -15,12 +15,12 @@ export const DEFAULT_POLL_MS = 15 * 60 * 1000
 /** 窓を前に出した・再読み込みを押したときの連打よけ（5分） */
 export const MIN_REFETCH_MS = 5 * 60 * 1000
 /** 失敗したプロバイダの再試行の最短間隔（30秒）。続けて失敗するたびに倍にし、15分で止める */
-export const ACTIVE_FAILURE_REFETCH_MS = 30 * 1000
-export const MAX_ACTIVE_FAILURE_REFETCH_MS = DEFAULT_POLL_MS
+const ACTIVE_FAILURE_REFETCH_MS = 30 * 1000
+const MAX_ACTIVE_FAILURE_REFETCH_MS = DEFAULT_POLL_MS
 export const MAX_ACTIVE_FAILURE_STREAK = 6
 /** これより古い成功値は、失敗時にも見せない（30分。取得制限中は24時間） */
 export const STALE_THRESHOLD_MS = 30 * 60 * 1000
-export const RATE_LIMITED_STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000
+const RATE_LIMITED_STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000
 /** アカウント別の内訳を開いたときの取り直しの間隔（60秒） */
 export const INACTIVE_FETCH_DEBOUNCE_MS = 60 * 1000
 
@@ -29,7 +29,7 @@ export function isRetryAfterActive(limits: ProviderRateLimits | null, now: numbe
 }
 
 function hasData(p: ProviderRateLimits | null): boolean {
-  return Boolean(p?.session || p?.weekly || p?.fableWeekly)
+  return Boolean(p?.session || p?.weekly || p?.fableWeekly || p?.spendLimit || p?.unlimited)
 }
 
 /**

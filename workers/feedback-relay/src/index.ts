@@ -9,14 +9,17 @@
  *   - 大きさ・フィールド・種類の許可リスト。画像は中身で PNG / JPEG を確かめ、メタデータを取り除く
  *   - 本文と題名の鍵・トークン・メール・ホームのパスを伏せ字にする
  *   - 本文を読む前に、IP ごとの試みの上限と、IP の送信の上限を確かめる（security-3 [4]）
+ *   - IPv6 は /64 にまとめ、本文を読む前に全体の前処理の枠も確かめる。送り主を増やしても読む量と limiter の数が増えない（security-4 [8]）
  *   - IP とインストール ID ごとの頻度の上限、全体の上限（狭い順に予約し、断られたら広い枠に触れない・予約を戻す。security-3 [3]）
  *   - 同じ内容の連投の拒否。画像・Issue を作る前に内容の鍵を1回の呼び出しで取る（security-3 [7]）。Durable Object で数える
+ *   - 全体の枠は、送り主の枠と内容の鍵を取ったあと、Issue を作る直前に取る。重複・失敗では戻す（security-4 [4]）
+ *   - GitHub へ送ったあとの、作られたかが分からない失敗では、内容の鍵・枠・画像を残して upstream_pending を返す（security-4 [12]）
  *   - 失敗の理由は短い code だけを返す。IP・本文・トークンはログにも出さず、IP は保存しない（HMAC で数えるだけ）
  */
 import type { Env } from './env'
 import { buildIssue, createIssue } from './github'
 import { sanitizeImage, type SanitizedImage } from './images'
-import { askLimiter, limiterKey, FeedbackLimiter, type LimiterResult, type Window } from './limiter'
+import { askLimiter, limiterKey, sourceIdentity, FeedbackLimiter, type LimiterResult, type Window } from './limiter'
 import {
   ALLOWED_FIELDS,
   ARCHES,
@@ -34,6 +37,7 @@ import {
   MEDIA_PATH_PREFIX,
   PER_SENDER_LIMITS,
   PLATFORMS,
+  PREPARSE_LIMITS,
   type ErrorCode
 } from './limits'
 
@@ -92,11 +96,18 @@ async function submit(request: Request, env: Env, deps: Deps): Promise<Response>
   // 本文（最大 8MB）を読む・multipart を解く・画像を確かめるより前に、IP だけで決められる上限を確かめる（security-3 [4]）。
   // IP・インストール ID はそのまま使わず HMAC にする。保存もしない
   const now = deps.now()
-  const ip = request.headers.get('cf-connecting-ip') ?? 'unknown'
+  // IPv6 は /64 にまとめる（1つの回線の中でアドレスを変えても同じ送り主。security-4 [8]）
+  const ip = sourceIdentity(request.headers.get('cf-connecting-ip') ?? 'unknown')
+  // 全体の前処理の枠が尽きていれば、送り主ごとの limiter を作る前・本文を読む前に断る（送り主を増やしても work と状態が増えない。security-4 [8]）
+  const preparse = await askLimiter(env, 'preparse', 'peek', PREPARSE_LIMITS, now)
+  if (!preparse.allowed) return fail('rate_limited', { 'retry-after': String(preparse.retryAfterSec) })
   const ipKey = await limiterKey(env.RATE_LIMIT_SALT, 'ip', ip)
   // 試みの数（形の悪いもの・断ったものも数える）。Issue になった数の枠（ip・全体）とは別
   const attempt = await askLimiter(env, await limiterKey(env.RATE_LIMIT_SALT, 'attempt', ip), 'hit', ATTEMPT_LIMITS, now)
   if (!attempt.allowed) return fail('rate_limited', { 'retry-after': String(attempt.retryAfterSec) })
+  // 送り主の枠を通ったものだけを、全体の前処理の枠に数える（1つの送り主が全体の枠を使い切れない）
+  const preparseHit = await askLimiter(env, 'preparse', 'hit', PREPARSE_LIMITS, now)
+  if (!preparseHit.allowed) return fail('rate_limited', { 'retry-after': String(preparseHit.retryAfterSec) })
   // 送信の枠を使い切った IP は、本文を読まずに断る（数えない）
   const ipPeek = await askLimiter(env, ipKey, 'peek', PER_SENDER_LIMITS, now)
   if (!ipPeek.allowed) return fail('rate_limited', { 'retry-after': String(ipPeek.retryAfterSec) })
@@ -117,18 +128,29 @@ async function submit(request: Request, env: Env, deps: Deps): Promise<Response>
   const s = await parseSubmission(form)
 
   // 頻度の上限。インストール ID は任意（送らない選択もできる）。無ければ IP と全体だけで数える
-  const checks = [
+  const senders = [
     { name: ipKey, windows: PER_SENDER_LIMITS },
-    ...(s.installId ? [{ name: await limiterKey(env.RATE_LIMIT_SALT, 'install', s.installId), windows: PER_SENDER_LIMITS }] : []),
-    { name: 'global', windows: GLOBAL_LIMITS }
+    ...(s.installId ? [{ name: await limiterKey(env.RATE_LIMIT_SALT, 'install', s.installId), windows: PER_SENDER_LIMITS }] : [])
   ]
-  const admission = await admit(env, checks, now)
+  const admission = await admit(env, senders, now)
   if (!admission.allowed) return fail('rate_limited', { 'retry-after': String(admission.retryAfterSec) })
+  const release = (held: ReadonlyArray<{ name: string; windows: readonly Window[] }>) =>
+    Promise.allSettled(held.map((c) => askLimiter(env, c.name, 'release', c.windows, now)))
 
-  // 同じ題名と本文の連投（送り主を問わない）。確かめると取るを1回で行い、同時に来た同じ内容は1件だけが先へ進む（security-3 [7]）
-  const dupKey = await limiterKey(env.RATE_LIMIT_SALT, 'dup', `${s.title.toLowerCase()}\n${s.body.replace(/\s+/g, ' ').trim().toLowerCase()}`)
-  const dupWindow = [{ windowMs: DUPLICATE_WINDOW_MS, max: 1 }]
-  if (!(await askLimiter(env, dupKey, 'hit', dupWindow, now)).allowed) return fail('duplicate')
+  // 同じ題名と本文の連投（送り主を問わない）。確かめると取るを1回で行い、同時に来た同じ内容は1件だけが先へ進む（security-3 [7]）。
+  // 全体の枠より前に取る。重複で断った要求は全体の枠に触れず、送り主の予約も戻す（security-4 [4]）
+  const dup = { name: await limiterKey(env.RATE_LIMIT_SALT, 'dup', `${s.title.toLowerCase()}\n${s.body.replace(/\s+/g, ' ').trim().toLowerCase()}`), windows: [{ windowMs: DUPLICATE_WINDOW_MS, max: 1 }] }
+  if (!(await askLimiter(env, dup.name, 'hit', dup.windows, now)).allowed) {
+    await release(senders)
+    return fail('duplicate')
+  }
+  // 全体の枠は最後に、Issue を作る直前に取る。断られたら取った予約を全部戻す
+  const global = { name: 'global', windows: GLOBAL_LIMITS }
+  const globalHit = await askLimiter(env, global.name, 'hit', global.windows, now)
+  if (!globalHit.allowed) {
+    await release([...senders, dup])
+    return fail('rate_limited', { 'retry-after': String(globalHit.retryAfterSec) })
+  }
 
   // 画像を推測できない名前で置く。Issue を作れなければ消す
   const keys: string[] = []
@@ -140,19 +162,25 @@ async function submit(request: Request, env: Env, deps: Deps): Promise<Response>
     }
     const issue = buildIssue({ ...s, imageUrls: keys.map((k) => `${env.PUBLIC_BASE}${MEDIA_PATH_PREFIX}${k.slice('v1/'.length)}`) })
     const created = await createIssue(deps.fetch, env.GITHUB_TOKEN, env.GITHUB_REPO, issue)
-    if (!created) throw new Rejection('upstream_failed')
-    return new Response(JSON.stringify({ ok: true, issue: created.number, url: created.url }), { status: 201, headers: JSON_HEADERS })
+    if (created.status === 'created') return new Response(JSON.stringify({ ok: true, issue: created.number, url: created.url }), { status: 201, headers: JSON_HEADERS })
+    if (created.status === 'unknown') {
+      // 送ったが、作られたかが分からない。Issue ができていれば画像はそこに貼られているので消さない。
+      // 内容の鍵と枠も戻さない（同じ内容の送り直しは duplicate になり、2件目を作らない）。アプリはブラウザへ回さない（security-4 [12]）
+      return fail('upstream_pending')
+    }
+    throw new Rejection('upstream_failed')
   } catch (e) {
-    // Issue を作れなかった：置いた画像を消し、内容の鍵を戻す（同じ内容をあとで送り直せる）
-    await Promise.allSettled([...keys.map((k) => env.MEDIA.delete(k)), askLimiter(env, dupKey, 'release', dupWindow, now)])
+    // Issue を作れなかった：置いた画像を消し、内容の鍵と全体の枠を戻す（同じ内容をあとで送り直せる。作っていない Issue で全体の枠を減らさない）。
+    // 送り主の枠は戻さない（GitHub へ送った分として、同じ送り主が失敗する送信を繰り返せないように数える）
+    await Promise.allSettled([...keys.map((k) => env.MEDIA.delete(k)), release([dup, global])])
     if (e instanceof Rejection) throw e
     throw new Rejection('upstream_failed')
   }
 }
 
 /**
- * 頻度の枠を、狭い順（IP → インストール ID → 全体）に1つずつ予約する（security-3 [3]）。
- * 断られたらそこで止め、広い枠（全体）には触れない。先に取った予約は戻す（断られた要求が、ほかの枠を減らさない）
+ * 送り主の頻度の枠を、狭い順（IP → インストール ID）に1つずつ予約する（security-3 [3]）。
+ * 断られたらそこで止め、先に取った予約は戻す（断られた要求が、ほかの枠を減らさない）。全体の枠はここでは取らない（security-4 [4]）
  */
 async function admit(env: Env, checks: ReadonlyArray<{ name: string; windows: readonly Window[] }>, now: number): Promise<LimiterResult> {
   const taken: Array<{ name: string; windows: readonly Window[] }> = []

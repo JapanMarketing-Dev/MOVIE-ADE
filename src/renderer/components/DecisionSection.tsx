@@ -25,8 +25,8 @@ import '../styles/decision.css'
 
 /** Agent が実行する依頼（設定の画面に見せる例。実際の手順は feedback.md の受け入れ確認の節） */
 const CURL_PREVIEW = `curl -sS -X POST "$FERRET_DECISION_URL" \\
-  -H 'content-type: application/json' --data-binary @req.json
-# req.json = { "model": "$FERRET_DECISION_MODEL", "state": "<finding + Done when>",
+  -H 'content-type: application/json' --data-binary @"$REQ_FILE"
+# $REQ_FILE (in a temporary folder) = { "model": "$FERRET_DECISION_MODEL", "state": "<finding + Done when>",
 #   "images": [BEFORE, AFTER] (base64, only if FERRET_DECISION_IMAGES=1),
 #   "questions": { "done": noul, "status": choice } }`
 

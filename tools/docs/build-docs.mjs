@@ -35,8 +35,11 @@ const code = (s) => `<pre><code>${s}</code></pre>`
  * 本文には {{clip:<name>|<説明>}} の札で書き、書き出すときに開く（説明は訳す。ファイルがまだ無いあいだは枠だけを出す）。
  */
 const clip = (name, caption) => `{{clip:${name}|${caption}}}`
-const shot = (name, caption) =>
-  `<figure class="docs-shot" data-shot="${name}"><div class="docs-shot-slot" role="img" aria-label="${caption} (screenshot coming soon)"><span>Screenshot coming soon</span></div><figcaption>${caption}</figcaption></figure>`
+/**
+ * 画面のスクリーンショット。site/docs/assets/<name>.png を使う（e2e/docs-shots.spec.ts で撮り直せる）。
+ * 本文には {{shot:<name>|<説明>}} の札で書き、書き出すときに開く（説明は訳す。画像が無ければ何も出さない）
+ */
+const shot = (name, caption) => `{{shot:${name}|${caption}}}`
 const figure = (name, alt, caption) => `<figure class="shot docs-figure">
   <img class="shot-light" src="assets/${name}-light.png" width="1600" height="972" alt="${alt}">
   <img class="shot-dark" src="assets/${name}-dark.png" width="1600" height="972" alt="${alt} (dark theme)">
@@ -44,7 +47,6 @@ const figure = (name, alt, caption) => `<figure class="shot docs-figure">
 </figure>`
 const note = (html, kind = 'note', title = '') =>
   `<div class="docs-callout docs-callout-${kind}">${title ? `<p class="docs-callout-title">${title}</p>` : ''}${html}</div>`
-const soon = (html) => note(html, 'wip', 'Coming soon')
 const keyRow = (action, spec) => `<tr><td>${action}</td><td class="os-mac">{{keys-mac:${spec}}}</td><td class="os-win">{{keys-win:${spec}}}</td></tr>`
 const keyTable = (rows) => `<table class="docs-keys">
   <thead><tr><th>Action</th><th class="os-mac">macOS</th><th class="os-win">Windows / Linux</th></tr></thead>
@@ -71,7 +73,7 @@ ${clip('quick-start', 'Open a page, record, circle and talk, stop, and send the 
   <li>A microphone. Feedback is your voice plus the pen. Without a mic, pen circles still become findings, but they have no words.</li>
 </ul>`],
     ['install', '1. Install', `
-<p>Download the build for your OS from the <a href="../download.html">download page</a> and open it. The macOS build is signed with a Developer ID and notarized by Apple, so it opens like any other app. The Windows and Linux builds are not code-signed yet, so their first launch needs one extra step. See <a href="install.html">Install</a> for Windows SmartScreen, Linux, and building from source.</p>`],
+<p>Download ${APP} from the <a href="../download.html">download page</a> and open it. The steps for each OS are on <a href="install.html">Install</a>.</p>`],
     ['open', '2. Open a project and a URL', `
 <ol class="docs-steps">
   <li>${ui('File → Open Project Folder…')} (${keys('Mod+O')}) and pick your repository root.</li>
@@ -111,84 +113,27 @@ ${code('Read "{{path}}" and the image for each finding in the same folder, then 
 </ul>`],
   ])
 
-const dlRows = `
-    <tr><td>macOS (Apple silicon / Intel)</td><td><code>Ferret-&lt;version&gt;-mac-arm64.dmg</code>, <code>Ferret-&lt;version&gt;-mac-x64.dmg</code></td></tr>
-    <tr><td>Windows (x64 / arm64)</td><td><code>Ferret-&lt;version&gt;-win-x64.exe</code>, <code>Ferret-&lt;version&gt;-win-arm64.exe</code> (NSIS installer)</td></tr>
-    <tr><td>Linux (x64)</td><td><code>Ferret-&lt;version&gt;-linux-x86_64.AppImage</code>, <code>Ferret-&lt;version&gt;-linux-amd64.deb</code></td></tr>`
-
 page('install.html', 'Start here', 'Install',
-  `${APP} is a desktop app for macOS, Windows, and Linux. The macOS build is signed with a Developer ID and notarized by Apple. The Windows and Linux builds are not code-signed yet, so those OSes ask you to confirm the first launch.`,
+  `Download ${APP} for your computer and open it. It runs on macOS, Windows, and Linux.`,
   [
     ['download', 'Download', `
-<p>Get the file for your OS and CPU from the <a href="../download.html">Download page</a>. Files are served from Cloudflare R2, not GitHub Releases, and only the 10 most recent versions are kept.</p>
-<table>
-  <thead><tr><th>OS</th><th>Files</th></tr></thead>
-  <tbody>${dlRows}
-  </tbody>
-</table>
-<p>Releases up to 0.1.x were published under the old name, as <code>MOVIE-ADE-&lt;version&gt;-…</code>. The <code>Ferret-…</code> names start with 0.2.0.</p>
-${note(`<p>${APP} supports macOS, Windows and Linux. The Windows and Linux builds are not code-signed yet, so the first launch asks you to confirm (see the steps below).</p>`, 'warn')}`],
-    ['verify', 'Verify the download (signed SHA256SUMS)', `
-<p>Every release has a <code>SHA256SUMS</code> file and its signature <code>SHA256SUMS.sig</code>. The signature is made with the ${APP} release key, which is kept apart from the download server, so a changed installer on the download server can't come with a valid signature. The public key is <em>not</em> taken from the download server: get it from the repository (<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers"><code>build/release-signing/allowed_signers</code></a>) or copy it from here:</p>
-${code(`release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9`)}
-<p>Its fingerprint is <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code>. The same files are attached to each release on GitHub. Check the signature with <code>ssh-keygen</code> (included in macOS, Windows 10 and later, and Linux), then compare the hash of your download with the signed list:</p>
-${code(`# the download server (currently the R2 public URL; it may move to a custom domain)
-BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
-VERSION=$(curl -s $BASE/latest.json | jq -r .version)
-curl -sO $BASE/releases/$VERSION/SHA256SUMS
-curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
-
-# save the public key above as allowed_signers, then:
-ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
-# → Good "ferret-release" signature for release@ferretade.dev …
-
-# macOS
-shasum -a 256 -c SHA256SUMS --ignore-missing
-# Linux
-sha256sum -c SHA256SUMS --ignore-missing`)}
-${code(`# Windows (PowerShell): compare with the line for your file in SHA256SUMS
-Get-FileHash .\\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256`)}
-<p>Stop if <code>ssh-keygen</code> doesn't print <q>Good "ferret-release" signature</q> or the hash isn't in the list. ${APP}'s ${ui('Check for Updates')} does the same check with the key built into the app and doesn't offer a version whose signature doesn't match. On macOS you can also check the Developer ID signature and notarization with <code>spctl -a -vv /Applications/Ferret.app</code>. The Windows and Linux installers are not code-signed by Microsoft or a Linux distribution yet. Releases up to 0.3.0 were published before signing started and have only the unsigned hashes in <code>releases/&lt;version&gt;/manifest.json</code>.</p>`],
+<p>The <a href="../download.html">download page</a> offers the right file for your computer. Click the download button.</p>`],
     ['macos', 'macOS', `
-<ol class="docs-steps">
-  <li>Open the <code>.dmg</code> and drag <code>Ferret.app</code> to <code>/Applications</code>.</li>
-  <li>Launch it. The app is signed with a Developer ID and notarized by Apple (the ticket is stapled), so it opens without a warning.</li>
-</ol>
-<p>To check the signature yourself:</p>
-${code(`spctl -a -vv /Applications/Ferret.app
-# accepted
-# source=Notarized Developer ID`)}
-<p><strong>Older versions only (0.2.0 build 2 and earlier)</strong> were not signed. For those, macOS says the developer cannot be verified: close the dialog, open ${ui('System Settings → Privacy &amp; Security')}, click ${ui('Open Anyway')} next to the Ferret message, and confirm with ${ui('Open')}. If it says the app "is damaged", remove the quarantine attribute:</p>
-${code('xattr -dr com.apple.quarantine /Applications/Ferret.app')}`],
+<p>Open the <code>.dmg</code>, drag ${APP} to <code>Applications</code>, and open it from there.</p>`],
     ['windows', 'Windows', `
-<ol class="docs-steps">
-  <li>Run <code>Ferret-&lt;version&gt;-win-&lt;arch&gt;.exe</code>.</li>
-  <li>When SmartScreen shows "Windows protected your PC", click ${ui('More info')}, then ${ui('Run anyway')}.</li>
-  <li>Choose the install folder. The installer creates a desktop shortcut.</li>
-</ol>`],
+<p>Run the downloaded <code>.exe</code>. ${APP} installs and opens, with nothing to choose. Next time, open it from the Start menu or the desktop shortcut.</p>
+<p>If Windows shows <q>Windows protected your PC</q>, click ${ui('More info')}, then ${ui('Run anyway')}.</p>`],
     ['linux', 'Linux', `
-<p>AppImage:</p>
-${code(`chmod +x Ferret-&lt;version&gt;-linux-x86_64.AppImage
-./Ferret-&lt;version&gt;-linux-x86_64.AppImage`)}
-<p>Debian / Ubuntu:</p>
+<p><strong>Ubuntu / Debian</strong>: double-click the <code>.deb</code> to install it with your software center, or run:</p>
 ${code('sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb')}
-<p>The deb installs the <code>ferret</code> package and command.</p>
-<p>On Ubuntu 23.10 and later, the AppImage can stop at launch with a sandbox error, because AppArmor restricts the user namespaces Electron's sandbox uses. Install the <code>.deb</code> instead; it sets up the sandbox helper.</p>`],
-    ['source', 'Build from source', `
-<p>Requires Node.js 20+ (CI and local development use 22), pnpm, and git.</p>
-${code(`git clone ${REPO}.git
-cd ferret
-pnpm install          # postinstall prepares node-pty for Electron
-pnpm dev              # run in development mode`)}
-<p>To package installers (output in <code>dist/release/</code>, config in <code>electron-builder.config.cjs</code>). The Linux build only runs on Linux.</p>
-${code(`pnpm dist:mac     # dmg (arm64, x64)
-pnpm dist:win     # NSIS installers (x64, arm64)
-pnpm dist:linux   # AppImage + deb (x64)`)}
-<p>The <code>build:&lt;os&gt;:dev</code> scripts produce an unpacked app only (<code>--dir</code>), which is faster for local testing.</p>
-<p>On Windows, <code>pnpm install</code> uses node-pty's bundled prebuilt binaries instead of rebuilding (that would need the Visual Studio C++ build tools). Set <code>ADE_FORCE_NATIVE_REBUILD=1</code> to force a rebuild.</p>
-<p>If the terminal reports that node-pty could not be loaded, run <code>pnpm rebuild:native</code>.</p>`],
-    ['update', 'Updates', `
-<p>${APP} does not auto-update. In the footer, open ${ui('Updates')} and click ${ui('Check for Updates')}. It fetches <code>latest.json</code> from the download server (R2), compares versions, and links to the download page. From 0.4.0 it also checks the signature of that version's <code>SHA256SUMS</code> with the release key built into the app, and doesn't offer a version whose signature can't be verified. Nothing is checked until you click, and nothing is installed automatically.</p>`],
+<p>Then open ${APP} from your app menu, or run <code>ferret</code>.</p>
+<p><strong>Other distributions</strong>: use the <code>.AppImage</code>. Allow it to run as a program (right-click → Properties, or <code>chmod +x</code>), then open it.</p>`],
+    ['more', 'Next', `
+<ul>
+  <li><a href="quick-start.html#open">Quick start</a>: open a project and record your first feedback.</li>
+  <li>Something went wrong? See <a href="troubleshooting.html#install">Troubleshooting</a>.</li>
+  <li>To check a download's signature, build from source, or get an older version, see <a href="advanced-install.html">Advanced install</a>.</li>
+</ul>`],
   ])
 
 page('concepts.html', 'Start here', 'Concepts',
@@ -230,7 +175,7 @@ ${code(`# UI feedback (N)
 <p>The headings and labels in <code>feedback.md</code> follow the interface language (Settings → Language).</p>
 <p>Agents read this with the tools they already have (file read, image view), so no plugin or MCP server is needed. Any agent that can read files and images can use it.</p>`],
     ['local-first', 'Local first', `
-<p>Recordings, images, and notes stay in your project folder. Transcription runs on-device by default. Anything that leaves your machine goes straight from your computer to the service you chose (OpenAI, your endpoint, GitHub). There are two exceptions: crash reporting to Sentry (errors, one session per launch, and freeze warnings; on by default, off in Settings), and in-app feedback you choose to send (coming soon), which goes through the developer's small relay and becomes a public GitHub issue. The relay does not store your IP address. Apart from that relay, the developer runs no servers and pays for nothing on your behalf. See <a href="privacy.html">Data and privacy</a>.</p>`],
+<p>Recordings, images, and notes stay in your project folder. Transcription runs on-device by default. Anything that leaves your machine goes straight from your computer to the service you chose (OpenAI, your endpoint, GitHub). There are two exceptions: crash reporting to Sentry (errors, one session per launch, and freeze warnings; on by default, off in Settings), and in-app feedback you choose to send, which goes through the developer's small relay and becomes a public GitHub issue. The relay does not store your IP address. Apart from that relay, the developer runs no servers and pays for nothing on your behalf. See <a href="privacy.html">Data and privacy</a>.</p>`],
   ])
 
 page('keyboard.html', 'Start here', 'Keyboard shortcuts',
@@ -263,16 +208,24 @@ page('keyboard.html', 'Start here', 'Keyboard shortcuts',
       keyRow('Open Project Folder…', 'Mod+O'),
       keyRow('Go to File…', 'Mod+P'),
       keyRow('Save', 'Mod+S'),
+      keyRow('Rename in File Tree', 'F2 / Enter|F2'),
+      keyRow('Delete in File Tree', 'Mod+Backspace / Delete|Delete'),
     ])],
     ['terminal', 'Terminal', keyTable([
       keyRow('New Terminal', 'Mod+T'),
       keyRow('Close Pane / Tab', 'Mod+W'),
       keyRow('Split Right', 'Mod+D|Ctrl+Shift+D'),
       keyRow('Split Down', 'Mod+Shift+D|Alt+Shift+D'),
-    ]) + `<p>Split shortcuts work while a terminal has focus.</p>`],
+      keyRow('Copy Selection', 'Mod+C|Ctrl+Shift+C / Ctrl+C'),
+      keyRow('Paste', 'Mod+V|Ctrl+V / Ctrl+Shift+V / Shift+Insert'),
+      keyRow('New Line in an Agent\'s Prompt', 'Shift+Enter'),
+      keyRow('Start / End of Line', 'Mod+Left / Mod+Right|'),
+      keyRow('Delete to Start of Line', 'Mod+Backspace|'),
+    ]) + `<p>These work while a terminal has focus. On Windows and Linux, Ctrl+C copies when text is selected and stops the running command when nothing is selected. {{keys:Shift+Enter}} starts a new line while an agent such as Claude Code or Codex is running; in a plain shell it runs the command like Enter. In a full-screen program that uses the mouse (vim, tmux, an agent), hold Option while dragging to select text on macOS.</p>`],
     ['window', 'Window and settings', keyTable([
       keyRow('Settings…', 'Mod+,'),
       keyRow('Close Window', 'Mod+Shift+W|'),
+      keyRow('Minimize', 'Mod+M|'),
     ]) + `<p>Windows and Linux have no shortcut to close the window: ${ui('File → Exit')} quits the app.</p>`],
   ])
 
@@ -300,7 +253,8 @@ page('projects.html', `Using ${APP}`, 'Projects and URLs',
   <li>Click ${ui('+')} (${ui('Save current URL')}) in the browser toolbar. The current URL is pre-filled.</li>
   <li>Enter a ${ui('Name')} and click ${ui('Save')}.</li>
 </ol>
-<p>Only <code>http://</code> and <code>https://</code> URLs are accepted. The name is guessed from the host if you leave it as suggested:</p>
+<p>Each saved URL has a kind under ${ui('Reviewing')}: ${ui('App')} (the app you are building), ${ui('Design')} (Figma, Penpot, Canva, a prototype) or ${ui('Doc / spec')} (Google Docs, Notion, Confluence, a Markdown spec on GitHub, a PDF). The kind is guessed from the URL and you can change it. See <a href="#design-docs">Review designs and documents, not only code</a>.</p>
+<p>Only <code>http://</code> and <code>https://</code> URLs are accepted. For an app URL, the name is guessed from the host if you leave it as suggested:</p>
 <table>
   <thead><tr><th>Host</th><th>Name</th></tr></thead>
   <tbody>
@@ -319,10 +273,26 @@ ${clip('targets', 'Switching review targets and pages without stopping the recor
   <li><strong>${ui('Files')}</strong>: the project folder. A file opens as a preview (Markdown and Mermaid rendered, other text read-only), so you can review docs too. The pencil (${ui('Open in editor')}) opens it in the editor.</li>
 </ul>
 <p>${ui('Filter targets')} filters targets, pages, and files together, with the same fuzzy matching as ${ui('Go to File…')}. In the list, ${k('↑')} ${k('↓')} ${k('Enter')} or ${k('1')}–${k('9')} switch targets. ${ui('Open URL…')} opens a one-off URL, and ${ui('Save to project URLs')} keeps it.</p>
-<p>Targets come from <code>projects[].urls</code> in <code>settings.json</code> (see <a href="settings-json.html#example">the example</a>). Each entry needs a <code>url</code>, a <code>launchCommand</code> (run in a terminal, e.g. to start a desktop app), or a <code>windowMatch</code> (the window to record). Picking a window target sets it as the recording source, so it can't be done while recording. Visited pages are remembered per project, on this machine only (up to 200).</p>`],
+<p>Targets come from <code>projects[].urls</code> in <code>settings.json</code> (see <a href="settings-json.html#example">the example</a>). Each entry needs a <code>url</code>, a <code>launchCommand</code> (run in a terminal, e.g. to start a desktop app), or a <code>windowMatch</code> (the window to record), and can have a <code>purpose</code> (<code>app</code>, <code>design</code> or <code>doc</code>). Picking a window target sets it as the recording source, so it can't be done while recording. Visited pages are remembered per project, on this machine only (up to 200).</p>`],
     ['switch-env', 'Open and switch environments', `
 <p>Click a saved URL to open it. If the current page is under another saved URL, ${APP} keeps the path, query, and hash and swaps only the origin. For example, on <code>http://localhost:3000/pricing?plan=pro</code>, clicking <code>prd</code> opens <code>https://example.com/pricing?plan=pro</code>.</p>
-<p>The chip matching the current page (longest prefix) is highlighted. Right-click a chip or use its pencil icon to edit or ${ui('Delete')} it. When a project opens and there is no previous URL, its first saved URL loads.</p>`],
+<p>The chip matching the current page (longest prefix) is highlighted. Right-click a chip or use its pencil icon to edit or ${ui('Delete')} it. When a project opens and there is no previous URL, its first saved URL loads.</p>
+<p>Chips are grouped by kind: app URLs first, then designs, then docs, with a divider and an icon for each kind. Switching to or from a design or doc opens its saved URL as is, without carrying the path over.</p>`],
+    ['design-docs', 'Review designs and documents, not only code', `
+<p>Feedback doesn't have to be about code. Anything that opens in the built-in browser can be recorded and marked up with the pen the same way: a Figma or Penpot design, a prototype, a spec in Google Docs or Notion, a design doc on GitHub, a PDF. Save those URLs to the project before the review, next to <code>local</code> and <code>dev</code>.</p>
+<ol class="docs-steps">
+  <li>Open ${ui('Edit Project…')} from the sidebar menu (or click ${ui('+')} in the browser toolbar) and ${ui('Add Target')}.</li>
+  <li>Paste the URL. A <code>figma.com</code> link becomes ${ui('Design')} and a <code>docs.google.com</code> or <code>notion.so</code> link becomes ${ui('Doc / spec')}, named <code>Figma</code> or <code>Spec</code>. Change the kind under ${ui('Reviewing')} if the guess is wrong (for example a prototype on your own server).</li>
+  <li>Open the target and sign in once in the built-in browser if the site needs it. The browser keeps its cookies between launches, so you stay signed in.</li>
+  <li>Record as usual: talk, point, draw on the design or the document.</li>
+</ol>
+<p>Findings recorded on a design or a doc are labeled with that kind in Findings and in <code>feedback.md</code>, and the instruction sent to the agent says so. The agent then changes the design or the document instead of the code:</p>
+<ul>
+  <li>If the document lives in the project (a Markdown spec, an ADR), the agent edits that file.</li>
+  <li>If it can't edit it (a Figma file, a Google Doc), the agent marks the finding ${ui('Needs you')} with the exact change to make, so you can apply it or pass it on.</li>
+</ul>
+<p>Example: while reading the pricing spec in Google Docs you circle the plan table and say "the Pro plan is 9,800 yen now, not 8,800". <code>feedback.md</code> lists the finding under the <code>Spec</code> target with <code>Kind: document</code>, and the agent answers with the corrected sentence for the spec rather than touching the pricing page code. Record the spec and the running app in the same recording, and the findings are split by target, so the agent can update the spec first and then the code that implements it.</p>
+<p>Unsaved pages on <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> and similar hosts are recognized too. Files in the project folder (Markdown, Mermaid) are reviewed from the ${ui('Files')} list in the ${ui('Review targets')} panel.</p>`],
   ])
 
 page('recording.html', `Using ${APP}`, 'Recording',
@@ -364,8 +334,33 @@ ${shot('feedback-toolbar', 'Feedback mode toolbar')}`],
   <li>a spoken segment ends</li>
 </ul>`],
     ['mic', 'Microphone', `
-<p>The microphone is on by default. Toggle it from the footer (${ui('Turn microphone off')} / ${ui('Turn microphone on')}) or with ${ui('Record my voice')} in Settings. Choose a device under ${ui('Microphone')}.</p>
-${soon(`<p>${ui('Record the other side too')} (capturing other participants in a meeting via system audio) is in beta. It has not been validated with meeting apps yet.</p>`)}`],
+<p>The microphone is on by default. Toggle it from the footer (${ui('Turn microphone off')} / ${ui('Turn microphone on')}) or with ${ui('Record my voice')} in Settings. Choose a device under ${ui('Microphone')}.</p>`],
+    ['other-side', 'Record the other side of a meeting', `
+<p>To review a page together on a call, let ${APP} record what you hear from your computer as well as your microphone. This works with any meeting app (Zoom, Google Meet, Microsoft Teams, and others), because ${APP} records your computer's audio, not the app. The two are kept apart: your microphone is transcribed as <strong>Me</strong> and your computer's audio as <strong>Other</strong>, so each finding shows who asked for what. It also works with your microphone turned off.</p>
+<ol class="docs-steps">
+  <li>Join the call in your meeting app as usual. Keep using its own microphone and speaker settings.</li>
+  <li>Turn on ${ui('Record the other side too')} in Settings, or ${ui('Also record other voices')} in the footer's microphone menu. It can't be changed while recording.</li>
+  <li>Choose what to record: the ${ui('Built-in Browser')} for the page under review, or ${ui('Entire Screen')} / ${ui('Window')} if you are looking at a shared screen.</li>
+  <li>${ui('Record')}, then talk through the page with the others and circle the spots with the pen.</li>
+  <li>${ui('Stop')}. Both sides are transcribed and turned into findings.</li>
+</ol>
+<p>Let the other participants know you are recording. With a cloud transcription provider, their voices are sent to that provider too.</p>`],
+    ['other-side-os', 'System audio by OS', `
+<table>
+  <thead><tr><th>OS</th><th>Requirement</th><th>Permission</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td>macOS 14.2 or later. On earlier versions, only your microphone is recorded.</td><td>The first time you record the other side, macOS asks whether ${APP} may record system audio. If you declined, turn on Ferret in ${ui('System Settings → Privacy &amp; Security → Screen &amp; System Audio Recording')}, then quit and reopen ${APP}. Your screen isn't recorded for this.</td></tr>
+    <tr><td>Windows</td><td>An enabled playback device (speakers or headphones) in ${ui('Settings → System → Sound')}.</td><td>None. The default playback device is recorded.</td></tr>
+    <tr><td>Linux</td><td>PulseAudio, or PipeWire with <code>pipewire-pulse</code> (the default on most desktops).</td><td>None. The default output is recorded.</td></tr>
+  </tbody>
+</table>
+<p>If the other side can't be recorded, ${APP} says why in a warning and keeps recording your microphone, the video, and the pen. See <a href="troubleshooting.html#system-audio">Troubleshooting</a>.</p>`],
+    ['other-side-tips', 'Tips for meetings', `
+<ul>
+  <li><strong>Use headphones.</strong> With speakers, your microphone picks up the other side as well. ${APP} turns on echo cancellation for the microphone when it records the other side, and drops lines that were heard by both, but headphones give the cleanest transcript.</li>
+  <li><strong>Everything your computer plays is recorded</strong>, including notification sounds and videos. Mute what you don't need during the review.</li>
+  <li><strong>Don't switch audio devices mid-recording.</strong> If the output device changes or is unplugged, recording the other side stops with a warning. Your microphone, the video, and the pen continue. Use ${ui('Record more')} afterwards to capture the rest.</li>
+</ul>`],
   ])
 
 page('agents.html', `Using ${APP}`, 'Sending to agents',
@@ -504,7 +499,17 @@ page('editor.html', `Using ${APP}`, 'Editor and preview',
   <li>If the file changes on disk while you have unsaved edits, choose ${ui('Reload from Disk')} or ${ui('Keep My Changes')}.</li>
 </ul>
 <p>The editor is Monaco. Files that aren't text open in a viewer instead: images (zoom in and out; SVG can also be shown as code), video and audio with a seek bar, PDF, and, for any other binary file, its size and a hex view of the first bytes. Viewers are read-only, and files outside the project folder or reached through a symbolic link that leaves it are not shown.</p>
-${soon('<p>Creating, renaming, and deleting files from the file tree.</p>')}`],
+`],
+    ['file-tree', 'Create, rename, and delete files', `
+<p>Work on files right in ${ui('Files')}, the way you would in VS Code. Names are typed in place in the tree.</p>
+<ul>
+  <li>${ui('New File')} / ${ui('New Folder')}: the buttons above the tree, or right-click a folder (or the empty space below the tree). A new item goes into the selected folder, next to the selected file, or at the top of the project. A new file opens in the editor.</li>
+  <li>${ui('Rename')}: ${keys('F2 / Enter|F2')}, or right-click. Open tabs follow the new name and keep unsaved edits.</li>
+  <li>${ui('Delete')}: ${keys('Mod+Backspace / Delete|Delete')}, or right-click. ${APP} asks first, then moves the item to the Trash (the Recycle Bin on Windows), so you can restore it. Tabs of deleted files close; if any had unsaved edits, the confirmation says so.</li>
+  <li>Select several items with ${keys('Mod')}-click or ${keys('Shift')}-click to delete them together.</li>
+  <li>${keys('Esc')} cancels a name you are typing.</li>
+</ul>
+<p>${APP} won't overwrite an existing file or folder with the same name, and it refuses anything that would leave the project folder (<code>..</code>, absolute paths, symbolic links that point outside), anything inside <code>.git</code>, and names that some OS can't use: <code>/ \\ &lt; &gt; : " | ? *</code>, control characters, a trailing space or dot, and Windows reserved names such as <code>CON</code> or <code>NUL</code>.</p>`],
     ['preview', 'Markdown and Mermaid preview', `
 <p>Preview works for <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code>, and <code>.mermaid</code>. Mermaid is bundled with the app, so diagrams render offline.</p>
 <ul>
@@ -591,7 +596,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
     <tr><td><a href="https://console.groq.com/docs/speech-to-text">Groq</a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
   </tbody>
 </table>
-${note(`<p>${APP} is designed for OpenAI-compatible servers like these, but they have not been tested against ${APP} yet. The URLs and model names are the servers' own documented defaults.</p>`, 'warn')}
+${note(`<p>${APP} talks to these servers through the standard OpenAI transcription API (<code>/v1/audio/transcriptions</code>), so any server that offers it can be used. The URLs and model names above are each server's documented defaults.</p>`)}
 <ul>
   <li>A trailing <code>/v1</code> or a pasted <code>/v1/audio/transcriptions</code> is stripped when saved, so either form works.</li>
   <li>URLs containing a username or password are rejected, so keys never end up in <code>settings.json</code>.</li>
@@ -638,7 +643,7 @@ page('settings.html', 'Configure', 'Settings reference',
   <tbody>
     <tr><td>${ui('Record my voice')}</td><td>On</td></tr>
     <tr><td>${ui('Microphone')}</td><td>${ui('System Default')}</td></tr>
-    <tr><td>${ui('Record the other side too')} (beta)</td><td>Off</td></tr>
+    <tr><td>${ui('Record the other side too')} (<a href="recording.html#other-side">meetings</a>)</td><td>Off</td></tr>
   </tbody>
 </table>`],
     ['transcription', 'Transcription', `
@@ -720,7 +725,9 @@ ${code(`{
       "kind": "web",
       "urls": [
         { "id": "local", "label": "local", "url": "http://localhost:3000" },
-        { "id": "prd", "label": "prd", "url": "https://shop.example.com" }
+        { "id": "prd", "label": "prd", "url": "https://shop.example.com" },
+        { "id": "figma", "label": "Figma", "url": "https://www.figma.com/design/…", "purpose": "design" },
+        { "id": "spec", "label": "Spec", "url": "https://docs.google.com/document/d/…", "purpose": "doc" }
       ]
     }
   ],
@@ -763,7 +770,7 @@ ${code(`{
   }
 }`)}
 <ul>
-  <li><code>projects[].urls</code>: review targets for the URL menu. The first one opens when the project opens. <code>id</code> can be any unique string.</li>
+  <li><code>projects[].urls</code>: review targets for the URL menu. The first one opens when the project opens. <code>id</code> can be any unique string. <code>purpose</code> marks a design or a doc (see <a href="projects.html#design-docs">Review designs and documents</a>); leave it out for the app.</li>
   <li><code>agents.customAgents</code>: any CLI or wrapper script. <code>startupAgents</code> lists the agent tabs opened with a project, in order.</li>
   <li><code>capture.sttEndpoints.compatible</code>: any server that implements OpenAI's <code>/v1/audio/transcriptions</code> (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> turns off the cost cap, which makes sense for your own GPU. See <a href="transcription.html">Transcription and costs</a>.</li>
   <li><code>organizer</code>: ${ui('Organize findings')} sent straight to an OpenAI-compatible <code>/v1/chat/completions</code> server (here Ollama). Use <code>"runner": "claude-code"</code> or <code>"codex"</code> to use your own CLI login instead, and <code>organizer.cliModels</code> to pick their model.</li>
@@ -878,8 +885,8 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
     <tr><td>${ui('Send to GitHub')}</td><td>GitHub via <code>gh</code></td><td>body text only (no images)</td></tr>
     <tr><td>Footer usage (Claude Code and Codex only)</td><td>Anthropic, ChatGPT</td><td>usage request with your own login</td></tr>
     <tr><td>GitHub star prompt</td><td>GitHub via your <code>gh</code></td><td>checks whether you starred the repo, and stars it only if you click ${ui('Star on GitHub')}</td></tr>
-    <tr><td>${ui('Check for Updates')} (manual)</td><td>download server (Cloudflare R2)</td><td>request for <code>latest.json</code></td></tr>
-    <tr><td>Sending feedback from the app (only when you send it; coming soon)</td><td>the developer's feedback relay (a Cloudflare Worker), which opens a public issue in <code>JapanMarketing-Dev/ferret</code></td><td>your text, bug or idea, app / OS version and CPU, and up to 3 screenshots you attach. Keys, tokens, email addresses, and home-folder paths are masked. The relay does not store your IP address (see <a href="#feedback">Feedback from the app</a>)</td></tr>
+    <tr><td>${ui('Check for Updates')} (manual)</td><td>download server (Cloudflare R2)</td><td>requests for <code>latest.json</code> and that version's <code>SHA256SUMS</code>; the installer when you click ${ui('Download')}</td></tr>
+    <tr><td>Sending feedback from the app (only when you send it)</td><td>the developer's feedback relay (a Cloudflare Worker), which opens a public issue in <code>JapanMarketing-Dev/ferret</code></td><td>your text, bug or idea, app / OS version and CPU, and up to 3 screenshots you attach. Keys, tokens, email addresses, and home-folder paths are masked. The relay does not store your IP address (see <a href="#feedback">Feedback from the app</a>)</td></tr>
     <tr><td>A crash or error (${ui('Send crash reports')} on)</td><td>Sentry</td><td>stack trace and OS / CPU / app versions (see <a href="#crash-reports">Crash reports</a>)</td></tr>
   </tbody>
 </table>
@@ -890,8 +897,7 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
   <li>This website (not the app) counts page views with Cloudflare Web Analytics: cookie-free, with no cross-site tracking and no personal data.</li>
 </ul>`],
     ['feedback', 'Feedback from the app', `
-${soon(`<p>The in-app feedback form and its relay are not released yet. This section describes how they will work.</p>`)}
-<p>You will be able to send a bug report or an idea from inside ${APP} without a GitHub account. It is sent only when you send it, and it becomes a <strong>public</strong> issue in <a href="${REPO}/issues">${REPO.replace('https://github.com/', '')}</a>, labeled <code>from-app</code>. Do not include anything you would not post in public.</p>
+<p>You can send a bug report or an idea from inside ${APP} without a GitHub account (${ui('Send Feedback')} at the bottom of the sidebar). It is sent only when you send it, and it becomes a <strong>public</strong> issue in <a href="${REPO}/issues">${REPO.replace('https://github.com/', '')}</a>, labeled <code>from-app</code>. Do not include anything you would not post in public.</p>
 <ul>
   <li>The app sends it from your computer to a small relay (a Cloudflare Worker run by the developer), which opens the issue with its own GitHub token. This relay is the only server of the developer's that receives anything you write.</li>
   <li>Sent: your title and text, whether it is a bug or an idea, the app version, and up to 3 PNG or JPEG screenshots you attach. The OS name and version, CPU architecture, and the random install ID are sent only if you leave them included. Not sent: your name, email, GitHub account, project files, recordings, or findings.</li>
@@ -978,11 +984,70 @@ accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts`)}
 </ul>`],
   ])
 
+const dlRows = `
+    <tr><td>macOS (Apple silicon / Intel)</td><td><code>Ferret-&lt;version&gt;-mac-arm64.dmg</code>, <code>Ferret-&lt;version&gt;-mac-x64.dmg</code></td></tr>
+    <tr><td>Windows (x64 / arm64)</td><td><code>Ferret-&lt;version&gt;-win-x64.exe</code>, <code>Ferret-&lt;version&gt;-win-arm64.exe</code> (installer)</td></tr>
+    <tr><td>Linux (x64)</td><td><code>Ferret-&lt;version&gt;-linux-x86_64.AppImage</code>, <code>Ferret-&lt;version&gt;-linux-amd64.deb</code></td></tr>`
+
+page('advanced-install.html', 'Reference', 'Advanced install',
+  `Check a download's signature, build ${APP} from source, get an older version, and see how updates work. You don't need any of this to install ${APP}.`,
+  [
+    ['files', 'All downloads', `
+<p>Files are served from Cloudflare R2, not GitHub Releases, and only the 10 most recent versions are kept. The <a href="../download.html#versions">download page</a> lists every one of them.</p>
+<table>
+  <thead><tr><th>OS</th><th>Files</th></tr></thead>
+  <tbody>${dlRows}
+  </tbody>
+</table>
+<p>Releases up to 0.1.x were published under the old name, as <code>MOVIE-ADE-&lt;version&gt;-…</code>. The <code>Ferret-…</code> names start with 0.2.0.</p>`],
+    ['verify', 'Verify the download (signed SHA256SUMS)', `
+<p>Every release has a <code>SHA256SUMS</code> file and its signature <code>SHA256SUMS.sig</code>. The signature is made with the ${APP} release key, which is kept apart from the download server, so a changed installer on the download server can't come with a valid signature. The public key is <em>not</em> taken from the download server: get it from the repository (<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers"><code>build/release-signing/allowed_signers</code></a>) or copy it from here:</p>
+${code(`release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9`)}
+<p>Its fingerprint is <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code>. The same files are attached to each release on GitHub. Check the signature with <code>ssh-keygen</code> (included in macOS, Windows 10 and later, and Linux), then compare the hash of your download with the signed list:</p>
+${code(`# the download server (currently the R2 public URL; it may move to a custom domain)
+BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
+VERSION=$(curl -s $BASE/latest.json | jq -r .version)
+curl -sO $BASE/releases/$VERSION/SHA256SUMS
+curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
+
+# save the public key above as allowed_signers, then:
+ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
+# → Good "ferret-release" signature for release@ferretade.dev …
+
+# macOS
+shasum -a 256 -c SHA256SUMS --ignore-missing
+# Linux
+sha256sum -c SHA256SUMS --ignore-missing`)}
+${code(`# Windows (PowerShell): compare with the line for your file in SHA256SUMS
+Get-FileHash .\\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256`)}
+<p>Stop if <code>ssh-keygen</code> doesn't print <q>Good "ferret-release" signature</q> or the hash isn't in the list. ${APP}'s ${ui('Check for Updates')} does the same check with the key built into the app and doesn't offer a version whose signature doesn't match. On macOS you can also check the Developer ID signature and notarization with <code>spctl -a -vv /Applications/Ferret.app</code>. For releases up to 0.3.0, compare with the hashes in <code>releases/&lt;version&gt;/manifest.json</code>.</p>`],
+    ['older-macos', 'Older macOS versions', `
+<p>For versions up to 0.2.0 build 2: if macOS says the developer cannot be verified, close the dialog, open ${ui('System Settings → Privacy &amp; Security')}, click ${ui('Open Anyway')} next to the Ferret message, and confirm with ${ui('Open')}. If it says the app "is damaged", remove the quarantine attribute:</p>
+${code('xattr -dr com.apple.quarantine /Applications/Ferret.app')}`],
+    ['source', 'Build from source', `
+<p>Requires Node.js 20+ (CI and local development use 22), pnpm, and git.</p>
+${code(`git clone ${REPO}.git
+cd ferret
+pnpm install          # postinstall prepares node-pty for Electron
+pnpm dev              # run in development mode`)}
+<p>To package installers (output in <code>dist/release/</code>, config in <code>electron-builder.config.cjs</code>). The Linux build only runs on Linux.</p>
+${code(`pnpm dist:mac     # dmg (arm64, x64)
+pnpm dist:win     # NSIS installers (x64, arm64)
+pnpm dist:linux   # AppImage + deb (x64)`)}
+<p>The <code>build:&lt;os&gt;:dev</code> scripts produce an unpacked app only (<code>--dir</code>), which is faster for local testing.</p>
+<p>On Windows, <code>pnpm install</code> uses node-pty's bundled prebuilt binaries instead of rebuilding (that would need the Visual Studio C++ build tools). Set <code>ADE_FORCE_NATIVE_REBUILD=1</code> to force a rebuild.</p>
+<p>If the terminal reports that node-pty could not be loaded, run <code>pnpm rebuild:native</code>.</p>`],
+    ['update', 'Updates', `
+<p>${APP} does not auto-update. In the footer, open ${ui('Updates')} and click ${ui('Check for Updates')}. It fetches <code>latest.json</code> from the download server (R2), compares versions, and checks the signature of that version's <code>SHA256SUMS</code> with the release key built into the app. When a newer version is available, click ${ui('Download')}: ${APP} downloads the installer for your computer, checks that its SHA-256 matches the signed <code>SHA256SUMS</code>, saves it to your Downloads folder and shows it there. The download page does the same check in your browser before it saves a file. Nothing is checked until you click, and nothing is installed automatically.</p>`],
+  ])
+
 /* ───────────── Help ───────────── */
 
 page('troubleshooting.html', 'Help', 'Troubleshooting',
   'Common problems and fixes. The quoted messages are what the app shows in English.',
   [
+    ['install', 'Install and first launch', `
+<p>Linux: on Ubuntu 23.10 and later, the AppImage can stop at launch with a sandbox error, because AppArmor restricts the user namespaces Electron's sandbox uses. Install the <code>.deb</code> instead.</p>`],
     ['screen-permission', 'Screen or window capture fails (macOS)', `
 <p>Message: <q>Recording the entire screen or another window requires macOS Screen Recording permission.</q></p>
 <ol class="docs-steps">
@@ -999,6 +1064,16 @@ page('troubleshooting.html', 'Help', 'Troubleshooting',
   <li>Windows: ${ui('Settings → Privacy &amp; security → Microphone')}, then allow desktop apps.</li>
 </ul>
 <p>Without a mic, pen circles still create findings, but they carry no spoken request.</p>`],
+    ['system-audio', 'The other side of a meeting is not recorded', `
+<p>When ${ui('Record the other side too')} is on and your computer's audio can't be recorded, ${APP} shows one of these warnings and keeps recording your microphone, the video, and the pen.</p>
+<ul>
+  <li><q>Ferret isn't allowed to record system audio.</q> (macOS): turn on Ferret in ${ui('System Settings → Privacy &amp; Security → Screen &amp; System Audio Recording')}, quit and reopen ${APP}, then start a new recording.</li>
+  <li><q>Recording the other side needs macOS 14.2 or later.</q>: update macOS. Until then only your microphone is recorded.</li>
+  <li><q>Windows didn't allow access to system audio.</q> or <q>no audio output device was found.</q>: enable speakers or headphones in ${ui('Settings → System → Sound')} (Windows) or connect them, then start a new recording.</li>
+  <li><q>system audio isn't available.</q> (Linux): install PulseAudio, or <code>pipewire-pulse</code> if you use PipeWire.</li>
+  <li><q>Stopped recording the other side: the audio output device changed or was disconnected.</q>: the rest of the recording continues without the other side. Use ${ui('Record more')} to capture the rest.</li>
+</ul>
+<p>If the other side's words also appear as yours, your microphone is picking up your speakers. Use headphones.</p>`],
     ['whisper', 'No on-device model / whisper-cli not found', `
 <p>Message: <q>No on-device transcription model found. Audio will be saved, and only pen findings will be processed.</q></p>
 <p>Download a model in Settings, or choose an existing <code>ggml-*.bin</code>. If Settings says <q>whisper.cpp (whisper-cli) was not found</q>, install it (<a href="transcription.html#whisper">instructions</a>), make sure it is on <code>PATH</code>, and reopen Settings. Packaged apps launched from Finder or Explorer may not see your shell's <code>PATH</code>, so install to a standard location such as Homebrew's.</p>
@@ -1096,7 +1171,6 @@ const SITE_STRINGS = {
   copy: 'Copy',
   copied: 'Copied',
   'copy-failed': 'Copy failed',
-  'clip.soon': 'Clip coming soon',
   'new-tab': '(opens in a new tab)',
   'footer.tagline': 'The ADE for feedback by voice and screen.',
   'footer.built-by': 'Built by {{company}}',
@@ -1187,7 +1261,7 @@ const chrome = (lang) => {
 
 /* ───────────── tokens ───────────── */
 
-const MAC_KEYS = { Mod: '⌘', Cmd: '⌘', Shift: '⇧', Alt: '⌥', Ctrl: '⌃', Left: '←', Right: '→', Up: '↑', Down: '↓' }
+const MAC_KEYS = { Mod: '⌘', Cmd: '⌘', Shift: '⇧', Alt: '⌥', Ctrl: '⌃', Backspace: '⌫', Left: '←', Right: '→', Up: '↑', Down: '↓' }
 const WIN_KEYS = { Mod: 'Ctrl', Left: '←', Right: '→', Up: '↑', Down: '↓' }
 
 /**
@@ -1236,8 +1310,8 @@ const agentList = () => `<ul class="docs-agent-list">
 function clipHtml(name, caption, c) {
   const mp4 = `assets/clips/${name}.mp4`
   const poster = `assets/clips/${name}.webp`
-  if (!existsSync(join(DOCS_DIR, mp4)) || !existsSync(join(DOCS_DIR, poster)))
-    return `<figure class="docs-clip" data-clip="${name}"><div class="docs-shot-slot" role="img" aria-label="${attr(caption)} (${c('clip.soon')})"><span>${c('clip.soon')}</span></div><figcaption>${caption}</figcaption></figure>`
+  // 動画がまだ無ければ何も出さない（「準備中」の枠は出さない）
+  if (!existsSync(join(DOCS_DIR, mp4)) || !existsSync(join(DOCS_DIR, poster))) return ''
   const webm = `assets/clips/${name}.webm`
   return `<figure class="docs-clip" data-clip="${name}">
   <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="${poster}" data-src="${mp4}"${existsSync(join(DOCS_DIR, webm)) ? ` data-src-webm="${webm}"` : ''} aria-label="${attr(caption)}"></video>
@@ -1245,8 +1319,8 @@ function clipHtml(name, caption, c) {
 </figure>`
 }
 
-/** 本文の札（{{keys:…}}・{{keys-mac:…}}・{{keys-win:…}}・{{clip:名前|説明}}・{{agent-catalog}}）を HTML に開く */
-export const TOKEN = /\{\{(keys|keys-mac|keys-win|clip|agent-catalog)(?::([^}]*))?\}\}/g
+/** 本文の札（{{keys:…}}・{{keys-mac:…}}・{{keys-win:…}}・{{clip:名前|説明}}・{{shot:名前|説明}}・{{agent-catalog}}）を HTML に開く */
+export const TOKEN = /\{\{(keys|keys-mac|keys-win|clip|shot|agent-catalog)(?::([^}]*))?\}\}/g
 function expand(html, c) {
   return html.replace(TOKEN, (whole, kind, arg = '') => {
     if (kind === 'keys') return inlineKeys(arg)
@@ -1254,8 +1328,17 @@ function expand(html, c) {
     if (kind === 'keys-win') return keysFor(arg, 'win') || '—'
     if (kind === 'agent-catalog') return agentList()
     const bar = arg.indexOf('|')
-    return clipHtml(arg.slice(0, bar), arg.slice(bar + 1), c)
+    return (kind === 'shot' ? shotHtml : clipHtml)(arg.slice(0, bar), arg.slice(bar + 1), c)
   })
+}
+
+/** site/docs/assets/<name>.png の画像。まだ無ければ何も出さない */
+function shotHtml(name, caption) {
+  const file = join(DOCS_DIR, 'assets', `${name}.png`)
+  if (!existsSync(file)) return ''
+  // PNG の IHDR から大きさを読む（読み込み前に場所を取り、ずれないように）
+  const png = readFileSync(file)
+  return `<figure class="docs-shot" data-shot="${name}"><img src="assets/${name}.png?v=${assetVersion(`docs/assets/${name}.png`)}" width="${png.readUInt32BE(16)}" height="${png.readUInt32BE(20)}" alt="${attr(caption)}" loading="lazy" decoding="async"><figcaption>${caption}</figcaption></figure>`
 }
 
 /* ───────────── frame ───────────── */
@@ -1576,16 +1659,21 @@ function scaffold(lang, name) {
 
 /**
  * ハッシュの更新: 訳した単位に今の英語のハッシュを書く。英語と同じ文のままの単位は「まだ訳していない」のまま残す
- * （--force なら全部。固有名詞だけの見出しのように、訳しても英語と同じになる単位があるとき）
+ * （--force なら全部。固有名詞だけの見出しのように、訳しても英語と同じになる単位があるとき）。
+ * ただし英語と同じ文でも、今の英語のハッシュが既に付いている単位（前に --force で確かめた os.mac など）は保つ
  */
+export function rehashUnits(en, have, force = false) {
+  return new Map(
+    [...have].filter(([id]) => en.has(id)).map(([id, u]) => {
+      const hash = sourceHash(en.get(id))
+      return [id, { hash: force || u.text !== en.get(id) || u.hash === hash ? hash : PENDING, text: u.text }]
+    }),
+  )
+}
+
 function rehash(lang, name, force) {
   const path = translationPath(lang, name)
-  const en = englishUnits(name)
-  const have = parseTranslation(readFileSync(path, 'utf8'))
-  const units = new Map(
-    [...have].filter(([id]) => en.has(id)).map(([id, u]) => [id, { hash: force || u.text !== en.get(id) ? sourceHash(en.get(id)) : PENDING, text: u.text }]),
-  )
-  writeFileSync(path, formatTranslation(lang, name, units))
+  writeFileSync(path, formatTranslation(lang, name, rehashUnits(englishUnits(name), parseTranslation(readFileSync(path, 'utf8')), force)))
   return path
 }
 
@@ -1595,7 +1683,7 @@ function rehash(lang, name, force) {
  */
 export function checkTranslations(lang) {
   const problems = []
-  const tokens = (s) => [...s.matchAll(/\{\{[^}]*\}\}/g)].map(([t]) => (t.startsWith('{{clip:') ? t.slice(0, t.indexOf('|')) : t)).sort().join(' ')
+  const tokens = (s) => [...s.matchAll(/\{\{[^}]*\}\}/g)].map(([t]) => (/^\{\{(clip|shot):/.test(t) ? t.slice(0, t.indexOf('|')) : t)).sort().join(' ')
   const hrefs = (s) => [...s.matchAll(/\shref="([^"]*)"/g)].map((m) => m[1]).sort().join(' ')
   const dir = join(I18N_DIR, lang)
   for (const f of existsSync(dir) ? readdirSync(dir) : []) if (!TRANSLATABLE.includes(f.replace(/\.html$/, ''))) problems.push(`${lang}/${f}: unknown page`)

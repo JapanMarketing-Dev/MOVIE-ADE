@@ -1,6 +1,6 @@
 /** 画像のビューアの拡大率（React に依存しない。単体テストから呼ぶ） */
 
-export const ZOOM_STEPS = [0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8, 16] as const
+const ZOOM_STEPS = [0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8, 16] as const
 export const MIN_ZOOM = ZOOM_STEPS[0]
 export const MAX_ZOOM = ZOOM_STEPS[ZOOM_STEPS.length - 1]
 

@@ -22,6 +22,7 @@ import { createManagedAccountDir, isValidAccountId, removeManagedAccountDir, sys
 import { normalizeAccountLabel } from './sanitize'
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
+import { errorKind, reportHandled } from '@shared/report'
 
 /**
  * アカウントの一覧・追加・名前の変更・削除・選択（IPC の受け口）。
@@ -168,15 +169,22 @@ export async function removeAgentAccount(agent: AccountAgent, accountId: string)
   await serialize(async () => {
     requireAccount(agent, accountId)
     const verdict = verifyManagedAccountDir({ userDataDir: userDataDir(), agent, accountId })
+    // 先にフォルダを消す。消せなければ（Windows でファイルが使われている等）一覧に残して知らせる。
+    // 一覧から先に外すと、認証情報の入ったフォルダが残ったまま消す手段が無くなる（Orca #11653）
+    if (verdict.kind === 'owned') {
+      if (agent === 'claude') await deleteScopedClaudeKeychainItem(verdict.dir)
+      try {
+        removeManagedAccountDir(userDataDir(), agent, accountId)
+      } catch (err) {
+        reportHandled(errorKind(err), { area: 'accounts', op: 'remove account folder' })
+        throw new UserFacingError(t('accounts.errors.removeFailed', { agent: agent === 'claude' ? 'Claude Code' : 'Codex', reason: errorKind(err).message }))
+      }
+    }
     const list = accountsSettings()[agent]
     saveList(agent, {
       accounts: list.accounts.filter((a) => a.id !== accountId),
       activeAccountId: list.activeAccountId === accountId ? null : list.activeAccountId
     })
-    if (verdict.kind === 'owned') {
-      if (agent === 'claude') await deleteScopedClaudeKeychainItem(verdict.dir)
-      removeManagedAccountDir(userDataDir(), agent, accountId)
-    }
   })
   return listAgentAccounts()
 }

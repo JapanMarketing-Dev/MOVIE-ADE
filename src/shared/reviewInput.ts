@@ -4,10 +4,10 @@
  */
 
 /** 続けて届いたクリックをまとめる間隔(ms)と距離(px)。ダブルクリックや連打を1件にする */
-export const CLICK_MERGE_MS = 250
-export const CLICK_MERGE_PX = 4
+const CLICK_MERGE_MS = 250
+const CLICK_MERGE_PX = 4
 
-export interface ClickInput {
+interface ClickInput {
   isTrusted: boolean
   clientX: number
   clientY: number

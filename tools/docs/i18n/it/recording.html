@@ -18,7 +18,7 @@ Registra il browser integrato, un intero schermo o un'altra finestra. Parla, cer
 </table>
 <p>La scelta viene ricordata. Su macOS, la cattura dello schermo e delle finestre richiede il permesso di registrazione dello schermo (<a href="troubleshooting.html#screen-permission">come concederlo</a>).</p>
 
-<!-- @record 0d1af48c7a -->
+<!-- @record deb62ed37c -->
 ## Avviare, mettere in pausa, fermare
 {{clip:record|Registrazione: parla della pagina e cerchia il punto con la penna.}}
 <ol class="docs-steps">
@@ -29,7 +29,7 @@ Registra il browser integrato, un intero schermo o un'altra finestra. Parla, cer
 </ol>
 <p>Nella barra laterale, ogni progetto ha il proprio <span class="docs-ui">Nuova revisione</span> (oppure il <span class="docs-ui">+</span> sulla sua riga, <span class="docs-ui">Nuova revisione in &lt;name&gt;</span>). Su un altro progetto, passa prima a quel progetto e poi avvia la registrazione. Non si avvia mentre è in corso un'altra registrazione.</p>
 <p>Una registrazione dura al massimo 90 minuti. Ricevi un avviso vicino al limite, e quando lo si raggiunge la registrazione si ferma e viene salvata automaticamente.</p>
-<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="Barra degli strumenti della modalità Feedback (screenshot in arrivo)"><span>Screenshot in arrivo</span></div><figcaption>Barra degli strumenti della modalità Feedback</figcaption></figure>
+{{shot:feedback-toolbar|Barra degli strumenti della modalità Feedback}}
 
 <!-- @pen 0232dc7983 -->
 ## Penna
@@ -48,7 +48,38 @@ Registra il browser integrato, un intero schermo o un'altra finestra. Parla, cer
   <li>termina un segmento parlato</li>
 </ul>
 
-<!-- @mic 3540329978 -->
+<!-- @mic 38bffa5e34 -->
 ## Microfono
 <p>Il microfono è attivo per impostazione predefinita. Puoi attivarlo o disattivarlo dal footer (<span class="docs-ui">Disattiva microfono</span> / <span class="docs-ui">Attiva microfono</span>) oppure con <span class="docs-ui">Registra la mia voce</span> nelle Impostazioni. Scegli un dispositivo in <span class="docs-ui">Microfono</span>.</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">In arrivo</p><p><span class="docs-ui">Registra anche l'interlocutore</span> (cattura degli altri partecipanti a una riunione tramite l'audio di sistema) è in beta. Non è ancora stato verificato con le app per riunioni.</p></div>
+
+<!-- @other-side bf51c46448 -->
+## Registrare l'altra parte di una riunione
+<p>Per rivedere una pagina insieme durante una chiamata, fai registrare a Ferret ciò che senti dal computer oltre al tuo microfono. Funziona con qualsiasi app per riunioni (Zoom, Google Meet, Microsoft Teams e altre), perché Ferret registra l'audio del computer, non l'app. Le due fonti restano separate: il microfono viene trascritto come <strong>Me</strong> e l'audio del computer come <strong>Other</strong>, così ogni segnalazione mostra chi ha chiesto cosa. Funziona anche con il microfono disattivato.</p>
+<ol class="docs-steps">
+  <li>Partecipa alla chiamata nella tua app per riunioni come al solito. Continua a usare le sue impostazioni di microfono e altoparlante.</li>
+  <li>Attiva <span class="docs-ui">Registra anche l'interlocutore</span> nelle Impostazioni, oppure <span class="docs-ui">Registra anche altre voci</span> nel menu del microfono nel footer. Non si può cambiare durante la registrazione.</li>
+  <li>Scegli cosa registrare: il <span class="docs-ui">Browser integrato</span> per la pagina in revisione, oppure <span class="docs-ui">Intero schermo</span> / <span class="docs-ui">Finestra</span> se stai guardando uno schermo condiviso.</li>
+  <li><span class="docs-ui">Registra</span>, poi commenta la pagina con gli altri e cerchia i punti con la penna.</li>
+  <li><span class="docs-ui">Ferma</span>. Entrambe le parti vengono trascritte e trasformate in segnalazioni.</li>
+</ol>
+<p>Avvisa gli altri partecipanti che stai registrando. Con un provider di trascrizione nel cloud, anche le loro voci vengono inviate a quel provider.</p>
+
+<!-- @other-side-os cb39949418 -->
+## Audio di sistema per sistema operativo
+<table>
+  <thead><tr><th>Sistema operativo</th><th>Requisito</th><th>Permesso</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td>macOS 14.2 o successivo. Nelle versioni precedenti viene registrato solo il microfono.</td><td>La prima volta che registri l'altra parte, macOS chiede se Ferret può registrare l'audio di sistema. Se hai rifiutato, attiva Ferret in <span class="docs-ui">Impostazioni di Sistema → Privacy e sicurezza → Registrazione schermo e audio di sistema</span>, poi chiudi e riapri Ferret. Lo schermo non viene registrato per questo.</td></tr>
+    <tr><td>Windows</td><td>Un dispositivo di riproduzione attivo (altoparlanti o cuffie) in <span class="docs-ui">Impostazioni → Sistema → Audio</span>.</td><td>Nessuno. Viene registrato il dispositivo di riproduzione predefinito.</td></tr>
+    <tr><td>Linux</td><td>PulseAudio, oppure PipeWire con <code>pipewire-pulse</code> (l'impostazione predefinita nella maggior parte dei desktop).</td><td>Nessuno. Viene registrata l'uscita predefinita.</td></tr>
+  </tbody>
+</table>
+<p>Se l'altra parte non può essere registrata, Ferret ne spiega il motivo in un avviso e continua a registrare il microfono, il video e la penna. Vedi <a href="troubleshooting.html#system-audio">Risoluzione dei problemi</a>.</p>
+
+<!-- @other-side-tips 2881bdb5c2 -->
+## Consigli per le riunioni
+<ul>
+  <li><strong>Usa le cuffie.</strong> Con gli altoparlanti, il microfono capta anche l'altra parte. Quando registra l'altra parte, Ferret attiva la cancellazione dell'eco sul microfono ed elimina le frasi sentite da entrambi, ma le cuffie danno la trascrizione più pulita.</li>
+  <li><strong>Viene registrato tutto ciò che il computer riproduce</strong>, compresi i suoni delle notifiche e i video. Durante la revisione silenzia ciò che non ti serve.</li>
+  <li><strong>Non cambiare dispositivo audio durante la registrazione.</strong> Se il dispositivo di uscita cambia o viene scollegato, la registrazione dell'altra parte si interrompe con un avviso. Microfono, video e penna continuano. Usa poi <span class="docs-ui">Registra ancora</span> per acquisire il resto.</li>
+</ul>

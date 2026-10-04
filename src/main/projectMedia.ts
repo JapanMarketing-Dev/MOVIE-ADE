@@ -6,10 +6,9 @@
  * どちらも src/main/files.ts の resolveInside で、プロジェクトの外・外を指すリンクを断ってから触る。
  * パイプ・デバイス・フォルダは開かない（開くと main が止まる）。全体をメモリへ載せない（ストリームで返す）。
  */
-import { constants } from 'node:fs'
-import { open, stat } from 'node:fs/promises'
 import { relativeInside, resolveInside } from './files'
-import { mediaResponse } from './mediaRange'
+import { openContained } from './containedFile'
+import { mediaResponseFromHandle } from './mediaRange'
 import { BINARY_HEAD_BYTES, MAX_VIEWER_BYTES, mediaTypeOf, projectMediaPathFromUrl, type FsFileInfo } from '@shared/fileViewer'
 import { UserFacingError } from '@shared/errors'
 import { t } from '@shared/i18n'
@@ -36,10 +35,15 @@ export async function projectMediaResponse(root: string | null, url: string, ran
     // 外を指す・無いファイル（想定内）
     return notFound()
   }
-  const info = await stat(file).catch(() => null)
-  if (!info?.isFile()) return notFound()
-  if (info.size > MAX_VIEWER_BYTES[media.kind]) return new Response('Too large', { status: 413, headers: { 'Content-Type': 'text/plain' } })
-  const response = await mediaResponse(file, rangeHeader, media.type)
+  // 開いたものがプロジェクトの中の実体かを確かめ、その fd から返す（確かめたあとでリンクに差し替えられても外を読まない。security-4 [5]）
+  const handle = await openContained(root, file, 'read').catch(() => null)
+  if (!handle) return notFound()
+  const info = await handle.stat().catch(() => null)
+  if (!info?.isFile() || info.size > MAX_VIEWER_BYTES[media.kind]) {
+    await handle.close()
+    return info?.isFile() ? new Response('Too large', { status: 413, headers: { 'Content-Type': 'text/plain' } }) : notFound()
+  }
+  const response = await mediaResponseFromHandle(handle, rangeHeader, media.type)
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('Cache-Control', 'no-store')
   if (media.type === 'image/svg+xml') response.headers.set('Content-Security-Policy', SVG_CSP)
@@ -49,12 +53,10 @@ export async function projectMediaResponse(root: string | null, url: string, ran
 /** 大きさと先頭のバイト。普通のファイルでなければ断る */
 export async function inspectProjectFile(root: string, relPath: string): Promise<FsFileInfo> {
   const file = await resolveInside(root, relPath)
-  const before = await stat(file)
-  if (before.isDirectory()) throw new UserFacingError(t('files.errors.folder'))
-  if (!before.isFile()) throw new UserFacingError(t('files.errors.notRegular'))
-  // O_NONBLOCK: 確かめたあとにパイプへ差し替えられても、開くところで止まらない
-  const handle = await open(file, constants.O_RDONLY | ((constants as { O_NONBLOCK?: number }).O_NONBLOCK ?? 0))
+  // 開いたものがプロジェクトの中の実体かを確かめる（security-4 [5]）。O_NONBLOCK で開くのでパイプでも止まらない
+  const handle = await openContained(root, file, 'read')
   try {
+    if ((await handle.stat()).isDirectory()) throw new UserFacingError(t('files.errors.folder'))
     const info = await handle.stat()
     if (!info.isFile()) throw new UserFacingError(t('files.errors.notRegular'))
     const head = Buffer.alloc(Math.min(BINARY_HEAD_BYTES, info.size))

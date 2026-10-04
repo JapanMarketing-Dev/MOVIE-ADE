@@ -12,7 +12,7 @@ import type { BuiltinAgent } from './types'
  * 単色の SVG（codex・pi・aider）は <img> だと黒になるので、明暗どちらでも見えるよう色を持たせている。
  */
 
-export interface AgentLogo {
+interface AgentLogo {
   id: BuiltinAgent
   name: string
   homepageUrl: string
@@ -20,13 +20,13 @@ export interface AgentLogo {
   icon: string | null
 }
 
-export const AGENT_LOGO_DIR = 'docs/images/agents'
+const AGENT_LOGO_DIR = 'docs/images/agents'
 
 const SVG_LOGOS: ReadonlySet<BuiltinAgent> = new Set<BuiltinAgent>(['claude', 'codex', 'aider', 'pi', 'omp', 'kilo', 'droid'])
 /** ロゴの画像が無いもの（Orca に無く、追加したもの） */
 const NO_LOGO: ReadonlySet<BuiltinAgent> = new Set<BuiltinAgent>(['blackbox', 'forge', 'junie', 'letta', 'openhands', 'roo'])
 
-export function agentLogoPath(id: BuiltinAgent): string | null {
+function agentLogoPath(id: BuiltinAgent): string | null {
   if (NO_LOGO.has(id)) return null
   return `${AGENT_LOGO_DIR}/${id}.${SVG_LOGOS.has(id) ? 'svg' : 'png'}`
 }

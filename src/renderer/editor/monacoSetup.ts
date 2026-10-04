@@ -66,6 +66,10 @@ monaco.typescript.javascriptDefaults.setCompilerOptions({
   jsx: monaco.typescript.JsxEmit.Preserve
 })
 
+// Markdown の ```bash / ```zsh のコードに色を付ける。Monaco 0.57 の shell の別名は Shell / sh だけ（Orca #20584）。
+// 同じ id の登録は別名が足されるだけで、文法はそのまま
+monaco.languages.register({ id: 'shell', aliases: ['bash', 'zsh', 'console'] })
+
 loader.config({ monaco })
 
 export { monaco }

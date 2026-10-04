@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CLI_TOOLS, cliInstallCommand, cliLoginCommand, type CliToolId, type CliToolStatus } from '@shared/cliTools'
+import { cliInstallCommand, cliLoginCommand, type CliToolId, type CliToolStatus } from '@shared/cliTools'
 import type { PlatformName } from '@shared/types'
 import { requestTerminalCommand } from './terminalCommand'
 
@@ -20,7 +20,7 @@ export function cliActionCommand(id: CliToolId, action: CliAction, platform: Pla
   return action === 'install' ? cliInstallCommand(id, platform) : cliLoginCommand(id)
 }
 
-export type CliRunResult = 'terminal' | 'copied' | 'failed'
+type CliRunResult = 'terminal' | 'copied' | 'failed'
 
 /**
  * 内蔵ターミナルの新しいタブでコマンドを走らせる。ターミナルが受け取れなければ（開いていない）コマンドを写す。
@@ -98,8 +98,4 @@ export function useCliTools(): {
   }, [tick])
 
   return { tools, refresh, watch, watching }
-}
-
-export function cliLabel(id: CliToolId): string {
-  return CLI_TOOLS[id].label
 }

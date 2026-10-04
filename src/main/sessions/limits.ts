@@ -41,22 +41,28 @@ export const SESSION_LIMITS = {
   imagesTotalBytes: 96 * 1024 * 1024
 } as const
 
+/**
+ * レビューの一覧（review:list）1回でする仕事の上限（security-4 [10]）。
+ * 1件ごとの上限（SESSION_LIMITS）だけでは、細工したレビューのフォルダを大量に置かれると、
+ * 起動・プロジェクトの切り替え・セットアップの確認のたびに一覧が止まる。件数・読む量・時間の合計を抑える
+ */
+export const HISTORY_LIMITS = {
+  /** 新しい順に返す件数。これより古いものは返さない（truncated） */
+  listed: 500,
+  /** 1つのフォルダで名前を見る数（readdir を全部メモリへ載せない） */
+  scannedNames: 20_000,
+  /** summary.json が無い・古い記録を、その場で組み立てる（session.json を解析する）数 */
+  heavyBuilds: 4,
+  /** 一覧1回で読むファイルの大きさの合計（要約・名前・進み具合と、組み立てる記録） */
+  readBytes: 128 * 1024 * 1024,
+  /** 一覧1回にかける時間。超えたら残りは読まずに軽い形で返す */
+  budgetMs: 3000
+} as const
+
 /** 数の配列の最大（空なら fallback）。可変長引数を使わない */
 export function maxOf(values: Iterable<number>, fallback: number): number {
   let out = fallback
   for (const v of values) if (Number.isFinite(v) && v > out) out = v
-  return out
-}
-
-/** 数の配列の最小（空なら fallback） */
-export function minOf(values: Iterable<number>, fallback: number): number {
-  let found = false
-  let out = fallback
-  for (const v of values) {
-    if (!Number.isFinite(v)) continue
-    if (!found || v < out) out = v
-    found = true
-  }
   return out
 }
 

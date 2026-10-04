@@ -9,7 +9,7 @@ import { sanitizeHeaders, type AiEndpointConfig } from '@shared/aiProviders'
 export const DEFAULT_COST_LIMIT_USD = 1
 
 /** 設定できる費用上限の最大(USD)。打ち間違いで青天井にならないように */
-export const MAX_COST_LIMIT_USD = 1000
+const MAX_COST_LIMIT_USD = 1000
 
 /**
  * Base URL を `https://host[:port][/path]` の形に揃える（末尾の / と /v1、貼り付けられた

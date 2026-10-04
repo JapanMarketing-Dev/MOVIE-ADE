@@ -19,7 +19,7 @@ import { leaf, leafIds, removeLeaf, type PaneNode } from './paneTree'
 
 export const TERMINAL_SNAPSHOT_KEY = 'ade.terminal.snapshot.v1'
 
-export interface SnapshotPane {
+interface SnapshotPane {
   key: string
   title: string
   launch: TuiAgent | null
@@ -28,7 +28,7 @@ export interface SnapshotPane {
   ptyId: string | null
 }
 
-export interface SnapshotTab {
+interface SnapshotTab {
   key: string
   projectId: string | null
   layout: PaneNode
@@ -42,7 +42,7 @@ export interface TerminalSnapshot {
   activeByProject: Record<string, string | null>
 }
 
-export interface RestorePlan {
+interface RestorePlan {
   tabs: SnapshotTab[]
   /** すべて ptyId 付き（つなぎ直す先） */
   panes: Array<SnapshotPane & { ptyId: string }>

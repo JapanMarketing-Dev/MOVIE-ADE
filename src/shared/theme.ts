@@ -7,8 +7,6 @@ import type { ThemePreference } from './types'
 
 export type ResolvedTheme = 'light' | 'dark'
 
-export const THEME_PREFERENCES: readonly ThemePreference[] = ['system', 'light', 'dark']
-
 /** ウインドウと内蔵ブラウザの背景。tokens.css の --color-bg-app と同じ値にする */
 export const THEME_BACKGROUND: Record<ResolvedTheme, string> = {
   dark: '#0a0a0a',
@@ -17,10 +15,4 @@ export const THEME_BACKGROUND: Record<ResolvedTheme, string> = {
 
 export function normalizeThemePreference(value: unknown): ThemePreference {
   return value === 'light' || value === 'dark' ? value : 'system'
-}
-
-export function resolveTheme(preference: ThemePreference, systemPrefersDark: boolean): ResolvedTheme {
-  if (preference === 'dark') return 'dark'
-  if (preference === 'light') return 'light'
-  return systemPrefersDark ? 'dark' : 'light'
 }

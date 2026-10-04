@@ -16,7 +16,7 @@ import {
 import { renderAgentPrompt } from '@shared/agentPrompt'
 
 /** 可視の ESC。本文に ESC があってもペーストの枠を壊さない */
-export const VISIBLE_ESC = '␛'
+const VISIBLE_ESC = '␛'
 
 /** 本文を送れる形に整える */
 export function sanitizePastePayload(text: string): string {

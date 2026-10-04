@@ -25,7 +25,7 @@ Semua pengaturan Ferret berada dalam satu file JSON dengan JSON Schema di sebela
 <p>Baris pertama <code>settings.json</code> adalah <code>"$schema": "./settings.schema.json"</code>. Editor seperti VS Code dan agent seperti Claude Code memakainya untuk pelengkapan, validasi, dan deskripsi setiap field. Schema disertakan di dalam aplikasi dan ditulis di sebelah file pada setiap peluncuran, sehingga selalu cocok dengan versi yang terinstal.</p>
 <p>Key yang tidak dikenal Ferret dipertahankan apa adanya saat aplikasi menyimpan. Tab yang terbuka, URL terakhir, dan status sesi lainnya disimpan di <code>state.json</code>, bukan di sini.</p>
 
-<!-- @example fece1b6b16 -->
+<!-- @example 8f2ce86189 -->
 ## Contoh dengan penjelasan
 <p>JSON tidak mendukung komentar, jadi catatannya ada di bawah contoh. Setiap field bersifat opsional; hilangkan yang tidak Anda perlukan.</p>
 <pre><code>{
@@ -40,7 +40,9 @@ Semua pengaturan Ferret berada dalam satu file JSON dengan JSON Schema di sebela
       "kind": "web",
       "urls": [
         { "id": "local", "label": "local", "url": "http://localhost:3000" },
-        { "id": "prd", "label": "prd", "url": "https://shop.example.com" }
+        { "id": "prd", "label": "prd", "url": "https://shop.example.com" },
+        { "id": "figma", "label": "Figma", "url": "https://www.figma.com/design/…", "purpose": "design" },
+        { "id": "spec", "label": "Spec", "url": "https://docs.google.com/document/d/…", "purpose": "doc" }
       ]
     }
   ],
@@ -83,7 +85,7 @@ Semua pengaturan Ferret berada dalam satu file JSON dengan JSON Schema di sebela
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>: target tinjauan untuk menu URL. Yang pertama dibuka saat proyek dibuka. <code>id</code> boleh berupa string unik apa pun.</li>
+  <li><code>projects[].urls</code>: target tinjauan untuk menu URL. Yang pertama dibuka saat proyek dibuka. <code>id</code> boleh berupa string unik apa pun. <code>purpose</code> menandai desain atau dokumen (lihat <a href="projects.html#design-docs">Meninjau desain dan dokumen</a>); hilangkan untuk aplikasi.</li>
   <li><code>agents.customAgents</code>: CLI atau skrip wrapper apa pun. <code>startupAgents</code> berisi daftar tab agent yang dibuka bersama proyek, sesuai urutan.</li>
   <li><code>capture.sttEndpoints.compatible</code>: server apa pun yang mengimplementasikan <code>/v1/audio/transcriptions</code> milik OpenAI (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> mematikan batas biaya, yang masuk akal untuk GPU milik sendiri. Lihat <a href="transcription.html">Transkripsi dan biaya</a>.</li>
   <li><code>organizer</code>: <span class="docs-ui">Rapikan temuan</span> yang dikirim langsung ke server <code>/v1/chat/completions</code> yang kompatibel dengan OpenAI (di sini Ollama). Gunakan <code>"runner": "claude-code"</code> atau <code>"codex"</code> untuk memakai login CLI Anda sendiri, dan <code>organizer.cliModels</code> untuk memilih modelnya.</li>

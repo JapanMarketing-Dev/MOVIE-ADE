@@ -11,11 +11,11 @@ import type { AgentResourceItem, AgentResourceWarning } from '@shared/agentResou
 /** 1つの CLI で集める項目の上限（種類ごと） */
 export const MAX_ITEMS_PER_KIND = 500
 /** 1つのフォルダから見る項目の上限 */
-export const MAX_DIR_ENTRIES = 1000
+const MAX_DIR_ENTRIES = 1000
 /** 設定ファイル（.claude.json・config.toml など）の上限 */
-export const MAX_CONFIG_BYTES = 8 * 1024 * 1024
+const MAX_CONFIG_BYTES = 8 * 1024 * 1024
 /** SKILL.md・コマンドのファイルは先頭だけを読む（frontmatter と1行目が分かれば足りる） */
-export const MAX_HEAD_BYTES = 16 * 1024
+const MAX_HEAD_BYTES = 16 * 1024
 
 /** 集めた結果と、読めなかったものの記録 */
 export class Collector {
@@ -83,7 +83,7 @@ export async function readHead(path: string, maxBytes = MAX_HEAD_BYTES): Promise
   }
 }
 
-export type ConfigRead = { kind: 'missing' } | { kind: 'tooLarge' } | { kind: 'ok'; text: string }
+type ConfigRead = { kind: 'missing' } | { kind: 'tooLarge' } | { kind: 'ok'; text: string }
 
 /** 設定ファイルを丸ごと読む。大きすぎれば読まない */
 export async function readConfig(path: string): Promise<ConfigRead> {

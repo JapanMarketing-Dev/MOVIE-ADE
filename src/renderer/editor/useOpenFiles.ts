@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { FsChangedEvent } from '@shared/files'
+import { isSameOrUnder, movedPath, type FsChangedEvent } from '@shared/files'
 import { MAX_VIEWER_BYTES, formatByteSize, mediaKindOf, type FileViewerKind, type FsFileInfo } from '@shared/fileViewer'
 import { previewUrl } from '@shared/preview'
 import { errorMessage } from '../lib/errors'
 import { t } from '@shared/i18n'
 import { CLOSE_REQUEST_EVENT } from '../components/TerminalPane'
 import { detectLanguage } from './language'
+import { canCloseAfterSave } from './closeAfterSave'
 
 /**
  * 開いているファイル（中央のタブ）の状態。
@@ -104,6 +105,10 @@ export interface OpenFilesApi {
   resolveClose: (choice: 'save' | 'discard' | 'cancel') => void
   /** 変更ありのファイルの相対パス（エクスプローラの M の印） */
   dirtyPaths: ReadonlySet<string>
+  /** ファイルツリーで名前を変えた。from（ファイルかフォルダ）とその下のタブを新しいパスへ移す（未保存の変更は残す） */
+  followRename: (from: string, to: string) => void
+  /** ファイルツリーで消した。そのパスとその下のタブを確認なしで閉じる（確認は削除の前に済んでいる） */
+  closeDeleted: (paths: readonly string[]) => void
 }
 
 export function useOpenFiles({
@@ -235,8 +240,9 @@ export function useOpenFiles({
     setPendingCloseId(null)
     if (!id || choice === 'cancel') return
     if (choice === 'discard') { remove(id); return }
-    // 保存に失敗したら閉じない（内容を失わない）
-    void save(id).then((ok) => { if (ok) remove(id) })
+    // 保存に失敗したら閉じない（内容を失わない）。書き込み中に打った分があれば閉じない（closeAfterSave.ts）
+    const written = drafts.current.get(id)
+    void save(id).then((ok) => { if (ok && canCloseAfterSave(written, drafts.current.get(id))) remove(id) })
   }, [pendingCloseId, remove, save])
 
   const togglePreview = useCallback((id: string) => patch(id, (f) => ({ preview: !f.preview })), [patch])
@@ -331,11 +337,48 @@ export function useOpenFiles({
     if (activeTab.startsWith('file:') && !files.some((f) => fileTabId(f.id) === activeTab)) setActiveTab('browser')
   }, [activeTab, files, setActiveTab])
 
+  const followRename = useCallback((from: string, to: string) => {
+    if (!root) return
+    const moves = filesRef.current
+      .filter((f) => f.root === root)
+      .flatMap((f) => { const path = movedPath(f.path, from, to); return path ? [{ file: f, path, id: fileId(root, path) }] : [] })
+    if (moves.length === 0) return
+    for (const { file, id } of moves) {
+      // 編集中の内容は新しい id へ移す。Monaco のモデルは id ごとなので、古いものは捨てて新しい id で作り直させる
+      const draft = drafts.current.get(file.id)
+      drafts.current.delete(file.id)
+      if (draft !== undefined) drafts.current.set(id, draft)
+      modelDisposer?.(file.id)
+    }
+    const byId = new Map(moves.map((m) => [m.file.id, m]))
+    setAllFiles((list) => list.map((f) => {
+      const move = byId.get(f.id)
+      return move ? { ...f, id: move.id, path: move.path, name: baseName(move.path), language: detectLanguage(move.path), external: undefined, revision: f.revision + 1 } : f
+    }))
+    const active = moves.find((m) => fileTabId(m.file.id) === activeTab)
+    if (active) setActiveTab(fileTabId(active.id))
+  }, [root, activeTab, setActiveTab])
+
+  const closeDeleted = useCallback((paths: readonly string[]) => {
+    const list = filesRef.current
+    const doomed = new Set(list.filter((f) => f.root === root && paths.some((p) => isSameOrUnder(f.path, p))).map((f) => f.id))
+    if (doomed.size === 0) return
+    for (const id of doomed) { drafts.current.delete(id); modelDisposer?.(id) }
+    setAllFiles((files) => files.filter((f) => !doomed.has(f.id)))
+    // 選択中のタブを閉じたら、残ったファイルの隣（無ければブラウザ）へ移る
+    const activeIndex = list.findIndex((f) => fileTabId(f.id) === activeTab)
+    if (activeIndex !== -1 && doomed.has(list[activeIndex]!.id)) {
+      const rest = list.filter((f) => f.root === root && !doomed.has(f.id))
+      const next = rest.find((f) => list.indexOf(f) > activeIndex) ?? rest.at(-1)
+      setActiveTab(next ? fileTabId(next.id) : 'browser')
+    }
+  }, [root, activeTab, setActiveTab])
+
   const dirtyPaths = useMemo(() => new Set(files.filter((f) => f.dirty).map((f) => f.path)), [files])
   const pendingClose = allFiles.find((f) => f.id === pendingCloseId) ?? null
 
   return {
     files, activeFile, open, requestClose, save, setDraft, getDraft, togglePreview, openPreviewInBrowser,
-    reloadFromDisk, keepMine, openAsText, reveal, openExternally, pendingClose, resolveClose, dirtyPaths
+    reloadFromDisk, keepMine, openAsText, reveal, openExternally, pendingClose, resolveClose, dirtyPaths, followRename, closeDeleted
   }
 }

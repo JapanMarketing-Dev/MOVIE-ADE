@@ -6,7 +6,7 @@
  * 購読する側がいない（ターミナルを開いていない）ときは false を返すので、呼び出し側はコマンドの写しを案内する。
  */
 
-export interface TerminalCommandRequest {
+interface TerminalCommandRequest {
   /** シェルに打ち込む1行（改行は付けない。受け取った側が Enter を送る） */
   command: string
   /** タブの名前。省略時はシェルの名前 */

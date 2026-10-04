@@ -14,6 +14,7 @@
  */
 
 import { init as initSentry } from '@sentry/electron/renderer'
+import { classifySystemAudioError } from '../shared/systemAudio'
 
 export {} // このファイルをモジュールにする（declare global のため）
 
@@ -29,17 +30,20 @@ interface StartPayload {
   sourceKind: 'tab' | 'desktop'
   sourceId: string
   startedAtEpoch: number
+  platform?: string
   captureMic: boolean
   syntheticMicWavBase64?: string
   syntheticMic: boolean
   captureSystemAudio: boolean
+  systemAudioEndAfterMs?: number
+  systemAudioSynthetic?: boolean
   micDeviceId?: string
   videoBitsPerSecond: number
   videoMaxWidth: number
   videoMaxFrameRate: number
   videoTimesliceMs: number
   /** エラーの文（画面の言語）。{{message}} / {{source}} をここで埋める。main（recorderWindow.ts）が渡す */
-  messages?: Partial<Record<'videoEnded' | 'videoFailed' | 'micFailed' | 'systemAudioFailed' | 'noAudioTrack', string>>
+  messages?: Partial<Record<keyof typeof DEFAULT_MESSAGES, string>>
 }
 
 interface RecorderBridge {
@@ -78,6 +82,9 @@ const DEFAULT_MESSAGES = {
   videoFailed: "Couldn't capture video: {{message}}",
   micFailed: "Couldn't access the microphone: {{message}}",
   systemAudioFailed: "Couldn't capture system audio: {{message}}",
+  systemAudioDenied: "Couldn't record the other side because system audio access wasn't allowed. Your microphone is still being recorded.",
+  systemAudioNoDevice: "Couldn't record the other side because no audio output device was found. Your microphone is still being recorded.",
+  systemAudioEnded: 'System audio stopped (the output device may have changed). The rest of the recording continues without the other side.',
   noAudioTrack: '{{source}}: no audio track'
 }
 function text(key: keyof typeof DEFAULT_MESSAGES, params: Record<string, string> = {}): string {
@@ -147,6 +154,8 @@ let recorder: MediaRecorder | null = null
 let videoTrack: MediaStreamTrack | null = null
 const captures: AudioCapture[] = []
 let videoWrites: Promise<void> = Promise.resolve()
+/** 止める操作の途中。相手の声の取り込みが終わっても「途中で止まった」とは知らせない */
+let stopping = false
 
 /**
  * 映像。内蔵ブラウザのタブ映像（tab）は OSの画面収録権限が要らない。
@@ -181,10 +190,22 @@ async function captureVideo(
 
 /**
  * PC音声（相手の声。AUD-1）。
- * Electron では「画面共有の音声ループバック」として取る。
- * macOS 13未満では取れない。取れない場合も録画は続ける（マイクだけになる）。
+ * getDisplayMedia で取る。main（recorderWindow.ts）の setDisplayMediaRequestHandler が、映像はこのウインドウ自身、
+ * 音声は PC のループバックを返す（macOS 14.2+ は Core Audio の tap、Windows は再生デバイス、Linux は PulseAudio のモニター）。
+ * Windows で取れなかったときだけ、古い取り込み方（desktop の音声）を試す。取れない場合も録画は続ける（マイクだけになる）。
  */
-async function captureSystemAudio(): Promise<MediaStream> {
+async function captureSystemAudio(payload: StartPayload): Promise<MediaStream> {
+  try {
+    return await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
+  } catch (err) {
+    const kind = classifySystemAudioError(err instanceof Error ? err.name : undefined, payload.platform)
+    if (payload.systemAudioSynthetic || payload.platform !== 'win32' || kind === 'denied') throw err
+    return legacyDesktopAudio()
+  }
+}
+
+/** Windows の古い取り込み方（chromeMediaSource: 'desktop' の音声） */
+async function legacyDesktopAudio(): Promise<MediaStream> {
   return navigator.mediaDevices.getUserMedia({
     audio: {
       mandatory: { chromeMediaSource: 'desktop' }
@@ -197,6 +218,7 @@ async function captureSystemAudio(): Promise<MediaStream> {
 
 async function start(payload: StartPayload): Promise<void> {
   const startedAt = payload.startedAtEpoch
+  stopping = false
   messages = payload.messages ?? {}
 
   // 映像
@@ -232,13 +254,17 @@ async function start(payload: StartPayload): Promise<void> {
       const stream = payload.syntheticMic
         ? await syntheticSpeechStream(payload.syntheticMicWavBase64)
         : await navigator.mediaDevices.getUserMedia({
+            /*
+             * 相手の声も録るときは、スピーカーから出た相手の声がマイクに入りにくいようエコー除去を入れる。
+             * 残った二重取りは、文字起こしのあとに時刻と文で落とす（src/main/pipeline/merge.ts）
+             */
             audio: payload.micDeviceId
               ? {
                   deviceId: { exact: payload.micDeviceId },
-                  echoCancellation: false,
+                  echoCancellation: payload.captureSystemAudio,
                   noiseSuppression: false
                 }
-              : { echoCancellation: false, noiseSuppression: false },
+              : { echoCancellation: payload.captureSystemAudio, noiseSuppression: false },
             video: false
           })
       const capture = new AudioCapture('mic', Date.now() - startedAt)
@@ -252,14 +278,24 @@ async function start(payload: StartPayload): Promise<void> {
   // PC音声（相手。MTG時のみ）
   if (payload.captureSystemAudio) {
     try {
-      const stream = await captureSystemAudio()
+      const stream = await captureSystemAudio(payload)
       // 映像トラックは不要なので止める（音声だけ使う）
       stream.getVideoTracks().forEach((track) => track.stop())
+      const track = stream.getAudioTracks()[0]
+      // 音声の出力先が無いと、音声の無い取り込みが返る
+      if (!track) throw new DOMException('no system audio track', 'NotFoundError')
+      // 出力先が抜かれた・切り替わった。マイクと映像は続ける
+      track.addEventListener('ended', () => { if (!stopping) bridge.error(text('systemAudioEnded')) })
       const capture = new AudioCapture('system', Date.now() - startedAt)
       await capture.start(stream)
       captures.push(capture)
+      if (payload.systemAudioEndAfterMs) {
+        // 検証用: 取り込みが途中で止まったときと同じにする（stop() では ended が来ないので自分で送る）
+        setTimeout(() => { track.stop(); track.dispatchEvent(new Event('ended')) }, payload.systemAudioEndAfterMs)
+      }
     } catch (err) {
-      bridge.error(text('systemAudioFailed', { message: message(err) }))
+      const kind = classifySystemAudioError(err instanceof Error ? err.name : undefined, payload.platform)
+      bridge.error(kind === 'denied' ? text('systemAudioDenied') : kind === 'noDevice' ? text('systemAudioNoDevice') : text('systemAudioFailed', { message: message(err) }))
     }
   }
   bridge.started()
@@ -341,6 +377,7 @@ bridge.onResume(() => {
 })
 
 bridge.onStop(() => {
+  stopping = true
   const done = async (): Promise<void> => {
     videoTrack?.stop()
     for (const capture of captures) capture.stop()

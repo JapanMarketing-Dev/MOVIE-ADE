@@ -171,7 +171,11 @@ module.exports = {
     notarize: MAC_NOTARIZE,
     category: 'public.app-category.developer-tools',
     extendInfo: {
-      NSMicrophoneUsageDescription: 'Ferret records your voice during a review and saves it with the findings on screen.'
+      NSMicrophoneUsageDescription: 'Ferret records your voice during a review and saves it with the findings on screen.',
+      // 「相手の声も録る」を入れたときだけ、会議の相手の声（PC の音声）を録る（src/shared/systemAudio.ts）
+      NSAudioCaptureUsageDescription: 'Ferret records the other side of a call (your computer\'s audio) when you turn on Record the other side too.',
+      // 内蔵ブラウザで同じ LAN の開発サーバー（http://192.168.…:3000 など）を開くため。macOS 15 以降のローカルネットワークの許可の確認に使う（Orca #18900）
+      NSLocalNetworkUsageDescription: 'Ferret opens development servers on your local network in its built-in browser.'
     },
     target: [{ target: 'dmg', arch: ['arm64', 'x64'] }]
   },
@@ -197,9 +201,14 @@ module.exports = {
     // MOVIE-ADE 0.1.x の appId（com.japanmarketing.movieade）から electron-builder が作った GUID。
     // 同じ GUID にしておくと、Ferret のインストーラが旧版を「同じアプリの更新」として入れ替える（アンインストールの項目が二重にならない）
     guid: 'a380747a-7ef6-5f56-83af-53845ee2cb83',
-    oneClick: false,
+    // 実行すればそのまま入って起動する（画面の選択なし）。ユーザーごとに %LOCALAPPDATA%\Programs へ入れるので管理者の確認も出ない。
+    // 同じ GUID なので、旧版（oneClick: false でユーザーごとに入れたもの）の入れ先を HKCU から読んで同じ場所に上書きし、
+    // 旧版のアンインストーラを先に走らせる（アンインストールの項目は1つのまま）
+    oneClick: true,
     perMachine: false,
-    allowToChangeInstallationDirectory: true,
+    runAfterFinish: true,
+    // 旧版を「すべてのユーザー」（HKLM）で入れた人の旧版を先に消す（中身と理由は build/installer.nsh）
+    include: 'build/installer.nsh',
     shortcutName: '${productName}',
     uninstallDisplayName: '${productName}',
     createDesktopShortcut: 'always'

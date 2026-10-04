@@ -2,7 +2,7 @@
  * 親のエージェント（Claude Code / Codex）のセッションの環境変数を、内蔵ターミナルと「指摘の整理」の子に渡さない。
  */
 import { describe, expect, it } from 'vitest'
-import { isInheritedAgentSessionEnv, stripInheritedAgentSessionEnv } from '../../src/main/inheritedAgentEnv'
+import { isInheritedAgentSessionEnv } from '../../src/main/inheritedAgentEnv'
 import { childEnv } from '../../src/main/pipeline/organize/runners/claudeCode'
 
 /** Claude Code の中から dev 版を起動したときに実際に受け継がれていたもの（値は伏せた） */
@@ -41,18 +41,7 @@ const userConfig = {
   CODEX_API_KEY_FILE: '/x'
 }
 
-describe('stripInheritedAgentSessionEnv', () => {
-  it('親の Claude Code / Codex のセッションの印を消し、利用者の設定は残す', () => {
-    const result = stripInheritedAgentSessionEnv({ ...fromClaudeCode, ...fromCodex, ...userConfig })
-    expect(result).toEqual(userConfig)
-  })
-
-  it('元の値は変えない', () => {
-    const env = { ...fromClaudeCode }
-    stripInheritedAgentSessionEnv(env)
-    expect(env).toEqual(fromClaudeCode)
-  })
-
+describe('isInheritedAgentSessionEnv', () => {
   it('GIT_EDITOR は Claude Code が付ける true のときだけ消す', () => {
     expect(isInheritedAgentSessionEnv('GIT_EDITOR', 'true')).toBe(true)
     expect(isInheritedAgentSessionEnv('GIT_EDITOR', 'vim')).toBe(false)

@@ -1,4 +1,5 @@
-import type { CaptureSourceInfo, ProjectKind, ProjectTarget } from './types'
+import { defaultUrlLabel } from './projectUrl'
+import type { CaptureSourceInfo, ProjectKind, ProjectTarget, TargetPurpose } from './types'
 
 /**
  * プロジェクトの種類と確認先（ターゲット）の純粋な関数。main（設定の読み込み）と renderer（編集・ボタン）で共有する。
@@ -39,6 +40,70 @@ export function sanitizeProjectKind(raw: unknown): ProjectKind {
   return PROJECT_KINDS.includes(raw as ProjectKind) ? (raw as ProjectKind) : DEFAULT_PROJECT_KIND
 }
 
+// ───────────────────────── 確認先の区分（アプリ・デザイン・設計書）─────────────────────────
+
+/**
+ * 確認先の区分。開発中のアプリのほか、デザイン（Figma など）や設計書（Google Docs・Notion など）も
+ * 同じ内蔵ブラウザで開いて録画・指摘できる。区分は feedback.md と Agent への指示に書き、
+ * Agent が「コードではなくデザイン・文書を直す」と判断できるようにする。
+ */
+export const TARGET_PURPOSES: readonly TargetPurpose[] = ['app', 'design', 'doc']
+export const DEFAULT_TARGET_PURPOSE: TargetPurpose = 'app'
+
+/** 区分ごとの名前の候補（app はプロジェクトの種類の候補を使う） */
+export const PURPOSE_LABELS: Record<Exclude<TargetPurpose, 'app'>, readonly string[]> = {
+  design: ['Figma', 'Design', 'Prototype', 'Penpot', 'Canva'],
+  doc: ['Spec', 'PRD', 'Design doc', 'Notion', 'Docs']
+}
+
+/** 区分ごとの URL の入力例 */
+export const PURPOSE_URL_PLACEHOLDERS: Record<Exclude<TargetPurpose, 'app'>, string> = {
+  design: 'https://www.figma.com/design/…',
+  doc: 'https://docs.google.com/document/d/…'
+}
+
+function sanitizeTargetPurpose(raw: unknown): TargetPurpose {
+  return TARGET_PURPOSES.includes(raw as TargetPurpose) ? (raw as TargetPurpose) : DEFAULT_TARGET_PURPOSE
+}
+
+/** 確認先の区分（未設定・壊れた値は app） */
+export function purposeOf(target: { purpose?: unknown } | null | undefined): TargetPurpose {
+  return sanitizeTargetPurpose(target?.purpose)
+}
+
+/** ホスト名がこれか、そのサブドメインか */
+const onHost = (host: string, domain: string) => host === domain || host.endsWith(`.${domain}`)
+
+const DESIGN_HOSTS = ['figma.com', 'penpot.app', 'canva.com', 'sketch.com', 'zeplin.io', 'invisionapp.com', 'miro.com',
+  'whimsical.com', 'xd.adobe.com', 'protopie.io', 'uizard.io', 'excalidraw.com', 'framer.com']
+const DOC_HOSTS = ['docs.google.com', 'drive.google.com', 'notion.so', 'notion.site', 'notion.com', 'quip.com', 'coda.io',
+  'paper.dropbox.com', 'sharepoint.com', 'onedrive.live.com', 'hackmd.io', 'scrapbox.io', 'cosense.app', 'esa.io', 'kibe.la',
+  'docbase.io', 'gitbook.io', 'dropbox.com']
+
+/**
+ * URL から区分を推し量る（確認先を足すときの初期値。外れたら利用者が選び直す）。
+ * localhost や知らないホストは app。PDF・GitHub / GitLab の Markdown や wiki・Confluence は doc。
+ */
+export function guessTargetPurpose(url: string): TargetPurpose {
+  let parsed: URL
+  try {
+    parsed = new URL(url.trim())
+  } catch {
+    return 'app'
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'app'
+  const host = parsed.hostname.toLowerCase()
+  const path = parsed.pathname.toLowerCase()
+  if (DESIGN_HOSTS.some((d) => onHost(host, d))) return 'design'
+  if (DOC_HOSTS.some((d) => onHost(host, d))) return 'doc'
+  if (/\.pdf$/.test(path)) return 'doc'
+  if (host.includes('confluence') || (onHost(host, 'atlassian.net') && path.startsWith('/wiki'))) return 'doc'
+  if (onHost(host, 'github.com') || onHost(host, 'gitlab.com')) {
+    if (/\.(md|markdown|mdx|adoc|rst)$/.test(path) || /\/wikis?(\/|$)/.test(path)) return 'doc'
+  }
+  return 'app'
+}
+
 const text = (v: unknown, max = 2000): string => (typeof v === 'string' ? v.trim().slice(0, max) : '')
 
 /** URL・起動コマンド・ウインドウのどれも無い確認先は、何もできないので捨てる */
@@ -65,14 +130,17 @@ export function sanitizeProjectTargets(raw: unknown, newId: () => string = () =>
     if (!id || seen.has(id)) id = newId()
     seen.add(id)
     const label = text(r.label, 100) || url || windowMatch || launchCommand
-    return [{ id, label, ...(url ? { url } : {}), ...(launchCommand ? { launchCommand } : {}), ...(windowMatch ? { windowMatch } : {}) }]
+    // 区分は app 以外のときだけ持つ（無い・知らない値は app。区分の無かった頃の設定もそのまま app）
+    const purpose = sanitizeTargetPurpose(r.purpose)
+    return [{ id, label, ...(url ? { url } : {}), ...(launchCommand ? { launchCommand } : {}), ...(windowMatch ? { windowMatch } : {}),
+      ...(purpose !== 'app' ? { purpose } : {}) }]
   })
 }
 
-/** まだ使っていない候補の名前。候補を使い切ったら「候補 2」「候補 3」… */
-export function suggestTargetLabel(kind: ProjectKind, targets: readonly Pick<ProjectTarget, 'label'>[]): string {
+/** まだ使っていない候補の名前。候補を使い切ったら「候補 2」「候補 3」…（デザイン・設計書は区分の候補から） */
+export function suggestTargetLabel(kind: ProjectKind, targets: readonly Pick<ProjectTarget, 'label'>[], purpose: TargetPurpose = 'app'): string {
   const used = new Set(targets.map((t) => t.label.trim().toLowerCase()))
-  const candidates = SUGGESTED_LABELS[kind]
+  const candidates = purpose === 'app' ? SUGGESTED_LABELS[kind] : PURPOSE_LABELS[purpose]
   const free = candidates.find((label) => !used.has(label.toLowerCase()))
   if (free) return free
   const base = candidates[0] ?? 'target'
@@ -81,7 +149,7 @@ export function suggestTargetLabel(kind: ProjectKind, targets: readonly Pick<Pro
 
 /** 確認先を末尾に足す（編集中は中身が空でもよい。保存時の sanitize で空のものは落ちる） */
 export function addTarget(targets: readonly ProjectTarget[], kind: ProjectKind, init: Partial<Omit<ProjectTarget, 'id'>> = {}, id: string = crypto.randomUUID()): ProjectTarget[] {
-  return [...targets, { id, label: init.label ?? suggestTargetLabel(kind, targets), ...stripEmpty(init) }]
+  return [...targets, { id, label: init.label ?? suggestTargetLabel(kind, targets, purposeOf(init)), ...stripEmpty(init) }]
 }
 
 export function updateTarget(targets: readonly ProjectTarget[], id: string, patch: Partial<Omit<ProjectTarget, 'id'>>): ProjectTarget[] {
@@ -90,6 +158,7 @@ export function updateTarget(targets: readonly ProjectTarget[], id: string, patc
     const merged: ProjectTarget = { ...t, ...patch }
     // 空にした欄は消す（設定ファイルに空文字を残さない）
     for (const key of ['url', 'launchCommand', 'windowMatch'] as const) if (!merged[key]?.trim()) delete merged[key]
+    if (purposeOf(merged) === 'app') delete merged.purpose
     return merged
   })
 }
@@ -110,7 +179,63 @@ export function moveTarget(targets: readonly ProjectTarget[], from: number, to: 
 function stripEmpty(init: Partial<Omit<ProjectTarget, 'id'>>): Partial<ProjectTarget> {
   const out: Partial<ProjectTarget> = {}
   for (const key of ['url', 'launchCommand', 'windowMatch'] as const) if (init[key]?.trim()) out[key] = init[key]!.trim()
+  if (purposeOf(init) !== 'app') out.purpose = purposeOf(init)
   return out
+}
+
+/**
+ * URL を変えたときの区分。区分がいまの URL から推した値のまま（＝利用者が選び直していない）なら、新しい URL から推し直す。
+ * 選び直していれば、その区分を保つ
+ */
+export function purposeAfterUrlChange(target: Pick<ProjectTarget, 'url' | 'purpose'>, nextUrl: string): TargetPurpose {
+  const current = purposeOf(target)
+  return current === guessTargetPurpose(target.url ?? '') ? guessTargetPurpose(nextUrl) : current
+}
+
+/** 名前が自動で付いた候補のままか（空・種類や区分の候補・URL から付けた local / dev / stg / prd・「候補 2」の形） */
+export function isSuggestedLabel(label: string, kind: ProjectKind): boolean {
+  const l = label.trim().toLowerCase()
+  if (!l) return true
+  const candidates = [...SUGGESTED_LABELS[kind], ...PURPOSE_LABELS.design, ...PURPOSE_LABELS.doc, 'local', 'dev', 'stg', 'prd'].map((c) => c.toLowerCase())
+  return candidates.some((c) => l === c || (l.startsWith(`${c} `) && /^\d+$/.test(l.slice(c.length + 1))))
+}
+
+/**
+ * 編集欄の変更に、区分の追従を足す。
+ *   - URL を変えたら、区分を選び直していない限り URL から推し直す（figma.com → design など）
+ *   - 区分が変わったら、名前が自動の候補のままなら新しい区分の候補に付け直す（local → Figma など）
+ * siblings は同じプロジェクトの確認先（名前の重なりを避ける）
+ */
+export function followPurpose(
+  target: ProjectTarget,
+  patch: Partial<Omit<ProjectTarget, 'id'>>,
+  kind: ProjectKind,
+  siblings: readonly Pick<ProjectTarget, 'id' | 'label'>[] = []
+): Partial<Omit<ProjectTarget, 'id'>> {
+  const out = { ...patch }
+  if (patch.url !== undefined && patch.purpose === undefined) {
+    const next = purposeAfterUrlChange(target, patch.url)
+    if (next !== purposeOf(target)) out.purpose = next
+  }
+  if (out.purpose !== undefined && purposeOf(out) !== purposeOf(target) && patch.label === undefined && isSuggestedLabel(target.label, kind)) {
+    out.label = suggestTargetLabel(kind, siblings.filter((s) => s.id !== target.id), purposeOf(out))
+  }
+  return out
+}
+
+/**
+ * 開いている URL をそのまま確認先にするときの1件。区分は URL から推し、
+ * 名前はアプリなら local / dev / prd、デザイン・設計書なら区分の候補（Figma・Spec など）
+ */
+export function urlTarget(url: string, kind: ProjectKind, siblings: readonly Pick<ProjectTarget, 'label'>[], id: string = crypto.randomUUID()): ProjectTarget {
+  const purpose = guessTargetPurpose(url)
+  if (purpose === 'app') return { id, label: defaultUrlLabel(url), url }
+  return { id, label: suggestTargetLabel(kind, siblings, purpose), url, purpose }
+}
+
+/** ツールバーに並べる順（アプリ → デザイン → 設計書。同じ区分の中は登録の順のまま） */
+export function groupTargetsByPurpose<T extends Pick<ProjectTarget, 'purpose'>>(targets: readonly T[]): Array<{ purpose: TargetPurpose; targets: T[] }> {
+  return TARGET_PURPOSES.map((purpose) => ({ purpose, targets: targets.filter((t) => purposeOf(t) === purpose) })).filter((g) => g.targets.length > 0)
 }
 
 /** URL を持つ確認先だけ（内蔵ブラウザで開けるもの） */
@@ -125,7 +250,7 @@ export function urlTargets<T extends ProjectTarget>(targets: readonly T[]): Arra
  *   none   … 何もできない（書きかけ）
  * web のプロジェクトは常に URL として扱う（起動コマンドやウインドウの欄を出していないため）。
  */
-export type TargetAction =
+type TargetAction =
   | { kind: 'url'; url: string }
   | { kind: 'window'; launchCommand?: string; windowMatch?: string; url?: string }
   | { kind: 'none' }

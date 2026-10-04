@@ -5,7 +5,7 @@ Editor und Vorschau
 <!-- @lead 97cbc36c8d -->
 Öffnen und bearbeiten Sie Projektdateien und zeigen Sie eine Vorschau von Markdown und Mermaid an. Eine im integrierten Browser geöffnete Vorschau lässt sich wie jede Webseite aufnehmen und prüfen.
 
-<!-- @files f1e2c27cca -->
+<!-- @files d29f6a2107 -->
 ## Dateien öffnen und bearbeiten
 <ul>
   <li><span class="docs-ui">Dateien</span> (der Dateibaum): {{keys:Mod+Shift+E}}, mit <span class="docs-ui">Nach Dateiname filtern</span>, <span class="docs-ui">Aktualisieren</span> und <span class="docs-ui">Alle einklappen</span>.</li>
@@ -14,7 +14,18 @@ Editor und Vorschau
   <li>Ändert sich die Datei auf der Festplatte, während Sie ungesicherte Änderungen haben, wählen Sie <span class="docs-ui">Von Festplatte neu laden</span> oder <span class="docs-ui">Meine Änderungen behalten</span>.</li>
 </ul>
 <p>Der Editor ist Monaco. Dateien, die kein Text sind, öffnen sich stattdessen in einem Viewer: Bilder (vergrößern und verkleinern; SVG lässt sich auch als Code anzeigen), Video und Audio mit Suchleiste, PDF und bei jeder anderen Binärdatei deren Größe und eine Hex-Ansicht der ersten Bytes. Viewer sind schreibgeschützt. Dateien außerhalb des Projektordners oder solche, die über einen symbolischen Link erreicht werden, der aus dem Ordner herausführt, werden nicht angezeigt.</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Demnächst</p><p>Dateien im Dateibaum erstellen, umbenennen und löschen.</p></div>
+
+<!-- @file-tree 4bec72e9f4 -->
+## Dateien anlegen, umbenennen und löschen
+<p>Arbeiten Sie direkt in <span class="docs-ui">Dateien</span> mit Dateien, so wie in VS Code. Namen geben Sie direkt im Baum ein.</p>
+<ul>
+  <li><span class="docs-ui">Neue Datei</span> / <span class="docs-ui">Neuer Ordner</span>: die Schaltflächen über dem Baum oder ein Rechtsklick auf einen Ordner (oder auf die freie Fläche unter dem Baum). Ein neues Element landet im ausgewählten Ordner, neben der ausgewählten Datei oder oben im Projekt. Eine neue Datei öffnet sich im Editor.</li>
+  <li><span class="docs-ui">Umbenennen</span>: {{keys:F2 / Enter|F2}} oder Rechtsklick. Geöffnete Tabs übernehmen den neuen Namen und behalten ungesicherte Änderungen.</li>
+  <li><span class="docs-ui">Löschen</span>: {{keys:Mod+Backspace / Delete|Delete}} oder Rechtsklick. Ferret fragt zuerst nach und verschiebt das Element dann in den Papierkorb, sodass Sie es wiederherstellen können. Tabs gelöschter Dateien werden geschlossen; hatte einer davon ungesicherte Änderungen, weist die Rückfrage darauf hin.</li>
+  <li>Wählen Sie mehrere Elemente mit {{keys:Mod}}-Klick oder {{keys:Shift}}-Klick aus, um sie gemeinsam zu löschen.</li>
+  <li>{{keys:Esc}} bricht die Eingabe eines Namens ab.</li>
+</ul>
+<p>Ferret überschreibt keine vorhandene Datei und keinen vorhandenen Ordner mit demselben Namen. Abgelehnt wird alles, was aus dem Projektordner herausführen würde (<code>..</code>, absolute Pfade, symbolische Links, die nach außen zeigen), alles innerhalb von <code>.git</code> sowie Namen, die ein Betriebssystem nicht verwenden kann: <code>/ \ &lt; &gt; : " | ? *</code>, Steuerzeichen, ein Leerzeichen oder Punkt am Ende und unter Windows reservierte Namen wie <code>CON</code> oder <code>NUL</code>.</p>
 
 <!-- @preview b8c0baaad4 -->
 ## Markdown- und Mermaid-Vorschau
@@ -24,7 +35,7 @@ Editor und Vorschau
   <li><span class="docs-ui">Vorschau öffnen</span>: im integrierten Browser (<code>ade-preview://</code>), sodass Sie sie aufnehmen und prüfen können</li>
 </ul>
 
-<!-- @review-docs 3956ed6f10 -->
+<!-- @review-docs 4b5c6316ba -->
 ## Dokumentation per Aufnahme prüfen
 <ol class="docs-steps">
   <li>Öffnen Sie eine Markdown-Datei und klicken Sie auf <span class="docs-ui">Vorschau öffnen</span>.</li>
@@ -32,4 +43,4 @@ Editor und Vorschau
   <li>Stoppen Sie. Die Befunde verweisen statt auf eine URL auf den projektrelativen Pfad der Datei.</li>
   <li>Mit <span class="docs-ui">An Agent senden</span> lassen Sie das Dokument korrigieren.</li>
 </ol>
-<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="Markdown-Vorschau im integrierten Browser (Screenshot folgt)"><span>Screenshot folgt</span></div><figcaption>Markdown-Vorschau im integrierten Browser</figcaption></figure>
+{{shot:preview|Markdown-Vorschau im integrierten Browser}}

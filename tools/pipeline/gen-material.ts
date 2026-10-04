@@ -3,7 +3,7 @@
  * macOS の `say`（日本語音声）で台本を読み上げ、`afconvert` で 16kHz モノラル WAV にする。
  * 台本から操作ログ・静止画の時刻一覧・正解データも同時に書き出す。
  *
- *   npx tsx tools/gen-material.ts <出力フォルダ>
+ *   npx tsx tools/pipeline/gen-material.ts <出力フォルダ>
  *
  * 注意: 合成音声は実際の人の声より明瞭で、口ごもり・言い直し・被りが無い。
  * 文字起こしの精度はここで測った値より実環境では落ちる（FINDINGS.md「限界」参照）。

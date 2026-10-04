@@ -27,7 +27,7 @@ export const TRIMMED_FILE = 'recording.trimmed.webm'
  */
 export const START_GRACE_MS = 1000
 
-export interface TrimInput {
+interface TrimInput {
   durationMs: number
   transcript: TranscriptSegment[]
   events: Event[]

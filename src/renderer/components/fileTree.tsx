@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type UIEvent } from 'react'
-import type { FsEntry } from '@shared/files'
+import { movedPath, type FsEntry } from '@shared/files'
 import { parseExpanded, serializeExpanded } from '@shared/fileTreeState'
 import { errorMessage } from '../lib/errors'
 import { readLocal, writeLocal } from '../lib/localPref'
@@ -25,7 +25,7 @@ function parentDir(path: string): string {
   return slash === -1 ? '' : path.slice(0, slash)
 }
 
-export interface FileTreeState {
+interface FileTreeState {
   rows: FileTreeRow[]
   expanded: ReadonlySet<string>
   loading: ReadonlySet<string>
@@ -35,6 +35,12 @@ export interface FileTreeState {
   /** 読み込み済みのフォルダをすべて読み直す */
   refresh: () => void
   collapseAll: () => void
+  /** フォルダを開く（まだ読んでいなければ読む）。作成の入力欄をその中に出すとき */
+  expandDir: (path: string) => void
+  /** 1つのフォルダを読み直す（作成・名前の変更・削除のすぐ後。変更通知を待たない） */
+  reloadDir: (path: string) => void
+  /** フォルダの名前が変わった。開いていた状態を新しいパスへ移す */
+  moveDir: (from: string, to: string) => void
 }
 
 export function useFileTree(root: string | null, options: { expandedKey?: string | null } = {}): FileTreeState {
@@ -131,7 +137,23 @@ export function useFileTree(root: string | null, options: { expandedKey?: string
     error,
     toggleDir,
     refresh: () => { for (const dir of childrenRef.current.keys()) void loadDir(dir) },
-    collapseAll: () => setExpanded(() => new Set())
+    collapseAll: () => setExpanded(() => new Set()),
+    expandDir: (path: string) => {
+      if (path === '') return
+      setExpanded((set) => (set.has(path) ? set : new Set(set).add(path)))
+      if (!childrenRef.current.has(path)) void loadDir(path)
+    },
+    reloadDir: (path: string) => { void loadDir(path) },
+    moveDir: (from: string, to: string) => {
+      const moved = [...expandedRef.current].flatMap((path) => { const next = movedPath(path, from, to); return next ? [next] : [] })
+      setChildren((map) => new Map([...map].filter(([dir]) => movedPath(dir, from, to) === null)))
+      setExpanded((set) => {
+        const next = new Set([...set].filter((path) => movedPath(path, from, to) === null))
+        for (const path of moved) next.add(path)
+        return next
+      })
+      for (const path of moved) void loadDir(path)
+    }
   }
 }
 

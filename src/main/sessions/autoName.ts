@@ -33,7 +33,7 @@ export interface AutoNameItem {
 }
 
 /** 意味のある本文だけを返す。効果音のタグ・無音への決まり文句だけなら空文字 */
-export function meaningfulText(text: string | undefined): string {
+function meaningfulText(text: string | undefined): string {
   // 制御文字・改行も除く（一覧の見出しと検索の本文に入る）
   const stripped = stripSoundTags(oneLine(text))
   if (!stripped || isSilencePhrase(stripped)) return ''
@@ -102,7 +102,7 @@ function isTopicWord(word: string, locale: SupportedLocale): boolean {
 }
 
 /** 文から話題の語を拾う（重複なし。見つけた順） */
-export function topicWords(text: string, locale: SupportedLocale): string[] {
+function topicWords(text: string, locale: SupportedLocale): string[] {
   const segmenter = new Intl.Segmenter(locale, { granularity: 'word' })
   const out: string[] = []
   for (const s of segmenter.segment(text)) {

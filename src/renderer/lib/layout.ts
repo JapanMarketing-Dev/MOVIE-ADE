@@ -33,7 +33,7 @@ export function initLayout(): void {
   })
 }
 
-export function currentLayout(): LayoutPrefs {
+function currentLayout(): LayoutPrefs {
   return current
 }
 

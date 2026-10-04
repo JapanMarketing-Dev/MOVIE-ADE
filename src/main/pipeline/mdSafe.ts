@@ -18,7 +18,7 @@ const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u200b\u200
 const LINE_BREAKS = /[\t\r\n\u2028\u2029]+/g
 
 /** 制御文字などを除く（改行は残す） */
-export function stripControls(text: string): string {
+function stripControls(text: string): string {
   return text.replace(CONTROL, '')
 }
 

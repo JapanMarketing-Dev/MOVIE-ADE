@@ -22,7 +22,7 @@ export const SUMMARY_VERSION = 3
 /** 検索用の本文の上限。一覧のたびに全レビュー分を renderer へ送るので抑える */
 export const SEARCH_TEXT_MAX = 4000
 
-export interface StoredSummary {
+interface StoredSummary {
   version: typeof SUMMARY_VERSION
   startedAt: string
   durationMs: number
@@ -39,7 +39,7 @@ export interface StoredSummary {
   searchText?: string
 }
 
-export interface NavRef {
+interface NavRef {
   url: string
   title: string
 }

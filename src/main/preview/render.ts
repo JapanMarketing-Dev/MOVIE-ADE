@@ -2,7 +2,7 @@ import { Marked } from 'marked'
 import { isMermaidFence, PREVIEW_SCHEME, type PreviewKind } from '@shared/preview'
 
 /** ページの種類。md / Mermaid 以外のテキストは、読み取り専用のコードとして出す（レビューの対象にするため） */
-export type PreviewPageKind = PreviewKind | 'code'
+type PreviewPageKind = PreviewKind | 'code'
 import { getLocale, t } from '@shared/i18n'
 
 /**
@@ -15,8 +15,11 @@ import { getLocale, t } from '@shared/i18n'
  * 生の HTML は文字として出す（Agent が書いたファイルのスクリプトをレビュー対象のページで動かさない）。
  */
 
-/** ページで「外部の画像を読み込む」を押したときだけ付くクエリ（その文書・その表示の間だけ。保存しない） */
-export const REMOTE_IMAGES_PARAM = 'remote-images'
+/**
+ * ページで「外部の画像を読み込む」を押したときだけ付くクエリ。値は main が出した使い切りの合言葉で、
+ * 値そのものは権限ではない（security-4 [6]。remoteGrant.ts）。保存する URL からは剥がす
+ */
+export { REMOTE_IMAGES_QUERY as REMOTE_IMAGES_PARAM } from '@shared/preview'
 
 /**
  * ページのスクリプトは同梱の2本だけ。Mermaid の SVG は style 属性を使うので style は inline を許す。
@@ -33,7 +36,7 @@ export function previewCsp(remoteImages = false): string {
   ].join('; ')
 }
 
-export function escapeHtml(text: string): string {
+function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
@@ -64,7 +67,7 @@ function remoteImageHost(href: string): string {
  * 外の画像は読み込まない印にする（行き先のホストを見せる）。利用者がページの「外部の画像を読み込む」を押したときだけ、
  * page.js が https の画像に置き換える（そのときだけ main が CSP で https を許す。index.ts）
  */
-export function remoteImagePlaceholder(href: string, alt: string): string {
+function remoteImagePlaceholder(href: string, alt: string): string {
   const host = remoteImageHost(href)
   const label = alt.trim() ? `${alt.trim()} · ${host}` : host
   return `<span class="remote-image" data-remote-src="${escapeHtml(href.trim())}" data-remote-alt="${escapeHtml(alt)}" data-remote-host="${escapeHtml(host)}" title="${escapeHtml(href.trim())}">${escapeHtml(label)}</span>`

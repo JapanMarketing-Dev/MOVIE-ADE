@@ -14,7 +14,7 @@ import type { WhisperModelName } from '@shared/types'
 /** 画面とやり取りするので、名前の一覧は shared/types に置く */
 export type WhisperModelId = WhisperModelName
 
-export interface WhisperModelInfo {
+interface WhisperModelInfo {
   id: WhisperModelId;
   /** ggml ファイル名 */
   file: string;
@@ -91,9 +91,6 @@ export const whisperModels: Record<WhisperModelId, WhisperModelInfo> = {
 
 /** 既定モデル（技術検証の実測で決定。FINDINGS.md 参照） */
 export const defaultWhisperModel: WhisperModelId = 'large-v3-turbo';
-
-/** GPUが無い・遅い端末向けの代替 */
-export const fallbackWhisperModel: WhisperModelId = 'small'
 
 /** 設定の画面で選べる順（小さい順）。medium は large-v3-turbo に劣るので出さない */
 export const selectableWhisperModels: WhisperModelId[] = ['small', 'large-v3-turbo-q5_0', 'large-v3-turbo', 'base', 'tiny']

@@ -21,7 +21,7 @@ Tinjauan berada di folder proyek Anda. Pengaturan berada di <code>~/.ferret/</co
 ## Masa simpan
 <p><span class="docs-ui">Simpan rekaman</span> (7 hari secara bawaan, 30 hari, atau <span class="docs-ui">Selamanya</span>): saat aplikasi dimulai, tinjauan selesai yang lebih lama dari itu kehilangan <code>recording.webm</code> dan <code>work/</code>. <code>feedback.md</code> dan gambar temuan tetap disimpan. Tinjauan yang belum selesai tidak pernah dipangkas. Pemangkasan berjalan saat peluncuran, untuk proyek yang terakhir dibuka.</p>
 
-<!-- @network 8886bf9546 -->
+<!-- @network 1eadb8b937 -->
 ## Apa yang keluar dari mesin Anda
 <table>
   <thead><tr><th>Kapan</th><th>Tujuan</th><th>Data</th></tr></thead>
@@ -35,8 +35,8 @@ Tinjauan berada di folder proyek Anda. Pengaturan berada di <code>~/.ferret/</co
     <tr><td><span class="docs-ui">Kirim ke GitHub</span></td><td>GitHub melalui <code>gh</code></td><td>hanya teks isi (tanpa gambar)</td></tr>
     <tr><td>Penggunaan di footer (hanya Claude Code dan Codex)</td><td>Anthropic, ChatGPT</td><td>permintaan data penggunaan dengan login Anda sendiri</td></tr>
     <tr><td>Ajakan memberi bintang di GitHub</td><td>GitHub melalui <code>gh</code> Anda</td><td>memeriksa apakah Anda sudah memberi bintang pada repo, dan memberi bintang hanya jika Anda mengklik <span class="docs-ui">Beri bintang di GitHub</span></td></tr>
-    <tr><td><span class="docs-ui">Periksa Pembaruan</span> (manual)</td><td>server unduhan (Cloudflare R2)</td><td>permintaan untuk <code>latest.json</code></td></tr>
-    <tr><td>Mengirim umpan balik dari aplikasi (hanya saat Anda mengirimnya; segera hadir)</td><td>relay umpan balik milik pengembang (Cloudflare Worker), yang membuka issue publik di <code>JapanMarketing-Dev/ferret</code></td><td>teks Anda, bug atau ide, versi aplikasi / OS dan CPU, serta hingga 3 screenshot yang Anda lampirkan. Key, token, alamat email, dan path folder home disamarkan. Relay tidak menyimpan alamat IP Anda (lihat <a href="#feedback">Umpan balik dari aplikasi</a>)</td></tr>
+    <tr><td><span class="docs-ui">Periksa Pembaruan</span> (manual)</td><td>server unduhan (Cloudflare R2)</td><td>permintaan untuk <code>latest.json</code> dan <code>SHA256SUMS</code> versi tersebut; installer saat Anda mengklik <span class="docs-ui">Unduh</span></td></tr>
+    <tr><td>Mengirim umpan balik dari aplikasi (hanya saat Anda mengirimnya)</td><td>relay umpan balik milik pengembang (Cloudflare Worker), yang membuka issue publik di <code>JapanMarketing-Dev/ferret</code></td><td>teks Anda, bug atau ide, versi aplikasi / OS dan CPU, serta hingga 3 screenshot yang Anda lampirkan. Key, token, alamat email, dan path folder home disamarkan. Relay tidak menyimpan alamat IP Anda (lihat <a href="#feedback">Umpan balik dari aplikasi</a>)</td></tr>
     <tr><td>Crash atau error (<span class="docs-ui">Kirim laporan crash</span> aktif)</td><td>Sentry</td><td>stack trace dan versi OS / CPU / aplikasi (lihat <a href="#crash-reports">Laporan crash</a>)</td></tr>
   </tbody>
 </table>
@@ -47,10 +47,9 @@ Tinjauan berada di folder proyek Anda. Pengaturan berada di <code>~/.ferret/</co
   <li>Situs web ini (bukan aplikasinya) menghitung tampilan halaman dengan Cloudflare Web Analytics: tanpa cookie, tanpa pelacakan lintas situs, dan tanpa data pribadi.</li>
 </ul>
 
-<!-- @feedback ba5f3fb0a3 -->
+<!-- @feedback 34fc2ebccc -->
 ## Umpan balik dari aplikasi
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Segera hadir</p><p>Formulir umpan balik dalam aplikasi dan relay-nya belum dirilis. Bagian ini menjelaskan cara kerjanya nanti.</p></div>
-<p>Anda akan bisa mengirim laporan bug atau ide dari dalam Ferret tanpa akun GitHub. Umpan balik hanya dikirim saat Anda mengirimnya, dan menjadi issue <strong>publik</strong> di <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a> dengan label <code>from-app</code>. Jangan sertakan apa pun yang tidak akan Anda unggah secara publik.</p>
+<p>Anda bisa mengirim laporan bug atau ide dari dalam Ferret tanpa akun GitHub (<span class="docs-ui">Kirim Masukan</span> di bagian bawah sidebar). Umpan balik hanya dikirim saat Anda mengirimnya, dan menjadi issue <strong>publik</strong> di <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a> dengan label <code>from-app</code>. Jangan sertakan apa pun yang tidak akan Anda unggah secara publik.</p>
 <ul>
   <li>Aplikasi mengirimnya dari komputer Anda ke relay kecil (Cloudflare Worker yang dijalankan pengembang), yang membuka issue dengan token GitHub miliknya sendiri. Relay ini adalah satu-satunya server milik pengembang yang menerima apa pun yang Anda tulis.</li>
   <li>Yang dikirim: judul dan teks Anda, apakah itu bug atau ide, versi aplikasi, dan hingga 3 screenshot PNG atau JPEG yang Anda lampirkan. Nama dan versi OS, arsitektur CPU, serta ID instalasi acak hanya dikirim jika Anda membiarkannya tetap disertakan. Yang tidak dikirim: nama, email, akun GitHub, file proyek, rekaman, atau temuan Anda.</li>

@@ -5,6 +5,10 @@
 <!-- @lead eabdc6539a -->
 常见问题及解决方法。引号中的消息是应用在简体中文界面下显示的内容。
 
+<!-- @install 2d5deeaa6d -->
+## 安装与首次启动
+<p>Linux：在 Ubuntu 23.10 及更高版本上，AppImage 可能在启动时因沙盒错误而停止，这是因为 AppArmor 限制了 Electron 沙盒所使用的用户命名空间。请改为安装 <code>.deb</code>。</p>
+
 <!-- @screen-permission 45fa22d7c7 -->
 ## 无法录制屏幕或窗口（macOS）
 <p>消息：<q>录制整个屏幕或其他窗口需要 macOS 屏幕录制权限。</q></p>
@@ -24,6 +28,18 @@
   <li>Windows：在 <span class="docs-ui">设置 → 隐私和安全性 → 麦克风</span> 中允许桌面应用访问。</li>
 </ul>
 <p>没有麦克风时，用画笔圈出的地方仍会生成反馈，但不带口述的请求。</p>
+
+<!-- @system-audio 62d76ef7c4 -->
+## 没有录到会议中对方的声音
+<p>当 <span class="docs-ui">同时录制对方的声音</span> 已开启但无法录制电脑的音频时，Ferret 会显示以下警告之一，并继续录制你的麦克风、视频和画笔标注。</p>
+<ul>
+  <li><q>Ferret 没有录制系统音频的权限。</q>（macOS）：在 <span class="docs-ui">系统设置 → 隐私与安全性 → 录屏与系统录音</span> 中打开 Ferret，退出并重新打开 Ferret，然后开始新的录制。</li>
+  <li><q>录制对方的声音需要 macOS 14.2 或更高版本。</q>：请更新 macOS。在此之前只会录制你的麦克风。</li>
+  <li><q>Windows 未允许访问系统音频。</q>或<q>未找到音频输出设备。</q>：在 <span class="docs-ui">设置 → 系统 → 声音</span>（Windows）中启用扬声器或耳机，或者连接它们，然后开始新的录制。</li>
+  <li><q>系统音频不可用。</q>（Linux）：安装 PulseAudio；如果使用 PipeWire，请安装 <code>pipewire-pulse</code>。</li>
+  <li><q>对方声音的录制已停止：音频输出设备已切换或断开。</q>：录制的其余部分会继续，但不包含对方的声音。请用 <span class="docs-ui">继续录制</span> 补录剩下的内容。</li>
+</ul>
+<p>如果对方说的话也显示为你说的，说明你的麦克风收进了扬声器的声音。请使用耳机。</p>
 
 <!-- @whisper ec2a54a0ef -->
 ## 没有本机模型 / 找不到 whisper-cli

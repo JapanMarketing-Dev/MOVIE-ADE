@@ -29,7 +29,7 @@ export interface ProcRow {
   memory: number
 }
 
-export interface ProcIndex {
+interface ProcIndex {
   byPid: Map<number, ProcRow>
   childrenOf: Map<number, number[]>
 }
@@ -118,7 +118,7 @@ async function enumerateWithPs(): Promise<ProcRow[]> {
   }
 }
 
-export interface ResourceSources {
+interface ResourceSources {
   terminals: () => Array<{ id: string; pid: number; cwd: string; title: string }>
   projects: () => readonly Project[]
   activeProjectId: () => string | null

@@ -210,7 +210,7 @@ function ensureWrapperRoot(): string {
   return root
 }
 
-export type StartupDelivery =
+type StartupDelivery =
   /** シェルの起動ファイルが最初のプロンプトで実行する */
   | { kind: 'shell-hook'; shell: ShellSpec; env: Record<string, string> }
   /** フックを差し込めないシェル。出力が落ち着いたらPTYへ書き込む */

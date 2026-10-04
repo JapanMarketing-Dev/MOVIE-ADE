@@ -5,13 +5,13 @@
  */
 
 /** JS より前の時間が全体のこの割合を超えたら pre-js とみなす */
-export const PRE_JS_SHARE = 0.5
+const PRE_JS_SHARE = 0.5
 /** 内訳に載せる節目の数の上限 */
 export const MAX_STARTUP_MARKS = 20
 
 const MARK_NAME = /^[A-Za-z0-9_.:-]{1,40}$/
 
-export type StartupPhase = 'pre-js' | 'js' | 'unknown'
+type StartupPhase = 'pre-js' | 'js' | 'unknown'
 
 export interface StartupTiming {
   /** プロセスの生成（取れなければモジュールの読み込み）から操作可能までの ms */
@@ -26,7 +26,7 @@ export interface StartupTiming {
   marks: Record<string, number>
 }
 
-export interface StartupBreakdown {
+interface StartupBreakdown {
   /** プロセスの生成からモジュールの読み込みまで。生成時刻が取れないときは分からない（null） */
   preJsMs: number | null
   /** モジュールの読み込みから操作可能まで */

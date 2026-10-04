@@ -1,0 +1,66 @@
+<!-- Ferret docs translation: zh-TW / advanced-install. Translate the text under each marker; keep the markers, {{…}} tokens, code and kbd as they are. See tools/docs/i18n/README.md -->
+<!-- @title c768532509 -->
+進階安裝
+
+<!-- @lead c298f9e477 -->
+檢查下載檔案的簽章、從原始碼建置 Ferret、取得舊版本，以及了解更新的運作方式。安裝 Ferret 並不需要這些步驟。
+
+<!-- @files 8d91113a43 -->
+## 所有下載檔案
+<p>檔案由 Cloudflare R2 提供，而非 GitHub Releases，且只保留最近 10 個版本。<a href="../download.html#versions">下載頁面</a>列出了所有這些版本。</p>
+<table>
+  <thead><tr><th>作業系統</th><th>檔案</th></tr></thead>
+  <tbody>
+    <tr><td>macOS（Apple silicon / Intel）</td><td><code>Ferret-&lt;version&gt;-mac-arm64.dmg</code>、<code>Ferret-&lt;version&gt;-mac-x64.dmg</code></td></tr>
+    <tr><td>Windows（x64 / arm64）</td><td><code>Ferret-&lt;version&gt;-win-x64.exe</code>、<code>Ferret-&lt;version&gt;-win-arm64.exe</code>（安裝程式）</td></tr>
+    <tr><td>Linux（x64）</td><td><code>Ferret-&lt;version&gt;-linux-x86_64.AppImage</code>、<code>Ferret-&lt;version&gt;-linux-amd64.deb</code></td></tr>
+  </tbody>
+</table>
+<p>0.1.x 以前的版本以舊名稱發佈，檔名為 <code>MOVIE-ADE-&lt;version&gt;-…</code>。<code>Ferret-…</code> 的檔名從 0.2.0 開始使用。</p>
+
+<!-- @verify 9ccf455542 -->
+## 驗證下載的檔案（已簽署的 SHA256SUMS）
+<p>每個版本都附有 <code>SHA256SUMS</code> 檔案及其簽章 <code>SHA256SUMS.sig</code>。簽章使用 Ferret 的發行金鑰製作，而該金鑰與下載伺服器分開保管，因此即使下載伺服器上的安裝程式遭到竄改，也不可能附上有效的簽章。公開金鑰<em>不</em>從下載伺服器取得：請從儲存庫（<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers"><code>build/release-signing/allowed_signers</code></a>）取得，或從這裡複製：</p>
+<pre><code>release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9</code></pre>
+<p>它的指紋是 <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code>。GitHub 上的每個版本也附有相同的檔案。請用 <code>ssh-keygen</code>（macOS、Windows 10 以上版本與 Linux 皆內建）檢查簽章，再將下載檔案的雜湊值與已簽署的清單比對：</p>
+<pre><code># the download server (currently the R2 public URL; it may move to a custom domain)
+BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
+VERSION=$(curl -s $BASE/latest.json | jq -r .version)
+curl -sO $BASE/releases/$VERSION/SHA256SUMS
+curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
+
+# save the public key above as allowed_signers, then:
+ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
+# → Good "ferret-release" signature for release@ferretade.dev …
+
+# macOS
+shasum -a 256 -c SHA256SUMS --ignore-missing
+# Linux
+sha256sum -c SHA256SUMS --ignore-missing</code></pre>
+<pre><code># Windows (PowerShell): compare with the line for your file in SHA256SUMS
+Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
+<p>如果 <code>ssh-keygen</code> 沒有顯示 <q>Good "ferret-release" signature</q>，或雜湊值不在清單中，請停止使用該檔案。Ferret 的 <span class="docs-ui">檢查更新</span> 會用 App 內建的金鑰進行相同的檢查，不會提供簽章不符的版本。在 macOS 上，也可以用 <code>spctl -a -vv /Applications/Ferret.app</code> 檢查 Developer ID 簽章與公證。0.3.0 以前的版本，請與 <code>releases/&lt;version&gt;/manifest.json</code> 中的雜湊值比對。</p>
+
+<!-- @older-macos c7f7a00c02 -->
+## 較舊的 macOS 版本
+<p>適用於 0.2.0 build 2 以前的版本：如果 macOS 顯示無法驗證開發者，請關閉對話框，開啟 <span class="docs-ui">系統設定 → 隱私權與安全性</span>，按一下 Ferret 訊息旁的 <span class="docs-ui">強制打開</span>，再按 <span class="docs-ui">打開</span> 確認。如果顯示 App「已損毀」，請移除隔離屬性：</p>
+<pre><code>xattr -dr com.apple.quarantine /Applications/Ferret.app</code></pre>
+
+<!-- @source 06a127ac19 -->
+## 從原始碼建置
+<p>需要 Node.js 20 以上版本（CI 與本機開發使用 22）、pnpm 與 git。</p>
+<pre><code>git clone https://github.com/JapanMarketing-Dev/ferret.git
+cd ferret
+pnpm install          # postinstall prepares node-pty for Electron
+pnpm dev              # run in development mode</code></pre>
+<p>封裝安裝程式（輸出到 <code>dist/release/</code>，設定在 <code>electron-builder.config.cjs</code>）。Linux 版只能在 Linux 上建置。</p>
+<pre><code>pnpm dist:mac     # dmg (arm64, x64)
+pnpm dist:win     # NSIS installers (x64, arm64)
+pnpm dist:linux   # AppImage + deb (x64)</code></pre>
+<p><code>build:&lt;os&gt;:dev</code> 指令碼只會產生未封裝的 App（<code>--dir</code>），在本機測試時較快。</p>
+<p>在 Windows 上，<code>pnpm install</code> 會使用 node-pty 隨附的預先建置二進位檔，而不重新建置（重新建置需要 Visual Studio C++ 建置工具）。設定 <code>ADE_FORCE_NATIVE_REBUILD=1</code> 可強制重新建置。</p>
+<p>如果終端機回報無法載入 node-pty，請執行 <code>pnpm rebuild:native</code>。</p>
+
+<!-- @update 142015ddda -->
+## 更新
+<p>Ferret 不會自動更新。請在頁尾開啟 <span class="docs-ui">更新</span>，然後按一下 <span class="docs-ui">檢查更新</span>。它會從下載伺服器（R2）取得 <code>latest.json</code>、比較版本，並用 App 內建的發行金鑰檢查該版本 <code>SHA256SUMS</code> 的簽章。有較新的版本時，按一下 <span class="docs-ui">下載</span>：Ferret 會下載適用於你電腦的安裝程式，確認其 SHA-256 與已簽署的 <code>SHA256SUMS</code> 相符，將它儲存到「下載」資料夾並在那裡顯示。下載頁面也會在瀏覽器中進行相同的檢查後才儲存檔案。在你按下按鈕之前不會進行任何檢查，也不會自動安裝任何東西。</p>

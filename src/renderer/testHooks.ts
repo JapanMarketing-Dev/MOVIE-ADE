@@ -7,7 +7,7 @@ import { getTerminal } from './terminal/terminalClient'
  * Playwright からテキストを読めるように、xterm のバッファを取り出す関数だけを公開する。
  * 読み取り専用で、アプリの動作は変えない。
  */
-export interface AdeTestHooks {
+interface AdeTestHooks {
   terminalText(tabKey?: string): string
   terminalRenderer(tabKey?: string): string
   terminalTabKeys(): string[]

@@ -24,7 +24,7 @@ export function stripSpinner(title: string): string {
 }
 
 /** 先頭がスピナーか（working の手がかり） */
-export function hasSpinner(title: string): boolean {
+function hasSpinner(title: string): boolean {
   return SPINNER.test(title)
 }
 
@@ -36,6 +36,9 @@ const PERMISSION_PATTERNS: RegExp[] = [
   /Do you want to (?:proceed|allow|make this edit)/i,
   /Yes,\s*I trust this folder/i,
   /Enter to confirm\s*·\s*Esc to cancel/i,
+  // claude: 選択式の質問（AskUserQuestion）やメニュー。本文を送ると選択肢の欄に入って失われる（Orca #19743。
+  // Claude Code 2.1 の実際の表示「↑/↓ to navigate · Enter to select · Esc to …」）
+  /Enter to select\b/i,
   /\bAllow\b.*\?\s*$/im,
   // codex
   /Action Required/i,
@@ -53,7 +56,7 @@ const VISIBLE_IDLE_PATTERNS: RegExp[] = [
   /^\s*›(?:\s*$|\s+(?:Ask Codex to do anything|Find and fix|Implement|Explain|Write tests|Improve))/m
 ]
 
-export interface DetectInput {
+interface DetectInput {
   /** OSC 0/2 で設定されたタイトル（あれば） */
   title?: string
   /** 画面末尾のテキスト（ANSI を落としたもの） */
@@ -166,7 +169,7 @@ export function identifyAgent(command: string): AgentKind {
 
 // ───────────────────────── 状態の保持と `done` ─────────────────────────
 
-export interface TrackerOptions {
+interface TrackerOptions {
   /** 起動直後、状態を publish しない時間(ms) */
   startupQuietMs: number
   /** `working → idle` の確定を待つ時間(ms) */
@@ -176,7 +179,7 @@ export interface TrackerOptions {
   now: () => number
 }
 
-export const defaultTrackerOptions: TrackerOptions = {
+const defaultTrackerOptions: TrackerOptions = {
   startupQuietMs: 3000,
   settleMs: 700,
   settleChecks: 3,
@@ -278,13 +281,4 @@ export class AgentStateTracker {
   canSend(): boolean {
     return this.state !== 'blocked'
   }
-}
-
-/** 表示の並び順（複数タブがあるとき） */
-export const displayPriority: Record<DisplayState, number> = {
-  blocked: 4,
-  done: 3,
-  working: 2,
-  idle: 1,
-  unknown: 0
 }

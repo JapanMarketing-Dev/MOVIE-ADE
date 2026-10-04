@@ -5,6 +5,10 @@ Pemecahan masalah
 <!-- @lead eabdc6539a -->
 Masalah umum dan cara mengatasinya. Pesan yang dikutip adalah teks yang ditampilkan aplikasi dalam bahasa Indonesia.
 
+<!-- @install 2d5deeaa6d -->
+## Instalasi dan peluncuran pertama
+<p>Linux: di Ubuntu 23.10 ke atas, AppImage bisa berhenti saat diluncurkan dengan error sandbox, karena AppArmor membatasi user namespace yang dipakai sandbox Electron. Pasang <code>.deb</code> sebagai gantinya.</p>
+
 <!-- @screen-permission 45fa22d7c7 -->
 ## Perekaman layar atau jendela gagal (macOS)
 <p>Pesan: <q>Merekam seluruh layar atau jendela lain memerlukan izin Perekaman Layar macOS.</q></p>
@@ -24,6 +28,18 @@ Masalah umum dan cara mengatasinya. Pesan yang dikutip adalah teks yang ditampil
   <li>Windows: <span class="docs-ui">Pengaturan → Privasi &amp; keamanan → Mikrofon</span>, lalu izinkan aplikasi desktop.</li>
 </ul>
 <p>Tanpa mikrofon, lingkaran pena tetap membuat temuan, tetapi tanpa permintaan lisan.</p>
+
+<!-- @system-audio 62d76ef7c4 -->
+## Pihak lain dalam rapat tidak terekam
+<p>Saat <span class="docs-ui">Rekam juga pihak lain</span> aktif dan audio komputer Anda tidak bisa direkam, Ferret menampilkan salah satu peringatan berikut dan tetap merekam mikrofon Anda, video, dan pena.</p>
+<ul>
+  <li><q>Ferret tidak diizinkan merekam audio sistem.</q> (macOS): aktifkan Ferret di <span class="docs-ui">Pengaturan Sistem → Privasi &amp; Keamanan → Perekaman Layar &amp; Audio Sistem</span>, keluar dan buka kembali Ferret, lalu mulai rekaman baru.</li>
+  <li><q>Merekam pihak lain memerlukan macOS 14.2 atau yang lebih baru.</q>: perbarui macOS. Sampai saat itu, hanya mikrofon Anda yang direkam.</li>
+  <li><q>Windows tidak mengizinkan akses ke audio sistem.</q> atau <q>tidak ditemukan perangkat output audio.</q>: aktifkan speaker atau headphone di <span class="docs-ui">Pengaturan → Sistem → Suara</span> (Windows) atau sambungkan perangkatnya, lalu mulai rekaman baru.</li>
+  <li><q>audio sistem tidak tersedia.</q> (Linux): pasang PulseAudio, atau <code>pipewire-pulse</code> jika Anda memakai PipeWire.</li>
+  <li><q>Perekaman pihak lain berhenti: perangkat output audio berganti atau terputus.</q>: sisa rekaman tetap berjalan tanpa pihak lain. Gunakan <span class="docs-ui">Rekam lagi</span> untuk merekam sisanya.</li>
+</ul>
+<p>Jika ucapan pihak lain juga muncul sebagai ucapan Anda, mikrofon Anda menangkap suara dari speaker. Gunakan headphone.</p>
 
 <!-- @whisper ec2a54a0ef -->
 ## Tidak ada model di perangkat / whisper-cli tidak ditemukan

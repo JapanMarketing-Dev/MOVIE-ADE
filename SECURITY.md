@@ -19,7 +19,7 @@ The latest release and the `develop` branch.
 
 ## Release authenticity
 
-The installers are not code-signed by Microsoft yet, and the download server (Cloudflare R2) holds both the installers and their manifest. So every release also has `SHA256SUMS` and `SHA256SUMS.sig`, signed with the Ferret release key. The key is kept apart from the download server: only the release workflow job that has no R2 credentials (and the maintainer's machine) can sign, and publishing stops if the signature is missing or does not match. Ferret's update check verifies the signature with the key built into the app before it offers a new version.
+The installers are not code-signed by Microsoft yet, and the download server (Cloudflare R2) holds both the installers and their manifest. So every release also has `SHA256SUMS` and `SHA256SUMS.sig`, signed with the Ferret release key. The key is kept apart from the download server: only the release workflow job that has no R2 credentials (and the maintainer's machine) can sign, and publishing stops if the signature is missing or does not match. Ferret's update check verifies the signature with the key built into the app before it offers a new version, then downloads the installer itself and keeps it only if its SHA-256 matches the signed `SHA256SUMS`. The download page does the same check in your browser with the same key before it saves a file.
 
 Public key (also in `build/release-signing/allowed_signers`; fingerprint `SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ`):
 
@@ -36,11 +36,17 @@ shasum -a 256 -c SHA256SUMS --ignore-missing
 
 ## Rules we keep (each one is pinned by a unit test)
 
-These come from security reviews. `test/unit/security-3.test.ts` (and the tests it points to) fail when one is broken.
+These come from security reviews. `test/unit/security-3.test.ts`, `test/unit/security-4.test.ts` (and the tests they point to) fail when one is broken.
 
 - **Agent trust.** Registering or cloning a project is not a decision to trust it. Agents start in their normal mode, with permission prompts, approvals and sandbox on. Ferret writes Claude Code / Codex folder trust and adds skip-permission flags only for a project the user turned on in Settings → Agent → Skip permission prompts after a confirmation that shows the path, and never for agents started automatically when a project opens. The main process decides this (`resolveAgentLaunchPolicy`), not renderer defaults.
 - **Release authenticity.** Anything users download must be checkable against a key that is not stored with the download. A release without a valid signature is not promoted and not offered by the update check.
 - **Project-driven network requests.** Opening or previewing project files must not make network requests the user did not choose. Remote images in Markdown previews stay blocked until the user clicks "Load remote images" for that page.
 - **Public endpoints.** On the anonymous feedback relay, rate limits are checked before reading or parsing attacker-sized input, narrower limits are checked before shared ones (a denied request never uses up the global limit), and idempotency keys are claimed in one atomic step before any visible side effect.
 - **Crash reports.** Every kind of data listed above as removed has a scrub sample in the tests, including IPv4 and IPv6 addresses.
+- **Executables come from trusted places.** Built-in agents and account logins start from an absolute path found on absolute `PATH` entries outside the project, never from the project folder; on Windows every terminal also tells `cmd.exe` not to search the current folder. Logins run from the home folder, not the project.
+- **Release identity comes from the signature.** Version, platform and download path are read from the names in the signed `SHA256SUMS` of that version, and the manifest must list exactly the signed files. What the user saves is the file whose bytes were checked against that signature: the app downloads and checks the installer itself, and the download page checks it in the browser. No page or app hands out an unchecked installer link.
+- **Check the file you opened.** Project reads and writes check the opened file handle against the project's real path after opening, and never truncate before that check. Paths that were checked and then reopened are not trusted.
+- **Consent is never URL state.** Loading remote images in a preview needs a one-time, unguessable grant that the main process issues to the page's own button for that document. Links, typed URLs and restored sessions cannot create it, and saved project URLs never keep it.
+- **Automatic work is bounded in total.** Anything that runs when a project opens (directory listings, review history) has a count, byte and time budget, not only a per-item limit.
+- **Public endpoints, continued.** The feedback relay groups source addresses (IPv6 by /64) and checks a shared budget before creating any per-source state or reading a body. The global issue quota is taken last, just before the GitHub call, and released on every rejection. User text is posted as a literal block, so it cannot create GitHub references or mentions. A GitHub call whose outcome is unknown keeps its idempotency claim and media and is not retried or sent another way.
 

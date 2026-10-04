@@ -18,7 +18,7 @@ Enregistrez le navigateur intégré, un écran entier ou une autre fenêtre. Par
 </table>
 <p>Votre choix est mémorisé. Sur macOS, la capture d'un écran ou d'une fenêtre nécessite l'autorisation d'enregistrement de l'écran (<a href="troubleshooting.html#screen-permission">comment l'accorder</a>).</p>
 
-<!-- @record 0d1af48c7a -->
+<!-- @record deb62ed37c -->
 ## Démarrer, mettre en pause, arrêter
 {{clip:record|Enregistrement : parler de la page et entourer l'endroit au stylo.}}
 <ol class="docs-steps">
@@ -29,7 +29,7 @@ Enregistrez le navigateur intégré, un écran entier ou une autre fenêtre. Par
 </ol>
 <p>Dans la barre latérale, chaque projet a sa propre <span class="docs-ui">Nouvelle relecture</span> (ou le <span class="docs-ui">+</span> sur sa ligne, <span class="docs-ui">Nouvelle relecture dans &lt;name&gt;</span>). Sur un autre projet, Ferret bascule d'abord vers ce projet, puis démarre l'enregistrement. Rien ne démarre tant qu'un autre enregistrement est en cours.</p>
 <p>Un enregistrement est limité à 90 minutes. Un avertissement s'affiche à l'approche de la limite, puis l'enregistrement s'arrête et s'enregistre automatiquement lorsqu'elle est atteinte.</p>
-<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="Barre d'outils du mode Retours (capture d'écran bientôt disponible)"><span>Capture d'écran bientôt disponible</span></div><figcaption>Barre d'outils du mode Retours</figcaption></figure>
+{{shot:feedback-toolbar|Barre d'outils du mode Retours}}
 
 <!-- @pen 0232dc7983 -->
 ## Stylo
@@ -48,7 +48,38 @@ Enregistrez le navigateur intégré, un écran entier ou une autre fenêtre. Par
   <li>un segment de parole se termine</li>
 </ul>
 
-<!-- @mic 3540329978 -->
+<!-- @mic 38bffa5e34 -->
 ## Microphone
 <p>Le microphone est activé par défaut. Basculez-le depuis le pied de page (<span class="docs-ui">Désactiver le microphone</span> / <span class="docs-ui">Activer le microphone</span>) ou avec <span class="docs-ui">Enregistrer ma voix</span> dans les réglages. Choisissez un périphérique sous <span class="docs-ui">Microphone</span>.</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">Bientôt disponible</p><p><span class="docs-ui">Enregistrer aussi l'interlocuteur</span> (capter les autres participants d'une réunion via l'audio système) est en bêta. Cette fonction n'a pas encore été validée avec les applications de réunion.</p></div>
+
+<!-- @other-side bf51c46448 -->
+## Enregistrer l'autre partie d'une réunion
+<p>Pour relire une page ensemble pendant un appel, laissez Ferret enregistrer ce que vous entendez sur votre ordinateur en plus de votre micro. Cela fonctionne avec n'importe quelle application de réunion (Zoom, Google Meet, Microsoft Teams et d'autres), car Ferret enregistre l'audio de votre ordinateur, pas l'application. Les deux restent séparés : votre micro est transcrit comme <strong>Moi</strong> et l'audio de votre ordinateur comme <strong>Autre</strong>, si bien que chaque remarque montre qui a demandé quoi. Cela fonctionne aussi avec votre micro désactivé.</p>
+<ol class="docs-steps">
+  <li>Rejoignez l'appel dans votre application de réunion comme d'habitude. Gardez ses propres réglages de micro et de haut-parleur.</li>
+  <li>Activez <span class="docs-ui">Enregistrer aussi l'interlocuteur</span> dans les réglages, ou <span class="docs-ui">Enregistrer aussi les autres voix</span> dans le menu du micro du pied de page. Ce réglage ne peut pas être modifié pendant un enregistrement.</li>
+  <li>Choisissez ce qu'il faut enregistrer : le <span class="docs-ui">Navigateur intégré</span> pour la page relue, ou <span class="docs-ui">Écran entier</span> / <span class="docs-ui">Fenêtre</span> si vous regardez un écran partagé.</li>
+  <li><span class="docs-ui">Enregistrer</span>, puis parcourez la page avec les autres et entourez les endroits au stylo.</li>
+  <li><span class="docs-ui">Arrêter</span>. Les deux côtés sont transcrits et transformés en remarques.</li>
+</ol>
+<p>Prévenez les autres participants que vous enregistrez. Avec un fournisseur de transcription dans le cloud, leurs voix sont aussi envoyées à ce fournisseur.</p>
+
+<!-- @other-side-os cb39949418 -->
+## Audio du système selon l'OS
+<table>
+  <thead><tr><th>OS</th><th>Prérequis</th><th>Autorisation</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td>macOS 14.2 ou version ultérieure. Sur les versions antérieures, seul votre micro est enregistré.</td><td>La première fois que vous enregistrez l'autre partie, macOS demande si Ferret peut enregistrer l'audio du système. Si vous avez refusé, activez Ferret dans <span class="docs-ui">Réglages Système → Confidentialité et sécurité → Enregistrement de l'écran et de l'audio du système</span>, puis quittez et rouvrez Ferret. Votre écran n'est pas enregistré pour cela.</td></tr>
+    <tr><td>Windows</td><td>Un périphérique de lecture activé (haut-parleurs ou casque) dans <span class="docs-ui">Paramètres → Système → Son</span>.</td><td>Aucune. Le périphérique de lecture par défaut est enregistré.</td></tr>
+    <tr><td>Linux</td><td>PulseAudio, ou PipeWire avec <code>pipewire-pulse</code> (par défaut sur la plupart des bureaux).</td><td>Aucune. La sortie par défaut est enregistrée.</td></tr>
+  </tbody>
+</table>
+<p>Si l'autre partie ne peut pas être enregistrée, Ferret en indique la raison dans un avertissement et continue d'enregistrer votre micro, la vidéo et le stylo. Voir <a href="troubleshooting.html#system-audio">Dépannage</a>.</p>
+
+<!-- @other-side-tips 2881bdb5c2 -->
+## Conseils pour les réunions
+<ul>
+  <li><strong>Utilisez un casque.</strong> Avec des haut-parleurs, votre micro capte aussi l'autre partie. Ferret active l'annulation d'écho du micro quand il enregistre l'autre partie, et écarte les phrases entendues des deux côtés, mais un casque donne la transcription la plus propre.</li>
+  <li><strong>Tout ce que joue votre ordinateur est enregistré</strong>, y compris les sons de notification et les vidéos. Coupez le son de ce dont vous n'avez pas besoin pendant la relecture.</li>
+  <li><strong>Ne changez pas de périphérique audio en cours d'enregistrement.</strong> Si le périphérique de sortie change ou est débranché, l'enregistrement de l'autre partie s'arrête avec un avertissement. Votre micro, la vidéo et le stylo continuent. Utilisez ensuite <span class="docs-ui">Enregistrer la suite</span> pour capturer le reste.</li>
+</ul>

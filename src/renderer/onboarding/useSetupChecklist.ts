@@ -18,9 +18,8 @@ export function useSetupChecklist(): { items: SetupItem[] | null; progress: Retu
         window.ade.invoke('capture:availability').catch(() => null),
         window.ade.invoke('permissions:status').catch(() => null)
       ])
-      // レビューは登録済みのプロジェクトごとに読む（読めないフォルダは数えない）
-      const lists = await Promise.all(settings.projects.map((p) => window.ade.invoke('review:list', p.folderPath).catch(() => [])))
-      const reviews = lists.flat()
+      // 録画した・送ったことがあるかだけを、登録済みのプロジェクトごとに聞く（全部の履歴は読まない。security-4 [10]）
+      const activity = await Promise.all(settings.projects.map((p) => window.ade.invoke('review:activity', p.folderPath).catch(() => ({ recorded: false, sent: false }))))
       const decision = settings.decision
       const vendor = decision ? DECISION_PRESETS[decision.preset].vendor : null
       const keyPresent = !!(vendor && available?.keys[vendor]) || !!decision?.apiKey
@@ -32,8 +31,8 @@ export function useSetupChecklist(): { items: SetupItem[] | null; progress: Retu
         transcriptionReady: !!available && (available.localReady || Object.values(available.stt).some(Boolean)),
         decisionReady: !!decision?.enabled && decisionReady(decision, keyPresent),
         permissions,
-        reviewCount: reviews.length,
-        sentCount: reviews.filter((r) => r.sentAt).length
+        reviewCount: activity.filter((a) => a.recorded).length,
+        sentCount: activity.filter((a) => a.sent).length
       }))
     })().catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（前の表示のまま）
   }, [])
@@ -58,7 +57,7 @@ export function useSetupChecklist(): { items: SetupItem[] | null; progress: Retu
 }
 
 /** 設定を変えた画面（セットアップを閉じた・Agent へ送ったなど）から、チェックリストに読み直してもらう */
-export const SETUP_CHANGED_EVENT = 'ade:setup-changed'
+const SETUP_CHANGED_EVENT = 'ade:setup-changed'
 
 export function notifySetupChanged(): void {
   window.dispatchEvent(new CustomEvent(SETUP_CHANGED_EVENT))

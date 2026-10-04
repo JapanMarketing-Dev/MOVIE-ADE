@@ -2,92 +2,33 @@
 <!-- @title 569ca49f4a -->
 Cài đặt
 
-<!-- @lead 1947d59ea4 -->
-Ferret là ứng dụng desktop cho macOS, Windows và Linux. Bản macOS được ký bằng Developer ID và được Apple notarize. Bản Windows và Linux chưa được ký mã, nên các hệ điều hành này sẽ yêu cầu bạn xác nhận ở lần khởi động đầu tiên.
+<!-- @lead a7ae9a04f0 -->
+Tải Ferret cho máy tính của bạn rồi mở nó. Ferret chạy trên macOS, Windows và Linux.
 
-<!-- @download 91a49c9274 -->
+<!-- @download 57d4dd8f14 -->
 ## Tải xuống
-<p>Lấy tệp cho hệ điều hành và CPU của bạn từ <a href="../download.html">trang Tải xuống</a>. Các tệp được phân phối từ Cloudflare R2, không phải GitHub Releases, và chỉ 10 phiên bản gần nhất được giữ lại.</p>
-<table>
-  <thead><tr><th>Hệ điều hành</th><th>Tệp</th></tr></thead>
-  <tbody>
-    <tr><td>macOS (Apple silicon / Intel)</td><td><code>Ferret-&lt;version&gt;-mac-arm64.dmg</code>, <code>Ferret-&lt;version&gt;-mac-x64.dmg</code></td></tr>
-    <tr><td>Windows (x64 / arm64)</td><td><code>Ferret-&lt;version&gt;-win-x64.exe</code>, <code>Ferret-&lt;version&gt;-win-arm64.exe</code> (trình cài đặt NSIS)</td></tr>
-    <tr><td>Linux (x64)</td><td><code>Ferret-&lt;version&gt;-linux-x86_64.AppImage</code>, <code>Ferret-&lt;version&gt;-linux-amd64.deb</code></td></tr>
-  </tbody>
-</table>
-<p>Các bản phát hành đến 0.1.x được công bố dưới tên cũ, dạng <code>MOVIE-ADE-&lt;version&gt;-…</code>. Tên <code>Ferret-…</code> bắt đầu từ 0.2.0.</p>
-<div class="docs-callout docs-callout-warn"><p>Ferret hỗ trợ macOS, Windows và Linux. Bản Windows và Linux chưa được ký mã, nên lần khởi động đầu tiên sẽ yêu cầu bạn xác nhận (xem các bước bên dưới).</p></div>
+<p><a href="../download.html">Trang tải xuống</a> đưa ra đúng tệp cho máy tính của bạn. Bấm nút tải xuống.</p>
 
-<!-- @verify 14ef497c52 -->
-## Xác minh tệp tải về (SHA256SUMS có chữ ký)
-<p>Mỗi bản phát hành có tệp <code>SHA256SUMS</code> và chữ ký của nó <code>SHA256SUMS.sig</code>. Chữ ký được tạo bằng khóa phát hành của Ferret, khóa này được giữ tách biệt khỏi server tải xuống, nên một trình cài đặt bị thay đổi trên server tải xuống không thể đi kèm chữ ký hợp lệ. Khóa công khai <em>không</em> được lấy từ server tải xuống: hãy lấy nó từ repository (<a href="https://github.com/JapanMarketing-Dev/ferret/blob/main/build/release-signing/allowed_signers"><code>build/release-signing/allowed_signers</code></a>) hoặc sao chép từ đây:</p>
-<pre><code>release@ferretade.dev ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpXERU8ST0MEOIMbzoL4zShkjIrMB4++NL3xBohKAS9</code></pre>
-<p>Dấu vân tay của nó là <code>SHA256:c7dvwwJQyY9qSstkmrO8JoVZ90DCaFZBAzjqV04N8zQ</code>. Các tệp tương tự cũng được đính kèm vào mỗi bản phát hành trên GitHub. Kiểm tra chữ ký bằng <code>ssh-keygen</code> (có sẵn trong macOS, Windows 10 trở lên và Linux), rồi so sánh hash của tệp bạn tải về với danh sách đã ký:</p>
-<pre><code># the download server (currently the R2 public URL; it may move to a custom domain)
-BASE=https://pub-588d93b3e875464f98d6cf98dc711a0c.r2.dev
-VERSION=$(curl -s $BASE/latest.json | jq -r .version)
-curl -sO $BASE/releases/$VERSION/SHA256SUMS
-curl -sO $BASE/releases/$VERSION/SHA256SUMS.sig
-
-# save the public key above as allowed_signers, then:
-ssh-keygen -Y verify -f allowed_signers -I release@ferretade.dev -n ferret-release -s SHA256SUMS.sig &lt; SHA256SUMS
-# → Good "ferret-release" signature for release@ferretade.dev …
-
-# macOS
-shasum -a 256 -c SHA256SUMS --ignore-missing
-# Linux
-sha256sum -c SHA256SUMS --ignore-missing</code></pre>
-<pre><code># Windows (PowerShell): compare with the line for your file in SHA256SUMS
-Get-FileHash .\Ferret-&lt;version&gt;-win-x64.exe -Algorithm SHA256</code></pre>
-<p>Hãy dừng lại nếu <code>ssh-keygen</code> không in ra <q>Good "ferret-release" signature</q> hoặc hash không có trong danh sách. <span class="docs-ui">Kiểm tra cập nhật</span> của Ferret cũng kiểm tra như vậy bằng khóa được tích hợp trong ứng dụng, và không đề xuất phiên bản có chữ ký không khớp. Trên macOS, bạn cũng có thể kiểm tra chữ ký Developer ID và notarization bằng <code>spctl -a -vv /Applications/Ferret.app</code>. Trình cài đặt Windows và Linux chưa được Microsoft hay một bản phân phối Linux ký mã. Các bản phát hành đến 0.3.0 được công bố trước khi bắt đầu ký, và chỉ có các hash chưa ký trong <code>releases/&lt;version&gt;/manifest.json</code>.</p>
-
-<!-- @macos 1aa07136fd -->
+<!-- @macos b0d1e6945a -->
 ## macOS
-<ol class="docs-steps">
-  <li>Mở tệp <code>.dmg</code> và kéo <code>Ferret.app</code> vào <code>/Applications</code>.</li>
-  <li>Khởi động ứng dụng. Ứng dụng được ký bằng Developer ID và được Apple notarize (ticket đã được staple), nên mở mà không có cảnh báo.</li>
-</ol>
-<p>Để tự kiểm tra chữ ký:</p>
-<pre><code>spctl -a -vv /Applications/Ferret.app
-# accepted
-# source=Notarized Developer ID</code></pre>
-<p><strong>Chỉ với các phiên bản cũ (0.2.0 build 2 trở về trước)</strong>: các bản này chưa được ký. Với chúng, macOS báo không thể xác minh nhà phát triển: đóng hộp thoại, mở <span class="docs-ui">System Settings → Privacy &amp; Security</span>, bấm <span class="docs-ui">Open Anyway</span> cạnh thông báo về Ferret, rồi xác nhận bằng <span class="docs-ui">Open</span>. Nếu macOS báo ứng dụng "is damaged" (bị hỏng), hãy gỡ thuộc tính quarantine:</p>
-<pre><code>xattr -dr com.apple.quarantine /Applications/Ferret.app</code></pre>
+<p>Mở tệp <code>.dmg</code>, kéo Ferret vào <code>Applications</code>, rồi mở nó từ đó.</p>
 
-<!-- @windows b5761835f1 -->
+<!-- @windows 18a1422bb6 -->
 ## Windows
-<ol class="docs-steps">
-  <li>Chạy <code>Ferret-&lt;version&gt;-win-&lt;arch&gt;.exe</code>.</li>
-  <li>Khi SmartScreen hiện "Windows protected your PC" (Windows đã bảo vệ PC của bạn), bấm <span class="docs-ui">More info</span> (Thêm thông tin), rồi <span class="docs-ui">Run anyway</span> (Vẫn chạy).</li>
-  <li>Chọn thư mục cài đặt. Trình cài đặt tạo một lối tắt trên desktop.</li>
-</ol>
+<p>Chạy tệp <code>.exe</code> đã tải về. Ferret tự cài đặt và mở ra, bạn không cần chọn gì. Những lần sau, mở Ferret từ menu Start hoặc lối tắt trên desktop.</p>
+<p>Nếu Windows hiện <q>Windows protected your PC</q> (Windows đã bảo vệ PC của bạn), bấm <span class="docs-ui">More info</span> (Thêm thông tin), rồi <span class="docs-ui">Run anyway</span> (Vẫn chạy).</p>
 
-<!-- @linux c46965a0c5 -->
+<!-- @linux 58ceb4839c -->
 ## Linux
-<p>AppImage:</p>
-<pre><code>chmod +x Ferret-&lt;version&gt;-linux-x86_64.AppImage
-./Ferret-&lt;version&gt;-linux-x86_64.AppImage</code></pre>
-<p>Debian / Ubuntu:</p>
+<p><strong>Ubuntu / Debian</strong>: nhấp đúp vào tệp <code>.deb</code> để cài bằng trình quản lý phần mềm, hoặc chạy:</p>
 <pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
-<p>Gói deb cài đặt package và lệnh <code>ferret</code>.</p>
-<p>Trên Ubuntu 23.10 trở lên, AppImage có thể dừng khi khởi động với lỗi sandbox, vì AppArmor hạn chế các user namespace mà sandbox của Electron sử dụng. Hãy cài <code>.deb</code> thay thế; gói này thiết lập sẵn trình trợ giúp sandbox.</p>
+<p>Sau đó mở Ferret từ menu ứng dụng, hoặc chạy <code>ferret</code>.</p>
+<p><strong>Các bản phân phối khác</strong>: dùng tệp <code>.AppImage</code>. Cho phép tệp chạy như một chương trình (nhấp chuột phải → Properties, hoặc <code>chmod +x</code>), rồi mở nó.</p>
 
-<!-- @source 06a127ac19 -->
-## Build từ mã nguồn
-<p>Cần Node.js 20 trở lên (CI và môi trường phát triển cục bộ dùng 22), pnpm và git.</p>
-<pre><code>git clone https://github.com/JapanMarketing-Dev/ferret.git
-cd ferret
-pnpm install          # postinstall prepares node-pty for Electron
-pnpm dev              # run in development mode</code></pre>
-<p>Để đóng gói trình cài đặt (đầu ra trong <code>dist/release/</code>, cấu hình trong <code>electron-builder.config.cjs</code>). Bản build Linux chỉ chạy được trên Linux.</p>
-<pre><code>pnpm dist:mac     # dmg (arm64, x64)
-pnpm dist:win     # NSIS installers (x64, arm64)
-pnpm dist:linux   # AppImage + deb (x64)</code></pre>
-<p>Các script <code>build:&lt;os&gt;:dev</code> chỉ tạo ứng dụng chưa đóng gói (<code>--dir</code>), nhanh hơn khi kiểm thử cục bộ.</p>
-<p>Trên Windows, <code>pnpm install</code> dùng các binary dựng sẵn đi kèm node-pty thay vì build lại (việc đó sẽ cần Visual Studio C++ build tools). Đặt <code>ADE_FORCE_NATIVE_REBUILD=1</code> để buộc build lại.</p>
-<p>Nếu terminal báo không tải được node-pty, hãy chạy <code>pnpm rebuild:native</code>.</p>
-
-<!-- @update 7f4d958687 -->
-## Cập nhật
-<p>Ferret không tự động cập nhật. Ở chân trang, mở <span class="docs-ui">Cập nhật</span> và bấm <span class="docs-ui">Kiểm tra cập nhật</span>. Ứng dụng lấy <code>latest.json</code> từ server tải xuống (R2), so sánh phiên bản và đưa liên kết tới trang tải xuống. Từ 0.4.0, nó còn kiểm tra chữ ký của <code>SHA256SUMS</code> cho phiên bản đó bằng khóa phát hành tích hợp trong ứng dụng, và không đề xuất phiên bản có chữ ký không xác minh được. Không có gì được kiểm tra cho đến khi bạn bấm, và không có gì được cài đặt tự động.</p>
+<!-- @more 75e55cbce4 -->
+## Tiếp theo
+<ul>
+  <li><a href="quick-start.html#open">Bắt đầu nhanh</a>: mở một dự án và ghi góp ý đầu tiên.</li>
+  <li>Gặp sự cố? Xem <a href="troubleshooting.html#install">Khắc phục sự cố</a>.</li>
+  <li>Để kiểm tra chữ ký của tệp tải về, build từ mã nguồn hoặc lấy phiên bản cũ hơn, xem <a href="advanced-install.html">Cài đặt nâng cao</a>.</li>
+</ul>

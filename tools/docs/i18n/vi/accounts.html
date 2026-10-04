@@ -16,9 +16,9 @@ Chuyển qua lại giữa nhiều lần đăng nhập Claude Code hoặc Codex, 
 <p>Cách hoạt động: mỗi tài khoản được thêm có thư mục cấu hình riêng, <code>&lt;userData&gt;/accounts/&lt;agent&gt;/&lt;id&gt;/</code>. Ferret khởi chạy agent với <code>CLAUDE_CONFIG_DIR</code> (Claude Code) hoặc <code>CODEX_HOME</code> (Codex) trỏ tới thư mục đó. <span class="docs-ui">Mặc định hệ thống</span> dùng <code>~/.claude</code> / <code>~/.codex</code> quen thuộc của bạn mà không thay đổi gì.</p>
 <p>Xóa một tài khoản sẽ xóa thư mục cấu hình của nó. Việc này không đăng xuất bạn trên server.</p>
 
-<!-- @usage bb03a3a17a -->
+<!-- @usage 5305accf41 -->
 ## Mức sử dụng ở chân trang
 <p>Chân trang cho biết mỗi khung rate limit đã dùng bao nhiêu: khung 5 giờ và khung hằng tuần, cùng với khung hằng tuần theo từng model của Claude. Màu chuyển sang vàng ở 60% và đỏ ở 80%. Giá trị được làm mới mỗi 15 phút, hoặc khi bấm <span class="docs-ui">Làm mới usage</span>.</p>
 <p>Lượng thông tin hiển thị tùy theo khoảng trống ở chân trang. Khi đủ chỗ, nó hiện thanh, tên khung và phần trăm. Khi chân trang hẹp dần, các phần ít hữu ích hơn bị bỏ trước, cho đến khi chỉ còn một con số phần trăm cho mỗi agent. Bấm vào mức sử dụng để xem đầy đủ trong một popover.</p>
 <p>Mức sử dụng được lấy trực tiếp từ Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) và ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) bằng chính thông tin xác thực của tài khoản đang đăng nhập.</p>
-<figure class="docs-shot" data-shot="usage"><div class="docs-shot-slot" role="img" aria-label="Mức sử dụng ở chân trang (ảnh chụp màn hình sắp có)"><span>Ảnh chụp màn hình sắp có</span></div><figcaption>Mức sử dụng ở chân trang</figcaption></figure>
+{{shot:usage|Mức sử dụng ở chân trang}}

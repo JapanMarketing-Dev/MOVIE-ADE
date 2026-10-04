@@ -2,7 +2,7 @@
  * 素材を実際に文字起こしして、分解パイプラインの入力（Material）を作る。
  * 録画中の逐次処理を模擬して、無音の切れ目ごとに whisper を呼ぶ。
  *
- *   npx tsx tools/build-material.ts <materialDir> [--model large-v3-turbo]
+ *   npx tsx tools/pipeline/build-material.ts <materialDir> [--model large-v3-turbo]
  *
  * 話者のマージと二重取り除去の結果を、台本（正解）と突き合わせて評価する。
  */

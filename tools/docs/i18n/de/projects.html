@@ -20,14 +20,15 @@ Ein Projekt ist ein Ordner (meist das Stammverzeichnis Ihres Repositorys). Jedes
 <p>Als Name wird standardmäßig der Ordnername verwendet. Fügen Sie einen bereits registrierten Ordner hinzu, wird stattdessen dieser geöffnet (unter macOS und Windows werden Pfade ohne Beachtung der Groß-/Kleinschreibung verglichen). Über das Menü in der Seitenleiste können Sie ein Projekt <span class="docs-ui">Umbenennen</span> oder <span class="docs-ui">Aus Liste entfernen</span>. Beim Entfernen wird der Ordner nie gelöscht.</p>
 <p>Terminals öffnen sich im Projektordner, und Reviews werden unter <code>&lt;project&gt;/.ferret/</code> gespeichert.</p>
 
-<!-- @save-url 8914160725 -->
+<!-- @save-url 553542e405 -->
 ## URLs speichern
 <ol class="docs-steps">
   <li>Öffnen Sie die Seite im integrierten Browser.</li>
   <li>Klicken Sie in der Browser-Werkzeugleiste auf <span class="docs-ui">+</span> (<span class="docs-ui">Aktuelle URL speichern</span>). Die aktuelle URL ist bereits eingetragen.</li>
   <li>Geben Sie einen <span class="docs-ui">Name</span> ein und klicken Sie auf <span class="docs-ui">Speichern</span>.</li>
 </ol>
-<p>Es werden nur URLs mit <code>http://</code> und <code>https://</code> akzeptiert. Wenn Sie den vorgeschlagenen Namen übernehmen, wird er aus dem Host abgeleitet:</p>
+<p>Jede gespeicherte URL hat unter <span class="docs-ui">Was Sie prüfen</span> eine Art: <span class="docs-ui">App</span> (die App, die Sie entwickeln), <span class="docs-ui">Design</span> (Figma, Penpot, Canva, ein Prototyp) oder <span class="docs-ui">Dokument / Spezifikation</span> (Google Docs, Notion, Confluence, eine Markdown-Spezifikation auf GitHub, ein PDF). Die Art wird aus der URL abgeleitet, und Sie können sie ändern. Siehe <a href="#design-docs">Designs und Dokumente prüfen, nicht nur Code</a>.</p>
+<p>Es werden nur URLs mit <code>http://</code> und <code>https://</code> akzeptiert. Wenn Sie bei einer App-URL den vorgeschlagenen Namen übernehmen, wird er aus dem Host abgeleitet:</p>
 <table>
   <thead><tr><th>Host</th><th>Name</th></tr></thead>
   <tbody>
@@ -37,9 +38,9 @@ Ein Projekt ist ein Ordner (meist das Stammverzeichnis Ihres Repositorys). Jedes
     <tr><td>alles andere</td><td><code>prd</code></td></tr>
   </tbody>
 </table>
-<figure class="docs-shot" data-shot="url-presets"><div class="docs-shot-slot" role="img" aria-label="Gespeicherte URLs in der Browser-Werkzeugleiste (Screenshot folgt)"><span>Screenshot folgt</span></div><figcaption>Gespeicherte URLs in der Browser-Werkzeugleiste</figcaption></figure>
+{{shot:url-presets|Gespeicherte URLs in der Browser-Werkzeugleiste}}
 
-<!-- @review-targets 351621051d -->
+<!-- @review-targets 7edd1985ee -->
 ## Bereich „Review-Ziele“
 {{clip:targets|Review-Ziele und Seiten wechseln, ohne die Aufnahme zu stoppen.}}
 <p>Im Feedback-Modus listet der Bereich <span class="docs-ui">Review-Ziele</span> rechts alles auf, was Sie im aktuellen Projekt prüfen können. Ein Wechsel des Ziels stoppt die Aufnahme nicht. Blenden Sie den Bereich mit <span class="docs-ui">Darstellung → Review-Ziele ein/aus</span> ({{keys:Mod+Shift+K}}) oder <span class="docs-ui">Bereich ausblenden</span> ein und aus.</p>
@@ -48,9 +49,27 @@ Ein Projekt ist ein Ordner (meist das Stammverzeichnis Ihres Repositorys). Jedes
   <li><strong><span class="docs-ui">Dateien</span></strong>: der Projektordner. Eine Datei öffnet sich als Vorschau (Markdown und Mermaid gerendert, anderer Text schreibgeschützt), sodass Sie auch Dokumentation prüfen können. Der Stift (<span class="docs-ui">Im Editor öffnen</span>) öffnet sie im Editor.</li>
 </ul>
 <p><span class="docs-ui">Ziele filtern</span> filtert Ziele, Seiten und Dateien gemeinsam, mit derselben unscharfen Suche wie <span class="docs-ui">Gehe zu Datei …</span>. In der Liste wechseln <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> oder <kbd>1</kbd>–<kbd>9</kbd> das Ziel. <span class="docs-ui">URL öffnen…</span> öffnet eine einmalige URL, und <span class="docs-ui">In Projekt-URLs speichern</span> behält sie.</p>
-<p>Die Ziele stammen aus <code>projects[].urls</code> in <code>settings.json</code> (siehe <a href="settings-json.html#example">das Beispiel</a>). Jeder Eintrag braucht eine <code>url</code>, einen <code>launchCommand</code> (wird in einem Terminal ausgeführt, z. B. um eine Desktop-App zu starten) oder ein <code>windowMatch</code> (das aufzunehmende Fenster). Die Auswahl eines Fensterziels legt es als Aufnahmequelle fest und ist daher während einer Aufnahme nicht möglich. Besuchte Seiten werden pro Projekt gespeichert, nur auf diesem Rechner (bis zu 200).</p>
+<p>Die Ziele stammen aus <code>projects[].urls</code> in <code>settings.json</code> (siehe <a href="settings-json.html#example">das Beispiel</a>). Jeder Eintrag braucht eine <code>url</code>, einen <code>launchCommand</code> (wird in einem Terminal ausgeführt, z. B. um eine Desktop-App zu starten) oder ein <code>windowMatch</code> (das aufzunehmende Fenster) und kann einen <code>purpose</code> haben (<code>app</code>, <code>design</code> oder <code>doc</code>). Die Auswahl eines Fensterziels legt es als Aufnahmequelle fest und ist daher während einer Aufnahme nicht möglich. Besuchte Seiten werden pro Projekt gespeichert, nur auf diesem Rechner (bis zu 200).</p>
 
-<!-- @switch-env 5103621352 -->
+<!-- @switch-env 3d0b21e6f6 -->
 ## Umgebungen öffnen und wechseln
 <p>Klicken Sie auf eine gespeicherte URL, um sie zu öffnen. Liegt die aktuelle Seite unter einer anderen gespeicherten URL, behält Ferret Pfad, Query und Hash bei und tauscht nur den Origin aus. Ein Beispiel: Auf <code>http://localhost:3000/pricing?plan=pro</code> öffnet ein Klick auf <code>prd</code> die Adresse <code>https://example.com/pricing?plan=pro</code>.</p>
 <p>Der Chip, der zur aktuellen Seite passt (längstes Präfix), ist hervorgehoben. Klicken Sie mit der rechten Maustaste auf einen Chip oder verwenden Sie sein Stiftsymbol, um ihn zu bearbeiten oder zu <span class="docs-ui">Löschen</span>. Wird ein Projekt geöffnet und gibt es keine vorherige URL, wird seine erste gespeicherte URL geladen.</p>
+<p>Die Chips sind nach Art gruppiert: zuerst App-URLs, dann Designs, dann Dokumente, mit einer Trennlinie und einem Symbol für jede Art. Beim Wechsel zu oder von einem Design oder Dokument wird dessen gespeicherte URL unverändert geöffnet, ohne den Pfad zu übernehmen.</p>
+
+<!-- @design-docs b11ff7ba55 -->
+## Designs und Dokumente prüfen, nicht nur Code
+<p>Feedback muss sich nicht auf Code beziehen. Alles, was sich im integrierten Browser öffnen lässt, können Sie auf dieselbe Weise aufnehmen und mit dem Stift markieren: ein Design in Figma oder Penpot, einen Prototyp, eine Spezifikation in Google Docs oder Notion, ein Design-Dokument auf GitHub, ein PDF. Speichern Sie diese URLs vor dem Review im Projekt, neben <code>local</code> und <code>dev</code>.</p>
+<ol class="docs-steps">
+  <li>Öffnen Sie <span class="docs-ui">Projekt bearbeiten …</span> über das Menü in der Seitenleiste (oder klicken Sie in der Browser-Werkzeugleiste auf <span class="docs-ui">+</span>) und wählen Sie <span class="docs-ui">Ziel hinzufügen</span>.</li>
+  <li>Fügen Sie die URL ein. Ein Link auf <code>figma.com</code> wird zu <span class="docs-ui">Design</span>, ein Link auf <code>docs.google.com</code> oder <code>notion.so</code> zu <span class="docs-ui">Dokument / Spezifikation</span>, benannt als <code>Figma</code> bzw. <code>Spec</code>. Ist die Zuordnung falsch (zum Beispiel bei einem Prototyp auf Ihrem eigenen Server), ändern Sie die Art unter <span class="docs-ui">Was Sie prüfen</span>.</li>
+  <li>Öffnen Sie das Ziel und melden Sie sich einmal im integrierten Browser an, falls die Site das verlangt. Der Browser behält seine Cookies zwischen den Starts, sodass Sie angemeldet bleiben.</li>
+  <li>Nehmen Sie wie gewohnt auf: sprechen, zeigen, auf dem Design oder dem Dokument zeichnen.</li>
+</ol>
+<p>Befunde, die auf einem Design oder einem Dokument aufgenommen wurden, sind in <span class="docs-ui">Befunde</span> und in <code>feedback.md</code> mit dieser Art gekennzeichnet, und die an den Agent gesendete Anweisung weist darauf hin. Der Agent ändert dann das Design oder das Dokument statt des Codes:</p>
+<ul>
+  <li>Liegt das Dokument im Projekt (eine Markdown-Spezifikation, ein ADR), bearbeitet der Agent diese Datei.</li>
+  <li>Kann er es nicht bearbeiten (eine Figma-Datei, ein Google-Dokument), markiert der Agent den Befund als <span class="docs-ui">Frage vom Agent</span> und nennt die genaue Änderung, damit Sie sie übernehmen oder weitergeben können.</li>
+</ul>
+<p>Beispiel: Beim Lesen der Preisspezifikation in Google Docs kreisen Sie die Tarif-Tabelle ein und sagen „der Pro-Tarif kostet jetzt 9.800 Yen, nicht 8.800“. <code>feedback.md</code> führt den Befund unter dem Ziel <code>Spec</code> mit <code>Kind: document</code>, und der Agent antwortet mit dem korrigierten Satz für die Spezifikation, statt den Code der Preisseite anzufassen. Nehmen Sie die Spezifikation und die laufende App in derselben Aufnahme auf, werden die Befunde nach Ziel getrennt, sodass der Agent zuerst die Spezifikation und danach den Code aktualisieren kann, der sie umsetzt.</p>
+<p>Nicht gespeicherte Seiten auf <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> und ähnlichen Hosts werden ebenfalls erkannt. Dateien im Projektordner (Markdown, Mermaid) prüfen Sie über die Liste <span class="docs-ui">Dateien</span> im Bereich <span class="docs-ui">Review-Ziele</span>.</p>

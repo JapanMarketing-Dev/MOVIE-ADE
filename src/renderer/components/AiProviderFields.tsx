@@ -36,7 +36,7 @@ import { useToast } from '../ui'
 export { formatHeaderLines, parseHeaderLines } from '@shared/aiProviders'
 
 /** 上書きの空の項目を落とす（空ならプリセットを使う） */
-export function compactEndpoint(cfg: AiEndpointConfig): AiEndpointConfig | undefined {
+function compactEndpoint(cfg: AiEndpointConfig): AiEndpointConfig | undefined {
   const out: AiEndpointConfig = {}
   if (cfg.baseUrl?.trim()) out.baseUrl = cfg.baseUrl.trim()
   if (cfg.model?.trim()) out.model = cfg.model.trim()
@@ -111,7 +111,7 @@ export function ProviderSetup({ preset, value, onChange, available, onAvailabili
 }
 
 /** ② モデル。一覧のある提供元は選択（推奨を選んだ状態、各行に一言の説明）、無いもの（Custom など）は自由入力 */
-export function ModelStep({ preset, value, onChange, disabled, label }: {
+function ModelStep({ preset, value, onChange, disabled, label }: {
   preset: Preset
   value: AiEndpointConfig | undefined
   onChange: (next: AiEndpointConfig | undefined) => void
@@ -141,7 +141,7 @@ export function ModelStep({ preset, value, onChange, disabled, label }: {
  * ③ API キー。欄1つ・「キーを取得」のリンク・「確認」だけ。
  * 欄から離れたときに保存する（形の誤りはその場で出す）。確認は押したときだけ送り、✓ か ✗ を小さく出す。
  */
-export function KeyStep({ vendor, label, optional, placeholder, links, available, disabled, onChanged, onCheck }: {
+function KeyStep({ vendor, label, optional, placeholder, links, available, disabled, onChanged, onCheck }: {
   vendor: AiVendor
   label: string
   optional: boolean
@@ -264,7 +264,7 @@ function CheckMark({ onCheck, disabled }: { onCheck: () => Promise<{ ok: boolean
  * タイムアウト・追加のヘッダー・キーを読む環境変数・費用の上限など（extra）・保存したキーの削除・プリセットに戻す。
  * 閉じていても値は消さない（提供元を切り替えても、提供元ごとに残る）。
  */
-export function AdvancedFields({ preset, value, onChange, disabled, azure, showBaseUrl, available, onAvailabilityChange, extra }: {
+function AdvancedFields({ preset, value, onChange, disabled, azure, showBaseUrl, available, onAvailabilityChange, extra }: {
   preset: Preset
   value: AiEndpointConfig | undefined
   onChange: (next: AiEndpointConfig | undefined) => void
@@ -333,7 +333,7 @@ export function AdvancedFields({ preset, value, onChange, disabled, azure, showB
 }
 
 /** キーの出どころの表示。値そのものは renderer に来ない */
-export function keyStateKey(source: SttAvailability['keys'][AiVendor], storage: SttAvailability['keyStorage']): TranslationKey {
+function keyStateKey(source: SttAvailability['keys'][AiVendor], storage: SttAvailability['keyStorage']): TranslationKey {
   if (source === 'saved') return 'settings.capture.keySaved'
   if (source === 'session') return storage === 'encrypted' ? 'settings.capture.keySet' : 'settings.capture.keySessionOnly'
   if (source === 'env') return 'settings.capture.keyEnv'

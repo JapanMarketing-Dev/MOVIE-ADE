@@ -2,14 +2,12 @@
  * 文字起こしの接続先（端末内 / OpenAI / OpenAI 互換）とキーの保管・費用上限のテスト。
  * 実際の OpenAI には送らない。接続の確認はローカルに立てたモックのサーバーで確かめる。
  */
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import type { AddressInfo } from 'node:net'
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { exceedsCostLimit, normalizeBaseUrl, sanitizeCostLimit } from '../../src/main/pipeline/stt/endpoint'
-import { OpenAiSttEngine, checkSttConnection, describeHttpFailure, sttPricePerMinuteUsd } from '../../src/main/pipeline/stt/openai'
+import { OpenAiSttEngine, describeHttpFailure } from '../../src/main/pipeline/stt/openai'
 import { SttKeyStore, devKeyEnv, loadDevDotEnv, safeStorageCipher, validateSttKey, type KeyCipher } from '../../src/main/pipeline/stt/keys'
 
 // settings.ts は electron の app を読み込むので、保存先だけを差し替える
@@ -89,11 +87,6 @@ describe('費用の上限', () => {
     expect(exceedsCostLimit(0.5, 0.5, 1)).toBe(false)
     expect(exceedsCostLimit(999, 999, null)).toBe(false)
     expect(exceedsCostLimit(0.9, 0.2, undefined)).toBe(true)
-  })
-
-  it('表にないモデル（互換サーバー）は多めの単価で概算する', () => {
-    expect(sttPricePerMinuteUsd('gpt-transcribe')).toBe(0.0045)
-    expect(sttPricePerMinuteUsd('Systran/faster-whisper-small')).toBe(0.006)
   })
 
   describe('エンジンでの扱い', () => {
@@ -286,55 +279,7 @@ describe('キーの保管', () => {
   })
 })
 
-describe('接続の確認（ローカルのモックのサーバー）', () => {
-  let server: ReturnType<typeof createServer> | null = null
-  afterEach(async () => { await new Promise<void>((r) => (server ? server.close(() => r()) : r())); server = null })
-
-  /** OpenAI 互換の文字起こしを真似る。キー test-token と モデル good だけを受け付ける */
-  async function startMock(): Promise<{ url: string; seen: Array<{ path: string; auth?: string; bytes: number }> }> {
-    const seen: Array<{ path: string; auth?: string; bytes: number }> = []
-    server = createServer((req: IncomingMessage, res: ServerResponse) => {
-      const chunks: Buffer[] = []
-      req.on('data', (c: Buffer) => chunks.push(c))
-      req.on('end', () => {
-        const body = Buffer.concat(chunks).toString('latin1')
-        seen.push({ path: req.url ?? '', auth: req.headers.authorization, bytes: body.length })
-        if (req.url !== '/v1/audio/transcriptions') { res.writeHead(404).end('Not Found'); return }
-        if (req.headers.authorization !== 'Bearer test-token') { res.writeHead(401).end('{"error":"invalid api key"}'); return }
-        if (!/name="model"\r\n\r\ngood\r\n/.test(body)) { res.writeHead(404).end('{"error":{"message":"The model `bad` does not exist"}}'); return }
-        res.writeHead(200, { 'content-type': 'application/json' }).end('{"text":""}')
-      })
-    })
-    await new Promise<void>((r) => server!.listen(0, '127.0.0.1', () => r()))
-    return { url: `http://127.0.0.1:${(server!.address() as AddressInfo).port}`, seen }
-  }
-
-  it('届けば ok。1秒の無音 WAV を送る', async () => {
-    const { url, seen } = await startMock()
-    const r = await checkSttConnection({ baseUrl: `${url}/v1/`, model: 'good', apiKey: 'test-token', label: '接続先' })
-    expect(r).toEqual({ ok: true, message: '接続先へ届きました（モデル good）。' })
-    // 16kHz モノラル 16bit の1秒 = 32000バイト＋ヘッダ
-    expect(seen[0]?.bytes).toBeGreaterThan(32_000)
-  })
-
-  it('認証エラー・モデル名の誤り・URL の誤りを言い分ける', async () => {
-    const { url } = await startMock()
-    expect((await checkSttConnection({ baseUrl: url, model: 'good', apiKey: 'wrong' })).message).toContain('APIキーを確認')
-    expect((await checkSttConnection({ baseUrl: url, model: 'good' })).message).toContain('認証を拒否')
-    expect((await checkSttConnection({ baseUrl: url, model: 'bad', apiKey: 'test-token' })).message).toContain('モデル名を確認')
-    expect((await checkSttConnection({ baseUrl: `${url}/wrong/v1`, model: 'good', apiKey: 'test-token' })).message).toContain('Base URL を確認')
-  })
-
-  it('つながらない・URL が壊れている・モデル名が空', async () => {
-    const { url } = await startMock()
-    const closed = url
-    await new Promise<void>((r) => server!.close(() => r()))
-    server = null
-    expect((await checkSttConnection({ baseUrl: closed, model: 'good' })).message).toContain('接続できません')
-    expect((await checkSttConnection({ baseUrl: 'gpu-box:8000', model: 'good' })).message).toContain('Base URL が正しくありません')
-    expect((await checkSttConnection({ baseUrl: 'http://localhost:1', model: ' ' })).message).toContain('モデル名を入れて')
-  })
-
+describe('接続の確認の失敗の言い分け', () => {
   it('状態コードの言い分け（その他）', () => {
     expect(describeHttpFailure(429, '', 'OpenAI')).toContain('残高')
     expect(describeHttpFailure(500, '', '接続先')).toContain('サーバーのログ')

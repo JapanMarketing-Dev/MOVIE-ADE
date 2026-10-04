@@ -159,9 +159,15 @@ Ferret launches CLI agents in its built-in terminals, on the subscriptions you a
 
 | macOS | Windows | Linux |
 |---|---|---|
-| Apple silicon / Intel · `.dmg` | x64 / Arm64 · installer `.exe` | x64 · AppImage / `.deb` |
+| Apple silicon / Intel · `.dmg` | x64 / Arm64 · installer `.exe` | x64 · `.deb` / AppImage |
 
-Get the latest build, or any earlier version, from **[ferretade.dev/download](https://ferretade.dev/download)**. The macOS build is signed with a Developer ID and notarized by Apple (since 0.2.0 build 3), so it opens like any other app. Windows and Linux builds are not code-signed yet; see [Install](https://ferretade.dev/docs/install.html) for their first-launch step.
+Download from **[ferretade.dev/download](https://ferretade.dev/download)** and open it:
+
+- **macOS**: open the `.dmg` and drag Ferret to Applications.
+- **Windows**: run the installer. Ferret installs and opens.
+- **Linux**: on Ubuntu / Debian, double-click the `.deb` (or `sudo apt install ./Ferret-<version>-linux-amd64.deb`). On other distributions, use the AppImage.
+
+Details: [Install](https://ferretade.dev/docs/install.html).
 
 ## Quick start
 
@@ -199,8 +205,8 @@ pnpm test:unit
 ## About this build
 
 - **What it does**: records and annotates a page opened in the built-in browser, turns your voice and pen marks into findings, lets you edit, merge and delete findings, and sends them to an agent (Codex / Claude Code) running in the built-in terminal, or to a GitHub / GitLab issue or pull / merge request. Projects can be local folders, clones from GitHub or GitLab, or opened over SSH; service CLIs (gh, glab, wrangler, Vercel, AWS and more) can be installed and signed in to from the terminal, and images, video, audio and PDF in the project open in a built-in viewer.
-- **You bring your own resources**: there is no server or API key on the developer's side for your work. The one exception, coming soon, is the optional in-app feedback form, whose small relay turns what you send into a public GitHub issue and does not store your IP address (`workers/feedback-relay`). Transcription runs on your machine (whisper.cpp, free), with your own OpenAI API key, or on an OpenAI-compatible server you host (for example on your own GPU). Agents run through the CLI subscriptions you already have.
-- **Platforms**: macOS (Apple Silicon / Intel), Windows (x64 / arm64) and Linux (x64). Day-to-day use is on macOS (Apple Silicon). Every release is checked on a Mac: `tools/qa/linux-smoke.sh` packages the Linux app in a Linux container and runs `e2e/platform-smoke.spec.ts` against it under xvfb (launch, built-in browser, a shell in the terminal, settings), and `scripts/check-win-unpacked.mjs` and `scripts/check-nsis-archive.mjs` check that the Windows apps and installers carry the right binaries for each CPU. The Intel macOS build's terminal was checked under Rosetta. The macOS build is signed with a Developer ID and notarized; Windows and Linux builds are not code-signed yet.
+- **You bring your own resources**: there is no server or API key on the developer's side for your work. The one exception is the optional in-app feedback form, whose small relay turns what you send into a public GitHub issue and does not store your IP address (`workers/feedback-relay`). Transcription runs on your machine (whisper.cpp, free), with your own OpenAI API key, or on an OpenAI-compatible server you host (for example on your own GPU). Agents run through the CLI subscriptions you already have.
+- **Platforms**: macOS (Apple Silicon / Intel), Windows (x64 / arm64) and Linux (x64). Day-to-day use is on macOS (Apple Silicon). Every release is checked on a Mac: `tools/qa/linux-smoke.sh` packages the Linux app in a Linux container and runs `e2e/platform-smoke.spec.ts` against it under xvfb (launch, built-in browser, a shell in the terminal, settings), and `scripts/check-win-unpacked.mjs` and `scripts/check-nsis-archive.mjs` check that the Windows apps and installers carry the right binaries for each CPU. The Intel macOS build's terminal was checked under Rosetta. The macOS build is signed with a Developer ID and notarized.
 
 ## Install and run
 
@@ -268,7 +274,7 @@ These build unsigned, unpacked dev apps for a quick check (`electron-builder.dev
 
 ### Releases
 
-The macOS installers are signed with a Developer ID and notarized; the Windows and Linux installers are not code-signed yet. They are hosted on Cloudflare R2 (bucket `movie-ade-releases`), not on GitHub. So that a second source exists outside R2, each version also gets a GitHub release with only a `SHA256SUMS` file attached (the same values as its `manifest.json`); the installers themselves are never attached to GitHub.
+The macOS installers are signed with a Developer ID and notarized. Installers are hosted on Cloudflare R2 (bucket `movie-ade-releases`), not on GitHub. So that a second source exists outside R2, each version also gets a GitHub release with only a `SHA256SUMS` file attached (the same values as its `manifest.json`); the installers themselves are never attached to GitHub.
 
 ```sh
 pnpm dist:mac    # Ferret-<version>-mac-arm64.dmg / -mac-x64.dmg

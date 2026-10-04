@@ -1,3 +1,6 @@
+import { terminalKeyAction, windowsAgentPasteData } from './terminalKeys'
+import { parseOsc52 } from './terminalOsc52'
+import { minimumContrastFor } from './terminalContrast'
 import { windowsPtyOption } from './windowsPty'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -61,8 +64,14 @@ export class TerminalHandle {
   private readonly host: HTMLDivElement
   private screenTimer: ReturnType<typeof setTimeout> | null = null
   private fitFrame = 0
+  /** 器が 0px（非表示のタブ・閉じたターミナル）から見える大きさに戻った。次の fit で全面を描き直す */
+  private revealPending = false
+  /** 読み込み直しのあと、保存した出力を流し直している間（中の問い合わせへの xterm の返事を PTY へ送らない） */
+  private replaying = false
 
   ptyId: string | null = null
+  /** 前面で Agent が動いているか（TerminalPane が1秒ごとの状態の問い合わせで更新する。Shift+Enter の扱いに使う） */
+  agentForeground = false
   renderer: RendererKind = 'dom'
 
   constructor(readonly key: string) {
@@ -77,14 +86,19 @@ export class TerminalHandle {
       smoothScrollDuration: 0,
       // Windows の ConPTY の折り返しの扱いを合わせる（幅を変えたときの崩れを防ぐ）
       windowsPty: windowsPtyOption(window.ade.platform, window.ade.systemVersion),
+      // macOS で、マウスを使う TUI（vim・tmux・Agent）の上でも ⌥ を押しながらドラッグすれば文字を選べる（Orca #15103 #9727）
+      macOptionClickForcesSelection: true,
       theme: theme()
     })
+    this.term.options.minimumContrastRatio = minimumContrastFor(this.term.options.theme?.background ?? '')
     this.term.loadAddon(this.fitAddon)
     this.host = document.createElement('div')
     this.host.className = 'terminal-host'
     // ライト／ダークの切り替えに追従する（tokens.css の --term-* を読み直す）
     const onTheme = () => {
-      this.term.options.theme = theme()
+      const next = theme()
+      this.term.options.theme = next
+      this.term.options.minimumContrastRatio = minimumContrastFor(next.background)
     }
     window.addEventListener(THEME_CHANGE_EVENT, onTheme)
     this.disposers.push(() => window.removeEventListener(THEME_CHANGE_EVENT, onTheme))
@@ -102,8 +116,51 @@ export class TerminalHandle {
       this.host.removeEventListener('compositionend', onCompositionEnd, true)
       this.host.removeEventListener('keydown', onKeyDown, true)
     })
+    // Shift+Enter の改行、Windows / Linux のコピー・貼り付け、macOS の ⌘← などを xterm より先に受ける（terminalKeys.ts）。
+    // keydown のときだけ実行し、同じキーの keypress / keyup も xterm に渡さない（渡すと Enter の CR などが重ねて送られる）
+    this.term.attachCustomKeyEventHandler((event) => {
+      const action = terminalKeyAction(event, window.ade.platform, { hasSelection: this.term.hasSelection(), agentForeground: this.agentForeground })
+      if (!action) return true
+      if (event.type !== 'keydown') return false
+      event.preventDefault()
+      if (action.kind === 'send') this.sendInput(action.data)
+      else if (action.kind === 'copy') this.copySelection()
+      else void this.pasteClipboard()
+      return false
+    })
+    // 端末の中のプログラムのコピー（OSC 52）をクリップボードへ。読み出しの問い合わせには答えない（terminalOsc52.ts）
+    const osc52 = this.term.parser.registerOscHandler(52, (data) => {
+      const request = parseOsc52(data)
+      // 流し直しの間の古いコピーで、そのあと利用者が写したものを上書きしない
+      if (request.kind === 'write' && !this.replaying) {
+        window.ade.invoke('terminal:writeClipboard', request.text).catch((err) => reportHandled(err, { area: 'terminal', op: 'osc52 clipboard write' }))
+      }
+      return true
+    })
+    this.disposers.push(() => osc52.dispose())
+    // ターミナルにフォーカスがある間は、Windows / Linux のメニューに Ctrl+R・Ctrl+W などを取らせない（main の before-input-event）
+    const onFocusIn = () => this.reportFocus(true)
+    const onFocusOut = () => this.reportFocus(false)
+    // 右クリックや編集メニューの貼り付けも、Ctrl+V と同じ経路で送る（Windows の Agent への複数行の貼り付け）
+    const onPaste = (event: ClipboardEvent) => {
+      const text = event.clipboardData?.getData('text/plain')
+      if (!text || !this.agentPasteData(text)) return
+      event.preventDefault()
+      event.stopPropagation()
+      this.pasteText(text)
+    }
+    this.host.addEventListener('focusin', onFocusIn)
+    this.host.addEventListener('focusout', onFocusOut)
+    this.host.addEventListener('paste', onPaste, true)
+    this.disposers.push(() => {
+      this.host.removeEventListener('focusin', onFocusIn)
+      this.host.removeEventListener('focusout', onFocusOut)
+      this.host.removeEventListener('paste', onPaste, true)
+      if (this.focused) this.reportFocus(false)
+    })
     // 入力は開く前から受けられるようにしておく（PTYができる前の打鍵は pending にためる）
     const onData = this.term.onData((raw) => {
+      if (this.replaying) return
       const data = imeGuard.filter(raw, performance.now())
       if (data.length === 0) return
       if (this.ptyId) void window.ade.invoke('terminal:write', this.ptyId, data)
@@ -113,6 +170,7 @@ export class TerminalHandle {
     // 器の大きさが変わるたびに（分割・ドラッグ・ウィンドウ・ターミナルの配置の変更・表示の切り替え）、
     // まだ開いていなければ開き、開いていれば寸法を合わせ直す
     const observer = new ResizeObserver(() => {
+      if (this.host.clientWidth === 0 || this.host.clientHeight === 0) this.revealPending = this.opened
       this.tryOpen()
       this.scheduleFit()
     })
@@ -180,11 +238,25 @@ export class TerminalHandle {
     cancelAnimationFrame(this.fitFrame)
     this.fitFrame = requestAnimationFrame(() => {
       if (!this.opened || this.host.clientWidth === 0 || this.host.clientHeight === 0) return
-      const before = this.size()
+      // 最下部を見ていたら、寸法を変えたあとも最下部に留める（折り返しが変わって上へ飛ぶのを防ぐ。Orca #377 #7118）
+      const buffer = this.term.buffer.active
+      const atBottom = buffer.viewportY >= buffer.baseY
       const size = this.fit()
-      if (!size || !this.ptyId) return
-      if (size.cols !== before.cols || size.rows !== before.rows || !this.ptySized || this.redrawPending) {
+      if (size && atBottom && this.term.buffer.active.viewportY < this.term.buffer.active.baseY) this.term.scrollToBottom()
+      if (size && this.revealPending) {
+        // 隠れている間に GPU の文字のキャッシュが古くなり、表示し直すと文字が化けたまま残ることがある。
+        // 見えるようになったときに1回だけ消して全面を描き直す（出力のたびには行わない。Orca #1847 #6901 #15813）
+        this.revealPending = false
+        this.term.clearTextureAtlas()
+        this.term.refresh(0, this.term.rows - 1)
+      }
+      // 区切り線をドラッグしている間は表示だけ合わせ、PTY へは離したときに1回だけ伝える。
+      // 毎フレーム伝えるとシェルや TUI が描き直し続け、プロンプトが崩れる（Orca #2910）
+      if (!size || !this.ptyId || ptyResizeHeld) return
+      const sent = this.ptySent
+      if (!sent || size.cols !== sent.cols || size.rows !== sent.rows || !this.ptySized || this.redrawPending) {
         this.ptySized = true
+        this.ptySent = size
         if (this.redrawPending && size.rows > 1) {
           // 大きさを一度だけ揺らして、全画面の TUI（Claude Code / Codex など）に描き直してもらう
           void window.ade.invoke('terminal:resize', this.ptyId, { cols: size.cols, rows: size.rows - 1 })
@@ -197,6 +269,8 @@ export class TerminalHandle {
 
   /** PTYへ今の寸法を一度でも伝えたか。80x24 の仮の大きさで作ったPTYを、表示時に必ず合わせ直す */
   private ptySized = false
+  /** 最後に PTY へ伝えた寸法 */
+  private ptySent: TerminalSize | null = null
   /** 次に寸法を伝えるとき、大きさを一度揺らして描き直してもらう（読み込み直しのあと、つなぎ直したとき） */
   private redrawPending = false
 
@@ -207,10 +281,66 @@ export class TerminalHandle {
   reattach(ptyId: string, history: string, size?: TerminalSize): void {
     // 出力は PTY の今の幅で折り返されているので、同じ大きさにしてから流し直す（違う幅だと崩れる）
     if (size && size.cols >= 2 && size.rows >= 1) this.term.resize(size.cols, size.rows)
-    if (history) this.term.write(history)
-    this.bindPty(ptyId)
     this.redrawPending = true
-    this.scheduleFit()
+    if (!history) {
+      this.bindPty(ptyId)
+      return
+    }
+    // 流し直す出力に含まれる問い合わせ（カーソル位置・端末の種類など）に xterm が今答えると、その返事が
+    // 生きているシェルや Agent に文字として入る。書き終わるまで返事を捨て、そのあとでつなぐ（Orca #8128 #24092）
+    // ptyId は先に付ける（流し直しの間に届いた新しい出力も、履歴のあとに順に書かれる）
+    this.replaying = true
+    this.ptyId = ptyId
+    this.term.write(history, () => {
+      this.replaying = false
+      if (this.ptyId === ptyId) this.bindPty(ptyId)
+    })
+  }
+
+  /** キーの代わりに送る文字列。PTY ができる前なら打鍵と同じく pending にためる */
+  private sendInput(data: string): void {
+    if (this.ptyId) void window.ade.invoke('terminal:write', this.ptyId, data)
+    else this.pending.push(data)
+  }
+
+  private copySelection(): void {
+    const text = this.term.getSelection()
+    if (!text) return
+    // Windows Terminal と同じく、写したら選択を外す（次の Ctrl+C は中断として届く）
+    this.term.clearSelection()
+    window.ade.invoke('terminal:writeClipboard', text).catch((err) => reportHandled(err, { area: 'terminal', op: 'copy selection' }))
+  }
+
+  private focused = false
+  private reportFocus(focused: boolean): void {
+    this.focused = focused
+    window.ade.invoke('terminal:focused', focused).catch((err) => reportHandled(err, { area: 'terminal', op: 'report focus' }))
+  }
+
+  /** Windows で Agent へ複数行を貼るときに PTY へ直接書く文字列（terminalKeys.ts）。null なら xterm に任せる */
+  private agentPasteData(text: string): string | null {
+    return windowsAgentPasteData(text, window.ade.platform, { agentForeground: this.agentForeground, bracketedPasteMode: this.term.modes.bracketedPasteMode })
+  }
+
+  /** term.paste はブラケットペーストのモードに従って包んで送る（複数行が1行ずつ実行されない） */
+  private pasteText(text: string): void {
+    const data = this.agentPasteData(text)
+    if (data === null) {
+      this.term.paste(text)
+      return
+    }
+    this.term.clearSelection()
+    this.term.scrollToBottom()
+    this.sendInput(data)
+  }
+
+  private async pasteClipboard(): Promise<void> {
+    try {
+      const text = await window.ade.invoke('terminal:clipboardText')
+      if (text) this.pasteText(text)
+    } catch (err) {
+      reportHandled(err, { area: 'terminal', op: 'paste clipboard' })
+    }
   }
 
   bindPty(ptyId: string): void {
@@ -290,6 +420,14 @@ export class TerminalHandle {
 
 const handles = new Map<string, TerminalHandle>()
 let subscribed = false
+let ptyResizeHeld = false
+
+/** 区切り線のドラッグの間 true。false に戻したとき、各ターミナルの寸法を PTY へ伝え直す */
+export function holdPtyResize(held: boolean): void {
+  if (ptyResizeHeld === held) return
+  ptyResizeHeld = held
+  if (!held) for (const handle of handles.values()) handle.scheduleFit()
+}
 
 function subscribe(): void {
   if (subscribed) return

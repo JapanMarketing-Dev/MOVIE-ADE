@@ -39,7 +39,7 @@ function codexEnv(): NodeJS.ProcessEnv {
   return env
 }
 
-export interface CodexRunnerOptions {
+interface CodexRunnerOptions {
   binary?: string
   model?: string
   /** 選択中のアカウントの環境変数（CODEX_HOME）。実行のたびに読む。src/main/accounts の resolveAgentEnv を渡す */

@@ -1,3 +1,4 @@
+import { delay } from '@shared/delay'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { NativeImage, WebContents } from 'electron'
@@ -42,7 +43,7 @@ export function webContentsStillSource(contents: WebContents): StillSource {
  * 1回の録画の静止画の上限（CWE-400 への備え）。超えたら保存をやめて1度だけ知らせる（声と動画は続ける）。
  * 0.5秒ごとの撮影は画面が変わったときだけ保存するので、ふつうの録画ではまず届かない。
  */
-export interface StillLimits {
+interface StillLimits {
   maxCount: number
   maxBytes: number
   /** 撮る予定の強制撮影（クリック・ペン・遷移）の数の上限。超えた分は撮らない */
@@ -51,7 +52,7 @@ export interface StillLimits {
   minClickIntervalMs: number
 }
 
-export const DEFAULT_STILL_LIMITS: StillLimits = {
+const DEFAULT_STILL_LIMITS: StillLimits = {
   maxCount: 20_000,
   maxBytes: 2 * 1024 * 1024 * 1024,
   maxPendingForced: 4,
@@ -62,12 +63,12 @@ export const DEFAULT_STILL_LIMITS: StillLimits = {
  * 撮りかけの静止画を待つ上限(ms)。capturePage が返ってこなくても、停止やページ遷移を待たせ続けない
  * （撮る予定は maxPendingForced 件までなので、ふつうはすぐ終わる）
  */
-export const SETTLE_TIMEOUT_MS = 5_000
+const SETTLE_TIMEOUT_MS = 5_000
 
 /** 計測用の所要時間を残す数（録画が長くても増え続けないように） */
 const MAX_TIMINGS = 1000
 
-export interface StillCaptureHandlers {
+interface StillCaptureHandlers {
   getCursor?(): { x: number; y: number; view?: { width: number; height: number } } | undefined
   onFrame(frame: FrameRef): void
   onWarning(message: string): void
@@ -123,7 +124,7 @@ export class StillCapturer {
   /** 撮りかけ・撮る予定の静止画が書き終わるまで待つ（定期撮影は止めない）。待つのは timeoutMs まで */
   async settle(timeoutMs = SETTLE_TIMEOUT_MS): Promise<void> {
     const deadline = this.now() + timeoutMs
-    while ((this.busy || this.pendingForced) && this.now() < deadline) await new Promise((done) => setTimeout(done, 10))
+    while ((this.busy || this.pendingForced) && this.now() < deadline) await delay(10)
   }
 
   get captured(): FrameRef[] {
@@ -145,9 +146,9 @@ export class StillCapturer {
     this.pendingForced++
     try {
       // 注入側のDOM更新が合成器に描画されてから撮る。
-      if (annotationId) await new Promise((done) => setTimeout(done, 40))
+      if (annotationId) await delay(40)
       // 定期撮影と重なっても、確定した書き込みの根拠画像は落とさない。
-      while (this.busy) await new Promise((done) => setTimeout(done, 10))
+      while (this.busy) await delay(10)
       return await this.tick(reason, true, cursor, annotationId)
     } finally { this.pendingForced-- }
   }
@@ -170,7 +171,7 @@ export class StillCapturer {
       // 撮れなければ1度だけ撮り直す（想定内）
       let image = await this.source.capture().catch(() => null)
       if (!image || image.isEmpty()) {
-        await new Promise((done) => setTimeout(done, 120))
+        await delay(120)
         if (this.source.gone) return null
         image = await this.source.capture().catch(() => null)
       }

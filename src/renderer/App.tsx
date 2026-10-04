@@ -1,3 +1,4 @@
+import { delay } from '@shared/delay'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import {
   DEFAULT_AGENT_PREFERENCES,
@@ -432,7 +433,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     if (plan.action === 'no-project') return
     if (plan.action === 'switch-then-start') {
       await window.ade.invoke('project:switch', plan.projectId)
-      for (let i = 0; i < 40 && workspaceProjectRef.current !== plan.projectId; i++) await new Promise((done) => setTimeout(done, 50))
+      for (let i = 0; i < 40 && workspaceProjectRef.current !== plan.projectId; i++) await delay(50)
       await new Promise((done) => requestAnimationFrame(() => done(null)))
     }
     toggleRecordingRef.current()
@@ -454,7 +455,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     if ((await window.ade.invoke('capture:screenAccess')) !== 'granted') { setTargetPickerOpen(true); return }
     const attempts = launched ? 15 : 1
     for (let i = 0; i < attempts; i++) {
-      if (i > 0) await new Promise((done) => setTimeout(done, 1000))
+      if (i > 0) await delay(1000)
       const found = matchWindowSource((await window.ade.invoke('capture:sources')).sources, windowMatch)
       if (found) {
         chooseTarget(targetFromSource(found))
@@ -916,6 +917,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
               dirtyPaths={files.dirtyPaths}
               onOpen={files.open}
               onQuickOpen={() => setQuickOpenOpen(true)}
+              onRenamed={files.followRename}
+              onDeleted={files.closeDeleted}
             />}
             </ErrorBoundary>
           </div>

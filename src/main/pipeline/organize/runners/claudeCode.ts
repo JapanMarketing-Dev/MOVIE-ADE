@@ -23,7 +23,7 @@ import { RunnerError } from '../runner'
 import { extractJson, spawnText, type SpawnTextOptions, type SpawnTextResult } from '../spawn'
 import { isInheritedAgentSessionEnv } from '../../../inheritedAgentEnv'
 
-export interface ClaudeCodeRunnerOptions {
+interface ClaudeCodeRunnerOptions {
   /** 実行パス。既定は PATH 上の claude */
   binary?: string;
   /** 既定モデル */
@@ -194,7 +194,7 @@ export class ClaudeCodeRunner implements LlmRunner {
  * `--output-format json` の stdout は「全イベントのJSON配列」。
  * 最後の `type:"result"` 要素を取り出す（1イベントだけのオブジェクトやJSONLにも耐える）。
  */
-export function parseEnvelope(stdout: string): ClaudeResultEnvelope | undefined {
+function parseEnvelope(stdout: string): ClaudeResultEnvelope | undefined {
   const pick = (v: unknown): ClaudeResultEnvelope | undefined => {
     if (Array.isArray(v)) {
       for (let i = v.length - 1; i >= 0; i--) {

@@ -16,6 +16,7 @@ export function sourceHash(s: string): string
 export function translationPath(lang: string, name: string): string
 export function parseTranslation(text: string): Map<string, { hash: string; text: string }>
 export function formatTranslation(lang: string, name: string, units: Map<string, { hash: string; text: string }>): string
+export function rehashUnits(en: Map<string, string>, have: Map<string, { hash: string; text: string }>, force?: boolean): Map<string, { hash: string; text: string }>
 export interface Localized {
   units: Map<string, string>
   status: 'full' | 'partial' | 'none'

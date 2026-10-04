@@ -14,7 +14,7 @@
 import type { OrganizeInput } from '../types'
 
 /** ページの文字の書き写しとみなす長さ（正規化した後の文字数） */
-export const COPIED_WINDOW = 16
+const COPIED_WINDOW = 16
 /** 1つのページの文字から見る長さの上限（長い文の全部の窓を作らない） */
 const PAGE_TEXT_MAX = 400
 
@@ -35,11 +35,11 @@ const INSTRUCTION_PATTERNS: RegExp[] = [
 ]
 
 /** 比べるための正規化（全角半角・大文字小文字・空白と記号の違いを無くす） */
-export function normalizeForMatch(text: string): string {
+function normalizeForMatch(text: string): string {
   return text.normalize('NFKC').toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, '')
 }
 
-export interface Grounding {
+interface Grounding {
   /** 利用者の発話（全区間）を正規化してつないだもの */
   spoken: string
   /** ページの文字の、長さ COPIED_WINDOW の窓 */
@@ -73,7 +73,7 @@ export function buildGrounding(input: OrganizeInput): Grounding {
   return { spoken, pageWindows }
 }
 
-export interface GroundingIssue {
+interface GroundingIssue {
   kind: 'instruction' | 'copied'
   /** 引っかかった部分（調査用。短く切る） */
   excerpt: string

@@ -5,7 +5,7 @@
 <!-- @lead 97cbc36c8d -->
 プロジェクトのファイルを開いて編集し、Markdown と Mermaid をプレビューします。内蔵のブラウザで開いたプレビューは、ほかの Web ページと同じように録画してレビューできます。
 
-<!-- @files f1e2c27cca -->
+<!-- @files d29f6a2107 -->
 ## ファイルを開いて編集する
 <ul>
   <li><span class="docs-ui">ファイル</span>（ファイルツリー）: {{keys:Mod+Shift+E}}。<span class="docs-ui">ファイル名で絞り込む</span>、<span class="docs-ui">再読込</span>、<span class="docs-ui">すべて畳む</span> があります。</li>
@@ -14,7 +14,18 @@
   <li>保存していない編集がある間にディスク上のファイルが変わったときは、<span class="docs-ui">ディスクの内容を読み込む</span> か <span class="docs-ui">自分の変更を残す</span> を選びます。</li>
 </ul>
 <p>エディタは Monaco です。テキストでないファイルは代わりにビューアで開きます。画像（拡大・縮小でき、SVG はコードとしても表示可能）、シークバー付きの動画と音声、PDF、そのほかのバイナリファイルはサイズと先頭のバイトの 16 進表示です。ビューアは読み取り専用で、プロジェクトのフォルダの外にあるファイルや、フォルダの外へ出るシンボリックリンクの先にあるファイルは表示しません。</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">準備中</p><p>ファイルツリーからのファイルの作成、名前の変更、削除。</p></div>
+
+<!-- @file-tree 4bec72e9f4 -->
+## ファイルを作る・名前を変える・削除する
+<p>VS Code と同じように、<span class="docs-ui">ファイル</span> の中でそのままファイルを扱えます。名前はツリーの中で直接入力します。</p>
+<ul>
+  <li><span class="docs-ui">新しいファイル</span> / <span class="docs-ui">新しいフォルダ</span>: ツリーの上のボタンか、フォルダ（またはツリーの下の空いた所）の右クリック。新しい項目は、選んでいるフォルダの中、選んでいるファイルの隣、またはプロジェクトの一番上にできます。新しいファイルはエディタで開きます。</li>
+  <li><span class="docs-ui">名前を変更</span>: {{keys:F2 / Enter|F2}} か右クリック。開いているタブは新しい名前に付いていき、保存していない編集も残ります。</li>
+  <li><span class="docs-ui">削除</span>: {{keys:Mod+Backspace / Delete|Delete}} か右クリック。Ferret は先に確認してから、項目をゴミ箱（Windows ではごみ箱）へ移すので、元に戻せます。削除したファイルのタブは閉じます。保存していない編集があったときは、確認の画面にそう出ます。</li>
+  <li>{{keys:Mod}}-クリックか {{keys:Shift}}-クリックで複数の項目を選ぶと、まとめて削除できます。</li>
+  <li>{{keys:Esc}} で入力中の名前を取り消します。</li>
+</ul>
+<p>Ferret は同じ名前の既存のファイルやフォルダを上書きしません。また、プロジェクトのフォルダの外に出るもの（<code>..</code>、絶対パス、外を指すシンボリックリンク）、<code>.git</code> の中のもの、どれかの OS で使えない名前（<code>/ \ &lt; &gt; : " | ? *</code>、制御文字、末尾の空白やドット、<code>CON</code> や <code>NUL</code> などの Windows の予約名）は受け付けません。</p>
 
 <!-- @preview b8c0baaad4 -->
 ## Markdown と Mermaid のプレビュー
@@ -24,7 +35,7 @@
   <li><span class="docs-ui">プレビューを開く</span>: 内蔵のブラウザ（<code>ade-preview://</code>）で表示。録画してレビューできます</li>
 </ul>
 
-<!-- @review-docs 3956ed6f10 -->
+<!-- @review-docs 4b5c6316ba -->
 ## ドキュメントを録画でレビューする
 <ol class="docs-steps">
   <li>Markdown のファイルを開き、<span class="docs-ui">プレビューを開く</span> を押します。</li>
@@ -32,4 +43,4 @@
   <li>止めます。指摘には URL の代わりに、プロジェクトからのファイルの相対パスが入ります。</li>
   <li><span class="docs-ui">Agentへ送信</span> で、ドキュメントを直してもらいます。</li>
 </ol>
-<figure class="docs-shot" data-shot="preview"><div class="docs-shot-slot" role="img" aria-label="内蔵のブラウザでの Markdown のプレビュー（スクリーンショットは準備中）"><span>スクリーンショットは準備中です</span></div><figcaption>内蔵のブラウザでの Markdown のプレビュー</figcaption></figure>
+{{shot:preview|内蔵のブラウザでの Markdown のプレビュー}}

@@ -11,7 +11,9 @@ import {
   isAppPageUrl,
   isPageNavigationAllowed,
   isTabCaptureRequest,
+  isPopupUrlAllowed,
   isTypedNavigationAllowed,
+  popupWindowAction,
   windowOpenAction,
   type PermissionDetails,
   type PermissionSessionLike
@@ -186,5 +188,42 @@ describe('security-2 [11] 遷移の決まり', () => {
     expect(isAppPageUrl('http://localhost:5173/#/x', roots)).toBe(true)
     expect(isAppPageUrl('http://localhost:5174/', roots)).toBe(false)
     expect(isAppPageUrl('ade-preview://p/index.html', roots)).toBe(false)
+  })
+})
+
+describe('ログインのポップアップ（Google でログインなど）', () => {
+  it('window.open に大きさを指定したもの（new-window）で https・手元の開発サーバーなら、子ウインドウで開く', () => {
+    expect(popupWindowAction({ url: 'https://accounts.google.com/o/oauth2/auth?x=1', disposition: 'new-window' })).toBe('popup')
+    expect(popupWindowAction({ url: 'https://www.figma.com/login', disposition: 'new-window' })).toBe('popup')
+    expect(popupWindowAction({ url: 'http://127.0.0.1:4100/login.html', disposition: 'new-window' })).toBe('popup')
+    expect(popupWindowAction({ url: 'http://localhost:3000/auth', disposition: 'new-window' })).toBe('popup')
+    expect(popupWindowAction({ url: 'about:blank', disposition: 'new-window' })).toBe('popup')
+  })
+
+  it('普通の別タブ（target=_blank・大きさの無い window.open）は今までどおり同じビュー', () => {
+    expect(popupWindowAction({ url: 'https://example.com/next', disposition: 'foreground-tab' })).toBe('in-app')
+    expect(popupWindowAction({ url: 'https://example.com/next', disposition: 'background-tab' })).toBe('in-app')
+    expect(popupWindowAction({ url: 'https://example.com/next' })).toBe('in-app')
+    expect(popupWindowAction({ url: 'mailto:a@example.com', disposition: 'foreground-tab' })).toBe('external')
+  })
+
+  it('ポップアップでも、外の http・ファイル・独自スキーム・プレビュー・認証情報付きは子ウインドウにしない', () => {
+    expect(popupWindowAction({ url: 'http://evil.example/login', disposition: 'new-window' })).toBe('in-app')
+    for (const url of ['file:///etc/passwd', 'zoommtg://zoom.us/join', 'javascript:alert(1)', 'data:text/html,<p>x</p>', 'ade-preview://p/a.md']) {
+      expect(popupWindowAction({ url, disposition: 'new-window' }), url).toBe('deny')
+    }
+    expect(popupWindowAction({ url: 'https://user:pass@accounts.example/login', disposition: 'new-window' })).toBe('in-app')
+  })
+
+  it('ポップアップの中で行ける先', () => {
+    expect(isPopupUrlAllowed('https://accounts.google.com/signin')).toBe(true)
+    expect(isPopupUrlAllowed('http://[::1]:3000/cb')).toBe(true)
+    expect(isPopupUrlAllowed('http://localhost.evil.example/cb')).toBe(false)
+    expect(isPopupUrlAllowed('http://127.0.0.1.evil.example/cb')).toBe(false)
+    expect(isPopupUrlAllowed('http://example.com/cb')).toBe(false)
+    expect(isPopupUrlAllowed('file:///tmp/x.html')).toBe(false)
+    expect(isPopupUrlAllowed('ade-preview://p/a.md')).toBe(false)
+    expect(isPopupUrlAllowed('not a url')).toBe(false)
+    expect(isPopupUrlAllowed(`https://a.example/${'x'.repeat(9000)}`)).toBe(false)
   })
 })

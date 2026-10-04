@@ -366,6 +366,113 @@
   font-size: var(--font-size-sm);
 }
 
+.explorer__note--error {
+  color: var(--color-danger);
+}
+
+/* 選択（⌘ / Ctrl・Shift で複数）。開いているファイル（is-active）とは別の、控えめな面 */
+.explorer__row.is-selected {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.explorer__row.is-selected.is-active {
+  background: var(--color-surface-selected);
+}
+
+.explorer__list--tree {
+  min-height: 100%;
+}
+
+/* ツリーの中のその場の名前の欄（作成・名前の変更） */
+.explorer__row--input {
+  height: auto;
+  min-height: var(--size-row);
+  align-items: flex-start;
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
+  cursor: default;
+}
+
+.explorer__row--input:hover {
+  background: transparent;
+}
+
+.explorer__row--input > svg {
+  margin-top: var(--space-2);
+}
+
+.explorer__input-wrap {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.explorer__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 var(--space-2);
+  border: var(--size-border) solid var(--color-border-focus);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  line-height: calc(var(--size-row) - var(--space-2));
+  outline: none;
+}
+
+.explorer__input.is-invalid {
+  border-color: var(--color-danger);
+}
+
+.explorer__input-hint {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-danger);
+  font-size: var(--font-size-xs);
+  white-space: normal;
+}
+
+/* 右クリックのメニュー（見た目は .sb-menu。位置は窓に対して） */
+.explorer-menu {
+  position: fixed;
+  min-width: 200px;
+}
+
+.explorer-menu > button:disabled {
+  color: var(--color-text-faint);
+  cursor: default;
+}
+
+.explorer-menu > button:disabled:hover {
+  background: transparent;
+}
+
+.explorer-menu__key {
+  margin-left: auto;
+  padding-left: var(--space-6);
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+}
+
+.explorer-delete__list {
+  max-height: 120px;
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-6);
+  overflow: auto;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.unsaved-dialog__body.explorer-delete__warn {
+  color: var(--color-warning);
+}
+
 /* ── ⌘P クイックオープン ───────────────────────────── */
 
 .quick-open-modal[open] {

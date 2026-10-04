@@ -18,7 +18,7 @@ export interface KeyRef {
   apiKeyEnv?: string
 }
 
-export type ConfiguredKeySource = 'config' | 'configEnv'
+type ConfiguredKeySource = 'config' | 'configEnv'
 
 export interface KeyLookup {
   env: NodeJS.ProcessEnv
@@ -45,7 +45,7 @@ function readDotEnv(dir: string | null | undefined, name: string, read: (path: s
 const DOTENV_MAX_BYTES = 256 * 1024
 
 /** 環境変数を 環境 → プロジェクトの .env → 設定フォルダの .env の順に探す */
-export function lookupEnv(name: string, lookup: KeyLookup): string | undefined {
+function lookupEnv(name: string, lookup: KeyLookup): string | undefined {
   // .env はプロジェクト側が用意するファイル。名前付きパイプ・巨大なファイル・リンク先で main が止まらないよう、大きさを決めて辿らずに読む
   const read = lookup.readText ?? ((path: string) => readTextBoundedSync(path, DOTENV_MAX_BYTES, { noFollow: true }))
   return lookup.env[name]?.trim() || readDotEnv(lookup.projectDir, name, read) || readDotEnv(lookup.configDir, name, read)

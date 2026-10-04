@@ -37,21 +37,19 @@ describe('IS_PACKAGED', () => {
   })
 
   describe('起動時の値', () => {
-    const saved = { defaultApp: process.defaultApp, url: process.env.ELECTRON_RENDERER_URL }
+    const saved = { defaultApp: process.defaultApp }
     afterEach(() => {
       vi.resetModules()
       vi.doUnmock('electron')
+      vi.unstubAllEnvs()
       Object.defineProperty(process, 'defaultApp', { value: saved.defaultApp, configurable: true, writable: true })
-      if (saved.url === undefined) delete process.env.ELECTRON_RENDERER_URL
-      else process.env.ELECTRON_RENDERER_URL = saved.url
     })
 
     const load = async (opt: { isPackaged: boolean; defaultApp?: boolean; url?: string }) => {
       vi.resetModules()
       vi.doMock('electron', () => ({ app: { isPackaged: opt.isPackaged } }))
       Object.defineProperty(process, 'defaultApp', { value: opt.defaultApp, configurable: true, writable: true })
-      if (opt.url === undefined) delete process.env.ELECTRON_RENDERER_URL
-      else process.env.ELECTRON_RENDERER_URL = opt.url
+      vi.stubEnv('ELECTRON_RENDERER_URL', opt.url)
       return (await import('../../src/main/runtime')).IS_PACKAGED
     }
 

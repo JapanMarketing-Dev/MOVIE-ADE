@@ -50,7 +50,12 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
     const model = monaco.editor.getModel(monaco.Uri.parse(modelPath(file)))
     const next = api.getDraft(file.id) ?? file.saved
     if (!model || model.getValue() === next) return
+    // 全体を置き換えるとカーソルと選択が末尾へ飛ぶ。置き換えの前の位置・スクロールを戻す
+    // （行が減っていれば Monaco が範囲の中に丸める。Orca #13756）
+    const editor = editorRef.current?.getModel() === model ? editorRef.current : null
+    const view = editor?.saveViewState() ?? null
     model.pushEditOperations([], [{ range: model.getFullModelRange(), text: next }], () => null)
+    if (editor && view) editor.restoreViewState(view)
   }, [file.id, file.revision])
 
   /*
@@ -206,7 +211,10 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
                 wordWrap: markdown ? 'on' : 'off',
                 contextmenu: true,
                 // 日本語の全角の括弧や記号を「紛らわしい文字」として枠で囲まない
-                unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false, nonBasicASCII: false }
+                unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false, nonBasicASCII: false },
+                // Monaco 0.57 の既定（EditContext）では、Windows の Microsoft Pinyin などが候補窓を出さない。
+                // 入力を従来の textarea で受ける（Orca #23360、microsoft/vscode#259380）
+                editContext: false
               }}
             />
             {previewable && file.preview && (

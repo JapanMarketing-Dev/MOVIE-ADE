@@ -16,8 +16,9 @@
  *                          （recording.webm・events.jsonl・transcript.jsonl・capture.json・work/）
  */
 import { existsSync } from 'node:fs'
-import { lstat, readdir } from 'node:fs/promises'
+import { lstat, opendir } from 'node:fs/promises'
 import { assertContained } from './containment'
+import { HISTORY_LIMITS } from './limits'
 import { basename, join } from 'node:path'
 
 export const ADE_DIR = '.ferret'
@@ -26,7 +27,7 @@ export const ADE_DIR = '.ferret'
  * 同じ ID が両方にあれば .ferret/ を使う
  */
 export const LEGACY_ADE_DIR = '.ade-movie'
-export const REVIEWS_DIR = 'reviews'
+const REVIEWS_DIR = 'reviews'
 
 export interface SessionPaths {
   /** セッションID（フォルダ名）。例 20261002-104012 */
@@ -78,20 +79,51 @@ export function reviewsRoots(projectDir: string): string[] {
 }
 
 /**
- * 両方のフォルダにあるセッションID（重複は1つ）。まだ録画していないプロジェクトにはフォルダが無い（想定内）。
- * リンク・ジャンクション（.ferret・reviews・レビューのフォルダ）をたどる先のものは一覧に出さない（containment.ts）
+ * 両方のフォルダにあるセッションID（重複は1つ）を新しい順に返す。まだ録画していないプロジェクトにはフォルダが無い（想定内）。
+ * リンク・ジャンクション（.ferret・reviews・レビューのフォルダ）をたどる先のものは一覧に出さない（containment.ts）。
+ * 1つのフォルダで見る名前は scannedNames まで、返すのは max 件まで（security-4 [10]。細工した大量のフォルダで止まらない）。
+ * truncated は、見きれなかった・max で打ち切った名前があったか
  */
-export async function listSessionIds(projectDir: string): Promise<string[]> {
-  const ids = new Set<string>()
+export async function listSessionIdsPage(projectDir: string, options: { max?: number; scannedNames?: number } = {}): Promise<{ ids: string[]; truncated: boolean }> {
+  const max = options.max ?? Number.POSITIVE_INFINITY
+  const scanLimit = options.scannedNames ?? HISTORY_LIMITS.scannedNames
+  const candidates = new Map<string, string>()
+  let truncated = false
   for (const root of reviewsRoots(projectDir)) {
     try { assertContained(projectDir, root) } catch { continue }
-    for (const name of await readdir(root).catch(() => [] as string[])) {
-      if (!isSessionId(name)) continue
-      const st = await lstat(join(root, name)).catch(() => null)
-      if (st?.isDirectory()) ids.add(name)
+    const dir = await opendir(root).catch(() => null)
+    if (!dir) continue
+    let seen = 0
+    try {
+      for await (const entry of dir) {
+        if (++seen > scanLimit) {
+          truncated = true
+          break
+        }
+        if (isSessionId(entry.name) && !candidates.has(entry.name)) candidates.set(entry.name, root)
+      }
+    } catch {
+      // 読んでいる途中で消えたフォルダ（想定内）
     }
+    // break で抜けると for await が閉じる。最後まで読んだときも閉じ済み
   }
-  return [...ids]
+  // ID は日時の形（20261002-104012）なので、文字の順がそのまま時刻の順
+  const sorted = [...candidates.keys()].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0))
+  const ids: string[] = []
+  for (const name of sorted) {
+    if (ids.length >= max) {
+      truncated = true
+      break
+    }
+    const st = await lstat(join(candidates.get(name)!, name)).catch(() => null)
+    if (st?.isDirectory()) ids.push(name)
+  }
+  return { ids, truncated }
+}
+
+/** 両方のフォルダにあるセッションID（新しい順。見る名前の数に上限がある） */
+export async function listSessionIds(projectDir: string): Promise<string[]> {
+  return (await listSessionIdsPage(projectDir)).ids
 }
 
 /**
@@ -122,12 +154,7 @@ export function sessionPaths(projectDir: string, id: string, base?: string): Ses
   }
 }
 
-/** 画像のファイル名（`01.png`）から絶対パスを作る。feedback.md の `./01.png` に対応する */
-export function imagePath(paths: SessionPaths, name: string): string {
-  return join(paths.dir, name.replace(/^\.\//, ''))
-}
-
-export const TAKES_DIR = 'takes'
+const TAKES_DIR = 'takes'
 
 /**
  * 追記した録画（2 本目から）の置き場所。ID と送信の指示文はレビューのものを使い、ファイルだけ takes/<n>/ に分ける。

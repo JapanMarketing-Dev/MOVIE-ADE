@@ -21,7 +21,7 @@
 ## 保留期間
 <p><span class="docs-ui">保留錄影</span>（預設 7 天，可選 30 天或 <span class="docs-ui">永久</span>）：啟動時，超過該期間的已完成審查會刪除 <code>recording.webm</code> 與 <code>work/</code>。<code>feedback.md</code> 與意見的圖片會保留。未完成的審查絕不會被清除。清除作業在啟動時針對最後開啟的專案執行。</p>
 
-<!-- @network 8886bf9546 -->
+<!-- @network 1eadb8b937 -->
 ## 哪些資料會離開你的電腦
 <table>
   <thead><tr><th>時機</th><th>傳送目的地</th><th>資料</th></tr></thead>
@@ -35,8 +35,8 @@
     <tr><td><span class="docs-ui">傳送到 GitHub</span></td><td>透過 <code>gh</code> 送到 GitHub</td><td>僅內文（不含圖片）</td></tr>
     <tr><td>頁尾的用量（僅限 Claude Code 與 Codex）</td><td>Anthropic、ChatGPT</td><td>以你自己的登入發出的用量請求</td></tr>
     <tr><td>GitHub 加星提示</td><td>透過你的 <code>gh</code> 送到 GitHub</td><td>檢查你是否已為儲存庫加星，只有在你按下 <span class="docs-ui">在 GitHub 上加星</span> 時才會加星</td></tr>
-    <tr><td><span class="docs-ui">檢查更新</span>（手動）</td><td>下載伺服器（Cloudflare R2）</td><td><code>latest.json</code> 的請求</td></tr>
-    <tr><td>從 App 傳送意見回饋（僅在你傳送時；即將推出）</td><td>開發者的意見回饋中繼（Cloudflare Worker），會在 <code>JapanMarketing-Dev/ferret</code> 中建立公開 issue</td><td>你的文字、屬於錯誤或想法、App / 作業系統版本與 CPU，以及你附加的最多 3 張螢幕截圖。金鑰、權杖、電子郵件地址與主資料夾路徑會被遮蔽。中繼不會儲存你的 IP 位址（請參閱<a href="#feedback">從 App 傳送意見回饋</a>）</td></tr>
+    <tr><td><span class="docs-ui">檢查更新</span>（手動）</td><td>下載伺服器（Cloudflare R2）</td><td><code>latest.json</code> 與該版本 <code>SHA256SUMS</code> 的請求；按一下 <span class="docs-ui">下載</span> 時則為安裝程式</td></tr>
+    <tr><td>從 App 傳送意見回饋（僅在你傳送時）</td><td>開發者的意見回饋中繼（Cloudflare Worker），會在 <code>JapanMarketing-Dev/ferret</code> 中建立公開 issue</td><td>你的文字、屬於錯誤或想法、App / 作業系統版本與 CPU，以及你附加的最多 3 張螢幕截圖。金鑰、權杖、電子郵件地址與主資料夾路徑會被遮蔽。中繼不會儲存你的 IP 位址（請參閱<a href="#feedback">從 App 傳送意見回饋</a>）</td></tr>
     <tr><td>當機或錯誤（<span class="docs-ui">傳送當機報告</span> 開啟時）</td><td>Sentry</td><td>stack trace 與作業系統 / CPU / App 版本（請參閱<a href="#crash-reports">當機報告</a>）</td></tr>
   </tbody>
 </table>
@@ -47,10 +47,9 @@
   <li>本網站（不是 App）使用 Cloudflare Web Analytics 計算頁面瀏覽次數：不使用 Cookie、不做跨網站追蹤，也不收集個人資料。</li>
 </ul>
 
-<!-- @feedback ba5f3fb0a3 -->
+<!-- @feedback 34fc2ebccc -->
 ## 從 App 傳送意見回饋
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">即將推出</p><p>App 內的意見回饋表單及其中繼尚未發布。本節說明它們將如何運作。</p></div>
-<p>你將可以在 Ferret 內傳送錯誤回報或想法，不需要 GitHub 帳號。只有在你傳送時才會送出，並會成為 <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a> 中加上 <code>from-app</code> 標籤的<strong>公開</strong> issue。請勿包含任何你不會公開發表的內容。</p>
+<p>你可以在 Ferret 內傳送錯誤回報或想法，不需要 GitHub 帳號（側邊欄底部的 <span class="docs-ui">傳送意見</span>）。只有在你傳送時才會送出，並會成為 <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a> 中加上 <code>from-app</code> 標籤的<strong>公開</strong> issue。請勿包含任何你不會公開發表的內容。</p>
 <ul>
   <li>App 會從你的電腦把內容送到一個小型中繼（由開發者營運的 Cloudflare Worker），由它用自己的 GitHub 權杖建立 issue。這個中繼是開發者唯一會收到你所寫內容的伺服器。</li>
   <li>會傳送：你的標題與文字、屬於錯誤或想法、App 版本，以及你附加的最多 3 張 PNG 或 JPEG 螢幕截圖。作業系統名稱與版本、CPU 架構與隨機安裝 ID 只有在你保留勾選時才會傳送。不會傳送：你的姓名、電子郵件、GitHub 帳號、專案檔案、錄影或意見。</li>

@@ -13,7 +13,7 @@ export interface ImageLike {
   resize(options: { width: number; quality?: 'good' | 'better' | 'best' }): ImageLike
 }
 
-export interface FittedImage {
+interface FittedImage {
   type: 'image/png' | 'image/jpeg'
   base64: string
   width: number
@@ -45,7 +45,7 @@ export function fitScreenshot(image: ImageLike, maxBytes = MAX_IMAGE_BYTES): Fit
 // （そこだけ空く）。画面収録の許可を求めずに済むよう、ビューも自分の capturePage() で撮り、
 // ウインドウの画像の同じ位置に重ねる。重ねるのは生のピクセル（toBitmap の BGRA）で、ここは純粋な計算だけ。
 
-export interface Bitmap {
+interface Bitmap {
   /** 1画素 4 バイト（toBitmap の並びのまま。重ねるだけなので色の順は問わない） */
   data: Uint8Array
   width: number

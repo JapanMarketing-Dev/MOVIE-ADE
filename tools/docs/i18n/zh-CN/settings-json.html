@@ -25,7 +25,7 @@ Ferret 的所有设置都保存在一个 JSON 文件中，旁边附有 JSON Sche
 <p><code>settings.json</code> 的第一行是 <code>"$schema": "./settings.schema.json"</code>。VS Code 等编辑器和 Claude Code 等 Agent 会利用它进行补全、校验，并显示每个字段的说明。Schema 随应用一起发布，每次启动时都会写到该文件旁边，因此它始终与已安装的版本一致。</p>
 <p>Ferret 不认识的键在应用保存时会原样保留。打开的标签页、上次的 URL 和其他会话状态保存在 <code>state.json</code> 中，而不在这里。</p>
 
-<!-- @example fece1b6b16 -->
+<!-- @example 8f2ce86189 -->
 ## 带注释的示例
 <p>JSON 不支持注释，所以说明写在示例下方。所有字段都是可选的；不需要的可以省略。</p>
 <pre><code>{
@@ -40,7 +40,9 @@ Ferret 的所有设置都保存在一个 JSON 文件中，旁边附有 JSON Sche
       "kind": "web",
       "urls": [
         { "id": "local", "label": "local", "url": "http://localhost:3000" },
-        { "id": "prd", "label": "prd", "url": "https://shop.example.com" }
+        { "id": "prd", "label": "prd", "url": "https://shop.example.com" },
+        { "id": "figma", "label": "Figma", "url": "https://www.figma.com/design/…", "purpose": "design" },
+        { "id": "spec", "label": "Spec", "url": "https://docs.google.com/document/d/…", "purpose": "doc" }
       ]
     }
   ],
@@ -83,7 +85,7 @@ Ferret 的所有设置都保存在一个 JSON 文件中，旁边附有 JSON Sche
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>：URL 菜单中的审查对象。打开项目时会打开第一个。<code>id</code> 可以是任意唯一字符串。</li>
+  <li><code>projects[].urls</code>：URL 菜单中的审查对象。打开项目时会打开第一个。<code>id</code> 可以是任意唯一字符串。<code>purpose</code> 用于标记设计或文档（参见<a href="projects.html#design-docs">审查设计和文档</a>）；应用则省略它。</li>
   <li><code>agents.customAgents</code>：任意 CLI 或包装脚本。<code>startupAgents</code> 按顺序列出随项目打开的 Agent 标签页。</li>
   <li><code>capture.sttEndpoints.compatible</code>：任何实现了 OpenAI <code>/v1/audio/transcriptions</code> 的服务器（speaches、vLLM、LocalAI…）。<code>costLimitUsd: null</code> 会关闭费用上限，这适合使用你自己的 GPU 的情况。参见<a href="transcription.html">转写与费用</a>。</li>
   <li><code>organizer</code>：<span class="docs-ui">整理反馈</span> 直接发送到兼容 OpenAI 的 <code>/v1/chat/completions</code> 服务器（此处为 Ollama）。如果想改用你自己的 CLI 登录，请使用 <code>"runner": "claude-code"</code> 或 <code>"codex"</code>，并用 <code>organizer.cliModels</code> 选择它们的模型。</li>

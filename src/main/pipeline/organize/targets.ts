@@ -12,7 +12,7 @@
 import { targetHeading, targetOfUrl } from '@shared/reviewTarget'
 import type { Event, NavEvent, SessionMeta } from '../types'
 
-export interface TargetSpan {
+interface TargetSpan {
   /** LLM に見せる ID（T1, T2 …。最初に出てきた順） */
   id: string
   /** 同じ対象かの鍵（shared/reviewTarget.ts の key） */
@@ -73,9 +73,4 @@ export function buildTargetIndex(events: readonly Event[], meta: Pick<SessionMet
       return id
     }
   }
-}
-
-/** その対象を開いていた時刻か */
-export function inTarget(index: TargetIndex, id: string, t: number): boolean {
-  return index.at(t) === id
 }

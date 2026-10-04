@@ -32,7 +32,7 @@ interface LoadedMap {
 
 const CONTEXT_LINES = 5
 
-export interface RemapOptions {
+interface RemapOptions {
   /** リポジトリの直下（dev では app.getAppPath()） */
   appPath: string
   /** Vite の dev サーバー（ELECTRON_RENDERER_URL）。無ければ renderer は戻さない */

@@ -18,7 +18,7 @@
 </table>
 <p>你的選擇會被記住。在 macOS 上，擷取螢幕與視窗需要螢幕錄製權限（<a href="troubleshooting.html#screen-permission">授予方式</a>）。</p>
 
-<!-- @record 0d1af48c7a -->
+<!-- @record deb62ed37c -->
 ## 開始、暫停、停止
 {{clip:record|錄製：一邊談論頁面，一邊用畫筆圈出位置。}}
 <ol class="docs-steps">
@@ -29,7 +29,7 @@
 </ol>
 <p>在側邊欄中，每個專案都有自己的 <span class="docs-ui">新增審查</span>（或該列上的 <span class="docs-ui">+</span>，即 <span class="docs-ui">在 &lt;name&gt; 中新增審查</span>）。在其他專案上使用時，會先切換到該專案，再開始錄製。如果有其他錄製正在進行，則不會開始。</p>
 <p>每次錄製的上限為 90 分鐘。接近上限時會出現警告，達到上限時會自動停止並儲存。</p>
-<figure class="docs-shot" data-shot="feedback-toolbar"><div class="docs-shot-slot" role="img" aria-label="意見模式工具列（螢幕截圖即將推出）"><span>螢幕截圖即將推出</span></div><figcaption>意見模式工具列</figcaption></figure>
+{{shot:feedback-toolbar|意見模式工具列}}
 
 <!-- @pen 0232dc7983 -->
 ## 畫筆
@@ -48,7 +48,38 @@
   <li>一段語音結束時</li>
 </ul>
 
-<!-- @mic 3540329978 -->
+<!-- @mic 38bffa5e34 -->
 ## 麥克風
 <p>麥克風預設為開啟。可從頁尾（<span class="docs-ui">關閉麥克風</span> / <span class="docs-ui">開啟麥克風</span>）或設定中的 <span class="docs-ui">錄下我的聲音</span> 切換。在 <span class="docs-ui">麥克風</span> 中選擇裝置。</p>
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">即將推出</p><p><span class="docs-ui">也錄下對方的聲音</span>（透過系統音訊擷取會議中的其他參與者）目前為 Beta 版。尚未在會議 App 中驗證。</p></div>
+
+<!-- @other-side bf51c46448 -->
+## 錄下會議中對方的聲音
+<p>在通話中一起審查頁面時，可以讓 Ferret 除了麥克風之外，也錄下你從電腦聽到的聲音。這適用於任何會議 App（Zoom、Google Meet、Microsoft Teams 等），因為 Ferret 錄的是電腦的音訊，而不是會議 App 本身。兩者會分開處理：麥克風會轉錄為 <strong>我</strong>，電腦的音訊則轉錄為 <strong>對方</strong>，因此每則意見都能看出是誰提出的要求。即使關閉麥克風也能使用。</p>
+<ol class="docs-steps">
+  <li>照常在會議 App 中加入通話，麥克風與喇叭沿用該 App 自己的設定。</li>
+  <li>在設定中開啟 <span class="docs-ui">也錄下對方的聲音</span>，或在頁尾的麥克風選單中開啟 <span class="docs-ui">也錄下其他人的聲音</span>。錄製期間無法變更。</li>
+  <li>選擇要錄製的內容：要審查頁面時選 <span class="docs-ui">內建瀏覽器</span>，觀看共用畫面時選 <span class="docs-ui">整個螢幕</span> / <span class="docs-ui">視窗</span>。</li>
+  <li>按 <span class="docs-ui">錄製</span>，然後和其他人一起邊說明頁面、邊用畫筆圈出位置。</li>
+  <li>按 <span class="docs-ui">停止</span>。雙方的聲音都會被轉錄並整理成意見。</li>
+</ol>
+<p>請告知其他參與者你正在錄音。使用雲端轉錄服務時，他們的聲音也會傳送到該服務。</p>
+
+<!-- @other-side-os cb39949418 -->
+## 各作業系統的系統音訊
+<table>
+  <thead><tr><th>作業系統</th><th>需求</th><th>權限</th></tr></thead>
+  <tbody>
+    <tr><td>macOS</td><td>macOS 14.2 或更新版本。在較早的版本上，只會錄下你的麥克風。</td><td>第一次錄製對方的聲音時，macOS 會詢問是否允許 Ferret 錄製系統音訊。如果你拒絕了，請在 <span class="docs-ui">系統設定 → 隱私權與安全性 → 螢幕與系統錄音</span> 中開啟 Ferret，然後結束並重新開啟 Ferret。這不會錄下你的螢幕。</td></tr>
+    <tr><td>Windows</td><td>在 <span class="docs-ui">設定 → 系統 → 音效</span> 中有已啟用的播放裝置（喇叭或耳機）。</td><td>不需要。會錄下預設的播放裝置。</td></tr>
+    <tr><td>Linux</td><td>PulseAudio，或裝有 <code>pipewire-pulse</code> 的 PipeWire（大多數桌面環境的預設）。</td><td>不需要。會錄下預設的輸出。</td></tr>
+  </tbody>
+</table>
+<p>如果無法錄下對方的聲音，Ferret 會在警告中說明原因，並繼續錄製你的麥克風、影片與畫筆。請參閱<a href="troubleshooting.html#system-audio">疑難排解</a>。</p>
+
+<!-- @other-side-tips 2881bdb5c2 -->
+## 會議中的訣竅
+<ul>
+  <li><strong>請使用耳機。</strong>使用喇叭時，你的麥克風也會收到對方的聲音。Ferret 在錄製對方聲音時會為麥克風開啟回音消除，並捨棄雙方都錄到的語句，但使用耳機能得到最乾淨的逐字稿。</li>
+  <li><strong>電腦播放的所有聲音都會被錄下</strong>，包括通知音效與影片。審查期間請把不需要的聲音靜音。</li>
+  <li><strong>錄製途中請勿切換音訊裝置。</strong>如果輸出裝置變更或被拔除，對方聲音的錄製會停止並顯示警告。麥克風、影片與畫筆會繼續錄製。之後可用 <span class="docs-ui">繼續錄製</span> 補錄其餘部分。</li>
+</ul>

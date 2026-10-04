@@ -15,7 +15,7 @@
  */
 
 /** 名前がそのまま一致したら消すもの */
-export const INHERITED_AGENT_SESSION_ENV_KEYS: readonly string[] = [
+const INHERITED_AGENT_SESSION_ENV_KEYS: readonly string[] = [
   // Claude Code が自分の子プロセス（Bash ツールなど）に付けるもの
   'CLAUDECODE',
   'CLAUDE_PID',
@@ -38,7 +38,7 @@ export const INHERITED_AGENT_SESSION_ENV_KEYS: readonly string[] = [
 ]
 
 /** この接頭辞で始まるものは消す（セッション ID・同席の有無・親とのメッセージ通信） */
-export const INHERITED_AGENT_SESSION_ENV_PREFIXES: readonly string[] = ['CLAUDE_CODE_SESSION_', 'CLAUDE_CODE_MESSAGING_']
+const INHERITED_AGENT_SESSION_ENV_PREFIXES: readonly string[] = ['CLAUDE_CODE_SESSION_', 'CLAUDE_CODE_MESSAGING_']
 
 /** 親のエージェントのセッションを示す変数か */
 export function isInheritedAgentSessionEnv(name: string, value?: string): boolean {
@@ -48,13 +48,4 @@ export function isInheritedAgentSessionEnv(name: string, value?: string): boolea
   // 何も書かずに終わってしまうので、この値のときだけ消す（利用者が設定したエディタは残す）
   if (name === 'GIT_EDITOR' && value === 'true') return true
   return false
-}
-
-/** 親のエージェントのセッションを示す変数を除いた環境変数を返す（元は変えない） */
-export function stripInheritedAgentSessionEnv<T extends Record<string, string | undefined>>(env: T): T {
-  const next = {} as Record<string, string | undefined>
-  for (const [name, value] of Object.entries(env)) {
-    if (!isInheritedAgentSessionEnv(name, value)) next[name] = value
-  }
-  return next as T
 }

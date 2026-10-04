@@ -38,7 +38,7 @@ export type AiKeyPermission = 'cloudflareWorkersAi'
 /** モデルの一言の説明（画面では ai.hint.* の文言にする） */
 export type AiModelHint = 'balanced' | 'fast' | 'cheap' | 'accurate' | 'best' | 'speakers' | 'timestamps' | 'local' | 'pinned' | 'retiring'
 
-export interface AiModelOption {
+interface AiModelOption {
   /** API に渡すモデル名そのもの */
   id: string
   hint: AiModelHint
@@ -180,7 +180,7 @@ export const STT_REMOTE_PROVIDERS = Object.keys(STT_PROVIDER_PRESETS) as SttRemo
 
 /** 整理を API キーで直接呼ぶ提供元。並びは設定の選択欄の順（おすすめの Ollama が先頭、Custom は最後） */
 export type LlmApiProvider = 'anthropic' | 'openai' | 'gemini' | 'openrouter' | 'vercel-gateway' | 'cloudflare' | 'ollama' | 'lmstudio' | 'compatible'
-export type LlmApiKind = 'anthropic-messages' | 'openai-chat' | 'gemini'
+type LlmApiKind = 'anthropic-messages' | 'openai-chat' | 'gemini'
 
 export interface LlmProviderPreset extends PresetSetup {
   id: LlmApiProvider
@@ -446,7 +446,7 @@ export function selectModel(preset: SetupPreset, override: AiEndpointConfig | un
   return Object.keys(next).length ? next : undefined
 }
 
-export interface SetupLayout {
+interface SetupLayout {
   /** モデルは一覧から選ぶか、自由入力か */
   modelField: 'select' | 'text'
   /** Base URL を詳細の外に出すか（Custom・Azure だけ） */

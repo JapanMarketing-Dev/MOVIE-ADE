@@ -9,8 +9,8 @@
  * 0: すべて出す → 1: 「used」を省く → 2: Fable などの副次の枠を省く → 3: バーと％だけ → 4: ％だけ（それでも溢れれば末尾を省略記号）
  * 捨てたものは Usage のポップオーバーで全部見られる。
  */
-export const USAGE_DENSITY_LEVELS = 5
-export type SegmentDetail = { used: boolean; secondary: boolean; labels: boolean; bar: boolean; allSections: boolean }
+const USAGE_DENSITY_LEVELS = 5
+type SegmentDetail = { used: boolean; secondary: boolean; labels: boolean; bar: boolean; allSections: boolean }
 
 export function segmentDetail(level: number): SegmentDetail {
   if (level >= 4) return { used: false, secondary: false, labels: false, bar: false, allSections: false }

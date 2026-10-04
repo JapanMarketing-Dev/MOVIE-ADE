@@ -8,7 +8,7 @@
 export const DEFAULT_SAME_RATIO = 0.012
 
 /** 1画素を「違う」とみなす輝度差の合計（BGRAの3成分の絶対差の和） */
-export const DEFAULT_PIXEL_DELTA = 24
+const DEFAULT_PIXEL_DELTA = 24
 
 /**
  * 縮小画像どうしを比べて、画面が変わったかを返す。

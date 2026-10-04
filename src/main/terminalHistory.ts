@@ -13,7 +13,7 @@
  */
 
 /** 覚えておく上限（文字数）。Claude Code / Codex の1画面分の描き直しを十分に含む */
-export const TERMINAL_HISTORY_LIMIT = 512 * 1024
+const TERMINAL_HISTORY_LIMIT = 512 * 1024
 
 export class TerminalHistory {
   private chunks: string[] = []

@@ -92,6 +92,11 @@ describe('中継: 送信と応答（偽の fetch）', () => {
     for (const code of ['network', 'timeout', 'internal', 'upstream_failed', 'disabled', 'bad_response'] as const) expect(shouldFallBackToBrowser(code)).toBe(true)
     for (const code of ['rate_limited', 'duplicate', 'too_large', 'image_too_large', 'invalid_title'] as const) expect(shouldFallBackToBrowser(code)).toBe(false)
   })
+
+  it('security-4 [12] 中継が「GitHub が作ったか分からない」と返したら、送り直さず・ブラウザにも回さない', async () => {
+    expect(shouldFallBackToBrowser('upstream_pending')).toBe(false)
+    expect(await sendToRelay(sub(), { fetch: async () => json(504, { ok: false, code: 'upstream_pending' }), userAgent: 'u' })).toEqual({ ok: false, code: 'upstream_pending', retryable: false })
+  })
 })
 
 describe('画面の添付: 2MB に収める', () => {

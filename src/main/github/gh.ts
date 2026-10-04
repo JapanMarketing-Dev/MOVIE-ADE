@@ -44,16 +44,6 @@ function findCli(cli: 'gh' | 'glab'): string | null {
   return cliPaths[cli]!
 }
 
-/** gh の絶対パス。見つからなければ null */
-export function findGh(): string | null {
-  return findCli('gh')
-}
-
-/** glab（GitLab CLI）の絶対パス。見つからなければ null */
-export function findGlab(): string | null {
-  return findCli('glab')
-}
-
 export interface ExecResult {
   stdout: string
   stderr: string
@@ -105,7 +95,7 @@ async function runCli(cli: 'gh' | 'glab', args: string[], options: { cwd?: strin
   return result
 }
 
-export type GhErrorKind = 'missing' | 'timeout' | 'not-logged-in' | 'rate-limited' | 'repo-not-found' | 'network' | 'failed'
+type GhErrorKind = 'missing' | 'timeout' | 'not-logged-in' | 'rate-limited' | 'repo-not-found' | 'network' | 'failed'
 
 /**
  * gh の失敗。利用者に見せる想定内のもので、**クラッシュレポート（Sentry）には送らない**（UserFacingError）。

@@ -1,10 +1,11 @@
+import { terminalOwnsMenuKey } from '@shared/terminalMenuKeys'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import type { SessionPaths } from './sessions/paths'
 import type { IncrementalTranscriber } from './pipeline/stt/engine'
 import { loadDevDotEnv, type SttKeyStore } from './pipeline/stt/keys'
-import { BrowserWindow, app, dialog, ipcMain, nativeTheme, safeStorage, shell, protocol, session } from 'electron'
+import { BrowserWindow, app, clipboard, dialog, ipcMain, nativeTheme, safeStorage, shell, protocol, session } from 'electron'
 import { basename, dirname, join } from 'node:path'
 import type { IpcEventChannel, IpcEvents, IpcRequests } from '@shared/ipc'
 import type { AiVendor, LlmApiProvider, SttRemoteProvider } from '@shared/aiProviders'
@@ -33,6 +34,7 @@ import { APP_ALLOWED_PERMISSIONS, installPermissionPolicy, isAllowedExternalUrl,
 import { pathToFileURL } from 'node:url'
 import type { PcmBlock, RecordingController } from './recording'
 import { installMenu } from './menu'
+import { allowCrashReload } from './crashReload'
 import { applyLocalePreference } from './locale'
 import { PRODUCT_NAME, getLocale, t } from '@shared/i18n'
 import { UserFacingError, isStaleChunkError, toUserFacingFileError } from '@shared/errors'
@@ -55,17 +57,19 @@ import {
 } from './accounts'
 import { attachUsageWindow, getAccountUsage, getUsageState, refreshUsage } from './usage/service'
 import { listAgentResources } from './agentResources'
-import { appVersion, checkForUpdate } from './updateCheck'
+import { appVersion, checkForUpdate, verifiedDownload } from './updateCheck'
 import { sanitizeLayout } from '@shared/layout'
 import { ResourceCollector } from './resources'
 import { ProjectWatcher, listDirectory, listFiles, readTextFile, resolveInside, searchFiles, writeTextFile } from './files'
+import { createEntry, renameEntry, trashEntries, trashFor } from './fileOps'
 import { inspectProjectFile, projectMediaResponse } from './projectMedia'
 import { isRiskyToOpenExternally } from '@shared/fileViewer'
 import { refreshPreviewIn, registerPreviewProtocol, renderPreviewSource } from './preview'
-import { PREVIEW_SCHEME } from '@shared/preview'
+import { PREVIEW_SCHEME, stripPreviewGrant } from '@shared/preview'
 import { crashReportsActive, initCrashReporting, maybeSendTestEvent, reportMainError, sentryTestKinds, setTelemetryContext, telemetryInstallId, trackIpc } from './telemetry'
 import { wrapIpcHandler } from '@shared/telemetry'
 import { flow, reportHandled } from '@shared/report'
+import { syntheticSystemAudio, systemAudioFeatures } from '@shared/systemAudio'
 
 /*
  * クラッシュの受け口（Crashpad / Sentry）は、OSの既定のクラッシュ処理より前に入れたいので、他の初期化より先に呼ぶ。
@@ -92,6 +96,13 @@ if (!IS_PACKAGED && process.platform === 'darwin' && process.env.ADE_DEV_REAL_KE
   app.commandLine.appendSwitch('use-mock-keychain')
 }
 /*
+ * 相手の声（PC の音声）をループバックで取れるようにする。macOS 14.2+ は Core Audio の tap、Linux は PulseAudio のモニター。
+ * Windows は既定で取れる。許可を求めるのは録画で相手の声を録り始めたときだけ（src/shared/systemAudio.ts）
+ */
+if (systemAudioFeatures(process.platform).length) app.commandLine.appendSwitch('enable-features', systemAudioFeatures(process.platform).join(','))
+// 内蔵ブラウザの Google ログインが FedCM の画面で止まらないよう、従来のポップアップに戻す（Orca #12854。Orca と同じ）
+app.commandLine.appendSwitch('disable-features', 'FedCm')
+/*
  * 表示名は Ferret だが、app.setName() は呼ばない。app.name（package.json の name = ade-movie）は
  * macOS のキーチェーンの「ade-movie Safe Storage」の名前にもなっていて、変えると保存済みのキーや
  * 内蔵ブラウザの Cookie を復号できなくなる。メニュー・Dock・⌘Tab の名前は .app の CFBundleName
@@ -114,6 +125,8 @@ mark('main:loaded')
  */
 
 let mainWindow: BrowserWindow | null = null
+/** 画面のターミナルにフォーカスがあるか（renderer が terminal:focused で知らせる） */
+let terminalFocused = false
 let browser: EmbeddedBrowser | null = null
 let terminals: TerminalManager | null = null
 /** Resource Manager の集計。ターミナル・ブラウザ・プロジェクトは読むだけ */
@@ -370,8 +383,10 @@ function recordProjectUrl(state: { url: string; loading: boolean }): void {
   if (!id || state.loading || !isRecordableUrl(state.url)) return
   const { projects } = currentSettings()
   const project = projects.find((p) => p.id === id)
-  if (!project || project.session?.url === state.url) return
-  updateSettings({ projects: withProjectSession(projects, id, { url: state.url }) })
+  // プレビューの外部の画像の許可（使い切りの合言葉）は覚えない（security-4 [6]）
+  const url = stripPreviewGrant(state.url)
+  if (!project || project.session?.url === url) return
+  updateSettings({ projects: withProjectSession(projects, id, { url }) })
 }
 
 /** フォルダを登録して開く。同じフォルダが登録済みならそれを開く */
@@ -552,13 +567,33 @@ function createWindow(): BrowserWindow {
     }
   })
 
-  window.once('ready-to-show', () => {
-    mark('window:readyToShow')
+  const showOnce = () => {
     // 画面に出さない指定のときは show() を呼ばない（フォーカスも奪わない）
-    if (HIDE_WINDOW) return
+    if (HIDE_WINDOW || window.isDestroyed() || window.isVisible()) return
     // E2Eで表示する場合も、前面に出して作業を邪魔しない
     if (IS_E2E) window.showInactive()
     else window.show()
+  }
+  window.once('ready-to-show', () => {
+    mark('window:readyToShow')
+    showOnce()
+  })
+  // Linux の一部の環境では ready-to-show が届かず、窓が出ないままになる。読み込み終わりから少し待って出す（Orca #8421）
+  window.webContents.once('did-finish-load', () => setTimeout(showOnce, 1500).unref?.())
+
+  // Windows / Linux: ターミナルにフォーカスがあるときは、シェルが使う Ctrl+… をメニューのショートカットに取らせない（Orca #11540）
+  window.webContents.on('before-input-event', (_event, input) => {
+    if (input.type === 'keyDown') window.webContents.setIgnoreMenuShortcuts(terminalFocused && terminalOwnsMenuKey(input, process.platform))
+  })
+  // 読み込み直したら、新しい画面が知らせ直すまではターミナルにフォーカスが無いとみなす
+  window.webContents.on('did-start-loading', () => { terminalFocused = false })
+
+  // 画面のプロセスが落ちたら読み込み直す（白い画面のまま残さない。crashReload.ts）
+  const crashReloads: number[] = []
+  window.webContents.on('render-process-gone', (_event, details) => {
+    if (shuttingDown || window.isDestroyed() || !allowCrashReload(crashReloads, details.reason, Date.now())) return
+    console.warn(`[app] 画面のプロセスが終了しました（${details.reason}）。読み込み直します`)
+    window.webContents.reload()
   })
 
   // リンクはブラウザで開く。http / https / mailto だけ（プレビューの iframe の中身はプロジェクトのもので信用しない。
@@ -758,7 +793,7 @@ async function stopReview(): Promise<RecordingStatus> {
           recordStarMoment('reviews')
           // 何も起きていない時間を削った版は、指摘を出したあとに裏で作る（失敗しても元の動画のまま使える）
           scheduleTrim(append?.review ?? paths, append?.n ?? 1, result, stt?.segments ?? [],
-            activeOptions.captureMic === false || (!!stt && stt.errors.length === 0))
+            (activeOptions.captureMic === false && !activeOptions.captureSystemAudio) || (!!stt && stt.errors.length === 0))
         }
         return recording.status
       } finally { recordingBusy = false }
@@ -845,8 +880,21 @@ function registerIpc(): void {
       const { ok, message } = await terminals!.sendReview(target, text)
       return { ok, message }
     },
-    'app:openUpdate': () => {
-      if (latestReleaseUrl) void shell.openExternal(latestReleaseUrl).catch((err: unknown) => reportHandled(err, { area: 'update', op: 'open release page' }))
+    'app:openUpdate': async () => {
+      // 署名を確かめたこの OS・CPU 向けのファイルは、アプリが落として sha256 を確かめてから置く（security-4 [7]）
+      const file = verifiedDownload()
+      if (!file) {
+        // この OS・CPU 向けのファイルが無い版だけ、ダウンロードページを開く（ページも署名と中身を確かめる）
+        if (latestReleaseUrl) void shell.openExternal(latestReleaseUrl).catch((err: unknown) => reportHandled(err, { area: 'update', op: 'open release page' }))
+        return
+      }
+      const [{ downloadVerifiedUpdate }, { net }] = await Promise.all([import('./updateDownload'), import('electron')])
+      try {
+        shell.showItemInFolder(await downloadVerifiedUpdate(file, app.getPath('downloads'), ((url, init) => net.fetch(url as string, init)) as typeof fetch))
+      } catch (err) {
+        reportHandled(err, { area: 'update', op: 'download update' })
+        throw new UserFacingError(t('update.errors.download'))
+      }
     },
 
     'workspace:open': () => openFolderDialog(),
@@ -962,6 +1010,10 @@ function registerIpc(): void {
     'terminal:screen': (id, text) => terminals?.updateScreen(id, text),
     'terminal:agentState': (id) => terminals?.agentState(id) ?? { kind: 'unknown', state: 'unknown' },
     'terminal:cwd': (id) => terminals?.currentCwd(id) ?? null,
+    'terminal:clipboardText': () => clipboard.readText(),
+    // 端末の中のプログラムが送れる量に上限を付ける（OSC 52 は base64 で 128K 文字まで。選択のコピーは大きくてもよい）
+    'terminal:writeClipboard': (text) => { if (typeof text === 'string' && text.length <= 8 * 1024 * 1024) clipboard.writeText(text) },
+    'terminal:focused': (focused) => { terminalFocused = focused === true },
     'terminal:list': () => terminals?.list() ?? [],
     'terminal:attach': (id) => {
       const info = terminals?.attach(String(id)) ?? null
@@ -994,7 +1046,7 @@ function registerIpc(): void {
         const launchAgent = want.kind === 'agent' ? want.agent : want.kind === 'terminal' ? want.agent ?? undefined : undefined
         return { ok: false, message: t('terminal.send.noAgent'), noAgent: true, ...(launchAgent ? { launchAgent } : {}) }
       }
-      const result: { ok: boolean; message: string; terminalId?: string; submitted?: boolean } = { ...(await terminals!.sendReview(target, request.text ?? (isRemoteWorkspace() ? await remoteReviewInstruction(paths) : reviewInstruction(paths, currentSettings().agentPrompt)))), terminalId: target }
+      const result: { ok: boolean; message: string; terminalId?: string; submitted?: boolean } = { ...(await terminals!.sendReview(target, request.text ?? (isRemoteWorkspace() ? await remoteReviewInstruction(paths) : await reviewInstruction(paths, currentSettings().agentPrompt)))), terminalId: target }
       // 一覧の「送信済み」に使う。記録できなくても送信の結果は変えない
       if (result.ok) await (await import('./sessions')).updateLabel(paths, { sentAt: new Date().toISOString() }).catch((err: unknown) => reportHandled(err, { area: 'review', op: 'record sent label' }))
       // 送った指摘を対応中にする（Agent が progress.json で done にするまで）。書けなくても送信の結果は変えない。
@@ -1194,6 +1246,10 @@ function registerIpc(): void {
       const target = historyFolder(folderPath)
       return target ? (await import('./sessions')).listSessions(target) : []
     },
+    'review:activity': async (folderPath) => {
+      const target = historyFolder(folderPath)
+      return target ? (await import('./sessions/history')).sessionActivity(target) : { recorded: false, sent: false }
+    },
     'review:label': async (id, patch, folderPath) => {
       const target = historyFolder(folderPath)
       const s = await import('./sessions')
@@ -1285,7 +1341,11 @@ function registerIpc(): void {
           transcription: options.transcription ?? 'local' }
         sttWarnings = []
         transcriber = null
-        if (options.captureMic !== false && (process.env.ADE_SYNTHETIC_MIC !== '1' || (IS_E2E && process.env.ADE_QA_AUDIO))) {
+        // 検証用の合成音は文字起こしに送らない。送るのは検証の音声（ADE_QA_AUDIO）か、相手の声の検証（ADE_SYNTHETIC_SYSTEM_AUDIO）のときだけ
+        const systemAudioCheck = options.captureSystemAudio ? syntheticSystemAudio(process.env.ADE_SYNTHETIC_SYSTEM_AUDIO, IS_E2E) : null
+        // 検証起動で口の指定が無ければ、本物のループバックを開かない（OS の許可の確認を出さない）。許可が無いときと同じに扱う
+        const systemAudioSafe = systemAudioCheck ?? (options.captureSystemAudio && (IS_E2E || process.env.ADE_SYNTHETIC_MIC === '1') ? 'denied' as const : null)
+        if ((options.captureMic !== false || options.captureSystemAudio) && (process.env.ADE_SYNTHETIC_MIC !== '1' || (IS_E2E && process.env.ADE_QA_AUDIO) || systemAudioCheck)) {
           const { IncrementalTranscriber } = await import('./pipeline/stt/engine')
           if (activeOptions.transcription !== 'local') {
             const provider = activeOptions.transcription
@@ -1325,6 +1385,7 @@ function registerIpc(): void {
           ...(IS_E2E && process.env.ADE_QA_LIMIT_MS ? { maxDurationMs: Number(process.env.ADE_QA_LIMIT_MS) } : {}),
           ...(options.micDeviceId ? { micDeviceId: options.micDeviceId } : {}),
           ...(process.env.ADE_SYNTHETIC_MIC === '1' ? { syntheticMic: true } : {}),
+          ...(systemAudioSafe ? { syntheticSystemAudio: systemAudioSafe } : {}),
           ...(IS_E2E && process.env.ADE_QA_AUDIO ? { syntheticMicWavBase64: (await readFile(process.env.ADE_QA_AUDIO)).toString('base64') } : {}) })
         for (const warning of sttWarnings) send('recording:warning', warning)
         return controller.status
@@ -1372,6 +1433,9 @@ function registerIpc(): void {
     'fs:files': () => listFiles(projectRoot()),
     'fs:search': (query, mode) => searchFiles(projectRoot(), query, mode),
     'fs:inspect': (relPath) => inspectProjectFile(projectRoot(), relPath),
+    'fs:create': (parentRel, name, kind) => createEntry(projectRoot(), parentRel, name, kind),
+    'fs:rename': (relPath, newName) => renameEntry(projectRoot(), relPath, newName),
+    'fs:trash': (relPaths) => trashEntries(projectRoot(), relPaths, trashFor((absolute) => shell.trashItem(absolute))),
     'fs:reveal': async (relPath) => shell.showItemInFolder(await resolveInside(projectRoot(), relPath)),
     'fs:openExternal': async (relPath) => {
       const file = await resolveInside(projectRoot(), relPath)
@@ -1523,6 +1587,8 @@ async function main(): Promise<void> {
   app.on('second-instance', () => {
     if (!mainWindow) return
     if (mainWindow.isMinimized()) mainWindow.restore()
+    // 窓がまだ出ていなければ出す（2回目の起動でも見えないままにしない。Orca #8421）
+    if (!mainWindow.isVisible() && !HIDE_WINDOW) mainWindow.show()
     mainWindow.focus()
   })
 

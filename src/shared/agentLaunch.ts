@@ -27,7 +27,7 @@ export function startupShellForPath(shellPath: string): AgentStartupShell {
   return 'posix'
 }
 
-export type StartupCommandTokens = { ok: true; tokens: string[] } | { ok: false; error: string }
+type StartupCommandTokens = { ok: true; tokens: string[] } | { ok: false; error: string }
 
 /**
  * Unix シェル風の分かち書き。`a"b"c` は1語 `abc`、クォート内の空白は区切らない。
@@ -158,7 +158,7 @@ function quoteCmdArg(value: string): string {
   return `"${escaped}"`
 }
 
-export type AgentLaunchCommand = { ok: true; command: string } | { ok: false; error: string }
+type AgentLaunchCommand = { ok: true; command: string } | { ok: false; error: string }
 
 /**
  * 設定（command + args）から、シェルへ流し込む1行を作る。

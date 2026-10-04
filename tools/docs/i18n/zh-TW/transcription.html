@@ -63,7 +63,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
 </ol>
 <p>模型固定為 <code>gpt-transcribe</code>。僅在開發環境（<code>pnpm dev</code>）中，也會讀取被 git 忽略的 <code>.env</code> 檔案中的 <code>OPENAI_API_KEY</code>。打包後的版本絕不會讀取 <code>.env</code>。</p>
 
-<!-- @compatible 8c200e00b1 -->
+<!-- @compatible 2ccbf4537c -->
 ## 相容 OpenAI 的端點
 <p>Ferret 會傳送 <code>POST &lt;base&gt;/v1/audio/transcriptions</code>（multipart：<code>file</code>、<code>model</code>、<code>response_format=json</code>、<code>language</code>、<code>prompt</code>），因此是為實作了 OpenAI 轉錄路由的伺服器而設計。</p>
 <ol class="docs-steps">
@@ -80,7 +80,7 @@ cmake -B build &amp;&amp; cmake --build build -j --config Release
     <tr><td><a href="https://console.groq.com/docs/speech-to-text">Groq</a></td><td><code>https://api.groq.com/openai/v1</code></td><td><code>whisper-large-v3-turbo</code></td></tr>
   </tbody>
 </table>
-<div class="docs-callout docs-callout-warn"><p>Ferret 是為這類相容 OpenAI 的伺服器而設計，但尚未實際與 Ferret 一起測試過。上表的 URL 與模型名稱是各伺服器文件中的預設值。</p></div>
+<div class="docs-callout docs-callout-note"><p>Ferret 透過標準的 OpenAI 轉錄 API（<code>/v1/audio/transcriptions</code>）與這些伺服器溝通，因此任何提供此 API 的伺服器都能使用。上表的 URL 與模型名稱是各伺服器文件中的預設值。</p></div>
 <ul>
   <li>儲存時會去掉結尾的 <code>/v1</code> 或貼上的 <code>/v1/audio/transcriptions</code>，因此兩種寫法都可以。</li>
   <li>含有使用者名稱或密碼的 URL 會被拒絕，所以金鑰絕不會寫進 <code>settings.json</code>。</li>

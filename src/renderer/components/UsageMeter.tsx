@@ -93,6 +93,13 @@ function ProviderSegment({ p, agent, level, now }: { p: ProviderRateLimits | nul
       </span>
     )
   }
+  if (!tightest && p.status === 'ok' && p.unlimited) {
+    return (
+      <span className="usage-seg usage-seg--muted" title={formatPlanLabel(p.planType) ?? undefined}>
+        <AgentIcon agent={agent} size={12} /> ∞
+      </span>
+    )
+  }
   if (!tightest) {
     return (
       <span className="usage-seg usage-seg--muted">
@@ -256,6 +263,7 @@ function UsageRow({ p, agent, now }: { p: ProviderRateLimits | null; agent: Acco
 /** 「>」の先：アカウント別の内訳と切り替え（Orca の ClaudeSwitcherMenu 相当） */
 function AccountBreakdown({ agent, onBack, onManage, onSwitched }: { agent: AccountAgent; onBack: () => void; onManage?: () => void; onSwitched: () => void }) {
   const t = useT()
+  const now = useMinuteClock()
   const { state, action, error, select, add } = useAgentAccounts()
   const [rows, setRows] = useState<AccountUsage[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -316,6 +324,11 @@ function AccountBreakdown({ agent, onBack, onManage, onSwitched }: { agent: Acco
               <span className="usage-row__head">
                 <span className="usage-row__name">{row.label}</span>
                 {row.active && <span className="usage-account__active">{t('accounts.selected')}</span>}
+                {/* アカウントごとの戻るまでの時間（主の行と同じ。Orca #5114 #21415） */}
+                {row.rateLimits && sections.length > 0 && (() => {
+                  const reset = soonestResetLabel(row.rateLimits, now)
+                  return reset ? <span className="usage-row__reset">{reset}</span> : null
+                })()}
               </span>
               {sections.length > 0 ? (
                 <span className="usage-row__metrics usage-row__metrics--flush">
@@ -421,7 +434,7 @@ export function UsageMeter({
   // 表示の中身が変わったときだけ幅を測り直す（1分ごとの残り時間の更新も含む）
   const contentKey = JSON.stringify([now, AGENTS.map((agent) => {
     const p = usage[agent]
-    return p && [p.status, p.session?.usedPercent, p.weekly?.usedPercent, p.fableWeekly?.usedPercent, p.session?.resetsAt, p.weekly?.resetsAt]
+    return p && [p.status, p.session?.usedPercent, p.weekly?.usedPercent, p.fableWeekly?.usedPercent, p.spendLimit?.usedPercent, p.unlimited, p.session?.resetsAt, p.weekly?.resetsAt]
   })])
   const { level, fullWidth, meterRef, contentRef } = useUsageDensity(contentKey, { shrink, onFullWidth })
 

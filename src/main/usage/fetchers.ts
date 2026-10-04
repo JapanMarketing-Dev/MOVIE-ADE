@@ -85,7 +85,7 @@ export function parseResetTimestamp(value: string | number | undefined): number 
   return Number.isNaN(parsed) ? null : parsed
 }
 
-export function mapClaudeUsageWindow(raw: ClaudeUsageWindowInput | undefined, windowMinutes: number): RateLimitWindow | null {
+function mapClaudeUsageWindow(raw: ClaudeUsageWindowInput | undefined, windowMinutes: number): RateLimitWindow | null {
   if (!raw) return null
   const used = typeof raw.utilization === 'number' ? raw.utilization : typeof raw.used_percentage === 'number' ? raw.used_percentage : null
   if (used === null) return null
@@ -102,7 +102,7 @@ type ClaudeUsageResponse = {
 }
 
 /** モデル別（Fable）の週の枠。新しい limits[] 形式と、古いキー名の両方を見る */
-export function mapClaudeFableWindow(data: ClaudeUsageResponse): RateLimitWindow | null {
+function mapClaudeFableWindow(data: ClaudeUsageResponse): RateLimitWindow | null {
   const scoped = Array.isArray(data.limits)
     ? data.limits.find(
         (l) => l?.kind === 'weekly_scoped' && Number.isFinite(l.percent) && l.scope?.model?.display_name?.trim().toLowerCase() === 'fable'
@@ -162,6 +162,10 @@ type CodexBackendWindow = { used_percent?: number; limit_window_seconds?: number
 type CodexUsageResponse = {
   plan_type?: string
   rate_limit?: { primary_window?: CodexBackendWindow | null; secondary_window?: CodexBackendWindow | null } | null
+  /** Business: メンバーごとの利用額の上限（Orca #8664） */
+  spend_control?: { individual_limit?: { used_percent?: number } | null } | null
+  /** Business の上限なし: 枠が null で credits.unlimited が true（Orca #15764） */
+  credits?: { unlimited?: boolean } | null
 }
 
 function codexWindow(raw: CodexBackendWindow | null | undefined): (RateLimitWindow & { durationKnown: boolean }) | null {
@@ -200,7 +204,14 @@ export function mapCodexUsageResponse(payload: CodexUsageResponse): ProviderRate
   if (!session && primary && classifyMinutes(primary.windowMinutes) === null) session = { ...primary, windowMinutes: primary.durationKnown ? primary.windowMinutes : SESSION_MINUTES }
   if (!weekly && secondary && classifyMinutes(secondary.windowMinutes) === null) weekly = { ...secondary, windowMinutes: secondary.durationKnown ? secondary.windowMinutes : WEEKLY_MINUTES }
   const strip = (w: RateLimitWindow | null): RateLimitWindow | null => (w ? { usedPercent: w.usedPercent, windowMinutes: w.windowMinutes, resetsAt: w.resetsAt } : null)
-  return { provider: 'codex', session: strip(session), weekly: strip(weekly), planType: payload.plan_type, updatedAt: Date.now(), error: null, status: 'ok' }
+  const spent = payload.spend_control?.individual_limit?.used_percent
+  const spendLimit = typeof spent === 'number' && Number.isFinite(spent) ? { usedPercent: Math.min(100, Math.max(0, spent)), windowMinutes: 0, resetsAt: null } : null
+  const unlimited = !session && !weekly && !spendLimit && payload.credits?.unlimited === true
+  return {
+    provider: 'codex', session: strip(session), weekly: strip(weekly),
+    ...(spendLimit ? { spendLimit } : {}), ...(unlimited ? { unlimited } : {}),
+    planType: payload.plan_type, updatedAt: Date.now(), error: null, status: 'ok'
+  }
 }
 
 export async function fetchCodexUsage(request: UsageRequest, codexHome: string): Promise<ProviderRateLimits> {

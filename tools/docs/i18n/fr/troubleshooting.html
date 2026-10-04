@@ -5,6 +5,10 @@ Dépannage
 <!-- @lead eabdc6539a -->
 Problèmes courants et solutions. Les messages cités sont ceux qu'affiche l'application en français.
 
+<!-- @install 2d5deeaa6d -->
+## Installation et premier lancement
+<p>Linux : sur Ubuntu 23.10 et versions ultérieures, l'AppImage peut s'arrêter au lancement avec une erreur de sandbox, car AppArmor restreint les espaces de noms utilisateur dont se sert la sandbox d'Electron. Installez plutôt le <code>.deb</code>.</p>
+
 <!-- @screen-permission 45fa22d7c7 -->
 ## La capture de l'écran ou d'une fenêtre échoue (macOS)
 <p>Message : <q>L'enregistrement de tout l'écran ou d'une autre fenêtre nécessite l'autorisation macOS Enregistrement de l'écran.</q></p>
@@ -24,6 +28,18 @@ Problèmes courants et solutions. Les messages cités sont ceux qu'affiche l'app
   <li>Windows : <span class="docs-ui">Paramètres → Confidentialité et sécurité → Microphone</span>, puis autorisez les applications de bureau.</li>
 </ul>
 <p>Sans micro, les zones entourées au stylo créent quand même des remarques, mais sans demande orale.</p>
+
+<!-- @system-audio 62d76ef7c4 -->
+## L'autre partie d'une réunion n'est pas enregistrée
+<p>Quand <span class="docs-ui">Enregistrer aussi l'interlocuteur</span> est activé et que l'audio de votre ordinateur ne peut pas être enregistré, Ferret affiche l'un de ces avertissements et continue d'enregistrer votre micro, la vidéo et le stylo.</p>
+<ul>
+  <li><q>Ferret n'est pas autorisé à enregistrer l'audio du système.</q> (macOS) : activez Ferret dans <span class="docs-ui">Réglages Système → Confidentialité et sécurité → Enregistrement de l'écran et de l'audio du système</span>, quittez et rouvrez Ferret, puis lancez un nouvel enregistrement.</li>
+  <li><q>L'enregistrement de l'autre partie nécessite macOS 14.2 ou une version ultérieure.</q> : mettez macOS à jour. D'ici là, seul votre micro est enregistré.</li>
+  <li><q>Windows n'a pas autorisé l'accès à l'audio du système.</q> ou <q>aucun périphérique de sortie audio n'a été trouvé.</q> : activez des haut-parleurs ou un casque dans <span class="docs-ui">Paramètres → Système → Son</span> (Windows) ou branchez-en, puis lancez un nouvel enregistrement.</li>
+  <li><q>l'audio du système n'est pas disponible.</q> (Linux) : installez PulseAudio, ou <code>pipewire-pulse</code> si vous utilisez PipeWire.</li>
+  <li><q>L'enregistrement de l'autre partie s'est arrêté : le périphérique de sortie audio a changé ou a été déconnecté.</q> : le reste de l'enregistrement continue sans l'autre partie. Utilisez <span class="docs-ui">Enregistrer la suite</span> pour capturer le reste.</li>
+</ul>
+<p>Si les paroles de l'autre partie apparaissent aussi comme les vôtres, votre micro capte vos haut-parleurs. Utilisez un casque.</p>
 
 <!-- @whisper ec2a54a0ef -->
 ## Aucun modèle sur l'appareil / whisper-cli introuvable

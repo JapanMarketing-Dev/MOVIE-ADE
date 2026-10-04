@@ -53,7 +53,7 @@ export function sanitizeProjectSource(raw: { source?: unknown; ssh?: unknown; re
   return { source }
 }
 
-export type CloneUrlCheck = { ok: true; url: string } | { ok: false }
+type CloneUrlCheck = { ok: true; url: string } | { ok: false }
 
 /**
  * 入力を git clone できる URL にする。

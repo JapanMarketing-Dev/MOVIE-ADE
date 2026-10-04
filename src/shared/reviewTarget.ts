@@ -1,8 +1,8 @@
 import { pageKey } from './page'
 import { previewPathFromUrl, previewUrl } from './preview'
-import { targetAction } from './projectTargets'
+import { guessTargetPurpose, purposeOf, targetAction } from './projectTargets'
 import { matchPresetUrl } from './projectUrl'
-import type { ProjectKind, ProjectUrl } from './types'
+import type { ProjectKind, ProjectUrl, TargetPurpose } from './types'
 
 /**
  * レビューの対象（URL・ファイル）。1本の録画の中で対象を切り替えながらレビューするための純粋な処理。
@@ -15,7 +15,7 @@ import type { ProjectKind, ProjectUrl } from './types'
  * ファイルは ade-preview:// のプレビューで内蔵ブラウザに出し、指摘ではプロジェクトからの相対パスで示す。
  */
 
-export type ReviewTargetKind = 'url' | 'file' | 'none'
+type ReviewTargetKind = 'url' | 'file' | 'none'
 
 /** 指摘の対象（停止後のまとめ・feedback.md の節） */
 export interface ReviewTarget {
@@ -31,6 +31,11 @@ export interface ReviewTarget {
   name: string
   /** URL のホスト（ポート込み） */
   host?: string
+  /**
+   * デザイン・設計書の確認先で撮った指摘か（app は持たない）。登録した確認先の区分、
+   * 登録に当たらなければ URL のホストから推した区分（figma.com → design など）
+   */
+  purpose?: Exclude<TargetPurpose, 'app'>
 }
 
 /** 指摘の URL から対象を決める。URL が無ければ「対象なし」（画面全体の録画など） */
@@ -46,13 +51,15 @@ export function targetOfUrl(url: string | undefined, presets: readonly ProjectUr
   }
   const preset = matchPresetUrl([...presets], url)
   const name = parsed ? `${parsed.pathname}${parsed.search}` || '/' : url
+  const purpose = preset ? purposeOf(preset) : guessTargetPurpose(url)
   return {
     key: `url:${pageKey(url)}`,
     kind: 'url',
     url,
     name,
     ...(parsed?.host ? { host: parsed.host } : {}),
-    ...(preset ? { label: preset.label } : {})
+    ...(preset ? { label: preset.label } : {}),
+    ...(purpose !== 'app' ? { purpose } : {})
   }
 }
 
@@ -84,7 +91,7 @@ export function groupByTarget<T>(
 
 // ───────────────────────── 右パネルの候補 ─────────────────────────
 
-export type TargetEntryGroup = 'preset' | 'file' | 'recent'
+type TargetEntryGroup = 'preset' | 'file' | 'recent'
 
 export interface TargetEntry {
   /** 一覧の中で一意（ページの鍵か、ウインドウの確認先なら target:<id>） */
@@ -109,9 +116,11 @@ export interface TargetEntry {
   launchCommand?: string
   /** window の確認先：録画の対象に選ぶウインドウの名前 */
   windowMatch?: string
+  /** 確認先の区分（デザイン・設計書。app は持たない） */
+  purpose?: Exclude<TargetPurpose, 'app'>
 }
 
-export interface TargetEntryInput {
+interface TargetEntryInput {
   /** 今のプロジェクトの確認先（URL・起動コマンド・ウインドウ） */
   presets: readonly ProjectUrl[]
   /** プロジェクトの種類。確認先のどの欄を使うかが変わる（未設定は web） */
@@ -150,9 +159,11 @@ export function buildTargetEntries(input: TargetEntryInput): TargetEntry[] {
   for (const preset of input.presets) {
     // 押したときの動きはツールバーの確認先と同じ（targetAction）。何もできない確認先は出さない
     const action = targetAction(preset, input.projectKind)
+    const purpose = purposeOf(preset)
     if (action.kind === 'url') {
       if (!isWebUrl(action.url)) continue
-      push({ id: pageKey(action.url), kind: 'url', group: 'preset', title: preset.label || action.url, detail: action.url, label: preset.label, url: action.url })
+      push({ id: pageKey(action.url), kind: 'url', group: 'preset', title: preset.label || action.url, detail: action.url, label: preset.label, url: action.url,
+        ...(purpose !== 'app' ? { purpose } : {}) })
     } else if (action.kind === 'window') {
       push({
         id: `target:${preset.id}`,
@@ -184,19 +195,10 @@ export function buildTargetEntries(input: TargetEntryInput): TargetEntry[] {
     } catch {
       // URL として読めないものはそのまま
     }
-    push({ id: pageKey(url), kind: 'url', group: 'recent', title, detail: url, url, ...(preset ? { label: preset.label } : {}) })
+    const purpose = preset ? purposeOf(preset) : guessTargetPurpose(url)
+    push({ id: pageKey(url), kind: 'url', group: 'recent', title, detail: url, url, ...(preset ? { label: preset.label } : {}), ...(purpose !== 'app' ? { purpose } : {}) })
   }
   return out
-}
-
-/** 検索欄の語で絞る（空白で区切った語をすべて含むもの。大文字小文字は問わない） */
-export function filterTargetEntries(entries: readonly TargetEntry[], query: string): TargetEntry[] {
-  const terms = query.toLowerCase().split(/\s+/).filter(Boolean)
-  if (terms.length === 0) return [...entries]
-  return entries.filter((entry) => {
-    const text = [entry.title, entry.detail, entry.label].filter(Boolean).join('\n').toLowerCase()
-    return terms.every((term) => text.includes(term))
-  })
 }
 
 /** 内蔵ブラウザがいまこの候補を出しているか（同じページか） */

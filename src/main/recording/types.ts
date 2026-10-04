@@ -34,8 +34,13 @@ export interface RecordingOptions {
   captureTarget: CaptureTarget
   /** 自分の声（マイク）を録る。既定 true。切ると映像と操作ログだけになる */
   captureMic: boolean
-  /** 相手の声も録る（AUD-1）。macOS では画面共有の音声ループバックを使う */
+  /**
+   * 相手の声も録る（AUD-1）。PC の音声をループバックで取る（src/shared/systemAudio.ts に OS ごとの条件）。
+   * マイクとは別の系統で録り、文字起こしでは話者「相手」になる
+   */
   captureSystemAudio: boolean
+  /** 検証用（ADE_E2E=1 のときだけ）。OS の許可なしで相手の声の経路を通す。本番は常に未指定 */
+  syntheticSystemAudio?: import('@shared/systemAudio').SyntheticSystemAudio
   /**
    * 検証用。マイクの代わりに合成音を使う。
    * 実機のマイクを開かないので、OSの権限ダイアログが出ない。本番は常に false。

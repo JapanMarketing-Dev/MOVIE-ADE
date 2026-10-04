@@ -8,9 +8,9 @@ import { removeContained, UnsafeStoragePathError } from './containment'
 import { listSessionIds, sessionPaths, takePaths } from './paths'
 import { loadSession } from './store'
 
-export const DEFAULT_KEEP_DAYS = 7
+const DEFAULT_KEEP_DAYS = 7
 
-export interface PruneOptions {
+interface PruneOptions {
   /** 保持日数。0 以下なら削除しない（無期限保持） */
   keepDays?: number
   /** 基準時刻（テスト用） */
@@ -19,7 +19,7 @@ export interface PruneOptions {
   dryRun?: boolean
 }
 
-export interface PruneResult {
+interface PruneResult {
   /** 削除した（または削除対象の）動画 */
   removedRecordings: string[]
   /** 削除した中間ファイルのフォルダ */

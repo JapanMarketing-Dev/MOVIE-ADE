@@ -109,7 +109,7 @@ function AccountRow({
             maxLength={80}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commitRename()
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) commitRename()
               if (e.key === 'Escape') {
                 e.stopPropagation()
                 setDraft(account.label)

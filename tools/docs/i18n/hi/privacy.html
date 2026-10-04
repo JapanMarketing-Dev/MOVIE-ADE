@@ -21,7 +21,7 @@ Reviews आपके प्रोजेक्ट फ़ोल्डर में
 ## कितने समय तक रखा जाता है
 <p><span class="docs-ui">रिकॉर्डिंग रखें</span> (डिफ़ॉल्ट 7 दिन, 30 दिन, या <span class="docs-ui">हमेशा</span>): ऐप शुरू होने पर, इससे पुराने पूरे हो चुके reviews से <code>recording.webm</code> और <code>work/</code> हटा दिए जाते हैं। <code>feedback.md</code> और findings की इमेज रखी जाती हैं। अधूरे reviews कभी नहीं हटाए जाते। यह सफ़ाई launch पर, आख़िरी बार खोले गए प्रोजेक्ट के लिए चलती है।</p>
 
-<!-- @network 8886bf9546 -->
+<!-- @network 1eadb8b937 -->
 ## आपकी मशीन से क्या बाहर जाता है
 <table>
   <thead><tr><th>कब</th><th>कहाँ</th><th>डेटा</th></tr></thead>
@@ -35,8 +35,8 @@ Reviews आपके प्रोजेक्ट फ़ोल्डर में
     <tr><td><span class="docs-ui">GitHub पर भेजें</span></td><td><code>gh</code> के ज़रिए GitHub</td><td>सिर्फ़ body का टेक्स्ट (कोई इमेज नहीं)</td></tr>
     <tr><td>फ़ुटर का usage (सिर्फ़ Claude Code और Codex)</td><td>Anthropic, ChatGPT</td><td>आपके अपने login के साथ usage की request</td></tr>
     <tr><td>GitHub स्टार का अनुरोध</td><td>आपके <code>gh</code> के ज़रिए GitHub</td><td>जाँचता है कि आपने repo को स्टार दिया है या नहीं, और सिर्फ़ तभी स्टार देता है जब आप <span class="docs-ui">GitHub पर स्टार दें</span> पर क्लिक करें</td></tr>
-    <tr><td><span class="docs-ui">अपडेट जाँचें</span> (हाथ से)</td><td>डाउनलोड server (Cloudflare R2)</td><td><code>latest.json</code> की request</td></tr>
-    <tr><td>ऐप से feedback भेजना (सिर्फ़ जब आप भेजें; जल्द आ रहा है)</td><td>Developer का feedback relay (एक Cloudflare Worker), जो <code>JapanMarketing-Dev/ferret</code> में एक सार्वजनिक issue खोलता है</td><td>आपका टेक्स्ट, bug या idea, ऐप / OS version और CPU, और आपके जोड़े गए अधिकतम 3 screenshots। Keys, tokens, ईमेल पते और home-folder paths छिपा दिए जाते हैं। Relay आपका IP address सेव नहीं करता (<a href="#feedback">ऐप से feedback</a> देखें)</td></tr>
+    <tr><td><span class="docs-ui">अपडेट जाँचें</span> (हाथ से)</td><td>डाउनलोड server (Cloudflare R2)</td><td><code>latest.json</code> और उस version की <code>SHA256SUMS</code> की requests; <span class="docs-ui">डाउनलोड करें</span> पर क्लिक करने पर installer</td></tr>
+    <tr><td>ऐप से feedback भेजना (सिर्फ़ जब आप भेजें)</td><td>Developer का feedback relay (एक Cloudflare Worker), जो <code>JapanMarketing-Dev/ferret</code> में एक सार्वजनिक issue खोलता है</td><td>आपका टेक्स्ट, bug या idea, ऐप / OS version और CPU, और आपके जोड़े गए अधिकतम 3 screenshots। Keys, tokens, ईमेल पते और home-folder paths छिपा दिए जाते हैं। Relay आपका IP address सेव नहीं करता (<a href="#feedback">ऐप से feedback</a> देखें)</td></tr>
     <tr><td>कोई crash या error (<span class="docs-ui">Crash reports भेजें</span> चालू)</td><td>Sentry</td><td>Stack trace और OS / CPU / ऐप के versions (<a href="#crash-reports">Crash reports</a> देखें)</td></tr>
   </tbody>
 </table>
@@ -47,10 +47,9 @@ Reviews आपके प्रोजेक्ट फ़ोल्डर में
   <li>यह वेबसाइट (ऐप नहीं) Cloudflare Web Analytics से पेज views गिनती है: बिना cookies के, बिना cross-site tracking के, और बिना किसी निजी डेटा के।</li>
 </ul>
 
-<!-- @feedback ba5f3fb0a3 -->
+<!-- @feedback 34fc2ebccc -->
 ## ऐप से feedback
-<div class="docs-callout docs-callout-wip"><p class="docs-callout-title">जल्द आ रहा है</p><p>ऐप के अंदर का feedback form और उसका relay अभी रिलीज़ नहीं हुए हैं। यह सेक्शन बताता है कि वे कैसे काम करेंगे।</p></div>
-<p>आप GitHub अकाउंट के बिना Ferret के अंदर से bug report या कोई idea भेज सकेंगे। यह सिर्फ़ तभी भेजा जाता है जब आप भेजें, और <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a> में <code>from-app</code> label वाला एक <strong>सार्वजनिक</strong> issue बन जाता है। ऐसा कुछ भी शामिल न करें जिसे आप सार्वजनिक रूप से पोस्ट नहीं करेंगे।</p>
+<p>आप GitHub अकाउंट के बिना Ferret के अंदर से bug report या कोई idea भेज सकते हैं (साइडबार में नीचे <span class="docs-ui">फ़ीडबैक भेजें</span>)। यह सिर्फ़ तभी भेजा जाता है जब आप भेजें, और <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a> में <code>from-app</code> label वाला एक <strong>सार्वजनिक</strong> issue बन जाता है। ऐसा कुछ भी शामिल न करें जिसे आप सार्वजनिक रूप से पोस्ट नहीं करेंगे।</p>
 <ul>
   <li>ऐप इसे आपके कंप्यूटर से एक छोटे relay (developer द्वारा चलाया जाने वाला एक Cloudflare Worker) को भेजता है, जो अपने GitHub token से issue खोलता है। Developer का यही एकमात्र server है जिसे आपका लिखा कुछ भी मिलता है।</li>
   <li>भेजा जाता है: आपका शीर्षक और टेक्स्ट, यह bug है या idea, ऐप का version, और आपके जोड़े गए अधिकतम 3 PNG या JPEG screenshots। OS का नाम और version, CPU architecture, और random install ID सिर्फ़ तभी भेजे जाते हैं जब आप उन्हें शामिल रहने दें। नहीं भेजा जाता: आपका नाम, ईमेल, GitHub अकाउंट, प्रोजेक्ट की फ़ाइलें, रिकॉर्डिंग या findings।</li>

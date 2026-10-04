@@ -32,7 +32,7 @@ export function hardwareInfo(): HardwareInfo {
 }
 
 /** NVIDIA の GPU の VRAM を1回だけ聞く（入っていなければ何もしない。失敗は想定内なので黙る） */
-export function probeGpu(run: typeof execFile = execFile): Promise<void> {
+function probeGpu(run: typeof execFile = execFile): Promise<void> {
   if (platform() === 'darwin') return Promise.resolve()
   probing ??= new Promise<void>((resolve) => {
     try {
@@ -53,7 +53,7 @@ export function localModelRecommendation(): LocalModelRecommendation {
   return recommendLocalModels(hardwareInfo())
 }
 
-export type LocalServerState = 'ok' | 'down' | 'noModel'
+type LocalServerState = 'ok' | 'down' | 'noModel'
 
 /**
  * 端末内のサーバー（Ollama・LM Studio の OpenAI 互換 /v1）が動いていて、そのモデルが入っているか。整理を始める前に1回だけ聞く
@@ -66,7 +66,11 @@ export async function checkLocalServer(baseUrl: string, model: string, fetchImpl
   } catch {
     return 'down' // 起動していない・入っていない（想定内）
   }
-  if (!res.ok) return 'down'
+  if (!res.ok) {
+    // 読まない本文は捨てておく（つないだままにすると Node の fetch の内部で例外になり main が落ちうる。Orca #8695）
+    await res.body?.cancel().catch(() => undefined)
+    return 'down'
+  }
   const body = await res.json().catch(() => null) as { data?: Array<{ id?: unknown }> } | null
   const ids = Array.isArray(body?.data) ? body.data.map((m) => String(m.id ?? '')) : []
   // Ollama は「名前:latest」で返すことがある。名前だけで頼んだものも同じとみなす

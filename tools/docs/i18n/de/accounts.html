@@ -16,9 +16,9 @@ Wechseln Sie zwischen mehreren Logins für Claude Code oder Codex und behalten S
 <p>So funktioniert es: Jedes hinzugefügte Konto erhält einen eigenen Konfigurationsordner, <code>&lt;userData&gt;/accounts/&lt;agent&gt;/&lt;id&gt;/</code>. Ferret startet den Agent mit <code>CLAUDE_CONFIG_DIR</code> (Claude Code) bzw. <code>CODEX_HOME</code> (Codex), das auf diesen Ordner zeigt. <span class="docs-ui">Systemstandard</span> verwendet unverändert Ihr übliches <code>~/.claude</code> / <code>~/.codex</code>.</p>
 <p>Wenn Sie ein Konto entfernen, wird sein Konfigurationsordner gelöscht. Auf dem Server werden Sie dadurch nicht abgemeldet.</p>
 
-<!-- @usage bb03a3a17a -->
+<!-- @usage 5305accf41 -->
 ## Nutzung in der Fußleiste
 <p>Die Fußleiste zeigt, wie viel von jedem Rate-Limit-Zeitfenster verbraucht ist: das 5-Stunden-Fenster und das Wochenfenster, bei Claude zusätzlich das Wochenfenster pro Modell. Die Farbe wechselt ab 60 % zu Gelb und ab 80 % zu Rot. Die Werte werden alle 15 Minuten aktualisiert oder wenn Sie auf <span class="docs-ui">Nutzung aktualisieren</span> klicken.</p>
 <p>Wie viel angezeigt wird, hängt vom Platz in der Fußleiste ab. Ist genug Platz vorhanden, erscheinen Balken, Namen der Zeitfenster und Prozentwerte. Wird die Fußleiste schmaler, fallen zuerst die weniger wichtigen Teile weg, bis nur noch ein Prozentwert pro Agent übrig ist. Klicken Sie auf die Nutzung, um alles in einem Popover zu sehen.</p>
 <p>Die Nutzung wird direkt bei Anthropic (<code>api.anthropic.com/api/oauth/usage</code>) und ChatGPT (<code>chatgpt.com/backend-api/wham/usage</code>) abgefragt, mit den eigenen Zugangsdaten des angemeldeten Kontos.</p>
-<figure class="docs-shot" data-shot="usage"><div class="docs-shot-slot" role="img" aria-label="Nutzung in der Fußleiste (Screenshot folgt in Kürze)"><span>Screenshot folgt in Kürze</span></div><figcaption>Nutzung in der Fußleiste</figcaption></figure>
+{{shot:usage|Nutzung in der Fußleiste}}

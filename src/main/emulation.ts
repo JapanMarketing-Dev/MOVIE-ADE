@@ -4,7 +4,7 @@
  * （FERRET-K: ARM64 の VM で x64 版を動かした起動が 15.4 秒だった）。
  * 判定は Electron の app.runningUnderARM64Translation（macOS と Windows で使える）。値は呼び出し側が渡す。
  */
-export type EmulationKind = 'rosetta' | 'prism' | 'none'
+type EmulationKind = 'rosetta' | 'prism' | 'none'
 
 export function emulationKind(platform: NodeJS.Platform, translated: boolean | undefined): EmulationKind {
   if (!translated) return 'none'

@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync, existsSync } from 'node:fs'
+import { lstatSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -18,7 +18,7 @@ import {
 } from '../../src/main/accounts/paths'
 import { sanitizeAgentAccounts } from '../../src/main/accounts/sanitize'
 import { resolveAgentEnvFrom } from '../../src/main/accounts/env'
-import { applyCodexDaemonSocketGuard, carryClaudeSettings, CODEX_DAEMON_OVERRIDE_MARKER, migrateManagedClaudeDir, pickClaudeGlobalConfig, seedManagedAccountDir } from '../../src/main/accounts/agentConfig'
+import { applyCodexDaemonSocketGuard, carryClaudeSettings, CODEX_DAEMON_OVERRIDE_MARKER, linkSharedEntries, migrateManagedClaudeDir, pickClaudeGlobalConfig, seedManagedAccountDir } from '../../src/main/accounts/agentConfig'
 import { claudeKeychainService, hasCodexCredential, readCodexIdentity } from '../../src/main/accounts/identity'
 import type { AgentAccountsSettings } from '../../src/shared/accounts'
 import { setLocale } from '@shared/i18n'
@@ -199,6 +199,28 @@ describe('Codex のデーモン用ソケットの長さ対策', () => {
     expect(existsSync(join(dir, 'auth.json'))).toBe(false)
     // 既定アカウントの設定は書き換えない
     expect(readFileSync(join(systemDir, 'config.toml'), 'utf8')).toBe('model = "o3"\n')
+  })
+})
+
+describe('Codex の rules の共有（Orca #24431）', () => {
+  it('作成時に rules もリンクで共有する', () => {
+    mkdirSync(join(systemDir, 'rules'))
+    writeFileSync(join(systemDir, 'rules', 'default.rules'), 'prefix_rule(pattern=["rm"], decision="forbidden")\n')
+    const dir = createManagedAccountDir(userData, 'codex', ID)
+    seedManagedAccountDir('codex', dir, systemDir)
+    expect(readFileSync(join(dir, 'rules', 'default.rules'), 'utf8')).toContain('forbidden')
+  })
+
+  it('以前に作ったアカウントにも、足りないリンクだけを張る（利用者が置いたものには触らない）', () => {
+    const dir = createManagedAccountDir(userData, 'codex', ID)
+    seedManagedAccountDir('codex', dir, systemDir)
+    mkdirSync(join(systemDir, 'rules'))
+    writeFileSync(join(systemDir, 'AGENTS.md'), '# 既定\n')
+    writeFileSync(join(dir, 'AGENTS.md'), '# このアカウントだけ\n')
+    linkSharedEntries('codex', dir, systemDir)
+    linkSharedEntries('codex', dir, systemDir)
+    expect(lstatSync(join(dir, 'rules')).isSymbolicLink()).toBe(true)
+    expect(readFileSync(join(dir, 'AGENTS.md'), 'utf8')).toBe('# このアカウントだけ\n')
   })
 })
 

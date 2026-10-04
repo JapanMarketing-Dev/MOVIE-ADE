@@ -7,7 +7,7 @@
  *   失敗     {"ok":false,"code":"<ErrorCode>"}（詳しい理由は返さない）
  */
 
-export const FEEDBACK_RELAY_ORIGIN = 'https://feedback.ferretade.dev'
+const FEEDBACK_RELAY_ORIGIN = 'https://feedback.ferretade.dev'
 export const FEEDBACK_RELAY_URL = `${FEEDBACK_RELAY_ORIGIN}/v1/issues`
 
 /** 受け付けるフィールドの名前。これ以外が1つでもあれば unknown_field で断られる */
@@ -45,11 +45,16 @@ export const ERROR_STATUS = {
   bad_image: 415,
   rate_limited: 429,
   internal: 500,
-  upstream_failed: 502
+  upstream_failed: 502,
+  /** GitHub へ送ったが、作られたかが分からない（応答が失われた・5xx など）。中継は内容の鍵を残すので、同じ内容の送り直しは duplicate になる（security-4 [12]） */
+  upstream_pending: 504
 } as const
 export type ErrorCode = keyof typeof ERROR_STATUS
 
-/** 送り直してよい code（429 は Retry-After のあと）。ほかは同じ内容で送り直しても同じ結果になる */
+/**
+ * 送り直してよい code（429 は Retry-After のあと）。ほかは同じ内容で送り直しても同じ結果になる。
+ * upstream_pending は入れない（Issue ができているかもしれない。送り直すと2件目になりうる。security-4 [12]）
+ */
 export const RETRYABLE_CODES: readonly ErrorCode[] = ['rate_limited', 'upstream_failed', 'internal']
 
 export function isErrorCode(value: unknown): value is ErrorCode {
