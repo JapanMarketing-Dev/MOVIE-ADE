@@ -9,11 +9,11 @@
  * その先祖にリンクが無く、普通のファイル（まだ無ければ新しく作る）であるときだけ書く。
  */
 import { execFile } from 'node:child_process'
-import { lstat, mkdir } from 'node:fs/promises'
+import { lstat } from 'node:fs/promises'
 import { readTextBounded } from '../boundedFile'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { ADE_DIR, LEGACY_ADE_DIR } from './paths'
-import { assertContained, writeFileNoFollow } from './containment'
+import { assertContained, mkdirContained, writeFileNoFollow } from './containment'
 
 /** 除外するフォルダ。古いレビューが残る .ade-movie/ も外したままにする */
 const DIRS = [ADE_DIR, LEGACY_ADE_DIR]
@@ -43,7 +43,7 @@ export async function ensureGitExclude(projectDir: string): Promise<GitExcludeRe
   if (missing.length === 0) return 'already'
 
   const infoDir = dirname(excludePath)
-  await mkdir(infoDir, { recursive: true })
+  await mkdirContained(infoDir, { root })
   // 作ったあと・書く直前にもう一度確かめる（あいだにリンクへ差し替えられていないか）
   assertContained(root, excludePath)
   const needsNewline = current !== null && current.length > 0 && !current.endsWith('\n')

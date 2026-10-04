@@ -4,12 +4,14 @@
  * 編集は「操作の列」として session.json に残し、feedback.md はそこから再生成する
  * （設計 5章④「確認画面での編集結果は session.json に保存し、feedback.md を再生成する」）。
  * 元の指摘一覧は変えないので、編集を取り消したり順番を入れ替えたりできる。
+ * 指摘の並べ替え（order）も操作の1つ。並べ替えたら finalizeItems は時刻順に並べ直さない（FeedbackDocument.customOrder）。
  */
 import type { AssembleOptions } from '../pipeline/assemble'
 import { finalizeItems, toPending } from '../pipeline/assemble'
 import type { PendingItem } from '../pipeline/assemble'
 import type { Event, FeedbackDocument, FrameRef, ItemStatus } from '../pipeline/types'
 import { t } from '@shared/i18n'
+import { applySubsetOrder } from '@shared/reorder'
 
 export type ItemEdit =
   /** テキストを直す（REV-2） */
@@ -26,6 +28,8 @@ export type ItemEdit =
   | { kind: 'frames'; id: string; frameTimes: number[] }
   /** 全体への補足コメント（REV-5） */
   | { kind: 'note'; note: string }
+  /** 指摘を並べ替える。ids は新しい並び（無い指摘はその位置のまま）。null で時刻順に戻す */
+  | { kind: 'order'; ids: string[] | null }
 
 interface ApplyEditsInput {
   /** 分解直後の指摘一覧（編集前の正本） */
@@ -51,6 +55,8 @@ export function applyEdits(input: ApplyEditsInput): ApplyEditsResult {
 
   let pending: PendingItem[] = input.document.items.map(toPending)
   let note = input.document.note
+  /** 並べ替えた一覧か（それまでの編集で並べ替えていれば、その順を保つ） */
+  let customOrder = input.document.customOrder === true
 
   const find = (id: string): PendingItem | undefined => pending.find((p) => p.id === id)
 
@@ -118,6 +124,23 @@ export function applyEdits(input: ApplyEditsInput): ApplyEditsResult {
         break
       }
 
+      case 'order': {
+        if (edit.ids === null) {
+          customOrder = false
+          break
+        }
+        // renderer から来た並び。知らない ID・重複は捨て、ids に無い指摘（追記・復元したもの）はその位置のまま
+        if (!Array.isArray(edit.ids)) {
+          skipped.push({ edit, reason: t('review.errors.skipped.notFound') })
+          break
+        }
+        const byId = new Map(pending.map((p) => [p.id, p]))
+        const subset = edit.ids.flatMap((id) => (typeof id === 'string' && byId.has(id) ? [byId.get(id)!] : []))
+        pending = applySubsetOrder(pending, subset)
+        customOrder = true
+        break
+      }
+
       case 'merge': {
         const targets = edit.ids.map((id) => find(id)).filter((x): x is PendingItem => x !== undefined)
         if (targets.length < 2) {
@@ -135,10 +158,12 @@ export function applyEdits(input: ApplyEditsInput): ApplyEditsResult {
 
   const document: FeedbackDocument = {
     ...input.document,
-    items: finalizeItems(pending, input.events, input.options),
-    ...(note !== undefined ? { note } : {})
+    items: finalizeItems(pending, input.events, input.options, customOrder),
+    ...(note !== undefined ? { note } : {}),
+    ...(customOrder ? { customOrder: true as const } : {})
   }
   if (note === undefined) delete document.note
+  if (!customOrder) delete document.customOrder
   return { document, skipped }
 }
 

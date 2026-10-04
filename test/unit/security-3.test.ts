@@ -8,9 +8,9 @@ import {
   BUILTIN_AGENTS,
   DEFAULT_AGENT_PREFERENCES,
   SKIP_PERMISSION_AGENTS,
-  resolveAgentLaunchPolicy,
   sanitizeAgentPreferences
 } from '../../src/shared/agentCatalog'
+import { resolveAgentLaunchPolicy } from '../../src/shared/agentPolicy'
 import { applyAgentWorkspaceTrust, registeredProjectIdFor } from '../../src/main/agentWorkspaceTrust'
 import { isRemoteImageSource, previewCsp, renderPreviewBody, renderPreviewPage } from '../../src/main/preview/render'
 import { scrubBreadcrumb, scrubEvent, scrubString } from '../../src/shared/telemetry'
@@ -95,33 +95,42 @@ describe('security-3 [1] Agent の権限確認は設定の skipPermissions で�
     expect(sanitizeAgentPreferences({ skipPermissions: 'yes' }).skipPermissions).toBe(true)
   })
 
+  // 決まりは設定を一度だけ argv に分けてから当てる（security-5 [2]）。結果は argv で返す
+  const policy = (input: { agent: 'claude' | 'codex' | 'gemini'; args: string; projectId: string | null; skipPermissions: boolean }) =>
+    resolveAgentLaunchPolicy({ ...input, command: '', shell: 'posix' })
+  const argv = (input: Parameters<typeof policy>[0]) => {
+    const result = policy(input)
+    return result.ok ? result.argv.slice(1).join(' ') : `refused:${result.reason}`
+  }
+
   it('security-3 [1] main の起動の決まり: 入なら Claude Code / Codex に省く引数を前に足し、登録したプロジェクトのフォルダだけ信頼を書く', () => {
     const on = { skipPermissions: true, projectId: 'p1' }
-    expect(resolveAgentLaunchPolicy({ ...on, agent: 'claude', args: '--chrome' })).toEqual({ args: '--dangerously-skip-permissions --chrome', trustFolder: true })
-    expect(resolveAgentLaunchPolicy({ ...on, agent: 'codex', args: '' })).toEqual({ args: '--dangerously-bypass-approvals-and-sandbox', trustFolder: true })
+    expect(policy({ ...on, agent: 'claude', args: '--chrome' })).toEqual({ ok: true, argv: ['claude', '--dangerously-skip-permissions', '--chrome'], trustFolder: true })
+    expect(policy({ ...on, agent: 'codex', args: '' })).toEqual({ ok: true, argv: ['codex', '--dangerously-bypass-approvals-and-sandbox'], trustFolder: true })
     // サブフォルダ・ホーム（登録したプロジェクトのフォルダそのものでない）では引数だけ足し、信頼は書かない
-    expect(resolveAgentLaunchPolicy({ ...on, projectId: null, agent: 'claude', args: '' })).toEqual({ args: '--dangerously-skip-permissions', trustFolder: false })
+    expect(policy({ ...on, projectId: null, agent: 'claude', args: '' })).toEqual({ ok: true, argv: ['claude', '--dangerously-skip-permissions'], trustFolder: false })
     // 確かめていない Agent には足さない
-    expect(resolveAgentLaunchPolicy({ ...on, agent: 'gemini', args: '' })).toEqual({ args: '', trustFolder: false })
+    expect(policy({ ...on, agent: 'gemini', args: '' })).toEqual({ ok: true, argv: ['gemini'], trustFolder: false })
   })
 
   it('security-3 [1] 切なら何も足さず信頼も書かない。利用者が書いた引数はどちらでもそのまま', () => {
     const off = { skipPermissions: false, projectId: 'p1' }
-    expect(resolveAgentLaunchPolicy({ ...off, agent: 'claude', args: '--chrome' })).toEqual({ args: '--chrome', trustFolder: false })
-    expect(resolveAgentLaunchPolicy({ ...off, agent: 'codex', args: '' })).toEqual({ args: '', trustFolder: false })
-    expect(resolveAgentLaunchPolicy({ ...off, agent: 'claude', args: '--dangerously-skip-permissions --add-dir "a  b"' }).args).toBe('--dangerously-skip-permissions --add-dir "a  b"')
+    expect(policy({ ...off, agent: 'claude', args: '--chrome' })).toEqual({ ok: true, argv: ['claude', '--chrome'], trustFolder: false })
+    expect(policy({ ...off, agent: 'codex', args: '' })).toEqual({ ok: true, argv: ['codex'], trustFolder: false })
+    const typed = policy({ ...off, agent: 'claude', args: '--dangerously-skip-permissions --add-dir "a  b"' })
+    expect(typed.ok && typed.argv).toEqual(['claude', '--dangerously-skip-permissions', '--add-dir', 'a  b'])
   })
 
   it('security-3 [1] 引数で確認の仕方を選んでいれば、省く引数を二重に足さない・混ぜない', () => {
     const on = { skipPermissions: true, projectId: null }
     for (const args of ['--dangerously-skip-permissions --chrome', '--permission-mode plan', '--permission-mode=acceptEdits', '--allow-dangerously-skip-permissions']) {
-      expect(resolveAgentLaunchPolicy({ ...on, agent: 'claude', args }).args, args).toBe(args)
+      expect(argv({ ...on, agent: 'claude', args }), args).toBe(args)
     }
     for (const args of ['--yolo --model o4', '-s workspace-write', '--sandbox=read-only', '-a on-request', '--full-auto', '-c approval_policy=never']) {
-      expect(resolveAgentLaunchPolicy({ ...on, agent: 'codex', args }).args, args).toBe(args)
+      expect(argv({ ...on, agent: 'codex', args }), args).toBe(args)
     }
     // 似ているが別の引数には足す
-    expect(resolveAgentLaunchPolicy({ ...on, agent: 'codex', args: '--search' }).args).toBe('--dangerously-bypass-approvals-and-sandbox --search')
+    expect(argv({ ...on, agent: 'codex', args: '--search' })).toBe('--dangerously-bypass-approvals-and-sandbox --search')
   })
 
   it('security-3 [1] プロジェクトの id はフォルダそのものでだけ決まる（サブフォルダ・ほかのプロジェクトに許可を引き継がない）', () => {
@@ -165,10 +174,11 @@ describe('security-3 [1] Agent の権限確認は設定の skipPermissions で�
     expect(offenders).toEqual([])
     const terminal = read('src/main/terminal.ts')
     expect(terminal).toMatch(/resolveAgentLaunchPolicy\(/)
-    expect(terminal).toMatch(/if \(policy\?\.trustFolder\) \{\s*await applyAgentWorkspaceTrust\(/)
+    expect(terminal).toMatch(/trustFolder = policy\.trustFolder/)
+    expect(terminal).toMatch(/if \(trustFolder\) \{\s*await applyAgentWorkspaceTrust\(/)
     expect(terminal.match(/applyAgentWorkspaceTrust\(/g)).toHaveLength(1)
     // 自動起動も手で開くのも同じ決まり（skipPermissions だけを見る）
-    expect(terminal).toMatch(/resolveAgentLaunchPolicy\(\{ agent, args: configured\.args, projectId, skipPermissions: prefs\.skipPermissions \}\)/)
+    expect(terminal).toMatch(/resolveAgentLaunchPolicy\(\{ agent, command: configured\.command, args: configured\.args, projectId, skipPermissions: prefs\.skipPermissions, shell: startupShell \}\)/)
   })
 })
 

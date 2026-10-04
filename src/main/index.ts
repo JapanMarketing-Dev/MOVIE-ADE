@@ -1,3 +1,5 @@
+import { CAPTURE_INDICATOR, UserGestures, appMediaAllowed, captureRequestProblem, indicatorTitle, isGestureInput, isRecorderContents, isTrustedIpcSender, nextAudioConsent, type CaptureConsentState } from './captureConsent'
+import { ProgramCopies, normalizeTerminalClipboardMode, programCopyDecision } from './terminalClipboard'
 import { showAgentNotification } from './agentNotify'
 import { failoverPrefs, initFailover, onUsageChanged, setFailoverPrefs } from './failover/service'
 import { droppedFolder, inspectDropped } from './droppedPaths'
@@ -8,8 +10,9 @@ import { homedir } from 'node:os'
 import type { SessionPaths } from './sessions/paths'
 import type { IncrementalTranscriber } from './pipeline/stt/engine'
 import { loadDevDotEnv, type SttKeyStore } from './pipeline/stt/keys'
+import { sanitizeCaptureTarget } from '@shared/captureTarget'
 import { BrowserWindow, Notification, app, clipboard, dialog, ipcMain, nativeTheme, safeStorage, shell, protocol, session } from 'electron'
-import { basename, dirname, join } from 'node:path'
+import { basename, dirname, isAbsolute, join } from 'node:path'
 import type { IpcEventChannel, IpcEvents, IpcRequests } from '@shared/ipc'
 import type { AiVendor, LlmApiProvider, SttRemoteProvider } from '@shared/aiProviders'
 import {
@@ -30,7 +33,7 @@ import {
 } from '@shared/types'
 import { isRecordableUrl, sessionUrl, withProjectSession } from '@shared/projectSession'
 import { THEME_BACKGROUND } from '@shared/theme'
-import { findProjectByFolder, newProject, upsertProjectFolder } from './projects'
+import { findProjectByFolder, markProjectOpened, newProject, reorderProjects, upsertProjectFolder } from './projects'
 import { checkSshTarget, remoteWorkspaceDirName, sshDefaultName, type SshTarget } from '@shared/sshCommand'
 import { EmbeddedBrowser, browserSession } from './browser'
 import { APP_ALLOWED_PERMISSIONS, installPermissionPolicy, isAllowedExternalUrl, isAppPageUrl, type PermissionSessionLike } from './webPolicy'
@@ -132,6 +135,20 @@ mark('main:loaded')
 let mainWindow: BrowserWindow | null = null
 /** 画面のターミナルにフォーカスがあるか（renderer が terminal:focused で知らせる） */
 let terminalFocused = false
+/**
+ * 録画・撮影・端末のプログラムのコピーの同意（security-5 [1][9]。captureConsent.ts）。
+ * 窓に届いた本物の入力とメニューの操作からだけ作り、renderer の求めは同意にしない
+ */
+const gestures = new UserGestures()
+/** 利用者が選んだ録る対象と音。起動時の設定から始め、操作の直後の変更でだけ広げる */
+let captureConsent: CaptureConsentState = { target: { kind: 'browser' }, mic: true, systemAudio: false }
+/** 録画中か（main が出す印。窓の題名と macOS の Dock） */
+let capturing = false
+/** 端末のプログラムのコピー（OSC 52）の確認待ち（terminalClipboard.ts） */
+const programCopies = new ProgramCopies()
+/** SSH のプロジェクトで開いたターミナル（プログラムのコピーをいつも確かめる） */
+const remoteTerminalIds = new Set<string>()
+let workspaceRemote = false
 let browser: EmbeddedBrowser | null = null
 let terminals: TerminalManager | null = null
 /** Resource Manager の集計。ターミナル・ブラウザ・プロジェクトは読むだけ */
@@ -220,6 +237,52 @@ function keyLookup(): import('./settingsKeys').KeyLookup {
 }
 
 /**
+ * 保存したキー・環境変数のヘッダーを送ってよい接続元（security-5 [6]。src/main/credentialOrigin.ts）。
+ * 初めて使うときに、この版より前に保存してあった接続先を一度だけ認めたものとして入れる
+ */
+let credentialOrigins: Promise<import('./credentialOrigin').CredentialOrigins> | null = null
+function credentialOriginStore(): Promise<import('./credentialOrigin').CredentialOrigins> {
+  credentialOrigins ??= (async () => {
+    const { CredentialOrigins } = await import('./credentialOrigin')
+    const store = new CredentialOrigins(join(app.getPath('userData'), 'credential-origins.json'))
+    const s = currentSettings()
+    await store.seedOnce([
+      ...Object.entries(s.capture?.sttEndpoints ?? {}).map(([provider, ep]) => ({ scope: `stt:${provider}`, url: ep?.baseUrl })),
+      ...Object.entries(s.organizer?.endpoints ?? {}).map(([provider, ep]) => ({ scope: `organize:${provider}`, url: ep?.baseUrl })),
+      ...(s.decision?.endpoint ? [{ scope: `decision:${s.decision.preset}`, url: s.decision.endpoint }] : [])
+    ])
+    return store
+  })()
+  return credentialOrigins
+}
+
+/**
+ * 認証情報（保存したキー・settings.json の apiKey / apiKeyEnv・環境変数から読むヘッダー）を url へ送ってよいかを確かめる。
+ * プリセットの接続元か、認めた接続元でなければ断る（UserFacingError）。ask（「接続を確かめる」を押したとき）なら、
+ * main のダイアログで接続元の名前を出して聞く。画面から届いた値で決めない
+ */
+async function gateCredentials(scope: string, url: string | undefined, ref: (KeyRef & { headers?: Record<string, unknown> }) | undefined,
+  vendor: AiVendor | null, defaults: ReadonlyArray<string | undefined>, ask: boolean): Promise<void> {
+  const { authorizeCredentialOrigin, isPlainHttpOrigin } = await import('./credentialOrigin')
+  const hasCredential = !!(ref?.apiKey || ref?.apiKeyEnv || Object.values(ref?.headers ?? {}).some((v) => typeof v !== 'string')
+    || (vendor && (await sttKeyStore()).has(vendor)))
+  const confirm = ask ? async (origin: string) => {
+    const options = {
+      type: 'question' as const,
+      buttons: [t('credentialOrigin.confirm.send'), t('common.cancel')],
+      defaultId: 1,
+      cancelId: 1,
+      message: t('credentialOrigin.confirm.message', { origin }),
+      detail: [t('credentialOrigin.confirm.detail'), isPlainHttpOrigin(origin) ? t('credentialOrigin.confirm.http') : ''].filter(Boolean).join('\n\n')
+    }
+    const { response } = mainWindow && !mainWindow.isDestroyed() ? await dialog.showMessageBox(mainWindow, options) : await dialog.showMessageBox(options)
+    return response === 0
+  } : undefined
+  const verdict = await authorizeCredentialOrigin({ scope, url, hasCredential, defaults }, await credentialOriginStore(), confirm)
+  if (!verdict.ok) throw new UserFacingError(t(ask ? 'credentialOrigin.declined' : 'credentialOrigin.blocked', { origin: verdict.origin }))
+}
+
+/**
  * 従量課金の API 呼び出しの記録（<設定フォルダ>/usage/decision-YYYY-MM.jsonl）と、判定モデルのローカル中継。
  * 中継は判定モデルを有効にしたときだけ立てる。Agent にはキーを渡さず、中継の URL だけを渡す（src/main/decision/）
  */
@@ -262,6 +325,9 @@ async function decision(): Promise<import('./decision/service').DecisionService>
       prefs: () => withLocalDecisionModel(currentSettings().decision ?? DEFAULT_DECISION_PREFERENCES, localModelRecommendation().decision),
       // キーは中継に最初の依頼が来たときに初めて読む（起動時には復号しない）
       readKey: (prefs) => providerKey(prefs as KeyRef, DECISION_PRESETS[prefs.preset].vendor),
+      // 認証情報は認めた接続元にだけ送る（security-5 [6]）。中継の依頼では聞かずに断り、「接続を確かめる」でだけ聞く
+      authorize: (prefs, url, interactive) => gateCredentials(`decision:${prefs.preset}`, url, prefs as KeyRef & { headers?: Record<string, unknown> },
+        DECISION_PRESETS[prefs.preset].vendor, [DECISION_PRESETS[prefs.preset].endpoint], interactive),
       getEnv: (name) => envGetter(keyLookup())(name),
       onCall: recordCall
     })
@@ -329,10 +395,15 @@ function setWorkspace(folderPath: string | null, project: Project | null = null)
   }
   terminals?.setCwd(folderPath)
   terminals?.setRemote(project?.source === 'ssh' && project.ssh ? project.ssh : null)
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.setTitle(workspace.folderName ? `${workspace.folderName} — ${PRODUCT_NAME}` : PRODUCT_NAME)
-  }
+  workspaceRemote = project?.source === 'ssh' && !!project.ssh
+  refreshWindowTitle()
   return workspace
+}
+
+/** 窓の題名。録画中は先頭に印を付け、macOS は Dock にも出す（renderer の表示に頼らない録画中の印） */
+function refreshWindowTitle(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  mainWindow.setTitle(indicatorTitle(workspace.folderName ? `${workspace.folderName} — ${PRODUCT_NAME}` : PRODUCT_NAME, capturing))
 }
 
 /** 取り込んだ settings.json を、動いているアプリへ反映する（配色・言語・エージェント・プロジェクト）。renderer へは平文のキーを外して送る */
@@ -369,7 +440,7 @@ function assertNotRecording(): void {
  */
 function openProject(project: Project): WorkspaceState {
   const next = setWorkspace(project.folderPath, project)
-  updateSettings({ activeProjectId: project.id, folderPath: project.folderPath })
+  updateSettings({ activeProjectId: project.id, folderPath: project.folderPath, projects: markProjectOpened(currentSettings().projects, project.id) })
   send('workspace:changed', next)
   send('projects:changed', projectsState())
   // 内蔵ブラウザもそのプロジェクトの状態に戻す。前に開いていた URL → 登録 URL の先頭 → 空の画面。
@@ -482,6 +553,8 @@ function updateProject(next: ProjectUpdate): ProjectsState {
     ...(next.urls ? { urls: next.urls } : {}),
     ...(next.kind ? { kind: next.kind } : {})
   }
+  if (next.starred === true) merged.starred = true
+  else if (next.starred === false) delete merged.starred
   updateSettings({ projects: settings.projects.map((p) => (p.id === next.id ? merged : p)) })
   // 表示名が変わったらタイトルバーにも反映する
   if (workspace.projectId === next.id) {
@@ -590,6 +663,8 @@ function createWindow(): BrowserWindow {
   window.webContents.on('before-input-event', (_event, input) => {
     if (input.type === 'keyDown') window.webContents.setIgnoreMenuShortcuts(terminalFocused && terminalOwnsMenuKey(input, process.platform))
   })
+  // 利用者の操作（OS から窓に届いたクリック・キー）だけが、録画・撮影・プログラムのコピーの許可を作る（captureConsent.ts）
+  window.webContents.on('input-event', (_event, input) => { if (isGestureInput(input.type)) gestures.noteGesture() })
   // 読み込み直したら、新しい画面が知らせ直すまではターミナルにフォーカスが無いとみなす
   window.webContents.on('did-start-loading', () => { terminalFocused = false })
 
@@ -649,7 +724,16 @@ async function ensureRecording(): Promise<RecordingController> {
     },
     {
       onLimit: () => stopReview().then(() => undefined),
-      onStatus: (status) => { setTelemetryContext({ recording: status.state }); send('recording:status', status) },
+      onStatus: (status) => {
+        setTelemetryContext({ recording: status.state })
+        const next = status.state !== 'idle'
+        if (next !== capturing) {
+          capturing = next
+          refreshWindowTitle()
+          if (process.platform === 'darwin') app.dock?.setBadge(capturing ? CAPTURE_INDICATOR : '')
+        }
+        send('recording:status', status)
+      },
       onLevel: (level) => send('recording:level', level),
       onPcm: (block) => audioWriter?.write(block),
       onWarning: (message) => send('recording:warning', message),
@@ -816,7 +900,11 @@ let autoUpdates: AutoUpdater | null = null
 function autoUpdater(): AutoUpdater {
   if (autoUpdates) return autoUpdates
   const e2eServer = IS_E2E && usingE2eReleaseServer()
+  // E2E だけ: 閉じたときの入れ替えの代わりに呼ぶ偽のインストーラー（絶対パスの .mjs）
+  const e2eInstaller = e2eServer ? process.env.FERRET_E2E_UPDATE_INSTALLER?.trim() : undefined
   const install = () => import('./autoUpdateInstall')
+  // 閉じるときは import を待てないので、準備ができた時点で読んでおく
+  let installSync: typeof import('./autoUpdateInstall') | null = null
   autoUpdates = new AutoUpdater({
     method: installMethodFor(process.platform, process.env),
     enabled: (IS_PACKAGED && !IS_E2E) || e2eServer,
@@ -836,9 +924,17 @@ function autoUpdater(): AutoUpdater {
     prepareDir: async (keep) => (await install()).prepareUpdateDir(app.getPath('userData'), keep),
     stage: async (method, path, file) => (await install()).stageUpdate(method, path, file),
     install: async (method, path, file) => (await install()).installUpdate(method, path, file),
+    installOnQuit: (method, path, file) => {
+      if (!installSync) return false
+      if (e2eInstaller && isAbsolute(e2eInstaller) && e2eInstaller.endsWith('.mjs')) return installSync.runE2eQuitInstaller(e2eInstaller, method, path)
+      return IS_PACKAGED && !IS_E2E ? installSync.installUpdateOnQuit(method, path, file) : false
+    },
     getAutoDownload: () => currentSettings().autoUpdate !== false,
     setAutoDownload: (on) => updateSettings({ autoUpdate: on ? undefined : false }),
-    emit: (status) => send('update:status', status),
+    emit: (status) => {
+      if (status.progress.phase === 'ready' && !installSync) void install().then((m) => { installSync = m }).catch(() => undefined)
+      send('update:status', status)
+    },
     report: (err, op) => reportHandled(err, { area: 'update', op }),
     failedMessage: () => t('update.errors.download')
   })
@@ -1026,6 +1122,11 @@ function registerIpc(): void {
       openFolderAsProject(folder)
       return projectsState()
     },
+    'project:reorder': (ids) => {
+      updateSettings({ projects: reorderProjects(currentSettings().projects, ids) })
+      send('projects:changed', projectsState())
+      return projectsState()
+    },
     'drop:inspect': (paths) => inspectDropped(paths, workspace.folderPath),
     'project:saveSession': (id, session) => {
       const { projects } = currentSettings()
@@ -1104,17 +1205,41 @@ function registerIpc(): void {
 
     'terminal:create': (options) => {
       if (!terminals) throw new UserFacingError(t('errors.terminalNotReady'))
-      return terminals.create(options).then((info) => { resources.noteTerminalCreated(info.id); return info })
+      const remote = workspaceRemote
+      return terminals.create(options).then((info) => { resources.noteTerminalCreated(info.id); if (remote) remoteTerminalIds.add(info.id); return info })
     },
     'terminal:write': (id, data) => terminals?.write(id, data),
     'terminal:resize': (id, size) => terminals?.resize(id, size),
-    'terminal:close': (id) => terminals?.close(id),
+    'terminal:close': (id) => { programCopies.forget(id); remoteTerminalIds.delete(id); return terminals?.close(id) },
     'terminal:screen': (id, text) => terminals?.updateScreen(id, text),
     'terminal:agentState': (id) => terminals?.agentState(id) ?? { kind: 'unknown', state: 'unknown' },
     'terminal:cwd': (id) => terminals?.currentCwd(id) ?? null,
     'terminal:clipboardText': () => clipboard.readText(),
-    // 端末の中のプログラムが送れる量に上限を付ける（OSC 52 は base64 で 128K 文字まで。選択のコピーは大きくてもよい）
-    'terminal:writeClipboard': (text) => { if (typeof text === 'string' && text.length <= 8 * 1024 * 1024) clipboard.writeText(text) },
+    // 選択範囲のコピー。キーを押した直後だけ書く（プログラムのコピーはこの道を通さない。terminal:programCopy）
+    'terminal:writeClipboard': (text) => { if (typeof text === 'string' && text.length <= 8 * 1024 * 1024 && gestures.consume('copy')) clipboard.writeText(text) },
+    // 端末のプログラムのコピー（OSC 52）。既定は預かって帯で確かめる。常に許可でも、手元の端末にフォーカスがあるときだけ（security-5 [9]）
+    'terminal:programCopy': (id, text) => {
+      const decision = programCopyDecision({ mode: normalizeTerminalClipboardMode(currentSettings().terminalClipboard), remote: remoteTerminalIds.has(String(id)),
+        windowFocused: !!mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused(), terminalFocused })
+      const { result, write } = programCopies.offer(String(id), text, decision)
+      if (write !== null) clipboard.writeText(write)
+      return result
+    },
+    'terminal:programCopyAccept': (id) => {
+      // 帯の［コピー］を押した直後だけ（renderer の求めだけでは写さない）
+      if (!gestures.consume('programCopy')) return false
+      const text = programCopies.take(String(id))
+      if (text === null) return false
+      clipboard.writeText(text)
+      return true
+    },
+    'terminal:programCopyDismiss': (id) => programCopies.forget(String(id)),
+    'settings:terminalClipboard': (mode) => {
+      const next = normalizeTerminalClipboardMode(mode)
+      // 確かめずに写す設定へ広げるのは、利用者の操作の直後だけ
+      if (next === 'allow' && !gestures.consume('choice')) throw new UserFacingError(t('errors.needsUserAction'))
+      updateSettings({ terminalClipboard: next === 'ask' ? undefined : next })
+    },
     'terminal:focused': (focused) => { terminalFocused = focused === true },
     'terminal:list': () => terminals?.list() ?? [],
     'terminal:attach': (id) => {
@@ -1190,8 +1315,16 @@ function registerIpc(): void {
     },
 
     // 録画の対象（captureTarget）は別に覚えるので、送られてこなければ前の値を残す
-    'settings:capture': (preferences) => updateSettings({ capture: { ...currentSettings().capture, ...preferences } }),
-    'capture:devices': async () => mainWindow?.webContents.executeJavaScript(`navigator.mediaDevices.enumerateDevices().then(devices => devices.filter(d => d.kind === 'audioinput' && d.deviceId).map((d, i) => ({ id: d.deviceId, label: d.label || ${JSON.stringify(t('capture.micNumbered'))}.replace('{{n}}', String(i + 1)) })))`).catch((err: unknown) => { reportHandled(err, { area: 'recording', op: 'list microphones' }); return [] }) ?? [],
+    'settings:capture': (preferences) => {
+      // マイク・PC の音声を録る同意は、利用者が切り替えた直後だけ広げる（操作が無ければ狭めるだけ）
+      captureConsent = { ...captureConsent, ...nextAudioConsent(captureConsent, preferences ?? {}, gestures.consume('choice')) }
+      return updateSettings({ capture: { ...currentSettings().capture, ...preferences } })
+    },
+    // ページで動かす文は固定の文字列にし、値（名前の無いマイクの訳）は main 側で付ける（コードに値を埋め込まない）
+    'capture:devices': async () => {
+      const devices: Array<{ id: string; label: string }> = await mainWindow?.webContents.executeJavaScript(`navigator.mediaDevices.enumerateDevices().then(devices => devices.filter(d => d.kind === 'audioinput' && d.deviceId).map(d => ({ id: d.deviceId, label: d.label })))`).catch((err: unknown) => { reportHandled(err, { area: 'recording', op: 'list microphones' }); return [] }) ?? []
+      return devices.map((d, i) => ({ id: d.id, label: d.label || t('capture.micNumbered').replace('{{n}}', String(i + 1)) }))
+    },
     'capture:model': async () => {
       if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new UserFacingError(t('errors.stopRecordingBeforeChange'))
       const chosen = await dialog.showOpenDialog(mainWindow!, { title: t('dialog.whisperModel.title'), properties: ['openFile'], filters: [{ name: t('dialog.whisperModel.filter'), extensions: ['bin'] }] })
@@ -1206,7 +1339,7 @@ function registerIpc(): void {
     },
     'review:organize': async (id, runner) => {
       const r = await import('./review')
-      const { LLM_PROVIDER_PRESETS, isOrganizeRunnerId } = await import('@shared/aiProviders')
+      const { LLM_PROVIDER_PRESETS, isOrganizeRunnerId, resolveEndpoint } = await import('@shared/aiProviders')
       // Ollama でモデルを決めていなければ、この PC に合うもの（gpt-oss / qwen3）を使う
       const localOrganizeModel = (await import('./localModels')).localModelRecommendation().organize
       if (!isOrganizeRunnerId(runner)) throw new Error('unknown runner')
@@ -1214,11 +1347,14 @@ function registerIpc(): void {
       const api = runner.startsWith('api:') ? (() => {
         const provider = runner.slice(4) as keyof typeof LLM_PROVIDER_PRESETS
         const endpoint = currentSettings().organizer?.endpoints?.[provider]
-        return { endpoint: provider === 'ollama' && !endpoint?.model ? { ...endpoint, model: localOrganizeModel } : endpoint, vendor: LLM_PROVIDER_PRESETS[provider].vendor }
+        return { provider, endpoint: provider === 'ollama' && !endpoint?.model ? { ...endpoint, model: localOrganizeModel } : endpoint, vendor: LLM_PROVIDER_PRESETS[provider].vendor }
       })() : undefined
       updateSettings({ organizer: { ...currentSettings().organizer, runner } })
+      const resolvedApi = api ? resolveEndpointRefs(api.endpoint, keyLookup()) : undefined
+      // 認証情報は認めた接続元にだけ送る（security-5 [6]。ここでは聞かずに断り、設定の「接続を確かめる」へ案内する）
+      if (api) await gateCredentials(`organize:${api.provider}`, resolveEndpoint(LLM_PROVIDER_PRESETS[api.provider], resolvedApi).baseUrl, api.endpoint, api.vendor, [LLM_PROVIDER_PRESETS[api.provider].baseUrl], false)
       return r.organizeReview(r.checkedPaths(workspace.folderPath, id), runner,
-        api ? { endpoint: resolveEndpointRefs(api.endpoint, keyLookup()), apiKey: await providerKey(api.endpoint, api.vendor) } : undefined, currentSettings().organizer?.cliModels)
+        api ? { endpoint: resolvedApi, apiKey: await providerKey(api.endpoint, api.vendor) } : undefined, currentSettings().organizer?.cliModels)
     },
     'review:frames': async (id, itemId) => {
       const r = await import('./review')
@@ -1232,13 +1368,17 @@ function registerIpc(): void {
       return (await sttKeyStore()).set(provider && AI_VENDORS.includes(provider) ? provider : 'openai', key)
     },
     'capture:testConnection': async (target) => {
-      const { STT_PROVIDER_PRESETS, isSttRemoteProvider } = await import('@shared/aiProviders')
+      const { STT_PROVIDER_PRESETS, isSttRemoteProvider, resolveEndpoint } = await import('@shared/aiProviders')
       const { sanitizeEndpointConfig } = await import('./pipeline/stt/endpoint')
       const { checkSttEngine } = await import('./pipeline/stt/cloud')
       if (!isSttRemoteProvider(target?.provider)) throw new Error('unknown provider')
-      // 画面でまだ保存していない値で確かめる。キーは settings.json の指定か保存済みのもの
+      // 画面でまだ保存していない値で確かめる。キーは settings.json の指定か保存済みのもの。
+      // 認証情報は、プリセットの接続元か利用者が main のダイアログで認めた接続元にだけ送る（security-5 [6]）
+      const preset = STT_PROVIDER_PRESETS[target.provider]
       const endpoint = keepKeyRefs(currentSettings().capture?.sttEndpoints, { [target.provider]: sanitizeEndpointConfig(target.endpoint) })?.[target.provider]
-      return checkSttEngine({ provider: target.provider, endpoint: resolveEndpointRefs(endpoint, keyLookup()),
+      const resolved = resolveEndpointRefs(endpoint, keyLookup())
+      await gateCredentials(`stt:${target.provider}`, resolveEndpoint(preset, resolved).baseUrl, endpoint, preset.vendor, [preset.baseUrl], true)
+      return checkSttEngine({ provider: target.provider, endpoint: resolved,
         apiKey: await providerKey(endpoint, STT_PROVIDER_PRESETS[target.provider].vendor) })
     },
     'settings:stt': async (patch) => {
@@ -1253,12 +1393,15 @@ function registerIpc(): void {
       updateSettings({ organizer: { ...prev, ...prefs, ...(prefs?.endpoints !== undefined ? { endpoints: keepKeyRefs(prev?.endpoints, prefs.endpoints) } : {}) } })
     },
     'organize:testConnection': async (target) => {
-      const { LLM_PROVIDER_PRESETS, isLlmApiProvider } = await import('@shared/aiProviders')
+      const { LLM_PROVIDER_PRESETS, isLlmApiProvider, resolveEndpoint } = await import('@shared/aiProviders')
       const { sanitizeEndpointConfig } = await import('./pipeline/stt/endpoint')
       const { checkLlmRunner } = await import('./pipeline/organize/runners/api')
       if (!isLlmApiProvider(target?.provider)) throw new Error('unknown provider')
+      const preset = LLM_PROVIDER_PRESETS[target.provider]
       const endpoint = keepKeyRefs(currentSettings().organizer?.endpoints, { [target.provider]: sanitizeEndpointConfig(target.endpoint) })?.[target.provider]
-      return checkLlmRunner({ provider: target.provider, endpoint: resolveEndpointRefs(endpoint, keyLookup()),
+      const resolved = resolveEndpointRefs(endpoint, keyLookup())
+      await gateCredentials(`organize:${target.provider}`, resolveEndpoint(preset, resolved).baseUrl, endpoint, preset.vendor, [preset.baseUrl], true)
+      return checkLlmRunner({ provider: target.provider, endpoint: resolved,
         apiKey: await providerKey(endpoint, LLM_PROVIDER_PRESETS[target.provider].vendor) })
     },
     'settings:decision': async (prefs) => {
@@ -1273,7 +1416,7 @@ function registerIpc(): void {
       const { sanitizeDecisionPreferences } = await import('@shared/decision')
       // 画面にはキーを渡していないので、settings.json に書かれた apiKey / apiKeyEnv を引き継ぐ。E2E は本物を呼ばない
       const prefs = sanitizeDecisionPreferences(keepKeyRefs({ d: currentSettings().decision as KeyRef | undefined }, { d: (raw ?? {}) as KeyRef })?.d)
-      return (await decision()).testConnection(prefs, { fake: IS_E2E })
+      return (await decision()).testConnection(prefs, { fake: IS_E2E, interactive: true })
     },
     'usage:apiCalls': () => apiUsageSummary(),
     'usage:openApiLog': async () => {
@@ -1283,6 +1426,8 @@ function registerIpc(): void {
       else void shell.openPath(dirname(file)).catch((err: unknown) => reportHandled(err, { area: 'usage', op: 'open api call log' }))
     },
     'capture:sources': async () => {
+      // 画面・ウインドウのサムネイルは、利用者が選択画面を開いた・選び直した直後だけ（security-5 [1]）
+      if (!gestures.consume('sources')) throw new UserFacingError(t('errors.needsUserAction'))
       const { listCaptureSources, screenAccess } = await import('./recording/sources')
       const sources = await listCaptureSources().catch((err: unknown) => {
         console.warn('[capture] 画面・ウインドウの一覧を取得できませんでした', err)
@@ -1292,9 +1437,11 @@ function registerIpc(): void {
       return { screenAccess: screenAccess(), sources }
     },
     'capture:setTarget': async (target) => {
-      const { sanitizeCaptureTarget } = await import('@shared/captureTarget')
       const captureTarget = sanitizeCaptureTarget(target)
       if (!captureTarget) throw new UserFacingError(t('errors.captureTargetInvalid'))
+      // 録る対象は、利用者が選んだ直後だけ変える。録画はこの対象しか録らない
+      if (!gestures.consume('choice')) throw new UserFacingError(t('errors.needsUserAction'))
+      captureConsent = { ...captureConsent, target: captureTarget }
       const capture = currentSettings().capture
       if (capture) updateSettings({ capture: { ...capture, captureTarget } })
       else updateSettings({ capture: { captureMic: true, captureSystemAudio: false, transcription: 'local', language: 'auto', keepDays: 7, stayFeedbackOnStop: false, captureTarget } })
@@ -1413,8 +1560,13 @@ function registerIpc(): void {
     'recording:start': async (options) => {
       if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new UserFacingError(t('errors.recordingBusy'))
       if (!workspace.folderPath) throw new UserFacingError(t('errors.openProjectFolder'))
-      const { sanitizeCaptureTarget, BROWSER_TARGET } = await import('@shared/captureTarget')
+      const { BROWSER_TARGET } = await import('@shared/captureTarget')
       let captureTarget = sanitizeCaptureTarget(options.captureTarget) ?? BROWSER_TARGET
+      // 利用者の操作の直後に1回だけ。対象と音は、利用者が選んだ範囲を超えない（security-5 [1]）
+      if (captureRequestProblem({ target: captureTarget, mic: options.captureMic !== false, systemAudio: options.captureSystemAudio === true }, captureConsent) !== null) {
+        throw new UserFacingError(t('errors.captureChooseAgain'))
+      }
+      if (!gestures.consume('record')) throw new UserFacingError(t('errors.needsUserAction'))
       // 画面全体・別のウインドウを録るときは、内蔵ブラウザにページが無くてもよい
       if (captureTarget.kind === 'browser') {
         if (!browser?.state().url || browser.state().url === 'about:blank') throw new UserFacingError(t('errors.openUrlToReview'))
@@ -1451,15 +1603,19 @@ function registerIpc(): void {
           const { IncrementalTranscriber } = await import('./pipeline/stt/engine')
           if (activeOptions.transcription !== 'local') {
             const provider = activeOptions.transcription
-            const { STT_PROVIDER_PRESETS, providerLabel } = await import('@shared/aiProviders')
+            const { STT_PROVIDER_PRESETS, providerLabel, resolveEndpoint } = await import('@shared/aiProviders')
             const { createSttEngine } = await import('./pipeline/stt/cloud')
             const preset = STT_PROVIDER_PRESETS[provider]
             const capture = currentSettings().capture
-            const apiKey = await providerKey(capture?.sttEndpoints?.[provider], preset.vendor)
+            // 認証情報は認めた接続元にだけ送る（security-5 [6]）。認めていなければ送らずに知らせ、端末内の文字起こしを案内する
+            const gate = await gateCredentials(`stt:${provider}`, resolveEndpoint(preset, resolveEndpointRefs(capture?.sttEndpoints?.[provider], keyLookup())).baseUrl,
+              capture?.sttEndpoints?.[provider], preset.vendor, [preset.baseUrl], false).then(() => null, (err: unknown) => err instanceof UserFacingError ? err.message : t('errors.endpointMissingWarning'))
+            const apiKey = gate ? undefined : await providerKey(capture?.sttEndpoints?.[provider], preset.vendor)
             // 上限は設定の値（null は上限なし）。検証起動では実API保護のため $0.05 に固定する
             const maxCostUsd = IS_E2E ? 0.05 : capture?.costLimitUsd
             // キーが無ければ別のキーや接続先へ切り替えず、端末内の文字起こしを案内するだけにする
-            if (preset.keyRequired && !apiKey) sttWarnings.push(t('stt.errors.keyMissing', { label: providerLabel(preset, t) }))
+            if (gate) sttWarnings.push(gate)
+            else if (preset.keyRequired && !apiKey) sttWarnings.push(t('stt.errors.keyMissing', { label: providerLabel(preset, t) }))
             else {
               try {
                 transcriber = new IncrementalTranscriber(createSttEngine({ provider, endpoint: resolveEndpointRefs(capture?.sttEndpoints?.[provider], keyLookup()), apiKey,
@@ -1609,6 +1765,8 @@ function registerIpc(): void {
     },
     'feedback:captureWindow': async () => {
       if (!mainWindow || mainWindow.isDestroyed()) throw new UserFacingError(t('feedback.errors.captureFailed'))
+      // 内蔵ブラウザも写る撮影は、利用者の操作1回につき1枚だけ（security-5 [1]）
+      if (!gestures.consume('screenshot')) throw new UserFacingError(t('errors.needsUserAction'))
       const [{ fitScreenshot, overlayView }, { nativeImage }] = await Promise.all([import('./feedbackCapture'), import('electron')])
       const window = mainWindow
       const shot = await window.webContents.capturePage()
@@ -1654,9 +1812,12 @@ function registerIpc(): void {
         done()
       }
     }, reportMainError)
-    ipcMain.handle(channel, async (_event, ...args: unknown[]) => {
+    ipcMain.handle(channel, async (event, ...args: unknown[]) => {
       // 終了処理に入った後は、破棄途中のオブジェクトを触らない
       if (shuttingDown) return null
+      // アプリの窓の本体のフレーム（アプリのページ）からだけ受ける。サブフレーム・別の窓・別のページからは断る（security-5 [1]）
+      const main = mainWindow && !mainWindow.isDestroyed() ? { contents: mainWindow.webContents, mainFrame: mainWindow.webContents.mainFrame } : null
+      if (!isTrustedIpcSender(event, main, (url) => isAppPageUrl(url, appPageRoots()))) throw new Error(`ipc ${channel}: sender is not the app window`)
       // 起動の内訳: renderer の最初の呼び出し（renderer の JS が動き始めた）と、画面の最初のデータを返し終えた時刻。
       // renderer:loaded → interactive のどこで遅れたか（renderer・main の順番待ち・描画）を分ける
       markOnce('renderer:firstIpc')
@@ -1713,8 +1874,10 @@ async function main(): Promise<void> {
   setStartupTags({ emulation: emulationKind(process.platform, app.runningUnderARM64Translation) })
   // 既定のセッション（アプリの画面・録画ウインドウ・プレビューの iframe）の権限。アプリ自身の画面の本体だけに、
   // 要るものだけを許す。プレビュー（プロジェクトの HTML）や外のページには何も許さない。読み込みの前に入れる
-  installPermissionPolicy(session.defaultSession as unknown as PermissionSessionLike, ({ permission, origin, isMainFrame }) =>
-    APP_ALLOWED_PERMISSIONS.has(permission) && isMainFrame !== false && isAppPageUrl(origin, appPageRoots()))
+  // media はアプリの窓には音だけ、映像（画面・タブ）は録画ウインドウだけ。カメラはどこにも許さない（captureConsent.ts）
+  installPermissionPolicy(session.defaultSession as unknown as PermissionSessionLike, (query) =>
+    APP_ALLOWED_PERMISSIONS.has(query.permission) && query.isMainFrame !== false && isAppPageUrl(query.origin, appPageRoots()) &&
+    (query.permission !== 'media' || appMediaAllowed(query, isRecorderContents(query.webContents))))
   // Windows のタスクバーで、インストーラが作るショートカット（appId）と同じアイコンにまとめる
   if (process.platform === 'win32') app.setAppUserModelId('dev.ferretade.ferret')
   // 開発版は名前を変えず、「について」の版の行にだけ (dev) と添える
@@ -1729,6 +1892,9 @@ async function main(): Promise<void> {
   }
 
   loadedSettings = await loadSettings()
+  // 前回までに利用者が選んだ録る対象と音（起動後の変更は、操作の直後のものだけを足す）
+  captureConsent = { target: sanitizeCaptureTarget(loadedSettings.capture?.captureTarget) ?? { kind: 'browser' },
+    mic: loadedSettings.capture?.captureMic !== false, systemAudio: loadedSettings.capture?.captureSystemAudio === true }
   maybeSendTestEvent()
   // ウインドウ・メニュー・ダイアログを作る前に画面の言語を決める
   applyLocalePreference(loadedSettings.locale)
@@ -1805,8 +1971,10 @@ async function main(): Promise<void> {
     if (target !== DEFAULT_URL || !loadedSettings.url) loadedSettings = { ...loadedSettings, url: target }
   }
   if (loadedSettings.folderPath) {
-    const { pruneRecordings } = await import('./sessions')
-    await pruneRecordings(loadedSettings.folderPath, { keepDays: loadedSettings.capture?.keepDays ?? 7 })
+    // 保持期間を過ぎた動画の掃除は窓を開くのを待たせない。小さな切れに分けて、あとから少しずつ進める（security-5 [7]）
+    const { scheduleRetention } = await import('./sessions')
+    scheduleRetention(loadedSettings.folderPath, { keepDays: loadedSettings.capture?.keepDays ?? 7,
+      onError: (err) => reportHandled(err, { area: 'sessions', op: 'prune recordings' }) })
   }
   const presetUrl = process.env.ADE_INITIAL_URL
   if (presetUrl && presetUrl.length > 0) loadedSettings.url = presetUrl
@@ -1844,7 +2012,8 @@ async function main(): Promise<void> {
   watchSettings(applyExternalSettings, (error) => send('settingsFile:error', error))
   installMenu({
     onOpenFolder: () => void openFolderDialog(),
-    onCommand: (command) => send('menu:command', command)
+    // メニューの操作も利用者の操作（録画の開始など。⌘⇧R）
+    onCommand: (command) => { gestures.noteGesture(); send('menu:command', command) }
   })
 
   // プレビュー（ade-preview://）は内蔵ブラウザと、エディタの横並びの iframe（既定のセッション）の両方で開く。
@@ -1974,6 +2143,8 @@ function drainTerminalsAndQuit(): void {
      */
     const watchdog = setTimeout(() => {
       console.warn(`[quit] ${QUIT_WATCHDOG_MS}ms 経っても終了できないため、強制的に終了します`)
+      // app.exit では quit が届かないので、閉じたときの更新はここで入れる
+      autoUpdates?.installOnQuit()
       app.exit(0)
     }, QUIT_WATCHDOG_MS)
     watchdog.unref?.()
@@ -2004,6 +2175,11 @@ function drainTerminalsAndQuit(): void {
 
 app.on('before-quit', (event) => {
   if (beginShutdown()) event.preventDefault()
+})
+
+// 準備のできた更新は、閉じたときに入れる（起動し直さない。次に開いたとき新しい版）。落ちたとき（0 以外）は入れない
+app.on('quit', (_event, exitCode) => {
+  if (exitCode === 0) autoUpdates?.installOnQuit()
 })
 
 app.on('activate', () => {

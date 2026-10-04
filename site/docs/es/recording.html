@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Grabación · Documentación de Ferret</title>
-  <meta name="description" content="Graba el navegador integrado, toda la pantalla u otra ventana. Habla, rodea y escribe mientras usas la página.">
+  <meta name="description" content="Graba el navegador integrado, toda la pantalla, otra ventana, una app de escritorio, un juego o un simulador de móvil. Habla, rodea y escribe mientras usas la página.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
   <link rel="canonical" href="https://ferretade.dev/docs/es/recording">
@@ -26,7 +26,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
   <meta property="og:title" content="Grabación · Documentación de Ferret">
-  <meta property="og:description" content="Graba el navegador integrado, toda la pantalla u otra ventana. Habla, rodea y escribe mientras usas la página.">
+  <meta property="og:description" content="Graba el navegador integrado, toda la pantalla, otra ventana, una app de escritorio, un juego o un simulador de móvil. Habla, rodea y escribe mientras usas la página.">
   <meta property="og:url" content="https://ferretade.dev/docs/es/recording">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="es_ES">
@@ -36,7 +36,7 @@
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Grabación · Documentación de Ferret">
-  <meta name="twitter:description" content="Graba el navegador integrado, toda la pantalla u otra ventana. Habla, rodea y escribe mientras usas la página.">
+  <meta name="twitter:description" content="Graba el navegador integrado, toda la pantalla, otra ventana, una app de escritorio, un juego o un simulador de móvil. Habla, rodea y escribe mientras usas la página.">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -155,7 +155,7 @@
       <article class="docs-content">
         <p class="docs-eyebrow">Uso de Ferret</p>
         <h1>Grabación</h1>
-        <p class="docs-lead">Graba el navegador integrado, toda la pantalla u otra ventana. Habla, rodea y escribe mientras usas la página.</p>
+        <p class="docs-lead">Graba el navegador integrado, toda la pantalla, otra ventana, una app de escritorio, un juego o un simulador de móvil. Habla, rodea y escribe mientras usas la página.</p>
         <div class="docs-os" role="group" aria-label="Atajos para" data-docs-os hidden>
           <span class="docs-os-label">Atajos para</span>
           <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">macOS</button>
@@ -170,10 +170,21 @@
   <tbody>
     <tr><td><span class="docs-ui">Navegador integrado</span> (predeterminado)</td><td>Vídeo, voz y lápiz, además de la URL, los selectores de elementos, los clics y los desplazamientos. No necesita permisos del sistema operativo.</td></tr>
     <tr><td><span class="docs-ui">Toda la pantalla</span></td><td>Vídeo, voz y lápiz. Sin URL, elemento ni registro de acciones (se indica en <code>feedback.md</code>).</td></tr>
-    <tr><td><span class="docs-ui">Ventana</span></td><td>Igual que lo anterior. Las ventanas de Ferret no aparecen en la lista.</td></tr>
+    <tr><td><span class="docs-ui">Ventana</span></td><td>Igual que lo anterior. Cada ventana aparece con el nombre de su app. Las ventanas de Ferret no aparecen en la lista.</td></tr>
+    <tr><td><span class="docs-ui">Móvil</span></td><td>Igual que lo anterior, pero solo se muestran las ventanas de iOS Simulator y Android Emulator.</td></tr>
   </tbody>
 </table>
 <p>Tu elección se recuerda. En macOS, la captura de pantalla y de ventana requiere el permiso de Grabación de pantalla (<a href="troubleshooting.html#screen-permission">cómo concederlo</a>).</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="desktop-mobile">
+        <h2 id="desktop-mobile"><a class="docs-anchor" href="#desktop-mobile" aria-label="Enlace a Apps de escritorio, juegos y apps móviles">#</a>Apps de escritorio, juegos y apps móviles</h2>
+        <p>Para revisar una app de escritorio que estás desarrollando (Electron, Tauri o una app nativa), iníciala como sueles hacerlo en desarrollo y elige su ventana en <span class="docs-ui">Ventana</span>. Las ventanas aparecen con el nombre de su app, así que una build de desarrollo de una app Electron aparece bajo <code>Electron</code>. También se muestran las ventanas pequeñas y las que se mantienen por encima de las demás; en macOS, una ventana que se mantiene por encima se muestra con el nombre de su app y su título en lugar de una vista previa.</p>
+<p>La elección sigue a la app. Cuando reinicias la app y su ventana vuelve a aparecer, la siguiente grabación usa la ventana con el mismo título, o la única ventana de la app si el título cambió.</p>
+<p>Para una app móvil, inicia iOS Simulator (Xcode, macOS) o Android Emulator (Android Studio) y elige el dispositivo en <span class="docs-ui">Móvil</span>. Cuando el emulador se ejecuta dentro de Android Studio, ábrelo en su propia ventana (en los ajustes de Android Studio, en Tools → Emulator, desactiva el inicio en la ventana de herramientas Running Devices) para que aparezca en la lista.</p>
+<p>En lugar de una URL, <code>feedback.md</code> empieza con lo que grabaste: la app y el título de la ventana, o el nombre del dispositivo y la versión del sistema operativo en un simulador o emulador, además de la app en primer plano en Android. También indica al agente que cambie el código fuente de esa app. Ferret lee los datos del dispositivo con <code>xcrun simctl</code> y <code>adb</code> (desde <code>ANDROID_HOME</code>, <code>ANDROID_SDK_ROOT</code> o la carpeta del SDK de Android Studio) al empezar la grabación. Las imágenes muestran solo la ventana elegida, así que di en voz alta a qué te refieres mientras hablas.</p>
+<p>Los juegos funcionan igual. Elige la ventana del editor de Unity, Unreal Engine o Godot con la vista del juego visible, o la ventana de un juego que hayas compilado, incluido el modo ventana sin bordes. Para un juego en pantalla completa exclusiva, elige su pantalla en <span class="docs-ui">Toda la pantalla</span>. Cuando la ventana es de uno de estos editores, <code>feedback.md</code> nombra el motor y pide al agente que cambie el código, las escenas o los recursos del juego. El vídeo se guarda a un máximo de 10 fotogramas por segundo para que los archivos sean pequeños, y las imágenes de los hallazgos salen del mismo vídeo, así que coinciden con el momento de la línea de tiempo.</p>
+<p>La <span class="docs-ui">Ventana que grabar</span> de un objetivo de revisión coincide tanto con el nombre de la app como con el título de la ventana, así que <code>Simulator</code> selecciona la ventana de iOS Simulator sea cual sea el dispositivo que muestre.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="record">
@@ -264,6 +275,7 @@
       <p class="docs-toc-heading">En esta página</p>
       <ul>
         <li><a href="#target">Elegir qué grabar</a></li>
+        <li><a href="#desktop-mobile">Apps de escritorio, juegos y apps móviles</a></li>
         <li><a href="#record">Iniciar, pausar, detener</a></li>
         <li><a href="#pen">Lápiz</a></li>
         <li><a href="#annotations-clear">Cuándo desaparecen los trazos</a></li>

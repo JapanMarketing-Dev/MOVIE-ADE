@@ -1,5 +1,8 @@
 # PR で増える・変わる依存（pnpm-lock.yaml と workflow の actions）に、既知の脆弱性や使えないライセンスが無いかを見る。
 # 公開リポジトリなので無料。依存を入れず、PR のコードも動かさない（GitHub の依存グラフを比べるだけ）。
+# 依存グラフ（Settings → Code security → Dependency graph）が切れていると、この action は
+# 「Dependency review is not supported on this repository」で必ず落ちる。先に比較の API が使えるかを確かめ、
+# 使えないときは notice を出して飛ばす（必ず落ちるワークフローを作らない。RULES.md・CONTRIBUTING.md の決まり）。
 name: Dependency review
 
 on:
@@ -20,8 +23,28 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Check that the dependency graph is enabled
+        id: graph
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if gh api "repos/${GITHUB_REPOSITORY}/dependency-graph/compare/${BASE}...${HEAD}" --silent 2>err.txt; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          elif grep -qiE 'dependency graph|not supported|HTTP 403|HTTP 404' err.txt; then
+            cat err.txt
+            echo "::notice title=Dependency review skipped::The dependency graph is not enabled for this repository (Settings > Code security > Dependency graph). Enable it to review dependency changes on pull requests."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            # 一時的な失敗などは隠さずに落とす
+            cat err.txt >&2
+            exit 1
+          fi
+
       # checkout は要らない（PR の前後の依存を API で比べる）
-      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+      - if: steps.graph.outputs.enabled == 'true'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
           # MIT のアプリに入れられないもの（コピーレフト）。CONTRIBUTING.md の決まりと同じ

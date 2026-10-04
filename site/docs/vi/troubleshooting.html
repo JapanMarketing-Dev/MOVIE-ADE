@@ -213,12 +213,13 @@
       <section class="docs-section" aria-labelledby="agent">
         <h2 id="agent"><a class="docs-anchor" href="#agent" aria-label="Liên kết tới Không tìm thấy agent / Gửi cho Agent không gửi được">#</a>Không tìm thấy agent / Gửi cho Agent không gửi được</h2>
         <ul>
-  <li><code>command not found: claude</code> (hoặc <code>codex</code>, <code>gemini</code>, hay lệnh của agent khác) trong terminal: CLI chưa được cài hoặc không nằm trong <code>PATH</code>. Ferret hiển thị nguyên lỗi của shell và không thêm gợi ý nào. Hãy kiểm tra lệnh đó chạy được trong terminal thông thường của bạn, dùng <span class="docs-ui">Cài đặt</span> trong <span class="docs-ui">Cài đặt → Agent</span>, hoặc đặt đường dẫn tuyệt đối làm <span class="docs-ui">Lệnh</span> của agent đó.</li>
+  <li><q>Claude Code: Không tìm thấy</q> (hoặc tên của agent tích hợp khác), hoặc <code>command not found: …</code> trong terminal với agent bạn tự thêm: CLI chưa được cài hoặc không nằm trong <code>PATH</code>. Ferret chỉ khởi chạy agent tích hợp từ đường dẫn tuyệt đối trong một thư mục <code>PATH</code> nằm ngoài dự án, không bao giờ từ thư mục dự án. Hãy kiểm tra lệnh đó chạy được trong terminal thông thường của bạn, dùng <span class="docs-ui">Cài đặt</span> trong <span class="docs-ui">Cài đặt → Agent</span>, hoặc đặt đường dẫn tuyệt đối làm <span class="docs-ui">Lệnh</span> của agent đó.</li>
   <li><q>Agent đang chờ xác nhận. Hãy phản hồi trong terminal, rồi gửi.</q> Hãy trả lời yêu cầu của agent trước.</li>
   <li><q>Ô nhập của agent chưa sẵn sàng.</q> Đợi agent khởi động xong.</li>
   <li><q>Văn bản đã được nhập nhưng chưa gửi. Hãy nhấn Enter trong terminal.</q></li>
   <li><q>Hãy mở terminal trước.</q></li>
   <li><q>Không phân tích được tham số khởi chạy: Unclosed quote.</q> Sửa lại dấu ngoặc kép trong tham số của agent.</li>
+  <li><q>Hãy ghi … vào đối số khởi chạy, không phải vào lệnh.</q> hoặc <q>Hãy ghi … vào đối số khởi chạy mà không dùng dấu ngoặc kép hay dấu gạch chéo ngược.</q> Hãy ghi cờ đó dưới dạng văn bản thường trong tham số của agent. Để khởi chạy agent mà không hỏi cấp quyền, hãy bật <span class="docs-ui">Khởi chạy Agent mà không hỏi cấp quyền</span> trong <span class="docs-ui">Cài đặt → Agent</span>.</li>
 </ul>
       </section>
 

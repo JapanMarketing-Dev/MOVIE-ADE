@@ -213,12 +213,13 @@
       <section class="docs-section" aria-labelledby="agent">
         <h2 id="agent"><a class="docs-anchor" href="#agent" aria-label="Tautan ke Agent tidak ditemukan / Kirim ke Agent tidak terkirim">#</a>Agent tidak ditemukan / Kirim ke Agent tidak terkirim</h2>
         <ul>
-  <li><code>command not found: claude</code> (atau <code>codex</code>, <code>gemini</code>, atau perintah agent lain) di terminal: CLI belum terinstal atau tidak ada di <code>PATH</code>. Ferret menampilkan error dari shell itu sendiri tanpa menambahkan petunjuk. Pastikan perintahnya berfungsi di terminal biasa Anda, gunakan <span class="docs-ui">Instal</span> di <span class="docs-ui">Pengaturan → Agent</span>, atau atur path absolut sebagai <span class="docs-ui">Perintah</span> untuk agent tersebut.</li>
+  <li><q>Claude Code: Tidak ditemukan</q> (atau nama agent bawaan lain), atau <code>command not found: …</code> di terminal untuk agent yang Anda tambahkan sendiri: CLI belum terinstal atau tidak ada di <code>PATH</code>. Ferret menjalankan agent bawaan hanya dari path absolut di folder <code>PATH</code> di luar proyek, tidak pernah dari folder proyek. Pastikan perintahnya berfungsi di terminal biasa Anda, gunakan <span class="docs-ui">Instal</span> di <span class="docs-ui">Pengaturan → Agent</span>, atau atur path absolut sebagai <span class="docs-ui">Perintah</span> untuk agent tersebut.</li>
   <li><q>Agent sedang menunggu konfirmasi. Tanggapi di terminal, lalu kirim.</q> Jawab prompt agent terlebih dahulu.</li>
   <li><q>Input agent belum siap.</q> Tunggu sampai agent selesai dijalankan.</li>
   <li><q>Teks sudah dimasukkan tetapi belum terkirim. Tekan Enter di terminal.</q></li>
   <li><q>Buka terminal terlebih dahulu.</q></li>
   <li><q>Tidak dapat mengurai argumen peluncuran: Tanda kutip tidak ditutup.</q> Perbaiki tanda kutip di argumen agent.</li>
+  <li><q>Tulis … di argumen peluncuran, bukan di perintah.</q> atau <q>Tulis … di argumen peluncuran tanpa tanda kutip atau garis miring terbalik.</q> Tulis flag tersebut sebagai teks biasa di argumen agent. Untuk menjalankan agent tanpa permintaan izin, aktifkan <span class="docs-ui">Jalankan Agent tanpa permintaan izin</span> di <span class="docs-ui">Pengaturan → Agent</span>.</li>
 </ul>
       </section>
 

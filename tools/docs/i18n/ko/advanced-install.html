@@ -61,17 +61,18 @@ pnpm dist:linux   # AppImage + deb (x64)</code></pre>
 <p>Windows에서 <code>pnpm install</code>은 다시 빌드하지 않고 node-pty에 포함된 미리 빌드된 바이너리를 사용합니다(다시 빌드하려면 Visual Studio C++ 빌드 도구가 필요합니다). 강제로 다시 빌드하려면 <code>ADE_FORCE_NATIVE_REBUILD=1</code>을 설정하세요.</p>
 <p>터미널에 node-pty를 불러올 수 없다고 표시되면 <code>pnpm rebuild:native</code>를 실행하세요.</p>
 
-<!-- @update d0e883a95e -->
+<!-- @update a0f43ea7e6 -->
 ## 업데이트
 <p>Ferret은 시작할 때, 6시간마다, 그리고 <span class="docs-ui">업데이트 확인</span>를 클릭할 때(푸터 → <span class="docs-ui">업데이트</span>) 새 버전을 확인합니다. 다운로드 서버(R2)에서 <code>latest.json</code>을 가져오고, 앱에 내장된 릴리스 키로 해당 버전 <code>SHA256SUMS</code>의 서명을 확인합니다. 서명이 맞지 않는 버전은 안내하지 않습니다.</p>
-<p>새 버전이 있으면 Ferret이 백그라운드에서 다운로드하고 <span class="docs-ui">업데이트</span>에 진행 상황을 표시합니다. 다운로드한 파일은 크기와 SHA-256이 서명된 목록과 일치할 때만 사용합니다. 그러면 <span class="docs-ui">업데이트</span>와 푸터에 <span class="docs-ui">다시 시작하여 업데이트</span>가 나타납니다. 클릭하면 다시 시작되어 새 버전이 됩니다. 터미널에서 Agent가 작업 중이거나 녹화 중이면 먼저 확인을 요청하며, 지금까지의 녹화는 다시 시작하기 전에 저장됩니다.</p>
+<p>새 버전이 있으면 Ferret이 백그라운드에서 다운로드하고 <span class="docs-ui">업데이트</span>에 진행 상황을 표시합니다. 다운로드한 파일은 크기와 SHA-256이 서명된 목록과 일치할 때만 사용합니다. 준비가 끝나면 <span class="docs-ui">업데이트</span>에 다음에 Ferret을 닫을 때 설치된다고 표시됩니다. 평소처럼 Ferret을 종료하면 다음에 열 때 새 버전이 됩니다. 설치 프로그램을 직접 다운로드하거나 실행할 필요가 없고, Ferret이 스스로 다시 시작하지도 않으므로 닫을 때까지 Agent는 계속 작업할 수 있습니다.</p>
+<p>바로 설치하려면 <span class="docs-ui">업데이트</span> 또는 푸터에서 <span class="docs-ui">다시 시작하여 업데이트</span>를 클릭합니다. 터미널에서 Agent가 작업 중이거나 녹화 중이면 먼저 확인을 요청하며, 지금까지의 녹화는 다시 시작하기 전에 저장됩니다.</p>
 <table>
   <thead><tr><th>설치 형태</th><th>다운로드하는 것</th><th>설치 방법</th></tr></thead>
   <tbody>
-    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>. <code>UPDATE-SHA256SUMS</code>에 들어 있고 같은 릴리스 키로 서명됨</td><td>macOS 업데이트 기능(Squirrel.Mac)에 넘깁니다. 새 앱이 같은 Developer ID로 서명되었는지도 여기서 확인하며, Ferret을 다시 시작할 때 교체됩니다</td></tr>
-    <tr><td>Windows</td><td>설치 프로그램(<code>.exe</code>)</td><td>Ferret을 다시 시작할 때 창 없이 실행되고, 끝나면 새 버전을 엽니다</td></tr>
-    <tr><td>Linux(AppImage)</td><td>새 <code>.AppImage</code></td><td>실행한 AppImage를 교체하고 새 버전을 엽니다</td></tr>
+    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>. <code>UPDATE-SHA256SUMS</code>에 들어 있고 같은 릴리스 키로 서명됨</td><td>macOS 업데이트 기능(Squirrel.Mac)에 넘깁니다. 새 앱이 같은 Developer ID로 서명되었는지도 여기서 확인하며, Ferret을 닫을 때(또는 <span class="docs-ui">다시 시작하여 업데이트</span>로) 설치됩니다</td></tr>
+    <tr><td>Windows</td><td>설치 프로그램(<code>.exe</code>)</td><td>Ferret을 닫은 뒤 창 없이 실행됩니다. <span class="docs-ui">다시 시작하여 업데이트</span>를 사용하면 끝난 뒤 새 버전을 엽니다</td></tr>
+    <tr><td>Linux(AppImage)</td><td>새 <code>.AppImage</code></td><td>Ferret을 닫을 때 실행한 AppImage를 교체합니다. <span class="docs-ui">다시 시작하여 업데이트</span>를 사용하면 그 뒤 새 버전을 엽니다</td></tr>
     <tr><td>Linux(deb)</td><td><code>.deb</code></td><td><span class="docs-ui">설치 프로그램 열기</span>를 누르면 다운로드 폴더에 저장하고 소프트웨어 설치 프로그램으로 엽니다</td></tr>
   </tbody>
 </table>
-<p>직접 고를 때만 다운로드하려면 <span class="docs-ui">업데이트</span>에서 <span class="docs-ui">새 버전을 자동으로 다운로드</span>을 끄고(또는 <code>settings.json</code>에 <code>"autoUpdate": false</code>), 새 버전이 표시되면 <span class="docs-ui">다운로드</span>를 클릭하세요. 개발 빌드(<code>pnpm dev</code>)는 백그라운드에서 다운로드하지 않으며, <span class="docs-ui">다운로드</span>는 확인한 설치 프로그램을 다운로드 폴더에 저장합니다.</p>
+<p>직접 선택할 때만 업데이트하려면 <span class="docs-ui">업데이트</span>에서 <span class="docs-ui">자동으로 업데이트</span>를 끕니다(또는 <code>settings.json</code>에 <code>"autoUpdate": false</code>). 그러면 Ferret이 스스로 다운로드하거나 설치하지 않습니다. 새 버전이 표시되면 <span class="docs-ui">다운로드</span>를 클릭한 뒤 <span class="docs-ui">다시 시작하여 업데이트</span>를 클릭합니다. 개발 빌드(<code>pnpm dev</code>)는 백그라운드에서 다운로드하지 않으며, <span class="docs-ui">다운로드</span>는 확인한 설치 프로그램을 다운로드 폴더에 저장합니다.</p>

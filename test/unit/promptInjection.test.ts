@@ -150,9 +150,11 @@ describe('整え方の部品', () => {
     expect(oneLine('a\u001b[201~b\r\nc‮d e')).toBe('a[201~b cd e')
     expect(oneLine('あ'.repeat(10), 5)).toBe('ああああ…')
   })
-  it('mdText は ` と < をエスケープする。mdCodeValue は ` を替える', () => {
+  it('mdText は ` と < と \\ をエスケープする。mdCodeValue は ` を替える', () => {
     expect(mdText('a`b<c>')).toBe('a\\`b\\<c>')
     expect(mdText('\\`')).toBe('\\\\\\`')
+    // \ をすべてエスケープするので、末尾の \ が後ろの文字と組んでエスケープを作ることも無い
+    expect(mdText('C:\\dir\\')).toBe('C:\\\\dir\\\\')
     expect(mdCodeValue('a`b')).toBe("a'b")
   })
   it('shellSafeUrl はクエリの区切りを残す', () => {

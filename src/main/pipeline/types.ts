@@ -287,7 +287,7 @@ export interface ItemContext {
 export interface FeedbackItem {
   /** 編集をまたいで変わらないID。確認画面の操作はこれで指す */
   id: string
-  /** 1 から始まる通し番号（時刻順。編集のたびに振り直す） */
+  /** 1 から始まる通し番号（時刻順。並べ替えたらその順。編集のたびに振り直す） */
   index: number;
   /** 指摘の代表時刻（見出しの [00:14]） */
   t: number
@@ -323,4 +323,9 @@ export interface FeedbackDocument {
    * 整理していない・指摘を足した後は無い（ルールで作った名前を使う）
    */
   reviewTitle?: string
+  /**
+   * 確認画面で指摘を並べ替えた（ドラッグ＆ドロップ・↑↓）。true なら items の順が正本で、番号もこの順に振る。
+   * 無ければ時刻順（並べ替えより前に保存したレビューも時刻順のまま読む）
+   */
+  customOrder?: true
 }

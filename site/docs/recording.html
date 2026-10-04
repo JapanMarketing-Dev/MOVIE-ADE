@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Recording · Ferret docs</title>
-  <meta name="description" content="Record the built-in browser, an entire screen, or another window. Talk, circle, and type while you use the page.">
+  <meta name="description" content="Record the built-in browser, an entire screen, another window, a desktop app, a game, or a phone simulator. Talk, circle, and type while you use the page.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
   <link rel="canonical" href="https://ferretade.dev/docs/recording">
@@ -26,7 +26,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
   <meta property="og:title" content="Recording · Ferret docs">
-  <meta property="og:description" content="Record the built-in browser, an entire screen, or another window. Talk, circle, and type while you use the page.">
+  <meta property="og:description" content="Record the built-in browser, an entire screen, another window, a desktop app, a game, or a phone simulator. Talk, circle, and type while you use the page.">
   <meta property="og:url" content="https://ferretade.dev/docs/recording">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="en_US">
@@ -36,7 +36,7 @@
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Recording · Ferret docs">
-  <meta name="twitter:description" content="Record the built-in browser, an entire screen, or another window. Talk, circle, and type while you use the page.">
+  <meta name="twitter:description" content="Record the built-in browser, an entire screen, another window, a desktop app, a game, or a phone simulator. Talk, circle, and type while you use the page.">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -155,7 +155,7 @@
       <article class="docs-content">
         <p class="docs-eyebrow">Using Ferret</p>
         <h1>Recording</h1>
-        <p class="docs-lead">Record the built-in browser, an entire screen, or another window. Talk, circle, and type while you use the page.</p>
+        <p class="docs-lead">Record the built-in browser, an entire screen, another window, a desktop app, a game, or a phone simulator. Talk, circle, and type while you use the page.</p>
         <div class="docs-os" role="group" aria-label="Shortcuts for" data-docs-os hidden>
           <span class="docs-os-label">Shortcuts for</span>
           <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">macOS</button>
@@ -170,10 +170,21 @@
   <tbody>
     <tr><td><span class="docs-ui">Built-in Browser</span> (default)</td><td>Video, voice, and pen, plus URL, element selectors, clicks, and scrolls. No OS permission needed.</td></tr>
     <tr><td><span class="docs-ui">Entire Screen</span></td><td>Video, voice, and pen. No URL, element, or action log (this is noted in <code>feedback.md</code>).</td></tr>
-    <tr><td><span class="docs-ui">Window</span></td><td>Same as above. Ferret's own windows are not listed.</td></tr>
+    <tr><td><span class="docs-ui">Window</span></td><td>Same as above. Each window is listed with its app name. Ferret's own windows are not listed.</td></tr>
+    <tr><td><span class="docs-ui">Phone</span></td><td>Same as above, listing only iOS Simulator and Android Emulator windows.</td></tr>
   </tbody>
 </table>
 <p>Your choice is remembered. On macOS, screen and window capture require Screen Recording permission (<a href="troubleshooting.html#screen-permission">how to grant it</a>).</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="desktop-mobile">
+        <h2 id="desktop-mobile"><a class="docs-anchor" href="#desktop-mobile" aria-label="Link to Desktop apps, games, and mobile apps">#</a>Desktop apps, games, and mobile apps</h2>
+        <p>To review a desktop app you are building (Electron, Tauri, or a native app), start it as you usually do in development, then choose its window under <span class="docs-ui">Window</span>. Windows are listed with their app name, so a development build of an Electron app appears under <code>Electron</code>. Small windows and windows that stay on top of others are listed too; on macOS a window that stays on top is shown by its app name and title instead of a preview.</p>
+<p>The choice follows the app. When you restart the app and its window comes back, the next recording uses the window with the same title, or the app's only window if the title changed.</p>
+<p>For a mobile app, start iOS Simulator (Xcode, macOS) or Android Emulator (Android Studio), then choose the device under <span class="docs-ui">Phone</span>. When the emulator runs inside Android Studio, open it in its own window (in Android Studio's settings, under Tools → Emulator, turn off launching in the Running Devices tool window) so it is listed.</p>
+<p>Instead of a URL, <code>feedback.md</code> starts with what you recorded: the app and window title, or the device name and OS version for a simulator or emulator, plus the app in the foreground on Android. It also tells the agent to change that app's source code. Ferret reads the device details with <code>xcrun simctl</code> and <code>adb</code> (from <code>ANDROID_HOME</code>, <code>ANDROID_SDK_ROOT</code>, or the Android Studio SDK folder) when the recording starts. The images show only the chosen window, so say what you are pointing at while you talk.</p>
+<p>Games work the same way. Choose the Unity, Unreal Engine, or Godot editor window with the game view showing, or the window of a game you built, including borderless windowed mode. For a game in exclusive full screen, choose its display under <span class="docs-ui">Entire Screen</span>. When the window is one of these editors, <code>feedback.md</code> names the engine and asks the agent to change the game's code, scenes, or assets. Video is kept at up to 10 frames per second to keep files small, and the images for findings come from the same video, so they match the moment on the timeline.</p>
+<p>A review target's <span class="docs-ui">Window to record</span> matches the app name as well as the window title, so <code>Simulator</code> selects the iOS Simulator window whatever device it shows.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="record">
@@ -264,6 +275,7 @@
       <p class="docs-toc-heading">On this page</p>
       <ul>
         <li><a href="#target">Choose what to record</a></li>
+        <li><a href="#desktop-mobile">Desktop apps, games, and mobile apps</a></li>
         <li><a href="#record">Start, pause, stop</a></li>
         <li><a href="#pen">Pen</a></li>
         <li><a href="#annotations-clear">When marks disappear</a></li>

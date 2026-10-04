@@ -1,3 +1,4 @@
+import { isGestureInput } from './captureConsent'
 import { cleanElectronUserAgent } from './browserUserAgent'
 import { WebContentsView, dialog, session, shell, type BaseWindow, type BrowserWindow, type Session, type WebContents } from 'electron'
 import { join } from 'node:path'
@@ -15,6 +16,7 @@ import {
   isTabCaptureRequest,
   isPopupUrlAllowed,
   isTypedNavigationAllowed,
+  PageClipboardGrant,
   popupWindowAction,
   type PermissionSessionLike
 } from './webPolicy'
@@ -32,10 +34,10 @@ export const PARTITION = 'persist:ade-browser'
 /**
  * 内蔵ブラウザで許す権限。レビューするページは信用しないので、既定ですべて断る。
  * 録画は別の録画ウインドウ（既定のセッション）がタブを録るので、ページにマイク・カメラ・画面共有は要らない。
- * 許すのは、ページの「コピー」ボタンが動くための書き込み専用・整形済みのクリップボードと、
+ * 許すのは、利用者がビューを操作した直後の、そのページの1回のコピー（書き込み専用・整形済み。PageClipboardGrant）と、
  * 録画ウインドウからのタブ録画の問い合わせ（isTabCaptureRequest）だけ
  */
-const BROWSER_ALLOWED_PERMISSIONS = new Set(['clipboard-sanitized-write'])
+const pageClipboard = new PageClipboardGrant()
 
 let browserSessionReady = false
 
@@ -48,7 +50,7 @@ export function browserSession(confirmWindow?: () => BaseWindow | null): Session
   if (!browserSessionReady) {
     browserSessionReady = true
     installPermissionPolicy(ses as unknown as PermissionSessionLike,
-      (query) => BROWSER_ALLOWED_PERMISSIONS.has(query.permission) || isTabCaptureRequest(query),
+      (query) => pageClipboard.allow(query) || isTabCaptureRequest(query),
       (url, origin) => void openExternalFromPage(url, origin))
     // Google などのログインに断られないよう、Chrome と同じ形の UA にする（browserUserAgent.ts）
     ses.setUserAgent(cleanElectronUserAgent(ses.getUserAgent()))
@@ -179,6 +181,10 @@ export class EmbeddedBrowser {
     view.setBounds({ x: 0, y: 0, width: 0, height: 0 })
 
     const wc = view.webContents
+    // ページのコピーは、利用者がこのビューをクリック・キー入力した直後だけ（ポップアップの入力では許さない。security-5 [14]）
+    wc.on('input-event', (_event, input) => {
+      if (isGestureInput(input.type)) pageClipboard.noteGesture(wc, wc.getURL())
+    })
 
     // ログインのポップアップ（window.open に大きさを指定したもの。Google でログインなど）だけは、同じセッションの子ウインドウで開く。
     // opener を保つので、ログインが終わってポップアップが閉じれば元のページに結果が届く（webPolicy.ts の popupWindowAction）。

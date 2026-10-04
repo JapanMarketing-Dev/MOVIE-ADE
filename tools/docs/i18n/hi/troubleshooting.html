@@ -52,15 +52,16 @@
 <p>यह तब होता है जब आप source से चला रहे हों और node-pty किसी दूसरे Node या Electron ABI के लिए build हुआ हो।</p>
 <pre><code>pnpm rebuild:native</code></pre>
 
-<!-- @agent 1b8e87d730 -->
+<!-- @agent b8de3c3989 -->
 ## Agent नहीं मिला / Agent को भेजें नहीं भेजता
 <ul>
-  <li>टर्मिनल में <code>command not found: claude</code> (या <code>codex</code>, <code>gemini</code>, या किसी दूसरे agent का command): CLI इंस्टॉल नहीं है या <code>PATH</code> में नहीं है। Ferret shell का अपना error दिखाता है और कोई संकेत नहीं जोड़ता। जाँचें कि command आपके सामान्य टर्मिनल में चलता है, <span class="docs-ui">Settings → Agents</span> में <span class="docs-ui">इंस्टॉल करें</span> इस्तेमाल करें, या उस agent के <span class="docs-ui">कमांड</span> में absolute path सेट करें।</li>
+  <li><q>Claude Code: नहीं मिला</q> (या किसी दूसरे built-in agent का नाम), या आपके जोड़े गए agent के लिए टर्मिनल में <code>command not found: …</code>: CLI इंस्टॉल नहीं है या <code>PATH</code> में नहीं है। Ferret built-in agents को सिर्फ़ project के बाहर के किसी <code>PATH</code> folder के absolute path से शुरू करता है, project folder से कभी नहीं। जाँचें कि command आपके सामान्य टर्मिनल में चलता है, <span class="docs-ui">Settings → Agents</span> में <span class="docs-ui">इंस्टॉल करें</span> इस्तेमाल करें, या उस agent के <span class="docs-ui">कमांड</span> में absolute path सेट करें।</li>
   <li><q>agent पुष्टि का इंतज़ार कर रहा है। terminal में जवाब दें, फिर भेजें।</q> पहले agent के सवाल का जवाब दें।</li>
   <li><q>agent का इनपुट अभी तैयार नहीं है।</q> Agent के पूरी तरह शुरू होने तक इंतज़ार करें।</li>
   <li><q>टेक्स्ट डाल दिया गया पर भेजा नहीं गया। terminal में Enter दबाएँ।</q></li>
   <li><q>पहले एक terminal खोलें।</q></li>
   <li><q>launch arguments पार्स नहीं हो सके: Quote बंद नहीं किया गया।</q> Agent के arguments में quotes ठीक करें।</li>
+  <li><q>… को कमांड में नहीं, लॉन्च आर्ग्युमेंट में लिखें।</q> या <q>… को लॉन्च आर्ग्युमेंट में बिना कोट्स या बैकस्लैश के लिखें।</q> उस flag को agent के arguments में सादे text के रूप में लिखें। अनुमति पूछे बिना agents शुरू करने के लिए <span class="docs-ui">Settings → Agents</span> में <span class="docs-ui">अनुमति पूछे बिना Agents शुरू करें</span> चालू करें।</li>
 </ul>
 
 <!-- @cannot-record 7b2c3ffb80 -->

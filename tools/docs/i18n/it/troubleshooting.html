@@ -52,15 +52,16 @@ Problemi comuni e come risolverli. I messaggi citati sono quelli che l'app mostr
 <p>Succede quando esegui dai sorgenti e node-pty è stato compilato per un ABI di Node o Electron diverso.</p>
 <pre><code>pnpm rebuild:native</code></pre>
 
-<!-- @agent 1b8e87d730 -->
+<!-- @agent b8de3c3989 -->
 ## Agent non trovato / Invia all'Agent non invia
 <ul>
-  <li><code>command not found: claude</code> (oppure <code>codex</code>, <code>gemini</code> o il comando di un altro agent) nel terminale: la CLI non è installata o non è nel <code>PATH</code>. Ferret mostra l'errore della shell così com'è e non aggiunge suggerimenti. Controlla che il comando funzioni nel tuo terminale abituale, usa <span class="docs-ui">Installa</span> in <span class="docs-ui">Impostazioni → Agent</span>, oppure imposta un percorso assoluto come <span class="docs-ui">Comando</span> di quell'agent.</li>
+  <li><q>Claude Code: Non trovato</q> (o il nome di un altro agent integrato), oppure <code>command not found: …</code> nel terminale per un agent che hai aggiunto tu: la CLI non è installata o non è nel <code>PATH</code>. Ferret avvia gli agent integrati solo da un percorso assoluto in una cartella del <code>PATH</code> fuori dal progetto, mai dalla cartella del progetto. Controlla che il comando funzioni nel tuo terminale abituale, usa <span class="docs-ui">Installa</span> in <span class="docs-ui">Impostazioni → Agent</span>, oppure imposta un percorso assoluto come <span class="docs-ui">Comando</span> di quell'agent.</li>
   <li><q>L'agent è in attesa di conferma. Rispondi nel terminale, poi invia.</q> Rispondi prima alla richiesta dell'agent.</li>
   <li><q>L'input dell'agent non è ancora pronto.</q> Attendi che l'agent finisca di avviarsi.</li>
   <li><q>Il testo è stato inserito ma non inviato. Premi Invio nel terminale.</q></li>
   <li><q>Apri prima un terminale.</q></li>
   <li><q>Impossibile analizzare gli argomenti di avvio: Virgolette non chiuse.</q> Correggi le virgolette negli argomenti dell'agent.</li>
+  <li><q>Inserisci … negli argomenti di avvio, non nel comando.</q> oppure <q>Scrivi … negli argomenti di avvio senza virgolette né barre rovesciate.</q> Scrivi quell'opzione come testo semplice negli argomenti dell'agent. Per avviare gli agent senza richieste di autorizzazione, attiva <span class="docs-ui">Avvia gli Agent senza richieste di autorizzazione</span> in <span class="docs-ui">Impostazioni → Agent</span>.</li>
 </ul>
 
 <!-- @cannot-record 7b2c3ffb80 -->

@@ -7,14 +7,18 @@
  * - パスを作るとき（sessionPaths / takePaths）に、プロジェクトから先の今ある階層をたどり、
  *   リンク・ジャンクションがあれば断る。実体（realpath）がプロジェクトの実体の外でも断る（他の reparse point も含む）
  * - 末端のファイルは、たどらない形で書く（一時ファイルを排他で作って rename で置き換える。追記は O_NOFOLLOW）
+ * - 書く・消すときは、親フォルダを開いて持ったまま pinnedDir.ts を通す（security-5 [11]。確かめてから書くまでに
+ *   途中のフォルダをリンクへ差し替えられても外へ書かない・外を消さない）。ここで fs の変更の関数を直接呼ばない
  *
  * プロジェクトのフォルダ自体がリンクなのはかまわない（利用者が選んだ場所。実体を基準にする）。
  */
-import { constants, lstatSync, realpathSync } from 'node:fs'
-import { lstat, open, rename, rm, writeFile } from 'node:fs/promises'
+import { lstatSync, realpathSync } from 'node:fs'
+import { lstat, type FileHandle } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import path from 'node:path'
 import { readFileBounded } from '../boundedFile'
+import { OutsideProjectError, PinnedDir, createFileIn, mkdirIn, openAppendIn, removeIn, renameIn } from '../pinnedDir'
+import { ADE_DIR, LEGACY_ADE_DIR } from './paths'
 
 /** レビューの保存先のファイルを読むときの上限（session.json などの JSON・JSONL。長い録画でも数十 MB に収まる） */
 const MAX_STORAGE_FILE_BYTES = 64 * 1024 * 1024
@@ -98,45 +102,137 @@ export async function readFileNoFollow(file: string, encoding: 'utf8' | null = '
 }
 
 /**
+ * file を含むプロジェクトのフォルダ（目印のフォルダの手前）。目印は保存先のフォルダ（paths.ts の ADE_DIR・改名前の LEGACY_ADE_DIR）と、除外の設定の .git。
+ * 目印が無ければ null（親フォルダの実体だけを持って確かめる）
+ */
+export function storageRootOf(file: string): string | null {
+  const markers = [ADE_DIR, LEGACY_ADE_DIR, '.git']
+  const parts = path.resolve(file).split(path.sep)
+  for (let i = parts.length - 2; i > 0; i--) if (markers.includes(parts[i])) return parts.slice(0, i).join(path.sep) || path.sep
+  return null
+}
+
+/** file の親フォルダを開いて持つ（プロジェクトが分かれば、その中であることも確かめる） */
+async function pinParent(file: string, root?: string): Promise<PinnedDir> {
+  const dir = path.dirname(file)
+  try {
+    return await PinnedDir.open(root ?? storageRootOf(file) ?? dir, dir)
+  } catch (err) {
+    if (err instanceof OutsideProjectError) throw new UnsafeStoragePathError(`storage path resolves outside the project: ${dir}`)
+    throw err
+  }
+}
+
+/** 開いて持った親の中で行う。外への差し替えに気づいたら UnsafeStoragePathError */
+async function inParent<T>(file: string, fn: (pin: PinnedDir, name: string) => Promise<T>, root?: string): Promise<T> {
+  const pin = await pinParent(file, root)
+  try {
+    return await fn(pin, path.basename(file))
+  } catch (err) {
+    if (err instanceof OutsideProjectError) throw new UnsafeStoragePathError(`storage path changed while writing: ${file}`)
+    throw err
+  } finally {
+    await pin.close()
+  }
+}
+
+/**
  * ファイルを書く。末端がリンクでもたどらない（一時ファイルを排他で作り、rename でリンクごと置き換える）。
- * 途中で落ちても、元のファイルは書きかけにならない
+ * 途中で落ちても、元のファイルは書きかけにならない。親フォルダを開いて持ったまま書く（pinnedDir.ts）
  */
 export async function writeFileNoFollow(file: string, data: string | Uint8Array, options: { mode?: number } = {}): Promise<void> {
-  const tmp = `${file}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`
-  // 'wx' は既にある名前（リンクを含む）なら失敗する
-  await writeFile(tmp, data, { flag: 'wx', ...(options.mode !== undefined ? { mode: options.mode } : {}) })
+  await inParent(file, async (pin, name) => {
+    const tmp = `${name}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`
+    // O_EXCL は既にある名前（リンクを含む）なら失敗する
+    const handle = await createFileIn(pin, tmp, options.mode ?? 0o666)
+    try {
+      try {
+        await handle.writeFile(data)
+      } finally {
+        await handle.close()
+      }
+      await renameIn(pin, tmp, pin, name, { replace: true })
+    } catch (err) {
+      await removeIn(pin, tmp).catch(() => undefined)
+      throw err
+    }
+  })
+}
+
+/**
+ * まだ無いファイルを作って開く（既にある名前・リンクには書かない。EEXIST）。親フォルダを開いて持ったまま作る（pinnedDir.ts）。
+ * 録画の静止画・音声の区切り・削った動画など、新しい名前で書くもの
+ */
+export async function openNewFileContained(file: string, mode = 0o666): Promise<FileHandle> {
+  return inParent(file, (pin, name) => createFileIn(pin, name, mode))
+}
+
+/** まだ無いファイルを作って書く（openNewFileContained） */
+export async function writeNewFileContained(file: string, data: string | Uint8Array): Promise<void> {
+  const handle = await openNewFileContained(file)
   try {
-    await rename(tmp, file)
-  } catch (err) {
-    await rm(tmp, { force: true })
-    throw err
+    await handle.writeFile(data)
+  } finally {
+    await handle.close()
   }
 }
 
 /** 追記する。末端がリンク・ハードリンクなら断る（O_NOFOLLOW のある OS では開くときにも断る） */
 export async function appendFileNoFollow(file: string, data: string): Promise<void> {
   await assertPlainLeaf(file)
-  const nofollow = (constants as { O_NOFOLLOW?: number }).O_NOFOLLOW ?? 0
-  const handle = await open(file, constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | nofollow, 0o644)
-  try {
-    await handle.write(data)
-  } finally {
-    await handle.close()
+  await inParent(file, async (pin, name) => {
+    const handle = await openAppendIn(pin, name).catch((err: unknown) => {
+      if (err instanceof OutsideProjectError) throw new UnsafeStoragePathError(`not a regular file: ${file}`)
+      throw err
+    })
+    try {
+      await handle.write(data)
+    } finally {
+      await handle.close()
+    }
+  })
+}
+
+/**
+ * root（省略時は保存先の目印から決める）の下にフォルダを作る。root から先の無い段を1つずつ、親を開いて持ったまま作る。
+ * 既にあるフォルダ（リンク・外を指すものは断る）はそのまま使う。exclusive なら最後の段が既にあれば EEXIST
+ */
+export async function mkdirContained(dir: string, options: { root?: string; exclusive?: boolean } = {}): Promise<void> {
+  const root = options.root ?? storageRootOf(dir) ?? path.dirname(dir)
+  const chain = pathChain(root, dir)
+  if (!chain) throw new UnsafeStoragePathError(`storage path is outside the project: ${dir}`)
+  for (const [i, at] of chain.entries()) {
+    const last = i === chain.length - 1
+    try {
+      await inParent(at, (pin, name) => mkdirIn(pin, name), root)
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST' || (last && options.exclusive)) throw err
+      // 既にある段は、リンク・ジャンクションでなく中を指すフォルダのときだけ使う
+      assertContained(root, at)
+      if (!(await lstat(at)).isDirectory()) throw new UnsafeStoragePathError(`not a folder: ${at}`)
+    }
   }
 }
 
 /**
- * root の下の target を消す（rm -r を含む）。消す前に、先祖にリンクが無く実体が root の中にあることを確かめる。
+ * root（省略時は保存先の目印から決める）の下で from を to へ動かす。両方の親を開いて持ったまま動かす。
+ * replace なら to にあるものを置き換える（無ければ、上書きせずに EEXIST）
+ */
+export async function renameContained(from: string, to: string, options: { root?: string; replace?: boolean } = {}): Promise<void> {
+  const root = options.root ?? storageRootOf(from) ?? path.dirname(from)
+  await inParent(from, (source, fromName) => inParent(to, (target, toName) =>
+    renameIn(source, fromName, target, toName, { replace: options.replace === true }), root), root)
+}
+
+/**
+ * root の下の target を消す（rm -r を含む）。消す前に、先祖にリンクが無く実体が root の中にあることを確かめ、
+ * 親フォルダを開いて持ったまま消す（フォルダは隔離用の名前へ動かしてから中を消す。pinnedDir.ts）。
  * target 自体がリンクなら、リンクだけを消す（たどった先は消さない）
  */
 export async function removeContained(root: string, target: string, options: { recursive?: boolean } = {}): Promise<void> {
   assertContained(root, path.dirname(target))
   const st = await lstat(target).catch(() => null)
   if (!st) return
-  if (st.isSymbolicLink()) {
-    await rm(target, { force: true })
-    return
-  }
-  assertContained(root, target)
-  await rm(target, { recursive: options.recursive === true, force: true })
+  if (!st.isSymbolicLink()) assertContained(root, target)
+  await inParent(target, (pin, name) => removeIn(pin, name, { recursive: options.recursive === true }), root)
 }

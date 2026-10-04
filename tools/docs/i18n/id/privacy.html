@@ -21,7 +21,7 @@ Tinjauan berada di folder proyek Anda. Pengaturan berada di <code>~/.ferret/</co
 ## Masa simpan
 <p><span class="docs-ui">Simpan rekaman</span> (7 hari secara bawaan, 30 hari, atau <span class="docs-ui">Selamanya</span>): saat aplikasi dimulai, tinjauan selesai yang lebih lama dari itu kehilangan <code>recording.webm</code> dan <code>work/</code>. <code>feedback.md</code> dan gambar temuan tetap disimpan. Tinjauan yang belum selesai tidak pernah dipangkas. Pemangkasan berjalan saat peluncuran, untuk proyek yang terakhir dibuka.</p>
 
-<!-- @network 93d136650b -->
+<!-- @network cab5d43d47 -->
 ## Apa yang keluar dari mesin Anda
 <table>
   <thead><tr><th>Kapan</th><th>Tujuan</th><th>Data</th></tr></thead>
@@ -35,7 +35,7 @@ Tinjauan berada di folder proyek Anda. Pengaturan berada di <code>~/.ferret/</co
     <tr><td><span class="docs-ui">Kirim ke GitHub</span></td><td>GitHub melalui <code>gh</code></td><td>hanya teks isi (tanpa gambar)</td></tr>
     <tr><td>Penggunaan di footer (hanya Claude Code dan Codex)</td><td>Anthropic, ChatGPT</td><td>permintaan data penggunaan dengan login Anda sendiri</td></tr>
     <tr><td>Ajakan memberi bintang di GitHub</td><td>GitHub melalui <code>gh</code> Anda</td><td>memeriksa apakah Anda sudah memberi bintang pada repo, dan memberi bintang hanya jika Anda mengklik <span class="docs-ui">Beri bintang di GitHub</span></td></tr>
-    <tr><td>Pembaruan (saat Ferret dimulai, setiap 6 jam, dan dengan <span class="docs-ui">Periksa Pembaruan</span>)</td><td>server unduhan (Cloudflare R2)</td><td>permintaan untuk <code>latest.json</code> dan <code>SHA256SUMS</code> versi tersebut (di macOS juga <code>UPDATE-SHA256SUMS</code>); jika ada versi baru, file pembaruan untuk komputer Anda (hanya saat Anda mengklik <span class="docs-ui">Unduh</span> jika <span class="docs-ui">Unduh versi baru secara otomatis</span> dimatikan)</td></tr>
+    <tr><td>Pembaruan (saat Ferret dimulai, setiap 6 jam, dan dengan <span class="docs-ui">Periksa Pembaruan</span>)</td><td>server unduhan (Cloudflare R2)</td><td>permintaan untuk <code>latest.json</code> dan <code>SHA256SUMS</code> versi tersebut (di macOS juga <code>UPDATE-SHA256SUMS</code>); jika ada versi baru, file pembaruan untuk komputer Anda (hanya saat Anda mengklik <span class="docs-ui">Unduh</span> jika <span class="docs-ui">Perbarui secara otomatis</span> dimatikan)</td></tr>
     <tr><td>Mengirim umpan balik dari aplikasi (hanya saat Anda mengirimnya)</td><td>relay umpan balik milik pengembang (Cloudflare Worker), yang membuka issue publik di <code>JapanMarketing-Dev/ferret</code></td><td>teks Anda, bug atau ide, versi aplikasi / OS dan CPU, serta hingga 3 screenshot yang Anda lampirkan. Key, token, alamat email, dan path folder home disamarkan. Relay tidak menyimpan alamat IP Anda (lihat <a href="#feedback">Umpan balik dari aplikasi</a>)</td></tr>
     <tr><td>Crash atau error (<span class="docs-ui">Kirim laporan crash</span> aktif)</td><td>Sentry</td><td>stack trace dan versi OS / CPU / aplikasi (lihat <a href="#crash-reports">Laporan crash</a>)</td></tr>
   </tbody>

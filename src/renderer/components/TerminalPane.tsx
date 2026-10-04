@@ -33,6 +33,7 @@ import {
   type PaneSplitDirection
 } from '../terminal/paneTree'
 import { AgentIcon } from './AgentIcon'
+import { TerminalClipboardBar } from './TerminalClipboardBar'
 import { useT } from '../lib/i18n'
 import { t as tNow, type TranslationKey } from '@shared/i18n'
 import { QuickLaunchButton, type QuickLaunchAgent, type QuickLaunchSearch } from './QuickLaunchButton'
@@ -1107,6 +1108,7 @@ export function TerminalPane({
             onDragStart={(e) => startDrag(e, { kind: 'pane', tabKey: tab.key, paneKey: node.leafId })}
             onDragEnd={endDrag}
           />
+          <TerminalClipboardBar paneKey={node.leafId} />
         </div>
       )
     }

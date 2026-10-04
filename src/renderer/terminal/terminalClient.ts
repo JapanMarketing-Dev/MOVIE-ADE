@@ -5,7 +5,7 @@ import { minimumContrastFor } from './terminalContrast'
 import { windowsPtyOption } from './windowsPty'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import type { TerminalSize, TuiAgent } from '@shared/types'
+import type { ProgramCopyResult, TerminalSize, TuiAgent } from '@shared/types'
 import { THEME_CHANGE_EVENT } from '../lib/theme'
 import { t } from '@shared/i18n'
 import { reportAnomaly, reportHandled } from '@shared/report'
@@ -139,12 +139,16 @@ export class TerminalHandle {
       else void this.pasteClipboard()
       return false
     })
-    // 端末の中のプログラムのコピー（OSC 52）をクリップボードへ。読み出しの問い合わせには答えない（terminalOsc52.ts）
+    // 端末の中のプログラムのコピー（OSC 52）。写すかどうかは main が決め、既定では帯で確かめる（src/main/terminalClipboard.ts。security-5 [9]）。
+    // 読み出しの問い合わせには答えない（terminalOsc52.ts）
     const osc52 = this.term.parser.registerOscHandler(52, (data) => {
       const request = parseOsc52(data)
       // 流し直しの間の古いコピーで、そのあと利用者が写したものを上書きしない
-      if (request.kind === 'write' && !this.replaying) {
-        window.ade.invoke('terminal:writeClipboard', request.text).catch((err) => reportHandled(err, { area: 'terminal', op: 'osc52 clipboard write' }))
+      const ptyId = this.ptyId
+      if (request.kind === 'write' && !this.replaying && ptyId) {
+        window.ade.invoke('terminal:programCopy', ptyId, request.text)
+          .then((result) => { if (this.ptyId === ptyId && result.kind !== 'blocked') setProgramCopy(this.key, { ptyId, result }) })
+          .catch((err) => reportHandled(err, { area: 'terminal', op: 'osc52 clipboard write' }))
       }
       return true
     })
@@ -438,6 +442,7 @@ export class TerminalHandle {
   }
 
   dispose(): void {
+    setProgramCopy(this.key, null)
     if (this.screenTimer) clearTimeout(this.screenTimer)
     cancelAnimationFrame(this.fitFrame)
     for (const dispose of this.disposers) dispose()
@@ -454,6 +459,29 @@ export class TerminalHandle {
 }
 
 const handles = new Map<string, TerminalHandle>()
+
+/** 端末のプログラムのコピー（OSC 52）の帯に出すもの（ペインごと。TerminalClipboardBar が読む） */
+export interface ProgramCopyNotice {
+  ptyId: string
+  result: Exclude<ProgramCopyResult, { kind: 'blocked' }>
+}
+const programCopyNotices = new Map<string, ProgramCopyNotice>()
+const programCopyListeners = new Set<() => void>()
+
+export function setProgramCopy(key: string, notice: ProgramCopyNotice | null): void {
+  if (notice) programCopyNotices.set(key, notice)
+  else if (!programCopyNotices.delete(key)) return
+  for (const listener of programCopyListeners) listener()
+}
+
+export function programCopyNotice(key: string): ProgramCopyNotice | null {
+  return programCopyNotices.get(key) ?? null
+}
+
+export function subscribeProgramCopy(listener: () => void): () => void {
+  programCopyListeners.add(listener)
+  return () => programCopyListeners.delete(listener)
+}
 let subscribed = false
 let ptyResizeHeld = false
 

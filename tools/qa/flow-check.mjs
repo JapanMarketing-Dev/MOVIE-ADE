@@ -354,7 +354,7 @@ try {
   await shot('05-sent')
   check('送信の結果が成功として出る', toast && !/Start Codex or Claude Code/i.test(toast) && /Sent the instructions|pressed Enter/i.test(toast), toast)
   const expected = SEND_AGENT || 'claude'
-  check(`${expected} のターミナルに feedback.md の指示が届く`, new RegExp(`(^|\\n)${expected}:[^\\n]*feedback\\.md`).test(received), received.slice(0, 300).replace(/\x1b/g, '\\e'))
+  check(`${expected} のターミナルに feedback.md の指示が届く`, received.split('\n').some((line) => line.startsWith(`${expected}:`) && line.includes('feedback.md')), received.slice(0, 300).replace(/\x1b/g, '\\e'))
 
   // ⑥ 「Record feedback」から次の録画が始まる
   if ((await recordAgain.count()) > 0) {

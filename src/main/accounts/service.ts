@@ -11,9 +11,10 @@ import {
   type AgentAccountsState,
   type AgentAccountsView
 } from '@shared/accounts'
-import { DEFAULT_AGENT_PREFERENCES, TUI_AGENT_LABEL, type AccountAgent, type TuiAgent } from '@shared/types'
+import { TUI_AGENT_LABEL, type AccountAgent, type TuiAgent } from '@shared/types'
 import { isAccountAgent } from '@shared/agentCatalog'
 import type { AgentStartupShell } from '@shared/agentLaunch'
+import { canonicalLaunchCommand } from '@shared/agentPolicy'
 import { currentSettings, updateSettings } from '../settings'
 import { seedManagedAccountDir } from './agentConfig'
 import { resolveAgentEnvFrom } from './env'
@@ -244,18 +245,20 @@ const LOGIN_ARGS: Record<AccountAgent, string> = {
 }
 
 /**
- * 内蔵ターミナルでアカウントのログインを始めるための、コマンド・環境変数・タブ名。
- * コマンド本体は Agent 設定の command（利用者が変えていればそれ）を使う。
+ * 内蔵ターミナルでアカウントのログインを始めるための、起動の語（argv）・環境変数・タブ名。
+ * コマンド本体は Agent 設定の command（利用者が変えていればそれ）を使う。Agent の起動と同じく一度だけ語に分け、
+ * コマンドの欄に権限やフォルダの信頼のフラグがあれば始めない（security-5 [2]）
  */
 export function buildAccountLoginLaunch(
   req: AccountLoginRequest,
-  _shell: AgentStartupShell
-): { command: string; env: Record<string, string>; title: string } {
+  shell: AgentStartupShell
+): { argv: string[]; env: Record<string, string>; title: string } {
   const { agent, accountId } = req
   if (!isValidAccountId(accountId)) throw new UserFacingError(t('accounts.errors.invalidId'))
   requireAccount(agent, accountId)
   const env = resolveAgentEnvFrom({ agent, accounts: accountsSettings(), userDataDir: userDataDir(), accountId })
-  const command = currentSettings().agents.launch[agent]?.command.trim() || DEFAULT_AGENT_PREFERENCES.launch[agent].command
-  // サブコマンドは固定の英字だけなので、どのシェルでもクォートは要らない
-  return { command: `${command} ${LOGIN_ARGS[agent]}`, env, title: t('accounts.loginTabTitle', { agent: TUI_AGENT_LABEL[agent] }) }
+  const title = t('accounts.loginTabTitle', { agent: TUI_AGENT_LABEL[agent] })
+  const command = canonicalLaunchCommand(agent, currentSettings().agents.launch[agent]?.command ?? '', shell)
+  if (!command.ok) throw new UserFacingError(t('terminal.errors.launch', { agent: TUI_AGENT_LABEL[agent], error: command.error }))
+  return { argv: [...command.words.map((word) => word.value), ...LOGIN_ARGS[agent].split(' ')], env, title }
 }

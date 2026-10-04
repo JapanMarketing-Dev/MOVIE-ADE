@@ -173,7 +173,7 @@ export class ApiLlmRunner implements LlmRunner {
       record(res.status)
       // 失敗の本文は説明に使うだけ（想定内）
       const body = redact(await readErrorText(res), this.opt.apiKey).slice(0, 500)
-      throw new RunnerError(describeLlmFailure(res.status, body, this.label), 'exit', commandLine, body)
+      throw new RunnerError(describeLlmFailure(res.status, body, this.label, this.opt.provider === 'ollama' ? req.model || this.ep.model : undefined), 'exit', commandLine, body)
     }
     let json: unknown
     try {
@@ -214,9 +214,13 @@ function llmUsage(json: unknown): { inputTokens?: number; outputTokens?: number;
     ...(costUsd !== undefined ? { costUsd, costSource: 'provider' as const } : {}) }
 }
 
-/** HTTP の失敗を、利用者が直せる言葉にする */
-function describeLlmFailure(status: number, body: string, label: string): string {
+/**
+ * HTTP の失敗を、利用者が直せる言葉にする（単体テストから使うため export）。
+ * ollamaModel は Ollama に頼んだモデル名。モデルがまだ落ちていない 404（model "…" not found, try pulling it first）は pull の手順を出す
+ */
+export function describeLlmFailure(status: number, body: string, label: string, ollamaModel?: string): string {
   if (status === 401 || status === 403) return t('stt.check.auth', { label, status })
+  if (ollamaModel && status === 404 && /model/i.test(body) && /not found|pull/i.test(body)) return t('organize.api.ollamaModelMissing', { label, model: ollamaModel })
   if ((status === 400 || status === 404 || status === 422) && /model/i.test(body)) return t('stt.check.model', { label, status })
   if (status === 404 || status === 405) return t('organize.api.notFound', { label, status })
   if (status === 429) return t('stt.check.rateLimit', { label })

@@ -232,7 +232,9 @@ export function ReviewFilterBar({
   onOpenChange,
   hosts,
   emptyDraftCount,
-  onDeleteEmpty
+  onDeleteEmpty,
+  projectSection,
+  projectFiltering = false
 }: {
   filter: ReviewFilter
   onChange: (next: ReviewFilter) => void
@@ -243,6 +245,10 @@ export function ReviewFilterBar({
   /** 読み込んだ全プロジェクトの、指摘0件の下書きの数 */
   emptyDraftCount: number
   onDeleteEmpty: () => void
+  /** パネルの先頭に置く、プロジェクトの並び順と「☆ のみ」（Sidebar.tsx） */
+  projectSection?: ReactNode
+  /** プロジェクトを絞り込んでいる（☆ のみ）。漏斗のボタンを強調する */
+  projectFiltering?: boolean
 }) {
   const t = useT()
   const [confirming, setConfirming] = useState(false)
@@ -265,7 +271,7 @@ export function ReviewFilterBar({
           size="sm"
           label={t('sidebar.filter.open')}
           title={t('sidebar.filter.open')}
-          className={`rv-filter__toggle${filtering ? ' is-active' : ''}`}
+          className={`rv-filter__toggle${filtering || projectFiltering ? ' is-active' : ''}`}
           selected={open}
           icon={<ListFilter size={14} strokeWidth={1.75} />}
           onClick={() => onOpenChange(!open)}
@@ -275,6 +281,7 @@ export function ReviewFilterBar({
 
       {open && (
         <div className="rv-filter__panel" data-testid="review-filter-panel">
+          {projectSection}
           <div className="rv-filter__label">{t('sidebar.filter.status')}</div>
           <div className="rv-filter__chips" role="group" aria-label={t('sidebar.filter.status')}>
             {REVIEW_STATUS_FILTERS.map((status) => {

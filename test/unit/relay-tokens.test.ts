@@ -107,16 +107,19 @@ describe('security-2 [6] 判定の設定と合言葉', () => {
     await service.stop()
   })
 
-  it('提供元・キー・モデルを変えても合言葉は切らない（中継は今の設定で送る）', async () => {
+  it('提供元・接続先・キー・モデルを変えたら合言葉を切る（security-5 [4]。同じ設定の sync では切らない）', async () => {
     let prefs: DecisionPreferences = { ...base, endpoint: upstreamUrl }
     const service = new DecisionService({ prefs: () => prefs, readKey: async () => undefined, getEnv: () => undefined, onCall: () => {} })
     const url = (await service.launchEnv())[DECISION_ENV.url]!
-    prefs = { ...prefs, model: 'clef' }
     await service.sync()
     expect(await post(url)).toBe(200)
     prefs = { ...prefs, endpoint: `${upstreamUrl}?other=1`, apiKeyEnv: 'OTHER_KEY' }
     await service.sync()
-    expect(await post(url)).toBe(200)
+    expect(await post(url)).toBe(401)
+    const next = (await service.launchEnv())[DECISION_ENV.url]!
+    prefs = { ...prefs, model: 'clef' }
+    await service.sync()
+    expect(await post(next)).toBe(401)
     await service.stop()
   })
 

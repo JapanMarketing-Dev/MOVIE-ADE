@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Enregistrement · Documentation de Ferret</title>
-  <meta name="description" content="Enregistrez le navigateur intégré, un écran entier ou une autre fenêtre. Parlez, entourez et tapez pendant que vous utilisez la page.">
+  <meta name="description" content="Enregistrez le navigateur intégré, un écran entier, une autre fenêtre, une application de bureau, un jeu ou un simulateur de téléphone. Parlez, entourez et tapez pendant que vous utilisez la page.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
   <link rel="canonical" href="https://ferretade.dev/docs/fr/recording">
@@ -26,7 +26,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
   <meta property="og:title" content="Enregistrement · Documentation de Ferret">
-  <meta property="og:description" content="Enregistrez le navigateur intégré, un écran entier ou une autre fenêtre. Parlez, entourez et tapez pendant que vous utilisez la page.">
+  <meta property="og:description" content="Enregistrez le navigateur intégré, un écran entier, une autre fenêtre, une application de bureau, un jeu ou un simulateur de téléphone. Parlez, entourez et tapez pendant que vous utilisez la page.">
   <meta property="og:url" content="https://ferretade.dev/docs/fr/recording">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="fr_FR">
@@ -36,7 +36,7 @@
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Enregistrement · Documentation de Ferret">
-  <meta name="twitter:description" content="Enregistrez le navigateur intégré, un écran entier ou une autre fenêtre. Parlez, entourez et tapez pendant que vous utilisez la page.">
+  <meta name="twitter:description" content="Enregistrez le navigateur intégré, un écran entier, une autre fenêtre, une application de bureau, un jeu ou un simulateur de téléphone. Parlez, entourez et tapez pendant que vous utilisez la page.">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -155,7 +155,7 @@
       <article class="docs-content">
         <p class="docs-eyebrow">Utiliser Ferret</p>
         <h1>Enregistrement</h1>
-        <p class="docs-lead">Enregistrez le navigateur intégré, un écran entier ou une autre fenêtre. Parlez, entourez et tapez pendant que vous utilisez la page.</p>
+        <p class="docs-lead">Enregistrez le navigateur intégré, un écran entier, une autre fenêtre, une application de bureau, un jeu ou un simulateur de téléphone. Parlez, entourez et tapez pendant que vous utilisez la page.</p>
         <div class="docs-os" role="group" aria-label="Raccourcis pour" data-docs-os hidden>
           <span class="docs-os-label">Raccourcis pour</span>
           <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">macOS</button>
@@ -170,10 +170,21 @@
   <tbody>
     <tr><td><span class="docs-ui">Navigateur intégré</span> (par défaut)</td><td>Vidéo, voix et stylo, plus l'URL, les sélecteurs d'éléments, les clics et les défilements. Aucune autorisation système n'est nécessaire.</td></tr>
     <tr><td><span class="docs-ui">Écran entier</span></td><td>Vidéo, voix et stylo. Ni URL, ni élément, ni journal des actions (c'est indiqué dans <code>feedback.md</code>).</td></tr>
-    <tr><td><span class="docs-ui">Fenêtre</span></td><td>Comme ci-dessus. Les fenêtres de Ferret elles-mêmes ne sont pas listées.</td></tr>
+    <tr><td><span class="docs-ui">Fenêtre</span></td><td>Comme ci-dessus. Chaque fenêtre est listée avec le nom de son application. Les fenêtres de Ferret elles-mêmes ne sont pas listées.</td></tr>
+    <tr><td><span class="docs-ui">Mobile</span></td><td>Comme ci-dessus, en ne listant que les fenêtres d'iOS Simulator et d'Android Emulator.</td></tr>
   </tbody>
 </table>
 <p>Votre choix est mémorisé. Sur macOS, la capture d'un écran ou d'une fenêtre nécessite l'autorisation d'enregistrement de l'écran (<a href="troubleshooting.html#screen-permission">comment l'accorder</a>).</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="desktop-mobile">
+        <h2 id="desktop-mobile"><a class="docs-anchor" href="#desktop-mobile" aria-label="Lien vers Applications de bureau, jeux et applications mobiles">#</a>Applications de bureau, jeux et applications mobiles</h2>
+        <p>Pour relire une application de bureau que vous développez (Electron, Tauri ou une application native), lancez-la comme d'habitude en développement, puis choisissez sa fenêtre sous <span class="docs-ui">Fenêtre</span>. Les fenêtres sont listées avec le nom de leur application : une build de développement d'une application Electron apparaît donc sous <code>Electron</code>. Les petites fenêtres et celles qui restent au-dessus des autres sont aussi listées ; sur macOS, une fenêtre qui reste au premier plan est affichée par le nom de son application et son titre au lieu d'un aperçu.</p>
+<p>Le choix suit l'application. Quand vous redémarrez l'application et que sa fenêtre réapparaît, l'enregistrement suivant utilise la fenêtre portant le même titre, ou la seule fenêtre de l'application si le titre a changé.</p>
+<p>Pour une application mobile, lancez iOS Simulator (Xcode, macOS) ou Android Emulator (Android Studio), puis choisissez l'appareil sous <span class="docs-ui">Mobile</span>. Quand l'émulateur tourne dans Android Studio, ouvrez-le dans sa propre fenêtre (dans les réglages d'Android Studio, sous Tools → Emulator, désactivez le lancement dans la fenêtre d'outils Running Devices) pour qu'il soit listé.</p>
+<p>Au lieu d'une URL, <code>feedback.md</code> commence par ce que vous avez enregistré : l'application et le titre de la fenêtre, ou le nom de l'appareil et la version du système pour un simulateur ou un émulateur, plus l'application au premier plan sur Android. Il demande aussi à l'agent de modifier le code source de cette application. Ferret lit les informations de l'appareil avec <code>xcrun simctl</code> et <code>adb</code> (depuis <code>ANDROID_HOME</code>, <code>ANDROID_SDK_ROOT</code> ou le dossier du SDK d'Android Studio) au début de l'enregistrement. Les images ne montrent que la fenêtre choisie : dites donc à voix haute ce que vous désignez pendant que vous parlez.</p>
+<p>Les jeux fonctionnent de la même façon. Choisissez la fenêtre de l'éditeur Unity, Unreal Engine ou Godot avec la vue du jeu affichée, ou la fenêtre d'un jeu que vous avez compilé, y compris en mode fenêtré sans bordure. Pour un jeu en plein écran exclusif, choisissez son écran sous <span class="docs-ui">Écran entier</span>. Quand la fenêtre est celle de l'un de ces éditeurs, <code>feedback.md</code> nomme le moteur et demande à l'agent de modifier le code, les scènes ou les ressources du jeu. La vidéo est limitée à 10 images par seconde pour garder des fichiers légers, et les images des constats proviennent de la même vidéo : elles correspondent donc au moment sur la timeline.</p>
+<p>Le champ <span class="docs-ui">Fenêtre à enregistrer</span> d'une cible de revue correspond au nom de l'application comme au titre de la fenêtre : <code>Simulator</code> sélectionne donc la fenêtre d'iOS Simulator, quel que soit l'appareil affiché.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="record">
@@ -264,6 +275,7 @@
       <p class="docs-toc-heading">Sur cette page</p>
       <ul>
         <li><a href="#target">Choisir ce qui est enregistré</a></li>
+        <li><a href="#desktop-mobile">Applications de bureau, jeux et applications mobiles</a></li>
         <li><a href="#record">Démarrer, mettre en pause, arrêter</a></li>
         <li><a href="#pen">Stylo</a></li>
         <li><a href="#annotations-clear">Quand les traits disparaissent</a></li>

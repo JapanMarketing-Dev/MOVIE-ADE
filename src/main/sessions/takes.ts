@@ -102,7 +102,7 @@ export function appendTake(record: SessionRecord, existingEvents: Event[], take:
   // 足した分はまだ整理していない（LLM の整理をもう一度かけられるようにする）
   // 整理が付けた名前（reviewTitle）は足した指摘を含まないので外す（自動の名前はルールで作り直す）
   const extend = ({ reviewTitle: _stale, ...doc }: FeedbackDocument): FeedbackDocument => ({ ...doc, meta: totalMeta, organizedByLlm: false,
-    items: finalizeItems([...doc.items.map(toPending), ...added], allEvents) })
+    items: finalizeItems([...doc.items.map(toPending), ...added], allEvents, {}, doc.customOrder === true) })
 
   // 編集は正本に積み直す（元に戻すと、足した指摘は残ったまま編集だけが戻る）。
   // 正本の無い古いレビューは、今の一覧へそのまま足す（編集を二重にかけない）

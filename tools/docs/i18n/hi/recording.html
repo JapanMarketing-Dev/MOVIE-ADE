@@ -2,10 +2,10 @@
 <!-- @title 80e8dd1a5a -->
 रिकॉर्डिंग
 
-<!-- @lead 14988eae28 -->
-बिल्ट-इन ब्राउज़र, पूरी स्क्रीन या कोई दूसरी विंडो रिकॉर्ड करें। पेज इस्तेमाल करते हुए बोलें, घेरें और टाइप करें।
+<!-- @lead a6afb525ba -->
+बिल्ट-इन ब्राउज़र, पूरी स्क्रीन, कोई दूसरी विंडो, desktop app, game या phone simulator रिकॉर्ड करें। पेज इस्तेमाल करते हुए बोलें, घेरें और टाइप करें।
 
-<!-- @target 133550362a -->
+<!-- @target 2ab7c5b1f7 -->
 ## क्या रिकॉर्ड करना है, चुनें
 <p>Feedback मोड में <span class="docs-ui">रिकॉर्डिंग target चुनें</span> पर क्लिक करें। <span class="docs-ui">रिकॉर्डिंग Target</span> dialog में ये विकल्प हैं:</p>
 <table>
@@ -13,10 +13,20 @@
   <tbody>
     <tr><td><span class="docs-ui">बिल्ट-इन Browser</span> (डिफ़ॉल्ट)</td><td>वीडियो, आवाज़ और पेन, साथ में URL, element selectors, clicks और scrolls। OS की किसी अनुमति की ज़रूरत नहीं।</td></tr>
     <tr><td><span class="docs-ui">पूरी स्क्रीन</span></td><td>वीडियो, आवाज़ और पेन। URL, element या action log नहीं (यह बात <code>feedback.md</code> में लिखी जाती है)।</td></tr>
-    <tr><td><span class="docs-ui">विंडो</span></td><td>ऊपर जैसा ही। Ferret की अपनी विंडो सूची में नहीं होतीं।</td></tr>
+    <tr><td><span class="docs-ui">विंडो</span></td><td>ऊपर जैसा ही। हर विंडो अपने app के नाम के साथ दिखती है। Ferret की अपनी विंडो सूची में नहीं होतीं।</td></tr>
+    <tr><td><span class="docs-ui">फ़ोन</span></td><td>ऊपर जैसा ही; सूची में सिर्फ़ iOS Simulator और Android Emulator की विंडो होती हैं।</td></tr>
   </tbody>
 </table>
 <p>आपका चुनाव याद रखा जाता है। macOS पर स्क्रीन और विंडो रिकॉर्ड करने के लिए Screen Recording की अनुमति चाहिए (<a href="troubleshooting.html#screen-permission">अनुमति कैसे दें</a>)।</p>
+
+<!-- @desktop-mobile 8d8ffcf90e -->
+## Desktop apps, games और mobile apps
+<p>जो desktop app आप बना रहे हैं (Electron, Tauri या native app), उसे review करने के लिए उसे वैसे ही चलाएँ जैसे development में चलाते हैं, फिर <span class="docs-ui">विंडो</span> में उसकी विंडो चुनें। विंडो अपने app के नाम के साथ दिखती हैं, इसलिए Electron app का development build <code>Electron</code> के नाम से दिखता है। छोटी विंडो और दूसरी विंडो के ऊपर रहने वाली विंडो भी सूची में होती हैं; macOS पर ऊपर रहने वाली विंडो preview की जगह app के नाम और title से दिखती है।</p>
+<p>चुनाव app के साथ जुड़ा रहता है। app को restart करने पर जब उसकी विंडो फिर आती है, तो अगली रिकॉर्डिंग उसी title वाली विंडो इस्तेमाल करती है, या title बदल गया हो तो app की इकलौती विंडो।</p>
+<p>Mobile app के लिए iOS Simulator (Xcode, macOS) या Android Emulator (Android Studio) चलाएँ, फिर <span class="docs-ui">फ़ोन</span> में device चुनें। जब emulator Android Studio के अंदर चल रहा हो, तो उसे अलग विंडो में खोलें (Android Studio की settings में Tools → Emulator के नीचे, Running Devices tool window में launch करना बंद करें), ताकि वह सूची में आए।</p>
+<p>URL की जगह <code>feedback.md</code> इस जानकारी से शुरू होता है कि आपने क्या रिकॉर्ड किया: app और विंडो का title, या simulator / emulator के लिए device का नाम और OS version, साथ में Android पर सामने चल रहा app। इसमें agent को उसी app का source code बदलने को भी कहा जाता है। रिकॉर्डिंग शुरू होने पर Ferret device की जानकारी <code>xcrun simctl</code> और <code>adb</code> (<code>ANDROID_HOME</code>, <code>ANDROID_SDK_ROOT</code> या Android Studio के SDK folder से) से पढ़ता है। Images में सिर्फ़ चुनी हुई विंडो दिखती है, इसलिए बोलते समय बताएँ कि आप किस चीज़ की ओर इशारा कर रहे हैं।</p>
+<p>Games भी इसी तरह काम करते हैं। Game view दिखाती हुई Unity, Unreal Engine या Godot editor की विंडो चुनें, या अपने बनाए game की विंडो, borderless windowed mode समेत। Exclusive full screen वाले game के लिए <span class="docs-ui">पूरी स्क्रीन</span> में उसका display चुनें। जब विंडो इनमें से किसी editor की हो, तो <code>feedback.md</code> engine का नाम लिखता है और agent से game का code, scenes या assets बदलने को कहता है। Files छोटी रखने के लिए वीडियो अधिकतम 10 frames per second पर रखा जाता है, और findings की images उसी वीडियो से ली जाती हैं, इसलिए वे timeline के उसी पल से मेल खाती हैं।</p>
+<p>Review target का <span class="docs-ui">रिकॉर्ड करने वाली विंडो</span> विंडो के title के साथ app के नाम से भी मिलान करता है, इसलिए <code>Simulator</code> से iOS Simulator की विंडो चुनी जाती है, चाहे उसमें कोई भी device दिख रहा हो।</p>
 
 <!-- @record deb62ed37c -->
 ## शुरू करें, विराम दें, रोकें

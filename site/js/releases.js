@@ -323,6 +323,21 @@ export function formatDate(iso) {
 }
 
 /**
+ * pattern に合う部分を、もう合わなくなるまで繰り返し外す（1回だけだと、外したあとに `<<b>script>` から `<script>` ができる）
+ * @param {string} text
+ * @param {RegExp} pattern g を付けた正規表現
+ */
+function removeUntilStable(text, pattern) {
+  let out = text
+  let before
+  do {
+    before = out
+    out = out.replace(pattern, '')
+  } while (out !== before)
+  return out
+}
+
+/**
  * リリースノート（Markdown）の先頭を、装飾を外した短い行の配列にする。
  * 表示は textContent で行う前提なので、HTML への変換はしない。
  * @param {string} body
@@ -332,21 +347,20 @@ export function excerptNotes(body, maxLines = 8) {
   if (typeof body !== 'string') return []
   const lines = []
   let inCode = false
-  for (const raw of body.split(/\r?\n/)) {
+  // HTML のコメントは複数行にまたがることがあるので、行に分ける前に外す（閉じていなければ GitHub と同じく末尾まで隠れる）
+  for (const raw of removeUntilStable(body, /<!--[\s\S]*?(?:--!?>|$)/g).split(/\r?\n/)) {
     if (/^\s*```/.test(raw)) {
       inCode = !inCode
       continue
     }
     if (inCode) continue
-    const text = raw
-      .replace(/<!--.*?-->/g, '')
+    const markdown = raw
       .replace(/^\s*#{1,6}\s+/, '')
       .replace(/^\s*[-*+]\s+/, '')
       .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
       .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
       .replace(/\*\*|__|~~|`/g, '')
-      .replace(/<[^>]+>/g, '')
-      .trim()
+    const text = removeUntilStable(markdown, /<[^>]*>/g).trim()
     if (!text) continue
     // 未署名の回避手順など、1行が長い注意書きも切らずに読めるようにする
     lines.push(text.length > 280 ? `${text.slice(0, 279)}…` : text)

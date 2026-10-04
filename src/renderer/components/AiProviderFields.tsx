@@ -4,6 +4,7 @@ import { Bot, ChevronRight, CircleAlert, CircleCheck, Copy, ExternalLink, KeyRou
 import {
   AI_PRESETS_VERIFIED_AT,
   currentModel,
+  endpointSetupGuide,
   formatHeaderLines,
   parseHeaderLines,
   providerLabel,
@@ -85,8 +86,8 @@ export function ProviderSetup({ preset, value, onChange, available, onAvailabili
   const t = useT()
   const layout = setupLayout(preset, { onboarding })
   const label = providerLabel(preset, t)
-  // リンクと指示文の元（プリセットにある案内の情報）
-  const guide: SetupGuide = { ...preset, label }
+  // リンクと指示文の元（プリセットにある案内の情報）。モデルと Base URL は画面で今選ばれている値（押した時点の value）
+  const guide: SetupGuide = endpointSetupGuide(preset, value, label)
   const azure = 'kind' in preset && preset.kind === 'azure-openai'
   const patch = (p: Partial<AiEndpointConfig>) => onChange(compactEndpoint({ ...value, ...p }))
   return <div className="st-endpoint" data-testid={testId}>

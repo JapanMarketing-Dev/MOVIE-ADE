@@ -29,6 +29,14 @@ export function startupShellForPath(shellPath: string): AgentStartupShell {
 
 type StartupCommandTokens = { ok: true; tokens: string[] } | { ok: false; error: string }
 
+/** 分けた1語。plain は引用符もバックスラッシュも使わずに書かれていたか（権限の引数を隠した書き方を見分ける。security-5 [2]） */
+export interface StartupWord {
+  value: string
+  plain: boolean
+}
+
+type StartupWords = { ok: true; words: StartupWord[] } | { ok: false; error: string }
+
 /**
  * Unix シェル風の分かち書き。`a"b"c` は1語 `abc`、クォート内の空白は区切らない。
  * Orca の tokenizeCustomCommandTemplate（backslash: 'escape'）から、
@@ -37,9 +45,10 @@ type StartupCommandTokens = { ok: true; tokens: string[] } | { ok: false; error:
  * クォートの書き方は OS で変えない。ただし Windows のシェル（cmd / PowerShell）では、バックスラッシュを
  * パスの区切りとしてそのまま残す（backslash: 'literal'）。エスケープにすると `C:\Users\me\x.toml` が `C:Usersmex.toml` になる
  */
-export function tokenizeStartupCommand(value: string, backslash: 'escape' | 'literal' = 'escape'): StartupCommandTokens {
-  const tokens: string[] = []
+export function tokenizeStartupWords(value: string, backslash: 'escape' | 'literal' = 'escape'): StartupWords {
+  const words: StartupWord[] = []
   let current = ''
+  let plain = true
   let inToken = false
   let quote: '"' | "'" | null = null
   let i = 0
@@ -67,19 +76,22 @@ export function tokenizeStartupCommand(value: string, backslash: 'escape' | 'lit
     if (ch === '"' || ch === "'") {
       quote = ch
       inToken = true
+      plain = false
       i++
       continue
     }
     if (backslash === 'escape' && ch === '\\' && i + 1 < value.length) {
       current += value[i + 1]
       inToken = true
+      plain = false
       i += 2
       continue
     }
     if (/\s/.test(ch)) {
       if (inToken) {
-        tokens.push(current)
+        words.push({ value: current, plain })
         current = ''
+        plain = true
         inToken = false
       }
       i++
@@ -91,8 +103,13 @@ export function tokenizeStartupCommand(value: string, backslash: 'escape' | 'lit
   }
 
   if (quote) return { ok: false, error: t('agentLaunch.errors.unclosedQuote') }
-  if (inToken) tokens.push(current)
-  return { ok: true, tokens }
+  if (inToken) words.push({ value: current, plain })
+  return { ok: true, words }
+}
+
+export function tokenizeStartupCommand(value: string, backslash: 'escape' | 'literal' = 'escape'): StartupCommandTokens {
+  const result = tokenizeStartupWords(value, backslash)
+  return result.ok ? { ok: true, tokens: result.words.map((word) => word.value) } : result
 }
 
 /**

@@ -28,6 +28,12 @@
 #   公開リポジトリなら標準のランナーは無料。非公開のリポジトリで動かすと、実行時間（とくに macOS）が開発者側の費用になる。
 #   R2 は保存が月 10GB まで無料・転送料は無料。scripts/release-r2.mjs が最新10版だけを残す。
 #
+# 【secrets が無いとき】今は secrets を置かず、署名と R2 への公開は手元の手順（README の Releases）で行っている。
+#   タグの push では build（3つのOSのビルドと単体テスト）だけが必ず走り、署名・下書き・R2 の段は鍵が無ければ
+#   notice を出して飛ばす（失敗にしない。必ず落ちるワークフローを作らない。RULES.md の決まり）。
+#   鍵の有無は、その secret を持つジョブの最初のステップで調べて出力にし、後のステップとジョブの if で使う
+#   （if: に secrets は直接書けない）。
+#
 # 配布物は R2 にだけ置き、GitHub Release には添付しない（ダウンロードはサイトへのリンク。添付するのは SHA256SUMS だけ）。
 # 当面は署名・公証をしない。リリースノートの雛形にそのことと、回避の前に確かめる手順を書く。
 #
@@ -150,7 +156,22 @@ jobs:
     environment: release-signing
     permissions:
       contents: write # リリースの下書きを作り、SHA256SUMS を添付するため
+    outputs:
+      signed: ${{ steps.key.outputs.present }}
     steps:
+      # 鍵が無ければ（手元の手順で公開する）、SHA256SUMS をログに出すところまでにして、署名と下書きは飛ばす
+      - name: Check for the release signing key
+        id: key
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: |
+          if [ -n "$RELEASE_SIGNING_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Signing and the draft release skipped::RELEASE_SIGNING_KEY is not set for the release-signing environment. Sign SHA256SUMS, draft the release and upload to R2 with the local steps (README, Releases)."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -181,6 +202,7 @@ jobs:
 
       # R2 とは別の鍵で SHA256SUMS に署名する（security-3 [2]）。鍵が無い・リポジトリの公開鍵と合わなければ止まる
       - name: Sign SHA256SUMS with the release key (kept apart from R2)
+        if: steps.key.outputs.present == 'true'
         env:
           RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
         run: |
@@ -188,6 +210,7 @@ jobs:
           node scripts/release-signing.mjs sign --sums UPDATE-SHA256SUMS --out UPDATE-SHA256SUMS.sig
 
       - name: Write release notes
+        if: steps.key.outputs.present == 'true'
         shell: bash
         env:
           # ダウンロードサイトの URL（リポジトリの変数 DOWNLOAD_URL。未設定なら ferretade.dev）
@@ -212,11 +235,13 @@ jobs:
           EOF
 
       - name: Draft the GitHub release (notes and SHA256SUMS, no installers)
+        if: steps.key.outputs.present == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "${GITHUB_REF_NAME}" SHA256SUMS SHA256SUMS.sig UPDATE-SHA256SUMS UPDATE-SHA256SUMS.sig --repo "${GITHUB_REPOSITORY}" --draft --title "Ferret ${GITHUB_REF_NAME#v}" --notes-file release-notes.md
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: steps.key.outputs.present == 'true'
         with:
           name: release-meta
           path: |
@@ -231,29 +256,48 @@ jobs:
   stage:
     name: upload to R2 staging
     needs: checksums
-    if: github.event_name == 'push'
+    # 署名が無ければ stage は --sums-sig で必ず止まるので、ジョブごと飛ばす
+    if: github.event_name == 'push' && needs.checksums.outputs.signed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
     steps:
+      - name: Check for the R2 credentials
+        id: r2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=R2 staging skipped::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID are not set. Upload to R2 with the local steps (README, Releases)."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.r2.outputs.present == 'true'
         with:
           persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.r2.outputs.present == 'true'
         with:
           node-version: 22
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: steps.r2.outputs.present == 'true'
         with:
           version: 10.31.0
 
       # 版を固定した wrangler（devDependencies）を lockfile のとおりに入れる。Electron の取得や node-pty のビルドは要らないので、スクリプトは走らせない
       - name: Install the pinned wrangler
+        if: steps.r2.outputs.present == 'true'
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: steps.r2.outputs.present == 'true'
         with:
           pattern: installers-*
           path: artifacts
@@ -261,17 +305,20 @@ jobs:
 
       # 自動更新用の zip も同じフォルダへ（stage が名前で分け、manifest の updates に載せる）
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: steps.r2.outputs.present == 'true'
         with:
           pattern: updates-*
           path: artifacts
           merge-multiple: true
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: steps.r2.outputs.present == 'true'
         with:
           name: release-meta
           path: release-meta
 
       - name: Upload to R2 staging
+        if: steps.r2.outputs.present == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

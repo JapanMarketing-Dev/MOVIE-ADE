@@ -1,3 +1,4 @@
+import { escapeRegExp, withoutHtmlComments } from './textHelpers'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -15,7 +16,7 @@ describe.each([
   const html = read(file)
 
   it('og:image・og:url・canonical は config.js の SITE_URL から作った絶対 URL（ずれたら pnpm site:meta）', () => {
-    expect(attr(html, /<meta property="og:image" content="([^"]*)"/)).toMatch(new RegExp(`^${SITE_URL.replace(/[.]/g, '\\.')}/assets/og\\.png\\?v=[0-9a-f]{8}$`))
+    expect(attr(html, /<meta property="og:image" content="([^"]*)"/)).toMatch(new RegExp(`^${escapeRegExp(SITE_URL)}/assets/og\\.png\\?v=[0-9a-f]{8}$`))
     expect(attr(html, /<meta property="og:url" content="([^"]*)"/)).toBe(`${SITE_URL}${path}`)
     expect(attr(html, /<link rel="canonical" href="([^"]*)"/)).toBe(`${SITE_URL}${path}`)
   })
@@ -27,7 +28,7 @@ describe.each([
     expect(attr(html, /<meta name="twitter:card" content="([^"]*)"/)).toBe('summary_large_image')
     expect(attr(html, /<meta name="twitter:title" content="([^"]*)"/)).toBe(attr(html, /<meta property="og:title" content="([^"]*)"/))
     expect(attr(html, /<meta name="twitter:description" content="([^"]*)"/)).toBe(attr(html, /<meta property="og:description" content="([^"]*)"/))
-    expect(attr(html, /<meta name="twitter:image" content="([^"]*)"/)).toMatch(new RegExp(`^${SITE_URL.replace(/[.]/g, '\\.')}/assets/og\\.png\\?v=[0-9a-f]{8}$`))
+    expect(attr(html, /<meta name="twitter:image" content="([^"]*)"/)).toMatch(new RegExp(`^${escapeRegExp(SITE_URL)}/assets/og\\.png\\?v=[0-9a-f]{8}$`))
     // og.png の実寸がメタの寸法と合う（PNG の IHDR）
     const png = readFileSync(resolve(__dirname, '../..', 'site/assets/og.png'))
     expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1200, 630])
@@ -35,7 +36,7 @@ describe.each([
 
   it('英語のページで、日本語の文字を含まない（コメントを除く）', () => {
     expect(html).toContain('<html lang="en">')
-    expect(html.replace(/<!--[\s\S]*?-->/g, '')).not.toMatch(/[぀-ヿ一-鿿]/)
+    expect(withoutHtmlComments(html)).not.toMatch(/[぀-ヿ一-鿿]/)
   })
 
   it('CSP に合わせ、インラインの script を持たない', () => {

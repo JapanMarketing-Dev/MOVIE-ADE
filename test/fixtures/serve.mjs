@@ -8,9 +8,9 @@
  */
 import { createServer } from 'node:http'
 import { createReadStream } from 'node:fs'
-import { stat } from 'node:fs/promises'
+import { readdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import { dirname, extname, join, normalize, resolve, sep } from 'node:path'
+import { dirname, extname, join, resolve } from 'node:path'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), 'site')
 
@@ -24,33 +24,44 @@ const MIME = {
   '.ico': 'image/x-icon'
 }
 
-/** `site/` の外へ出る相対パスを弾く */
-function resolveRequestPath(urlPath) {
-  const decoded = decodeURIComponent(urlPath.split('?')[0] ?? '/')
-  const relative = normalize(decoded === '/' ? '/index.html' : decoded).replace(/^[\\/]+/, '')
-  const target = resolve(ROOT, relative)
-  if (target !== ROOT && !target.startsWith(ROOT + sep)) return null
-  return target
+/**
+ * `site/` の下にあるファイルを「URL のパス → ファイルのパス」の表にする（シンボリックリンクは辿らない）。
+ * 要求の URL はこの表を引くだけにして、ファイルのパスの組み立てには使わない（`..` や `%2e%2e` で外へ出られない）
+ */
+async function servedFiles(dir = ROOT, prefix = '') {
+  const files = new Map()
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) for (const [url, file] of await servedFiles(path, `${prefix}/${entry.name}`)) files.set(url, file)
+    else if (entry.isFile()) files.set(`${prefix}/${entry.name}`, path)
+  }
+  return files
+}
+
+/** URL のパスに当たるファイル（フォルダならその index.html）。無ければ undefined */
+function lookup(files, urlPath) {
+  let decoded
+  try {
+    decoded = decodeURIComponent((urlPath.split('?')[0] ?? '/').split('#')[0])
+  } catch {
+    return undefined
+  }
+  const path = decoded.replace(/\/+$/, '')
+  return files.get(path) ?? files.get(`${path}/index.html`)
 }
 
 export function createFixtureServer() {
   return createServer(async (req, res) => {
-    const target = resolveRequestPath(req.url ?? '/')
-    if (!target) {
-      res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' })
-      res.end('アクセスできません')
-      return
-    }
-    try {
-      const info = await stat(target)
-      const file = info.isDirectory() ? join(target, 'index.html') : target
-      const type = MIME[extname(file).toLowerCase()] ?? 'application/octet-stream'
-      res.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' })
-      createReadStream(file).pipe(res)
-    } catch {
+    // 題材のファイルはテストの途中で変わりうるので、要求ごとに表を作る（十数ファイルなので軽い）
+    const file = lookup(await servedFiles(), req.url ?? '/')
+    if (!file) {
       res.writeHead(404, { 'content-type': 'text/html; charset=utf-8' })
       res.end('<!doctype html><html lang="ja"><meta charset="utf-8"><h1>404 見つかりません</h1>')
+      return
     }
+    const type = MIME[extname(file).toLowerCase()] ?? 'application/octet-stream'
+    res.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' })
+    createReadStream(file).pipe(res)
   })
 }
 

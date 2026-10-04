@@ -252,6 +252,8 @@ page('projects.html', `Using ${APP}`, 'Projects and URLs',
 </ol>
 <p>You can also drag a folder from Finder (File Explorer on Windows, your file manager on Linux) and drop it on the project list in the sidebar. The list is highlighted while you drag. Drop a folder, not a file; dropping several folders adds each of them and opens the last one.</p>
 <p>The name defaults to the folder name. Adding a folder that is already registered opens it instead (paths are compared case-insensitively on macOS and Windows). From the sidebar menu you can ${ui('Rename')} a project or ${ui('Remove from List')}. Removing never deletes the folder.</p>
+<p>To change the order of the list, drag a project up or down (a line shows where it will go), press ${keys('Alt+Up')} / ${keys('Alt+Down')} on a selected project, or use ${ui('Move Up')} / ${ui('Move Down')} in its menu. The order is saved and kept after a restart.</p>
+<p>The filter button next to the review search also sets ${ui('Sort projects')}: ${ui('Manual (drag order)')}, ${ui('Active first')} (projects whose agent waits for you, is working, or just finished come first), ${ui('Recently used')}, ${ui('Name')}, or ${ui('Date added')}. If you drag a project while another sort is selected, the list as shown becomes the manual order and the sort switches to ${ui('Manual (drag order)')}. Click the star on a project row, or ${ui('Star')} in its menu, to keep it at the top of the list in every sort; ${ui('Starred only')} hides the rest. Stars and the sort are kept after a restart.</p>
 <p>Terminals open in the project folder, and reviews are saved under <code>&lt;project&gt;/.ferret/</code>.</p>`],
     ['save-url', 'Save URLs', `
 <ol class="docs-steps">
@@ -302,7 +304,7 @@ ${clip('targets', 'Switching review targets and pages without stopping the recor
   ])
 
 page('recording.html', `Using ${APP}`, 'Recording',
-  'Record the built-in browser, an entire screen, or another window. Talk, circle, and type while you use the page.',
+  'Record the built-in browser, an entire screen, another window, a desktop app, a game, or a phone simulator. Talk, circle, and type while you use the page.',
   [
     ['target', 'Choose what to record', `
 <p>In Feedback mode, click ${ui('Choose recording target')}. The ${ui('Recording Target')} dialog offers:</p>
@@ -311,10 +313,18 @@ page('recording.html', `Using ${APP}`, 'Recording',
   <tbody>
     <tr><td>${ui('Built-in Browser')} (default)</td><td>Video, voice, and pen, plus URL, element selectors, clicks, and scrolls. No OS permission needed.</td></tr>
     <tr><td>${ui('Entire Screen')}</td><td>Video, voice, and pen. No URL, element, or action log (this is noted in <code>feedback.md</code>).</td></tr>
-    <tr><td>${ui('Window')}</td><td>Same as above. ${APP}'s own windows are not listed.</td></tr>
+    <tr><td>${ui('Window')}</td><td>Same as above. Each window is listed with its app name. ${APP}'s own windows are not listed.</td></tr>
+    <tr><td>${ui('Phone')}</td><td>Same as above, listing only iOS Simulator and Android Emulator windows.</td></tr>
   </tbody>
 </table>
 <p>Your choice is remembered. On macOS, screen and window capture require Screen Recording permission (<a href="troubleshooting.html#screen-permission">how to grant it</a>).</p>`],
+    ['desktop-mobile', 'Desktop apps, games, and mobile apps', `
+<p>To review a desktop app you are building (Electron, Tauri, or a native app), start it as you usually do in development, then choose its window under ${ui('Window')}. Windows are listed with their app name, so a development build of an Electron app appears under <code>Electron</code>. Small windows and windows that stay on top of others are listed too; on macOS a window that stays on top is shown by its app name and title instead of a preview.</p>
+<p>The choice follows the app. When you restart the app and its window comes back, the next recording uses the window with the same title, or the app's only window if the title changed.</p>
+<p>For a mobile app, start iOS Simulator (Xcode, macOS) or Android Emulator (Android Studio), then choose the device under ${ui('Phone')}. When the emulator runs inside Android Studio, open it in its own window (in Android Studio's settings, under Tools → Emulator, turn off launching in the Running Devices tool window) so it is listed.</p>
+<p>Instead of a URL, <code>feedback.md</code> starts with what you recorded: the app and window title, or the device name and OS version for a simulator or emulator, plus the app in the foreground on Android. It also tells the agent to change that app's source code. ${APP} reads the device details with <code>xcrun simctl</code> and <code>adb</code> (from <code>ANDROID_HOME</code>, <code>ANDROID_SDK_ROOT</code>, or the Android Studio SDK folder) when the recording starts. The images show only the chosen window, so say what you are pointing at while you talk.</p>
+<p>Games work the same way. Choose the Unity, Unreal Engine, or Godot editor window with the game view showing, or the window of a game you built, including borderless windowed mode. For a game in exclusive full screen, choose its display under ${ui('Entire Screen')}. When the window is one of these editors, <code>feedback.md</code> names the engine and asks the agent to change the game's code, scenes, or assets. Video is kept at up to 10 frames per second to keep files small, and the images for findings come from the same video, so they match the moment on the timeline.</p>
+<p>A review target's ${ui('Window to record')} matches the app name as well as the window title, so <code>Simulator</code> selects the iOS Simulator window whatever device it shows.</p>`],
     ['record', 'Start, pause, stop', `
 ${clip('record', 'Recording: talk about the page and circle the spot with the pen.')}
 <ol class="docs-steps">
@@ -381,6 +391,7 @@ page('agents.html', `Using ${APP}`, 'Sending to agents',
   <li>${ui('Confirm')} / ${ui('Mark as Needs Review')}, ${ui('Merge with Next')}, ${ui('Delete')}</li>
 </ul>
 <p>${ui('Filter by progress')} shows or hides findings by status (for example ${ui('Only')} the ones waiting for your review); ${ui('Show all')} clears it.</p>
+<p>To reorder findings, drag the handle to the left of a card's title, or select the handle and press ${k('↑')} / ${k('↓')}. The numbers, <code>feedback.md</code>, and what you send to the agent follow the new order. While a filter is on, the order among the visible findings changes and hidden findings keep their place. When a review covers several pages or files, findings move within their own group. ${ui('Sort findings')} in the header switches between ${ui('Manual (drag order)')}, ${ui('Recording time')}, and ${ui('Progress')} (not started first, done last); sorting by progress saves that order as the manual order.</p>
 <p>The header has ${ui('Undo')}, ${ui('Open Folder')}, ${ui('Copy for Agent')}, ${ui('Send to GitHub / GitLab')}, ${ui('Organize')}, and ${ui('Send to Agent')}. Speech that didn't become a finding is listed under ${ui('Excluded speech')}, where ${ui('Restore as Finding')} brings it back.</p>
 ${shot('findings', 'The Findings tab')}`],
     ['terminal', 'Run agents in the built-in terminal', `
@@ -448,7 +459,7 @@ ${clip('verify', 'The agent fixes the findings and checks each one with the deci
 <p>For Ollama, install it (0.35.1 or later for Clef / Clef Flash) and pull the model in a terminal. ${APP} doesn't run installers:</p>
 ${code('ollama pull clef-flash')}
 <p>Keys come from the key field (saved with your other API keys), an environment variable you name (the app's environment, the project <code>.env</code>, or <code>~/.ferret/.env</code>), or <code>apiKey</code> in <code>settings.json</code>. Extra headers can read values from environment variables with <code>\${VAR}</code>.</p>
-${note(`<p>Agents never see your key. ${APP} runs a local relay on <code>127.0.0.1</code> and gives each terminal <code>FERRET_DECISION_URL</code> (the relay, with a per-terminal token), <code>FERRET_DECISION_MODEL</code> and <code>FERRET_DECISION_IMAGES</code> (for one release, the old <code>MOVIE_ADE_DECISION_*</code> names are set too). The relay adds the key and headers and forwards the request unchanged, so prompts, <code>feedback.md</code> and agent transcripts contain no secrets. Terminals opened after you change the settings pick them up.</p>`, 'note', 'How the key stays out of prompts')}
+${note(`<p>Agents never see your key. ${APP} runs a local relay on <code>127.0.0.1</code> and gives each terminal <code>FERRET_DECISION_URL</code> (the relay, with a per-terminal token), <code>FERRET_DECISION_MODEL</code> and <code>FERRET_DECISION_IMAGES</code> (for one release, the old <code>MOVIE_ADE_DECISION_*</code> names are set too). The relay adds the key and headers and forwards the request unchanged, so prompts, <code>feedback.md</code> and agent transcripts contain no secrets. Each terminal's token allows 500 calls, 30 per minute, 20M tokens and $5 (when the cost is known), and each project allows 2,000 calls and $20 a day; when a limit is reached the relay answers 429 with the reason, and a new terminal tab gets a new token. Changing the decision-model settings ends the tokens of open terminals; terminals opened afterwards use the new settings.</p>`, 'note', 'How the key stays out of prompts')}
 <p>Cloudflare differs from the System One docs in two ways (checked against the live API): images must be data URIs (<code>data:image/jpeg;base64,…</code>, otherwise 422 "image must be an embedded base64 data URI"), and the answer is wrapped as <code>{ "result": { … }, "success": true }</code> (errors come back as <code>{ "success": false, "errors": [ … ] }</code>). The Cloudflare preset sets ${ui('Image encoding')} to data URI, agents get it as <code>FERRET_DECISION_IMAGE_FORMAT</code>, and the instructions tell them to read <code>.result</code> when present. The relay passes both directions through unchanged. To use a Global API Key instead of an API token, set ${ui('Authentication')} to ${ui('No key')} and add the headers <code>X-Auth-Email: \${CLOUDFLARE_EMAIL}</code> and <code>X-Auth-Key: \${CLOUDFLARE_API_KEY}</code>.</p>
 <p>Only Clef and Clef Flash read images. With a text-only model, turn off ${ui('Send BEFORE/AFTER images')}; the agent then judges from text alone, which is less reliable.</p>
 ${note(`<p>Ollama 0.35.0 limits <code>/v1/systemone</code> requests to 64 KiB, so requests with screenshots fail with HTTP 413. The instructions tell the agent to shrink both images to at most 1024px wide as JPEG (quality about 70). If it still gets 413, update Ollama to 0.35.1 or later, or switch to Cloudflare Workers AI.</p>`, 'warn', 'Ollama and large images')}`],
@@ -942,7 +953,7 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
     <tr><td>${ui('Send to GitHub')}</td><td>GitHub via <code>gh</code></td><td>body text only (no images)</td></tr>
     <tr><td>Footer usage (Claude Code and Codex only)</td><td>Anthropic, ChatGPT</td><td>usage request with your own login</td></tr>
     <tr><td>GitHub star prompt</td><td>GitHub via your <code>gh</code></td><td>checks whether you starred the repo, and stars it only if you click ${ui('Star on GitHub')}</td></tr>
-    <tr><td>Updates (when ${APP} starts, every 6 hours, and ${ui('Check for Updates')})</td><td>download server (Cloudflare R2)</td><td>requests for <code>latest.json</code> and that version's <code>SHA256SUMS</code> (on macOS also <code>UPDATE-SHA256SUMS</code>); when a newer version is found, the update file for your computer (only when you click ${ui('Download')} if ${ui('Download new versions automatically')} is off)</td></tr>
+    <tr><td>Updates (when ${APP} starts, every 6 hours, and ${ui('Check for Updates')})</td><td>download server (Cloudflare R2)</td><td>requests for <code>latest.json</code> and that version's <code>SHA256SUMS</code> (on macOS also <code>UPDATE-SHA256SUMS</code>); when a newer version is found, the update file for your computer (only when you click ${ui('Download')} if ${ui('Update automatically')} is off)</td></tr>
     <tr><td>Sending feedback from the app (only when you send it)</td><td>the developer's feedback relay (a Cloudflare Worker), which opens a public issue in <code>JapanMarketing-Dev/ferret</code></td><td>your text, bug or idea, app / OS version and CPU, and up to 3 screenshots you attach. Keys, tokens, email addresses, and home-folder paths are masked. The relay does not store your IP address (see <a href="#feedback">Feedback from the app</a>)</td></tr>
     <tr><td>A crash or error (${ui('Send crash reports')} on)</td><td>Sentry</td><td>stack trace and OS / CPU / app versions (see <a href="#crash-reports">Crash reports</a>)</td></tr>
   </tbody>
@@ -1096,17 +1107,18 @@ pnpm dist:linux   # AppImage + deb (x64)`)}
 <p>If the terminal reports that node-pty could not be loaded, run <code>pnpm rebuild:native</code>.</p>`],
     ['update', 'Updates', `
 <p>${APP} checks for a new version when it starts, every 6 hours, and when you click ${ui('Check for Updates')} (footer → ${ui('Updates')}). It fetches <code>latest.json</code> from the download server (R2) and checks the signature of that version's <code>SHA256SUMS</code> with the release key built into the app. A version whose signature doesn't match is not offered.</p>
-<p>When a newer version is found, ${APP} downloads it in the background and shows the progress in ${ui('Updates')}. The download is used only if its size and SHA-256 match the signed list. Then ${ui('Restart to Update')} appears in ${ui('Updates')} and in the footer. Click it to restart into the new version. If an agent is working in a terminal or a recording is running, ${APP} asks first; the recording so far is saved before the restart.</p>
+<p>When a newer version is found, ${APP} downloads it in the background and shows the progress in ${ui('Updates')}. The download is used only if its size and SHA-256 match the signed list. Once it is ready, ${ui('Updates')} shows that it will be installed the next time you close ${APP}: quit ${APP} as usual, and the next time you open it, it is the new version. You don't need to download or run an installer yourself, and ${APP} never restarts on its own, so agents keep working until you close it.</p>
+<p>To install right away, click ${ui('Restart to Update')} in ${ui('Updates')} or in the footer. If an agent is working in a terminal or a recording is running, ${APP} asks first; the recording so far is saved before the restart.</p>
 <table>
   <thead><tr><th>Install type</th><th>What is downloaded</th><th>How it is installed</th></tr></thead>
   <tbody>
-    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>, listed in <code>UPDATE-SHA256SUMS</code> and signed with the same release key</td><td>handed to the macOS updater (Squirrel.Mac), which also checks that the new app has the same Developer ID signature; replaced when ${APP} restarts</td></tr>
-    <tr><td>Windows</td><td>the installer (<code>.exe</code>)</td><td>runs without any windows when ${APP} restarts, then opens the new version</td></tr>
-    <tr><td>Linux (AppImage)</td><td>the new <code>.AppImage</code></td><td>replaces the AppImage you started, then opens the new version</td></tr>
+    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>, listed in <code>UPDATE-SHA256SUMS</code> and signed with the same release key</td><td>handed to the macOS updater (Squirrel.Mac), which also checks that the new app has the same Developer ID signature; installed when you close ${APP} (or with ${ui('Restart to Update')})</td></tr>
+    <tr><td>Windows</td><td>the installer (<code>.exe</code>)</td><td>runs without any windows after you close ${APP}; with ${ui('Restart to Update')} it then opens the new version</td></tr>
+    <tr><td>Linux (AppImage)</td><td>the new <code>.AppImage</code></td><td>replaces the AppImage you started when you close ${APP}; with ${ui('Restart to Update')} it then opens the new version</td></tr>
     <tr><td>Linux (deb)</td><td>the <code>.deb</code></td><td>${ui('Open Installer')} saves it to your Downloads folder and opens it in your software installer</td></tr>
   </tbody>
 </table>
-<p>To download only when you choose, turn off ${ui('Download new versions automatically')} in ${ui('Updates')} (or set <code>"autoUpdate": false</code> in <code>settings.json</code>), then click ${ui('Download')} when a new version is shown. Development builds (<code>pnpm dev</code>) don't download in the background; ${ui('Download')} saves the checked installer to your Downloads folder.</p>`],
+<p>To update only when you choose, turn off ${ui('Update automatically')} in ${ui('Updates')} (or set <code>"autoUpdate": false</code> in <code>settings.json</code>). ${APP} then doesn't download or install anything on its own: click ${ui('Download')} when a new version is shown, then ${ui('Restart to Update')}. Development builds (<code>pnpm dev</code>) don't download in the background; ${ui('Download')} saves the checked installer to your Downloads folder.</p>`],
   ])
 
 /* ───────────── Help ───────────── */
@@ -1151,12 +1163,13 @@ page('troubleshooting.html', 'Help', 'Troubleshooting',
 ${code('pnpm rebuild:native')}`],
     ['agent', "Agent not found / Send to Agent doesn't send", `
 <ul>
-  <li><code>command not found: claude</code> (or <code>codex</code>, <code>gemini</code>, or another agent's command) in the terminal: the CLI is not installed or not on <code>PATH</code>. ${APP} shows the shell's own error and adds no hint. Check that the command works in your normal terminal, use ${ui('Install')} in ${ui('Settings → Agents')}, or set an absolute path as that agent's ${ui('Command')}.</li>
+  <li><q>Claude Code: Not found</q> (or another built-in agent's name), or <code>command not found: …</code> in the terminal for an agent you added: the CLI is not installed or not on <code>PATH</code>. ${APP} starts built-in agents only from an absolute path in a <code>PATH</code> folder outside the project, never from the project folder. Check that the command works in your normal terminal, use ${ui('Install')} in ${ui('Settings → Agents')}, or set an absolute path as that agent's ${ui('Command')}.</li>
   <li><q>The agent is waiting for confirmation. Respond in the terminal, then send.</q> Answer the agent's prompt first.</li>
   <li><q>The agent's input isn't ready yet.</q> Wait for the agent to finish starting.</li>
   <li><q>The text was entered but not sent. Press Enter in the terminal.</q></li>
   <li><q>Open a terminal first.</q></li>
   <li><q>Can't parse launch arguments: Unclosed quote.</q> Fix the quoting in the agent's arguments.</li>
+  <li><q>Put … in the launch arguments, not in the command.</q> or <q>Write … in the launch arguments without quotes or backslashes.</q> Write that flag as plain text in the agent's arguments. To start agents without permission prompts, turn on ${ui('Start agents without permission prompts')} in ${ui('Settings → Agents')}.</li>
 </ul>`],
     ['cannot-record', "Recording won't start", `
 <ul>
@@ -1503,7 +1516,16 @@ const footer = (c) => `<footer class="site-footer">
 const OG_IMAGE_ALT = 'Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.'
 const OG_LOCALES = { en: 'en_US', ja: 'ja_JP', 'zh-CN': 'zh_CN', 'zh-TW': 'zh_TW', ko: 'ko_KR', es: 'es_ES', fr: 'fr_FR', de: 'de_DE', it: 'it_IT', 'pt-BR': 'pt_BR', ru: 'ru_RU', hi: 'hi_IN', id: 'id_ID', vi: 'vi_VN' }
 
-const strip = (s) => s.replace(/<[^>]+>/g, '')
+// タグを外す。1回だけだと、外したあとに `<<b>script>` から `<script>` ができるので、変わらなくなるまで繰り返す
+const strip = (s) => {
+  let out = s
+  let before
+  do {
+    before = out
+    out = out.replace(/<[^>]+>/g, '')
+  } while (out !== before)
+  return out
+}
 const attr = (s) => strip(s).replace(/"/g, '&quot;')
 
 /** ページの単位を、見出し・本文に分けて返す（訳が無い単位は英語。fallback はその単位が英語のままか） */

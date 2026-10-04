@@ -14,6 +14,10 @@ export const RELEASE_SIGNING_NAMESPACE = 'ferret-release'
 export const RELEASE_PRODUCT = 'Ferret'
 /** SHA256SUMS と署名の上限 */
 const SIGNED_SUMS_MAX_BYTES = 64 * 1024
+/** 索引・manifest（latest.json・versions.json・各版の manifest.json）の上限（アプリの SMALL_JSON_MAX_BYTES と同じ） */
+export const METADATA_MAX_BYTES = 1024 * 1024
+/** 索引・manifest・SHA256SUMS(.sig) を1つ取るのにかける時間の上限 */
+export const METADATA_TIMEOUT_MS = 15_000
 /** インストーラーの大きさの上限（アプリの MAX_INSTALLER_BYTES と同じ） */
 export const MAX_INSTALLER_BYTES = 400 * 1024 * 1024
 
@@ -164,10 +168,86 @@ export async function verifiedAssets(release, base, sums, signature, trustedKey 
   return out
 }
 
-async function readCapped(res, max) {
-  const buf = new Uint8Array(await res.arrayBuffer())
-  if (buf.length > max) throw new Error('too large')
-  return buf
+/**
+ * 本文を、届いた量を数えながら max バイトまで読む（security-5 [12]）。
+ * res.json() / res.arrayBuffer() は本文を最後まで溜めてから返すので、配信元が巨大な・終わらない応答を返すとタブが固まる。
+ * 宣言の長さが上限を超えていれば読まずに断り、届いた量が超えた時点・signal が中断した時点で接続を切って例外にする
+ * @param {Response} res
+ * @param {number} max
+ * @param {AbortSignal} [signal]
+ */
+export async function readBounded(res, max, signal) {
+  const declared = Number(res.headers.get('content-length'))
+  if (Number.isFinite(declared) && declared > max) {
+    await res.body?.cancel().catch(() => undefined)
+    throw new Error('too large')
+  }
+  if (!res.body) return new Uint8Array()
+  const reader = res.body.getReader()
+  const stop = () => void reader.cancel().catch(() => undefined)
+  signal?.addEventListener('abort', stop, { once: true })
+  const chunks = []
+  let total = 0
+  try {
+    for (;;) {
+      if (signal?.aborted) throw new Error('timeout')
+      const { done, value } = await reader.read()
+      // 中断で切ったときも done になるので、途中までの本文を返さない
+      if (signal?.aborted) throw new Error('timeout')
+      if (done) break
+      total += value.length
+      if (total > max) {
+        stop()
+        throw new Error('too large')
+      }
+      chunks.push(value)
+    }
+  } finally {
+    signal?.removeEventListener('abort', stop)
+  }
+  const out = new Uint8Array(total)
+  let at = 0
+  for (const c of chunks) {
+    out.set(c, at)
+    at += c.length
+  }
+  return out
+}
+
+/**
+ * 配信元の小さなファイル（索引・manifest・SHA256SUMS(.sig)）を、時間と大きさの上限つきで取る（security-5 [12]）。
+ * 成功（2xx）のときだけ本文を読み、それ以外は本文を捨てて bytes: null を返す。時間切れ・上限超えは例外
+ * @param {string} url
+ * @param {number} max
+ * @param {typeof fetch} [fetcher]
+ * @param {number} [timeoutMs]
+ * @returns {Promise<{ status: number, ok: boolean, bytes: Uint8Array | null }>}
+ */
+export async function fetchBounded(url, max, fetcher = fetch, timeoutMs = METADATA_TIMEOUT_MS) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetcher(url, { cache: 'no-cache', signal: controller.signal })
+    if (!res.ok) {
+      await res.body?.cancel().catch(() => undefined)
+      return { status: res.status, ok: false, bytes: null }
+    }
+    return { status: res.status, ok: true, bytes: await readBounded(res, max, controller.signal) }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
+ * 配信元の JSON を上限つきで取る。まだ置かれていない（404・403）ときは null、それ以外の失敗・時間切れ・上限超えは例外
+ * @param {string} url
+ * @param {typeof fetch} [fetcher]
+ */
+export async function fetchBoundedJson(url, fetcher = fetch) {
+  const r = await fetchBounded(url, METADATA_MAX_BYTES, fetcher)
+  if (r.status === 404 || r.status === 403) return null
+  if (!r.ok || !r.bytes) throw new Error(`HTTP ${r.status}`)
+  return JSON.parse(new TextDecoder().decode(r.bytes))
 }
 
 /**
@@ -176,13 +256,15 @@ async function readCapped(res, max) {
  * @param {any} release normalizeManifest の結果
  * @param {string} base
  * @param {typeof fetch} fetcher
+ * @param {number} [timeoutMs] SHA256SUMS(.sig) を1つ取るのにかける時間の上限
  */
-export async function verifyRelease(release, base, fetcher = fetch) {
+export async function verifyRelease(release, base, fetcher = fetch, timeoutMs = METADATA_TIMEOUT_MS) {
   const dir = `${base.replace(/\/+$/, '')}/releases/${encodeURIComponent(release.version)}/`
-  const [sumsRes, sigRes] = await Promise.all([fetcher(`${dir}SHA256SUMS`, { cache: 'no-cache' }), fetcher(`${dir}SHA256SUMS.sig`, { cache: 'no-cache' })])
+  // 本文は上限まで・時間の上限つきで読む（security-5 [12]）
+  const [sumsRes, sigRes] = await Promise.all([fetchBounded(`${dir}SHA256SUMS`, SIGNED_SUMS_MAX_BYTES, fetcher, timeoutMs), fetchBounded(`${dir}SHA256SUMS.sig`, SIGNED_SUMS_MAX_BYTES, fetcher, timeoutMs)])
   if (sumsRes.status >= 500 || sigRes.status >= 500) throw new Error(`HTTP ${Math.max(sumsRes.status, sigRes.status)}`)
-  const assets = sumsRes.ok && sigRes.ok
-    ? await verifiedAssets(release, base, await readCapped(sumsRes, SIGNED_SUMS_MAX_BYTES), new TextDecoder().decode(await readCapped(sigRes, SIGNED_SUMS_MAX_BYTES)))
+  const assets = sumsRes.bytes && sigRes.bytes
+    ? await verifiedAssets(release, base, sumsRes.bytes, new TextDecoder().decode(sigRes.bytes))
     : null
   return assets ? { ...release, assets, verified: true } : { ...release, assets: [], verified: false }
 }

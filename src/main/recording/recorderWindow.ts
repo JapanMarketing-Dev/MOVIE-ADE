@@ -1,3 +1,4 @@
+import { registerRecorderContents } from '../captureConsent'
 import { BrowserWindow, ipcMain, nativeImage, type NativeImage, type Streams, type WebContents } from 'electron'
 import { constants, createWriteStream, type WriteStream } from 'node:fs'
 import { open } from 'node:fs/promises'
@@ -131,6 +132,8 @@ export class RecorderWindow {
       }
     })
     this.window = window
+    // 映像（画面・タブ）の取り込みを許すのは、この録画ウインドウだけ（アプリの窓は音だけ。captureConsent.ts）
+    registerRecorderContents(window.webContents)
     /*
      * 相手の声は getDisplayMedia で取る。映像はこのウインドウ自身（画面収録の許可が要らない）、音声は PC のループバック。
      * 同じ session のほかのページ（アプリの画面・プレビュー）の getDisplayMedia は、これまでどおり断る

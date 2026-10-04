@@ -1,7 +1,6 @@
 import { delay } from '@shared/delay'
 import { ipcMain, type WebContents } from 'electron'
-import { mkdir } from 'node:fs/promises'
-import { appendFileNoFollow } from '../sessions/containment'
+import { appendFileNoFollow, mkdirContained } from '../sessions/containment'
 import { redactUrl } from '../pipeline/redact'
 import { dirname, join } from 'node:path'
 import { captureTargetGap, captureTargetLabel, resolveCaptureTarget } from '@shared/captureTarget'
@@ -10,6 +9,7 @@ import { isPageChange } from '@shared/page'
 import { DEFAULT_ANNOTATION_COLOR, type AnnotationColor } from '@shared/annotation'
 import { RecorderWindow, type VideoSource } from './recorderWindow'
 import { listCaptureSources, screenAccess } from './sources'
+import { readDevice } from './devices'
 import { StillCapturer, webContentsStillSource, type StillSource } from './stills'
 import {
   defaultRecordingOptions,
@@ -304,8 +304,9 @@ export class RecordingController {
     // 画面全体・別のウインドウでは、内蔵ブラウザ専用の情報が欠けることを指摘に明記する
     const gap = captureTargetGap(options.captureTarget)
     if (gap) this.warnings.push(gap)
-    await mkdir(options.paths.framesDir, { recursive: true })
-    await mkdir(options.paths.audioDir, { recursive: true })
+    // 親を開いて持ったまま1段ずつ作る（security-5 [11]。sessions/containment.ts）
+    await mkdirContained(options.paths.framesDir)
+    await mkdirContained(options.paths.audioDir)
 
     const clock = new RecordingClock()
     this.clock = clock
@@ -392,7 +393,16 @@ export class RecordingController {
     if (!resolved) {
       throw new UserFacingError(t('recording.errors.targetGone', { target: captureTargetLabel(target) }))
     }
-    return resolved
+    if (resolved.kind !== 'window') return resolved
+    // スマホのシミュレータ／エミュレータなら、端末名・OS の版・前面のアプリを指摘に添える（読むだけの命令。取れなくても録る）
+    if (target.kind === 'window' && target.device && target.sourceId === resolved.sourceId) return { ...resolved, device: target.device }
+    const platform = sources.find((s) => s.id === resolved.sourceId)?.device
+    if (!platform) return resolved
+    const device = await readDevice(platform, resolved.name).catch((err: unknown) => {
+      reportHandled(err, { area: 'recording', op: 'read device' })
+      return { platform }
+    })
+    return { ...resolved, device }
   }
 
   /** 内蔵ブラウザを録っているか。画面・ウインドウのときは内蔵ブラウザの操作ログを取らない */

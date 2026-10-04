@@ -52,15 +52,16 @@ Problèmes courants et solutions. Les messages cités sont ceux qu'affiche l'app
 <p>Cela se produit lors d'une exécution depuis les sources lorsque node-pty a été compilé pour une autre ABI de Node ou d'Electron.</p>
 <pre><code>pnpm rebuild:native</code></pre>
 
-<!-- @agent 1b8e87d730 -->
+<!-- @agent b8de3c3989 -->
 ## Agent introuvable / Envoyer à l'agent n'envoie rien
 <ul>
-  <li><code>command not found: claude</code> (ou <code>codex</code>, <code>gemini</code>, ou la commande d'un autre agent) dans le terminal : la CLI n'est pas installée ou n'est pas dans le <code>PATH</code>. Ferret affiche l'erreur du shell telle quelle, sans ajouter d'indication. Vérifiez que la commande fonctionne dans votre terminal habituel, utilisez <span class="docs-ui">Installer</span> dans <span class="docs-ui">Réglages → Agents</span>, ou indiquez un chemin absolu comme <span class="docs-ui">Commande</span> de cet agent.</li>
+  <li><q>Claude Code: Introuvable</q> (ou le nom d'un autre agent intégré), ou <code>command not found: …</code> dans le terminal pour un agent que vous avez ajouté : la CLI n'est pas installée ou n'est pas dans le <code>PATH</code>. Ferret lance les agents intégrés uniquement depuis un chemin absolu dans un dossier du <code>PATH</code> situé hors du projet, jamais depuis le dossier du projet. Vérifiez que la commande fonctionne dans votre terminal habituel, utilisez <span class="docs-ui">Installer</span> dans <span class="docs-ui">Réglages → Agents</span>, ou indiquez un chemin absolu comme <span class="docs-ui">Commande</span> de cet agent.</li>
   <li><q>L'agent attend une confirmation. Répondez dans le terminal, puis envoyez.</q> Répondez d'abord à la question de l'agent.</li>
   <li><q>La saisie de l'agent n'est pas encore prête.</q> Attendez que l'agent ait fini de démarrer.</li>
   <li><q>Le texte a été saisi mais pas envoyé. Appuyez sur Entrée dans le terminal.</q></li>
   <li><q>Ouvrez d'abord un terminal.</q></li>
   <li><q>Impossible d'analyser les arguments de lancement : Guillemet non fermé.</q> Corrigez les guillemets dans les arguments de l'agent.</li>
+  <li><q>Placez … dans les arguments de lancement, pas dans la commande.</q> ou <q>Écrivez … dans les arguments de lancement sans guillemets ni barres obliques inverses.</q> Écrivez cette option en texte simple dans les arguments de l'agent. Pour démarrer les agents sans demandes d'autorisation, activez <span class="docs-ui">Démarrer les agents sans demandes d'autorisation</span> dans <span class="docs-ui">Réglages → Agents</span>.</li>
 </ul>
 
 <!-- @cannot-record 7b2c3ffb80 -->

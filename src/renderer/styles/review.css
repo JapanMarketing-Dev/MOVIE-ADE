@@ -279,6 +279,33 @@
   opacity: 0.4;
 }
 
+/* 指摘の並び順（ReviewFindings.tsx）。道具の並びの中に、文字の選択欄として置く */
+.rv-sort {
+  height: 26px;
+  max-width: 12em;
+  padding: 0 var(--space-8) 0 var(--space-3);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-sm);
+  appearance: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+}
+
+.rv-sort:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.rv-sort:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 /* ── 一覧 ─────────────────────────────────────────────── */
 
 .rv-list {
@@ -348,6 +375,73 @@
 
 .rv-card.is-checking {
   border-color: var(--color-warning-border);
+}
+
+/* 並べ替え（ReviewFindings.tsx）: 動かしているカードは薄く、落とす位置にカードの間の線を出す */
+.rv-card.is-dragging {
+  opacity: 0.5;
+}
+
+.rv-card.is-drop-before,
+.rv-card.is-drop-after {
+  position: relative;
+}
+
+.rv-card.is-drop-before::before,
+.rv-card.is-drop-after::after {
+  position: absolute;
+  right: var(--space-4);
+  left: var(--space-4);
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-accent);
+  content: '';
+  pointer-events: none;
+}
+
+/* カードの間（.rv-list の gap）の中ほど */
+.rv-card.is-drop-before::before {
+  top: calc(var(--space-5) / -2 - 2px);
+}
+
+.rv-card.is-drop-after::after {
+  bottom: calc(var(--space-5) / -2 - 2px);
+}
+
+/* 並べ替えのつまみ。見出しの左に置き、見出しの欄（左へはみ出す余白）より前に出す */
+.rv-card__grip {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 20px;
+  height: 24px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: grab;
+  place-items: center;
+}
+
+.rv-card__grip:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.rv-card__grip:focus-visible {
+  outline: 1px solid var(--color-border-focus);
+  outline-offset: -1px;
+}
+
+.rv-card__grip:active {
+  cursor: grabbing;
+}
+
+.rv-card__grip:disabled {
+  cursor: default;
+  opacity: 0.45;
 }
 
 @container (max-width: 560px) {

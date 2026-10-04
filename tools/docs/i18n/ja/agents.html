@@ -5,7 +5,7 @@
 <!-- @lead 14c9151ac0 -->
 内蔵のターミナルでコーディングエージェントを動かし、ワンクリックでレビューを渡します。よく使われるのは Claude Code と Codex ですが、下の一覧にあるエージェントならどれでも使え、自分で足した CLI も使えます。ほかの場所で動くエージェント向けに指示をコピーしたり、レビューを GitHub に投稿したりもできます。
 
-<!-- @findings bc1a08f06c -->
+<!-- @findings 3f601cd2f3 -->
 ## 指摘を確かめる
 <p><span class="docs-ui">指摘</span> タブの各カードでできること:</p>
 <ul>
@@ -15,6 +15,7 @@
   <li><span class="docs-ui">確定する</span> / <span class="docs-ui">要確認にする</span>、<span class="docs-ui">次とまとめる</span>、<span class="docs-ui">削除</span></li>
 </ul>
 <p><span class="docs-ui">進み具合で絞り込む</span> で、状態ごとに指摘を表示したり隠したりできます（たとえば、あなたの確認待ちのもの<span class="docs-ui">だけ表示</span>する）。<span class="docs-ui">すべて表示</span> で絞り込みを解除します。</p>
+<p>指摘を並べ替えるには、カードの題名の左にあるつまみをドラッグするか、つまみを選んで <kbd>↑</kbd> / <kbd>↓</kbd> を押します。番号、<code>feedback.md</code>、エージェントへ送る内容は新しい順番に従います。絞り込んでいる間は見えている指摘の中で順番が変わり、隠れている指摘はその位置のままです。1つのレビューが複数のページやファイルにまたがるときは、指摘は同じまとまりの中で動きます。上部の <span class="docs-ui">指摘の並び順</span> で <span class="docs-ui">手動（ドラッグの順）</span>・<span class="docs-ui">録画の時刻順</span>・<span class="docs-ui">進み具合の順</span>（未対応が先、完了が最後）を切り替えられます。進み具合の順に並べると、その並びが手動の順として保存されます。</p>
 <p>上部には <span class="docs-ui">元に戻す</span>、<span class="docs-ui">保存先を開く</span>、<span class="docs-ui">Agent向けにコピー</span>、<span class="docs-ui">GitHub / GitLab に送る</span>、<span class="docs-ui">整理</span>、<span class="docs-ui">Agentへ送信</span> があります。指摘にならなかった発話は <span class="docs-ui">除外した発話</span> に並び、<span class="docs-ui">発話を指摘に戻す</span> で戻せます。</p>
 {{shot:findings|指摘タブ}}
 
@@ -69,7 +70,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>エージェントが動いていなければ、Ferret が先に起動し、準備ができしだい送ります。エージェントが権限の確認への答えを待っている間は何も送りません。先にターミナルで答えてください。</p>
 <p><span class="docs-ui">Agent向けにコピー</span> は、ほかの場所（別のターミナル、IDE、アプリ）で動くエージェントのために、同じ指示をクリップボードに入れます。対象になるのは <span class="docs-ui">送信する</span> にした指摘だけです。動画は決して含めません。</p>
 
-<!-- @verify f8f4f5bb1d -->
+<!-- @verify f6f903b43a -->
 ## 判定モデルでの受け入れ確認
 {{clip:verify|エージェントが指摘を直し、すべて通るまで判定モデルで1件ずつ確かめる。}}
 <p>これを入にすると、コーディングエージェントは「完了」と報告する前に、自分の作業を指摘ごとに確かめます。Ferret 自身は何も判定しません。エージェントに<em>判定モデル</em>（System One 互換の API ならどれでも）を渡し、すべての指摘が通るまで繰り返すよう <code>feedback.md</code> で指示します。</p>
@@ -93,7 +94,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>Ollama を使うときは、Ollama を入れ（Clef / Clef Flash には 0.35.1 以降が必要）、ターミナルでモデルを取得します。Ferret はインストーラーを実行しません。</p>
 <pre><code>ollama pull clef-flash</code></pre>
 <p>キーは、キーの欄（ほかの API キーと一緒に保存）、名前を指定した環境変数（アプリの環境、プロジェクトの <code>.env</code>、または <code>~/.ferret/.env</code>）、または <code>settings.json</code> の <code>apiKey</code> から読みます。追加のヘッダーでは <code>${VAR}</code> で環境変数の値を使えます。</p>
-<div class="docs-callout docs-callout-note"><p class="docs-callout-title">キーが指示に入らないしくみ</p><p>エージェントがキーを見ることはありません。Ferret は <code>127.0.0.1</code> でローカルの中継を動かし、各ターミナルに <code>FERRET_DECISION_URL</code>（中継の URL。ターミナルごとのトークン付き）、<code>FERRET_DECISION_MODEL</code>、<code>FERRET_DECISION_IMAGES</code> を渡します（1リリースの間は、古い <code>MOVIE_ADE_DECISION_*</code> という名前も設定します）。中継がキーとヘッダーを付けてリクエストをそのまま転送するので、指示、<code>feedback.md</code>、エージェントのやり取りの記録には秘密の情報が入りません。設定を変えた後に開いたターミナルから反映されます。</p></div>
+<div class="docs-callout docs-callout-note"><p class="docs-callout-title">キーが指示に入らないしくみ</p><p>エージェントがキーを見ることはありません。Ferret は <code>127.0.0.1</code> でローカルの中継を動かし、各ターミナルに <code>FERRET_DECISION_URL</code>（中継の URL。ターミナルごとのトークン付き）、<code>FERRET_DECISION_MODEL</code>、<code>FERRET_DECISION_IMAGES</code> を渡します（1リリースの間は、古い <code>MOVIE_ADE_DECISION_*</code> という名前も設定します）。中継がキーとヘッダーを付けてリクエストをそのまま転送するので、指示、<code>feedback.md</code>、エージェントのやり取りの記録には秘密の情報が入りません。ターミナルごとのトークンで使えるのは 500 回・1分に 30 回・2,000 万トークン・5 ドル（費用が分かるとき）まで、プロジェクトごとには1日 2,000 回・20 ドルまでです。上限に届くと中継は理由を付けて 429 を返し、新しいターミナルのタブには新しいトークンが渡ります。判定モデルの設定を変えると、開いているターミナルのトークンは使えなくなり、その後に開いたターミナルから新しい設定が使われます。</p></div>
 <p>Cloudflare は System One のドキュメントと2点違います（実際の API で確認済み）。画像はデータ URI（<code>data:image/jpeg;base64,…</code>）でなければならず、そうでないと 422 "image must be an embedded base64 data URI" になります。また、答えは <code>{ "result": { … }, "success": true }</code> で包まれて返ります（エラーは <code>{ "success": false, "errors": [ … ] }</code>）。Cloudflare のプリセットは <span class="docs-ui">画像の渡し方</span> をデータ URI にし、エージェントはそれを <code>FERRET_DECISION_IMAGE_FORMAT</code> として受け取り、指示では <code>.result</code> があればそれを読むよう伝えます。中継は行きも帰りもそのまま通します。API トークンの代わりに Global API Key を使うときは、<span class="docs-ui">認証</span> を <span class="docs-ui">キーなし</span> にし、ヘッダー <code>X-Auth-Email: ${CLOUDFLARE_EMAIL}</code> と <code>X-Auth-Key: ${CLOUDFLARE_API_KEY}</code> を足します。</p>
 <p>画像を読めるのは Clef と Clef Flash だけです。テキストのみのモデルでは <span class="docs-ui">BEFORE / AFTER の画像を送る</span> を切にします。その場合エージェントはテキストだけで判定するので、確かさは下がります。</p>
 <div class="docs-callout docs-callout-warn"><p class="docs-callout-title">Ollama と大きな画像</p><p>Ollama 0.35.0 は <code>/v1/systemone</code> へのリクエストを 64 KiB までに制限しているため、スクリーンショット付きのリクエストは HTTP 413 で失敗します。指示では、両方の画像を幅 1024px 以下の JPEG（品質 70 ほど）に縮めるようエージェントに伝えます。それでも 413 になるときは、Ollama を 0.35.1 以降に上げるか、Cloudflare Workers AI に切り替えてください。</p></div>

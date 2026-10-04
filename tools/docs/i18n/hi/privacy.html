@@ -21,7 +21,7 @@ Reviews आपके प्रोजेक्ट फ़ोल्डर में
 ## कितने समय तक रखा जाता है
 <p><span class="docs-ui">रिकॉर्डिंग रखें</span> (डिफ़ॉल्ट 7 दिन, 30 दिन, या <span class="docs-ui">हमेशा</span>): ऐप शुरू होने पर, इससे पुराने पूरे हो चुके reviews से <code>recording.webm</code> और <code>work/</code> हटा दिए जाते हैं। <code>feedback.md</code> और findings की इमेज रखी जाती हैं। अधूरे reviews कभी नहीं हटाए जाते। यह सफ़ाई launch पर, आख़िरी बार खोले गए प्रोजेक्ट के लिए चलती है।</p>
 
-<!-- @network 93d136650b -->
+<!-- @network cab5d43d47 -->
 ## आपकी मशीन से क्या बाहर जाता है
 <table>
   <thead><tr><th>कब</th><th>कहाँ</th><th>डेटा</th></tr></thead>
@@ -35,7 +35,7 @@ Reviews आपके प्रोजेक्ट फ़ोल्डर में
     <tr><td><span class="docs-ui">GitHub पर भेजें</span></td><td><code>gh</code> के ज़रिए GitHub</td><td>सिर्फ़ body का टेक्स्ट (कोई इमेज नहीं)</td></tr>
     <tr><td>फ़ुटर का usage (सिर्फ़ Claude Code और Codex)</td><td>Anthropic, ChatGPT</td><td>आपके अपने login के साथ usage की request</td></tr>
     <tr><td>GitHub स्टार का अनुरोध</td><td>आपके <code>gh</code> के ज़रिए GitHub</td><td>जाँचता है कि आपने repo को स्टार दिया है या नहीं, और सिर्फ़ तभी स्टार देता है जब आप <span class="docs-ui">GitHub पर स्टार दें</span> पर क्लिक करें</td></tr>
-    <tr><td>अपडेट (Ferret शुरू होने पर, हर 6 घंटे में, और <span class="docs-ui">अपडेट जाँचें</span> पर)</td><td>डाउनलोड server (Cloudflare R2)</td><td><code>latest.json</code> और उस version की <code>SHA256SUMS</code> (macOS पर <code>UPDATE-SHA256SUMS</code> भी) की requests; नया version मिलने पर आपके कंप्यूटर की update file (<span class="docs-ui">नए संस्करण अपने-आप डाउनलोड करें</span> बंद हो तो सिर्फ़ <span class="docs-ui">डाउनलोड करें</span> पर क्लिक करने पर)</td></tr>
+    <tr><td>अपडेट (Ferret शुरू होने पर, हर 6 घंटे में, और <span class="docs-ui">अपडेट जाँचें</span> पर)</td><td>डाउनलोड server (Cloudflare R2)</td><td><code>latest.json</code> और उस version की <code>SHA256SUMS</code> (macOS पर <code>UPDATE-SHA256SUMS</code> भी) की requests; नया version मिलने पर आपके कंप्यूटर की update file (<span class="docs-ui">अपने-आप अपडेट करें</span> बंद हो तो सिर्फ़ <span class="docs-ui">डाउनलोड करें</span> पर क्लिक करने पर)</td></tr>
     <tr><td>ऐप से feedback भेजना (सिर्फ़ जब आप भेजें)</td><td>Developer का feedback relay (एक Cloudflare Worker), जो <code>JapanMarketing-Dev/ferret</code> में एक सार्वजनिक issue खोलता है</td><td>आपका टेक्स्ट, bug या idea, ऐप / OS version और CPU, और आपके जोड़े गए अधिकतम 3 screenshots। Keys, tokens, ईमेल पते और home-folder paths छिपा दिए जाते हैं। Relay आपका IP address सेव नहीं करता (<a href="#feedback">ऐप से feedback</a> देखें)</td></tr>
     <tr><td>कोई crash या error (<span class="docs-ui">Crash reports भेजें</span> चालू)</td><td>Sentry</td><td>Stack trace और OS / CPU / ऐप के versions (<a href="#crash-reports">Crash reports</a> देखें)</td></tr>
   </tbody>

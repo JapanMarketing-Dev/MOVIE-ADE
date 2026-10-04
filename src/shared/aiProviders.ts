@@ -434,6 +434,21 @@ export function currentModel(preset: SetupPreset, override: AiEndpointConfig | u
   return override?.model?.trim() || recommendedModel(preset)
 }
 
+/** 「指摘の整理」の「確認」で main へ送る値。モデルは画面で今選ばれているもの（空なら送らず main の既定に任せる） */
+export function organizeCheckTarget(provider: LlmApiProvider, preset: SetupPreset, override: AiEndpointConfig | undefined): { provider: LlmApiProvider; endpoint?: AiEndpointConfig } {
+  const model = currentModel(preset, override)
+  const endpoint = model ? { ...override, model } : override
+  return { provider, ...(endpoint ? { endpoint } : {}) }
+}
+
+/**
+ * 「Agent に設定を頼む」の指示文とリンクの元。モデルと Base URL は、プリセットの既定ではなく画面で今選ばれている値にする
+ * （Ollama で gpt-oss:120b を選んでも指示文が既定の gpt-oss:20b を pull させていた）
+ */
+export function endpointSetupGuide<P extends SetupPreset & Omit<import('./setupGuide').SetupGuide, 'label' | 'model'>>(preset: P, override: AiEndpointConfig | undefined, label: string): import('./setupGuide').SetupGuide {
+  return { ...preset, label, model: currentModel(preset, override), baseUrl: override?.baseUrl?.trim() || preset.baseUrl }
+}
+
 /**
  * モデルを選ぶ。推奨と同じなら上書きを消す（未設定＝推奨。プリセットの推奨が変われば追従する）。
  * 端末内のサーバーは「使う」と選んだ印として残す。Base URL・ヘッダーなどほかの項目は消さない。

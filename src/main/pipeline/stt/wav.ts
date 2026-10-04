@@ -98,10 +98,10 @@ export async function writeWavFile(
   samples: Int16Array,
   sampleRate: number
 ): Promise<void> {
-  const { writeFile } = await import('node:fs/promises')
-  // 排他で作る（同じ名前が先にあれば失敗する）。レビューのフォルダの中に先回りで置かれたリンクをたどって外へ書かない。
+  const { writeNewFileContained } = await import('../../sessions/containment')
+  // 排他で作る（同じ名前が先にあれば失敗する）。レビューのフォルダの中に先回りで置かれたリンクをたどって外へ書かない。親を開いて持ったまま作る。
   // 呼び出し側はどれも新しい名前で書く（録画ごとの連番＋時刻、追記録画は takes/<n> の新しいフォルダ、接続の確認は一時フォルダ）
-  await writeFile(path, encodeWav(samples, sampleRate), { flag: 'wx' })
+  await writeNewFileContained(path, encodeWav(samples, sampleRate))
 }
 
 /** WAV ファイルから 16bit PCM を読み出す（データの開始位置はヘッダから求める） */

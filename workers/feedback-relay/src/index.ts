@@ -98,16 +98,19 @@ async function submit(request: Request, env: Env, deps: Deps): Promise<Response>
   const now = deps.now()
   // IPv6 は /64 にまとめる（1つの回線の中でアドレスを変えても同じ送り主。security-4 [8]）
   const ip = sourceIdentity(request.headers.get('cf-connecting-ip') ?? 'unknown')
-  // 全体の前処理の枠が尽きていれば、送り主ごとの limiter を作る前・本文を読む前に断る（送り主を増やしても work と状態が増えない。security-4 [8]）
-  const preparse = await askLimiter(env, 'preparse', 'peek', PREPARSE_LIMITS, now)
+  // 全体の前処理の枠を、送り主ごとの limiter を作る前・本文を読む前に予約する（確かめると取るを1回で。security-5 [10]）。
+  // peek（数えずに見る）だと、同時に来た別々の送り主がみな通って送り主ごとの状態を作り、そのあとで枠を取り合う。
+  // 尽きていれば断る（送り主を増やしても、送り主ごとの状態と work はこの枠の数を超えない。security-4 [8]）
+  const preparse = await askLimiter(env, 'preparse', 'hit', PREPARSE_LIMITS, now)
   if (!preparse.allowed) return fail('rate_limited', { 'retry-after': String(preparse.retryAfterSec) })
   const ipKey = await limiterKey(env.RATE_LIMIT_SALT, 'ip', ip)
   // 試みの数（形の悪いもの・断ったものも数える）。Issue になった数の枠（ip・全体）とは別
   const attempt = await askLimiter(env, await limiterKey(env.RATE_LIMIT_SALT, 'attempt', ip), 'hit', ATTEMPT_LIMITS, now)
-  if (!attempt.allowed) return fail('rate_limited', { 'retry-after': String(attempt.retryAfterSec) })
-  // 送り主の枠を通ったものだけを、全体の前処理の枠に数える（1つの送り主が全体の枠を使い切れない）
-  const preparseHit = await askLimiter(env, 'preparse', 'hit', PREPARSE_LIMITS, now)
-  if (!preparseHit.allowed) return fail('rate_limited', { 'retry-after': String(preparseHit.retryAfterSec) })
+  if (!attempt.allowed) {
+    // 送り主の枠で断ったものは、全体の前処理の予約を戻す（1つの送り主が全体の枠を使い切れない）
+    await askLimiter(env, 'preparse', 'release', PREPARSE_LIMITS, now).catch(() => undefined)
+    return fail('rate_limited', { 'retry-after': String(attempt.retryAfterSec) })
+  }
   // 送信の枠を使い切った IP は、本文を読まずに断る（数えない）
   const ipPeek = await askLimiter(env, ipKey, 'peek', PER_SENDER_LIMITS, now)
   if (!ipPeek.allowed) return fail('rate_limited', { 'retry-after': String(ipPeek.retryAfterSec) })

@@ -36,6 +36,7 @@ const FULL = {
   crashReports: false,
   crashReportsNoticeShown: true,
   autoUpdate: false,
+  terminalClipboard: 'allow',
   onboarding: { completedAt: '2026-10-03T00:00:00.000Z' }
 }
 

@@ -1,3 +1,4 @@
+import { escapeRegExp } from './textHelpers'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -218,6 +219,42 @@ describe('workflow 全体の決まり（Orca を参考に足した workflow に�
   })
 })
 
+describe('secrets が無くても、タグの push で必ず落ちるワークフローにしない', () => {
+  // 署名・R2 の secrets はまだ置かず、手元の手順で公開している。置いていないあいだも Release を赤にしない（RULES.md）
+  const text = read(`${workflowDir}/release.yml`)
+  const jobs = jobsOf(text)
+  /** ジョブの steps を、- で始まる step ごとに分ける */
+  const stepsOf = (lines: string[]) => lines.join('\n').split(/\n(?= {6}- )/).filter((b) => /^ {6}- /.test(b))
+
+  it('checksums は鍵の有無を最初に調べ、鍵を使うステップと下書き・release-meta はそれで飛ばせる', () => {
+    const steps = stepsOf(jobs.get('checksums')!)
+    expect(steps[0]).toMatch(/id: key/)
+    expect(steps[0]).toMatch(/RELEASE_SIGNING_KEY: \$\{\{ secrets\.RELEASE_SIGNING_KEY \}\}/)
+    expect(steps[0]).toMatch(/::notice /)
+    expect(jobs.get('checksums')!.join('\n')).toMatch(/signed: \$\{\{ steps\.key\.outputs\.present \}\}/)
+    for (const step of steps.slice(1).filter((b) => /secrets\.|gh release create|name: release-meta/.test(b))) {
+      expect(step).toMatch(/if: steps\.key\.outputs\.present == 'true'/)
+    }
+  })
+
+  it('stage は署名があるときだけ動き、R2 の secrets が無ければ notice を出してほかのステップを飛ばす', () => {
+    const lines = jobs.get('stage')!
+    expect(lines.join('\n')).toMatch(/^ {4}if: github\.event_name == 'push' && needs\.checksums\.outputs\.signed == 'true'$/m)
+    const steps = stepsOf(lines)
+    expect(steps[0]).toMatch(/id: r2/)
+    expect(steps[0]).toMatch(/::notice /)
+    for (const step of steps.slice(1)) expect(step).toMatch(/if: steps\.r2\.outputs\.present == 'true'/)
+  })
+
+  it('dependency review は依存グラフが切れているリポジトリでは notice を出して飛ばす', () => {
+    const steps = stepsOf(jobsOf(read(`${workflowDir}/dependency-review.yml`)).get('review')!)
+    expect(steps[0]).toMatch(/dependency-graph\/compare/)
+    expect(steps[0]).toMatch(/::notice /)
+    const action = steps.find((b) => /actions\/dependency-review-action@/.test(b))!
+    expect(action).toMatch(/if: steps\.graph\.outputs\.enabled == 'true'/)
+  })
+})
+
 describe('スクリプトの外の道具の起動', () => {
   it.each(scriptFiles)('%s で shell を使って起動しない', (file) => {
     expect(read(file)).not.toMatch(/shell:\s*(true|process\.platform)/)
@@ -242,7 +279,7 @@ describe('スクリプトの外の道具の起動', () => {
     const version = pkg.devDependencies.wrangler
     expect(version).toMatch(/^\d+\.\d+\.\d+$/)
     const lock = read('pnpm-lock.yaml')
-    expect(lock).toMatch(new RegExp(`\\n {2}wrangler@${version.replace(/\./g, '\\.')}:\\n {4}resolution: \\{integrity: sha512-`))
+    expect(lock).toMatch(new RegExp(`\\n {2}wrangler@${escapeRegExp(version)}:\\n {4}resolution: \\{integrity: sha512-`))
   })
 
   it('release-r2.mjs は manifest の値をローカルのパスに使わず、R2 から読んだ JSON を確かめてから使う', () => {

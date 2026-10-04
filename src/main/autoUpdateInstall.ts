@@ -1,11 +1,11 @@
 import { app, autoUpdater, shell } from 'electron'
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
-import { constants, createReadStream } from 'node:fs'
+import { chmodSync, closeSync, constants, copyFileSync, createReadStream, openSync, readSync, renameSync, rmSync } from 'node:fs'
 import { chmod, copyFile, link, mkdir, readdir, rename, rm, stat } from 'node:fs/promises'
 import { createServer, type Server } from 'node:http'
 import { basename, dirname, extname, isAbsolute, join } from 'node:path'
-import type { InstallMethod } from '@shared/appUpdate'
+import { nsisInstallerArgs, type InstallMethod } from '@shared/appUpdate'
 import type { VerifiedDownload } from './updateCheck'
 
 /**
@@ -17,6 +17,8 @@ import type { VerifiedDownload } from './updateCheck'
  *     Squirrel.Mac に渡す。Squirrel.Mac は zip の中のアプリの署名が、動いているアプリと同じ開発元（Developer ID）かも確かめる
  *   - Windows: NsisUpdater.doInstall … `--updated /S --force-run` でインストーラーを走らせ、アプリを終える
  *   - Linux AppImage: AppImageUpdater.doInstall … 今の AppImage の場所に置き換え（名前に版があれば新しい名前で並べて古い方を消す）、起動し直す
+ *   - 閉じたときに入れる: AppUpdater の autoInstallOnAppQuit … app の quit（終了コード 0）で、起動し直さずに入れ替える
+ *     （NSIS は --force-run を付けない。macOS は Squirrel.Mac が受け取り終えていれば、閉じたあとに自分で入れ替える）
  * electron-updater そのものは入れていない。配信元の latest*.yml を読み直して、その中の sha512 で確かめる作りなので、
  * R2 だけを書き換えられたときに守れない（このアプリは署名した SHA256SUMS の値だけを信じる）。
  */
@@ -42,6 +44,26 @@ export async function hashFile(path: string): Promise<string | null> {
     const hash = createHash('sha256')
     createReadStream(path).on('data', (d) => hash.update(d)).on('end', () => resolve(hash.digest('hex'))).on('error', () => resolve(null))
   })
+}
+
+/** hashFile の同期版。閉じるとき（app の quit）は待てないので、こちらで確かめる */
+function hashFileSync(path: string): string | null {
+  let fd: number
+  try {
+    fd = openSync(path, 'r')
+  } catch {
+    return null
+  }
+  try {
+    const hash = createHash('sha256')
+    const chunk = Buffer.alloc(1024 * 1024)
+    for (let n = readSync(fd, chunk); n > 0; n = readSync(fd, chunk)) hash.update(chunk.subarray(0, n))
+    return hash.digest('hex')
+  } catch {
+    return null
+  } finally {
+    closeSync(fd)
+  }
 }
 
 /** userData/updates を作り、keep 以外（前の版の残り・途中のもの）を消す */
@@ -161,7 +183,7 @@ export async function installUpdate(method: InstallMethod, path: string, file: V
   }
   if (method === 'nsis') {
     // 画面なしで入れ替え（/S）、終わったら新しい版を起動する（--force-run）。--updated は「更新として入れる」の印
-    const child = spawn(path, ['--updated', '/S', '--force-run'], { detached: true, stdio: 'ignore' })
+    const child = spawn(path, nsisInstallerArgs('restart'), { detached: true, stdio: 'ignore' })
     await new Promise<void>((resolve, reject) => {
       child.once('spawn', () => resolve())
       child.once('error', reject)
@@ -171,11 +193,7 @@ export async function installUpdate(method: InstallMethod, path: string, file: V
     return
   }
   if (method === 'appimage') {
-    const current = process.env.APPIMAGE
-    if (!current || !isAbsolute(current) || current.includes('\0')) throw new Error('APPIMAGE is not an absolute path')
-    // 利用者が付けた名前（版を含まない）はそのまま上書きし、版を含む名前なら新しい版の名前で並べて古い方を消す
-    const destination = /\d+\.\d+\.\d+/.test(basename(current)) ? join(dirname(current), file.name) : current
-    const staged = `${destination}.${randomBytes(4).toString('hex')}.new`
+    const { current, destination, staged } = appImageTargets(file)
     await copyFile(path, staged)
     await chmod(staged, 0o755)
     await rename(staged, destination)
@@ -188,6 +206,55 @@ export async function installUpdate(method: InstallMethod, path: string, file: V
   const placed = await placeInDownloads(path, file.name)
   const error = await shell.openPath(placed)
   if (error) shell.showItemInFolder(placed)
+}
+
+/** AppImage の置き場所。利用者が付けた名前（版を含まない）はそのまま上書きし、版を含む名前なら新しい版の名前で並べて古い方を消す */
+function appImageTargets(file: VerifiedDownload): { current: string; destination: string; staged: string } {
+  const current = process.env.APPIMAGE
+  if (!current || !isAbsolute(current) || current.includes('\0')) throw new Error('APPIMAGE is not an absolute path')
+  const destination = /\d+\.\d+\.\d+/.test(basename(current)) ? join(dirname(current), file.name) : current
+  return { current, destination, staged: `${destination}.${randomBytes(4).toString('hex')}.new` }
+}
+
+/**
+ * アプリを閉じるとき（app の quit）に入れ替える。起動し直さない（次に開いたとき新しい版）。
+ * 終了の途中なので同期で行い、入れ替えを始めたら true。macOS は Squirrel.Mac が受け取り終えていれば（stageUpdate）、
+ * アプリが終わったあとに Squirrel.Mac 自身が入れ替えるので、ここでは何もしない
+ */
+export function installUpdateOnQuit(method: InstallMethod, path: string, file: VerifiedDownload): boolean {
+  if (method === 'squirrel-mac' || method === 'deb') return false
+  // 入れ替える直前にもう一度 sha256 を確かめる
+  if (hashFileSync(path) !== file.sha256) throw new Error('update file changed before install on quit')
+  if (method === 'nsis') {
+    // 画面なし（/S）で入れ替える。--force-run を付けないので、終わっても起動しない
+    const child = spawn(path, nsisInstallerArgs('quit'), { detached: true, stdio: 'ignore' })
+    // 走らせられなかったとき（error は後から届く）に、終了の途中で落ちない。次に開いたとき、また準備から始める
+    child.once('error', () => undefined)
+    child.unref()
+    return true
+  }
+  const { current, destination, staged } = appImageTargets(file)
+  copyFileSync(path, staged)
+  chmodSync(staged, 0o755)
+  renameSync(staged, destination)
+  if (destination !== current) rmSync(current, { force: true })
+  return true
+}
+
+/**
+ * E2E だけ（偽の配信元のとき）: 閉じたときの入れ替えの代わりに、偽のインストーラー（.mjs）を Electron の node で走らせる。
+ * 本物と同じ方法・ファイル・引数を渡す（NSIS なら --updated /S）。本物のインストーラーは走らせない
+ */
+export function runE2eQuitInstaller(script: string, method: InstallMethod, path: string): boolean {
+  const args = method === 'nsis' ? nsisInstallerArgs('quit') : []
+  const child = spawn(process.execPath, [script, method, path, ...args], {
+    detached: true,
+    stdio: 'ignore',
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+  })
+  child.once('error', () => undefined)
+  child.unref()
+  return true
 }
 
 /** アプリを閉じるときに、Squirrel.Mac 用の手元のサーバーを閉じる */

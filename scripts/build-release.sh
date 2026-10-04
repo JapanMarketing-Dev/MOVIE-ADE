@@ -19,7 +19,27 @@
 #      pnpm install をやり直し（out/ は手順 2 で作ったものを使う）、AppImage / deb を作る。パッケージに入った node-pty で PTY が開けることも確かめる
 #
 # 必要なもの: macOS、pnpm、podman（または docker）、p7zip（brew install p7zip。インストーラの検査用）。未署名で作る。
+#
+# Linux のビルドの材料は動かない値に固定する（security-5 [13]。タグや apt の索引は後から中身が変わる）:
+#   - コンテナのイメージは digest で指定し、取ったイメージの digest が同じことを確かめてから使う
+#   - apt は snapshot.debian.org の決まった時刻の索引から入れる（パッケージの署名はイメージの中の Debian の鍵で確かめる）
+#   - pnpm は corepack に sha512 を渡して入れる（違えば止まる）
+# 更新するときは、新しい digest・時刻・sha512 を確かめてからこの3つを書き換える（test/unit/security-5-release.test.ts が形を確かめる）。
+# できたものの sha256・commit・使った材料は dist/release/BUILD-PROVENANCE.txt に残す
 set -euo pipefail
+
+# node:22-bookworm の linux/amd64（2026-10-04 に docker.io で確かめた digest）
+LINUX_IMAGE="docker.io/library/node:22-bookworm@sha256:17b7fd60fd812617654c64b95f9b2dde94f103313073b672bc40fdad6dccbaa2"
+DEBIAN_SNAPSHOT="20261001T000000Z"
+PNPM_SPEC="pnpm@10.31.0+sha512.e3927388bfaa8078ceb79b748ffc1e8274e84d75163e67bc22e06c0d3aed43dd153151cbf11d7f8301ff4acb98c68bdc5cadf6989532801ffafe3b3e4a63c268"
+if [[ ! "${LINUX_IMAGE}" =~ @sha256:[0-9a-f]{64}$ ]]; then
+  echo "Linux のビルドのイメージは digest（@sha256:…）で指定してください: ${LINUX_IMAGE}" >&2
+  exit 1
+fi
+if [[ ! "${DEBIAN_SNAPSHOT}" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] || [[ ! "${PNPM_SPEC}" =~ ^pnpm@[0-9.]+\+sha512\.[0-9a-f]{128}$ ]]; then
+  echo "DEBIAN_SNAPSHOT・PNPM_SPEC の形が違います" >&2
+  exit 1
+fi
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="$(node -p "require('${REPO}/package.json').version")"
@@ -109,12 +129,19 @@ else
   mkdir -p "${WORK}/linux"
   cat > "${WORK}/linux/run.sh" <<'LINUX'
 set -euo pipefail
-apt-get update -qq
+# 日々変わる既定の索引ではなく、決まった時刻の snapshot だけから入れる
+rm -f /etc/apt/sources.list.d/*
+cat > /etc/apt/sources.list <<APT
+deb https://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT} bookworm main
+deb https://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT} bookworm-updates main
+deb https://snapshot.debian.org/archive/debian-security/${DEBIAN_SNAPSHOT} bookworm-security main
+APT
+apt-get -o Acquire::Check-Valid-Until=false update -qq
 apt-get install -y -qq build-essential python3 rsync libnss3 libnspr4 libgtk-3-0 libasound2 libgbm1 libxss1 libxtst6 >/dev/null
 # out/ は Mac で作ったものをそのまま使う（JS は OS に関係なく同じ。ソースマップの debug ID も揃う）
 rsync -a --exclude node_modules --exclude dist /src/ /work/
 cd /work
-corepack enable && corepack prepare pnpm@10.31.0 --activate
+corepack enable && corepack prepare "${PNPM_SPEC}" --activate
 pnpm install --frozen-lockfile
 pnpm exec electron-builder --config electron-builder.config.cjs --linux AppImage deb --x64
 cp dist/release/Ferret-*.AppImage dist/release/Ferret-*.deb /out/
@@ -128,12 +155,29 @@ LINUX
   mkdir -p "${WORK}/registry"
   echo '{}' > "${WORK}/registry/config.json"
   echo '{"auths":{}}' > "${WORK}/registry/auth.json"
-  DOCKER_CONFIG="${WORK}/registry" REGISTRY_AUTH_FILE="${WORK}/registry/auth.json" "${CLI}" run --rm --platform linux/amd64 -m 7g \
+  DOCKER_CONFIG="${WORK}/registry" REGISTRY_AUTH_FILE="${WORK}/registry/auth.json" "${CLI}" pull --platform linux/amd64 "${LINUX_IMAGE}" >/dev/null
+  # 取ったイメージが固定した digest のものかを確かめる（digest で取れば中身は確かめられるが、念のため手元の記録でも見る）
+  if ! "${CLI}" image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "${LINUX_IMAGE}" | grep -q "@${LINUX_IMAGE##*@}\$"; then
+    echo "取ったイメージの digest が ${LINUX_IMAGE##*@} と違います" >&2
+    exit 1
+  fi
+  DOCKER_CONFIG="${WORK}/registry" REGISTRY_AUTH_FILE="${WORK}/registry/auth.json" "${CLI}" run --rm --platform linux/amd64 -m 7g --pull=never \
+    -e DEBIAN_SNAPSHOT="${DEBIAN_SNAPSHOT}" -e PNPM_SPEC="${PNPM_SPEC}" \
     -v "${SRC}:/src:ro" -v "${WORK}/linux:/s:ro" -v "${WORK}/linux/out:/out" \
-    docker.io/library/node:22-bookworm bash /s/run.sh
+    "${LINUX_IMAGE}" bash /s/run.sh
   cp "${WORK}"/linux/out/* "${OUT}/"
   if [[ -n "${started_podman}" ]]; then podman machine stop >/dev/null; fi
 fi
+
+# どの commit と材料から作ったかと、できたものの sha256（release-github.mjs create はこのフォルダを自分でハッシュして署名する）
+{
+  echo "version ${VERSION}"
+  echo "commit $(git -C "${REPO}" rev-parse HEAD)$(git -C "${REPO}" diff --quiet HEAD -- 2>/dev/null || echo ' (uncommitted changes)')"
+  echo "linux-image ${LINUX_IMAGE}"
+  echo "debian-snapshot ${DEBIAN_SNAPSHOT}"
+  echo "linux-pnpm ${PNPM_SPEC}"
+  (cd "${OUT}" && shasum -a 256 Ferret-"${VERSION}"-*)
+} > "${OUT}/BUILD-PROVENANCE.txt"
 
 rm -rf "${WORK}"
 echo "== できたもの（${OUT}）"

@@ -14,6 +14,8 @@ import { groupByTarget, targetHeading, targetOfUrl, type ReviewTarget } from '@s
 import { getLocale, translate, type MessageParams, type SupportedLocale, type TranslationKey } from '@shared/i18n'
 import { progressOf, recentComments, type FindingProgress, type ProgressMap } from '@shared/findingProgress'
 import { afterCaptureSpec, afterCommand, afterRelPath } from '@shared/afterShot'
+import { captureTargetLines } from '@shared/captureTarget'
+import type { CaptureTarget } from '@shared/types'
 
 interface RenderOptions {
   /** 「要確認」の指摘も書き出すか（既定: false。設計7章4で送信対象から外す） */
@@ -58,6 +60,11 @@ interface RenderOptions {
   reviewDir?: string
   /** 録画時の確認先（local / dev / prd）。AFTER を撮る localhost の URL に置き換えるのに使う。省略時は meta.urlPresets */
   urlPresets: ReadonlyArray<{ label: string; url?: string }>
+  /**
+   * 録った対象（capture.json）。内蔵ブラウザ以外（デスクトップアプリ・スマホのシミュレータ／エミュレータ・画面全体）なら、
+   * 冒頭にアプリ名・ウインドウの題名・端末を書く（内蔵ブラウザの URL の代わり）
+   */
+  captureTarget?: CaptureTarget
 }
 
 const speakerKey: Record<Speaker, TranslationKey> = { self: 'feedbackMd.speaker.self', other: 'feedbackMd.speaker.other' }
@@ -88,6 +95,8 @@ export function renderFeedbackMarkdown(doc: FeedbackDocument, options: Partial<R
   const sectioned = groups.length > 1
   if (sectioned) lines.push(tr('feedbackMd.targets', { count: groups.length }))
   else if (doc.meta.targetUrl) lines.push(`- ${tr('feedbackMd.label.target')}: ${describeTargetUrl(doc.meta.targetUrl) ?? shellSafeUrl(redactUrl(doc.meta.targetUrl))}`)
+  // 画面・ウインドウを録ったときは、URL の代わりに録った対象（アプリ名・題名・端末）。題名は画面由来の文字列なので md として無害にする
+  if (!sectioned && !doc.meta.targetUrl && opt.captureTarget) lines.push(...captureTargetLines(opt.captureTarget, opt.locale).map((line) => mdText(line)))
   // 対象が1つなら、その区分（デザイン・設計書）を対象の行のすぐ下に書く（節に分けるときは各節の見出しの下）
   const single = !sectioned ? groups[0]?.target.purpose : undefined
   if (single) lines.push(tr(`feedbackMd.kind.${single}`))

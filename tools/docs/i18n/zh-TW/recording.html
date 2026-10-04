@@ -2,10 +2,10 @@
 <!-- @title 80e8dd1a5a -->
 錄製
 
-<!-- @lead 14988eae28 -->
-錄製內建瀏覽器、整個螢幕或其他視窗。一邊操作頁面，一邊說話、圈選與輸入。
+<!-- @lead a6afb525ba -->
+錄製內建瀏覽器、整個螢幕、其他視窗、桌面應用程式、遊戲或手機模擬器。一邊操作頁面，一邊說話、圈選與輸入。
 
-<!-- @target 133550362a -->
+<!-- @target 2ab7c5b1f7 -->
 ## 選擇要錄製的內容
 <p>在意見模式中，按一下 <span class="docs-ui">選擇錄製目標</span>。<span class="docs-ui">錄製目標</span> 對話框提供以下選項：</p>
 <table>
@@ -13,10 +13,20 @@
   <tbody>
     <tr><td><span class="docs-ui">內建瀏覽器</span>（預設）</td><td>影像、語音與畫筆，以及 URL、元素選擇器、點擊與捲動。不需要作業系統權限。</td></tr>
     <tr><td><span class="docs-ui">整個螢幕</span></td><td>影像、語音與畫筆。沒有 URL、元素與操作記錄（<code>feedback.md</code> 中會註明這一點）。</td></tr>
-    <tr><td><span class="docs-ui">視窗</span></td><td>同上。Ferret 本身的視窗不會列出。</td></tr>
+    <tr><td><span class="docs-ui">視窗</span></td><td>同上。每個視窗都會連同其應用程式名稱一起列出。Ferret 本身的視窗不會列出。</td></tr>
+    <tr><td><span class="docs-ui">手機</span></td><td>同上，只列出 iOS Simulator 與 Android Emulator 的視窗。</td></tr>
   </tbody>
 </table>
 <p>你的選擇會被記住。在 macOS 上，擷取螢幕與視窗需要螢幕錄製權限（<a href="troubleshooting.html#screen-permission">授予方式</a>）。</p>
+
+<!-- @desktop-mobile 8d8ffcf90e -->
+## 桌面應用程式、遊戲與行動應用程式
+<p>若要審查你正在開發的桌面應用程式（Electron、Tauri 或原生應用程式），請像平常開發時一樣啟動它，然後在 <span class="docs-ui">視窗</span> 下選擇它的視窗。視窗會連同應用程式名稱一起列出，因此 Electron 應用程式的開發版本會顯示為 <code>Electron</code>。小視窗與始終顯示在其他視窗之上的視窗也會列出；在 macOS 上，始終置頂的視窗會以應用程式名稱與標題顯示，而不是預覽圖。</p>
+<p>所選內容會跟著應用程式走。重新啟動應用程式、它的視窗再次出現後，下一次錄製會使用標題相同的視窗；若標題已改變，則使用該應用程式唯一的視窗。</p>
+<p>行動應用程式請啟動 iOS Simulator（Xcode，macOS）或 Android Emulator（Android Studio），然後在 <span class="docs-ui">手機</span> 下選擇裝置。若模擬器在 Android Studio 內執行，請讓它在獨立視窗中開啟（在 Android Studio 的設定中，於 Tools → Emulator 下關閉在 Running Devices 工具視窗中啟動），這樣它就會列出。</p>
+<p><code>feedback.md</code> 開頭寫的不是 URL，而是你錄製的內容：應用程式與視窗標題；若是模擬器，則是裝置名稱與作業系統版本，在 Android 上還包括前景中的應用程式。它也會告訴 Agent 去修改該應用程式的原始碼。Ferret 在錄製開始時透過 <code>xcrun simctl</code> 與 <code>adb</code>（來自 <code>ANDROID_HOME</code>、<code>ANDROID_SDK_ROOT</code> 或 Android Studio 的 SDK 資料夾）讀取裝置資訊。影像中只會顯示所選的視窗，所以請邊說邊講清楚你指的是什麼。</p>
+<p>遊戲的用法相同。選擇顯示著遊戲檢視的 Unity、Unreal Engine 或 Godot 編輯器視窗，或你建置的遊戲視窗（包括無邊框視窗模式）。若遊戲為獨占全螢幕，請在 <span class="docs-ui">整個螢幕</span> 下選擇它所在的顯示器。當視窗是這些編輯器之一時，<code>feedback.md</code> 會寫明引擎，並請 Agent 修改遊戲的程式碼、場景或素材。為了讓檔案保持精簡，影像最多以每秒 10 格錄製；問題的圖片也取自同一段影像，因此與時間軸上的那一刻一致。</p>
+<p>審查目標的 <span class="docs-ui">要錄製的視窗</span> 除了視窗標題，也會比對應用程式名稱，因此填入 <code>Simulator</code> 時，無論顯示的是哪個裝置，都會選到 iOS Simulator 的視窗。</p>
 
 <!-- @record deb62ed37c -->
 ## 開始、暫停、停止

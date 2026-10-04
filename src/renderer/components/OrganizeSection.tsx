@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Sparkles } from 'lucide-react'
-import { LLM_API_PROVIDERS, LLM_PROVIDER_PRESETS, RECOMMENDED_ORGANIZE_PROVIDER, providerLabel, type AiEndpointConfig, type LlmApiProvider } from '@shared/aiProviders'
+import { LLM_API_PROVIDERS, LLM_PROVIDER_PRESETS, RECOMMENDED_ORGANIZE_PROVIDER, organizeCheckTarget, providerLabel, type AiEndpointConfig, type LlmApiProvider } from '@shared/aiProviders'
 import { withRecommendedModel } from '@shared/localModels'
 import type { SttAvailability } from '@shared/types'
 import { useT } from '../lib/i18n'
@@ -63,7 +63,8 @@ export function OrganizeSection({ recording = false, headless = false }: { recor
           else delete copy[provider]
           saveEndpoints(copy)
         }}
-        onCheck={() => window.ade.invoke('organize:testConnection', { provider, ...(endpoint ? { endpoint } : {}) })}
+        // 画面に出ているモデル（Ollama はこの PC の推奨を含む）で確かめる。main の既定（プリセットの model）に任せない
+        onCheck={() => window.ade.invoke('organize:testConnection', organizeCheckTarget(provider, preset, endpoint))}
         // Agent に設定を頼む指示文の宛先（settings.json の中の場所。src/shared/settingsSchema.ts）
         setupTarget={{ purpose: t('ai.setup.purpose.organize'), endpointPath: `organizer.endpoints.${provider}`, select: { path: 'organizer.runner', value: `api:${provider}` } }}
         advancedExtra={<p className="st-note">{t(preset.structuredOutput ? 'ai.organize.structured' : 'ai.organize.unstructured')}</p>} />}

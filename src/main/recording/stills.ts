@@ -1,5 +1,5 @@
 import { delay } from '@shared/delay'
-import { writeFile } from 'node:fs/promises'
+import { writeNewFileContained } from '../sessions/containment'
 import { join } from 'node:path'
 import type { NativeImage, WebContents } from 'electron'
 import type { FrameRef } from '../pipeline/types'
@@ -192,8 +192,8 @@ export class StillCapturer {
         this.handlers.onWarning(translateMessage('recording.errors.stillsLimitReached'))
         return null
       }
-      // 既にある名前・リンクには書かない（録画のフォルダは作ったばかりで、名前は通し番号）
-      await writeFile(path, data, { flag: 'wx' })
+      // 既にある名前・リンクには書かない（録画のフォルダは作ったばかりで、名前は通し番号）。親を開いて持ったまま作る
+      await writeNewFileContained(path, data)
       this.savedBytes += data.length
 
       cursor ??= this.handlers.getCursor?.()

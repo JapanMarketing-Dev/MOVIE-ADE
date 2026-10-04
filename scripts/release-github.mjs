@@ -4,10 +4,12 @@
  *
  * 手順の中の位置（README の「Releases」）:
  *   1. node scripts/release-r2.mjs stage …
- *   2. node scripts/release-github.mjs create --version <v> [--target <public main の commit>] [--dry-run]
- *        → staging の manifest から SHA256SUMS を作り、それだけを付けた GitHub Release の下書きを作る
+ *   2. node scripts/release-github.mjs create --version <v> [--dir dist/release] [--target <public main の commit>] [--dry-run]
+ *        → 手元の配布物（--dir。build-release.sh が作ったもの）を自分でハッシュして SHA256SUMS を作り、
+ *        それだけを付けた GitHub Release の下書きを作る。staging の manifest は、手元と名前・大きさ・sha256 が
+ *        過不足なく同じかを確かめるためだけに読み、違えば署名しない（security-5 [8]。R2 の値には署名しない）
  *        SHA256SUMS には R2 とは別の鍵で署名し（scripts/release-signing.mjs。鍵は ~/.ferret-signing か RELEASE_SIGNING_KEY）、
- *        SHA256SUMS.sig も付ける（security-3 [2]）。自動更新用のファイル（manifest の updates。macOS の zip）があれば、
+ *        SHA256SUMS.sig も付ける（security-3 [2]）。自動更新用のファイル（macOS の zip）があれば、
  *        その sha256 を UPDATE-SHA256SUMS に分けて書き、同じ鍵で署名して UPDATE-SHA256SUMS.sig と並べて付ける
  *   3. gh release download v<v> --repo <repo> --pattern 'SHA256SUMS*' --pattern 'UPDATE-SHA256SUMS*' --dir <フォルダ>
  *      node scripts/release-r2.mjs promote --version <v> --expect-sums <フォルダ>/SHA256SUMS --sums-sig <フォルダ>/SHA256SUMS.sig \
@@ -15,7 +17,7 @@
  *        → 署名が合わない・R2 の manifest が GitHub の SHA256SUMS と一致しなければ公開しない
  *   4. node scripts/release-github.mjs publish --version <v> [--dry-run]   … 下書きを公開する
  *
- * すでに promote した版は create --from releases で作れる。manifest を手元のファイルから読むときは --manifest <file>。
+ * すでに promote した版は create --from releases で作れる（このときも手元の配布物が要る）。manifest を手元のファイルから読むときは --manifest <file>。
  * --dry-run は gh を動かさず、作る SHA256SUMS と gh のコマンドを表示するだけ。
  * gh も wrangler も shell を通さずに起動する（scripts/release-tools.mjs）。
  */
@@ -25,7 +27,6 @@ import * as nodePath from 'node:path'
 import { join, resolve } from 'node:path'
 import {
   assertValidVersion,
-  formatSha256Sums,
   ghReleaseCreateArgs,
   ghReleaseNotes,
   ghReleasePublishArgs,
@@ -33,6 +34,7 @@ import {
   validateManifest,
   workPath
 } from './release-r2-lib.mjs'
+import { hashLocalArtifacts, signedSumsFromLocal } from './release-local-sums.mjs'
 import { runTool, wranglerInvocation } from './release-tools.mjs'
 import { assertSignedSums, loadSigningKey, signSshsig } from './release-signing.mjs'
 
@@ -40,7 +42,7 @@ const root = resolve(import.meta.dirname, '..')
 const BUCKET = process.env.R2_BUCKET ?? 'movie-ade-releases'
 
 function parseArgs(argv) {
-  const args = { command: argv[0], from: 'staging', repo: process.env.RELEASE_REPO ?? 'JapanMarketing-Dev/ferret', dryRun: false }
+  const args = { command: argv[0], from: 'staging', dir: 'dist/release', repo: process.env.RELEASE_REPO ?? 'JapanMarketing-Dev/ferret', dryRun: false }
   if (args.command !== 'create' && args.command !== 'publish') throw new Error('使い方: node scripts/release-github.mjs create|publish --version <v> [--dry-run]')
   for (let i = 1; i < argv.length; i++) {
     const key = argv[i]
@@ -48,6 +50,7 @@ function parseArgs(argv) {
     if (key === '--version') args.version = value()
     else if (key === '--from') args.from = value()
     else if (key === '--manifest') args.manifest = value()
+    else if (key === '--dir') args.dir = value()
     else if (key === '--repo') args.repo = value()
     else if (key === '--target') args.target = value()
     else if (key === '--dry-run') args.dryRun = true
@@ -81,14 +84,17 @@ const args = parseArgs(process.argv.slice(2))
 if (args.command === 'publish') {
   gh(ghReleasePublishArgs({ version: args.version, repo: args.repo }), args.dryRun)
 } else {
+  // 署名するのは手元のファイルのハッシュ。manifest はそれと同じかを確かめるだけ（違えば signedSumsFromLocal が止める）
+  const local = await hashLocalArtifacts(resolve(root, args.dir), args.version)
   const manifest = readManifest(args)
+  const signed = signedSumsFromLocal(local, manifest)
   const work = mkdtempSync(join(tmpdir(), 'ferret-gh-release-'))
   try {
     // 添付するファイルの名前が SHA256SUMS になるよう、作業フォルダに同じ名前で置く
     const sumsFile = workPath(work, 'SHA256SUMS', nodePath)
-    const sums = formatSha256Sums(manifest.files)
+    const sums = signed.sums
     writeFileSync(sumsFile, sums, { flag: 'wx' })
-    console.log(`SHA256SUMS（${manifest.files.length} 件。manifest の値と同じ）:\n${sums}`)
+    console.log(`SHA256SUMS（${local.files.length} 件。${args.dir} のファイルをハッシュした値。manifest とも一致）:\n${sums}`)
     // R2 の書き込みとは別の鍵で署名する。出す前に、リポジトリの公開鍵で確かめられることを確かめる
     const sigFile = workPath(work, 'SHA256SUMS.sig', nodePath)
     const signature = signSshsig(Buffer.from(sums), loadSigningKey())
@@ -96,9 +102,9 @@ if (args.command === 'publish') {
     writeFileSync(sigFile, signature, { flag: 'wx' })
     // 自動更新用のファイル（macOS の zip）は別の SHA256SUMS に分ける（0.4.x のアプリが SHA256SUMS と files の一致を求めるため。release-r2-lib.mjs）
     const extraFiles = []
-    if (manifest.updates?.length) {
-      const updateSums = formatSha256Sums(manifest.updates)
-      console.log(`${UPDATE_SUMS}（${manifest.updates.length} 件。自動更新用）:\n${updateSums}`)
+    if (signed.updateSums) {
+      const updateSums = signed.updateSums
+      console.log(`${UPDATE_SUMS}（${local.updates.length} 件。自動更新用。手元のファイルをハッシュした値）:\n${updateSums}`)
       const updateSumsFile = workPath(work, UPDATE_SUMS, nodePath)
       const updateSigFile = workPath(work, `${UPDATE_SUMS}.sig`, nodePath)
       const updateSignature = signSshsig(Buffer.from(updateSums), loadSigningKey())

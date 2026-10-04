@@ -21,7 +21,7 @@ Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong
 ## Thời gian lưu giữ
 <p><span class="docs-ui">Giữ bản ghi</span> (mặc định 7 ngày, 30 ngày, hoặc <span class="docs-ui">Vĩnh viễn</span>): khi khởi động, các review đã hoàn tất cũ hơn mức đó sẽ bị xóa <code>recording.webm</code> và <code>work/</code>. <code>feedback.md</code> và ảnh của các góp ý được giữ lại. Review chưa hoàn tất không bao giờ bị dọn. Việc dọn chạy khi khởi động, cho dự án được mở gần nhất.</p>
 
-<!-- @network 93d136650b -->
+<!-- @network cab5d43d47 -->
 ## Dữ liệu nào rời khỏi máy của bạn
 <table>
   <thead><tr><th>Khi nào</th><th>Đích đến</th><th>Dữ liệu</th></tr></thead>
@@ -35,7 +35,7 @@ Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong
     <tr><td><span class="docs-ui">Gửi lên GitHub</span></td><td>GitHub qua <code>gh</code></td><td>chỉ phần nội dung văn bản (không có ảnh)</td></tr>
     <tr><td>Mức sử dụng ở footer (chỉ Claude Code và Codex)</td><td>Anthropic, ChatGPT</td><td>yêu cầu xem mức sử dụng bằng chính thông tin đăng nhập của bạn</td></tr>
     <tr><td>Lời mời gắn sao GitHub</td><td>GitHub qua <code>gh</code> của bạn</td><td>kiểm tra xem bạn đã gắn sao repo chưa, và chỉ gắn sao khi bạn nhấn <span class="docs-ui">Gắn sao trên GitHub</span></td></tr>
-    <tr><td>Cập nhật (khi Ferret khởi động, mỗi 6 giờ và khi bấm <span class="docs-ui">Kiểm tra cập nhật</span>)</td><td>server tải xuống (Cloudflare R2)</td><td>yêu cầu tải <code>latest.json</code> và <code>SHA256SUMS</code> của phiên bản đó (trên macOS còn có <code>UPDATE-SHA256SUMS</code>); khi có phiên bản mới, tệp cập nhật cho máy của bạn (chỉ khi bạn bấm <span class="docs-ui">Tải xuống</span> nếu đã tắt <span class="docs-ui">Tự động tải phiên bản mới</span>)</td></tr>
+    <tr><td>Cập nhật (khi Ferret khởi động, mỗi 6 giờ và khi bấm <span class="docs-ui">Kiểm tra cập nhật</span>)</td><td>server tải xuống (Cloudflare R2)</td><td>yêu cầu tải <code>latest.json</code> và <code>SHA256SUMS</code> của phiên bản đó (trên macOS còn có <code>UPDATE-SHA256SUMS</code>); khi có phiên bản mới, tệp cập nhật cho máy của bạn (chỉ khi bạn bấm <span class="docs-ui">Tải xuống</span> nếu đã tắt <span class="docs-ui">Tự động cập nhật</span>)</td></tr>
     <tr><td>Gửi feedback từ ứng dụng (chỉ khi bạn gửi)</td><td>relay feedback của nhà phát triển (một Cloudflare Worker), relay này mở một issue công khai trong <code>JapanMarketing-Dev/ferret</code></td><td>văn bản của bạn, loại lỗi hay ý tưởng, phiên bản ứng dụng / hệ điều hành và CPU, cùng tối đa 3 ảnh chụp màn hình bạn đính kèm. Key, token, địa chỉ email và đường dẫn thư mục home được che đi. Relay không lưu địa chỉ IP của bạn (xem <a href="#feedback">Feedback từ ứng dụng</a>)</td></tr>
     <tr><td>Khi có crash hoặc lỗi (<span class="docs-ui">Gửi báo cáo crash</span> đang bật)</td><td>Sentry</td><td>stack trace và phiên bản hệ điều hành / CPU / ứng dụng (xem <a href="#crash-reports">Báo cáo crash</a>)</td></tr>
   </tbody>

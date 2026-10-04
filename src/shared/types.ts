@@ -120,7 +120,10 @@ export type TargetPurpose = 'app' | 'design' | 'doc'
 export type ProjectTarget = ProjectUrl
 
 /** project:update で送るもの。id のほかは変えたい項目だけでよい */
-export type ProjectUpdate = Pick<Project, 'id'> & Partial<Pick<Project, 'name' | 'kind' | 'urls'>>
+export type ProjectUpdate = Pick<Project, 'id'> & Partial<Pick<Project, 'name' | 'kind' | 'urls'>> & {
+  /** ☆ の付け外し（false で外す） */
+  starred?: boolean
+}
 
 /** 事前に登録したフォルダ。ターミナルは常にここをカレントにして起動する（worktreeは使わない） */
 export interface Project {
@@ -139,6 +142,12 @@ export interface Project {
   urls: ProjectUrl[]
   /** 前に開いていたときの作業の状態。切り替えて戻ったときと再起動したときに元へ戻す（src/shared/projectSession.ts） */
   session?: ProjectSession
+  /** ☆（お気に入り）。一覧の上にまとめ、「☆ のみ」で絞り込める（src/shared/projectOrder.ts） */
+  starred?: true
+  /** 登録した時刻（ISO8601）。「追加した順」に使う。これより前に登録したものには無い */
+  addedAt?: string
+  /** 最後に開いた時刻（ISO8601）。「最近使った順」「動いている順」に使う */
+  lastOpenedAt?: string
 }
 
 /** プロジェクトごとに覚える作業の状態。パスと URL だけで、中身や履歴は持たない */
@@ -329,7 +338,7 @@ export interface Settings {
   crashReports?: boolean
   /** 初回起動の「クラッシュレポートを送ります」の案内を出し終えたか */
   crashReportsNoticeShown?: boolean
-  /** 新しい版を見つけたら裏でダウンロードし、「再起動して更新」を出すか。未設定は ON（src/main/autoUpdate.ts） */
+  /** 新しい版を見つけたら裏でダウンロードし、閉じたときに入れるか（「再起動して更新」で今すぐも入れられる）。未設定は ON（src/main/autoUpdate.ts） */
   autoUpdate?: boolean
   /** 初回起動のセットアップの進み具合（src/shared/onboarding.ts）。未設定なら出す */
   onboarding?: OnboardingState
@@ -337,7 +346,15 @@ export interface Settings {
   starPrompt?: StarPromptState
   /** フィードバックモードの右パネル（レビュー対象）の開閉と幅。省略時は開いていて 0.78 */
   feedbackTargets?: FeedbackTargetsPrefs
+  /** 端末のプログラムのコピー（OSC 52）。省略時は ask（src/main/terminalClipboard.ts） */
+  terminalClipboard?: TerminalClipboardMode
 }
+
+/** 端末のプログラムのコピー（OSC 52）の扱い。ask = 毎回確認 / allow = フォーカスのある手元の端末なら写して知らせる / off = 写さない */
+export type TerminalClipboardMode = 'ask' | 'allow' | 'off'
+
+/** 端末のプログラムのコピーを main が受けた結果。ask は写さずに預かり、帯で確かめる */
+export type ProgramCopyResult = { kind: 'copied'; chars: number } | { kind: 'ask'; chars: number; preview: string } | { kind: 'blocked' }
 
 export interface FeedbackTargetsPrefs {
   visible?: boolean
@@ -504,7 +521,22 @@ export interface StartRecordingOptions {
  */
 export type CaptureTarget =
   | { kind: 'browser' }
-  | { kind: 'screen' | 'window'; sourceId: string; name: string; displayId?: string }
+  | { kind: 'screen' | 'window'; sourceId: string; name: string; displayId?: string
+    /** ウインドウのアプリ名（macOS で分かるとき）。ID・題名で見つからないとき、同じアプリのウインドウを探すのにも使う */
+    appName?: string
+    /** スマホのシミュレータ／エミュレータの端末の情報。録画を始めるときに読むだけの命令で取る（recording/devices.ts） */
+    device?: CaptureDevice }
+
+/** 録っているスマホのシミュレータ／エミュレータの端末 */
+export interface CaptureDevice {
+  platform: 'ios' | 'android'
+  /** 端末名（iPhone 16 Pro、AVD の名前など） */
+  name?: string
+  /** OS の版（iOS 18.2、Android 15 など） */
+  os?: string
+  /** 前面のアプリ（Android のパッケージ名） */
+  app?: string
+}
 
 /** 対象の選択画面に出す1件 */
 export interface CaptureSourceInfo {
@@ -516,6 +548,10 @@ export interface CaptureSourceInfo {
   thumbnail: string
   /** ウインドウのアプリのアイコン（data URL） */
   appIcon?: string
+  /** ウインドウのアプリ名（macOS で分かるとき） */
+  appName?: string
+  /** スマホのシミュレータ（ios）／エミュレータ（android）のウインドウ */
+  device?: CaptureDevice['platform']
 }
 
 export interface CaptureSourceList {

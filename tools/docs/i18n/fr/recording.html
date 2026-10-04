@@ -2,10 +2,10 @@
 <!-- @title 80e8dd1a5a -->
 Enregistrement
 
-<!-- @lead 14988eae28 -->
-Enregistrez le navigateur intégré, un écran entier ou une autre fenêtre. Parlez, entourez et tapez pendant que vous utilisez la page.
+<!-- @lead a6afb525ba -->
+Enregistrez le navigateur intégré, un écran entier, une autre fenêtre, une application de bureau, un jeu ou un simulateur de téléphone. Parlez, entourez et tapez pendant que vous utilisez la page.
 
-<!-- @target 133550362a -->
+<!-- @target 2ab7c5b1f7 -->
 ## Choisir ce qui est enregistré
 <p>En mode Retours, cliquez sur <span class="docs-ui">Choisir la cible d'enregistrement</span>. La boîte de dialogue <span class="docs-ui">Cible d'enregistrement</span> propose :</p>
 <table>
@@ -13,10 +13,20 @@ Enregistrez le navigateur intégré, un écran entier ou une autre fenêtre. Par
   <tbody>
     <tr><td><span class="docs-ui">Navigateur intégré</span> (par défaut)</td><td>Vidéo, voix et stylo, plus l'URL, les sélecteurs d'éléments, les clics et les défilements. Aucune autorisation système n'est nécessaire.</td></tr>
     <tr><td><span class="docs-ui">Écran entier</span></td><td>Vidéo, voix et stylo. Ni URL, ni élément, ni journal des actions (c'est indiqué dans <code>feedback.md</code>).</td></tr>
-    <tr><td><span class="docs-ui">Fenêtre</span></td><td>Comme ci-dessus. Les fenêtres de Ferret elles-mêmes ne sont pas listées.</td></tr>
+    <tr><td><span class="docs-ui">Fenêtre</span></td><td>Comme ci-dessus. Chaque fenêtre est listée avec le nom de son application. Les fenêtres de Ferret elles-mêmes ne sont pas listées.</td></tr>
+    <tr><td><span class="docs-ui">Mobile</span></td><td>Comme ci-dessus, en ne listant que les fenêtres d'iOS Simulator et d'Android Emulator.</td></tr>
   </tbody>
 </table>
 <p>Votre choix est mémorisé. Sur macOS, la capture d'un écran ou d'une fenêtre nécessite l'autorisation d'enregistrement de l'écran (<a href="troubleshooting.html#screen-permission">comment l'accorder</a>).</p>
+
+<!-- @desktop-mobile 8d8ffcf90e -->
+## Applications de bureau, jeux et applications mobiles
+<p>Pour relire une application de bureau que vous développez (Electron, Tauri ou une application native), lancez-la comme d'habitude en développement, puis choisissez sa fenêtre sous <span class="docs-ui">Fenêtre</span>. Les fenêtres sont listées avec le nom de leur application : une build de développement d'une application Electron apparaît donc sous <code>Electron</code>. Les petites fenêtres et celles qui restent au-dessus des autres sont aussi listées ; sur macOS, une fenêtre qui reste au premier plan est affichée par le nom de son application et son titre au lieu d'un aperçu.</p>
+<p>Le choix suit l'application. Quand vous redémarrez l'application et que sa fenêtre réapparaît, l'enregistrement suivant utilise la fenêtre portant le même titre, ou la seule fenêtre de l'application si le titre a changé.</p>
+<p>Pour une application mobile, lancez iOS Simulator (Xcode, macOS) ou Android Emulator (Android Studio), puis choisissez l'appareil sous <span class="docs-ui">Mobile</span>. Quand l'émulateur tourne dans Android Studio, ouvrez-le dans sa propre fenêtre (dans les réglages d'Android Studio, sous Tools → Emulator, désactivez le lancement dans la fenêtre d'outils Running Devices) pour qu'il soit listé.</p>
+<p>Au lieu d'une URL, <code>feedback.md</code> commence par ce que vous avez enregistré : l'application et le titre de la fenêtre, ou le nom de l'appareil et la version du système pour un simulateur ou un émulateur, plus l'application au premier plan sur Android. Il demande aussi à l'agent de modifier le code source de cette application. Ferret lit les informations de l'appareil avec <code>xcrun simctl</code> et <code>adb</code> (depuis <code>ANDROID_HOME</code>, <code>ANDROID_SDK_ROOT</code> ou le dossier du SDK d'Android Studio) au début de l'enregistrement. Les images ne montrent que la fenêtre choisie : dites donc à voix haute ce que vous désignez pendant que vous parlez.</p>
+<p>Les jeux fonctionnent de la même façon. Choisissez la fenêtre de l'éditeur Unity, Unreal Engine ou Godot avec la vue du jeu affichée, ou la fenêtre d'un jeu que vous avez compilé, y compris en mode fenêtré sans bordure. Pour un jeu en plein écran exclusif, choisissez son écran sous <span class="docs-ui">Écran entier</span>. Quand la fenêtre est celle de l'un de ces éditeurs, <code>feedback.md</code> nomme le moteur et demande à l'agent de modifier le code, les scènes ou les ressources du jeu. La vidéo est limitée à 10 images par seconde pour garder des fichiers légers, et les images des constats proviennent de la même vidéo : elles correspondent donc au moment sur la timeline.</p>
+<p>Le champ <span class="docs-ui">Fenêtre à enregistrer</span> d'une cible de revue correspond au nom de l'application comme au titre de la fenêtre : <code>Simulator</code> sélectionne donc la fenêtre d'iOS Simulator, quel que soit l'appareil affiché.</p>
 
 <!-- @record deb62ed37c -->
 ## Démarrer, mettre en pause, arrêter

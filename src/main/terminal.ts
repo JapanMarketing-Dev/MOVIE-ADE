@@ -7,13 +7,16 @@ import { homedir } from 'node:os'
 import type { IPty } from 'node-pty'
 import { type TerminalAttachInfo, type TerminalCreateOptions, type TerminalSessionInfo, type TerminalSize, type TerminalTabInfo, type TuiAgent } from '@shared/types'
 import { buildAgentLaunchCommand, startupShellForPath } from '@shared/agentLaunch'
-import { agentForProcess, agentLabel, findCustomAgent, isBuiltinAgent, resolveAgentLaunchPolicy } from '@shared/agentCatalog'
+import { agentForProcess, agentLabel, findCustomAgent, isBuiltinAgent } from '@shared/agentCatalog'
+import { resolveAgentLaunchPolicy } from '@shared/agentPolicy'
 import { currentSettings } from './settings'
 import { planStartupDelivery } from './shellStartup'
 import { buildAccountLoginLaunch, resolveAgentEnv } from './accounts'
 import { resolveProcessCwd } from './processCwd'
 import { isInheritedAgentSessionEnv } from './inheritedAgentEnv'
-import { resolveTrustedCommand, windowsSearchPathEnv } from './agentExecutable'
+import { remoteTrustedLaunchLine, resolveTrustedExecutable, trustedLaunchLine, windowsSearchPathEnv } from './agentExecutable'
+import { executionSphere } from './executionSphere'
+import { searchDirs } from './agentDetection'
 import { TerminalHistory } from './terminalHistory'
 import { defaultLocaleEnv, isHostTerminalEnv, stripAppImagePaths } from './terminalEnv'
 import { windowsTreeKillCommand } from './platform/windowsTreeKill'
@@ -256,9 +259,11 @@ export class TerminalManager {
     const nodePty = await loadNodePty()
     // アカウントのログインは、プロジェクトではないフォルダで動かす（プロジェクトに置かれた同じ名前のコマンドを拾わない。security-4 [1]）
     const cwd = options.accountLogin ? homedir() : options.cwd && existsSync(options.cwd) ? options.cwd : this.cwd
-    let shell = resolveShell()
-    // SSH のプロジェクト：ssh -t -- <host> 'cd <path> && exec "$SHELL" -l'。Agent の起動はリモートの最初のプロンプトで打ち込む
-    if (this.remote) shell = sshShellSpec(this.remote)
+    // SSH のプロジェクト：ssh -t -- <host> 'cd <path> && exec "$SHELL" -l'。Agent の起動はリモートの最初のプロンプトで打ち込む。
+    // アカウントのログインは SSH のプロジェクトでも手元で動かす（security-5 [3]）
+    const sphere = executionSphere({ accountLogin: Boolean(options.accountLogin), remote: this.remote })
+    let shell = sphere.kind === 'ssh' ? sshShellSpec(sphere.target) : resolveShell()
+    const startupShell = startupShellForPath(shell.file)
     let extraEnv: Record<string, string> = {}
     let pendingWrite: string | null = null
     let loginTitle: string | null = null
@@ -270,37 +275,48 @@ export class TerminalManager {
       extraEnv = { ...env, ...delivery.env }
       if (delivery.kind === 'write') pendingWrite = command
     }
-    // 組み込みの Agent とログインは、信頼できる絶対パスで起動する。見つからなければ起動しない（security-4 [1]）
-    const trusted = (command: string, label: string): string => {
-      const resolved = resolveTrustedCommand(command, { env: ptyEnv(), cwd, shell: startupShellForPath(shell.file) })
+    // 組み込みの Agent とログインは、決まりを通した argv の実行ファイルを信頼できる絶対パスにして起動する。
+    // 見つからなければ起動しない（security-4 [1]・security-5 [5]）。リモートでは、リモートのシェルで同じ決まりで探す
+    const trusted = async (argv: readonly string[], label: string): Promise<string> => {
+      if (sphere.kind === 'ssh') return remoteTrustedLaunchLine(argv)
+      const resolved = await resolveTrustedExecutable(argv[0] ?? '', { env: ptyEnv(), cwd, dirs: process.platform === 'win32' ? undefined : await searchDirs() })
       if (!resolved.ok) throw new UserFacingError(t('terminal.errors.launch', { agent: label, error: t('settings.agents.notFound') }))
-      return resolved.command
+      return trustedLaunchLine(resolved.path, argv.slice(1), startupShell)
     }
     if (options.accountLogin) {
-      const login = buildAccountLoginLaunch(options.accountLogin, startupShellForPath(shell.file))
+      const login = buildAccountLoginLaunch(options.accountLogin, startupShell)
       loginTitle = login.title
-      deliver(trusted(login.command, login.title), login.env)
+      deliver(await trusted(login.argv, login.title), login.env)
     } else if (agent) {
       const settings = currentSettings()
       const prefs = settings.agents
       // 組み込みは launch の設定、カスタムは登録した command / args
       const configured = isBuiltinAgent(agent) ? prefs.launch[agent] : findCustomAgent(prefs, agent)
       if (!configured) throw new UserFacingError(t('terminal.errors.unknownAgent', { agent: agentLabel(agent, prefs) }))
-      // 権限確認を省くか・フォルダの信頼を書くかは、ここ（main）で決める（設定の skipPermissions）
+      // 権限確認を省くか・フォルダの信頼を書くかは、ここ（main）で決める（設定の skipPermissions）。
+      // 組み込みは設定を一度だけ argv に分けてから決まりを当て、決まりを通した argv だけで起動する（security-5 [2]）
       const projectId = registeredProjectIdFor(cwd, settings.projects)
-      const policy = isBuiltinAgent(agent)
-        ? resolveAgentLaunchPolicy({ agent, args: configured.args, projectId, skipPermissions: prefs.skipPermissions })
-        : null
-      const config = policy ? { ...configured, args: policy.args } : configured
-      const launch = buildAgentLaunchCommand(agent, config, startupShellForPath(shell.file))
-      if (!launch.ok) throw new UserFacingError(t('terminal.errors.launch', { agent: agentLabel(agent, prefs), error: launch.error }))
+      const label = agentLabel(agent, prefs)
+      let launchLine: string
+      let trustFolder = false
+      if (isBuiltinAgent(agent)) {
+        const policy = resolveAgentLaunchPolicy({ agent, command: configured.command, args: configured.args, projectId, skipPermissions: prefs.skipPermissions, shell: startupShell })
+        if (!policy.ok) throw new UserFacingError(t('terminal.errors.launch', { agent: label, error: policy.error }))
+        trustFolder = policy.trustFolder
+        launchLine = await trusted(policy.argv, label)
+      } else {
+        // カスタムの Agent は利用者が書いたコマンドそのまま（引数だけ語に分けて引用し直す）
+        const custom = buildAgentLaunchCommand(agent, configured, startupShell)
+        if (!custom.ok) throw new UserFacingError(t('terminal.errors.launch', { agent: label, error: custom.error }))
+        launchLine = custom.command
+      }
       // パンくず：自作の Agent は名前を出さない（利用者が付けた名前を送らない）
       flow('agent launch', { agent: isBuiltinAgent(agent) ? agent : 'custom' })
       const accountEnv = resolveAgentEnv(agent)
       // 権限確認を省いて起動するときは、登録したプロジェクトのフォルダについて Claude Code / Codex の「このフォルダを信頼しますか」も先に書いておく
       // （書く先はアカウント切り替えの CLAUDE_CONFIG_DIR / CODEX_HOME を含む、起動する環境のもの）。
       // 切にしていれば書かず、エージェント自身にフォルダのパスを見せて聞かせる
-      if (policy?.trustFolder) {
+      if (trustFolder) {
         await applyAgentWorkspaceTrust({
           agent,
           cwd,
@@ -308,7 +324,7 @@ export class TerminalManager {
           env: ptyEnv(accountEnv)
         })
       }
-      deliver(isBuiltinAgent(agent) ? trusted(launch.command, agentLabel(agent, prefs)) : launch.command, accountEnv)
+      deliver(launchLine, accountEnv)
     } else if (options.command?.trim()) {
       // CLI のインストール（設定の「CLI」の一覧から）は E2E では本物を走らせない（oneShotCommand が差し替える）
       const line = options.exitWhenDone || isKnownCliInstallCommand(options.command) ? oneShotCommand(options.command) : options.command.trim()

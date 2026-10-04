@@ -2,10 +2,10 @@
 <!-- @title 80e8dd1a5a -->
 Registrazione
 
-<!-- @lead 14988eae28 -->
-Registra il browser integrato, un intero schermo o un'altra finestra. Parla, cerchia e scrivi mentre usi la pagina.
+<!-- @lead a6afb525ba -->
+Registra il browser integrato, un intero schermo, un'altra finestra, un'app desktop, un gioco o un simulatore di smartphone. Parla, cerchia e scrivi mentre usi la pagina.
 
-<!-- @target 133550362a -->
+<!-- @target 2ab7c5b1f7 -->
 ## Scegliere cosa registrare
 <p>In modalità Feedback, fai clic su <span class="docs-ui">Scegli il target di registrazione</span>. La finestra <span class="docs-ui">Target di registrazione</span> offre:</p>
 <table>
@@ -13,10 +13,20 @@ Registra il browser integrato, un intero schermo o un'altra finestra. Parla, cer
   <tbody>
     <tr><td><span class="docs-ui">Browser integrato</span> (predefinito)</td><td>Video, voce e penna, più URL, selettori degli elementi, clic e scorrimenti. Non serve alcun permesso del sistema operativo.</td></tr>
     <tr><td><span class="docs-ui">Intero schermo</span></td><td>Video, voce e penna. Nessun URL, elemento o registro delle azioni (questo viene indicato in <code>feedback.md</code>).</td></tr>
-    <tr><td><span class="docs-ui">Finestra</span></td><td>Come sopra. Le finestre di Ferret stesso non sono elencate.</td></tr>
+    <tr><td><span class="docs-ui">Finestra</span></td><td>Come sopra. Ogni finestra è elencata con il nome della sua app. Le finestre di Ferret stesso non sono elencate.</td></tr>
+    <tr><td><span class="docs-ui">Smartphone</span></td><td>Come sopra, elencando solo le finestre di iOS Simulator e Android Emulator.</td></tr>
   </tbody>
 </table>
 <p>La scelta viene ricordata. Su macOS, la cattura dello schermo e delle finestre richiede il permesso di registrazione dello schermo (<a href="troubleshooting.html#screen-permission">come concederlo</a>).</p>
+
+<!-- @desktop-mobile 8d8ffcf90e -->
+## App desktop, giochi e app mobili
+<p>Per rivedere un'app desktop che stai sviluppando (Electron, Tauri o un'app nativa), avviala come fai di solito in sviluppo, poi scegli la sua finestra in <span class="docs-ui">Finestra</span>. Le finestre sono elencate con il nome della loro app, quindi una build di sviluppo di un'app Electron compare sotto <code>Electron</code>. Sono elencate anche le finestre piccole e quelle che restano sopra le altre; su macOS una finestra che resta in primo piano viene mostrata con il nome della sua app e il titolo invece che con un'anteprima.</p>
+<p>La scelta segue l'app. Quando riavvii l'app e la sua finestra ricompare, la registrazione successiva usa la finestra con lo stesso titolo, oppure l'unica finestra dell'app se il titolo è cambiato.</p>
+<p>Per un'app mobile, avvia iOS Simulator (Xcode, macOS) o Android Emulator (Android Studio), poi scegli il dispositivo in <span class="docs-ui">Smartphone</span>. Quando l'emulatore gira all'interno di Android Studio, aprilo in una finestra propria (nelle impostazioni di Android Studio, in Tools → Emulator, disattiva l'avvio nella finestra degli strumenti Running Devices) così che venga elencato.</p>
+<p>Invece di un URL, <code>feedback.md</code> inizia con ciò che hai registrato: l'app e il titolo della finestra, oppure il nome del dispositivo e la versione del sistema operativo per un simulatore o emulatore, più l'app in primo piano su Android. Indica inoltre all'agente di modificare il codice sorgente di quell'app. Ferret legge i dati del dispositivo con <code>xcrun simctl</code> e <code>adb</code> (da <code>ANDROID_HOME</code>, <code>ANDROID_SDK_ROOT</code> o dalla cartella dell'SDK di Android Studio) all'avvio della registrazione. Le immagini mostrano solo la finestra scelta, quindi di' a voce a cosa ti riferisci mentre parli.</p>
+<p>I giochi funzionano allo stesso modo. Scegli la finestra dell'editor di Unity, Unreal Engine o Godot con la vista di gioco visibile, oppure la finestra di un gioco che hai compilato, anche in modalità finestra senza bordi. Per un gioco a schermo intero esclusivo, scegli il suo schermo in <span class="docs-ui">Intero schermo</span>. Quando la finestra è di uno di questi editor, <code>feedback.md</code> indica il motore e chiede all'agente di modificare il codice, le scene o gli asset del gioco. Il video viene salvato a un massimo di 10 fotogrammi al secondo per mantenere i file piccoli, e le immagini dei rilievi provengono dallo stesso video, quindi corrispondono al momento sulla timeline.</p>
+<p>Il campo <span class="docs-ui">Finestra da registrare</span> di un target di revisione corrisponde sia al nome dell'app sia al titolo della finestra, quindi <code>Simulator</code> seleziona la finestra di iOS Simulator qualunque dispositivo mostri.</p>
 
 <!-- @record deb62ed37c -->
 ## Avviare, mettere in pausa, fermare

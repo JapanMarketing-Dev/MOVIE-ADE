@@ -84,7 +84,12 @@ function sanitizeProjects(raw: unknown): Project[] {
     // どこから開いたか（今のものは local）。ssh は接続先を確かめ、github の URL は資格情報を落とす
     const origin = sanitizeProjectSource(r)
     const session = sanitizeProjectSession(r.session)
-    return [{ id: r.id, name: str(r.name) ? r.name : r.folderPath.split(/[\\/]/).pop() ?? r.folderPath, folderPath: r.folderPath, kind, ...origin, urls, ...(session ? { session } : {}) }]
+    // ☆ と時刻（並び順に使う）。読めない時刻は捨てる
+    const stamp = (v: unknown) => (str(v) && Number.isFinite(Date.parse(v)) ? v : undefined)
+    const addedAt = stamp(r.addedAt)
+    const lastOpenedAt = stamp(r.lastOpenedAt)
+    return [{ id: r.id, name: str(r.name) ? r.name : r.folderPath.split(/[\\/]/).pop() ?? r.folderPath, folderPath: r.folderPath, kind, ...origin, urls, ...(session ? { session } : {}),
+      ...(r.starred === true ? { starred: true as const } : {}), ...(addedAt ? { addedAt } : {}), ...(lastOpenedAt ? { lastOpenedAt } : {}) }]
   })
 }
 
@@ -170,6 +175,8 @@ export function sanitize(raw: unknown): Settings {
     // 未設定は ON のまま書かない。明示の OFF だけを残す
     ...(r.crashReports === false ? { crashReports: false } : {}),
     ...(r.crashReportsNoticeShown === true ? { crashReportsNoticeShown: true } : {}),
+    // 端末のプログラムのコピー（OSC 52）。既定の ask は書かない
+    ...(r.terminalClipboard === 'allow' || r.terminalClipboard === 'off' ? { terminalClipboard: r.terminalClipboard } : {}),
     // 自動更新のダウンロード。未設定は ON のまま書かない。明示の OFF だけを残す
     ...(r.autoUpdate === false ? { autoUpdate: false } : {}),
     ...(() => {

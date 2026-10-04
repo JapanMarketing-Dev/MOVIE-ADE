@@ -1,11 +1,12 @@
 import { constants } from 'node:fs'
-import { lstat, mkdir, open, readdir, readlink, realpath, rename, rm, stat, symlink } from 'node:fs/promises'
+import { lstat, open, readdir, readlink, realpath, rename, stat } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, sep } from 'node:path'
 import { ENTRY_NAME_PROBLEM_KEYS, MAX_COPY_BYTES, MAX_COPY_ENTRIES, entryNameProblem, isInsideGitDir, nestedNameParts, nestedNameProblem, uniqueName, type FsCreated, type FsEntry, type FsTransfer } from '@shared/files'
 import { t } from '@shared/i18n'
 import { UserFacingError, toUserFacingFileError } from '@shared/errors'
 import { relativeInside, resolveInside } from './files'
-import { assertStillInside, createContained, openContained } from './containedFile'
+import { assertStillInside, openContained } from './containedFile'
+import { OutsideProjectError, createFileIn, entryIdentity, mkdirIn, removeIn, renameIn, symlinkIn, trashIn, withPinnedDir } from './pinnedDir'
 import { isWithin } from './sessions/containment'
 import { isRecentlyDropped } from './droppedPaths'
 
@@ -20,6 +21,8 @@ const O_NOFOLLOW = (constants as { O_NOFOLLOW?: number }).O_NOFOLLOW ?? 0
  *   2. 名前が1階層分で、どの OS でも使えるか（entryNameProblem。区切り・制御文字・Windows の予約名など）
  *   3. .git の中ではないか（文字の上と、リンクを辿った実体の両方）
  * を確かめてから触る。既にある名前は上書きしない。削除はゴミ箱へ送る（元に戻せる）。
+ * 作る・名前を変える・動かす・消すは、すべて親フォルダを開いて持ったまま pinnedDir.ts を通す（security-5 [11]。
+ * 確かめてから変えるまでに途中のフォルダをリンクへ差し替えられても、外を変えない）。ここで fs の変更の関数を直接呼ばない。
  */
 
 /** 1回で削除できる数の上限（選択の誤りで大量に送らない） */
@@ -75,7 +78,7 @@ export async function createEntry(root: string, parentRel: string, name: string,
   for (const part of parts.slice(0, -1)) {
     const next = join(dir, part)
     try {
-      await mkdir(join(await assertStillInside(root, dir), part))
+      await withPinnedDir(root, dir, (pin) => mkdirIn(pin, part))
       top ??= next
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw toUserFacingFileError(err)
@@ -90,9 +93,11 @@ export async function createEntry(root: string, parentRel: string, name: string,
   const target = join(dir, last)
   try {
     // O_EXCL・mkdir は既にあれば失敗する（確かめてから作るあいだに作られても上書きしない）。
-    // ファイルは親の実体の下に作り、作ったものが中かを確かめる（containedFile.ts）。mkdir は安全な形が無いので直前に親を確かめ直す
-    if (kind === 'file') await (await createContained(root, target)).close()
-    else await mkdir(join(await assertStillInside(root, dir), last))
+    // 親を開いて持ったまま作り、作ったものが中かを確かめる（pinnedDir.ts）
+    await withPinnedDir(root, dir, async (pin) => {
+      if (kind === 'file') await (await createFileIn(pin, last)).close()
+      else await mkdirIn(pin, last)
+    })
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'EEXIST') throw existsError(last)
     throw toUserFacingFileError(err)
@@ -110,16 +115,18 @@ export async function renameEntry(root: string, relPath: string, newName: string
   const target = join(dirname(source.absolute), newName)
   if (oldName === newName) return source.rel
   const existing = await lstat(target).catch((err: unknown) => { if (isMissing(err)) return null; throw err })
+  let caseOnly = false
   if (existing) {
     // 大文字小文字だけの変更は、大文字小文字を区別しないファイルシステムでは同じものが見える。それだけは通す
     const self = await lstat(source.absolute)
-    const caseOnly = oldName.toLowerCase() === newName.toLowerCase() && existing.ino === self.ino && existing.dev === self.dev
+    caseOnly = oldName.toLowerCase() === newName.toLowerCase() && existing.ino === self.ino && existing.dev === self.dev
     if (!caseOnly) throw existsError(newName)
   }
-  // 確かめてから動かすまでに、元や親がリンクへ差し替えられて外を指していないか
-  await assertStillInside(root, source.absolute)
-  await assertStillInside(root, dirname(target))
-  await rename(source.absolute, target).catch((err: unknown) => { throw toUserFacingFileError(err) })
+  // 親を開いて持ったまま、上書きせずに動かす（確かめてから動かすまでに、親がリンクへ差し替えられても外を変えない）
+  await withPinnedDir(root, dirname(source.absolute), (pin) => renameIn(pin, oldName, pin, newName, { replace: caseOnly })).catch((err: unknown) => {
+    if ((err as NodeJS.ErrnoException).code === 'EEXIST') throw existsError(newName)
+    throw toUserFacingFileError(err)
+  })
   return relativeInside(root, target) ?? ''
 }
 
@@ -129,22 +136,24 @@ export async function renameEntry(root: string, relPath: string, newName: string
  */
 export async function trashEntries(root: string, relPaths: unknown, trash: (absolute: string) => Promise<void>): Promise<string[]> {
   if (!Array.isArray(relPaths) || relPaths.length === 0 || relPaths.length > MAX_TRASH_ENTRIES) throw new UserFacingError(t('files.errors.badContent'))
-  const targets: Array<{ absolute: string; rel: string }> = []
+  const targets: Array<{ absolute: string; rel: string; id: { dev: bigint; ino: bigint } }> = []
   for (const relPath of relPaths) {
     const target = await resolveExisting(root, relPath)
     if (target.rel === '') throw new UserFacingError(t('files.errors.projectRoot'))
     await assertOutsideGit(root, target.absolute, target.rel)
-    targets.push(target)
+    // 確かめたものの実体。送る直前に、同じ名前が同じ実体かを見る
+    const id = await lstat(target.absolute, { bigint: true })
+    targets.push({ ...target, id: { dev: id.dev, ino: id.ino } })
   }
   const rels = new Set(targets.map((x) => x.rel))
   const top = targets.filter((x, i) =>
     targets.findIndex((y) => y.rel === x.rel) === i && ![...rels].some((other) => other !== x.rel && x.rel.startsWith(`${other}/`)))
   const trashed: string[] = []
   for (const target of top) {
-    await assertStillInside(root, target.absolute)
     try {
-      await trash(target.absolute)
-    } catch {
+      await withPinnedDir(root, dirname(target.absolute), (pin) => trashIn(pin, basename(target.absolute), trash, target.id))
+    } catch (err) {
+      if (err instanceof OutsideProjectError) throw err
       // OS の文言は絶対パスを含むことがあるので、名前だけを出す（ゴミ箱の無いドライブ・権限など）
       throw new UserFacingError(t('files.errors.trashFailed', { name: basename(target.absolute) }))
     }
@@ -207,21 +216,23 @@ async function measure(absolute: string, total: { entries: number; bytes: number
 
 /**
  * source（ファイルかフォルダ）を target へコピーする。target はまだ無い名前。
- * 書く側は毎回、親の実体がプロジェクトの中かを確かめてから作る（ファイルは O_EXCL・O_NOFOLLOW。containedFile.ts）。
+ * 書く側は毎回、親フォルダを開いて持ったまま作る（ファイルは O_EXCL・O_NOFOLLOW。pinnedDir.ts）。
  * 読む側は、プロジェクトの中なら開いたものが中の実体かを確かめ（openContained）、外から取り込むなら読むだけで開く。
  * リンクは辿らない: プロジェクトの中のコピーではリンクのまま写し、外からの取り込みでは写さない。パイプ・ソケットなどは写さない
  */
-async function copyTree(root: string, source: string, target: string, origin: 'project' | 'external', onCreated: () => void = () => undefined): Promise<void> {
+async function copyTree(root: string, source: string, target: string, origin: 'project' | 'external', onCreated: (id: { dev: bigint; ino: bigint }) => void = () => undefined): Promise<void> {
   const info = await lstat(source)
+  const name = basename(target)
+  /** 作ったものの実体（失敗したときに、作ったものだけを消すため） */
+  const created = async (pin: Parameters<typeof entryIdentity>[0]) => { const id = await entryIdentity(pin, name); if (id) onCreated(id) }
   if (info.isSymbolicLink()) {
-    if (origin === 'project') { await symlink(await readlink(source), join(await assertStillInside(root, dirname(target)), basename(target))); onCreated() }
+    if (origin === 'project') { const link = await readlink(source); await withPinnedDir(root, dirname(target), async (pin) => { await symlinkIn(pin, name, link); await created(pin) }) }
     return
   }
   if (info.isDirectory()) {
     if (origin === 'project') await assertStillInside(root, source)
-    await mkdir(join(await assertStillInside(root, dirname(target)), basename(target)))
-    onCreated()
-    for (const name of await readdir(source)) await copyTree(root, join(source, name), join(target, name), origin)
+    await withPinnedDir(root, dirname(target), async (pin) => { await mkdirIn(pin, name); await created(pin) })
+    for (const child of await readdir(source)) await copyTree(root, join(source, child), join(target, child), origin)
     return
   }
   if (!info.isFile()) return
@@ -230,8 +241,7 @@ async function copyTree(root: string, source: string, target: string, origin: 'p
     : await open(source, constants.O_RDONLY | O_NOFOLLOW | O_NONBLOCK)
   try {
     if (!(await input.stat()).isFile()) return
-    const output = await createContained(root, target)
-    onCreated()
+    const output = await withPinnedDir(root, dirname(target), async (pin) => { const handle = await createFileIn(pin, name); await created(pin); return handle })
     try {
       const buffer = Buffer.allocUnsafe(COPY_CHUNK_BYTES)
       for (;;) {
@@ -251,11 +261,13 @@ async function copyTree(root: string, source: string, target: string, origin: 'p
 
 /** コピーの途中で失敗したら、作りかけを消す（今回作ったものだけ。先に同じ名前が作られていたらそれは消さない） */
 async function copyOrCleanUp(root: string, source: string, target: string, origin: 'project' | 'external'): Promise<void> {
-  let created = false
+  let created: { dev: bigint; ino: bigint } | null = null
   try {
-    await copyTree(root, source, target, origin, () => { created = true })
+    await copyTree(root, source, target, origin, (id) => { created = id })
   } catch (err) {
-    if (created) await assertStillInside(root, dirname(target)).then(() => rm(target, { recursive: true, force: true })).catch(() => undefined)
+    // 作ったものと同じ実体のときだけ、親を開いて持ったまま消す
+    const id = created
+    if (id) await withPinnedDir(root, dirname(target), (pin) => removeIn(pin, basename(target), { recursive: true, expect: id })).catch(() => undefined)
     if ((err as NodeJS.ErrnoException).code === 'EEXIST') throw existsError(basename(target))
     throw toUserFacingFileError(err)
   }
@@ -313,10 +325,13 @@ export async function moveEntries(root: string, relPaths: unknown, destRel: unkn
   const done: FsTransfer[] = []
   for (const { source, target } of plan) {
     if (target !== source.absolute) {
-      // 確かめてから動かすまでに、元や先がリンクへ差し替えられて外を指していないか。先は実体の下へ動かす
-      await assertStillInside(root, source.absolute)
-      const destReal = await assertStillInside(root, dest.absolute)
-      await rename(source.absolute, join(destReal, basename(target))).catch((err: unknown) => { throw toUserFacingFileError(err) })
+      // 元の親と先のフォルダを開いて持ったまま、上書きせずに動かす（確かめてから動かすまでに差し替えられても外を変えない）
+      await withPinnedDir(root, dirname(source.absolute), (from) => withPinnedDir(root, dest.absolute, (to) =>
+        renameIn(from, basename(source.absolute), to, basename(target))))
+        .catch((err: unknown) => {
+          if ((err as NodeJS.ErrnoException).code === 'EEXIST') throw existsError(basename(target))
+          throw toUserFacingFileError(err)
+        })
     }
     done.push({ from: source.rel, to: relativeInside(root, target) ?? '' })
   }

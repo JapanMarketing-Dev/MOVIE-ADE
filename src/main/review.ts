@@ -1,3 +1,4 @@
+import { sanitizeCaptureTarget } from '@shared/captureTarget'
 import { sanitizeLimitFailover } from '@shared/failover'
 import { handoffFilePath } from './failover/handoff'
 import { clipboard, nativeImage, shell } from 'electron'
@@ -6,7 +7,7 @@ import { groupByTarget } from '@shared/reviewTarget'
 import { purposeOf } from '@shared/projectTargets'
 import { buildRemoteFeedbackPrompt } from '@shared/projectSource'
 import { cursorRing } from './pipeline/cursor-ring'
-import { basename, join, relative, resolve, sep } from 'node:path'
+import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import type { ReviewData, ReviewEdit } from '@shared/review'
 import type { RecordingResult } from './recording/types'
 import type { Material, TranscriptSegment } from './pipeline/types'
@@ -31,7 +32,7 @@ import { hasTrimFailure, videoDuration as videoDurationOf, withTrim, withTrimFai
 import { keptSpans, type TrimCut } from '@shared/trim'
 import { reportHandled } from '@shared/report'
 import { randomBytes } from 'node:crypto'
-import { assertContained, readFileNoFollow, writeFileNoFollow } from './sessions/containment'
+import { assertContained, mkdirContained, readFileNoFollow, removeContained, renameContained, writeFileNoFollow } from './sessions/containment'
 import { applyProgress, applyVerdict, pendingIds, queuedIds, recentComments, sentPatch, type ProgressMap, type ProgressPatchValue, type ReviewVerdict } from '@shared/findingProgress'
 import type { ReviewProgressPatch } from '@shared/review'
 
@@ -118,14 +119,13 @@ export function trimReviewTake(review: SessionPaths, n: number, cuts: TrimCut[],
   const run = trimQueue.catch(() => {}).then(async () => {
     const files = takePaths(review, n)
     const { renderTrimmedVideo } = await import('./trimVideo')
-    const { rename, rm } = await import('node:fs/promises')
-    // 途中のファイルは毎回別の名前にし、排他で作る（trimVideo.ts）。先回りのリンクへ書かない
+    // 途中のファイルは毎回別の名前にし、排他で作る（trimVideo.ts）。先回りのリンクへ書かない。置き換え・片付けは親を開いて持ったまま（containment.ts）
     const part = `${files.trimmedRecording}.${randomBytes(4).toString('hex')}.part`
     try {
       await renderTrimmedVideo(takeVideoUrl(review.id, n), part, keptSpans(sourceDurationMs, cuts))
-      await rename(part, files.trimmedRecording)
+      await renameContained(part, files.trimmedRecording, { replace: true })
     } catch (err) {
-      await rm(part, { force: true })
+      await removeContained(dirname(part), part).catch(() => undefined)
       reportHandled(err, { area: 'review', op: 'trim recording' })
       // 元の動画のまま使う（▷ は元の位置を開く）。削らなかったことは session.json に残し、画面に一度だけ知らせる
       await inReviewQueue(review, async () => {
@@ -140,7 +140,7 @@ export function trimReviewTake(review: SessionPaths, n: number, cuts: TrimCut[],
       if (!record) return false
       const next = withTrim(record, n, cuts, sourceDurationMs)
       await saveSession(review, next)
-      await writeFeedbackMarkdown(review, renderFeedbackMarkdown(next.document, feedbackOptions(review, next)))
+      await writeFeedbackMarkdown(review, renderFeedbackMarkdown(next.document, await feedbackOptions(review, next)))
       return true
     })
   })
@@ -166,17 +166,16 @@ export async function prepareReviewTake(projectDir: string, id: string): Promise
   if (!record) throw new UserFacingError(t('review.errors.appendUnavailable'))
   const { nextTakeNumber } = await import('./sessions/takes')
   const { existsSync } = await import('node:fs')
-  const { mkdir } = await import('node:fs/promises')
   // 足し終えずに残った録画のフォルダ（落ちた・失敗した）は上書きせず、次の番号を使う
   let n = nextTakeNumber(record)
   while (existsSync(takePaths(review, n).dir)) n++
   const paths = takePaths(review, n)
   // takes/ は確かめてから作り、録画のフォルダ（takes/<n>）は排他で作る（先回りのリンクの中へ録らない）
-  await mkdir(join(review.dir, 'takes'), { recursive: true })
+  await mkdirContained(join(review.dir, 'takes'), { root: review.dir })
   assertContained(review.dir, join(review.dir, 'takes'))
-  await mkdir(paths.dir)
-  await mkdir(paths.audioDir, { recursive: true })
-  await mkdir(paths.framesDir, { recursive: true })
+  await mkdirContained(paths.dir, { root: review.dir, exclusive: true })
+  await mkdirContained(paths.audioDir, { root: review.dir })
+  await mkdirContained(paths.framesDir, { root: review.dir })
   assertContained(review.dir, paths.framesDir)
   return { review, n, paths }
 }
@@ -219,17 +218,21 @@ async function persist(paths: SessionPaths, record: SessionRecord): Promise<void
     await writeFileNoFollow(join(paths.dir, basename(plan.name)), frame.resize({ width }).toPNG())
   }
   await saveSession(paths, record)
-  await writeFeedbackMarkdown(paths, renderFeedbackMarkdown(record.document, feedbackOptions(paths, record)))
+  await writeFeedbackMarkdown(paths, renderFeedbackMarkdown(record.document, await feedbackOptions(paths, record)))
 }
 
-/** feedback.md の書き出しの設定（受け入れ確認の節・進み具合のファイル） */
-function feedbackOptions(paths: SessionPaths, record: SessionRecord) {
+/** feedback.md の書き出しの設定（受け入れ確認の節・進み具合のファイル・録った対象） */
+async function feedbackOptions(paths: SessionPaths, record: SessionRecord) {
   // 動画の長さは、削った版があれば削ったあとの長さ（元の長さも併記する）。録画と録画のすき間は数えない
   const videoDuration = videoDurationOf(record, listTakes(record)[0]!.durationMs)
   // AFTER を撮る localhost の URL は、録画時の確認先に加えて今のプロジェクトの確認先からも探す（あとから local を登録した場合）
   const project = currentSettings().projects.find((p) => paths.dir.startsWith(`${p.folderPath}${sep}`))
   const urlPresets = [...(record.document.meta.urlPresets ?? []), ...(project?.urls ?? [])]
-  return { captureGaps: record.captureGaps ?? [], decision: feedbackDecisionOptions(paths), progressFile: paths.progressJson, reviewDir: paths.dir, urlPresets, videoDuration }
+  // 録った対象（デスクトップアプリ・スマホの端末）。古い録画・内蔵ブラウザの録画には無い（想定内）
+  const capture = parseSmallJson(await readFileNoFollow(join(paths.dir, 'capture.json'), 'utf8', { maxBytes: 1024 * 1024 }).catch(() => '{}'))
+  const captureTarget = sanitizeCaptureTarget(capture.captureTarget)
+  return { captureGaps: record.captureGaps ?? [], decision: feedbackDecisionOptions(paths), progressFile: paths.progressJson, reviewDir: paths.dir, urlPresets, videoDuration,
+    ...(captureTarget ? { captureTarget } : {}) }
 }
 
 /**
@@ -352,7 +355,7 @@ function feedbackDecisionOptions(paths: SessionPaths): { threshold: number; dir:
 export async function refreshFeedbackMarkdown(paths: SessionPaths): Promise<void> {
   const record = await loadSession(paths)
   // 人のコメント（NG・Comment）も各指摘に載せる
-  if (record) await writeFeedbackMarkdown(paths, renderFeedbackMarkdown(record.document, { ...feedbackOptions(paths, record), progress: await readProgress(paths) }))
+  if (record) await writeFeedbackMarkdown(paths, renderFeedbackMarkdown(record.document, { ...(await feedbackOptions(paths, record)), progress: await readProgress(paths) }))
 }
 
 /**
@@ -365,7 +368,7 @@ export async function prepareSendFeedback(paths: SessionPaths): Promise<string[]
   if (!record) return []
   const progress = await readProgress(paths)
   const ids = pendingIds(record.document.items, progress)
-  if (ids.length) await writeFeedbackMarkdown(paths, renderFeedbackMarkdown(record.document, { ...feedbackOptions(paths, record), focusIds: ids, progress }))
+  if (ids.length) await writeFeedbackMarkdown(paths, renderFeedbackMarkdown(record.document, { ...(await feedbackOptions(paths, record)), focusIds: ids, progress }))
   return ids
 }
 
@@ -480,8 +483,7 @@ async function recoverReview(paths: SessionPaths): Promise<ReviewData> {
   if (!info.worthRecovering) throw new Error(broken ? t('review.errors.broken') : t('review.errors.nothingRecoverable'))
   // 壊れた session.json は上書きで失わないよう、別名へ移してから作り直す（読み込まずに移す。巨大なものもある）
   if (broken) {
-    const { rename } = await import('node:fs/promises')
-    await rename(paths.sessionJson, `${paths.sessionJson}.broken`)
+    await renameContained(paths.sessionJson, `${paths.sessionJson}.broken`, { replace: true })
   }
   // 記録の各ファイルは無いことがあり、途中で切れた行は飛ばす（中断した録画の復元。想定内）。
   // 行数・1行の長さ・大きさの上限付きで読み、形の合わない行は捨てる（limits.ts）

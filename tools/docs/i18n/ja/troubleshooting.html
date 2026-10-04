@@ -52,15 +52,16 @@
 <p>ソースから動かしていて、node-pty が別の Node や Electron の ABI 向けにビルドされているときに起きます。</p>
 <pre><code>pnpm rebuild:native</code></pre>
 
-<!-- @agent 1b8e87d730 -->
+<!-- @agent b8de3c3989 -->
 ## エージェントが見つからない / Agentへ送信 で送られない
 <ul>
-  <li>ターミナルに <code>command not found: claude</code>（または <code>codex</code>、<code>gemini</code>、ほかのエージェントのコマンド）と出る: CLI がインストールされていないか、<code>PATH</code> に入っていません。Ferret はシェル自身のエラーを出すだけで、ヒントは足しません。ふだんのターミナルでそのコマンドが動くか確かめるか、<span class="docs-ui">設定 → Agent</span> の <span class="docs-ui">インストール</span> を使うか、そのエージェントの <span class="docs-ui">コマンド</span> に絶対パスを入れてください。</li>
+  <li><q>Claude Code: 見つかりません</q>（またはほかの組み込みのエージェントの名前）、または自分で足したエージェントでターミナルに <code>command not found: …</code> と出る: CLI がインストールされていないか、<code>PATH</code> に入っていません。Ferret は組み込みのエージェントを、プロジェクトの外の <code>PATH</code> のフォルダにある絶対パスからだけ起動し、プロジェクトのフォルダからは起動しません。ふだんのターミナルでそのコマンドが動くか確かめるか、<span class="docs-ui">設定 → Agent</span> の <span class="docs-ui">インストール</span> を使うか、そのエージェントの <span class="docs-ui">コマンド</span> に絶対パスを入れてください。</li>
   <li><q>Agentが確認を待っています。ターミナルで応答してから送信してください。</q> 先にエージェントの問いに答えてください。</li>
   <li><q>Agentの入力欄がまだ準備できていません。</q> エージェントの起動が終わるまで待ってください。</li>
   <li><q>本文は入力しましたが送信できませんでした。ターミナルでEnterを押してください。</q></li>
   <li><q>ターミナルを開いてください。</q></li>
   <li><q>起動引数を解釈できません: クォートが閉じていません。</q> エージェントの引数のクォートを直してください。</li>
+  <li><q>… はコマンドの欄ではなく起動引数の欄に書いてください。</q> または <q>… は引用符やバックスラッシュを使わずに起動引数の欄に書いてください。</q> そのフラグを、エージェントの引数にそのままの文字で書いてください。権限確認を省いて起動したいときは、<span class="docs-ui">設定 → Agent</span> の <span class="docs-ui">権限確認を省いて起動する</span> を入にしてください。</li>
 </ul>
 
 <!-- @cannot-record 7b2c3ffb80 -->

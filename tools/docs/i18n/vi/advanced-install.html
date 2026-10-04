@@ -61,17 +61,18 @@ pnpm dist:linux   # AppImage + deb (x64)</code></pre>
 <p>Trên Windows, <code>pnpm install</code> dùng các binary dựng sẵn đi kèm node-pty thay vì build lại (việc đó sẽ cần Visual Studio C++ build tools). Đặt <code>ADE_FORCE_NATIVE_REBUILD=1</code> để buộc build lại.</p>
 <p>Nếu terminal báo không tải được node-pty, hãy chạy <code>pnpm rebuild:native</code>.</p>
 
-<!-- @update d0e883a95e -->
+<!-- @update a0f43ea7e6 -->
 ## Cập nhật
 <p>Ferret kiểm tra phiên bản mới khi khởi động, mỗi 6 giờ và khi bạn bấm <span class="docs-ui">Kiểm tra cập nhật</span> (chân trang → <span class="docs-ui">Cập nhật</span>). Ferret lấy <code>latest.json</code> từ server tải xuống (R2) và kiểm tra chữ ký của <code>SHA256SUMS</code> phiên bản đó bằng khóa phát hành tích hợp trong ứng dụng. Phiên bản có chữ ký không khớp sẽ không được đề xuất.</p>
-<p>Khi tìm thấy phiên bản mới, Ferret tải nó trong nền và hiển thị tiến độ trong <span class="docs-ui">Cập nhật</span>. Bản tải về chỉ được dùng khi kích thước và SHA-256 khớp với danh sách đã ký. Sau đó <span class="docs-ui">Khởi động lại để cập nhật</span> xuất hiện trong <span class="docs-ui">Cập nhật</span> và ở chân trang. Bấm vào để khởi động lại vào phiên bản mới. Nếu có Agent đang làm việc trong terminal hoặc đang ghi hình, Ferret sẽ hỏi trước; phần đã ghi đến lúc đó được lưu trước khi khởi động lại.</p>
+<p>Khi tìm thấy phiên bản mới, Ferret tải nó trong nền và hiển thị tiến độ trong <span class="docs-ui">Cập nhật</span>. Bản tải về chỉ được dùng khi kích thước và SHA-256 khớp với danh sách đã ký. Khi đã sẵn sàng, <span class="docs-ui">Cập nhật</span> cho biết bản này sẽ được cài khi bạn đóng Ferret lần tới: cứ thoát Ferret như bình thường, lần mở sau sẽ là phiên bản mới. Bạn không cần tự tải hay chạy trình cài đặt, và Ferret không bao giờ tự khởi động lại, nên Agent vẫn làm việc cho đến khi bạn đóng ứng dụng.</p>
+<p>Để cài ngay, bấm <span class="docs-ui">Khởi động lại để cập nhật</span> trong <span class="docs-ui">Cập nhật</span> hoặc ở chân trang. Nếu có Agent đang làm việc trong terminal hoặc đang ghi hình, Ferret sẽ hỏi trước; phần đã ghi đến lúc đó được lưu trước khi khởi động lại.</p>
 <table>
   <thead><tr><th>Kiểu cài đặt</th><th>Tải xuống gì</th><th>Cài đặt thế nào</th></tr></thead>
   <tbody>
-    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>, có trong <code>UPDATE-SHA256SUMS</code> và được ký bằng cùng khóa phát hành</td><td>được giao cho trình cập nhật của macOS (Squirrel.Mac), trình này cũng kiểm tra ứng dụng mới có cùng chữ ký Developer ID; được thay khi Ferret khởi động lại</td></tr>
-    <tr><td>Windows</td><td>trình cài đặt (<code>.exe</code>)</td><td>chạy không hiện cửa sổ khi Ferret khởi động lại, rồi mở phiên bản mới</td></tr>
-    <tr><td>Linux (AppImage)</td><td>tệp <code>.AppImage</code> mới</td><td>thay AppImage bạn đã chạy, rồi mở phiên bản mới</td></tr>
+    <tr><td>macOS</td><td><code>Ferret-&lt;version&gt;-mac-&lt;arch&gt;.zip</code>, có trong <code>UPDATE-SHA256SUMS</code> và được ký bằng cùng khóa phát hành</td><td>được giao cho trình cập nhật của macOS (Squirrel.Mac), trình này cũng kiểm tra ứng dụng mới có cùng chữ ký Developer ID; được cài khi bạn đóng Ferret (hoặc bằng <span class="docs-ui">Khởi động lại để cập nhật</span>)</td></tr>
+    <tr><td>Windows</td><td>trình cài đặt (<code>.exe</code>)</td><td>chạy mà không mở cửa sổ nào sau khi bạn đóng Ferret; với <span class="docs-ui">Khởi động lại để cập nhật</span>, sau đó mở phiên bản mới</td></tr>
+    <tr><td>Linux (AppImage)</td><td>tệp <code>.AppImage</code> mới</td><td>thay thế AppImage bạn đã chạy khi bạn đóng Ferret; với <span class="docs-ui">Khởi động lại để cập nhật</span>, sau đó mở phiên bản mới</td></tr>
     <tr><td>Linux (deb)</td><td>tệp <code>.deb</code></td><td><span class="docs-ui">Mở trình cài đặt</span> lưu tệp vào thư mục Tải xuống và mở bằng trình cài đặt phần mềm của bạn</td></tr>
   </tbody>
 </table>
-<p>Để chỉ tải khi bạn chọn, hãy tắt <span class="docs-ui">Tự động tải phiên bản mới</span> trong <span class="docs-ui">Cập nhật</span> (hoặc đặt <code>"autoUpdate": false</code> trong <code>settings.json</code>), rồi bấm <span class="docs-ui">Tải xuống</span> khi có phiên bản mới. Bản build phát triển (<code>pnpm dev</code>) không tải trong nền; <span class="docs-ui">Tải xuống</span> lưu trình cài đặt đã kiểm tra vào thư mục Tải xuống.</p>
+<p>Để chỉ cập nhật khi bạn chọn, tắt <span class="docs-ui">Tự động cập nhật</span> trong <span class="docs-ui">Cập nhật</span> (hoặc đặt <code>"autoUpdate": false</code> trong <code>settings.json</code>). Khi đó Ferret không tự tải hay cài gì cả: bấm <span class="docs-ui">Tải xuống</span> khi có phiên bản mới, rồi bấm <span class="docs-ui">Khởi động lại để cập nhật</span>. Bản build phát triển (<code>pnpm dev</code>) không tải trong nền; <span class="docs-ui">Tải xuống</span> lưu trình cài đặt đã kiểm tra vào thư mục Tải xuống.</p>

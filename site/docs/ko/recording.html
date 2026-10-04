@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>녹화 · Ferret 문서</title>
-  <meta name="description" content="내장 브라우저, 전체 화면, 또는 다른 창을 녹화합니다. 페이지를 사용하면서 말하고, 동그라미를 그리고, 입력하세요.">
+  <meta name="description" content="내장 브라우저, 전체 화면, 다른 창, 데스크톱 앱, 게임, 또는 스마트폰 시뮬레이터를 녹화합니다. 페이지를 사용하면서 말하고, 동그라미를 그리고, 입력하세요.">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
   <link rel="canonical" href="https://ferretade.dev/docs/ko/recording">
@@ -26,7 +26,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
   <meta property="og:title" content="녹화 · Ferret 문서">
-  <meta property="og:description" content="내장 브라우저, 전체 화면, 또는 다른 창을 녹화합니다. 페이지를 사용하면서 말하고, 동그라미를 그리고, 입력하세요.">
+  <meta property="og:description" content="내장 브라우저, 전체 화면, 다른 창, 데스크톱 앱, 게임, 또는 스마트폰 시뮬레이터를 녹화합니다. 페이지를 사용하면서 말하고, 동그라미를 그리고, 입력하세요.">
   <meta property="og:url" content="https://ferretade.dev/docs/ko/recording">
   <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta property="og:locale" content="ko_KR">
@@ -36,7 +36,7 @@
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="녹화 · Ferret 문서">
-  <meta name="twitter:description" content="내장 브라우저, 전체 화면, 또는 다른 창을 녹화합니다. 페이지를 사용하면서 말하고, 동그라미를 그리고, 입력하세요.">
+  <meta name="twitter:description" content="내장 브라우저, 전체 화면, 다른 창, 데스크톱 앱, 게임, 또는 스마트폰 시뮬레이터를 녹화합니다. 페이지를 사용하면서 말하고, 동그라미를 그리고, 입력하세요.">
   <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -155,7 +155,7 @@
       <article class="docs-content">
         <p class="docs-eyebrow">Ferret 사용하기</p>
         <h1>녹화</h1>
-        <p class="docs-lead">내장 브라우저, 전체 화면, 또는 다른 창을 녹화합니다. 페이지를 사용하면서 말하고, 동그라미를 그리고, 입력하세요.</p>
+        <p class="docs-lead">내장 브라우저, 전체 화면, 다른 창, 데스크톱 앱, 게임, 또는 스마트폰 시뮬레이터를 녹화합니다. 페이지를 사용하면서 말하고, 동그라미를 그리고, 입력하세요.</p>
         <div class="docs-os" role="group" aria-label="단축키 표시" data-docs-os hidden>
           <span class="docs-os-label">단축키 표시</span>
           <button type="button" class="docs-os-btn" data-os-choice="mac" aria-pressed="false">macOS</button>
@@ -170,10 +170,21 @@
   <tbody>
     <tr><td><span class="docs-ui">내장 브라우저</span>(기본값)</td><td>동영상, 음성, 펜과 함께 URL, 요소 선택자, 클릭, 스크롤. OS 권한이 필요 없습니다.</td></tr>
     <tr><td><span class="docs-ui">전체 화면</span></td><td>동영상, 음성, 펜. URL, 요소, 조작 기록은 없습니다(<code>feedback.md</code>에 그렇게 적힙니다).</td></tr>
-    <tr><td><span class="docs-ui">창</span></td><td>위와 같습니다. Ferret 자신의 창은 목록에 나오지 않습니다.</td></tr>
+    <tr><td><span class="docs-ui">창</span></td><td>위와 같습니다. 각 창은 앱 이름과 함께 목록에 나옵니다. Ferret 자신의 창은 목록에 나오지 않습니다.</td></tr>
+    <tr><td><span class="docs-ui">모바일</span></td><td>위와 같습니다. 목록에는 iOS Simulator와 Android Emulator 창만 나옵니다.</td></tr>
   </tbody>
 </table>
 <p>선택한 대상은 기억됩니다. macOS에서 화면과 창을 녹화하려면 화면 기록 권한이 필요합니다(<a href="troubleshooting.html#screen-permission">권한을 주는 방법</a>).</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="desktop-mobile">
+        <h2 id="desktop-mobile"><a class="docs-anchor" href="#desktop-mobile" aria-label="&quot;데스크톱 앱, 게임, 모바일 앱&quot;(으)로 가는 링크">#</a>데스크톱 앱, 게임, 모바일 앱</h2>
+        <p>개발 중인 데스크톱 앱(Electron, Tauri, 네이티브 앱)을 리뷰하려면 개발할 때처럼 앱을 실행한 다음 <span class="docs-ui">창</span>에서 그 창을 고릅니다. 창은 앱 이름과 함께 목록에 나오므로 Electron 앱의 개발 빌드는 <code>Electron</code>으로 나옵니다. 작은 창과 다른 창 위에 항상 떠 있는 창도 목록에 나옵니다. macOS에서는 항상 위에 떠 있는 창이 미리보기 대신 앱 이름과 제목으로 표시됩니다.</p>
+<p>선택한 대상은 앱을 따라갑니다. 앱을 다시 실행해 창이 돌아오면 다음 녹화는 제목이 같은 창을 쓰고, 제목이 바뀌었으면 그 앱의 유일한 창을 씁니다.</p>
+<p>모바일 앱은 iOS Simulator(Xcode, macOS)나 Android Emulator(Android Studio)를 실행한 다음 <span class="docs-ui">모바일</span>에서 기기를 고릅니다. 에뮬레이터가 Android Studio 안에서 실행 중이면 별도 창으로 열어야 목록에 나옵니다(Android Studio 설정의 Tools → Emulator에서 Running Devices 도구 창에서 실행하는 옵션을 끕니다).</p>
+<p><code>feedback.md</code>는 URL 대신 녹화한 대상으로 시작합니다. 앱 이름과 창 제목, 시뮬레이터나 에뮬레이터라면 기기 이름과 OS 버전, Android에서는 앞에 떠 있는 앱도 적습니다. 그 앱의 소스 코드를 고치라고 에이전트에게 전하는 내용도 들어갑니다. Ferret은 녹화를 시작할 때 <code>xcrun simctl</code>과 <code>adb</code>(<code>ANDROID_HOME</code>, <code>ANDROID_SDK_ROOT</code>, 또는 Android Studio SDK 폴더에 있는 것)로 기기 정보를 읽습니다. 이미지에는 고른 창만 담기므로 무엇을 가리키는지 말로 설명하면서 녹화하세요.</p>
+<p>게임도 같은 방식으로 녹화합니다. 게임 뷰가 보이는 Unity, Unreal Engine, Godot 에디터 창이나, 빌드한 게임의 창(테두리 없는 창 모드 포함)을 고릅니다. 전용 전체 화면으로 실행 중인 게임은 <span class="docs-ui">전체 화면</span>에서 그 디스플레이를 고릅니다. 창이 이 에디터 중 하나이면 <code>feedback.md</code>에 엔진 이름을 적고, 게임의 코드, 씬, 에셋을 고치라고 에이전트에게 요청합니다. 파일을 작게 유지하려고 동영상은 초당 최대 10프레임으로 기록하며, 지적 사항의 이미지도 같은 동영상에서 가져오므로 타임라인의 그 순간과 일치합니다.</p>
+<p>리뷰 대상의 <span class="docs-ui">녹화할 창</span>은 창 제목뿐 아니라 앱 이름에도 일치합니다. 그래서 <code>Simulator</code>라고 적으면 어떤 기기를 보여 주든 iOS Simulator 창을 고릅니다.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="record">
@@ -264,6 +275,7 @@
       <p class="docs-toc-heading">이 페이지의 내용</p>
       <ul>
         <li><a href="#target">녹화할 대상 고르기</a></li>
+        <li><a href="#desktop-mobile">데스크톱 앱, 게임, 모바일 앱</a></li>
         <li><a href="#record">시작, 일시 정지, 중지</a></li>
         <li><a href="#pen">펜</a></li>
         <li><a href="#annotations-clear">표시가 사라질 때</a></li>
