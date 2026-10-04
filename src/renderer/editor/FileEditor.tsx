@@ -150,6 +150,7 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
               variant="ghost"
               icon={<Columns2 size={13} />}
               aria-pressed={file.preview}
+              title={file.preview ? t('editor.closePreview') : t('editor.previewToSide')}
               onClick={() => api.togglePreview(file.id)}
               data-testid="editor-preview-toggle"
             >
@@ -163,22 +164,22 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
         {file.viewer && file.status === 'ready' && (
           <>
             {file.viewer === 'image' && isSvgPath(file.path) && (
-              <Button variant="ghost" icon={<FileCode size={13} />} onClick={() => api.openAsText(file.id)} data-testid="viewer-open-as-text">
+              <Button variant="ghost" icon={<FileCode size={13} />} title={t('viewer.openAsText')} onClick={() => api.openAsText(file.id)} data-testid="viewer-open-as-text">
                 {t('viewer.openAsText')}
               </Button>
             )}
-            <Button variant="ghost" icon={<FolderOpen size={13} />} onClick={() => api.reveal(file.id)} data-testid="viewer-reveal">
+            <Button variant="ghost" icon={<FolderOpen size={13} />} title={t('viewer.showInFolder')} onClick={() => api.reveal(file.id)} data-testid="viewer-reveal">
               {t('viewer.showInFolder')}
             </Button>
             {!isRiskyToOpenExternally(file.path) && (
-              <Button variant="ghost" icon={<ExternalLink size={13} />} onClick={() => api.openExternally(file.id)} data-testid="viewer-open-external">
+              <Button variant="ghost" icon={<ExternalLink size={13} />} title={t('viewer.openExternal')} onClick={() => api.openExternally(file.id)} data-testid="viewer-open-external">
                 {t('viewer.openExternal')}
               </Button>
             )}
           </>
         )}
         {file.status === 'ready' && !file.viewer && (
-          <Button variant="ghost" icon={<Save size={13} />} disabled={!file.dirty && !file.external} onClick={() => void api.save(file.id)} data-testid="editor-save">
+          <Button variant="ghost" className="editor-head__save" icon={<Save size={13} />} title={t('common.save')} disabled={!file.dirty && !file.external} onClick={() => void api.save(file.id)} data-testid="editor-save">
             {t('common.save')}
           </Button>
         )}

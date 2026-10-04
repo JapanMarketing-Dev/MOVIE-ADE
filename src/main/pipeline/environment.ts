@@ -5,7 +5,7 @@
  * **Electron の API には依存しない。** パス（`app.getPath('userData')` や
  * `process.resourcesPath`）は引数で受け取るので、単体テストできる。
  */
-import { execFile, execFileSync } from 'node:child_process'
+import { execFile } from 'node:child_process'
 import { accessSync, constants as fsConstants, existsSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import type { PlatformName } from '@shared/types'
@@ -31,8 +31,8 @@ export interface EnvironmentProbes {
   home?: string
   /** ファイルが存在するか */
   exists: (path: string) => boolean
-  /** PATH 上のコマンドの絶対パス。無ければ null */
-  which: (command: string) => string | null
+  /** PATH 上のコマンドの絶対パス。無ければ null（テストの差し替えは同期で返してよい） */
+  which: (command: string) => Promise<string | null> | string | null
   /**
    * コマンドを実行して stdout+stderr を返す。失敗したら null。
    * GPUバックエンドの検出と CLI の有無の確認に使う。
@@ -48,10 +48,10 @@ const WHISPER_EXECUTABLE = 'whisper-cli'
  * 2. PATH 上
  * 3. Homebrew などの既定の場所（OSごと。platform/binaryDirs.ts）
  */
-export function resolveWhisperBinary(
+export async function resolveWhisperBinary(
   paths: EnvironmentPaths,
   probes: EnvironmentProbes
-): string | null {
+): Promise<string | null> {
   const name = probes.platform === 'win32' ? `${WHISPER_EXECUTABLE}.exe` : WHISPER_EXECUTABLE
 
   if (paths.resourcesDir) {
@@ -59,7 +59,7 @@ export function resolveWhisperBinary(
     if (probes.exists(bundled)) return bundled
   }
 
-  const onPath = probes.which(WHISPER_EXECUTABLE)
+  const onPath = await probes.which(WHISPER_EXECUTABLE)
   if (onPath) return onPath
 
   for (const dir of commonBinaryDirs(probes.platform as NodeJS.Platform, probes.home ?? '')) {
@@ -114,7 +114,7 @@ export async function resolveWhisperRuntime(
   probes: EnvironmentProbes,
   override?: { modelId?: WhisperModelId }
 ): Promise<WhisperRuntime | { error: 'binary-not-found' }> {
-  const binary = resolveWhisperBinary(paths, probes)
+  const binary = await resolveWhisperBinary(paths, probes)
   if (!binary) return { error: 'binary-not-found' }
 
   const gpuAvailable = await detectGpu(binary, probes)
@@ -148,8 +148,7 @@ export async function detectLlmRuntime(
   probes: EnvironmentProbes,
   preferred?: LlmRunnerKind
 ): Promise<LlmRuntime | null> {
-  const codex = probes.which('codex')
-  const claude = probes.which('claude')
+  const [codex, claude] = await Promise.all([probes.which('codex'), probes.which('claude')])
 
   const candidates: LlmRuntime[] = []
   if (codex) candidates.push({ kind: 'codex', binary: codex })
@@ -175,7 +174,7 @@ function joinPath(parts: string[]): string {
 
 /** which の結果を覚える時間（PATH の変化は30秒で拾い直す） */
 const WHICH_CACHE_MS = 30_000
-const whichCache = new Map<string, { value: string | null; at: number }>()
+const whichCache = new Map<string, { value: Promise<string | null>; at: number }>()
 
 /** 既定の probes（main から使う）。Electron には依存しない */
 /** Windows の where を待つ上限 */
@@ -213,28 +212,21 @@ export function nodeProbes(): EnvironmentProbes {
     exists: (p) => existsSync(p),
     which: (command) => {
       /*
-       * capture:availability（指摘の画面を開くたび）などで何度も呼ばれるので、結果を30秒覚える（見つからないことも覚える）。
-       * macOS / Linux は which を起動せず、PATH のフォルダを順に見る（プロセスを起動して main を止めない。FERRET-M）。
-       * Windows の where は PATHEXT と npm のスクリプトの扱いがあるのでそのまま使い、止まる上限を付ける。時間は重い処理として控える
+       * capture:availability（指摘の画面を開くたび）などで何度も呼ばれるので、結果を30秒覚える（見つからないことも、探している途中も）。
+       * macOS / Linux は which を起動せず、PATH のフォルダを順に見る。
+       * Windows の where は PATHEXT と npm のスクリプトの扱いがあるのでそのまま使うが、非同期で起動し、止まる上限を付ける
+       * （同期で起動すると main が 0.1〜0.6 秒止まっていた。FERRET-M）。同期で見る macOS / Linux の時間は重い処理として控える
        */
       const hit = whichCache.get(command)
       if (hit && Date.now() - hit.at < WHICH_CACHE_MS) return hit.value
-      const value = timedSync(`which:${command}`.slice(0, 40), () => {
-        if (process.platform !== 'win32') return findOnPath(command, process.env.PATH ?? '', isExecutableFile)
-        try {
-          const out = execFileSync('where', [command], {
-            encoding: 'utf8',
-            windowsHide: true,
-            timeout: WHERE_TIMEOUT_MS,
-            stdio: ['ignore', 'pipe', 'ignore']
+      const value = process.platform !== 'win32'
+        ? Promise.resolve(timedSync(`which:${command}`.slice(0, 40), () => findOnPath(command, process.env.PATH ?? '', isExecutableFile)))
+        : new Promise<string | null>((resolve) => {
+          execFile('where', [command], { encoding: 'utf8', windowsHide: true, timeout: WHERE_TIMEOUT_MS }, (err, stdout) => {
+            // 見つからない・時間切れは null（想定内）。Windows の where は npm の拡張子なしのスクリプトを先に出すことがある。起動できるものを選ぶ
+            resolve(err ? null : pickWindowsWhereResult(stdout, process.env))
           })
-          // Windows の where は npm の拡張子なしのスクリプトを先に出すことがある。起動できるものを選ぶ
-          return pickWindowsWhereResult(out, process.env)
-        } catch {
-          // コマンドが見つからない（想定内）
-          return null
-        }
-      })
+        })
       whichCache.set(command, { value, at: Date.now() })
       return value
     },

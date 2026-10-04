@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process'
 import { errorKind, reportHandled } from '@shared/report'
-import { accessSync, constants, statSync } from 'node:fs'
+import { constants } from 'node:fs'
+import { access, readdir, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import {
@@ -84,25 +85,60 @@ export async function searchDirs(): Promise<string[]> {
   return [...new Set(dirs.filter(Boolean))]
 }
 
-/** dirs のどこかに実行できる command があるか（Windows は PATHEXT の拡張子も試す） */
-export function isCommandInDirs(command: string, dirs: readonly string[], platform: NodeJS.Platform = process.platform): boolean {
-  if (!command || /[\\/]/.test(command)) {
-    // 絶対パス・相対パスはそのまま確かめる
-    return command ? isExecutable(command, platform) : false
-  }
-  const exts = platform === 'win32' ? ['', ...(process.env.PATHEXT ?? '.EXE;.CMD;.BAT;.PS1').toLowerCase().split(';')] : ['']
-  return dirs.some((dir) => exts.some((ext) => isExecutable(join(dir, command + ext), platform)))
+/** Windows は PATHEXT の拡張子も試す（拡張子なしが先） */
+function commandExts(platform: NodeJS.Platform): string[] {
+  return platform === 'win32' ? ['', ...(process.env.PATHEXT ?? '.EXE;.CMD;.BAT;.PS1').toLowerCase().split(';').filter(Boolean)] : ['']
 }
 
-function isExecutable(path: string, platform: NodeJS.Platform): boolean {
+/** フォルダの中の名前（探す鍵 → 実際の名前。Windows は大文字小文字を区別しないので鍵を小文字にする）。読めなければ空 */
+function dirNames(dir: string, platform: NodeJS.Platform): Promise<Map<string, string>> {
+  return readdir(dir).then(
+    (names) => new Map(names.map((name) => [platform === 'win32' ? name.toLowerCase() : name, name])),
+    () => new Map<string, string>() // 無い・読めないフォルダ（想定内）
+  )
+}
+
+async function isExecutableAsync(path: string, platform: NodeJS.Platform): Promise<boolean> {
   try {
-    if (!statSync(path).isFile()) return false
-    if (platform !== 'win32') accessSync(path, constants.X_OK)
+    if (!(await stat(path)).isFile()) return false
+    if (platform !== 'win32') await access(path, constants.X_OK)
     return true
   } catch {
     // 無い・実行できない候補（想定内）
     return false
   }
+}
+
+/**
+ * commands をそれぞれ dirs の前から探し、最初に見つかった実行ファイルのパスを返す（見つからないものは入れない）。
+ * 各フォルダは1度だけ非同期で一覧し、名前が合ったものだけ確かめる。候補（コマンド × フォルダ × PATHEXT）ごとに
+ * 同期の stat を呼ぶと、PATH が長い Windows では main が1秒以上止まっていた（FERRET-M）
+ */
+export async function resolveCommandsInDirs(commands: readonly string[], dirs: readonly string[], platform: NodeJS.Platform = process.platform): Promise<Map<string, string>> {
+  const exts = commandExts(platform)
+  const listings = await Promise.all(dirs.map((dir) => (dir ? dirNames(dir, platform) : Promise.resolve(new Map<string, string>()))))
+  const found = new Map<string, string>()
+  for (const command of new Set(commands)) {
+    if (!command) continue
+    if (/[\\/]/.test(command)) {
+      // 絶対パス・相対パスはそのまま確かめる
+      if (await isExecutableAsync(command, platform)) found.set(command, command)
+      continue
+    }
+    search: for (const [i, dir] of dirs.entries()) {
+      for (const ext of exts) {
+        const key = command + ext
+        const name = listings[i]!.get(platform === 'win32' ? key.toLowerCase() : key)
+        if (!name) continue
+        const path = join(dir, name)
+        if (await isExecutableAsync(path, platform)) {
+          found.set(command, path)
+          break search
+        }
+      }
+    }
+  }
+  return found
 }
 
 let cache: { at: number; checked: Set<string>; found: Set<string> } | null = null
@@ -114,7 +150,7 @@ async function foundCommands(commands: readonly string[], refresh: boolean): Pro
     return current.found
   }
   const dirs = await searchDirs()
-  const found = new Set(commands.filter((command) => isCommandInDirs(command, dirs)))
+  const found = new Set((await resolveCommandsInDirs(commands, dirs)).keys())
   cache = { at: Date.now(), checked: new Set(commands), found }
   return found
 }

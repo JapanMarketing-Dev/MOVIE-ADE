@@ -18,12 +18,12 @@
 <p>ダウンロードした <code>.exe</code> を実行します。選ぶものは無く、Ferret がインストールされてそのまま開きます。次からはスタートメニューかデスクトップのショートカットから開きます。</p>
 <p>Windows が <q>Windows によって PC が保護されました</q> と出したら、<span class="docs-ui">詳細情報</span> を押してから <span class="docs-ui">実行</span> を押します。</p>
 
-<!-- @linux 58ceb4839c -->
+<!-- @linux 3c62a59460 -->
 ## Linux
 <p><strong>Ubuntu / Debian</strong>: <code>.deb</code> をダブルクリックしてソフトウェアセンターで入れるか、次を実行します。</p>
 <pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
 <p>そのあと、アプリのメニューから Ferret を開くか、<code>ferret</code> を実行します。</p>
-<p><strong>ほかのディストリビューション</strong>: <code>.AppImage</code> を使います。プログラムとして実行できるようにして（右クリック → プロパティ、または <code>chmod +x</code>）から開きます。</p>
+<p><strong>ほかのディストリビューション</strong>: <code>.AppImage</code> を使います。AppImage は FUSE 2 で動くので、入っていなければ先にそのパッケージを入れます（Fedora は <code>fuse-libs</code>、Arch は <code>fuse2</code>、openSUSE と Debian 系は <code>libfuse2</code>）。そのあと <code>.AppImage</code> をプログラムとして実行できるようにして（右クリック → プロパティ、または <code>chmod +x</code>）から開きます。</p>
 
 <!-- @more 75e55cbce4 -->
 ## 次に

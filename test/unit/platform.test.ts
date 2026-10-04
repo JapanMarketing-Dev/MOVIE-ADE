@@ -133,17 +133,17 @@ describe('CLI のよくある置き場（OSごと）', () => {
     expect(commonBinaryDirs('win32', 'C:\\Users\\me')).toEqual([])
   })
 
-  it('Linux では ~/.local/bin の whisper-cli も見つける', () => {
-    const found = resolveWhisperBinary(
+  it('Linux では ~/.local/bin の whisper-cli も見つける', async () => {
+    const found = await resolveWhisperBinary(
       { modelDir: '/m' },
       { platform: 'linux', arch: 'x64', home: '/home/me', exists: (p) => p === '/home/me/.local/bin/whisper-cli', which: () => null }
     )
     expect(found).toBe('/home/me/.local/bin/whisper-cli')
   })
 
-  it('Windows では macOS の置き場を探さない', () => {
+  it('Windows では macOS の置き場を探さない', async () => {
     const seen: string[] = []
-    resolveWhisperBinary({ modelDir: 'C:\\m' }, { platform: 'win32', arch: 'x64', exists: (p) => (seen.push(p), false), which: () => null })
+    await resolveWhisperBinary({ modelDir: 'C:\\m' }, { platform: 'win32', arch: 'x64', exists: (p) => (seen.push(p), false), which: () => null })
     expect(seen.some((p) => p.includes('homebrew'))).toBe(false)
   })
 })

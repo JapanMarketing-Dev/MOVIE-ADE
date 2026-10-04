@@ -135,6 +135,34 @@
   background: var(--color-bg-chrome);
   box-shadow: inset 0 calc(-1 * var(--size-border)) 0 var(--color-border);
   gap: var(--space-3);
+  /* 入りきらないボタンを隣のペイン（ターミナル）へ重ねない */
+  overflow: hidden;
+}
+
+/* 狭いときはボタンも文字を省いて縮む。保存だけは縮めない */
+.editor-head .btn {
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.editor-head .btn.editor-head__save {
+  flex-shrink: 0;
+}
+
+/* ペインが狭いときは、アイコンのあるボタンを文字なしにする（文字は読み上げ用に残し、title で見せる） */
+@container pane (width < 560px) {
+  .editor-head .btn:has(> svg) {
+    padding: 0 var(--space-3);
+  }
+
+  .editor-head .btn > svg + .btn__label {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 .editor-head__path {
@@ -170,6 +198,7 @@
 /* Markdown の「ソース」「プレビューで編集」の切り替え */
 .editor-head__modes {
   display: inline-flex;
+  min-width: 0;
   gap: 2px;
   padding-right: 6px;
   margin-right: 2px;

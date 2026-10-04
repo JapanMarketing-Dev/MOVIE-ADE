@@ -23,8 +23,8 @@ function probes(overrides: Partial<EnvironmentProbes> = {}): EnvironmentProbes {
 const paths = { modelDir: '/userdata/models' }
 
 describe('whisper の実行ファイルを探す', () => {
-  it('同梱したものを最優先で使う（配布時）', () => {
-    const found = resolveWhisperBinary(
+  it('同梱したものを最優先で使う（配布時）', async () => {
+    const found = await resolveWhisperBinary(
       { ...paths, resourcesDir: '/app/resources' },
       probes({
         exists: (p) => p === '/app/resources/whisper/darwin-arm64/whisper-cli',
@@ -34,8 +34,8 @@ describe('whisper の実行ファイルを探す', () => {
     expect(found).toBe('/app/resources/whisper/darwin-arm64/whisper-cli')
   })
 
-  it('Windows では .exe を探す', () => {
-    const found = resolveWhisperBinary(
+  it('Windows では .exe を探す', async () => {
+    const found = await resolveWhisperBinary(
       { ...paths, resourcesDir: 'C:\\app\\resources' },
       probes({
         platform: 'win32',
@@ -46,21 +46,21 @@ describe('whisper の実行ファイルを探す', () => {
     expect(found).toBe('C:\\app\\resources\\whisper\\win32-x64\\whisper-cli.exe')
   })
 
-  it('同梱が無ければ PATH 上のものを使う（開発時）', () => {
-    const found = resolveWhisperBinary(paths, probes({ which: () => '/usr/local/bin/whisper-cli' }))
+  it('同梱が無ければ PATH 上のものを使う（開発時）', async () => {
+    const found = await resolveWhisperBinary(paths, probes({ which: () => '/usr/local/bin/whisper-cli' }))
     expect(found).toBe('/usr/local/bin/whisper-cli')
   })
 
-  it('PATH に無ければ Homebrew の既定の場所を見る', () => {
-    const found = resolveWhisperBinary(
+  it('PATH に無ければ Homebrew の既定の場所を見る', async () => {
+    const found = await resolveWhisperBinary(
       paths,
       probes({ exists: (p) => p === '/opt/homebrew/bin/whisper-cli' })
     )
     expect(found).toBe('/opt/homebrew/bin/whisper-cli')
   })
 
-  it('どこにも無ければ null', () => {
-    expect(resolveWhisperBinary(paths, probes())).toBeNull()
+  it('どこにも無ければ null', async () => {
+    expect(await resolveWhisperBinary(paths, probes())).toBeNull()
   })
 })
 

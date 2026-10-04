@@ -274,9 +274,9 @@ describe('イベントの除去', () => {
     ]
   }
 
-  it('user・request・extra・server_name を持たない', () => {
+  it('user は空の geo だけ・request・extra・server_name を持たない', () => {
     const out = scrubEvent(event, ctx) as Record<string, unknown>
-    expect(out.user).toBeUndefined()
+    expect(out.user).toEqual({ geo: {} })
     expect(out.request).toBeUndefined()
     expect(out.extra).toBeUndefined()
     expect(out.server_name).toBeUndefined()
@@ -305,7 +305,7 @@ describe('イベントの除去', () => {
   })
   it('Sentry の ID（event_id・trace_id）は秘密の形でも残す', () => {
     const ids = { event_id: 'a'.repeat(32), contexts: { trace: { trace_id: 'b'.repeat(32), span_id: 'c'.repeat(16) } } }
-    expect(scrubEvent(ids)).toEqual(ids)
+    expect(scrubEvent(ids)).toEqual({ ...ids, user: { geo: {} } })
   })
   it('元のイベントは書き換えない', () => {
     scrubEvent(event, ctx)

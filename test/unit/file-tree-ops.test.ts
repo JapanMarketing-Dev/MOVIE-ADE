@@ -115,7 +115,8 @@ describe('ファイルツリーの一式の操作（src/main/fileOps.ts）', () 
       await expect(copyEntries(root, ['src', 'src/a.ts'], 'docs')).resolves.toEqual([{ from: 'src', to: 'docs/src' }])
     })
 
-    it('実行の権限を保つ', async () => {
+    // Windows のファイルには実行の権限が無い
+    it.skipIf(process.platform === 'win32')('実行の権限を保つ', async () => {
       await writeFile(join(root, 'run.sh'), '#!/bin/sh\n', { mode: 0o755 })
       await copyEntries(root, ['run.sh'], '')
       expect((await lstat(join(root, 'run copy.sh'))).mode & 0o111).not.toBe(0)
@@ -155,7 +156,10 @@ describe('ファイルツリーの一式の操作（src/main/fileOps.ts）', () 
     it(`数が多すぎる（${MAX_COPY_ENTRIES} を超える）ときは何も写さずに知らせる`, async () => {
       const many = join(root, 'many')
       await mkdir(many)
-      await Promise.all(Array.from({ length: MAX_COPY_ENTRIES }, (_, i) => writeFile(join(many, `f${i}`), '')))
+      // 一度に全部開くと Windows で EMFILE になるので、500 個ずつ作る
+      for (let start = 0; start < MAX_COPY_ENTRIES; start += 500) {
+        await Promise.all(Array.from({ length: Math.min(500, MAX_COPY_ENTRIES - start) }, (_, i) => writeFile(join(many, `f${start + i}`), '')))
+      }
       await expect(copyEntries(root, ['many'], 'docs')).rejects.toThrow('一度にコピーできるのは 10,000 個まで')
       expect(await readdir(join(root, 'docs'))).toEqual([])
     }, 60_000)

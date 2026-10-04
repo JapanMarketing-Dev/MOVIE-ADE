@@ -127,7 +127,7 @@ page('install.html', 'Start here', 'Install',
 <p><strong>Ubuntu / Debian</strong>: double-click the <code>.deb</code> to install it with your software center, or run:</p>
 ${code('sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb')}
 <p>Then open ${APP} from your app menu, or run <code>ferret</code>.</p>
-<p><strong>Other distributions</strong>: use the <code>.AppImage</code>. Allow it to run as a program (right-click → Properties, or <code>chmod +x</code>), then open it.</p>`],
+<p><strong>Other distributions</strong>: use the <code>.AppImage</code>. AppImages run with FUSE 2, so first install its package if your system does not have it: <code>fuse-libs</code> on Fedora, <code>fuse2</code> on Arch, <code>libfuse2</code> on openSUSE and Debian-based systems. Then allow the <code>.AppImage</code> to run as a program (right-click → Properties, or <code>chmod +x</code>) and open it.</p>`],
     ['more', 'Next', `
 <ul>
   <li><a href="quick-start.html#open">Quick start</a>: open a project and record your first feedback.</li>

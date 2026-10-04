@@ -178,7 +178,7 @@
         <p><strong>Ubuntu / Debian</strong>: clique duas vezes no <code>.deb</code> para instalá-lo pela central de software, ou execute:</p>
 <pre><code>sudo apt install ./Ferret-&lt;version&gt;-linux-amd64.deb</code></pre>
 <p>Depois, abra o Ferret pelo menu de aplicativos ou execute <code>ferret</code>.</p>
-<p><strong>Outras distribuições</strong>: use o <code>.AppImage</code>. Permita que ele seja executado como programa (clique com o botão direito → Propriedades, ou <code>chmod +x</code>) e depois abra-o.</p>
+<p><strong>Outras distribuições</strong>: use o <code>.AppImage</code>. AppImages funcionam com FUSE 2, então primeiro instale o pacote dele se o seu sistema não o tiver: <code>fuse-libs</code> no Fedora, <code>fuse2</code> no Arch e <code>libfuse2</code> no openSUSE e em sistemas baseados no Debian. Depois permita que o <code>.AppImage</code> seja executado como programa (clique com o botão direito → Propriedades, ou <code>chmod +x</code>) e abra-o.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="more">

@@ -42,8 +42,12 @@ describe('インストール ID', () => {
   })
   it('送る前の除去で、user は ID だけを残す（名前・メール・IP は落とす）', () => {
     const out = scrubEvent({ user: { id: uuid, email: 'taro@example.com', ip_address: '1.2.3.4', username: 'taro' } }) as { user?: unknown }
-    expect(out.user).toEqual({ id: uuid })
-    expect((scrubEvent({ user: { id: 'taro' } }) as { user?: unknown }).user).toBeUndefined()
+    expect(out.user).toEqual({ id: uuid, geo: {} })
+    expect((scrubEvent({ user: { id: 'taro' } }) as { user?: unknown }).user).toEqual({ geo: {} })
+  })
+  it('空の geo を必ず置き、Sentry に接続元の IP から市区町村を推定させない（user が無いイベントも）', () => {
+    expect((scrubEvent({ user: { id: uuid, geo: { city: 'Adachi City', country_code: 'JP' } } }) as { user?: unknown }).user).toEqual({ id: uuid, geo: {} })
+    expect((scrubEvent({ message: 'x' }) as { user?: unknown }).user).toEqual({ geo: {} })
   })
 })
 
