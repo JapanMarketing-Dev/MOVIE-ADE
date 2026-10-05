@@ -25,7 +25,7 @@ Ferret の設定はすべて1つの JSON ファイルにあり、隣に JSON Sch
 <p><code>settings.json</code> の最初の行は <code>"$schema": "./settings.schema.json"</code> です。VS Code などのエディタや Claude Code などのエージェントは、これを使って補完・検証し、各項目の説明を表示します。スキーマはアプリに同梱され、起動のたびにファイルの隣へ書き出されるので、常にインストールしているバージョンと一致します。</p>
 <p>Ferret が知らないキーは、アプリが保存するときもそのまま残します。開いているタブや最後の URL などのセッションの状態は、ここではなく <code>state.json</code> に保存します。</p>
 
-<!-- @example 8f2ce86189 -->
+<!-- @example a3549b8c04 -->
 ## 注釈つきの例
 <p>JSON にはコメントが書けないので、説明は例の下に置きます。どの項目も省略でき、要らないものは書かなくてかまいません。</p>
 <pre><code>{
@@ -85,7 +85,7 @@ Ferret の設定はすべて1つの JSON ファイルにあり、隣に JSON Sch
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>: URL メニューに出るレビュー対象。プロジェクトを開くと最初のものが開きます。<code>id</code> は重複しなければどんな文字列でもかまいません。<code>purpose</code> はデザインや文書の印です（<a href="projects.html#design-docs">デザインや文書をレビューする</a>を参照）。アプリなら書きません。</li>
+  <li><code>projects[].urls</code>: URL メニューに出るレビュー対象。プロジェクトを開くと最初のものが開きます。<code>id</code> は重複しなければどんな文字列でもかまいません。<code>purpose</code> はデザインや文書（<a href="projects.html#design-docs">デザインや文書をレビューする</a>を参照）、または参考に見る外部のサイト（<a href="projects.html#reference-sites">外部のサイトを参考にする</a>を参照）の印です。アプリなら書きません。</li>
   <li><code>agents.customAgents</code>: 任意の CLI やラッパースクリプト。<code>startupAgents</code> は、プロジェクトと一緒に開くエージェントのタブを順に並べたものです。</li>
   <li><code>capture.sttEndpoints.compatible</code>: OpenAI の <code>/v1/audio/transcriptions</code> を実装したサーバーならどれでも使えます（speaches、vLLM、LocalAI…）。<code>costLimitUsd: null</code> で費用の上限を外します。自前の GPU ならこれが妥当です。<a href="transcription.html">文字起こしと費用</a>を見てください。</li>
   <li><code>organizer</code>: <span class="docs-ui">指摘を整理</span> を OpenAI 互換の <code>/v1/chat/completions</code> サーバー（ここでは Ollama）に直接送ります。代わりに自分の CLI のログインを使うなら <code>"runner": "claude-code"</code> か <code>"codex"</code> にし、そのモデルは <code>organizer.cliModels</code> で選びます。</li>

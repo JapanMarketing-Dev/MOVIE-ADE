@@ -261,7 +261,7 @@ page('projects.html', `Using ${APP}`, 'Projects and URLs',
   <li>Click ${ui('+')} (${ui('Save current URL')}) in the browser toolbar. The current URL is pre-filled.</li>
   <li>Enter a ${ui('Name')} and click ${ui('Save')}.</li>
 </ol>
-<p>Each saved URL has a kind under ${ui('Reviewing')}: ${ui('App')} (the app you are building), ${ui('Design')} (Figma, Penpot, Canva, a prototype) or ${ui('Doc / spec')} (Google Docs, Notion, Confluence, a Markdown spec on GitHub, a PDF). The kind is guessed from the URL and you can change it. See <a href="#design-docs">Review designs and documents, not only code</a>.</p>
+<p>Each saved URL has a kind under ${ui('Reviewing')}: ${ui('App')} (the app you are building), ${ui('Design')} (Figma, Penpot, Canva, a prototype), ${ui('Doc / spec')} (Google Docs, Notion, Confluence, a Markdown spec on GitHub, a PDF) or ${ui('Reference')} (a competitor's or another external site you can't change). The kind is guessed from the URL and the name, and you can change it. See <a href="#design-docs">Review designs and documents, not only code</a> and <a href="#reference-sites">Use other sites as a reference</a>.</p>
 <p>Only <code>http://</code> and <code>https://</code> URLs are accepted. For an app URL, the name is guessed from the host if you leave it as suggested:</p>
 <table>
   <thead><tr><th>Host</th><th>Name</th></tr></thead>
@@ -281,11 +281,11 @@ ${clip('targets', 'Switching review targets and pages without stopping the recor
   <li><strong>${ui('Files')}</strong>: the project folder. A file opens as a preview (Markdown and Mermaid rendered, other text read-only), so you can review docs too. The pencil (${ui('Open in editor')}) opens it in the editor.</li>
 </ul>
 <p>${ui('Filter targets')} filters targets, pages, and files together, with the same fuzzy matching as ${ui('Go to File…')}. In the list, ${k('↑')} ${k('↓')} ${k('Enter')} or ${k('1')}–${k('9')} switch targets. ${ui('Open URL…')} opens a one-off URL, and ${ui('Save to project URLs')} keeps it.</p>
-<p>Targets come from <code>projects[].urls</code> in <code>settings.json</code> (see <a href="settings-json.html#example">the example</a>). Each entry needs a <code>url</code>, a <code>launchCommand</code> (run in a terminal, e.g. to start a desktop app), or a <code>windowMatch</code> (the window to record), and can have a <code>purpose</code> (<code>app</code>, <code>design</code> or <code>doc</code>). Picking a window target sets it as the recording source, so it can't be done while recording. Visited pages are remembered per project, on this machine only (up to 200).</p>`],
+<p>Targets come from <code>projects[].urls</code> in <code>settings.json</code> (see <a href="settings-json.html#example">the example</a>). Each entry needs a <code>url</code>, a <code>launchCommand</code> (run in a terminal, e.g. to start a desktop app), or a <code>windowMatch</code> (the window to record), and can have a <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> or <code>reference</code>). Picking a window target sets it as the recording source, so it can't be done while recording. Visited pages are remembered per project, on this machine only (up to 200).</p>`],
     ['switch-env', 'Open and switch environments', `
 <p>Click a saved URL to open it. If the current page is under another saved URL, ${APP} keeps the path, query, and hash and swaps only the origin. For example, on <code>http://localhost:3000/pricing?plan=pro</code>, clicking <code>prd</code> opens <code>https://example.com/pricing?plan=pro</code>.</p>
 <p>The chip matching the current page (longest prefix) is highlighted. Right-click a chip or use its pencil icon to edit or ${ui('Delete')} it. When a project opens and there is no previous URL, its first saved URL loads.</p>
-<p>Chips are grouped by kind: app URLs first, then designs, then docs, with a divider and an icon for each kind. Switching to or from a design or doc opens its saved URL as is, without carrying the path over.</p>`],
+<p>Chips are grouped by kind: app URLs first, then designs, then docs, then references, with a divider and an icon for each kind. Switching to or from a design, a doc or a reference opens its saved URL as is, without carrying the path over.</p>`],
     ['design-docs', 'Review designs and documents, not only code', `
 <p>Feedback doesn't have to be about code. Anything that opens in the built-in browser can be recorded and marked up with the pen the same way: a Figma or Penpot design, a prototype, a spec in Google Docs or Notion, a design doc on GitHub, a PDF. Save those URLs to the project before the review, next to <code>local</code> and <code>dev</code>.</p>
 <ol class="docs-steps">
@@ -301,6 +301,19 @@ ${clip('targets', 'Switching review targets and pages without stopping the recor
 </ul>
 <p>Example: while reading the pricing spec in Google Docs you circle the plan table and say "the Pro plan is 9,800 yen now, not 8,800". <code>feedback.md</code> lists the finding under the <code>Spec</code> target with <code>Kind: document</code>, and the agent answers with the corrected sentence for the spec rather than touching the pricing page code. Record the spec and the running app in the same recording, and the findings are split by target, so the agent can update the spec first and then the code that implements it.</p>
 <p>Unsaved pages on <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> and similar hosts are recognized too. Files in the project folder (Markdown, Mermaid) are reviewed from the ${ui('Files')} list in the ${ui('Review targets')} panel.</p>`],
+    ['reference-sites', 'Use other sites as a reference', `
+<p>You can also record a competitor's site, or any page whose look you like, and say what to take from it ("use this as a model", "this black background doesn't work"). You can't change that site, so the agent never tries to: it treats those findings as a reference for your own app.</p>
+<ol class="docs-steps">
+  <li>Add the site as a target and pick ${ui('Reference')} under ${ui('Reviewing')}. A name with "competitor" or "reference" in it (for example <code>Competitor: Acme</code>) picks it for you.</li>
+  <li>Record as usual, and switch between that site and your app in the same recording if you like.</li>
+</ol>
+<p>Findings on a reference site are labeled ${ui('Reference')} in Findings and <code>Kind: reference</code> in <code>feedback.md</code>. For each one the agent:</p>
+<ul>
+  <li>adopts what you liked where it fits in your app, and notes where it applied it;</li>
+  <li>checks that your app doesn't do what you disliked, and fixes your app if it does;</li>
+  <li>changes nothing when a remark gives it nothing to act on, and sets the finding to ${ui('To review')} with a note such as "External site, no action needed (reference)".</li>
+</ul>
+<p>It never edits the external site and never stops to ask you. A finding is also treated as a reference, without picking the kind, when its target's name contains "competitor" or "reference" (or 競合 / 参考), or when it was recorded on an unsaved site whose host doesn't match any of the project's app URLs. <code>localhost</code> and private addresses never count as external, and a project with no app URLs saved doesn't get this guess.</p>`],
   ])
 
 page('recording.html', `Using ${APP}`, 'Recording',
@@ -449,13 +462,14 @@ ${clip('send', 'From the Findings tab to the agent in the built-in terminal with
 <p>${ui('Copy for Agent')} puts the same instruction on the clipboard for an agent running elsewhere (another terminal, IDE, or app). Only findings toggled to ${ui('Send')} are addressed. The video is never included.</p>`],
     ['verify', 'Acceptance check with a decision model', `
 ${clip('verify', 'The agent fixes the findings and checks each one with the decision model before you look at them.')}
-<p>Turn this on and your coding agent checks its own work against each finding and keeps improving it before you look. ${APP} does not judge anything itself: it gives the agent a <em>decision model</em> (any System One compatible API) and tells it, in <code>feedback.md</code>, how to use it. The decision model is the agent's own check, never a question for you: the agent does not ask you anything. You only compare BEFORE and AFTER and press ${ui('OK')} or ${ui('NG')}.</p>
+<p>Turn this on and your coding agent checks its own work once against each finding before you look. ${APP} does not judge anything itself: it gives the agent a <em>decision model</em> (any System One compatible API) and tells it, in <code>feedback.md</code>, how to use it. The decision model is the agent's own check, never a question for you: the agent does not ask you anything. You only compare BEFORE and AFTER and press ${ui('OK')} or ${ui('NG')}.</p>
 <ol class="docs-steps">
   <li>The agent implements the findings.</li>
   <li>For each finding it captures an AFTER screenshot (same viewport and page state as the BEFORE still) and sends one request with the finding text, its "Done when" line and the BEFORE/AFTER images to the decision model.</li>
-  <li>A finding passes when P(done) is at least the threshold (default 0.7) and the choice is <code>done</code>. The agent improves the fix (or the screenshot) for the rest and re-judges <strong>all</strong> findings every round, until every finding passes in the same round.</li>
-  <li>A finding that still fails after a few rounds (3 rounds with unchanged scores, or 5 in all), a finding that is out of scope, or a decision API that cannot be reached does not stop the work: the agent sets the finding to ${ui('To review')} anyway, with its AFTER, its last score and at most a one-line note.</li>
-  <li>In ${ui('Findings')}, each finding waiting for you shows BEFORE, AFTER and the score as material. ${ui('OK')} marks it done; ${ui('NG')} with a comment sends it back to the agent. The agent's final Done / Not done list in the terminal includes each finding's scores and the number of rounds.</li>
+  <li>The decision model is called <strong>at most once per finding</strong> each time you send findings to the agent. There is no second judgement and no loop, so a model that never says "done" cannot keep the agent busy.</li>
+  <li>The agent reads that one result. A finding passes when P(done) is at least the threshold (default 0.7) and the choice is <code>done</code>, and goes to you as it is. Otherwise, if the result shows a clear gap the agent can fix, it may improve the fix one more time and capture AFTER again, without judging again.</li>
+  <li>Either way the agent sets the finding to ${ui('To review')} with its AFTER, that one score and at most a one-line note. A finding that is out of scope, or a decision API that cannot be reached, does not stop the work: the finding goes to ${ui('To review')} without a score.</li>
+  <li>In ${ui('Findings')}, each finding waiting for you shows BEFORE, AFTER and the score as material. ${ui('OK')} marks it done; ${ui('NG')} with a comment sends it back to the agent as a new request, where it is judged once again. The agent's final Done / Not done list in the terminal includes each finding's score and whether it improved the fix once more.</li>
 </ol>
 <p>Set it up in ${ui('Settings → Decision model')} and turn on ${ui('Add the decision-model check to agent instructions')}. Presets only fill in the fields; every field stays editable, and ${ui('Custom')} works with any compatible API.</p>
 <table>
@@ -543,6 +557,7 @@ page('editor.html', `Using ${APP}`, 'Editor and preview',
 <p>A Markdown file has two views at the top of the editor: ${ui('Source')} and ${ui('Preview')}. The preview is always editable, so you can type straight into it; click ${ui('Source')} to go back to the text. Both show the same content, and saving, the unsaved mark, and the close confirmation work the same way.</p>
 <ul>
   <li>Type straight into headings, paragraphs, lists, checkboxes, tables, links, and bold, italic, or inline code. Typing <code>#</code>, <code>-</code>, <code>1.</code>, or <code>&gt;</code> and a space at the start of a line starts a heading, list, or quote.</li>
+  <li>Type <code>/</code> at the start of a line (or after a space) to pick a block from a list: headings, bulleted, numbered, or check lists, a table, a code block, a quote, or a divider. Each entry says what it makes and how it is written in Markdown. Keep typing to filter, use ${keys('Up')} ${keys('Down')} and ${keys('Enter')} to choose, or ${keys('Esc')} to keep the <code>/</code> as text. A table starts as 3 × 3 with a header row; ${keys('Tab')} moves to the next cell and adds a row at the end. Typing <code>/</code> inside a table adds or deletes rows and columns, or deletes the table.</li>
   <li>Code blocks and Mermaid diagrams are edited as their source, with the language shown in the corner. To see the diagram drawn, open the file from ${ui('Files')} in the <a href="projects.html#review-targets">${ui('Review targets')}</a> panel.</li>
   <li>Front matter (the <code>---</code> block at the top) is shown as text above the document and can be edited there.</li>
   <li>Parts you don't change are saved exactly as written, including heading style, list markers, blank lines, table alignment, and line endings. A block you edit keeps its style where possible; otherwise that block is written in a standard Markdown form, with <code>-</code> for lists and <code>#</code> for headings.</li>
@@ -848,7 +863,7 @@ ${code(`{
   }
 }`)}
 <ul>
-  <li><code>projects[].urls</code>: review targets for the URL menu. The first one opens when the project opens. <code>id</code> can be any unique string. <code>purpose</code> marks a design or a doc (see <a href="projects.html#design-docs">Review designs and documents</a>); leave it out for the app.</li>
+  <li><code>projects[].urls</code>: review targets for the URL menu. The first one opens when the project opens. <code>id</code> can be any unique string. <code>purpose</code> marks a design or a doc (see <a href="projects.html#design-docs">Review designs and documents</a>) or an external site used as a reference (see <a href="projects.html#reference-sites">Use other sites as a reference</a>); leave it out for the app.</li>
   <li><code>agents.customAgents</code>: any CLI or wrapper script. <code>startupAgents</code> lists the agent tabs opened with a project, in order.</li>
   <li><code>capture.sttEndpoints.compatible</code>: any server that implements OpenAI's <code>/v1/audio/transcriptions</code> (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> turns off the cost cap, which makes sense for your own GPU. See <a href="transcription.html">Transcription and costs</a>.</li>
   <li><code>organizer</code>: ${ui('Organize findings')} sent straight to an OpenAI-compatible <code>/v1/chat/completions</code> server (here Ollama). Use <code>"runner": "claude-code"</code> or <code>"codex"</code> to use your own CLI login instead, and <code>organizer.cliModels</code> to pick their model.</li>

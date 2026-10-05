@@ -16,6 +16,7 @@
  * - `--no-session-persistence` で会話（文字起こし）をディスクに残さない
  */
 import { mkdtemp, rm } from 'node:fs/promises'
+import { CLAUDE_CODE_ORGANIZE_DEFAULT_MODEL } from '@shared/organizeModels'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { LlmRunner, RunnerRequest, RunnerResult } from '../runner'
@@ -92,7 +93,7 @@ export class ClaudeCodeRunner implements LlmRunner {
     this.accountEnv = options.accountEnv ?? (() => ({}))
     this.spawn = options.spawn ?? spawnText
     this.binary = options.binary ?? 'claude'
-    this.defaultModel = options.model ?? 'haiku'
+    this.defaultModel = options.model ?? CLAUDE_CODE_ORGANIZE_DEFAULT_MODEL
     this.effort = options.effort ?? 'low'
   }
 

@@ -1,6 +1,6 @@
 import { pageKey } from './page'
 import { previewPathFromUrl, previewUrl } from './preview'
-import { guessTargetPurpose, purposeOf, targetAction } from './projectTargets'
+import { registeredPurpose, targetAction, unregisteredUrlPurpose } from './projectTargets'
 import { matchPresetUrl } from './projectUrl'
 import type { ProjectKind, ProjectUrl, TargetPurpose } from './types'
 
@@ -32,8 +32,9 @@ export interface ReviewTarget {
   /** URL のホスト（ポート込み） */
   host?: string
   /**
-   * デザイン・設計書の確認先で撮った指摘か（app は持たない）。登録した確認先の区分、
-   * 登録に当たらなければ URL のホストから推した区分（figma.com → design など）
+   * デザイン・設計書・参考（外部サイト）の確認先で撮った指摘か（app は持たない）。登録した確認先の区分
+   * （名前が「競合」「参考」などなら reference）、登録に当たらなければ URL から推した区分
+   * （figma.com → design、アプリの確認先と違う外部のホスト → reference。projectTargets.ts の unregisteredUrlPurpose）
    */
   purpose?: Exclude<TargetPurpose, 'app'>
 }
@@ -51,7 +52,7 @@ export function targetOfUrl(url: string | undefined, presets: readonly ProjectUr
   }
   const preset = matchPresetUrl([...presets], url)
   const name = parsed ? `${parsed.pathname}${parsed.search}` || '/' : url
-  const purpose = preset ? purposeOf(preset) : guessTargetPurpose(url)
+  const purpose = preset ? registeredPurpose(preset) : unregisteredUrlPurpose(url, presets)
   return {
     key: `url:${pageKey(url)}`,
     kind: 'url',
@@ -116,7 +117,7 @@ export interface TargetEntry {
   launchCommand?: string
   /** window の確認先：録画の対象に選ぶウインドウの名前 */
   windowMatch?: string
-  /** 確認先の区分（デザイン・設計書。app は持たない） */
+  /** 確認先の区分（デザイン・設計書・参考。app は持たない） */
   purpose?: Exclude<TargetPurpose, 'app'>
 }
 
@@ -159,7 +160,7 @@ export function buildTargetEntries(input: TargetEntryInput): TargetEntry[] {
   for (const preset of input.presets) {
     // 押したときの動きはツールバーの確認先と同じ（targetAction）。何もできない確認先は出さない
     const action = targetAction(preset, input.projectKind)
-    const purpose = purposeOf(preset)
+    const purpose = registeredPurpose(preset)
     if (action.kind === 'url') {
       if (!isWebUrl(action.url)) continue
       push({ id: pageKey(action.url), kind: 'url', group: 'preset', title: preset.label || action.url, detail: action.url, label: preset.label, url: action.url,
@@ -195,7 +196,7 @@ export function buildTargetEntries(input: TargetEntryInput): TargetEntry[] {
     } catch {
       // URL として読めないものはそのまま
     }
-    const purpose = preset ? purposeOf(preset) : guessTargetPurpose(url)
+    const purpose = preset ? registeredPurpose(preset) : unregisteredUrlPurpose(url, input.presets)
     push({ id: pageKey(url), kind: 'url', group: 'recent', title, detail: url, url, ...(preset ? { label: preset.label } : {}), ...(purpose !== 'app' ? { purpose } : {}) })
   }
   return out

@@ -259,6 +259,9 @@ function jsonErrorPosition(text: string): number {
   }
 }
 
+/** エラーに載せるスキーマの違反の件数の上限（AI への修正依頼に並べる分。残りは Agent がスキーマと照らして見つける） */
+export const SETTINGS_ERROR_ISSUE_LIMIT = 20
+
 type ParsedSettings = { ok: true; value: Record<string, unknown> } | { ok: false; error: SettingsFileError }
 
 /** settings.json の文字列を読む。JSON の誤り・スキーマの違反は、行つきのエラーにする */
@@ -280,9 +283,12 @@ export function parseSettingsText(text: string): ParsedSettings {
   }
   const issues = validateAgainstSchema(value, SETTINGS_SCHEMA)
   if (issues.length) {
-    const first = issues[0]
-    const line = lineOfPath(text, first.path)
-    return { ok: false, error: { kind: 'schema', message: `${first.path}: ${first.message}${issues.length > 1 ? ` (+${issues.length - 1} more)` : ''}`, path: first.path, ...(line ? { line } : {}) } }
+    const listed = issues.slice(0, SETTINGS_ERROR_ISSUE_LIMIT).map((issue) => {
+      const at = lineOfPath(text, issue.path)
+      return { path: issue.path, message: issue.message, ...(at ? { line: at } : {}) }
+    })
+    const first = listed[0]
+    return { ok: false, error: { kind: 'schema', message: `${first.path}: ${first.message}${issues.length > 1 ? ` (+${issues.length - 1} more)` : ''}`, path: first.path, ...(first.line ? { line: first.line } : {}), issues: listed } }
   }
   return { ok: true, value: value as Record<string, unknown> }
 }

@@ -199,6 +199,7 @@
 <p>Markdown 文件在编辑器顶部有两种视图：<span class="docs-ui">源代码</span> 和 <span class="docs-ui">预览</span>。预览始终可以编辑，因此可以直接在其中输入；点击 <span class="docs-ui">源代码</span> 即可回到文本。两者显示相同的内容，保存、未保存标记和关闭时的确认也都一样。</p>
 <ul>
   <li>可以直接在标题、段落、列表、复选框、表格、链接以及粗体、斜体或行内代码中输入。在行首输入 <code>#</code>、<code>-</code>、<code>1.</code> 或 <code>&gt;</code> 加一个空格，即可开始标题、列表或引用。</li>
+  <li>在行首（或空格之后）输入 <code>/</code>，即可从列表中选择块：标题、项目符号列表、编号列表或清单、表格、代码块、引用或分隔线。每一项都会说明它生成什么，以及在 Markdown 中如何书写。继续输入可以筛选，用 <kbd>↑</kbd> <kbd>↓</kbd> 和 <kbd>Enter</kbd> 选择，或按 <kbd>Esc</kbd> 将 <code>/</code> 保留为文字。表格初始为带表头行的 3 × 3；<kbd>Tab</kbd> 移到下一个单元格，在末尾会添加一行。在表格中输入 <code>/</code> 可以添加或删除行和列，或删除整个表格。</li>
   <li>代码块和 Mermaid 图表以源代码形式编辑，角落里会显示语言。要查看绘制出的图表，请在 <a href="projects.html#review-targets"><span class="docs-ui">审查对象</span></a> 面板中从 <span class="docs-ui">文件</span> 打开该文件。</li>
   <li>前置元数据（顶部的 <code>---</code> 块）以文本形式显示在文档上方，可以在那里编辑。</li>
   <li>未修改的部分会按原样保存，包括标题样式、列表标记、空行、表格对齐和换行符。编辑过的块会尽量保留原有样式；无法保留时，该块会以标准 Markdown 形式写出，列表用 <code>-</code>，标题用 <code>#</code>。</li>

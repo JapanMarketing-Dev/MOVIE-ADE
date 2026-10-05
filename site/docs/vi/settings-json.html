@@ -239,7 +239,7 @@
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>: các mục tiêu review cho menu URL. URL đầu tiên được mở khi mở dự án. <code>id</code> có thể là bất kỳ chuỗi duy nhất nào. <code>purpose</code> đánh dấu một thiết kế hoặc tài liệu (xem <a href="projects.html#design-docs">Review cả thiết kế và tài liệu</a>); bỏ trống với ứng dụng.</li>
+  <li><code>projects[].urls</code>: các mục tiêu review cho menu URL. URL đầu tiên được mở khi mở dự án. <code>id</code> có thể là bất kỳ chuỗi duy nhất nào. <code>purpose</code> đánh dấu một thiết kế hoặc tài liệu (xem <a href="projects.html#design-docs">Review cả thiết kế và tài liệu</a>) hoặc một trang bên ngoài dùng làm tham khảo (xem <a href="projects.html#reference-sites">Dùng trang khác làm tham khảo</a>); bỏ trống với ứng dụng.</li>
   <li><code>agents.customAgents</code>: bất kỳ CLI hay script wrapper nào. <code>startupAgents</code> liệt kê theo thứ tự các tab agent được mở cùng dự án.</li>
   <li><code>capture.sttEndpoints.compatible</code>: bất kỳ server nào triển khai <code>/v1/audio/transcriptions</code> của OpenAI (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> tắt giới hạn chi phí, hợp lý khi dùng GPU của chính bạn. Xem <a href="transcription.html">Chuyển văn bản và chi phí</a>.</li>
   <li><code>organizer</code>: <span class="docs-ui">Sắp xếp góp ý</span> được gửi thẳng tới một server <code>/v1/chat/completions</code> tương thích OpenAI (ở đây là Ollama). Dùng <code>"runner": "claude-code"</code> hoặc <code>"codex"</code> để dùng thông tin đăng nhập CLI của bạn thay vào đó, và <code>organizer.cliModels</code> để chọn model của chúng.</li>

@@ -34,12 +34,13 @@
 </ul>
 <p>已開啟的分頁會跟著重新命名或移動的檔案，並保留未儲存的編輯。Ferret 不會覆寫同名的現有檔案或資料夾，並會把一切都限制在專案資料夾內：它會拒絕 <code>..</code>、絕對路徑、指向外部的符號連結、<code>.git</code> 內的任何項目、把資料夾移到自身之中，以及某些作業系統無法使用的名稱：<code>/ \ &lt; &gt; : " | ? *</code>、控制字元、結尾的空格或句點，以及 <code>CON</code> 或 <code>NUL</code> 等 Windows 保留名稱。一次複製或拖放最多可包含 10,000 個項目、1 GB。</p>
 
-<!-- @preview 8cf744371d -->
+<!-- @preview 73d733f3b8 -->
 ## Markdown 與 Mermaid 預覽
 <p>預覽支援 <code>.md</code>、<code>.markdown</code>、<code>.mdx</code>、<code>.mmd</code> 與 <code>.mermaid</code>。Mermaid 已內建於 App 中，因此離線也能繪製圖表。</p>
 <p>Markdown 檔案在編輯器上方有兩種檢視：<span class="docs-ui">原始碼</span> 與 <span class="docs-ui">預覽</span>。預覽隨時都可以編輯，因此可以直接在其中輸入；按一下 <span class="docs-ui">原始碼</span> 即可回到文字。兩者顯示相同的內容，儲存、未儲存標記與關閉時的確認也都相同。</p>
 <ul>
   <li>可以直接在標題、段落、清單、核取方塊、表格、連結，以及粗體、斜體或行內程式碼中輸入。在行首輸入 <code>#</code>、<code>-</code>、<code>1.</code> 或 <code>&gt;</code> 再加一個空格，即可開始標題、清單或引言。</li>
+  <li>在行首（或空格之後）輸入 <code>/</code>，即可從清單中選擇區塊：標題、項目符號清單、編號清單或核取清單、表格、程式碼區塊、引用或分隔線。每一項都會說明它產生什麼，以及在 Markdown 中如何撰寫。繼續輸入可以篩選，用 {{keys:Up}} {{keys:Down}} 和 {{keys:Enter}} 選擇，或按 {{keys:Esc}} 將 <code>/</code> 保留為文字。表格一開始是帶標題列的 3 × 3；{{keys:Tab}} 移到下一個儲存格，在最後會新增一列。在表格中輸入 <code>/</code> 可以新增或刪除列與欄，或刪除整個表格。</li>
   <li>程式碼區塊和 Mermaid 圖表以原始碼形式編輯，角落會顯示語言。若要看到繪製出的圖表，請在 <a href="projects.html#review-targets"><span class="docs-ui">審查目標</span></a> 面板中從 <span class="docs-ui">檔案</span> 開啟該檔案。</li>
   <li>前置資料（最上方的 <code>---</code> 區塊）會以文字顯示在文件上方，並可在那裡編輯。</li>
   <li>未變更的部分會照原樣儲存，包括標題樣式、清單符號、空行、表格對齊與換行字元。編輯過的區塊會盡量保留原本的樣式；無法保留時，該區塊會以標準 Markdown 形式寫出，清單用 <code>-</code>，標題用 <code>#</code>。</li>

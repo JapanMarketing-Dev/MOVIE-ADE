@@ -112,7 +112,8 @@ describe('Agent への指示文', () => {
     const on = renderAgentPrompt(target, null, 'en', { threshold: 0.8 })
     expect(on.startsWith(renderAgentPrompt(target, null, 'en'))).toBe(true)
     expect(on).toContain('Acceptance check')
-    expect(on).toContain('until every finding passes in the same round')
+    expect(on).toContain('at most once per finding in this request (no re-judging, no loops)')
+    expect(on).not.toMatch(/until every finding passes|round/)
     expect(on).toContain('human_review')
     expect(on).toContain('≥ 0.8')
     expect(on).not.toContain('{{')
@@ -126,7 +127,7 @@ describe('Agent への指示文', () => {
     expect(on).toContain('install and start it and pull the model yourself')
     expect(renderAgentPrompt(target, null, 'ja', { threshold: 0.7 })).toContain('判定モデルに送らなくてかまいません')
     // 届かないままでも人には聞かず、判定モデルなしで続ける
-    expect(on).toContain('if it still cannot be reached, go on without it')
+    expect(on).toContain('if it still cannot be reached, skip the judgement and go on without it')
     // 無効なら付けない
     expect(renderAgentPrompt(target, null, 'en', null)).not.toContain('explicitly approved')
   })
@@ -172,10 +173,12 @@ describe('feedback.md の受け入れ確認の節', () => {
     expect(md.match(/^- Done when: /gm)).toHaveLength(2)
   })
 
-  it('全件が同じ回で合格するまで、全件を判定し直すループと、止めてよい場合を書く', () => {
+  it('判定は指摘1件につき1回だけ。結果からもう1回だけ直すかを決め、判定しないまま渡してよい場合を書く', () => {
     expect(md).toContain('## Acceptance check (decision model)')
-    expect(md).toContain('Re-judge ALL findings every round')
-    expect(md).toContain('When every finding passes in the same round, stop')
+    expect(md).toContain('Call the decision model at most once per finding in this request')
+    expect(md).toContain('Judge the finding once')
+    expect(md).toContain('you may improve the fix one more time and capture AFTER again, without judging again')
+    expect(md).toContain('`#3 judged once: noul 0.45 / partial / conf 0.12 → improved once`')
     // 合格しても done にはしない（done にできるのは人だけ）。AFTER とスコアを付けて human_review
     expect(md).toContain('`human_review`')
     expect(md).toContain('Never set `done`')
@@ -190,15 +193,48 @@ describe('feedback.md の受け入れ確認の節', () => {
     expect(md).toContain('You decide whether to send a finding to the decision model')
     expect(md).toContain('explicitly approved')
     expect(md).toContain('(b) a finding is out of scope or impossible')
-    expect(md).toContain('(c) the same finding has failed for 3 rounds')
     expect(md).toContain('Never edit the BEFORE images, the state text, the questions or the threshold')
     expect(md).toContain('.result.answers')
-    expect(md).toContain('round n · passed x/y')
     // 古い Ollama（0.35.0）は本文が 64 KiB まで。画像を縮め、それでも 413 なら更新か Cloudflare を案内させる
     expect(md).toContain('at most 1024px wide')
     expect(md).toContain('0.35.1 or later')
     expect(md).toContain('Cloudflare Workers AI')
     expect(md).not.toContain('{{')
+  })
+
+  it('判定は指摘1件につき1回だけ。ループ・回・「3回」「5回」の手順を書かず、needs_human も書かない（ja / en）', () => {
+    const cases = [
+      { locale: 'en' as const, heading: '## Acceptance check (decision model)', once: /at most once per finding in this request/, never: /\bround|\bloop|re-judge|judge again|3 times|5 times|\b[35] rounds|until every finding passes/i },
+      { locale: 'ja' as const, heading: '## 受け入れ確認（判定モデル）', once: /指摘1件につき1回だけ/, never: /ループ|全件を判定し直|判定し直す|[35]回|毎回|round|合格するまで/ }
+    ]
+    for (const { locale, heading, once, never } of cases) {
+      const text = renderFeedbackMarkdown(doc, { locale, decision: { threshold: 0.75, dir: reviewDir } })
+      const section = text.slice(text.indexOf(heading))
+      expect(text.indexOf(heading), locale).toBeGreaterThan(0)
+      expect(section, locale).toMatch(once)
+      // 判定の結果からもう1回だけ直してよいが、判定はし直さない
+      expect(section, locale).toMatch(locale === 'en' ? /one more time and capture AFTER again, without judging again/ : /もう1回だけ直して AFTER を撮り直してよい。そのとき判定はしない/)
+      expect(section, locale).toMatch(locale === 'en' ? /#3 judged once: / : /#3 判定1回: /)
+      expect(section, locale).not.toMatch(never)
+      // 進み具合の節の1行も同じ決まり
+      const progressLine = text.split('\n').find((l) => l.includes(locale === 'en' ? 'The acceptance check below is on' : '下の受け入れ確認が有効'))!
+      expect(progressLine, locale).toMatch(locale === 'en' ? /judge each finding once/ : /指摘ごとに1回だけ判定し/)
+      expect(progressLine, locale).not.toMatch(never)
+      expect(text, locale).toContain('`human_review`')
+      expect(text, locale).not.toContain('needs_human')
+      expect(text, locale).not.toContain('"rounds"')
+    }
+  })
+
+  it('どの言語でも受け入れ確認の節は1件につき1回の記録の形で、回の進み具合の行を書かない', async () => {
+    const { SUPPORTED_LOCALES } = await import('@shared/i18n')
+    for (const locale of SUPPORTED_LOCALES) {
+      const text = renderFeedbackMarkdown(doc, { locale, decision: { threshold: 0.75, dir: reviewDir } })
+      expect(text, locale).toContain('#3 ')
+      expect(text, locale).toContain('`answers.done.noul` ≥ 0.75')
+      expect(text, locale).not.toMatch(/round n|passed x\/y|"rounds"|needs_human/)
+      expect(text, locale).not.toContain('{{')
+    }
   })
 
   it('キー・認証のヘッダーは書かない（Agent は中継の URL だけを使う）', () => {

@@ -6,7 +6,7 @@ import { authHeaders, fillAccountId, resolveHeaderValues, sanitizeHeaders, type 
  * Ferret 自身は判定しない。設定を有効にすると:
  *   - main がローカルの中継（src/main/decision/relay.ts）を立て、Agent のターミナルに中継の URL・モデル・画像の可否を
  *     環境変数で渡す（キーは渡さない。中継がキーと追加のヘッダーを付けて本当の接続先へ送る）
- *   - feedback.md と Agent への指示文に「全件が合格するまで判定を繰り返す」受け入れ確認の手順を足す
+ *   - feedback.md と Agent への指示文に「指摘1件につき1回だけ判定し、結果からもう1回だけ直すかを決めて人に渡す」受け入れ確認の手順を足す（ループしない）
  * プリセットは入力欄を埋めるだけで、どの値も書き換えられる（Custom で System One 互換の API ならどこでも使える）。
  */
 

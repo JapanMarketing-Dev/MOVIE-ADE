@@ -218,7 +218,7 @@ export const SETTINGS_SCHEMA: JsonSchema = {
                 url: str('URL opened in the built-in browser.'),
                 launchCommand: str('Command run in a terminal in the project folder when the target is chosen, e.g. "pnpm tauri dev".'),
                 windowMatch: str('Part of the app or window name to record, e.g. "Simulator".', { maxLength: 200 }),
-                purpose: { type: 'string', description: 'What the target is: "app" (the app under development), "design" (Figma, Penpot, Canva, a prototype...) or "doc" (a spec or design doc: Google Docs, Notion, Confluence, a Markdown file on GitHub, a PDF...). Findings recorded on it are marked with it in feedback.md, so the agent updates the design or document instead of the code. Omitted means "app".', enum: TARGET_PURPOSES, default: DEFAULT_TARGET_PURPOSE }
+                purpose: { type: 'string', description: 'What the target is: "app" (the app under development), "design" (Figma, Penpot, Canva, a prototype...), "doc" (a spec or design doc: Google Docs, Notion, Confluence, a Markdown file on GitHub, a PDF...) or "reference" (an external site you cannot change, such as a competitor or an example, viewed for reference). Findings recorded on it are marked with it in feedback.md, so the agent updates the design or document instead of the code, and for "reference" never touches that site but adopts or avoids the pattern in the project\'s own app. An "app" target whose label contains "競合", "参考", "competitor" or "reference" is treated as "reference". Omitted means "app".', enum: TARGET_PURPOSES, default: DEFAULT_TARGET_PURPOSE }
               }
             }
           }
@@ -332,9 +332,9 @@ export const SETTINGS_SCHEMA: JsonSchema = {
     },
     decision: {
       type: 'object',
-      description: 'Decision model (System One compatible API) used by your coding agent to check each finding after implementing it. Ferret does not judge by itself: when enabled, agents get FERRET_DECISION_URL (a local relay that adds the key and logs usage), FERRET_DECISION_MODEL and FERRET_DECISION_IMAGES, and feedback.md gets an acceptance-check loop. Presets only prefill fields; any compatible API works with "custom".',
+      description: 'Decision model (System One compatible API) used by your coding agent to check each finding after implementing it. Ferret does not judge by itself: when enabled, agents get FERRET_DECISION_URL (a local relay that adds the key and logs usage), FERRET_DECISION_MODEL and FERRET_DECISION_IMAGES, and feedback.md gets an acceptance check that judges each finding once (the agent may improve it once more from that result, then hands it to you). Presets only prefill fields; any compatible API works with "custom".',
       properties: {
-        enabled: bool('Use the decision model (local relay + acceptance-check loop in the agent prompt).', { default: false }),
+        enabled: bool('Use the decision model (local relay + a one-judgement-per-finding acceptance check in the agent prompt).', { default: false }),
         preset: { type: 'string', description: 'Which preset prefilled the fields: ollama (local, free), cloudflare (Workers AI), vercel (AI Gateway), typesafe, custom.', enum: DECISION_PRESET_IDS, default: 'ollama' },
         endpoint: str('Full request URL. {account_id} and {model} are replaced. e.g. "http://localhost:11434/v1/systemone", "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}". Omit for the preset.', { pattern: '^https?://' }),
         model: str('Model name, e.g. "clef-flash", "clef", "typesafe-ai/jev", "jev-latest".', { maxLength: 200 }),

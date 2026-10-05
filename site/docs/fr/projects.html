@@ -188,7 +188,7 @@
   <li>Cliquez sur <span class="docs-ui">+</span> (<span class="docs-ui">Enregistrer l'URL actuelle</span>) dans la barre d'outils du navigateur. L'URL actuelle est préremplie.</li>
   <li>Saisissez un <span class="docs-ui">Nom</span> et cliquez sur <span class="docs-ui">Enregistrer</span>.</li>
 </ol>
-<p>Chaque URL enregistrée a un type, sous <span class="docs-ui">Ce que vous relisez</span> : <span class="docs-ui">App</span> (l'application que vous développez), <span class="docs-ui">Design</span> (Figma, Penpot, Canva, un prototype) ou <span class="docs-ui">Doc / spécification</span> (Google Docs, Notion, Confluence, une spécification Markdown sur GitHub, un PDF). Le type est déduit de l'URL et vous pouvez le changer. Voir <a href="#design-docs">Relire des designs et des documents, pas seulement du code</a>.</p>
+<p>Chaque URL enregistrée a un type, sous <span class="docs-ui">Ce que vous relisez</span> : <span class="docs-ui">App</span> (l'application que vous développez), <span class="docs-ui">Design</span> (Figma, Penpot, Canva, un prototype) <span class="docs-ui">Doc / spécification</span> (Google Docs, Notion, Confluence, une spécification Markdown sur GitHub, un PDF) ou <span class="docs-ui">Référence</span> (le site d'un concurrent ou un autre site externe que vous ne pouvez pas modifier). Le type est déduit de l'URL et du nom, et vous pouvez le changer. Voir <a href="#design-docs">Relire des designs et des documents, pas seulement du code</a> et <a href="#reference-sites">S'inspirer d'autres sites</a>.</p>
 <p>Seules les URL <code>http://</code> et <code>https://</code> sont acceptées. Pour une URL d'application, si vous gardez le nom proposé, il est déduit de l'hôte :</p>
 <table>
   <thead><tr><th>Hôte</th><th>Nom</th></tr></thead>
@@ -214,14 +214,14 @@
   <li><strong><span class="docs-ui">Fichiers</span></strong> : le dossier du projet. Un fichier s'ouvre en aperçu (Markdown et Mermaid rendus, autres textes en lecture seule), ce qui permet aussi de relire de la documentation. Le crayon (<span class="docs-ui">Ouvrir dans l'éditeur</span>) l'ouvre dans l'éditeur.</li>
 </ul>
 <p><span class="docs-ui">Filtrer les cibles</span> filtre à la fois les cibles, les pages et les fichiers, avec la même recherche approximative que <span class="docs-ui">Aller au fichier…</span>. Dans la liste, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> ou <kbd>1</kbd>–<kbd>9</kbd> changent de cible. <span class="docs-ui">Ouvrir une URL…</span> ouvre une URL ponctuelle, et <span class="docs-ui">Enregistrer dans les URL du projet</span> la conserve.</p>
-<p>Les cibles proviennent de <code>projects[].urls</code> dans <code>settings.json</code> (voir <a href="settings-json.html#example">l'exemple</a>). Chaque entrée a besoin d'une <code>url</code>, d'une <code>launchCommand</code> (exécutée dans un terminal, par exemple pour lancer une application de bureau) ou d'un <code>windowMatch</code> (la fenêtre à enregistrer), et peut avoir un <code>purpose</code> (<code>app</code>, <code>design</code> ou <code>doc</code>). Choisir une cible de type fenêtre en fait la source d'enregistrement : ce n'est donc pas possible pendant un enregistrement. Les pages visitées sont mémorisées par projet, sur cette machine uniquement (jusqu'à 200).</p>
+<p>Les cibles proviennent de <code>projects[].urls</code> dans <code>settings.json</code> (voir <a href="settings-json.html#example">l'exemple</a>). Chaque entrée a besoin d'une <code>url</code>, d'une <code>launchCommand</code> (exécutée dans un terminal, par exemple pour lancer une application de bureau) ou d'un <code>windowMatch</code> (la fenêtre à enregistrer), et peut avoir un <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> ou <code>reference</code>). Choisir une cible de type fenêtre en fait la source d'enregistrement : ce n'est donc pas possible pendant un enregistrement. Les pages visitées sont mémorisées par projet, sur cette machine uniquement (jusqu'à 200).</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">
         <h2 id="switch-env"><a class="docs-anchor" href="#switch-env" aria-label="Lien vers Ouvrir et changer d'environnement">#</a>Ouvrir et changer d'environnement</h2>
         <p>Cliquez sur une URL enregistrée pour l'ouvrir. Si la page actuelle relève d'une autre URL enregistrée, Ferret conserve le chemin, la query et le hash, et ne remplace que l'origine. Par exemple, sur <code>http://localhost:3000/pricing?plan=pro</code>, cliquer sur <code>prd</code> ouvre <code>https://example.com/pricing?plan=pro</code>.</p>
 <p>La puce correspondant à la page actuelle (préfixe le plus long) est mise en évidence. Faites un clic droit sur une puce ou utilisez son icône de crayon pour la modifier ou la <span class="docs-ui">Supprimer</span>. À l'ouverture d'un projet sans URL précédente, sa première URL enregistrée se charge.</p>
-<p>Les puces sont regroupées par type : d'abord les URL d'application, puis les designs, puis les documents, avec un séparateur et une icône pour chaque type. Passer à un design ou à un document, ou en revenir, ouvre son URL enregistrée telle quelle, sans reporter le chemin.</p>
+<p>Les puces sont regroupées par type : d'abord les URL d'application, puis les designs, puis les documents, puis les références, avec un séparateur et une icône pour chaque type. Passer à un design, un document ou une référence, ou en revenir, ouvre son URL enregistrée telle quelle, sans reporter le chemin.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="design-docs">
@@ -242,6 +242,22 @@
 <p>Les pages non enregistrées sur <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> et des hôtes similaires sont aussi reconnues. Les fichiers du dossier du projet (Markdown, Mermaid) se relisent depuis la liste <span class="docs-ui">Fichiers</span> du panneau <span class="docs-ui">Cibles de relecture</span>.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="reference-sites">
+        <h2 id="reference-sites"><a class="docs-anchor" href="#reference-sites" aria-label="Lien vers S'inspirer d'autres sites">#</a>S'inspirer d'autres sites</h2>
+        <p>Vous pouvez aussi enregistrer le site d'un concurrent, ou toute page dont l'apparence vous plaît, et dire ce qu'il faut en retenir (« prends ça comme modèle », « ce fond noir ne va pas »). Vous ne pouvez pas modifier ce site, donc l'agent n'essaie jamais : il traite ces remarques comme une référence pour votre propre application.</p>
+<ol class="docs-steps">
+  <li>Ajoutez le site comme cible et choisissez <span class="docs-ui">Référence</span> sous <span class="docs-ui">Ce que vous relisez</span>. Un nom contenant « competitor » ou « reference » (par exemple <code>Competitor: Acme</code>) le choisit pour vous.</li>
+  <li>Enregistrez comme d'habitude, et passez si vous le souhaitez de ce site à votre application dans le même enregistrement.</li>
+</ol>
+<p>Les remarques faites sur un site de référence sont étiquetées <span class="docs-ui">Référence</span> dans l'onglet Remarques et <code>Kind: reference</code> dans <code>feedback.md</code>. Pour chacune, l'agent :</p>
+<ul>
+  <li>reprend ce qui vous a plu là où cela convient dans votre application, et note où il l'a appliqué ;</li>
+  <li>vérifie que votre application ne fait pas ce qui vous a déplu, et la corrige si c'est le cas ;</li>
+  <li>ne change rien quand une remarque n'apporte rien d'applicable, et passe la remarque à <span class="docs-ui">À vérifier</span> avec une note comme « Site externe, aucune action (référence) ».</li>
+</ul>
+<p>Il ne modifie jamais le site externe et ne s'arrête jamais pour vous poser la question. Une remarque est aussi traitée comme une référence, sans choisir le type, quand le nom de sa cible contient « competitor » ou « reference » (ou 競合 / 参考), ou quand elle a été enregistrée sur un site non enregistré dont l'hôte ne correspond à aucune des URL d'application du projet. <code>localhost</code> et les adresses privées ne comptent jamais comme externes, et un projet sans URL d'application enregistrée ne bénéficie pas de cette déduction.</p>
+      </section>
+
         <nav class="docs-pager" aria-label="Page précédente et suivante">
           <a class="docs-pager-prev" href="keyboard.html"><span>Précédent</span>Raccourcis clavier</a>
           <a class="docs-pager-next" href="recording.html"><span>Suivant</span>Enregistrement</a>
@@ -258,6 +274,7 @@
         <li><a href="#review-targets">Panneau des cibles de relecture</a></li>
         <li><a href="#switch-env">Ouvrir et changer d'environnement</a></li>
         <li><a href="#design-docs">Relire des designs et des documents, pas seulement du code</a></li>
+        <li><a href="#reference-sites">S'inspirer d'autres sites</a></li>
       </ul>
     </aside>
   </div>

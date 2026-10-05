@@ -201,6 +201,11 @@
   font-size: var(--font-size-sm);
 }
 
+/* 提供元の隣のモデルの選択。長いモデル名は省略して、整理の部品を広げすぎない */
+.rv-organize__model {
+  max-width: 16em;
+}
+
 .rv-head__primary {
   display: inline-flex;
   align-items: center;
@@ -367,6 +372,15 @@
 
 .rv-card:hover {
   border-color: var(--color-border-strong);
+}
+
+/*
+ * BEFORE と AFTER がある指摘（あなたの確認待ちなど）は、2枚をカードの幅いっぱいに並べ、文字はその下に置く。
+ * 左の細い列に2枚を詰めると小さく、毎回拡大しないと比べられなかった
+ */
+.rv-card:has(.rv-shots__pair) {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
 }
 
 .rv-card:focus-within {

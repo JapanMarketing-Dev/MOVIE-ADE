@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('electron', () => ({ app: { getPath: () => '/tmp/ade-settings-file-unit' } }))
 
 import { sanitize } from '../../src/main/settings'
-import { SettingsFileStore, configDirOverride, mergeSettings, parseSettingsText, plaintextKeyPaths, relocateMisplacedDevConfig, resolveConfigDir, splitSettings, writeFileAtomicSync } from '../../src/main/settingsFile'
+import { SETTINGS_ERROR_ISSUE_LIMIT, SettingsFileStore, configDirOverride, mergeSettings, parseSettingsText, plaintextKeyPaths, relocateMisplacedDevConfig, resolveConfigDir, splitSettings, writeFileAtomicSync } from '../../src/main/settingsFile'
 import { isPackagedBuild } from '../../src/main/runtimeKind'
 
 /**
@@ -254,6 +254,20 @@ describe('外部の変更の取り込み', () => {
 })
 
 describe('parseSettingsText / plaintextKeyPaths', () => {
+  it('スキーマの違反は全件を行つきで issues に載せる（AI への修正依頼に並べる。上限つき）', () => {
+    const r = parseSettingsText('{\n  "theme": "dark",\n  "capture": {\n    "keepDays": "seven",\n    "sttEndpoints": { "openai": {\n      "organizer": 1\n    } }\n  }\n}\n')
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.error.message).toContain('(+1 more)')
+    expect(r.error.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: '/capture/keepDays', line: 4 }),
+      expect.objectContaining({ path: '/capture/sttEndpoints/openai/organizer', message: 'unknown property', line: 6 }),
+    ]))
+    const many = `{ "capture": { "sttEndpoints": { "openai": {\n${Array.from({ length: SETTINGS_ERROR_ISSUE_LIMIT + 5 }, (_, i) => `  "unknown${i}": 1`).join(',\n')}\n} } } }\n`
+    const r2 = parseSettingsText(many)
+    expect(r2.ok ? [] : r2.error.issues).toHaveLength(SETTINGS_ERROR_ISSUE_LIMIT)
+  })
+
   it('上の階層が配列なら誤り', () => {
     expect(parseSettingsText('[]')).toMatchObject({ ok: false, error: { kind: 'schema' } })
   })

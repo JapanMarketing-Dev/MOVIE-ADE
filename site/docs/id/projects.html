@@ -188,7 +188,7 @@
   <li>Klik <span class="docs-ui">+</span> (<span class="docs-ui">Simpan URL saat ini</span>) di toolbar browser. URL saat ini sudah terisi.</li>
   <li>Masukkan <span class="docs-ui">Nama</span> lalu klik <span class="docs-ui">Simpan</span>.</li>
 </ol>
-<p>Setiap URL tersimpan memiliki jenis di <span class="docs-ui">Yang ditinjau</span>: <span class="docs-ui">Aplikasi</span> (aplikasi yang sedang Anda bangun), <span class="docs-ui">Desain</span> (Figma, Penpot, Canva, prototipe) atau <span class="docs-ui">Dokumen / spesifikasi</span> (Google Docs, Notion, Confluence, spesifikasi Markdown di GitHub, PDF). Jenisnya ditebak dari URL dan bisa Anda ubah. Lihat <a href="#design-docs">Meninjau desain dan dokumen, bukan hanya kode</a>.</p>
+<p>Setiap URL tersimpan memiliki jenis di <span class="docs-ui">Yang ditinjau</span>: <span class="docs-ui">Aplikasi</span> (aplikasi yang sedang Anda bangun), <span class="docs-ui">Desain</span> (Figma, Penpot, Canva, prototipe), <span class="docs-ui">Dokumen / spesifikasi</span> (Google Docs, Notion, Confluence, spesifikasi Markdown di GitHub, PDF) atau <span class="docs-ui">Referensi</span> (situs pesaing atau situs eksternal lain yang tidak bisa Anda ubah). Jenisnya ditebak dari URL dan nama, dan bisa Anda ubah. Lihat <a href="#design-docs">Meninjau desain dan dokumen, bukan hanya kode</a> dan <a href="#reference-sites">Menggunakan situs lain sebagai referensi</a>.</p>
 <p>Hanya URL <code>http://</code> dan <code>https://</code> yang diterima. Untuk URL aplikasi, jika Anda membiarkan nama sesuai saran, nama ditebak dari host-nya:</p>
 <table>
   <thead><tr><th>Host</th><th>Nama</th></tr></thead>
@@ -214,14 +214,14 @@
   <li><strong><span class="docs-ui">File</span></strong>: folder proyek. File dibuka sebagai pratinjau (Markdown dan Mermaid dirender, teks lain hanya-baca), sehingga Anda juga bisa meninjau dokumen. Ikon pensil (<span class="docs-ui">Buka di editor</span>) membukanya di editor.</li>
 </ul>
 <p><span class="docs-ui">Filter target</span> menyaring target, halaman, dan file sekaligus, dengan pencocokan fuzzy yang sama seperti <span class="docs-ui">Buka File…</span>. Di dalam daftar, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> atau <kbd>1</kbd>–<kbd>9</kbd> berpindah target. <span class="docs-ui">Buka URL…</span> membuka URL sekali pakai, dan <span class="docs-ui">Simpan ke URL proyek</span> menyimpannya.</p>
-<p>Target berasal dari <code>projects[].urls</code> di <code>settings.json</code> (lihat <a href="settings-json.html#example">contohnya</a>). Setiap entri memerlukan <code>url</code>, <code>launchCommand</code> (dijalankan di terminal, misalnya untuk memulai aplikasi desktop), atau <code>windowMatch</code> (jendela yang direkam), dan dapat memiliki <code>purpose</code> (<code>app</code>, <code>design</code> atau <code>doc</code>). Memilih target jendela akan menjadikannya sumber perekaman, jadi tidak bisa dilakukan saat sedang merekam. Halaman yang dikunjungi diingat per proyek, hanya di mesin ini (hingga 200).</p>
+<p>Target berasal dari <code>projects[].urls</code> di <code>settings.json</code> (lihat <a href="settings-json.html#example">contohnya</a>). Setiap entri memerlukan <code>url</code>, <code>launchCommand</code> (dijalankan di terminal, misalnya untuk memulai aplikasi desktop), atau <code>windowMatch</code> (jendela yang direkam), dan dapat memiliki <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> atau <code>reference</code>). Memilih target jendela akan menjadikannya sumber perekaman, jadi tidak bisa dilakukan saat sedang merekam. Halaman yang dikunjungi diingat per proyek, hanya di mesin ini (hingga 200).</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">
         <h2 id="switch-env"><a class="docs-anchor" href="#switch-env" aria-label="Tautan ke Membuka dan berpindah lingkungan">#</a>Membuka dan berpindah lingkungan</h2>
         <p>Klik URL tersimpan untuk membukanya. Jika halaman saat ini berada di bawah URL tersimpan lain, Ferret mempertahankan path, query, dan hash, lalu hanya mengganti origin-nya. Misalnya, di <code>http://localhost:3000/pricing?plan=pro</code>, mengklik <code>prd</code> akan membuka <code>https://example.com/pricing?plan=pro</code>.</p>
 <p>Chip yang cocok dengan halaman saat ini (prefiks terpanjang) disorot. Klik kanan chip atau gunakan ikon pensilnya untuk mengedit atau <span class="docs-ui">Hapus</span>. Saat proyek dibuka dan belum ada URL sebelumnya, URL tersimpan pertamanya akan dimuat.</p>
-<p>Chip dikelompokkan menurut jenis: URL aplikasi lebih dulu, lalu desain, lalu dokumen, dengan pemisah dan ikon untuk setiap jenis. Berpindah ke atau dari desain atau dokumen akan membuka URL tersimpannya apa adanya, tanpa membawa path.</p>
+<p>Chip dikelompokkan menurut jenis: URL aplikasi lebih dulu, lalu desain, lalu dokumen, lalu referensi, dengan pemisah dan ikon untuk setiap jenis. Berpindah ke atau dari desain, dokumen, atau referensi akan membuka URL tersimpannya apa adanya, tanpa membawa path.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="design-docs">
@@ -242,6 +242,22 @@
 <p>Halaman yang tidak tersimpan di <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> dan host serupa juga dikenali. File di folder proyek (Markdown, Mermaid) ditinjau dari daftar <span class="docs-ui">File</span> di panel <span class="docs-ui">Target tinjauan</span>.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="reference-sites">
+        <h2 id="reference-sites"><a class="docs-anchor" href="#reference-sites" aria-label="Tautan ke Menggunakan situs lain sebagai referensi">#</a>Menggunakan situs lain sebagai referensi</h2>
+        <p>Anda juga bisa merekam situs pesaing, atau halaman apa pun yang tampilannya Anda sukai, lalu mengatakan apa yang ingin diambil darinya ("jadikan ini contoh", "latar belakang hitam ini tidak cocok"). Anda tidak bisa mengubah situs itu, jadi agent tidak pernah mencobanya: agent memperlakukan temuan tersebut sebagai referensi untuk aplikasi Anda sendiri.</p>
+<ol class="docs-steps">
+  <li>Tambahkan situs itu sebagai target dan pilih <span class="docs-ui">Referensi</span> di <span class="docs-ui">Yang ditinjau</span>. Nama yang mengandung "competitor" atau "reference" (misalnya <code>Competitor: Acme</code>) akan memilihnya untuk Anda.</li>
+  <li>Rekam seperti biasa, dan jika mau, berpindahlah antara situs itu dan aplikasi Anda dalam rekaman yang sama.</li>
+</ol>
+<p>Temuan pada situs referensi diberi label <span class="docs-ui">Referensi</span> di Temuan dan <code>Kind: reference</code> di <code>feedback.md</code>. Untuk setiap temuan, agent:</p>
+<ul>
+  <li>mengadopsi yang Anda sukai di bagian aplikasi Anda yang cocok, dan mencatat di mana menerapkannya;</li>
+  <li>memeriksa bahwa aplikasi Anda tidak melakukan hal yang tidak Anda sukai, dan memperbaiki aplikasi Anda jika ternyata melakukannya;</li>
+  <li>tidak mengubah apa pun jika sebuah komentar tidak memberi apa pun untuk dikerjakan, lalu mengubah temuan itu menjadi <span class="docs-ui">Perlu dicek</span> dengan catatan seperti "Situs eksternal, tidak perlu tindakan (referensi)".</li>
+</ul>
+<p>Agent tidak pernah mengedit situs eksternal dan tidak pernah berhenti untuk bertanya kepada Anda. Sebuah temuan juga diperlakukan sebagai referensi, tanpa memilih jenisnya, jika nama targetnya mengandung "competitor" atau "reference" (atau 競合 / 参考), atau jika direkam pada situs yang belum disimpan yang host-nya tidak cocok dengan URL aplikasi mana pun di proyek. <code>localhost</code> dan alamat privat tidak pernah dianggap eksternal, dan proyek yang belum menyimpan URL aplikasi tidak mendapat tebakan ini.</p>
+      </section>
+
         <nav class="docs-pager" aria-label="Halaman sebelumnya dan berikutnya">
           <a class="docs-pager-prev" href="keyboard.html"><span>Sebelumnya</span>Pintasan keyboard</a>
           <a class="docs-pager-next" href="recording.html"><span>Berikutnya</span>Perekaman</a>
@@ -258,6 +274,7 @@
         <li><a href="#review-targets">Panel target tinjauan</a></li>
         <li><a href="#switch-env">Membuka dan berpindah lingkungan</a></li>
         <li><a href="#design-docs">Meninjau desain dan dokumen, bukan hanya kode</a></li>
+        <li><a href="#reference-sites">Menggunakan situs lain sebagai referensi</a></li>
       </ul>
     </aside>
   </div>

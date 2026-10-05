@@ -302,9 +302,9 @@ describe('Agent は人に質問しない（判定モデルは Agent 自身の確
           expect(text).toMatch(locale === 'en' ? /Never stop to ask the reviewer anything/ : /レビューした人に質問して止まらないこと/)
         }
         if (decision) {
-          // 判定モデルは自分の確認。上限まで合格しなくても human_review にして、人が BEFORE / AFTER で決める
+          // 判定モデルは自分の確認。判定は1件につき1回だけで、合格しなくても human_review にして、人が BEFORE / AFTER で決める
           expect(full).toMatch(locale === 'en' ? /your own check/ : /あなた自身の確認/)
-          expect(full).toMatch(locale === 'en' ? /3 rounds in a row with no change in its scores, or for 5 rounds in all/ : /3回続けてスコアも変わらずに失敗しているか、全部で5回失敗した/)
+          expect(full).toMatch(locale === 'en' ? /at most once per finding in this request/ : /指摘1件につき1回だけ/)
           expect(full).toMatch(locale === 'en' ? /still set it to `human_review`/ : /そのときも `human_review` にする/)
           expect(full).toMatch(locale === 'en' ? /go on without the decision model/ : /判定モデルなしで続ける/)
         }
@@ -320,7 +320,7 @@ describe('Agent は人に質問しない（判定モデルは Agent 自身の確
         expect(renderNgPrompt(target, [{ n: 1, id: 'i1', comment: 'まだ違う' }], locale, decision)).not.toContain('needs_human')
       }
     }
-    expect(renderNgPrompt(target, [{ n: 1, id: 'i1', comment: 'x' }], 'en', { threshold: 0.7 })).toContain('once the round limit is reached')
+    expect(renderNgPrompt(target, [{ n: 1, id: 'i1', comment: 'x' }], 'en', { threshold: 0.7 })).toContain('judge it once')
   })
 })
 
@@ -506,8 +506,11 @@ describe('NG をまとめて送る文面', () => {
     expect(text).not.toContain('acceptance check')
   })
 
-  it('判定モデルが有効なら、合格するか回数の上限で human_review にする（done にしない）を足す。日本語でも同じ形', () => {
-    expect(renderNgPrompt(target, [{ n: 1, id: 'i1', comment: 'x' }], 'en', { threshold: 0.7 })).toContain('set them to human_review once they pass or once the round limit is reached. Never set done.')
+  it('判定モデルが有効なら、差し戻しは新しい依頼として1回だけ判定し、もう1回だけ直すかを決めて human_review にする（done にしない）を足す。日本語でも同じ形', () => {
+    const en = renderNgPrompt(target, [{ n: 1, id: 'i1', comment: 'x' }], 'en', { threshold: 0.7 })
+    expect(en).toContain('a finding sent back with NG is a new request, so after fixing it, judge it once as described in feedback.md, improve it at most once more from that result, and set it to human_review. Do not judge it again. Never set done.')
+    expect(en).not.toMatch(/round|until they pass/)
+    expect(renderNgPrompt(target, [{ n: 1, id: 'i1', comment: 'x' }], 'ja', { threshold: 0.7 })).toContain('1回だけ判定し')
     const ja = renderNgPrompt(target, [{ n: 1, id: 'i1', comment: '色が違う' }, { n: 3, id: 'i3', comment: '小さい' }], 'ja')
     expect(ja).toContain('#1（ID i1）「色が違う」、#3（ID i3）「小さい」')
     expect(ja).toContain('human_review に戻して')

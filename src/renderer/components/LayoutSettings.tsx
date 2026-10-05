@@ -1,4 +1,4 @@
-import { DEFAULT_LAYOUT, DOCKS, FOOTER_ITEMS, PANEL_IDS, withPanel, type Dock, type FooterDock, type PanelId } from '@shared/layout'
+import { DEFAULT_LAYOUT, DOCKS, FOOTER_ITEMS, PANEL_IDS, withPanel, type Dock, type PanelId } from '@shared/layout'
 import { Button } from '../ui'
 import { useT } from '../lib/i18n'
 import { setLayout, useLayout } from '../lib/layout'
@@ -43,8 +43,6 @@ export function LayoutSettings() {
       <div className="st-layout__panel">
         {toggle(t('settings.layout.show', { panel: panelName('footer') }), layout.footer.visible,
           (visible) => setLayout((prev) => ({ ...prev, footer: { ...prev.footer, visible } })), 'layout-footer-visible')}
-        {dockSelect(t('settings.layout.position', { panel: panelName('footer') }), layout.footer.dock, ['top', 'bottom'],
-          (dock) => setLayout((prev) => ({ ...prev, footer: { ...prev.footer, dock: dock as FooterDock } })), 'layout-footer-dock')}
       </div>
       <p className="st-note">{t('settings.layout.footerItems')}</p>
       <div className="st-layout__items">

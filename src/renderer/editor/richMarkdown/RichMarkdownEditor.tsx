@@ -4,6 +4,8 @@ import Image from '@tiptap/extension-image'
 import { Video, createMarkdownCodec, richMarkdownExtensions } from './codec'
 import { buildSourceModel, reconcileEdit, type SourceModel } from './reconcile'
 import { resolveRichImage } from './images'
+import { SLASH_ITEMS, filterSlashItems, moveSlashIndex, slashLabelKey } from './slashCommands'
+import { SlashMenu, readSlashState, runSlashItem, type SlashState } from './SlashMenu'
 import { registerDraftFlush, type OpenFile, type OpenFilesApi } from '../useOpenFiles'
 import { registerMarkdownDropTarget, type DropPoint, type MediaEmbed } from '../markdownDrop'
 import { encodeMarkdownUrl, mediaAlt } from '@shared/markdownMedia'
@@ -145,6 +147,73 @@ export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFi
   const fileRef = useRef(file)
   fileRef.current = file
 
+  // 「/」メニュー（SlashMenu.tsx）。Esc で閉じた「/」は、その「/」を消すまで開き直さない
+  const [slash, setSlash] = useState<SlashState | null>(null)
+  const [slashIndex, setSlashIndex] = useState(0)
+  const slashRef = useRef<SlashState | null>(null)
+  const slashDismissedRef = useRef<number | null>(null)
+  const slashItems = useMemo(
+    () => (slash ? filterSlashItems(SLASH_ITEMS, slash.context, slash.query, (item) => t(slashLabelKey(item.id))) : []),
+    [slash?.context, slash?.query, t]
+  )
+  const activeSlashIndex = Math.min(slashIndex, Math.max(0, slashItems.length - 1))
+  const closeSlash = () => { slashRef.current = null; setSlash(null) }
+  const refreshSlash = () => {
+    const editor = editorRef.current
+    const next = editor ? readSlashState(editor) : null
+    if (!next) { slashDismissedRef.current = null; closeSlash(); return }
+    if (slashDismissedRef.current === next.from) { closeSlash(); return }
+    slashDismissedRef.current = null
+    const prev = slashRef.current
+    if (!prev || prev.from !== next.from || prev.query !== next.query) setSlashIndex(0)
+    slashRef.current = next
+    setSlash(next)
+  }
+  const pickSlash = (index: number) => {
+    const editor = editorRef.current
+    const state = slashRef.current
+    const item = slashItems[index]
+    if (!editor || !state || !item) return
+    closeSlash()
+    runSlashItem(editor, item.id, state)
+  }
+  /** メニューが開いているときの ↑↓・Enter・Tab・Esc（エディタの handleKeyDown から呼ぶ）。扱ったら true */
+  const slashKey = (event: KeyboardEvent): boolean => {
+    const state = slashRef.current
+    if (!state || slashItems.length === 0 || event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return false
+    switch (event.key) {
+      case 'ArrowDown': setSlashIndex(moveSlashIndex(activeSlashIndex, 1, slashItems.length)); return true
+      case 'ArrowUp': setSlashIndex(moveSlashIndex(activeSlashIndex, -1, slashItems.length)); return true
+      case 'Enter':
+      case 'Tab':
+        if (event.shiftKey) return false
+        pickSlash(activeSlashIndex)
+        return true
+      case 'Escape':
+        event.stopPropagation()
+        slashDismissedRef.current = state.from
+        closeSlash()
+        return true
+      default: return false
+    }
+  }
+  const slashKeyRef = useRef(slashKey)
+  slashKeyRef.current = slashKey
+  const refreshSlashRef = useRef(refreshSlash)
+  refreshSlashRef.current = refreshSlash
+
+  // 開いている間は、ページを動かしたら「/」の位置に付いていく
+  useEffect(() => {
+    if (!slash) return
+    const onScroll = () => refreshSlashRef.current()
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [slash !== null])
+
   /** 編集中の文書を、元の書き方に合わせた文字列にして drafts へ写す */
   const commit = () => {
     window.clearTimeout(timer.current)
@@ -191,8 +260,13 @@ export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFi
       element: host,
       extensions,
       content: contentOf(model.nodes),
-      editorProps: { attributes: { class: 'rich-md markdown-body', spellcheck: 'false', 'data-testid': 'rich-md-editor' } },
-      onUpdate: ({ transaction }) => { if (transaction.docChanged) schedule() }
+      editorProps: {
+        attributes: { class: 'rich-md markdown-body', spellcheck: 'false', 'data-testid': 'rich-md-editor' },
+        handleKeyDown: (_view, event) => slashKeyRef.current(event)
+      },
+      onUpdate: ({ transaction }) => { if (transaction.docChanged) schedule() },
+      onTransaction: () => refreshSlashRef.current(),
+      onBlur: () => { slashRef.current = null; setSlash(null) }
     })
     editorRef.current = editor
     // チェックボックスにフォーカスを取らせない（取ると、次にクリックした箇所へカーソルが移らない）。切り替えはそのまま効く
@@ -213,6 +287,8 @@ export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFi
       unregisterDrop()
       host.removeEventListener('mousedown', keepFocus, true)
       editorRef.current = null
+      slashRef.current = null
+      setSlash(null)
       editor.destroy()
     }
     // revision はディスクの内容で差し替えたとき（外部の変更の取り込み・読み直し）に増える
@@ -248,6 +324,9 @@ export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFi
         )}
         <div ref={hostRef} />
       </div>
+      {slash && (
+        <SlashMenu state={slash} items={slashItems} index={activeSlashIndex} onPick={(item) => pickSlash(slashItems.indexOf(item))} onHover={setSlashIndex} />
+      )}
     </div>
   )
 }

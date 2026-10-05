@@ -1,8 +1,8 @@
 /**
  * Findings を進み具合（未対応・対応中・確認待ち・完了）で絞り込む。
  *
- * 持つのは「隠す進み具合」の一覧。空ならすべて出す。チップを押すとその進み具合の表示と非表示が切り替わり、
- * 「〜だけ表示」でそれ以外をすべて隠す。選んだものはこの端末に保存して、次に開いたときも残す。
+ * 持つのは「隠す進み具合」の一覧。空ならすべて出す。チップを押すとその進み具合だけに絞り込み（selectStatus）、
+ * 続けて押すと選んだものを足す・外す。選んだものはこの端末に保存して、次に開いたときも残す。
  */
 import { progressOf, type FindingProgress, type ProgressMap } from './findingProgress'
 
@@ -28,6 +28,15 @@ export function toggleStatus(hidden: HiddenStatuses, status: FindingProgress): F
   return sanitizeHiddenStatuses(next)
 }
 
+/**
+ * チップを押したとき（絞り込み）。何も選んでいなければ押したものだけを出し、選んでいれば押したものを足す・外す。
+ * 最後の1つを外したら全部の表示に戻す。保存の形は「隠す進み具合」のまま（選んでいないもの＝隠すもの）
+ */
+export function selectStatus(hidden: HiddenStatuses, status: FindingProgress): FindingProgress[] {
+  if (hidden.length === 0) return onlyStatus(status)
+  return toggleStatus(hidden, status)
+}
+
 /** その進み具合だけを出す */
 export function onlyStatus(status: FindingProgress): FindingProgress[] {
   return FINDING_STATUSES.filter((s) => s !== status)
@@ -47,4 +56,12 @@ export function countByStatus(items: ReadonlyArray<{ id: string }>, map: Progres
 export function sortByStatus(ids: readonly string[], map: ProgressMap | undefined): string[] {
   const rank = (id: string) => FINDING_STATUSES.indexOf(progressOf(map, id))
   return ids.map((id, index) => ({ id, index })).sort((a, b) => rank(a.id) - rank(b.id) || a.index - b.index).map((x) => x.id)
+}
+
+/**
+ * 確認待ち（human_review）を上に出す（表示だけ。番号・feedback.md・Agent へ送る順は変えない）。
+ * 確認待ちの中と、それ以外の中は今の並びのまま。人がすぐ確認して OK / NG を付けられるように、指摘の一覧の既定にする
+ */
+export function reviewFirst<T>(rows: readonly T[], statusOf: (row: T) => FindingProgress): T[] {
+  return [...rows.filter((row) => statusOf(row) === 'human_review'), ...rows.filter((row) => statusOf(row) !== 'human_review')]
 }

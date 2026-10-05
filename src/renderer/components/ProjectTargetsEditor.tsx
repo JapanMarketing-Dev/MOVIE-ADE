@@ -37,8 +37,8 @@ const SAVE_DELAY_MS = 400
 
 /**
  * 1件分の欄。ツールバーのチップの編集ダイアログでも使う。
- * 区分（アプリ・デザイン・設計書）を選べ、URL を変えると区分と名前の候補が追従する（projectTargets.ts の followPurpose）。
- * デザイン・設計書は URL で開くものなので、起動コマンドとウインドウの欄は出さない（値は保つ）
+ * 区分（アプリ・デザイン・設計書・参考）を選べ、URL を変えると区分と名前の候補が追従する（projectTargets.ts の followPurpose）。
+ * デザイン・設計書・参考は URL で開くものなので、起動コマンドとウインドウの欄は出さない（値は保つ）
  */
 export function TargetFields({ target, kind, onChange, autoFocus, siblings }: {
   target: ProjectTarget

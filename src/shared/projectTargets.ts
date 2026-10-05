@@ -47,19 +47,21 @@ export function sanitizeProjectKind(raw: unknown): ProjectKind {
  * 同じ内蔵ブラウザで開いて録画・指摘できる。区分は feedback.md と Agent への指示に書き、
  * Agent が「コードではなくデザイン・文書を直す」と判断できるようにする。
  */
-export const TARGET_PURPOSES: readonly TargetPurpose[] = ['app', 'design', 'doc']
+export const TARGET_PURPOSES: readonly TargetPurpose[] = ['app', 'design', 'doc', 'reference']
 export const DEFAULT_TARGET_PURPOSE: TargetPurpose = 'app'
 
 /** 区分ごとの名前の候補（app はプロジェクトの種類の候補を使う） */
 export const PURPOSE_LABELS: Record<Exclude<TargetPurpose, 'app'>, readonly string[]> = {
   design: ['Figma', 'Design', 'Prototype', 'Penpot', 'Canva'],
-  doc: ['Spec', 'PRD', 'Design doc', 'Notion', 'Docs']
+  doc: ['Spec', 'PRD', 'Design doc', 'Notion', 'Docs'],
+  reference: ['Reference', 'Competitor', 'Inspiration']
 }
 
 /** 区分ごとの URL の入力例 */
 export const PURPOSE_URL_PLACEHOLDERS: Record<Exclude<TargetPurpose, 'app'>, string> = {
   design: 'https://www.figma.com/design/…',
-  doc: 'https://docs.google.com/document/d/…'
+  doc: 'https://docs.google.com/document/d/…',
+  reference: 'https://www.example.com'
 }
 
 function sanitizeTargetPurpose(raw: unknown): TargetPurpose {
@@ -102,6 +104,79 @@ export function guessTargetPurpose(url: string): TargetPurpose {
     if (/\.(md|markdown|mdx|adoc|rst)$/.test(path) || /\/wikis?(\/|$)/.test(path)) return 'doc'
   }
   return 'app'
+}
+
+// ───────────────────────── 参考（外部サイト）の見分け ─────────────────────────
+
+/** 名前が参考・競合のサイトを指しているか（「競合:調達info」「参考 A社」「Competitor」「reference」など。大文字小文字は問わない） */
+export function looksLikeReferenceLabel(label: string | undefined): boolean {
+  const l = (label ?? '').normalize('NFKC').toLowerCase()
+  return /競合|参考|competitor|reference/.test(l)
+}
+
+/**
+ * 登録した確認先の、指摘での区分。登録の区分をそのまま使い、アプリのままでも名前が参考・競合を指していれば reference
+ * （区分を選ばずに競合のサイトを登録した場合も、Agent にそのサイトを直させない）
+ */
+export function registeredPurpose(target: { purpose?: unknown; label?: string; url?: string }): TargetPurpose {
+  const purpose = purposeOf(target)
+  return purpose === 'app' && looksLikeReferenceLabel(target.label) ? 'reference' : purpose
+}
+
+/** 手元・社内のホスト（localhost・127.0.0.1・::1・*.local・*.localhost・*.test・*.internal・プライベートの IPv4） */
+export function isLocalHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '')
+  if (!host || host === 'localhost' || host === '::1' || host === '0.0.0.0') return true
+  if (/\.(local|localhost|test|internal|lan|home\.arpa)$/.test(host)) return true
+  const ip = host.match(/^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/)
+  if (ip) {
+    const a = Number(ip[1])
+    const b = Number(ip[2])
+    return a === 127 || a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) || (a === 169 && b === 254)
+  }
+  return false
+}
+
+const bareHost = (host: string) => host.toLowerCase().replace(/^www\./, '')
+
+/** 同じサイトのホストか（同じ・どちらかがもう一方のサブドメイン。www. は無視） */
+function sameSite(a: string, b: string): boolean {
+  const x = bareHost(a)
+  const y = bareHost(b)
+  return x === y || x.endsWith(`.${y}`) || y.endsWith(`.${x}`)
+}
+
+/**
+ * 登録に当たらない URL の区分（指摘の対象・右パネルの候補）。
+ *   1. ホストから分かるデザイン・設計書（Figma・Google Docs など）はそのまま design / doc
+ *   2. 手元のホスト（localhost など）は app
+ *   3. プロジェクトにアプリの確認先（URL のあるもの。local / dev / prd）が1つ以上あり、そのどのホストとも同じサイトでなければ、
+ *      録画中に見に行った外部のサイト（競合・お手本）とみなして reference
+ *   4. アプリの確認先が1つも無ければ、自分のアプリのホストが分からないので app のまま（何でも参考にしない）
+ * 参考と見なしても Agent に渡す指示は「自分のアプリに取り入れる・避ける」なので、自分のサイトを取り違えても害は小さい
+ */
+export function unregisteredUrlPurpose(url: string, presets: ReadonlyArray<{ url?: string; purpose?: unknown; label?: string }> = []): TargetPurpose {
+  const guessed = guessTargetPurpose(url)
+  if (guessed !== 'app') return guessed
+  let host: string
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'app'
+    host = parsed.hostname
+  } catch {
+    return 'app'
+  }
+  if (isLocalHost(host)) return 'app'
+  const appHosts = presets.flatMap((p) => {
+    if (!p.url || registeredPurpose(p) !== 'app') return []
+    try {
+      return [new URL(p.url).hostname]
+    } catch {
+      return []
+    }
+  })
+  if (appHosts.length === 0) return 'app'
+  return appHosts.some((h) => sameSite(h, host)) ? 'app' : 'reference'
 }
 
 const text = (v: unknown, max = 2000): string => (typeof v === 'string' ? v.trim().slice(0, max) : '')
@@ -196,7 +271,7 @@ export function purposeAfterUrlChange(target: Pick<ProjectTarget, 'url' | 'purpo
 export function isSuggestedLabel(label: string, kind: ProjectKind): boolean {
   const l = label.trim().toLowerCase()
   if (!l) return true
-  const candidates = [...SUGGESTED_LABELS[kind], ...PURPOSE_LABELS.design, ...PURPOSE_LABELS.doc, 'local', 'dev', 'stg', 'prd'].map((c) => c.toLowerCase())
+  const candidates = [...SUGGESTED_LABELS[kind], ...PURPOSE_LABELS.design, ...PURPOSE_LABELS.doc, ...PURPOSE_LABELS.reference, 'local', 'dev', 'stg', 'prd'].map((c) => c.toLowerCase())
   return candidates.some((c) => l === c || (l.startsWith(`${c} `) && /^\d+$/.test(l.slice(c.length + 1))))
 }
 
@@ -217,6 +292,10 @@ export function followPurpose(
     const next = purposeAfterUrlChange(target, patch.url)
     if (next !== purposeOf(target)) out.purpose = next
   }
+  // 名前に「競合」「参考」などを書いたアプリの確認先は、参考（外部サイト）を勧める（選び直せる）
+  if (patch.label !== undefined && patch.purpose === undefined && purposeOf({ ...target, ...out }) === 'app' && looksLikeReferenceLabel(patch.label)) {
+    out.purpose = 'reference'
+  }
   if (out.purpose !== undefined && purposeOf(out) !== purposeOf(target) && patch.label === undefined && isSuggestedLabel(target.label, kind)) {
     out.label = suggestTargetLabel(kind, siblings.filter((s) => s.id !== target.id), purposeOf(out))
   }
@@ -233,7 +312,7 @@ export function urlTarget(url: string, kind: ProjectKind, siblings: readonly Pic
   return { id, label: suggestTargetLabel(kind, siblings, purpose), url, purpose }
 }
 
-/** ツールバーに並べる順（アプリ → デザイン → 設計書。同じ区分の中は登録の順のまま） */
+/** ツールバーに並べる順（アプリ → デザイン → 設計書 → 参考。同じ区分の中は登録の順のまま） */
 export function groupTargetsByPurpose<T extends Pick<ProjectTarget, 'purpose'>>(targets: readonly T[]): Array<{ purpose: TargetPurpose; targets: T[] }> {
   return TARGET_PURPOSES.map((purpose) => ({ purpose, targets: targets.filter((t) => purposeOf(t) === purpose) })).filter((g) => g.targets.length > 0)
 }

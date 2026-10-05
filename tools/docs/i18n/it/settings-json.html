@@ -25,7 +25,7 @@ Tutte le impostazioni di Ferret si trovano in un unico file JSON con uno JSON Sc
 <p>La prima riga di <code>settings.json</code> è <code>"$schema": "./settings.schema.json"</code>. Editor come VS Code e agent come Claude Code la usano per il completamento, la validazione e la descrizione di ogni campo. Lo schema è incluso nell'app e viene scritto accanto al file a ogni avvio, quindi corrisponde sempre alla versione installata.</p>
 <p>Le chiavi che Ferret non conosce vengono mantenute così come sono quando l'app salva. Le schede aperte, l'ultimo URL e il resto dello stato della sessione sono conservati in <code>state.json</code>, non qui.</p>
 
-<!-- @example 8f2ce86189 -->
+<!-- @example a3549b8c04 -->
 ## Esempio commentato
 <p>JSON non ammette commenti, quindi le note sono sotto l'esempio. Ogni campo è facoltativo; tralascia ciò che non ti serve.</p>
 <pre><code>{
@@ -85,7 +85,7 @@ Tutte le impostazioni di Ferret si trovano in un unico file JSON con uno JSON Sc
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>: i target di revisione per il menu degli URL. Il primo si apre all'apertura del progetto. <code>id</code> può essere qualsiasi stringa univoca. <code>purpose</code> contrassegna un design o un documento (vedi <a href="projects.html#design-docs">Rivedere design e documenti</a>); omettilo per l'app.</li>
+  <li><code>projects[].urls</code>: i target di revisione per il menu degli URL. Il primo si apre all'apertura del progetto. <code>id</code> può essere qualsiasi stringa univoca. <code>purpose</code> contrassegna un design o un documento (vedi <a href="projects.html#design-docs">Rivedere design e documenti</a>) oppure un sito esterno usato come riferimento (vedi <a href="projects.html#reference-sites">Usare altri siti come riferimento</a>); omettilo per l'app.</li>
   <li><code>agents.customAgents</code>: qualsiasi CLI o script wrapper. <code>startupAgents</code> elenca, in ordine, le schede degli agent aperte con un progetto.</li>
   <li><code>capture.sttEndpoints.compatible</code>: qualsiasi server che implementa <code>/v1/audio/transcriptions</code> di OpenAI (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> disattiva il limite di spesa, il che ha senso per una tua GPU. Vedi <a href="transcription.html">Trascrizione e costi</a>.</li>
   <li><code>organizer</code>: <span class="docs-ui">Organizza segnalazioni</span> inviato direttamente a un server <code>/v1/chat/completions</code> compatibile con OpenAI (qui Ollama). Usa <code>"runner": "claude-code"</code> o <code>"codex"</code> per usare invece il tuo accesso alla CLI, e <code>organizer.cliModels</code> per sceglierne il modello.</li>

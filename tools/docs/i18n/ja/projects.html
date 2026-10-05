@@ -23,14 +23,14 @@
 <p>レビューの検索欄の横にある絞り込みボタンでは <span class="docs-ui">プロジェクトの並び順</span> も選べます: <span class="docs-ui">手動（ドラッグの順）</span>、<span class="docs-ui">動いている順</span>（エージェントがあなたを待っている・作業中・作業を終えたばかりのプロジェクトが上）、<span class="docs-ui">最近使った順</span>、<span class="docs-ui">名前順</span>、<span class="docs-ui">追加した順</span>。手動以外の並び順のときにプロジェクトをドラッグすると、表示している並びが手動の順になり、並び順は <span class="docs-ui">手動（ドラッグの順）</span> に切り替わります。プロジェクトの行の星、またはメニューの <span class="docs-ui">☆ を付ける</span> で星を付けると、どの並び順でも一覧の上に置かれます。<span class="docs-ui">☆ のみ表示</span> にすると、ほかのプロジェクトは隠れます。星と並び順は再起動しても残ります。</p>
 <p>ターミナルはプロジェクトのフォルダで開き、レビューは <code>&lt;project&gt;/.ferret/</code> の下に保存します。</p>
 
-<!-- @save-url 553542e405 -->
+<!-- @save-url cb8cafed1c -->
 ## URL を登録する
 <ol class="docs-steps">
   <li>内蔵ブラウザでページを開きます。</li>
   <li>ブラウザのツールバーの <span class="docs-ui">+</span>（<span class="docs-ui">表示中のURLを登録</span>）を押します。いまの URL が入った状態で開きます。</li>
   <li><span class="docs-ui">名前</span> を入れて <span class="docs-ui">保存</span> を押します。</li>
 </ol>
-<p>登録した URL には、<span class="docs-ui">確認するもの</span> で種類が付きます。<span class="docs-ui">アプリ</span>（作っているアプリ）、<span class="docs-ui">デザイン</span>（Figma、Penpot、Canva、プロトタイプ）、<span class="docs-ui">設計書・文書</span>（Google Docs、Notion、Confluence、GitHub 上の Markdown の仕様書、PDF）のどれかです。種類は URL から推測し、あとから変えられます。<a href="#design-docs">コードだけでなく、デザインや文書もレビューする</a>を見てください。</p>
+<p>登録した URL には、<span class="docs-ui">確認するもの</span> で種類が付きます。<span class="docs-ui">アプリ</span>（作っているアプリ）、<span class="docs-ui">デザイン</span>（Figma、Penpot、Canva、プロトタイプ）、<span class="docs-ui">設計書・文書</span>（Google Docs、Notion、Confluence、GitHub 上の Markdown の仕様書、PDF）、<span class="docs-ui">参考</span>（競合など、自分では直せない外部のサイト）のどれかです。種類は URL と名前から推測し、あとから変えられます。<a href="#design-docs">コードだけでなく、デザインや文書もレビューする</a>と<a href="#reference-sites">外部のサイトを参考にする</a>を見てください。</p>
 <p>使える URL は <code>http://</code> と <code>https://</code> だけです。アプリの URL では、名前を提案のまま残すと、ホストから次のように決まります。</p>
 <table>
   <thead><tr><th>ホスト</th><th>名前</th></tr></thead>
@@ -43,7 +43,7 @@
 </table>
 {{shot:url-presets|ブラウザのツールバーに並ぶ登録済みの URL}}
 
-<!-- @review-targets 7edd1985ee -->
+<!-- @review-targets 9c48e48820 -->
 ## レビュー対象のパネル
 {{clip:targets|録画を止めずに、レビューの対象やページを切り替える。}}
 <p>フィードバックモードでは、右の <span class="docs-ui">レビュー対象</span> パネルに、いまのプロジェクトでレビューできるものが並びます。対象を切り替えても録画は止まりません。パネルは <span class="docs-ui">表示 → レビュー対象の表示を切り替える</span>（{{keys:Mod+Shift+K}}）か <span class="docs-ui">パネルを隠す</span> で出し入れします。</p>
@@ -52,13 +52,13 @@
   <li><strong><span class="docs-ui">ファイル</span></strong>: プロジェクトのフォルダ。ファイルはプレビューで開く（Markdown と Mermaid は描画し、ほかのテキストは読み取り専用）ので、ドキュメントもレビューできます。鉛筆（<span class="docs-ui">エディタで開く</span>）でエディタで開きます。</li>
 </ul>
 <p><span class="docs-ui">対象を絞り込む</span> は、確認先・ページ・ファイルをまとめて絞り込みます。あいまい一致の仕方は <span class="docs-ui">ファイルを名前で開く…</span> と同じです。一覧では <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> か <kbd>1</kbd>〜<kbd>9</kbd> で対象を切り替えます。<span class="docs-ui">URL を開く…</span> はその場限りの URL を開き、<span class="docs-ui">プロジェクトの URL に登録</span> で残せます。</p>
-<p>確認先は <code>settings.json</code> の <code>projects[].urls</code> から読みます（<a href="settings-json.html#example">例</a>を参照）。各項目には <code>url</code>、<code>launchCommand</code>（ターミナルで実行します。たとえばデスクトップアプリの起動）、<code>windowMatch</code>（録画するウインドウ）のどれかが要り、<code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code>）も付けられます。ウインドウの対象を選ぶとそれが録画の対象になるので、録画中は選べません。開いたページはプロジェクトごとに、この端末にだけ覚えます（200件まで）。</p>
+<p>確認先は <code>settings.json</code> の <code>projects[].urls</code> から読みます（<a href="settings-json.html#example">例</a>を参照）。各項目には <code>url</code>、<code>launchCommand</code>（ターミナルで実行します。たとえばデスクトップアプリの起動）、<code>windowMatch</code>（録画するウインドウ）のどれかが要り、<code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code>、<code>reference</code>）も付けられます。ウインドウの対象を選ぶとそれが録画の対象になるので、録画中は選べません。開いたページはプロジェクトごとに、この端末にだけ覚えます（200件まで）。</p>
 
-<!-- @switch-env 3d0b21e6f6 -->
+<!-- @switch-env 70e1c23f78 -->
 ## 開く・環境を切り替える
 <p>登録した URL を押すと開きます。いまのページが別の登録 URL の下にあるときは、Ferret はパス・クエリ・ハッシュを保ったまま、オリジンだけを入れ替えます。たとえば <code>http://localhost:3000/pricing?plan=pro</code> で <code>prd</code> を押すと、<code>https://example.com/pricing?plan=pro</code> が開きます。</p>
 <p>いまのページに合うチップ（前方一致が最も長いもの）が強調されます。チップを右クリックするか鉛筆のアイコンで、編集や <span class="docs-ui">削除</span> ができます。プロジェクトを開いたときに前回の URL が無ければ、最初に登録した URL を読み込みます。</p>
-<p>チップは種類ごとにまとまります。アプリの URL が先で、そのあとにデザイン、文書が続き、種類ごとに区切り線とアイコンが付きます。デザインや文書へ（またはそこから）切り替えるときは、パスを引き継がず、登録した URL をそのまま開きます。</p>
+<p>チップは種類ごとにまとまります。アプリの URL が先で、そのあとにデザイン、文書、参考が続き、種類ごとに区切り線とアイコンが付きます。デザイン・文書・参考へ（またはそこから）切り替えるときは、パスを引き継がず、登録した URL をそのまま開きます。</p>
 
 <!-- @design-docs 674aff9ed3 -->
 ## コードだけでなく、デザインや文書もレビューする
@@ -76,3 +76,18 @@
 </ul>
 <p>例: Google Docs で料金の仕様書を読みながら、プランの表を丸で囲んで「Pro プランはいま 8,800 円ではなく 9,800 円」と話したとします。<code>feedback.md</code> ではこの指摘が <code>Spec</code> の確認先の下に <code>Kind: document</code> で並び、エージェントは料金ページのコードには触らず、仕様書の直した文を返します。仕様書と動いているアプリを同じ録画で録ると、指摘は確認先ごとに分かれるので、エージェントは先に仕様書を、次にそれを実装するコードを直せます。</p>
 <p>登録していないページでも、<code>figma.com</code>、<code>docs.google.com</code>、<code>notion.so</code> などのホストなら見分けます。プロジェクトのフォルダの中のファイル（Markdown、Mermaid）は、<span class="docs-ui">レビュー対象</span> パネルの <span class="docs-ui">ファイル</span> の一覧からレビューします。</p>
+
+<!-- @reference-sites 6fb5f06ade -->
+## 外部のサイトを参考にする
+<p>競合のサイトや、見た目の良いページを録画して、何を取り入れたいかを話すこともできます（「これを参考にして」「この黒背景はダメ」など）。そのサイトは自分では直せないので、エージェントも直そうとはしません。こうした指摘は、自分のアプリへの参考として扱います。</p>
+<ol class="docs-steps">
+  <li>そのサイトを確認先に足し、<span class="docs-ui">確認するもの</span> で <span class="docs-ui">参考</span> を選びます。名前に「競合」「参考」などを入れると（たとえば <code>競合:調達info</code>）、自動でこの種類になります。</li>
+  <li>いつもどおり録画します。同じ録画の中で、そのサイトと自分のアプリを行き来してもかまいません。</li>
+</ol>
+<p>参考のサイトで録った指摘には、指摘の一覧で <span class="docs-ui">参考</span> が付き、<code>feedback.md</code> では <code>Kind: reference</code> の区分が付きます。エージェントは指摘ごとに次のようにします。</p>
+<ul>
+  <li>良いと言った点は、自分のアプリの合う箇所に取り入れ、どこに取り入れたかをメモに書きます。</li>
+  <li>ダメと言った点は、自分のアプリが同じことをしていないかを確かめ、していれば自分のアプリを直します。</li>
+  <li>自分のアプリに生かせることが無い感想なら何も変えず、「外部サイトのため対応不要（参考）」のようなメモを付けて <span class="docs-ui">確認待ち</span> にします。</li>
+</ul>
+<p>外部のサイトを書き換えることも、止まってあなたに質問することもありません。種類を選ばなくても、確認先の名前に「competitor」「reference」（または 競合 / 参考）が入っているとき、またはプロジェクトのどのアプリの URL ともホストが合わない、登録していないサイトで録ったときも、参考として扱います。<code>localhost</code> やプライベートのアドレスは外部に数えません。アプリの URL を1つも登録していないプロジェクトでは、この推測はしません。</p>
