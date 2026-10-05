@@ -25,6 +25,8 @@ import {
 } from 'lucide-react'
 import { isUnsentTake, playbackAt, takeAt, type ReviewData, type ReviewEdit, type ReviewFrame } from '@shared/review'
 import { LLM_API_PROVIDERS, LLM_PROVIDER_PRESETS, RECOMMENDED_ORGANIZE_PROVIDER, isOrganizeRunnerId, providerLabel, type LlmApiProvider, type OrganizeRunnerId } from '@shared/aiProviders'
+import { organizeModelChoice, organizeModelPatch, organizeRunnerSummary, type OrganizerModelPrefs } from '@shared/organizeModels'
+import { notifyOrganizerChanged, onOrganizerChanged } from '../lib/organizerEvents'
 import { Button, EmptyState, IconButton, Modal, Tooltip, useToast } from '../ui'
 import { FindingsEmptyArt } from './reviewArt'
 import { FindingShots } from './ReviewShots'
@@ -41,7 +43,7 @@ import { ProgressSummary, ProgressToggle, QueuedPanel, ReviewActions, StatusFilt
 import { countByStatus, isStatusShown, sanitizeHiddenStatuses } from '@shared/findingStatusFilter'
 import { countProgress, nextProgress, pendingIds, progressOf, type FindingProgress, type ReviewVerdict } from '@shared/findingProgress'
 import { dropPositionAt, moveAmongVisible, stepAmongVisible, type DropPosition } from '@shared/reorder'
-import { sortByStatus } from '@shared/findingStatusFilter'
+import { reviewFirst, sortByStatus } from '@shared/findingStatusFilter'
 
 type FeedbackItem = ReviewData['document']['items'][number]
 
@@ -52,6 +54,22 @@ function loadHiddenStatuses(): FindingProgress[] {
     return sanitizeHiddenStatuses(JSON.parse(localStorage.getItem(STATUS_FILTER_KEY) ?? '[]'))
   } catch { // ストレージが使えない・壊れた値（想定内。すべて表示で続ける）
     return []
+  }
+}
+/** 並び順「確認待ちを上に」（表示だけ）。既定は入（保存が無ければ入） */
+const REVIEW_FIRST_KEY = 'ade.findings.reviewFirst'
+function loadReviewFirst(): boolean {
+  try {
+    return localStorage.getItem(REVIEW_FIRST_KEY) !== 'false'
+  } catch { // ストレージが使えない（想定内。既定の入で続ける）
+    return true
+  }
+}
+function saveReviewFirst(on: boolean): void {
+  try {
+    localStorage.setItem(REVIEW_FIRST_KEY, String(on))
+  } catch {
+    // 保存できなくても、この起動の間は効く
   }
 }
 function saveHiddenStatuses(hidden: readonly FindingProgress[]): void {
@@ -67,6 +85,8 @@ function saveHiddenStatuses(hidden: readonly FindingProgress[]): void {
  * 外からのドロップやターミナル・エディタへのドロップと取り違えない
  */
 const FINDING_DRAG_TYPE = 'application/x-ferret-finding'
+/** 整理のモデルの選択の「その他（設定で指定）」。モデル名には使えない文字で始める */
+const OTHER_MODEL = '\u0000other'
 
 const time = (ms: number) => `${Math.floor(ms / 60000).toString().padStart(2, '0')}:${Math.floor(ms / 1000 % 60).toString().padStart(2, '0')}`
 
@@ -114,10 +134,12 @@ function TargetName({ target }: { target: ReviewTarget }) {
   const t = useT()
   if (target.kind === 'none') return <span className="rv-target__name">{t('review.targets.none')}</span>
   const Icon = target.kind === 'file' ? FileText : Globe
-  // デザイン・設計書で撮った指摘は、区分のアイコンと名前を出す（Agent にもコードではなくそれらを直すよう伝わる）
+  // デザイン・設計書で撮った指摘は、区分のアイコンと名前を出す（Agent にもコードではなくそれらを直すよう伝わる）。
+  // 参考（外部サイト）は「参考」の札を出し、そのサイトは直さず自分のアプリへの参考として渡ることを添える
   return <>
     {target.purpose ? <TargetPurposeIcon purpose={target.purpose} size={12} /> : <Icon size={12} aria-hidden="true" />}
-    {target.purpose && <span className="rv-target__env" data-testid="review-target-purpose">{t(`projectTargets.purpose.${target.purpose}`)}</span>}
+    {target.purpose && <span className="rv-target__env" data-testid="review-target-purpose" data-purpose={target.purpose}
+      title={target.purpose === 'reference' ? t('projectTargets.purposeHint.reference') : undefined}>{t(`projectTargets.purpose.${target.purpose}`)}</span>}
     {target.label && <span className="rv-target__env">{target.label}</span>}
     <span className="rv-target__name">{target.kind === 'file' ? target.name : targetHeading({ ...target, label: undefined })}</span>
   </>
@@ -145,13 +167,28 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
   const [projectKey, setProjectKey] = useState('default')
   /** API キーで直接呼べる提供元（設定の「指摘の整理」でキーと接続先が揃ったもの） */
   const [apiReady, setApiReady] = useState<LlmApiProvider[]>([])
+  /** 整理のモデルの設定（settings.json の organizer。設定の「指摘の整理」と同じ値）と、この PC に合う Ollama のモデル */
+  const [organizerPrefs, setOrganizerPrefs] = useState<OrganizerModelPrefs | undefined>(undefined)
+  const [localOrganizeModel, setLocalOrganizeModel] = useState<string | undefined>(undefined)
   useEffect(() => {
     void Promise.all([window.ade.invoke('app:settings'), window.ade.invoke('capture:availability')]).then(([s, a]) => {
       if (isOrganizeRunnerId(s.organizer?.runner)) setRunner(s.organizer.runner)
+      setOrganizerPrefs(s.organizer)
+      setLocalOrganizeModel(a.localModels?.organize)
       setDefaultAgent(defaultLaunchAgent(s.agents?.startupAgents ?? [], s.agents?.disabledAgents ?? []))
       if (s.activeProjectId) setProjectKey(s.activeProjectId)
       setApiReady(LLM_API_PROVIDERS.filter((p) => a.llm[p]))
     }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
+  }, [])
+  // 設定の画面・settings.json の書き換えで変えた提供元とモデルを、ここの選択にも映す
+  useEffect(() => {
+    const apply = (s: { organizer?: OrganizerModelPrefs & { runner?: unknown } }) => {
+      if (isOrganizeRunnerId(s.organizer?.runner)) setRunner(s.organizer.runner)
+      setOrganizerPrefs(s.organizer)
+    }
+    const offFile = window.ade.on('settings:changed', apply)
+    const offApp = onOrganizerChanged(() => void window.ade.invoke('app:settings').then(apply).catch(() => undefined)) // 失敗は main の IPC が Sentry へ送る
+    return () => { offFile(); offApp() }
   }, [])
   const [busy, setBusy] = useState(false)
   const [image, setImage] = useState<{ src: string; n: number } | null>(null)
@@ -172,6 +209,30 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
     trimNoticeShown.add(review.id)
     toast({ tone: 'info', message: t('review.trimSkipped') })
   }, [review.id, review.trimSkipped, toast, t])
+  /** 「整理」の提供元の隣のモデルの選択。一覧は設定の「指摘の整理」と同じ推奨＋設定したモデル。選び直すと settings.json に書く */
+  const organizeModelSelect = () => {
+    const choice = organizeModelChoice(runner, organizerPrefs, localOrganizeModel)
+    const provider = runner.startsWith('api:') ? runner.slice(4) as LlmApiProvider : null
+    const name = provider ? providerLabel(LLM_PROVIDER_PRESETS[provider], t) : runner === 'codex' ? 'Codex' : 'Claude Code'
+    const label = (id: string, recommended?: boolean) => {
+      const text = id || (provider ? t('review.organizeModelUnset') : t('review.organizeModelCliDefault', { name }))
+      return recommended && id ? t('onboarding.decision.recommendedOption', { label: text }) : text
+    }
+    return <Tooltip side="bottom" label={t('review.organizeModelTip', { summary: choice.current ? organizeRunnerSummary(name, choice.current) : name })}><span className="rv-select"><select className="rv-organize__runner rv-organize__model" aria-label={t('review.organizeModel')} value={choice.current} disabled={busy} data-testid="organize-model" onChange={(e) => {
+      if (e.target.value === OTHER_MODEL) {
+        // 一覧に無いモデルは設定の「指摘の整理」で入れる（今の提供元の欄を開く）
+        window.dispatchEvent(new CustomEvent('ade:open-settings', { detail: { section: 'organize' } }))
+        return
+      }
+      const patch = organizeModelPatch(runner, organizerPrefs, e.target.value, choice.defaultModel)
+      setOrganizerPrefs((prev) => ({ ...prev, ...patch }))
+      void window.ade.invoke('settings:organizer', patch).then(notifyOrganizerChanged).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
+    }}>
+      {!choice.options.some((o) => o.id === choice.current) && <option value={choice.current}>{label(choice.current)}</option>}
+      {choice.options.map((o) => <option key={o.id} value={o.id}>{label(o.id, o.recommended)}</option>)}
+      {choice.otherInSettings && <option value={OTHER_MODEL}>{t('review.organizeModelOther')}</option>}
+    </select></span></Tooltip>
+  }
   const action = (fn: () => Promise<void>) => {
     pending.current++
     setBusy(true)
@@ -194,13 +255,11 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
   /** Send to Agent で送る件数。未対応の指摘だけ（完了・対応中・確認待ちは送らない） */
   const unstarted = pendingIds(items, review.progress).length
   /*
-   * 録画の途中で対象（URL・ファイル）を切り替えたら、指摘を対象ごとにまとめ、対象で絞れるようにする。
+   * 録画の途中で対象（URL・ファイル）を切り替えたら、指摘を対象ごとにまとめる（見出しで分ける。対象で絞るチップは置かない）。
    * 番号はまとめた順に振る（feedback.md の節分けと同じ並び）。
    */
-  const [targetFilter, setTargetFilter] = useState<string | null>(null)
   const groups = groupByTarget(items, (it) => it.context.url, review.document.meta.urlPresets ?? [])
   const grouped = groups.length > 1
-  const activeFilter = grouped && groups.some((g) => g.target.key === targetFilter) ? targetFilter : null
   let counter = 0
   /*
    * 確認モード: Agent が直した指摘（human_review）だけを並べ、BEFORE / AFTER を順に見て OK / NG を付ける。
@@ -217,8 +276,13 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
     saveHiddenStatuses(next)
   }
   const statusFiltered = !reviewMode && hiddenStatuses.length > 0
-  const rows = groups.flatMap((g) => g.items.map((item) => ({ item, n: ++counter, owner: g })))
-    .filter((row) => !activeFilter || row.owner.target.key === activeFilter)
+  const [reviewFirstOn, setReviewFirstState] = useState(loadReviewFirst)
+  const setReviewFirst = (on: boolean) => {
+    setReviewFirstState(on)
+    saveReviewFirst(on)
+  }
+  const numbered = groups.flatMap((g) => g.items.map((item) => ({ item, n: ++counter, owner: g })))
+  const rows = (reviewFirstOn ? reviewFirst(numbered, (row) => progressOf(review.progress, row.item.id)) : numbered)
     .filter((row) => !reviewMode || reviewing(row.item))
     .filter((row) => !statusFiltered || isStatusShown(hiddenStatuses, progressOf(review.progress, row.item.id)))
     // 対象の見出しは、絞り込んだあとの各対象の先頭に出す（先頭の指摘が隠れても見出しは残す）
@@ -233,7 +297,8 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
   const [dropAt, setDropAt] = useState<{ id: string; position: DropPosition } | null>(null)
   const refocusHandle = useRef<string | null>(null)
   const allIds = groups.flatMap((g) => g.items.map((it) => it.id))
-  const visibleIds = rows.map((row) => row.item.id)
+  // 並べ替えは元の並び（番号の順）の中で決める。「確認待ちを上に」は表示だけなので使わない
+  const visibleIds = allIds.filter((id) => rows.some((row) => row.item.id === id))
   const ownerOf = (id: string) => rows.find((row) => row.item.id === id)?.owner
   const canReorder = !reviewMode && rows.length > 1
   const reorderTo = (next: string[] | null) => {
@@ -323,10 +388,8 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
         <ReviewActions humanReview={progressCount.humanReview} queued={progressCount.queued} reviewMode={reviewMode} busy={busy}
           onToggleReviewMode={() => { setReviewMode((on) => !on); setReviewIndex(0) }} onSendQueued={() => sendNg()} />
       </div>
-      {/* 送る指摘はあるが、どれも着手済み（完了・対応中・確認待ち）なら、送れない理由を出す */}
-      <p className="rv-head__hint" role={sendable > 0 && unstarted === 0 ? 'status' : undefined} data-testid="findings-head-hint">
-        {sendable > 0 && unstarted === 0 ? t('review.nothingPending') : t('review.headHint')}
-      </p>
+      {/* 送る指摘が残っているときだけ案内を出す。どれも着手済みなら何も出さない（送れない理由は送信ボタンの説明に出る） */}
+      {!(sendable > 0 && unstarted === 0) && <p className="rv-head__hint" data-testid="findings-head-hint">{t('review.headHint')}</p>}
       <div className="rv-head__actions">
         <div className="rv-head__tools">
           <Tool side="bottom" tip={t('review.undo')} label={t('review.undoLabel')} icon={<Undo2 size={15} />} disabled={busy || !review.canUndo} onClick={() => void edit({ kind: 'undo' })} />
@@ -335,11 +398,13 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
             （番号・feedback.md・Agent へ送る順が並びに従うため、表示だけを並べ替えない）。元に戻す ↶ でも1手ずつ戻せる
           */}
           {items.length > 1 && <Tooltip side="bottom" label={t('review.sort.tip')}><span className="rv-select"><select className="rv-sort" aria-label={t('review.sort.label')} disabled={busy}
-            value={review.document.customOrder ? 'manual' : 'time'} data-testid="findings-sort"
+            value={reviewFirstOn ? 'review_first' : review.document.customOrder ? 'manual' : 'time'} data-testid="findings-sort"
             onChange={(e) => {
+              setReviewFirst(e.target.value === 'review_first')
               if (e.target.value === 'time') void edit({ kind: 'order', ids: null })
               else if (e.target.value === 'status') void edit({ kind: 'order', ids: sortByStatus(allIds, review.progress) })
             }}>
+            <option value="review_first">{t('review.sort.reviewFirst')}</option>
             <option value="manual" disabled={!review.document.customOrder}>{t('review.sort.manual')}</option>
             <option value="time">{t('review.sort.time')}</option>
             <option value="status">{t('review.sort.status')}</option>
@@ -372,6 +437,7 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
               {LLM_API_PROVIDERS.filter((p) => p !== RECOMMENDED_ORGANIZE_PROVIDER && (apiReady.includes(p) || runner === `api:${p}`)).map((p) => <option key={p} value={`api:${p}`}>{providerLabel(LLM_PROVIDER_PRESETS[p], t)}</option>)}
             </optgroup>}
           </select></span></Tooltip>
+          {organizeModelSelect()}
         </div>
         {/* 録る・送るは1組。幅が足りないときも離さず、まとめて次の行へ回す */}
         <div className="rv-head__primary">
@@ -407,15 +473,6 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
 
       {items.length > 0 && !reviewMode && <StatusFilterBar counts={countByStatus(items, review.progress)} hidden={hiddenStatuses} onChange={setHiddenStatuses} />}
 
-      {grouped && <div className="rv-targets" role="group" aria-label={t('review.targets.filter')}>
-        <button type="button" className="rv-targets__chip" aria-pressed={activeFilter === null} onClick={() => setTargetFilter(null)}>
-          {t('review.targets.all')}<span className="rv-targets__count">{items.length}</span>
-        </button>
-        {groups.map((g) => <button key={g.target.key} type="button" className="rv-targets__chip" aria-pressed={activeFilter === g.target.key}
-          title={g.target.url ?? g.target.name} onClick={() => setTargetFilter(g.target.key)}>
-          <TargetName target={g.target} /><span className="rv-targets__count">{g.items.length}</span>
-        </button>)}
-      </div>}
 
       {rows.map(({ item, n, group }) => {
         const source = sourcesOf(item)
@@ -426,7 +483,7 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
         // 要望と同じ原文は引用に出さない（下書きでは要望＝話した全文。原文は保存されている）
         const quotes = same(item.quotes.map((q) => q.text).join(''), item.request) ? [] : item.quotes.filter((q) => !same(q.text, item.request))
         return <Fragment key={item.id}>
-          {/* 対象が1つでも、デザイン・設計書で撮った指摘なら見出しを出す（コードではなくそれらへの指摘だと分かるように） */}
+          {/* 対象が1つでも、デザイン・設計書・参考（外部サイト）で撮った指摘なら見出しを出す（アプリのコードへの指摘ではないと分かるように） */}
           {(grouped || group?.target.purpose) && group && <h3 className="rv-target" title={group.target.url ?? group.target.name}>
             <TargetName target={group.target} />
             <span className="rv-targets__count">{group.items.length}</span>

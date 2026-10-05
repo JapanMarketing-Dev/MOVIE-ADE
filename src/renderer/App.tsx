@@ -1077,7 +1077,6 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
 
         {footer.visible && <ErrorBoundary name="footer"><StatusBar
           items={footer.items}
-          onStartDrag={panelDrag.start}
 
           state={browserState}
           capture={capture}

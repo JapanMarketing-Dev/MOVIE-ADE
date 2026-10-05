@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { Copy, FileJson, FolderOpen } from 'lucide-react'
+import { buildSettingsFixPrompt } from '@shared/settingsFixPrompt'
 import type { SettingsFileInfo } from '@shared/types'
 import { Button, Spinner, useToast } from '../ui'
 import { useT } from '../lib/i18n'
@@ -31,6 +32,13 @@ export function SettingsFileCard() {
   const copyPrompt = () => void navigator.clipboard.writeText(prompt)
     .then(() => toast({ tone: 'success', message: t('settings.file.copied') }))
     .catch(() => undefined) // クリップボードが使えない（想定内。プロンプトは画面にも出ている）
+  // 誤りがあるときの修正依頼。押した直後だけコピーする（作るのも押したとき。設定の値は入らず、場所と誤りだけ）
+  const copyFixPrompt = () => {
+    if (!info.error) return
+    void navigator.clipboard.writeText(buildSettingsFixPrompt({ path: info.path, schemaPath: info.schemaPath, error: info.error }, t))
+      .then(() => toast({ tone: 'success', message: t('settings.file.copied') }))
+      .catch(() => undefined) // クリップボードが使えない（想定内。誤りは画面に出ている）
+  }
 
   return <section className="st-file" data-testid="settings-file" aria-label={t('settings.file.title')}>
     <div className="st-file__head">
@@ -41,6 +49,9 @@ export function SettingsFileCard() {
     {info.error && <div className="st-file__error" role="alert" data-testid="settings-file-error">
       <p className="st-note st-note--warn">{t('settings.file.error')}</p>
       <p className="st-note st-note--warn"><code>{info.error.line ? t('settings.file.errorAt', { line: String(info.error.line), message: info.error.message }) : info.error.message}</code></p>
+      <div className="st-file__actions">
+        <Button icon={<Copy size={14} strokeWidth={1.5} />} onClick={copyFixPrompt} data-testid="settings-file-copy-fix">{t('settings.file.copyFixPrompt')}</Button>
+      </div>
     </div>}
     {info.plaintextKeys.length > 0 && <p className="st-note st-note--warn" data-testid="settings-file-plaintext">{t('settings.file.plaintextWarning', { paths: info.plaintextKeys.join(', ') })}</p>}
     <div className="st-file__actions">

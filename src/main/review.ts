@@ -64,7 +64,7 @@ function urlPresetsOf(value: unknown): NonNullable<Material['meta']['urlPresets'
   return Array.isArray(value)
     ? value.filter((p): p is { id: string; label: string; url: string; purpose?: unknown } =>
       !!p && typeof p.id === 'string' && typeof p.label === 'string' && typeof p.url === 'string')
-      // 区分（デザイン・設計書）は知っている値だけ残す。app と壊れた値は持たない
+      // 区分（デザイン・設計書・参考）は知っている値だけ残す。app と壊れた値は持たない
       .map(({ purpose, ...p }) => (purposeOf({ purpose }) !== 'app' ? { ...p, purpose: purposeOf({ purpose }) } : p))
     : []
 }
@@ -395,15 +395,19 @@ export async function revealReview(paths: SessionPaths): Promise<void> {
 
 /**
  * 「Agentへ送信」「Agent向けにコピー」の1行。文面は設定のテンプレート（空なら既定文）。
- * デザイン・設計書の確認先で撮った指摘があれば、コードではなくそれらを直す1文を足す
+ * デザイン・設計書の確認先で撮った指摘があれば、コードではなくそれらを直す1文を足す。
+ * 参考（外部サイト）で撮った指摘があれば、そのサイトは直さず自分のアプリに取り入れる・避ける1文を足す
  */
 export async function reviewInstruction(paths: SessionPaths, template?: string | null): Promise<string> {
   const record = await loadSession(paths)
   const included = record?.document.items.filter((it) => it.include) ?? []
-  const nonCode = groupByTarget(included, (it) => it.context.url, record?.document.meta.urlPresets ?? []).some((g) => !!g.target.purpose)
+  const purposes = new Set(groupByTarget(included, (it) => it.context.url, record?.document.meta.urlPresets ?? []).map((g) => g.target.purpose))
+  const nonCode = purposes.has('design') || purposes.has('doc')
+  // 参考に見た外部サイト（競合・お手本）の指摘は、そのサイトを直させない
+  const reference = purposes.has('reference')
   // 上限での自動切り替えが入なら、引き継ぎのファイル（.ferret/handoff.md）を区切りごとに更新させる（src/main/failover）
   const handoff = sanitizeLimitFailover(currentSettings().limitFailover).enabled ? handoffFilePath(resolve(paths.dir, relative(paths.relativeDir, '.'))) : undefined
-  return renderAgentPrompt({ relativeDir: paths.relativeDir, feedbackMd: paths.feedbackMd, ...(nonCode ? { nonCode } : {}), ...(handoff ? { handoff } : {}) }, template, undefined, decisionPromptOptions())
+  return renderAgentPrompt({ relativeDir: paths.relativeDir, feedbackMd: paths.feedbackMd, ...(nonCode ? { nonCode } : {}), ...(reference ? { reference } : {}), ...(handoff ? { handoff } : {}) }, template, undefined, decisionPromptOptions())
 }
 
 export async function previewFrames(paths: SessionPaths, itemId: string): Promise<import('@shared/review').ReviewFrame[]> {

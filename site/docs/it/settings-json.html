@@ -239,7 +239,7 @@
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>: i target di revisione per il menu degli URL. Il primo si apre all'apertura del progetto. <code>id</code> può essere qualsiasi stringa univoca. <code>purpose</code> contrassegna un design o un documento (vedi <a href="projects.html#design-docs">Rivedere design e documenti</a>); omettilo per l'app.</li>
+  <li><code>projects[].urls</code>: i target di revisione per il menu degli URL. Il primo si apre all'apertura del progetto. <code>id</code> può essere qualsiasi stringa univoca. <code>purpose</code> contrassegna un design o un documento (vedi <a href="projects.html#design-docs">Rivedere design e documenti</a>) oppure un sito esterno usato come riferimento (vedi <a href="projects.html#reference-sites">Usare altri siti come riferimento</a>); omettilo per l'app.</li>
   <li><code>agents.customAgents</code>: qualsiasi CLI o script wrapper. <code>startupAgents</code> elenca, in ordine, le schede degli agent aperte con un progetto.</li>
   <li><code>capture.sttEndpoints.compatible</code>: qualsiasi server che implementa <code>/v1/audio/transcriptions</code> di OpenAI (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> disattiva il limite di spesa, il che ha senso per una tua GPU. Vedi <a href="transcription.html">Trascrizione e costi</a>.</li>
   <li><code>organizer</code>: <span class="docs-ui">Organizza segnalazioni</span> inviato direttamente a un server <code>/v1/chat/completions</code> compatibile con OpenAI (qui Ollama). Usa <code>"runner": "claude-code"</code> o <code>"codex"</code> per usare invece il tuo accesso alla CLI, e <code>organizer.cliModels</code> per sceglierne il modello.</li>

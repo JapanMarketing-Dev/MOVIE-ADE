@@ -291,13 +291,14 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/verify.webp" data-src="../assets/clips/verify.mp4" aria-label="Agent 修正意見，並在你查看之前用判定模型逐一檢查。"></video>
   <figcaption>Agent 修正意見，並在你查看之前用判定模型逐一檢查。</figcaption>
 </figure>
-<p>開啟後，你的程式設計 Agent 會依每則意見檢查自己的成果，並在你查看之前持續改善。Ferret 本身不做任何判定：它把<em>判定模型</em>（任何相容 System One 的 API）提供給 Agent，並在 <code>feedback.md</code> 中告訴它如何使用。判定模型是 Agent 自己的檢查，絕不是向你提問：Agent 不會問你任何問題。你只需比較 BEFORE 與 AFTER，然後按 <span class="docs-ui">OK</span> 或 <span class="docs-ui">NG</span>。</p>
+<p>開啟後，你的程式設計 Agent 會在你查看之前依每則意見把自己的成果檢查一次。Ferret 本身不做任何判定：它把<em>判定模型</em>（任何相容 System One 的 API）提供給 Agent，並在 <code>feedback.md</code> 中告訴它如何使用。判定模型是 Agent 自己的檢查，絕不是向你提問：Agent 不會問你任何問題。你只需比較 BEFORE 與 AFTER，然後按 <span class="docs-ui">OK</span> 或 <span class="docs-ui">NG</span>。</p>
 <ol class="docs-steps">
   <li>Agent 實作意見。</li>
   <li>對每則意見，Agent 擷取 AFTER 螢幕截圖（與 BEFORE 靜態畫面相同的視窗範圍與頁面狀態），並把意見內容、其「完成條件」行以及 BEFORE/AFTER 圖片，以一個請求傳給判定模型。</li>
-  <li>當 P(done) 達到門檻（預設 0.7）且選擇為 <code>done</code> 時，該意見即通過。對其餘意見，Agent 會改善修正（或螢幕截圖），並在每一輪重新判定<strong>所有</strong>意見，直到所有意見在同一輪中都通過。</li>
-  <li>經過幾輪仍未通過的意見（連續 3 輪分數不變，或總共 5 輪）、超出範圍的意見，或無法連線的判定 API，都不會讓工作停下來：Agent 照樣將該意見設為 <span class="docs-ui">待檢查</span>，附上它的 AFTER、最後的分數，以及最多一行說明。</li>
-  <li>在 <span class="docs-ui">意見</span> 中，每則等你處理的意見都會把 BEFORE、AFTER 與分數作為參考資料顯示出來。<span class="docs-ui">OK</span> 會將它標為完成；<span class="docs-ui">NG</span> 加上留言會將它傳回給 Agent。Agent 在終端機中給出的最後「完成 / 未完成」清單會包含每則意見的分數與輪數。</li>
+  <li>每次你把意見送給 Agent 時，判定模型<strong>每則意見最多呼叫一次</strong>。沒有第二次判定，也沒有迴圈，因此一個始終不說 "done" 的模型也無法讓 Agent 一直忙下去。</li>
+  <li>Agent 讀取那一次的結果。當 P(done) 達到門檻（預設 0.7）且選擇為 <code>done</code> 時，該意見即通過，原樣交給你。否則，如果結果顯示出 Agent 能修正的明確差距，它可以再改善一次修正並重新擷取 AFTER，不再判定。</li>
+  <li>無論哪種情況，Agent 都將該意見設為 <span class="docs-ui">待檢查</span>，附上它的 AFTER、那一次的分數，以及最多一行說明。超出範圍的意見，或無法連線的判定 API，都不會讓工作停下來：該意見不帶分數進入 <span class="docs-ui">待檢查</span>。</li>
+  <li>在 <span class="docs-ui">意見</span> 中，每則等你處理的意見都會把 BEFORE、AFTER 與分數作為參考資料顯示出來。<span class="docs-ui">OK</span> 會將它標為完成；<span class="docs-ui">NG</span> 加上留言會將它作為新的請求傳回給 Agent，在那裡它會再被判定一次。Agent 在終端機中給出的最後「完成 / 未完成」清單會包含每則意見的分數，以及是否又改善了一次修正。</li>
 </ol>
 <p>請在 <span class="docs-ui">設定 → 判定模型</span> 中設定，並開啟 <span class="docs-ui">在 Agent 指示中加入判定模型檢查</span>。預設組合只會幫你填入欄位；每個欄位都能再編輯，<span class="docs-ui">自訂</span> 可搭配任何相容的 API。</p>
 <table>

@@ -34,7 +34,7 @@ const CURL_PREVIEW = `curl -sS -X POST "$FERRET_DECISION_URL" \\
  * 設定の「判定モデル」の節。利用者が自分の System One 互換 API を入れる。
  * Ferret が自分から API を呼ぶのは「接続を確かめる」を押したときの1回だけ（合否の判定はしない）。有効にすると:
  *   - Agent のターミナルにローカル中継の URL・モデル・画像の可否を環境変数で渡す（キーは渡さない）
- *   - feedback.md と指示文に「全件が合格するまで判定を繰り返す」手順を足す
+ *   - feedback.md と指示文に「指摘1件につき1回だけ判定し、結果からもう1回だけ直すかを決めて人に渡す」手順を足す
  * プリセットは欄を埋めるだけで、どの値も書き換えられる。保存は自分で IPC へ送る（OrganizeSection と同じ）。
  */
 export function DecisionSection({ recording = false }: { recording?: boolean }) {

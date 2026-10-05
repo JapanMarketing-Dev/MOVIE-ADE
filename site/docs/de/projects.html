@@ -188,7 +188,7 @@
   <li>Klicken Sie in der Browser-Werkzeugleiste auf <span class="docs-ui">+</span> (<span class="docs-ui">Aktuelle URL speichern</span>). Die aktuelle URL ist bereits eingetragen.</li>
   <li>Geben Sie einen <span class="docs-ui">Name</span> ein und klicken Sie auf <span class="docs-ui">Speichern</span>.</li>
 </ol>
-<p>Jede gespeicherte URL hat unter <span class="docs-ui">Was Sie prüfen</span> eine Art: <span class="docs-ui">App</span> (die App, die Sie entwickeln), <span class="docs-ui">Design</span> (Figma, Penpot, Canva, ein Prototyp) oder <span class="docs-ui">Dokument / Spezifikation</span> (Google Docs, Notion, Confluence, eine Markdown-Spezifikation auf GitHub, ein PDF). Die Art wird aus der URL abgeleitet, und Sie können sie ändern. Siehe <a href="#design-docs">Designs und Dokumente prüfen, nicht nur Code</a>.</p>
+<p>Jede gespeicherte URL hat unter <span class="docs-ui">Was Sie prüfen</span> eine Art: <span class="docs-ui">App</span> (die App, die Sie entwickeln), <span class="docs-ui">Design</span> (Figma, Penpot, Canva, ein Prototyp) <span class="docs-ui">Dokument / Spezifikation</span> (Google Docs, Notion, Confluence, eine Markdown-Spezifikation auf GitHub, ein PDF) oder <span class="docs-ui">Referenz</span> (die Site eines Mitbewerbers oder eine andere externe Site, die Sie nicht ändern können). Die Art wird aus der URL und dem Namen abgeleitet, und Sie können sie ändern. Siehe <a href="#design-docs">Designs und Dokumente prüfen, nicht nur Code</a> und <a href="#reference-sites">Andere Sites als Referenz nutzen</a>.</p>
 <p>Es werden nur URLs mit <code>http://</code> und <code>https://</code> akzeptiert. Wenn Sie bei einer App-URL den vorgeschlagenen Namen übernehmen, wird er aus dem Host abgeleitet:</p>
 <table>
   <thead><tr><th>Host</th><th>Name</th></tr></thead>
@@ -214,14 +214,14 @@
   <li><strong><span class="docs-ui">Dateien</span></strong>: der Projektordner. Eine Datei öffnet sich als Vorschau (Markdown und Mermaid gerendert, anderer Text schreibgeschützt), sodass Sie auch Dokumentation prüfen können. Der Stift (<span class="docs-ui">Im Editor öffnen</span>) öffnet sie im Editor.</li>
 </ul>
 <p><span class="docs-ui">Ziele filtern</span> filtert Ziele, Seiten und Dateien gemeinsam, mit derselben unscharfen Suche wie <span class="docs-ui">Gehe zu Datei …</span>. In der Liste wechseln <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> oder <kbd>1</kbd>–<kbd>9</kbd> das Ziel. <span class="docs-ui">URL öffnen…</span> öffnet eine einmalige URL, und <span class="docs-ui">In Projekt-URLs speichern</span> behält sie.</p>
-<p>Die Ziele stammen aus <code>projects[].urls</code> in <code>settings.json</code> (siehe <a href="settings-json.html#example">das Beispiel</a>). Jeder Eintrag braucht eine <code>url</code>, einen <code>launchCommand</code> (wird in einem Terminal ausgeführt, z. B. um eine Desktop-App zu starten) oder ein <code>windowMatch</code> (das aufzunehmende Fenster) und kann einen <code>purpose</code> haben (<code>app</code>, <code>design</code> oder <code>doc</code>). Die Auswahl eines Fensterziels legt es als Aufnahmequelle fest und ist daher während einer Aufnahme nicht möglich. Besuchte Seiten werden pro Projekt gespeichert, nur auf diesem Rechner (bis zu 200).</p>
+<p>Die Ziele stammen aus <code>projects[].urls</code> in <code>settings.json</code> (siehe <a href="settings-json.html#example">das Beispiel</a>). Jeder Eintrag braucht eine <code>url</code>, einen <code>launchCommand</code> (wird in einem Terminal ausgeführt, z. B. um eine Desktop-App zu starten) oder ein <code>windowMatch</code> (das aufzunehmende Fenster) und kann einen <code>purpose</code> haben (<code>app</code>, <code>design</code>, <code>doc</code> oder <code>reference</code>). Die Auswahl eines Fensterziels legt es als Aufnahmequelle fest und ist daher während einer Aufnahme nicht möglich. Besuchte Seiten werden pro Projekt gespeichert, nur auf diesem Rechner (bis zu 200).</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">
         <h2 id="switch-env"><a class="docs-anchor" href="#switch-env" aria-label="Link zu „Umgebungen öffnen und wechseln“">#</a>Umgebungen öffnen und wechseln</h2>
         <p>Klicken Sie auf eine gespeicherte URL, um sie zu öffnen. Liegt die aktuelle Seite unter einer anderen gespeicherten URL, behält Ferret Pfad, Query und Hash bei und tauscht nur den Origin aus. Ein Beispiel: Auf <code>http://localhost:3000/pricing?plan=pro</code> öffnet ein Klick auf <code>prd</code> die Adresse <code>https://example.com/pricing?plan=pro</code>.</p>
 <p>Der Chip, der zur aktuellen Seite passt (längstes Präfix), ist hervorgehoben. Klicken Sie mit der rechten Maustaste auf einen Chip oder verwenden Sie sein Stiftsymbol, um ihn zu bearbeiten oder zu <span class="docs-ui">Löschen</span>. Wird ein Projekt geöffnet und gibt es keine vorherige URL, wird seine erste gespeicherte URL geladen.</p>
-<p>Die Chips sind nach Art gruppiert: zuerst App-URLs, dann Designs, dann Dokumente, mit einer Trennlinie und einem Symbol für jede Art. Beim Wechsel zu oder von einem Design oder Dokument wird dessen gespeicherte URL unverändert geöffnet, ohne den Pfad zu übernehmen.</p>
+<p>Die Chips sind nach Art gruppiert: zuerst App-URLs, dann Designs, dann Dokumente, dann Referenzen, mit einer Trennlinie und einem Symbol für jede Art. Beim Wechsel zu oder von einem Design, einem Dokument oder einer Referenz wird dessen gespeicherte URL unverändert geöffnet, ohne den Pfad zu übernehmen.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="design-docs">
@@ -242,6 +242,22 @@
 <p>Nicht gespeicherte Seiten auf <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> und ähnlichen Hosts werden ebenfalls erkannt. Dateien im Projektordner (Markdown, Mermaid) prüfen Sie über die Liste <span class="docs-ui">Dateien</span> im Bereich <span class="docs-ui">Review-Ziele</span>.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="reference-sites">
+        <h2 id="reference-sites"><a class="docs-anchor" href="#reference-sites" aria-label="Link zu „Andere Sites als Referenz nutzen“">#</a>Andere Sites als Referenz nutzen</h2>
+        <p>Sie können auch die Site eines Mitbewerbers oder jede Seite, deren Aussehen Ihnen gefällt, aufnehmen und sagen, was davon übernommen werden soll („nimm das als Vorbild“, „dieser schwarze Hintergrund funktioniert nicht“). Diese Site lässt sich nicht ändern, deshalb versucht der Agent es nie: Er behandelt diese Befunde als Referenz für Ihre eigene App.</p>
+<ol class="docs-steps">
+  <li>Fügen Sie die Site als Ziel hinzu und wählen Sie unter <span class="docs-ui">Was Sie prüfen</span> die Art <span class="docs-ui">Referenz</span>. Ein Name, der „competitor“ oder „reference“ enthält (zum Beispiel <code>Competitor: Acme</code>), wählt sie automatisch.</li>
+  <li>Nehmen Sie wie gewohnt auf und wechseln Sie bei Bedarf in derselben Aufnahme zwischen dieser Site und Ihrer App.</li>
+</ol>
+<p>Befunde auf einer Referenz-Site sind in <span class="docs-ui">Befunde</span> mit <span class="docs-ui">Referenz</span> und in <code>feedback.md</code> mit <code>Kind: reference</code> gekennzeichnet. Für jeden davon:</p>
+<ul>
+  <li>übernimmt der Agent, was Ihnen gefallen hat, dort, wo es in Ihre App passt, und notiert, wo er es übernommen hat;</li>
+  <li>prüft er, dass Ihre App nicht tut, was Ihnen missfallen hat, und korrigiert Ihre App, falls doch;</li>
+  <li>ändert er nichts, wenn sich aus einer Bemerkung nichts ableiten lässt, und setzt den Befund auf <span class="docs-ui">Zu prüfen</span> mit einer Notiz wie „Externe Website, nichts zu tun (Referenz)“.</li>
+</ul>
+<p>Er bearbeitet nie die externe Site und hält nie an, um Sie zu fragen. Ein Befund wird auch ohne Auswahl der Art als Referenz behandelt, wenn der Name seines Ziels „competitor“ oder „reference“ (oder 競合 / 参考) enthält oder wenn er auf einer nicht gespeicherten Site aufgenommen wurde, deren Host zu keiner der App-URLs des Projekts passt. <code>localhost</code> und private Adressen gelten nie als extern, und für ein Projekt ohne gespeicherte App-URLs gibt es diese Ableitung nicht.</p>
+      </section>
+
         <nav class="docs-pager" aria-label="Vorherige und nächste Seite">
           <a class="docs-pager-prev" href="keyboard.html"><span>Zurück</span>Tastenkürzel</a>
           <a class="docs-pager-next" href="recording.html"><span>Weiter</span>Aufnahme</a>
@@ -258,6 +274,7 @@
         <li><a href="#review-targets">Bereich „Review-Ziele“</a></li>
         <li><a href="#switch-env">Umgebungen öffnen und wechseln</a></li>
         <li><a href="#design-docs">Designs und Dokumente prüfen, nicht nur Code</a></li>
+        <li><a href="#reference-sites">Andere Sites als Referenz nutzen</a></li>
       </ul>
     </aside>
   </div>

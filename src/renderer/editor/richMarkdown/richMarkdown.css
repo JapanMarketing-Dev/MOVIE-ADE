@@ -252,3 +252,56 @@
   border-radius: 4px;
   background: #000;
 }
+
+/* 「/」メニュー（SlashMenu.tsx）。「/」の下（入らなければ上）に出す。名前・説明・ソースでの書き方 */
+.rich-md__slash {
+  position: fixed;
+  z-index: var(--z-overlay);
+  box-sizing: border-box;
+  padding: 4px;
+  border: var(--size-border) solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-md);
+  overflow-y: auto;
+}
+
+.rich-md__slash-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.rich-md__slash-item[aria-selected='true'] {
+  background: var(--color-surface-selected);
+}
+
+.rich-md__slash-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rich-md__slash-label {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.rich-md__slash-description {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.rich-md__slash-syntax {
+  flex: none;
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: pre;
+}

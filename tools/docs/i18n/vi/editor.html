@@ -34,12 +34,13 @@ Mở và sửa tệp trong dự án, xem trước Markdown và Mermaid. Bản xe
 </ul>
 <p>Các tab đang mở đi theo tệp đã đổi tên hoặc di chuyển và giữ nguyên chỉnh sửa chưa lưu. Ferret không ghi đè lên tệp hoặc thư mục đã có cùng tên, và giữ mọi thứ bên trong thư mục dự án: nó từ chối <code>..</code>, đường dẫn tuyệt đối, symbolic link trỏ ra ngoài, mọi thứ bên trong <code>.git</code>, việc di chuyển một thư mục vào chính nó, và những tên mà một số hệ điều hành không dùng được: <code>/ \ &lt; &gt; : " | ? *</code>, ký tự điều khiển, khoảng trắng hoặc dấu chấm ở cuối, và các tên dành riêng của Windows như <code>CON</code> hay <code>NUL</code>. Một lần sao chép hoặc thả có thể chứa tới 10.000 mục và 1 GB.</p>
 
-<!-- @preview 8cf744371d -->
+<!-- @preview 73d733f3b8 -->
 ## Xem trước Markdown và Mermaid
 <p>Xem trước hoạt động với <code>.md</code>, <code>.markdown</code>, <code>.mdx</code>, <code>.mmd</code> và <code>.mermaid</code>. Mermaid được đóng gói sẵn trong ứng dụng, nên sơ đồ hiển thị được khi không có mạng.</p>
 <p>Tệp Markdown có hai chế độ xem ở phía trên editor: <span class="docs-ui">Mã nguồn</span> và <span class="docs-ui">Xem trước</span>. Bản xem trước luôn sửa được, nên bạn có thể gõ trực tiếp vào đó; nhấp <span class="docs-ui">Mã nguồn</span> để quay lại văn bản. Cả hai hiển thị cùng một nội dung, và việc lưu, dấu chưa lưu cũng như hộp xác nhận khi đóng đều hoạt động như nhau.</p>
 <ul>
   <li>Gõ trực tiếp vào tiêu đề, đoạn văn, danh sách, hộp kiểm, bảng, liên kết, và chữ đậm, nghiêng hoặc mã nội dòng. Gõ <code>#</code>, <code>-</code>, <code>1.</code> hoặc <code>&gt;</code> cùng một dấu cách ở đầu dòng sẽ bắt đầu một tiêu đề, danh sách hoặc trích dẫn.</li>
+  <li>Gõ <code>/</code> ở đầu dòng (hoặc sau dấu cách) để chọn một khối từ danh sách: tiêu đề, danh sách dấu đầu dòng, đánh số hoặc danh sách kiểm, bảng, khối mã, trích dẫn hoặc đường phân cách. Mỗi mục cho biết nó tạo ra gì và cách viết trong Markdown. Gõ tiếp để lọc, dùng {{keys:Up}} {{keys:Down}} và {{keys:Enter}} để chọn, hoặc {{keys:Esc}} để giữ <code>/</code> dưới dạng chữ. Bảng bắt đầu với 3 × 3 và một hàng tiêu đề; {{keys:Tab}} chuyển sang ô tiếp theo và thêm một hàng ở cuối. Gõ <code>/</code> trong bảng để thêm hoặc xóa hàng và cột, hoặc xóa bảng.</li>
   <li>Khối mã và sơ đồ Mermaid được sửa dưới dạng mã nguồn, với ngôn ngữ hiển thị ở góc. Để xem sơ đồ được vẽ ra, hãy mở tệp từ <span class="docs-ui">Tệp</span> trong bảng <a href="projects.html#review-targets"><span class="docs-ui">Mục tiêu review</span></a>.</li>
   <li>Front matter (khối <code>---</code> ở đầu tệp) được hiển thị dưới dạng văn bản phía trên tài liệu và có thể sửa ở đó.</li>
   <li>Những phần bạn không thay đổi được lưu đúng như đã viết, bao gồm kiểu tiêu đề, ký hiệu danh sách, dòng trống, căn lề bảng và ký tự xuống dòng. Khối bạn sửa giữ kiểu của nó khi có thể; nếu không, khối đó được ghi theo dạng Markdown chuẩn, với <code>-</code> cho danh sách và <code>#</code> cho tiêu đề.</li>

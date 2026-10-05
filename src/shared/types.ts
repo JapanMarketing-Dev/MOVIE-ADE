@@ -113,8 +113,9 @@ export interface ProjectUrl {
  *   app    … 開発中のアプリ（local / dev / prd など）
  *   design … デザイン（Figma・Penpot・Canva・プロトタイプなど）
  *   doc    … 設計書・仕様・文書（Google Docs・Notion・Confluence・GitHub の設計 md・PDF など）
+ *   reference … 参考に見る外部サイト（競合・お手本）。直せないので、指摘は自分のアプリへ取り入れる・避ける参考として渡す
  */
-export type TargetPurpose = 'app' | 'design' | 'doc'
+export type TargetPurpose = 'app' | 'design' | 'doc' | 'reference'
 
 /** 確認先。ProjectUrl と同じもの（新しいコードはこちらの名前を使う） */
 export type ProjectTarget = ProjectUrl
@@ -371,6 +372,17 @@ export interface SettingsFileError {
   column?: number
   /** スキーマの違反の場所（/capture/keepDays） */
   path?: string
+  /** スキーマの違反の全件（先頭から最大 SETTINGS_ERROR_ISSUE_LIMIT 件）。AI への修正依頼に並べる。message は1件目と残りの件数だけ */
+  issues?: SettingsFileIssue[]
+}
+
+/** スキーマの違反の1件 */
+export interface SettingsFileIssue {
+  /** JSON Pointer 風の場所（/layout/footer/items/organizer） */
+  path: string
+  message: string
+  /** 1 始まり。見つからないときは無し */
+  line?: number
 }
 
 /** 設定のページに出す settings.json の情報 */

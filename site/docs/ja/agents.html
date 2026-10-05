@@ -291,13 +291,14 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   <video class="docs-clip-video" muted loop playsinline preload="none" width="1280" height="800" poster="../assets/clips/verify.webp" data-src="../assets/clips/verify.mp4" aria-label="エージェントが指摘を直し、あなたが見る前に判定モデルで1件ずつ確かめる。"></video>
   <figcaption>エージェントが指摘を直し、あなたが見る前に判定モデルで1件ずつ確かめる。</figcaption>
 </figure>
-<p>これを入にすると、コーディングエージェントはあなたが見る前に、自分の作業を指摘ごとに確かめて良くし続けます。Ferret 自身は何も判定しません。エージェントに<em>判定モデル</em>（System One 互換の API ならどれでも）を渡し、その使い方を <code>feedback.md</code> で指示します。判定モデルはエージェント自身の確認で、あなたへの質問にはなりません。エージェントはあなたに何も質問しません。あなたは BEFORE と AFTER を見比べて <span class="docs-ui">OK</span> か <span class="docs-ui">NG</span> を押すだけです。</p>
+<p>これを入にすると、コーディングエージェントはあなたが見る前に、自分の作業を指摘ごとに1回確かめます。Ferret 自身は何も判定しません。エージェントに<em>判定モデル</em>（System One 互換の API ならどれでも）を渡し、その使い方を <code>feedback.md</code> で指示します。判定モデルはエージェント自身の確認で、あなたへの質問にはなりません。エージェントはあなたに何も質問しません。あなたは BEFORE と AFTER を見比べて <span class="docs-ui">OK</span> か <span class="docs-ui">NG</span> を押すだけです。</p>
 <ol class="docs-steps">
   <li>エージェントが指摘を実装します。</li>
   <li>指摘ごとに AFTER のスクリーンショットを撮り（BEFORE の静止画と同じビューポートとページの状態で）、指摘の文、その「完了の条件」の行、BEFORE / AFTER の画像を1つのリクエストで判定モデルに送ります。</li>
-  <li>P(done) がしきい値（既定 0.7）以上で、選ばれた答えが <code>done</code> なら、その指摘は合格です。エージェントは残りの直し（またはスクリーンショット）を良くし、同じ回ですべての指摘が合格するまで、毎回<strong>すべての</strong>指摘を判定し直します。</li>
-  <li>何回か直しても合格しない指摘（点数が変わらないまま3回、または全部で5回）、対象外の指摘、判定 API につながらないときも、作業は止まりません。エージェントはその指摘を AFTER、最後の点数、長くても1行のメモと一緒に <span class="docs-ui">確認待ち</span> にします。</li>
-  <li><span class="docs-ui">指摘</span> では、あなたの確認を待つ指摘ごとに BEFORE・AFTER・点数が材料として並びます。<span class="docs-ui">OK</span> で完了、コメントつきの <span class="docs-ui">NG</span> でエージェントへ差し戻します。ターミナルに出るエージェントの最後の「完了／未完了」の一覧には、指摘ごとの点数と回数が入ります。</li>
+  <li>判定モデルを呼ぶのは、エージェントへ指摘を送るたびに<strong>指摘1件につき1回まで</strong>です。2回目の判定もループもないので、「done」を出さないモデルのせいでエージェントが回り続けることはありません。</li>
+  <li>エージェントはその1回の結果を読みます。P(done) がしきい値（既定 0.7）以上で、選ばれた答えが <code>done</code> なら、その指摘は合格で、そのままあなたに渡ります。そうでなく、結果がエージェントに直せる差をはっきり示していれば、もう1回だけ直して AFTER を撮り直してよく、そのとき判定はし直しません。</li>
+  <li>どちらの場合も、エージェントはその指摘を AFTER、その1回の点数、長くても1行のメモと一緒に <span class="docs-ui">確認待ち</span> にします。対象外の指摘や、判定 API につながらないときも作業は止まらず、その指摘は点数なしで <span class="docs-ui">確認待ち</span> になります。</li>
+  <li><span class="docs-ui">指摘</span> では、あなたの確認を待つ指摘ごとに BEFORE・AFTER・点数が材料として並びます。<span class="docs-ui">OK</span> で完了、コメントつきの <span class="docs-ui">NG</span> で新しい依頼としてエージェントへ差し戻し、そこでもう1回判定されます。ターミナルに出るエージェントの最後の「完了／未完了」の一覧には、指摘ごとの点数と、もう1回直したかが入ります。</li>
 </ol>
 <p><span class="docs-ui">設定 → 判定モデル</span> で設定し、<span class="docs-ui">Agent への指示に判定モデルでの確認を入れる</span> を入にします。プリセットは欄を埋めるだけで、どの欄も後から直せます。<span class="docs-ui">任意の接続先</span> は互換の API ならどれでも使えます。</p>
 <table>

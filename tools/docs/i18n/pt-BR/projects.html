@@ -23,14 +23,14 @@ Um projeto é uma pasta (normalmente a raiz do seu repositório). Cada projeto g
 <p>O botão de filtro ao lado da busca de revisões também define <span class="docs-ui">Ordenar projetos</span>: <span class="docs-ui">Manual (ordem de arrastar)</span>, <span class="docs-ui">Ativos primeiro</span> (primeiro os projetos cujo agente está esperando por você, trabalhando ou acabou de terminar), <span class="docs-ui">Usados recentemente</span>, <span class="docs-ui">Nome</span> ou <span class="docs-ui">Data de inclusão</span>. Se você arrastar um projeto com outra ordem selecionada, a lista como está na tela vira a ordem manual e a ordem muda para <span class="docs-ui">Manual (ordem de arrastar)</span>. Clique na estrela da linha de um projeto, ou em <span class="docs-ui">Marcar com estrela</span> no menu dele, para mantê-lo no topo da lista em qualquer ordem; <span class="docs-ui">Somente com estrela</span> oculta os demais. As estrelas e a ordem são mantidas depois de reiniciar.</p>
 <p>Os terminais abrem na pasta do projeto, e as revisões são salvas em <code>&lt;project&gt;/.ferret/</code>.</p>
 
-<!-- @save-url 553542e405 -->
+<!-- @save-url cb8cafed1c -->
 ## Salvar URLs
 <ol class="docs-steps">
   <li>Abra a página no navegador integrado.</li>
   <li>Clique em <span class="docs-ui">+</span> (<span class="docs-ui">Salvar URL atual</span>) na barra de ferramentas do navegador. A URL atual já vem preenchida.</li>
   <li>Digite um <span class="docs-ui">Nome</span> e clique em <span class="docs-ui">Salvar</span>.</li>
 </ol>
-<p>Cada URL salva tem um tipo em <span class="docs-ui">O que revisar</span>: <span class="docs-ui">App</span> (o app que você está construindo), <span class="docs-ui">Design</span> (Figma, Penpot, Canva, um protótipo) ou <span class="docs-ui">Documento / especificação</span> (Google Docs, Notion, Confluence, uma especificação em Markdown no GitHub, um PDF). O tipo é deduzido a partir da URL, e você pode alterá-lo. Veja <a href="#design-docs">Revisar designs e documentos, não só código</a>.</p>
+<p>Cada URL salva tem um tipo em <span class="docs-ui">O que revisar</span>: <span class="docs-ui">App</span> (o app que você está construindo), <span class="docs-ui">Design</span> (Figma, Penpot, Canva, um protótipo), <span class="docs-ui">Documento / especificação</span> (Google Docs, Notion, Confluence, uma especificação em Markdown no GitHub, um PDF) ou <span class="docs-ui">Referência</span> (o site de um concorrente ou outro site externo que você não pode alterar). O tipo é deduzido a partir da URL e do nome, e você pode alterá-lo. Veja <a href="#design-docs">Revisar designs e documentos, não só código</a> e <a href="#reference-sites">Usar outros sites como referência</a>.</p>
 <p>Só são aceitas URLs <code>http://</code> e <code>https://</code>. Para a URL de um app, se você mantiver o nome sugerido, ele é deduzido a partir do host:</p>
 <table>
   <thead><tr><th>Host</th><th>Nome</th></tr></thead>
@@ -43,7 +43,7 @@ Um projeto é uma pasta (normalmente a raiz do seu repositório). Cada projeto g
 </table>
 {{shot:url-presets|URLs salvas na barra de ferramentas do navegador}}
 
-<!-- @review-targets 7edd1985ee -->
+<!-- @review-targets 9c48e48820 -->
 ## Painel de alvos de revisão
 {{clip:targets|Trocando de alvo de revisão e de página sem parar a gravação.}}
 <p>No modo Feedback, o painel <span class="docs-ui">Alvos de revisão</span> à direita lista tudo o que você pode revisar no projeto atual. Trocar de alvo não interrompe a gravação. Mostre ou oculte o painel com <span class="docs-ui">Exibir → Alternar alvos de revisão</span> ({{keys:Mod+Shift+K}}) ou <span class="docs-ui">Ocultar painel</span>.</p>
@@ -52,12 +52,12 @@ Um projeto é uma pasta (normalmente a raiz do seu repositório). Cada projeto g
   <li><strong><span class="docs-ui">Arquivos</span></strong>: a pasta do projeto. Um arquivo abre como prévia (Markdown e Mermaid renderizados, outros textos somente leitura), então você também pode revisar documentos. O lápis (<span class="docs-ui">Abrir no editor</span>) o abre no editor.</li>
 </ul>
 <p><span class="docs-ui">Filtrar alvos</span> filtra alvos, páginas e arquivos ao mesmo tempo, com a mesma busca aproximada de <span class="docs-ui">Ir para arquivo…</span>. Na lista, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> ou <kbd>1</kbd>–<kbd>9</kbd> trocam de alvo. <span class="docs-ui">Abrir URL…</span> abre uma URL avulsa, e <span class="docs-ui">Salvar nas URLs do projeto</span> a guarda.</p>
-<p>Os alvos vêm de <code>projects[].urls</code> no <code>settings.json</code> (veja <a href="settings-json.html#example">o exemplo</a>). Cada entrada precisa de uma <code>url</code>, de um <code>launchCommand</code> (executado em um terminal, por exemplo para iniciar um app de desktop) ou de um <code>windowMatch</code> (a janela a gravar), e pode ter um <code>purpose</code> (<code>app</code>, <code>design</code> ou <code>doc</code>). Escolher um alvo de janela o define como a fonte da gravação, então isso não pode ser feito durante a gravação. As páginas visitadas são lembradas por projeto, apenas nesta máquina (até 200).</p>
+<p>Os alvos vêm de <code>projects[].urls</code> no <code>settings.json</code> (veja <a href="settings-json.html#example">o exemplo</a>). Cada entrada precisa de uma <code>url</code>, de um <code>launchCommand</code> (executado em um terminal, por exemplo para iniciar um app de desktop) ou de um <code>windowMatch</code> (a janela a gravar), e pode ter um <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> ou <code>reference</code>). Escolher um alvo de janela o define como a fonte da gravação, então isso não pode ser feito durante a gravação. As páginas visitadas são lembradas por projeto, apenas nesta máquina (até 200).</p>
 
-<!-- @switch-env 3d0b21e6f6 -->
+<!-- @switch-env 70e1c23f78 -->
 ## Abrir e trocar de ambiente
 <p>Clique em uma URL salva para abri-la. Se a página atual estiver sob outra URL salva, o Ferret mantém o caminho, a query e o hash e troca só a origem. Por exemplo, em <code>http://localhost:3000/pricing?plan=pro</code>, clicar em <code>prd</code> abre <code>https://example.com/pricing?plan=pro</code>.</p>
-<p>Os chips são agrupados por tipo: primeiro as URLs de app, depois os designs e então os documentos, com um divisor e um ícone para cada tipo. Ao trocar para um design ou documento, ou sair dele, a URL salva é aberta como está, sem levar o caminho junto.</p>
+<p>Os chips são agrupados por tipo: primeiro as URLs de app, depois os designs, depois os documentos e então as referências, com um divisor e um ícone para cada tipo. Ao trocar para um design, um documento ou uma referência, ou sair dele, a URL salva é aberta como está, sem levar o caminho junto.</p>
 <p>O chip que corresponde à página atual (o prefixo mais longo) fica destacado. Clique com o botão direito em um chip ou use o ícone de lápis para editá-lo ou usar <span class="docs-ui">Excluir</span>. Quando um projeto abre e não há URL anterior, a primeira URL salva dele é carregada.</p>
 
 <!-- @design-docs 674aff9ed3 -->
@@ -76,3 +76,18 @@ Um projeto é uma pasta (normalmente a raiz do seu repositório). Cada projeto g
 </ul>
 <p>Exemplo: lendo a especificação de preços no Google Docs, você circula a tabela de planos e diz "o plano Pro agora custa 9.800 ienes, não 8.800". O <code>feedback.md</code> lista o apontamento sob o alvo <code>Spec</code> com <code>Kind: document</code>, e o agente responde com a frase corrigida para a especificação, sem mexer no código da página de preços. Grave a especificação e o app em execução na mesma gravação, e os apontamentos são separados por alvo, para que o agente possa atualizar primeiro a especificação e depois o código que a implementa.</p>
 <p>Páginas não salvas em <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> e hosts parecidos também são reconhecidas. Os arquivos da pasta do projeto (Markdown, Mermaid) são revisados pela lista <span class="docs-ui">Arquivos</span> no painel <span class="docs-ui">Alvos de revisão</span>.</p>
+
+<!-- @reference-sites 6fb5f06ade -->
+## Usar outros sites como referência
+<p>Você também pode gravar o site de um concorrente, ou qualquer página cujo visual você goste, e dizer o que aproveitar dela ("use isto como modelo", "este fundo preto não funciona"). Você não pode alterar esse site, então o agente nunca tenta: ele trata esses apontamentos como referência para o seu próprio app.</p>
+<ol class="docs-steps">
+  <li>Adicione o site como alvo e escolha <span class="docs-ui">Referência</span> em <span class="docs-ui">O que revisar</span>. Um nome que contenha "competitor" ou "reference" (por exemplo <code>Competitor: Acme</code>) já faz essa escolha para você.</li>
+  <li>Grave como de costume e, se quiser, alterne entre esse site e o seu app na mesma gravação.</li>
+</ol>
+<p>Os apontamentos em um site de referência recebem o rótulo <span class="docs-ui">Referência</span> em Apontamentos e <code>Kind: reference</code> no <code>feedback.md</code>. Para cada um, o agente:</p>
+<ul>
+  <li>adota o que você gostou onde fizer sentido no seu app e anota onde aplicou;</li>
+  <li>verifica que o seu app não faz o que você não gostou e, se fizer, corrige o seu app;</li>
+  <li>não muda nada quando um comentário não traz nada a fazer, e marca o apontamento como <span class="docs-ui">Para revisar</span> com uma nota como "Site externo, nenhuma ação necessária (referência)".</li>
+</ul>
+<p>Ele nunca edita o site externo e nunca para para perguntar a você. Um apontamento também é tratado como referência, sem que você escolha o tipo, quando o nome do alvo contém "competitor" ou "reference" (ou 競合 / 参考), ou quando foi gravado em um site não salvo cujo host não corresponde a nenhuma das URLs de app do projeto. <code>localhost</code> e endereços privados nunca contam como externos, e um projeto sem URLs de app salvas não recebe essa dedução.</p>

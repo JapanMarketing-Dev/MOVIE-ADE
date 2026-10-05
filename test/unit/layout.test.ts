@@ -37,7 +37,8 @@ describe('sanitizeLayout', () => {
       footer: { dock: 'top', visible: false, items: { usage: false, bogus: false } }
     })
     expect(l.panels.files).toEqual({ dock: 'bottom', visible: false })
-    expect(l.footer.dock).toBe('top')
+    // フッターは常に下（古い設定の top も下に戻す）
+    expect(l.footer.dock).toBe('bottom')
     expect(l.footer.visible).toBe(false)
     expect(l.footer.items.usage).toBe(false)
     expect(l.footer.items.mic).toBe(true)
@@ -222,7 +223,7 @@ describe('dropPanel', () => {
     expect(dropPanel(hidden, 'terminal', 'top').panels.terminal).toEqual({ dock: 'top', visible: true })
   })
   it('フッターは上か下だけ', () => {
-    expect(dropPanel(DEFAULT_LAYOUT, 'footer', 'top').footer.dock).toBe('top')
+    expect(dropPanel(DEFAULT_LAYOUT, 'footer', 'top')).toBe(DEFAULT_LAYOUT)
     expect(dropPanel(DEFAULT_LAYOUT, 'footer', 'left')).toBe(DEFAULT_LAYOUT)
   })
 })

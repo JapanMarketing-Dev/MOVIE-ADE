@@ -25,7 +25,7 @@
 <p>Первая строка <code>settings.json</code> — <code>"$schema": "./settings.schema.json"</code>. Редакторы, такие как VS Code, и агенты, такие как Claude Code, используют её для автодополнения, проверки и описания каждого поля. Схема поставляется внутри приложения и записывается рядом с файлом при каждом запуске, поэтому всегда соответствует установленной версии.</p>
 <p>Ключи, которые Ferret не знает, при сохранении остаются как есть. Открытые вкладки, последний URL и другое состояние сеанса хранятся в <code>state.json</code>, а не здесь.</p>
 
-<!-- @example 8f2ce86189 -->
+<!-- @example a3549b8c04 -->
 ## Пример с пояснениями
 <p>В JSON нет комментариев, поэтому пояснения даны под примером. Все поля необязательны; опускайте то, что вам не нужно.</p>
 <pre><code>{
@@ -85,7 +85,7 @@
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>: цели ревью для меню URL. Первая открывается при открытии проекта. <code>id</code> может быть любой уникальной строкой. <code>purpose</code> отмечает дизайн или документ (см. <a href="projects.html#design-docs">Ревью дизайна и документов</a>); для приложения его не указывают.</li>
+  <li><code>projects[].urls</code>: цели ревью для меню URL. Первая открывается при открытии проекта. <code>id</code> может быть любой уникальной строкой. <code>purpose</code> отмечает дизайн или документ (см. <a href="projects.html#design-docs">Ревью дизайна и документов</a>) или внешний сайт, который используется как образец (см. <a href="projects.html#reference-sites">Другие сайты как образец</a>); для приложения его не указывают.</li>
   <li><code>agents.customAgents</code>: любой CLI или скрипт-обёртка. <code>startupAgents</code> перечисляет вкладки агентов, открываемые вместе с проектом, по порядку.</li>
   <li><code>capture.sttEndpoints.compatible</code>: любой сервер, реализующий <code>/v1/audio/transcriptions</code> OpenAI (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> отключает лимит расходов, что разумно для собственного GPU. См. <a href="transcription.html">Распознавание речи и расходы</a>.</li>
   <li><code>organizer</code>: <span class="docs-ui">Обработать замечания</span> с отправкой напрямую на OpenAI-совместимый сервер <code>/v1/chat/completions</code> (здесь Ollama). Чтобы вместо этого использовать собственный вход в CLI, укажите <code>"runner": "claude-code"</code> или <code>"codex"</code>, а модель для них выберите в <code>organizer.cliModels</code>.</li>

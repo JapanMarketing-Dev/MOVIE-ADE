@@ -1,0 +1,140 @@
+import type { JSONContent } from '@tiptap/core'
+import type { MessageKey } from '@shared/i18n'
+
+/**
+ * プレビューで編集するときの「/」メニュー（スラッシュコマンド）の中身。DOM・エディタを使わないので単体テストから使う。
+ *
+ * 行の頭（または空白の後）で「/」を打つと候補を出し、続けて打った文字で絞る。選ぶと「/…」を消して塊を入れる。
+ * 表の中では、表の外の塊（GFM のセルには入れられない）の代わりに、行・列の追加と削除を出す。
+ * 実際の書き換えは RichMarkdownEditor が TipTap のコマンドで行う（表は slashTableTemplate を入れる）。
+ */
+
+export type SlashItemId =
+  | 'heading1'
+  | 'heading2'
+  | 'heading3'
+  | 'bulletList'
+  | 'orderedList'
+  | 'taskList'
+  | 'table'
+  | 'codeBlock'
+  | 'blockquote'
+  | 'horizontalRule'
+  | 'addRowAfter'
+  | 'addColumnAfter'
+  | 'deleteRow'
+  | 'deleteColumn'
+  | 'deleteTable'
+
+/** どこで出すか。block は表の外、table は表のセルの中 */
+export type SlashContext = 'block' | 'table'
+
+export interface SlashItem {
+  id: SlashItemId
+  context: SlashContext
+  /** 絞り込みに使う英語の別名（言語を問わず効く） */
+  keywords: readonly string[]
+  /** 説明に添える Markdown の書き方（ソースで同じものを書くとき） */
+  syntax?: string
+}
+
+export const SLASH_ITEMS: readonly SlashItem[] = [
+  { id: 'heading1', context: 'block', keywords: ['h1', 'heading', 'title'], syntax: '# ' },
+  { id: 'heading2', context: 'block', keywords: ['h2', 'heading', 'subtitle'], syntax: '## ' },
+  { id: 'heading3', context: 'block', keywords: ['h3', 'heading'], syntax: '### ' },
+  { id: 'bulletList', context: 'block', keywords: ['ul', 'bullet', 'list', 'unordered'], syntax: '- ' },
+  { id: 'orderedList', context: 'block', keywords: ['ol', 'ordered', 'numbered', 'list'], syntax: '1. ' },
+  { id: 'taskList', context: 'block', keywords: ['todo', 'task', 'checkbox', 'checklist'], syntax: '- [ ] ' },
+  { id: 'table', context: 'block', keywords: ['table', 'grid'], syntax: '| a | b |' },
+  { id: 'codeBlock', context: 'block', keywords: ['code', 'pre', 'fence', 'mermaid'], syntax: '```' },
+  { id: 'blockquote', context: 'block', keywords: ['quote', 'blockquote'], syntax: '> ' },
+  { id: 'horizontalRule', context: 'block', keywords: ['hr', 'divider', 'rule', 'separator'], syntax: '---' },
+  { id: 'addRowAfter', context: 'table', keywords: ['row', 'add', 'insert'] },
+  { id: 'addColumnAfter', context: 'table', keywords: ['column', 'col', 'add', 'insert'] },
+  { id: 'deleteRow', context: 'table', keywords: ['row', 'delete', 'remove'] },
+  { id: 'deleteColumn', context: 'table', keywords: ['column', 'col', 'delete', 'remove'] },
+  { id: 'deleteTable', context: 'table', keywords: ['table', 'delete', 'remove'] }
+]
+
+export function slashLabelKey(id: SlashItemId): MessageKey {
+  return `markdown.slash.${id}`
+}
+export function slashDescriptionKey(id: SlashItemId): MessageKey {
+  return `markdown.slash.${id}.description`
+}
+
+/** 比べる形（全角英数を半角に、大文字を小文字に） */
+function fold(text: string): string {
+  return text.normalize('NFKC').toLowerCase().trim()
+}
+
+/**
+ * 打った文字で絞る。空なら全部。名前（その言語）か英語の別名のどれかが、頭から一致するもの → 途中に含むものの順。
+ * label は表示する名前（t で引いたもの）
+ */
+export function filterSlashItems(
+  items: readonly SlashItem[],
+  context: SlashContext,
+  query: string,
+  label: (item: SlashItem) => string
+): SlashItem[] {
+  const inContext = items.filter((item) => item.context === context)
+  const q = fold(query)
+  if (q === '') return inContext
+  const prefix: SlashItem[] = []
+  const contains: SlashItem[] = []
+  for (const item of inContext) {
+    const words = [fold(label(item)), ...item.keywords.map(fold)]
+    if (words.some((w) => w.startsWith(q))) prefix.push(item)
+    else if (words.some((w) => w.includes(q))) contains.push(item)
+  }
+  return [...prefix, ...contains]
+}
+
+/** 「/」として受ける文字（日本語入力の全角の ／ も） */
+const SLASH_TRIGGER_RE = /(?:^|[\s　])([/／])([^\s　/／]{0,32})$/
+
+/**
+ * カーソルの前の文字（同じ段落の頭から）を見て、メニューを開くか決める。
+ * 開くなら、消す範囲（「/」からカーソルまで。段落の頭からの位置）と、絞る文字を返す
+ */
+export function detectSlashTrigger(textBefore: string): { start: number; query: string } | null {
+  const match = SLASH_TRIGGER_RE.exec(textBefore)
+  if (!match) return null
+  const query = match[2] ?? ''
+  return { start: textBefore.length - query.length - 1, query }
+}
+
+/**
+ * 「/…」を消すのを、塊を入れる操作と別の変更にするか。表の行・列の操作（prosemirror-tables）は TipTap の chain の中だと
+ * 消す前の文書から表の形を読み、消した後の文書に入れるので、列がずれて2列増える（E2E で見つけた）。表の操作は先に消してから行う
+ */
+export function slashDeletesSeparately(id: SlashItemId): boolean {
+  return SLASH_ITEMS.some((item) => item.id === id && item.context === 'table')
+}
+
+/** 選んだ候補の位置を上下に動かす（端で反対へ回る） */
+export function moveSlashIndex(index: number, delta: number, count: number): number {
+  if (count <= 0) return 0
+  return (((index + delta) % count) + count) % count
+}
+
+function cell(type: 'tableHeader' | 'tableCell'): JSONContent {
+  return { type, attrs: { colspan: 1, rowspan: 1, colwidth: null }, content: [{ type: 'paragraph' }] }
+}
+
+/**
+ * 「/表」で入れる表。見出しの行を含めて rows 行 × cols 列（GFM の表は見出しの行が要る）。
+ * 保存すると | | の表になる（test/unit/rich-markdown-slash.test.ts で GFM として読み戻せることを確かめる）
+ */
+export function slashTableTemplate(rows = 3, cols = 3): JSONContent {
+  const r = Math.max(2, Math.floor(rows))
+  const c = Math.max(1, Math.floor(cols))
+  return {
+    type: 'table',
+    content: Array.from({ length: r }, (_, i) => ({
+      type: 'tableRow',
+      content: Array.from({ length: c }, () => cell(i === 0 ? 'tableHeader' : 'tableCell'))
+    }))
+  }
+}

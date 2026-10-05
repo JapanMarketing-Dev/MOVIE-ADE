@@ -23,14 +23,14 @@
 <p>review खोज के पास वाले फ़िल्टर बटन से <span class="docs-ui">प्रोजेक्ट का क्रम</span> भी चुना जा सकता है: <span class="docs-ui">मैन्युअल (खींचने का क्रम)</span>, <span class="docs-ui">सक्रिय पहले</span> (जिन प्रोजेक्ट का Agent आपका इंतज़ार कर रहा है, काम कर रहा है या अभी-अभी काम पूरा किया है, वे पहले), <span class="docs-ui">हाल ही में इस्तेमाल</span>, <span class="docs-ui">नाम</span> या <span class="docs-ui">जोड़ने की तारीख</span>। कोई दूसरा क्रम चुना हो और आप कोई प्रोजेक्ट खींचें, तो जैसी सूची दिख रही है वही मैन्युअल क्रम बन जाती है और क्रम <span class="docs-ui">मैन्युअल (खींचने का क्रम)</span> पर चला जाता है। किसी प्रोजेक्ट की पंक्ति के स्टार पर, या उसके मेन्यू में <span class="docs-ui">स्टार लगाएँ</span> पर क्लिक करें, तो वह हर क्रम में सूची में सबसे ऊपर रहता है; <span class="docs-ui">केवल स्टार वाले</span> बाकी को छिपा देता है। स्टार और क्रम रीस्टार्ट के बाद भी बने रहते हैं।</p>
 <p>टर्मिनल प्रोजेक्ट फ़ोल्डर में खुलते हैं, और reviews <code>&lt;project&gt;/.ferret/</code> के अंदर सेव होते हैं।</p>
 
-<!-- @save-url 553542e405 -->
+<!-- @save-url cb8cafed1c -->
 ## URL सेव करें
 <ol class="docs-steps">
   <li>बिल्ट-इन ब्राउज़र में पेज खोलें।</li>
   <li>ब्राउज़र टूलबार में <span class="docs-ui">+</span> (<span class="docs-ui">मौजूदा URL सेव करें</span>) पर क्लिक करें। मौजूदा URL पहले से भरा होता है।</li>
   <li><span class="docs-ui">नाम</span> डालें और <span class="docs-ui">सेव करें</span> पर क्लिक करें।</li>
 </ol>
-<p>हर सेव किए गए URL का <span class="docs-ui">क्या review कर रहे हैं</span> में एक प्रकार होता है: <span class="docs-ui">ऐप</span> (जो ऐप आप बना रहे हैं), <span class="docs-ui">डिज़ाइन</span> (Figma, Penpot, Canva, कोई prototype) या <span class="docs-ui">दस्तावेज़ / spec</span> (Google Docs, Notion, Confluence, GitHub पर Markdown spec, PDF)। प्रकार URL से अनुमान लगाया जाता है और आप उसे बदल सकते हैं। <a href="#design-docs">सिर्फ़ code नहीं, design और दस्तावेज़ों का भी review करें</a> देखें।</p>
+<p>हर सेव किए गए URL का <span class="docs-ui">क्या review कर रहे हैं</span> में एक प्रकार होता है: <span class="docs-ui">ऐप</span> (जो ऐप आप बना रहे हैं), <span class="docs-ui">डिज़ाइन</span> (Figma, Penpot, Canva, कोई prototype), <span class="docs-ui">दस्तावेज़ / spec</span> (Google Docs, Notion, Confluence, GitHub पर Markdown spec, PDF) या <span class="docs-ui">संदर्भ</span> (किसी प्रतिस्पर्धी की या कोई और बाहरी साइट, जिसे आप बदल नहीं सकते)। प्रकार URL और नाम से अनुमान लगाया जाता है, और आप उसे बदल सकते हैं। <a href="#design-docs">सिर्फ़ code नहीं, design और दस्तावेज़ों का भी review करें</a> और <a href="#reference-sites">दूसरी साइटों को संदर्भ के रूप में इस्तेमाल करें</a> देखें।</p>
 <p>सिर्फ़ <code>http://</code> और <code>https://</code> URL स्वीकार किए जाते हैं। ऐप वाले URL के लिए, अगर आप सुझाया गया नाम ही रहने दें, तो नाम host से अनुमान लगाया जाता है:</p>
 <table>
   <thead><tr><th>Host</th><th>नाम</th></tr></thead>
@@ -43,7 +43,7 @@
 </table>
 {{shot:url-presets|ब्राउज़र टूलबार में सेव किए गए URL}}
 
-<!-- @review-targets 7edd1985ee -->
+<!-- @review-targets 9c48e48820 -->
 ## Review targets पैनल
 {{clip:targets|रिकॉर्डिंग रोके बिना review targets और पेज बदलना।}}
 <p>Feedback मोड में, दाईं ओर का <span class="docs-ui">Review targets</span> पैनल मौजूदा प्रोजेक्ट में review की जा सकने वाली हर चीज़ की सूची दिखाता है। Target बदलने से रिकॉर्डिंग नहीं रुकती। पैनल को <span class="docs-ui">दृश्य → Review targets टॉगल करें</span> ({{keys:Mod+Shift+K}}) या <span class="docs-ui">पैनल छिपाएँ</span> से टॉगल करें।</p>
@@ -52,13 +52,13 @@
   <li><strong><span class="docs-ui">फ़ाइलें</span></strong>: प्रोजेक्ट फ़ोल्डर। फ़ाइल प्रीव्यू के रूप में खुलती है (Markdown और Mermaid render होकर, बाकी टेक्स्ट सिर्फ़ पढ़ने के लिए), ताकि आप दस्तावेज़ों का भी review कर सकें। पेंसिल (<span class="docs-ui">editor में खोलें</span>) उसे editor में खोलती है।</li>
 </ul>
 <p><span class="docs-ui">targets फ़िल्टर करें</span> targets, पेज और फ़ाइलें, तीनों को एक साथ फ़िल्टर करता है, <span class="docs-ui">फ़ाइल पर जाएँ…</span> जैसी ही fuzzy matching के साथ। सूची में <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> या <kbd>1</kbd>–<kbd>9</kbd> से targets बदलते हैं। <span class="docs-ui">URL खोलें…</span> एक बार के लिए कोई URL खोलता है, और <span class="docs-ui">प्रोजेक्ट URL में सहेजें</span> उसे रख लेता है।</p>
-<p>Targets <code>settings.json</code> के <code>projects[].urls</code> से आते हैं (<a href="settings-json.html#example">उदाहरण</a> देखें)। हर entry में एक <code>url</code>, एक <code>launchCommand</code> (टर्मिनल में चलता है, जैसे कोई डेस्कटॉप ऐप शुरू करने के लिए), या एक <code>windowMatch</code> (रिकॉर्ड की जाने वाली विंडो) होना चाहिए, और उसमें एक <code>purpose</code> (<code>app</code>, <code>design</code> या <code>doc</code>) भी हो सकता है। विंडो वाला target चुनने पर वह रिकॉर्डिंग का source बन जाता है, इसलिए यह रिकॉर्डिंग के दौरान नहीं किया जा सकता। देखे गए पेज हर प्रोजेक्ट के लिए सिर्फ़ इसी मशीन पर याद रखे जाते हैं (अधिकतम 200)।</p>
+<p>Targets <code>settings.json</code> के <code>projects[].urls</code> से आते हैं (<a href="settings-json.html#example">उदाहरण</a> देखें)। हर entry में एक <code>url</code>, एक <code>launchCommand</code> (टर्मिनल में चलता है, जैसे कोई डेस्कटॉप ऐप शुरू करने के लिए), या एक <code>windowMatch</code> (रिकॉर्ड की जाने वाली विंडो) होना चाहिए, और उसमें एक <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> या <code>reference</code>) भी हो सकता है। विंडो वाला target चुनने पर वह रिकॉर्डिंग का source बन जाता है, इसलिए यह रिकॉर्डिंग के दौरान नहीं किया जा सकता। देखे गए पेज हर प्रोजेक्ट के लिए सिर्फ़ इसी मशीन पर याद रखे जाते हैं (अधिकतम 200)।</p>
 
-<!-- @switch-env 3d0b21e6f6 -->
+<!-- @switch-env 70e1c23f78 -->
 ## Environments खोलें और बदलें
 <p>सेव किए गए URL को खोलने के लिए उस पर क्लिक करें। अगर मौजूदा पेज किसी दूसरे सेव किए गए URL के अंतर्गत है, तो Ferret path, query और hash वैसे ही रखता है और सिर्फ़ origin बदलता है। उदाहरण के लिए, <code>http://localhost:3000/pricing?plan=pro</code> पर <code>prd</code> क्लिक करने से <code>https://example.com/pricing?plan=pro</code> खुलता है।</p>
 <p>मौजूदा पेज से मेल खाने वाला chip (सबसे लंबा prefix) हाइलाइट होता है। किसी chip को संपादित करने या <span class="docs-ui">हटाएँ</span> के लिए उस पर right-click करें या उसका पेंसिल आइकन इस्तेमाल करें। जब कोई प्रोजेक्ट खुलता है और पिछला कोई URL नहीं होता, तो उसका पहला सेव किया गया URL लोड होता है।</p>
-<p>Chips प्रकार के हिसाब से समूहों में दिखते हैं: पहले ऐप URL, फिर design, फिर दस्तावेज़, हर प्रकार के लिए एक divider और एक आइकन के साथ। किसी design या दस्तावेज़ पर जाने या वहाँ से लौटने पर उसका सेव किया गया URL जैसा है वैसा ही खुलता है, path साथ नहीं ले जाया जाता।</p>
+<p>Chips प्रकार के हिसाब से समूहों में दिखते हैं: पहले ऐप URL, फिर design, फिर दस्तावेज़, फिर संदर्भ, हर प्रकार के लिए एक divider और एक आइकन के साथ। किसी design, दस्तावेज़ या संदर्भ पर जाने या वहाँ से लौटने पर उसका सेव किया गया URL जैसा है वैसा ही खुलता है, path साथ नहीं ले जाया जाता।</p>
 
 <!-- @design-docs 674aff9ed3 -->
 ## सिर्फ़ code नहीं, design और दस्तावेज़ों का भी review करें
@@ -76,3 +76,18 @@
 </ul>
 <p>उदाहरण: Google Docs में pricing spec पढ़ते हुए आप plan table पर गोला बनाते हैं और कहते हैं "Pro plan अब 8,800 नहीं, 9,800 yen है"। <code>feedback.md</code> उस finding को <code>Spec</code> target के अंतर्गत <code>Kind: document</code> के साथ सूचीबद्ध करता है, और agent pricing पेज के code को छूने के बजाय spec के लिए सुधरा हुआ वाक्य देता है। Spec और चलते हुए ऐप को एक ही रिकॉर्डिंग में रिकॉर्ड करें, तो findings target के हिसाब से बँट जाते हैं, ताकि agent पहले spec और फिर उसे लागू करने वाला code अपडेट कर सके।</p>
 <p><code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> और ऐसे ही hosts के बिना सेव किए पेज भी पहचाने जाते हैं। प्रोजेक्ट फ़ोल्डर की फ़ाइलों (Markdown, Mermaid) का review <span class="docs-ui">Review targets</span> पैनल की <span class="docs-ui">फ़ाइलें</span> सूची से होता है।</p>
+
+<!-- @reference-sites 6fb5f06ade -->
+## दूसरी साइटों को संदर्भ के रूप में इस्तेमाल करें
+<p>आप किसी प्रतिस्पर्धी की साइट, या कोई भी पेज जिसका look आपको पसंद हो, रिकॉर्ड करके बता सकते हैं कि उससे क्या लेना है ("इसे मॉडल बनाओ", "यह काला background ठीक नहीं")। आप उस साइट को बदल नहीं सकते, इसलिए agent भी कभी उसे बदलने की कोशिश नहीं करता: वह उन findings को आपके अपने ऐप के लिए संदर्भ मानता है।</p>
+<ol class="docs-steps">
+  <li>साइट को target के रूप में जोड़ें और <span class="docs-ui">क्या review कर रहे हैं</span> में <span class="docs-ui">संदर्भ</span> चुनें। नाम में "competitor" या "reference" हो (जैसे <code>Competitor: Acme</code>), तो यह अपने आप चुन लिया जाता है।</li>
+  <li>हमेशा की तरह रिकॉर्ड करें, और चाहें तो एक ही रिकॉर्डिंग में उस साइट और अपने ऐप के बीच switch करें।</li>
+</ol>
+<p>संदर्भ साइट पर रिकॉर्ड किए गए findings पर Findings में <span class="docs-ui">संदर्भ</span> और <code>feedback.md</code> में <code>Kind: reference</code> का label लगता है। हर ऐसी finding के लिए agent:</p>
+<ul>
+  <li>जो आपको पसंद आया उसे आपके ऐप में जहाँ ठीक बैठे वहाँ अपनाता है, और लिखता है कि कहाँ अपनाया;</li>
+  <li>जाँचता है कि आपका ऐप वह तो नहीं करता जो आपको पसंद नहीं आया, और अगर करता है तो आपका ऐप ठीक करता है;</li>
+  <li>अगर किसी टिप्पणी से करने लायक कुछ नहीं मिलता, तो कुछ नहीं बदलता, और finding को "बाहरी साइट, कोई कार्रवाई नहीं (संदर्भ)" जैसे note के साथ <span class="docs-ui">जाँच बाकी</span> पर सेट करता है।</li>
+</ul>
+<p>वह बाहरी साइट को कभी संपादित नहीं करता और आपसे पूछने के लिए कभी नहीं रुकता। प्रकार चुने बिना भी किसी finding को संदर्भ माना जाता है, जब उसके target के नाम में "competitor" या "reference" (या 競合 / 参考) हो, या जब वह किसी बिना सेव की गई साइट पर रिकॉर्ड हुई हो जिसका host प्रोजेक्ट के किसी भी ऐप URL से मेल नहीं खाता। <code>localhost</code> और private addresses को कभी बाहरी नहीं माना जाता, और जिस प्रोजेक्ट में कोई ऐप URL सेव नहीं है, उसमें यह अनुमान नहीं लगाया जाता।</p>

@@ -188,7 +188,7 @@
   <li>Bấm <span class="docs-ui">+</span> (<span class="docs-ui">Lưu URL hiện tại</span>) trên thanh công cụ của trình duyệt. URL hiện tại được điền sẵn.</li>
   <li>Nhập <span class="docs-ui">Tên</span> rồi bấm <span class="docs-ui">Lưu</span>.</li>
 </ol>
-<p>Mỗi URL đã lưu có một loại trong <span class="docs-ui">Nội dung xem lại</span>: <span class="docs-ui">Ứng dụng</span> (ứng dụng bạn đang xây dựng), <span class="docs-ui">Thiết kế</span> (Figma, Penpot, Canva, một bản prototype) hoặc <span class="docs-ui">Tài liệu / đặc tả</span> (Google Docs, Notion, Confluence, một đặc tả Markdown trên GitHub, một tệp PDF). Loại được đoán từ URL và bạn có thể đổi. Xem <a href="#design-docs">Review cả thiết kế và tài liệu, không chỉ code</a>.</p>
+<p>Mỗi URL đã lưu có một loại trong <span class="docs-ui">Nội dung xem lại</span>: <span class="docs-ui">Ứng dụng</span> (ứng dụng bạn đang xây dựng), <span class="docs-ui">Thiết kế</span> (Figma, Penpot, Canva, một bản prototype), <span class="docs-ui">Tài liệu / đặc tả</span> (Google Docs, Notion, Confluence, một đặc tả Markdown trên GitHub, một tệp PDF) hoặc <span class="docs-ui">Tham khảo</span> (trang của đối thủ hoặc một trang bên ngoài khác mà bạn không thể sửa). Loại được đoán từ URL và tên, và bạn có thể đổi. Xem <a href="#design-docs">Review cả thiết kế và tài liệu, không chỉ code</a> và <a href="#reference-sites">Dùng trang khác làm tham khảo</a>.</p>
 <p>Chỉ chấp nhận URL <code>http://</code> và <code>https://</code>. Với URL của ứng dụng, nếu bạn giữ nguyên tên được gợi ý, tên sẽ được đoán từ host:</p>
 <table>
   <thead><tr><th>Host</th><th>Tên</th></tr></thead>
@@ -214,14 +214,14 @@
   <li><strong><span class="docs-ui">Tệp</span></strong>: thư mục dự án. Một tệp được mở dưới dạng xem trước (Markdown và Mermaid được hiển thị, văn bản khác ở chế độ chỉ đọc), nên bạn cũng có thể review tài liệu. Biểu tượng bút chì (<span class="docs-ui">Mở trong editor</span>) mở tệp trong editor.</li>
 </ul>
 <p><span class="docs-ui">Lọc mục tiêu</span> lọc cùng lúc mục tiêu, trang và tệp, với cách khớp gần đúng giống <span class="docs-ui">Đi đến tệp…</span>. Trong danh sách, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> hoặc <kbd>1</kbd>–<kbd>9</kbd> để chuyển mục tiêu. <span class="docs-ui">Mở URL…</span> mở một URL dùng một lần, và <span class="docs-ui">Lưu vào URL của dự án</span> giữ lại URL đó.</p>
-<p>Mục tiêu lấy từ <code>projects[].urls</code> trong <code>settings.json</code> (xem <a href="settings-json.html#example">ví dụ</a>). Mỗi mục cần một <code>url</code>, một <code>launchCommand</code> (chạy trong terminal, ví dụ để khởi động ứng dụng desktop), hoặc một <code>windowMatch</code> (cửa sổ cần ghi), và có thể có <code>purpose</code> (<code>app</code>, <code>design</code> hoặc <code>doc</code>). Chọn một mục tiêu là cửa sổ sẽ đặt nó làm nguồn ghi, nên không thể làm việc này trong lúc đang ghi. Các trang đã truy cập được ghi nhớ theo từng dự án, chỉ trên máy này (tối đa 200).</p>
+<p>Mục tiêu lấy từ <code>projects[].urls</code> trong <code>settings.json</code> (xem <a href="settings-json.html#example">ví dụ</a>). Mỗi mục cần một <code>url</code>, một <code>launchCommand</code> (chạy trong terminal, ví dụ để khởi động ứng dụng desktop), hoặc một <code>windowMatch</code> (cửa sổ cần ghi), và có thể có <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> hoặc <code>reference</code>). Chọn một mục tiêu là cửa sổ sẽ đặt nó làm nguồn ghi, nên không thể làm việc này trong lúc đang ghi. Các trang đã truy cập được ghi nhớ theo từng dự án, chỉ trên máy này (tối đa 200).</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">
         <h2 id="switch-env"><a class="docs-anchor" href="#switch-env" aria-label="Liên kết tới Mở và chuyển môi trường">#</a>Mở và chuyển môi trường</h2>
         <p>Bấm vào một URL đã lưu để mở nó. Nếu trang hiện tại nằm dưới một URL đã lưu khác, Ferret giữ nguyên path, query và hash, chỉ đổi origin. Ví dụ, đang ở <code>http://localhost:3000/pricing?plan=pro</code>, bấm <code>prd</code> sẽ mở <code>https://example.com/pricing?plan=pro</code>.</p>
 <p>Chip khớp với trang hiện tại (tiền tố dài nhất) được làm nổi bật. Nhấp chuột phải vào chip hoặc dùng biểu tượng bút chì của nó để sửa hoặc <span class="docs-ui">Xóa</span>. Khi mở một dự án mà chưa có URL trước đó, URL đã lưu đầu tiên của dự án sẽ được tải.</p>
-<p>Các chip được nhóm theo loại: URL của ứng dụng trước, rồi đến thiết kế, rồi đến tài liệu, với một đường phân cách và một biểu tượng cho mỗi loại. Khi chuyển sang hoặc rời khỏi một thiết kế hay tài liệu, URL đã lưu của nó được mở nguyên dạng, không mang path theo.</p>
+<p>Các chip được nhóm theo loại: URL của ứng dụng trước, rồi đến thiết kế, rồi đến tài liệu, rồi đến tham khảo, với một đường phân cách và một biểu tượng cho mỗi loại. Khi chuyển sang hoặc rời khỏi một thiết kế, tài liệu hay trang tham khảo, URL đã lưu của nó được mở nguyên dạng, không mang path theo.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="design-docs">
@@ -242,6 +242,22 @@
 <p>Các trang chưa lưu trên <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> và các host tương tự cũng được nhận ra. Tệp trong thư mục dự án (Markdown, Mermaid) được review từ danh sách <span class="docs-ui">Tệp</span> trong panel <span class="docs-ui">Mục tiêu review</span>.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="reference-sites">
+        <h2 id="reference-sites"><a class="docs-anchor" href="#reference-sites" aria-label="Liên kết tới Dùng trang khác làm tham khảo">#</a>Dùng trang khác làm tham khảo</h2>
+        <p>Bạn cũng có thể ghi trang của đối thủ, hoặc bất kỳ trang nào có giao diện bạn thích, và nói nên lấy gì từ đó ("lấy cái này làm mẫu", "nền đen này không ổn"). Bạn không thể sửa trang đó, nên agent không bao giờ thử: nó coi các góp ý đó là tham khảo cho ứng dụng của chính bạn.</p>
+<ol class="docs-steps">
+  <li>Thêm trang đó làm đích và chọn <span class="docs-ui">Tham khảo</span> trong <span class="docs-ui">Nội dung xem lại</span>. Tên có chứa "competitor" hoặc "reference" (ví dụ <code>Competitor: Acme</code>) sẽ tự chọn loại này cho bạn.</li>
+  <li>Ghi như bình thường, và nếu muốn, chuyển qua lại giữa trang đó và ứng dụng của bạn trong cùng một lần ghi.</li>
+</ol>
+<p>Góp ý trên trang tham khảo được gắn nhãn <span class="docs-ui">Tham khảo</span> trong tab Góp ý và <code>Kind: reference</code> trong <code>feedback.md</code>. Với mỗi góp ý, agent:</p>
+<ul>
+  <li>áp dụng điều bạn thích vào chỗ phù hợp trong ứng dụng của bạn, và ghi lại đã áp dụng ở đâu;</li>
+  <li>kiểm tra rằng ứng dụng của bạn không làm điều bạn không thích, và sửa ứng dụng của bạn nếu có;</li>
+  <li>không thay đổi gì khi một nhận xét không mang lại điều gì để làm, và đặt góp ý thành <span class="docs-ui">Chờ kiểm tra</span> kèm một ghi chú như "Trang bên ngoài, không cần xử lý (tham khảo)".</li>
+</ul>
+<p>Agent không bao giờ sửa trang bên ngoài và không bao giờ dừng lại để hỏi bạn. Một góp ý cũng được coi là tham khảo, mà không cần chọn loại, khi tên đích của nó chứa "competitor" hoặc "reference" (hoặc 競合 / 参考), hoặc khi nó được ghi trên một trang chưa lưu có host không khớp với URL ứng dụng nào của dự án. <code>localhost</code> và địa chỉ riêng không bao giờ được tính là bên ngoài, và dự án chưa lưu URL ứng dụng nào sẽ không được đoán như vậy.</p>
+      </section>
+
         <nav class="docs-pager" aria-label="Trang trước và trang sau">
           <a class="docs-pager-prev" href="keyboard.html"><span>Trước</span>Phím tắt</a>
           <a class="docs-pager-next" href="recording.html"><span>Tiếp</span>Ghi</a>
@@ -258,6 +274,7 @@
         <li><a href="#review-targets">Panel mục tiêu review</a></li>
         <li><a href="#switch-env">Mở và chuyển môi trường</a></li>
         <li><a href="#design-docs">Review cả thiết kế và tài liệu, không chỉ code</a></li>
+        <li><a href="#reference-sites">Dùng trang khác làm tham khảo</a></li>
       </ul>
     </aside>
   </div>

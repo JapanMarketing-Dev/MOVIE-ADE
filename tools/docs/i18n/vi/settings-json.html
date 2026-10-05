@@ -25,7 +25,7 @@ Mọi cài đặt của Ferret nằm trong một tệp JSON, kèm một JSON Sch
 <p>Dòng đầu tiên của <code>settings.json</code> là <code>"$schema": "./settings.schema.json"</code>. Các editor như VS Code và các agent như Claude Code dùng nó để gợi ý, kiểm tra hợp lệ và hiển thị mô tả của từng trường. Schema đi kèm trong ứng dụng và được ghi ra cạnh tệp mỗi lần khởi động, nên luôn khớp với phiên bản đã cài.</p>
 <p>Các key mà Ferret không biết được giữ nguyên khi ứng dụng lưu. Các tab đang mở, URL gần nhất và trạng thái phiên khác được lưu trong <code>state.json</code>, không phải ở đây.</p>
 
-<!-- @example 8f2ce86189 -->
+<!-- @example a3549b8c04 -->
 ## Ví dụ có chú thích
 <p>JSON không có chú thích, nên phần giải thích nằm bên dưới ví dụ. Mọi trường đều không bắt buộc; bỏ qua những gì bạn không cần.</p>
 <pre><code>{
@@ -85,7 +85,7 @@ Mọi cài đặt của Ferret nằm trong một tệp JSON, kèm một JSON Sch
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>: các mục tiêu review cho menu URL. URL đầu tiên được mở khi mở dự án. <code>id</code> có thể là bất kỳ chuỗi duy nhất nào. <code>purpose</code> đánh dấu một thiết kế hoặc tài liệu (xem <a href="projects.html#design-docs">Review cả thiết kế và tài liệu</a>); bỏ trống với ứng dụng.</li>
+  <li><code>projects[].urls</code>: các mục tiêu review cho menu URL. URL đầu tiên được mở khi mở dự án. <code>id</code> có thể là bất kỳ chuỗi duy nhất nào. <code>purpose</code> đánh dấu một thiết kế hoặc tài liệu (xem <a href="projects.html#design-docs">Review cả thiết kế và tài liệu</a>) hoặc một trang bên ngoài dùng làm tham khảo (xem <a href="projects.html#reference-sites">Dùng trang khác làm tham khảo</a>); bỏ trống với ứng dụng.</li>
   <li><code>agents.customAgents</code>: bất kỳ CLI hay script wrapper nào. <code>startupAgents</code> liệt kê theo thứ tự các tab agent được mở cùng dự án.</li>
   <li><code>capture.sttEndpoints.compatible</code>: bất kỳ server nào triển khai <code>/v1/audio/transcriptions</code> của OpenAI (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> tắt giới hạn chi phí, hợp lý khi dùng GPU của chính bạn. Xem <a href="transcription.html">Chuyển văn bản và chi phí</a>.</li>
   <li><code>organizer</code>: <span class="docs-ui">Sắp xếp góp ý</span> được gửi thẳng tới một server <code>/v1/chat/completions</code> tương thích OpenAI (ở đây là Ollama). Dùng <code>"runner": "claude-code"</code> hoặc <code>"codex"</code> để dùng thông tin đăng nhập CLI của bạn thay vào đó, và <code>organizer.cliModels</code> để chọn model của chúng.</li>

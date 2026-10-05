@@ -25,7 +25,7 @@ Tous les réglages de Ferret se trouvent dans un seul fichier JSON accompagné d
 <p>La première ligne de <code>settings.json</code> est <code>"$schema": "./settings.schema.json"</code>. Les éditeurs comme VS Code et les agents comme Claude Code s'en servent pour la complétion, la validation et la description de chaque champ. Le schéma est livré avec l'application et écrit à côté du fichier à chaque lancement : il correspond donc toujours à la version installée.</p>
 <p>Les clés que Ferret ne connaît pas sont conservées telles quelles lorsque l'application enregistre. Les onglets ouverts, la dernière URL et les autres éléments d'état de session sont conservés dans <code>state.json</code>, pas ici.</p>
 
-<!-- @example 8f2ce86189 -->
+<!-- @example a3549b8c04 -->
 ## Exemple commenté
 <p>Le JSON n'accepte pas les commentaires : les explications se trouvent donc sous l'exemple. Tous les champs sont facultatifs ; omettez ce dont vous n'avez pas besoin.</p>
 <pre><code>{
@@ -85,7 +85,7 @@ Tous les réglages de Ferret se trouvent dans un seul fichier JSON accompagné d
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code> : les cibles de relecture du menu des URL. La première s'ouvre à l'ouverture du projet. <code>id</code> peut être n'importe quelle chaîne unique. <code>purpose</code> indique un design ou un document (voir <a href="projects.html#design-docs">Relire des designs et des documents</a>) ; omettez-le pour l'application.</li>
+  <li><code>projects[].urls</code> : les cibles de relecture du menu des URL. La première s'ouvre à l'ouverture du projet. <code>id</code> peut être n'importe quelle chaîne unique. <code>purpose</code> indique un design ou un document (voir <a href="projects.html#design-docs">Relire des designs et des documents</a>) ou un site externe utilisé comme référence (voir <a href="projects.html#reference-sites">S'inspirer d'autres sites</a>) ; omettez-le pour l'application.</li>
   <li><code>agents.customAgents</code> : n'importe quelle CLI ou script d'enrobage. <code>startupAgents</code> liste, dans l'ordre, les onglets d'agent ouverts avec un projet.</li>
   <li><code>capture.sttEndpoints.compatible</code> : n'importe quel serveur qui implémente <code>/v1/audio/transcriptions</code> d'OpenAI (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> désactive le plafond de coût, ce qui est logique pour votre propre GPU. Voir <a href="transcription.html">Transcription et coûts</a>.</li>
   <li><code>organizer</code> : <span class="docs-ui">Organiser les remarques</span> est envoyé directement à un serveur <code>/v1/chat/completions</code> compatible OpenAI (ici Ollama). Utilisez <code>"runner": "claude-code"</code> ou <code>"codex"</code> pour passer plutôt par votre propre connexion CLI, et <code>organizer.cliModels</code> pour choisir leur modèle.</li>

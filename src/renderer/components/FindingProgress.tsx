@@ -5,7 +5,7 @@ import { REPLY_MAX } from '@shared/agentPrompt'
 import type { TranslationKey } from '@shared/i18n'
 import { Button, Tooltip } from '../ui'
 import { useT } from '../lib/i18n'
-import { FINDING_STATUSES, isStatusShown, onlyStatus, toggleStatus, type HiddenStatuses } from '@shared/findingStatusFilter'
+import { FINDING_STATUSES, isStatusShown, onlyStatus, selectStatus, type HiddenStatuses } from '@shared/findingStatusFilter'
 
 /**
  * Findings の進み具合（未対応・対応中・人の確認待ち・完了）。ReviewFindings から使う。
@@ -53,10 +53,11 @@ export function StatusFilterBar({ counts, hidden, onChange }: {
     {FINDING_STATUSES.map((status) => {
       const Icon = ICON[status]
       const state = t(LABEL[status])
-      const shown = isStatusShown(hidden, status)
+      // 押したものだけを出す（絞り込み）。何も選んでいなければ全部
+      const selected = hidden.length > 0 && isStatusShown(hidden, status)
       return <span key={status} className={`rv-status-filter__item rv-status-filter__item--${status}`}>
-        <button type="button" className="rv-status-filter__chip" aria-pressed={shown} title={t('review.statusFilter.toggle', { state })}
-          onClick={() => onChange(toggleStatus(hidden, status))} data-testid={`findings-status-filter-${status}`}>
+        <button type="button" className="rv-status-filter__chip" aria-pressed={selected} title={t('review.statusFilter.toggle', { state })}
+          onClick={() => onChange(selectStatus(hidden, status))} data-testid={`findings-status-filter-${status}`}>
           <Icon size={12} strokeWidth={2.25} aria-hidden="true" /><span className="rv-status-filter__label">{state}</span><span className="rv-status-filter__count">{counts[status]}</span>
         </button>
         <button type="button" className="rv-status-filter__only" aria-label={t('review.statusFilter.only', { state })} title={t('review.statusFilter.only', { state })}

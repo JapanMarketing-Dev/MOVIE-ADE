@@ -4,6 +4,7 @@ import { LLM_API_PROVIDERS, LLM_PROVIDER_PRESETS, RECOMMENDED_ORGANIZE_PROVIDER,
 import { withRecommendedModel } from '@shared/localModels'
 import type { SttAvailability } from '@shared/types'
 import { useT } from '../lib/i18n'
+import { notifyOrganizerChanged, onOrganizerChanged } from '../lib/organizerEvents'
 import { ProviderSetup } from './AiProviderFields'
 
 /**
@@ -30,14 +31,21 @@ export function OrganizeSection({ recording = false, headless = false }: { recor
       if (runner?.startsWith('api:')) setProvider(runner.slice(4) as LlmApiProvider)
     }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
     void reload()
-    return () => window.clearTimeout(saveTimer.current)
+    // 指摘の画面の「整理」の横でモデルを選び直したとき・settings.json を書き換えたときに映す（ここで打っている途中の値は上書きしない）
+    const apply = (s: { organizer?: { endpoints?: Partial<Record<LlmApiProvider, AiEndpointConfig>> } }) => {
+      if (saveTimer.current === undefined) setEndpoints(s.organizer?.endpoints ?? {})
+    }
+    const offFile = window.ade.on('settings:changed', apply)
+    const offApp = onOrganizerChanged(() => void window.ade.invoke('app:settings').then(apply).catch(() => undefined)) // 失敗は main の IPC が Sentry へ送る
+    return () => { offFile(); offApp(); window.clearTimeout(saveTimer.current) }
   }, [reload])
 
   const saveEndpoints = (next: Partial<Record<LlmApiProvider, AiEndpointConfig>>) => {
     setEndpoints(next)
     window.clearTimeout(saveTimer.current)
     saveTimer.current = window.setTimeout(() => {
-      void window.ade.invoke('settings:organizer', { endpoints: next }).then(reload).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
+      saveTimer.current = undefined
+      void window.ade.invoke('settings:organizer', { endpoints: next }).then(() => { notifyOrganizerChanged(); return reload() }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
     }, 400)
   }
 

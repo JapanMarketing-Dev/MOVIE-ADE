@@ -81,7 +81,8 @@ export function sanitizeLayout(raw: unknown, legacyTerminalDock?: unknown): Layo
   for (const id of FOOTER_ITEMS) items[id] = f.items?.[id] !== false
   return {
     panels,
-    footer: { dock: f.dock === 'top' ? 'top' : 'bottom', visible: f.visible !== false, items }
+    // フッターは常に下（動かす機能は削除。ユーザーの指示: 不要）。古い設定の dock: 'top' も下に戻す
+    footer: { dock: 'bottom', visible: f.visible !== false, items }
   }
 }
 
@@ -262,9 +263,8 @@ export function dropPreviewRect(dock: Dock, rect: Rect, size = 0.25): Rect {
 
 /** 落としたあとの配置。動かしたパネルは見えるようにする */
 export function dropPanel(layout: LayoutPrefs, panel: DragPanel, dock: Dock): LayoutPrefs {
-  if (panel === 'footer') {
-    return dock === 'top' || dock === 'bottom' ? { ...layout, footer: { ...layout.footer, dock, visible: true } } : layout
-  }
+  // フッターは動かさない
+  if (panel === 'footer') return layout
   return withPanel(layout, panel, { dock, visible: true })
 }
 

@@ -25,7 +25,7 @@ Ferret 的所有設定都存放在一個 JSON 檔中，旁邊附有 JSON Schema�
 <p><code>settings.json</code> 的第一行是 <code>"$schema": "./settings.schema.json"</code>。VS Code 等編輯器與 Claude Code 等 Agent 會用它來自動完成、驗證，以及顯示每個欄位的說明。Schema 內建於 App 中，每次啟動時都會寫到檔案旁邊，因此一定與已安裝的版本一致。</p>
 <p>App 儲存時，Ferret 不認得的鍵會原樣保留。開啟的分頁、最後的 URL 及其他工作階段狀態存放在 <code>state.json</code>，而不是這裡。</p>
 
-<!-- @example 8f2ce86189 -->
+<!-- @example a3549b8c04 -->
 ## 附註解的範例
 <p>JSON 不支援註解，因此說明寫在範例下方。所有欄位都是選填的；不需要的就省略。</p>
 <pre><code>{
@@ -85,7 +85,7 @@ Ferret 的所有設定都存放在一個 JSON 檔中，旁邊附有 JSON Schema�
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>：URL 選單中的審查目標。開啟專案時會開啟第一個。<code>id</code> 可以是任何不重複的字串。<code>purpose</code> 用來標示設計或文件（請參閱<a href="projects.html#design-docs">審查設計與文件</a>）；App 則不需要填寫。</li>
+  <li><code>projects[].urls</code>：URL 選單中的審查目標。開啟專案時會開啟第一個。<code>id</code> 可以是任何不重複的字串。<code>purpose</code> 用來標示設計或文件（請參閱<a href="projects.html#design-docs">審查設計與文件</a>），或當作參考的外部網站（請參閱<a href="projects.html#reference-sites">把其他網站當作參考</a>）；App 則不需要填寫。</li>
   <li><code>agents.customAgents</code>：任何 CLI 或包裝腳本。<code>startupAgents</code> 依序列出開啟專案時要開啟的 Agent 分頁。</li>
   <li><code>capture.sttEndpoints.compatible</code>：任何實作 OpenAI <code>/v1/audio/transcriptions</code> 的伺服器（speaches、vLLM、LocalAI…）。<code>costLimitUsd: null</code> 會關閉費用上限，適合使用自己的 GPU 時。請參閱<a href="transcription.html">轉錄與費用</a>。</li>
   <li><code>organizer</code>：將 <span class="docs-ui">整理意見</span> 直接送到相容 OpenAI 的 <code>/v1/chat/completions</code> 伺服器（此例為 Ollama）。若要改用你自己的 CLI 登入，請使用 <code>"runner": "claude-code"</code> 或 <code>"codex"</code>，並用 <code>organizer.cliModels</code> 選擇其模型。</li>

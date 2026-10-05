@@ -239,7 +239,7 @@
   }
 }</code></pre>
 <ul>
-  <li><code>projects[].urls</code>: URL 메뉴에 나오는 리뷰 대상입니다. 프로젝트를 열면 첫 번째 URL이 열립니다. <code>id</code>는 겹치지 않는 문자열이면 무엇이든 됩니다. <code>purpose</code>는 디자인이나 문서임을 나타냅니다(<a href="projects.html#design-docs">디자인과 문서 리뷰하기</a> 참고). 앱이라면 생략합니다.</li>
+  <li><code>projects[].urls</code>: URL 메뉴에 나오는 리뷰 대상입니다. 프로젝트를 열면 첫 번째 URL이 열립니다. <code>id</code>는 겹치지 않는 문자열이면 무엇이든 됩니다. <code>purpose</code>는 디자인이나 문서(<a href="projects.html#design-docs">디자인과 문서 리뷰하기</a> 참고), 또는 참고로 쓰는 외부 사이트(<a href="projects.html#reference-sites">다른 사이트를 참고로 쓰기</a> 참고)임을 나타냅니다. 앱이라면 생략합니다.</li>
   <li><code>agents.customAgents</code>: 임의의 CLI나 래퍼 스크립트입니다. <code>startupAgents</code>는 프로젝트를 열 때 함께 여는 에이전트 탭을 순서대로 나열합니다.</li>
   <li><code>capture.sttEndpoints.compatible</code>: OpenAI의 <code>/v1/audio/transcriptions</code>를 구현한 서버라면 무엇이든 됩니다(speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code>은 비용 한도를 끕니다. 자체 GPU를 쓸 때 적합합니다. <a href="transcription.html">음성 인식과 비용</a>을 참고하세요.</li>
   <li><code>organizer</code>: <span class="docs-ui">지적 사항 정리</span>를 OpenAI 호환 <code>/v1/chat/completions</code> 서버(여기서는 Ollama)로 직접 보냅니다. 대신 자신의 CLI 로그인을 쓰려면 <code>"runner": "claude-code"</code> 또는 <code>"codex"</code>를 지정하고, 그 모델은 <code>organizer.cliModels</code>로 고릅니다.</li>

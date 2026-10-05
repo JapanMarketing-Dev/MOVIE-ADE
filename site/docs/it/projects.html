@@ -188,7 +188,7 @@
   <li>Fai clic su <span class="docs-ui">+</span> (<span class="docs-ui">Salva URL corrente</span>) nella barra degli strumenti del browser. L'URL corrente è già compilato.</li>
   <li>Inserisci un <span class="docs-ui">Nome</span> e fai clic su <span class="docs-ui">Salva</span>.</li>
 </ol>
-<p>Ogni URL salvato ha un tipo in <span class="docs-ui">Cosa revisioni</span>: <span class="docs-ui">App</span> (l'app che stai sviluppando), <span class="docs-ui">Design</span> (Figma, Penpot, Canva, un prototipo) oppure <span class="docs-ui">Documento / specifica</span> (Google Docs, Notion, Confluence, una specifica Markdown su GitHub, un PDF). Il tipo viene dedotto dall'URL e puoi cambiarlo. Vedi <a href="#design-docs">Rivedere design e documenti, non solo il codice</a>.</p>
+<p>Ogni URL salvato ha un tipo in <span class="docs-ui">Cosa revisioni</span>: <span class="docs-ui">App</span> (l'app che stai sviluppando), <span class="docs-ui">Design</span> (Figma, Penpot, Canva, un prototipo) <span class="docs-ui">Documento / specifica</span> (Google Docs, Notion, Confluence, una specifica Markdown su GitHub, un PDF) oppure <span class="docs-ui">Riferimento</span> (il sito di un concorrente o un altro sito esterno che non puoi modificare). Il tipo viene dedotto dall'URL e dal nome, e puoi cambiarlo. Vedi <a href="#design-docs">Rivedere design e documenti, non solo il codice</a> e <a href="#reference-sites">Usare altri siti come riferimento</a>.</p>
 <p>Sono accettati solo URL <code>http://</code> e <code>https://</code>. Per l'URL di un'app, se lasci il nome suggerito, viene dedotto dall'host:</p>
 <table>
   <thead><tr><th>Host</th><th>Nome</th></tr></thead>
@@ -214,14 +214,14 @@
   <li><strong><span class="docs-ui">File</span></strong>: la cartella del progetto. Un file si apre come anteprima (Markdown e Mermaid renderizzati, altro testo in sola lettura), quindi puoi rivedere anche la documentazione. La matita (<span class="docs-ui">Apri nell'editor</span>) lo apre nell'editor.</li>
 </ul>
 <p><span class="docs-ui">Filtra target</span> filtra insieme target, pagine e file, con la stessa ricerca approssimata di <span class="docs-ui">Vai al file…</span>. Nell'elenco, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> oppure <kbd>1</kbd>–<kbd>9</kbd> cambiano target. <span class="docs-ui">Apri URL…</span> apre un URL occasionale, e <span class="docs-ui">Salva negli URL del progetto</span> lo conserva.</p>
-<p>I target provengono da <code>projects[].urls</code> in <code>settings.json</code> (vedi <a href="settings-json.html#example">l'esempio</a>). Ogni voce richiede un <code>url</code>, un <code>launchCommand</code> (eseguito in un terminale, ad es. per avviare un'app desktop) oppure un <code>windowMatch</code> (la finestra da registrare), e può avere un <code>purpose</code> (<code>app</code>, <code>design</code> o <code>doc</code>). Scegliere un target finestra lo imposta come sorgente di registrazione, quindi non si può fare durante la registrazione. Le pagine visitate vengono ricordate per progetto, solo su questa macchina (fino a 200).</p>
+<p>I target provengono da <code>projects[].urls</code> in <code>settings.json</code> (vedi <a href="settings-json.html#example">l'esempio</a>). Ogni voce richiede un <code>url</code>, un <code>launchCommand</code> (eseguito in un terminale, ad es. per avviare un'app desktop) oppure un <code>windowMatch</code> (la finestra da registrare), e può avere un <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> o <code>reference</code>). Scegliere un target finestra lo imposta come sorgente di registrazione, quindi non si può fare durante la registrazione. Le pagine visitate vengono ricordate per progetto, solo su questa macchina (fino a 200).</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">
         <h2 id="switch-env"><a class="docs-anchor" href="#switch-env" aria-label="Link a Aprire e cambiare ambiente">#</a>Aprire e cambiare ambiente</h2>
         <p>Fai clic su un URL salvato per aprirlo. Se la pagina attuale è sotto un altro URL salvato, Ferret mantiene percorso, query e hash e cambia solo l'origine. Per esempio, su <code>http://localhost:3000/pricing?plan=pro</code>, un clic su <code>prd</code> apre <code>https://example.com/pricing?plan=pro</code>.</p>
 <p>Il chip corrispondente alla pagina attuale (il prefisso più lungo) è evidenziato. Fai clic destro su un chip o usa la sua icona a forma di matita per modificarlo, oppure per rimuoverlo con <span class="docs-ui">Elimina</span>. Quando un progetto si apre e non c'è un URL precedente, viene caricato il suo primo URL salvato.</p>
-<p>I chip sono raggruppati per tipo: prima gli URL delle app, poi i design, poi i documenti, con un separatore e un'icona per ogni tipo. Passando a un design o a un documento, o lasciandolo, si apre il suo URL salvato così com'è, senza riportare il percorso.</p>
+<p>I chip sono raggruppati per tipo: prima gli URL delle app, poi i design, poi i documenti, poi i riferimenti, con un separatore e un'icona per ogni tipo. Passando a un design, a un documento o a un riferimento, o lasciandolo, si apre il suo URL salvato così com'è, senza riportare il percorso.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="design-docs">
@@ -242,6 +242,22 @@
 <p>Vengono riconosciute anche le pagine non salvate su <code>figma.com</code>, <code>docs.google.com</code>, <code>notion.so</code> e host simili. I file nella cartella del progetto (Markdown, Mermaid) si rivedono dall'elenco <span class="docs-ui">File</span> nel pannello <span class="docs-ui">Target di revisione</span>.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="reference-sites">
+        <h2 id="reference-sites"><a class="docs-anchor" href="#reference-sites" aria-label="Link a Usare altri siti come riferimento">#</a>Usare altri siti come riferimento</h2>
+        <p>Puoi anche registrare il sito di un concorrente, o qualsiasi pagina il cui aspetto ti piace, e dire cosa prenderne ("prendilo come modello", "questo sfondo nero non funziona"). Quel sito non si può modificare, quindi l'agent non ci prova mai: tratta quelle segnalazioni come un riferimento per la tua app.</p>
+<ol class="docs-steps">
+  <li>Aggiungi il sito come target e scegli <span class="docs-ui">Riferimento</span> in <span class="docs-ui">Cosa revisioni</span>. Un nome che contiene "competitor" o "reference" (per esempio <code>Competitor: Acme</code>) lo sceglie al posto tuo.</li>
+  <li>Registra come al solito e, se vuoi, passa da quel sito alla tua app nella stessa registrazione.</li>
+</ol>
+<p>Le segnalazioni su un sito di riferimento sono contrassegnate con <span class="docs-ui">Riferimento</span> nelle segnalazioni e con <code>Kind: reference</code> in <code>feedback.md</code>. Per ciascuna, l'agent:</p>
+<ul>
+  <li>adotta ciò che ti è piaciuto dove si adatta nella tua app, e annota dove l'ha applicato;</li>
+  <li>controlla che la tua app non faccia ciò che non ti è piaciuto, e la corregge se lo fa;</li>
+  <li>non cambia nulla quando un commento non dà nulla di applicabile, e imposta la segnalazione su <span class="docs-ui">Da controllare</span> con una nota come "Sito esterno, nessuna azione (riferimento)".</li>
+</ul>
+<p>Non modifica mai il sito esterno e non si ferma mai a chiederti nulla. Una segnalazione viene trattata come riferimento anche senza scegliere il tipo quando il nome del suo target contiene "competitor" o "reference" (o 競合 / 参考), oppure quando è stata registrata su un sito non salvato il cui host non corrisponde a nessuno degli URL delle app del progetto. <code>localhost</code> e gli indirizzi privati non contano mai come esterni, e un progetto senza URL delle app salvati non riceve questa deduzione.</p>
+      </section>
+
         <nav class="docs-pager" aria-label="Pagina precedente e successiva">
           <a class="docs-pager-prev" href="keyboard.html"><span>Precedente</span>Scorciatoie da tastiera</a>
           <a class="docs-pager-next" href="recording.html"><span>Successiva</span>Registrazione</a>
@@ -258,6 +274,7 @@
         <li><a href="#review-targets">Pannello dei target di revisione</a></li>
         <li><a href="#switch-env">Aprire e cambiare ambiente</a></li>
         <li><a href="#design-docs">Rivedere design e documenti, non solo il codice</a></li>
+        <li><a href="#reference-sites">Usare altri siti come riferimento</a></li>
       </ul>
     </aside>
   </div>

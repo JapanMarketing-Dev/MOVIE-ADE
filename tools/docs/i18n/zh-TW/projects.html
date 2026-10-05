@@ -23,14 +23,14 @@
 <p>審查搜尋欄旁的篩選按鈕也可以設定 <span class="docs-ui">專案排序</span>：<span class="docs-ui">手動（拖曳順序）</span>、<span class="docs-ui">活動中優先</span>（Agent 正在等你、正在工作或剛完成的專案排在前面）、<span class="docs-ui">最近使用</span>、<span class="docs-ui">名稱</span> 或 <span class="docs-ui">新增時間</span>。在其他排序下拖曳專案時，目前顯示的順序會成為手動順序，排序也會切換為 <span class="docs-ui">手動（拖曳順序）</span>。按專案列上的星號，或使用選單中的 <span class="docs-ui">加上星號</span>，可讓專案在任何排序下都固定在清單頂端；選擇 <span class="docs-ui">僅顯示星號</span> 會隱藏其他專案。星號與排序在重新啟動後依然保留。</p>
 <p>終端機會在專案資料夾中開啟，審查則儲存在 <code>&lt;project&gt;/.ferret/</code> 底下。</p>
 
-<!-- @save-url 553542e405 -->
+<!-- @save-url cb8cafed1c -->
 ## 儲存 URL
 <ol class="docs-steps">
   <li>在內建瀏覽器中開啟頁面。</li>
   <li>按一下瀏覽器工具列中的 <span class="docs-ui">+</span>（<span class="docs-ui">儲存目前的 URL</span>）。目前的 URL 會預先填入。</li>
   <li>輸入 <span class="docs-ui">名稱</span>，然後按一下 <span class="docs-ui">儲存</span>。</li>
 </ol>
-<p>每個儲存的 URL 在 <span class="docs-ui">審查內容</span> 底下都有一個種類：<span class="docs-ui">應用程式</span>（你正在開發的 App）、<span class="docs-ui">設計</span>（Figma、Penpot、Canva、原型）或 <span class="docs-ui">文件 / 規格</span>（Google Docs、Notion、Confluence、GitHub 上的 Markdown 規格、PDF）。種類會根據 URL 推測，你也可以變更。請參閱<a href="#design-docs">不只審查程式碼，也審查設計與文件</a>。</p>
+<p>每個儲存的 URL 在 <span class="docs-ui">審查內容</span> 底下都有一個種類：<span class="docs-ui">應用程式</span>（你正在開發的 App）、<span class="docs-ui">設計</span>（Figma、Penpot、Canva、原型）、<span class="docs-ui">文件 / 規格</span>（Google Docs、Notion、Confluence、GitHub 上的 Markdown 規格、PDF）或 <span class="docs-ui">參考</span>（競品或其他你無法修改的外部網站）。種類會根據 URL 和名稱推測，你也可以變更。請參閱<a href="#design-docs">不只審查程式碼，也審查設計與文件</a>和<a href="#reference-sites">把其他網站當作參考</a>。</p>
 <p>只接受 <code>http://</code> 與 <code>https://</code> 的 URL。對於 App 的 URL，如果保留建議的名稱，會根據主機推測名稱：</p>
 <table>
   <thead><tr><th>主機</th><th>名稱</th></tr></thead>
@@ -43,7 +43,7 @@
 </table>
 {{shot:url-presets|瀏覽器工具列中儲存的 URL}}
 
-<!-- @review-targets 7edd1985ee -->
+<!-- @review-targets 9c48e48820 -->
 ## 審查目標面板
 {{clip:targets|在不停止錄製的情況下切換審查目標與頁面。}}
 <p>在意見模式中，右側的 <span class="docs-ui">審查目標</span> 面板會列出目前專案中所有可以審查的項目。切換目標不會停止錄製。可用 <span class="docs-ui">顯示方式 → 切換審查目標</span>（{{keys:Mod+Shift+K}}）或 <span class="docs-ui">隱藏面板</span> 切換面板顯示。</p>
@@ -52,13 +52,13 @@
   <li><strong><span class="docs-ui">檔案</span></strong>：專案資料夾。檔案會以預覽開啟（Markdown 與 Mermaid 會轉譯顯示，其他文字為唯讀），因此也能審查文件。鉛筆圖示（<span class="docs-ui">在編輯器中開啟</span>）會在編輯器中開啟檔案。</li>
 </ul>
 <p><span class="docs-ui">篩選目標</span> 會同時篩選目標、頁面與檔案，使用與 <span class="docs-ui">前往檔案…</span> 相同的模糊比對。在清單中，可用 <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> 或 <kbd>1</kbd>–<kbd>9</kbd> 切換目標。<span class="docs-ui">開啟 URL…</span> 可開啟一次性的 URL，<span class="docs-ui">儲存到專案 URL</span> 則會保留它。</p>
-<p>目標來自 <code>settings.json</code> 中的 <code>projects[].urls</code>（請參閱<a href="settings-json.html#example">範例</a>）。每個項目都需要 <code>url</code>、<code>launchCommand</code>（在終端機中執行，例如啟動桌面 App）或 <code>windowMatch</code>（要錄製的視窗）其中之一，並可加上 <code>purpose</code>（<code>app</code>、<code>design</code> 或 <code>doc</code>）。選擇視窗目標會將它設為錄製來源，因此錄製期間無法這麼做。造訪過的頁面會依專案記住，只保存在這台電腦上（最多 200 個）。</p>
+<p>目標來自 <code>settings.json</code> 中的 <code>projects[].urls</code>（請參閱<a href="settings-json.html#example">範例</a>）。每個項目都需要 <code>url</code>、<code>launchCommand</code>（在終端機中執行，例如啟動桌面 App）或 <code>windowMatch</code>（要錄製的視窗）其中之一，並可加上 <code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code> 或 <code>reference</code>）。選擇視窗目標會將它設為錄製來源，因此錄製期間無法這麼做。造訪過的頁面會依專案記住，只保存在這台電腦上（最多 200 個）。</p>
 
-<!-- @switch-env 3d0b21e6f6 -->
+<!-- @switch-env 70e1c23f78 -->
 ## 開啟與切換環境
 <p>按一下儲存的 URL 即可開啟。如果目前的頁面位於另一個儲存的 URL 之下，Ferret 會保留路徑、查詢字串與雜湊，只替換來源（origin）。例如在 <code>http://localhost:3000/pricing?plan=pro</code> 上按一下 <code>prd</code>，會開啟 <code>https://example.com/pricing?plan=pro</code>。</p>
 <p>與目前頁面相符（最長前綴）的標籤會反白顯示。在標籤上按右鍵，或使用其鉛筆圖示，即可編輯或 <span class="docs-ui">刪除</span> 它。開啟專案時若沒有上次的 URL，會載入第一個儲存的 URL。</p>
-<p>標籤會依種類分組：先是 App 的 URL，接著是設計，然後是文件，各種類之間有分隔線，並各有圖示。切換到設計或文件，或從設計或文件切換出去時，會直接開啟它儲存的 URL，不會沿用路徑。</p>
+<p>標籤會依種類分組：先是 App 的 URL，接著是設計，然後是文件，最後是參考，各種類之間有分隔線，並各有圖示。切換到設計、文件或參考，或從它們切換出去時，會直接開啟它儲存的 URL，不會沿用路徑。</p>
 
 <!-- @design-docs 674aff9ed3 -->
 ## 不只審查程式碼，也審查設計與文件
@@ -76,3 +76,18 @@
 </ul>
 <p>範例：在 Google Docs 中閱讀價格規格時，你圈起方案表並說「Pro 方案現在是 9,800 日圓，不是 8,800」。<code>feedback.md</code> 會把這則意見列在 <code>Spec</code> 目標底下，並標示 <code>Kind: document</code>，Agent 會回覆規格中修正後的句子，而不會去動價格頁面的程式碼。把規格和執行中的 App 錄在同一段錄影中，意見會依目標分開，因此 Agent 可以先更新規格，再更新實作它的程式碼。</p>
 <p><code>figma.com</code>、<code>docs.google.com</code>、<code>notion.so</code> 等主機上未儲存的頁面也會被辨識出來。專案資料夾中的檔案（Markdown、Mermaid）可從 <span class="docs-ui">審查目標</span> 面板的 <span class="docs-ui">檔案</span> 清單中審查。</p>
+
+<!-- @reference-sites 6fb5f06ade -->
+## 把其他網站當作參考
+<p>你也可以錄製競品的網站，或任何你喜歡其外觀的頁面，並說出要從中借鏡什麼（「以這個為範本」「這個黑色背景不行」）。你無法修改那個網站，所以 Agent 也絕不會嘗試修改：它會把這些意見當作你自己 App 的參考。</p>
+<ol class="docs-steps">
+  <li>把該網站新增為目標，並在 <span class="docs-ui">審查內容</span> 底下選擇 <span class="docs-ui">參考</span>。名稱中含有「competitor」或「reference」（例如 <code>Competitor: Acme</code>）時會自動選好。</li>
+  <li>照常錄製；如果需要，也可以在同一段錄影中在該網站和你的 App 之間切換。</li>
+</ol>
+<p>在參考網站上錄下的意見，會在「意見」分頁中標示為 <span class="docs-ui">參考</span>，在 <code>feedback.md</code> 中標示為 <code>Kind: reference</code>。對每則這樣的意見，Agent 會：</p>
+<ul>
+  <li>把你喜歡的地方用在你的 App 中合適的位置，並註明在哪裡採用；</li>
+  <li>檢查你的 App 是否也有你不喜歡的做法，如果有，就修正你的 App；</li>
+  <li>如果某則評論沒有可以落實的內容，就不做任何修改，將該意見設為 <span class="docs-ui">待檢查</span>，並附上類似「外部網站，無需處理（參考）」的說明。</li>
+</ul>
+<p>Agent 絕不會修改外部網站，也絕不會停下來問你。即使沒有選擇種類，下列情況的意見也會被當作參考：目標名稱中含有「competitor」或「reference」（或 競合 / 参考），或者意見是在未儲存的網站上錄製的，而該網站的主機與專案中任何 App 的 URL 都不相符。<code>localhost</code> 和私人位址絕不會被視為外部網站；沒有儲存任何 App URL 的專案不會進行這種推測。</p>

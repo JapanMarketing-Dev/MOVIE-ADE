@@ -35,6 +35,11 @@ interface AgentPromptTarget {
    */
   nonCode?: boolean
   /**
+   * 参考に見た外部サイト（競合・お手本。区分 reference）で撮った指摘を含むか。
+   * true なら「そのサイトは直さず、自分のアプリに取り入れるか避けるかを決める」1文を文末に足す（利用者が書き換えた文でも足す）
+   */
+  reference?: boolean
+  /**
    * 引き継ぎのファイル（プロジェクトの .ferret/handoff.md の絶対パス）。渡すと「区切りごと・上限が近づいたら更新する」1文を
    * 文末に足す（利用者が書き換えた文でも足す）。上限での自動切り替え（src/main/failover）が次の Agent に読ませる
    */
@@ -55,6 +60,7 @@ export function renderAgentPrompt(target: AgentPromptTarget, template?: string |
   if (body.includes('{{decisionCheck}}')) body = body.replace(/\{\{decisionCheck\}\}/g, check).replace(/[ \t]+$/gm, '').trim()
   else if (check) body = `${body} ${check}`
   if (target.nonCode) body = `${body} ${translate(locale ?? getLocale(), 'agentPrompt.nonCode')}`
+  if (target.reference) body = `${body} ${translate(locale ?? getLocale(), 'agentPrompt.reference')}`
   if (target.handoff) body = `${body} ${translate(locale ?? getLocale(), 'agentPrompt.handoff', { handoff: target.handoff })}`
   const threshold = String(decision?.threshold ?? 0.7)
   const progress = path.replace(/feedback\.md$/, 'progress.json')

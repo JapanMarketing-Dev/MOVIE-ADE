@@ -107,7 +107,12 @@ export function renderFeedbackMarkdown(doc: FeedbackDocument, options: Partial<R
   lines.push(tr('feedbackMd.injectionNote'))
   lines.push(tr('feedbackMd.acceptanceNote'))
   // デザイン・設計書で撮った指摘は、コードではなくデザイン・文書を直させる（直せないものは、具体的な変更案を note に書いて human_review にさせる。人には質問させない）
-  if (groups.some((g) => g.target.purpose && g.items.some(inFocus))) lines.push(tr('feedbackMd.nonCodeNote'))
+  const focusedPurposes = new Set(groups.filter((g) => g.items.some(inFocus)).map((g) => g.target.purpose))
+  if (focusedPurposes.has('design') || focusedPurposes.has('doc')) lines.push(tr('feedbackMd.nonCodeNote'))
+  // 参考に見た外部サイト（競合・お手本）で撮った指摘は、そのサイトを直させず、自分のアプリに取り入れる・避ける参考として扱わせる。
+  // 生かせることが無ければ何も変えずに理由を note に書いて human_review（人には質問させない）
+  const reference = focusedPurposes.has('reference')
+  if (reference) lines.push(tr('feedbackMd.referenceNote'))
   if (!doc.organizedByLlm) {
     lines.push(tr('feedbackMd.ruleOnly'))
   } else {
@@ -157,7 +162,7 @@ export function renderFeedbackMarkdown(doc: FeedbackDocument, options: Partial<R
     for (const g of gaps) lines.push(`- ${g}`)
   }
 
-  if (focusedCount > 0) lines.push('', ...renderProgress(opt, tr), '', ...renderAfter(opt, tr))
+  if (focusedCount > 0) lines.push('', ...renderProgress(opt, tr, reference), '', ...renderAfter(opt, tr))
   if (opt.decision) lines.push('', ...renderDecisionCheck(opt.decision.threshold, tr))
 
   return `${lines.join('\n')}\n`
@@ -194,8 +199,8 @@ export const DECISION_NODE_LINE = `node -e 'const f=require("fs"),e=process.env,
 
 /**
  * feedback.md の末尾の受け入れ確認の節。判定モデルは Agent 自身の確認で、人への問いにはしない。
- * 全件が同じ回で合格するまで判定と修正を繰り返させ、決まった回数で合格しない指摘もスコアをつけて human_review にさせる
- * （人は BEFORE / AFTER で決める）
+ * 判定モデルは依頼ごとに指摘1件につき1回だけ呼ばせる（判定し直し・全件のやり直しのループはしない。合格を出さないモデルで無限に回らないように）。
+ * 結果から Agent がもう1回だけ直すかを決め、どちらでもスコアをつけて human_review にさせる（人は BEFORE / AFTER で決める）
  */
 function renderDecisionCheck(threshold: number, tr: Tr): string[] {
   const p = { threshold: String(threshold) }
@@ -208,9 +213,10 @@ function renderDecisionCheck(threshold: number, tr: Tr): string[] {
     tr('feedbackMd.check.capture'),
     tr('feedbackMd.check.judge'),
     tr('feedbackMd.check.imageFormat'),
-    tr('feedbackMd.check.pass', p),
-    tr('feedbackMd.check.loop'),
-    tr('feedbackMd.check.progress'),
+    // 判定は指摘1件につき1回だけ。結果を見て、直せる差があればもう1回だけ直して撮り直し（判定はしない）、どちらでも human_review にする
+    tr('feedbackMd.check.decide', p),
+    tr('feedbackMd.check.handover'),
+    tr('feedbackMd.check.log'),
     '',
     tr('feedbackMd.check.rules'),
     // 判定 API に届かなければ、止まる前に Agent が Ollama を入れて起動しモデルを落とす（人の手作業にしない）
@@ -252,7 +258,7 @@ const otherStateKey: Record<FindingProgress, TranslationKey> = {
 
 /**
  * 今回の依頼に含まない指摘（対応中・完了・確認待ち）。Agent がやり直したり、progress.json の値を書き換えたりしないように、
- * 見出しと状態だけを載せる。判定モデルの受け入れ確認もこの指摘は対象外（全件合格のループは今回の指摘だけで回す）
+ * 見出しと状態だけを載せる。判定モデルの受け入れ確認もこの指摘は対象外（判定は今回の指摘だけ、1件につき1回）
  */
 function renderOthers(others: Array<{ it: FeedbackItem; n: number }>, opt: RenderOptions, tr: Tr): string[] {
   return [
@@ -266,9 +272,9 @@ function renderOthers(others: Array<{ it: FeedbackItem; n: number }>, opt: Rende
 
 /**
  * 進み具合の節。Ferret は直ったかを判定しないので、Agent に指摘のIDごとに progress.json へ書かせる。
- * 書かせる状態は in_progress と human_review だけ。受け入れ確認（判定モデル）が有効なら、それで直しを詰めてから human_review にさせる
+ * 書かせる状態は in_progress と human_review だけ。受け入れ確認（判定モデル）が有効なら、1件につき1回判定してから human_review にさせる
  */
-function renderProgress(opt: RenderOptions, tr: Tr): string[] {
+function renderProgress(opt: RenderOptions, tr: Tr, reference = false): string[] {
   const path = opt.progressFile ?? tr('feedbackMd.progress.sameFolder')
   return [
     '---',
@@ -281,6 +287,8 @@ function renderProgress(opt: RenderOptions, tr: Tr): string[] {
     tr('feedbackMd.progress.assume'),
     // 人の確認（OK で done・NG とコメントで差し戻し）。done にできるのは人だけ
     tr('feedbackMd.progress.feedback'),
+    // 参考（外部サイト）の指摘で、その外部サイトを変えることは無い
+    ...(reference ? [tr('feedbackMd.progress.reference')] : []),
     ...(opt.decision ? [tr('feedbackMd.progress.decision')] : [])
   ]
 }
