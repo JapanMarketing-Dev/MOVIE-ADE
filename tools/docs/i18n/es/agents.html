@@ -49,6 +49,13 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   </tbody>
 </table>
 
+<!-- @restore d051d24e56 -->
+## Recuperar las terminales después de reiniciar
+<p>Al salir, Ferret recuerda las pestañas de terminal de cada proyecto: su orden y divisiones, la carpeta en la que se abrió cada una, el agente y la cuenta con que se ejecutaba, y hasta 2.000 líneas de cada pantalla. La próxima vez que inicies Ferret, las pestañas vuelven en el mismo orden. Primero se muestra el texto anterior, luego una línea atenuada como <code>— Continuación de la sesión anterior (2026-10-05 14:30) —</code>, y después se inicia una shell nueva en la misma carpeta.</p>
+<p>Las pestañas de agentes se inician de nuevo con su conversación: Claude Code con <code>--continue</code> y Codex con <code>resume --last</code>, que continúan la conversación más reciente de esa carpeta. Si varias pestañas ejecutan el mismo agente en la misma carpeta con la misma cuenta, solo la primera la continúa y las demás empiezan de cero, así que dos pestañas nunca continúan la misma conversación. Si Claude Code no tiene ninguna conversación en esa carpeta, o el proyecto está en un host SSH, se inicia de forma normal.</p>
+<p><strong>Reabrir una terminal cerrada.</strong> <span class="docs-ui">Terminal → Reabrir terminal cerrada</span> ({{keys:Mod+Shift+T}} con el foco en una terminal) recupera la última pestaña o panel que cerraste en este proyecto, con su texto, y continúa su agente de la misma manera. Se guardan las 10 últimas terminales cerradas, también entre reinicios.</p>
+<p>El historial se guarda como texto sin colores en la carpeta de datos de Ferret (<code>terminal-restore.json</code>, que solo tú puedes leer), nunca en el proyecto. Las pestañas de inicio de sesión abiertas desde <span class="docs-ui">Añadir cuenta</span> y los comandos de un solo uso no se guardan. Para dejar de guardarlo, desactiva <span class="docs-ui">Ajustes → Agentes → Guardar el historial de la terminal y restaurarlo</span>; esto también borra lo guardado. <span class="docs-ui">Borrar el historial guardado</span>, justo al lado, lo borra en cualquier momento.</p>
+
 <!-- @supported 69600dc42f -->
 ## Agentes compatibles
 <p>Ferret no está atado a un solo agente. Reconoce los agentes de programación de abajo: puede iniciarlos, detectarlos en una terminal para <span class="docs-ui">Enviar al agente</span> y mostrar si están instalados. <span class="docs-ui">Ajustes → Agentes</span> los muestra con <span class="docs-ui">Instalado</span> / <span class="docs-ui">No encontrado</span>, un botón <span class="docs-ui">Instalar</span> cuando el fabricante publica un instalador de una línea, y el comando y los argumentos de cada uno.</p>

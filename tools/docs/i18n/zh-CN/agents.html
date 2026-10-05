@@ -49,6 +49,13 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   </tbody>
 </table>
 
+<!-- @restore d051d24e56 -->
+## 重启后恢复终端
+<p>Ferret 退出时，会记住每个项目的终端标签页：顺序和分割、每个标签页打开时的文件夹、运行的 Agent 和账户，以及每个屏幕最多 2,000 行文字。下次启动 Ferret 时，标签页按相同顺序恢复。先显示之前的文字，接着是一行淡色的 <code>— 接续上次（2026-10-05 14:30）—</code>，然后在同一文件夹中启动新的 shell。</p>
+<p>Agent 标签页会接着之前的对话启动：Claude Code 使用 <code>--continue</code>，Codex 使用 <code>resume --last</code>，继续该文件夹中最近的一次对话。如果多个标签页在同一文件夹、用同一账户运行同一个 Agent，只有第一个会继续对话，其余的重新开始，因此不会有两个标签页继续同一个对话。如果该文件夹中没有 Claude Code 的对话，或项目位于 SSH 主机上，则正常启动。</p>
+<p><strong>重新打开已关闭的终端。</strong><span class="docs-ui">终端 → 重新打开已关闭的终端</span>（终端获得焦点时按 {{keys:Mod+Shift+T}}）会恢复你在此项目中最后关闭的标签页或窗格及其文字，并以同样方式继续其 Agent 的对话。最多保留最近关闭的 10 个终端，重启后也会保留。</p>
+<p>历史记录只以不带颜色的纯文本保存在 Ferret 的数据文件夹中（<code>terminal-restore.json</code>，只有你本人可读），不会写入项目。从 <span class="docs-ui">添加账户</span> 打开的登录标签页和一次性命令不会保留。要停止保存，请关闭 <span class="docs-ui">设置 → Agent → 保存终端历史并恢复</span>，已保存的内容也会被删除。旁边的 <span class="docs-ui">删除已保存的历史</span> 可随时删除。</p>
+
 <!-- @supported 69600dc42f -->
 ## 支持的 Agent
 <p>Ferret 不绑定于某一个 Agent。它能识别下列编码 Agent：可以启动它们，在终端中检测到它们以便 <span class="docs-ui">发送给 Agent</span>，并显示它们是否已安装。<span class="docs-ui">设置 → Agent</span> 会列出这些 Agent，显示 <span class="docs-ui">已安装</span> / <span class="docs-ui">未找到</span>；对于厂商提供了一行安装命令的 Agent，还有 <span class="docs-ui">安装</span> 按钮；此外还有每个 Agent 的命令和参数。</p>

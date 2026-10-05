@@ -86,6 +86,7 @@ import { PREVIEW_SCHEME, stripPreviewGrant } from '@shared/preview'
 import { crashReportsActive, initCrashReporting, maybeSendTestEvent, reportMainError, sentryTestKinds, setTelemetryContext, telemetryInstallId, trackIpc } from './telemetry'
 import { wrapIpcHandler } from '@shared/telemetry'
 import { flow, reportHandled } from '@shared/report'
+import { TerminalRestoreStore } from './terminalRestore'
 import { syntheticSystemAudio, systemAudioFeatures } from '@shared/systemAudio'
 
 /*
@@ -396,6 +397,45 @@ function keyLookup(): import('./settingsKeys').KeyLookup {
  * プリセット以外の接続先は、「接続を確かめる」で main のダイアログが接続元の名前を出して聞き、認められたものだけを覚える
  */
 let credentialOrigins: Promise<import('./credentialOrigin').CredentialOrigins> | null = null
+
+/**
+ * ターミナルのタブと画面の文字を、終了・閉じたあとに戻すために覚える（userData/terminal-restore.json。terminalRestore.ts）。
+ * 設定の agents.restoreTerminals が切なら覚えない。E2E では ADE_E2E_TERMINAL_RESTORE=1 のときだけ（既存の E2E の起動の形を変えない）
+ */
+let terminalRestoreStore: TerminalRestoreStore | null = null
+function terminalRestoreEnabled(): boolean {
+  if (process.env.ADE_E2E === '1' && process.env.ADE_E2E_TERMINAL_RESTORE !== '1') return false
+  return currentSettings().agents.restoreTerminals
+}
+function terminalRestore(): TerminalRestoreStore {
+  terminalRestoreStore ??= new TerminalRestoreStore(join(app.getPath('userData'), 'terminal-restore.json'), terminalRestoreEnabled)
+  return terminalRestoreStore
+}
+/** 設定を切にしたら、書いたものも消す */
+function syncTerminalRestore(): void {
+  if (!currentSettings().agents.restoreTerminals) terminalRestore().clear()
+}
+/** 終了の前に renderer に今の画面の文字を頼み、返事（terminal:restoreSave）を待っている間の後始末 */
+let terminalRestoreCollected: (() => void) | null = null
+/** 終了の前に renderer の返事を待つ上限 */
+const TERMINAL_RESTORE_COLLECT_MS = 1000
+
+/** 終了の前に、今のタブと画面の文字を renderer から受け取る（返事が無くても上限で進める） */
+function collectTerminalRestore(): Promise<void> {
+  const window = mainWindow
+  if (!terminalRestoreEnabled() || !window || window.isDestroyed() || window.webContents.isDestroyed()) return Promise.resolve()
+  return new Promise((resolve) => {
+    const done = (): void => {
+      clearTimeout(timer)
+      if (terminalRestoreCollected === done) terminalRestoreCollected = null
+      resolve()
+    }
+    const timer = setTimeout(done, TERMINAL_RESTORE_COLLECT_MS)
+    terminalRestoreCollected = done
+    // send() は終了の手順に入ると（shuttingDown）何も送らないので、ここは直接送る（終了の途中で頼むもの）
+    window.webContents.send('terminal:restoreCollect')
+  })
+}
 function credentialOriginStore(): Promise<import('./credentialOrigin').CredentialOrigins> {
   credentialOrigins ??= (async () => {
     const { CredentialOrigins } = await import('./credentialOrigin')
@@ -633,6 +673,7 @@ function applyExternalSettings(settings: Settings): void {
   if (settings.whisperModel) process.env.ADE_WHISPER_MODEL = settings.whisperModel
   void listAgentOptions(settings.agents).then((options) => send('agents:changed', options))
     .catch((err: unknown) => reportHandled(err, { area: 'settings', op: 'reload agents' }))
+  syncTerminalRestore()
   send('projects:changed', projectsState())
   // 内蔵ブラウザの拡張機能（足す・外す・有効の切り替え）
   void extensions?.sync(settings.browserExtensions)
@@ -1495,6 +1536,7 @@ function registerIpc(): void {
 
     'settings:agents': (preferences) => {
       updateSettings({ agents: preferences })
+      syncTerminalRestore()
       // 「＋」メニューと設定画面に、保存した結果（sanitize 後）と検出を配る
       void listAgentOptions(currentSettings().agents).then((options) => send('agents:changed', options))
     },
@@ -1646,6 +1688,15 @@ function registerIpc(): void {
       updateSettings({ terminalClipboard: next === 'ask' ? undefined : next })
     },
     'terminal:focused': (focused) => { terminalFocused = focused === true },
+    // 終了・閉じたあとに戻すタブと画面の文字（中身は main が確かめてから覚える。@shared/terminalRestore）
+    'terminal:restoreSave': (snapshot) => {
+      terminalRestore().save(snapshot)
+      terminalRestoreCollected?.()
+    },
+    'terminal:restoreTake': () => terminalRestore().takeSession(new Set(currentSettings().projects.map((project) => project.id))),
+    'terminal:closedPush': (entry) => terminalRestore().pushClosed(entry),
+    'terminal:closedPop': (projectId) => terminalRestore().popClosed(typeof projectId === 'string' ? projectId : null),
+    'terminal:restoreClear': () => terminalRestore().clear(),
     'terminal:list': () => terminals?.list() ?? [],
     'terminal:attach': (id) => {
       const info = terminals?.attach(String(id)) ?? null
@@ -2263,8 +2314,9 @@ function registerIpc(): void {
       }
     }, reportMainError)
     ipcMain.handle(channel, async (event, ...args: unknown[]) => {
-      // 終了処理に入った後は、破棄途中のオブジェクトを触らない
-      if (shuttingDown) return null
+      // 終了処理に入った後は、破棄途中のオブジェクトを触らない。
+      // ただし終了の途中で main が頼んだ、ターミナルの最後の画面の文字（terminal:restoreSave。collectTerminalRestore）は受ける
+      if (shuttingDown && channel !== 'terminal:restoreSave') return null
       // アプリの窓の本体のフレーム（アプリのページ）からだけ受ける。サブフレーム・別の窓・別のページからは断る（security-5 [1]）
       const main = mainWindow && !mainWindow.isDestroyed() ? { contents: mainWindow.webContents, mainFrame: mainWindow.webContents.mainFrame } : null
       if (!isTrustedIpcSender(event, main, (url) => isAppPageUrl(url, appPageRoots()))) throw new Error(`ipc ${channel}: sender is not the app window`)
@@ -2584,6 +2636,8 @@ function beginShutdown(): boolean {
   }
 
   flushSettingsSync()
+  // ターミナルのタブと画面の文字（PTY を閉じる前に、renderer から最後の分を受け取ってもう一度書く。drainTerminalsAndQuit）
+  terminalRestoreStore?.flushSync()
   fileWatcher.close()
 
   /*
@@ -2618,6 +2672,7 @@ function beginShutdown(): boolean {
   // Electron のネイティブ側で二重破棄になりうる。後始末は Electron に任せる。
 
   if (!terminals || terminals.pendingCount() === 0) {
+    terminalRestoreStore?.finish()
     shutdownPhase = 'ready'
     return false
   }
@@ -2633,6 +2688,16 @@ function beginShutdown(): boolean {
  */
 function drainTerminalsAndQuit(): void {
   shutdownPhase = 'draining'
+  // PTY を閉じる前に、今のタブと画面の文字を受け取って書く（閉じると「終了しました」の行が画面に足される）
+  void collectTerminalRestore()
+    .catch((err: unknown) => reportHandled(err, { area: 'terminal', op: 'collect terminal restore' }))
+    .finally(() => {
+      terminalRestoreStore?.finish()
+      drainTerminalsNow()
+    })
+}
+
+function drainTerminalsNow(): void {
   const pending = terminals?.pendingCount() ?? 0
   const finish = (): void => {
     shutdownPhase = 'ready'

@@ -116,3 +116,13 @@ export function freshForegroundAgent(
     )
   })
 }
+
+/**
+ * ⌘⇧T（Windows・Linux は Ctrl+Shift+T）。最後に閉じたターミナルを開き直す。ターミナルにフォーカスがあるときだけ TerminalPane が拾う
+ * （メニューの accelerator にはしない。内蔵ブラウザ・エディタにフォーカスがあるときは奪わない）。
+ * 内蔵ブラウザのタブのキー（⌘T・⌘W・⌘1〜9。@shared/browserTabs）は Shift を使わないので重ならない
+ */
+export function isReopenTerminalKey(event: { code: string; ctrlKey: boolean; metaKey: boolean; altKey: boolean; shiftKey: boolean }, platform: string): boolean {
+  if (event.code !== 'KeyT' || !event.shiftKey || event.altKey) return false
+  return platform === 'darwin' ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey
+}

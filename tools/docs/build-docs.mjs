@@ -461,6 +461,11 @@ ${keyTable([
   keyRow('Split Down', 'Mod+Shift+D|Alt+Shift+D'),
   keyRow('Close Pane / Tab', 'Mod+W'),
 ])}`],
+    ['restore', 'Bring terminals back after a restart', `
+<p>When ${APP} quits, it remembers the terminal tabs of every project: their order and splits, the folder each one was opened in, the agent and the account it ran with, and up to 2,000 lines of each screen. The next time ${APP} starts, the tabs come back in the same order. The old text is shown first, then a dimmed line such as <code>— Continued from last session (2026-10-05 14:30) —</code>, and then a new shell starts in the same folder.</p>
+<p>Agent tabs start again with their conversation: Claude Code with <code>--continue</code> and Codex with <code>resume --last</code>, which continue the most recent conversation in that folder. If several tabs run the same agent in the same folder with the same account, only the first one continues it and the others start fresh, so two tabs never continue the same conversation. If Claude Code has no conversation in that folder, or the project is on an SSH host, it starts normally.</p>
+<p><strong>Reopen a closed terminal.</strong> ${ui('Terminal → Reopen Closed Terminal')} (${keys('Mod+Shift+T')} while a terminal has focus) brings back the last tab or pane you closed in this project, with its text, and continues its agent the same way. The last 10 closed terminals are kept, also across restarts.</p>
+<p>The history is saved as plain text, without colors, in ${APP}'s data folder (<code>terminal-restore.json</code>, readable only by you), never in the project. Login tabs opened from ${ui('Add Account')} and one-off commands are not kept. To stop saving it, turn off ${ui('Settings → Agents → Save terminal history and restore it')}; this also deletes what was saved. ${ui('Delete saved history')} next to it deletes it at any time.</p>`],
     ['supported', 'Supported agents', `
 <p>${APP} is not tied to one agent. It recognizes the coding agents below: it can start them, detect them in a terminal for ${ui('Send to Agent')}, and show whether they are installed. ${ui('Settings → Agents')} lists them with ${ui('Installed')} / ${ui('Not found')}, an ${ui('Install')} button where the vendor publishes a one-line installer, and the command and arguments for each.</p>
 {{agent-catalog}}

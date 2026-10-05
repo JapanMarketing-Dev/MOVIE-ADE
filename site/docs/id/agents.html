@@ -211,6 +211,14 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 </table>
       </section>
 
+      <section class="docs-section" aria-labelledby="restore">
+        <h2 id="restore"><a class="docs-anchor" href="#restore" aria-label="Tautan ke Mengembalikan terminal setelah memulai ulang">#</a>Mengembalikan terminal setelah memulai ulang</h2>
+        <p>Saat Ferret ditutup, Ferret mengingat tab terminal setiap proyek: urutan dan pembagiannya, folder tempat setiap tab dibuka, agen dan akun yang dipakai, serta hingga 2.000 baris dari setiap layar. Saat Ferret dimulai lagi, tab-tab itu kembali dengan urutan yang sama. Teks sebelumnya ditampilkan lebih dulu, lalu baris redup seperti <code>— Lanjutan sesi sebelumnya (2026-10-05 14:30) —</code>, kemudian shell baru dimulai di folder yang sama.</p>
+<p>Tab agen dimulai lagi dengan percakapannya: Claude Code dengan <code>--continue</code> dan Codex dengan <code>resume --last</code>, yang melanjutkan percakapan terbaru di folder itu. Jika beberapa tab menjalankan agen yang sama di folder yang sama dengan akun yang sama, hanya tab pertama yang melanjutkannya dan yang lain dimulai dari awal, sehingga dua tab tidak pernah melanjutkan percakapan yang sama. Jika Claude Code tidak punya percakapan di folder itu, atau proyek berada di host SSH, agen dimulai seperti biasa.</p>
+<p><strong>Membuka lagi terminal yang ditutup.</strong> <span class="docs-ui">Terminal → Buka Lagi Terminal yang Ditutup</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>T</kbd></span></span> saat terminal sedang fokus) mengembalikan tab atau panel terakhir yang Anda tutup di proyek ini beserta teksnya, dan melanjutkan agennya dengan cara yang sama. 10 terminal terakhir yang ditutup tetap disimpan, juga setelah memulai ulang.</p>
+<p>Riwayat disimpan sebagai teks biasa tanpa warna di folder data Ferret (<code>terminal-restore.json</code>, hanya bisa dibaca oleh Anda), tidak pernah di proyek. Tab login yang dibuka dari <span class="docs-ui">Tambah Akun</span> dan perintah sekali jalan tidak disimpan. Untuk berhenti menyimpannya, matikan <span class="docs-ui">Pengaturan → Agent → Simpan riwayat terminal dan pulihkan</span>; yang sudah disimpan juga ikut dihapus. <span class="docs-ui">Hapus riwayat tersimpan</span> di sebelahnya menghapusnya kapan saja.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="supported">
         <h2 id="supported"><a class="docs-anchor" href="#supported" aria-label="Tautan ke Agent yang didukung">#</a>Agent yang didukung</h2>
         <p>Ferret tidak terikat pada satu agent. Ferret mengenali agent coding di bawah ini: Ferret bisa menjalankannya, mendeteksinya di terminal untuk <span class="docs-ui">Kirim ke Agent</span>, dan menampilkan apakah agent tersebut terinstal. <span class="docs-ui">Pengaturan → Agent</span> mencantumkannya dengan <span class="docs-ui">Terinstal</span> / <span class="docs-ui">Tidak ditemukan</span>, tombol <span class="docs-ui">Instal</span> jika vendornya menyediakan installer satu baris, serta perintah dan argumen untuk masing-masing.</p>
@@ -377,6 +385,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
       <ul>
         <li><a href="#findings">Meninjau temuan</a></li>
         <li><a href="#terminal">Menjalankan agent di terminal bawaan</a></li>
+        <li><a href="#restore">Mengembalikan terminal setelah memulai ulang</a></li>
         <li><a href="#supported">Agent yang didukung</a></li>
         <li><a href="#send">Kirim ke Agent / Salin untuk Agent</a></li>
         <li><a href="#verify">Pemeriksaan penerimaan dengan model keputusan</a></li>

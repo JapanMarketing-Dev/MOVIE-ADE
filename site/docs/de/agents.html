@@ -211,6 +211,14 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 </table>
       </section>
 
+      <section class="docs-section" aria-labelledby="restore">
+        <h2 id="restore"><a class="docs-anchor" href="#restore" aria-label="Link zu „Terminals nach einem Neustart zurückholen“">#</a>Terminals nach einem Neustart zurückholen</h2>
+        <p>Beim Beenden merkt sich Ferret die Terminal-Tabs jedes Projekts: ihre Reihenfolge und Teilungen, den Ordner, in dem jeder geöffnet wurde, den Agent und das Konto, mit dem er lief, und bis zu 2.000 Zeilen jedes Bildschirms. Beim nächsten Start von Ferret kommen die Tabs in derselben Reihenfolge zurück. Zuerst wird der alte Text angezeigt, dann eine abgeblendete Zeile wie <code>— Fortsetzung der letzten Sitzung (2026-10-05 14:30) —</code>, und danach startet eine neue Shell im selben Ordner.</p>
+<p>Agent-Tabs starten wieder mit ihrem Gespräch: Claude Code mit <code>--continue</code> und Codex mit <code>resume --last</code>, die das letzte Gespräch in diesem Ordner fortsetzen. Laufen mehrere Tabs mit demselben Agent im selben Ordner und mit demselben Konto, setzt nur der erste es fort und die anderen starten neu, sodass nie zwei Tabs dasselbe Gespräch fortsetzen. Hat Claude Code in diesem Ordner kein Gespräch oder liegt das Projekt auf einem SSH-Host, startet es normal.</p>
+<p><strong>Ein geschlossenes Terminal wieder öffnen.</strong> <span class="docs-ui">Terminal → Geschlossenes Terminal wieder öffnen</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>T</kbd></span></span>, wenn ein Terminal den Fokus hat) holt den zuletzt in diesem Projekt geschlossenen Tab oder Bereich mit seinem Text zurück und setzt seinen Agent auf dieselbe Weise fort. Die letzten 10 geschlossenen Terminals bleiben erhalten, auch über Neustarts hinweg.</p>
+<p>Der Verlauf wird als reiner Text ohne Farben im Datenordner von Ferret gespeichert (<code>terminal-restore.json</code>, nur für dich lesbar), nie im Projekt. Anmelde-Tabs aus <span class="docs-ui">Konto hinzufügen</span> und einmalige Befehle werden nicht gespeichert. Um das Speichern zu beenden, schalte <span class="docs-ui">Einstellungen → Agents → Terminalverlauf speichern und wiederherstellen</span> aus; dabei wird auch das Gespeicherte gelöscht. <span class="docs-ui">Gespeicherten Verlauf löschen</span> daneben löscht ihn jederzeit.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="supported">
         <h2 id="supported"><a class="docs-anchor" href="#supported" aria-label="Link zu „Unterstützte Agents“">#</a>Unterstützte Agents</h2>
         <p>Ferret ist nicht an einen bestimmten Agent gebunden. Es erkennt die folgenden Coding-Agents: Es kann sie starten, sie für <span class="docs-ui">An Agent senden</span> in einem Terminal erkennen und anzeigen, ob sie installiert sind. <span class="docs-ui">Einstellungen → Agents</span> listet sie mit <span class="docs-ui">Installiert</span> / <span class="docs-ui">Nicht gefunden</span> auf, mit einer Schaltfläche <span class="docs-ui">Installieren</span>, wo der Anbieter einen einzeiligen Installer veröffentlicht, sowie mit Befehl und Argumenten für jeden Agent.</p>
@@ -377,6 +385,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
       <ul>
         <li><a href="#findings">Befunde eines Reviews</a></li>
         <li><a href="#terminal">Agents im integrierten Terminal ausführen</a></li>
+        <li><a href="#restore">Terminals nach einem Neustart zurückholen</a></li>
         <li><a href="#supported">Unterstützte Agents</a></li>
         <li><a href="#send">An Agent senden / Für Agent kopieren</a></li>
         <li><a href="#verify">Abnahmeprüfung mit einem Entscheidungsmodell</a></li>

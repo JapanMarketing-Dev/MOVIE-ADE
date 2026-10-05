@@ -211,6 +211,14 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 </table>
       </section>
 
+      <section class="docs-section" aria-labelledby="restore">
+        <h2 id="restore"><a class="docs-anchor" href="#restore" aria-label="Lien vers Retrouver les terminaux après un redémarrage">#</a>Retrouver les terminaux après un redémarrage</h2>
+        <p>Quand Ferret se ferme, il mémorise les onglets de terminal de chaque projet : leur ordre et leurs divisions, le dossier dans lequel chacun a été ouvert, l’agent et le compte utilisés, et jusqu’à 2 000 lignes de chaque écran. Au prochain démarrage de Ferret, les onglets reviennent dans le même ordre. L’ancien texte s’affiche d’abord, puis une ligne grisée comme <code>— Suite de la session précédente (2026-10-05 14:30) —</code>, puis un nouveau shell démarre dans le même dossier.</p>
+<p>Les onglets d’agent redémarrent avec leur conversation : Claude Code avec <code>--continue</code> et Codex avec <code>resume --last</code>, qui reprennent la conversation la plus récente de ce dossier. Si plusieurs onglets exécutent le même agent dans le même dossier avec le même compte, seul le premier la reprend et les autres repartent de zéro : deux onglets ne reprennent jamais la même conversation. Si Claude Code n’a aucune conversation dans ce dossier, ou si le projet est sur un hôte SSH, il démarre normalement.</p>
+<p><strong>Rouvrir un terminal fermé.</strong> <span class="docs-ui">Terminal → Rouvrir le terminal fermé</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>T</kbd></span></span> quand un terminal a le focus) rétablit le dernier onglet ou panneau fermé dans ce projet, avec son texte, et reprend son agent de la même façon. Les 10 derniers terminaux fermés sont conservés, y compris d’un démarrage à l’autre.</p>
+<p>L’historique est enregistré en texte brut, sans couleurs, dans le dossier de données de Ferret (<code>terminal-restore.json</code>, lisible par vous seul), jamais dans le projet. Les onglets de connexion ouverts depuis <span class="docs-ui">Ajouter un compte</span> et les commandes ponctuelles ne sont pas conservés. Pour ne plus l’enregistrer, désactivez <span class="docs-ui">Réglages → Agents → Enregistrer l’historique du terminal et le restaurer</span> ; ce qui a été enregistré est aussi supprimé. <span class="docs-ui">Supprimer l’historique enregistré</span>, juste à côté, le supprime à tout moment.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="supported">
         <h2 id="supported"><a class="docs-anchor" href="#supported" aria-label="Lien vers Agents pris en charge">#</a>Agents pris en charge</h2>
         <p>Ferret n'est pas lié à un seul agent. Il reconnaît les agents de code ci-dessous : il peut les démarrer, les détecter dans un terminal pour <span class="docs-ui">Envoyer à l'agent</span> et indiquer s'ils sont installés. <span class="docs-ui">Réglages → Agents</span> les liste avec <span class="docs-ui">Installé</span> / <span class="docs-ui">Introuvable</span>, un bouton <span class="docs-ui">Installer</span> lorsque l'éditeur publie un installeur en une ligne, ainsi que la commande et les arguments de chacun.</p>
@@ -377,6 +385,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
       <ul>
         <li><a href="#findings">Relire les remarques</a></li>
         <li><a href="#terminal">Lancer des agents dans le terminal intégré</a></li>
+        <li><a href="#restore">Retrouver les terminaux après un redémarrage</a></li>
         <li><a href="#supported">Agents pris en charge</a></li>
         <li><a href="#send">Envoyer à l'agent / Copier pour l'agent</a></li>
         <li><a href="#verify">Vérification d'acceptation avec un modèle de décision</a></li>

@@ -30,7 +30,9 @@ const state = vi.hoisted(() => ({ dirs: [] as string[], spawns: [] as Array<{ fi
 vi.mock('../../src/main/agentDetection', () => ({ searchDirs: async () => state.dirs }))
 vi.mock('../../src/main/accounts', () => ({
   buildAccountLoginLaunch: () => ({ argv: ['claude', 'auth', 'login', '--claudeai'], env: {}, title: 'Claude Code login' }),
-  resolveAgentEnv: () => ({})
+  resolveAgentEnv: () => ({}),
+  resolveAgentEnvForAccount: () => ({}),
+  tabAccountId: () => undefined
 }))
 vi.mock('../../src/main/settings', () => ({
   currentSettings: () => ({ agents: { ...DEFAULT_AGENT_PREFERENCES, startupAgents: [] }, projects: [] })

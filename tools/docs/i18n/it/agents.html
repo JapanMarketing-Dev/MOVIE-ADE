@@ -49,6 +49,13 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   </tbody>
 </table>
 
+<!-- @restore d051d24e56 -->
+## Ritrovare i terminali dopo un riavvio
+<p>Quando Ferret si chiude, ricorda le schede del terminale di ogni progetto: ordine e divisioni, la cartella in cui è stata aperta ciascuna, l’agente e l’account con cui girava e fino a 2.000 righe di ogni schermo. Al successivo avvio di Ferret le schede tornano nello stesso ordine. Prima compare il testo precedente, poi una riga attenuata come <code>— Continua dalla sessione precedente (2026-10-05 14:30) —</code>, e quindi parte una nuova shell nella stessa cartella.</p>
+<p>Le schede degli agenti ripartono con la loro conversazione: Claude Code con <code>--continue</code> e Codex con <code>resume --last</code>, che riprendono la conversazione più recente di quella cartella. Se più schede eseguono lo stesso agente nella stessa cartella con lo stesso account, solo la prima la riprende e le altre ripartono da zero, così due schede non riprendono mai la stessa conversazione. Se Claude Code non ha conversazioni in quella cartella, o il progetto è su un host SSH, si avvia normalmente.</p>
+<p><strong>Riaprire un terminale chiuso.</strong> <span class="docs-ui">Terminale → Riapri terminale chiuso</span> ({{keys:Mod+Shift+T}} quando un terminale ha il focus) ripristina l’ultima scheda o riquadro chiuso in questo progetto, con il suo testo, e riprende il suo agente allo stesso modo. Vengono conservati gli ultimi 10 terminali chiusi, anche tra un riavvio e l’altro.</p>
+<p>La cronologia è salvata come testo semplice, senza colori, nella cartella dati di Ferret (<code>terminal-restore.json</code>, leggibile solo da te), mai nel progetto. Le schede di accesso aperte da <span class="docs-ui">Aggiungi account</span> e i comandi una tantum non vengono conservati. Per smettere di salvarla, disattiva <span class="docs-ui">Impostazioni → Agent → Salva la cronologia del terminale e ripristinala</span>; anche ciò che è stato salvato viene eliminato. <span class="docs-ui">Elimina la cronologia salvata</span>, lì accanto, la elimina in qualsiasi momento.</p>
+
 <!-- @supported 69600dc42f -->
 ## Agent supportati
 <p>Ferret non è legato a un solo agent. Riconosce i coding agent qui sotto: può avviarli, rilevarli in un terminale per <span class="docs-ui">Invia all'Agent</span> e mostrare se sono installati. <span class="docs-ui">Impostazioni → Agent</span> li elenca con <span class="docs-ui">Installato</span> / <span class="docs-ui">Non trovato</span>, un pulsante <span class="docs-ui">Installa</span> dove il produttore pubblica un programma di installazione da una riga, e il comando e gli argomenti di ciascuno.</p>

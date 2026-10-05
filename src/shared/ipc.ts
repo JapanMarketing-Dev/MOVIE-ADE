@@ -9,6 +9,7 @@ import type { SendRequest } from './sendTarget'
 import type { CloneFailureKind, CloneProgress, GitHubRepoList, SshConfigHost } from './projectSource'
 import type { SshTarget } from './sshCommand'
 import type { QuitSaveEntry, QuitSaveOutcome, UnsavedFileRef, UnsavedReveal } from './quitUnsaved'
+import type { ClosedTerminal, TerminalRestoreSnapshot } from './terminalRestore'
 import type {
   AnnotationHistory,
   AnnotationShortcut,
@@ -247,6 +248,16 @@ export interface IpcRequests {
   'settings:terminalClipboard': (mode: TerminalClipboardMode) => void
   /** ターミナルにフォーカスが入った・外れた。Windows / Linux でターミナルのキー（Ctrl+R など）をメニューに取らせない（terminalMenuKeys.ts） */
   'terminal:focused': (focused: boolean) => void
+  /** 今開いているタブと画面の文字（終了したあとに戻すため。設定の agents.restoreTerminals が切なら main は捨てる） */
+  'terminal:restoreSave': (snapshot: TerminalRestoreSnapshot) => void
+  /** 起動して最初の1回だけ、前に終了したときのタブ。無い・切なら null */
+  'terminal:restoreTake': () => TerminalRestoreSnapshot | null
+  /** 利用者が閉じたタブ（開き直すため） */
+  'terminal:closedPush': (entry: ClosedTerminal) => void
+  /** そのプロジェクトで最後に閉じたタブを取り出す。無ければ null */
+  'terminal:closedPop': (projectId: string | null) => ClosedTerminal | null
+  /** 覚えたタブと画面の文字をすべて消す（設定の「保存した履歴を消す」） */
+  'terminal:restoreClear': () => void
   /**
    * 指摘を Agent へ送る。request は宛先と差し替える本文（@shared/sendTarget の SendRequest。古い形のターミナルの id も受ける）。
    * noAgent: 宛先に Agent が居ない（launchAgent があればそれを、無ければ既定の Agent を renderer が起動して送り直す）。
@@ -448,6 +459,8 @@ export interface IpcEvents {
   'mode:changed': (mode: AppMode) => void
   'terminal:data': (id: string, data: string) => void
   'terminal:exit': (id: string, exitCode: number) => void
+  /** 終了の前に、今のタブと画面の文字を terminal:restoreSave で送ってほしい */
+  'terminal:restoreCollect': () => void
   'menu:command': (command: MenuCommand) => void
   'workspace:changed': (state: WorkspaceState) => void
   'projects:changed': (state: ProjectsState) => void
@@ -607,7 +620,7 @@ export const IPC_REQUEST_CHANNELS = [
   'terminal:write',
   'terminal:resize',
   'terminal:close',
-  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:clipboardText', 'terminal:writeClipboard', 'terminal:programCopy', 'terminal:programCopyAccept', 'terminal:programCopyDismiss', 'settings:terminalClipboard', 'terminal:focused', 'review:send',
+  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:clipboardText', 'terminal:writeClipboard', 'terminal:programCopy', 'terminal:programCopyAccept', 'terminal:programCopyDismiss', 'settings:terminalClipboard', 'terminal:focused', 'terminal:restoreSave', 'terminal:restoreTake', 'terminal:closedPush', 'terminal:closedPop', 'terminal:restoreClear', 'review:send',
   'settings:splitRatio',
   'settings:layout',
   'settings:theme',
@@ -641,6 +654,7 @@ export const IPC_EVENT_CHANNELS = [
   'mode:changed',
   'terminal:data',
   'terminal:exit',
+  'terminal:restoreCollect',
   'menu:command',
   'workspace:changed',
   'projects:changed',

@@ -374,7 +374,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const urlInputRef = useRef<HTMLInputElement | null>(null)
   /** フィードバックモードのタブの帯の URL 欄 */
   const feedbackUrlRef = useRef<HTMLInputElement | null>(null)
-  const terminalCommand = useRef<{ add: () => void; close: () => void } | null>(null)
+  const terminalCommand = useRef<{ add: () => void; close: () => void; reopen: () => void } | null>(null)
 
   /*
    * 空状態（NF-13）。フォルダ未選択、またはURL未入力のときはDOMで案内を出す。
@@ -560,7 +560,11 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     }
   }, [toast, showNotice])
 
-  const refreshHistory = useCallback(async () => { setHistory(await window.ade.invoke('review:list')) }, [])
+  const refreshHistory = useCallback(async () => {
+    // 終了の途中は main が IPC に null で答える。一覧を null にすると Workspace が落ちるので、前の一覧のままにする
+    const list = await window.ade.invoke('review:list')
+    if (Array.isArray(list)) setHistory(list)
+  }, [])
   /*
    * 文字で指摘（エディタの内蔵ブラウザ・映したウインドウで、枠を引いて指示を打つ。録画しない）。
    * 使えるのはエディタのブラウザのタブで、録画していないとき。足し先は開いているレビュー（無ければ最初の1件で新しく作る）。
@@ -885,6 +889,10 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         case 'closeTerminal':
           if (browserOwnsTabKeys()) { if (browserState.activeTabId) void window.ade.invoke('browser:closeTab', browserState.activeTabId) }
           else terminalCommand.current?.close()
+          break
+        case 'reopenTerminal':
+          // 最後に閉じたターミナルを開き直す（前の画面の文字と会話のまま）
+          terminalCommand.current?.reopen()
           break
         case 'quickOpen':
           // フィードバック（録画）中はビューを隠さない
@@ -1294,6 +1302,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
             cwd={workspace.folderPath}
             startupAgents={agents.startupAgents}
             notify={agents.notify}
+            restore={agents.restoreTerminals}
             onOpenFile={files.open}
             onOpenAgentSettings={() => openSettings('agents')}
           />

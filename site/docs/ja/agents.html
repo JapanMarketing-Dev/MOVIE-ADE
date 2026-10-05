@@ -211,6 +211,14 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 </table>
       </section>
 
+      <section class="docs-section" aria-labelledby="restore">
+        <h2 id="restore"><a class="docs-anchor" href="#restore" aria-label="「再起動したあとにターミナルを戻す」へのリンク">#</a>再起動したあとにターミナルを戻す</h2>
+        <p>Ferret を終了するとき、すべてのプロジェクトのターミナルのタブを覚えておきます。並びと分割、それぞれを開いたフォルダ、動かしていた Agent とアカウント、各画面の文字を 2,000 行までです。次に Ferret を起動すると、タブが同じ並びで戻ります。前の文字が先に出て、<code>— 前回の続き（2026-10-05 14:30）—</code> のような薄い色の行のあとに、同じフォルダで新しいシェルが始まります。</p>
+<p>Agent のタブは会話を続けて起動します。Claude Code は <code>--continue</code>、Codex は <code>resume --last</code> で、そのフォルダの最後の会話を続けます。同じフォルダ・同じアカウントで同じ Agent のタブが複数あれば、続けるのは最初の1つだけで、ほかは新しく始めます（2つのタブが同じ会話を続けることはありません）。そのフォルダに Claude Code の会話が無いとき、またはプロジェクトが SSH のホストにあるときは、普通に起動します。</p>
+<p><strong>閉じたターミナルを開き直す。</strong><span class="docs-ui">ターミナル → 閉じたターミナルを開き直す</span>（ターミナルにフォーカスがあるときは <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>T</kbd></span></span>）で、このプロジェクトで最後に閉じたタブまたはペインを文字ごと戻し、Agent も同じように会話を続けて起動します。閉じたターミナルは最後の 10 個まで、再起動をまたいでも覚えています。</p>
+<p>履歴は色の無い文字だけで、Ferret のデータフォルダ（<code>terminal-restore.json</code>、本人だけが読める）に保存し、プロジェクトには書きません。<span class="docs-ui">アカウントを追加</span> から開いたログインのタブと、1回きりのコマンドは覚えません。保存をやめるには <span class="docs-ui">設定 → Agent → ターミナルの履歴を保存して復元する</span> を切にします。保存したものも消えます。隣の <span class="docs-ui">保存した履歴を消す</span> でいつでも消せます。</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="supported">
         <h2 id="supported"><a class="docs-anchor" href="#supported" aria-label="「対応しているエージェント」へのリンク">#</a>対応しているエージェント</h2>
         <p>Ferret は特定のエージェントに縛られません。下のコーディングエージェントを認識し、起動したり、<span class="docs-ui">Agentへ送信</span> のためにターミナルの中から見つけたり、インストール済みかどうかを表示したりできます。<span class="docs-ui">設定 → Agent</span> には、<span class="docs-ui">インストール済み</span> / <span class="docs-ui">見つかりません</span>、提供元が1行のインストーラーを公開している場合の <span class="docs-ui">インストール</span> ボタン、各エージェントのコマンドと引数が並びます。</p>
@@ -377,6 +385,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
       <ul>
         <li><a href="#findings">指摘を確かめる</a></li>
         <li><a href="#terminal">内蔵のターミナルでエージェントを動かす</a></li>
+        <li><a href="#restore">再起動したあとにターミナルを戻す</a></li>
         <li><a href="#supported">対応しているエージェント</a></li>
         <li><a href="#send">Agentへ送信 / Agent向けにコピー</a></li>
         <li><a href="#verify">判定モデルでの受け入れ確認</a></li>

@@ -49,6 +49,13 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   </tbody>
 </table>
 
+<!-- @restore d051d24e56 -->
+## Recuperar os terminais depois de reiniciar
+<p>Ao sair, o Ferret guarda as abas de terminal de cada projeto: a ordem e as divisões, a pasta em que cada uma foi aberta, o agente e a conta com que rodava, e até 2.000 linhas de cada tela. Na próxima vez que o Ferret iniciar, as abas voltam na mesma ordem. Primeiro aparece o texto anterior, depois uma linha esmaecida como <code>— Continuação da última sessão (2026-10-05 14:30) —</code>, e então um novo shell começa na mesma pasta.</p>
+<p>As abas de agente voltam com a conversa: o Claude Code com <code>--continue</code> e o Codex com <code>resume --last</code>, que continuam a conversa mais recente daquela pasta. Se várias abas rodam o mesmo agente na mesma pasta com a mesma conta, só a primeira continua a conversa e as outras começam do zero, então duas abas nunca continuam a mesma conversa. Se o Claude Code não tiver conversa naquela pasta, ou se o projeto estiver em um host SSH, ele inicia normalmente.</p>
+<p><strong>Reabrir um terminal fechado.</strong> <span class="docs-ui">Terminal → Reabrir terminal fechado</span> ({{keys:Mod+Shift+T}} com o foco em um terminal) traz de volta a última aba ou painel que você fechou neste projeto, com o texto, e continua o agente da mesma forma. Os 10 últimos terminais fechados ficam guardados, inclusive entre reinícios.</p>
+<p>O histórico é salvo como texto simples, sem cores, na pasta de dados do Ferret (<code>terminal-restore.json</code>, que só você pode ler), nunca no projeto. Abas de login abertas por <span class="docs-ui">Adicionar conta</span> e comandos de uso único não são guardados. Para parar de salvar, desative <span class="docs-ui">Configurações → Agents → Salvar o histórico do terminal e restaurá-lo</span>; isso também apaga o que foi salvo. <span class="docs-ui">Apagar histórico salvo</span>, ao lado, apaga a qualquer momento.</p>
+
 <!-- @supported 69600dc42f -->
 ## Agentes suportados
 <p>O Ferret não está preso a um único agente. Ele reconhece os agentes de programação abaixo: consegue iniciá-los, detectá-los em um terminal para o <span class="docs-ui">Enviar ao Agent</span> e mostrar se estão instalados. <span class="docs-ui">Configurações → Agents</span> os lista com <span class="docs-ui">Instalado</span> / <span class="docs-ui">Não encontrado</span>, um botão <span class="docs-ui">Instalar</span> quando o fornecedor publica um instalador de uma linha, e o comando e os argumentos de cada um.</p>

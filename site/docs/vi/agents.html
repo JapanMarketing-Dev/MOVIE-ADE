@@ -211,6 +211,14 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 </table>
       </section>
 
+      <section class="docs-section" aria-labelledby="restore">
+        <h2 id="restore"><a class="docs-anchor" href="#restore" aria-label="Liên kết tới Khôi phục terminal sau khi khởi động lại">#</a>Khôi phục terminal sau khi khởi động lại</h2>
+        <p>Khi thoát, Ferret ghi nhớ các tab terminal của mọi dự án: thứ tự và cách chia pane, thư mục mà mỗi tab được mở, agent và tài khoản đã chạy, cùng tối đa 2.000 dòng của mỗi màn hình. Lần tới khi Ferret khởi động, các tab trở lại theo đúng thứ tự. Nội dung cũ hiện ra trước, tiếp theo là một dòng mờ như <code>— Tiếp tục từ phiên trước (2026-10-05 14:30) —</code>, rồi một shell mới bắt đầu trong cùng thư mục.</p>
+<p>Tab agent khởi động lại cùng cuộc trò chuyện: Claude Code với <code>--continue</code> và Codex với <code>resume --last</code>, tiếp tục cuộc trò chuyện gần nhất trong thư mục đó. Nếu nhiều tab chạy cùng một agent trong cùng thư mục với cùng tài khoản, chỉ tab đầu tiên tiếp tục cuộc trò chuyện, các tab khác bắt đầu mới, nên hai tab không bao giờ tiếp tục cùng một cuộc trò chuyện. Nếu Claude Code không có cuộc trò chuyện nào trong thư mục đó, hoặc dự án nằm trên máy chủ SSH, nó khởi động bình thường.</p>
+<p><strong>Mở lại terminal đã đóng.</strong> <span class="docs-ui">Terminal → Mở lại terminal đã đóng</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>T</kbd></span></span> khi terminal đang được focus) khôi phục tab hoặc pane bạn đóng gần nhất trong dự án này cùng nội dung của nó, và tiếp tục agent theo cùng cách. 10 terminal đóng gần nhất được giữ lại, kể cả qua các lần khởi động lại.</p>
+<p>Lịch sử được lưu dưới dạng văn bản thuần, không màu, trong thư mục dữ liệu của Ferret (<code>terminal-restore.json</code>, chỉ bạn đọc được), không bao giờ trong dự án. Tab đăng nhập mở từ <span class="docs-ui">Thêm tài khoản</span> và các lệnh chạy một lần không được lưu. Để ngừng lưu, hãy tắt <span class="docs-ui">Cài đặt → Agent → Lưu lịch sử terminal và khôi phục</span>; những gì đã lưu cũng bị xóa. <span class="docs-ui">Xóa lịch sử đã lưu</span> ngay bên cạnh xóa nó bất cứ lúc nào.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="supported">
         <h2 id="supported"><a class="docs-anchor" href="#supported" aria-label="Liên kết tới Các agent được hỗ trợ">#</a>Các agent được hỗ trợ</h2>
         <p>Ferret không gắn với một agent duy nhất. Nó nhận biết các coding agent dưới đây: có thể khởi động chúng, phát hiện chúng trong terminal để dùng <span class="docs-ui">Gửi cho Agent</span>, và cho biết chúng đã được cài hay chưa. <span class="docs-ui">Cài đặt → Agent</span> liệt kê chúng kèm <span class="docs-ui">Đã cài đặt</span> / <span class="docs-ui">Không tìm thấy</span>, nút <span class="docs-ui">Cài đặt</span> khi nhà cung cấp có trình cài đặt một dòng, và lệnh cùng tham số của từng agent.</p>
@@ -377,6 +385,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
       <ul>
         <li><a href="#findings">Xem lại các góp ý</a></li>
         <li><a href="#terminal">Chạy agent trong terminal tích hợp</a></li>
+        <li><a href="#restore">Khôi phục terminal sau khi khởi động lại</a></li>
         <li><a href="#supported">Các agent được hỗ trợ</a></li>
         <li><a href="#send">Gửi cho Agent / Sao chép cho Agent</a></li>
         <li><a href="#verify">Kiểm tra nghiệm thu bằng model quyết định</a></li>

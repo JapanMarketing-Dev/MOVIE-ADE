@@ -211,6 +211,14 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 </table>
       </section>
 
+      <section class="docs-section" aria-labelledby="restore">
+        <h2 id="restore"><a class="docs-anchor" href="#restore" aria-label="Link to Bring terminals back after a restart">#</a>Bring terminals back after a restart</h2>
+        <p>When Ferret quits, it remembers the terminal tabs of every project: their order and splits, the folder each one was opened in, the agent and the account it ran with, and up to 2,000 lines of each screen. The next time Ferret starts, the tabs come back in the same order. The old text is shown first, then a dimmed line such as <code>— Continued from last session (2026-10-05 14:30) —</code>, and then a new shell starts in the same folder.</p>
+<p>Agent tabs start again with their conversation: Claude Code with <code>--continue</code> and Codex with <code>resume --last</code>, which continue the most recent conversation in that folder. If several tabs run the same agent in the same folder with the same account, only the first one continues it and the others start fresh, so two tabs never continue the same conversation. If Claude Code has no conversation in that folder, or the project is on an SSH host, it starts normally.</p>
+<p><strong>Reopen a closed terminal.</strong> <span class="docs-ui">Terminal → Reopen Closed Terminal</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>T</kbd></span></span> while a terminal has focus) brings back the last tab or pane you closed in this project, with its text, and continues its agent the same way. The last 10 closed terminals are kept, also across restarts.</p>
+<p>The history is saved as plain text, without colors, in Ferret's data folder (<code>terminal-restore.json</code>, readable only by you), never in the project. Login tabs opened from <span class="docs-ui">Add Account</span> and one-off commands are not kept. To stop saving it, turn off <span class="docs-ui">Settings → Agents → Save terminal history and restore it</span>; this also deletes what was saved. <span class="docs-ui">Delete saved history</span> next to it deletes it at any time.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="supported">
         <h2 id="supported"><a class="docs-anchor" href="#supported" aria-label="Link to Supported agents">#</a>Supported agents</h2>
         <p>Ferret is not tied to one agent. It recognizes the coding agents below: it can start them, detect them in a terminal for <span class="docs-ui">Send to Agent</span>, and show whether they are installed. <span class="docs-ui">Settings → Agents</span> lists them with <span class="docs-ui">Installed</span> / <span class="docs-ui">Not found</span>, an <span class="docs-ui">Install</span> button where the vendor publishes a one-line installer, and the command and arguments for each.</p>
@@ -377,6 +385,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
       <ul>
         <li><a href="#findings">Review findings</a></li>
         <li><a href="#terminal">Run agents in the built-in terminal</a></li>
+        <li><a href="#restore">Bring terminals back after a restart</a></li>
         <li><a href="#supported">Supported agents</a></li>
         <li><a href="#send">Send to Agent / Copy for Agent</a></li>
         <li><a href="#verify">Acceptance check with a decision model</a></li>
