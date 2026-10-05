@@ -187,6 +187,13 @@
 <p>レビュー対象の <span class="docs-ui">録画するウインドウ</span> は、ウインドウのタイトルだけでなくアプリ名にも一致します。そのため <code>Simulator</code> と書けば、どのデバイスを表示していても iOS Simulator のウインドウを選びます。</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="tabs">
+        <h2 id="tabs"><a class="docs-anchor" href="#tabs" aria-label="「タブで複数のページを開く」へのリンク">#</a>タブで複数のページを開く</h2>
+        <p>内蔵ブラウザにはタブがあります。エディタモードではブラウザのツールバーの上、フィードバックモードでは URL 欄の横です。<span class="docs-ui">新しいタブ</span>（<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span>）で空のタブを開き、URL を入れます。たとえばログインのコードを見るために Web メールを開けます。タブを押すか <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>1</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>1</kbd></span></span>〜<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>9</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>9</kbd></span></span>、<span class="docs-kbd"><span class="os-mac"><kbd>⌃</kbd><kbd>Tab</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Tab</kbd></span></span> で切り替え、タブの × か <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span> で閉じます。<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span> と <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span> がタブに効くのは、ページ・タブ・URL 欄に焦点があるときと、フィードバックモードのときです。ターミナルでは今までどおりターミナルを開く・閉じるです。新しいタブで開くリンク（<code>target="_blank"</code>）と、大きさを指定しない <code>window.open</code> は新しいタブで開きます。大きさを指定するログインのポップアップは、今までどおり別のウインドウで開きます。</p>
+<p>どのタブもログインと Cookie を共有し、あるタブでコピーしたものを別のタブに貼れます。タブは 20 枚まで開けます。ページがタブを開けるのは、そのページをクリック・キー入力した直後だけです。そうでなければリンクは同じタブで開きます。</p>
+<p><span class="docs-ui">内蔵ブラウザ</span>を録画している間にタブを切り替えると、切り替えた先のタブを別の映像として録ります（<a href="#multi">複数のウインドウを同時に録画する</a>）。操作ログに切り替えとページが残るので、指摘はどのページの話かと結びついたままです。ペンと四角の枠はどのタブでも使えます。空のタブは、ページを読み込むと録り始めます。</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="extensions">
         <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="「ブラウザ拡張機能」へのリンク">#</a>ブラウザ拡張機能</h2>
         <p><span class="docs-ui">設定 → ブラウザ拡張機能</span> で、内蔵ブラウザに Chrome の拡張機能を入れられます。<code>manifest.json</code> があるフォルダは <span class="docs-ui">展開済みのフォルダを追加…</span>、Chrome・Edge・Brave・Chromium に入っている拡張は <span class="docs-ui">Chrome から取り込む…</span> で写して使います。拡張が動くのは内蔵ブラウザの中だけで、Ferret 自身の画面には入りません。拡張はそこで開いたすべてのページを読み書きでき、そのログインのまま通信できるので、信用できる拡張だけを入れてください。</p>
@@ -316,6 +323,7 @@
       <ul>
         <li><a href="#target">録画の対象を選ぶ</a></li>
         <li><a href="#desktop-mobile">デスクトップアプリ、ゲーム、モバイルアプリ</a></li>
+        <li><a href="#tabs">タブで複数のページを開く</a></li>
         <li><a href="#extensions">ブラウザ拡張機能</a></li>
         <li><a href="#multi">複数のウインドウを同時に録画する</a></li>
         <li><a href="#record">開始・一時停止・停止</a></li>

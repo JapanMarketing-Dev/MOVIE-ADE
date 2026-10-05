@@ -200,19 +200,25 @@ describe('ログインのポップアップ（Google でログインなど）', 
     expect(popupWindowAction({ url: 'about:blank', disposition: 'new-window' })).toBe('popup')
   })
 
-  it('普通の別タブ（target=_blank・大きさの無い window.open）は今までどおり同じビュー', () => {
-    expect(popupWindowAction({ url: 'https://example.com/next', disposition: 'foreground-tab' })).toBe('in-app')
-    expect(popupWindowAction({ url: 'https://example.com/next', disposition: 'background-tab' })).toBe('in-app')
-    expect(popupWindowAction({ url: 'https://example.com/next' })).toBe('in-app')
+  it('普通の別タブ（target=_blank・大きさの無い window.open）は内蔵ブラウザの新しいタブ。同じタブを求めたものは同じタブ', () => {
+    expect(popupWindowAction({ url: 'https://example.com/next', disposition: 'foreground-tab' })).toBe('tab')
+    expect(popupWindowAction({ url: 'https://example.com/next', disposition: 'background-tab' })).toBe('tab')
+    expect(popupWindowAction({ url: 'https://example.com/next' })).toBe('tab')
+    expect(popupWindowAction({ url: 'https://example.com/next', disposition: 'current-tab' })).toBe('in-app')
     expect(popupWindowAction({ url: 'mailto:a@example.com', disposition: 'foreground-tab' })).toBe('external')
+    // 新しいタブでも、file: data: javascript: 独自スキーム・プレビューは開かない
+    for (const url of ['file:///etc/passwd', 'zoommtg://zoom.us/join', 'javascript:alert(1)', 'data:text/html,<p>x</p>', 'ade-preview://p/a.md']) {
+      expect(popupWindowAction({ url, disposition: 'foreground-tab' }), url).toBe('deny')
+    }
   })
 
   it('ポップアップでも、外の http・ファイル・独自スキーム・プレビュー・認証情報付きは子ウインドウにしない', () => {
-    expect(popupWindowAction({ url: 'http://evil.example/login', disposition: 'new-window' })).toBe('in-app')
+    // 子ウインドウにはせず、opener の無い新しいタブで開く
+    expect(popupWindowAction({ url: 'http://evil.example/login', disposition: 'new-window' })).toBe('tab')
     for (const url of ['file:///etc/passwd', 'zoommtg://zoom.us/join', 'javascript:alert(1)', 'data:text/html,<p>x</p>', 'ade-preview://p/a.md']) {
       expect(popupWindowAction({ url, disposition: 'new-window' }), url).toBe('deny')
     }
-    expect(popupWindowAction({ url: 'https://user:pass@accounts.example/login', disposition: 'new-window' })).toBe('in-app')
+    expect(popupWindowAction({ url: 'https://user:pass@accounts.example/login', disposition: 'new-window' })).toBe('tab')
   })
 
   it('ポップアップの中で行ける先', () => {

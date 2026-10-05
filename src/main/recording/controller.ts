@@ -186,6 +186,12 @@ export class RecordingController {
   private popupReturnTrackId: string | null = null
   /** 前に出たら書き込みを戻す面に付けた focus の受け口（同じものに二重に付けない） */
   private readonly focusWatched = new WeakSet<WebContents>()
+  /** 結びつけた内蔵ブラウザのタブ（同じタブに受け口を二重に付けない） */
+  private readonly attachedTabs = new WeakSet<WebContents>()
+  /** 内蔵ブラウザでいま前に出ているタブ（browser.ts の onActiveTab）。録画していない間は source と同じ */
+  private browserTab: WebContents | null = null
+  /** 録画中に前に出た空のタブ。URL が入ったら、そのタブの映像を録り始める */
+  private pendingTab: WebContents | null = null
 
   constructor(
     private readonly assets: RecordingAssets,
@@ -193,15 +199,19 @@ export class RecordingController {
   ) {}
 
   /**
-   * 録る対象（内蔵ブラウザの webContents）を結びつける。
-   * モード切替でビューを作り直さないので1度でよい。
+   * 録る対象（内蔵ブラウザのタブの webContents）を結びつける。タブごとに1度（同じタブは二度結びつけない）。
+   * モード切替でビューを作り直さないので、タブを開いたときだけでよい。録るのは前に出ているタブ（selectBrowserTab）
    */
   attach(contents: WebContents): void {
-    this.source = contents
     this.bindReview()
+    if (contents.isDestroyed() || this.attachedTabs.has(contents)) return
+    this.attachedTabs.add(contents)
     const wc = contents
-
-    this.pageUrl = wc.getURL()
+    if (!this.source || this.source.isDestroyed()) {
+      this.source = wc
+      this.pageUrl = wc.getURL()
+    }
+    if (!this.browserTab || this.browserTab.isDestroyed()) this.browserTab = wc
     // ログインのポップアップで書き込んでいる間に内蔵ブラウザを押したら、書き込みを内蔵ブラウザへ戻す
     this.watchFocusBack(wc)
 
@@ -209,18 +219,83 @@ export class RecordingController {
     wc.on('did-finish-load', () => this.pushMode())
     // 別のドキュメントへ移る前に、入力中の文を確定させる（ページを離れると吹き出しごと消えるため）
     wc.on('did-start-navigation', (details) => {
-      if (this.recordsBrowser && details.isMainFrame && !details.isSameDocument && isPageChange(this.pageUrl, details.url)) {
+      if (wc === this.source && this.recordsBrowser && details.isMainFrame && !details.isSameDocument && isPageChange(this.pageUrl, details.url)) {
         this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'commit' })
       }
     })
     // 別のドキュメントへ移ったときは注入スクリプトごと読み直されるので、書き込みは自然に消える
     wc.on('did-navigate', (_e, url) => {
+      // 録画中に開いた空のタブに URL が入った。そのタブを録り始める
+      if (wc === this.pendingTab) return this.selectBrowserTab(wc, true)
+      if (wc !== this.source) return
       this.pageUrl = url
       this.recordNav(url)
     })
     wc.on('did-navigate-in-page', (_e, url, isMainFrame) => {
-      if (isMainFrame) this.onInPageNavigate(url)
+      if (isMainFrame && wc === this.source) this.onInPageNavigate(url)
     })
+  }
+
+  /**
+   * 内蔵ブラウザで前に出ているタブが変わった（browser.ts の onActiveTab）。
+   * 録画中に内蔵ブラウザを映しているなら、そのタブの映像（トラック）へ切り替える。まだ録っていないタブなら1本足す
+   * （切り替えは track と nav の操作ログに残るので、指摘がどのタブのページの話かが分かる）
+   */
+  selectBrowserTab(contents: WebContents, again = false): void {
+    if (contents.isDestroyed() || (!again && contents === this.browserTab && contents === this.source)) return
+    this.attach(contents)
+    this.browserTab = contents
+    if (!this.capturing) {
+      this.pendingTab = null
+      this.source = contents
+      this.pageUrl = contents.getURL()
+      return
+    }
+    void this.serialTracks(() => this.followBrowserTabNow(contents)).catch((err: unknown) => reportHandled(err, { area: 'recording', op: 'follow browser tab' }))
+  }
+
+  private async followBrowserTabNow(contents: WebContents): Promise<void> {
+    if (!this.capturing || contents.isDestroyed() || contents !== this.browserTab) return
+    this.pendingTab = null
+    const active = this.activeTrack
+    // 画面・ウインドウ・ログインのポップアップを映している間は、内蔵ブラウザのどのタブかだけ覚えておく（内蔵ブラウザへ戻したときに使う）
+    if (!active || active.popup || active.video.kind !== 'tab') {
+      this.source = contents
+      this.pageUrl = contents.getURL()
+      return
+    }
+    const live = this.tracks.filter((track) => track.live)
+    const same = live.find((track) => !track.popup && track.video.kind === 'tab' && track.video.contents === contents)
+    if (same) return this.switchTrackNow(same.id)
+    // 空のタブ（URL 欄から入れる前）はまだ録らない。URL が入ったら録り始める（attach の did-navigate）
+    const url = contents.getURL()
+    if (!url || url === 'about:blank') {
+      this.pendingTab = contents
+      return
+    }
+    if (live.length >= MAX_CAPTURE_TRACKS) {
+      // 上限なら、いま映していないほかのタブの映像を閉じて空ける（録った分は残る）
+      const spare = live.find((track) => track.id !== 'main' && track !== active && !track.popup && track.video.kind === 'tab')
+      if (!spare) {
+        this.warn(t('recording.tracks.limit', { n: MAX_CAPTURE_TRACKS }))
+        return
+      }
+      await this.closeTrackNow(spare.id)
+    }
+    const label = t('recording.tracks.tabLabel', { host: popupHost(url) || '-' })
+    await this.startTrack({ kind: 'tab', contents }, { kind: 'browser' }, label, { activate: true })
+  }
+
+  /** 内蔵ブラウザのタブを閉じた。そのタブの映像（main 以外）を閉じる。main は音声も録っているので録画の終わりまで残す */
+  browserTabClosed(contents: WebContents): void {
+    if (this.pendingTab === contents) this.pendingTab = null
+    const track = this.tracks.find((candidate) => candidate.live && candidate.id !== 'main' && !candidate.popup && candidate.video.kind === 'tab' && candidate.video.contents === contents)
+    if (track) void this.closeTrack(track.id)
+  }
+
+  /** 録画がそのタブの映像を録っている（録った）か。録画中に閉じたタブは、録画が終わるまで中身を残す */
+  usesContents(contents: WebContents): boolean {
+    return this.capturing && this.tracks.some((track) => track.video.kind === 'tab' && track.video.contents === contents)
   }
 
   /** 画面・ウインドウを録るときに映像を映す先を結びつける */
@@ -468,6 +543,9 @@ export class RecordingController {
 
   async start(partial: Partial<RecordingOptions> & Pick<RecordingOptions, 'paths'>): Promise<void> {
     if (this.state !== 'idle') throw new UserFacingError(t('recording.errors.alreadyRecording'))
+    // 録るのは、内蔵ブラウザでいま前に出ているタブ
+    if (this.browserTab && !this.browserTab.isDestroyed()) this.source = this.browserTab
+    this.pendingTab = null
     const source = this.reviewContents
     const options: RecordingOptions = { ...defaultRecordingOptions, ...partial }
     const video = await this.resolveVideo(options, source)
@@ -704,9 +782,12 @@ export class RecordingController {
     let video: VideoSource
     let resolved = target
     if (target.kind === 'browser') {
-      const same = live.find((track) => track.video.kind === 'tab' && !track.popup)
+      // 内蔵ブラウザでいま前に出ているタブを録っていればそれ、無ければほかのタブの映像
+      const tab = this.browserTab && !this.browserTab.isDestroyed() ? this.browserTab : this.source
+      const tabs = live.filter((track) => track.video.kind === 'tab' && !track.popup)
+      const same = tabs.find((track) => track.video.kind === 'tab' && track.video.contents === tab) ?? tabs[0]
       if (same) { if (opts.activate) await this.switchTrackNow(same.id); return same.id }
-      const wc = this.source
+      const wc = tab
       if (!wc || wc.isDestroyed()) throw new UserFacingError(t('recording.errors.noBrowser'))
       video = { kind: 'tab', contents: wc }
     } else {
@@ -809,6 +890,12 @@ export class RecordingController {
       this.mirrorSwitched = true
       this.mirrorContents = null
       this.mirror?.showBrowser?.()
+      // 内蔵ブラウザのタブの映像。書き込み・操作ログもそのタブで受け、内蔵ブラウザもそのタブを前に出す
+      const wc = track.video.kind === 'tab' ? track.video.contents : null
+      if (wc && !wc.isDestroyed()) {
+        this.source = wc
+        if (wc !== this.browserTab) this.handlers.onBrowserTab?.(wc)
+      }
     }
     this.lastSurface = null
     // 前に書き込みを受けていた面（隠れた・後ろに回った）は書き込みを止める
@@ -1007,6 +1094,12 @@ export class RecordingController {
     this.stills = null
     this.clock = null
     this.state = 'idle'
+    // 録画のあいだに映すものを切り替えていても、内蔵ブラウザでいま前に出ているタブへ戻す
+    this.pendingTab = null
+    if (this.browserTab && !this.browserTab.isDestroyed()) {
+      this.source = this.browserTab
+      this.pageUrl = this.browserTab.getURL()
+    }
     this.closeMirror()
     const tracks: TrackRecordInfo[] = this.tracks.map((track) => ({ id: track.id, kind: track.target.kind, label: track.label, video: track.videoRel,
       startMs: track.startMs, endMs: track.endMs ?? durationMs, ...(track.watchId ? { watchId: track.watchId } : {}) }))

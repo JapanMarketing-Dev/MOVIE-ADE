@@ -133,15 +133,21 @@ interface WindowOpenRequest {
   disposition?: string
 }
 
+/** 同じタブで開く disposition（ページが自分のタブで開くよう求めたもの） */
+const SAME_TAB_DISPOSITIONS = new Set(['current-tab', 'save-to-disk'])
+
 /**
  * 内蔵ブラウザのページの window.open / target=_blank の扱い。
  * - popup: ログインのポップアップ（Google でログインなど）。同じセッションの子ウインドウで開き、opener を保つ
  *          （ログインが終わってポップアップが閉じれば、元のページに結果が届く）
- * - in-app / external / deny: windowOpenAction と同じ（普通の別タブのリンクは今までどおり同じビューで開く）
+ * - tab: 普通の別タブ（target=_blank・大きさを指定しない window.open）。内蔵ブラウザの新しいタブで開く（http / https だけ。opener は渡さない）
+ * - in-app / external / deny: windowOpenAction と同じ
  */
-export function popupWindowAction(request: WindowOpenRequest): 'popup' | 'in-app' | 'external' | 'deny' {
+export function popupWindowAction(request: WindowOpenRequest): 'popup' | 'tab' | 'in-app' | 'external' | 'deny' {
   if (request.disposition === 'new-window' && isPopupUrlAllowed(request.url)) return 'popup'
-  return windowOpenAction(request.url)
+  const action = windowOpenAction(request.url)
+  if (action === 'in-app' && !SAME_TAB_DISPOSITIONS.has(request.disposition ?? '')) return 'tab'
+  return action
 }
 
 /**

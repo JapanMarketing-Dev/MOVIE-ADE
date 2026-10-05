@@ -528,7 +528,7 @@ function send<C extends IpcEventChannel>(channel: C, ...args: Parameters<IpcEven
 const fileWatcher = new ProjectWatcher((event) => {
   send('fs:changed', event)
   // 内蔵ブラウザで開いているプレビューは、読み直さずに中身だけ差し替える（録画中の書き込みを残す）
-  refreshPreviewIn(browser?.contents ?? null, event.paths)
+  for (const tab of browser?.allContents() ?? []) refreshPreviewIn(tab, event.paths)
 }, (ids) => send('review:progressChanged', ids))
 
 /** ファイルエディタの IPC が触ってよい根。未選択なら断る */
@@ -959,17 +959,23 @@ async function ensureRecording(): Promise<RecordingController> {
           if (process.platform === 'darwin') app.dock?.setBadge(capturing ? CAPTURE_INDICATOR : '')
         }
         send('recording:status', status)
+        // 録画のために残していた、録画中に閉じたタブを閉じる
+        if (status.state === 'idle') browser?.releaseClosedTabs()
       },
       onLevel: (level) => { send('recording:level', level); liveFeed?.level(level.source, level.rms, level.peak) },
       onPcm: (block) => audioWriter?.write(block),
       onWarning: (message) => send('recording:warning', message),
       onAnnotationHistory: (history) => send('annotation:history', history),
       onAnnotationShortcut: (action) => send('annotation:shortcut', action),
-      onTracks: (state) => send('recording:tracksChanged', state)
+      onTracks: (state) => send('recording:tracksChanged', state),
+      // 録画のトラックの切り替えで内蔵ブラウザの別のタブを映した。内蔵ブラウザもそのタブを前に出す
+      onBrowserTab: (contents) => browser?.activateContents(contents)
     }
   )
+  // 内蔵ブラウザのタブ（録画の用意より前に開いていたもの）。録るのは前に出ているタブ
+  for (const tab of browser?.allContents() ?? []) recording.attach(tab)
   const contents = browser?.contents
-  if (contents) recording.attach(contents)
+  if (contents) recording.selectBrowserTab(contents)
   // 録画の用意より前に開いていたログインのポップアップ
   for (const popup of browser?.popupContents() ?? []) recording.attachPopupWindow(popup, popup.getURL())
   // 録画の用意より前に開いていた拡張機能のポップアップ
@@ -1538,6 +1544,9 @@ function registerIpc(): void {
       if (captureConsent.target.kind === 'window' && (recording?.status.state ?? 'idle') === 'idle') setCaptureTargetFromMain({ kind: 'browser' })
       return browser?.navigate(url)
     },
+    'browser:newTab': (url) => browser?.newTab(typeof url === 'string' ? url.slice(0, 8000) : '').then(() => undefined),
+    'browser:closeTab': (id) => { if (typeof id === 'string') browser?.closeTab(id) },
+    'browser:activateTab': (id) => { if (typeof id === 'string') browser?.activateTab(id) },
     'browser:back': () => browser?.back(),
     'browser:forward': () => browser?.forward(),
     'browser:reload': () => browser?.reload(),
@@ -2472,6 +2481,23 @@ async function main(): Promise<void> {
     recordProjectUrl(state)
     send('browser:stateChanged', state)
   })
+  // タブ（@shared/browserTabs）。どのタブも録画に結びつけ、前に出ているタブを録る（recording/controller.ts の selectBrowserTab）
+  browser.onTabCreated = (contents) => {
+    recording?.attach(contents)
+    // ページを押したら、拡張機能のポップアップは閉じる（Chrome と同じ）。書き込みの最中は閉じない
+    contents.on('input-event', (_event, input) => { if (input.type === 'mouseDown') dismissExtensionPopup('page') })
+  }
+  browser.onActiveTab = (contents) => recording?.selectBrowserTab(contents)
+  browser.onTabClosed = (contents) => recording?.browserTabClosed(contents)
+  // 録画がそのタブを録っている間は、閉じても中身を残す（録画が終わったら閉じる）
+  browser.keepClosedTab = (contents) => recording?.usesContents(contents) ?? false
+  // ページのキー（⌘T）で新しいタブを開いた。アプリの画面の URL 欄へ焦点を移して、そのまま URL を打てるようにする
+  browser.onFocusUrl = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    mainWindow.webContents.focus()
+    send('menu:command', 'focusUrl')
+  }
+  browser.onNotice = (message) => send('browser:notice', message)
   // 表示幅の切替を操作ログへ残す（WS-3 → viewport イベント）
   browser.onViewportChange = (width) => recording?.recordViewport(width)
   // 文字で指摘の静止画は、そのビューへの本物の入力の直後だけ（noteInputs）
@@ -2481,8 +2507,6 @@ async function main(): Promise<void> {
   // 内蔵ブラウザの拡張機能。content script を最初のページにも効かせるため、ページを開く前に読み込む（待つのは少しだけ）
   await startBrowserExtensions(loadedSettings.browserExtensions)
   browser.attach(mainWindow, loadedSettings.url, loadedSettings.viewport)
-  // ページを押したら、拡張機能のポップアップは閉じる（Chrome と同じ）。書き込みの最中は閉じない
-  browser.contents?.on('input-event', (_event, input) => { if (input.type === 'mouseDown') dismissExtensionPopup('page') })
   browser.setBackgroundColor(nativeThemeBackground())
   mark('browser:attached')
   // 前回ウインドウを選んでいたなら、起動したときからそれを映す

@@ -17,6 +17,8 @@ import {
 } from '@shared/types'
 import { BrowserSlot, type SlotEmptyReason } from './components/BrowserSlot'
 import { BrowserToolbar } from './components/BrowserToolbar'
+import { BrowserTabs } from './components/BrowserTabs'
+import { UrlField } from './components/NavControls'
 import { CenterTabs, isFileTab, type CenterTab } from './components/CenterTabs'
 import { layoutSignature, mainSplitGrid, withPanel, workspaceGrid, type Dock } from '@shared/layout'
 import { initLayout, setLayout, useLayout } from './lib/layout'
@@ -370,6 +372,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const captureTargetRef = useRef<CaptureTarget>({ kind: 'browser' })
   const [targetPickerOpen, setTargetPickerOpen] = useState(false)
   const urlInputRef = useRef<HTMLInputElement | null>(null)
+  /** フィードバックモードのタブの帯の URL 欄 */
+  const feedbackUrlRef = useRef<HTMLInputElement | null>(null)
   const terminalCommand = useRef<{ add: () => void; close: () => void } | null>(null)
 
   /*
@@ -402,7 +406,9 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     centerTab,
     // パネルの置き場所・表示が変わると、内蔵ブラウザの置き場所も動く
     layoutSignature(layout),
-    targetsOpen ? `t${targetsRatio.toFixed(4)}` : '-'
+    targetsOpen ? `t${targetsRatio.toFixed(4)}` : '-',
+    // フィードバックモードのタブの帯は、内蔵ブラウザを録るときだけ出る（出ると置き場所が下がる）
+    showsBrowserNav(captureTarget) ? 'tabs' : '-'
   ].join(':')
   const slotRef = useViewBounds(layoutKey, viewVisible)
 
@@ -513,6 +519,36 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const navigate = useCallback((url: string) => {
     void window.ade.invoke('browser:navigate', url)
   }, [])
+
+  /** いまのモードの URL 欄へ焦点を移して全体を選ぶ（⌘L・新しいタブ）。エディタではブラウザのタブを前に出してから */
+  const focusUrlField = useCallback(() => {
+    if (modeRef.current === 'feedback') {
+      feedbackUrlRef.current?.focus()
+      feedbackUrlRef.current?.select()
+      return
+    }
+    setCenterTab('browser')
+    requestAnimationFrame(() => {
+      urlInputRef.current?.focus()
+      urlInputRef.current?.select()
+    })
+  }, [])
+
+  /**
+   * ⌘T / ⌘W（メニューのターミナルのキー）を内蔵ブラウザのタブに使うか。ページに焦点があるときは main が受けるので、ここはアプリの画面の焦点。
+   * ターミナル・エディタで打っているときはターミナルのまま。フィードバックモードは内蔵ブラウザを見ているときはタブ、
+   * エディタはタブの帯・URL 欄（data-browser-chrome）に焦点があるときだけタブ
+   */
+  const browserOwnsTabKeys = useCallback((): boolean => {
+    const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    if (focused?.closest('.xterm, .terminal-mount, .monaco-editor')) return false
+    if (focused?.closest('[data-browser-chrome]')) return true
+    return modeRef.current === 'feedback' && showsBrowserNav(captureTargetRef.current)
+  }, [])
+
+  const openBrowserTab = useCallback(() => {
+    void window.ade.invoke('browser:newTab').then(focusUrlField).catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
+  }, [focusUrlField, toast])
 
   /** MODE-3 エディタで「録画」を押すとフィードバックモードへ移って始まる */
   const run = useCallback(async (fn: () => Promise<void>) => {
@@ -786,11 +822,14 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
 
   useEffect(() => {
     const offBrowser = window.ade.on('browser:stateChanged', setBrowserState)
+    // 内蔵ブラウザからの短い知らせ（タブの上限など）。フィードバックモードでは帯の案内の枠にも出る（Toast の置き先）
+    const offBrowserNotice = window.ade.on('browser:notice', (message) => toast({ tone: 'warning', message }))
     const offWorkspace = window.ade.on('workspace:changed', setWorkspace)
     const offProjects = window.ade.on('projects:changed', setProjects)
     const offMode = window.ade.on('mode:changed', (next) => { modeRef.current = next; setMode(next) })
     return () => {
       offBrowser()
+      offBrowserNotice()
       offWorkspace()
       offProjects()
       offMode()
@@ -826,9 +865,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           )
           break
         case 'focusUrl':
-          setCenterTab('browser')
-          urlInputRef.current?.focus()
-          urlInputRef.current?.select()
+          focusUrlField()
           break
         case 'reloadPage':
           void window.ade.invoke('browser:reload')
@@ -841,10 +878,13 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           }
           break
         case 'newTerminal':
-          terminalCommand.current?.add()
+          // 内蔵ブラウザを見ているときは新しいタブ（@shared/browserTabs）
+          if (browserOwnsTabKeys()) openBrowserTab()
+          else terminalCommand.current?.add()
           break
         case 'closeTerminal':
-          terminalCommand.current?.close()
+          if (browserOwnsTabKeys()) { if (browserState.activeTabId) void window.ade.invoke('browser:closeTab', browserState.activeTabId) }
+          else terminalCommand.current?.close()
           break
         case 'quickOpen':
           // フィードバック（録画）中はビューを隠さない
@@ -878,7 +918,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           break
       }
     })
-  }, [browserState.viewport, changeMode, toggleRecording, workspace.folderPath, files.activeFile, files.save, settingsOpen, centerTab, openSettings, closeSettings, reopenOnboarding])
+  }, [browserState.viewport, browserState.activeTabId, changeMode, toggleRecording, workspace.folderPath, files.activeFile, files.save, settingsOpen, centerTab, openSettings, closeSettings, reopenOnboarding, focusUrlField, browserOwnsTabKeys, openBrowserTab])
 
   // #gallery で直接開けるようにする（E2Eが撮影に使う）
   useEffect(() => {
@@ -1059,6 +1099,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                 )
               ) : centerTab === 'browser' ? (
                 <ErrorBoundary name="browser">
+                  <div className="browser-chrome" data-browser-chrome="">
+                  <BrowserTabs state={browserState} onNewTab={focusUrlField} />
                   <BrowserToolbar
                     state={browserState}
                     urlInputRef={urlInputRef}
@@ -1071,6 +1113,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                     noteDisabled={!noteAllowed}
                     onToggleNote={toggleNote}
                   />
+                  </div>
                   <BrowserSlot
                     viewport={browserState.viewport}
                     slotRef={mode === 'editor' && viewVisible ? slotRef : noopRef}
@@ -1186,6 +1229,14 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         {/* 内蔵ブラウザと、右のレビュー対象の一覧。対象を押すと録画したまま切り替わる */}
         <div className={`fb-body${targetsOpen ? ' has-targets' : ''}`} style={targetsOpen ? { gridTemplateColumns: `minmax(0, ${targetsRatio}fr) var(--size-splitter) minmax(0, ${1 - targetsRatio}fr)` } : undefined}>
           <ErrorBoundary name="feedback-browser">
+          <div className="fb-browser">
+          {/* 内蔵ブラウザのタブと URL 欄。メールのコードを別のタブで見て戻る、などをフィードバックモードのまま行う */}
+          {showsBrowserNav(captureTarget) && (
+            <div className="fb-tabbar" data-browser-chrome="" data-testid="feedback-tabbar">
+              <BrowserTabs state={browserState} onNewTab={focusUrlField} testId="feedback-tabs" />
+              <UrlField state={browserState} inputRef={feedbackUrlRef} testId="feedback-url-input" />
+            </div>
+          )}
           <BrowserSlot
             viewport={browserState.viewport}
             slotRef={mode === 'feedback' && viewVisible ? slotRef : noopRef}
@@ -1194,6 +1245,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
             onOpenFolder={openFolder}
             onNavigate={navigate}
           />
+          </div>
           </ErrorBoundary>
           {targetsOpen && <>
             <Splitter

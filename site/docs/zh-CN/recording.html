@@ -187,6 +187,13 @@
 <p>审查对象的 <span class="docs-ui">要录制的窗口</span> 既匹配窗口标题，也匹配应用名称，因此填写 <code>Simulator</code> 时，无论显示的是哪台设备，都会选中 iOS Simulator 的窗口。</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="tabs">
+        <h2 id="tabs"><a class="docs-anchor" href="#tabs" aria-label="指向“用标签页打开多个页面”的链接">#</a>用标签页打开多个页面</h2>
+        <p>内置浏览器支持标签页：编辑器模式下在浏览器工具栏上方，反馈模式下在 URL 栏旁边。点击<span class="docs-ui">新标签页</span>（<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span>）打开一个空标签页，然后输入 URL，例如打开网页邮箱查看登录验证码。点击标签页或按 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>1</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>1</kbd></span></span> 到 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>9</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>9</kbd></span></span>、<span class="docs-kbd"><span class="os-mac"><kbd>⌃</kbd><kbd>Tab</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Tab</kbd></span></span> 切换，点击标签页上的 × 或按 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span> 关闭。当焦点在页面、标签页或 URL 栏上时，以及在反馈模式下，<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span> 和 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span> 作用于标签页；在终端中它们仍然用于打开和关闭终端。在新标签页中打开的链接（<code>target="_blank"</code>）和未指定大小的 <code>window.open</code> 会在新标签页中打开。指定了大小的登录弹窗仍在单独的窗口中打开。</p>
+<p>所有标签页共享相同的登录状态和 Cookie，可以在一个标签页中复制、在另一个标签页中粘贴。最多可打开 20 个标签页。页面只有在你刚点击或在其中输入后才能打开新标签页，否则链接会在当前标签页中打开。</p>
+<p>录制<span class="docs-ui">内置浏览器</span>时切换标签页，会把切换到的标签页录制为单独的视频（参见<a href="#multi">同时录制多个窗口</a>），操作日志会记录切换和页面，因此每条反馈都与其页面关联。画笔和方框在每个标签页中都可用。空标签页会在加载页面后开始录制。</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="extensions">
         <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="指向“浏览器扩展”的链接">#</a>浏览器扩展</h2>
         <p>在 <span class="docs-ui">设置 → 浏览器扩展</span> 中为内置浏览器添加 Chrome 扩展：包含 <code>manifest.json</code> 的文件夹用 <span class="docs-ui">添加已解压的文件夹…</span>，已安装在 Chrome、Edge、Brave 或 Chromium 中的扩展用 <span class="docs-ui">从 Chrome 导入…</span> 复制过来。扩展只在内置浏览器中运行，不会进入 Ferret 自身的窗口。扩展可以读取和修改你在其中打开的所有页面，并使用其中的登录状态，所以请只添加你信任的扩展。</p>
@@ -316,6 +323,7 @@
       <ul>
         <li><a href="#target">选择录制内容</a></li>
         <li><a href="#desktop-mobile">桌面应用、游戏和移动应用</a></li>
+        <li><a href="#tabs">用标签页打开多个页面</a></li>
         <li><a href="#extensions">浏览器扩展</a></li>
         <li><a href="#multi">同时录制多个窗口</a></li>
         <li><a href="#record">开始、暂停、停止</a></li>

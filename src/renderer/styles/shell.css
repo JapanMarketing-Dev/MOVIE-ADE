@@ -3027,3 +3027,122 @@ button.sb-more__row:hover {
   min-width: 0;
   flex: 1;
 }
+
+/* ── 内蔵ブラウザのタブ（BrowserTabs）─────────────────── */
+
+/* エディタのブラウザの上の2段（タブの帯・ツールバー）。.pane の auto の行に入る */
+.browser-chrome {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.browser-tabs {
+  display: flex;
+  overflow: auto hidden;
+  height: 30px;
+  min-width: 0;
+  flex: none;
+  align-items: stretch;
+  padding: 0 var(--space-2);
+  background: var(--color-bg-chrome);
+  box-shadow: inset 0 -1px 0 var(--color-border);
+  gap: var(--space-1);
+  scrollbar-width: none;
+}
+
+.browser-tab {
+  position: relative;
+  display: inline-flex;
+  min-width: 56px;
+  max-width: 200px;
+  flex: 0 1 180px;
+  align-items: center;
+  margin-top: 4px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: var(--color-text-muted);
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out);
+}
+
+.browser-tab:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.browser-tab.is-active {
+  border-color: var(--color-border);
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+}
+
+.browser-tab__main {
+  display: inline-flex;
+  min-width: 0;
+  height: 100%;
+  flex: 1;
+  align-items: center;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  gap: var(--space-2);
+}
+
+.browser-tab__main:focus-visible,
+.browser-tab__close:focus-visible,
+.browser-tabs__new:focus-visible {
+  outline-offset: -2px;
+}
+
+.browser-tab__icon {
+  flex: none;
+}
+
+.browser-tab.is-active .browser-tab__icon {
+  color: var(--color-accent);
+}
+
+.browser-tab__label {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-tab__close,
+.browser-tabs__new {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.browser-tab__close {
+  width: 18px;
+  height: 18px;
+  margin-right: var(--space-2);
+}
+
+.browser-tab__close:hover,
+.browser-tabs__new:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.browser-tabs__new {
+  width: 24px;
+  height: 24px;
+  align-self: center;
+  margin-left: var(--space-1);
+}

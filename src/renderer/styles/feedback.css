@@ -1251,3 +1251,37 @@
   gap: var(--space-2);
   transform: translateX(-50%);
 }
+
+/* ── 内蔵ブラウザのタブと URL 欄（フィードバックモード）─────── */
+
+/* 左の列。上にタブの帯、下に内蔵ブラウザの置き場所（.browser-slot は動かさない） */
+.fb-browser {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.fb-tabbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  background: var(--color-bg-chrome);
+  box-shadow: inset 0 -1px 0 var(--color-border);
+}
+
+.fb-tabbar .browser-tabs {
+  flex: 1 1 auto;
+  box-shadow: none;
+}
+
+.fb-tabbar .url-form {
+  max-width: 420px;
+  flex: 0 1 38%;
+  padding: 0 var(--space-3);
+}
+
+/* 帯を出さない（画面・ウインドウを録る）ときも、置き場所は下の行に入れる */
+.fb-browser > .browser-slot {
+  grid-row: 2;
+}
