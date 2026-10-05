@@ -25,16 +25,7 @@ export function NavControls({
   urlInputRef?: React.RefObject<HTMLInputElement | null>
   tooltipSide?: 'top' | 'bottom'
 }) {
-  const displayed = state.url === 'about:blank' ? '' : state.url
-  const [draft, setDraft] = useState(displayed)
-  const editing = useRef(false)
-  const toast = useToast()
   const t = useT()
-
-  // 入力中はユーザーの文字を上書きしない。遷移が起きたら表示を追従させる。
-  useEffect(() => {
-    if (!editing.current) setDraft(displayed)
-  }, [displayed])
 
   /** ツールチップを使う場面と、OS標準の title で済ませる場面を1か所で切り替える */
   const wrap = (label: string, shortcut: string | undefined, node: React.ReactElement) =>
@@ -86,43 +77,78 @@ export function NavControls({
         )}
       </div>
 
-      <form
-        className="url-form"
-        onSubmit={(event) => {
-          event.preventDefault()
-          editing.current = false
-          // URLとして読めない入力は開かずに知らせる（いまのページはそのまま）
-          void window.ade.invoke('browser:navigate', draft).catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
-        }}
-      >
-        <Field
-          ref={urlInputRef}
-          mono
-          icon={<Globe size={14} strokeWidth={1.75} />}
-          type="text"
-          value={draft}
-          placeholder="http://localhost:3000"
-          aria-label="URL"
-          autoComplete="off"
-          data-testid="url-input"
-          onChange={(event) => {
-            editing.current = true
-            setDraft(event.target.value)
-          }}
-          onBlur={() => {
-            editing.current = false
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              editing.current = false
-              setDraft(displayed)
-              event.currentTarget.blur()
-            }
-          }}
-        />
-        {/* 読み込み中は URL欄の下端に線が流れる。文字で「読み込み中」と書くより静か */}
-        <span className={`url-progress${state.loading ? ' is-loading' : ''}`} aria-hidden="true" />
-      </form>
+      <UrlField state={state} inputRef={urlInputRef} />
     </>
+  )
+}
+
+/**
+ * URL 欄。入れて Enter で、前に出ているタブをその URL へ移す。
+ * エディタのツールバー（NavControls）と、フィードバックモードのタブの帯（FeedbackBrowserBar）で同じものを使う
+ */
+export function UrlField({
+  state,
+  inputRef,
+  testId = 'url-input'
+}: {
+  state: BrowserState
+  inputRef?: React.RefObject<HTMLInputElement | null>
+  testId?: string
+}) {
+  const displayed = state.url === 'about:blank' ? '' : state.url
+  const [draft, setDraft] = useState(displayed)
+  const editing = useRef(false)
+  const toast = useToast()
+
+  // 入力中はユーザーの文字を上書きしない。遷移が起きたら表示を追従させる。
+  // タブを切り替えたら、打ちかけの文字は捨てて、前に出たタブの URL を出す
+  useEffect(() => {
+    if (!editing.current) setDraft(displayed)
+  }, [displayed])
+  useEffect(() => {
+    editing.current = false
+    setDraft(displayed)
+    // タブが変わったときだけ（URL の変化は上で追う）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.activeTabId])
+
+  return (
+    <form
+      className="url-form"
+      onSubmit={(event) => {
+        event.preventDefault()
+        editing.current = false
+        // URLとして読めない入力は開かずに知らせる（いまのページはそのまま）
+        void window.ade.invoke('browser:navigate', draft).catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
+      }}
+    >
+      <Field
+        ref={inputRef}
+        mono
+        icon={<Globe size={14} strokeWidth={1.75} />}
+        type="text"
+        value={draft}
+        placeholder="http://localhost:3000"
+        aria-label="URL"
+        autoComplete="off"
+        data-testid={testId}
+        onChange={(event) => {
+          editing.current = true
+          setDraft(event.target.value)
+        }}
+        onBlur={() => {
+          editing.current = false
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            editing.current = false
+            setDraft(displayed)
+            event.currentTarget.blur()
+          }
+        }}
+      />
+      {/* 読み込み中は URL欄の下端に線が流れる。文字で「読み込み中」と書くより静か */}
+      <span className={`url-progress${state.loading ? ' is-loading' : ''}`} aria-hidden="true" />
+    </form>
   )
 }

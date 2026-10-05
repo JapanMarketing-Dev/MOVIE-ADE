@@ -187,6 +187,13 @@
 <p>審查目標的 <span class="docs-ui">要錄製的視窗</span> 除了視窗標題，也會比對應用程式名稱，因此填入 <code>Simulator</code> 時，無論顯示的是哪個裝置，都會選到 iOS Simulator 的視窗。</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="tabs">
+        <h2 id="tabs"><a class="docs-anchor" href="#tabs" aria-label="連結至「用分頁開啟多個頁面」">#</a>用分頁開啟多個頁面</h2>
+        <p>內建瀏覽器支援分頁：編輯器模式下位於瀏覽器工具列上方，回饋模式下位於 URL 欄旁邊。點選<span class="docs-ui">新分頁</span>（<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span>）開啟空白分頁，再輸入 URL，例如開啟網頁郵件查看登入驗證碼。點選分頁或按 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>1</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>1</kbd></span></span> 到 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>9</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>9</kbd></span></span>、<span class="docs-kbd"><span class="os-mac"><kbd>⌃</kbd><kbd>Tab</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Tab</kbd></span></span> 切換，點選分頁上的 × 或按 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span> 關閉。焦點在頁面、分頁或 URL 欄時，以及在回饋模式下，<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span> 與 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span> 會作用於分頁；在終端機中仍用於開啟與關閉終端機。在新分頁開啟的連結（<code>target="_blank"</code>）和未指定大小的 <code>window.open</code> 會在新分頁中開啟。指定大小的登入彈出視窗仍會在獨立的視窗中開啟。</p>
+<p>所有分頁共用相同的登入狀態與 Cookie，可以在一個分頁複製、在另一個分頁貼上。最多可開啟 20 個分頁。頁面只有在你剛點選或在其中輸入後才能開啟分頁，否則連結會在目前的分頁中開啟。</p>
+<p>錄製<span class="docs-ui">內建瀏覽器</span>時切換分頁，會把切換到的分頁錄成獨立的影片（請參閱<a href="#multi">同時錄製多個視窗</a>），操作記錄會記下切換與頁面，因此每則回饋都與其頁面相連。畫筆與方框在每個分頁都能使用。空白分頁會在載入頁面後開始錄製。</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="extensions">
         <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="連結至「瀏覽器擴充功能」">#</a>瀏覽器擴充功能</h2>
         <p>在 <span class="docs-ui">設定 → 瀏覽器擴充功能</span> 中為內建瀏覽器加入 Chrome 擴充功能：含有 <code>manifest.json</code> 的資料夾用 <span class="docs-ui">加入已解壓縮的資料夾…</span>，已安裝在 Chrome、Edge、Brave 或 Chromium 中的擴充功能用 <span class="docs-ui">從 Chrome 匯入…</span> 複製過來。擴充功能只在內建瀏覽器中執行，不會進入 Ferret 自身的視窗。擴充功能可以讀取與修改你在其中開啟的所有頁面，並使用其中的登入狀態，所以請只加入你信任的擴充功能。</p>
@@ -316,6 +323,7 @@
       <ul>
         <li><a href="#target">選擇要錄製的內容</a></li>
         <li><a href="#desktop-mobile">桌面應用程式、遊戲與行動應用程式</a></li>
+        <li><a href="#tabs">用分頁開啟多個頁面</a></li>
         <li><a href="#extensions">瀏覽器擴充功能</a></li>
         <li><a href="#multi">同時錄製多個視窗</a></li>
         <li><a href="#record">開始、暫停、停止</a></li>

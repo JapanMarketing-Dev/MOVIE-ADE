@@ -28,6 +28,12 @@
 <p>游戏的用法相同。选择显示着游戏视图的 Unity、Unreal Engine 或 Godot 编辑器窗口，或者你构建的游戏的窗口（包括无边框窗口模式）。对于独占全屏的游戏，请在 <span class="docs-ui">整个屏幕</span> 下选择它所在的显示器。当窗口是这些编辑器之一时，<code>feedback.md</code> 会写明引擎，并让 Agent 修改游戏的代码、场景或资源。为了让文件保持较小，视频最多以每秒 10 帧录制；问题的图像也取自同一段视频，因此与时间轴上的那一刻一致。</p>
 <p>审查对象的 <span class="docs-ui">要录制的窗口</span> 既匹配窗口标题，也匹配应用名称，因此填写 <code>Simulator</code> 时，无论显示的是哪台设备，都会选中 iOS Simulator 的窗口。</p>
 
+<!-- @tabs 3195fb06ec -->
+## 用标签页打开多个页面
+<p>内置浏览器支持标签页：编辑器模式下在浏览器工具栏上方，反馈模式下在 URL 栏旁边。点击<span class="docs-ui">新标签页</span>（{{keys:Mod+T}}）打开一个空标签页，然后输入 URL，例如打开网页邮箱查看登录验证码。点击标签页或按 {{keys:Mod+1}} 到 {{keys:Mod+9}}、{{keys:Ctrl+Tab}} 切换，点击标签页上的 × 或按 {{keys:Mod+W}} 关闭。当焦点在页面、标签页或 URL 栏上时，以及在反馈模式下，{{keys:Mod+T}} 和 {{keys:Mod+W}} 作用于标签页；在终端中它们仍然用于打开和关闭终端。在新标签页中打开的链接（<code>target="_blank"</code>）和未指定大小的 <code>window.open</code> 会在新标签页中打开。指定了大小的登录弹窗仍在单独的窗口中打开。</p>
+<p>所有标签页共享相同的登录状态和 Cookie，可以在一个标签页中复制、在另一个标签页中粘贴。最多可打开 20 个标签页。页面只有在你刚点击或在其中输入后才能打开新标签页，否则链接会在当前标签页中打开。</p>
+<p>录制<span class="docs-ui">内置浏览器</span>时切换标签页，会把切换到的标签页录制为单独的视频（参见<a href="#multi">同时录制多个窗口</a>），操作日志会记录切换和页面，因此每条反馈都与其页面关联。画笔和方框在每个标签页中都可用。空标签页会在加载页面后开始录制。</p>
+
 <!-- @extensions b0aca6defb -->
 ## 浏览器扩展
 <p>在 <span class="docs-ui">设置 → 浏览器扩展</span> 中为内置浏览器添加 Chrome 扩展：包含 <code>manifest.json</code> 的文件夹用 <span class="docs-ui">添加已解压的文件夹…</span>，已安装在 Chrome、Edge、Brave 或 Chromium 中的扩展用 <span class="docs-ui">从 Chrome 导入…</span> 复制过来。扩展只在内置浏览器中运行，不会进入 Ferret 自身的窗口。扩展可以读取和修改你在其中打开的所有页面，并使用其中的登录状态，所以请只添加你信任的扩展。</p>

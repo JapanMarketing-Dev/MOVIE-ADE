@@ -1,3 +1,4 @@
+import type { BrowserTabInfo } from './browserTabs'
 import type { LimitFailoverPrefs } from './failover'
 import type { AnnotationColor } from './annotation'
 import type { LayoutPrefs } from './layout'
@@ -68,6 +69,9 @@ export interface BrowserState {
   viewport: Viewport
   /** ページを開けなかったときの理由（利用者向けの文）。開けていれば無い */
   loadError?: string
+  /** 開いているタブ（@shared/browserTabs）。url・title などは前に出ているタブ（activeTabId）のもの */
+  tabs?: BrowserTabInfo[]
+  activeTabId?: string
 }
 
 /** 開いているプロジェクト */

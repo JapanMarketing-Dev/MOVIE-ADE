@@ -187,6 +187,13 @@
 <p>A review target's <span class="docs-ui">Window to record</span> matches the app name as well as the window title, so <code>Simulator</code> selects the iOS Simulator window whatever device it shows.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="tabs">
+        <h2 id="tabs"><a class="docs-anchor" href="#tabs" aria-label="Link to Open several pages in tabs">#</a>Open several pages in tabs</h2>
+        <p>The built-in browser has tabs: in Editor mode above the browser toolbar, in Feedback mode next to the URL field. Click <span class="docs-ui">New tab</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span>) to open an empty tab, then type a URL, for example your webmail to fetch a sign-in code. Click a tab or press <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>1</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>1</kbd></span></span> to <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>9</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>9</kbd></span></span> or <span class="docs-kbd"><span class="os-mac"><kbd>⌃</kbd><kbd>Tab</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Tab</kbd></span></span> to switch, and click its × or press <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span> to close it. <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span> and <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span> act on tabs while the page, the tabs, or the URL field has focus, and in Feedback mode; in the terminal they still open and close terminals. Links that open a new tab (<code>target="_blank"</code>) and <code>window.open</code> without a size open in a new tab. Sign-in popups that ask for a size still open in their own window.</p>
+<p>All tabs share the same logins and cookies, and you can copy in one tab and paste in another. Up to 20 tabs can be open. A page can open a tab only right after you click or type in it; otherwise the link opens in the same tab.</p>
+<p>While you record the <span class="docs-ui">Built-in Browser</span>, switching tabs records the tab you switch to as a separate video (see <a href="#multi">Record several windows at once</a>), and the action log notes the switch and the page, so each finding stays tied to its page. The pen and the box work in every tab. An empty tab is recorded once a page loads in it.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="extensions">
         <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="Link to Browser extensions">#</a>Browser extensions</h2>
         <p>Add Chrome extensions to the built-in browser in <span class="docs-ui">Settings → Browser extensions</span>: <span class="docs-ui">Add unpacked folder…</span> for a folder that contains <code>manifest.json</code>, or <span class="docs-ui">Import from Chrome…</span> to copy one already installed in Chrome, Edge, Brave or Chromium. Extensions run only in the built-in browser, never in Ferret's own windows. They can read and change every page you open there and use its sign-ins, so add only extensions you trust.</p>
@@ -316,6 +323,7 @@
       <ul>
         <li><a href="#target">Choose what to record</a></li>
         <li><a href="#desktop-mobile">Desktop apps, games, and mobile apps</a></li>
+        <li><a href="#tabs">Open several pages in tabs</a></li>
         <li><a href="#extensions">Browser extensions</a></li>
         <li><a href="#multi">Record several windows at once</a></li>
         <li><a href="#record">Start, pause, stop</a></li>

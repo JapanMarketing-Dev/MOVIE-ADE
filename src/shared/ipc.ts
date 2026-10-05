@@ -198,6 +198,10 @@ export interface IpcRequests {
 
   'browser:setBounds': (bounds: ViewBounds | null) => void
   'browser:navigate': (url: string) => void
+  /** 新しいタブを開いて前に出す。url を省けば空のタブ（上限・開けない URL なら断る） */
+  'browser:newTab': (url?: string) => void
+  'browser:closeTab': (id: string) => void
+  'browser:activateTab': (id: string) => void
   'browser:back': () => void
   'browser:forward': () => void
   'browser:reload': () => void
@@ -437,6 +441,8 @@ export interface IpcRequests {
 
 export interface IpcEvents {
   'browser:stateChanged': (state: BrowserState) => void
+  /** 内蔵ブラウザから利用者へ短く知らせる（タブの上限など） */
+  'browser:notice': (message: string) => void
   /** 拡張機能の一覧・読み込みの結果が変わった */
   'browserExtensions:changed': (list: BrowserExtensionInfo[]) => void
   'mode:changed': (mode: AppMode) => void
@@ -588,6 +594,9 @@ export const IPC_REQUEST_CHANNELS = [
   'mode:set',
   'browser:setBounds',
   'browser:navigate',
+  'browser:newTab',
+  'browser:closeTab',
+  'browser:activateTab',
   'browser:back',
   'browser:forward',
   'browser:reload',
@@ -627,6 +636,7 @@ export const IPC_REQUEST_CHANNELS = [
 
 export const IPC_EVENT_CHANNELS = [
   'browser:stateChanged',
+  'browser:notice',
   'browserExtensions:changed',
   'mode:changed',
   'terminal:data',

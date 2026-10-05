@@ -18,7 +18,9 @@ const state = vi.hoisted(() => ({
   events: new Map<string, (...args: unknown[]) => void>(),
   loaded: [] as string[],
   currentUrl: 'https://evil.example/page',
-  partitions: [] as string[]
+  partitions: [] as string[],
+  /** 作ったビュー（タブ）。並び順 */
+  views: [] as Array<{ webContents: { events: Map<string, (...args: unknown[]) => void>; windowOpen: null | ((d: { url: string; disposition?: string }) => { action: string }); loaded: string[]; closed: boolean } ; visible: boolean; webPreferences: Record<string, unknown> }>
 }))
 
 vi.mock('electron', () => {
@@ -29,22 +31,36 @@ vi.mock('electron', () => {
     setUserAgent: () => undefined
   }
   class WebContentsView {
+    visible = true
+    webPreferences: Record<string, unknown>
     webContents = {
       session: fakeSession,
-      isDestroyed: () => false,
-      setWindowOpenHandler: (h: typeof state.windowOpen) => { state.windowOpen = h },
-      on: (name: string, fn: (...args: unknown[]) => void) => { state.events.set(name, fn) },
-      loadURL: async (url: string) => { state.loaded.push(url) },
-      getURL: () => state.currentUrl,
+      events: new Map<string, (...args: unknown[]) => void>(),
+      windowOpen: null as typeof state.windowOpen,
+      loaded: [] as string[],
+      closed: false,
+      url: '',
+      isDestroyed: () => this.webContents.closed,
+      setWindowOpenHandler: (h: typeof state.windowOpen) => { state.windowOpen = h; this.webContents.windowOpen = h },
+      on: (name: string, fn: (...args: unknown[]) => void) => { state.events.set(name, fn); this.webContents.events.set(name, fn) },
+      loadURL: async (url: string) => { state.loaded.push(url); this.webContents.loaded.push(url); this.webContents.url = url },
+      getURL: () => this.webContents.url || state.currentUrl,
       getTitle: () => '',
       isLoading: () => false,
+      isFocused: () => false,
+      focus: () => undefined,
+      close: () => { this.webContents.closed = true },
       navigationHistory: { canGoBack: () => false, canGoForward: () => false }
     }
-    constructor(options: { webPreferences: { session: unknown } }) {
+    constructor(options: { webPreferences: { session: unknown } & Record<string, unknown> }) {
       state.order.push(options.webPreferences.session === fakeSession ? 'view-with-policy-session' : 'view-with-other-session')
+      this.webPreferences = options.webPreferences
+      state.views.push(this)
     }
     setBackgroundColor(): void {}
     setBounds(): void {}
+    setVisible(visible: boolean): void { this.visible = visible }
+    getBounds() { return { x: 0, y: 0, width: 0, height: 0 } }
   }
   return {
     WebContentsView,
@@ -59,9 +75,16 @@ const { EmbeddedBrowser, browserSession, PARTITION } = await import('../../src/m
 const flush = () => new Promise((r) => setTimeout(r, 0))
 const request = (permission: string, details: Record<string, unknown>) => new Promise<boolean>((resolve) => state.requestHandler!({}, permission, resolve, details))
 
-function attach(): void {
-  const window = { contentView: { addChildView: () => {}, removeChildView: () => {} }, isDestroyed: () => false } as unknown as Parameters<InstanceType<typeof EmbeddedBrowser>['attach']>[0]
-  new EmbeddedBrowser().attach(window, 'https://evil.example/page', 'desktop')
+function attach(): InstanceType<typeof EmbeddedBrowser> {
+  const window = { contentView: { addChildView: () => {}, removeChildView: () => {}, children: [] }, isDestroyed: () => false } as unknown as Parameters<InstanceType<typeof EmbeddedBrowser>['attach']>[0]
+  const browser = new EmbeddedBrowser()
+  browser.attach(window, 'https://evil.example/page', 'desktop')
+  return browser
+}
+
+/** そのタブ（ビュー）に、利用者の本物の入力（クリック）が届いた */
+function gesture(view: (typeof state.views)[number]): void {
+  view.webContents.events.get('input-event')!({}, { type: 'mouseDown' })
 }
 
 beforeEach(() => {
@@ -124,11 +147,31 @@ describe('ログインのポップアップ', () => {
     expect(child.loaded).toEqual(['https://accounts.example/next'])
   })
 
-  it('普通の別タブ（target=_blank）は子ウインドウにせず、同じビューで開く', () => {
+  it('普通の別タブ（target=_blank）は子ウインドウにせず、利用者が押した直後なら内蔵ブラウザの新しいタブで開く', () => {
     attach()
+    const opener = state.views.at(-1)!
+    gesture(opener)
     state.loaded.length = 0
-    expect(state.windowOpen!({ url: 'https://example.com/tab', disposition: 'foreground-tab' }).action).toBe('deny')
-    expect(state.loaded).toContain('https://example.com/tab')
+    expect(opener.webContents.windowOpen!({ url: 'https://example.com/tab', disposition: 'foreground-tab' }).action).toBe('deny')
+    const tab = state.views.at(-1)!
+    expect(tab).not.toBe(opener)
+    expect(tab.webContents.loaded).toEqual(['https://example.com/tab'])
+    expect(tab.visible).toBe(true)
+    expect(opener.visible).toBe(false)
+  })
+
+  it('ページのスクリプトだけ（利用者の操作が無い）の window.open は、タブを増やさず同じタブで開く。1回の操作で開けるのは1枚', () => {
+    attach()
+    const opener = state.views.at(-1)!
+    const before = state.views.length
+    opener.webContents.windowOpen!({ url: 'https://example.com/spam', disposition: 'foreground-tab' })
+    expect(state.views.length).toBe(before)
+    expect(opener.webContents.loaded).toContain('https://example.com/spam')
+    gesture(opener)
+    opener.webContents.windowOpen!({ url: 'https://example.com/one', disposition: 'foreground-tab' })
+    opener.webContents.windowOpen!({ url: 'https://example.com/two', disposition: 'foreground-tab' })
+    expect(state.views.length).toBe(before + 1)
+    expect(opener.webContents.loaded).toContain('https://example.com/two')
   })
 })
 
@@ -208,5 +251,87 @@ describe('security-2 [11] 内蔵ブラウザから OS の URL ハンドラへ渡
     state.windowOpen!({ url: 'mailto:a@example.com' })
     await flush()
     expect(state.openExternal).toEqual(['mailto:a@example.com'])
+  })
+})
+
+describe('内蔵ブラウザのタブ', () => {
+  it('新しいタブも、同じ永続の session・注入スクリプトだけ・sandbox・遷移の決まり・window.open の扱いで作る', async () => {
+    const browser = attach()
+    const first = state.views.at(-1)!
+    await browser.newTab('https://example.com/mail')
+    const tab = state.views.at(-1)!
+    expect(tab).not.toBe(first)
+    expect(state.order.at(-1)).toBe('view-with-policy-session')
+    expect(tab.webPreferences).toMatchObject({ contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true })
+    expect(String(tab.webPreferences.preload)).toMatch(/preload[\\/]review\.js$/)
+    for (const name of ['input-event', 'before-input-event', 'will-navigate', 'will-redirect', 'did-create-window']) expect(tab.webContents.events.has(name), name).toBe(true)
+    // 新しいタブからも、独自スキーム・ファイルへは行かせない
+    const event = { url: 'file:///etc/passwd', preventDefault: vi.fn() }
+    tab.webContents.events.get('will-navigate')!(event)
+    expect(event.preventDefault).toHaveBeenCalled()
+    expect(tab.webContents.windowOpen!({ url: 'zoommtg://zoom.us/join' }).action).toBe('deny')
+    expect(new Set(state.partitions)).toEqual(new Set([PARTITION]))
+  })
+
+  it('URL 欄から開くタブも、javascript: data: 独自スキームは作る前に断る', async () => {
+    const browser = attach()
+    const before = state.views.length
+    for (const url of ['javascript:alert(1)', 'data:text/html,<p>x</p>', 'zoommtg://zoom.us/join']) await expect(browser.newTab(url), url).rejects.toThrow()
+    expect(state.views.length).toBe(before)
+  })
+
+  it('タブは上限（MAX_BROWSER_TABS）まで。最後の1枚を閉じると空のタブに置き換わる。閉じたタブの中身は閉じる', async () => {
+    const { MAX_BROWSER_TABS } = await import('../../src/shared/browserTabs')
+    const base = state.views.length
+    const browser = attach()
+    for (let i = 1; i < MAX_BROWSER_TABS; i++) await browser.newTab()
+    expect(browser.state().tabs).toHaveLength(MAX_BROWSER_TABS)
+    await expect(browser.newTab()).rejects.toThrow(String(MAX_BROWSER_TABS))
+    for (const tab of browser.state().tabs!.slice(1)) browser.closeTab(tab.id)
+    const only = browser.state().tabs!
+    expect(only).toHaveLength(1)
+    const last = state.views.slice(base).find((view) => !view.webContents.closed)!
+    browser.closeTab(only[0]!.id)
+    expect(last.webContents.closed).toBe(true)
+    expect(browser.state().tabs).toHaveLength(1)
+    expect(browser.state().tabs![0]!.id).not.toBe(only[0]!.id)
+  })
+
+  it('録画が使っているタブは、閉じても録画が終わるまで中身を残す', async () => {
+    const browser = attach()
+    await browser.newTab('https://example.com/b')
+    const tab = state.views.at(-1)!
+    browser.keepClosedTab = () => true
+    browser.closeTab(browser.state().activeTabId!)
+    expect(tab.webContents.closed).toBe(false)
+    expect(tab.visible).toBe(true)
+    browser.releaseClosedTabs()
+    expect(tab.webContents.closed).toBe(true)
+  })
+
+  it('ページに焦点があるときの ⌘T・⌘W・⌘1・Ctrl+Tab は、メニューへ渡さずタブの操作にする', async () => {
+    const browser = attach()
+    const first = state.views.at(-1)!
+    const press = (view: (typeof state.views)[number], input: Record<string, unknown>) => {
+      const event = { preventDefault: vi.fn() }
+      view.webContents.events.get('before-input-event')!(event, { type: 'keyDown', control: false, meta: false, alt: false, shift: false, ...input })
+      return event.preventDefault
+    }
+    const mod = process.platform === 'darwin' ? { meta: true } : { control: true }
+    let focused = 0
+    browser.onFocusUrl = () => { focused++ }
+    expect(press(first, { key: 't', ...mod })).toHaveBeenCalled()
+    await flush()
+    expect(browser.state().tabs).toHaveLength(2)
+    expect(focused).toBe(1)
+    const second = state.views.at(-1)!
+    expect(press(second, { key: '1', ...mod })).toHaveBeenCalled()
+    expect(browser.state().activeTabId).toBe(browser.state().tabs![0]!.id)
+    expect(press(first, { key: 'Tab', control: true })).toHaveBeenCalled()
+    expect(browser.state().activeTabId).toBe(browser.state().tabs![1]!.id)
+    expect(press(second, { key: 'w', ...mod })).toHaveBeenCalled()
+    expect(browser.state().tabs).toHaveLength(1)
+    // ふつうの文字・書き込みのキーはページへ
+    expect(press(first, { key: 'p' })).not.toHaveBeenCalled()
   })
 })

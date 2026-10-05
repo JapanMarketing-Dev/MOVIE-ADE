@@ -5,6 +5,7 @@
  * 同じ時計で、録画側はそちらの型に合わせて出力する。
  */
 
+import type { WebContents } from 'electron'
 import type { AnnotationHistory, AnnotationShortcut, CaptureTarget } from '@shared/types'
 import type { CaptureTracksState, WatchedWindow } from '@shared/captureTracks'
 import type { Event, FrameRef } from '../pipeline/types'
@@ -197,4 +198,6 @@ export interface RecordingHandlers {
   onAnnotationShortcut?(action: AnnotationShortcut): void
   /** 録っている映像（トラック）・映しているもの・待ち受けが変わった */
   onTracks?(state: CaptureTracksState): void
+  /** 録画のトラックの切り替えで、内蔵ブラウザの別のタブを映した。内蔵ブラウザもそのタブを前に出す */
+  onBrowserTab?(contents: WebContents): void
 }

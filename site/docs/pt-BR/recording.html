@@ -187,6 +187,13 @@
 <p>A <span class="docs-ui">Janela a gravar</span> de um alvo de revisão corresponde tanto ao nome do app quanto ao título da janela, então <code>Simulator</code> seleciona a janela do iOS Simulator seja qual for o dispositivo exibido.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="tabs">
+        <h2 id="tabs"><a class="docs-anchor" href="#tabs" aria-label="Link para Abrir várias páginas em abas">#</a>Abrir várias páginas em abas</h2>
+        <p>O navegador integrado tem abas: no modo Editor, acima da barra do navegador; no modo Feedback, ao lado do campo de URL. Clique em <span class="docs-ui">Nova aba</span> (<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span>) para abrir uma aba vazia e digite uma URL, por exemplo seu webmail para pegar um código de login. Clique em uma aba ou pressione <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>1</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>1</kbd></span></span> a <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>9</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>9</kbd></span></span> ou <span class="docs-kbd"><span class="os-mac"><kbd>⌃</kbd><kbd>Tab</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Tab</kbd></span></span> para alternar, e clique no × dela ou pressione <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span> para fechá-la. <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span> e <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span> agem nas abas quando o foco está na página, nas abas ou no campo de URL, e no modo Feedback; no terminal, continuam abrindo e fechando terminais. Links que abrem uma nova aba (<code>target="_blank"</code>) e <code>window.open</code> sem tamanho abrem em uma nova aba. Pop-ups de login que pedem um tamanho continuam abrindo em uma janela própria.</p>
+<p>Todas as abas compartilham os mesmos logins e cookies, e você pode copiar em uma aba e colar em outra. É possível abrir até 20 abas. Uma página só pode abrir uma aba logo depois que você clica ou digita nela; caso contrário, o link abre na mesma aba.</p>
+<p>Enquanto você grava o <span class="docs-ui">Navegador integrado</span>, trocar de aba grava a aba escolhida como um vídeo separado (veja <a href="#multi">Gravar várias janelas ao mesmo tempo</a>), e o registro de ações anota a troca e a página, para que cada apontamento fique ligado à sua página. A caneta e o retângulo funcionam em todas as abas. Uma aba vazia passa a ser gravada assim que uma página carrega nela.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="extensions">
         <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="Link para Extensões do navegador">#</a>Extensões do navegador</h2>
         <p>Adicione extensões do Chrome ao navegador integrado em <span class="docs-ui">Configurações → Extensões do navegador</span>: <span class="docs-ui">Adicionar pasta descompactada…</span> para uma pasta que contém <code>manifest.json</code>, ou <span class="docs-ui">Importar do Chrome…</span> para copiar uma já instalada no Chrome, Edge, Brave ou Chromium. As extensões rodam só no navegador integrado, nunca nas janelas do Ferret. Elas podem ler e alterar qualquer página aberta ali e usar os logins dele, então adicione apenas extensões em que você confia.</p>
@@ -316,6 +323,7 @@
       <ul>
         <li><a href="#target">Escolher o que gravar</a></li>
         <li><a href="#desktop-mobile">Apps para desktop, jogos e apps para celular</a></li>
+        <li><a href="#tabs">Abrir várias páginas em abas</a></li>
         <li><a href="#extensions">Extensões do navegador</a></li>
         <li><a href="#multi">Gravar várias janelas ao mesmo tempo</a></li>
         <li><a href="#record">Iniciar, pausar, parar</a></li>

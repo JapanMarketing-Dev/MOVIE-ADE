@@ -187,6 +187,13 @@
 <p>리뷰 대상의 <span class="docs-ui">녹화할 창</span>은 창 제목뿐 아니라 앱 이름에도 일치합니다. 그래서 <code>Simulator</code>라고 적으면 어떤 기기를 보여 주든 iOS Simulator 창을 고릅니다.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="tabs">
+        <h2 id="tabs"><a class="docs-anchor" href="#tabs" aria-label="&quot;탭으로 여러 페이지 열기&quot;(으)로 가는 링크">#</a>탭으로 여러 페이지 열기</h2>
+        <p>내장 브라우저에는 탭이 있습니다. 편집기 모드에서는 브라우저 도구 모음 위, 피드백 모드에서는 URL 입력란 옆에 있습니다. <span class="docs-ui">새 탭</span>(<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span>)으로 빈 탭을 열고 URL을 입력합니다. 예를 들어 로그인 코드를 확인하려고 웹메일을 열 수 있습니다. 탭을 클릭하거나 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>1</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>1</kbd></span></span>~<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>9</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>9</kbd></span></span>, <span class="docs-kbd"><span class="os-mac"><kbd>⌃</kbd><kbd>Tab</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Tab</kbd></span></span>으로 전환하고, 탭의 × 또는 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span>로 닫습니다. <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span>와 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span>는 페이지, 탭, URL 입력란에 포커스가 있을 때와 피드백 모드에서 탭에 적용됩니다. 터미널에서는 이전처럼 터미널을 열고 닫습니다. 새 탭으로 여는 링크(<code>target="_blank"</code>)와 크기를 지정하지 않은 <code>window.open</code>은 새 탭에서 열립니다. 크기를 지정하는 로그인 팝업은 이전처럼 별도 창에서 열립니다.</p>
+<p>모든 탭은 같은 로그인과 쿠키를 공유하므로 한 탭에서 복사해 다른 탭에 붙여 넣을 수 있습니다. 탭은 최대 20개까지 열 수 있습니다. 페이지는 사용자가 그 페이지를 클릭하거나 입력한 직후에만 탭을 열 수 있으며, 그렇지 않으면 링크가 같은 탭에서 열립니다.</p>
+<p><span class="docs-ui">내장 브라우저</span>를 녹화하는 동안 탭을 전환하면 전환한 탭을 별도의 영상으로 녹화합니다(<a href="#multi">여러 창을 동시에 녹화</a> 참고). 작업 로그에 전환과 페이지가 남으므로 각 피드백이 해당 페이지와 연결됩니다. 펜과 사각형은 모든 탭에서 쓸 수 있습니다. 빈 탭은 페이지를 불러오면 녹화가 시작됩니다.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="extensions">
         <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="&quot;브라우저 확장 프로그램&quot;(으)로 가는 링크">#</a>브라우저 확장 프로그램</h2>
         <p><span class="docs-ui">설정 → 브라우저 확장 프로그램</span>에서 내장 브라우저에 Chrome 확장 프로그램을 추가합니다. <code>manifest.json</code>이 있는 폴더는 <span class="docs-ui">압축을 푼 폴더 추가…</span>로, Chrome, Edge, Brave, Chromium에 이미 설치된 확장 프로그램은 <span class="docs-ui">Chrome에서 가져오기…</span>로 복사해 씁니다. 확장 프로그램은 내장 브라우저에서만 동작하며 Ferret 자체 창에는 들어가지 않습니다. 그 안에서 연 모든 페이지를 읽고 바꿀 수 있고 그 로그인 상태를 쓸 수 있으므로, 신뢰할 수 있는 확장 프로그램만 추가하세요.</p>
@@ -316,6 +323,7 @@
       <ul>
         <li><a href="#target">녹화할 대상 고르기</a></li>
         <li><a href="#desktop-mobile">데스크톱 앱, 게임, 모바일 앱</a></li>
+        <li><a href="#tabs">탭으로 여러 페이지 열기</a></li>
         <li><a href="#extensions">브라우저 확장 프로그램</a></li>
         <li><a href="#multi">여러 창을 동시에 녹화</a></li>
         <li><a href="#record">시작, 일시 정지, 중지</a></li>
