@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, lstatSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, lstatSync, readFileSync, realpathSync, symlinkSync, writeFileSync, linkSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { AccountAgent } from '@shared/types'
 import { errorKind, reportHandled } from '@shared/report'
@@ -186,6 +186,27 @@ export function seedManagedAccountDir(agent: AccountAgent, managedDir: string, s
 }
 
 /**
+ * 共有の項目を張る。Windows のシンボリックリンクは開発者モードか管理者でないと作れない（EPERM。FERRET-1K）ので、
+ * フォルダは権限の要らないジャンクションで、ファイルはシンボリックリンクがだめならハードリンクで張る
+ */
+export function linkShared(source: string, target: string, platform: NodeJS.Platform = process.platform): void {
+  if (platform !== 'win32') {
+    symlinkSync(source, target)
+    return
+  }
+  if (statSync(source).isDirectory()) {
+    symlinkSync(source, target, 'junction')
+    return
+  }
+  try {
+    symlinkSync(source, target, 'file')
+  } catch (err) {
+    if ((err as { code?: unknown } | null)?.code !== 'EPERM') throw err
+    linkSync(source, target)
+  }
+}
+
+/**
  * 既定アカウントの共有する置き場所を、管理フォルダにリンクで見せる。既にある名前（利用者が置いたものも）には触らない。
  * 何度呼んでもよい（起動のたびに、あとから足した共有の項目を既存のアカウントにも張る）
  */
@@ -195,10 +216,11 @@ export function linkSharedEntries(agent: AccountAgent, managedDir: string, syste
     const target = join(managedDir, name)
     try {
       if (!existsSync(source) || lstatExists(target)) continue
-      symlinkSync(realpathSync(source), target)
+      linkShared(realpathSync(source), target)
     } catch (err) {
       console.warn(`[accounts] ${name} を共有できませんでした`, err)
-      reportHandled(err, { area: 'accounts', op: 'link account file' })
+      // Windows で権限が無く張れない（EPERM）のは利用者の環境の都合。知らせても直せないので送らない（FERRET-1K）
+      if ((err as { code?: unknown } | null)?.code !== 'EPERM') reportHandled(err, { area: 'accounts', op: 'link account file' })
     }
   }
 }

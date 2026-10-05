@@ -31,12 +31,14 @@ export const GESTURE_GRANT_MS = {
   /** 録る対象・音・コピーの扱いを選ぶ（利用者が切り替えた直後） */
   choice: 30_000,
   /** 端末の選択範囲のコピー（キーを押した直後） */
-  copy: 5_000
+  copy: 5_000,
+  /** フッターの「最新を取得」・push（押した直後に1回だけ。push は外へ出るので確認の Push を押したとき） */
+  gitSync: 10_000
 } as const
 
 export type GestureAction = keyof typeof GESTURE_GRANT_MS
 /** 1回の操作で1回しか使えないもの */
-const ONE_USE: ReadonlySet<GestureAction> = new Set(['record', 'screenshot', 'programCopy'])
+const ONE_USE: ReadonlySet<GestureAction> = new Set(['record', 'screenshot', 'programCopy', 'gitSync'])
 
 /**
  * 利用者の操作から作る、短い間だけ有効な許可。

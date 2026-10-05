@@ -1,17 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, ExternalLink, GitBranch } from 'lucide-react'
-import { branchWebUrl, type GitRepoStatus } from '@shared/github'
-import { useT } from '../lib/i18n'
+import { ArrowDown, ArrowUp, Download, ExternalLink, GitBranch, RefreshCw } from 'lucide-react'
+import { branchWebUrl, type GitActionResult, type GitRepoStatus } from '@shared/github'
+import { elapsedLabel, gitActionAvailability, type GitSyncErrorKind } from '@shared/gitSync'
+import type { TranslationKey } from '@shared/i18n'
+import { useT, type TFunction } from '../lib/i18n'
+import { errorMessage } from '../lib/errors'
 import { subscribeIpc } from '../lib/ipcEvents'
 import { StatusPopover } from './StatusPopover'
 import '../styles/github.css'
 
 /**
- * フッターの「どの GitHub / GitLab の、どのブランチか」。例: [GitHub] JapanMarketing-Dev/ferret · develop •3 ↑1
+ * フッターの「どの GitHub / GitLab（またはほかのリモート）の、どのブランチか」。例: [GitHub] JapanMarketing-Dev/ferret · develop •3 ↑1 ↓2
  *
  * 読み直すのは、プロジェクトの切り替え・ウインドウを前に出したとき・30 秒ごと・.git/HEAD と index の変化（main が知らせる）。
- * git でないフォルダでは何も出さない（後ろの区切り線も含めて。線だけが残らないよう、区切り線はこの部品が出す）。GitHub 以外の remote のときはブランチだけを出す。
- * 押すと「リポジトリを開く」「ブランチを開く」のメニュー。GitHub のページを開くだけで、書き込みはしない。
+ * 遅れ（↓）が古くならないよう、裏で fetch する：プロジェクトを開いたとき（起動時・切り替えを含む）はすぐ、
+ * あとはウインドウが見えている間 5 分ごとと前に出したとき（間隔・失敗の間の延ばし方は main と src/shared/gitSync.ts が決める）。
+ * 失敗はトーストにせず、吹き出しに最後に確認した時刻と一緒に静かに出す。
+ *
+ * 押すと吹き出し：リモートの変更を確認・最新を取得（fast-forward だけ）・同期（取得してから、確認のうえ push）と、ページを開くリンク。
+ * 分かれている・未コミットの変更とぶつかるときは取り込まず、Agent かターミナルで直すよう案内する。
+ * git でないフォルダでは何も出さない（後ろの区切り線も含めて。線だけが残らないよう、区切り線はこの部品が出す）。
  */
 
 const POLL_MS = 30_000
@@ -30,10 +38,55 @@ function GitLabMark({ size = 12 }: { size?: number }) {
   </svg>
 }
 
+const ERROR_KEYS: Record<GitSyncErrorKind, TranslationKey> = {
+  gitMissing: 'git.sync.error.gitMissing',
+  timeout: 'git.sync.error.timeout',
+  auth: 'git.sync.error.auth',
+  network: 'git.sync.error.network',
+  noUpstream: 'git.sync.error.noUpstream',
+  upstreamGone: 'git.sync.error.upstreamGone',
+  detached: 'git.sync.error.detached',
+  diverged: 'git.sync.error.diverged',
+  localChanges: 'git.sync.error.localChanges',
+  rejected: 'git.sync.error.rejected',
+  locked: 'git.sync.error.locked',
+  headMoved: 'git.sync.error.headMoved',
+  notGit: 'git.sync.error.notGit',
+  failed: 'git.sync.error.failed'
+}
+
+function errorText(t: TFunction, kind: GitSyncErrorKind, detail: string | null): string {
+  return kind === 'failed' && detail ? t('git.sync.error.failedWith', { detail }) : t(ERROR_KEYS[kind])
+}
+
+/** 「3 分前に確認」など */
+function fetchedText(t: TFunction, now: number, at: number | null): string {
+  if (at === null) return t('git.sync.neverFetched')
+  const { unit, count } = elapsedLabel(now, at)
+  if (unit === 'just') return t('git.sync.fetchedJustNow')
+  return t(unit === 'minutes' ? 'git.sync.fetchedMinutes' : unit === 'hours' ? 'git.sync.fetchedHours' : 'git.sync.fetchedDays', { count })
+}
+
+/** upstream との差の1行 */
+function compareText(t: TFunction, status: GitRepoStatus): string | null {
+  const upstream = status.upstream ?? ''
+  if (!status.branch || !status.hasUpstream || status.upstreamGone) return null
+  if (status.ahead > 0 && status.behind > 0) return t('git.sync.diverged', { upstream, ahead: status.ahead, behind: status.behind })
+  if (status.behind > 0) return t('git.sync.behind', { upstream, count: status.behind })
+  if (status.ahead > 0) return t('git.sync.ahead', { upstream, count: status.ahead })
+  return t('git.sync.upToDate', { upstream })
+}
+
+type UiAction = 'fetch' | 'pull' | 'sync' | 'push'
+
 export function GitHubStatusItem() {
   const t = useT()
   const [status, setStatus] = useState<GitRepoStatus | null>(null)
   const [open, setOpen] = useState(false)
+  const [working, setWorking] = useState<UiAction | null>(null)
+  const [message, setMessage] = useState<{ text: string; tone: 'ok' | 'warn' } | null>(null)
+  const [confirmPush, setConfirmPush] = useState<{ count: number; upstream: string; head: string } | null>(null)
+  const [now, setNow] = useState(() => Date.now())
   const anchor = useRef<HTMLButtonElement>(null)
   const loading = useRef(false)
 
@@ -50,20 +103,89 @@ export function GitHubStatusItem() {
     }
   }, [])
 
+  /** 裏の fetch を頼む。走らせるかは main が決める（走らせなければ null） */
+  const autoFetch = useCallback(async (trigger: 'open' | 'interval' | 'focus') => {
+    try {
+      const next = await window.ade.invoke('github:autoFetch', trigger, document.visibilityState === 'visible')
+      if (next) setStatus(next)
+    } catch { // 失敗は main の IPC が Sentry へ送る（fetch の失敗そのものは状態に入って返る）
+    }
+  }, [])
+
   useEffect(() => {
     void load()
-    const reload = () => void load()
-    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') reload() }, POLL_MS)
-    window.addEventListener('focus', reload)
-    const offWorkspace = subscribeIpc('workspace:changed', reload, 'github')
-    const offHead = subscribeIpc('github:headChanged', reload, 'github')
+    // プロジェクトを開いた（起動時に開いていたものを含む）ら、すぐ fetch する
+    void autoFetch('open')
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      void load()
+      void autoFetch('interval')
+    }, POLL_MS)
+    const onFocus = () => { void load(); void autoFetch('focus') }
+    window.addEventListener('focus', onFocus)
+    const offWorkspace = subscribeIpc('workspace:changed', () => {
+      setMessage(null)
+      setConfirmPush(null)
+      void load()
+      void autoFetch('open')
+    }, 'github')
+    const offHead = subscribeIpc('github:headChanged', () => void load(), 'github')
     return () => {
       window.clearInterval(timer)
-      window.removeEventListener('focus', reload)
+      window.removeEventListener('focus', onFocus)
       offWorkspace()
       offHead()
     }
-  }, [load])
+  }, [load, autoFetch])
+
+  // 吹き出しを開いている間は「何分前」を進め、取得中なら様子を読み直す
+  useEffect(() => {
+    if (!open) return
+    setNow(Date.now())
+    const timer = window.setInterval(() => {
+      setNow(Date.now())
+      if (status?.fetch.fetching) void load()
+    }, status?.fetch.fetching ? 2_000 : 30_000)
+    return () => window.clearInterval(timer)
+  }, [open, status?.fetch.fetching, load])
+
+  const run = useCallback(async (action: UiAction) => {
+    if (working) return
+    setWorking(action)
+    setMessage(null)
+    if (action !== 'push') setConfirmPush(null)
+    try {
+      const result: GitActionResult = action === 'push'
+        ? await window.ade.invoke('github:gitAction', 'push', confirmPush?.head ?? null)
+        : await window.ade.invoke('github:gitAction', action === 'fetch' ? 'fetch' : 'pull', null)
+      setStatus(result.status)
+      setNow(Date.now())
+      if (!result.ok) {
+        setConfirmPush(null)
+        setMessage({ text: errorText(t, result.error ?? 'failed', result.detail), tone: 'warn' })
+        return
+      }
+      if (action === 'push') {
+        setConfirmPush(null)
+        setMessage({ text: result.commits > 0 ? t('git.sync.donePush', { count: result.commits, upstream: result.status.upstream ?? '' }) : t('git.sync.nothingToPush'), tone: 'ok' })
+        return
+      }
+      const pulled = action === 'fetch' ? null
+        : result.commits > 0 ? t('git.sync.donePull', { count: result.commits }) : t('git.sync.alreadyUpToDate')
+      // 同期：取り込めて、push していないコミットがあれば、外へ出す前に確かめる
+      if (action === 'sync' && result.status.ahead > 0 && result.status.headOid && result.status.upstream) {
+        setConfirmPush({ count: result.status.ahead, upstream: result.status.upstream, head: result.status.headOid })
+        setMessage(pulled && result.commits > 0 ? { text: pulled, tone: 'ok' } : null)
+        return
+      }
+      setMessage({ text: pulled ?? t('git.sync.doneFetch'), tone: 'ok' })
+    } catch (err) {
+      setConfirmPush(null)
+      setMessage({ text: errorMessage(err), tone: 'warn' })
+    } finally {
+      setWorking(null)
+    }
+  }, [working, confirmPush, t])
 
   if (!status?.isGit) return null
 
@@ -73,14 +195,20 @@ export function GitHubStatusItem() {
   const branchLabel = branch ?? t('github.footer.detachedHead', { oid: shortOid ?? '?' })
   const details = [
     repo ? `${repo.owner}/${repo.repo}` : t('github.footer.notGitHubTitle'),
-    branchLabel,
+    status.upstream ? `${branchLabel} → ${status.upstream}` : branchLabel,
     changes > 0 ? t('github.footer.changes', { count: changes }) : '',
-    ahead > 0 || behind > 0 ? t('github.footer.aheadBehind', { ahead, behind }) : ''
+    ahead > 0 || behind > 0 ? t('github.footer.aheadBehind', { ahead, behind }) : '',
+    status.hasRemote ? (status.fetch.fetching ? t('git.sync.fetching') : fetchedText(t, Date.now(), status.fetch.lastFetchAt)) : ''
   ].filter(Boolean).join('\n')
   const openUrl = (url: string) => {
     setOpen(false)
     void window.ade.invoke('github:open', url).catch(() => {}) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
   }
+  const available = gitActionAvailability(status)
+  const busy = working !== null || status.busy !== null
+  const compare = compareText(t, status)
+  const blockedReason = available.pull.reason
+  const fetchLine = status.fetch.fetching || working === 'fetch' ? t('git.sync.fetching') : fetchedText(t, now, status.fetch.lastFetchAt)
 
   return <>
     <button
@@ -88,10 +216,9 @@ export function GitHubStatusItem() {
       type="button"
       className="statusbar__btn gh-status"
       aria-label={t('github.footer.label')}
-      aria-haspopup="menu"
+      aria-haspopup="dialog"
       aria-expanded={open}
       title={details}
-      disabled={!repo}
       onClick={() => setOpen((v) => !v)}
       data-testid="statusbar-github"
     >
@@ -102,19 +229,60 @@ export function GitHubStatusItem() {
       <span className="statusbar__value gh-status__branch">{branchLabel}</span>
       {changes > 0 && <span className="gh-status__badge" aria-hidden="true">•{changes}</span>}
       {ahead > 0 && <span className="gh-status__badge" aria-hidden="true"><ArrowUp size={10} strokeWidth={2} />{ahead}</span>}
-      {behind > 0 && <span className="gh-status__badge" aria-hidden="true"><ArrowDown size={10} strokeWidth={2} />{behind}</span>}
+      {behind > 0 && <span className="gh-status__badge gh-status__badge--behind" aria-hidden="true"><ArrowDown size={10} strokeWidth={2} />{behind}</span>}
+      {(status.fetch.fetching || busy) && <RefreshCw size={10} strokeWidth={2} className="gh-status__spin" aria-hidden="true" />}
     </button>
-    {open && repo && <StatusPopover anchor={anchor.current} label={t('github.footer.label')} onClose={() => setOpen(false)}>
-      <div className="gh-menu" role="menu">
-        <button type="button" role="menuitem" className="gh-menu__item" onClick={() => openUrl(repo.webUrl)}>
-          <Mark /><span>{t(isGitLab ? 'gitlab.footer.openRepo' : 'github.footer.openRepo')}</span><ExternalLink size={12} aria-hidden="true" />
-        </button>
-        <button type="button" role="menuitem" className="gh-menu__item" disabled={!branch || !hasUpstream}
-          title={branch && !hasUpstream ? t(isGitLab ? 'gitlab.footer.branchNotPushed' : 'github.footer.branchNotPushed') : undefined}
-          onClick={() => branch && openUrl(branchWebUrl(repo, branch))}>
-          <GitBranch size={12} aria-hidden="true" /><span>{t(isGitLab ? 'gitlab.footer.openBranch' : 'github.footer.openBranch')}</span><ExternalLink size={12} aria-hidden="true" />
-        </button>
-        {branch && !hasUpstream && <p className="gh-menu__note">{t(isGitLab ? 'gitlab.footer.branchNotPushed' : 'github.footer.branchNotPushed')}</p>}
+    {open && <StatusPopover anchor={anchor.current} label={t('github.footer.label')} onClose={() => setOpen(false)} className="sb-pop--git">
+      <div className="gh-menu" data-testid="git-sync-popover">
+        <div className="gh-sync">
+          <p className="gh-sync__branch">
+            <GitBranch size={12} aria-hidden="true" />
+            <span className="gh-sync__mono">{branchLabel}</span>
+            {status.upstream && <><span className="gh-status__sep" aria-hidden="true">→</span><span className="gh-sync__mono gh-sync__muted">{status.upstream}</span></>}
+          </p>
+          {compare && <p className="gh-sync__line" data-testid="git-sync-compare">{compare}</p>}
+          {changes > 0 && <p className="gh-sync__line gh-sync__muted">{t('github.footer.changes', { count: changes })}</p>}
+          {status.hasRemote && <p className="gh-sync__line gh-sync__muted" data-testid="git-sync-fetched">
+            {fetchLine}
+            {status.fetch.lastError && !status.fetch.fetching && working !== 'fetch' && <> · <span className="gh-sync__warn">{t(ERROR_KEYS[status.fetch.lastError])}</span></>}
+          </p>}
+          {!status.hasRemote && <p className="gh-sync__line gh-sync__muted">{t('git.sync.noRemote')}</p>}
+        </div>
+        {status.hasRemote && <>
+          <button type="button" className="gh-menu__item" disabled={busy} onClick={() => void run('fetch')} data-testid="git-sync-fetch">
+            <RefreshCw size={12} aria-hidden="true" className={working === 'fetch' ? 'gh-status__spin' : undefined} /><span>{t('git.sync.fetch')}</span>
+          </button>
+          <button type="button" className="gh-menu__item" disabled={busy || !available.pull.enabled} onClick={() => void run('pull')} data-testid="git-sync-pull"
+            title={blockedReason ? t(ERROR_KEYS[blockedReason]) : t('git.sync.pullHint')}>
+            <Download size={12} aria-hidden="true" className={working === 'pull' ? 'gh-status__spin' : undefined} /><span>{t('git.sync.pull')}</span>
+            {behind > 0 && <span className="gh-status__badge"><ArrowDown size={10} strokeWidth={2} />{behind}</span>}
+          </button>
+          <button type="button" className="gh-menu__item" disabled={busy || !available.sync.enabled} onClick={() => void run('sync')} data-testid="git-sync-sync"
+            title={blockedReason ? t(ERROR_KEYS[blockedReason]) : t('git.sync.syncHint')}>
+            <ArrowUp size={12} aria-hidden="true" className={working === 'sync' || working === 'push' ? 'gh-status__spin' : undefined} /><span>{t('git.sync.sync')}</span>
+            {ahead > 0 && <span className="gh-status__badge"><ArrowUp size={10} strokeWidth={2} />{ahead}</span>}
+          </button>
+          {blockedReason && <p className="gh-menu__note">{t(ERROR_KEYS[blockedReason])}</p>}
+        </>}
+        {confirmPush && <div className="gh-sync__confirm" role="group" aria-label={t('git.sync.confirmPush', { count: confirmPush.count, upstream: confirmPush.upstream })} data-testid="git-sync-confirm">
+          <p className="gh-sync__line">{t('git.sync.confirmPush', { count: confirmPush.count, upstream: confirmPush.upstream })}</p>
+          <div className="gh-sync__buttons">
+            <button type="button" className="btn btn--ghost" disabled={working !== null} onClick={() => setConfirmPush(null)}>{t('common.cancel')}</button>
+            <button type="button" className="btn btn--primary" disabled={working !== null} onClick={() => void run('push')} data-testid="git-sync-push">{t('git.sync.push')}</button>
+          </div>
+        </div>}
+        {message && <p className={`gh-sync__message${message.tone === 'warn' ? ' gh-sync__warn' : ''}`} role="status" data-testid="git-sync-message">{message.text}</p>}
+        {repo && <>
+          <div className="gh-menu__sep" aria-hidden="true" />
+          <button type="button" className="gh-menu__item" onClick={() => openUrl(repo.webUrl)}>
+            <Mark /><span>{t(isGitLab ? 'gitlab.footer.openRepo' : 'github.footer.openRepo')}</span><ExternalLink size={12} aria-hidden="true" />
+          </button>
+          <button type="button" className="gh-menu__item" disabled={!branch || !hasUpstream}
+            title={branch && !hasUpstream ? t(isGitLab ? 'gitlab.footer.branchNotPushed' : 'github.footer.branchNotPushed') : undefined}
+            onClick={() => branch && openUrl(branchWebUrl(repo, branch))}>
+            <GitBranch size={12} aria-hidden="true" /><span>{t(isGitLab ? 'gitlab.footer.openBranch' : 'github.footer.openBranch')}</span><ExternalLink size={12} aria-hidden="true" />
+          </button>
+        </>}
       </div>
     </StatusPopover>}
     <span className="statusbar__divider" aria-hidden="true" />

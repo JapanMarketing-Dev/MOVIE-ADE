@@ -37,6 +37,7 @@ import {
 import { hashLocalArtifacts, signedSumsFromLocal } from './release-local-sums.mjs'
 import { runTool, wranglerInvocation } from './release-tools.mjs'
 import { assertSignedSums, loadSigningKey, signSshsig } from './release-signing.mjs'
+import { ciVerdict } from './release-ci.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const BUCKET = process.env.R2_BUCKET ?? 'movie-ade-releases'
@@ -80,7 +81,30 @@ function gh(ghArgs, dryRun) {
   if (r.status !== 0) throw new Error(`gh が失敗しました（終了コード ${r.status}）`)
 }
 
+/**
+ * 公開する commit（--target）で GitHub Actions の Cross-platform が通るのを待つ。落ちていれば止める（0.4.10 の再発防止）。
+ * 最長 30 分待つ。--skip-ci は使わない（無ければ止まる）
+ */
+async function waitForCi(repo, sha) {
+  const deadline = Date.now() + 30 * 60 * 1000
+  for (;;) {
+    const r = runTool({ command: 'gh', args: ['api', `repos/${repo}/actions/runs?head_sha=${sha}&per_page=50`] }, { cwd: root, encoding: 'utf8' })
+    if (r.error) throw r.error
+    if (r.status !== 0) throw new Error(`GitHub Actions の結果を読めませんでした（終了コード ${r.status}）`)
+    const verdict = ciVerdict(JSON.parse(String(r.stdout)).workflow_runs ?? [], sha)
+    if (verdict.state === 'success') { console.log(`GitHub Actions: ${sha.slice(0, 7)} の Cross-platform は通っています`); return }
+    if (verdict.state === 'failure') throw new Error(`GitHub Actions が落ちています。直してから公開してください: ${verdict.failed.join(', ')}`)
+    if (Date.now() > deadline) throw new Error(`GitHub Actions が 30 分で終わりませんでした: ${verdict.pending.join(', ')}`)
+    console.log(`GitHub Actions を待っています: ${verdict.pending.join(', ')}`)
+    await new Promise((done) => setTimeout(done, 30_000))
+  }
+}
+
 const args = parseArgs(process.argv.slice(2))
+if (args.command === 'create' && !args.dryRun) {
+  if (!args.target) throw new Error('--target（公開した main の commit）を付けてください。その commit の GitHub Actions を確かめます')
+  await waitForCi(args.repo, args.target)
+}
 if (args.command === 'publish') {
   gh(ghReleasePublishArgs({ version: args.version, repo: args.repo }), args.dryRun)
 } else {

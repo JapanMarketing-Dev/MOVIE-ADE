@@ -101,6 +101,16 @@ const HISTORY_CAPACITY = 30
 const HISTORY_STALE_MS = 10 * 60 * 1000
 const OTHER_KEY = '__other__'
 
+/** ps が続けて失敗した回数。一時的な失敗（スリープ明け・ディスプレイの抜き差し・時間切れ）は送らず、続いたときだけ送る（FERRET-1M） */
+let psFailures = 0
+const PS_REPORT_AFTER = 3
+
+/** 送るか。時間切れで止めたもの（killed）は送らない。続けて PS_REPORT_AFTER 回目のときだけ送る（同じ失敗を何度も送らない） */
+export function shouldReportPsFailure(err: unknown, consecutive: number): boolean {
+  if ((err as { killed?: unknown } | null)?.killed === true) return false
+  return consecutive === PS_REPORT_AFTER
+}
+
 async function enumerateWithPs(): Promise<ProcRow[]> {
   try {
     // pcpu はロケールによって小数点が「,」になるので C ロケールに固定する（Orca と同じ）
@@ -109,11 +119,13 @@ async function enumerateWithPs(): Promise<ProcRow[]> {
       timeout: PS_TIMEOUT_MS,
       env: { ...process.env, LC_ALL: 'C', LANG: 'C' }
     })
+    psFailures = 0
     return parsePsOutput(stdout)
   } catch (err) {
+    psFailures++
     console.warn('[resources] ps の実行に失敗しました', err)
     // 失敗の文は ps の stderr を含むので、種類だけを送る
-    reportHandled(errorKind(err), { area: 'resources', op: 'sample processes with ps' })
+    if (shouldReportPsFailure(err, psFailures)) reportHandled(errorKind(err), { area: 'resources', op: 'sample processes with ps' })
     return []
   }
 }

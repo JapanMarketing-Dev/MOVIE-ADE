@@ -212,8 +212,16 @@ function copyTooLargeError(): UserFacingError {
   return new UserFacingError(t('files.errors.copyTooLarge', { limit: Math.round(MAX_COPY_BYTES / 1024 / 1024 / 1024) }))
 }
 
-/** 測ったときの実体（dev・ino）。パスごと */
-type Identities = Map<string, { dev: bigint; ino: bigint }>
+/**
+ * 測ったときの実体。パスごと。dev・ino だけでは、消してすぐ作り直したファイルに同じ inode が使い回される（Linux の ext4。
+ * GitHub Actions で security-6 [7] のテストが通らなかった）。大きさと ctime（作り直すと必ず変わる。ナノ秒）も比べる
+ */
+export interface FileIdentity { dev: bigint; ino: bigint; size: bigint; ctimeNs: bigint }
+type Identities = Map<string, FileIdentity>
+
+function identityOf(info: FileIdentity): FileIdentity {
+  return { dev: info.dev, ino: info.ino, size: info.size, ctimeNs: info.ctimeNs }
+}
 
 /**
  * コピーの残りの枠（security-6 [7]）。前もって測った量だけでは、測ってから読むまでに元のファイルが伸びる・差し替わると上限を超えて写す。
@@ -237,17 +245,22 @@ interface CopyContext {
   onCreated?: (id: { dev: bigint; ino: bigint }) => void
 }
 
+/** 同じ実体か（dev・ino・大きさ・ctime）。inode が使い回されても、作り直したものは ctime が違う */
+export function sameFileIdentity(a: FileIdentity, b: FileIdentity): boolean {
+  return a.dev === b.dev && a.ino === b.ino && a.size === b.size && a.ctimeNs === b.ctimeNs
+}
+
 /** 測ったときと同じ実体か。違えば「見つからない」（測ったものはもう無い）で断る */
-function assertSameIdentity(expected: Identities | undefined, path: string, actual: { dev: bigint; ino: bigint }): void {
+function assertSameIdentity(expected: Identities | undefined, path: string, actual: FileIdentity): void {
   if (!expected) return
   const was = expected.get(path)
-  if (!was || was.dev !== actual.dev || was.ino !== actual.ino) throw new UserFacingError(t('files.errors.notFound'))
+  if (!was || !sameFileIdentity(was, actual)) throw new UserFacingError(t('files.errors.notFound'))
 }
 
 /** 中身を数える（リンクは辿らない）。上限を超えたらその場で断る。seen があれば、測った実体をパスごとに控える */
 async function measure(absolute: string, total: { entries: number; bytes: number }, seen?: Identities): Promise<void> {
   const info = await lstat(absolute, { bigint: true })
-  seen?.set(absolute, { dev: info.dev, ino: info.ino })
+  seen?.set(absolute, identityOf(info))
   total.entries++
   if (info.isFile()) total.bytes += Number(info.size)
   if (total.entries > MAX_COPY_ENTRIES) throw copyTooManyError()
@@ -470,7 +483,7 @@ export async function importMediaForMarkdown(root: string, markdownRel: unknown,
     if (Number(info.size) > limit) throw tooLarge()
     total += Number(info.size)
     if (total > totalLimit) throw totalTooLarge()
-    expected.set(source, { dev: info.dev, ino: info.ino })
+    expected.set(source, identityOf(info))
     // 写すときも、開いたものの実体と、ファイルの上限・全体の上限を確かめながら書く（security-6 [7]）
     sources.push({ path: source, fileBytes: { limit, error: tooLarge } })
   }

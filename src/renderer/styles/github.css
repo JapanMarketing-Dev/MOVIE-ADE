@@ -423,3 +423,98 @@
   cursor: crosshair;
   touch-action: none;
 }
+
+/* ── フッターの同期（リモートの変更を確認・最新を取得・同期） ──────────────── */
+
+.sb-pop--git {
+  width: min(320px, calc(100vw - 16px));
+}
+
+.gh-sync {
+  display: grid;
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  gap: var(--space-1);
+}
+
+.gh-sync__branch {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  gap: var(--space-2);
+}
+
+.gh-sync__branch > svg {
+  flex: none;
+  color: var(--color-text-muted);
+}
+
+.gh-sync__mono {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gh-sync__line,
+.gh-sync__message {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  overflow-wrap: anywhere;
+}
+
+.gh-sync__message {
+  padding: var(--space-1) var(--space-3);
+  color: var(--color-text-muted);
+}
+
+.gh-sync__muted {
+  color: var(--color-text-muted);
+}
+
+.gh-sync__warn {
+  color: var(--color-warning);
+}
+
+.gh-sync__confirm {
+  display: grid;
+  margin: var(--space-1) var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-warning-border, var(--color-border));
+  border-radius: var(--radius-sm);
+  gap: var(--space-2);
+}
+
+.gh-sync__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.gh-menu__sep {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--color-border);
+}
+
+.gh-status__badge--behind {
+  color: var(--color-text-muted);
+}
+
+.gh-status__spin {
+  flex: none;
+  animation: gh-spin 1s linear infinite;
+}
+
+@keyframes gh-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gh-status__spin {
+    animation: none;
+  }
+}

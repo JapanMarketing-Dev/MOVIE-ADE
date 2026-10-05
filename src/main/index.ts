@@ -2208,6 +2208,21 @@ function registerIpc(): void {
       void watchGitHead(workspace.folderPath, () => send('github:headChanged'))
       return gitRepoStatus(workspace.folderPath)
     },
+    'github:autoFetch': async (trigger, visible) => {
+      // 利用者が押す fetch は github:gitAction（manual はここでは受けない）
+      if (trigger !== 'open' && trigger !== 'interval' && trigger !== 'focus') throw new Error('invalid fetch trigger')
+      const { autoFetch } = await import('./github/gitSync')
+      return autoFetch(workspace.folderPath, trigger, visible === true)
+    },
+    'github:gitAction': async (action, expectedHead) => {
+      if (action !== 'fetch' && action !== 'pull' && action !== 'push') throw new Error('invalid git action')
+      // 作業ツリーを書き換える・外へ送る操作は、利用者が押した直後だけ（fetch は読むだけ）
+      if (action !== 'fetch' && !gestures.consume('gitSync')) throw new UserFacingError(t('errors.needsUserAction'))
+      const head = typeof expectedHead === 'string' && /^[0-9a-f]{40,64}$/i.test(expectedHead) ? expectedHead : null
+      if (action === 'push' && !head) throw new Error('push needs the confirmed HEAD')
+      const { runGitAction } = await import('./github/gitSync')
+      return runGitAction(workspace.folderPath, action, head)
+    },
     'github:open': async (url) => {
       // 一覧に出した GitHub のページだけを開く（任意のURL・スキームは開かない）
       const parsed = new URL(String(url))
