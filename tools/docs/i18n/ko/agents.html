@@ -49,6 +49,13 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   </tbody>
 </table>
 
+<!-- @restore d051d24e56 -->
+## 다시 시작한 뒤 터미널 되돌리기
+<p>Ferret을 종료할 때 모든 프로젝트의 터미널 탭을 기억합니다. 순서와 분할, 각 탭을 연 폴더, 실행하던 에이전트와 계정, 그리고 화면마다 최대 2,000줄의 글자입니다. 다음에 Ferret을 시작하면 탭이 같은 순서로 돌아옵니다. 이전 글자가 먼저 표시되고, <code>— 지난번에 이어서 (2026-10-05 14:30) —</code> 같은 흐린 줄 뒤에 같은 폴더에서 새 셸이 시작됩니다.</p>
+<p>에이전트 탭은 대화를 이어서 시작합니다. Claude Code는 <code>--continue</code>, Codex는 <code>resume --last</code>로 그 폴더의 가장 최근 대화를 이어갑니다. 같은 폴더에서 같은 계정으로 같은 에이전트를 실행하는 탭이 여러 개면 첫 번째 탭만 대화를 잇고 나머지는 새로 시작하므로, 두 탭이 같은 대화를 잇는 일은 없습니다. 그 폴더에 Claude Code 대화가 없거나 프로젝트가 SSH 호스트에 있으면 평소처럼 시작합니다.</p>
+<p><strong>닫은 터미널 다시 열기.</strong> <span class="docs-ui">터미널 → 닫은 터미널 다시 열기</span>(터미널에 포커스가 있을 때 {{keys:Mod+Shift+T}})는 이 프로젝트에서 마지막으로 닫은 탭이나 창을 글자와 함께 되돌리고, 에이전트도 같은 방식으로 대화를 이어서 시작합니다. 닫은 터미널은 최근 10개까지 다시 시작한 뒤에도 기억합니다.</p>
+<p>기록은 색이 없는 일반 텍스트로 Ferret의 데이터 폴더(<code>terminal-restore.json</code>, 본인만 읽을 수 있음)에 저장하며 프로젝트에는 쓰지 않습니다. <span class="docs-ui">계정 추가</span>에서 연 로그인 탭과 한 번만 실행하는 명령은 기억하지 않습니다. 저장을 멈추려면 <span class="docs-ui">설정 → 에이전트 → 터미널 기록을 저장하고 복원</span>을 끄세요. 저장한 내용도 삭제됩니다. 옆의 <span class="docs-ui">저장한 기록 삭제</span>로 언제든지 삭제할 수 있습니다.</p>
+
 <!-- @supported 69600dc42f -->
 ## 지원하는 에이전트
 <p>Ferret은 특정 에이전트에 묶여 있지 않습니다. 아래의 코딩 에이전트를 인식하여, 시작하고, <span class="docs-ui">에이전트에게 보내기</span>를 위해 터미널에서 감지하고, 설치 여부를 표시할 수 있습니다. <span class="docs-ui">설정 → 에이전트</span>에는 각 에이전트가 <span class="docs-ui">설치됨</span> / <span class="docs-ui">찾을 수 없음</span> 상태와 함께 나열되며, 제공사가 한 줄 설치 프로그램을 공개한 경우 <span class="docs-ui">설치</span> 버튼, 그리고 각각의 명령과 인수가 표시됩니다.</p>

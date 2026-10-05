@@ -177,8 +177,8 @@ describe('security-3 [1] Agent の権限確認は設定の skipPermissions で�
     expect(terminal).toMatch(/trustFolder = policy\.trustFolder/)
     expect(terminal).toMatch(/if \(trustFolder\) \{\s*await applyAgentWorkspaceTrust\(/)
     expect(terminal.match(/applyAgentWorkspaceTrust\(/g)).toHaveLength(1)
-    // 自動起動も手で開くのも同じ決まり（skipPermissions だけを見る）
-    expect(terminal).toMatch(/resolveAgentLaunchPolicy\(\{ agent, command: configured\.command, args: configured\.args, projectId, skipPermissions: prefs\.skipPermissions, shell: startupShell \}\)/)
+    // 自動起動も手で開くのも同じ決まり（skipPermissions だけを見る）。resume は会話を続ける引数だけで、権限には関わらない
+    expect(terminal).toMatch(/resolveAgentLaunchPolicy\(\{ agent, command: configured\.command, args: configured\.args, projectId, skipPermissions: prefs\.skipPermissions, shell: startupShell(?:, resume)? \}\)/)
   })
 })
 

@@ -11,7 +11,8 @@ import { agentForProcess, agentLabel, findCustomAgent, isBuiltinAgent } from '@s
 import { resolveAgentLaunchPolicy } from '@shared/agentPolicy'
 import { currentSettings } from './settings'
 import { planStartupDelivery } from './shellStartup'
-import { buildAccountLoginLaunch, resolveAgentEnv } from './accounts'
+import { buildAccountLoginLaunch, resolveAgentEnvForAccount, tabAccountId } from './accounts'
+import { hasClaudeConversation } from './terminalRestore'
 import { resolveProcessCwd } from './processCwd'
 import { isInheritedAgentSessionEnv } from './inheritedAgentEnv'
 import { remoteTrustedLaunchLine, resolveTrustedExecutable, trustedLaunchLine, windowsSearchPathEnv } from './agentExecutable'
@@ -267,6 +268,9 @@ export class TerminalManager {
     let extraEnv: Record<string, string> = {}
     let pendingWrite: string | null = null
     let loginTitle: string | null = null
+    /** 起動したアカウント（Claude Code / Codex）と、前の会話を続ける引数で起動したか（タブを戻すときに使う） */
+    let accountId: string | null | undefined
+    let resumed = false
     // 起動コマンドを、シェルの最初のプロンプトで実行させる（Agent・アカウントのログイン共通）
     const deliver = (command: string, env: Record<string, string>): void => {
       const delivery = planStartupDelivery(shell, command)
@@ -299,10 +303,18 @@ export class TerminalManager {
       const label = agentLabel(agent, prefs)
       let launchLine: string
       let trustFolder = false
+      // 前と同じアカウントで開く（タブを戻したとき）。指定が無ければ今選んでいるアカウント
+      accountId = tabAccountId(agent, options.accountId)
+      const accountEnv = resolveAgentEnvForAccount(agent, accountId)
       if (isBuiltinAgent(agent)) {
-        const policy = resolveAgentLaunchPolicy({ agent, command: configured.command, args: configured.args, projectId, skipPermissions: prefs.skipPermissions, shell: startupShell })
+        // 会話を続けて起動する（タブを戻したとき）。Claude Code は続ける会話がこのフォルダに無ければ普通に起動する。
+        // SSH のプロジェクトでは手元から会話を確かめられないので、Claude Code は続けない
+        const resume = options.resume === true && (agent !== 'claude' ||
+          (sphere.kind !== 'ssh' && hasClaudeConversation(cwd, accountEnv.CLAUDE_CONFIG_DIR || process.env.CLAUDE_CONFIG_DIR)))
+        const policy = resolveAgentLaunchPolicy({ agent, command: configured.command, args: configured.args, projectId, skipPermissions: prefs.skipPermissions, shell: startupShell, resume })
         if (!policy.ok) throw new UserFacingError(t('terminal.errors.launch', { agent: label, error: policy.error }))
         trustFolder = policy.trustFolder
+        resumed = policy.resumed === true
         launchLine = await trusted(policy.argv, label)
       } else {
         // カスタムの Agent は利用者が書いたコマンドそのまま（引数だけ語に分けて引用し直す）
@@ -312,7 +324,6 @@ export class TerminalManager {
       }
       // パンくず：自作の Agent は名前を出さない（利用者が付けた名前を送らない）
       flow('agent launch', { agent: isBuiltinAgent(agent) ? agent : 'custom' })
-      const accountEnv = resolveAgentEnv(agent)
       // 権限確認を省いて起動するときは、登録したプロジェクトのフォルダについて Claude Code / Codex の「このフォルダを信頼しますか」も先に書いておく
       // （書く先はアカウント切り替えの CLAUDE_CONFIG_DIR / CODEX_HOME を含む、起動する環境のもの）。
       // 切にしていれば書かず、エージェント自身にフォルダのパスを見せて聞かせる
@@ -380,7 +391,7 @@ export class TerminalManager {
       this.notifyExitWaiters()
     })
 
-    return { id, title, agent: launched, cwd }
+    return { id, title, agent: launched, cwd, ...(accountId !== undefined ? { accountId } : {}), ...(resumed ? { resumed } : {}) }
   }
 
   /**

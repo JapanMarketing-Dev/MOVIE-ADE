@@ -85,6 +85,7 @@ function AgentSection({ value, onChange, prompt, onPromptChange }: {
 }) {
   const t = useT()
   const locale = useLocale()
+  const toast = useToast()
   const [options, setOptions] = useState<AgentOption[]>([])
   useEffect(() => {
     void window.ade.invoke('agents:list').then(setOptions).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
@@ -129,6 +130,17 @@ function AgentSection({ value, onChange, prompt, onPromptChange }: {
     <div data-testid="agent-notify">
       <Switch label={t('settings.agents.notify')} checked={value.notify} onChange={(notify) => onChange({ ...value, notify })} />
       <p className="st-note">{t('settings.agents.notifyNote')}</p>
+    </div>
+
+    {/* ターミナルのタブと画面の文字を覚えて、再起動・閉じたあとに戻す（既定は入。切にすると main が書いたものも消す） */}
+    <div data-testid="agent-restore-terminals">
+      <Switch label={t('settings.agents.restoreTerminals')} checked={value.restoreTerminals} onChange={(restoreTerminals) => onChange({ ...value, restoreTerminals })} />
+      <p className="st-note">{t('settings.agents.restoreTerminalsNote')}</p>
+      <Button variant="ghost" data-testid="agent-restore-terminals-clear" onClick={() => {
+        void window.ade.invoke('terminal:restoreClear')
+          .then(() => toast({ tone: 'success', message: t('settings.agents.clearTerminalHistoryDone') }))
+          .catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
+      }}>{t('settings.agents.clearTerminalHistory')}</Button>
     </div>
 
     <h3 className="st-page__subheading">{t('settings.agents.startupTitle')}</h3>

@@ -11,6 +11,7 @@ import { t } from '@shared/i18n'
 import { reportAnomaly, reportHandled } from '@shared/report'
 import { ImeInputGuard } from './imeInputGuard'
 import { isWebglUnavailable } from './rendererFallback'
+import { RESTORE_LINE_LIMIT, capScrollback, joinWrappedRows } from '@shared/terminalRestore'
 
 /**
  * renderer 側のターミナル実体（xterm.js）を管理する。
@@ -72,6 +73,8 @@ export class TerminalHandle {
   private replaying = false
 
   ptyId: string | null = null
+  /** 画面に書いた回数。終了・閉じたあとに戻すための画面の文字を、変わったときだけ取り出し直す（TerminalPane） */
+  outputSeq = 0
   /** 前面で動いている Agent（TerminalPane が1秒ごとの状態の問い合わせで更新する。Shift+Enter の扱いに使う） */
   foregroundAgent: TuiAgent | null = null
   get agentForeground(): boolean {
@@ -297,6 +300,7 @@ export class TerminalHandle {
     // 出力は PTY の今の幅で折り返されているので、同じ大きさにしてから流し直す（違う幅だと崩れる）
     if (size && size.cols >= 2 && size.rows >= 1) this.term.resize(size.cols, size.rows)
     this.redrawPending = true
+    this.outputSeq++
     if (!history) {
       this.bindPty(ptyId)
       return
@@ -393,7 +397,37 @@ export class TerminalHandle {
     }
   }
 
+  /**
+   * 終了・閉じる前の画面の文字を書く（PTY を作る前。@shared/terminalRestore の restoreReplayText）。
+   * 制御文字は落としてあるが、念のため書き終わるまで xterm の返事を PTY へ送らない
+   */
+  restoreScreen(text: string): void {
+    if (!text) return
+    this.outputSeq++
+    this.replaying = true
+    this.term.write(text, () => {
+      this.replaying = false
+    })
+  }
+
+  /**
+   * 終了・閉じたあとに戻すための画面の文字（通常の画面の、折り返す前の行で新しい側から RESTORE_LINE_LIMIT 行まで）。
+   * 全画面の TUI（vim など）が使う別の画面は含めない。色・制御文字は含めない
+   */
+  scrollbackText(): string {
+    const buffer = this.term.buffer.normal
+    // 折り返しで1行が何行にもなるので、行数の上限より多めに見る
+    const start = Math.max(0, buffer.length - RESTORE_LINE_LIMIT * 4)
+    const rows: Array<{ text: string; wrapped: boolean }> = []
+    for (let i = start; i < buffer.length; i++) {
+      const line = buffer.getLine(i)
+      if (line) rows.push({ text: line.translateToString(false), wrapped: line.isWrapped })
+    }
+    return capScrollback(joinWrappedRows(rows).join('\n'))
+  }
+
   write(data: string): void {
+    this.outputSeq++
     this.term.write(data, () => {
       if (this.screenTimer || !this.ptyId) return
       this.screenTimer = setTimeout(() => {

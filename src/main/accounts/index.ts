@@ -10,6 +10,8 @@ export {
   removeAgentAccount,
   renameAgentAccount,
   resolveAgentEnv,
-  selectAgentAccount
+  resolveAgentEnvForAccount,
+  selectAgentAccount,
+  tabAccountId
 } from './service'
 export { requireTuiAgent, sanitizeAgentAccounts } from './sanitize'

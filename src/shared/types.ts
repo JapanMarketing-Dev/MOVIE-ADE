@@ -272,6 +272,11 @@ export interface AgentPreferences {
    * 見ているタブのことは出さない（renderer の terminal/agentAttention.ts、main の agentNotify.ts）
    */
   notify: boolean
+  /**
+   * ターミナルの画面の文字とタブを userData に書いておき、次に開いたとき・閉じたタブを開き直したときに戻す（既定は入）。
+   * 切にすると書いたものも消す（main の terminalRestore.ts）
+   */
+  restoreTerminals: boolean
 }
 
 /** 設定画面・メニューに出す1件（main が検出結果と設定を合わせて返す） */
@@ -313,6 +318,16 @@ export interface TerminalCreateOptions {
   autoStart?: boolean
   /** 上限での自動切り替えで開くタブ（main の failover:launch の token）。会話の再開と引き継ぎの指示文は main が行う */
   failoverToken?: string | null
+  /**
+   * 前の会話を続けて起動する（終了・閉じたあとにタブを戻したとき。Claude Code の --continue、Codex の resume --last）。
+   * 続けられないとき（会話が無い・SSH のプロジェクトの Claude Code など）は普通に起動する
+   */
+  resume?: boolean
+  /**
+   * 起動するアカウント（Claude Code / Codex）。省略すると今選んでいるアカウント、null はシステムの既定アカウント。
+   * 消したアカウントなら今選んでいるアカウント（タブを戻したとき、前と同じアカウントで開くため）
+   */
+  accountId?: string | null
 }
 
 /** 復元対象の設定（WS-1 ＋ 分割幅） */
@@ -430,6 +445,10 @@ export interface TerminalTabInfo {
   title: string
   agent?: TuiAgent | null
   cwd?: string
+  /** 起動したアカウント（Claude Code / Codex）。null はシステムの既定アカウント。ほかの Agent・シェルでは省く */
+  accountId?: string | null
+  /** 前の会話を続ける引数で起動した */
+  resumed?: boolean
 }
 
 export interface TerminalSize {
@@ -454,6 +473,8 @@ export type MenuCommand =
   | 'toggleMode'
   | 'newTerminal'
   | 'closeTerminal'
+  /** ⌘⇧T（Windows・Linux は Ctrl+Shift+T）最後に閉じたターミナルを開き直す（ターミナルにフォーカスがあるときは TerminalPane が直接受ける） */
+  | 'reopenTerminal'
   /** ⌘D / ⌘⇧D フォーカス中のペインを右／下に分割する（TerminalPane が直接受ける） */
   | 'splitTerminalRight'
   | 'splitTerminalDown'

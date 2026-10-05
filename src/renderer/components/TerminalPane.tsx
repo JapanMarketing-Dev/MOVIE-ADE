@@ -1,4 +1,4 @@
-import { foregroundAgentOf } from '../terminal/terminalKeys'
+import { foregroundAgentOf, isReopenTerminalKey } from '../terminal/terminalKeys'
 import { hasExternalFiles, readDrop } from '../lib/externalDrop'
 import { shellPathsText, shellQuotingFor, treePathsForTerminal } from '@shared/externalDrop'
 import { hasTreePaths, treeDragPaths } from '../lib/treeDrag'
@@ -51,6 +51,15 @@ import {
 } from '../terminal/restorePlan'
 import { reportHandled } from '@shared/report'
 import { errorMessage } from '../lib/errors'
+import {
+  formatRestoreTime,
+  panesToResume,
+  remapRestoreKeys,
+  restoreReplayText,
+  type RestorePane,
+  type RestoreTab,
+  type TerminalRestoreSnapshot
+} from '@shared/terminalRestore'
 
 /**
  * 内蔵ターミナル（WS-4）。タブで複数のシェルを開き、閉じられる。
@@ -114,6 +123,46 @@ interface Pane {
   autoStart?: boolean
   /** 上限での自動切り替えで開くタブ（main の failover:launch の token） */
   failoverToken?: string | null
+  /** 起動したアカウント（Claude Code / Codex。main の返事）。null はシステムの既定。戻したタブではこのアカウントで開く */
+  accountId?: string | null
+  /** 戻したタブ: 前の会話を続けて起動する（@shared/terminalRestore の panesToResume） */
+  resume?: boolean
+  /** 戻したタブ: PTY を作る前に xterm に書く、前の画面の文字と区切りの行 */
+  restoreText?: string | null
+  /** 戻したタブ: まだ xterm を作っていない間に、覚え直すときに使う前の画面の文字 */
+  savedScrollback?: string | null
+}
+
+/** 終了・閉じたあとに戻すペイン。アカウントのログインと1回きりのコマンド（gh auth login など）は戻さない */
+function isRestorable(pane: Pane): boolean {
+  return !pane.accountLogin && !pane.command
+}
+
+function toRestorePane(pane: Pane, scrollback: string): RestorePane {
+  return { key: pane.key, title: pane.title, launch: pane.launch, cwd: pane.cwd, accountId: pane.accountId ?? null, scrollback }
+}
+
+/** 覚えていたペインから、戻すペインを作る（前の画面の文字を書いてから PTY を作る） */
+function paneFromRestore(saved: RestorePane, banner: string, resume: boolean): Pane {
+  return {
+    key: saved.key,
+    title: saved.title || (saved.launch ? agentLabel(saved.launch) : tNow('terminal.shell')),
+    state: 'unknown',
+    launch: saved.launch,
+    cwd: saved.cwd,
+    accountId: saved.accountId,
+    resume,
+    restoreText: restoreReplayText(saved.scrollback, banner),
+    savedScrollback: saved.scrollback
+  }
+}
+
+/** 戻すときの今のスクロールバックを、変わったときだけ取り出し直す間隔 */
+const RESTORE_PUSH_MS = 10_000
+
+/** 閉じたターミナルを開き直すキーの表示 */
+function reopenShortcut(): string {
+  return globalThis.window?.ade?.platform === 'darwin' ? formatShortcut('Mod', 'Shift', 'T') : formatShortcut('Ctrl', 'Shift', 'T')
 }
 
 interface Tab {
@@ -238,7 +287,8 @@ export function TerminalPane({
   startupAgents = [],
   onOpenAgentSettings,
   onOpenFile,
-  notify = false
+  notify = false,
+  restore = true
 }: {
   /** 分割幅など、レイアウトが変わったことを知らせる値 */
   layoutKey: string
@@ -246,7 +296,7 @@ export function TerminalPane({
   /** フォーカス中のペインのPTY（「Agentへ送信」の宛先） */
   onActiveTerminal?: (id: string | null) => void
   /** メニュー（ショートカット）からタブ操作を呼べるようにする窓口 */
-  commandRef?: React.RefObject<{ add: () => void; close: () => void } | null>
+  commandRef?: React.RefObject<{ add: () => void; close: () => void; reopen: () => void } | null>
   /** 表示中のプロジェクト。タブはこれごとに分かれる */
   projectId?: string | null
   /** 新しいタブのカレント（プロジェクトのフォルダ） */
@@ -259,6 +309,8 @@ export function TerminalPane({
   onOpenFile?: (path: string) => void
   /** Agent が終わった・確認を待っているときに OS の通知を出す（設定の agents.notify） */
   notify?: boolean
+  /** タブと画面の文字を覚えて、終了・閉じたあとに戻す（設定の agents.restoreTerminals） */
+  restore?: boolean
 }) {
   const sectionRef = useRef<HTMLElement | null>(null)
   const t = useT()
@@ -390,11 +442,38 @@ export function TerminalPane({
     )
   }, [])
 
+  /**
+   * 利用者が閉じたタブ（またはペイン）を、開き直せるように main へ渡す。xterm を捨てる前に画面の文字を取り出す。
+   * keys がタブのペインすべてならタブの分割の形のまま、1つならそのペインだけのタブとして覚える
+   */
+  const restoreRef = useRef(restore)
+  restoreRef.current = restore
+  const rememberClosed = useCallback((tab: Tab, keys: string[]) => {
+    if (!restoreRef.current) return
+    const kept = keys.filter((key) => {
+      const pane = panesRef.current[key]
+      return pane !== undefined && isRestorable(pane)
+    })
+    if (kept.length === 0) return
+    let layout: PaneNode | null = keys.length === leafIds(tab.layout).length ? tab.layout : leaf(kept[0]!)
+    for (const key of keys) if (layout && !kept.includes(key)) layout = removeLeaf(layout, key)
+    if (!layout) return
+    const remaining = leafIds(layout)
+    const panes = remaining.map((key) => toRestorePane(panesRef.current[key]!, getTerminal(key)?.scrollbackText() ?? panesRef.current[key]!.savedScrollback ?? ''))
+    void window.ade.invoke('terminal:closedPush', {
+      projectId: tab.projectId,
+      tab: { key: tab.key, projectId: tab.projectId, layout, activePane: remaining.includes(tab.activePane) ? tab.activePane : remaining[0]! },
+      panes,
+      closedAt: Date.now()
+    }).catch((err: unknown) => reportHandled(err, { area: 'terminal', op: 'remember closed terminal' }))
+  }, [])
+
   const closeTab = useCallback(
-    (key: string) => {
+    (key: string, remember = true) => {
       const tab = tabs.find((t) => t.key === key)
       if (!tab) return
       const keys = leafIds(tab.layout)
+      if (remember) rememberClosed(tab, keys)
       for (const paneKey of keys) releasePane(paneKey)
       // 更新関数の中で別の state を更新しない（Reactが更新を捨てることがある）。
       // 選択中のタブを閉じたときの移動は、下の effect に任せる。
@@ -405,7 +484,7 @@ export function TerminalPane({
         return next
       })
     },
-    [tabs, releasePane]
+    [tabs, releasePane, rememberClosed]
   )
 
   /**
@@ -418,14 +497,15 @@ export function TerminalPane({
 
   /** ペインを閉じる。最後の1枚ならタブごと閉じる（Orca の closeActivePane と同じ） */
   const closePane = useCallback(
-    (tabKey: string, paneKey: string) => {
+    (tabKey: string, paneKey: string, remember = true) => {
       const tab = tabs.find((t) => t.key === tabKey)
       if (!tab) return
       const layout = removeLeaf(tab.layout, paneKey)
       if (!layout) {
-        closeTab(tabKey)
+        closeTab(tabKey, remember)
         return
       }
+      if (remember) rememberClosed(tab, [paneKey])
       releasePane(paneKey)
       const nextActive = tab.activePane === paneKey ? (neighborLeaf(tab.layout, paneKey) ?? leafIds(layout)[0]!) : tab.activePane
       setTabs((prev) => prev.map((t) => (t.key === tabKey ? { ...t, layout, activePane: nextActive } : t)))
@@ -435,7 +515,7 @@ export function TerminalPane({
         return next
       })
     },
-    [tabs, closeTab, releasePane]
+    [tabs, closeTab, releasePane, rememberClosed]
   )
 
   /** 区画の右クリックのメニュー（右に分割・下に分割・区画を閉じる） */
@@ -512,7 +592,8 @@ export function TerminalPane({
     const offNotice = window.ade.on('failover:notice', (notice) => {
       if (notice.fromTerminalId && notice.toTerminalId) {
         const from = paneOf(notice.fromTerminalId)
-        if (from) closePaneRef.current(from.tab.key, from.paneKey)
+        // 引き継いだ古いタブは、閉じたタブとして覚えない（開き直すと上限の Agent に戻ってしまう）
+        if (from) closePaneRef.current(from.tab.key, from.paneKey, false)
       }
       if (notice.toTerminalId) window.dispatchEvent(new CustomEvent(FOCUS_TERMINAL_EVENT, { detail: { id: notice.toTerminalId } }))
     })
@@ -603,13 +684,39 @@ export function TerminalPane({
   // 戻す先の無いもの（登録を外したプロジェクトのものなど）だけを閉じる
   useEffect(() => {
     let stopped = false
+    // アプリを起動し直したとき（生きているターミナルが無いとき）は、前に終了したときのタブを戻す（@shared/terminalRestore）。
+    // タブ・分割の形・作業フォルダ・Agent とアカウントはそのまま、前の画面の文字を書いてから新しい PTY を作る。
+    // Agent は会話を続けて起動する（同じ Agent・フォルダ・アカウントのタブが複数あれば最初の1つだけ）
+    const restoreSavedSession = async () => {
+      const saved = await window.ade.invoke('terminal:restoreTake').catch((err: unknown) => {
+        reportHandled(err, { area: 'terminal', op: 'take terminal restore' })
+        return null
+      })
+      if (stopped || !saved || saved.tabs.length === 0) return
+      const mapped = remapRestoreKeys(saved, (kind) => (kind === 'tab' ? `tab${++tabSeq}` : `pane${++paneSeq}`))
+      const paneByKey = new Map(mapped.panes.map((pane) => [pane.key, pane]))
+      const resume = panesToResume(mapped.tabs.flatMap((tab) => leafIds(tab.layout)).flatMap((key) => paneByKey.get(key) ?? []))
+      const banner = tNow('terminal.restoredSeparator', { time: formatRestoreTime(saved.savedAt) })
+      setPanes((prev) => ({
+        ...prev,
+        ...Object.fromEntries(mapped.panes.map((pane): [string, Pane] => [pane.key, paneFromRestore(pane, banner, resume.has(pane.key))]))
+      }))
+      setTabs((prev) => [...prev, ...mapped.tabs])
+      setActiveByProject((prev) => ({ ...mapped.activeByProject, ...prev }))
+      // 戻したタブのあるプロジェクトは、もう自動でタブを作らない
+      for (const tab of mapped.tabs) seededRef.current.add(tab.projectId ?? '')
+    }
     void (async () => {
       try {
         const [live, projectsState] = await Promise.all([
           window.ade.invoke('terminal:list'),
           window.ade.invoke('project:list')
         ])
-        if (stopped || live.length === 0) return
+        if (stopped) return
+        if (live.length === 0) {
+          await restoreSavedSession()
+          return
+        }
         const snapshot = parseTerminalSnapshot(readSnapshot())
         tabSeq = Math.max(tabSeq, maxKeySeq(snapshot?.tabs.map((tab) => tab.key) ?? [], 'tab'))
         paneSeq = Math.max(paneSeq, maxKeySeq(snapshot?.panes.map((pane) => pane.key) ?? [], 'pane'))
@@ -670,6 +777,92 @@ export function TerminalPane({
     )
   }, [tabs, panes, activeByProject, restored])
 
+  // 終了・閉じたあとに戻すため、タブと画面の文字を main へ送る（main が userData に書く。設定の agents.restoreTerminals）。
+  // 画面の文字は、書き足されたペインだけ取り出し直す。終了の直前には main が terminal:restoreCollect で最後の分を頼む
+  const activeByProjectRef = useRef(activeByProject)
+  activeByProjectRef.current = activeByProject
+  const restoredRef = useRef(restored)
+  restoredRef.current = restored
+  const scrollbackCacheRef = useRef(new Map<string, { seq: number; text: string }>())
+  const lastRestoreRef = useRef('')
+  const buildRestoreSnapshot = useCallback((): TerminalRestoreSnapshot => {
+    const current = panesRef.current
+    const restoreTabs: RestoreTab[] = []
+    for (const tab of tabsRef.current) {
+      let layout: PaneNode | null = tab.layout
+      for (const key of leafIds(tab.layout)) {
+        const pane = current[key]
+        if (layout && (!pane || !isRestorable(pane))) layout = removeLeaf(layout, key)
+      }
+      if (!layout) continue
+      const remaining = leafIds(layout)
+      restoreTabs.push({ key: tab.key, projectId: tab.projectId, layout, activePane: remaining.includes(tab.activePane) ? tab.activePane : remaining[0]! })
+    }
+    const keys = restoreTabs.flatMap((tab) => leafIds(tab.layout))
+    const cache = scrollbackCacheRef.current
+    for (const key of [...cache.keys()]) if (!keys.includes(key)) cache.delete(key)
+    const restorePanes = keys.map((key) => {
+      const handle = getTerminal(key)
+      let entry = cache.get(key)
+      if (handle && entry?.seq !== handle.outputSeq) {
+        entry = { seq: handle.outputSeq, text: handle.scrollbackText() }
+        cache.set(key, entry)
+      }
+      return toRestorePane(current[key]!, entry?.text ?? current[key]!.savedScrollback ?? '')
+    })
+    const tabKeys = new Set(restoreTabs.map((tab) => tab.key))
+    const active = Object.fromEntries(Object.entries(activeByProjectRef.current).filter(([, key]) => key !== null && tabKeys.has(key)))
+    return { tabs: restoreTabs, panes: restorePanes, activeByProject: active, savedAt: Date.now() }
+  }, [])
+  const pushRestore = useCallback((force: boolean) => {
+    if (!restoredRef.current || !restoreRef.current) return
+    const signature = JSON.stringify([
+      tabsRef.current.map((tab) => [tab.key, tab.projectId, tab.layout, tab.activePane]),
+      activeByProjectRef.current,
+      Object.values(panesRef.current).map((pane) => [pane.key, pane.title, pane.accountId ?? null, getTerminal(pane.key)?.outputSeq ?? -1])
+    ])
+    if (!force && signature === lastRestoreRef.current) return
+    lastRestoreRef.current = signature
+    void window.ade.invoke('terminal:restoreSave', buildRestoreSnapshot())
+      .catch((err: unknown) => reportHandled(err, { area: 'terminal', op: 'save terminal restore' }))
+  }, [buildRestoreSnapshot])
+  useEffect(() => {
+    const timer = setInterval(() => pushRestore(false), RESTORE_PUSH_MS)
+    return () => clearInterval(timer)
+  }, [pushRestore])
+  useEffect(() => window.ade.on('terminal:restoreCollect', () => pushRestore(true)), [pushRestore])
+  // タブを開いた・閉じた・並べ替えたときは少し待ってから送る
+  useEffect(() => {
+    if (!restored) return
+    const timer = setTimeout(() => pushRestore(false), 1000)
+    return () => clearTimeout(timer)
+  }, [tabs, activeByProject, restored, pushRestore])
+
+  /**
+   * 最後に閉じたターミナル（表示中のプロジェクトのもの）を開き直す。前の画面の文字を書き、Agent は会話を続けて起動する。
+   * 同じ Agent・フォルダ・アカウントのタブがもう開いていれば、会話は続けずに新しく起動する（同じ会話を2か所で続けない）
+   */
+  const reopenClosed = useCallback(async () => {
+    const entry = await window.ade.invoke('terminal:closedPop', projectId).catch((err: unknown) => {
+      reportHandled(err, { area: 'terminal', op: 'reopen closed terminal' })
+      return null
+    })
+    if (!entry) return
+    const mapped = remapRestoreKeys({ tabs: [entry.tab], panes: entry.panes }, (kind) => (kind === 'tab' ? `tab${++tabSeq}` : `pane${++paneSeq}`))
+    const tab = mapped.tabs[0]
+    if (!tab) return
+    const paneByKey = new Map(mapped.panes.map((pane) => [pane.key, pane]))
+    const live = Object.values(panesRef.current).map((pane) => ({ launch: pane.launch, cwd: pane.cwd, accountId: pane.accountId ?? null }))
+    const resume = panesToResume(leafIds(tab.layout).flatMap((key) => paneByKey.get(key) ?? []), live)
+    const banner = tNow('terminal.reopenedSeparator', { time: formatRestoreTime(entry.closedAt) })
+    setPanes((prev) => ({
+      ...prev,
+      ...Object.fromEntries(mapped.panes.map((pane): [string, Pane] => [pane.key, paneFromRestore(pane, banner, resume.has(pane.key))]))
+    }))
+    setTabs((prev) => [...prev, { ...tab, projectId }])
+    setActiveKey(tab.key)
+  }, [projectId, setActiveKey])
+
   // ペインごとに xterm を開き、PTYを結びつける。
   // 非表示のペイン（裏のタブ・プロジェクトを含む）もすぐPTYを作る。寸法が測れなければ 80x24 で作り、表示時に合わせる
   useEffect(() => {
@@ -680,6 +873,8 @@ export function TerminalPane({
       handle.open(node)
       if (handle.ptyId !== null || spawnedRef.current.has(pane.key)) continue
       spawnedRef.current.add(pane.key)
+      // 戻したタブ: 前の画面の文字と区切りの行を先に書く
+      if (pane.restoreText) handle.restoreScreen(pane.restoreText)
       const measurable = node.offsetWidth > 0 && node.offsetHeight > 0
       const size = (measurable ? handle.fit() : null) ?? FALLBACK_SIZE
       void window.ade
@@ -691,7 +886,10 @@ export function TerminalPane({
           command: pane.command ?? null,
           title: pane.customTitle ?? null,
           autoStart: pane.autoStart === true,
-          failoverToken: pane.failoverToken ?? null
+          failoverToken: pane.failoverToken ?? null,
+          // 戻したタブ: 前の会話を続け、前と同じアカウントで開く
+          ...(pane.resume ? { resume: true } : {}),
+          ...(pane.accountId !== undefined ? { accountId: pane.accountId } : {})
         })
         .then((info) => {
           // 作っている間にペインを閉じたら、できたPTYもすぐ閉じる
@@ -703,7 +901,9 @@ export function TerminalPane({
           if (pane.key === focusedPaneRef.current) onActiveTerminal?.(info.id)
           fitPane(pane.key)
           setPanes((prev) =>
-            prev[pane.key] ? { ...prev, [pane.key]: { ...prev[pane.key]!, title: info.title } } : prev
+            prev[pane.key]
+              ? { ...prev, [pane.key]: { ...prev[pane.key]!, title: info.title, accountId: info.accountId ?? null, restoreText: null, savedScrollback: null } }
+              : prev
           )
           onReady?.()
         })
@@ -841,12 +1041,14 @@ export function TerminalPane({
         const focused = sectionRef.current?.contains(document.activeElement) ?? false
         if (!focused && !window.dispatchEvent(new CustomEvent(CLOSE_REQUEST_EVENT, { cancelable: true }))) return
         if (activeTab && confirmCloseRunning([activeTab.activePane])) closePane(activeTab.key, activeTab.activePane)
-      }
+      },
+      // メニューの「閉じたターミナルを開き直す」
+      reopen: () => void reopenClosed()
     }
     return () => {
       commandRef.current = null
     }
-  }, [commandRef, addTab, closePane, activeTab, confirmCloseRunning])
+  }, [commandRef, addTab, closePane, activeTab, confirmCloseRunning, reopenClosed])
 
   // アンマウント時（＝アプリ終了）にPTYを残さない
   useEffect(
@@ -860,6 +1062,13 @@ export function TerminalPane({
 
   // xterm に届く前に拾い、シェルへは送らない
   const onKeyDownCapture = (event: React.KeyboardEvent) => {
+    // ⌘⇧T（Windows・Linux は Ctrl+Shift+T）最後に閉じたターミナルを開き直す
+    if (isReopenTerminalKey(event, window.ade.platform)) {
+      event.preventDefault()
+      event.stopPropagation()
+      void reopenClosed()
+      return
+    }
     const direction = splitDirectionForKey(event)
     if (!direction || !activeTab) return
     event.preventDefault()
@@ -1265,9 +1474,16 @@ export function TerminalPane({
               </>
             }
             hints={
-              <span className="hint">
-                <kbd className="kbd">{SHORTCUTS.newTerminal()}</kbd>{t('terminal.newTab')}
-              </span>
+              <>
+                <span className="hint">
+                  <kbd className="kbd">{SHORTCUTS.newTerminal()}</kbd>{t('terminal.newTab')}
+                </span>
+                {restore && (
+                  <span className="hint">
+                    <kbd className="kbd">{reopenShortcut()}</kbd>{t('terminal.reopenClosed')}
+                  </span>
+                )}
+              </>
             }
           />
         )}

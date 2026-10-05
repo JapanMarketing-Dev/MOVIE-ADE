@@ -49,6 +49,13 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   </tbody>
 </table>
 
+<!-- @restore d051d24e56 -->
+## 重新啟動後還原終端機
+<p>Ferret 結束時，會記住每個專案的終端機分頁：順序與分割、每個分頁開啟時的資料夾、執行的 Agent 與帳號，以及每個畫面最多 2,000 行文字。下次啟動 Ferret 時，分頁會依相同順序還原。先顯示先前的文字，接著是一行淡色的 <code>— 接續上次（2026-10-05 14:30）—</code>，然後在同一資料夾啟動新的 shell。</p>
+<p>Agent 分頁會接續先前的對話啟動：Claude Code 使用 <code>--continue</code>，Codex 使用 <code>resume --last</code>，接續該資料夾中最近的一次對話。若多個分頁在同一資料夾、以同一帳號執行同一個 Agent，只有第一個會接續對話，其餘重新開始，因此不會有兩個分頁接續同一個對話。若該資料夾中沒有 Claude Code 的對話，或專案位於 SSH 主機上，則正常啟動。</p>
+<p><strong>重新開啟已關閉的終端機。</strong><span class="docs-ui">終端機 → 重新開啟已關閉的終端機</span>（終端機有焦點時按 {{keys:Mod+Shift+T}}）會還原你在此專案中最後關閉的分頁或窗格及其文字，並以相同方式接續其 Agent 的對話。最多保留最近關閉的 10 個終端機，重新啟動後也會保留。</p>
+<p>歷史只以不含顏色的純文字儲存在 Ferret 的資料資料夾中（<code>terminal-restore.json</code>，只有你本人可讀），不會寫入專案。從 <span class="docs-ui">新增帳號</span> 開啟的登入分頁與一次性指令不會保留。若要停止儲存，請關閉 <span class="docs-ui">設定 → Agent → 儲存終端機歷史並還原</span>，已儲存的內容也會刪除。旁邊的 <span class="docs-ui">刪除已儲存的歷史</span> 可隨時刪除。</p>
+
 <!-- @supported 69600dc42f -->
 ## 支援的 Agent
 <p>Ferret 不綁定特定 Agent。它能辨識下列程式設計 Agent：可以啟動它們、在終端機中偵測它們以使用 <span class="docs-ui">傳送給 Agent</span>，並顯示是否已安裝。<span class="docs-ui">設定 → Agent</span> 會列出它們並標示 <span class="docs-ui">已安裝</span> / <span class="docs-ui">找不到</span>；若供應商有提供一行安裝指令，會顯示 <span class="docs-ui">安裝</span> 按鈕，並列出每個 Agent 的指令與參數。</p>

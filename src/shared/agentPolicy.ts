@@ -10,6 +10,7 @@ import {
 } from './agentCatalog'
 import { tokenizeStartupWords, type AgentStartupShell, type StartupWord } from './agentLaunch'
 import { t } from './i18n'
+import { resumeArgs } from './terminalRestore'
 
 /**
  * 組み込みの Agent を起動するときの決まり（security-3 [1]・security-5 [2]）。main の terminal.ts とアカウントのログインが使う。
@@ -28,7 +29,8 @@ import { t } from './i18n'
 export type AgentLaunchRefusal = 'no-command' | 'bad-quote' | 'flag-in-command' | 'disguised-flag'
 
 export type AgentLaunchPolicy =
-  | { ok: true; argv: string[]; trustFolder: boolean }
+  /** resumed: 会話を続ける引数を足した（resume を頼んだときだけ付く） */
+  | { ok: true; argv: string[]; trustFolder: boolean; resumed?: true }
   | { ok: false; reason: AgentLaunchRefusal; error: string }
 
 type MatchKind = 'bypass' | 'trust' | 'mode'
@@ -144,6 +146,8 @@ export function resolveAgentLaunchPolicy(input: {
   skipPermissions: boolean
   /** 起動するシェル（Windows のシェルではバックスラッシュをパスの区切りとして読む） */
   shell: AgentStartupShell
+  /** 前の会話を続けて起動する（ターミナルを戻したとき。@shared/terminalRestore の resumeArgs）。続けられなければ普通に起動する */
+  resume?: boolean
 }): AgentLaunchPolicy {
   const { agent } = input
   const command = canonicalLaunchCommand(agent, input.command, input.shell)
@@ -169,6 +173,8 @@ export function resolveAgentLaunchPolicy(input: {
   const yolo = skip && !choosesMode ? words(AGENT_CATALOG[agent].yoloArgs) : []
   const inProject = input.skipPermissions && input.projectId !== null
   const trust = inProject && !matches.some((match) => match.kind === 'trust') ? words(AGENT_CATALOG[agent].trustArgs ?? '') : []
-  const argv = [head!.value, ...tail.map((word) => word.value), ...trust, ...yolo, ...args.map((word) => word.value)]
-  return { ok: true, argv, trustFolder: skip && input.projectId !== null }
+  const rest = [...trust, ...yolo, ...args.map((word) => word.value)]
+  const resume = input.resume ? resumeArgs(agent, tail.map((word) => word.value), rest) : null
+  const argv = [head!.value, ...(resume?.lead ?? []), ...tail.map((word) => word.value), ...rest, ...(resume?.trail ?? [])]
+  return { ok: true, argv, trustFolder: skip && input.projectId !== null, ...(resume ? { resumed: true as const } : {}) }
 }

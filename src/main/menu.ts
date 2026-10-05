@@ -150,6 +150,16 @@ function buildMenu(handlers: Parameters<typeof installMenu>[0]): void {
           accelerator: 'CmdOrCtrl+W',
           click: () => handlers.onCommand('closeTerminal')
         },
+        // 最後に閉じたターミナルを、前の画面の文字と会話のまま開き直す。キーは分割と同じく、ターミナルにフォーカスが
+        // あるときだけ TerminalPane が拾う（内蔵ブラウザ・エディタの ⌘⇧T を奪わない）。メニューは表示とクリックだけ
+        isMac
+          ? { label: `${t('menu.reopenTerminal')} (⌘⇧T)`, click: () => handlers.onCommand('reopenTerminal') }
+          : {
+              label: t('menu.reopenTerminal'),
+              accelerator: 'Ctrl+Shift+T',
+              registerAccelerator: false,
+              click: () => handlers.onCommand('reopenTerminal')
+            },
         { type: 'separator' },
         // Orca と同じ割り当て（~/bench/orca/src/shared/keybindings/definitions-core-4.ts）。
         // macOS は ⌘D / ⌘⇧D、Windows / Linux は Ctrl+Shift+D / Alt+Shift+D。

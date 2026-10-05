@@ -264,7 +264,8 @@ export const SETTINGS_SCHEMA: JsonSchema = {
         disabledAgents: { type: 'array', description: 'Agents hidden from menus.', items: agentId },
         startupAgents: { type: 'array', description: 'Agent tabs opened automatically when a project opens, in order. Empty means one plain shell. They start with the same arguments as agents you open yourself.', items: agentId },
         skipPermissions: bool(`Start Claude Code with ${AGENT_CATALOG.claude.yoloArgs} and Codex with ${AGENT_CATALOG.codex.yoloArgs}, added before your launch args, and mark registered project folders as trusted for both. Not added when your args already choose a permission mode. Turn off to start them in their normal mode.`, { default: true }),
-        notify: bool('Show a system notification when all agents in a project have finished, or when an agent is waiting for a permission or an answer. Nothing is shown for the tab you are looking at. Clicking the notification opens that tab.', { default: false })
+        notify: bool('Show a system notification when all agents in a project have finished, or when an agent is waiting for a permission or an answer. Nothing is shown for the tab you are looking at. Clicking the notification opens that tab.', { default: false }),
+        restoreTerminals: bool('Remember terminal tabs (order, split, folder, agent and account) and the text on their screens, and bring them back when Ferret starts again and when you reopen a closed terminal (Cmd/Ctrl+Shift+T). Claude Code reopens with --continue and Codex with resume --last. Up to 2,000 lines per terminal are kept in Ferret\'s own data folder, never in the project. Turning this off deletes what was saved.', { default: true })
       }
     },
     agentAccounts: {

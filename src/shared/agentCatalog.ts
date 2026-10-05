@@ -582,7 +582,8 @@ export const DEFAULT_AGENT_PREFERENCES: AgentPreferences = {
   disabledAgents: [],
   startupAgents: ['claude', 'codex'],
   skipPermissions: true,
-  notify: false
+  notify: false,
+  restoreTerminals: true
 }
 
 // ───────────────────────── 権限確認を省く引数 ─────────────────────────
@@ -873,6 +874,7 @@ export function sanitizeAgentPreferences(raw: unknown): AgentPreferences {
     disabledAgents,
     startupAgents: list(r.startupAgents, DEFAULT_AGENT_PREFERENCES.startupAgents).filter(launchable),
     skipPermissions,
-    notify: typeof r.notify === 'boolean' ? r.notify : DEFAULT_AGENT_PREFERENCES.notify
+    notify: typeof r.notify === 'boolean' ? r.notify : DEFAULT_AGENT_PREFERENCES.notify,
+    restoreTerminals: typeof r.restoreTerminals === 'boolean' ? r.restoreTerminals : DEFAULT_AGENT_PREFERENCES.restoreTerminals
   }
 }

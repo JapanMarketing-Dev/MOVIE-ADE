@@ -238,6 +238,27 @@ export function resolveAgentEnv(agent: TuiAgent): Record<string, string> {
   return resolveAgentEnvFrom({ agent, accounts: currentSettings().agentAccounts, userDataDir: userDataDir() })
 }
 
+/**
+ * タブを開くアカウント。requested が undefined なら今選んでいるもの、null ならシステムの既定。
+ * 消したアカウントを指していれば今選んでいるもの（ターミナルを戻したとき、前と同じアカウントで開くため）。
+ * アカウントを切り替えられない Agent では undefined
+ */
+export function tabAccountId(agent: TuiAgent, requested: string | null | undefined): string | null | undefined {
+  if (!isAccountAgent(agent)) return undefined
+  const list = currentSettings().agentAccounts?.[agent]
+  const known = (id: string | null | undefined): id is string => typeof id === 'string' && Boolean(list?.accounts.some((account) => account.id === id))
+  const active = known(list?.activeAccountId) ? list!.activeAccountId : null
+  if (requested === undefined) return active
+  if (requested === null) return null
+  return known(requested) ? requested : active
+}
+
+/** tabAccountId で決めたアカウントの環境変数（CLAUDE_CONFIG_DIR / CODEX_HOME）。null はシステムの既定アカウント */
+export function resolveAgentEnvForAccount(agent: TuiAgent, accountId: string | null | undefined): Record<string, string> {
+  if (!isAccountAgent(agent) || accountId === undefined) return resolveAgentEnv(agent)
+  return resolveAgentEnvFrom({ agent, accounts: currentSettings().agentAccounts, userDataDir: userDataDir(), accountId })
+}
+
 /** ログイン用のコマンド（Orca の runClaudeLoginSession / runCodexLoginSession と同じサブコマンド） */
 const LOGIN_ARGS: Record<AccountAgent, string> = {
   claude: 'auth login --claudeai',
