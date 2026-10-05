@@ -28,7 +28,7 @@
   <meta property="og:title" content="रिकॉर्डिंग · Ferret दस्तावेज़">
   <meta property="og:description" content="बिल्ट-इन ब्राउज़र, पूरी स्क्रीन, कोई दूसरी विंडो, desktop app, game या phone simulator रिकॉर्ड करें। पेज इस्तेमाल करते हुए बोलें, घेरें और टाइप करें।">
   <meta property="og:url" content="https://ferretade.dev/docs/hi/recording">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="hi_IN">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="रिकॉर्डिंग · Ferret दस्तावेज़">
   <meta name="twitter:description" content="बिल्ट-इन ब्राउज़र, पूरी स्क्रीन, कोई दूसरी विंडो, desktop app, game या phone simulator रिकॉर्ड करें। पेज इस्तेमाल करते हुए बोलें, घेरें और टाइप करें।">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -187,6 +187,24 @@
 <p>Review target का <span class="docs-ui">रिकॉर्ड करने वाली विंडो</span> विंडो के title के साथ app के नाम से भी मिलान करता है, इसलिए <code>Simulator</code> से iOS Simulator की विंडो चुनी जाती है, चाहे उसमें कोई भी device दिख रहा हो।</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="extensions">
+        <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="ब्राउज़र एक्सटेंशन का लिंक">#</a>ब्राउज़र एक्सटेंशन</h2>
+        <p><span class="docs-ui">Settings → ब्राउज़र एक्सटेंशन</span> में बिल्ट-इन ब्राउज़र में Chrome एक्सटेंशन जोड़ें: <code>manifest.json</code> वाले फ़ोल्डर के लिए <span class="docs-ui">अनपैक्ड फ़ोल्डर जोड़ें…</span>, या Chrome, Edge, Brave या Chromium में पहले से इंस्टॉल एक्सटेंशन कॉपी करने के लिए <span class="docs-ui">Chrome से आयात करें…</span>। एक्सटेंशन सिर्फ़ बिल्ट-इन ब्राउज़र में चलते हैं, Ferret की अपनी विंडो में कभी नहीं। वे वहाँ खोले गए हर पेज को पढ़ और बदल सकते हैं और उसके साइन-इन का उपयोग कर सकते हैं, इसलिए सिर्फ़ भरोसेमंद एक्सटेंशन जोड़ें।</p>
+<p>ब्राउज़र टूलबार या फ़ीडबैक टूलबार में <span class="docs-ui">एक्सटेंशन</span> से किसी एक्सटेंशन का पॉपअप खोलें। यह पेज के ऊपर दाईं ओर खुलता है और कहीं और क्लिक करने या <kbd>Esc</kbd> दबाने पर बंद हो जाता है। जब आप <span class="docs-ui">बिल्ट-इन Browser</span> रिकॉर्ड करते हैं, तो एक्सटेंशन द्वारा पेज के अंदर किए गए बदलाव और खुला पॉपअप, दोनों वीडियो और इमेज में आते हैं। Electron एक्सटेंशन API का सिर्फ़ एक हिस्सा सपोर्ट करता है: साइड पैनल, कॉन्टेक्स्ट मेन्यू, सूचनाएँ, कीबोर्ड शॉर्टकट और एक्सटेंशन द्वारा खोले गए टैब या विंडो काम नहीं करते, और पैक की गई <code>.crx</code> फ़ाइलें लोड नहीं की जा सकतीं।</p>
+<p>पॉपअप पर भी निशान लगाए जा सकते हैं। रिकॉर्डिंग के दौरान टूलबार पर क्लिक करने से एक्सटेंशन का पॉपअप बंद नहीं होता। पेन या बॉक्स चुना होने पर, या <span class="docs-ui">लिखकर फ़ीडबैक</span> चालू होने पर, पेज पर क्लिक करने से भी वह बंद नहीं होता, और <kbd>Esc</kbd> उसे बंद करने के बजाय टूल बंद कर देता है। पॉपअप के अंदर बनाएँ: निशान पॉपअप की जगह पर वीडियो और इमेज में आते हैं। यह रिकॉर्डिंग या <span class="docs-ui">लिखकर फ़ीडबैक</span> शुरू होने के बाद खुले पॉपअप पर काम करता है। कोई पेज अपनी अलग विंडो में जो साइन-इन पॉपअप खोलता है (जैसे Google से साइन इन करें), वह खुला रहने तक अलग वीडियो के रूप में रिकॉर्ड होता है। जब वह सामने आता है, तो पेन और बॉक्स उसी में बनाते हैं; पेज पर क्लिक करने से वापस आ जाते हैं। साइन इन के बाद वह पहले की तरह अपने-आप बंद हो जाता है।</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="multi">
+        <h2 id="multi"><a class="docs-anchor" href="#multi" aria-label="कई विंडो एक साथ रिकॉर्ड करें का लिंक">#</a>कई विंडो एक साथ रिकॉर्ड करें</h2>
+        <p>एक रिकॉर्डिंग में एक साथ अधिकतम चार व्यू कैप्चर हो सकते हैं: बिल्ट-इन ब्राउज़र, डेस्कटॉप ऐप की विंडो और स्क्रीन। रिकॉर्डिंग रुकने तक हर एक अपने अलग वीडियो में रिकॉर्ड होता है, इसलिए उनके बीच आने-जाने वाला फ़्लो, जैसे वेब ऐप से डेस्कटॉप ऐप खुलना और फिर वापस आना, शुरू से अंत तक कैप्चर हो जाता है।</p>
+<ol class="docs-steps">
+  <li>रिकॉर्डिंग के दौरान रिकॉर्डिंग बार में <span class="docs-ui">+</span> (<span class="docs-ui">एक और विंडो साथ में रिकॉर्ड करें</span>) पर क्लिक करें और कोई विंडो, स्क्रीन या बिल्ट-इन ब्राउज़र चुनें। <span class="docs-ui">Review targets</span> पैनल में विंडो वाले target पर क्लिक करने से भी यही होता है।</li>
+  <li>दिखाया जाने वाला व्यू बदलने के लिए रिकॉर्डिंग बार की किसी चिप पर क्लिक करें। पेन और findings की इमेज दिखाए जा रहे व्यू के साथ चलती हैं; बाकी व्यू बैकग्राउंड में अधिकतम 5 फ़्रेम प्रति सेकंड पर रिकॉर्ड होते रहते हैं।</li>
+</ol>
+<p>जो विंडो अभी खुली नहीं है, उसका इंतज़ार भी किया जा सकता है। <span class="docs-ui">प्रोजेक्ट संपादित करें…</span> में किसी target को <span class="docs-ui">रिकॉर्ड करने वाली विंडो</span> दें (ऐप का नाम, विंडो के शीर्षक का हिस्सा, <code>com.example.MyApp</code> जैसा macOS bundle id, या ऐप का पाथ) और <span class="docs-ui">रिकॉर्डिंग के दौरान खुले तो</span> को <span class="docs-ui">साथ में रिकॉर्ड करें</span> या <span class="docs-ui">रिकॉर्ड करें और उस पर जाएँ</span> पर सेट करें। <code>settings.json</code> में यह <code>"watch": "record"</code> या <code>"watch": "switch"</code> है। रिकॉर्डिंग के दौरान Ferret हर सेकंड विंडो की सूची देखता है। विंडो खुलने तक target एक डैश वाली चिप के रूप में दिखता है, और ऐप बंद होकर फिर खुलने पर उसे दोबारा रिकॉर्ड किया जाता है।</p>
+<p>हर स्विच ऐक्शन लॉग में लिखा जाता है, इसलिए हर finding को पता होता है कि वह किस व्यू के बारे में थी। ऐप विंडो दिखते समय बनी findings में URL या एलिमेंट की जानकारी नहीं होती, वे <span class="docs-ui">Findings</span> और <code>feedback.md</code> में उस विंडो के नीचे समूह में रहती हैं, और एजेंट को बताया जाता है कि वह एक ऐप विंडो थी। अतिरिक्त वीडियो रिव्यू फ़ोल्डर में <code>tracks/</code> के अंदर सहेजे जाते हैं, और उनके शुरू व खत्म होने का समय <code>tracks.jsonl</code> में। Windows और Linux पर सिर्फ़ विंडो के शीर्षक पता होते हैं, इसलिए नाम को शीर्षक से मिलाया जाता है। Linux पर Wayland में विंडो का इंतज़ार उपलब्ध नहीं है, क्योंकि वहाँ हर बार विंडो की सूची लेने पर एक विंडो चुनने को कहा जाता है; इसके बजाय विंडो खुलने के बाद उसे <span class="docs-ui">+</span> से जोड़ें।</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="record">
         <h2 id="record"><a class="docs-anchor" href="#record" aria-label="शुरू करें, विराम दें, रोकें का लिंक">#</a>शुरू करें, विराम दें, रोकें</h2>
         <figure class="docs-clip" data-clip="record">
@@ -245,6 +263,11 @@
 <p>अगर ट्रांसक्रिप्शन विफल हो, कोई मॉडल या कुंजी सेट न हो, लगभग 2 मिनट की आवाज़ से कोई टेक्स्ट न बने, या माइक्रोफ़ोन तक कोई आवाज़ न पहुँचे, तो टैब बंद होने पर भी Ferret एक बार चेतावनी देता है और दाएँ पैनल के बटन पर निशान लगाता है। रिकॉर्डिंग जारी रहती है और ऑडियो रखा जाता है। टैब छिपाने के लिए <span class="docs-ui">Settings → ट्रांसक्रिप्शन</span> में <span class="docs-ui">रिकॉर्डिंग के दौरान लाइव ट्रांसक्रिप्ट दिखाएँ (फ़ीडबैक मोड का दायाँ पैनल)</span> बंद करें। चेतावनियाँ फिर भी दिखती हैं।</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="feedback-terminal">
+        <h2 id="feedback-terminal"><a class="docs-anchor" href="#feedback-terminal" aria-label="रिकॉर्ड करते हुए अपने एजेंट से बात करें का लिंक">#</a>रिकॉर्ड करते हुए अपने एजेंट से बात करें</h2>
+        <p>फ़ीडबैक मोड के दाएँ पैनल में <span class="docs-ui">Terminal</span> टैब भी है। यह नया shell नहीं, बल्कि Editor मोड वाला ही टर्मिनल है: वही टैब, वही चल रहे एजेंट (जैसे Claude Code या Codex) और उनका इतिहास। ऊपर से एक टैब चुनें और टाइप करें, जैसे एजेंट को बताने के लिए कि <code>localhost</code> चालू नहीं है। Editor मोड में लौटने पर टर्मिनल उसी स्थिति में दिखता है। बिल्ट-इन ब्राउज़र या किसी दूसरे ऐप की विंडो रिकॉर्ड करने पर टर्मिनल रिकॉर्डिंग में नहीं आता।</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="other-side">
         <h2 id="other-side"><a class="docs-anchor" href="#other-side" aria-label="मीटिंग में सामने वालों को भी रिकॉर्ड करें का लिंक">#</a>मीटिंग में सामने वालों को भी रिकॉर्ड करें</h2>
         <p>किसी call पर साथ मिलकर किसी पेज का review करने के लिए, Ferret को अपने माइक्रोफ़ोन के साथ-साथ वह भी रिकॉर्ड करने दें जो आप अपने कंप्यूटर से सुनते हैं। यह किसी भी मीटिंग ऐप (Zoom, Google Meet, Microsoft Teams और दूसरे) के साथ काम करता है, क्योंकि Ferret ऐप को नहीं, आपके कंप्यूटर के ऑडियो को रिकॉर्ड करता है। दोनों अलग रखे जाते हैं: आपके माइक्रोफ़ोन का ट्रांसक्रिप्शन <strong>मैं</strong> के रूप में और कंप्यूटर के ऑडियो का <strong>दूसरा</strong> के रूप में होता है, ताकि हर finding में दिखे कि किसने क्या माँगा। यह माइक्रोफ़ोन बंद होने पर भी काम करता है।</p>
@@ -293,12 +316,15 @@
       <ul>
         <li><a href="#target">क्या रिकॉर्ड करना है, चुनें</a></li>
         <li><a href="#desktop-mobile">Desktop apps, games और mobile apps</a></li>
+        <li><a href="#extensions">ब्राउज़र एक्सटेंशन</a></li>
+        <li><a href="#multi">कई विंडो एक साथ रिकॉर्ड करें</a></li>
         <li><a href="#record">शुरू करें, विराम दें, रोकें</a></li>
         <li><a href="#pen">पेन</a></li>
         <li><a href="#type">बोलने के बजाय लिखकर फ़ीडबैक दें</a></li>
         <li><a href="#annotations-clear">निशान कब गायब होते हैं</a></li>
         <li><a href="#mic">माइक्रोफ़ोन</a></li>
         <li><a href="#live-transcript">देखें कि क्या ट्रांसक्राइब हो रहा है</a></li>
+        <li><a href="#feedback-terminal">रिकॉर्ड करते हुए अपने एजेंट से बात करें</a></li>
         <li><a href="#other-side">मीटिंग में सामने वालों को भी रिकॉर्ड करें</a></li>
         <li><a href="#other-side-os">OS के हिसाब से सिस्टम ऑडियो</a></li>
         <li><a href="#other-side-tips">मीटिंग के लिए सुझाव</a></li>

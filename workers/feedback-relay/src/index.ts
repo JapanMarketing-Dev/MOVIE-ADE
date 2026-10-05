@@ -22,7 +22,9 @@ import { sanitizeImage, type SanitizedImage } from './images'
 import { askLimiter, limiterKey, sourceIdentity, FeedbackLimiter, type LimiterResult, type Window } from './limiter'
 import {
   ALLOWED_FIELDS,
+  APP_VERSION_PATTERN,
   ARCHES,
+  OS_RELEASE_PATTERN,
   DUPLICATE_WINDOW_MS,
   ERROR_STATUS,
   GLOBAL_LIMITS,
@@ -103,17 +105,23 @@ async function submit(request: Request, env: Env, deps: Deps): Promise<Response>
   // 尽きていれば断る（送り主を増やしても、送り主ごとの状態と work はこの枠の数を超えない。security-4 [8]）
   const preparse = await askLimiter(env, 'preparse', 'hit', PREPARSE_LIMITS, now)
   if (!preparse.allowed) return fail('rate_limited', { 'retry-after': String(preparse.retryAfterSec) })
+  /**
+   * 送り主の枠（試みの数・送信の数）で断るときは、必ずここを通して全体の前処理の予約を戻す（security-5 [10]・security-6 [4]）。
+   * 狭い枠で断った要求が全体の枠を減らすと、1つの送り主が全体の枠を使い切って、ほかの人の送信を止められる。
+   * 枝ごとに戻す処理を書くと戻し忘れる（ipPeek で戻していなかった）ので、送り主の枠の断りはこの1つの口にまとめる。
+   * 形の悪い送信（種類・大きさ・中身）は戻さない: 送り主ごとの limiter を作り、本文を読む・解く work をしたので、全体の枠で数える（security-4 [8]）
+   */
+  const refuseBySender = async (r: LimiterResult): Promise<Response> => {
+    await askLimiter(env, 'preparse', 'release', PREPARSE_LIMITS, now).catch(() => undefined)
+    return fail('rate_limited', { 'retry-after': String(r.retryAfterSec) })
+  }
   const ipKey = await limiterKey(env.RATE_LIMIT_SALT, 'ip', ip)
   // 試みの数（形の悪いもの・断ったものも数える）。Issue になった数の枠（ip・全体）とは別
   const attempt = await askLimiter(env, await limiterKey(env.RATE_LIMIT_SALT, 'attempt', ip), 'hit', ATTEMPT_LIMITS, now)
-  if (!attempt.allowed) {
-    // 送り主の枠で断ったものは、全体の前処理の予約を戻す（1つの送り主が全体の枠を使い切れない）
-    await askLimiter(env, 'preparse', 'release', PREPARSE_LIMITS, now).catch(() => undefined)
-    return fail('rate_limited', { 'retry-after': String(attempt.retryAfterSec) })
-  }
-  // 送信の枠を使い切った IP は、本文を読まずに断る（数えない）
+  if (!attempt.allowed) return refuseBySender(attempt)
+  // 送信の枠を使い切った IP は、本文を読まずに断る（数えない）。全体の前処理の予約も戻す（security-6 [4]）
   const ipPeek = await askLimiter(env, ipKey, 'peek', PER_SENDER_LIMITS, now)
-  if (!ipPeek.allowed) return fail('rate_limited', { 'retry-after': String(ipPeek.retryAfterSec) })
+  if (!ipPeek.allowed) return refuseBySender(ipPeek)
 
   const contentType = request.headers.get('content-type') ?? ''
   if (!/^multipart\/form-data;\s*boundary=/i.test(contentType)) return fail('unsupported_media_type')
@@ -256,10 +264,10 @@ export async function parseSubmission(form: FormData): Promise<Submission> {
   const osRelease = text('osRelease', 'invalid_meta', false)
   const installId = text('installId', 'invalid_meta', false)
   if (
-    !/^[0-9A-Za-z.+-]{1,32}$/.test(appVersion) ||
+    !APP_VERSION_PATTERN.test(appVersion) ||
     (platform !== undefined && !(PLATFORMS as readonly string[]).includes(platform)) ||
     (arch !== undefined && !(ARCHES as readonly string[]).includes(arch)) ||
-    (osRelease !== undefined && !/^[0-9A-Za-z._-]{1,64}$/.test(osRelease)) ||
+    (osRelease !== undefined && !OS_RELEASE_PATTERN.test(osRelease)) ||
     (installId !== undefined && !UUID_V4.test(installId))
   ) {
     throw new Rejection('invalid_meta')

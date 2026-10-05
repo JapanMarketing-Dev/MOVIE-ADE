@@ -2,24 +2,40 @@ import { delay } from '@shared/delay'
 import { ipcMain, type WebContents } from 'electron'
 import { appendFileNoFollow, mkdirContained } from '../sessions/containment'
 import { redactUrl } from '../pipeline/redact'
-import { dirname, join } from 'node:path'
-import { captureTargetGap, captureTargetLabel, resolveCaptureTarget } from '@shared/captureTarget'
+import { basename, dirname, join } from 'node:path'
+import { captureTargetGap, captureTargetLabel, resolveCaptureTarget, targetFromSource } from '@shared/captureTarget'
+import {
+  EXTRA_TRACK_BITS_PER_SECOND,
+  EXTRA_TRACK_MAX_FPS,
+  MAX_CAPTURE_TRACKS,
+  WATCH_POLL_MS,
+  nextTrackId,
+  planWatch,
+  trackLabel,
+  waitingWindows,
+  watchUnavailable,
+  type CaptureTracksState,
+  type WatchedWindow
+} from '@shared/captureTracks'
 import { RecordingClock } from './clock'
 import { isPageChange } from '@shared/page'
 import { DEFAULT_ANNOTATION_COLOR, type AnnotationColor } from '@shared/annotation'
+import { mapPopupBox, popupHost, popupReturnTrack, reviewSurfaceOf } from '@shared/popupAnnotation'
 import { RecorderWindow, type VideoSource } from './recorderWindow'
 import { listCaptureSources, screenAccess } from './sources'
 import { readDevice } from './devices'
-import { StillCapturer, mirrorStillSource, webContentsStillSource, type StillSource } from './stills'
+import { StillCapturer, mirrorStillSource, overlayStillSource, webContentsStillSource, type StillSource } from './stills'
 import {
   defaultRecordingOptions,
   type AudioLevel,
+  type BrowserOverlay,
   type PcmBlock,
   type RecordingHandlers,
   type RecordingOptions,
   type RecordingResult,
   type RecordingState,
-  type RecordingStatus
+  type RecordingStatus,
+  type TrackRecordInfo
 } from './types'
 import type { Event } from '../pipeline/types'
 import type { CaptureTarget } from '@shared/types'
@@ -84,13 +100,38 @@ export interface RecordingAssets {
  */
 export interface CaptureMirror {
   show(sourceId: string): Promise<WebContents | null>
+  /** 録画が終わった。録画の前の表示（選んだウインドウ・内蔵ブラウザ）へ戻す */
   hide(): void
+  /** 録画中に内蔵ブラウザのトラックへ切り替えた。録画が終わるまで、何も映さず内蔵ブラウザを見せる */
+  showBrowser?(): void
+}
+
+/**
+ * 1回の録画の映像1本（@shared/captureTracks）。main は録画を始めたときの対象で、音声も録る（this.recorder と同じ録画ウインドウ）。
+ * ほかは映像だけを tracks/<id>.webm へ録る
+ */
+interface Track {
+  id: string
+  target: CaptureTarget
+  label: string
+  video: VideoSource
+  recorder: RecorderWindow
+  /** レビューのフォルダからの相対パス */
+  videoRel: string
+  startMs: number
+  endMs?: number
+  watchId?: string
+  live: boolean
+  /** ログインのポップアップ（内蔵ブラウザが開いた子ウインドウ）の映像。書き込みはその窓の中で引く */
+  popup?: WebContents
 }
 
 export class RecordingController {
   private source: WebContents | null = null
   /** 画面・ウインドウの映像を映したビュー。録画中だけ。あれば書き込みはこちらで受ける */
   private mirrorContents: WebContents | null = null
+  /** 録画中に映すものを切り替えた（止めたときに、録画の前の表示へ戻す） */
+  private mirrorSwitched = false
   private mirror: CaptureMirror | null = null
   private clock: RecordingClock | null = null
   private recorder: RecorderWindow | null = null
@@ -122,6 +163,29 @@ export class RecordingController {
   /** ページが変わり、書き込みを片付けている途中の行き先URL */
   private pendingLeave: string | null = null
   private leaveTimer: NodeJS.Timeout | null = null
+  /** 録っている映像（main とあとから足したもの。閉じたものも録画の終わりまで残す） */
+  private tracks: Track[] = []
+  /** 画面に映して書き込んでいるトラック */
+  private activeTrackId = 'main'
+  /** トラックの追加・切り替え・閉じるを1つずつ行う */
+  private trackQueue: Promise<unknown> = Promise.resolve()
+  /** 待ち受けるウインドウ（プロジェクトの確認先の watch） */
+  private watched: WatchedWindow[] = []
+  private watchTimer: NodeJS.Timeout | null = null
+  private watchBusy = false
+  private watchProblem: CaptureTracksState['watchUnavailable'] | undefined
+  /** 待ち受けのウインドウを録れなかったと知らせた確認先（同じ失敗を1秒ごとに出さない） */
+  private readonly watchFailed = new Set<string>()
+  /** 内蔵ブラウザのページの大きさ（CSS px）。拡張機能のポップアップの書き込みの座標を直すのに使う */
+  private lastBrowserView?: { width: number; height: number }
+  /** 最後に書き込みを確定した面（ツールバーの元に戻す・やり直すはそこへ送る） */
+  private lastSurface: WebContents | null = null
+  /** 開いているログインのポップアップの中身と、開いたときの URL（トラックの名前に使う） */
+  private readonly popupWindows = new Map<WebContents, string>()
+  /** ログインのポップアップへ切り替える前に映していたトラック（ポップアップから戻るときに使う） */
+  private popupReturnTrackId: string | null = null
+  /** 前に出たら書き込みを戻す面に付けた focus の受け口（同じものに二重に付けない） */
+  private readonly focusWatched = new WeakSet<WebContents>()
 
   constructor(
     private readonly assets: RecordingAssets,
@@ -138,6 +202,8 @@ export class RecordingController {
     const wc = contents
 
     this.pageUrl = wc.getURL()
+    // ログインのポップアップで書き込んでいる間に内蔵ブラウザを押したら、書き込みを内蔵ブラウザへ戻す
+    this.watchFocusBack(wc)
 
     // 遷移のたびに注入スクリプトが読み直されるので、現在のモードを送り直す
     wc.on('did-finish-load', () => this.pushMode())
@@ -160,6 +226,62 @@ export class RecordingController {
   /** 画面・ウインドウを録るときに映像を映す先を結びつける */
   setMirror(mirror: CaptureMirror): void {
     this.mirror = mirror
+  }
+
+  /** 内蔵ブラウザのビューの上に重なっているもの（拡張機能のポップアップ）。録画していない間も覚えておき、録り始めたら重ねる */
+  private overlay: BrowserOverlay | null = null
+
+  /**
+   * 拡張機能のポップアップが開いた・動いた・閉じた（null）。
+   * 内蔵ブラウザを録っている間は、動画（録画ウインドウの合成）と静止画（overlayStillSource）の両方に重ねる
+   */
+  setBrowserOverlay(overlay: BrowserOverlay | null): void {
+    const before = this.overlay?.contents ?? null
+    this.overlay = overlay && !overlay.contents.isDestroyed() ? overlay : null
+    if (this.state !== 'idle' && this.options?.captureTarget.kind === 'browser') this.recorder?.setOverlay(this.overlay)
+    const now = this.overlay?.contents ?? null
+    if (now === before) return
+    if (this.lastSurface === before) this.lastSurface = null
+    // 新しく開いたポップアップ（注入スクリプトが入っていれば）にも、いまの道具を送る。
+    // 注入側の準備の知らせ（ready）は、ポップアップがここへ届くより先に来ることがあるので、ここでも送る
+    const surface = this.overlaySurface
+    if (surface) this.pushModeTo(surface)
+  }
+
+  /** いまの書き込みの道具 */
+  get annotationModeNow(): AnnotationMode {
+    return this.annotationMode
+  }
+
+  /**
+   * ログインのポップアップ（内蔵ブラウザが window.open で開いた子ウインドウ）を結びつける。
+   * 録画中は映像を1本足し（タブ録画。OS の画面収録の許可は要らない）、その窓が前に出たら映すもの（書き込む先）をそちらへ切り替える。
+   * 窓が閉じたらトラックを閉じ、前に映していたものへ戻す
+   */
+  attachPopupWindow(contents: WebContents, url: string): void {
+    if (contents.isDestroyed() || this.popupWindows.has(contents)) return
+    this.popupWindows.set(contents, url)
+    contents.on('focus', () => {
+      if (!this.capturing || contents.isDestroyed()) return
+      void this.serialTracks(() => this.addPopupTrackNow(contents, true)).catch((err: unknown) => reportHandled(err, { area: 'recording', op: 'switch to popup' }))
+    })
+    contents.once('destroyed', () => {
+      this.popupWindows.delete(contents)
+      const track = this.tracks.find((candidate) => candidate.popup === contents && candidate.live)
+      if (track) void this.closeTrack(track.id)
+    })
+    if (this.capturing) void this.serialTracks(() => this.addPopupTrackNow(contents, contents.isFocused())).catch((err: unknown) => reportHandled(err, { area: 'recording', op: 'add popup track' }))
+  }
+
+  /** 書き込みを受ける面が前に出たら（押された）、ログインのポップアップで書き込んでいたのをやめて、その面のトラックへ戻す */
+  private watchFocusBack(wc: WebContents): void {
+    if (this.focusWatched.has(wc)) return
+    this.focusWatched.add(wc)
+    wc.on('focus', () => {
+      if (!this.capturing || !this.activeTrack?.popup) return
+      const target = popupReturnTrack(this.popupReturnTrackId, this.tracks.filter((track) => track.live && !track.popup).map((track) => track.id))
+      void this.switchTrack(target).catch((err: unknown) => reportHandled(err, { area: 'recording', op: 'return from popup' }))
+    })
   }
 
   /**
@@ -210,31 +332,62 @@ export class RecordingController {
     if (this.boundReview) return
     this.boundReview = true
 
+    // 受けるのは、いま書き込みを受けている面（映しているトラック・その上の拡張機能のポップアップ）からだけ（reviewSurfaceOf）
     ipcMain.on(REVIEW_CHANNELS.ready, (event) => {
-      if (event.sender === this.reviewContents) this.pushMode()
+      if (this.surfaceOf(event.sender)) this.pushModeTo(event.sender)
     })
 
     ipcMain.on(REVIEW_CHANNELS.history, (event, history: unknown) => {
-      if (event.sender !== this.reviewContents || !this.admit('history')) return
+      if (!this.surfaceOf(event.sender) || !this.admit('history')) return
       const value = history as { canUndo?: unknown; canRedo?: unknown } | null
       this.handlers.onAnnotationHistory?.({ canUndo: value?.canUndo === true, canRedo: value?.canRedo === true })
     })
 
     ipcMain.on(REVIEW_CHANNELS.shortcut, (event, action: unknown) => {
-      if (event.sender !== this.reviewContents || this.state !== 'recording' || !this.admit('shortcut')) return
+      if (!this.surfaceOf(event.sender) || this.state !== 'recording' || !this.admit('shortcut')) return
       if (action === 'pen' || action === 'rect' || action === 'off' || action === 'color') this.handlers.onAnnotationShortcut?.(action)
     })
 
     ipcMain.on(REVIEW_CHANNELS.event, (event, raw: RawReviewEvent) => {
-      if (event.sender !== this.reviewContents) return
+      const surface = this.surfaceOf(event.sender)
+      if (!surface) return
+      if (surface === 'overlay') return this.recordOverlayInjected(event.sender, raw)
       // ページ移動に伴う確定が済んだ返事（onInPageNavigate）
       if (raw?.type === 'left') return void this.finishLeave()
       this.recordInjected(raw)
     })
   }
 
-  /** 書き込みを受けるビュー。画面・ウインドウを映しているならそちら、ほかは内蔵ブラウザ */
+  /** IPC の送り主が、いま書き込みを受けている面か（@shared/popupAnnotation の reviewSurfaceOf） */
+  private surfaceOf(sender: unknown): 'review' | 'overlay' | null {
+    return reviewSurfaceOf<unknown>(sender, { review: this.reviewContents, overlay: this.overlaySurface })
+  }
+
+  /**
+   * 内蔵ブラウザを映しているときの、その上の拡張機能のポップアップ。録画・静止画に同じ位置で重なるので、その中にも書き込める
+   * （注入スクリプトは録画中・文字で指摘の間に開いたポップアップにだけ入る。browserExtensions.ts）
+   */
+  private get overlaySurface(): WebContents | null {
+    const top = this.overlay?.contents
+    if (!top || top.isDestroyed()) return null
+    const review = this.reviewContents
+    return review && review === this.source ? top : null
+  }
+
+  /** いま書き込みを受けている面（映しているもの・その上の拡張機能のポップアップ） */
+  private get surfaces(): WebContents[] {
+    return [this.reviewContents, this.overlaySurface].filter((wc): wc is WebContents => !!wc)
+  }
+
+  /** いま書き込みを受けている面のすべてへ送る */
+  private sendAll(command: Record<string, unknown>): void {
+    for (const wc of this.surfaces) wc.send(REVIEW_CHANNELS.command, command)
+  }
+
+  /** 書き込みを受けるビュー。ログインのポップアップを映しているならその窓、画面・ウインドウを映しているならそちら、ほかは内蔵ブラウザ */
   private get reviewContents(): WebContents | null {
+    const popup = this.activeTrack?.popup
+    if (popup && !popup.isDestroyed()) return popup
     const mirror = this.mirrorContents
     if (mirror && !mirror.isDestroyed()) return mirror
     const wc = this.source
@@ -242,8 +395,11 @@ export class RecordingController {
   }
 
   private pushMode(): void {
-    const wc = this.reviewContents
-    if (!wc) return
+    for (const wc of this.surfaces) this.pushModeTo(wc)
+  }
+
+  private pushModeTo(wc: WebContents): void {
+    if (wc.isDestroyed()) return
     wc.send(REVIEW_CHANNELS.command, {
       type: 'config',
       maxHoldMs: this.options?.annotationMaxHoldMs ?? 30_000,
@@ -260,13 +416,13 @@ export class RecordingController {
   /** ペン／四角の枠／OFF の切り替え（PEN-2） */
   setAnnotationMode(mode: AnnotationMode): void {
     this.annotationMode = mode
-    this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'mode', mode })
+    this.sendAll({ type: 'mode', mode })
   }
 
   /** 書き込みの色。描いてあるものはそのままで、次に描くものから変わる */
   setAnnotationColor(color: AnnotationColor): void {
     this.annotationColor = color
-    this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'color', color })
+    this.sendAll({ type: 'color', color })
   }
 
   /**
@@ -283,16 +439,21 @@ export class RecordingController {
    */
   clearAnnotations(manual = false): void {
     // 手動の［消去］だけは「元に戻す」で画面に戻せる。発話の区切りでの消去は戻す手順も片付ける
-    this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'clear', ...(manual ? { manual: true } : {}) })
+    this.sendAll({ type: 'clear', ...(manual ? { manual: true } : {}) })
   }
 
-  /** 書き込みを一つ前に戻す・やり直す（描く・動かす・消去が1手） */
+  /** 書き込みを一つ前に戻す・やり直す（描く・動かす・消去が1手）。最後に書き込んだ面（拡張機能のポップアップのこともある）へ送る */
   undoAnnotation(): void {
-    this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'undo' })
+    this.undoTarget()?.send(REVIEW_CHANNELS.command, { type: 'undo' })
   }
 
   redoAnnotation(): void {
-    this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'redo' })
+    this.undoTarget()?.send(REVIEW_CHANNELS.command, { type: 'redo' })
+  }
+
+  private undoTarget(): WebContents | null {
+    const last = this.lastSurface
+    return last && !last.isDestroyed() && this.surfaces.includes(last) ? last : this.reviewContents
   }
 
   get status(): RecordingStatus {
@@ -320,6 +481,13 @@ export class RecordingController {
     this.annotationMode = 'off'
     this.lastStatus = null
     this.pendingLeave = null
+    this.tracks = []
+    this.activeTrackId = 'main'
+    this.popupReturnTrackId = null
+    this.lastSurface = null
+    this.lastBrowserView = undefined
+    this.watchFailed.clear()
+    this.watchProblem = undefined
 
     this.options = options
     // 画面全体・別のウインドウでは、内蔵ブラウザ専用の情報が欠けることを指摘に明記する
@@ -342,6 +510,7 @@ export class RecordingController {
     try {
       await this.recorder.open()
       await this.recorder.start(video, options, clock.startedAtEpoch)
+      if (video.kind === 'tab' && this.overlay) this.recorder.setOverlay(this.overlay)
     } catch (err) {
       this.recorder.dispose()
       this.recorder = null
@@ -352,14 +521,19 @@ export class RecordingController {
     }
 
     const recorder = this.recorder
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- 静止画の撮る元の getter から、いま映しているトラックを引く
+    const controller = this
+    this.tracks = [{ id: 'main', target: options.captureTarget, label: trackLabel(options.captureTarget), video, recorder,
+      videoRel: basename(options.paths.videoPath), startMs: 0, live: true }]
     if (video.kind === 'desktop') await this.openMirror(video.sourceId)
-    const stillSource: StillSource =
-      video.kind === 'tab'
-        ? webContentsStillSource(video.contents)
-        : mirrorStillSource(() => this.mirrorContents, { capture: () => recorder.grabFrame(), get gone() { return recorder.gone } })
+    // 静止画は、そのとき画面に映しているトラックから撮る（切り替えると撮る元も変わる）
+    const stillSource: StillSource = {
+      capture: () => this.activeStillSource().capture(),
+      get gone() { return controller.activeStillSource().gone }
+    }
     this.stills = new StillCapturer(stillSource, clock, options, {
       // カーソルの座標は内蔵ブラウザの中のものなので、画面・ウインドウの画像には重ねない
-      getCursor: () => (video.kind === 'tab' ? this.lastCursor : undefined),
+      getCursor: () => (this.activeTrack?.video.kind === 'tab' && !this.activeTrack.popup ? this.lastCursor : undefined),
       onFrame: (frame) => {
         this.eventWrites = this.eventWrites.then(() => appendFileNoFollow(join(dirname(options.paths.eventsPath), 'frames.jsonl'), JSON.stringify(frame) + '\n')).catch((err) => { reportHandled(err, { area: 'recording', op: 'save frame times' }); this.warn(t('recording.errors.frameTimesSaveFailed', { error: String(err) })) })
         this.handlers.onFrame?.(frame)
@@ -368,11 +542,22 @@ export class RecordingController {
     })
     this.stills.start()
 
+    // 最初に映しているもの（main）を記録する。切り替えたら足していく（指摘がどれの話かを引く）
+    const main = this.tracks[0]!
+    this.pushTrackEvent(main)
+    this.appendTrackLine({ op: 'open', id: main.id, t: 0, kind: main.target.kind, label: main.label, video: main.videoRel })
     this.pushMode()
     if (source) {
       this.pageUrl = source.getURL()
       this.recordNav(this.pageUrl)
     }
+    this.startWatch(options.watch ?? [])
+    // 録画の前から開いていたログインのポップアップも録る（前に出ているならそちらへ切り替える）
+    for (const contents of this.popupWindows.keys()) {
+      if (contents.isDestroyed()) continue
+      void this.serialTracks(() => this.addPopupTrackNow(contents, contents.isFocused())).catch((err: unknown) => reportHandled(err, { area: 'recording', op: 'add popup track' }))
+    }
+    this.emitTracks()
 
     this.limitWarningTimer = setTimeout(() => this.warn(t('recording.limitSoon')), Math.max(0, options.maxDurationMs - Math.min(300000, options.maxDurationMs / 10)))
     this.limitWarningTimer.unref?.()
@@ -400,11 +585,14 @@ export class RecordingController {
       reportHandled(err, { area: 'recording', op: 'show capture mirror' })
       return null
     })
+    if (this.mirrorContents) this.watchFocusBack(this.mirrorContents)
   }
 
   private closeMirror(): void {
-    if (!this.mirrorContents) return
+    // 録画中に内蔵ブラウザへ切り替えていた（映していない）ときも、録画の前の表示へ戻すよう知らせる
+    if (!this.mirrorContents && !this.mirrorSwitched) return
     this.mirrorContents = null
+    this.mirrorSwitched = false
     this.mirror?.hide()
     // 内蔵ブラウザの注入側へ、いまの状態（録画していないので無効）を送り直す
     this.pushMode()
@@ -449,16 +637,308 @@ export class RecordingController {
     return { ...resolved, device }
   }
 
-  /** 内蔵ブラウザを録っているか。画面・ウインドウのときは内蔵ブラウザの操作ログを取らない */
+  /** 内蔵ブラウザを映しているか。画面・ウインドウのときは内蔵ブラウザの操作ログを取らない */
   private get recordsBrowser(): boolean {
-    return (this.options?.captureTarget.kind ?? 'browser') === 'browser'
+    return (this.activeTrack?.target.kind ?? this.options?.captureTarget.kind ?? 'browser') === 'browser'
   }
+
+  // ───────────────────────── 複数の映像（トラック） ─────────────────────────
+
+  private get activeTrack(): Track | undefined {
+    return this.tracks.find((track) => track.id === this.activeTrackId)
+  }
+
+  /** いま映しているトラックの静止画の撮り方 */
+  private activeStillSource(): StillSource {
+    const track = this.activeTrack
+    if (!track) return { capture: async () => null, gone: true }
+    // ログインのポップアップはその窓をそのまま撮る（書き込みも写る）
+    if (track.popup) return webContentsStillSource(track.popup)
+    // 拡張機能のポップアップが開いていれば、ビューの静止画に同じ位置で重ねる（ポップアップの中の書き込みも一緒に写る）
+    if (track.video.kind === 'tab') return overlayStillSource(webContentsStillSource(track.video.contents), () => this.overlay)
+    const recorder = track.recorder
+    return mirrorStillSource(() => this.mirrorContents, { capture: () => recorder.grabFrame(), get gone() { return recorder.gone } })
+  }
+
+  /** トラックの操作を1つずつ行う（待ち受けと利用者の切り替えが重なっても、順に揃う） */
+  private serialTracks<T>(task: () => Promise<T>): Promise<T> {
+    const next = this.trackQueue.then(task)
+    this.trackQueue = next.catch(() => undefined)
+    return next
+  }
+
+  private get capturing(): boolean {
+    return this.state === 'recording' || this.state === 'paused'
+  }
+
+  /** 画面へ出すトラックの状態 */
+  get tracksState(): CaptureTracksState {
+    const live = this.tracks.filter((track) => track.live)
+    return {
+      tracks: live.map((track) => ({ id: track.id, kind: track.target.kind, label: track.label, live: true, active: track.id === this.activeTrackId,
+        ...(track.watchId ? { watchId: track.watchId } : {}) })),
+      waiting: this.capturing ? waitingWindows(this.watched, this.tracks) : [],
+      ...(this.watchProblem ? { watchUnavailable: this.watchProblem } : {})
+    }
+  }
+
+  private emitTracks(): void {
+    this.handlers.onTracks?.(this.tracksState)
+  }
+
+  /**
+   * 録画中に映像を足す（別のウインドウ・画面・内蔵ブラウザ）。足した映像は tracks/<id>.webm へ録画の終わりまで録る。
+   * activate なら画面もそちらへ切り替える。同じものを録っていれば足さずにそれを使う。
+   * @param fresh 待ち受けがいま見つけたウインドウ（一覧を取り直さない）
+   * @returns トラックの id
+   */
+  addTrack(target: CaptureTarget, opts: { watch?: WatchedWindow; activate?: boolean; fresh?: boolean } = {}): Promise<string> {
+    return this.serialTracks(() => this.addTrackNow(target, opts))
+  }
+
+  private async addTrackNow(target: CaptureTarget, opts: { watch?: WatchedWindow; activate?: boolean; fresh?: boolean }): Promise<string> {
+    const options = this.options
+    const clock = this.clock
+    if (!this.capturing || !options || !clock) throw new UserFacingError(t('recording.errors.notRecording'))
+    const live = this.tracks.filter((track) => track.live)
+    let video: VideoSource
+    let resolved = target
+    if (target.kind === 'browser') {
+      const same = live.find((track) => track.video.kind === 'tab' && !track.popup)
+      if (same) { if (opts.activate) await this.switchTrackNow(same.id); return same.id }
+      const wc = this.source
+      if (!wc || wc.isDestroyed()) throw new UserFacingError(t('recording.errors.noBrowser'))
+      video = { kind: 'tab', contents: wc }
+    } else {
+      if (!opts.fresh) resolved = await this.checkTarget(target)
+      const sourceId = resolved.kind === 'browser' ? '' : resolved.sourceId
+      const same = live.find((track) => track.video.kind === 'desktop' && track.video.sourceId === sourceId)
+      if (same) { if (opts.activate) await this.switchTrackNow(same.id); return same.id }
+      video = { kind: 'desktop', sourceId }
+    }
+    if (live.length >= MAX_CAPTURE_TRACKS) throw new UserFacingError(t('recording.tracks.limit', { n: MAX_CAPTURE_TRACKS }))
+    return this.startTrack(video, resolved, trackLabel(resolved, opts.watch?.label), opts)
+  }
+
+  /**
+   * ログインのポップアップの映像を足す（同じ窓を録っていれば足さない）。activate なら映すものもそちらへ切り替える。
+   * 録っている数が上限なら足さずに知らせる（ポップアップの書き込みは引けない）
+   */
+  private async addPopupTrackNow(contents: WebContents, activate: boolean): Promise<string | null> {
+    if (!this.capturing || contents.isDestroyed() || !this.popupWindows.has(contents)) return null
+    const live = this.tracks.filter((track) => track.live)
+    const same = live.find((track) => track.popup === contents)
+    if (same) {
+      if (activate) await this.switchTrackNow(same.id)
+      return same.id
+    }
+    if (live.length >= MAX_CAPTURE_TRACKS) {
+      this.warn(t('recording.tracks.limit', { n: MAX_CAPTURE_TRACKS }))
+      return null
+    }
+    const host = popupHost(this.popupWindows.get(contents) ?? '') || popupHost(contents.getURL())
+    const label = t('recording.tracks.popupLabel', { host: host || '-' })
+    const target: CaptureTarget = { kind: 'window', sourceId: '', name: label }
+    return this.startTrack({ kind: 'tab', contents }, target, label, { activate }, contents)
+  }
+
+  /** 録画ウインドウを1つ開いてトラックを録り始め、一覧に足す */
+  private async startTrack(video: VideoSource, resolved: CaptureTarget, label: string, opts: { watch?: WatchedWindow; activate?: boolean }, popup?: WebContents): Promise<string> {
+    const options = this.options
+    const clock = this.clock
+    if (!this.capturing || !options || !clock) throw new UserFacingError(t('recording.errors.notRecording'))
+    const id = nextTrackId(this.tracks.map((track) => track.id))
+    const dir = join(dirname(options.paths.videoPath), 'tracks')
+    await mkdirContained(dir)
+    const recorder = new RecorderWindow(this.assets.recorderHtml, this.assets.recorderPreload, {
+      onPcm: () => undefined,
+      onLevel: () => undefined,
+      onError: (message) => this.onTrackError(id, message)
+    }, true)
+    // 見ていない間も録り続けるが、見返し用なのでフレームレートとビットレートは控えめにする
+    const trackOptions: RecordingOptions = { ...options, paths: { ...options.paths, videoPath: join(dir, `${id}.webm`) }, captureMic: false, captureSystemAudio: false,
+      videoMaxFrameRate: Math.min(options.videoMaxFrameRate, EXTRA_TRACK_MAX_FPS), videoBitsPerSecond: Math.min(options.videoBitsPerSecond, EXTRA_TRACK_BITS_PER_SECOND) }
+    try {
+      await recorder.open()
+      await recorder.start(video, trackOptions, clock.startedAtEpoch)
+    } catch (err) {
+      recorder.dispose()
+      throw err
+    }
+    // 始めている間に止めた
+    if (!this.capturing) {
+      await recorder.stop()
+      recorder.dispose()
+      throw new UserFacingError(t('recording.errors.notRecording'))
+    }
+    if (this.state === 'paused') recorder.pause()
+    const track: Track = { id, target: resolved, label, video, recorder, videoRel: `tracks/${id}.webm`,
+      startMs: clock.now(), live: true, ...(opts.watch ? { watchId: opts.watch.id } : {}), ...(popup ? { popup } : {}) }
+    this.tracks.push(track)
+    this.appendTrackLine({ op: 'open', id, t: track.startMs, kind: resolved.kind, label: track.label, video: track.videoRel, ...(track.watchId ? { watchId: track.watchId } : {}) })
+    if (video.kind === 'desktop') this.ensureWatchTimer()
+    this.emitTracks()
+    if (opts.activate) await this.switchTrackNow(id)
+    return id
+  }
+
+  /** 画面に映して書き込むトラックを切り替える。録画はどのトラックも続ける */
+  switchTrack(id: string): Promise<void> {
+    return this.serialTracks(() => this.switchTrackNow(id))
+  }
+
+  private async switchTrackNow(id: string): Promise<void> {
+    const track = this.tracks.find((candidate) => candidate.id === id && candidate.live)
+    if (!track || id === this.activeTrackId || !this.capturing) return
+    // 書きかけを確定させ、その静止画を撮り終えてから切り替える（前に映していたものの指摘として残す）
+    const before = this.surfaces
+    this.sendAll({ type: 'commit' })
+    await delay(80)
+    await this.stills?.settle()
+    this.sendAll({ type: 'clear', page: true })
+    // ログインのポップアップへ切り替えるときは、戻る先（いま映しているもの）を覚えておく
+    if (track.popup && !this.activeTrack?.popup) this.popupReturnTrackId = this.activeTrackId
+    this.activeTrackId = id
+    if (track.popup) {
+      // ポップアップの窓そのものに書き込む。内蔵ブラウザの場所に映しているものはそのまま
+    } else if (track.video.kind === 'desktop') {
+      this.mirrorSwitched = true
+      await this.openMirror(track.video.sourceId)
+    } else {
+      // 内蔵ブラウザへ戻す。映していたビューは閉じる
+      this.mirrorSwitched = true
+      this.mirrorContents = null
+      this.mirror?.showBrowser?.()
+    }
+    this.lastSurface = null
+    // 前に書き込みを受けていた面（隠れた・後ろに回った）は書き込みを止める
+    const now = this.surfaces
+    for (const wc of before) if (!now.includes(wc) && !wc.isDestroyed()) wc.send(REVIEW_CHANNELS.command, { type: 'disable' })
+    this.pushTrackEvent(track)
+    this.pushMode()
+    if (track.video.kind === 'tab' && !track.popup) {
+      const wc = this.source
+      if (wc && !wc.isDestroyed()) {
+        this.pageUrl = wc.getURL()
+        // 遷移として記録し、その画面を1枚撮る（ウインドウを映していた間の遷移は記録していない）
+        this.recordNav(this.pageUrl)
+      }
+    } else {
+      // 映したビューが映像を出すまで少し待って1枚撮る
+      setTimeout(() => void this.stills?.captureNow('track'), 600).unref?.()
+    }
+    this.emitTracks()
+  }
+
+  /** 足したトラックを閉じる（ウインドウが閉じた）。main は音声も録っているので閉じない */
+  closeTrack(id: string): Promise<void> {
+    return this.serialTracks(() => this.closeTrackNow(id))
+  }
+
+  private async closeTrackNow(id: string): Promise<void> {
+    const track = this.tracks.find((candidate) => candidate.id === id && candidate.live)
+    if (!track || id === 'main') return
+    track.live = false
+    track.endMs = this.clock?.now() ?? 0
+    if (this.activeTrackId === id) {
+      // 映していたものが消えたら、ログインのポップアップなら前に映していたもの、ほかは main へ戻す
+      const back = track.popup ? popupReturnTrack(this.popupReturnTrackId, this.tracks.filter((c) => c.live && !c.popup).map((c) => c.id)) : 'main'
+      const next = this.tracks.find((candidate) => candidate.id === back && candidate.live) ?? this.tracks[0]
+      if (next?.live) await this.switchTrackNow(next.id)
+    }
+    await track.recorder.stop().catch((err: unknown) => reportHandled(err, { area: 'recording', op: 'stop track' }))
+    track.recorder.dispose()
+    this.appendTrackLine({ op: 'close', id, t: track.endMs })
+    this.emitTracks()
+  }
+
+  /** 足したトラックの録画ウインドウからの知らせ。ウインドウが閉じたならトラックを閉じる（警告にしない） */
+  private onTrackError(id: string, message: string): void {
+    if (message === t('recorder.videoEnded')) return void this.closeTrack(id)
+    const track = this.tracks.find((candidate) => candidate.id === id)
+    this.warn(t('recording.tracks.trackProblem', { label: track?.label ?? id, message }))
+  }
+
+  /** 映しているものの切り替えを操作ログに残す */
+  private pushTrackEvent(track: Track): void {
+    if (!this.clock) return
+    this.push({ t: this.clock.now(), type: 'track', track: track.id, kind: track.target.kind, label: track.label, video: track.videoRel })
+  }
+
+  /** tracks.jsonl（録った映像の始まりと終わり）。追記のみ */
+  private appendTrackLine(line: Record<string, unknown>): void {
+    const eventsPath = this.options?.paths.eventsPath
+    if (!eventsPath) return
+    this.eventWrites = this.eventWrites.then(() => appendFileNoFollow(join(dirname(eventsPath), 'tracks.jsonl'), JSON.stringify(line) + '\n'))
+      .catch((err) => { reportHandled(err, { area: 'recording', op: 'save tracks' }); this.warn(t('recording.errors.eventsSaveFailed', { error: String(err) })) })
+  }
+
+  /** 待ち受けを始める。Wayland・画面収録の許可が無いときは待たない（知らせるだけ） */
+  private startWatch(watched: WatchedWindow[]): void {
+    this.watched = watched
+    if (watched.length === 0) return
+    const problem = watchUnavailable(process.platform, process.env, screenAccess())
+    if (problem) {
+      this.watchProblem = problem
+      this.warn(t(problem === 'wayland' ? 'recording.tracks.watchWayland' : 'recording.tracks.watchPermission', { names: watched.map((w) => w.label).join(', ') }))
+      return
+    }
+    this.ensureWatchTimer()
+  }
+
+  /** ウインドウの一覧を定期的に見る（待ち受けがあるか、足したウインドウを録っている間） */
+  private ensureWatchTimer(): void {
+    if (this.watchTimer || this.watchProblem || !this.capturing) return
+    if (watchUnavailable(process.platform, process.env, screenAccess())) return
+    this.watchTimer = setInterval(() => void this.pollWatch(), WATCH_POLL_MS)
+    this.watchTimer.unref?.()
+    void this.pollWatch()
+  }
+
+  private stopWatch(): void {
+    if (this.watchTimer) clearInterval(this.watchTimer)
+    this.watchTimer = null
+  }
+
+  /** 待ち受けのウインドウが現れたら録り、録っているウインドウが消えたら閉じる */
+  private async pollWatch(): Promise<void> {
+    if (this.watchBusy || !this.capturing) return
+    this.watchBusy = true
+    try {
+      const sources = await listCaptureSources({ width: 0, height: 0 })
+      if (!this.capturing) return
+      const actions = planWatch({
+        watched: this.watched,
+        tracks: this.tracks.map((track) => ({ id: track.id, live: track.live, closable: track.id !== 'main',
+          ...(track.video.kind === 'desktop' ? { sourceId: track.video.sourceId } : {}), ...(track.watchId ? { watchId: track.watchId } : {}) })),
+        sources
+      })
+      for (const action of actions) {
+        if (!this.capturing) return
+        if (action.type === 'close') { await this.closeTrack(action.trackId); continue }
+        await this.addTrack(targetFromSource(action.source), { watch: action.watch, activate: action.watch.mode === 'switch', fresh: true })
+          .then(() => { this.watchFailed.delete(action.watch.id) })
+          .catch((err: unknown) => {
+            if (this.watchFailed.has(action.watch.id)) return
+            this.watchFailed.add(action.watch.id)
+            if (!(err instanceof UserFacingError)) reportHandled(err, { area: 'recording', op: 'add watched window' })
+            this.warn(t('recording.tracks.watchFailed', { label: action.watch.label, error: err instanceof Error ? err.message : String(err) }))
+          })
+      }
+    } catch (err) {
+      reportHandled(err, { area: 'recording', op: 'poll watched windows' })
+    } finally {
+      this.watchBusy = false
+    }
+  }
+
 
   pause(): void {
     if (this.state !== 'recording') return
     this.state = 'paused'
     this.clock?.pause()
     this.recorder?.pause()
+    for (const track of this.tracks) if (track.live && track.id !== 'main') track.recorder.pause()
     this.stills?.pause()
     this.pushMode()
     this.emitStatus()
@@ -469,6 +949,7 @@ export class RecordingController {
     this.state = 'recording'
     this.clock?.resume()
     this.recorder?.resume()
+    for (const track of this.tracks) if (track.live && track.id !== 'main') track.recorder.resume()
     this.stills?.resume()
     this.pushMode()
     this.emitStatus()
@@ -486,6 +967,7 @@ export class RecordingController {
     if (this.leaveTimer) clearTimeout(this.leaveTimer)
     this.leaveTimer = null
     this.pendingLeave = null
+    this.stopWatch()
     this.emitStatus()
 
     // 長さは「止める直前」の時計を使う。停止処理にかかる時間を含めると、
@@ -495,8 +977,20 @@ export class RecordingController {
 
     console.log('[STEP] stills.stop')
     await this.stills?.stop()
+    // 追加・切り替えの途中なら終わるのを待つ（録画ウインドウを残さない）
+    await Promise.race([this.trackQueue, delay(5_000)])
     console.log('[STEP] recorder.stop 開始')
-    await this.recorder?.stop()
+    const extras = this.tracks.filter((track) => track.live && track.id !== 'main')
+    await Promise.all([
+      this.recorder?.stop(),
+      ...extras.map((track) => track.recorder.stop().catch((err: unknown) => reportHandled(err, { area: 'recording', op: 'stop track' })))
+    ])
+    for (const track of extras) {
+      track.live = false
+      track.endMs = durationMs
+      track.recorder.dispose()
+      this.appendTrackLine({ op: 'close', id: track.id, t: durationMs })
+    }
     console.log('[STEP] recorder.stop 完了')
 
     const options = this.options
@@ -507,14 +1001,23 @@ export class RecordingController {
     this.lastStatus = { state: 'idle', elapsedMs: durationMs, videoBytes,
       frameCount: frames.length, eventCount: this.events.length }
 
-    this.reviewContents?.send(REVIEW_CHANNELS.command, { type: 'disable' })
+    this.sendAll({ type: 'disable' })
     this.recorder?.dispose()
     this.recorder = null
     this.stills = null
     this.clock = null
     this.state = 'idle'
     this.closeMirror()
+    const tracks: TrackRecordInfo[] = this.tracks.map((track) => ({ id: track.id, kind: track.target.kind, label: track.label, video: track.videoRel,
+      startMs: track.startMs, endMs: track.endMs ?? durationMs, ...(track.watchId ? { watchId: track.watchId } : {}) }))
+    this.tracks = []
+    this.activeTrackId = 'main'
+    this.popupReturnTrackId = null
+    this.lastSurface = null
+    this.watched = []
+    this.watchProblem = undefined
     this.emitStatus()
+    this.emitTracks()
 
     return {
       startedAt: this.startedAt,
@@ -524,7 +1027,8 @@ export class RecordingController {
       frames,
       events: [...this.events],
       audioSamples: { ...this.samples },
-      warnings: [...this.warnings]
+      warnings: [...this.warnings],
+      tracks
     }
   }
 
@@ -533,6 +1037,9 @@ export class RecordingController {
     this.limitWarningTimer = null
     if (this.maxDurationTimer) clearTimeout(this.maxDurationTimer)
     if (this.statusTimer) clearInterval(this.statusTimer)
+    this.stopWatch()
+    for (const track of this.tracks) if (track.id !== 'main') track.recorder.dispose()
+    this.tracks = []
     this.recorder?.dispose()
     this.recorder = null
     this.stills?.stop()
@@ -622,8 +1129,10 @@ export class RecordingController {
     if (Number.isFinite(raw.x) && Number.isFinite(raw.y) && view) this.lastCursor = { x: raw.x!, y: raw.y!, view }
     if (raw.type === 'pointer') return
     let event = toLogEvent(raw, (epochMs) => clock.fromEpoch(epochMs))
-    if (!event || event.type === 'nav' || event.type === 'viewport') return
+    // 遷移・表示幅・映すものの切り替えは main が記録する。注入側からは受けない
+    if (!event || event.type === 'nav' || event.type === 'viewport' || event.type === 'track') return
     if (!this.admit(event.type)) return
+    if (event.type === 'pen' || event.type === 'erase') this.lastSurface = this.reviewContents
     if (!this.recordsBrowser) {
       // 画面・ウインドウを録っているときは、書き込み（指摘そのもの）だけ残す。
       // 要素情報は内蔵ブラウザの中のもので、録っている画面と食い違いうるので外す
@@ -635,6 +1144,7 @@ export class RecordingController {
       void this.stills?.captureNow(event.type, undefined, event.id)
       return
     }
+    if (view) this.lastBrowserView = view
     if (view && this.lastViewWidth !== view.width) this.recordViewport(view.width, event.t)
     this.push(event)
 
@@ -642,6 +1152,29 @@ export class RecordingController {
     // ペンの確定時とクリック時は、間隔を待たずにその場で撮る（設計4章）
     const cursor = event.type === 'click' ? { x: event.x, y: event.y, view } : undefined
     void this.stills?.captureNow(event.type, cursor, event.type === 'pen' ? event.id : undefined)
+  }
+
+  /**
+   * 内蔵ブラウザの上の拡張機能のポップアップから届いた書き込み。書き込み（pen・erase）だけを、内蔵ブラウザのビューの座標へ直して残す。
+   * クリック・スクロール・カーソルはポップアップの中のもので、ページの操作ログとは食い違うので受けない。
+   * 要素情報（拡張機能の画面の中身）は外す。静止画は内蔵ブラウザの画像にポップアップを重ねたもの（書き込みも写る）
+   */
+  private recordOverlayInjected(sender: WebContents, raw: RawReviewEvent): void {
+    const clock = this.clock
+    const overlay = this.overlay
+    if (this.state !== 'recording' || !clock || !overlay || typeof raw !== 'object' || raw === null) return
+    if (raw.type !== 'pen' && raw.type !== 'erase') return
+    let input: RawReviewEvent = { ...raw, el: undefined }
+    if (raw.type === 'pen') {
+      const mapped = mapPopupBox(raw.bbox, sanitizeView(raw.view), overlay.rect, this.lastBrowserView)
+      if (!mapped) return
+      input = { ...input, bbox: mapped.bbox, view: mapped.view }
+    }
+    const event = toLogEvent(input, (epochMs) => clock.fromEpoch(epochMs))
+    if (!event || (event.type !== 'pen' && event.type !== 'erase') || !this.admit(event.type)) return
+    this.lastSurface = sender
+    this.push(event)
+    if (event.type === 'pen') void this.stills?.captureNow('pen', undefined, event.id)
   }
 
 }

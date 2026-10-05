@@ -91,7 +91,7 @@ export function renderFeedbackMarkdown(doc: FeedbackDocument, options: Partial<R
   lines.push(`# ${tr('feedbackMd.title', { count: focusedCount })}`)
   // markdown / Mermaid のプレビュー（ade-preview://）は、Agent が直すファイルの相対パスで示す
   // 録画の途中で対象（URL・ファイル）を切り替えたら、指摘を対象ごとの節に分ける
-  const groups = groupByTarget(items, (it) => it.context.url, doc.meta.urlPresets ?? [])
+  const groups = groupByTarget(items, (it) => it.context.url, doc.meta.urlPresets ?? [], (it) => it.context.source)
   const sectioned = groups.length > 1
   if (sectioned) lines.push(tr('feedbackMd.targets', { count: groups.length }))
   else if (doc.meta.targetUrl) lines.push(`- ${tr('feedbackMd.label.target')}: ${describeTargetUrl(doc.meta.targetUrl) ?? shellSafeUrl(redactUrl(doc.meta.targetUrl))}`)
@@ -103,6 +103,8 @@ export function renderFeedbackMarkdown(doc: FeedbackDocument, options: Partial<R
   lines.push(tr('feedbackMd.recorded', { at: formatRecordedAt(doc.meta.startedAt), duration: recordedDuration(doc.meta.durationMs, opt.videoDuration, opt.locale, tr) }))
   lines.push(tr('feedbackMd.penNote'))
   lines.push(tr('feedbackMd.sttNote'))
+  // エージェントが transcript.jsonl の項目名を推し量って読み、時刻が NaN:NaN になった（ユーザーの指摘）。形をはっきり書く
+  lines.push(tr('feedbackMd.transcriptNote'))
   // NF-14 プロンプトインジェクションへの手当て。画面由来の文字列を指示として扱わせない
   lines.push(tr('feedbackMd.injectionNote'))
   lines.push(tr('feedbackMd.acceptanceNote'))
@@ -300,6 +302,8 @@ function renderSection(target: ReviewTarget, n: number, tr: Tr): string[] {
   const safeName = target.kind === 'url' && target.url ? targetOfUrl(redactUrl(target.url)).name : target.name
   const out = [`## ${tr('feedbackMd.section', { n, name: mdText(targetHeading({ ...target, name: safeName }), 300) })}`]
   if (target.kind === 'file') out.push(tr('feedbackMd.sectionFile', { path: mdText(target.name, 500) }))
+  // 内蔵ブラウザ以外の映像（デスクトップアプリのウインドウ・画面）。URL も要素情報も無いので、画像と発話から判断させる
+  else if (target.kind === 'window') out.push(tr('feedbackMd.sectionWindow'))
   else {
     if (target.label) out.push(tr('feedbackMd.sectionEnv', { label: mdText(target.label, 100) }))
     if (target.purpose) out.push(tr(`feedbackMd.kind.${target.purpose}`))
@@ -332,6 +336,8 @@ function renderItem(it: FeedbackItem, n: number, opt: RenderOptions, tr: Tr): st
   if (opt.decision && before) out.push(tr('feedbackMd.beforeImage', { path: join(opt.decision.dir, basename(before)) }))
 
   const c = it.context
+  // 複数の映像を録って切り替えた録画で、内蔵ブラウザ以外を映していた指摘。どの画面の話かを書く（題名は画面由来の文字列）
+  if (c.source) out.push(tr('feedbackMd.source', { label: mdText(c.source.label, 300) }))
   if (c.url) {
     const vp = c.viewport !== undefined ? tr('feedbackMd.viewport', { px: c.viewport }) : ''
     // URL・要素の文字・selector・直前の操作はページの作者が書ける文字。1行にし、囲みを閉じさせない

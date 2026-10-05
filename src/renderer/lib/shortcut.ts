@@ -72,7 +72,6 @@ export function formatShortcut(...parts: Array<Modifier | string>): string {
 export const SHORTCUTS = {
   openFolder: () => formatShortcut('Mod', 'O'),
   toggleMode: () => formatShortcut('Mod', 'Shift', 'M'),
-  toggleSidebar: () => formatShortcut('Mod', 'B'),
   toggleExplorer: () => formatShortcut('Mod', 'Shift', 'E'),
   quickOpen: () => formatShortcut('Mod', 'P'),
   saveFile: () => formatShortcut('Mod', 'S'),

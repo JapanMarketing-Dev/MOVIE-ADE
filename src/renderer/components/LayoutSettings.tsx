@@ -1,4 +1,4 @@
-import { DEFAULT_LAYOUT, DOCKS, FOOTER_ITEMS, PANEL_IDS, withPanel, type Dock, type PanelId } from '@shared/layout'
+import { ALWAYS_VISIBLE_PANELS, DEFAULT_LAYOUT, DOCKS, FOOTER_ITEMS, PANEL_IDS, withPanel, type Dock, type PanelId } from '@shared/layout'
 import { Button } from '../ui'
 import { useT } from '../lib/i18n'
 import { setLayout, useLayout } from '../lib/layout'
@@ -35,7 +35,7 @@ export function LayoutSettings() {
       <p className="st-note">{t('settings.layout.intro')}</p>
       {PANEL_IDS.map((id) => <div key={id} className="st-layout__panel">
         {/* ターミナルは常に表示する（閉じる手段を持たない）ので、表示の切り替えは出さない。置き場所だけ選べる */}
-        {id !== 'terminal' && toggle(t('settings.layout.show', { panel: panelName(id) }), layout.panels[id].visible,
+        {!ALWAYS_VISIBLE_PANELS.includes(id) && toggle(t('settings.layout.show', { panel: panelName(id) }), layout.panels[id].visible,
           (visible) => setLayout((prev) => withPanel(prev, id, { visible })), `layout-${id}-visible`)}
         {dockSelect(t('settings.layout.position', { panel: panelName(id) }), layout.panels[id].dock, DOCKS,
           (dock) => setLayout((prev) => withPanel(prev, id, { dock: dock as Dock })), `layout-${id}-dock`)}

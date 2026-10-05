@@ -1,3 +1,4 @@
+import { sanitizeBrowserExtensions } from '@shared/browserExtensions'
 import { sanitizeLimitFailover } from '@shared/failover'
 import { app } from 'electron'
 import { dirname, join } from 'node:path'
@@ -179,6 +180,11 @@ export function sanitize(raw: unknown): Settings {
     ...(r.crashReportsNoticeShown === true ? { crashReportsNoticeShown: true } : {}),
     // 端末のプログラムのコピー（OSC 52）。既定の ask は書かない
     ...(r.terminalClipboard === 'allow' || r.terminalClipboard === 'off' ? { terminalClipboard: r.terminalClipboard } : {}),
+    // 内蔵ブラウザの拡張機能（展開済みのフォルダ）。空なら書かない
+    ...(() => {
+      const browserExtensions = sanitizeBrowserExtensions(r.browserExtensions)
+      return browserExtensions ? { browserExtensions } : {}
+    })(),
     // 自動更新のダウンロード。未設定は ON のまま書かない。明示の OFF だけを残す
     ...(r.autoUpdate === false ? { autoUpdate: false } : {}),
     ...(() => {

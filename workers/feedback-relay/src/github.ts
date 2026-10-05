@@ -3,7 +3,7 @@
  * トークンは Authorization ヘッダーにだけ入れ、ログ・応答・例外の文には出さない。
  */
 import { FROM_APP_LABEL } from './limits'
-import { literalBlock, neutralizeMentions, redact } from './redact'
+import { literalBlock, literalInline, neutralizeMentions, redact } from './redact'
 
 export type IssueInput = {
   kind: 'bug' | 'enhancement'
@@ -20,20 +20,23 @@ export const ISSUE_HEADING = '## Anonymous feedback from the Ferret app'
 
 /**
  * 題名・本文を伏せ字にし、メンションを崩して、Issue の題名・本文・ラベルにする。
- * 本文は送り主が決める文字なので、コードブロックに入れて、そのままの文字として表示させる（参照・リンク・HTML にならない。security-4 [11]）
+ * 本文は送り主が決める文字なので、コードブロックに入れて、そのままの文字として表示させる（参照・リンク・HTML にならない。security-4 [11]）。
+ * 送り主が決める値（kind・appVersion・platform・osRelease・arch）は、本文の外の行にも生のまま埋め込まない。
+ * すべて literalInline（メンションを崩してからコードの中へ）を通す（GH-123 のような版の値で参照を作らせない。security-6 [5]）
  */
 export function buildIssue(input: IssueInput): { title: string; body: string; labels: string[] } {
   const title = neutralizeMentions(redact(input.title).text)
   const text = neutralizeMentions(redact(input.body).text)
   // 環境情報は送られたものだけを書く（利用者が外したら OS は not shared）
-  const os = [input.platform, input.osRelease, input.arch ? `(${input.arch})` : ''].filter(Boolean).join(' ') || 'not shared'
+  const osParts = [input.platform, input.osRelease, input.arch ? `(${input.arch})` : ''].filter(Boolean).join(' ')
+  const os = osParts ? literalInline(osParts) : 'not shared'
   const lines = [
     ISSUE_HEADING,
     '',
     '> This issue was sent anonymously from the in-app feedback form, through a relay that does not keep the sender\'s IP address.',
     '> Keys, tokens, email addresses and home-folder paths were masked automatically. Reply here; the sender may not see it.',
     '',
-    `**Kind:** ${input.kind} · **App:** ${input.appVersion} · **OS:** ${os}`,
+    `**Kind:** ${literalInline(input.kind)} · **App:** ${literalInline(input.appVersion)} · **OS:** ${os}`,
     '',
     '---',
     '',

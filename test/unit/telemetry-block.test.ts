@@ -9,7 +9,9 @@ import {
   eventLoopBlockThreshold,
   gcKindName,
   memoryBucket,
-  scrubEvent
+  RESUME_GRACE_MS,
+  scrubEvent,
+  shouldReportEventLoopBlock
 } from '../../src/shared/telemetry'
 
 /**
@@ -115,5 +117,31 @@ describe('止まったときの main の様子（FERRET-M: スタックもパン
   it('メモリの区分と GC の種類の名前', () => {
     expect([100, 300, 700, 1500, 4096].map(memoryBucket)).toEqual(['<256MB', '256-512MB', '512MB-1GB', '1-2GB', '2GB+'])
     expect([1, 4, 8, 16, 99, undefined].map(gcKindName)).toEqual(['minor', 'major', 'incremental', 'weakcb', 'other', 'other'])
+  })
+})
+
+describe('送る止まりと送らない遅れ（FERRET-M: 0.4.1・0.4.4 の macOS）', () => {
+  const base = { lagMs: 2000, thresholdMs: EVENT_LOOP_BLOCK_MS, quitting: false, appActive: true, msSinceResume: null }
+
+  it('前面で閾値を超えて止まったら送る。閾値以下は送らない', () => {
+    expect(shouldReportEventLoopBlock(base)).toBe(true)
+    expect(shouldReportEventLoopBlock({ ...base, lagMs: EVENT_LOOP_BLOCK_MS })).toBe(false)
+  })
+
+  it('更新の入れ替え（quitAndInstall）で終了する途中の止まりは送らない（5.2s・ipc:update:install）', () => {
+    expect(shouldReportEventLoopBlock({ ...base, lagMs: 5200, quitting: true })).toBe(false)
+    // ウィンドウを閉じた後（前面のウィンドウが無い）も同じ
+    expect(shouldReportEventLoopBlock({ ...base, lagMs: 5200, appActive: false })).toBe(false)
+  })
+
+  it('裏に回っている間のタイマーの遅れ（App Nap）は送らない（2.0s・4.0s、どちらも数分前から裏）', () => {
+    expect(shouldReportEventLoopBlock({ ...base, lagMs: 2000, appActive: false })).toBe(false)
+    expect(shouldReportEventLoopBlock({ ...base, lagMs: 4000, appActive: false })).toBe(false)
+  })
+
+  it('スリープから戻った直後の遅れは送らない。しばらく経てば送る', () => {
+    expect(shouldReportEventLoopBlock({ ...base, msSinceResume: 0 })).toBe(false)
+    expect(shouldReportEventLoopBlock({ ...base, msSinceResume: RESUME_GRACE_MS })).toBe(false)
+    expect(shouldReportEventLoopBlock({ ...base, msSinceResume: RESUME_GRACE_MS + base.lagMs + 1 })).toBe(true)
   })
 })

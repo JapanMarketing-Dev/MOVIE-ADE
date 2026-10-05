@@ -33,12 +33,18 @@ function run(file: string, args: readonly string[], timeout: number): Promise<st
   })
 }
 
-/** JXA。kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements の一覧を JSON で書く */
+/**
+ * JXA。kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements の一覧を JSON で書く。
+ * バンドル ID は同じプロセスの NSRunningApplication から読む（Apple Events は送らない。録画中の待ち受けの照合に使う）
+ */
 const MAC_WINDOW_LIST_JXA = [
   'ObjC.import("CoreGraphics");',
+  'ObjC.import("AppKit");',
   'var list = ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly | $.kCGWindowListExcludeDesktopElements, 0))) || [];',
+  'var bundles = {};',
+  'function bundleOf(pid) { if (!(pid in bundles)) { try { var a = $.NSRunningApplication.runningApplicationWithProcessIdentifier(pid); bundles[pid] = a && !a.isNil() ? ObjC.unwrap(a.bundleIdentifier) || "" : "" } catch (e) { bundles[pid] = "" } } return bundles[pid] }',
   'JSON.stringify(list.map(function (w) { var b = w.kCGWindowBounds || {}; return { id: w.kCGWindowNumber, layer: w.kCGWindowLayer, owner: w.kCGWindowOwnerName || "",',
-  ' pid: w.kCGWindowOwnerPID, name: w.kCGWindowName || "", w: b.Width, h: b.Height, sharing: w.kCGWindowSharingState, alpha: w.kCGWindowAlpha } }))'
+  ' pid: w.kCGWindowOwnerPID, name: w.kCGWindowName || "", w: b.Width, h: b.Height, sharing: w.kCGWindowSharingState, alpha: w.kCGWindowAlpha, bundle: bundleOf(w.kCGWindowOwnerPID) } }))'
 ].join('\n')
 
 /** macOS の画面に出ているウインドウの一覧。macOS 以外・読めなければ空 */

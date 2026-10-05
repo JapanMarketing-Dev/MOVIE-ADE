@@ -27,7 +27,7 @@ interface PromptPayload {
    * 録画の途中で切り替えた対象（URL・ファイル）。2つ以上のときだけ入れる。
    * 各発話・書き込み・下書きの tg がこの id を指す（organize/targets.ts）
    */
-  targets?: Array<{ id: string; label: string; kind: 'url' | 'file' }>
+  targets?: Array<{ id: string; label: string; kind: 'url' | 'file' | 'window' }>
   transcript: Array<{ t: number; t1: number; sp: string; text: string; tg?: string }>
   screen: Array<{ t: number; url: string; title: string; w?: number; tg?: string }>
   clicks: Array<{ t: number; text?: string; selector: string }>
@@ -131,7 +131,7 @@ All times are milliseconds from the start of the recording.
    - needs_check: How to fix is not decided / investigation or internal confirmation comes first / the topic ended with "on hold", "leave it as is", "decide next time" or "not this time".
 6. **Image times**: From the values in frame_times, pick 1–3 times where the finding is visible on screen and put them in frame_times. For findings with a pen mark, pick the time where the mark is visible (the closest value at or after the annotation's t_end). **Never use a value that is not in frame_times.**
 7. **annotation_ids**: List the IDs of pen marks related to the finding. Use an empty array if none. Do not use IDs that are not in the input annotations.
-8. **Target**: When the input has targets, the reviewer switched between targets (URLs and files) during the recording. Always set each finding's target to the id of the target it is about (an id from targets; the same value as tg in transcript, annotations and draft). If there are no targets, set target to an empty string.
+8. **Target**: When the input has targets, the reviewer switched between targets (URLs, files and app windows) during the recording. Always set each finding's target to the id of the target it is about (an id from targets; the same value as tg in transcript, annotations and draft). If there are no targets, set target to an empty string.
 9. **Review title (review_title)**: Write one short name that tells what kind of fixes the whole review is about (3–8 words, e.g. "Header spacing and colors", "Login form validation", "Pricing page copy"). Do not just copy the page title or site name. Write review_title in the same language as title and request.
 
 ## Rules

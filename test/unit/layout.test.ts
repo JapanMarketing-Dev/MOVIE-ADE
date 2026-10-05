@@ -63,8 +63,8 @@ describe('workspaceGrid', () => {
     })
   })
   it('隠したパネルは列を残して幅 0 にする', () => {
-    const g = workspaceGrid(withPanel(DEFAULT_LAYOUT, 'projects', { visible: false }))
-    expect(g.columns).toBe('0px minmax(606px, 1fr) minmax(140px, var(--size-sidebar))')
+    const g = workspaceGrid(withPanel(DEFAULT_LAYOUT, 'files', { visible: false }))
+    expect(g.columns).toBe('minmax(140px, var(--sidebar-width)) minmax(606px, 1fr) 0px')
     expect(g.areas).toBe('"projects main files"')
   })
   it('上下に置いたパネルは横幅いっぱいの行になる', () => {
@@ -144,12 +144,16 @@ describe('ターミナルは常に表示（閉じる手段を持たない）', (
   it('古い設定でターミナルを閉じていても、読み込むと表示になる', () => {
     expect(sanitizeLayout({ panels: { terminal: { dock: 'bottom', visible: false } } }).panels.terminal).toEqual({ dock: 'bottom', visible: true })
   })
-  it('ほかのパネルは閉じたまま残る', () => {
+  it('ファイルツリーは閉じたまま残り、プロジェクト一覧は表示に戻る（プロジェクト一覧も常に表示）', () => {
     expect(sanitizeLayout({ panels: { files: { dock: 'right', visible: false }, projects: { dock: 'left', visible: false } } }).panels)
-      .toMatchObject({ files: { visible: false }, projects: { visible: false } })
+      .toMatchObject({ files: { visible: false }, projects: { visible: true } })
   })
-  it('開閉ボタンの並びにターミナルは入らない', () => {
-    expect(panelToggleOrder(DEFAULT_LAYOUT)).toEqual(['projects', 'files'])
+  it('開閉ボタンの並びにターミナルとプロジェクト一覧は入らない', () => {
+    expect(panelToggleOrder(DEFAULT_LAYOUT)).toEqual(['files'])
+  })
+  it('プロジェクト一覧は閉じようとしても表示のまま', () => {
+    expect(togglePanel(DEFAULT_LAYOUT, 'projects').panels.projects.visible).toBe(true)
+    expect(withPanel(DEFAULT_LAYOUT, 'projects', { visible: false }).panels.projects.visible).toBe(true)
   })
   it('閉じようとしても、保存し直す（sanitize）と表示に戻る', () => {
     expect(sanitizeLayout(togglePanel(DEFAULT_LAYOUT, 'terminal')).panels.terminal.visible).toBe(true)
@@ -230,8 +234,8 @@ describe('dropPanel', () => {
 
 describe('togglePanel / panelToggleOrder（タイトルバーの開閉ボタン）', () => {
   it('開閉を切り替え、open を渡すとその状態にする', () => {
-    expect(togglePanel(DEFAULT_LAYOUT, 'terminal').panels.terminal.visible).toBe(false)
-    expect(togglePanel(togglePanel(DEFAULT_LAYOUT, 'terminal'), 'terminal').panels.terminal.visible).toBe(true)
+    expect(togglePanel(DEFAULT_LAYOUT, 'files').panels.files.visible).toBe(false)
+    expect(togglePanel(togglePanel(DEFAULT_LAYOUT, 'files'), 'files').panels.files.visible).toBe(true)
     expect(togglePanel(DEFAULT_LAYOUT, 'files', false).panels.files.visible).toBe(false)
     expect(togglePanel(DEFAULT_LAYOUT, 'files', true).panels.files).toEqual(DEFAULT_LAYOUT.panels.files)
   })
@@ -240,9 +244,8 @@ describe('togglePanel / panelToggleOrder（タイトルバーの開閉ボタン�
     expect(togglePanel(l, 'terminal').panels.terminal.dock).toBe('top')
   })
   it('ボタンの並びは置き場所の順（左 → 上 → 下 → 右）', () => {
-    expect(panelToggleOrder(DEFAULT_LAYOUT)).toEqual(['projects', 'files'])
-    const l = withPanel(withPanel(DEFAULT_LAYOUT, 'files', { dock: 'bottom' }), 'projects', { dock: 'right' })
-    expect(panelToggleOrder(l)).toEqual(['files', 'projects'])
+    expect(panelToggleOrder(DEFAULT_LAYOUT)).toEqual(['files'])
+    expect(panelToggleOrder(withPanel(DEFAULT_LAYOUT, 'files', { dock: 'bottom' }))).toEqual(['files'])
   })
 })
 

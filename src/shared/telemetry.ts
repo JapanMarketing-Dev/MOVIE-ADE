@@ -405,6 +405,30 @@ export const DEV_EVENT_LOOP_BLOCK_MS = 3000
 export function eventLoopBlockThreshold(packaged: boolean): number {
   return packaged ? EVENT_LOOP_BLOCK_MS : DEV_EVENT_LOOP_BLOCK_MS
 }
+
+/** スリープから戻ってこの間は、タイマーの遅れを止まりとして数えない */
+export const RESUME_GRACE_MS = 5000
+
+/**
+ * タイマーの遅れを main の止まりとして送るか。
+ * 送らないのは、利用者が待っていない・アプリの処理ではない遅れ（FERRET-M の 0.4.1・0.4.4 の macOS の事例）:
+ *   quitting … 終了の途中（更新の入れ替え quitAndInstall でウィンドウを閉じた後に 5.2s）。画面は無く、誰も待っていない
+ *   appActive … 遅れの前後ともアプリが前面か。裏にいる間は macOS の App Nap・タイマーのまとめでタイマーが数秒遅れる
+ *     （前面に戻した瞬間に溜まった遅れで発火するので、前の回も前面だったかで見る。裏に回って数分後に 2.0s・4.0s）
+ *   msSinceResume … スリープから戻ってからの時間（null は戻っていない）。戻った直後のタイマーの遅れは止まりではない
+ */
+export function shouldReportEventLoopBlock(s: {
+  lagMs: number
+  thresholdMs: number
+  quitting: boolean
+  appActive: boolean
+  msSinceResume: number | null
+}): boolean {
+  if (s.lagMs <= s.thresholdMs) return false
+  if (s.quitting || !s.appActive) return false
+  if (s.msSinceResume !== null && s.msSinceResume < RESUME_GRACE_MS + s.lagMs) return false
+  return true
+}
 /** 同じ種類の性能の異常を続けて送らない間隔 */
 export const ANOMALY_COOLDOWN_MS = 10 * 60 * 1000
 

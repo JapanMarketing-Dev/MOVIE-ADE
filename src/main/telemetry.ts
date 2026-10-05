@@ -1,10 +1,10 @@
-import { app, crashReporter, dialog, session, type WebContents } from 'electron'
+import { app, BrowserWindow, crashReporter, dialog, powerMonitor, session, type WebContents } from 'electron'
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { PerformanceObserver } from 'node:perf_hooks'
+import { performance, PerformanceObserver } from 'node:perf_hooks'
 import * as Sentry from '@sentry/electron/main'
 import { IS_PACKAGED } from './runtime'
 import {
@@ -33,6 +33,7 @@ import {
   createInflightTracker,
   eventLoopBlockContext,
   eventLoopBlockThreshold,
+  shouldReportEventLoopBlock,
   type ScrubContext,
   type SentryTestKind,
   classifyStaleBuild,
@@ -210,7 +211,19 @@ export function trackIpc(channel: string): () => void {
 
 function watchEventLoop(threshold: number): void {
   const INTERVAL = 250
-  let expected = Date.now() + INTERVAL
+  // 単調な時計で測る（Date.now は時計合わせ・スリープで飛ぶ）
+  let expected = performance.now() + INTERVAL
+  // 送らない遅れの見分け（shouldReportEventLoopBlock）：終了の途中・裏にいる間（App Nap）・スリープから戻った直後
+  let quitting = false
+  let resumedAt: number | null = null
+  const isActive = (): boolean => app.isReady() && BrowserWindow.getFocusedWindow() !== null
+  let activeAtLastTick = false
+  app.on('will-quit', () => { quitting = true })
+  void app.whenReady().then(() => {
+    // powerMonitor は ready の後でしか使えない
+    powerMonitor.on('resume', () => { resumedAt = performance.now() })
+    powerMonitor.on('suspend', () => { resumedAt = null })
+  })
   // 補助技術の切り替え（FERRET-M では 25 秒ごとに来ていた）。パンくずには残さないので、最後の時刻だけ覚える
   let axChangedAt: number | null = null
   app.on('accessibility-support-changed', () => { axChangedAt = Date.now() })
@@ -225,14 +238,21 @@ function watchEventLoop(threshold: number): void {
     // GC を観測できない環境では手がかりが減るだけ
   }
   const timer = setInterval(() => {
-    const now = Date.now()
+    const now = performance.now()
     const lag = now - expected
     expected = now + INTERVAL
-    if (lag > threshold && anomalyGate('event-loop')) {
+    // 遅れの前（前の回）と後（今）の両方で前面だったときだけ、利用者が待たされた止まりとみなす
+    const activeNow = isActive()
+    const appActive = activeAtLastTick && activeNow
+    activeAtLastTick = activeNow
+    const report = shouldReportEventLoopBlock({
+      lagMs: lag, thresholdMs: threshold, quitting, appActive, msSinceResume: resumedAt === null ? null : now - resumedAt
+    })
+    if (report && anomalyGate('event-loop')) {
       // 手がかり：まだ終わっていない IPC（長い順の上位3つ）、直前に終わった重い処理（同期の fs・ps・which・GC など）、メモリの量、補助技術
       const inflight = inflightIpc.snapshot()
       const memory = process.memoryUsage()
-      const ax = { axEnabled: app.accessibilitySupportEnabled, axChangedMsAgo: axChangedAt === null ? null : now - axChangedAt }
+      const ax = { axEnabled: app.accessibilitySupportEnabled, axChangedMsAgo: axChangedAt === null ? null : Date.now() - axChangedAt }
       // GC の記録は少し遅れて届くので、待ってから重い処理を集める
       setTimeout(() => {
         reportPerf('event-loop-block', lag, eventLoopBlockContext(inflight, recentSlowOps(Date.now()).slice(0, 3), {

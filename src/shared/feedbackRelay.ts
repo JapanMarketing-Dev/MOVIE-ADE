@@ -17,6 +17,13 @@ export type FieldName = (typeof ALLOWED_FIELDS)[number]
 export const KINDS = ['bug', 'enhancement'] as const
 export const PLATFORMS = ['darwin', 'win32', 'linux'] as const
 export const ARCHES = ['x64', 'arm64'] as const
+/**
+ * appVersion の形（semver。例 0.4.9・1.0.0-beta.1）。英字で始まる GH-123 のような値は受けない（security-6 [5]）。
+ * 中継は値をそのまま Issue に書かず、コードの中に入れる（literalInline）。これは入口での2重目の守り
+ */
+export const APP_VERSION_PATTERN = /^(?=.{1,32}$)\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
+/** osRelease の形（os.release()。例 25.6.0・10.0.26100・6.8.0-45-generic）。数字で始まる */
+export const OS_RELEASE_PATTERN = /^(?=.{1,64}$)\d[0-9A-Za-z._-]*$/
 
 export const MAX_TITLE_CHARS = 200
 export const MAX_BODY_BYTES = 20 * 1024

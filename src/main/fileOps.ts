@@ -204,36 +204,86 @@ async function assertNotIntoItself(source: string, dest: string): Promise<void> 
   if (isWithin(realSource, realDest)) throw intoItselfError()
 }
 
-/** 中身を数える（リンクは辿らない）。上限を超えたらその場で断る */
-async function measure(absolute: string, total: { entries: number; bytes: number }): Promise<void> {
-  const info = await lstat(absolute)
+function copyTooManyError(): UserFacingError {
+  return new UserFacingError(t('files.errors.copyTooMany', { limit: MAX_COPY_ENTRIES.toLocaleString('en-US') }))
+}
+
+function copyTooLargeError(): UserFacingError {
+  return new UserFacingError(t('files.errors.copyTooLarge', { limit: Math.round(MAX_COPY_BYTES / 1024 / 1024 / 1024) }))
+}
+
+/** 測ったときの実体（dev・ino）。パスごと */
+type Identities = Map<string, { dev: bigint; ino: bigint }>
+
+/**
+ * コピーの残りの枠（security-6 [7]）。前もって測った量だけでは、測ってから読むまでに元のファイルが伸びる・差し替わると上限を超えて写す。
+ * そこで写しながら、作った数と書いたバイト数をこの枠から減らし、超えたらその場で止める（作りかけは copyOrCleanUp が消す）
+ */
+interface CopyBudget {
+  entries: number
+  bytes: number
+}
+
+function newCopyBudget(): CopyBudget {
+  return { entries: MAX_COPY_ENTRIES, bytes: MAX_COPY_BYTES }
+}
+
+/** コピーの決まり。expected があれば、測った実体と違うもの・測っていないものは写さない（外から取り込むとき） */
+interface CopyContext {
+  budget: CopyBudget
+  expected?: Identities
+  /** 1つのファイルの上限（Markdown へ埋め込む画像・動画） */
+  fileBytes?: { limit: number; error: () => UserFacingError }
+  onCreated?: (id: { dev: bigint; ino: bigint }) => void
+}
+
+/** 測ったときと同じ実体か。違えば「見つからない」（測ったものはもう無い）で断る */
+function assertSameIdentity(expected: Identities | undefined, path: string, actual: { dev: bigint; ino: bigint }): void {
+  if (!expected) return
+  const was = expected.get(path)
+  if (!was || was.dev !== actual.dev || was.ino !== actual.ino) throw new UserFacingError(t('files.errors.notFound'))
+}
+
+/** 中身を数える（リンクは辿らない）。上限を超えたらその場で断る。seen があれば、測った実体をパスごとに控える */
+async function measure(absolute: string, total: { entries: number; bytes: number }, seen?: Identities): Promise<void> {
+  const info = await lstat(absolute, { bigint: true })
+  seen?.set(absolute, { dev: info.dev, ino: info.ino })
   total.entries++
-  if (info.isFile()) total.bytes += info.size
-  if (total.entries > MAX_COPY_ENTRIES) throw new UserFacingError(t('files.errors.copyTooMany', { limit: MAX_COPY_ENTRIES.toLocaleString('en-US') }))
-  if (total.bytes > MAX_COPY_BYTES) throw new UserFacingError(t('files.errors.copyTooLarge', { limit: Math.round(MAX_COPY_BYTES / 1024 / 1024 / 1024) }))
+  if (info.isFile()) total.bytes += Number(info.size)
+  if (total.entries > MAX_COPY_ENTRIES) throw copyTooManyError()
+  if (total.bytes > MAX_COPY_BYTES) throw copyTooLargeError()
   if (!info.isDirectory()) return
-  for (const name of await readdir(absolute)) await measure(join(absolute, name), total)
+  for (const name of await readdir(absolute)) await measure(join(absolute, name), total, seen)
 }
 
 /**
  * source（ファイルかフォルダ）を target へコピーする。target はまだ無い名前。
  * 書く側は毎回、親フォルダを開いて持ったまま作る（ファイルは O_EXCL・O_NOFOLLOW。pinnedDir.ts）。
  * 読む側は、プロジェクトの中なら開いたものが中の実体かを確かめ（openContained）、外から取り込むなら読むだけで開く。
- * リンクは辿らない: プロジェクトの中のコピーではリンクのまま写し、外からの取り込みでは写さない。パイプ・ソケットなどは写さない
+ * リンクは辿らない: プロジェクトの中のコピーではリンクのまま写し、外からの取り込みでは写さない。パイプ・ソケットなどは写さない。
+ * 作った数と書いたバイト数は ctx.budget から減らし、超えたらその場で止める（security-6 [7]）。
+ * ctx.expected（外からの取り込み）があれば、測ったときと同じ実体だけを写す。ファイルは開いたもの（fd）の実体で確かめ、その fd から読む
  */
-async function copyTree(root: string, source: string, target: string, origin: 'project' | 'external', onCreated: (id: { dev: bigint; ino: bigint }) => void = () => undefined): Promise<void> {
-  const info = await lstat(source)
+async function copyTree(root: string, source: string, target: string, origin: 'project' | 'external', ctx: CopyContext): Promise<void> {
+  const info = await lstat(source, { bigint: true })
+  assertSameIdentity(ctx.expected, source, info)
   const name = basename(target)
   /** 作ったものの実体（失敗したときに、作ったものだけを消すため） */
-  const created = async (pin: Parameters<typeof entryIdentity>[0]) => { const id = await entryIdentity(pin, name); if (id) onCreated(id) }
+  const created = async (pin: Parameters<typeof entryIdentity>[0]) => { const id = await entryIdentity(pin, name); if (id) ctx.onCreated?.(id) }
+  const children: CopyContext = { budget: ctx.budget, ...(ctx.expected ? { expected: ctx.expected } : {}), ...(ctx.fileBytes ? { fileBytes: ctx.fileBytes } : {}) }
   if (info.isSymbolicLink()) {
-    if (origin === 'project') { const link = await readlink(source); await withPinnedDir(root, dirname(target), async (pin) => { await symlinkIn(pin, name, link); await created(pin) }) }
+    if (origin === 'project') {
+      if (--ctx.budget.entries < 0) throw copyTooManyError()
+      const link = await readlink(source)
+      await withPinnedDir(root, dirname(target), async (pin) => { await symlinkIn(pin, name, link); await created(pin) })
+    }
     return
   }
   if (info.isDirectory()) {
     if (origin === 'project') await assertStillInside(root, source)
+    if (--ctx.budget.entries < 0) throw copyTooManyError()
     await withPinnedDir(root, dirname(target), async (pin) => { await mkdirIn(pin, name); await created(pin) })
-    for (const child of await readdir(source)) await copyTree(root, join(source, child), join(target, child), origin)
+    for (const child of await readdir(source)) await copyTree(root, join(source, child), join(target, child), origin, children)
     return
   }
   if (!info.isFile()) return
@@ -241,17 +291,27 @@ async function copyTree(root: string, source: string, target: string, origin: 'p
     ? await openContained(root, source, 'read')
     : await open(source, constants.O_RDONLY | O_NOFOLLOW | O_NONBLOCK)
   try {
-    if (!(await input.stat()).isFile()) return
+    const opened = await input.stat({ bigint: true })
+    if (!opened.isFile()) return
+    // 測ってから開くまでに差し替えられていないか（開いたものの実体で確かめる）
+    assertSameIdentity(ctx.expected, source, opened)
+    if (--ctx.budget.entries < 0) throw copyTooManyError()
     const output = await withPinnedDir(root, dirname(target), async (pin) => { const handle = await createFileIn(pin, name); await created(pin); return handle })
     try {
       const buffer = Buffer.allocUnsafe(COPY_CHUNK_BYTES)
+      let copied = 0
       for (;;) {
         const { bytesRead } = await input.read(buffer, 0, buffer.length, null)
         if (bytesRead === 0) break
+        // 測ったあとで伸びても、全体とファイルの上限を超えて書かない（security-6 [7]）
+        copied += bytesRead
+        ctx.budget.bytes -= bytesRead
+        if (ctx.budget.bytes < 0) throw copyTooLargeError()
+        if (ctx.fileBytes && copied > ctx.fileBytes.limit) throw ctx.fileBytes.error()
         let written = 0
         while (written < bytesRead) written += (await output.write(buffer, written, bytesRead - written, null)).bytesWritten
       }
-      await output.chmod(info.mode & 0o777).catch(() => undefined)
+      await output.chmod(Number(info.mode) & 0o777).catch(() => undefined)
     } finally {
       await output.close()
     }
@@ -261,10 +321,10 @@ async function copyTree(root: string, source: string, target: string, origin: 'p
 }
 
 /** コピーの途中で失敗したら、作りかけを消す（今回作ったものだけ。先に同じ名前が作られていたらそれは消さない） */
-async function copyOrCleanUp(root: string, source: string, target: string, origin: 'project' | 'external'): Promise<void> {
+async function copyOrCleanUp(root: string, source: string, target: string, origin: 'project' | 'external', ctx: Omit<CopyContext, 'onCreated'>): Promise<void> {
   let created: { dev: bigint; ino: bigint } | null = null
   try {
-    await copyTree(root, source, target, origin, (id) => { created = id })
+    await copyTree(root, source, target, origin, { ...ctx, onCreated: (id) => { created = id } })
   } catch (err) {
     // 作ったものと同じ実体のときだけ、親を開いて持ったまま消す
     const id = created
@@ -293,11 +353,13 @@ export async function copyEntries(root: string, relPaths: unknown, destRel: unkn
   }
   const taken = await namesIn(root, dest.absolute)
   const done: FsTransfer[] = []
+  // 測ったあとで増えても、写しながら同じ上限で止める（security-6 [7]）
+  const budget = newCopyBudget()
   for (const source of sources) {
     const info = await lstat(source.absolute)
     const name = uniqueName(basename(source.absolute), info.isDirectory() ? 'directory' : 'file', taken)
     const target = join(dest.absolute, name)
-    await copyOrCleanUp(root, source.absolute, target, 'project')
+    await copyOrCleanUp(root, source.absolute, target, 'project', { budget })
     taken.push(name)
     done.push({ from: source.rel, to: relativeInside(root, target) ?? '' })
   }
@@ -345,25 +407,32 @@ export async function moveEntries(root: string, relPaths: unknown, destRel: unkn
  * 確かめるのは取り込み先がプロジェクトの中であることと、上限。元のファイルは読むだけで、動かしも変えもしない。
  * 同じ名前があれば「名前 copy」にする。from は元の名前、to は新しい相対パス
  */
-export async function importEntries(root: string, absolutePaths: unknown, destRel: unknown, wasDropped: (path: unknown) => boolean = isRecentlyDropped): Promise<FsTransfer[]> {
+export async function importEntries(root: string, absolutePaths: unknown, destRel: unknown, wasDropped: (path: unknown) => boolean = isRecentlyDropped,
+  /** 単体テスト用（security-6 [7]）: 測ったあと・写す前に呼ぶ（元を伸ばす・差し替える）。budget は写すときの枠を小さくする */
+  testHooks: { afterMeasure?: () => Promise<void>; budget?: CopyBudget } = {}): Promise<FsTransfer[]> {
   if (!Array.isArray(absolutePaths) || absolutePaths.length === 0 || absolutePaths.length > MAX_TRANSFER_ENTRIES) throw badRequest()
   const dest = await resolveDestination(root, destRel)
   const sources: Array<{ absolute: string; kind: FsEntry['kind'] }> = []
   const total = { entries: 0, bytes: 0 }
+  // 測ったときの実体。写すときに、これと違うもの・測っていないものは写さない（security-6 [7]）
+  const expected: Identities = new Map()
   for (const source of absolutePaths) {
     if (typeof source !== 'string' || !isAbsolute(source) || source.includes('\0') || !wasDropped(source)) throw badRequest()
     const info = await lstat(source).catch((err: unknown) => { if (isMissing(err)) throw new UserFacingError(t('files.errors.notFound')); throw err })
     if (!info.isFile() && !info.isDirectory()) throw new UserFacingError(t('files.errors.cantImport', { name: basename(source) }))
     if (info.isDirectory()) await assertNotIntoItself(source, dest.absolute)
-    await measure(source, total)
+    await measure(source, total, expected)
     sources.push({ absolute: source, kind: info.isDirectory() ? 'directory' : 'file' })
   }
+  await testHooks.afterMeasure?.()
   const taken = await namesIn(root, dest.absolute)
   const done: FsTransfer[] = []
+  // 測ったあとで伸びても、写しながら同じ上限で止める（security-6 [7]）
+  const budget = testHooks.budget ?? newCopyBudget()
   for (const source of sources) {
     const name = uniqueName(basename(source.absolute), source.kind, taken)
     const target = join(dest.absolute, name)
-    await copyOrCleanUp(root, source.absolute, target, 'external')
+    await copyOrCleanUp(root, source.absolute, target, 'external', { budget, expected })
     taken.push(name)
     done.push({ from: basename(source.absolute), to: relativeInside(root, target) ?? '' })
   }
@@ -383,7 +452,10 @@ export async function importMediaForMarkdown(root: string, markdownRel: unknown,
   if (markdown.rel === '' || !isMarkdownFilePath(markdown.rel)) throw badRequest()
   await assertOutsideGit(root, markdown.absolute, markdown.rel)
   if (!(await stat(markdown.absolute)).isFile()) throw badRequest()
-  const sources: string[] = []
+  const sources: Array<{ path: string; fileBytes: CopyContext['fileBytes'] }> = []
+  const expected: Identities = new Map()
+  const totalLimit = Math.min(MAX_COPY_BYTES, MAX_MARKDOWN_MEDIA_TOTAL_BYTES)
+  const totalTooLarge = () => new UserFacingError(t('files.errors.copyTooLarge', { limit: Math.round(MAX_MARKDOWN_MEDIA_TOTAL_BYTES / 1024 / 1024 / 1024) }))
   let total = 0
   for (const source of absolutePaths) {
     if (typeof source !== 'string' || !isAbsolute(source) || source.includes('\0') || !wasDropped(source)) throw badRequest()
@@ -391,13 +463,16 @@ export async function importMediaForMarkdown(root: string, markdownRel: unknown,
     const kind = markdownMediaKind(name)
     if (!kind) throw new UserFacingError(t('files.errors.notMedia', { name }))
     // リンク・パイプ・フォルダは受けない（lstat。リンクを辿らない）
-    const info = await lstat(source).catch((err: unknown) => { if (isMissing(err)) throw new UserFacingError(t('files.errors.notFound')); throw err })
+    const info = await lstat(source, { bigint: true }).catch((err: unknown) => { if (isMissing(err)) throw new UserFacingError(t('files.errors.notFound')); throw err })
     if (!info.isFile()) throw new UserFacingError(t('files.errors.notMedia', { name }))
     const limit = MAX_MARKDOWN_MEDIA_BYTES[kind]
-    if (info.size > limit) throw new UserFacingError(t('files.errors.mediaTooLarge', { name, limit: Math.round(limit / 1024 / 1024) }))
-    total += info.size
-    if (total > MAX_COPY_BYTES || total > MAX_MARKDOWN_MEDIA_TOTAL_BYTES) throw new UserFacingError(t('files.errors.copyTooLarge', { limit: Math.round(MAX_MARKDOWN_MEDIA_TOTAL_BYTES / 1024 / 1024 / 1024) }))
-    sources.push(source)
+    const tooLarge = () => new UserFacingError(t('files.errors.mediaTooLarge', { name, limit: Math.round(limit / 1024 / 1024) }))
+    if (Number(info.size) > limit) throw tooLarge()
+    total += Number(info.size)
+    if (total > totalLimit) throw totalTooLarge()
+    expected.set(source, { dev: info.dev, ino: info.ino })
+    // 写すときも、開いたものの実体と、ファイルの上限・全体の上限を確かめながら書く（security-6 [7]）
+    sources.push({ path: source, fileBytes: { limit, error: tooLarge } })
   }
   // コピー先のフォルダ。Markdown の隣の assets / images / media / img のうち既にあるもの、無ければ作る
   const dir = dirname(markdown.absolute)
@@ -411,10 +486,11 @@ export async function importMediaForMarkdown(root: string, markdownRel: unknown,
   const target = await resolveDestination(root, relativeInside(root, dest) ?? '')
   const taken = await namesIn(root, target.absolute)
   const done: string[] = []
+  const budget: CopyBudget = { entries: MAX_MARKDOWN_MEDIA_FILES, bytes: totalLimit }
   for (const source of sources) {
-    const name = uniqueMediaName(safeMediaFileName(basename(source)), taken)
+    const name = uniqueMediaName(safeMediaFileName(basename(source.path)), taken)
     const file = join(target.absolute, name)
-    await copyOrCleanUp(root, source, file, 'external')
+    await copyOrCleanUp(root, source.path, file, 'external', { budget, expected, fileBytes: source.fileBytes })
     taken.push(name)
     done.push(relativeInside(root, file) ?? '')
   }

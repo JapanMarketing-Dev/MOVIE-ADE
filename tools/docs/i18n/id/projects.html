@@ -43,7 +43,7 @@ Proyek adalah sebuah folder (biasanya root repo Anda). Setiap proyek menyimpan U
 </table>
 {{shot:url-presets|URL tersimpan di toolbar browser}}
 
-<!-- @review-targets 9c48e48820 -->
+<!-- @review-targets 5ca6dd4b29 -->
 ## Panel target tinjauan
 {{clip:targets|Berpindah target tinjauan dan halaman tanpa menghentikan rekaman.}}
 <p>Dalam mode Umpan Balik, panel <span class="docs-ui">Target tinjauan</span> di kanan mencantumkan semua yang bisa Anda tinjau untuk proyek saat ini. Berpindah target tidak menghentikan rekaman. Tampilkan atau sembunyikan panel dengan <span class="docs-ui">Tampilan → Tampilkan/Sembunyikan Target Tinjauan</span> ({{keys:Mod+Shift+K}}) atau <span class="docs-ui">Sembunyikan panel</span>.</p>
@@ -52,7 +52,7 @@ Proyek adalah sebuah folder (biasanya root repo Anda). Setiap proyek menyimpan U
   <li><strong><span class="docs-ui">File</span></strong>: folder proyek. File dibuka sebagai pratinjau (Markdown dan Mermaid dirender, teks lain hanya-baca), sehingga Anda juga bisa meninjau dokumen. Ikon pensil (<span class="docs-ui">Buka di editor</span>) membukanya di editor.</li>
 </ul>
 <p><span class="docs-ui">Filter target</span> menyaring target, halaman, dan file sekaligus, dengan pencocokan fuzzy yang sama seperti <span class="docs-ui">Buka File…</span>. Di dalam daftar, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> atau <kbd>1</kbd>–<kbd>9</kbd> berpindah target. <span class="docs-ui">Buka URL…</span> membuka URL sekali pakai, dan <span class="docs-ui">Simpan ke URL proyek</span> menyimpannya.</p>
-<p>Target berasal dari <code>projects[].urls</code> di <code>settings.json</code> (lihat <a href="settings-json.html#example">contohnya</a>). Setiap entri memerlukan <code>url</code>, <code>launchCommand</code> (dijalankan di terminal, misalnya untuk memulai aplikasi desktop), atau <code>windowMatch</code> (jendela yang direkam), dan dapat memiliki <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> atau <code>reference</code>). Memilih target jendela akan menjadikannya sumber perekaman, jadi tidak bisa dilakukan saat sedang merekam. Halaman yang dikunjungi diingat per proyek, hanya di mesin ini (hingga 200).</p>
+<p>Target berasal dari <code>projects[].urls</code> di <code>settings.json</code> (lihat <a href="settings-json.html#example">contohnya</a>). Setiap entri memerlukan <code>url</code>, <code>launchCommand</code> (dijalankan di terminal, misalnya untuk memulai aplikasi desktop), atau <code>windowMatch</code> (jendela yang direkam), dan dapat memiliki <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> atau <code>reference</code>). Memilih target jendela sebelum merekam menjadikannya sumber perekaman; saat merekam, jendela itu ditambahkan ke rekaman dan ditampilkan (lihat <a href="recording.html#multi">Merekam beberapa jendela sekaligus</a>). Halaman yang dikunjungi diingat per proyek, hanya di mesin ini (hingga 200).</p>
 
 <!-- @switch-env 70e1c23f78 -->
 ## Membuka dan berpindah lingkungan

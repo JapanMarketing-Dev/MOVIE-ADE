@@ -28,7 +28,7 @@
   <meta property="og:title" content="प्रोजेक्ट और URL · Ferret दस्तावेज़">
   <meta property="og:description" content="प्रोजेक्ट एक फ़ोल्डर होता है (आम तौर पर आपकी repository का root)। हर प्रोजेक्ट के अपने सेव किए गए URL होते हैं, इसलिए local, dev और production के बीच सिर्फ़ एक क्लिक का फ़ासला रहता है।">
   <meta property="og:url" content="https://ferretade.dev/docs/hi/projects">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="hi_IN">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="प्रोजेक्ट और URL · Ferret दस्तावेज़">
   <meta name="twitter:description" content="प्रोजेक्ट एक फ़ोल्डर होता है (आम तौर पर आपकी repository का root)। हर प्रोजेक्ट के अपने सेव किए गए URL होते हैं, इसलिए local, dev और production के बीच सिर्फ़ एक क्लिक का फ़ासला रहता है।">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -214,7 +214,7 @@
   <li><strong><span class="docs-ui">फ़ाइलें</span></strong>: प्रोजेक्ट फ़ोल्डर। फ़ाइल प्रीव्यू के रूप में खुलती है (Markdown और Mermaid render होकर, बाकी टेक्स्ट सिर्फ़ पढ़ने के लिए), ताकि आप दस्तावेज़ों का भी review कर सकें। पेंसिल (<span class="docs-ui">editor में खोलें</span>) उसे editor में खोलती है।</li>
 </ul>
 <p><span class="docs-ui">targets फ़िल्टर करें</span> targets, पेज और फ़ाइलें, तीनों को एक साथ फ़िल्टर करता है, <span class="docs-ui">फ़ाइल पर जाएँ…</span> जैसी ही fuzzy matching के साथ। सूची में <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> या <kbd>1</kbd>–<kbd>9</kbd> से targets बदलते हैं। <span class="docs-ui">URL खोलें…</span> एक बार के लिए कोई URL खोलता है, और <span class="docs-ui">प्रोजेक्ट URL में सहेजें</span> उसे रख लेता है।</p>
-<p>Targets <code>settings.json</code> के <code>projects[].urls</code> से आते हैं (<a href="settings-json.html#example">उदाहरण</a> देखें)। हर entry में एक <code>url</code>, एक <code>launchCommand</code> (टर्मिनल में चलता है, जैसे कोई डेस्कटॉप ऐप शुरू करने के लिए), या एक <code>windowMatch</code> (रिकॉर्ड की जाने वाली विंडो) होना चाहिए, और उसमें एक <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> या <code>reference</code>) भी हो सकता है। विंडो वाला target चुनने पर वह रिकॉर्डिंग का source बन जाता है, इसलिए यह रिकॉर्डिंग के दौरान नहीं किया जा सकता। देखे गए पेज हर प्रोजेक्ट के लिए सिर्फ़ इसी मशीन पर याद रखे जाते हैं (अधिकतम 200)।</p>
+<p>Targets <code>settings.json</code> के <code>projects[].urls</code> से आते हैं (<a href="settings-json.html#example">उदाहरण</a> देखें)। हर entry में एक <code>url</code>, एक <code>launchCommand</code> (टर्मिनल में चलता है, जैसे कोई डेस्कटॉप ऐप शुरू करने के लिए), या एक <code>windowMatch</code> (रिकॉर्ड की जाने वाली विंडो) होना चाहिए, और उसमें एक <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> या <code>reference</code>) भी हो सकता है। रिकॉर्डिंग से पहले विंडो वाला target चुनने पर वह रिकॉर्डिंग का source बन जाता है; रिकॉर्डिंग के दौरान चुनने पर वह विंडो रिकॉर्डिंग में जुड़ जाती है और दिखने लगती है (देखें <a href="recording.html#multi">कई विंडो एक साथ रिकॉर्ड करें</a>)। देखे गए पेज हर प्रोजेक्ट के लिए सिर्फ़ इसी मशीन पर याद रखे जाते हैं (अधिकतम 200)।</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">

@@ -16,7 +16,8 @@ const CH = {
   stopped: 'ade-recorder:stopped'
   ,started: 'ade-recorder:started',
   grab: 'ade-recorder:grab',
-  frame: 'ade-recorder:frame'
+  frame: 'ade-recorder:frame',
+  overlay: 'ade-recorder:overlay'
 } as const
 
 contextBridge.exposeInMainWorld('adeRecorder', {
@@ -32,5 +33,7 @@ contextBridge.exposeInMainWorld('adeRecorder', {
   started: () => ipcRenderer.send(CH.started),
   // 画面全体・別のウインドウの静止画。main が番号付きで頼み、PNG を返す
   onGrab: (fn: (id: number) => void) => ipcRenderer.on(CH.grab, (_e, id: number) => fn(id)),
-  frame: (id: number, png: ArrayBuffer | null) => ipcRenderer.send(CH.frame, id, png)
+  frame: (id: number, png: ArrayBuffer | null) => ipcRenderer.send(CH.frame, id, png),
+  // 内蔵ブラウザの上に重ねるもの（拡張機能のポップアップ）の取り込みの ID と位置。null で外す
+  onOverlay: (fn: (overlay: unknown) => void) => ipcRenderer.on(CH.overlay, (_e, overlay) => fn(overlay))
 })

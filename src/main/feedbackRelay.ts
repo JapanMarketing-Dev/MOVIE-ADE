@@ -1,4 +1,5 @@
 import {
+  APP_VERSION_PATTERN,
   ARCHES,
   FEEDBACK_RELAY_URL,
   MAX_BODY_BYTES,
@@ -6,6 +7,7 @@ import {
   MAX_IMAGES,
   MAX_REQUEST_BYTES,
   MAX_TITLE_CHARS,
+  OS_RELEASE_PATTERN,
   PLATFORMS,
   RELAY_TIMEOUT_MS,
   RETRYABLE_CODES,
@@ -62,10 +64,10 @@ export function checkSubmission(s: RelaySubmission): ErrorCode | null {
   const title = s.title.trim()
   if (!title || /[\r\n]/.test(title) || [...title].length > MAX_TITLE_CHARS) return 'invalid_title'
   if (!s.body.trim() || utf8Bytes(s.body) > MAX_BODY_BYTES) return 'invalid_body'
-  if (!/^[0-9A-Za-z.+-]{1,32}$/.test(s.appVersion)) return 'invalid_meta'
+  if (!APP_VERSION_PATTERN.test(s.appVersion)) return 'invalid_meta'
   if (s.platform !== undefined && !(PLATFORMS as readonly string[]).includes(s.platform)) return 'invalid_meta'
   if (s.arch !== undefined && !(ARCHES as readonly string[]).includes(s.arch)) return 'invalid_meta'
-  if (s.osRelease !== undefined && !/^[0-9A-Za-z._-]{1,64}$/.test(s.osRelease)) return 'invalid_meta'
+  if (s.osRelease !== undefined && !OS_RELEASE_PATTERN.test(s.osRelease)) return 'invalid_meta'
   if (s.installId !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s.installId)) return 'invalid_meta'
   if (s.images.length > MAX_IMAGES) return 'too_many_images'
   for (const image of s.images) {

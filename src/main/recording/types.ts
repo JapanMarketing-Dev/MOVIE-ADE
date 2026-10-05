@@ -6,6 +6,7 @@
  */
 
 import type { AnnotationHistory, AnnotationShortcut, CaptureTarget } from '@shared/types'
+import type { CaptureTracksState, WatchedWindow } from '@shared/captureTracks'
 import type { Event, FrameRef } from '../pipeline/types'
 
 export type RecordingState = 'idle' | 'recording' | 'paused' | 'stopping'
@@ -83,6 +84,25 @@ export interface RecordingOptions {
    * 通常は発話の区切りで `clearAnnotations()` が呼ばれて消える。
    */
   annotationMaxHoldMs: number
+  /**
+   * 録画中に待ち受けるウインドウ（プロジェクトの確認先の watch。@shared/captureTracks）。
+   * 現れたら別のトラックとして映像を録り、mode が switch なら画面もそちらへ切り替える
+   */
+  watch?: WatchedWindow[]
+  /**
+   * 内蔵ブラウザのビューの上に重なるもの（拡張機能のポップアップ。src/main/browserExtensions.ts）も動画に合成するか。
+   * 入なら録画ウインドウがタブの映像とポップアップの映像を1枚に重ねてから録る。切（既定）ならタブの映像をそのまま録る
+   */
+  overlayCompositing?: boolean
+}
+
+/**
+ * 内蔵ブラウザのビューの上に重ねて録るもの（拡張機能のポップアップ）。
+ * rect はビューの左上を原点にした 0〜1 の割合（タブ録画の映像の上の位置）
+ */
+export interface BrowserOverlay {
+  contents: import('electron').WebContents
+  rect: { x: number; y: number; width: number; height: number }
 }
 
 export const defaultRecordingOptions: Omit<RecordingOptions, 'paths'> = {
@@ -140,6 +160,23 @@ export interface RecordingResult {
   audioSamples: Record<AudioSourceKind, number>
   /** 途中で起きた不具合（録画は続行している） */
   warnings: string[]
+  /** 録った映像（トラック）。1本目（main）は videoPath と同じ */
+  tracks: TrackRecordInfo[]
+}
+
+/** 録った映像1本の控え（tracks.jsonl にも同じ内容を追記する） */
+export interface TrackRecordInfo {
+  id: string
+  kind: 'browser' | 'screen' | 'window'
+  label: string
+  /** レビューのフォルダからの相対パス（recording.webm・tracks/t2.webm） */
+  video: string
+  /** 録り始めた時刻（録画開始からのms） */
+  startMs: number
+  /** 録り終えた時刻（録画開始からのms） */
+  endMs: number
+  /** 待ち受けから自動で足したなら、その確認先の id */
+  watchId?: string
 }
 
 /** 録画側が外へ出すイベント */
@@ -158,4 +195,6 @@ export interface RecordingHandlers {
   onAnnotationHistory?(history: AnnotationHistory): void
   /** ページに焦点があるときに押された、書き込みの道具の切り替えキー */
   onAnnotationShortcut?(action: AnnotationShortcut): void
+  /** 録っている映像（トラック）・映しているもの・待ち受けが変わった */
+  onTracks?(state: CaptureTracksState): void
 }

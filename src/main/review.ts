@@ -286,7 +286,7 @@ export async function ngResendInstruction(paths: SessionPaths, itemIds?: string[
   if (!record) throw new UserFacingError(t('review.errors.notFound'))
   const progress = await readProgress(paths)
   const included = record.document.items.filter((it) => it.include)
-  const ordered = groupByTarget(included, (it) => it.context.url, record.document.meta.urlPresets ?? []).flatMap((g) => g.items)
+  const ordered = groupByTarget(included, (it) => it.context.url, record.document.meta.urlPresets ?? [], (it) => it.context.source).flatMap((g) => g.items)
   const wanted = new Set(itemIds ?? queuedIds(ordered, progress))
   const items = ordered.flatMap((it, i) => {
     const comment = recentComments(progress[it.id], 1)[0]?.text
@@ -401,7 +401,7 @@ export async function revealReview(paths: SessionPaths): Promise<void> {
 export async function reviewInstruction(paths: SessionPaths, template?: string | null): Promise<string> {
   const record = await loadSession(paths)
   const included = record?.document.items.filter((it) => it.include) ?? []
-  const purposes = new Set(groupByTarget(included, (it) => it.context.url, record?.document.meta.urlPresets ?? []).map((g) => g.target.purpose))
+  const purposes = new Set(groupByTarget(included, (it) => it.context.url, record?.document.meta.urlPresets ?? [], (it) => it.context.source).map((g) => g.target.purpose))
   const nonCode = purposes.has('design') || purposes.has('doc')
   // 参考に見た外部サイト（競合・お手本）の指摘は、そのサイトを直させない
   const reference = purposes.has('reference')
@@ -436,11 +436,13 @@ export async function organizeReview(paths: SessionPaths, runnerId: OrganizeRunn
     if (!record || record.edits.length) throw new UserFacingError(t('review.errors.editedNoOverwrite'))
     // 選択中のアカウント（フッターで切り替えたもの）で CLI を動かす
     const apiProvider = runnerId.startsWith('api:') ? runnerId.slice(4) as LlmApiProvider : null
+    // CLI はプロジェクトの外の信頼できる絶対パスから起動する（プロジェクトに置かれた claude / codex を拾わない。security-6 [6]）
+    const project = resolve(paths.dir, relative(paths.relativeDir, '.'))
     const runner = apiProvider
       ? new ApiLlmRunner({ provider: apiProvider, endpoint: api?.endpoint, apiKey: api?.apiKey })
       : runnerId === 'codex'
-        ? new CodexRunner({ accountEnv: () => resolveAgentEnv('codex'), ...(cliModels?.codex ? { model: cliModels.codex } : {}) })
-        : new ClaudeCodeRunner({ accountEnv: () => resolveAgentEnv('claude'), ...(cliModels?.['claude-code'] ? { model: cliModels['claude-code'] } : {}) })
+        ? new CodexRunner({ project, accountEnv: () => resolveAgentEnv('codex'), ...(cliModels?.codex ? { model: cliModels.codex } : {}) })
+        : new ClaudeCodeRunner({ project, accountEnv: () => resolveAgentEnv('claude'), ...(cliModels?.['claude-code'] ? { model: cliModels['claude-code'] } : {}) })
     const name = apiProvider ? providerLabel(LLM_PROVIDER_PRESETS[apiProvider], t) : runnerId === 'codex' ? 'Codex' : 'Claude Code'
     if (!await runner.available()) throw new Error(apiProvider ? t('organize.api.keyMissing', { label: name }) : t('review.errors.runnerUnavailable', { name }))
     // 端末内のサーバー（おすすめの Ollama など）は、動いていない・モデルが無いときに先に理由と次の一手を出す
@@ -494,7 +496,7 @@ async function recoverReview(paths: SessionPaths): Promise<ReviewData> {
   // 可変長引数（Math.max(...xs)）は、件数が引数の上限を超えると投げる。ループで求める
   const durationMs = maxOf([...events.map((e) => e.t), ...frames.map((f) => f.t), ...transcript.map((s) => s.t1)], 0)
   return finishReview(paths, { startedAt: typeof meta.startedAt === 'string' ? meta.startedAt : startedAtFromId(paths.id), durationMs, videoPath: paths.recording,
-    videoBytes: 0, frames, events, audioSamples: { mic: 0, system: 0 }, warnings: [] }, transcript,
+    videoBytes: 0, frames, events, audioSamples: { mic: 0, system: 0 }, warnings: [], tracks: [] }, transcript,
     [t('review.recoveredWarning')], meta.twoSpeakers === true)
 }
 

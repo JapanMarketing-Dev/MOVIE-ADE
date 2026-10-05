@@ -131,3 +131,42 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* 比べる画面（ReviewCompare）。画像の下に前後の移動と、確認待ちなら OK / NG / コメント */
+.rv-compare {
+  overflow: auto;
+  max-height: 100%;
+}
+
+.rv-compare .rv-shots__big img {
+  max-height: calc(100vh - 380px);
+}
+
+.rv-compare__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.rv-compare__position {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.rv-compare__verdict {
+  width: min(720px, 100%);
+}
+
+.rv-compare__keys {
+  color: var(--color-text-faint);
+  font-size: var(--font-size-2xs);
+}
+
+.rv-compare__done {
+  display: grid;
+  justify-items: center;
+}

@@ -5,6 +5,7 @@ import type { NativeImage, WebContents } from 'electron'
 import type { FrameRef } from '../pipeline/types'
 import type { RecordingClock } from './clock'
 import type { RecordingOptions } from './types'
+import { overlayView } from '../feedbackCapture'
 import { frameFileName, hasChanged, isNearlyBlank, targetWidth } from './frames'
 // 静止画の時刻を t と呼ぶので、文の取り出しは別名にする
 import { t as translateMessage } from '@shared/i18n'
@@ -36,6 +37,39 @@ export function webContentsStillSource(contents: WebContents): StillSource {
   return {
     capture: () => contents.capturePage(),
     get gone() { return contents.isDestroyed() }
+  }
+}
+
+/** 静止画の上に重ねるもの（拡張機能のポップアップ）。rect は画像の左上を原点にした 0〜1 の割合 */
+export interface StillOverlay {
+  contents: WebContents
+  rect: { x: number; y: number; width: number; height: number }
+}
+
+type FromBitmap = (data: Buffer, size: { width: number; height: number; scaleFactor: number }) => NativeImage | Promise<NativeImage>
+
+const nativeFromBitmap: FromBitmap = async (data, size) => (await import('electron')).nativeImage.createFromBitmap(data, size)
+
+/**
+ * 内蔵ブラウザの静止画に、ビューの上に重なっている拡張機能のポップアップ（別の WebContentsView なので capturePage に写らない）を
+ * 同じ位置に重ねる。重ねるのは生の画素（feedbackCapture.ts の overlayView）。ポップアップが無い・撮れないときは元の画像のまま
+ */
+export function overlayStillSource(base: StillSource, overlay: () => StillOverlay | null, fromBitmap: FromBitmap = nativeFromBitmap): StillSource {
+  return {
+    capture: async () => {
+      const image = await base.capture()
+      const top = overlay()
+      if (!image || image.isEmpty() || !top || top.contents.isDestroyed()) return image
+      const shot = await top.contents.capturePage().catch(() => null)
+      if (!shot || shot.isEmpty()) return image
+      // 割合の矩形なので、元の大きさを 1×1 として置く
+      const merged = overlayView(image, { width: 1, height: 1 }, { image: shot, bounds: top.rect })
+      if (!merged) return image
+      // 元の画像と同じ DIP の大きさに見えるよう、画素の倍率を付ける（Retina で 2）
+      const scaleFactor = merged.width / Math.max(1, image.getSize().width)
+      return fromBitmap(Buffer.from(merged.data.buffer, merged.data.byteOffset, merged.data.byteLength), { width: merged.width, height: merged.height, scaleFactor })
+    },
+    get gone() { return base.gone }
   }
 }
 

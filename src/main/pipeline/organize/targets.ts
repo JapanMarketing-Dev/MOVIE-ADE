@@ -9,8 +9,8 @@
  *     target が欠けている・知らない・根拠と食い違う・根拠が複数の対象にまたがる場合は、元の区切りに戻す
  * 対象が1つだけの録画（切り替えなし・画面全体の録画）では何もしない（プロンプトも変えない）。
  */
-import { targetHeading, targetOfUrl } from '@shared/reviewTarget'
-import type { Event, NavEvent, SessionMeta } from '../types'
+import { targetHeading, targetOfSource, targetOfUrl, type ReviewTarget } from '@shared/reviewTarget'
+import type { Event, NavEvent, SessionMeta, TrackEvent } from '../types'
 
 interface TargetSpan {
   /** LLM に見せる ID（T1, T2 …。最初に出てきた順） */
@@ -19,7 +19,7 @@ interface TargetSpan {
   key: string
   /** 人が読めるラベル（「dev · example.com/pricing」「docs/a.md」） */
   label: string
-  kind: 'url' | 'file'
+  kind: 'url' | 'file' | 'window'
   /** この対象を開いていた時間帯 [始まり, 終わり)（ms）。行き来すると複数になる */
   ranges: Array<[number, number]>
 }
@@ -37,14 +37,15 @@ const NONE: TargetIndex = { spans: [], at: () => null }
  * 対象が1つ以下なら区切りは要らないので空を返す。
  */
 export function buildTargetIndex(events: readonly Event[], meta: Pick<SessionMeta, 'durationMs' | 'urlPresets'>): TargetIndex {
-  const navs = events.filter((e): e is NavEvent => e.type === 'nav').sort((a, b) => a.t - b.t)
-  if (navs.length === 0) return NONE
+  // 複数の映像を録って切り替えた録画では、映していたもの（track）も対象の区切りにする（内蔵ブラウザへ戻ったら直前のページ）
+  const multiTrack = new Set(events.filter((e) => e.type === 'track').map((e) => (e as TrackEvent).track)).size > 1
+  const timeline = events.filter((e): e is NavEvent | TrackEvent => e.type === 'nav' || (multiTrack && e.type === 'track')).sort((a, b) => a.t - b.t)
+  if (timeline.length === 0) return NONE
   const spans: TargetSpan[] = []
   const byKey = new Map<string, TargetSpan>()
   const segments: Array<{ start: number; id: string }> = []
-  for (const nav of navs) {
-    const target = targetOfUrl(nav.url, meta.urlPresets ?? [])
-    if (target.kind === 'none') continue
+  const enter = (target: ReviewTarget, t: number): void => {
+    if (target.kind === 'none') return
     let span = byKey.get(target.key)
     if (!span) {
       span = { id: `T${spans.length + 1}`, key: target.key, label: targetHeading(target), kind: target.kind, ranges: [] }
@@ -52,12 +53,27 @@ export function buildTargetIndex(events: readonly Event[], meta: Pick<SessionMet
       spans.push(span)
     }
     const last = segments[segments.length - 1]
-    if (last?.id === span.id) continue
-    segments.push({ start: segments.length === 0 ? 0 : nav.t, id: span.id })
+    if (last?.id === span.id) return
+    segments.push({ start: segments.length === 0 ? 0 : t, id: span.id })
+  }
+  let page: ReviewTarget | null = null
+  let onWindow = false
+  for (const e of timeline) {
+    if (e.type === 'nav') {
+      page = targetOfUrl(e.url, meta.urlPresets ?? [])
+      // ウインドウを映している間の内蔵ブラウザの遷移は、映していたものの区切りにしない
+      if (!onWindow) enter(page, e.t)
+    } else if (e.kind === 'browser') {
+      onWindow = false
+      if (page) enter(page, e.t)
+    } else {
+      onWindow = true
+      enter(targetOfSource(e), e.t)
+    }
   }
   if (spans.length <= 1) return NONE
 
-  const end = Math.max(meta.durationMs, navs[navs.length - 1]!.t + 1)
+  const end = Math.max(meta.durationMs, timeline[timeline.length - 1]!.t + 1)
   segments.forEach((segment, i) => {
     const until = segments[i + 1]?.start ?? end
     spans.find((s) => s.id === segment.id)!.ranges.push([segment.start, until])

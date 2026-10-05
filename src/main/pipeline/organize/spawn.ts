@@ -1,7 +1,9 @@
 /** 子プロセスの共通実行（stdin でプロンプトを渡し、stdout を集める） */
 import { spawn } from 'node:child_process'
+import { homedir } from 'node:os'
 import { RunnerError } from './runner'
 import { resolveSpawn } from '../../platform/windowsSpawn'
+import { resolveTrustedExecutable } from '../../agentExecutable'
 
 export interface SpawnTextOptions {
   binary: string
@@ -11,6 +13,27 @@ export interface SpawnTextOptions {
   /** stdin へ流す文字列 */
   stdin?: string
   env?: NodeJS.ProcessEnv
+  /** 開いているプロジェクトのフォルダ。この中のフォルダ・実体の CLI は使わない（security-6 [6]） */
+  project?: string
+}
+
+/**
+ * 整理の CLI（claude / codex）を、組み込みの Agent と同じ決まりで信頼できる絶対パスにする（security-6 [6]。agentExecutable.ts）。
+ * 素の名前を受け継いだ PATH で探させると、PATH にプロジェクトのフォルダ（や `.`・相対の項目）があれば、
+ * プロジェクトに置かれた同じ名前のものが、アカウントの環境変数を渡されて動く。
+ * 絶対パスで、プロジェクトの外を指す PATH の項目（main の PATH とログインシェルの PATH）だけから探す。見つからなければ起動しない
+ */
+export async function resolveOrganizerCli(binary: string, opt: { project?: string; env?: NodeJS.ProcessEnv; dirs?: readonly string[]; home?: string; platform?: NodeJS.Platform } = {}): Promise<string | null> {
+  const home = opt.home ?? homedir()
+  const platform = opt.platform ?? process.platform
+  const dirs = opt.dirs ?? (platform === 'win32' ? undefined : await (await import('../../agentDetection')).searchDirs())
+  const found = await resolveTrustedExecutable(binary, { env: opt.env ?? process.env, cwd: opt.project ?? home, home, platform, ...(dirs ? { dirs } : {}) })
+  return found.ok ? found.path : null
+}
+
+export interface SpawnTextDeps {
+  /** テスト用。省略時は resolveOrganizerCli */
+  resolve?: (binary: string, opt: { project?: string; env?: NodeJS.ProcessEnv }) => Promise<string | null>
 }
 
 export interface SpawnTextResult {
@@ -21,15 +44,18 @@ export interface SpawnTextResult {
   commandLine: string
 }
 
-export async function spawnText(opt: SpawnTextOptions): Promise<SpawnTextResult> {
+export async function spawnText(opt: SpawnTextOptions, deps: SpawnTextDeps = {}): Promise<SpawnTextResult> {
   const commandLine = [opt.binary, ...opt.args].join(' ')
+  // 起動する実体は、信頼できる絶対パスに決めてから渡す（素の名前を spawn に探させない。security-6 [6]）
+  const trusted = await (deps.resolve ?? resolveOrganizerCli)(opt.binary, { ...(opt.project ? { project: opt.project } : {}), ...(opt.env ? { env: opt.env } : {}) })
+  if (!trusted) throw new RunnerError(`LLM を起動できませんでした: ${opt.binary} が、プロジェクトの外の PATH に見つかりません`, 'spawn', commandLine)
   const started = Date.now()
 
   return new Promise<SpawnTextResult>((resolve, reject) => {
     // Windows の codex.cmd などは、そのままでは起動できない（windowsSpawn.ts）
     let resolved
     try {
-      resolved = resolveSpawn(opt.binary, opt.args, opt.env ?? process.env)
+      resolved = resolveSpawn(trusted, opt.args, opt.env ?? process.env)
     } catch (e) {
       reject(new RunnerError(`LLM を起動できませんでした: ${(e as Error).message}`, 'spawn', commandLine))
       return

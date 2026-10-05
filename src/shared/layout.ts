@@ -13,8 +13,13 @@ export type Dock = 'left' | 'right' | 'top' | 'bottom'
 export type FooterDock = 'top' | 'bottom'
 
 export const PANEL_IDS: readonly PanelId[] = ['projects', 'terminal', 'files']
-/** 開閉できるパネル。ターミナルは常に表示する（ユーザーの指示：閉じる・隠す手段を持たない） */
-const CLOSABLE_PANELS: readonly PanelId[] = ['projects', 'files']
+/**
+ * 開閉できるパネル。ターミナルとプロジェクト一覧は常に表示する（ユーザーの指示：閉じる・隠す手段を持たない。
+ * プロジェクト一覧は閉じると開き直し方が分からずややこしい）
+ */
+const CLOSABLE_PANELS: readonly PanelId[] = ['files']
+/** 常に表示するパネル */
+export const ALWAYS_VISIBLE_PANELS: readonly PanelId[] = ['terminal', 'projects']
 export const DOCKS: readonly Dock[] = ['left', 'right', 'top', 'bottom']
 
 /** フッターの項目。並びはフッターでの左からの順 */
@@ -74,7 +79,7 @@ export function sanitizeLayout(raw: unknown, legacyTerminalDock?: unknown): Layo
     const p = (r.panels?.[id] && typeof r.panels[id] === 'object' ? r.panels[id] : {}) as Partial<PanelPlacement>
     const fallback = id === 'terminal' && !r.panels && isDock(legacyTerminalDock) ? legacyTerminalDock : DEFAULT_LAYOUT.panels[id].dock
     // ターミナルは常に表示する（ユーザーの指示：閉じる手段を持たない）。古い設定で閉じたままにしない
-    panels[id] = { dock: isDock(p.dock) ? p.dock : fallback, visible: id === 'terminal' || p.visible !== false }
+    panels[id] = { dock: isDock(p.dock) ? p.dock : fallback, visible: ALWAYS_VISIBLE_PANELS.includes(id) || p.visible !== false }
   }
   const f = (r.footer ?? {}) as { dock?: unknown; visible?: unknown; items?: Record<string, unknown> }
   const items = {} as Record<FooterItemId, boolean>
@@ -88,7 +93,9 @@ export function sanitizeLayout(raw: unknown, legacyTerminalDock?: unknown): Layo
 
 /** 1つのパネルの置き場所・表示を変えた配置を返す */
 export function withPanel(layout: LayoutPrefs, id: PanelId, patch: Partial<PanelPlacement>): LayoutPrefs {
-  return { ...layout, panels: { ...layout.panels, [id]: { ...layout.panels[id], ...patch } } }
+  const next = { ...layout.panels[id], ...patch }
+  if (ALWAYS_VISIBLE_PANELS.includes(id)) next.visible = true
+  return { ...layout, panels: { ...layout.panels, [id]: next } }
 }
 
 interface GridTemplate {

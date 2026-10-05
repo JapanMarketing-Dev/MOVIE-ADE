@@ -28,7 +28,7 @@
   <meta property="og:title" content="Projetos e URLs · Documentação do Ferret">
   <meta property="og:description" content="Um projeto é uma pasta (normalmente a raiz do seu repositório). Cada projeto guarda as próprias URLs salvas, então local, dev e produção ficam a um clique de distância.">
   <meta property="og:url" content="https://ferretade.dev/docs/pt-BR/projects">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="pt_BR">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Projetos e URLs · Documentação do Ferret">
   <meta name="twitter:description" content="Um projeto é uma pasta (normalmente a raiz do seu repositório). Cada projeto guarda as próprias URLs salvas, então local, dev e produção ficam a um clique de distância.">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -214,7 +214,7 @@
   <li><strong><span class="docs-ui">Arquivos</span></strong>: a pasta do projeto. Um arquivo abre como prévia (Markdown e Mermaid renderizados, outros textos somente leitura), então você também pode revisar documentos. O lápis (<span class="docs-ui">Abrir no editor</span>) o abre no editor.</li>
 </ul>
 <p><span class="docs-ui">Filtrar alvos</span> filtra alvos, páginas e arquivos ao mesmo tempo, com a mesma busca aproximada de <span class="docs-ui">Ir para arquivo…</span>. Na lista, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> ou <kbd>1</kbd>–<kbd>9</kbd> trocam de alvo. <span class="docs-ui">Abrir URL…</span> abre uma URL avulsa, e <span class="docs-ui">Salvar nas URLs do projeto</span> a guarda.</p>
-<p>Os alvos vêm de <code>projects[].urls</code> no <code>settings.json</code> (veja <a href="settings-json.html#example">o exemplo</a>). Cada entrada precisa de uma <code>url</code>, de um <code>launchCommand</code> (executado em um terminal, por exemplo para iniciar um app de desktop) ou de um <code>windowMatch</code> (a janela a gravar), e pode ter um <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> ou <code>reference</code>). Escolher um alvo de janela o define como a fonte da gravação, então isso não pode ser feito durante a gravação. As páginas visitadas são lembradas por projeto, apenas nesta máquina (até 200).</p>
+<p>Os alvos vêm de <code>projects[].urls</code> no <code>settings.json</code> (veja <a href="settings-json.html#example">o exemplo</a>). Cada entrada precisa de uma <code>url</code>, de um <code>launchCommand</code> (executado em um terminal, por exemplo para iniciar um app de desktop) ou de um <code>windowMatch</code> (a janela a gravar), e pode ter um <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> ou <code>reference</code>). Escolher um alvo de janela antes de gravar o define como a fonte da gravação; durante a gravação, isso adiciona essa janela à gravação e a mostra (veja <a href="recording.html#multi">Gravar várias janelas ao mesmo tempo</a>). As páginas visitadas são lembradas por projeto, apenas nesta máquina (até 200).</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">

@@ -15,7 +15,8 @@ import type { ProjectKind, ProjectUrl, TargetPurpose } from './types'
  * ファイルは ade-preview:// のプレビューで内蔵ブラウザに出し、指摘ではプロジェクトからの相対パスで示す。
  */
 
-type ReviewTargetKind = 'url' | 'file' | 'none'
+/** window は内蔵ブラウザ以外の映像（デスクトップアプリのウインドウ・画面。複数の映像を録って切り替えた録画） */
+type ReviewTargetKind = 'url' | 'file' | 'window' | 'none'
 
 /** 指摘の対象（停止後のまとめ・feedback.md の節） */
 export interface ReviewTarget {
@@ -64,9 +65,14 @@ export function targetOfUrl(url: string | undefined, presets: readonly ProjectUr
   }
 }
 
+/** 内蔵ブラウザ以外の映像（ウインドウ・画面）の対象。同じ名前のものは1つにまとめる（閉じて開き直したアプリも同じ対象） */
+export function targetOfSource(source: { label: string }): ReviewTarget {
+  return { key: `window:${source.label}`, kind: 'window', name: source.label }
+}
+
 /** 見出し1行（例「dev · example.com/pricing」「docs/a.md」） */
 export function targetHeading(target: ReviewTarget): string {
-  if (target.kind === 'file') return target.name
+  if (target.kind === 'file' || target.kind === 'window') return target.name
   if (target.kind === 'none') return ''
   const where = `${target.host ?? ''}${target.name === '/' ? '' : target.name}` || target.name
   return target.label ? `${target.label} · ${where}` : where
@@ -74,15 +80,18 @@ export function targetHeading(target: ReviewTarget): string {
 
 /**
  * 指摘を対象ごとにまとめる。対象の並びは最初に出てきた順、中の並びは元の順のまま。
+ * sourceOf が内蔵ブラウザ以外の映像（ItemContext の source）を返す指摘は、その映像の対象にまとめる
  */
 export function groupByTarget<T>(
   items: readonly T[],
   urlOf: (item: T) => string | undefined,
-  presets: readonly ProjectUrl[] = []
+  presets: readonly ProjectUrl[] = [],
+  sourceOf?: (item: T) => { label: string } | undefined
 ): Array<{ target: ReviewTarget; items: T[] }> {
   const groups = new Map<string, { target: ReviewTarget; items: T[] }>()
   for (const item of items) {
-    const target = targetOfUrl(urlOf(item), presets)
+    const source = sourceOf?.(item)
+    const target = source ? targetOfSource(source) : targetOfUrl(urlOf(item), presets)
     const group = groups.get(target.key)
     if (group) group.items.push(item)
     else groups.set(target.key, { target, items: [item] })
@@ -163,7 +172,9 @@ export function buildTargetEntries(input: TargetEntryInput): TargetEntry[] {
     const purpose = registeredPurpose(preset)
     if (action.kind === 'url') {
       if (!isWebUrl(action.url)) continue
-      push({ id: pageKey(action.url), kind: 'url', group: 'preset', title: preset.label || action.url, detail: action.url, label: preset.label, url: action.url,
+      // 同じ URL を別の名前で2つ登録していても、登録した確認先はどれも消さずに並べる（2つ目からは確認先の ID で区別する）
+      const key = pageKey(action.url)
+      push({ id: seen.has(key) ? `target:${preset.id}` : key, kind: 'url', group: 'preset', title: preset.label || action.url, detail: action.url, label: preset.label, url: action.url,
         ...(purpose !== 'app' ? { purpose } : {}) })
     } else if (action.kind === 'window') {
       push({
@@ -175,7 +186,8 @@ export function buildTargetEntries(input: TargetEntryInput): TargetEntry[] {
         label: preset.label,
         ...(action.url ? { url: action.url } : {}),
         ...(action.launchCommand ? { launchCommand: action.launchCommand } : {}),
-        ...(action.windowMatch ? { windowMatch: action.windowMatch } : {})
+        ...(action.windowMatch ? { windowMatch: action.windowMatch } : {}),
+        ...(purpose !== 'app' ? { purpose } : {})
       })
     }
   }

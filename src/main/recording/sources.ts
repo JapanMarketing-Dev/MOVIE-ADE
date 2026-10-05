@@ -4,6 +4,7 @@ import { t } from '@shared/i18n'
 import { reportHandled } from '@shared/report'
 import { windowNumberOf, withAppWindows } from '@shared/desktopApps'
 import { captureMacWindowImage, listMacWindows } from './devices'
+import { fakeCapturePath, readFakeCapture } from './fakeCapture'
 
 /**
  * 画面全体・別のウインドウの録画対象（REC-2 の拡張 / 設計9章）。
@@ -19,6 +20,9 @@ import { captureMacWindowImage, listMacWindows } from './devices'
  * Orca はマイク・カメラを見ているが、同じ考え方で 'screen' を見る。
  */
 export function screenAccess(): CaptureSourceList['screenAccess'] {
+  // E2E の偽の画面・ウインドウ（fakeCapture.ts）。OS の許可は読まない
+  const fake = fakeCapturePath()
+  if (fake) return readFakeCapture(fake).screenAccess
   if (process.platform !== 'darwin') return 'granted'
   try {
     return systemPreferences.getMediaAccessStatus('screen')
@@ -56,6 +60,9 @@ export async function openScreenSettings(): Promise<void> {
 export async function listCaptureSources(
   thumbnail: { width: number; height: number } = { width: 320, height: 200 }
 ): Promise<CaptureSourceInfo[]> {
+  // E2E の偽の画面・ウインドウ（fakeCapture.ts）。desktopCapturer・osascript・screencapture を呼ばない
+  const fake = fakeCapturePath()
+  if (fake) return readFakeCapture(fake).sources
   const own = new Set(BrowserWindow.getAllWindows().map((w) => w.getMediaSourceId()))
   const withThumbnail = thumbnail.width > 0 && thumbnail.height > 0
   // ウインドウの題名・アプリ名は画面収録の許可があるときだけ読める。許可が無ければ読まない

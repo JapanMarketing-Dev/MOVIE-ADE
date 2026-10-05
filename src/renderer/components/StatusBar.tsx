@@ -24,7 +24,7 @@ import { DEFAULT_LAYOUT, FOOTER_ITEMS, FOOTER_PRIORITY, pickFooterTier, type Doc
 import { PanelGrip } from './PanelDock'
 import { GitHubStatusItem } from './GitHubStatusItem'
 import type { UpdateCheckResult } from '@shared/appVersion'
-import type { AutoUpdateStatus } from '@shared/appUpdate'
+import { checkOnUpdatePopoverOpen, type AutoUpdateStatus } from '@shared/appUpdate'
 import { Button, IconButton, Progress, RecordDot, Spinner, SttLanguageSelect, ThemeToggle } from '../ui'
 import type { SpeechLanguage, Transcription } from './SettingsPage'
 import { StatusPopover as Popover } from './StatusPopover'
@@ -262,6 +262,16 @@ function UpdatePopover({ version, packaged, status }: { version: string; package
       .catch(() => setResult({ state: 'error', current: version, message: t('statusBar.checkFailed') }))
       .finally(() => setChecking(false))
   }
+  // 開いたら［更新を確認］と同じことをする（押さなくても最新の版が分かり、自動の更新がオンなら裏で落とし始める。ユーザーの指示）
+  // 開発版でも裏の更新が動く起動（E2E の偽の配信元）なら確かめる。状態が後から届いても、開いている間に1回だけ
+  const checkedOnOpen = useRef(false)
+  const shouldCheckOnOpen = checkOnUpdatePopoverOpen(packaged, status)
+  useEffect(() => {
+    if (checkedOnOpen.current || !shouldCheckOnOpen) return
+    checkedOnOpen.current = true
+    check()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldCheckOnOpen])
   // 最後の確認の結果は main が持つ（起動時・一定間隔の確認も含む）。届く前は、このポップオーバーで押した結果
   const shown = status?.check ?? result
   const progress = status?.progress

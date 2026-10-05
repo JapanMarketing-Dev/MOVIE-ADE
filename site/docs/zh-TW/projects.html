@@ -28,7 +28,7 @@
   <meta property="og:title" content="專案與 URL · Ferret 文件">
   <meta property="og:description" content="專案就是一個資料夾（通常是你的儲存庫根目錄）。每個專案都有自己儲存的 URL，因此本機、開發與正式環境只要按一下就能切換。">
   <meta property="og:url" content="https://ferretade.dev/docs/zh-TW/projects">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="zh_TW">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="專案與 URL · Ferret 文件">
   <meta name="twitter:description" content="專案就是一個資料夾（通常是你的儲存庫根目錄）。每個專案都有自己儲存的 URL，因此本機、開發與正式環境只要按一下就能切換。">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -214,7 +214,7 @@
   <li><strong><span class="docs-ui">檔案</span></strong>：專案資料夾。檔案會以預覽開啟（Markdown 與 Mermaid 會轉譯顯示，其他文字為唯讀），因此也能審查文件。鉛筆圖示（<span class="docs-ui">在編輯器中開啟</span>）會在編輯器中開啟檔案。</li>
 </ul>
 <p><span class="docs-ui">篩選目標</span> 會同時篩選目標、頁面與檔案，使用與 <span class="docs-ui">前往檔案…</span> 相同的模糊比對。在清單中，可用 <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> 或 <kbd>1</kbd>–<kbd>9</kbd> 切換目標。<span class="docs-ui">開啟 URL…</span> 可開啟一次性的 URL，<span class="docs-ui">儲存到專案 URL</span> 則會保留它。</p>
-<p>目標來自 <code>settings.json</code> 中的 <code>projects[].urls</code>（請參閱<a href="settings-json.html#example">範例</a>）。每個項目都需要 <code>url</code>、<code>launchCommand</code>（在終端機中執行，例如啟動桌面 App）或 <code>windowMatch</code>（要錄製的視窗）其中之一，並可加上 <code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code> 或 <code>reference</code>）。選擇視窗目標會將它設為錄製來源，因此錄製期間無法這麼做。造訪過的頁面會依專案記住，只保存在這台電腦上（最多 200 個）。</p>
+<p>目標來自 <code>settings.json</code> 中的 <code>projects[].urls</code>（請參閱<a href="settings-json.html#example">範例</a>）。每個項目都需要 <code>url</code>、<code>launchCommand</code>（在終端機中執行，例如啟動桌面 App）或 <code>windowMatch</code>（要錄製的視窗）其中之一，並可加上 <code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code> 或 <code>reference</code>）。在錄製前選擇視窗目標，會將它設為錄製來源；在錄製中選擇，則會把該視窗加入錄製並顯示它（見<a href="recording.html#multi">同時錄製多個視窗</a>）。造訪過的頁面會依專案記住，只保存在這台電腦上（最多 200 個）。</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">

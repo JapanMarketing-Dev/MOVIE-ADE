@@ -1,10 +1,12 @@
+import { BrowserExtensionsButton } from './BrowserExtensionsButton'
 import { useCallback, useEffect, useRef, useState, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
-import { AppWindow, ArrowLeft, ArrowRight, CodeXml, Eraser, Globe, MicOff, Monitor, MousePointer2, PanelRight, Pause, Play, PenTool, Redo2, Square, TriangleAlert, Undo2 } from 'lucide-react'
+import { AppWindow, ArrowLeft, ArrowRight, CodeXml, Eraser, Globe, Hourglass, MicOff, Monitor, MousePointer2, PanelRight, Pause, Play, PenTool, Plus, Redo2, Square, TriangleAlert, Undo2 } from 'lucide-react'
 import { MicPopover, type FooterCapture } from './StatusBar'
 import { StatusPopover } from './StatusPopover'
 import { micDeviceName } from '../lib/micDevice'
 import type { BrowserState, CaptureTarget, SttAvailability } from '@shared/types'
 import { captureTargetLabel } from '@shared/captureTarget'
+import { MAX_CAPTURE_TRACKS, shortTrackLabel, type CaptureTracksState } from '@shared/captureTracks'
 import { browserNavKeys, canBrowserNav, showsBrowserNav } from '@shared/browserNav'
 import { ANNOTATION_COLORS, ANNOTATION_COLOR_IDS, DEFAULT_ANNOTATION_COLOR, annotationKeyAction, nextAnnotationColor, type AnnotationColor, type AnnotationKeyAction } from '@shared/annotation'
 import type { TranslationKey } from '@shared/i18n'
@@ -122,6 +124,9 @@ export function FeedbackToolbar({
   targetsOpen,
   targetsAlert,
   onToggleTargets,
+  tracks,
+  onSwitchTrack,
+  onAddTrack,
   mic
 }: {
   level?: number
@@ -158,6 +163,14 @@ export function FeedbackToolbar({
   onToggleTargets?: () => void
   /** 文字起こしに問題があるとき、開閉ボタンに印を付けて出す文（右パネルの文字起こしのタブを見ていない間だけ） */
   targetsAlert?: string | null
+  /**
+   * 録画中に録っている映像（トラック）と待ち受け（@shared/captureTracks）。2本以上・待ち受けがあるときは
+   * チップを並べ、押すと画面に映して書き込むものが切り替わる（録画はどれも続ける）
+   */
+  tracks?: CaptureTracksState
+  onSwitchTrack?: (id: string) => void
+  /** 録画中にほかのウインドウ・画面も同時に録る（選択画面を開く） */
+  onAddTrack?: () => void
   /** マイクのメニュー（つながっているマイクの名前・入力レベルのテスト・選択）。フッターのものと同じ */
   mic?: {
     settings: FooterCapture
@@ -173,7 +186,12 @@ export function FeedbackToolbar({
   const t = useT()
   const pick = (next: AnnotationTool) => onToolChange?.(tool === next ? 'none' : next)
   // 画面・ウインドウを録っているときは、内蔵ブラウザのページ名ではなく録っている対象を出す
-  const page = target.kind === 'browser' ? state.title || state.url.replace(/^https?:\/\//, '') : captureTargetLabel(target)
+  const liveTracks = recording ? tracks?.tracks ?? [] : []
+  const waiting = recording ? tracks?.waiting ?? [] : []
+  const activeTrack = liveTracks.length > 1 ? liveTracks.find((track) => track.active) : undefined
+  // 複数の映像を録っているときは、映しているものの名前を出す
+  const page = activeTrack && activeTrack.kind !== 'browser' ? activeTrack.label
+    : target.kind === 'browser' || activeTrack?.kind === 'browser' ? state.title || state.url.replace(/^https?:\/\//, '') : captureTargetLabel(target)
   const isPaused = recording && paused
   // つながっているマイクの名前（録る前に確かめられるよう、帯に出す）
   const micRef = useRef<HTMLButtonElement | null>(null)
@@ -239,6 +257,7 @@ export function FeedbackToolbar({
     back: { label: t('browser.back'), keys: browserNavKeys('back', window.ade.platform) },
     forward: { label: t('browser.forward'), keys: browserNavKeys('forward', window.ade.platform) },
     target: { label: t('feedback.target', { target: captureTargetLabel(target) }) },
+    extensions: { label: t('browserExtensions.buttonTitle') },
     record: { label: recording ? t('feedback.stop') : t('feedback.record'), keys: KEYS.record },
     pause: { label: paused ? t('feedback.resume') : t('feedback.pause') },
     browse: { label: t('feedback.browse'), keys: KEYS.browse, hold: ['Escape'] },
@@ -249,7 +268,10 @@ export function FeedbackToolbar({
     redo: { label: t('menu.redo'), keys: KEYS.redo },
     clear: { label: t('feedback.clear') },
     editor: { label: t('feedback.toEditor'), keys: KEYS.mode },
-    targets: { label: t('feedbackTargets.toggle'), keys: KEYS.targets }
+    targets: { label: t('feedbackTargets.toggle'), keys: KEYS.targets },
+    addTrack: { label: liveTracks.length >= MAX_CAPTURE_TRACKS ? t('recording.tracks.limit', { n: MAX_CAPTURE_TRACKS }) : t('feedback.tracks.add') },
+    ...Object.fromEntries(liveTracks.map((track) => [`track:${track.id}`, { label: t('feedback.tracks.switch', { label: track.label }) }])),
+    ...Object.fromEntries(waiting.map((w) => [`wait:${w.id}`, { label: t('feedback.tracks.waiting', { label: w.label }) }]))
   }
   const [hintId, setHintId] = useState<string | null>(null)
   /** 色の候補を案内の枠に並べているか（ビューに隠れるので、浮かせたメニューにはしない） */
@@ -263,8 +285,9 @@ export function FeedbackToolbar({
     const slot = (event.target as Element).closest<HTMLElement>('[data-hint]')
     setHintId(slot?.dataset.hint ?? null)
   }
+  // key は録っている映像のチップを並べるとき用（id は帯の中で一意）
   const slot = (id: string, node: ReactNode) => (
-    <span className="fb-slot" data-hint={id}>
+    <span key={id} className="fb-slot" data-hint={id}>
       {node}
     </span>
   )
@@ -364,6 +387,8 @@ export function FeedbackToolbar({
             icon={<ArrowRight size={18} strokeWidth={1.75} />}
           />
         )}
+        {/* 拡張機能のポップアップ。録画中も開ける（ポップアップも動画・静止画に重ねて録る） */}
+        {showsBrowserNav(target) && slot('extensions', <BrowserExtensionsButton className="fb-btn" testId="feedback-extensions" />)}
         {onPickTarget && slot(
           'target',
           <IconButton
@@ -397,6 +422,47 @@ export function FeedbackToolbar({
             icon={paused ? <Play size={18} strokeWidth={2} /> : <Pause size={18} strokeWidth={1.75} />}
           />
         )}
+
+        {/* 録っている映像（トラック）。押すと映すもの（書き込む先）が切り替わる。待ち受けのウインドウは開くまで薄く出す */}
+        {recording && (liveTracks.length > 1 || waiting.length > 0 || onAddTrack) && <>
+          {divider}
+          <span className="fb-tracks" role="group" aria-label={t('feedback.tracks.label')} data-testid="feedback-tracks">
+            {liveTracks.length > 1 && liveTracks.map((track) => slot(
+              `track:${track.id}`,
+              <button
+                type="button"
+                className={`fb-track${track.active ? ' is-active' : ''}`}
+                aria-pressed={track.active}
+                aria-label={t('feedback.tracks.switch', { label: track.label })}
+                disabled={busy}
+                onClick={() => { if (!track.active) onSwitchTrack?.(track.id) }}
+                data-testid={`feedback-track-${track.id}`}
+              >
+                {track.kind === 'browser' ? <Globe size={13} strokeWidth={1.9} aria-hidden="true" /> : track.kind === 'screen' ? <Monitor size={13} strokeWidth={1.9} aria-hidden="true" /> : <AppWindow size={13} strokeWidth={1.9} aria-hidden="true" />}
+                <span className="fb-track__label">{shortTrackLabel(track.label)}</span>
+              </button>
+            ))}
+            {waiting.map((w) => slot(
+              `wait:${w.id}`,
+              <span className="fb-track is-waiting" role="status" aria-label={t('feedback.tracks.waiting', { label: w.label })} data-testid={`feedback-track-waiting-${w.id}`}>
+                <Hourglass size={12} strokeWidth={1.9} aria-hidden="true" />
+                <span className="fb-track__label">{shortTrackLabel(w.label)}</span>
+              </span>
+            ))}
+            {onAddTrack && slot(
+              'addTrack',
+              <IconButton
+                label={t('feedback.tracks.add')}
+                size="sm"
+                className="fb-btn"
+                disabled={busy || paused || liveTracks.length >= MAX_CAPTURE_TRACKS}
+                onClick={onAddTrack}
+                data-testid="feedback-add-track"
+                icon={<Plus size={16} strokeWidth={1.9} />}
+              />
+            )}
+          </span>
+        </>}
 
         {divider}
 

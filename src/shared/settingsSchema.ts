@@ -1,3 +1,4 @@
+import { MAX_BROWSER_EXTENSIONS } from './browserExtensions'
 import { DEFAULT_LIMIT_FAILOVER, MAX_FAILOVER_THRESHOLD, MIN_FAILOVER_THRESHOLD } from './failover'
 import { ANNOTATION_COLOR_IDS, DEFAULT_ANNOTATION_COLOR } from './annotation'
 import { AGENT_CATALOG, BUILTIN_AGENTS, DEFAULT_AGENT_PREFERENCES } from './agentCatalog'
@@ -217,7 +218,8 @@ export const SETTINGS_SCHEMA: JsonSchema = {
                 label: str('Name shown in the target menu, e.g. "local", "prd" or "iOS sim".', { maxLength: 100 }),
                 url: str('URL opened in the built-in browser.'),
                 launchCommand: str('Command run in a terminal in the project folder when the target is chosen, e.g. "pnpm tauri dev".'),
-                windowMatch: str('Part of the app or window name to record, e.g. "Simulator".', { maxLength: 200 }),
+                windowMatch: str('The app or window to record: part of the app or window name (e.g. "Simulator"), a macOS bundle id (e.g. "com.example.MyApp") or the path of the app or executable (e.g. "/Applications/MyApp.app", "C:\\Program Files\\MyApp\\MyApp.exe"; only its name is compared). On Windows and Linux only window titles are known, so the name is matched against the title.', { maxLength: 200 }),
+                watch: { type: 'string', description: 'While a recording is running, wait for this window (windowMatch) and record it as soon as it appears, for example a desktop app that a web app launches. "record" records it alongside the current view; "switch" also switches the view to it. It is recorded again if it closes and reopens. Up to 4 videos are recorded at once. Not available on Linux under Wayland. Omitted means do not wait.', enum: ['record', 'switch'] },
                 purpose: { type: 'string', description: 'What the target is: "app" (the app under development), "design" (Figma, Penpot, Canva, a prototype...), "doc" (a spec or design doc: Google Docs, Notion, Confluence, a Markdown file on GitHub, a PDF...) or "reference" (an external site you cannot change, such as a competitor or an example, viewed for reference). Findings recorded on it are marked with it in feedback.md, so the agent updates the design or document instead of the code, and for "reference" never touches that site but adopts or avoids the pattern in the project\'s own app. An "app" target whose label contains "競合", "参考", "competitor" or "reference" is treated as "reference". Omitted means "app".', enum: TARGET_PURPOSES, default: DEFAULT_TARGET_PURPOSE }
               }
             }
@@ -354,6 +356,20 @@ export const SETTINGS_SCHEMA: JsonSchema = {
           }
         },
         ...AUTH_FIELDS
+      }
+    },
+    browserExtensions: {
+      type: 'array',
+      description: `Chrome extensions loaded into the built-in browser only (never into Ferret's own windows). Each entry is an unpacked extension folder that contains manifest.json (Manifest V2 or V3). Extensions can read and change every page you open in the built-in browser and use its sign-ins, so add only extensions you trust. At most ${MAX_BROWSER_EXTENSIONS}. Use Settings > Browser extensions to add a folder or import one from Chrome, Edge or Brave.`,
+      items: {
+        type: 'object',
+        description: 'One extension folder.',
+        required: ['path'],
+        additionalProperties: false,
+        properties: {
+          path: str('Absolute path of the unpacked extension folder (the folder with manifest.json). Packed .crx files are not supported.', { maxLength: 1000 }),
+          enabled: bool('Load this extension. Omit for true.')
+        }
       }
     },
     terminalClipboard: { type: 'string', description: 'When a program in a terminal asks to copy text to the clipboard (OSC 52): "ask" shows a bar with a Copy button, "allow" copies right away when the terminal on this machine has focus and shows a notice (terminals on SSH hosts still ask), "off" never copies.', enum: ['ask', 'allow', 'off'], default: 'ask' },

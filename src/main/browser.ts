@@ -1,3 +1,4 @@
+import { fakeCapturePath } from './recording/fakeCapture'
 import { isGestureInput, registerRecorderContents } from './captureConsent'
 import { cleanElectronUserAgent } from './browserUserAgent'
 import { WebContentsView, dialog, session, shell, type BaseWindow, type BrowserWindow, type Session, type WebContents } from 'electron'
@@ -66,7 +67,9 @@ const HIDE_POPUPS = process.env.ADE_E2E === '1' && process.env.ADE_E2E_SHOW !== 
 
 /**
  * ログインのポップアップの子ウインドウ。内蔵ブラウザと同じ永続の session（ログインがそのまま残る）で、
- * ページのスクリプトに Node は渡さない（sandbox・contextIsolation・nodeIntegration なし）
+ * ページのスクリプトに Node は渡さない（sandbox・contextIsolation・nodeIntegration なし）。
+ * 内蔵ブラウザのページと同じ書き込みの注入スクリプト（preload/review）を入れ、録画中はポップアップの上にもペン・枠・文字で指摘を引ける。
+ * main が受けるのは、いま前に出ているポップアップからの書き込みのチャネルだけ（recording/controller.ts・textNotes.ts）
  */
 function popupWindowOptions(): Electron.BrowserWindowConstructorOptions {
   return {
@@ -76,6 +79,7 @@ function popupWindowOptions(): Electron.BrowserWindowConstructorOptions {
     autoHideMenuBar: true,
     webPreferences: {
       partition: PARTITION,
+      preload: join(__dirname, '../preload/review.js'),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
@@ -140,6 +144,14 @@ export class EmbeddedBrowser {
    */
   onPageInput?: (contents: WebContents) => void
 
+  /** ログインのポップアップ（子ウインドウ）を開いた。url は開いた先（録画のトラックの名前に使う） */
+  onPopupWindow?: (contents: WebContents, url: string) => void
+
+  /** 開いているログインのポップアップの中身 */
+  popupContents(): WebContents[] {
+    return [...this.popups].filter((popup) => !popup.isDestroyed() && !popup.webContents.isDestroyed()).map((popup) => popup.webContents)
+  }
+
   /** 録画エンジンが録る対象。破棄済みなら null */
   get contents(): WebContents | null {
     return this.webContents
@@ -160,6 +172,22 @@ export class EmbeddedBrowser {
     const bounds = this.view?.getBounds()
     if (!wc || !bounds || bounds.width <= 0 || bounds.height <= 0) return null
     return { contents: wc, bounds }
+  }
+
+  /**
+   * ビューの位置・大きさが変わった（隠れた・映したウインドウを出した も含む）。
+   * 拡張機能のポップアップ（browserExtensions.ts）をビューの右上に付いて動かす・閉じるのに使う
+   */
+  onLayout?: () => void
+
+  /**
+   * 内蔵ブラウザのビューの、いまの位置（ウインドウの中の DIP）。
+   * 隠れている（0 サイズ）・映したウインドウを上に出している・破棄済みなら null
+   */
+  viewBounds(): { x: number; y: number; width: number; height: number } | null {
+    if (!this.webContents || this.mirrorContents) return null
+    const bounds = this.view?.getBounds()
+    return bounds && bounds.width > 0 && bounds.height > 0 ? bounds : null
   }
 
   /** ページが描く前に見える地の色。配色の切り替えに合わせる */
@@ -211,7 +239,7 @@ export class EmbeddedBrowser {
       else if (action === 'external') void openExternalFromPage(details.url, wc.getURL())
       return { action: 'deny' }
     })
-    wc.on('did-create-window', (child) => this.guardPopup(child))
+    wc.on('did-create-window', (child, details) => this.guardPopup(child, (details as { url?: unknown } | undefined)?.url))
     // ページが始めた遷移（リンク・location の書き換え）。行けない先は止め、mailto は確認へ回す
     wc.on('will-navigate', (event) => {
       if (isPageNavigationAllowed(event.url, wc.getURL())) return
@@ -353,7 +381,8 @@ export class EmbeddedBrowser {
     window.contentView.addChildView(view)
     this.applyBounds()
     try {
-      await wc.loadFile(htmlPath, { query: { source: sourceId, ...(message ? { message } : {}) } })
+      // E2E の偽の画面・ウインドウ（recording/fakeCapture.ts）なら、本物の取り込みの代わりに canvas の映像を映す
+      await wc.loadFile(htmlPath, { query: { source: sourceId, ...(message ? { message } : {}), ...(fakeCapturePath() ? { synthetic: '1' } : {}) } })
     } catch (err) {
       reportHandled(err, { area: 'browser', op: 'load capture mirror' })
       if (this.mirror === view) this.hideMirror()
@@ -367,6 +396,7 @@ export class EmbeddedBrowser {
     this.mirror = null
     this.mirrorSource = null
     if (!view) return
+    this.onLayout?.()
     try {
       if (this.window && !this.window.isDestroyed()) this.window.contentView.removeChildView(view)
       if (!view.webContents.isDestroyed()) view.webContents.close()
@@ -382,6 +412,11 @@ export class EmbeddedBrowser {
   }
 
   private applyBounds(): void {
+    this.placeViews()
+    this.onLayout?.()
+  }
+
+  private placeViews(): void {
     const view = this.view
     // 破棄済みのビューに bounds を入れない（終了処理と重なるとネイティブ側で落ちる）
     if (!view || !this.webContents) return
@@ -501,7 +536,8 @@ export class EmbeddedBrowser {
    * ログインのポップアップに決まりを当てる。行けるのは https と手元の開発サーバーだけ（isPopupUrlAllowed）。
    * ポップアップの中からさらに開こうとしたものは、行ける先ならポップアップの中で開き、ほかは断る
    */
-  private guardPopup(child: BrowserWindow): void {
+  private guardPopup(child: BrowserWindow, openedUrl: unknown): void {
+    const url = typeof openedUrl === 'string' ? openedUrl : ''
     this.popups.add(child)
     child.once('closed', () => this.popups.delete(child))
     child.setMenuBarVisibility(false)
@@ -515,6 +551,10 @@ export class EmbeddedBrowser {
     }
     pwc.on('will-navigate', guard)
     pwc.on('will-redirect', guard)
+    // 文字で指摘の静止画の許可（そのポップアップへの本物の入力だけ。captureConsent.ts の ViewInputGrant）
+    pwc.on('input-event', (_event, input) => { if (isGestureInput(input.type)) this.onPageInput?.(pwc) })
+    // 録画中はこのポップアップも録り、前に出たら書き込む先をそちらへ切り替える（recording/controller.ts の attachPopupWindow）
+    this.onPopupWindow?.(pwc, url)
     // E2E の非表示実行では出さない（Playwright からは見える）
     if (!HIDE_POPUPS) child.once('ready-to-show', () => { if (!child.isDestroyed()) child.show() })
   }

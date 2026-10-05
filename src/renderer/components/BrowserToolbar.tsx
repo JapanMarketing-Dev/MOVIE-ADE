@@ -5,6 +5,7 @@ import { SHORTCUTS } from '../lib/shortcut'
 import { Button, Segmented, Tooltip } from '../ui'
 import { NavControls } from './NavControls'
 import { UrlPresets } from './UrlPresets'
+import { BrowserExtensionsButton } from './BrowserExtensionsButton'
 import { useT } from '../lib/i18n'
 
 /**
@@ -75,6 +76,8 @@ export function BrowserToolbar({
           </Button>
         </Tooltip>
       )}
+      {/* 内蔵ブラウザの拡張機能のポップアップ（拡張を入れたときだけ出る） */}
+      <BrowserExtensionsButton className="browser-toolbar__extensions" />
       <Segmented
         ariaLabel={t('browser.viewport')}
         value={state.viewport}

@@ -28,7 +28,7 @@
   <meta property="og:title" content="Grabación · Documentación de Ferret">
   <meta property="og:description" content="Graba el navegador integrado, toda la pantalla, otra ventana, una app de escritorio, un juego o un simulador de móvil. Habla, rodea y escribe mientras usas la página.">
   <meta property="og:url" content="https://ferretade.dev/docs/es/recording">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="es_ES">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Grabación · Documentación de Ferret">
   <meta name="twitter:description" content="Graba el navegador integrado, toda la pantalla, otra ventana, una app de escritorio, un juego o un simulador de móvil. Habla, rodea y escribe mientras usas la página.">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -187,6 +187,24 @@
 <p>La <span class="docs-ui">Ventana que grabar</span> de un objetivo de revisión coincide tanto con el nombre de la app como con el título de la ventana, así que <code>Simulator</code> selecciona la ventana de iOS Simulator sea cual sea el dispositivo que muestre.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="extensions">
+        <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="Enlace a Extensiones del navegador">#</a>Extensiones del navegador</h2>
+        <p>Añade extensiones de Chrome al navegador integrado en <span class="docs-ui">Ajustes → Extensiones del navegador</span>: <span class="docs-ui">Añadir carpeta descomprimida…</span> para una carpeta que contiene <code>manifest.json</code>, o <span class="docs-ui">Importar desde Chrome…</span> para copiar una ya instalada en Chrome, Edge, Brave o Chromium. Las extensiones solo se ejecutan en el navegador integrado, nunca en las ventanas de Ferret. Pueden leer y modificar cualquier página que abras allí y usar sus sesiones iniciadas, así que añade solo extensiones de confianza.</p>
+<p>Abre la ventana emergente de una extensión con <span class="docs-ui">Extensiones</span> en la barra del navegador o en la barra de feedback. Se abre en la esquina superior derecha de la página y se cierra al hacer clic en otro sitio o pulsar <kbd>Esc</kbd>. Cuando grabas el <span class="docs-ui">Navegador integrado</span>, tanto lo que una extensión cambia dentro de la página como la ventana emergente abierta aparecen en el vídeo y en las imágenes. Electron solo admite una parte de las API de extensiones: los paneles laterales, los menús contextuales, las notificaciones, los atajos de teclado y las pestañas o ventanas que abre una extensión no funcionan, y no se pueden cargar archivos <code>.crx</code> empaquetados.</p>
+<p>También puedes marcar sobre las ventanas emergentes. Durante la grabación, hacer clic en la barra de herramientas no cierra la ventana emergente de una extensión. Con el lápiz o el recuadro seleccionado, o con <span class="docs-ui">Escribir comentario</span> activado, hacer clic en la página tampoco la cierra, y <kbd>Esc</kbd> desactiva la herramienta en lugar de cerrarla. Dibuja dentro de la ventana emergente: las marcas aparecen en el vídeo y en las imágenes en la posición de la ventana emergente. Funciona con las ventanas emergentes abiertas después de empezar la grabación o <span class="docs-ui">Escribir comentario</span>. Una ventana emergente de inicio de sesión que una página abre en su propia ventana (por ejemplo, Iniciar sesión con Google) se graba como un vídeo aparte mientras está abierta. Cuando pasa al frente, el lápiz y el recuadro dibujan en ella; al hacer clic en la página se vuelve atrás. Sigue cerrándose sola después de iniciar sesión.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="multi">
+        <h2 id="multi"><a class="docs-anchor" href="#multi" aria-label="Enlace a Grabar varias ventanas a la vez">#</a>Grabar varias ventanas a la vez</h2>
+        <p>Una grabación puede capturar hasta cuatro vistas a la vez: el navegador integrado, ventanas de apps de escritorio y pantallas. Cada una se graba en su propio vídeo hasta que se detiene la grabación, así que un flujo que pasa de una a otra, como una app web que abre una app de escritorio y luego vuelve, queda capturado de principio a fin.</p>
+<ol class="docs-steps">
+  <li>Durante la grabación, haz clic en <span class="docs-ui">+</span> (<span class="docs-ui">Grabar otra ventana a la vez</span>) en la barra de grabación y elige una ventana, una pantalla o el navegador integrado. Hacer clic en un objetivo de ventana en el panel <span class="docs-ui">Objetivos de revisión</span> hace lo mismo.</li>
+  <li>Haz clic en una etiqueta de la barra de grabación para cambiar la vista que se muestra. El lápiz y las imágenes de los hallazgos siguen a la vista que muestras; las demás siguen grabándose en segundo plano a un máximo de 5 fotogramas por segundo.</li>
+</ol>
+<p>También puedes esperar a una ventana que aún no está abierta. En <span class="docs-ui">Editar proyecto…</span>, da a un objetivo una <span class="docs-ui">Ventana que grabar</span> (un nombre de app, parte del título de la ventana, un bundle id de macOS como <code>com.example.MyApp</code> o la ruta de la app) y pon <span class="docs-ui">Si se abre durante la grabación</span> en <span class="docs-ui">Grabarla también</span> o <span class="docs-ui">Grabarla y cambiar a ella</span>. En <code>settings.json</code> es <code>"watch": "record"</code> o <code>"watch": "switch"</code>. Durante la grabación, Ferret revisa la lista de ventanas una vez por segundo. El objetivo aparece como una etiqueta con borde discontinuo hasta que se abre su ventana, y se vuelve a grabar si la app se cierra y se abre de nuevo.</p>
+<p>Cada cambio se escribe en el registro de acciones, así que cada hallazgo sabe a qué vista se refería. Los hallazgos hechos mientras se mostraba una ventana de app no tienen URL ni datos de elementos, se agrupan bajo esa ventana en <span class="docs-ui">Hallazgos</span> y en <code>feedback.md</code>, y al agente se le indica que era una ventana de app. Los vídeos adicionales se guardan en la carpeta de la revisión, en <code>tracks/</code>, con sus horas de inicio y fin en <code>tracks.jsonl</code>. En Windows y Linux solo se conocen los títulos de las ventanas, así que el nombre se compara con el título. Esperar una ventana no está disponible en Linux con Wayland, donde listar ventanas te pide elegir una cada vez; en su lugar, añade la ventana con <span class="docs-ui">+</span> cuando se abra.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="record">
         <h2 id="record"><a class="docs-anchor" href="#record" aria-label="Enlace a Iniciar, pausar, detener">#</a>Iniciar, pausar, detener</h2>
         <figure class="docs-clip" data-clip="record">
@@ -245,6 +263,11 @@
 <p>Si la transcripción falla, no hay modelo ni clave, unos 2 minutos de voz no producen texto o no llega sonido al micrófono, Ferret te avisa una vez y marca el botón del panel derecho, aunque la pestaña esté cerrada. La grabación continúa y el audio se conserva. Para ocultar la pestaña, desactiva <span class="docs-ui">Mostrar la transcripción en vivo al grabar (panel derecho del modo feedback)</span> en <span class="docs-ui">Ajustes → Transcripción</span>. Los avisos se siguen mostrando.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="feedback-terminal">
+        <h2 id="feedback-terminal"><a class="docs-anchor" href="#feedback-terminal" aria-label="Enlace a Habla con tu agente mientras grabas">#</a>Habla con tu agente mientras grabas</h2>
+        <p>El panel derecho del modo feedback también tiene una pestaña <span class="docs-ui">Terminal</span>. Es el mismo terminal que en el modo Editor, no una shell nueva: las mismas pestañas, los mismos agentes en ejecución (por ejemplo Claude Code o Codex) y su historial. Elige una pestaña arriba y escribe, por ejemplo para decirle al agente que <code>localhost</code> no está en marcha. Al volver al modo Editor, el terminal muestra el mismo estado. Grabar el navegador integrado o la ventana de otra app no incluye el terminal.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="other-side">
         <h2 id="other-side"><a class="docs-anchor" href="#other-side" aria-label="Enlace a Grabar a la otra parte de una reunión">#</a>Grabar a la otra parte de una reunión</h2>
         <p>Para revisar una página con otras personas en una llamada, deja que Ferret grabe lo que oyes en tu ordenador además de tu micrófono. Funciona con cualquier app de reuniones (Zoom, Google Meet, Microsoft Teams y otras), porque Ferret graba el audio de tu ordenador, no la app. Las dos fuentes se mantienen separadas: tu micrófono se transcribe como <strong>Yo</strong> y el audio de tu ordenador como <strong>Otra persona</strong>, así que cada hallazgo muestra quién pidió qué. También funciona con el micrófono desactivado.</p>
@@ -293,12 +316,15 @@
       <ul>
         <li><a href="#target">Elegir qué grabar</a></li>
         <li><a href="#desktop-mobile">Apps de escritorio, juegos y apps móviles</a></li>
+        <li><a href="#extensions">Extensiones del navegador</a></li>
+        <li><a href="#multi">Grabar varias ventanas a la vez</a></li>
         <li><a href="#record">Iniciar, pausar, detener</a></li>
         <li><a href="#pen">Lápiz</a></li>
         <li><a href="#type">Escribir en lugar de hablar</a></li>
         <li><a href="#annotations-clear">Cuándo desaparecen los trazos</a></li>
         <li><a href="#mic">Micrófono</a></li>
         <li><a href="#live-transcript">Ver lo que se está transcribiendo</a></li>
+        <li><a href="#feedback-terminal">Habla con tu agente mientras grabas</a></li>
         <li><a href="#other-side">Grabar a la otra parte de una reunión</a></li>
         <li><a href="#other-side-os">Audio del sistema según el sistema operativo</a></li>
         <li><a href="#other-side-tips">Consejos para reuniones</a></li>

@@ -66,6 +66,24 @@ export function neutralizeMentions(text: string): string {
  * フェンスは本文の中のいちばん長いバッククォートの並びより長くするので、本文の中の ``` や ~~~ では閉じない
  */
 export function literalBlock(text: string): string {
+  return literalFenced(text)
+}
+
+/**
+ * 1行の短い値（版・OS など）を、そのままの文字として表示させる（security-6 [5]）。
+ * メンション・参照を崩してから、インラインのコード（`…`）に入れる。GitHub はコードの中では参照・リンクを作らない。
+ * 改行は空白にし、区切りは値の中のいちばん長いバッククォートの並びより長くする（値の中の ` で閉じない）
+ */
+export function literalInline(value: string): string {
+  const text = neutralizeMentions(value.replace(/[\r\n]+/g, ' '))
+  const longest = Math.max(0, ...[...text.matchAll(/`+/g)].map((m) => m[0].length))
+  const tick = '`'.repeat(longest + 1)
+  // 先頭・末尾がバッククォートなら空白をはさむ（GitHub の書き方）
+  const pad = text.startsWith('`') || text.endsWith('`') ? ' ' : ''
+  return `${tick}${pad}${text}${pad}${tick}`
+}
+
+function literalFenced(text: string): string {
   const longest = Math.max(0, ...[...text.matchAll(/`+/g)].map((m) => m[0].length))
   const fence = '`'.repeat(Math.max(3, longest + 1))
   return `${fence}text\n${text.replace(/\n+$/, '')}\n${fence}`

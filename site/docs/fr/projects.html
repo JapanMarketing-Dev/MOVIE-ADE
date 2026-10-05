@@ -28,7 +28,7 @@
   <meta property="og:title" content="Projets et URL · Documentation de Ferret">
   <meta property="og:description" content="Un projet est un dossier (en général la racine de votre dépôt). Chaque projet garde ses propres URL enregistrées : local, dev et production sont ainsi à un clic l'un de l'autre.">
   <meta property="og:url" content="https://ferretade.dev/docs/fr/projects">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="fr_FR">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Projets et URL · Documentation de Ferret">
   <meta name="twitter:description" content="Un projet est un dossier (en général la racine de votre dépôt). Chaque projet garde ses propres URL enregistrées : local, dev et production sont ainsi à un clic l'un de l'autre.">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -214,7 +214,7 @@
   <li><strong><span class="docs-ui">Fichiers</span></strong> : le dossier du projet. Un fichier s'ouvre en aperçu (Markdown et Mermaid rendus, autres textes en lecture seule), ce qui permet aussi de relire de la documentation. Le crayon (<span class="docs-ui">Ouvrir dans l'éditeur</span>) l'ouvre dans l'éditeur.</li>
 </ul>
 <p><span class="docs-ui">Filtrer les cibles</span> filtre à la fois les cibles, les pages et les fichiers, avec la même recherche approximative que <span class="docs-ui">Aller au fichier…</span>. Dans la liste, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> ou <kbd>1</kbd>–<kbd>9</kbd> changent de cible. <span class="docs-ui">Ouvrir une URL…</span> ouvre une URL ponctuelle, et <span class="docs-ui">Enregistrer dans les URL du projet</span> la conserve.</p>
-<p>Les cibles proviennent de <code>projects[].urls</code> dans <code>settings.json</code> (voir <a href="settings-json.html#example">l'exemple</a>). Chaque entrée a besoin d'une <code>url</code>, d'une <code>launchCommand</code> (exécutée dans un terminal, par exemple pour lancer une application de bureau) ou d'un <code>windowMatch</code> (la fenêtre à enregistrer), et peut avoir un <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> ou <code>reference</code>). Choisir une cible de type fenêtre en fait la source d'enregistrement : ce n'est donc pas possible pendant un enregistrement. Les pages visitées sont mémorisées par projet, sur cette machine uniquement (jusqu'à 200).</p>
+<p>Les cibles proviennent de <code>projects[].urls</code> dans <code>settings.json</code> (voir <a href="settings-json.html#example">l'exemple</a>). Chaque entrée a besoin d'une <code>url</code>, d'une <code>launchCommand</code> (exécutée dans un terminal, par exemple pour lancer une application de bureau) ou d'un <code>windowMatch</code> (la fenêtre à enregistrer), et peut avoir un <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> ou <code>reference</code>). Choisir une cible de type fenêtre avant l'enregistrement en fait la source d'enregistrement ; pendant l'enregistrement, cela ajoute cette fenêtre à l'enregistrement et l'affiche (voir <a href="recording.html#multi">Enregistrer plusieurs fenêtres à la fois</a>). Les pages visitées sont mémorisées par projet, sur cette machine uniquement (jusqu'à 200).</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">

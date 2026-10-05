@@ -28,7 +28,7 @@
   <meta property="og:title" content="Progetti e URL · Documentazione di Ferret">
   <meta property="og:description" content="Un progetto è una cartella (di solito la radice del tuo repository). Ogni progetto conserva i propri URL salvati, così locale, dev e produzione sono a un clic di distanza.">
   <meta property="og:url" content="https://ferretade.dev/docs/it/projects">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="it_IT">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Progetti e URL · Documentazione di Ferret">
   <meta name="twitter:description" content="Un progetto è una cartella (di solito la radice del tuo repository). Ogni progetto conserva i propri URL salvati, così locale, dev e produzione sono a un clic di distanza.">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -214,7 +214,7 @@
   <li><strong><span class="docs-ui">File</span></strong>: la cartella del progetto. Un file si apre come anteprima (Markdown e Mermaid renderizzati, altro testo in sola lettura), quindi puoi rivedere anche la documentazione. La matita (<span class="docs-ui">Apri nell'editor</span>) lo apre nell'editor.</li>
 </ul>
 <p><span class="docs-ui">Filtra target</span> filtra insieme target, pagine e file, con la stessa ricerca approssimata di <span class="docs-ui">Vai al file…</span>. Nell'elenco, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> oppure <kbd>1</kbd>–<kbd>9</kbd> cambiano target. <span class="docs-ui">Apri URL…</span> apre un URL occasionale, e <span class="docs-ui">Salva negli URL del progetto</span> lo conserva.</p>
-<p>I target provengono da <code>projects[].urls</code> in <code>settings.json</code> (vedi <a href="settings-json.html#example">l'esempio</a>). Ogni voce richiede un <code>url</code>, un <code>launchCommand</code> (eseguito in un terminale, ad es. per avviare un'app desktop) oppure un <code>windowMatch</code> (la finestra da registrare), e può avere un <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> o <code>reference</code>). Scegliere un target finestra lo imposta come sorgente di registrazione, quindi non si può fare durante la registrazione. Le pagine visitate vengono ricordate per progetto, solo su questa macchina (fino a 200).</p>
+<p>I target provengono da <code>projects[].urls</code> in <code>settings.json</code> (vedi <a href="settings-json.html#example">l'esempio</a>). Ogni voce richiede un <code>url</code>, un <code>launchCommand</code> (eseguito in un terminale, ad es. per avviare un'app desktop) oppure un <code>windowMatch</code> (la finestra da registrare), e può avere un <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> o <code>reference</code>). Scegliere un target finestra prima di registrare lo imposta come sorgente di registrazione; durante la registrazione, aggiunge quella finestra alla registrazione e la mostra (vedi <a href="recording.html#multi">Registrare più finestre insieme</a>). Le pagine visitate vengono ricordate per progetto, solo su questa macchina (fino a 200).</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">

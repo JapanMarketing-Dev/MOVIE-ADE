@@ -23,6 +23,8 @@ export interface MacWindowInfo {
   /** 0 は他のアプリから見せない設定（setContentProtection）。録っても黒くなるので出さない */
   sharing: number
   alpha: number
+  /** アプリのバンドル ID（NSRunningApplication から。読めなければ無い）。待ち受けの照合に使う */
+  bundle?: string
 }
 
 /** 手前に出す普通のウインドウの高さの範囲。20 以上は Dock・メニューバー・メニュー・カーソルなど OS の部品 */
@@ -51,8 +53,9 @@ export function parseMacWindowList(json: string): MacWindowInfo[] {
     const r = item as Record<string, unknown>
     const id = num(r.id, -1)
     if (!Number.isInteger(id) || id <= 0) continue
+    const bundle = typeof r.bundle === 'string' && /^[\w.-]{1,200}$/.test(r.bundle) ? r.bundle : ''
     out.push({ id, layer: num(r.layer, 0), owner: str(r.owner), pid: num(r.pid, -1), name: str(r.name),
-      width: num(r.w, 0), height: num(r.h, 0), sharing: num(r.sharing, 1), alpha: num(r.alpha, 1) })
+      width: num(r.w, 0), height: num(r.h, 0), sharing: num(r.sharing, 1), alpha: num(r.alpha, 1), ...(bundle ? { bundle } : {}) })
   }
   return out
 }
@@ -107,16 +110,18 @@ export function withAppWindows(sources: CaptureSourceInfo[], macWindows: MacWind
   const annotated = sources.map((source): CaptureSourceInfo => {
     if (source.kind !== 'window') return source
     const n = windowNumberOf(source.id)
-    const appName = (n !== null ? byId.get(n)?.owner : undefined) || source.appName
+    const mac = n !== null ? byId.get(n) : undefined
+    const appName = mac?.owner || source.appName
+    const bundleId = mac?.bundle || source.bundleId
     const device = deviceKindOf(appName, source.name)
-    return { ...source, ...(appName ? { appName } : {}), ...(device ? { device } : {}) }
+    return { ...source, ...(appName ? { appName } : {}), ...(bundleId ? { bundleId } : {}), ...(device ? { device } : {}) }
   })
   const listed = new Set(sources.map((s) => windowNumberOf(s.id)).filter((n): n is number => n !== null))
   const extras = macWindows
     .filter((w) => !listed.has(w.id) && isExtraAppWindow(w, ownPid))
     .map((w): CaptureSourceInfo => {
       const device = deviceKindOf(w.owner, w.name)
-      return { id: `window:${w.id}:0`, kind: 'window', name: w.name, thumbnail: '', ...(w.owner ? { appName: w.owner } : {}), ...(device ? { device } : {}) }
+      return { id: `window:${w.id}:0`, kind: 'window', name: w.name, thumbnail: '', ...(w.owner ? { appName: w.owner } : {}), ...(w.bundle ? { bundleId: w.bundle } : {}), ...(device ? { device } : {}) }
     })
   return [...annotated, ...extras]
 }

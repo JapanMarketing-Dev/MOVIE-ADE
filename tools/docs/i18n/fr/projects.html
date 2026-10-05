@@ -43,7 +43,7 @@ Un projet est un dossier (en général la racine de votre dépôt). Chaque proje
 </table>
 {{shot:url-presets|URL enregistrées dans la barre d'outils du navigateur}}
 
-<!-- @review-targets 9c48e48820 -->
+<!-- @review-targets 5ca6dd4b29 -->
 ## Panneau des cibles de relecture
 {{clip:targets|Changer de cible de relecture et de page sans arrêter l'enregistrement.}}
 <p>En mode Retours, le panneau <span class="docs-ui">Cibles de relecture</span>, à droite, liste tout ce que vous pouvez relire pour le projet actuel. Changer de cible n'arrête pas l'enregistrement. Affichez ou masquez le panneau avec <span class="docs-ui">Présentation → Afficher/masquer les cibles de relecture</span> ({{keys:Mod+Shift+K}}) ou <span class="docs-ui">Masquer le panneau</span>.</p>
@@ -52,7 +52,7 @@ Un projet est un dossier (en général la racine de votre dépôt). Chaque proje
   <li><strong><span class="docs-ui">Fichiers</span></strong> : le dossier du projet. Un fichier s'ouvre en aperçu (Markdown et Mermaid rendus, autres textes en lecture seule), ce qui permet aussi de relire de la documentation. Le crayon (<span class="docs-ui">Ouvrir dans l'éditeur</span>) l'ouvre dans l'éditeur.</li>
 </ul>
 <p><span class="docs-ui">Filtrer les cibles</span> filtre à la fois les cibles, les pages et les fichiers, avec la même recherche approximative que <span class="docs-ui">Aller au fichier…</span>. Dans la liste, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> ou <kbd>1</kbd>–<kbd>9</kbd> changent de cible. <span class="docs-ui">Ouvrir une URL…</span> ouvre une URL ponctuelle, et <span class="docs-ui">Enregistrer dans les URL du projet</span> la conserve.</p>
-<p>Les cibles proviennent de <code>projects[].urls</code> dans <code>settings.json</code> (voir <a href="settings-json.html#example">l'exemple</a>). Chaque entrée a besoin d'une <code>url</code>, d'une <code>launchCommand</code> (exécutée dans un terminal, par exemple pour lancer une application de bureau) ou d'un <code>windowMatch</code> (la fenêtre à enregistrer), et peut avoir un <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> ou <code>reference</code>). Choisir une cible de type fenêtre en fait la source d'enregistrement : ce n'est donc pas possible pendant un enregistrement. Les pages visitées sont mémorisées par projet, sur cette machine uniquement (jusqu'à 200).</p>
+<p>Les cibles proviennent de <code>projects[].urls</code> dans <code>settings.json</code> (voir <a href="settings-json.html#example">l'exemple</a>). Chaque entrée a besoin d'une <code>url</code>, d'une <code>launchCommand</code> (exécutée dans un terminal, par exemple pour lancer une application de bureau) ou d'un <code>windowMatch</code> (la fenêtre à enregistrer), et peut avoir un <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> ou <code>reference</code>). Choisir une cible de type fenêtre avant l'enregistrement en fait la source d'enregistrement ; pendant l'enregistrement, cela ajoute cette fenêtre à l'enregistrement et l'affiche (voir <a href="recording.html#multi">Enregistrer plusieurs fenêtres à la fois</a>). Les pages visitées sont mémorisées par projet, sur cette machine uniquement (jusqu'à 200).</p>
 
 <!-- @switch-env 70e1c23f78 -->
 ## Ouvrir et changer d'environnement

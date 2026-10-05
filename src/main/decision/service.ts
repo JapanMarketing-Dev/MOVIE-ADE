@@ -17,6 +17,7 @@ import type { ApiCallRecord } from '@shared/apiUsage'
 import { t } from '@shared/i18n'
 import { checkDecision, type DecisionTestResult } from './check'
 import { DecisionRelay, RelayConfigError, type RelayTokenMeta, type RelayUpstream } from './relay'
+import type { ProjectUsageStore } from './projectLedger'
 
 interface DecisionServiceDeps {
   prefs: () => DecisionPreferences | undefined
@@ -30,6 +31,8 @@ interface DecisionServiceDeps {
    * interactive（利用者が「接続を確かめる」を押した）なら、まだ認めていない接続元を main のダイアログで聞いてよい
    */
   authorize?: (prefs: DecisionPreferences, url: string, interactive: boolean) => Promise<void>
+  /** プロジェクトのその日の判定の量を残す先（security-6 [8]。起動し直しても枠を空に戻さない）。main は userData のファイルを渡す */
+  ledger?: ProjectUsageStore
   fetch?: typeof fetch
 }
 
@@ -59,7 +62,7 @@ export class DecisionService {
     const fingerprint = createHash('sha256').update(JSON.stringify(prefs)).digest('hex')
     if (this.prefsFingerprint !== null && this.prefsFingerprint !== fingerprint) this.relay?.revokeAll()
     this.prefsFingerprint = fingerprint
-    if (!this.relay) this.relay = new DecisionRelay({ upstream: () => this.upstream(), onCall: this.deps.onCall, ...(this.deps.fetch ? { fetch: this.deps.fetch } : {}) })
+    if (!this.relay) this.relay = new DecisionRelay({ upstream: () => this.upstream(), onCall: this.deps.onCall, ...(this.deps.ledger ? { ledger: this.deps.ledger } : {}), ...(this.deps.fetch ? { fetch: this.deps.fetch } : {}) })
     await this.relay.start()
   }
 

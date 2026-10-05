@@ -114,11 +114,28 @@ export interface ViewportEvent {
 }
 
 /**
+ * 画面に映して書き込むトラック（録画の映像の1本）を切り替えた（@shared/captureTracks）。
+ * 録画の開始時に最初のトラック（main）を1件記録し、切り替えるたびに足す。
+ * 指摘は、その時刻に映していたトラックの話として扱う（内蔵ブラウザ以外なら URL・要素・直前の操作を付けない）
+ */
+export interface TrackEvent {
+  t: number
+  type: 'track'
+  /** トラックの id（main・t2 …） */
+  track: string
+  kind: 'browser' | 'screen' | 'window'
+  /** 人が読める名前（「Figma — 画面名」「内蔵ブラウザ」など）。画面由来の文字列 */
+  label: string
+  /** このトラックの動画（レビューのフォルダからの相対パス。recording.webm・tracks/t2.webm） */
+  video?: string
+}
+
+/**
  * 操作ログの1件。
  * 録画中に画面へ文字を置く機能（旧 TXT-1）は廃止した（依頼は声とペンで行う）。古いレビューの events.jsonl には
  * type: 'text' の行が残っていることがあるが、どの処理も知らない種類として読み飛ばす（ファイルは移さない）。
  */
-export type Event = NavEvent | ClickEvent | ScrollEvent | PenEvent | EraseEvent | ViewportEvent;
+export type Event = NavEvent | ClickEvent | ScrollEvent | PenEvent | EraseEvent | ViewportEvent | TrackEvent;
 
 /** 書き込み（annotation）。いまはペンだけ */
 export type Annotation = PenEvent
@@ -283,6 +300,11 @@ export interface ItemContext {
   element?: ElementRef;
   /** 直前の操作の説明（例「トップ →「料金」をクリック」） */
   priorOps?: string
+  /**
+   * 複数の映像を録って切り替えた録画で、この指摘の時刻に映していた内蔵ブラウザ以外のもの（デスクトップアプリのウインドウ・画面）。
+   * あれば URL・要素・直前の操作は付けない（内蔵ブラウザのものなので、映していた画面とは食い違う）
+   */
+  source?: { track: string; kind: 'screen' | 'window'; label: string }
 }
 
 /** 確認画面・feedback.md が扱う最終の指摘 */

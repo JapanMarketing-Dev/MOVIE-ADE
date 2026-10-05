@@ -194,7 +194,7 @@ describe('feedback-relay: Issue を作る', () => {
     expect(sent.title).toBe('Recording stops')
     expect(sent.labels).toEqual(['bug', 'from-app'])
     expect(sent.body.startsWith(`${ISSUE_HEADING}\n`)).toBe(true)
-    expect(sent.body).toContain('**Kind:** bug · **App:** 0.2.0 · **OS:** darwin 25.6.0 (arm64)')
+    expect(sent.body).toContain('**Kind:** `bug` · **App:** `0.2.0` · **OS:** `darwin 25.6.0 (arm64)`')
     expect(sent.body).toContain('It stops after 10 seconds.')
     // インストール ID と IP は Issue に書かない
     expect(sent.body).not.toContain(INSTALL)
@@ -317,7 +317,7 @@ describe('feedback-relay: フィールドの許可リストと上限', () => {
     const gh = fakeGithub()
     const { res } = await send(env, gh, post(form({ platform: undefined, arch: undefined, osRelease: undefined, installId: undefined })))
     expect(res.status).toBe(201)
-    expect(JSON.parse(String(gh.calls[0].init.body)).body).toContain('**Kind:** bug · **App:** 0.2.0 · **OS:** not shared')
+    expect(JSON.parse(String(gh.calls[0].init.body)).body).toContain('**Kind:** `bug` · **App:** `0.2.0` · **OS:** not shared')
   })
 
   it('題名と本文の日本語（UTF-8 の multipart）はそのまま Issue になる', async () => {

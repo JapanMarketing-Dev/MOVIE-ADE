@@ -34,14 +34,13 @@ const ICON_CLOSED: Record<Dock, LucideIcon> = { left: PanelLeftDashed, right: Pa
 const ICON_COLLAPSE: Record<Dock, LucideIcon> = { left: PanelLeftClose, right: PanelRightClose, top: PanelTopClose, bottom: PanelBottomClose }
 
 /** 開閉できるパネル（ターミナルは除く）とそのキー */
-type ClosablePanel = Exclude<PanelId, 'terminal'>
+type ClosablePanel = Exclude<PanelId, 'terminal' | 'projects'>
 const SHORTCUT_OF: Record<ClosablePanel, () => string> = {
-  projects: SHORTCUTS.toggleSidebar,
   files: SHORTCUTS.toggleExplorer
 }
 
 /** E2E が掴む印。プロジェクト一覧は以前のサイドバー開閉ボタンと同じ名前を引き継ぐ */
-const TEST_ID: Record<ClosablePanel, string> = { projects: 'toggle-sidebar', files: 'toggle-files-panel' }
+const TEST_ID: Record<ClosablePanel, string> = { files: 'toggle-files-panel' }
 
 export function LayoutToggles() {
   const t = useT()

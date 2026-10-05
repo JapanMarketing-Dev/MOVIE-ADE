@@ -43,7 +43,7 @@
 </table>
 {{shot:url-presets|浏览器工具栏中保存的 URL}}
 
-<!-- @review-targets 9c48e48820 -->
+<!-- @review-targets 5ca6dd4b29 -->
 ## 审查对象面板
 {{clip:targets|在不停止录制的情况下切换审查对象和页面。}}
 <p>在反馈模式下，右侧的 <span class="docs-ui">审查对象</span> 面板会列出当前项目中所有可以审查的内容。切换对象不会停止录制。可以用 <span class="docs-ui">显示 → 显示 / 隐藏审查对象</span>（{{keys:Mod+Shift+K}}）或 <span class="docs-ui">隐藏面板</span> 来切换面板。</p>
@@ -52,7 +52,7 @@
   <li><strong><span class="docs-ui">文件</span></strong>：项目文件夹。文件以预览方式打开（渲染 Markdown 和 Mermaid，其他文本为只读），因此也可以审查文档。铅笔图标（<span class="docs-ui">在编辑器中打开</span>）会在编辑器中打开它。</li>
 </ul>
 <p><span class="docs-ui">筛选对象</span> 会同时筛选目标、页面和文件，模糊匹配方式与 <span class="docs-ui">转到文件…</span> 相同。在列表中，按 <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> 或 <kbd>1</kbd>–<kbd>9</kbd> 切换对象。<span class="docs-ui">打开 URL…</span> 用于临时打开一个 URL，<span class="docs-ui">保存到项目 URL</span> 会把它保存下来。</p>
-<p>目标来自 <code>settings.json</code> 中的 <code>projects[].urls</code>（参见<a href="settings-json.html#example">示例</a>）。每个条目需要一个 <code>url</code>、一个 <code>launchCommand</code>（在终端中运行，例如用来启动桌面应用）或一个 <code>windowMatch</code>（要录制的窗口），还可以带一个 <code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code> 或 <code>reference</code>）。选择窗口类目标会把它设为录制来源，因此录制过程中无法这样做。访问过的页面按项目记住，仅保存在这台机器上（最多 200 个）。</p>
+<p>目标来自 <code>settings.json</code> 中的 <code>projects[].urls</code>（参见<a href="settings-json.html#example">示例</a>）。每个条目需要一个 <code>url</code>、一个 <code>launchCommand</code>（在终端中运行，例如用来启动桌面应用）或一个 <code>windowMatch</code>（要录制的窗口），还可以带一个 <code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code> 或 <code>reference</code>）。在录制前选择窗口类目标，会把它设为录制来源；在录制中选择，则会把该窗口加入录制并显示它（见<a href="recording.html#multi">同时录制多个窗口</a>）。访问过的页面按项目记住，仅保存在这台机器上（最多 200 个）。</p>
 
 <!-- @switch-env 70e1c23f78 -->
 ## 打开和切换环境

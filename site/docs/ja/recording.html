@@ -28,7 +28,7 @@
   <meta property="og:title" content="録画 · Ferret ドキュメント">
   <meta property="og:description" content="内蔵ブラウザ、画面全体、ほかのウインドウ、デスクトップアプリ、ゲーム、スマホのシミュレータを録画します。ページを操作しながら、話し、囲み、入力します。">
   <meta property="og:url" content="https://ferretade.dev/docs/ja/recording">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="ja_JP">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="録画 · Ferret ドキュメント">
   <meta name="twitter:description" content="内蔵ブラウザ、画面全体、ほかのウインドウ、デスクトップアプリ、ゲーム、スマホのシミュレータを録画します。ページを操作しながら、話し、囲み、入力します。">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -187,6 +187,24 @@
 <p>レビュー対象の <span class="docs-ui">録画するウインドウ</span> は、ウインドウのタイトルだけでなくアプリ名にも一致します。そのため <code>Simulator</code> と書けば、どのデバイスを表示していても iOS Simulator のウインドウを選びます。</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="extensions">
+        <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="「ブラウザ拡張機能」へのリンク">#</a>ブラウザ拡張機能</h2>
+        <p><span class="docs-ui">設定 → ブラウザ拡張機能</span> で、内蔵ブラウザに Chrome の拡張機能を入れられます。<code>manifest.json</code> があるフォルダは <span class="docs-ui">展開済みのフォルダを追加…</span>、Chrome・Edge・Brave・Chromium に入っている拡張は <span class="docs-ui">Chrome から取り込む…</span> で写して使います。拡張が動くのは内蔵ブラウザの中だけで、Ferret 自身の画面には入りません。拡張はそこで開いたすべてのページを読み書きでき、そのログインのまま通信できるので、信用できる拡張だけを入れてください。</p>
+<p>拡張のポップアップは、ブラウザのツールバーかフィードバックのツールバーの <span class="docs-ui">拡張機能</span> から開きます。ページの右上に開き、ほかの場所を押すか <kbd>Esc</kbd> で閉じます。<span class="docs-ui">内蔵ブラウザ</span> を録画すると、拡張がページの中で変えたものも、開いているポップアップも、動画と画像に入ります。Electron が対応する拡張の API は一部だけです。サイドパネル・右クリックメニュー・通知・キーボードショートカット・拡張が開く新しいタブやウインドウは動かず、パッケージ化した <code>.crx</code> は読み込めません。</p>
+<p>ポップアップの上にも書き込めます。録画中はツールバーを押しても拡張のポップアップは閉じません。ペンか枠を選んでいるとき、または <span class="docs-ui">文字で指摘</span> が入のときは、ページを押しても閉じず、<kbd>Esc</kbd> はポップアップを閉じる代わりに道具を切ります。ポップアップの中に描くと、その書き込みはポップアップの位置で動画と画像に入ります。使えるのは、録画か <span class="docs-ui">文字で指摘</span> を始めてから開いたポップアップです。ページが別のウインドウで開くログインのポップアップ（Google でログインなど）は、開いている間、別の動画として録画します。そのウインドウが前に出るとペンと枠はその中に描け、ページを押すと元に戻ります。ログインが終われば、これまでどおり自動で閉じます。</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="multi">
+        <h2 id="multi"><a class="docs-anchor" href="#multi" aria-label="「複数のウインドウを同時に録画する」へのリンク">#</a>複数のウインドウを同時に録画する</h2>
+        <p>1回の録画で、内蔵ブラウザ・デスクトップアプリのウインドウ・画面を最大 4 つまで同時に録れます。それぞれを録画を止めるまで別の動画に録るので、Web アプリからデスクトップアプリを開いてまた戻る、のように行き来する流れも最初から最後まで残ります。</p>
+<ol class="docs-steps">
+  <li>録画中に、録画の帯の <span class="docs-ui">+</span>（<span class="docs-ui">ほかのウインドウも同時に録る</span>） を押し、ウインドウ・画面・内蔵ブラウザを選びます。<span class="docs-ui">レビュー対象</span> パネルでウインドウの対象を押しても同じです。</li>
+  <li>録画の帯のチップを押すと、映すものが切り替わります。ペンと指摘の画像は映しているものに付き、ほかは裏で毎秒 5 フレームまで録り続けます。</li>
+</ol>
+<p>まだ開いていないウインドウを待つこともできます。<span class="docs-ui">プロジェクトを編集…</span> で対象に <span class="docs-ui">録画するウインドウ</span>（アプリ名、ウインドウのタイトルの一部、<code>com.example.MyApp</code> のような macOS のバンドル ID、またはアプリのパス）を入れ、<span class="docs-ui">録画中に開いたら</span> を <span class="docs-ui">一緒に録る</span> か <span class="docs-ui">録って切り替える</span> にします。<code>settings.json</code> では <code>"watch": "record"</code> か <code>"watch": "switch"</code> です。録画中、Ferret は 1 秒ごとにウインドウの一覧を見ます。ウインドウが開くまでは対象が点線のチップで出て、アプリを閉じてまた開いたときも録り直します。</p>
+<p>切り替えはすべて操作ログに残るので、指摘ごとにどれを映していたかが分かります。アプリのウインドウを映していた間の指摘には URL・要素の情報が付かず、<span class="docs-ui">指摘</span> と <code>feedback.md</code> ではそのウインドウの下にまとまり、Agent にもアプリのウインドウだと伝わります。足した動画はレビューのフォルダの <code>tracks/</code> に、始まりと終わりの時刻は <code>tracks.jsonl</code> に保存します。Windows と Linux ではウインドウのタイトルしか分からないので、名前はタイトルと照らし合わせます。Linux の Wayland ではウインドウの一覧を取るたびに選択を求められるため、ウインドウを待つことはできません。開いたあとで <span class="docs-ui">+</span> から足してください。</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="record">
         <h2 id="record"><a class="docs-anchor" href="#record" aria-label="「開始・一時停止・停止」へのリンク">#</a>開始・一時停止・停止</h2>
         <figure class="docs-clip" data-clip="record">
@@ -245,6 +263,11 @@
 <p>文字起こしが失敗したとき、モデルやキーが無いとき、2分ほど声が入っているのに文字にならないとき、マイクに音が届いていないときは、タブを閉じていても Ferret が1回だけ知らせ、右パネルのボタンに印を付けます。録画は続き、音声も残ります。タブを出さないようにするには、<span class="docs-ui">設定 → 文字起こし</span> の <span class="docs-ui">録画中に文字起こしを表示する（フィードバック画面の右パネル）</span> を OFF にします。警告はそれでも出ます。</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="feedback-terminal">
+        <h2 id="feedback-terminal"><a class="docs-anchor" href="#feedback-terminal" aria-label="「録画しながら Agent に伝える」へのリンク">#</a>録画しながら Agent に伝える</h2>
+        <p>フィードバック画面の右パネルには <span class="docs-ui">ターミナル</span> タブもあります。新しいシェルではなく、エディタモードと同じターミナルです。同じタブ、動いている同じ Agent（たとえば Claude Code や Codex）とその履歴がそのまま出ます。上でタブを選んで打てば、たとえば <code>localhost</code> が起動していないことを Agent に伝えられます。エディタモードへ戻っても、ターミナルは同じ状態です。内蔵ブラウザやほかのアプリのウインドウを録画しても、ターミナルは写りません。</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="other-side">
         <h2 id="other-side"><a class="docs-anchor" href="#other-side" aria-label="「会議の相手の声も録る」へのリンク">#</a>会議の相手の声も録る</h2>
         <p>通話をしながら一緒にページをレビューするときは、マイクに加えて、パソコンから聞こえる音も Ferret に録らせます。Ferret が録るのはアプリではなくパソコンの音声なので、どの会議アプリ（Zoom、Google Meet、Microsoft Teams など）でも使えます。2つは分けて扱い、マイクは <strong>自分</strong>、パソコンの音声は <strong>相手</strong> として文字起こしするので、どの指摘を誰が求めたかが分かります。マイクをオフにしていても使えます。</p>
@@ -293,12 +316,15 @@
       <ul>
         <li><a href="#target">録画の対象を選ぶ</a></li>
         <li><a href="#desktop-mobile">デスクトップアプリ、ゲーム、モバイルアプリ</a></li>
+        <li><a href="#extensions">ブラウザ拡張機能</a></li>
+        <li><a href="#multi">複数のウインドウを同時に録画する</a></li>
         <li><a href="#record">開始・一時停止・停止</a></li>
         <li><a href="#pen">ペン</a></li>
         <li><a href="#type">話す代わりに文字で指摘する</a></li>
         <li><a href="#annotations-clear">書き込みが消えるとき</a></li>
         <li><a href="#mic">マイク</a></li>
         <li><a href="#live-transcript">文字起こしされた内容を見る</a></li>
+        <li><a href="#feedback-terminal">録画しながら Agent に伝える</a></li>
         <li><a href="#other-side">会議の相手の声も録る</a></li>
         <li><a href="#other-side-os">OS ごとのシステム音声</a></li>
         <li><a href="#other-side-tips">会議で使うときのコツ</a></li>

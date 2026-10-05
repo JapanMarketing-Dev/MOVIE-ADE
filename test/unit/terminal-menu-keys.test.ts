@@ -60,7 +60,7 @@ describe('ターミナルのキーをメニューに取らせない（Orca #1154
   it('Windows / Linux のメニューの Ctrl+英字の accelerator は、どれもターミナルのフォーカス中はターミナルへ渡る', async () => {
     for (const platform of ['win32', 'linux'] as const) {
       const plain = (await acceleratorsFor(platform)).map(inputOf).filter((i) => i.control && !i.shift && !i.alt && !i.meta)
-      expect(plain.map((i) => i.key)).toEqual(expect.arrayContaining(['o', 'p', 's', 'b', 'l', 'r', 't', 'w']))
+      expect(plain.map((i) => i.key)).toEqual(expect.arrayContaining(['o', 'p', 's', 'l', 'r', 't', 'w']))
       for (const input of plain) expect(terminalOwnsMenuKey(input, platform), `${platform} Ctrl+${input.key}`).toBe(true)
     }
   })

@@ -28,7 +28,7 @@
   <meta property="og:title" content="Enregistrement · Documentation de Ferret">
   <meta property="og:description" content="Enregistrez le navigateur intégré, un écran entier, une autre fenêtre, une application de bureau, un jeu ou un simulateur de téléphone. Parlez, entourez et tapez pendant que vous utilisez la page.">
   <meta property="og:url" content="https://ferretade.dev/docs/fr/recording">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="fr_FR">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Enregistrement · Documentation de Ferret">
   <meta name="twitter:description" content="Enregistrez le navigateur intégré, un écran entier, une autre fenêtre, une application de bureau, un jeu ou un simulateur de téléphone. Parlez, entourez et tapez pendant que vous utilisez la page.">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -187,6 +187,24 @@
 <p>Le champ <span class="docs-ui">Fenêtre à enregistrer</span> d'une cible de revue correspond au nom de l'application comme au titre de la fenêtre : <code>Simulator</code> sélectionne donc la fenêtre d'iOS Simulator, quel que soit l'appareil affiché.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="extensions">
+        <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="Lien vers Extensions du navigateur">#</a>Extensions du navigateur</h2>
+        <p>Ajoutez des extensions Chrome au navigateur intégré dans <span class="docs-ui">Réglages → Extensions du navigateur</span> : <span class="docs-ui">Ajouter un dossier décompressé…</span> pour un dossier qui contient <code>manifest.json</code>, ou <span class="docs-ui">Importer depuis Chrome…</span> pour copier une extension déjà installée dans Chrome, Edge, Brave ou Chromium. Les extensions ne s'exécutent que dans le navigateur intégré, jamais dans les fenêtres de Ferret. Elles peuvent lire et modifier toutes les pages que vous y ouvrez et utiliser ses connexions : n'ajoutez que des extensions de confiance.</p>
+<p>Ouvrez la fenêtre contextuelle d'une extension avec <span class="docs-ui">Extensions</span> dans la barre du navigateur ou la barre de retour. Elle s'ouvre en haut à droite de la page et se ferme quand vous cliquez ailleurs ou appuyez sur <kbd>Esc</kbd>. Quand vous enregistrez le <span class="docs-ui">Navigateur intégré</span>, ce qu'une extension modifie dans la page et la fenêtre contextuelle ouverte figurent tous deux dans la vidéo et les images. Electron ne prend en charge qu'une partie des API d'extensions : les panneaux latéraux, menus contextuels, notifications, raccourcis clavier et les onglets ou fenêtres ouverts par une extension ne fonctionnent pas, et les fichiers <code>.crx</code> empaquetés ne peuvent pas être chargés.</p>
+<p>Vous pouvez aussi annoter les fenêtres pop-up. Pendant l'enregistrement, cliquer sur la barre d'outils ne ferme pas la fenêtre pop-up d'une extension. Quand le stylo ou le cadre est sélectionné, ou quand <span class="docs-ui">Retour écrit</span> est activé, cliquer sur la page ne la ferme pas non plus, et <kbd>Esc</kbd> désactive l'outil au lieu de la fermer. Dessinez dans la fenêtre pop-up : les annotations apparaissent dans la vidéo et les images à la position de la fenêtre pop-up. Cela fonctionne pour les fenêtres pop-up ouvertes après le début de l'enregistrement ou de <span class="docs-ui">Retour écrit</span>. Une fenêtre pop-up de connexion qu'une page ouvre dans sa propre fenêtre (par exemple Se connecter avec Google) est enregistrée comme une vidéo distincte tant qu'elle est ouverte. Quand elle passe au premier plan, le stylo et le cadre dessinent dedans ; cliquer sur la page revient en arrière. Elle se ferme toujours d'elle-même une fois connecté.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="multi">
+        <h2 id="multi"><a class="docs-anchor" href="#multi" aria-label="Lien vers Enregistrer plusieurs fenêtres à la fois">#</a>Enregistrer plusieurs fenêtres à la fois</h2>
+        <p>Un enregistrement peut capturer jusqu'à quatre vues en même temps : le navigateur intégré, des fenêtres d'apps de bureau et des écrans. Chacune est enregistrée dans sa propre vidéo jusqu'à l'arrêt, si bien qu'un parcours qui passe de l'une à l'autre, comme une app web qui ouvre une app de bureau puis y revient, est capturé du début à la fin.</p>
+<ol class="docs-steps">
+  <li>Pendant l'enregistrement, cliquez sur <span class="docs-ui">+</span> (<span class="docs-ui">Enregistrer une autre fenêtre en même temps</span>) dans la barre d'enregistrement et choisissez une fenêtre, un écran ou le navigateur intégré. Cliquer sur une cible de type fenêtre dans le panneau <span class="docs-ui">Cibles de relecture</span> fait de même.</li>
+  <li>Cliquez sur une pastille de la barre d'enregistrement pour changer la vue affichée. Le stylo et les images des remarques suivent la vue affichée ; les autres continuent d'être enregistrées en arrière-plan, jusqu'à 5 images par seconde.</li>
+</ol>
+<p>Vous pouvez aussi attendre une fenêtre qui n'est pas encore ouverte. Dans <span class="docs-ui">Modifier le projet…</span>, donnez à une cible une <span class="docs-ui">Fenêtre à enregistrer</span> (un nom d'app, une partie du titre de la fenêtre, un bundle id macOS comme <code>com.example.MyApp</code> ou le chemin de l'app) et réglez <span class="docs-ui">S'il s'ouvre pendant l'enregistrement</span> sur <span class="docs-ui">L'enregistrer aussi</span> ou <span class="docs-ui">L'enregistrer et y basculer</span>. Dans <code>settings.json</code>, c'est <code>"watch": "record"</code> ou <code>"watch": "switch"</code>. Pendant l'enregistrement, Ferret consulte la liste des fenêtres une fois par seconde. La cible s'affiche comme une pastille en pointillés jusqu'à l'ouverture de sa fenêtre, et elle est de nouveau enregistrée si l'app se ferme puis se rouvre.</p>
+<p>Chaque changement est écrit dans le journal des actions, donc chaque remarque sait de quelle vue il s'agissait. Les remarques faites pendant qu'une fenêtre d'app était affichée n'ont ni URL ni infos d'élément, sont regroupées sous cette fenêtre dans <span class="docs-ui">Remarques</span> et <code>feedback.md</code>, et l'agent est informé qu'il s'agissait d'une fenêtre d'app. Les vidéos supplémentaires sont enregistrées dans le dossier de la relecture, sous <code>tracks/</code>, avec leurs heures de début et de fin dans <code>tracks.jsonl</code>. Sous Windows et Linux, seuls les titres des fenêtres sont connus : le nom est donc comparé au titre. Attendre une fenêtre n'est pas possible sous Linux avec Wayland, où lister les fenêtres demande à chaque fois d'en choisir une ; ajoutez plutôt la fenêtre avec <span class="docs-ui">+</span> une fois qu'elle est ouverte.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="record">
         <h2 id="record"><a class="docs-anchor" href="#record" aria-label="Lien vers Démarrer, mettre en pause, arrêter">#</a>Démarrer, mettre en pause, arrêter</h2>
         <figure class="docs-clip" data-clip="record">
@@ -245,6 +263,11 @@
 <p>Si la transcription échoue, si aucun modèle ni clé n'est configuré, si environ 2 minutes de voix ne donnent aucun texte, ou si aucun son n'arrive au micro, Ferret vous prévient une fois et marque le bouton du panneau de droite, même quand l'onglet est fermé. L'enregistrement continue et l'audio est conservé. Pour masquer l'onglet, désactivez <span class="docs-ui">Afficher la transcription en direct pendant l'enregistrement (panneau de droite du mode feedback)</span> dans <span class="docs-ui">Réglages → Transcription</span>. Les alertes s'affichent quand même.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="feedback-terminal">
+        <h2 id="feedback-terminal"><a class="docs-anchor" href="#feedback-terminal" aria-label="Lien vers Parler à votre agent pendant l'enregistrement">#</a>Parler à votre agent pendant l'enregistrement</h2>
+        <p>Le panneau de droite du mode feedback a aussi un onglet <span class="docs-ui">Terminal</span>. C'est le même terminal qu'en mode Éditeur, pas un nouveau shell : les mêmes onglets, les mêmes agents en cours d'exécution (par exemple Claude Code ou Codex) et leur historique. Choisissez un onglet en haut et tapez, par exemple pour dire à l'agent que <code>localhost</code> ne tourne pas. De retour en mode Éditeur, le terminal est dans le même état. L'enregistrement du navigateur intégré ou de la fenêtre d'une autre app n'inclut pas le terminal.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="other-side">
         <h2 id="other-side"><a class="docs-anchor" href="#other-side" aria-label="Lien vers Enregistrer l'autre partie d'une réunion">#</a>Enregistrer l'autre partie d'une réunion</h2>
         <p>Pour relire une page ensemble pendant un appel, laissez Ferret enregistrer ce que vous entendez sur votre ordinateur en plus de votre micro. Cela fonctionne avec n'importe quelle application de réunion (Zoom, Google Meet, Microsoft Teams et d'autres), car Ferret enregistre l'audio de votre ordinateur, pas l'application. Les deux restent séparés : votre micro est transcrit comme <strong>Moi</strong> et l'audio de votre ordinateur comme <strong>Autre</strong>, si bien que chaque remarque montre qui a demandé quoi. Cela fonctionne aussi avec votre micro désactivé.</p>
@@ -293,12 +316,15 @@
       <ul>
         <li><a href="#target">Choisir ce qui est enregistré</a></li>
         <li><a href="#desktop-mobile">Applications de bureau, jeux et applications mobiles</a></li>
+        <li><a href="#extensions">Extensions du navigateur</a></li>
+        <li><a href="#multi">Enregistrer plusieurs fenêtres à la fois</a></li>
         <li><a href="#record">Démarrer, mettre en pause, arrêter</a></li>
         <li><a href="#pen">Stylo</a></li>
         <li><a href="#type">Écrire au lieu de parler</a></li>
         <li><a href="#annotations-clear">Quand les traits disparaissent</a></li>
         <li><a href="#mic">Microphone</a></li>
         <li><a href="#live-transcript">Voir ce qui est transcrit</a></li>
+        <li><a href="#feedback-terminal">Parler à votre agent pendant l'enregistrement</a></li>
         <li><a href="#other-side">Enregistrer l'autre partie d'une réunion</a></li>
         <li><a href="#other-side-os">Audio du système selon l'OS</a></li>
         <li><a href="#other-side-tips">Conseils pour les réunions</a></li>
