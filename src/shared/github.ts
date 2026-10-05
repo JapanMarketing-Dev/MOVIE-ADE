@@ -1,4 +1,5 @@
 import { forgeBranchUrl, type Forge } from './forge'
+import type { GitStatusSummary, GitSyncAction, GitSyncErrorKind } from './gitSync'
 
 /**
  * GitHub 連携の型（main と renderer で共有する）。
@@ -51,19 +52,36 @@ export interface GitHubRepoResult {
 }
 
 /** フッターに出す、今のプロジェクトのリポジトリとブランチ */
-export interface GitRepoStatus {
+export interface GitRepoStatus extends GitStatusSummary {
   /** git のリポジトリか。false なら項目を隠す */
   isGit: boolean
-  /** origin が GitHub のとき。それ以外の remote・remote なしは null */
+  /** origin が GitHub / GitLab のとき。それ以外の remote・remote なしは null */
   repo: GitHubRepoRef | null
-  /** ブランチ名。detached HEAD のときは null で、shortOid を出す */
-  branch: string | null
-  shortOid: string | null
-  /** 未コミットの変更（追跡外を含む）のファイル数 */
-  changes: number
-  ahead: number
-  behind: number
-  hasUpstream: boolean
+  /** fetch できるリモートがあるか（upstream があるか、origin がある） */
+  hasRemote: boolean
+  /** 裏の fetch の様子（取得中・最後に取得した時刻・最後の失敗） */
+  fetch: GitFetchView
+  /** 走っている操作（最新の取得・push）。無ければ null */
+  busy: GitSyncAction | null
+}
+
+export interface GitFetchView {
+  fetching: boolean
+  lastFetchAt: number | null
+  lastError: GitSyncErrorKind | null
+}
+
+/** フッターの「リモートの変更を確認」「最新を取得」「push」の結果 */
+export interface GitActionResult {
+  ok: boolean
+  action: GitSyncAction
+  /** 失敗・取り込まなかった理由 */
+  error: GitSyncErrorKind | null
+  /** error が failed のときだけ、git の出力の1行目（トークン・URL の認証情報は伏せる） */
+  detail: string | null
+  /** 取り込んだコミットの数（pull）・push したコミットの数（push） */
+  commits: number
+  status: GitRepoStatus
 }
 
 /** GitHub / GitLab のブランチのページ。ブランチ名の「/」は区切りのまま残す */

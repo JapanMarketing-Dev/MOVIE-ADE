@@ -60,3 +60,15 @@ describe('formatMemory / formatCpu', () => {
     expect(formatCpu(12.345)).toBe('12.3%')
   })
 })
+
+describe('ps の失敗を送るか（FERRET-1M）', () => {
+  it('一時的な失敗は送らず、続けて3回目だけ送る。時間切れで止めたものは送らない', async () => {
+    const { shouldReportPsFailure } = await import('../../src/main/resources')
+    const err = new Error('ps failed')
+    expect(shouldReportPsFailure(err, 1)).toBe(false)
+    expect(shouldReportPsFailure(err, 2)).toBe(false)
+    expect(shouldReportPsFailure(err, 3)).toBe(true)
+    expect(shouldReportPsFailure(err, 4)).toBe(false)
+    expect(shouldReportPsFailure(Object.assign(new Error('timeout'), { killed: true }), 3)).toBe(false)
+  })
+})

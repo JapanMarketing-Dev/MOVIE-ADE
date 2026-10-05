@@ -412,11 +412,21 @@ describe('security-6 [7] external imports enforce the budget while copying and c
   })
   const dropped = () => true
 
-  it('a file that grows after measuring stops at the limit and the partial copy is removed', async () => {
+  it('a file that grows after measuring is refused before copying (size and ctime are part of its identity)', async () => {
     const src = join(outside, 'grow.bin')
     await writeFile(src, Buffer.alloc(10))
     await expect(importEntries(root, [src], '', dropped, {
       afterMeasure: () => appendFile(src, Buffer.alloc(4 * 1024 * 1024)),
+      budget: { entries: 10, bytes: 1024 * 1024 }
+    })).rejects.toThrow(/no longer exists/)
+    expect(await readdir(root)).toEqual([])
+  })
+
+  it('the budget is enforced while copying and the partial copy is removed', async () => {
+    // 測ったあとは変えず、写すときの枠（1 MiB）だけを小さくして、写しながら止まることを確かめる
+    const src = join(outside, 'big.bin')
+    await writeFile(src, Buffer.alloc(4 * 1024 * 1024))
+    await expect(importEntries(root, [src], '', dropped, {
       budget: { entries: 10, bytes: 1024 * 1024 }
     })).rejects.toThrow(/Too much data/)
     expect(await readdir(root)).toEqual([])
@@ -509,5 +519,16 @@ describe('security-6 [8] daily project decision budgets survive a restart', () =
   it('main wires the ledger into the decision service in userData (shape check)', () => {
     const index = read('src/main/index.ts')
     expect(index).toMatch(/ledger: new ProjectLedger\(join\(app\.getPath\('userData'\), 'decision-project-usage\.json'\)\)/)
+  })
+})
+
+describe('security-6 [7] file identity does not depend on inode numbers alone', () => {
+  it('a file recreated with the same dev and inode (ext4 reuses inodes) is a different file when its ctime or size differs', async () => {
+    const { sameFileIdentity } = await import('../../src/main/fileOps')
+    const was = { dev: 1n, ino: 42n, size: 5n, ctimeNs: 1_000n }
+    expect(sameFileIdentity(was, { ...was })).toBe(true)
+    expect(sameFileIdentity(was, { ...was, ctimeNs: 2_000n })).toBe(false)
+    expect(sameFileIdentity(was, { ...was, size: 1000n })).toBe(false)
+    expect(sameFileIdentity(was, { ...was, ino: 43n })).toBe(false)
   })
 })

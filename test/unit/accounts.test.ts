@@ -18,7 +18,7 @@ import {
 } from '../../src/main/accounts/paths'
 import { sanitizeAgentAccounts } from '../../src/main/accounts/sanitize'
 import { resolveAgentEnvFrom } from '../../src/main/accounts/env'
-import { applyCodexDaemonSocketGuard, carryClaudeSettings, CODEX_DAEMON_OVERRIDE_MARKER, linkSharedEntries, migrateManagedClaudeDir, pickClaudeGlobalConfig, seedManagedAccountDir } from '../../src/main/accounts/agentConfig'
+import { applyCodexDaemonSocketGuard, carryClaudeSettings, CODEX_DAEMON_OVERRIDE_MARKER, linkShared, linkSharedEntries, migrateManagedClaudeDir, pickClaudeGlobalConfig, seedManagedAccountDir } from '../../src/main/accounts/agentConfig'
 import { claudeKeychainService, hasCodexCredential, readCodexIdentity } from '../../src/main/accounts/identity'
 import type { AgentAccountsSettings } from '../../src/shared/accounts'
 import { setLocale } from '@shared/i18n'
@@ -339,5 +339,25 @@ describe('設定フォルダから読むアカウント情報', () => {
     expect(claudeKeychainService()).toBe('Claude Code-credentials')
     expect(claudeKeychainService('/a')).toMatch(/^Claude Code-credentials-[0-9a-f]{8}$/)
     expect(claudeKeychainService('/a')).not.toBe(claudeKeychainService('/b'))
+  })
+})
+
+describe('linkShared（Windows はフォルダをジャンクションで張る。FERRET-1K）', () => {
+  it('フォルダもファイルも、Windows の分岐でも共有の先を指す（ジャンクション・ファイルのリンク）', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ferret-link-'))
+    try {
+      mkdirSync(join(root, 'skills'))
+      writeFileSync(join(root, 'skills', 'a.md'), 'x')
+      writeFileSync(join(root, 'CLAUDE.md'), 'y')
+      mkdirSync(join(root, 'managed'))
+      linkShared(join(root, 'skills'), join(root, 'managed', 'skills'), 'win32')
+      linkShared(join(root, 'CLAUDE.md'), join(root, 'managed', 'CLAUDE.md'), 'win32')
+      expect(readFileSync(join(root, 'managed', 'skills', 'a.md'), 'utf8')).toBe('x')
+      expect(readFileSync(join(root, 'managed', 'CLAUDE.md'), 'utf8')).toBe('y')
+      linkShared(join(root, 'skills'), join(root, 'managed', 'skills2'), 'darwin')
+      expect(lstatSync(join(root, 'managed', 'skills2')).isSymbolicLink()).toBe(true)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })

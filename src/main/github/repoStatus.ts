@@ -1,29 +1,13 @@
 import { watch, type FSWatcher } from 'node:fs'
 import type { GitRepoStatus } from '@shared/github'
 import { run } from './gh'
-import { parseGitStatus } from './parse'
-import { resolveRemote } from './index'
+import { readGitStatus, trustedGit } from './gitSync'
 
 /**
- * フッターの「どの GitHub / GitLab の、どのブランチか」。
- *
- * git を2回だけ呼ぶ（remote get-url と status --porcelain=v2 --branch）。status は optional locks を切って
- * 走らせるので、ターミナルで動いている git と index.lock を取り合わない。
- * 追跡外のファイルは `normal`（ディレクトリ単位）で数え、node_modules などの大きなフォルダを歩き回らない。
+ * フッターの「どの GitHub / GitLab の、どのブランチか」。読み方と fetch・取り込み・push は gitSync.ts
  */
 export async function gitRepoStatus(folderPath: string | null): Promise<GitRepoStatus> {
-  const empty: GitRepoStatus = { isGit: false, repo: null, branch: null, shortOid: null, changes: 0, ahead: 0, behind: 0, hasUpstream: false }
-  if (!folderPath) return empty
-  const [status, remote] = await Promise.all([
-    run('git', ['-C', folderPath, '-c', 'core.quotePath=false', 'status', '--porcelain=v2', '--branch', '--untracked-files=normal'], { timeoutMs: 5_000 }),
-    run('git', ['-C', folderPath, 'remote', 'get-url', 'origin'], { timeoutMs: 5_000 })
-  ])
-  if (status.failed) return empty
-  return {
-    isGit: true,
-    repo: remote.failed ? null : await resolveRemote(remote.stdout),
-    ...parseGitStatus(status.stdout)
-  }
+  return readGitStatus(folderPath)
 }
 
 // ─── .git/HEAD の監視 ─────────────────────────────
@@ -42,7 +26,9 @@ export async function watchGitHead(folderPath: string | null, onChange: () => vo
   if (!folderPath) return
   const current = watched
   // worktree では .git がファイルなので、git に本当の置き場を聞く
-  const gitDir = await run('git', ['-C', folderPath, 'rev-parse', '--absolute-git-dir'], { timeoutMs: 5_000 })
+  const git = await trustedGit(folderPath)
+  if (!git || watched !== current) return
+  const gitDir = await run(git, ['-C', folderPath, 'rev-parse', '--absolute-git-dir'], { timeoutMs: 5_000 })
   if (gitDir.failed || watched !== current) return
   let timer: NodeJS.Timeout | null = null
   try {

@@ -91,12 +91,12 @@ describe('GitHub: git status --porcelain=v2 --branch の解析', () => {
       '? 新しい.md',
       '! ignored.log'
     ].join('\n')
-    expect(parseGitStatus(text)).toEqual({ branch: 'develop', shortOid: '0123456', changes: 4, ahead: 2, behind: 1, hasUpstream: true })
+    expect(parseGitStatus(text)).toMatchObject({ branch: 'develop', shortOid: '0123456', changes: 4, ahead: 2, behind: 1, hasUpstream: true })
   })
 
   it('detached HEAD・upstream なし・コミットなし', () => {
-    expect(parseGitStatus('# branch.oid abcdef1234567\n# branch.head (detached)\n')).toEqual({ branch: null, shortOid: 'abcdef1', changes: 0, ahead: 0, behind: 0, hasUpstream: false })
-    expect(parseGitStatus('# branch.oid (initial)\r\n# branch.head main\r\n? a.txt\r\n')).toEqual({ branch: 'main', shortOid: null, changes: 1, ahead: 0, behind: 0, hasUpstream: false })
+    expect(parseGitStatus('# branch.oid abcdef1234567\n# branch.head (detached)\n')).toMatchObject({ branch: null, shortOid: 'abcdef1', changes: 0, ahead: 0, behind: 0, hasUpstream: false })
+    expect(parseGitStatus('# branch.oid (initial)\r\n# branch.head main\r\n? a.txt\r\n')).toMatchObject({ branch: 'main', shortOid: null, changes: 1, ahead: 0, behind: 0, hasUpstream: false })
   })
 
   it('ブランチのURLは「/」を区切りのまま残し、ほかは符号化する', () => {

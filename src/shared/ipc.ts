@@ -71,7 +71,8 @@ import type { FsChangedEvent, FsCreated, FsEntry, FsFileList, FsReadResult, FsSe
 import type { FsFileInfo } from './fileViewer'
 import type { StarActionResult, StarPromptMode } from './starPrompt'
 import type { FeedbackEnvironment, FeedbackSubmitInput, FeedbackSubmitResult } from './feedback'
-import type { GitRepoStatus } from './github'
+import type { GitActionResult, GitRepoStatus } from './github'
+import type { FetchTrigger, GitSyncAction } from './gitSync'
 import type { DroppedEntry } from './externalDrop'
 
 /**
@@ -404,6 +405,13 @@ export interface IpcRequests {
   'github:open': (url: string) => void
   /** フッター用：今のプロジェクトのリポジトリ・ブランチ・変更の数。呼ぶと .git/HEAD の見張りも始める */
   'github:repoStatus': () => GitRepoStatus
+  /**
+   * 裏の fetch（open: プロジェクトを開いた・interval: 定期・focus: 前に出した）。走らせるかは main が決め、走らせなければ null。
+   * 失敗は投げずに、返す状態の fetch.lastError に入れる
+   */
+  'github:autoFetch': (trigger: FetchTrigger, visible: boolean) => GitRepoStatus | null
+  /** フッターの「リモートの変更を確認」「最新を取得」「push」。push は確認を出したときの HEAD を渡し、押した直後だけ受け付ける */
+  'github:gitAction': (action: GitSyncAction, expectedHead: string | null) => GitActionResult
 
   // GitHub の star のお願い（src/main/starPrompt.ts）。star するのは利用者が押したときだけ
   /** トーストの「Star」。gh で star できたら true（できなければ画面はブラウザの案内に切り替える） */
@@ -612,7 +620,7 @@ export const IPC_REQUEST_CHANNELS = [
   'review:list', 'review:activity', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
   'capture:screenAccess', 'capture:sources', 'capture:setTarget', 'capture:openScreenSettings',
   'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:create', 'fs:copy', 'fs:move', 'fs:import', 'fs:importMedia', 'fs:copyPath', 'fs:terminalDir', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'editor:quitSave', 'preview:render',
-  'github:open', 'github:repoStatus',
+  'github:open', 'github:repoStatus', 'github:autoFetch', 'github:gitAction',
   'star:star', 'star:openWeb', 'star:later', 'star:never', 'star:fromMenu',
   'feedback:environment', 'feedback:account', 'feedback:submit', 'feedback:captureWindow'
 ] as const satisfies readonly IpcRequestChannel[]
