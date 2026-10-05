@@ -3,7 +3,8 @@ import { planEditorDrop, readDrop } from './lib/externalDrop'
 import { embedMedia, markdownDropTargetAt, planMediaDrop, planTreeMediaDrop } from './editor/markdownDrop'
 import { isMarkdownLanguage } from './editor/language'
 import { delay } from '@shared/delay'
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   DEFAULT_AGENT_PREFERENCES,
   DEFAULT_SPLIT_RATIO,
@@ -26,7 +27,9 @@ import { UnsavedChangesDialog } from './components/UnsavedChangesDialog'
 import { useOpenFiles } from './editor/useOpenFiles'
 import { FeedbackToolbar, type AnnotationTool } from './components/FeedbackToolbar'
 import { ReviewTargetsPanel } from './components/ReviewTargetsPanel'
-import { FeedbackSideTabs, LiveTranscriptPanel, type FeedbackSideTab } from './components/LiveTranscriptPanel'
+import { FeedbackSideTabs, LiveTranscriptPanel } from './components/LiveTranscriptPanel'
+import { TERMINAL_MOUNT_CLASS, readFeedbackSideTab, shownFeedbackSideTab, terminalPlacement, type FeedbackSideTab } from './lib/feedbackSide'
+import { getTerminal } from './terminal/terminalClient'
 import { useLiveTranscript } from './lib/liveTranscript'
 import { liveTranscriptProblem } from '@shared/liveTranscript'
 import { readLocal, writeLocal } from './lib/localPref'
@@ -55,6 +58,7 @@ import { sanitizeAgentPreferences } from '@shared/agentCatalog'
 import { CrashReportNotice } from './components/CrashReportNotice'
 import { setUiTab } from './lib/telemetry'
 import type { CaptureTarget, FeedbackTargetsPrefs, RecordingStatus, SttAvailability, SttProvider } from '@shared/types'
+import { EMPTY_TRACKS_STATE, type CaptureTracksState } from '@shared/captureTracks'
 import { DEFAULT_ANNOTATION_COLOR, annotationModeForTool, normalizeAnnotationColor, type AnnotationColor } from '@shared/annotation'
 import { showsBrowserNav } from '@shared/browserNav'
 import { AI_VENDORS, LLM_API_PROVIDERS, STT_PROVIDER_PRESETS, STT_REMOTE_PROVIDERS, providerLabel } from '@shared/aiProviders'
@@ -175,7 +179,6 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     void onboardingStoreRef.current?.apply(patch)
   }, [])
   const sidebarOpen = layout.panels.projects.visible
-  const setSidebarOpen = (next: (open: boolean) => boolean) => setLayout((prev) => withPanel(prev, 'projects', { visible: next(prev.panels.projects.visible) }))
   const [activeTerminal, setActiveTerminal] = useState<string | null>(null)
   const [centerTab, setCenterTab] = useState<CenterTab>('browser')
   /** 中央のタブの並び（ドラッグで並べ替えた順）。開いているファイルは閉じれば消えるので保存しない */
@@ -187,6 +190,10 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
    */
   const [recordStatus, setRecordStatus] = useState<RecordingStatus>({ state: 'idle', elapsedMs: 0, videoBytes: 0, frameCount: 0, eventCount: 0 })
   const recording = recordStatus.state !== 'idle'
+  /** 録画中に録っている映像（トラック）と待ち受け。2本以上なら録画の帯で切り替える（@shared/captureTracks） */
+  const [tracks, setTracks] = useState<CaptureTracksState>(EMPTY_TRACKS_STATE)
+  /** 録画中に「ほかのウインドウも同時に録る」の選択画面を開いているか */
+  const [addTrackOpen, setAddTrackOpen] = useState(false)
   const [recordBusy, setRecordBusy] = useState(false)
   const recordLock = useRef(false)
   /** 次の録画を足す先のレビュー（Findings の「追加で録る」）。toggleRecording が読んで空にする */
@@ -243,6 +250,19 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     llm: Object.fromEntries(LLM_API_PROVIDERS.map((p) => [p, false])) as SttAvailability['llm'] })
   const toast = useToast()
   const t = useT()
+  /*
+   * 待ち受けのウインドウ（確認先の「録画中に開いたら録る」）が現れて録り始めたら知らせる。
+   * ビューは DOM の上に重なるのでトーストは見えないことがあるが、録画の帯のチップにも出る
+   */
+  const seenTracks = useRef(new Set<string>())
+  useEffect(() => {
+    if (tracks.tracks.length === 0) { seenTracks.current.clear(); return }
+    for (const track of tracks.tracks) {
+      if (seenTracks.current.has(track.id)) continue
+      seenTracks.current.add(track.id)
+      if (track.watchId) toast({ tone: 'info', message: t('feedback.tracks.appeared', { label: track.label }) })
+    }
+  }, [tracks, toast, t])
   /** ファイルエディタ（中央のファイルタブ・右のファイルツリー・⌘P） */
   const explorerOpen = layout.panels.files.visible
   const setExplorerOpen = (next: (open: boolean) => boolean) => setLayout((prev) => withPanel(prev, 'files', { visible: next(prev.panels.files.visible) }))
@@ -265,12 +285,15 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
    * 止まった・声が文字にならない・マイクに音が来ないときは、パネルを見ていなくても1回だけ知らせ、右パネルの開閉ボタンに印を付ける
    */
   const live = useLiveTranscript()
-  const [sideTab, setSideTab] = useState<FeedbackSideTab>(() => readLocal('ade.feedback.sideTab') === 'transcript' ? 'transcript' : 'targets')
+  const [sideTab, setSideTab] = useState<FeedbackSideTab>(() => readFeedbackSideTab(readLocal('ade.feedback.sideTab')))
+  /** ターミナルのタブを押したら、移した先で入力できるようにフォーカスを渡す（モードの切り替えだけでは渡さない。描き込みのキーを奪わないため） */
+  const focusTerminalOnMove = useRef(false)
   const chooseSideTab = (tab: FeedbackSideTab) => {
     setSideTab(tab)
     writeLocal('ade.feedback.sideTab', tab)
+    if (tab === 'terminal') focusTerminalOnMove.current = true
   }
-  const shownSideTab: FeedbackSideTab = showLiveTranscript ? sideTab : 'targets'
+  const shownSideTab = shownFeedbackSideTab(sideTab, showLiveTranscript)
   const liveProblem = liveTranscriptProblem(live.status)
   const liveToasted = useRef(new Set<string>())
   useEffect(() => {
@@ -369,7 +392,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const anyModalOpen = useAnyModalOpen()
   /** ビューに場所を譲ってよい条件。ひとつでも欠けたら 0 サイズにして隠す */
   const viewVisible =
-    !anyModalOpen && !gallery && !onboardingOpen && !targetPickerOpen && !footerPopoverOpen && !splitDragging && !panelDrag.drag && !projectMenuOpen && !urlDialogOpen && !projectDialogOpen && !quickOpenOpen && !files.pendingClose && emptyReason === null && (mode === 'feedback' || centerTab === 'browser')
+    !anyModalOpen && !gallery && !onboardingOpen && !targetPickerOpen && !addTrackOpen && !footerPopoverOpen && !splitDragging && !panelDrag.drag && !projectMenuOpen && !urlDialogOpen && !projectDialogOpen && !quickOpenOpen && !files.pendingClose && emptyReason === null && (mode === 'feedback' || centerTab === 'browser')
 
   const layoutKey = [
     mode,
@@ -382,6 +405,40 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     targetsOpen ? `t${targetsRatio.toFixed(4)}` : '-'
   ].join(':')
   const slotRef = useViewBounds(layoutKey, viewVisible)
+
+  /*
+   * ターミナルはエディタとフィードバックで1つだけ（同じ xterm・同じ PTY・同じタブ）。
+   * TerminalPane は React の上ではずっと同じ場所（この器への portal）に描き、器の DOM だけをエディタの場所と
+   * フィードバックの右パネルの間で移す。作り直さないので、Agent の画面・スクロールの履歴・入力中の文字がそのまま残る。
+   * xterm の器は自分の大きさの変化を見て寸法を合わせ直す（terminalClient.ts の ResizeObserver）
+   */
+  const [terminalHost] = useState(() => {
+    const host = document.createElement('div')
+    // xterm の器（terminalClient.ts の .terminal-host・絶対配置）と同じ名前にしない。同じだと窓いっぱいに広がり、上のボタンを覆う
+    host.className = TERMINAL_MOUNT_CLASS
+    return host
+  })
+  const [editorTerminalSlot, setEditorTerminalSlot] = useState<HTMLDivElement | null>(null)
+  const [feedbackTerminalSlot, setFeedbackTerminalSlot] = useState<HTMLDivElement | null>(null)
+  const terminalPlace = terminalPlacement({ mode, targetsOpen, shownTab: shownSideTab })
+  useLayoutEffect(() => {
+    const slot = terminalPlace === 'feedback' ? feedbackTerminalSlot : editorTerminalSlot
+    if (!slot) return
+    if (terminalHost.parentElement !== slot) slot.appendChild(terminalHost)
+    // 右パネルへ移さなかったら頼みは捨てる（あとでモードを切り替えたときに、描き込みのキーを奪わないよう）
+    const wantFocus = terminalPlace === 'feedback' && focusTerminalOnMove.current
+    focusTerminalOnMove.current = false
+    if (!wantFocus) return
+    // 移した直後は xterm が寸法を測り直している。2フレーム待ってから、見えているタブの選択中のペインへ
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        const leaf = terminalHost.querySelector<HTMLElement>('.terminal-surface:not([hidden]) .terminal-leaf[data-active="true"]')
+        const key = leaf?.dataset.pane
+        if (key) getTerminal(key)?.focus()
+      })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [terminalPlace, editorTerminalSlot, feedbackTerminalSlot, terminalHost])
 
   /** 連打（⌘⇧M）で古い値から切り替えないよう、最新のモードを同期して持つ */
   const modeRef = useRef<AppMode>('editor')
@@ -587,19 +644,29 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
    * 起動コマンドを走らせた直後は、ウインドウが出るまで少し待って探し直す。
    */
   const selectWindowTarget = (windowMatch: string, launched: boolean) => void run(async () => {
-    if ((await window.ade.invoke('capture:screenAccess')) !== 'granted') { setTargetPickerOpen(true); return }
+    // 録画中は対象を変えず、同時に録る映像として足す（画面もそちらへ切り替わる）
+    const adding = recording
+    if ((await window.ade.invoke('capture:screenAccess')) !== 'granted') { if (adding) setAddTrackOpen(true); else setTargetPickerOpen(true); return }
     const attempts = launched ? 15 : 1
     for (let i = 0; i < attempts; i++) {
       if (i > 0) await delay(1000)
       const found = matchWindowSource((await window.ade.invoke('capture:sources')).sources, windowMatch)
       if (found) {
-        chooseTarget(targetFromSource(found))
-        toast({ tone: 'success', message: t('projectTargets.windowSelected', { name: found.name }) })
+        if (adding) await window.ade.invoke('recording:addTrack', targetFromSource(found))
+        else chooseTarget(targetFromSource(found))
+        toast({ tone: 'success', message: adding ? t('feedback.tracks.appeared', { label: found.name }) : t('projectTargets.windowSelected', { name: found.name }) })
         return
       }
     }
     toast({ tone: 'warning', message: t('projectTargets.windowNotFound', { match: windowMatch }) })
-    setTargetPickerOpen(true)
+    if (adding) setAddTrackOpen(true)
+    else setTargetPickerOpen(true)
+  })
+
+  /** 録画中に選んだウインドウ・画面・内蔵ブラウザを同時に録る映像として足す */
+  const addTrack = (target: CaptureTarget) => void run(async () => {
+    setAddTrackOpen(false)
+    await window.ade.invoke('recording:addTrack', target)
   })
 
   const selectTool = (next: AnnotationTool) => void run(async () => {
@@ -617,6 +684,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     const offs = [
       window.ade.on('recording:level', (data) => { if (data.source === 'mic') setLevel(data.rms) }),
       window.ade.on('recording:status', setRecordStatus),
+      window.ade.on('recording:tracksChanged', setTracks),
       // ウインドウを映している間に URL を開くと、main が内蔵ブラウザへ戻す
       window.ade.on('capture:targetChanged', (target) => { captureTargetRef.current = target; setCaptureTarget(target) }),
       window.ade.on('annotation:history', setAnnotationHistory),
@@ -777,9 +845,6 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           break
         case 'closeTerminal':
           terminalCommand.current?.close()
-          break
-        case 'toggleSidebar':
-          setSidebarOpen((open) => !open)
           break
         case 'quickOpen':
           // フィードバック（録画）中はビューを隠さない
@@ -1032,24 +1097,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
               onDragChange={setSplitDragging}
             />
 
-            {projectsLoaded && terminalsAllowed ? (
-              <ErrorBoundary name="terminal" as="section" className="terminal-pane">
-              <TerminalPane
-                layoutKey={layoutKey}
-                onReady={onTerminalReady}
-                commandRef={terminalCommand}
-                onActiveTerminal={setActiveTerminal}
-                projectId={workspace.projectId ?? null}
-                cwd={workspace.folderPath}
-                startupAgents={agents.startupAgents}
-                notify={agents.notify}
-                onOpenFile={files.open}
-                onOpenAgentSettings={() => openSettings('agents')}
-              />
-              </ErrorBoundary>
-            ) : (
-              <section className="terminal-pane" aria-label={t('app.terminal')} />
-            )}
+            {/* ターミナルの置き場所。中身（.terminal-mount）は下の portal で描き、フィードバックの右パネルへも移す */}
+            <div className="terminal-slot" ref={setEditorTerminalSlot} />
             <PanelGrip panel="terminal" area="term" onStart={panelDrag.start} />
           </div>
 
@@ -1120,6 +1169,9 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           onBackToEditor={() => changeMode('editor')}
           target={captureTarget}
           onPickTarget={() => setTargetPickerOpen(true)}
+          tracks={tracks}
+          onSwitchTrack={(id) => void run(async () => { await window.ade.invoke('recording:switchTrack', id) })}
+          onAddTrack={() => setAddTrackOpen(true)}
           notice={notice}
           targetsOpen={targetsOpen}
           targetsAlert={liveAlert}
@@ -1159,21 +1211,57 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
               onOpenUrl={navigate}
               onOpenEditor={(path) => { files.open(path); changeMode('editor') }}
               onSelectWindow={selectWindowTarget}
-              recording={recording}
               hidden={shownSideTab !== 'targets'}
-              head={showLiveTranscript ? <FeedbackSideTabs value={shownSideTab} onChange={chooseSideTab} alert={liveProblem !== null} /> : undefined}
+              head={<FeedbackSideTabs value={shownSideTab} onChange={chooseSideTab} alert={liveProblem !== null} showTranscript={showLiveTranscript} />}
             />
             </ErrorBoundary>
             {showLiveTranscript && <ErrorBoundary name="live-transcript">
             <LiveTranscriptPanel status={live.status} segments={live.segments} hidden={shownSideTab !== 'transcript'}
-              head={<FeedbackSideTabs value={shownSideTab} onChange={chooseSideTab} alert={liveProblem !== null} />} />
+              head={<FeedbackSideTabs value={shownSideTab} onChange={chooseSideTab} alert={liveProblem !== null} showTranscript={showLiveTranscript} />} />
             </ErrorBoundary>}
+            {/* エディタと同じターミナル（同じ Agent のタブ）。見ている間だけ、エディタの場所からここへ移す */}
+            <aside className="fb-targets fb-terminal" aria-label={t('terminal.label')} data-testid="feedback-terminal" hidden={shownSideTab !== 'terminal'}>
+              <header className="fb-targets__head">
+                <FeedbackSideTabs value={shownSideTab} onChange={chooseSideTab} alert={liveProblem !== null} showTranscript={showLiveTranscript} />
+              </header>
+              <div className="fb-terminal__slot" ref={setFeedbackTerminalSlot} />
+            </aside>
           </>}
         </div>
       </div>
 
+      {createPortal(
+        projectsLoaded && terminalsAllowed ? (
+          <ErrorBoundary name="terminal" as="section" className="terminal-pane">
+          <TerminalPane
+            layoutKey={layoutKey}
+            onReady={onTerminalReady}
+            commandRef={terminalCommand}
+            onActiveTerminal={setActiveTerminal}
+            projectId={workspace.projectId ?? null}
+            cwd={workspace.folderPath}
+            startupAgents={agents.startupAgents}
+            notify={agents.notify}
+            onOpenFile={files.open}
+            onOpenAgentSettings={() => openSettings('agents')}
+          />
+          </ErrorBoundary>
+        ) : (
+          <section className="terminal-pane" aria-label={t('app.terminal')} />
+        ),
+        terminalHost
+      )}
       {quickOpenOpen && <QuickOpen onOpen={(path) => files.open(path)} onClose={() => setQuickOpenOpen(false)} />}
       {files.pendingClose && <UnsavedChangesDialog name={files.pendingClose.name} onChoose={files.resolveClose} />}
+      {addTrackOpen && recording && <CaptureTargetPicker
+        value={{ kind: 'browser' }}
+        initialKind="window"
+        pageTitle={browserState.title || browserState.url}
+        onChoose={addTrack}
+        onStart={addTrack}
+        onAdd={addTrack}
+        onClose={() => setAddTrackOpen(false)}
+      />}
       {targetPickerOpen && <CaptureTargetPicker
         value={captureTarget}
         pageTitle={browserState.title || browserState.url}

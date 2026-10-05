@@ -15,7 +15,7 @@ import type { IncrementalTranscriber } from './pipeline/stt/engine'
 import { loadDevDotEnv, type SttKeyStore } from './pipeline/stt/keys'
 import { captureTargetLabel, resolveCaptureTarget, sanitizeCaptureTarget } from '@shared/captureTarget'
 import { AGENT_SKILL_AGENTS, type AgentSkillAgent, type SkillContext } from '@shared/agentSkill'
-import { BrowserWindow, Notification, app, clipboard, dialog, ipcMain, nativeTheme, safeStorage, shell, protocol, session } from 'electron'
+import { BrowserWindow, Notification, app, clipboard, dialog, ipcMain, nativeTheme, powerMonitor, safeStorage, shell, protocol, session } from 'electron'
 import { basename, dirname, isAbsolute, join } from 'node:path'
 import type { IpcEventChannel, IpcEvents, IpcRequests } from '@shared/ipc'
 import type { AiVendor, LlmApiProvider, SttRemoteProvider } from '@shared/aiProviders'
@@ -39,9 +39,12 @@ import {
 import { isRecordableUrl, sessionUrl, withProjectSession } from '@shared/projectSession'
 import { THEME_BACKGROUND } from '@shared/theme'
 import { normalizeAnnotationColor } from '@shared/annotation'
+import { extensionPopupGetsReviewPreload, shouldCloseExtensionPopup, type AnnotationActivity, type PopupDismissCause } from '@shared/popupAnnotation'
 import { findProjectByFolder, markProjectOpened, newProject, reorderProjects, upsertProjectFolder } from './projects'
 import { checkSshTarget, remoteWorkspaceDirName, sshDefaultName, type SshTarget } from '@shared/sshCommand'
 import { EmbeddedBrowser, browserSession } from './browser'
+import { BrowserExtensions } from './browserExtensions'
+import { MAX_BROWSER_EXTENSIONS, relativeRect, sanitizeBrowserExtensions, type BrowserExtensionEntry, type BrowserExtensionInfo } from '@shared/browserExtensions'
 import { APP_ALLOWED_PERMISSIONS, installPermissionPolicy, isAllowedExternalUrl, isAppPageUrl, type PermissionSessionLike } from './webPolicy'
 import { pathToFileURL } from 'node:url'
 import type { PcmBlock, RecordingController } from './recording'
@@ -163,6 +166,10 @@ const programCopies = new ProgramCopies()
 const remoteTerminalIds = new Set<string>()
 let workspaceRemote = false
 let browser: EmbeddedBrowser | null = null
+/** 内蔵ブラウザの拡張機能（内蔵ブラウザの session にだけ読み込む。browserExtensions.ts） */
+let extensions: BrowserExtensions | null = null
+/** 直前に探した取り込みの候補（key → 写す元）。画面からはパスを受け取らず、この key だけを受ける */
+let installedExtensions = new Map<string, { id: string; dir: string }>()
 let terminals: TerminalManager | null = null
 /** Resource Manager の集計。ターミナル・ブラウザ・プロジェクトは読むだけ */
 const resources = new ResourceCollector({
@@ -385,20 +392,14 @@ function keyLookup(): import('./settingsKeys').KeyLookup {
 
 /**
  * 保存したキー・環境変数のヘッダーを送ってよい接続元（security-5 [6]。src/main/credentialOrigin.ts）。
- * 初めて使うときに、この版より前に保存してあった接続先を一度だけ認めたものとして入れる
+ * 設定（settings.json）の接続先は、初めての起動でも認めたものとして入れない（security-6 [3]。設定は画面・Agent からも書ける）。
+ * プリセット以外の接続先は、「接続を確かめる」で main のダイアログが接続元の名前を出して聞き、認められたものだけを覚える
  */
 let credentialOrigins: Promise<import('./credentialOrigin').CredentialOrigins> | null = null
 function credentialOriginStore(): Promise<import('./credentialOrigin').CredentialOrigins> {
   credentialOrigins ??= (async () => {
     const { CredentialOrigins } = await import('./credentialOrigin')
-    const store = new CredentialOrigins(join(app.getPath('userData'), 'credential-origins.json'))
-    const s = currentSettings()
-    await store.seedOnce([
-      ...Object.entries(s.capture?.sttEndpoints ?? {}).map(([provider, ep]) => ({ scope: `stt:${provider}`, url: ep?.baseUrl })),
-      ...Object.entries(s.organizer?.endpoints ?? {}).map(([provider, ep]) => ({ scope: `organize:${provider}`, url: ep?.baseUrl })),
-      ...(s.decision?.endpoint ? [{ scope: `decision:${s.decision.preset}`, url: s.decision.endpoint }] : [])
-    ])
-    return store
+    return new CredentialOrigins(join(app.getPath('userData'), 'credential-origins.json'))
   })()
   return credentialOrigins
 }
@@ -467,7 +468,10 @@ async function decision(): Promise<import('./decision/service').DecisionService>
     const { DecisionService } = await import('./decision/service')
     const { DECISION_PRESETS, DEFAULT_DECISION_PREFERENCES, withLocalDecisionModel } = await import('@shared/decision')
     const { localModelRecommendation } = await import('./localModels')
+    const { ProjectLedger } = await import('./decision/projectLedger')
     decisionService = new DecisionService({
+      // プロジェクトのその日の量は main のフォルダに残す（起動し直しても枠を空に戻さない。security-6 [8]）
+      ledger: new ProjectLedger(join(app.getPath('userData'), 'decision-project-usage.json')),
       // Ollama でモデルを決めていなければ、この PC に合うもの（clef / clef-flash）を使う
       prefs: () => withLocalDecisionModel(currentSettings().decision ?? DEFAULT_DECISION_PREFERENCES, localModelRecommendation().decision),
       // キーは中継に最初の依頼が来たときに初めて読む（起動時には復号しない）
@@ -557,6 +561,71 @@ function refreshWindowTitle(): void {
   mainWindow.setTitle(indicatorTitle(workspace.folderName ? `${workspace.folderName} — ${PRODUCT_NAME}` : PRODUCT_NAME, capturing))
 }
 
+/** 拡張機能を足す・外す・切り替える。録画中は変えない（録画の合成の有無が録画の途中で変わらないように） */
+function requireExtensionsEditable(): BrowserExtensions {
+  if (!extensions) throw new UserFacingError(t('browserExtensions.errors.unavailable'))
+  if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new UserFacingError(t('browserExtensions.errors.recording'))
+  return extensions
+}
+
+/** 設定の browserExtensions を書き換えて保存し、読み込み直した一覧を返す */
+async function saveExtensionEntries(ext: BrowserExtensions, change: (entries: BrowserExtensionEntry[]) => BrowserExtensionEntry[]): Promise<BrowserExtensionInfo[]> {
+  const next = change(currentSettings().browserExtensions ?? [])
+  if (next.length > MAX_BROWSER_EXTENSIONS) throw new UserFacingError(t('browserExtensions.errors.tooMany', { max: MAX_BROWSER_EXTENSIONS }))
+  const browserExtensions = sanitizeBrowserExtensions(next)
+  updateSettings({ browserExtensions })
+  await ext.sync(browserExtensions)
+  return ext.list()
+}
+
+/** いまの書き込みの状態（拡張機能のポップアップを閉じるか・注入スクリプトを入れるかの判断に使う。@shared/popupAnnotation） */
+function annotationActivity(): AnnotationActivity {
+  const state = recording?.status.state ?? 'idle'
+  return { capturing: state === 'recording' || state === 'paused', mode: recording?.annotationModeNow ?? 'off', note: textNotes?.isActive === true }
+}
+
+/** ページ・アプリの画面を押したときに拡張機能のポップアップを閉じる（書き込みの最中は閉じない） */
+function dismissExtensionPopup(cause: PopupDismissCause): void {
+  if (shouldCloseExtensionPopup(cause, annotationActivity())) extensions?.closePopup()
+}
+
+/** 内蔵ブラウザのビューの上に開いている拡張機能のポップアップと、ビューの中の位置（0〜1 の割合）。無ければ null */
+function browserOverlay(): { contents: Electron.WebContents; rect: { x: number; y: number; width: number; height: number } } | null {
+  const popup = extensions?.popupTarget() ?? null
+  const view = browser?.viewBounds() ?? null
+  const rect = popup && view ? relativeRect(popup.bounds, view) : null
+  return popup && rect ? { contents: popup.contents, rect } : null
+}
+
+/**
+ * 内蔵ブラウザの拡張機能を用意する。拡張は内蔵ブラウザの session にだけ読み込む（アプリの画面の session には入れない）。
+ * 設定に拡張があるときだけ、最初のページを開く前に少し（最大2秒）待つ
+ */
+async function startBrowserExtensions(entries: BrowserExtensionEntry[] | undefined): Promise<void> {
+  const ext = new BrowserExtensions({
+    session: () => browserSession(),
+    importDir: () => join(configDir(), 'browser-extensions'),
+    host: {
+      window: () => mainWindow,
+      viewBounds: () => browser?.viewBounds() ?? null,
+      navigate: (url) => void browser?.navigate(url).catch(() => undefined),
+      // 録画中・文字で指摘の間に開いたポップアップにだけ、内蔵ブラウザのページと同じ書き込みの注入スクリプトを入れる
+      reviewPreload: () => (extensionPopupGetsReviewPreload(annotationActivity()) ? join(__dirname, '../preload/review.js') : null),
+      annotating: () => !shouldCloseExtensionPopup('escape', annotationActivity()),
+      // 文字で指摘の静止画の許可は、そのポップアップへの本物の入力から（内蔵ブラウザのビューと同じ口）
+      popupInput: (contents) => browser?.onPageInput?.(contents)
+    }
+  })
+  extensions = ext
+  ext.onChange = () => send('browserExtensions:changed', ext.list())
+  // ポップアップは別のビューなので、録画（タブ録画・静止画）にはビューの上の位置を割合で渡して重ねる
+  ext.onPopupChange = () => recording?.setBrowserOverlay(browserOverlay())
+  if (browser) browser.onLayout = () => ext.relayout()
+  if (!entries?.length) return
+  const { delay } = await import('@shared/delay')
+  await Promise.race([ext.sync(entries), delay(2000)])
+}
+
 /** 取り込んだ settings.json を、動いているアプリへ反映する（配色・言語・エージェント・プロジェクト）。renderer へは平文のキーを外して送る */
 function applyExternalSettings(settings: Settings): void {
   nativeTheme.themeSource = settings.theme ?? 'system'
@@ -565,6 +634,8 @@ function applyExternalSettings(settings: Settings): void {
   void listAgentOptions(settings.agents).then((options) => send('agents:changed', options))
     .catch((err: unknown) => reportHandled(err, { area: 'settings', op: 'reload agents' }))
   send('projects:changed', projectsState())
+  // 内蔵ブラウザの拡張機能（足す・外す・有効の切り替え）
+  void extensions?.sync(settings.browserExtensions)
   // 判定モデルの中継（有効・接続先の変更）
   syncDecision()
   send('settings:changed', redactKeys(settings))
@@ -818,6 +889,8 @@ function createWindow(): BrowserWindow {
   })
   // 利用者の操作（OS から窓に届いたクリック・キー）だけが、録画・撮影・プログラムのコピーの許可を作る（captureConsent.ts）
   window.webContents.on('input-event', (_event, input) => { if (isGestureInput(input.type)) gestures.noteGesture() })
+  // アプリの画面を押したら、拡張機能のポップアップは閉じる（Chrome と同じ）。録画中・文字で指摘の間は閉じない（ツールバーで道具を選んでからポップアップに書き込む）
+  window.webContents.on('input-event', (_event, input) => { if (input.type === 'mouseDown') dismissExtensionPopup('app') })
   // 読み込み直したら、新しい画面が知らせ直すまではターミナルにフォーカスが無いとみなす
   window.webContents.on('did-start-loading', () => { terminalFocused = false })
 
@@ -891,15 +964,22 @@ async function ensureRecording(): Promise<RecordingController> {
       onPcm: (block) => audioWriter?.write(block),
       onWarning: (message) => send('recording:warning', message),
       onAnnotationHistory: (history) => send('annotation:history', history),
-      onAnnotationShortcut: (action) => send('annotation:shortcut', action)
+      onAnnotationShortcut: (action) => send('annotation:shortcut', action),
+      onTracks: (state) => send('recording:tracksChanged', state)
     }
   )
   const contents = browser?.contents
   if (contents) recording.attach(contents)
+  // 録画の用意より前に開いていたログインのポップアップ
+  for (const popup of browser?.popupContents() ?? []) recording.attachPopupWindow(popup, popup.getURL())
+  // 録画の用意より前に開いていた拡張機能のポップアップ
+  recording.setBrowserOverlay(browserOverlay())
   // 画面・ウインドウを録る間は、その映像を内蔵ブラウザの場所に映し、その上に書き込める
   recording.setMirror({
     show: (sourceId) => { mirrorRecording = sourceId; return syncMirror() },
-    hide: () => { mirrorRecording = null; void syncMirror() }
+    hide: () => { mirrorRecording = null; void syncMirror() },
+    // 録画中に内蔵ブラウザへ切り替えた。選んだウインドウの下見も出さない（録画が終わるまで）
+    showBrowser: () => { mirrorRecording = false; void syncMirror() }
   })
   return recording
 }
@@ -929,8 +1009,8 @@ function setCaptureTargetFromMain(target: CaptureTarget): void {
   send('capture:targetChanged', target)
 }
 
-/** 録画中の画面・ウインドウ（録画が映させているもの）。録画していなければ null */
-let mirrorRecording: string | null = null
+/** 録画中の画面・ウインドウ（録画が映させているもの）。録画していなければ null、録画中に内蔵ブラウザを見せているなら false */
+let mirrorRecording: string | false | null = null
 let mirrorQueue: Promise<unknown> = Promise.resolve()
 
 /**
@@ -953,7 +1033,7 @@ async function previewSourceId(): Promise<string | null> {
  */
 function syncMirror(): Promise<Electron.WebContents | null> {
   const next = mirrorQueue.then(async () => {
-    const wanted = mirrorRecording ?? await previewSourceId()
+    const wanted = mirrorRecording === false ? null : mirrorRecording ?? await previewSourceId()
     if (!browser) return null
     if (!wanted) { browser.hideMirror(); return null }
     return browser.showMirror(join(__dirname, '../recorder/mirror.html'), wanted, t('recording.mirrorUnavailable', { target: captureTargetLabel(captureConsent.target) }))
@@ -967,7 +1047,8 @@ async function ensureTextNotes(): Promise<import('./textNotes').TextNotes> {
   if (textNotes) return textNotes
   const { TextNotes } = await import('./textNotes')
   textNotes = new TextNotes({
-    views: () => ({ browser: browser?.contents ?? null, mirror: browser?.mirrorContents ?? null }),
+    views: () => ({ browser: browser?.contents ?? null, mirror: browser?.mirrorContents ?? null,
+      popups: [extensions?.popupTarget()?.contents, ...(browser?.popupContents() ?? [])].filter((wc): wc is Electron.WebContents => !!wc) }),
     recording: () => recordingBusy || (!!recording && recording.status.state !== 'idle'),
     capture: async (view) => {
       // そのビューで直前に利用者が Enter・クリックした1回だけ撮る（security-5 [1]。ページのスクリプトや IPC だけでは撮れない）
@@ -1149,6 +1230,8 @@ let latestReleaseUrl: string | null = null
  * 配布版だけで動かす。E2E は偽の配信元（FERRET_E2E_RELEASE_BASE_URL。updateCheck.ts）のときだけ流れを通し、本物の入れ替えはしない
  */
 let autoUpdates: AutoUpdater | null = null
+/** ウインドウに戻ったとき、前の確認からこれ以上たっていれば確かめ直す */
+const UPDATE_RECHECK_ON_FOCUS_MS = 60 * 60 * 1000
 function autoUpdater(): AutoUpdater {
   if (autoUpdates) return autoUpdates
   const e2eServer = IS_E2E && usingE2eReleaseServer()
@@ -1461,6 +1544,50 @@ function registerIpc(): void {
     'browser:setViewport': (viewport) => {
       updateSettings({ viewport })
       browser?.setViewport(viewport)
+    },
+    'browserExtensions:list': () => extensions?.list() ?? [],
+    'browserExtensions:addFolder': async () => {
+      const ext = requireExtensionsEditable()
+      const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+      const options: Electron.OpenDialogOptions = { title: t('browserExtensions.pickFolder'), properties: ['openDirectory'] }
+      const picked = parent ? await dialog.showOpenDialog(parent, options) : await dialog.showOpenDialog(options)
+      const path = picked.canceled ? undefined : picked.filePaths[0]
+      if (!path) return null
+      if (!(await ext.inspectFolder(path))) throw new UserFacingError(t('browserExtensions.errors.notExtension'))
+      return saveExtensionEntries(ext, (entries) => entries.some((e) => e.path === path) ? entries.map((e) => e.path === path ? { path } : e) : [...entries, { path }])
+    },
+    'browserExtensions:scanInstalled': async () => {
+      const found = await (extensions?.scanInstalled(homedir()) ?? Promise.resolve([]))
+      installedExtensions = new Map(found.map((f) => [f.key, { id: f.id, dir: f.dir }]))
+      return found.map(({ dir: _dir, ...rest }) => rest)
+    },
+    'browserExtensions:import': async (key) => {
+      const ext = requireExtensionsEditable()
+      // 直前に main が見つけた候補だけ（画面が送るのは key だけ）
+      const candidate = installedExtensions.get(String(key))
+      if (!candidate) throw new UserFacingError(t('browserExtensions.errors.notFound'))
+      const path = await ext.importInstalled(candidate)
+      return saveExtensionEntries(ext, (entries) => entries.some((e) => e.path === path) ? entries.map((e) => e.path === path ? { path } : e) : [...entries, { path }])
+    },
+    'browserExtensions:setEnabled': (path, enabled) => {
+      const ext = requireExtensionsEditable()
+      return saveExtensionEntries(ext, (entries) => entries.map((e) => e.path === path ? (enabled === true ? { path: e.path } : { path: e.path, enabled: false }) : e))
+    },
+    'browserExtensions:remove': async (path) => {
+      const ext = requireExtensionsEditable()
+      const list = await saveExtensionEntries(ext, (entries) => entries.filter((e) => e.path !== path))
+      // 外し終えてから、取り込んだ写しだけを消す（利用者の開発中のフォルダは消さない）
+      await ext.deleteImportedCopy(String(path)).catch((err: unknown) => reportHandled(err, { area: 'browser', op: 'delete imported extension' }))
+      return list
+    },
+    'browserExtensions:menu': async (at) => {
+      const ext = extensions
+      const window = mainWindow
+      if (!ext || !window || window.isDestroyed()) return null
+      const x = Number(at?.x)
+      const y = Number(at?.y)
+      return ext.showMenu(window, { x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0 },
+        { manage: t('browserExtensions.menu.manage'), options: t('browserExtensions.menu.options'), none: t('browserExtensions.menu.none') })
     },
     'browser:state': () =>
       browser?.state() ?? {
@@ -1918,9 +2045,14 @@ function registerIpc(): void {
         liveFeed.start({ transcribing: transcriber !== null, audio: options.captureMic !== false || options.captureSystemAudio, mic: options.captureMic !== false,
           twoSpeakers: options.captureSystemAudio, message: sttWarnings[0] })
         audioWriter = await createAudioWriter(paths.audioDir)
+        // 確認先に登録した「録画中に開いたら録る」ウインドウ（Web アプリから起動するデスクトップアプリなど。@shared/captureTracks）
+        const project = currentSettings().projects.find((p) => p.id === workspace.projectId)
+        const watch = project ? (await import('@shared/captureTracks')).watchedWindows(project.urls, project.kind ?? 'web') : []
         await controller.start({ paths: { videoPath: paths.recording, framesDir: paths.framesDir,
           audioDir: paths.audioDir, eventsPath: paths.eventsJsonl }, captureSystemAudio: options.captureSystemAudio,
-          captureMic: options.captureMic !== false, captureTarget,
+          captureMic: options.captureMic !== false, captureTarget, watch,
+          // 拡張機能のポップアップがあるときは、動画にも重ねて録る（無ければ今までどおりタブの映像だけ）
+          overlayCompositing: extensions?.hasPopupExtensions() ?? false,
           ...(IS_E2E && process.env.ADE_QA_LIMIT_MS ? { maxDurationMs: Number(process.env.ADE_QA_LIMIT_MS) } : {}),
           ...(options.micDeviceId ? { micDeviceId: options.micDeviceId } : {}),
           ...(process.env.ADE_SYNTHETIC_MIC === '1' ? { syntheticMic: true } : {}),
@@ -1943,6 +2075,20 @@ function registerIpc(): void {
     },
     'recording:stop': () => stopReview(),
     'recording:status': () => recording?.status ?? IDLE_RECORDING_STATUS,
+    'recording:addTrack': async (target) => {
+      const captureTarget = sanitizeCaptureTarget(target)
+      if (!captureTarget) throw new UserFacingError(t('errors.captureTargetInvalid'))
+      // 録る映像を足すのは、利用者が選択画面・確認先で選んだ直後だけ（security-5 [1]。録画の開始と同じく、利用者の選んだものだけを録る）
+      if (!gestures.consume('choice')) throw new UserFacingError(t('errors.needsUserAction'))
+      if (!recording || recording.status.state === 'idle' || recording.status.state === 'stopping') throw new UserFacingError(t('recording.errors.notRecording'))
+      return recording.addTrack(captureTarget, { activate: true })
+    },
+    'recording:switchTrack': async (id) => {
+      const { isTrackId } = await import('@shared/captureTracks')
+      if (!isTrackId(id) || !recording) return
+      await recording.switchTrack(id)
+    },
+    'recording:tracks': async () => recording?.tracksState ?? (await import('@shared/captureTracks')).EMPTY_TRACKS_STATE,
     'annotation:setMode': async (mode: AnnotationMode) => {
       // 廃止した 'text' など知らない値は OFF にする
       ;(await ensureRecording()).setAnnotationMode(mode === 'pen' || mode === 'rect' ? mode : 'off')
@@ -2050,7 +2196,12 @@ function registerIpc(): void {
       const viewShot = target ? await target.contents.capturePage().catch(() => null) : null
       const [width, height] = window.isDestroyed() ? [0, 0] : window.getContentSize()
       const merged = viewShot && target ? overlayView(shot, { width: width!, height: height! }, { image: viewShot, bounds: target.bounds }) : null
-      return fitScreenshot(merged ? nativeImage.createFromBitmap(Buffer.from(merged.data.buffer, merged.data.byteOffset, merged.data.byteLength), { width: merged.width, height: merged.height }) : shot)
+      const withView = merged ? nativeImage.createFromBitmap(Buffer.from(merged.data.buffer, merged.data.byteOffset, merged.data.byteLength), { width: merged.width, height: merged.height }) : shot
+      // 拡張機能のポップアップ（さらに別のビュー）も同じく重ねる
+      const popup = extensions?.popupTarget() ?? null
+      const popupShot = popup ? await popup.contents.capturePage().catch(() => null) : null
+      const withPopup = popup && popupShot && !popupShot.isEmpty() ? overlayView(withView, { width: width!, height: height! }, { image: popupShot, bounds: popup.bounds }) : null
+      return fitScreenshot(withPopup ? nativeImage.createFromBitmap(Buffer.from(withPopup.data.buffer, withPopup.data.byteOffset, withPopup.data.byteLength), { width: withPopup.width, height: withPopup.height }) : withView)
     },
     'github:repoStatus': async () => {
       const { gitRepoStatus, watchGitHead } = await import('./github/repoStatus')
@@ -2283,6 +2434,9 @@ async function main(): Promise<void> {
   registerIpc()
   // 裏での更新。配布版だけ、起動から少し待って確かめ、あとは6時間ごと（開発版・E2E では動かさない）
   autoUpdater().start()
+  // スリープ明けはすぐ、ウインドウに戻ったときは前の確認から1時間たっていれば確かめる（6時間ごとの確認はスリープで遅れる）
+  powerMonitor.on('resume', () => void autoUpdater().checkIfStale(0)?.catch(() => undefined))
+  mainWindow.on('focus', () => void autoUpdater().checkIfStale(UPDATE_RECHECK_ON_FOCUS_MS)?.catch(() => undefined))
   // settings.json の外部の変更（利用者のエディタ・Claude Code など）をその場で反映する。壊れていれば画面に知らせるだけ
   watchSettings(applyExternalSettings, (error) => send('settingsFile:error', error))
   installMenu({
@@ -2307,7 +2461,13 @@ async function main(): Promise<void> {
   browser.onViewportChange = (width) => recording?.recordViewport(width)
   // 文字で指摘の静止画は、そのビューへの本物の入力の直後だけ（noteInputs）
   browser.onPageInput = (contents) => noteInputs.sawInput(contents)
+  // ログインのポップアップ。録画中はその窓も録り、前に出たら書き込む先をそちらへ切り替える（recording/controller.ts）
+  browser.onPopupWindow = (contents, url) => recording?.attachPopupWindow(contents, url)
+  // 内蔵ブラウザの拡張機能。content script を最初のページにも効かせるため、ページを開く前に読み込む（待つのは少しだけ）
+  await startBrowserExtensions(loadedSettings.browserExtensions)
   browser.attach(mainWindow, loadedSettings.url, loadedSettings.viewport)
+  // ページを押したら、拡張機能のポップアップは閉じる（Chrome と同じ）。書き込みの最中は閉じない
+  browser.contents?.on('input-event', (_event, input) => { if (input.type === 'mouseDown') dismissExtensionPopup('page') })
   browser.setBackgroundColor(nativeThemeBackground())
   mark('browser:attached')
   // 前回ウインドウを選んでいたなら、起動したときからそれを映す

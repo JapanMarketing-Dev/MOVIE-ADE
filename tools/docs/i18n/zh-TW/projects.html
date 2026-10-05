@@ -43,7 +43,7 @@
 </table>
 {{shot:url-presets|瀏覽器工具列中儲存的 URL}}
 
-<!-- @review-targets 9c48e48820 -->
+<!-- @review-targets 5ca6dd4b29 -->
 ## 審查目標面板
 {{clip:targets|在不停止錄製的情況下切換審查目標與頁面。}}
 <p>在意見模式中，右側的 <span class="docs-ui">審查目標</span> 面板會列出目前專案中所有可以審查的項目。切換目標不會停止錄製。可用 <span class="docs-ui">顯示方式 → 切換審查目標</span>（{{keys:Mod+Shift+K}}）或 <span class="docs-ui">隱藏面板</span> 切換面板顯示。</p>
@@ -52,7 +52,7 @@
   <li><strong><span class="docs-ui">檔案</span></strong>：專案資料夾。檔案會以預覽開啟（Markdown 與 Mermaid 會轉譯顯示，其他文字為唯讀），因此也能審查文件。鉛筆圖示（<span class="docs-ui">在編輯器中開啟</span>）會在編輯器中開啟檔案。</li>
 </ul>
 <p><span class="docs-ui">篩選目標</span> 會同時篩選目標、頁面與檔案，使用與 <span class="docs-ui">前往檔案…</span> 相同的模糊比對。在清單中，可用 <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> 或 <kbd>1</kbd>–<kbd>9</kbd> 切換目標。<span class="docs-ui">開啟 URL…</span> 可開啟一次性的 URL，<span class="docs-ui">儲存到專案 URL</span> 則會保留它。</p>
-<p>目標來自 <code>settings.json</code> 中的 <code>projects[].urls</code>（請參閱<a href="settings-json.html#example">範例</a>）。每個項目都需要 <code>url</code>、<code>launchCommand</code>（在終端機中執行，例如啟動桌面 App）或 <code>windowMatch</code>（要錄製的視窗）其中之一，並可加上 <code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code> 或 <code>reference</code>）。選擇視窗目標會將它設為錄製來源，因此錄製期間無法這麼做。造訪過的頁面會依專案記住，只保存在這台電腦上（最多 200 個）。</p>
+<p>目標來自 <code>settings.json</code> 中的 <code>projects[].urls</code>（請參閱<a href="settings-json.html#example">範例</a>）。每個項目都需要 <code>url</code>、<code>launchCommand</code>（在終端機中執行，例如啟動桌面 App）或 <code>windowMatch</code>（要錄製的視窗）其中之一，並可加上 <code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code> 或 <code>reference</code>）。在錄製前選擇視窗目標，會將它設為錄製來源；在錄製中選擇，則會把該視窗加入錄製並顯示它（見<a href="recording.html#multi">同時錄製多個視窗</a>）。造訪過的頁面會依專案記住，只保存在這台電腦上（最多 200 個）。</p>
 
 <!-- @switch-env 70e1c23f78 -->
 ## 開啟與切換環境

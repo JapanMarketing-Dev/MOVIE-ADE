@@ -28,6 +28,7 @@ import type {
 } from './types'
 import { annotationFrameTime, isAnnotation, resolveAnnotationEdits } from './types'
 import { normalizeJa } from './text'
+import { activeTrackAt } from '@shared/captureTracks'
 import { isMeaninglessUtterance } from './meaningless'
 import { pageKey } from '@shared/page'
 
@@ -136,7 +137,11 @@ export function buildDraft(material: Material, options: Partial<DraftOptions> = 
  */
 function pageLookup(events: Event[]): (t: number) => string {
   const navs = events.filter((e): e is NavEvent => e.type === 'nav').sort((a, b) => a.t - b.t)
+  // 複数の映像を録って切り替えた録画では、内蔵ブラウザ以外（ウインドウ・画面）を映していた間はそれが対象
+  const tracks = events.filter((e) => e.type === 'track')
   return (t) => {
+    const track = activeTrackAt(tracks, t)
+    if (track?.type === 'track' && track.kind !== 'browser') return `window:${track.label}`
     let key = ''
     for (const nav of navs) {
       if (nav.t > t) break
@@ -245,8 +250,8 @@ function pickFrameTimes(c: Cluster, frames: FrameRef[], events: Event[], maxFram
     push(nearestFrameTime(filled.length > 0 ? filled : frames, c.t))
   }
 
-  // まとまりの途中でURLが変わったら、変化後の静止画を足す
-  const navs = events.filter((e): e is NavEvent => e.type === 'nav' && e.t > c.t && e.t <= c.tEnd)
+  // まとまりの途中でURL・映していたもの（track）が変わったら、変化後の静止画を足す
+  const navs = events.filter((e) => (e.type === 'nav' || e.type === 'track') && e.t > c.t && e.t <= c.tEnd)
   for (const n of navs) push(nearestFrameTimeAfter(frames, n.t));
 
   return out.sort((a, b) => a - b)

@@ -28,7 +28,7 @@
   <meta property="og:title" content="录制 · Ferret 文档">
   <meta property="og:description" content="录制内置浏览器、整个屏幕、其他窗口、桌面应用、游戏或手机模拟器。一边使用页面，一边说话、圈画和打字。">
   <meta property="og:url" content="https://ferretade.dev/docs/zh-CN/recording">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="zh_CN">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="录制 · Ferret 文档">
   <meta name="twitter:description" content="录制内置浏览器、整个屏幕、其他窗口、桌面应用、游戏或手机模拟器。一边使用页面，一边说话、圈画和打字。">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -187,6 +187,24 @@
 <p>审查对象的 <span class="docs-ui">要录制的窗口</span> 既匹配窗口标题，也匹配应用名称，因此填写 <code>Simulator</code> 时，无论显示的是哪台设备，都会选中 iOS Simulator 的窗口。</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="extensions">
+        <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="指向“浏览器扩展”的链接">#</a>浏览器扩展</h2>
+        <p>在 <span class="docs-ui">设置 → 浏览器扩展</span> 中为内置浏览器添加 Chrome 扩展：包含 <code>manifest.json</code> 的文件夹用 <span class="docs-ui">添加已解压的文件夹…</span>，已安装在 Chrome、Edge、Brave 或 Chromium 中的扩展用 <span class="docs-ui">从 Chrome 导入…</span> 复制过来。扩展只在内置浏览器中运行，不会进入 Ferret 自身的窗口。扩展可以读取和修改你在其中打开的所有页面，并使用其中的登录状态，所以请只添加你信任的扩展。</p>
+<p>用浏览器工具栏或反馈工具栏中的 <span class="docs-ui">扩展</span> 打开扩展的弹出窗口。它在页面右上角打开，点击其他地方或按 <kbd>Esc</kbd> 即关闭。录制 <span class="docs-ui">内置浏览器</span> 时，扩展在页面中做出的变化和打开的弹出窗口都会出现在视频和图片中。Electron 只支持部分扩展 API：侧边栏、右键菜单、通知、键盘快捷键，以及扩展打开的标签页或窗口都无法使用，也无法加载打包的 <code>.crx</code> 文件。</p>
+<p>弹出窗口上也可以标注。录制时点击工具栏不会关闭扩展的弹出窗口。选中画笔或方框时，或 <span class="docs-ui">文字反馈</span> 打开时，点击页面也不会关闭它，<kbd>Esc</kbd> 会关闭工具而不是关闭弹出窗口。在弹出窗口里画的标注会按弹出窗口的位置出现在视频和图片中。仅适用于开始录制或 <span class="docs-ui">文字反馈</span> 之后打开的弹出窗口。页面在单独窗口中打开的登录弹出窗口（例如使用 Google 登录）在打开期间会录制为单独的视频。它来到前台时，画笔和方框会画在其中；点击页面即切换回来。登录完成后它仍会自动关闭。</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="multi">
+        <h2 id="multi"><a class="docs-anchor" href="#multi" aria-label="指向“同时录制多个窗口”的链接">#</a>同时录制多个窗口</h2>
+        <p>一次录制可以同时录下最多 4 个画面：内置浏览器、桌面应用的窗口和屏幕。每个画面都单独录成一个视频，直到停止录制，因此在它们之间来回切换的流程（例如 Web 应用打开桌面应用后再返回）也能从头到尾录下来。</p>
+<ol class="docs-steps">
+  <li>录制中，点击录制栏中的 <span class="docs-ui">+</span>（<span class="docs-ui">同时录制另一个窗口</span>），然后选择一个窗口、屏幕或内置浏览器。在 <span class="docs-ui">审查对象</span> 面板中点击窗口类目标也一样。</li>
+  <li>点击录制栏中的标签即可切换显示的画面。画笔和反馈的图片跟随当前显示的画面；其他画面在后台继续以每秒最多 5 帧录制。</li>
+</ol>
+<p>也可以等待尚未打开的窗口。在 <span class="docs-ui">编辑项目…</span> 中为目标填写 <span class="docs-ui">要录制的窗口</span>（应用名、窗口标题的一部分、<code>com.example.MyApp</code> 这样的 macOS bundle ID，或应用的路径），并把 <span class="docs-ui">录制中打开时</span> 设为 <span class="docs-ui">一起录制</span> 或 <span class="docs-ui">录制并切换过去</span>。在 <code>settings.json</code> 中对应 <code>"watch": "record"</code> 或 <code>"watch": "switch"</code>。录制中，Ferret 每秒检查一次窗口列表。窗口打开前，目标显示为虚线标签；应用关闭后再次打开时也会重新录制。</p>
+<p>每次切换都会写入操作日志，因此每条反馈都知道它针对的是哪个画面。显示应用窗口期间做出的反馈不带 URL 和元素信息，在 <span class="docs-ui">反馈</span> 和 <code>feedback.md</code> 中归到该窗口下，并告诉 Agent 这是一个应用窗口。额外的视频保存在审查文件夹的 <code>tracks/</code> 下，开始和结束时间记录在 <code>tracks.jsonl</code> 中。在 Windows 和 Linux 上只能得知窗口标题，所以用名称去匹配标题。在 Linux 的 Wayland 下无法等待窗口，因为每次列出窗口时都会要求你选择一个；请在窗口打开后用 <span class="docs-ui">+</span> 添加。</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="record">
         <h2 id="record"><a class="docs-anchor" href="#record" aria-label="指向“开始、暂停、停止”的链接">#</a>开始、暂停、停止</h2>
         <figure class="docs-clip" data-clip="record">
@@ -245,6 +263,11 @@
 <p>如果转写失败、没有设置模型或密钥、约 2 分钟的语音没有转成文字，或麦克风没有收到声音，即使标签已关闭，Ferret 也会提示一次，并在右侧面板按钮上做标记。录制会继续，音频也会保留。要隐藏该标签，请在 <span class="docs-ui">设置 → 转写</span> 中关闭 <span class="docs-ui">录制时显示实时转写（反馈模式的右侧面板）</span>。警告仍会显示。</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="feedback-terminal">
+        <h2 id="feedback-terminal"><a class="docs-anchor" href="#feedback-terminal" aria-label="指向“录制时向 Agent 发话”的链接">#</a>录制时向 Agent 发话</h2>
+        <p>反馈模式的右侧面板还有一个 <span class="docs-ui">终端</span> 标签。它不是新的 shell，而是与编辑器模式相同的终端：同样的标签、同样正在运行的 Agent（例如 Claude Code 或 Codex）及其历史。在顶部选择一个标签并输入，例如告诉 Agent <code>localhost</code> 没有启动。回到编辑器模式后，终端保持同样的状态。录制内置浏览器或其他应用的窗口时，不会录进终端。</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="other-side">
         <h2 id="other-side"><a class="docs-anchor" href="#other-side" aria-label="指向“录制会议中对方的声音”的链接">#</a>录制会议中对方的声音</h2>
         <p>如果要在通话中和他人一起审查页面，可以让 Ferret 在录制麦克风的同时，也录制你电脑中听到的声音。这适用于任何会议应用（Zoom、Google Meet、Microsoft Teams 等），因为 Ferret 录制的是电脑的音频，而不是某个应用。两路声音分开处理：麦克风转写为 <strong>我</strong>，电脑音频转写为 <strong>其他人</strong>，因此每条反馈都能看出是谁提出的。关闭麦克风时同样可用。</p>
@@ -293,12 +316,15 @@
       <ul>
         <li><a href="#target">选择录制内容</a></li>
         <li><a href="#desktop-mobile">桌面应用、游戏和移动应用</a></li>
+        <li><a href="#extensions">浏览器扩展</a></li>
+        <li><a href="#multi">同时录制多个窗口</a></li>
         <li><a href="#record">开始、暂停、停止</a></li>
         <li><a href="#pen">画笔</a></li>
         <li><a href="#type">不说话，用文字反馈</a></li>
         <li><a href="#annotations-clear">标记何时消失</a></li>
         <li><a href="#mic">麦克风</a></li>
         <li><a href="#live-transcript">查看转写内容</a></li>
+        <li><a href="#feedback-terminal">录制时向 Agent 发话</a></li>
         <li><a href="#other-side">录制会议中对方的声音</a></li>
         <li><a href="#other-side-os">各操作系统的系统音频</a></li>
         <li><a href="#other-side-tips">会议录制技巧</a></li>

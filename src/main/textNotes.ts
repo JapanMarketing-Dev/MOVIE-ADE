@@ -25,8 +25,11 @@ const REVIEW_READY = 'ade-review:ready'
 export type NoteCapture = { png: Uint8Array; size: { width: number; height: number } } | null | false
 
 interface TextNoteDeps {
-  /** 内蔵ブラウザのビューと、その場所に映しているウインドウのビュー */
-  views(): { browser: WebContents | null; mirror: WebContents | null }
+  /**
+   * 内蔵ブラウザのビューと、その場所に映しているウインドウのビュー。
+   * popups は内蔵ブラウザの上の拡張機能のポップアップとログインのポップアップ（書き込みの注入スクリプトが入っているもの）
+   */
+  views(): { browser: WebContents | null; mirror: WebContents | null; popups?: WebContents[] }
   recording(): boolean
   /** そのビューへの直前の本物の入力の許可を使ってから1枚撮る（index.ts。撮る処理は決めた場所にだけ置く） */
   capture(view: WebContents): Promise<NoteCapture>
@@ -86,21 +89,26 @@ export class TextNotes {
     if (this.active) for (const view of this.allViews()) this.push(view)
   }
 
-  /** いま見えているビュー（映していればそちら） */
+  /**
+   * いま打っているビュー。ポップアップ（拡張機能・ログイン）に焦点があればそれ（利用者がその中で打っている）、
+   * ほかは見えているビュー（映していればそちら）
+   */
   private current(): WebContents | null {
-    const { browser, mirror } = this.deps.views()
+    const { browser, mirror, popups = [] } = this.deps.views()
+    const focused = popups.find((wc) => !wc.isDestroyed() && wc.isFocused())
+    if (focused) return focused
     if (mirror && !mirror.isDestroyed()) return mirror
     return browser && !browser.isDestroyed() ? browser : null
   }
 
   private allViews(): WebContents[] {
-    const { browser, mirror } = this.deps.views()
-    return [browser, mirror].filter((wc): wc is WebContents => !!wc && !wc.isDestroyed())
+    const { browser, mirror, popups = [] } = this.deps.views()
+    return [browser, mirror, ...popups].filter((wc): wc is WebContents => !!wc && !wc.isDestroyed())
   }
 
   private isView(sender: unknown): sender is WebContents {
-    const { browser, mirror } = this.deps.views()
-    return !!sender && (sender === browser || sender === mirror)
+    const { browser, mirror, popups = [] } = this.deps.views()
+    return !!sender && (sender === browser || sender === mirror || popups.includes(sender as WebContents))
   }
 
   private push(view: WebContents): void {

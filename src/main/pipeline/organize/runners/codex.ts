@@ -40,7 +40,10 @@ function codexEnv(): NodeJS.ProcessEnv {
 }
 
 interface CodexRunnerOptions {
+  /** 実行ファイルの名前か絶対パス。既定は codex。プロジェクトの外の絶対パスの PATH の項目からだけ探す（spawn.ts の resolveOrganizerCli。security-6 [6]） */
   binary?: string
+  /** 開いているプロジェクトのフォルダ。この中の codex は起動しない */
+  project?: string
   model?: string
   /** 選択中のアカウントの環境変数（CODEX_HOME）。実行のたびに読む。src/main/accounts の resolveAgentEnv を渡す */
   accountEnv?: () => Record<string, string>
@@ -75,6 +78,8 @@ export const CODEX_DISABLED_FEATURES = [
 export class CodexRunner implements LlmRunner {
   readonly id = 'codex'
   private readonly binary: string
+  /** 開いているプロジェクト。この中の CLI は起動しない（security-6 [6]） */
+  private readonly project: string | undefined
   private readonly defaultModel?: string
   private readonly accountEnv: () => Record<string, string>
   private readonly spawn: (opt: SpawnTextOptions) => Promise<SpawnTextResult>
@@ -83,6 +88,7 @@ export class CodexRunner implements LlmRunner {
     this.accountEnv = options.accountEnv ?? (() => ({}))
     this.spawn = options.spawn ?? spawnText
     this.binary = options.binary ?? 'codex'
+    this.project = options.project
     this.defaultModel = options.model
   }
 
@@ -90,6 +96,7 @@ export class CodexRunner implements LlmRunner {
     try {
       const r = await this.spawn({
         binary: this.binary,
+        ...(this.project ? { project: this.project } : {}),
         args: ['--version'],
         cwd: process.cwd(),
         timeoutMs: 15_000,
@@ -143,6 +150,7 @@ export class CodexRunner implements LlmRunner {
 
       const r = await this.spawn({
         binary: this.binary,
+        ...(this.project ? { project: this.project } : {}),
         args,
         cwd: workDir,
         timeoutMs: req.timeoutMs,

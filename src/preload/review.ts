@@ -226,14 +226,119 @@ function ensureLayer(): HTMLDivElement {
   layer = root
   canvas = element
   resizeCanvas()
+  watchTopLayer()
   return root
+}
+
+/*
+ * ページがあとから開いたダイアログ（<dialog> の showModal・popover）は、Top Layer で描く層の上に来る。
+ * モーダルのダイアログが開くと、その外は操作できない（inert）ので、枠・ペン・文字の指摘が効かなくなる（ユーザーの指摘）。
+ * 開いたら層をそのダイアログの中へ移して Top Layer の一番上に載せ直し、閉じたら元へ戻す。
+ * Top Layer の要素は DOM のどこにあっても画面全体を基準に置かれるので、ダイアログの中へ移しても位置は変わらない
+ */
+let topLayerWatched = false
+let raiseQueued = false
+
+/** いま開いているモーダルのダイアログ（後ろにあるものほど後から開いた見込み） */
+function openModalDialog(): HTMLDialogElement | null {
+  if (typeof document.querySelectorAll !== 'function') return null
+  const dialogs = Array.from(document.querySelectorAll('dialog')).filter((d) => {
+    try { return d.matches(':modal') } catch { return d.open }
+  })
+  return dialogs.at(-1) ?? null
+}
+
+/** 層を、開いているモーダルの中（無ければ documentElement）へ置き、Top Layer の一番上に載せ直す */
+function raiseLayer(): void {
+  raiseQueued = false
+  const root = layer
+  if (!root) return
+  const host: Element = openModalDialog() ?? document.documentElement
+  const focused = document.activeElement
+  const popover = root as HTMLElement & { showPopover(): void; hidePopover(): void }
+  try {
+    if (root.parentNode !== host) host.append(root)
+    if (root.matches(':popover-open')) popover.hidePopover()
+    popover.showPopover()
+  } catch {
+    // popover が使えない環境。最大 z-index のまま使う
+  }
+  // 文字の指摘を打っている途中なら、入力欄へ戻す（移すとフォーカスが外れる）
+  if (focused instanceof HTMLElement && root.contains(focused) && document.activeElement !== focused) focused.focus()
+}
+
+function queueRaise(): void {
+  if (raiseQueued) return
+  raiseQueued = true
+  queueMicrotask(raiseLayer)
+}
+
+function watchTopLayer(): void {
+  if (topLayerWatched) return
+  topLayerWatched = true
+  // DOM の仕組みが揃っていない環境（単体テストの偽の DOM）では見ない
+  if (typeof MutationObserver === 'undefined' || typeof HTMLDialogElement === 'undefined') return
+  // popover・dialog の開閉（toggle は popover と dialog で出る。dialog の close も拾う）
+  document.addEventListener('toggle', (event) => { if (event.target !== layer) queueRaise() }, true)
+  document.addEventListener('close', () => queueRaise(), true)
+  // showModal は属性 open を付ける。toggle を出さないブラウザでも拾えるように属性の変化も見る
+  new MutationObserver((records) => {
+    if (records.some((r) => r.type === 'attributes' && r.target instanceof HTMLDialogElement)) queueRaise()
+  }).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['open'] })
+  // 層を入れたダイアログをページが DOM から外したときは、層を documentElement へ戻す（描いたものは一覧から描き直る）
+  new MutationObserver(() => {
+    const root = layer
+    if (root && !root.isConnected) {
+      document.documentElement.append(root)
+      queueRaise()
+    }
+  }).observe(document.documentElement, { subtree: true, childList: true })
+}
+
+/*
+ * ページの「フォーカスをダイアログの中に閉じ込める」仕組み（focusin を見て戻す）が、文字の指摘の入力欄からフォーカスを奪わないようにする。
+ * window の capture で、層の中へのフォーカスだけ先に止める（ページのリスナーは document 以下なので後に動く）
+ */
+window.addEventListener('focusin', (event) => {
+  if (layer && event.target instanceof Node && layer.contains(event.target)) event.stopImmediatePropagation()
+}, true)
+
+/*
+ * 拡張機能のポップアップ（chrome-extension:）は、中身の大きさに合わせてポップアップの大きさが決まる（preferred size）。
+ * 層を画面いっぱい（100%）にすると、層の大きさが中身に数えられてポップアップが上限まで広がる。
+ * ポップアップでは層を、層を除いた中身の大きさ（px）にする
+ */
+const IN_EXTENSION_PAGE = typeof location !== 'undefined' && location.protocol === 'chrome-extension:'
+let contentObserved = false
+
+function layerSize(): { width: number; height: number } {
+  const viewport = { width: window.innerWidth, height: window.innerHeight }
+  if (!IN_EXTENSION_PAGE || !document.body) return viewport
+  const root = layer
+  const display = root?.style.display ?? ''
+  if (root) root.style.display = 'none'
+  const width = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth)
+  const height = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)
+  if (root) root.style.display = display
+  return { width: Math.min(viewport.width, width) || viewport.width, height: Math.min(viewport.height, height) || viewport.height }
 }
 
 function resizeCanvas(): void {
   if (!canvas) return
   const ratio = window.devicePixelRatio || 1
-  canvas.width = Math.floor(window.innerWidth * ratio)
-  canvas.height = Math.floor(window.innerHeight * ratio)
+  const size = layerSize()
+  if (IN_EXTENSION_PAGE && layer) {
+    layer.style.width = `${size.width}px`
+    layer.style.height = `${size.height}px`
+    layer.style.right = 'auto'
+    layer.style.bottom = 'auto'
+    if (!contentObserved && typeof ResizeObserver !== 'undefined' && document.body) {
+      contentObserved = true
+      new ResizeObserver(() => resizeCanvas()).observe(document.body)
+    }
+  }
+  canvas.width = Math.floor(size.width * ratio)
+  canvas.height = Math.floor(size.height * ratio)
   ctx = canvas.getContext('2d')
   if (!ctx) return
   ctx.scale(ratio, ratio)

@@ -28,7 +28,7 @@
   <meta property="og:title" content="プロジェクトと URL · Ferret ドキュメント">
   <meta property="og:description" content="プロジェクトは1つのフォルダです（たいていはリポジトリのルート）。プロジェクトごとに URL を登録しておけるので、ローカル・開発・本番をワンクリックで行き来できます。">
   <meta property="og:url" content="https://ferretade.dev/docs/ja/projects">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="ja_JP">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="プロジェクトと URL · Ferret ドキュメント">
   <meta name="twitter:description" content="プロジェクトは1つのフォルダです（たいていはリポジトリのルート）。プロジェクトごとに URL を登録しておけるので、ローカル・開発・本番をワンクリックで行き来できます。">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -214,7 +214,7 @@
   <li><strong><span class="docs-ui">ファイル</span></strong>: プロジェクトのフォルダ。ファイルはプレビューで開く（Markdown と Mermaid は描画し、ほかのテキストは読み取り専用）ので、ドキュメントもレビューできます。鉛筆（<span class="docs-ui">エディタで開く</span>）でエディタで開きます。</li>
 </ul>
 <p><span class="docs-ui">対象を絞り込む</span> は、確認先・ページ・ファイルをまとめて絞り込みます。あいまい一致の仕方は <span class="docs-ui">ファイルを名前で開く…</span> と同じです。一覧では <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> か <kbd>1</kbd>〜<kbd>9</kbd> で対象を切り替えます。<span class="docs-ui">URL を開く…</span> はその場限りの URL を開き、<span class="docs-ui">プロジェクトの URL に登録</span> で残せます。</p>
-<p>確認先は <code>settings.json</code> の <code>projects[].urls</code> から読みます（<a href="settings-json.html#example">例</a>を参照）。各項目には <code>url</code>、<code>launchCommand</code>（ターミナルで実行します。たとえばデスクトップアプリの起動）、<code>windowMatch</code>（録画するウインドウ）のどれかが要り、<code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code>、<code>reference</code>）も付けられます。ウインドウの対象を選ぶとそれが録画の対象になるので、録画中は選べません。開いたページはプロジェクトごとに、この端末にだけ覚えます（200件まで）。</p>
+<p>確認先は <code>settings.json</code> の <code>projects[].urls</code> から読みます（<a href="settings-json.html#example">例</a>を参照）。各項目には <code>url</code>、<code>launchCommand</code>（ターミナルで実行します。たとえばデスクトップアプリの起動）、<code>windowMatch</code>（録画するウインドウ）のどれかが要り、<code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code>、<code>reference</code>）も付けられます。録画の前にウインドウの対象を選ぶと、それが録画の対象になります。録画中に選ぶと、そのウインドウを録画に足して映します（<a href="recording.html#multi">複数のウインドウを同時に録画する</a>）。開いたページはプロジェクトごとに、この端末にだけ覚えます（200件まで）。</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">

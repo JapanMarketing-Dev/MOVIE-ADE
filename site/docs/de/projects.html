@@ -28,7 +28,7 @@
   <meta property="og:title" content="Projekte und URLs · Ferret-Doku">
   <meta property="og:description" content="Ein Projekt ist ein Ordner (meist das Stammverzeichnis Ihres Repositorys). Jedes Projekt hat eigene gespeicherte URLs, sodass lokal, Dev und Produktion nur einen Klick voneinander entfernt sind.">
   <meta property="og:url" content="https://ferretade.dev/docs/de/projects">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="de_DE">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Projekte und URLs · Ferret-Doku">
   <meta name="twitter:description" content="Ein Projekt ist ein Ordner (meist das Stammverzeichnis Ihres Repositorys). Jedes Projekt hat eigene gespeicherte URLs, sodass lokal, Dev und Produktion nur einen Klick voneinander entfernt sind.">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -214,7 +214,7 @@
   <li><strong><span class="docs-ui">Dateien</span></strong>: der Projektordner. Eine Datei öffnet sich als Vorschau (Markdown und Mermaid gerendert, anderer Text schreibgeschützt), sodass Sie auch Dokumentation prüfen können. Der Stift (<span class="docs-ui">Im Editor öffnen</span>) öffnet sie im Editor.</li>
 </ul>
 <p><span class="docs-ui">Ziele filtern</span> filtert Ziele, Seiten und Dateien gemeinsam, mit derselben unscharfen Suche wie <span class="docs-ui">Gehe zu Datei …</span>. In der Liste wechseln <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> oder <kbd>1</kbd>–<kbd>9</kbd> das Ziel. <span class="docs-ui">URL öffnen…</span> öffnet eine einmalige URL, und <span class="docs-ui">In Projekt-URLs speichern</span> behält sie.</p>
-<p>Die Ziele stammen aus <code>projects[].urls</code> in <code>settings.json</code> (siehe <a href="settings-json.html#example">das Beispiel</a>). Jeder Eintrag braucht eine <code>url</code>, einen <code>launchCommand</code> (wird in einem Terminal ausgeführt, z. B. um eine Desktop-App zu starten) oder ein <code>windowMatch</code> (das aufzunehmende Fenster) und kann einen <code>purpose</code> haben (<code>app</code>, <code>design</code>, <code>doc</code> oder <code>reference</code>). Die Auswahl eines Fensterziels legt es als Aufnahmequelle fest und ist daher während einer Aufnahme nicht möglich. Besuchte Seiten werden pro Projekt gespeichert, nur auf diesem Rechner (bis zu 200).</p>
+<p>Die Ziele stammen aus <code>projects[].urls</code> in <code>settings.json</code> (siehe <a href="settings-json.html#example">das Beispiel</a>). Jeder Eintrag braucht eine <code>url</code>, einen <code>launchCommand</code> (wird in einem Terminal ausgeführt, z. B. um eine Desktop-App zu starten) oder ein <code>windowMatch</code> (das aufzunehmende Fenster) und kann einen <code>purpose</code> haben (<code>app</code>, <code>design</code>, <code>doc</code> oder <code>reference</code>). Die Auswahl eines Fensterziels vor der Aufnahme legt es als Aufnahmequelle fest; während einer Aufnahme fügt sie das Fenster zur Aufnahme hinzu und zeigt es an (siehe <a href="recording.html#multi">Mehrere Fenster gleichzeitig aufnehmen</a>). Besuchte Seiten werden pro Projekt gespeichert, nur auf diesem Rechner (bis zu 200).</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">

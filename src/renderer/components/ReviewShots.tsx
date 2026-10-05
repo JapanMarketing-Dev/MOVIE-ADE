@@ -14,7 +14,7 @@ import '../styles/reviewShots.css'
  * 確認待ち・完了なのに AFTER が無ければ「AFTER がありません」と出す。判定モデルのスコアがあれば小さく出す。
  * Ferret は直ったかを判定しない。スコアは Agent が書いた、人の判断の材料。
  */
-export function ReviewShots({ before, after, progress, n, time, score, onZoom }: {
+export function ReviewShots({ before, after, progress, n, time, score, onZoom, onCompare }: {
   /** BEFORE の画像（data: URL） */
   before?: string
   /** AFTER の画像（ade-media:// の URL。@shared/afterShot の afterImageUrl） */
@@ -27,6 +27,8 @@ export function ReviewShots({ before, after, progress, n, time, score, onZoom }:
   score?: DecisionScore
   /** BEFORE だけのときの拡大。省略すると、この部品のモーダルで拡大する */
   onZoom?: (src: string) => void
+  /** AFTER があるときの「大きく比べる」。省略すると、この部品のモーダルで比べる（渡すと一覧側の比べる画面で判定・前後の移動ができる） */
+  onCompare?: () => void
 }) {
   const t = useT()
   const [zoomed, setZoomed] = useState<string | null>(null)
@@ -46,7 +48,7 @@ export function ReviewShots({ before, after, progress, n, time, score, onZoom }:
 
   return <div className="rv-shots" data-testid={`review-shots-${n}`}>
     {shots.after
-      ? <button type="button" className="rv-shots__pair" aria-label={t('review.shots.compare', { n })} onClick={() => setComparing(true)} data-testid="review-shots-compare">
+      ? <button type="button" className="rv-shots__pair" aria-label={t('review.shots.compare', { n })} onClick={() => onCompare ? onCompare() : setComparing(true)} data-testid="review-shots-compare">
         <span className="rv-shots__frame">
           {shots.before ? <img src={shots.before} alt={t('review.imageAlt', { n })} /> : <NoImageArt />}
           <span className="rv-shots__tag">{t('review.shots.before')}</span>
@@ -97,18 +99,32 @@ const clock = (ms: number) => `${Math.floor(ms / 60000).toString().padStart(2, '
  * レビューと指摘から ReviewShots を組み立てる（Findings のカードと確認モードで共通）。
  * AFTER と score は progress.json の値（Agent が書く）を、ここでもう一度確かめてから使う
  */
-export function FindingShots({ review, item, n, onZoom }: {
+export function FindingShots({ review, item, n, onZoom, onCompare }: {
   review: Pick<ReviewData, 'id' | 'images' | 'progress'>
   item: ReviewData['document']['items'][number]
   n: number
   onZoom?: (src: string) => void
+  onCompare?: () => void
 }) {
+  const { before, after, progress, score } = useFindingShots(review, item)
+  return <ReviewShots before={before} after={after}
+    progress={progress} n={n} time={clock(item.t)} {...(score ? { score } : {})} {...(onZoom ? { onZoom } : {})} {...(onCompare ? { onCompare } : {})} />
+}
+
+/**
+ * 指摘の BEFORE・AFTER の画像の URL と進み具合・スコア（カードと比べる画面で共通）。
+ * AFTER と score は progress.json の値（Agent が書く）を、ここでもう一度確かめてから使う
+ */
+export function useFindingShots(review: Pick<ReviewData, 'id' | 'images' | 'progress'>, item: ReviewData['document']['items'][number]) {
   const entry = review.progress?.[item.id] as { status?: string; after?: unknown; score?: unknown } | undefined
   const rel = sanitizeAfterPath(entry?.after)
   // progress.json が変わるたびに読み直す（同じファイル名に撮り直されても新しい画像を出す）
   const version = useMemo(() => Date.now(), [review.progress])
   const shown = item.images.find((name) => review.images[name])
-  const score = sanitizeDecisionScore(entry?.score)
-  return <ReviewShots before={shown ? review.images[shown] : undefined} after={rel ? afterImageUrl(review.id, rel, version) : undefined}
-    progress={entry?.status ?? 'todo'} n={n} time={clock(item.t)} {...(score ? { score } : {})} {...(onZoom ? { onZoom } : {})} />
+  return {
+    before: shown ? review.images[shown] : undefined,
+    after: rel ? afterImageUrl(review.id, rel, version) : undefined,
+    progress: entry?.status ?? 'todo',
+    score: sanitizeDecisionScore(entry?.score)
+  }
 }

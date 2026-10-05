@@ -183,18 +183,17 @@ describe('security-5 [6] saved credentials are bound to approved origins in main
     expect(await authorizeCredentialOrigin({ ...req, hasCredential: false, url: 'http://127.0.0.1:9/v1' }, origins)).toEqual({ ok: true })
   })
 
-  it('an origin confirmed in the main-process dialog is remembered by main, per scope; the old settings are seeded only once', async () => {
+  it('an origin confirmed in the main-process dialog is remembered by main, per scope (settings are never seeded as approval: security-6 [3])', async () => {
     const file = join(dir, 'credential-origins.json')
     const origins = new CredentialOrigins(file)
-    expect(await origins.seedOnce([{ scope: 'organize:compatible', url: 'https://llm.example.test/v1' }])).toBe(true)
+    // 設定の接続先を「認めた」ものとして移す口は無い（security-6 [3]）
+    expect('seedOnce' in origins).toBe(false)
     const ok = await authorizeCredentialOrigin({ scope: 'stt:compatible', url: 'https://stt.example.test/v1', hasCredential: true, defaults: [] }, origins, async () => true)
     expect(ok).toEqual({ ok: true })
     const again = new CredentialOrigins(file)
     expect(again.isApproved('stt:compatible', 'https://stt.example.test')).toBe(true)
-    expect(again.isApproved('organize:compatible', 'https://llm.example.test')).toBe(true)
-    // 別の用途には持ち越さない。2回目の seed は何も足さない
+    // 別の用途には持ち越さない
     expect(again.isApproved('organize:openai', 'https://stt.example.test')).toBe(false)
-    expect(await again.seedOnce([{ scope: 'stt:openai', url: 'https://attacker.example.test' }])).toBe(false)
     expect(new CredentialOrigins(file).isApproved('stt:openai', 'https://attacker.example.test')).toBe(false)
   })
 

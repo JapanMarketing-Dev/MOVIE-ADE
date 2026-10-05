@@ -104,6 +104,11 @@ export interface ProjectUrl {
   launchCommand?: string
   /** 録画するウインドウを選ぶための名前（アプリ名やウインドウ名の一部。例: Simulator） */
   windowMatch?: string
+  /**
+   * 録画中に windowMatch のウインドウが現れたらどうするか（@shared/captureTracks の WatchMode）。
+   * record は一緒に録る、switch は録って画面もそちらへ切り替える。未設定は待ち受けない
+   */
+  watch?: import('./captureTracks').WatchMode
   /** 何の確認先か（src/shared/projectTargets.ts の TARGET_PURPOSES）。未設定は app（開発中のアプリ） */
   purpose?: TargetPurpose
 }
@@ -349,6 +354,8 @@ export interface Settings {
   feedbackTargets?: FeedbackTargetsPrefs
   /** 端末のプログラムのコピー（OSC 52）。省略時は ask（src/main/terminalClipboard.ts） */
   terminalClipboard?: TerminalClipboardMode
+  /** 内蔵ブラウザに読み込むブラウザ拡張機能（展開済みのフォルダ）。省略時はなし（src/shared/browserExtensions.ts） */
+  browserExtensions?: import('./browserExtensions').BrowserExtensionEntry[]
 }
 
 /** 端末のプログラムのコピー（OSC 52）の扱い。ask = 毎回確認 / allow = フォーカスのある手元の端末なら写して知らせる / off = 写さない */
@@ -453,7 +460,6 @@ export type MenuCommand =
   | 'browserForward'
   | 'toggleViewport'
   /** 左サイドバー（レビュー一覧）の開閉 */
-  | 'toggleSidebar'
   /** 共通部品の見本（開発時のみ。URL の #gallery でも開ける） */
   | 'toggleGallery'
   /** ⌘P ファイルを名前で開く */
@@ -562,6 +568,8 @@ export interface CaptureSourceInfo {
   appIcon?: string
   /** ウインドウのアプリ名（macOS で分かるとき） */
   appName?: string
+  /** ウインドウのアプリのバンドル ID（macOS で分かるとき。待ち受けの照合に使う） */
+  bundleId?: string
   /** スマホのシミュレータ（ios）／エミュレータ（android）のウインドウ */
   device?: CaptureDevice['platform']
 }

@@ -28,7 +28,7 @@
   <meta property="og:title" content="项目与 URL · Ferret 文档">
   <meta property="og:description" content="项目就是一个文件夹（通常是仓库的根目录）。每个项目都保存自己的 URL，因此本地、开发和生产环境只需一次点击即可切换。">
   <meta property="og:url" content="https://ferretade.dev/docs/zh-CN/projects">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="zh_CN">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="项目与 URL · Ferret 文档">
   <meta name="twitter:description" content="项目就是一个文件夹（通常是仓库的根目录）。每个项目都保存自己的 URL，因此本地、开发和生产环境只需一次点击即可切换。">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -214,7 +214,7 @@
   <li><strong><span class="docs-ui">文件</span></strong>：项目文件夹。文件以预览方式打开（渲染 Markdown 和 Mermaid，其他文本为只读），因此也可以审查文档。铅笔图标（<span class="docs-ui">在编辑器中打开</span>）会在编辑器中打开它。</li>
 </ul>
 <p><span class="docs-ui">筛选对象</span> 会同时筛选目标、页面和文件，模糊匹配方式与 <span class="docs-ui">转到文件…</span> 相同。在列表中，按 <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> 或 <kbd>1</kbd>–<kbd>9</kbd> 切换对象。<span class="docs-ui">打开 URL…</span> 用于临时打开一个 URL，<span class="docs-ui">保存到项目 URL</span> 会把它保存下来。</p>
-<p>目标来自 <code>settings.json</code> 中的 <code>projects[].urls</code>（参见<a href="settings-json.html#example">示例</a>）。每个条目需要一个 <code>url</code>、一个 <code>launchCommand</code>（在终端中运行，例如用来启动桌面应用）或一个 <code>windowMatch</code>（要录制的窗口），还可以带一个 <code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code> 或 <code>reference</code>）。选择窗口类目标会把它设为录制来源，因此录制过程中无法这样做。访问过的页面按项目记住，仅保存在这台机器上（最多 200 个）。</p>
+<p>目标来自 <code>settings.json</code> 中的 <code>projects[].urls</code>（参见<a href="settings-json.html#example">示例</a>）。每个条目需要一个 <code>url</code>、一个 <code>launchCommand</code>（在终端中运行，例如用来启动桌面应用）或一个 <code>windowMatch</code>（要录制的窗口），还可以带一个 <code>purpose</code>（<code>app</code>、<code>design</code>、<code>doc</code> 或 <code>reference</code>）。在录制前选择窗口类目标，会把它设为录制来源；在录制中选择，则会把该窗口加入录制并显示它（见<a href="recording.html#multi">同时录制多个窗口</a>）。访问过的页面按项目记住，仅保存在这台机器上（最多 200 个）。</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">

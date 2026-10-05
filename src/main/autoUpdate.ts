@@ -62,6 +62,8 @@ export interface AutoUpdateDeps {
   /** 画面に出す失敗の文（i18n） */
   failedMessage(): string
   timers?: { setTimeout: typeof setTimeout; clearTimeout: typeof clearTimeout }
+  /** 今の時刻（ms）。テストで差し替える */
+  now?: () => number
 }
 
 export class AutoUpdater {
@@ -73,6 +75,8 @@ export class AutoUpdater {
   private downloadAbort: AbortController | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
   private installing = false
+  /** 最後に確かめ終えた時刻（ms）。まだなら null */
+  private lastChecked: number | null = null
   /** 入れ替えの準備（macOS は Squirrel.Mac への受け渡し）を済ませた。済ませた Squirrel.Mac は閉じたときに入れ替える */
   private staged = false
 
@@ -148,7 +152,18 @@ export class AutoUpdater {
   }
 
   /**
-   * 確かめる（起動時・一定間隔・［更新を確認］）。新しい版があり、自動のダウンロードがオンなら、裏でダウンロードを始める。
+   * 前の確認から maxAgeMs 以上たっていれば確かめる（スリープ明け・ウインドウに戻ったとき）。
+   * 開いたままのアプリは、スリープなどで一定間隔の確認が遅れ、新しい版に気づかないことがある（ユーザーの指摘）
+   */
+  checkIfStale(maxAgeMs: number): Promise<UpdateCheckResult> | null {
+    if (!this.deps.enabled) return null
+    const now = (this.deps.now ?? Date.now)()
+    if (this.lastChecked !== null && now - this.lastChecked < maxAgeMs) return null
+    return this.checkNow()
+  }
+
+  /**
+   * 確かめる（起動時・一定間隔・［更新を確認］・バージョンの表示を開いたとき）。新しい版があり、自動のダウンロードがオンなら、裏でダウンロードを始める。
    * 同時に2回は確かめない（走っている確認の結果を返す）
    */
   checkNow(): Promise<UpdateCheckResult> {
@@ -162,6 +177,7 @@ export class AutoUpdater {
           this.progress = { phase: 'idle' }
         }
         this.check = result
+        this.lastChecked = (this.deps.now ?? Date.now)()
         return result
       } finally {
         this.checking = null

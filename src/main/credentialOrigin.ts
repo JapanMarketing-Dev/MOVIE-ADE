@@ -5,7 +5,7 @@
  * （「接続を確かめる」や、保存した設定での文字起こし・整理・判定）。そこでキーは提供元ではなく接続元（origin）に結び付ける:
  *   - 送ってよいのは、プリセットの接続元か、利用者が main のダイアログ（接続元の名前を出す）で認めた接続元だけ
  *   - 認めた接続元は userData/credential-origins.json に main が書く（settings.json は画面からも書けるので使わない）
- *   - この版より前に保存してあった接続先は、初めて読むときに一度だけ認めたものとして入れる（今の設定を壊さない）
+ *   - 設定に書いてある接続先は、初めての起動でも認めたものにしない（security-6 [3]）。プリセット以外は「接続を確かめる」で一度認めてもらう
  *   - 認めていない接続元には、キーも環境変数のヘッダーも付けずに断る（送ってから気づくのではなく、送る前に止める）
  *
  * Electron に依存させない（ダイアログは呼び出し側が confirm として渡す）。
@@ -46,7 +46,6 @@ interface StoredOrigins {
 
 export class CredentialOrigins {
   private approved: Map<string, Set<string>> | null = null
-  private existed = false
   private queue: Promise<unknown> = Promise.resolve()
 
   constructor(private readonly file: string) {}
@@ -56,7 +55,6 @@ export class CredentialOrigins {
     const map = new Map<string, Set<string>>()
     try {
       const text = readFileSync(this.file, 'utf8')
-      this.existed = true
       if (text.length <= MAX_FILE_BYTES) {
         const raw = JSON.parse(text) as Partial<StoredOrigins>
         for (const [scope, origins] of Object.entries(raw.approved ?? {}).slice(0, MAX_SCOPES)) {
@@ -65,28 +63,18 @@ export class CredentialOrigins {
           if (clean.length) map.set(scope, new Set(clean))
         }
       }
-    } catch (err) {
+    } catch {
       // 無い（初めて）・壊れたファイル。壊れていれば空から（認めた接続元はもう一度聞く）
-      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') this.existed = true
     }
     this.approved = map
     return map
   }
 
-  /**
-   * この版より前の設定を壊さないための一度だけの移行。ファイルがまだ無いときだけ、今の設定の接続元を認めたものとして入れる
-   * @returns 入れたら true
+  /*
+   * 設定（settings.json）の接続先を「認めた」ものとして移す口（以前の seedOnce）は持たない（security-6 [3]）。
+   * 設定は画面や、利用者の権限で動く Agent からも書けるので、移す前に書き換えられると、その接続元へ保存したキーが送られる。
+   * 認めた接続元を増やせるのは approve（main のダイアログで利用者が認めたとき）だけ
    */
-  async seedOnce(entries: Array<{ scope: string; url: string | undefined }>): Promise<boolean> {
-    const map = this.load()
-    if (this.existed) return false
-    for (const { scope, url } of entries) {
-      const origin = credentialOriginOf(url)
-      if (origin) this.add(map, scope, origin)
-    }
-    await this.save()
-    return true
-  }
 
   isApproved(scope: string, origin: string, defaults: ReadonlyArray<string | undefined> = []): boolean {
     if (defaults.some((d) => credentialOriginOf(d) === origin)) return true
@@ -111,7 +99,6 @@ export class CredentialOrigins {
 
   private save(): Promise<void> {
     const map = this.load()
-    this.existed = true
     const body: StoredOrigins = { version: 1, approved: Object.fromEntries([...map].map(([scope, set]) => [scope, [...set]])) }
     const next = this.queue.catch(() => undefined).then(async () => {
       await mkdir(dirname(this.file), { recursive: true })

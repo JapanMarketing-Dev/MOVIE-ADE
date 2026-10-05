@@ -72,3 +72,12 @@ export function nsisInstallerArgs(when: 'restart' | 'quit'): string[] {
 export const AUTO_UPDATE_INTERVAL_MS = 6 * 60 * 60 * 1000
 /** 起動してから最初に確かめるまで（起動の重さに重ねない） */
 export const AUTO_UPDATE_FIRST_CHECK_MS = 20 * 1000
+
+/**
+ * バージョンの表示（フッターのポップオーバー）を開いたときに、［更新を確認］と同じ確認をするか。
+ * 配布版は確かめる。開発版の起動は本物の配信元へ行かないよう確かめない。ただし裏の更新が動く起動
+ * （E2E の偽の配信元。main の autoUpdate.ts の enabled）では supported が true なので確かめる（開いたら確かめることを E2E で見られるように）
+ */
+export function checkOnUpdatePopoverOpen(packaged: boolean, status: Pick<AutoUpdateStatus, 'supported'> | null): boolean {
+  return packaged || status?.supported === true
+}

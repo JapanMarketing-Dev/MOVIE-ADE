@@ -123,7 +123,7 @@ Projects are the objects in the top-level \`projects\` array. Find the right one
 | --- | --- | --- |
 ${projectRows.join('\n')}
 
-Review targets are \`projects[].urls\` (the first one opens by default). Each needs at least one of \`url\`, \`launchCommand\` or \`windowMatch\`. Use \`windowMatch\` for desktop apps, iOS Simulator, Android Emulator or game editors (Unity, Unreal, Godot): Ferret shows that window live in its editor and records it with voice and annotations.
+Review targets are \`projects[].urls\` (the first one opens by default). Each needs at least one of \`url\`, \`launchCommand\` or \`windowMatch\`. Use \`windowMatch\` for desktop apps, iOS Simulator, Android Emulator or game editors (Unity, Unreal, Godot): Ferret shows that window live in its editor and records it with voice and annotations. Add \`watch: "record"\` (or \`"switch"\` to also show it) when the window is not open yet when recording starts, e.g. a desktop app that the web app launches: Ferret records it as soon as it opens, alongside the current view, and the user switches between the recorded views in the recording bar. \`windowMatch\` may also be a macOS bundle id or an app or executable path.
 
 | Key | Type | Meaning |
 | --- | --- | --- |

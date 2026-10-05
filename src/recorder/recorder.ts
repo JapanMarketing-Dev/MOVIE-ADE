@@ -37,11 +37,15 @@ interface StartPayload {
   captureSystemAudio: boolean
   systemAudioEndAfterMs?: number
   systemAudioSynthetic?: boolean
+  /** 検証用（E2E の偽の画面・ウインドウ）。画面・ウインドウの代わりに canvas の映像を録る（OS の画面収録に触れない） */
+  syntheticDesktop?: boolean
   micDeviceId?: string
   videoBitsPerSecond: number
   videoMaxWidth: number
   videoMaxFrameRate: number
   videoTimesliceMs: number
+  /** タブの映像の上に、拡張機能のポップアップの映像を重ねてから録る（OverlayCompositor） */
+  composite?: boolean
   /** エラーの文（画面の言語）。{{message}} / {{source}} をここで埋める。main（recorderWindow.ts）が渡す */
   messages?: Partial<Record<keyof typeof DEFAULT_MESSAGES, string>>
 }
@@ -59,6 +63,17 @@ interface RecorderBridge {
   started(): void
   onGrab(fn: (id: number) => void): void
   frame(id: number, png: ArrayBuffer | null): void
+  onOverlay(fn: (overlay: unknown) => void): void
+}
+
+/** Chromium の Insertable Streams（lib.dom に型が無い） */
+declare class MediaStreamTrackProcessor {
+  constructor(init: { track: MediaStreamTrack })
+  readonly readable: ReadableStream<VideoFrame>
+}
+declare class MediaStreamTrackGenerator extends MediaStreamTrack {
+  constructor(init: { kind: 'video' })
+  readonly writable: WritableStream<VideoFrame>
 }
 
 /** Chromium の ImageCapture（lib.dom に型が無い） */
@@ -150,6 +165,161 @@ class AudioCapture {
   }
 }
 
+interface OverlayRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** main から届く重ねるもの。形が違えば null（重ねない） */
+function readOverlay(raw: unknown): { sourceId: string; rect: OverlayRect } | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as { sourceId?: unknown; rect?: Partial<Record<keyof OverlayRect, unknown>> }
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : NaN)
+  const rect = { x: n(r.rect?.x), y: n(r.rect?.y), width: n(r.rect?.width), height: n(r.rect?.height) }
+  if (typeof r.sourceId !== 'string' || !r.sourceId || Object.values(rect).some(Number.isNaN) || rect.width <= 0 || rect.height <= 0) return null
+  return { sourceId: r.sourceId, rect }
+}
+
+/**
+ * タブの映像（内蔵ブラウザのビュー）の上に、拡張機能のポップアップ（別のビュー。タブ録画には写らない）の映像を重ねる。
+ *
+ * 両方の映像をフレームごとに受け（MediaStreamTrackProcessor）、OffscreenCanvas に重ねて描き、新しい映像（MediaStreamTrackGenerator）にする。
+ * 画面に描かない（非表示の録画ウインドウでも止まらない）。どちらかの映像が変わったときだけ描き、フレームレートの上限で間引く
+ */
+class OverlayCompositor {
+  readonly stream: MediaStream
+  private readonly canvas = new OffscreenCanvas(2, 2)
+  private readonly context = this.canvas.getContext('2d', { alpha: false })
+  private readonly writer: WritableStreamDefaultWriter<VideoFrame>
+  private base: VideoFrame | null = null
+  private top: VideoFrame | null = null
+  private topTrack: MediaStreamTrack | null = null
+  private topSource: string | null = null
+  private rect: OverlayRect | null = null
+  private generation = 0
+  private lastDraw = 0
+  private timer: ReturnType<typeof setTimeout> | null = null
+  private stopped = false
+  private readonly minIntervalMs: number
+
+  static supported(): boolean {
+    return typeof MediaStreamTrackProcessor === 'function' && typeof MediaStreamTrackGenerator === 'function' && typeof VideoFrame === 'function'
+  }
+
+  constructor(baseTrack: MediaStreamTrack, private readonly maxFrameRate: number) {
+    this.minIntervalMs = 1000 / Math.max(1, maxFrameRate)
+    const generator = new MediaStreamTrackGenerator({ kind: 'video' })
+    this.writer = generator.writable.getWriter()
+    this.stream = new MediaStream([generator])
+    void this.pump(baseTrack, (frame) => { this.base?.close(); this.base = frame })
+  }
+
+  /** その映像のフレームを受け続ける。止めた・映像が終わったら抜ける */
+  private async pump(track: MediaStreamTrack, take: (frame: VideoFrame) => void, generation?: number): Promise<void> {
+    const reader = new MediaStreamTrackProcessor({ track }).readable.getReader()
+    try {
+      for (;;) {
+        const { value, done } = await reader.read()
+        if (done) break
+        if (this.stopped || (generation !== undefined && generation !== this.generation)) {
+          value.close()
+          break
+        }
+        take(value)
+        this.schedule()
+      }
+    } catch {
+      // 映像が途中で止まった（ポップアップが閉じた等）。重ねるのをやめるだけ（想定内）
+    } finally {
+      reader.releaseLock()
+    }
+  }
+
+  /** ポップアップが開いた・動いた・閉じた（null） */
+  async setOverlay(next: { sourceId: string; rect: OverlayRect } | null): Promise<void> {
+    if (this.stopped) return
+    if (next && next.sourceId === this.topSource) {
+      this.rect = next.rect
+      this.schedule()
+      return
+    }
+    const generation = ++this.generation
+    this.topTrack?.stop()
+    this.topTrack = null
+    this.top?.close()
+    this.top = null
+    this.topSource = next?.sourceId ?? null
+    this.rect = next?.rect ?? null
+    this.schedule()
+    if (!next) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { mandatory: { chromeMediaSource: 'tab', chromeMediaSourceId: next.sourceId, maxFrameRate: this.maxFrameRate } } as unknown as MediaTrackConstraints
+      })
+      const track = stream.getVideoTracks()[0] ?? null
+      if (!track || this.stopped || generation !== this.generation) { stream.getTracks().forEach((t) => t.stop()); return }
+      this.topTrack = track
+      void this.pump(track, (frame) => { this.top?.close(); this.top = frame }, generation)
+    } catch (err) {
+      // 重ねられなくても録画は続ける（タブの映像だけになる）
+      console.warn('[recorder] overlay capture failed', message(err))
+    }
+  }
+
+  private schedule(): void {
+    if (this.stopped || this.timer) return
+    const wait = this.lastDraw + this.minIntervalMs - performance.now()
+    if (wait <= 0) return this.draw()
+    this.timer = setTimeout(() => { this.timer = null; this.draw() }, wait)
+  }
+
+  private draw(): void {
+    const base = this.base
+    const context = this.context
+    if (this.stopped || !base || !context) return
+    this.lastDraw = performance.now()
+    const width = base.displayWidth
+    const height = base.displayHeight
+    if (this.canvas.width !== width || this.canvas.height !== height) {
+      this.canvas.width = width
+      this.canvas.height = height
+    }
+    context.drawImage(base, 0, 0, width, height)
+    const rect = this.rect
+    if (this.top && rect) {
+      const x = Math.round(rect.x * width)
+      const y = Math.round(rect.y * height)
+      const w = Math.round(rect.width * width)
+      const h = Math.round(rect.height * height)
+      context.drawImage(this.top, x, y, w, h)
+      // ポップアップの縁（ページと見分けられるよう、Chrome のポップアップと同じく薄い線）
+      context.strokeStyle = 'rgba(0, 0, 0, 0.25)'
+      context.lineWidth = 1
+      context.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1)
+    }
+    const frame = new VideoFrame(this.canvas, { timestamp: Math.round(performance.now() * 1000) })
+    this.writer.write(frame).catch(() => frame.close())
+  }
+
+  stop(): void {
+    this.stopped = true
+    if (this.timer) clearTimeout(this.timer)
+    this.timer = null
+    this.topTrack?.stop()
+    this.base?.close()
+    this.top?.close()
+    this.base = this.top = null
+    void this.writer.close().catch(() => undefined)
+  }
+}
+
+let compositor: OverlayCompositor | null = null
+/** 録画を始める前に届いた重ねるもの（開いていたポップアップ） */
+let pendingOverlay: { sourceId: string; rect: OverlayRect } | null = null
+
 let recorder: MediaRecorder | null = null
 let videoTrack: MediaStreamTrack | null = null
 const captures: AudioCapture[] = []
@@ -189,6 +359,35 @@ async function captureVideo(
 }
 
 /**
+ * 検証用（E2E の偽の画面・ウインドウ。main の fakeCapture.ts）。ID ごとに色の違う canvas を動かし続けた映像。
+ * 非表示の窓でも描き続けるよう requestAnimationFrame ではなくタイマーで描く
+ */
+function syntheticDesktopStream(sourceId: string, maxFrameRate: number): MediaStream {
+  const canvas = document.createElement('canvas')
+  canvas.width = 640
+  canvas.height = 400
+  const ctx = canvas.getContext('2d')
+  let hue = 0
+  for (const ch of sourceId) hue = (hue * 31 + ch.charCodeAt(0)) % 360
+  let n = 0
+  const draw = () => {
+    if (!ctx) return
+    ctx.fillStyle = `hsl(${hue}, 70%, 45%)`
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect((n * 8) % canvas.width, 180, 40, 40)
+    ctx.font = '24px sans-serif'
+    ctx.fillText(sourceId, 20, 40)
+    n++
+  }
+  draw()
+  const timer = setInterval(draw, 100)
+  const stream = canvas.captureStream(Math.max(1, Math.min(30, maxFrameRate)))
+  stream.getVideoTracks()[0]?.addEventListener('ended', () => clearInterval(timer))
+  return stream
+}
+
+/**
  * PC音声（相手の声。AUD-1）。
  * getDisplayMedia で取る。main（recorderWindow.ts）の setDisplayMediaRequestHandler が、映像はこのウインドウ自身、
  * 音声は PC のループバックを返す（macOS 14.2+ は Core Audio の tap、Windows は再生デバイス、Linux は PulseAudio のモニター）。
@@ -223,18 +422,27 @@ async function start(payload: StartPayload): Promise<void> {
 
   // 映像
   try {
-    const stream = await captureVideo(
-      payload.sourceKind,
-      payload.sourceId,
-      payload.videoMaxWidth,
-      payload.videoMaxFrameRate
-    )
+    const stream = payload.syntheticDesktop && payload.sourceKind === 'desktop'
+      ? syntheticDesktopStream(payload.sourceId, payload.videoMaxFrameRate)
+      : await captureVideo(
+        payload.sourceKind,
+        payload.sourceId,
+        payload.videoMaxWidth,
+        payload.videoMaxFrameRate
+      )
     videoTrack = stream.getVideoTracks()[0] ?? null
     if (videoTrack && payload.sourceKind === 'desktop') {
       // 録っていたウインドウが閉じられた。音声と書き込みの記録は続ける
       videoTrack.onended = () => bridge.error(text('videoEnded'))
     }
-    recorder = new MediaRecorder(stream, {
+    // 拡張機能のポップアップも録るときは、タブの映像に重ねた映像を録る（使えない環境ではタブの映像のまま）
+    let recorded = stream
+    if (payload.composite && payload.sourceKind === 'tab' && videoTrack && OverlayCompositor.supported()) {
+      compositor = new OverlayCompositor(videoTrack, payload.videoMaxFrameRate)
+      recorded = compositor.stream
+      if (pendingOverlay) void compositor.setOverlay(pendingOverlay)
+    } else if (payload.composite) console.warn('[recorder] overlay compositing is not available; recording the page only')
+    recorder = new MediaRecorder(recorded, {
       mimeType: 'video/webm;codecs=vp8',
       videoBitsPerSecond: payload.videoBitsPerSecond
     })
@@ -362,6 +570,11 @@ bridge.onGrab((id) => {
     .catch(() => bridge.frame(id, null))
 })
 
+bridge.onOverlay((raw) => {
+  pendingOverlay = readOverlay(raw)
+  void compositor?.setOverlay(pendingOverlay)
+})
+
 bridge.onStart((payload: StartPayload) => {
   void start(payload).catch((err) => bridge.error(message(err)))
 })
@@ -380,6 +593,9 @@ bridge.onStop(() => {
   stopping = true
   const done = async (): Promise<void> => {
     videoTrack?.stop()
+    compositor?.stop()
+    compositor = null
+    pendingOverlay = null
     for (const capture of captures) capture.stop()
     captures.length = 0
     await videoWrites

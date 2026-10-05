@@ -23,7 +23,6 @@ import { errorMessage } from '../lib/errors'
 import { useT } from '../lib/i18n'
 import { Button, EmptyState, Field, IconButton, useToast } from '../ui'
 import { filterReviews, isEmptyDraft, reviewHosts, type ReviewFilter } from '@shared/reviewList'
-import { PanelCloseButton } from './LayoutToggles'
 import { ProjectEditDialog } from './ProjectTargetsEditor'
 import { AddProjectDialog, ProjectSourceIcon } from './AddProjectDialog'
 import type { ProjectSource } from '@shared/projectSource'
@@ -388,7 +387,6 @@ export function Sidebar({
             data-testid="sidebar-add-project"
           />
           {/* プロジェクト一覧を閉じる（開き直すのはタイトルバー右の開閉ボタン・⌘B・設定ページ） */}
-          <PanelCloseButton panel="projects" />
         </div>
 
         {projects.projects.length > 0 && (

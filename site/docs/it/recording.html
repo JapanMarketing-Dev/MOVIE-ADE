@@ -28,7 +28,7 @@
   <meta property="og:title" content="Registrazione · Documentazione di Ferret">
   <meta property="og:description" content="Registra il browser integrato, un intero schermo, un'altra finestra, un'app desktop, un gioco o un simulatore di smartphone. Parla, cerchia e scrivi mentre usi la pagina.">
   <meta property="og:url" content="https://ferretade.dev/docs/it/recording">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="it_IT">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Registrazione · Documentazione di Ferret">
   <meta name="twitter:description" content="Registra il browser integrato, un intero schermo, un'altra finestra, un'app desktop, un gioco o un simulatore di smartphone. Parla, cerchia e scrivi mentre usi la pagina.">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -187,6 +187,24 @@
 <p>Il campo <span class="docs-ui">Finestra da registrare</span> di un target di revisione corrisponde sia al nome dell'app sia al titolo della finestra, quindi <code>Simulator</code> seleziona la finestra di iOS Simulator qualunque dispositivo mostri.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="extensions">
+        <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="Link a Estensioni del browser">#</a>Estensioni del browser</h2>
+        <p>Aggiungi estensioni di Chrome al browser integrato in <span class="docs-ui">Impostazioni → Estensioni del browser</span>: <span class="docs-ui">Aggiungi cartella decompressa…</span> per una cartella che contiene <code>manifest.json</code>, oppure <span class="docs-ui">Importa da Chrome…</span> per copiarne una già installata in Chrome, Edge, Brave o Chromium. Le estensioni funzionano solo nel browser integrato, mai nelle finestre di Ferret. Possono leggere e modificare ogni pagina che apri lì e usarne gli accessi, quindi aggiungi solo estensioni di cui ti fidi.</p>
+<p>Apri il popup di un'estensione con <span class="docs-ui">Estensioni</span> nella barra del browser o nella barra del feedback. Si apre in alto a destra nella pagina e si chiude quando fai clic altrove o premi <kbd>Esc</kbd>. Quando registri il <span class="docs-ui">Browser integrato</span>, sia ciò che un'estensione cambia nella pagina sia il popup aperto compaiono nel video e nelle immagini. Electron supporta solo una parte delle API delle estensioni: pannelli laterali, menu contestuali, notifiche, scorciatoie da tastiera e schede o finestre aperte da un'estensione non funzionano, e i file <code>.crx</code> compressi non si possono caricare.</p>
+<p>Puoi annotare anche i popup. Durante la registrazione, fare clic sulla barra degli strumenti non chiude il popup di un'estensione. Con la penna o il riquadro selezionati, o con <span class="docs-ui">Feedback scritto</span> attivo, nemmeno un clic sulla pagina lo chiude, e <kbd>Esc</kbd> disattiva lo strumento invece di chiuderlo. Disegna dentro il popup: i segni compaiono nel video e nelle immagini nella posizione del popup. Funziona con i popup aperti dopo l'avvio della registrazione o di <span class="docs-ui">Feedback scritto</span>. Un popup di accesso che una pagina apre in una finestra a sé (per esempio Accedi con Google) viene registrato come video separato finché resta aperto. Quando passa in primo piano, la penna e il riquadro disegnano al suo interno; un clic sulla pagina torna indietro. Dopo l'accesso si chiude comunque da solo.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="multi">
+        <h2 id="multi"><a class="docs-anchor" href="#multi" aria-label="Link a Registrare più finestre insieme">#</a>Registrare più finestre insieme</h2>
+        <p>Una registrazione può catturare fino a quattro viste contemporaneamente: il browser integrato, finestre di app desktop e schermi. Ognuna viene registrata in un proprio video fino all'arresto, quindi un flusso che passa dall'una all'altra, come un'app web che apre un'app desktop e poi torna indietro, viene catturato dall'inizio alla fine.</p>
+<ol class="docs-steps">
+  <li>Durante la registrazione, fai clic su <span class="docs-ui">+</span> (<span class="docs-ui">Registra un'altra finestra contemporaneamente</span>) nella barra di registrazione e scegli una finestra, uno schermo o il browser integrato. Fare clic su un target finestra nel pannello <span class="docs-ui">Target di revisione</span> fa lo stesso.</li>
+  <li>Fai clic su un chip nella barra di registrazione per cambiare la vista mostrata. La penna e le immagini delle segnalazioni seguono la vista mostrata; le altre continuano a essere registrate in background fino a 5 fotogrammi al secondo.</li>
+</ol>
+<p>Puoi anche attendere una finestra non ancora aperta. In <span class="docs-ui">Modifica progetto…</span>, assegna a un target una <span class="docs-ui">Finestra da registrare</span> (un nome di app, parte del titolo della finestra, un bundle id macOS come <code>com.example.MyApp</code> o il percorso dell'app) e imposta <span class="docs-ui">Se si apre durante la registrazione</span> su <span class="docs-ui">Registrala anche</span> o <span class="docs-ui">Registrala e passa a lei</span>. In <code>settings.json</code> corrisponde a <code>"watch": "record"</code> o <code>"watch": "switch"</code>. Durante la registrazione, Ferret controlla l'elenco delle finestre una volta al secondo. Il target appare come un chip tratteggiato finché la sua finestra non si apre, e viene registrato di nuovo se l'app si chiude e si riapre.</p>
+<p>Ogni cambio viene scritto nel registro delle azioni, quindi ogni segnalazione sa a quale vista si riferiva. Le segnalazioni fatte mentre era mostrata una finestra di app non hanno URL né info sugli elementi, sono raggruppate sotto quella finestra in <span class="docs-ui">Segnalazioni</span> e in <code>feedback.md</code>, e all'agente viene detto che era una finestra di app. I video aggiuntivi vengono salvati nella cartella della revisione, in <code>tracks/</code>, con gli orari di inizio e fine in <code>tracks.jsonl</code>. Su Windows e Linux si conoscono solo i titoli delle finestre, quindi il nome viene confrontato con il titolo. Attendere una finestra non è disponibile su Linux con Wayland, dove elencare le finestre chiede ogni volta di sceglierne una; aggiungi invece la finestra con <span class="docs-ui">+</span> dopo che si è aperta.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="record">
         <h2 id="record"><a class="docs-anchor" href="#record" aria-label="Link a Avviare, mettere in pausa, fermare">#</a>Avviare, mettere in pausa, fermare</h2>
         <figure class="docs-clip" data-clip="record">
@@ -245,6 +263,11 @@
 <p>Se la trascrizione non riesce, non sono impostati un modello o una chiave, circa 2 minuti di voce non producono testo o al microfono non arriva alcun suono, Ferret ti avvisa una volta e segna il pulsante del pannello destro, anche quando la scheda è chiusa. La registrazione continua e l'audio viene conservato. Per nascondere la scheda, disattiva <span class="docs-ui">Mostra la trascrizione dal vivo durante la registrazione (pannello destro della modalità feedback)</span> in <span class="docs-ui">Impostazioni → Trascrizione</span>. Gli avvisi compaiono comunque.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="feedback-terminal">
+        <h2 id="feedback-terminal"><a class="docs-anchor" href="#feedback-terminal" aria-label="Link a Parla con il tuo agente mentre registri">#</a>Parla con il tuo agente mentre registri</h2>
+        <p>Il pannello destro della modalità feedback ha anche una scheda <span class="docs-ui">Terminale</span>. È lo stesso terminale della modalità Editor, non una nuova shell: le stesse schede, gli stessi agenti in esecuzione (per esempio Claude Code o Codex) e la loro cronologia. Scegli una scheda in alto e scrivi, per esempio per dire all'agente che <code>localhost</code> non è in esecuzione. Tornando alla modalità Editor, il terminale mostra lo stesso stato. Registrare il browser integrato o la finestra di un'altra app non include il terminale.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="other-side">
         <h2 id="other-side"><a class="docs-anchor" href="#other-side" aria-label="Link a Registrare l'altra parte di una riunione">#</a>Registrare l'altra parte di una riunione</h2>
         <p>Per rivedere una pagina insieme durante una chiamata, fai registrare a Ferret ciò che senti dal computer oltre al tuo microfono. Funziona con qualsiasi app per riunioni (Zoom, Google Meet, Microsoft Teams e altre), perché Ferret registra l'audio del computer, non l'app. Le due fonti restano separate: il microfono viene trascritto come <strong>Me</strong> e l'audio del computer come <strong>Other</strong>, così ogni segnalazione mostra chi ha chiesto cosa. Funziona anche con il microfono disattivato.</p>
@@ -293,12 +316,15 @@
       <ul>
         <li><a href="#target">Scegliere cosa registrare</a></li>
         <li><a href="#desktop-mobile">App desktop, giochi e app mobili</a></li>
+        <li><a href="#extensions">Estensioni del browser</a></li>
+        <li><a href="#multi">Registrare più finestre insieme</a></li>
         <li><a href="#record">Avviare, mettere in pausa, fermare</a></li>
         <li><a href="#pen">Penna</a></li>
         <li><a href="#type">Scrivere invece di parlare</a></li>
         <li><a href="#annotations-clear">Quando i segni scompaiono</a></li>
         <li><a href="#mic">Microfono</a></li>
         <li><a href="#live-transcript">Vedere cosa viene trascritto</a></li>
+        <li><a href="#feedback-terminal">Parla con il tuo agente mentre registri</a></li>
         <li><a href="#other-side">Registrare l'altra parte di una riunione</a></li>
         <li><a href="#other-side-os">Audio di sistema per sistema operativo</a></li>
         <li><a href="#other-side-tips">Consigli per le riunioni</a></li>

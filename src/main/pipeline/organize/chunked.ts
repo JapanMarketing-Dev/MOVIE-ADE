@@ -75,10 +75,11 @@ function sliceInput(
 
   const transcript = input.transcript.filter((s) => s.t1 >= lo && s.t0 <= hi)
   const inWindow = input.events.filter((e) => e.t >= lo && e.t <= hi);
-  // 区間の開始時点の画面が分かるように、直前の nav / viewport を1つずつ足す
+  // 区間の開始時点の画面が分かるように、直前の nav / viewport / 映していたもの（track）を1つずつ足す
   const lastNav = [...input.events].filter((e) => e.type === 'nav' && e.t < lo).pop()
   const lastViewport = [...input.events].filter((e) => e.type === 'viewport' && e.t < lo).pop()
-  const events = [...(lastNav ? [lastNav] : []), ...(lastViewport ? [lastViewport] : []), ...inWindow].sort(
+  const lastTrack = [...input.events].filter((e) => e.type === 'track' && e.t < lo).pop()
+  const events = [...(lastNav ? [lastNav] : []), ...(lastViewport ? [lastViewport] : []), ...(lastTrack ? [lastTrack] : []), ...inWindow].sort(
     (a, b) => a.t - b.t,
   )
 

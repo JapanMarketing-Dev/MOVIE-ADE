@@ -15,7 +15,7 @@ import {
   validateManifest
 } from '../../scripts/release-r2-lib.mjs'
 import { setReporter } from '../../src/shared/report'
-import { INSTALL_KIND, installMethodFor, nsisInstallerArgs, type AutoUpdateStatus } from '../../src/shared/appUpdate'
+import { INSTALL_KIND, checkOnUpdatePopoverOpen, installMethodFor, nsisInstallerArgs, type AutoUpdateStatus } from '../../src/shared/appUpdate'
 import type { UpdateCheckResult } from '../../src/shared/appVersion'
 
 vi.mock('electron', () => ({ app: { getVersion: () => '0.0.1' }, net: { fetch: vi.fn() } }))
@@ -255,6 +255,39 @@ describe('AutoUpdater（裏での確認 → ダウンロード → 再起動し�
     expect(calls.at(-1)).toBe('install squirrel-mac /cache/Ferret-2.0.0-mac-arm64.zip')
     // 入れ替えが始まったら二度押さない
     expect(await updater.install()).toBe(false)
+  })
+
+  it('checkIfStale: まだ確かめていなければ確かめ、前の確認から maxAge たつまでは確かめない（スリープ明け・ウインドウに戻ったとき）', async () => {
+    let now = 1_000_000
+    let checks = 0
+    const { updater } = setup({ now: () => now, check: async () => { checks++; return available }, getAutoDownload: () => false })
+    await updater.checkIfStale(60 * 60 * 1000)
+    expect(checks).toBe(1)
+    now += 30 * 60 * 1000
+    expect(updater.checkIfStale(60 * 60 * 1000)).toBeNull()
+    expect(checks).toBe(1)
+    now += 31 * 60 * 1000
+    await updater.checkIfStale(60 * 60 * 1000)
+    expect(checks).toBe(2)
+    // スリープ明け（maxAge 0）は必ず確かめる
+    await updater.checkIfStale(0)
+    expect(checks).toBe(3)
+  })
+
+  it('checkIfStale: 配布版でない起動（enabled でない）では確かめない', () => {
+    let checks = 0
+    const { updater } = setup({ enabled: false, check: async () => { checks++; return available } })
+    expect(updater.checkIfStale(0)).toBeNull()
+    expect(checks).toBe(0)
+  })
+
+  it('バージョンの表示を開いたときの確認: 配布版と、裏の更新が動く起動（E2E の偽の配信元）だけ。開発版の起動は本物の配信元へ行かない', () => {
+    expect(checkOnUpdatePopoverOpen(true, null)).toBe(true)
+    expect(checkOnUpdatePopoverOpen(true, { supported: false })).toBe(true)
+    expect(checkOnUpdatePopoverOpen(false, { supported: true })).toBe(true)
+    expect(checkOnUpdatePopoverOpen(false, { supported: false })).toBe(false)
+    // 状態がまだ届いていない開発版は確かめない
+    expect(checkOnUpdatePopoverOpen(false, null)).toBe(false)
   })
 
   it('自動のダウンロードがオフなら、見つけても落とさない。［ダウンロード］で始める', async () => {

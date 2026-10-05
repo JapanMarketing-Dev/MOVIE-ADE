@@ -11,7 +11,7 @@ const SITE_URL = /export const SITE_URL = '([^']+)'/.exec(await readFile(join(ro
 if (!SITE_URL) throw new Error('site/js/config.js に SITE_URL が見つかりません')
 // OGP / X のカード画像。X や Slack は画像を URL ごとに長くキャッシュする（改名前の MOVIE-ADE の画像が出続けた）ので、
 // 中身の版（sha256 の先頭8文字）を付けて、絵が変わったら別の URL として取り直させる
-export const OG_IMAGE_URL = `${SITE_URL}/assets/og.png?v=${assetVersion('assets/og.png')}`
+export const OG_IMAGE_URL = `${SITE_URL}/assets/ferret-og.png?v=${assetVersion('assets/ferret-og.png')}`
 
 async function htmlFiles(dir) {
   const out = []

@@ -44,7 +44,9 @@ export function CaptureTargetPicker({
   pageTitle,
   onChoose,
   onStart,
-  onClose
+  onClose,
+  onAdd,
+  initialKind
 }: {
   value: CaptureTarget
   /** 内蔵ブラウザで開いているページの名前 */
@@ -54,10 +56,17 @@ export function CaptureTargetPicker({
   /** 対象を覚えて、そのまま録画を始める */
   onStart: (target: CaptureTarget) => void
   onClose: () => void
+  /**
+   * 録画中に開いたとき。選んだものを今の録画に足して同時に録る（@shared/captureTracks）。
+   * 渡すと［選ぶ］［これを録画］の代わりに［録画に足す］だけを出す
+   */
+  onAdd?: (target: CaptureTarget) => void
+  /** 開いたときのタブ。省略時はいまの対象のタブ */
+  initialKind?: Kind
 }) {
   const t = useT()
-  const [kind, setKind] = useState<Kind>(kindOf(value))
-  const [selected, setSelected] = useState<CaptureTarget | null>(value)
+  const [kind, setKind] = useState<Kind>(initialKind ?? kindOf(value))
+  const [selected, setSelected] = useState<CaptureTarget | null>(initialKind && !fits(value, initialKind) ? null : value)
   const [list, setList] = useState<CaptureSourceList | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -92,10 +101,10 @@ export function CaptureTargetPicker({
   const ready = selected !== null && fits(selected, kind)
 
   return (
-    <Modal className="rv-modal" label={t('capture.title')} onClose={onClose}>
+    <Modal className="rv-modal" label={onAdd ? t('capture.addTitle') : t('capture.title')} onClose={onClose}>
       <div className="rv-modal__panel capture-picker" data-testid="capture-picker">
         <header className="rv-modal__head">
-          <h2><ScreenShare size={16} aria-hidden="true" />{t('capture.title')}</h2>
+          <h2><ScreenShare size={16} aria-hidden="true" />{onAdd ? t('capture.addTitle') : t('capture.title')}</h2>
           <IconButton label={t('common.close')} icon={<X size={16} />} onClick={onClose} />
         </header>
 
@@ -173,8 +182,12 @@ export function CaptureTargetPicker({
         <footer className="capture-picker__foot">
           <span className="capture-picker__current">{selected && ready ? captureTargetLabel(selected) : t('capture.notSelected')}</span>
           <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button disabled={!ready} onClick={() => selected && onChoose(selected)} data-testid="capture-choose">{t('capture.choose')}</Button>
-          <Button variant="record" disabled={!ready} onClick={() => selected && onStart(selected)} data-testid="capture-start">{t('capture.recordThis')}</Button>
+          {onAdd ? (
+            <Button variant="primary" disabled={!ready} onClick={() => selected && onAdd(selected)} data-testid="capture-add">{t('capture.addThis')}</Button>
+          ) : <>
+            <Button disabled={!ready} onClick={() => selected && onChoose(selected)} data-testid="capture-choose">{t('capture.choose')}</Button>
+            <Button variant="record" disabled={!ready} onClick={() => selected && onStart(selected)} data-testid="capture-start">{t('capture.recordThis')}</Button>
+          </>}
         </footer>
       </div>
     </Modal>

@@ -28,7 +28,7 @@
   <meta property="og:title" content="Проекты и URL · Документация Ferret">
   <meta property="og:description" content="Проект — это папка (обычно корень репозитория). У каждого проекта свои сохранённые URL, поэтому между локальной, dev- и продакшен-средой — один щелчок.">
   <meta property="og:url" content="https://ferretade.dev/docs/ru/projects">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="ru_RU">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Проекты и URL · Документация Ferret">
   <meta name="twitter:description" content="Проект — это папка (обычно корень репозитория). У каждого проекта свои сохранённые URL, поэтому между локальной, dev- и продакшен-средой — один щелчок.">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -214,7 +214,7 @@
   <li><strong><span class="docs-ui">Файлы</span></strong>: папка проекта. Файл открывается в предпросмотре (Markdown и Mermaid отображаются, прочий текст — только для чтения), так что проверять можно и документацию. Карандаш (<span class="docs-ui">Открыть в редакторе</span>) открывает файл в редакторе.</li>
 </ul>
 <p><span class="docs-ui">Фильтр целей</span> фильтрует цели, страницы и файлы одновременно, с тем же нечётким поиском, что и <span class="docs-ui">Перейти к файлу…</span>. В списке цели переключаются клавишами <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> или <kbd>1</kbd>–<kbd>9</kbd>. <span class="docs-ui">Открыть URL…</span> открывает разовый URL, а <span class="docs-ui">Сохранить в URL проекта</span> сохраняет его.</p>
-<p>Цели берутся из <code>projects[].urls</code> в <code>settings.json</code> (см. <a href="settings-json.html#example">пример</a>). Каждой записи нужен <code>url</code>, <code>launchCommand</code> (запускается в терминале, например чтобы открыть настольное приложение) или <code>windowMatch</code> (окно для записи), а также может иметь <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> или <code>reference</code>). Выбор цели-окна делает его источником записи, поэтому во время записи это невозможно. Посещённые страницы запоминаются для каждого проекта, только на этом компьютере (не более 200).</p>
+<p>Цели берутся из <code>projects[].urls</code> в <code>settings.json</code> (см. <a href="settings-json.html#example">пример</a>). Каждой записи нужен <code>url</code>, <code>launchCommand</code> (запускается в терминале, например чтобы открыть настольное приложение) или <code>windowMatch</code> (окно для записи), а также может иметь <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> или <code>reference</code>). Выбор цели-окна до записи делает его источником записи; во время записи он добавляет это окно в запись и показывает его (см. <a href="recording.html#multi">Запись нескольких окон одновременно</a>). Посещённые страницы запоминаются для каждого проекта, только на этом компьютере (не более 200).</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">

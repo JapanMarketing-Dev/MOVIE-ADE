@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Plus, Trash2, X } from 'lucide-react'
 import type { Project, ProjectKind, ProjectTarget, TargetPurpose } from '@shared/types'
 import { isPresetableUrl } from '@shared/projectUrl'
+import type { WatchMode } from '@shared/captureTracks'
+
+/** 録画中に開いたら録るか（待たない・一緒に録る・録って切り替える） */
+const WATCH_OPTIONS = ['off', 'record', 'switch'] as const
 import {
   KIND_FIELDS,
   KIND_PLACEHOLDERS,
@@ -87,6 +91,14 @@ export function TargetFields({ target, kind, onChange, autoFocus, siblings }: {
       <Field placeholder={placeholder.windowMatch} value={target.windowMatch ?? ''} autoComplete="off" spellCheck={false}
         onChange={(e) => change({ windowMatch: e.target.value })} data-testid="target-window" />
     </label>}
+    {/* 録画中にこのウインドウが開いたら録る（Web アプリから起動するデスクトップアプリなど。@shared/captureTracks） */}
+    {fields.windowMatch && target.windowMatch?.trim() && <div className="pt-field">
+      <span>{t('projectTargets.watch')}</span>
+      <Segmented<'off' | WatchMode> options={WATCH_OPTIONS.map((value) => ({ value, label: t(`projectTargets.watch.${value}`), testId: `target-watch-${value}` }))}
+        value={target.watch ?? 'off'} ariaLabel={t('projectTargets.watch')}
+        onChange={(next) => change({ watch: next === 'off' ? undefined : next })} />
+      <p className="st-note">{t('projectTargets.watchHint')}</p>
+    </div>}
     {urlInvalid && <p className="st-note st-note--warn">{t('urlPresets.invalid')}</p>}
     {!hasTargetContent({ url: url.trim(), launchCommand: target.launchCommand?.trim(), windowMatch: target.windowMatch?.trim() }) &&
       <p className="st-note" data-testid="target-incomplete">{t(fields.launchCommand ? 'projectTargets.incomplete' : 'projectTargets.incompleteWeb')}</p>}

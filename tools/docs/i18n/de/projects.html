@@ -43,7 +43,7 @@ Ein Projekt ist ein Ordner (meist das Stammverzeichnis Ihres Repositorys). Jedes
 </table>
 {{shot:url-presets|Gespeicherte URLs in der Browser-Werkzeugleiste}}
 
-<!-- @review-targets 9c48e48820 -->
+<!-- @review-targets 5ca6dd4b29 -->
 ## Bereich „Review-Ziele“
 {{clip:targets|Review-Ziele und Seiten wechseln, ohne die Aufnahme zu stoppen.}}
 <p>Im Feedback-Modus listet der Bereich <span class="docs-ui">Review-Ziele</span> rechts alles auf, was Sie im aktuellen Projekt prüfen können. Ein Wechsel des Ziels stoppt die Aufnahme nicht. Blenden Sie den Bereich mit <span class="docs-ui">Darstellung → Review-Ziele ein/aus</span> ({{keys:Mod+Shift+K}}) oder <span class="docs-ui">Bereich ausblenden</span> ein und aus.</p>
@@ -52,7 +52,7 @@ Ein Projekt ist ein Ordner (meist das Stammverzeichnis Ihres Repositorys). Jedes
   <li><strong><span class="docs-ui">Dateien</span></strong>: der Projektordner. Eine Datei öffnet sich als Vorschau (Markdown und Mermaid gerendert, anderer Text schreibgeschützt), sodass Sie auch Dokumentation prüfen können. Der Stift (<span class="docs-ui">Im Editor öffnen</span>) öffnet sie im Editor.</li>
 </ul>
 <p><span class="docs-ui">Ziele filtern</span> filtert Ziele, Seiten und Dateien gemeinsam, mit derselben unscharfen Suche wie <span class="docs-ui">Gehe zu Datei …</span>. In der Liste wechseln <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> oder <kbd>1</kbd>–<kbd>9</kbd> das Ziel. <span class="docs-ui">URL öffnen…</span> öffnet eine einmalige URL, und <span class="docs-ui">In Projekt-URLs speichern</span> behält sie.</p>
-<p>Die Ziele stammen aus <code>projects[].urls</code> in <code>settings.json</code> (siehe <a href="settings-json.html#example">das Beispiel</a>). Jeder Eintrag braucht eine <code>url</code>, einen <code>launchCommand</code> (wird in einem Terminal ausgeführt, z. B. um eine Desktop-App zu starten) oder ein <code>windowMatch</code> (das aufzunehmende Fenster) und kann einen <code>purpose</code> haben (<code>app</code>, <code>design</code>, <code>doc</code> oder <code>reference</code>). Die Auswahl eines Fensterziels legt es als Aufnahmequelle fest und ist daher während einer Aufnahme nicht möglich. Besuchte Seiten werden pro Projekt gespeichert, nur auf diesem Rechner (bis zu 200).</p>
+<p>Die Ziele stammen aus <code>projects[].urls</code> in <code>settings.json</code> (siehe <a href="settings-json.html#example">das Beispiel</a>). Jeder Eintrag braucht eine <code>url</code>, einen <code>launchCommand</code> (wird in einem Terminal ausgeführt, z. B. um eine Desktop-App zu starten) oder ein <code>windowMatch</code> (das aufzunehmende Fenster) und kann einen <code>purpose</code> haben (<code>app</code>, <code>design</code>, <code>doc</code> oder <code>reference</code>). Die Auswahl eines Fensterziels vor der Aufnahme legt es als Aufnahmequelle fest; während einer Aufnahme fügt sie das Fenster zur Aufnahme hinzu und zeigt es an (siehe <a href="recording.html#multi">Mehrere Fenster gleichzeitig aufnehmen</a>). Besuchte Seiten werden pro Projekt gespeichert, nur auf diesem Rechner (bis zu 200).</p>
 
 <!-- @switch-env 70e1c23f78 -->
 ## Umgebungen öffnen und wechseln

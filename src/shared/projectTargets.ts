@@ -207,8 +207,10 @@ export function sanitizeProjectTargets(raw: unknown, newId: () => string = () =>
     const label = text(r.label, 100) || url || windowMatch || launchCommand
     // 区分は app 以外のときだけ持つ（無い・知らない値は app。区分の無かった頃の設定もそのまま app）
     const purpose = sanitizeTargetPurpose(r.purpose)
+    // 録画中の待ち受けは、ウインドウの名前があるときだけ持つ（@shared/captureTracks）
+    const watch = windowMatch && (r.watch === 'record' || r.watch === 'switch') ? r.watch : undefined
     return [{ id, label, ...(url ? { url } : {}), ...(launchCommand ? { launchCommand } : {}), ...(windowMatch ? { windowMatch } : {}),
-      ...(purpose !== 'app' ? { purpose } : {}) }]
+      ...(watch ? { watch } : {}), ...(purpose !== 'app' ? { purpose } : {}) }]
   })
 }
 
@@ -233,6 +235,7 @@ export function updateTarget(targets: readonly ProjectTarget[], id: string, patc
     const merged: ProjectTarget = { ...t, ...patch }
     // 空にした欄は消す（設定ファイルに空文字を残さない）
     for (const key of ['url', 'launchCommand', 'windowMatch'] as const) if (!merged[key]?.trim()) delete merged[key]
+    if (!merged.watch || !merged.windowMatch) delete merged.watch
     if (purposeOf(merged) === 'app') delete merged.purpose
     return merged
   })
@@ -254,6 +257,7 @@ export function moveTarget(targets: readonly ProjectTarget[], from: number, to: 
 function stripEmpty(init: Partial<Omit<ProjectTarget, 'id'>>): Partial<ProjectTarget> {
   const out: Partial<ProjectTarget> = {}
   for (const key of ['url', 'launchCommand', 'windowMatch'] as const) if (init[key]?.trim()) out[key] = init[key]!.trim()
+  if (out.windowMatch && (init.watch === 'record' || init.watch === 'switch')) out.watch = init.watch
   if (purposeOf(init) !== 'app') out.purpose = purposeOf(init)
   return out
 }

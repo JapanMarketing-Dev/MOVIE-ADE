@@ -37,6 +37,7 @@ const FULL = {
   crashReportsNoticeShown: true,
   autoUpdate: false,
   terminalClipboard: 'allow',
+  browserExtensions: [{ path: '/Users/me/ext/picker' }, { path: '/Users/me/ext/off', enabled: false }],
   onboarding: { completedAt: '2026-10-03T00:00:00.000Z' }
 }
 

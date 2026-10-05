@@ -2,6 +2,7 @@ import { defaultLaunchAgent } from '@shared/sendTarget'
 import { Fragment, useEffect, useState, useRef, type DragEvent } from 'react'
 import {
   AlertTriangle,
+  AppWindow,
   CheckCircle2,
   Circle,
   Clipboard,
@@ -30,6 +31,7 @@ import { notifyOrganizerChanged, onOrganizerChanged } from '../lib/organizerEven
 import { Button, EmptyState, IconButton, Modal, Tooltip, useToast } from '../ui'
 import { FindingsEmptyArt } from './reviewArt'
 import { FindingShots } from './ReviewShots'
+import { ReviewCompare, ReviewCompareDone } from './ReviewCompare'
 import { errorMessage } from '../lib/errors'
 import { TargetPurposeIcon } from './TargetPurposeIcon'
 import { useT } from '../lib/i18n'
@@ -44,6 +46,8 @@ import { countByStatus, isStatusShown, sanitizeHiddenStatuses } from '@shared/fi
 import { countProgress, nextProgress, pendingIds, progressOf, type FindingProgress, type ReviewVerdict } from '@shared/findingProgress'
 import { dropPositionAt, moveAmongVisible, stepAmongVisible, type DropPosition } from '@shared/reorder'
 import { reviewFirst, sortByStatus } from '@shared/findingStatusFilter'
+import { afterVerdict, compareNav } from '@shared/compareNav'
+import { sanitizeAfterPath } from '@shared/afterShot'
 
 type FeedbackItem = ReviewData['document']['items'][number]
 
@@ -133,7 +137,7 @@ function ModalClose({ onClose }: { onClose: () => void }) {
 function TargetName({ target }: { target: ReviewTarget }) {
   const t = useT()
   if (target.kind === 'none') return <span className="rv-target__name">{t('review.targets.none')}</span>
-  const Icon = target.kind === 'file' ? FileText : Globe
+  const Icon = target.kind === 'file' ? FileText : target.kind === 'window' ? AppWindow : Globe
   // デザイン・設計書で撮った指摘は、区分のアイコンと名前を出す（Agent にもコードではなくそれらを直すよう伝わる）。
   // 参考（外部サイト）は「参考」の札を出し、そのサイトは直さず自分のアプリへの参考として渡ることを添える
   return <>
@@ -141,7 +145,7 @@ function TargetName({ target }: { target: ReviewTarget }) {
     {target.purpose && <span className="rv-target__env" data-testid="review-target-purpose" data-purpose={target.purpose}
       title={target.purpose === 'reference' ? t('projectTargets.purposeHint.reference') : undefined}>{t(`projectTargets.purpose.${target.purpose}`)}</span>}
     {target.label && <span className="rv-target__env">{target.label}</span>}
-    <span className="rv-target__name">{target.kind === 'file' ? target.name : targetHeading({ ...target, label: undefined })}</span>
+    <span className="rv-target__name">{target.kind === 'file' || target.kind === 'window' ? target.name : targetHeading({ ...target, label: undefined })}</span>
   </>
 }
 
@@ -258,12 +262,12 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
    * 録画の途中で対象（URL・ファイル）を切り替えたら、指摘を対象ごとにまとめる（見出しで分ける。対象で絞るチップは置かない）。
    * 番号はまとめた順に振る（feedback.md の節分けと同じ並び）。
    */
-  const groups = groupByTarget(items, (it) => it.context.url, review.document.meta.urlPresets ?? [])
+  const groups = groupByTarget(items, (it) => it.context.url, review.document.meta.urlPresets ?? [], (it) => it.context.source)
   const grouped = groups.length > 1
   let counter = 0
   /*
    * 確認モード: Agent が直した指摘（human_review）だけを並べ、BEFORE / AFTER を順に見て OK / NG を付ける。
-   * O = OK、N = NG のコメント欄へ、↓ / ↑ = 次 / 前、Esc = 終了。入力欄で打っているときはキーを奪わない
+   * O = OK、N = コメント欄へ（Enter・⌘/Ctrl+Enter で NG として Agent へ送る）、↓ / ↑ = 次 / 前、Esc = 終了。入力欄で打っているときはキーを奪わない
    */
   const [reviewMode, setReviewMode] = useState(false)
   const [reviewIndex, setReviewIndex] = useState(0)
@@ -288,6 +292,33 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
     // 対象の見出しは、絞り込んだあとの各対象の先頭に出す（先頭の指摘が隠れても見出しは残す）
     .map((row, i, all) => ({ ...row, group: i === 0 || all[i - 1]!.owner !== row.owner ? row.owner : null }))
   const currentRow = reviewMode ? rows[Math.min(reviewIndex, rows.length - 1)] : undefined
+  /*
+   * BEFORE と AFTER を大きく比べる画面（ReviewCompare.tsx）。確認待ちならそこで OK / NG / コメントを付け、付けたら次の確認待ちへ進む。
+   * 前後の移動は一覧の表示順（@shared/compareNav）。確認待ちをすべて片付けたら「もうありません」を出す
+   */
+  const [compareId, setCompareId] = useState<string | null>(null)
+  const [compareDone, setCompareDone] = useState(false)
+  const compareOpen = useRef<string | null>(null)
+  compareOpen.current = compareId
+  const hasAfter = (id: string) => !!sanitizeAfterPath((review.progress?.[id] as { after?: unknown } | undefined)?.after)
+  const isAwaiting = (id: string) => { const it = items.find((x) => x.id === id); return !!it && reviewing(it) }
+  const displayOrder = rows.map((row) => row.item.id)
+  const compareRow = compareId ? numbered.find((row) => row.item.id === compareId) : undefined
+  // 開いている指摘が消えた（削除など）ときは閉じたものとして扱う
+  const comparing = !!compareRow || compareDone
+  const closeCompare = () => { setCompareId(null); setCompareDone(false) }
+  const compareVerdict = async (id: string, kind: ReviewVerdict, body?: string, sendNow?: boolean) => {
+    // 判定の前の表示順で次を決める（「確認待ちを上に」だと判定した指摘は下へ動く）
+    const then = afterVerdict(displayOrder, id, isAwaiting, kind)
+    const ok = await verdict(id, kind, body)
+    // コメントを書いて Enter（NG）は、溜めずにその1件をすぐ Agent へ送る（ユーザーの指示）
+    if (ok && kind === 'ng' && sendNow) sendNg([id])
+    // 保存の間に閉じた・別の指摘へ移ったときは動かさない
+    if (!ok || compareOpen.current !== id) return ok
+    if (then.kind === 'go') setCompareId(then.id)
+    else if (then.kind === 'done') { setCompareId(null); setCompareDone(true) }
+    return ok
+  }
   /*
    * 並べ替え（つまみのドラッグ＆ドロップ・つまみで ↑ / ↓）。番号・feedback.md・Agent へ送る順はこの順に従う。
    * 全体の並びは画面の並び（対象ごとにまとめた順）。絞り込み中は見えている中での相対位置で決め、見えない指摘の位置は保つ。
@@ -335,6 +366,12 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
     })
     return ok
   }
+  /** 判定を付け、NG を「今すぐ送る」（Enter・Agent に送信）ならその1件をすぐ Agent へ送る */
+  const verdictAndSend = async (itemId: string, kind: ReviewVerdict, body?: string, sendNow?: boolean) => {
+    const ok = await verdict(itemId, kind, body)
+    if (ok && kind === 'ng' && sendNow) sendNg([itemId])
+    return ok
+  }
   /** NG の指摘をコメントつきで送り直す。itemIds を省くと送り直し待ちすべて（Agent はまた並列で直す） */
   const sendNg = (itemIds?: string[]) => void action(async () => {
     const prompt = await window.ade.invoke('review:ngPrompt', review.id, itemIds)
@@ -343,7 +380,7 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
     toast({ tone: result.ok && result.submitted !== false ? 'success' : 'warning', message: result.ok && result.submitted !== false ? t('review.verdict.sent', { count: prompt.ids.length }) : result.message })
   })
   useEffect(() => {
-    if (!reviewMode) return
+    if (!reviewMode || comparing) return // 比べる画面を開いている間は、そちらがキーを受ける
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null
       if (e.metaKey || e.ctrlKey || e.altKey || (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)))) return
@@ -508,7 +545,7 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
           }}
           className={`rv-card${dragging === item.id ? ' is-dragging' : ''}${dropAt?.id === item.id ? ` is-drop-${dropAt.position}` : ''}${item.include ? '' : ' is-excluded'}${checking ? ' is-checking' : ''}${progressOf(review.progress, item.id) === 'done' ? ' is-done' : ''}${reviewing(item) ? ' is-reviewing' : ''}${currentRow?.item === item ? ' is-current' : ''}`} data-testid={`review-item-${n}`}>
           {/* BEFORE（録画時の静止画）と、Agent が直したあとに撮った AFTER（progress.json の after）。ReviewShots.tsx */}
-          <FindingShots review={review} item={item} n={n} onZoom={(src) => setImage({ src, n })} />
+          <FindingShots review={review} item={item} n={n} onZoom={(src) => setImage({ src, n })} onCompare={() => { setCompareDone(false); setCompareId(item.id) }} />
 
           <div className="rv-card__body">
             <div className="rv-card__top">
@@ -545,7 +582,7 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
                 title={t(unsent ? 'review.addedUnsentTip' : 'review.addedTip', { n: take.n })}>{t('review.addedBadge')}</span>}
             </div>
             {/* Agent が直した指摘（human_review）。人が OK / NG / Comment を付ける。done にできるのは人だけ */}
-            {reviewing(item) && <VerdictPanel n={n} entry={review.progress![item.id]!} busy={busy} onVerdict={(kind, body) => verdict(item.id, kind, body)} />}
+            {reviewing(item) && <VerdictPanel n={n} entry={review.progress![item.id]!} busy={busy} onVerdict={(kind, body, sendNow) => verdictAndSend(item.id, kind, body, sendNow)} />}
             {/* NG を付けて、まだ送り直していない。1件だけ送る操作（まとめて送るのはヘッダー） */}
             {item.include && review.progress?.[item.id]?.queued && <QueuedPanel n={n} entry={review.progress[item.id]!} busy={busy} onSendOne={() => sendNg([item.id])} />}
             {/* 要望は Agent に渡す本文。空に見えると何も伝わらないように見えるので、見出しと同じでもそのまま出す */}
@@ -642,6 +679,11 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
       </div>
     </Modal>}
 
+
+    {compareRow && <ReviewCompare review={review} item={compareRow.item} n={compareRow.n} busy={busy} awaiting={reviewing(compareRow.item)}
+      nav={compareNav(displayOrder, compareRow.item.id, isAwaiting, hasAfter)} onGo={setCompareId}
+      onVerdict={(kind, body, sendNow) => compareVerdict(compareRow.item.id, kind, body, sendNow)} onClose={closeCompare} />}
+    {compareDone && !compareRow && <ReviewCompareDone onClose={closeCompare} />}
 
     {image && <Modal className="rv-modal" label={t('review.findingScreen')} onClose={() => setImage(null)}>
       <div className="rv-modal__media">

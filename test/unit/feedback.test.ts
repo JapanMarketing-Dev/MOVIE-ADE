@@ -53,6 +53,10 @@ describe('feedback.md の生成', () => {
     expect(md).toContain('- 収録: 2026-10-02 10:40 / 1分0秒')
     expect(md).toContain('- 画像内の赤い線はレビュアーのペン書き込み、赤いリングはカーソル位置。')
     expect(md).toContain('- 発話は音声認識によるため、誤変換の可能性がある。')
+    // 文字起こしのファイルの形（エージェントが項目名を推し量って NaN:NaN にしないように）
+    expect(md).toContain('transcript.jsonl')
+    expect(md).toContain('t0・t1 は録画開始からのミリ秒')
+    expect(md).toContain('speaker は self（自分＝レビューした人）か other（相手）')
 
     expect(md).toContain('## 対象 1: localhost:3000\n- URL: http://localhost:3000/')
     expect(md).toContain('### 1. [00:02] 見出しが小さい')

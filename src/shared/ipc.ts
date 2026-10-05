@@ -1,3 +1,4 @@
+import type { BrowserExtensionInfo, InstalledBrowserExtension } from './browserExtensions'
 import type { AgentNotifyOpen, AgentNotifyRequest } from './agentNotify'
 import type { FailoverLaunchRequest, FailoverNotice, LimitFailoverPrefs } from './failover'
 import type { CliToolStatus } from './cliTools'
@@ -201,6 +202,19 @@ export interface IpcRequests {
   'browser:reload': () => void
   'browser:setViewport': (viewport: Viewport) => void
   'browser:state': () => BrowserState
+  /** 内蔵ブラウザの拡張機能の一覧と読み込みの結果（src/main/browserExtensions.ts） */
+  'browserExtensions:list': () => BrowserExtensionInfo[]
+  /** 展開済みの拡張のフォルダを選んで足す（ダイアログは main が出す。パスは画面から受け取らない）。やめたら null */
+  'browserExtensions:addFolder': () => BrowserExtensionInfo[] | null
+  /** Chrome・Edge・Brave などのプロフィールに入っている拡張（取り込みの候補） */
+  'browserExtensions:scanInstalled': () => InstalledBrowserExtension[]
+  /** 候補（直前の scanInstalled の key）を Ferret の設定フォルダへ写して足す */
+  'browserExtensions:import': (key: string) => BrowserExtensionInfo[]
+  'browserExtensions:setEnabled': (path: string, enabled: boolean) => BrowserExtensionInfo[]
+  /** 設定から外す（取り込んだ写しは消す。利用者のフォルダは消さない） */
+  'browserExtensions:remove': (path: string) => BrowserExtensionInfo[]
+  /** ツールバーの拡張機能のボタンのメニュー（at はウインドウの中の位置）。「拡張機能を管理」を選んだら 'manage' */
+  'browserExtensions:menu': (at: { x: number; y: number }) => 'manage' | null
 
   'terminal:create': (options: TerminalCreateOptions) => TerminalTabInfo
   'terminal:write': (id: string, data: string) => void
@@ -265,6 +279,12 @@ export interface IpcRequests {
   'recording:resume': () => RecordingStatus
   'recording:stop': () => RecordingStatus
   'recording:status': () => RecordingStatus
+  /** 録画中に映像を足す（選択画面で選んだ直後だけ）。足したトラックの id。画面もそちらへ切り替える */
+  'recording:addTrack': (target: CaptureTarget) => string
+  /** 画面に映して書き込むトラックを切り替える（録画はどのトラックも続ける） */
+  'recording:switchTrack': (id: string) => void
+  /** 録っている映像（トラック）と待ち受けのいまの状態 */
+  'recording:tracks': () => import('./captureTracks').CaptureTracksState
   'annotation:setMode': (mode: AnnotationMode) => void
   /** 書き込みの色を変え、settings.json（capture.annotationColor）にも残す */
   'annotation:setColor': (color: AnnotationColor) => void
@@ -409,6 +429,8 @@ export interface IpcRequests {
 
 export interface IpcEvents {
   'browser:stateChanged': (state: BrowserState) => void
+  /** 拡張機能の一覧・読み込みの結果が変わった */
+  'browserExtensions:changed': (list: BrowserExtensionInfo[]) => void
   'mode:changed': (mode: AppMode) => void
   'terminal:data': (id: string, data: string) => void
   'terminal:exit': (id: string, exitCode: number) => void
@@ -419,6 +441,8 @@ export interface IpcEvents {
   /** エージェントの設定が変わった（settings:agents の保存後） */
   'agents:changed': (options: AgentOption[]) => void
   'recording:status': (status: RecordingStatus) => void
+  /** 録っている映像（トラック）・映しているもの・待ち受けが変わった */
+  'recording:tracksChanged': (state: import('./captureTracks').CaptureTracksState) => void
   /** 録画の対象を main が変えた（ウインドウを映している間に URL を開いたので内蔵ブラウザへ戻した） */
   'capture:targetChanged': (target: CaptureTarget) => void
   'recording:level': (level: AudioLevel) => void
@@ -561,6 +585,7 @@ export const IPC_REQUEST_CHANNELS = [
   'browser:reload',
   'browser:setViewport',
   'browser:state',
+  'browserExtensions:list', 'browserExtensions:addFolder', 'browserExtensions:scanInstalled', 'browserExtensions:import', 'browserExtensions:setEnabled', 'browserExtensions:remove', 'browserExtensions:menu',
   'terminal:create',
   'terminal:write',
   'terminal:resize',
@@ -577,6 +602,7 @@ export const IPC_REQUEST_CHANNELS = [
   'recording:resume',
   'recording:stop',
   'recording:status',
+  'recording:addTrack', 'recording:switchTrack', 'recording:tracks',
   'annotation:setMode',
   'annotation:setColor',
   'annotation:clear',
@@ -593,6 +619,7 @@ export const IPC_REQUEST_CHANNELS = [
 
 export const IPC_EVENT_CHANNELS = [
   'browser:stateChanged',
+  'browserExtensions:changed',
   'mode:changed',
   'terminal:data',
   'terminal:exit',
@@ -602,6 +629,7 @@ export const IPC_EVENT_CHANNELS = [
   'project:cloneProgress',
   'agents:changed',
   'recording:status',
+  'recording:tracksChanged',
   'recording:level',
   'recording:warning', 'transcript:status', 'transcript:segments', 'capture:targetChanged', 'annotation:history', 'annotation:shortcut', 'capture:modelProgress', 'usage:apiCallsChanged', 'review:ready', 'review:progressChanged',
   'note:added', 'note:mode', 'note:error',

@@ -951,6 +951,38 @@
   color: var(--color-text-muted);
 }
 
+/* 「もっと表示（残り N 件）/ 折りたたむ」。押せる文字として控えめに出す */
+.fb-target--more .fb-target__name {
+  color: var(--color-accent);
+  font-size: var(--font-size-2xs);
+}
+
+/* 見たページの、確認先ごとの小見出し（local · http://localhost:3000） */
+.fb-targets__subgroup {
+  display: flex;
+  height: 100%;
+  box-sizing: border-box;
+  align-items: center;
+  padding: 0 var(--space-3);
+  gap: var(--space-3);
+  font-size: var(--font-size-2xs);
+}
+
+.fb-targets__subgroup-name {
+  flex: none;
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-bold);
+}
+
+.fb-targets__subgroup-detail {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 「エディタで開く」は触れたとき・選んだときだけ出す（行を広く使う） */
 .fb-targets__list .fb-target__editor {
   opacity: 0;
@@ -986,6 +1018,56 @@
 }
 
 .fb-micbtn__name {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 録画中に録っている映像（トラック）のチップ。押すと映すもの（書き込む先）が切り替わる。待ち受けは開くまで薄く出す */
+.fb-tracks {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.fb-track {
+  display: inline-flex;
+  max-width: 11em;
+  height: var(--size-control-sm);
+  align-items: center;
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  gap: var(--space-1);
+}
+
+.fb-track:hover:not(:disabled, .is-waiting) {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.fb-track.is-active {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-wash);
+  color: var(--color-text);
+  cursor: default;
+}
+
+.fb-track.is-waiting {
+  border-style: dashed;
+  border-color: var(--color-border);
+  cursor: default;
+  opacity: 0.7;
+}
+
+.fb-track__label {
   overflow: hidden;
   min-width: 0;
   text-overflow: ellipsis;
@@ -1034,6 +1116,16 @@
 
 .fb-live {
   position: relative;
+}
+
+/* 右パネルの「ターミナル」タブ。エディタと同じターミナル（.terminal-mount）をここへ移して見せる */
+.fb-terminal__slot {
+  display: grid;
+  overflow: hidden;
+  min-height: 0;
+  flex: 1;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  border-top: 1px solid var(--color-border);
 }
 
 .fb-live__status {

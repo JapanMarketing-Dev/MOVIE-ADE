@@ -6,14 +6,15 @@ import {
 } from '@shared/liveTranscript'
 import { useT } from '../lib/i18n'
 import { Segmented, Spinner } from '../ui'
+import type { FeedbackSideTab } from '../lib/feedbackSide'
 
-export type FeedbackSideTab = 'targets' | 'transcript'
+export type { FeedbackSideTab }
 
 /**
- * フィードバックの右パネルの上のタブ（レビュー対象 | 文字起こし）。
- * 文字起こしに問題があれば、タブに警告の印を付ける
+ * フィードバックの右パネルの上のタブ（レビュー対象 | 文字起こし | ターミナル）。
+ * 文字起こしに問題があれば、タブに警告の印を付ける。文字起こしを出さない設定ならそのタブは出さない
  */
-export function FeedbackSideTabs({ value, onChange, alert }: { value: FeedbackSideTab; onChange: (tab: FeedbackSideTab) => void; alert: boolean }) {
+export function FeedbackSideTabs({ value, onChange, alert, showTranscript = true }: { value: FeedbackSideTab; onChange: (tab: FeedbackSideTab) => void; alert: boolean; showTranscript?: boolean }) {
   const t = useT()
   return <Segmented<FeedbackSideTab>
     className="fb-side-tabs"
@@ -22,8 +23,9 @@ export function FeedbackSideTabs({ value, onChange, alert }: { value: FeedbackSi
     onChange={onChange}
     options={[
       { value: 'targets', label: t('feedbackTargets.title'), testId: 'feedback-side-tab-targets' },
-      { value: 'transcript', label: t('liveTranscript.tab'), testId: 'feedback-side-tab-transcript',
-        ...(alert ? { icon: <AlertTriangle className="fb-side-tabs__alert" size={12} strokeWidth={2} aria-label={t('liveTranscript.alert')} />, title: t('liveTranscript.alert') } : {}) }
+      ...(showTranscript ? [{ value: 'transcript' as const, label: t('liveTranscript.tab'), testId: 'feedback-side-tab-transcript',
+        ...(alert ? { icon: <AlertTriangle className="fb-side-tabs__alert" size={12} strokeWidth={2} aria-label={t('liveTranscript.alert')} />, title: t('liveTranscript.alert') } : {}) }] : []),
+      { value: 'terminal', label: t('terminal.label'), testId: 'feedback-side-tab-terminal' }
     ]}
   />
 }

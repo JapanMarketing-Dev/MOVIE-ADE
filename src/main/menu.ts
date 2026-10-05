@@ -88,12 +88,6 @@ function buildMenu(handlers: Parameters<typeof installMenu>[0]): void {
           click: () => handlers.onCommand('toggleMode')
         },
         {
-          // サイドバーの開閉。既存のADEと同じ割り当てにする
-          label: t('menu.toggleSidebar'),
-          accelerator: 'CmdOrCtrl+B',
-          click: () => handlers.onCommand('toggleSidebar')
-        },
-        {
           label: t('menu.toggleExplorer'),
           accelerator: 'CmdOrCtrl+Shift+E',
           click: () => handlers.onCommand('toggleExplorer')

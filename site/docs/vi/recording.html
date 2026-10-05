@@ -28,7 +28,7 @@
   <meta property="og:title" content="Ghi · Tài liệu Ferret">
   <meta property="og:description" content="Ghi trình duyệt tích hợp, toàn màn hình, một cửa sổ khác, ứng dụng desktop, game hoặc trình giả lập điện thoại. Vừa dùng trang vừa nói, khoanh vùng và gõ.">
   <meta property="og:url" content="https://ferretade.dev/docs/vi/recording">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="vi_VN">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Ghi · Tài liệu Ferret">
   <meta name="twitter:description" content="Ghi trình duyệt tích hợp, toàn màn hình, một cửa sổ khác, ứng dụng desktop, game hoặc trình giả lập điện thoại. Vừa dùng trang vừa nói, khoanh vùng và gõ.">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -187,6 +187,24 @@
 <p><span class="docs-ui">Cửa sổ cần ghi</span> của một mục tiêu review khớp với cả tên ứng dụng lẫn tiêu đề cửa sổ, nên <code>Simulator</code> sẽ chọn cửa sổ iOS Simulator bất kể nó đang hiển thị thiết bị nào.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="extensions">
+        <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="Liên kết tới Tiện ích trình duyệt">#</a>Tiện ích trình duyệt</h2>
+        <p>Thêm tiện ích Chrome vào trình duyệt tích hợp trong <span class="docs-ui">Cài đặt → Tiện ích trình duyệt</span>: <span class="docs-ui">Thêm thư mục đã giải nén…</span> cho thư mục có <code>manifest.json</code>, hoặc <span class="docs-ui">Nhập từ Chrome…</span> để sao chép tiện ích đã cài trong Chrome, Edge, Brave hoặc Chromium. Tiện ích chỉ chạy trong trình duyệt tích hợp, không bao giờ chạy trong cửa sổ của chính Ferret. Tiện ích có thể đọc và thay đổi mọi trang bạn mở ở đó và dùng các phiên đăng nhập của nó, vì vậy chỉ thêm những tiện ích bạn tin cậy.</p>
+<p>Mở cửa sổ bật lên của tiện ích bằng <span class="docs-ui">Tiện ích</span> trên thanh công cụ trình duyệt hoặc thanh công cụ phản hồi. Cửa sổ mở ở góc trên bên phải trang và đóng khi bạn bấm chỗ khác hoặc nhấn <kbd>Esc</kbd>. Khi bạn ghi <span class="docs-ui">Trình duyệt tích hợp</span>, cả những thay đổi tiện ích tạo ra trong trang lẫn cửa sổ bật lên đang mở đều có trong video và hình ảnh. Electron chỉ hỗ trợ một phần API tiện ích: bảng bên, menu ngữ cảnh, thông báo, phím tắt và các tab hoặc cửa sổ do tiện ích mở không hoạt động, và không thể tải tệp <code>.crx</code> đã đóng gói.</p>
+<p>Bạn cũng có thể đánh dấu trên cửa sổ bật lên. Khi đang ghi, bấm vào thanh công cụ không đóng cửa sổ bật lên của tiện ích. Khi đang chọn bút hoặc khung, hoặc khi <span class="docs-ui">Góp ý bằng chữ</span> đang bật, bấm vào trang cũng không đóng nó, và <kbd>Esc</kbd> tắt công cụ thay vì đóng cửa sổ. Hãy vẽ bên trong cửa sổ bật lên: dấu sẽ xuất hiện trong video và hình ảnh tại vị trí của cửa sổ bật lên. Tính năng này áp dụng cho cửa sổ bật lên mở sau khi bắt đầu ghi hoặc <span class="docs-ui">Góp ý bằng chữ</span>. Cửa sổ bật lên đăng nhập mà trang mở trong cửa sổ riêng (ví dụ Đăng nhập bằng Google) được ghi thành một video riêng trong lúc nó mở. Khi nó lên phía trước, bút và khung sẽ vẽ trong đó; bấm vào trang để quay lại. Sau khi đăng nhập, nó vẫn tự đóng như trước.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="multi">
+        <h2 id="multi"><a class="docs-anchor" href="#multi" aria-label="Liên kết tới Ghi nhiều cửa sổ cùng lúc">#</a>Ghi nhiều cửa sổ cùng lúc</h2>
+        <p>Một lần ghi có thể ghi tối đa bốn nguồn cùng lúc: trình duyệt tích hợp, cửa sổ ứng dụng desktop và màn hình. Mỗi nguồn được ghi vào video riêng cho đến khi dừng ghi, nên một luồng chuyển qua lại giữa chúng, như ứng dụng web mở ứng dụng desktop rồi quay lại, được ghi lại từ đầu đến cuối.</p>
+<ol class="docs-steps">
+  <li>Trong lúc ghi, bấm <span class="docs-ui">+</span> (<span class="docs-ui">Ghi thêm một cửa sổ cùng lúc</span>) trên thanh ghi rồi chọn một cửa sổ, một màn hình hoặc trình duyệt tích hợp. Bấm vào một mục tiêu là cửa sổ trong bảng <span class="docs-ui">Mục tiêu review</span> cũng tương tự.</li>
+  <li>Bấm vào một chip trên thanh ghi để đổi nguồn đang hiển thị. Bút và hình ảnh của góp ý đi theo nguồn đang hiển thị; các nguồn khác tiếp tục được ghi ở chế độ nền với tối đa 5 khung hình mỗi giây.</li>
+</ol>
+<p>Bạn cũng có thể chờ một cửa sổ chưa mở. Trong <span class="docs-ui">Sửa dự án…</span>, đặt cho mục tiêu một <span class="docs-ui">Cửa sổ cần ghi</span> (tên ứng dụng, một phần tiêu đề cửa sổ, bundle id macOS như <code>com.example.MyApp</code>, hoặc đường dẫn ứng dụng) rồi đặt <span class="docs-ui">Nếu mở trong lúc ghi</span> thành <span class="docs-ui">Ghi cùng</span> hoặc <span class="docs-ui">Ghi và chuyển sang</span>. Trong <code>settings.json</code>, đó là <code>"watch": "record"</code> hoặc <code>"watch": "switch"</code>. Trong lúc ghi, Ferret kiểm tra danh sách cửa sổ mỗi giây một lần. Mục tiêu hiển thị dưới dạng chip viền nét đứt cho đến khi cửa sổ của nó mở, và được ghi lại nếu ứng dụng đóng rồi mở lại.</p>
+<p>Mỗi lần chuyển đều được ghi vào nhật ký thao tác, nên mỗi góp ý biết nó nói về nguồn nào. Các góp ý tạo ra khi đang hiển thị cửa sổ ứng dụng không có URL hay thông tin phần tử, được nhóm dưới cửa sổ đó trong <span class="docs-ui">Góp ý</span> và <code>feedback.md</code>, và agent được cho biết đó là cửa sổ ứng dụng. Các video bổ sung được lưu trong thư mục review ở <code>tracks/</code>, với thời điểm bắt đầu và kết thúc trong <code>tracks.jsonl</code>. Trên Windows và Linux chỉ biết được tiêu đề cửa sổ, nên tên được so với tiêu đề. Chờ cửa sổ không khả dụng trên Linux với Wayland, nơi mỗi lần liệt kê cửa sổ đều yêu cầu bạn chọn một; thay vào đó, hãy thêm cửa sổ bằng <span class="docs-ui">+</span> sau khi nó mở.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="record">
         <h2 id="record"><a class="docs-anchor" href="#record" aria-label="Liên kết tới Bắt đầu, tạm dừng, dừng">#</a>Bắt đầu, tạm dừng, dừng</h2>
         <figure class="docs-clip" data-clip="record">
@@ -245,6 +263,11 @@
 <p>Nếu chuyển văn bản thất bại, chưa có mô hình hoặc khóa, khoảng 2 phút giọng nói không thành chữ, hoặc không có âm thanh nào đến micro, Ferret sẽ cảnh báo một lần và đánh dấu nút của bảng bên phải, kể cả khi tab đang đóng. Việc ghi vẫn tiếp tục và âm thanh được giữ lại. Để ẩn tab, hãy tắt <span class="docs-ui">Hiện văn bản trực tiếp khi ghi (bảng bên phải của chế độ phản hồi)</span> trong <span class="docs-ui">Cài đặt → Chuyển văn bản</span>. Cảnh báo vẫn hiện.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="feedback-terminal">
+        <h2 id="feedback-terminal"><a class="docs-anchor" href="#feedback-terminal" aria-label="Liên kết tới Nói với agent trong lúc ghi">#</a>Nói với agent trong lúc ghi</h2>
+        <p>Bảng bên phải của chế độ phản hồi còn có tab <span class="docs-ui">Terminal</span>. Đây là chính terminal ở chế độ Editor, không phải shell mới: cùng các tab, cùng các agent đang chạy (ví dụ Claude Code hoặc Codex) và lịch sử của chúng. Chọn một tab ở trên cùng rồi gõ, ví dụ để báo cho agent rằng <code>localhost</code> chưa chạy. Khi quay lại chế độ Editor, terminal vẫn ở trạng thái như cũ. Ghi trình duyệt tích hợp hoặc cửa sổ của ứng dụng khác sẽ không ghi terminal.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="other-side">
         <h2 id="other-side"><a class="docs-anchor" href="#other-side" aria-label="Liên kết tới Ghi cả phía bên kia của cuộc họp">#</a>Ghi cả phía bên kia của cuộc họp</h2>
         <p>Để cùng review một trang trong cuộc gọi, hãy để Ferret ghi cả những gì bạn nghe từ máy tính, bên cạnh microphone. Cách này dùng được với mọi ứng dụng họp (Zoom, Google Meet, Microsoft Teams và các ứng dụng khác), vì Ferret ghi âm thanh của máy tính chứ không phải của ứng dụng. Hai nguồn được giữ riêng: microphone của bạn được chuyển văn bản thành <strong>Tôi</strong>, âm thanh của máy tính thành <strong>Người khác</strong>, nên mỗi góp ý cho thấy ai yêu cầu điều gì. Cách này cũng dùng được khi microphone của bạn đang tắt.</p>
@@ -293,12 +316,15 @@
       <ul>
         <li><a href="#target">Chọn nội dung cần ghi</a></li>
         <li><a href="#desktop-mobile">Ứng dụng desktop, game và ứng dụng di động</a></li>
+        <li><a href="#extensions">Tiện ích trình duyệt</a></li>
+        <li><a href="#multi">Ghi nhiều cửa sổ cùng lúc</a></li>
         <li><a href="#record">Bắt đầu, tạm dừng, dừng</a></li>
         <li><a href="#pen">Bút</a></li>
         <li><a href="#type">Gõ thay vì nói</a></li>
         <li><a href="#annotations-clear">Khi nào nét bút biến mất</a></li>
         <li><a href="#mic">Microphone</a></li>
         <li><a href="#live-transcript">Xem nội dung đang được chuyển thành văn bản</a></li>
+        <li><a href="#feedback-terminal">Nói với agent trong lúc ghi</a></li>
         <li><a href="#other-side">Ghi cả phía bên kia của cuộc họp</a></li>
         <li><a href="#other-side-os">Âm thanh hệ thống theo hệ điều hành</a></li>
         <li><a href="#other-side-tips">Mẹo cho cuộc họp</a></li>

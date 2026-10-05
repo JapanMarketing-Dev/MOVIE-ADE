@@ -28,7 +28,7 @@
   <meta property="og:title" content="Recording · Ferret docs">
   <meta property="og:description" content="Record the built-in browser, an entire screen, another window, a desktop app, a game, or a phone simulator. Talk, circle, and type while you use the page.">
   <meta property="og:url" content="https://ferretade.dev/docs/recording">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="en_US">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Recording · Ferret docs">
   <meta name="twitter:description" content="Record the built-in browser, an entire screen, another window, a desktop app, a game, or a phone simulator. Talk, circle, and type while you use the page.">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -187,6 +187,24 @@
 <p>A review target's <span class="docs-ui">Window to record</span> matches the app name as well as the window title, so <code>Simulator</code> selects the iOS Simulator window whatever device it shows.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="extensions">
+        <h2 id="extensions"><a class="docs-anchor" href="#extensions" aria-label="Link to Browser extensions">#</a>Browser extensions</h2>
+        <p>Add Chrome extensions to the built-in browser in <span class="docs-ui">Settings → Browser extensions</span>: <span class="docs-ui">Add unpacked folder…</span> for a folder that contains <code>manifest.json</code>, or <span class="docs-ui">Import from Chrome…</span> to copy one already installed in Chrome, Edge, Brave or Chromium. Extensions run only in the built-in browser, never in Ferret's own windows. They can read and change every page you open there and use its sign-ins, so add only extensions you trust.</p>
+<p>Open an extension's popup with <span class="docs-ui">Extensions</span> in the browser toolbar or the feedback toolbar. It opens at the top right of the page and closes when you click elsewhere or press <kbd>Esc</kbd>. When you record the <span class="docs-ui">Built-in Browser</span>, what an extension changes inside the page and the open popup are both in the video and the images. Electron supports only part of the extension APIs: side panels, context menus, notifications, keyboard shortcuts, and tabs or windows opened by an extension don't work, and packed <code>.crx</code> files can't be loaded.</p>
+<p>You can mark up popups too. While recording, clicking the toolbar doesn't close an extension's popup. With the pen or the box selected, or while <span class="docs-ui">Type feedback</span> is on, clicking the page doesn't close it either, and <kbd>Esc</kbd> turns the tool off instead. Draw inside the popup: the marks appear in the video and the images at the popup's position. This works for popups opened after the recording or <span class="docs-ui">Type feedback</span> started. A sign-in popup that a page opens in its own window (for example Sign in with Google) is recorded as a separate video while it is open. When it comes to the front, the pen and the box draw in it; clicking the page switches back. It still closes by itself after you sign in.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="multi">
+        <h2 id="multi"><a class="docs-anchor" href="#multi" aria-label="Link to Record several windows at once">#</a>Record several windows at once</h2>
+        <p>One recording can capture up to four views at the same time: the built-in browser, desktop app windows, and screens. Each one is recorded to its own video until the recording stops, so a flow that moves between them, such as a web app that opens a desktop app and then goes back, is captured from start to end.</p>
+<ol class="docs-steps">
+  <li>While recording, click <span class="docs-ui">+</span> (<span class="docs-ui">Record another window at the same time</span>) in the recording bar and choose a window, a screen, or the built-in browser. Clicking a window target in the <span class="docs-ui">Review targets</span> panel does the same.</li>
+  <li>Click a chip in the recording bar to switch the view that is shown. The pen and the images for findings follow the view you show; the others keep recording in the background at up to 5 frames per second.</li>
+</ol>
+<p>You can also wait for a window that isn't open yet. In <span class="docs-ui">Edit Project…</span>, give a target a <span class="docs-ui">Window to record</span> (an app name, part of the window title, a macOS bundle id such as <code>com.example.MyApp</code>, or the path of the app) and set <span class="docs-ui">When it opens while recording</span> to <span class="docs-ui">Record it too</span> or <span class="docs-ui">Record it and switch to it</span>. In <code>settings.json</code> this is <code>"watch": "record"</code> or <code>"watch": "switch"</code>. While recording, Ferret checks the window list once a second. The target shows as a dashed chip until its window opens, and it is recorded again if the app closes and opens again.</p>
+<p>Every switch is written to the action log, so each finding knows which view it was about. Findings made while an app window was shown have no URL or element info, are grouped under that window in <span class="docs-ui">Findings</span> and <code>feedback.md</code>, and the agent is told it was an app window. The extra videos are saved in the review folder under <code>tracks/</code>, with their start and end times in <code>tracks.jsonl</code>. On Windows and Linux only window titles are known, so the name is matched against the title. Waiting for a window isn't available on Linux under Wayland, where listing windows asks you to pick one every time; add the window with <span class="docs-ui">+</span> after it opens instead.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="record">
         <h2 id="record"><a class="docs-anchor" href="#record" aria-label="Link to Start, pause, stop">#</a>Start, pause, stop</h2>
         <figure class="docs-clip" data-clip="record">
@@ -245,6 +263,11 @@
 <p>If transcription fails, no model or key is set, about 2 minutes of voice produce no text, or no sound reaches the microphone, Ferret warns you once and marks the right panel button, even when the tab is closed. Recording continues and the audio is kept. To hide the tab, turn off <span class="docs-ui">Show the live transcript while recording (right panel of feedback mode)</span> in <span class="docs-ui">Settings → Transcription</span>. The warnings still appear.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="feedback-terminal">
+        <h2 id="feedback-terminal"><a class="docs-anchor" href="#feedback-terminal" aria-label="Link to Talk to your agent while recording">#</a>Talk to your agent while recording</h2>
+        <p>The right panel in feedback mode also has a <span class="docs-ui">Terminal</span> tab. It is the same terminal as in Editor mode, not a new shell: the same tabs, the same running agents (for example Claude Code or Codex) and their history. Pick a tab at its top and type, for example to tell the agent that <code>localhost</code> is not running. Back in Editor mode, the terminal shows the same state. Recording the built-in browser or another app's window does not include the terminal.</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="other-side">
         <h2 id="other-side"><a class="docs-anchor" href="#other-side" aria-label="Link to Record the other side of a meeting">#</a>Record the other side of a meeting</h2>
         <p>To review a page together on a call, let Ferret record what you hear from your computer as well as your microphone. This works with any meeting app (Zoom, Google Meet, Microsoft Teams, and others), because Ferret records your computer's audio, not the app. The two are kept apart: your microphone is transcribed as <strong>Me</strong> and your computer's audio as <strong>Other</strong>, so each finding shows who asked for what. It also works with your microphone turned off.</p>
@@ -293,12 +316,15 @@
       <ul>
         <li><a href="#target">Choose what to record</a></li>
         <li><a href="#desktop-mobile">Desktop apps, games, and mobile apps</a></li>
+        <li><a href="#extensions">Browser extensions</a></li>
+        <li><a href="#multi">Record several windows at once</a></li>
         <li><a href="#record">Start, pause, stop</a></li>
         <li><a href="#pen">Pen</a></li>
         <li><a href="#type">Type feedback instead of talking</a></li>
         <li><a href="#annotations-clear">When marks disappear</a></li>
         <li><a href="#mic">Microphone</a></li>
         <li><a href="#live-transcript">See what is being transcribed</a></li>
+        <li><a href="#feedback-terminal">Talk to your agent while recording</a></li>
         <li><a href="#other-side">Record the other side of a meeting</a></li>
         <li><a href="#other-side-os">System audio by OS</a></li>
         <li><a href="#other-side-tips">Tips for meetings</a></li>

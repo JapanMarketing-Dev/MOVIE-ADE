@@ -1,3 +1,4 @@
+import { fakeCapturePath } from './fakeCapture'
 import { registerRecorderContents } from '../captureConsent'
 import { BrowserWindow, ipcMain, nativeImage, type NativeImage, type Streams, type WebContents } from 'electron'
 import { constants, createWriteStream, type WriteStream } from 'node:fs'
@@ -34,7 +35,8 @@ const RECORDER_CHANNELS = {
   stopped: 'ade-recorder:stopped',
   started: 'ade-recorder:started',
   grab: 'ade-recorder:grab',
-  frame: 'ade-recorder:frame'
+  frame: 'ade-recorder:frame',
+  overlay: 'ade-recorder:overlay'
 } as const
 
 /**
@@ -66,11 +68,15 @@ interface StartPayload {
   systemAudioEndAfterMs?: number
   /** 検証用。OS の取り込み（ループバック）を使わない。古い取り込み方に逃げない */
   systemAudioSynthetic: boolean
+  /** 検証用（E2E の偽の画面・ウインドウ。fakeCapture.ts）。画面・ウインドウの代わりに canvas の映像を録る */
+  syntheticDesktop?: boolean
   micDeviceId?: string
   videoBitsPerSecond: number
   videoMaxWidth: number
   videoMaxFrameRate: number
   videoTimesliceMs: number
+  /** タブの映像の上に、拡張機能のポップアップの映像を重ねてから録る（recorder.ts の OverlayCompositor） */
+  composite: boolean
   /** 録画ウィンドウが出すエラーの文。画面の言語で main が組み立てて渡す（録画ウィンドウは辞書を持たない） */
   messages: Record<RecorderMessageKey, string>
 }
@@ -108,7 +114,12 @@ export class RecorderWindow {
   constructor(
     private readonly htmlPath: string,
     private readonly preloadPath: string,
-    private readonly handlers: RecorderWindowHandlers
+    private readonly handlers: RecorderWindowHandlers,
+    /**
+     * 映像だけを録る（同じ録画の2本目以降のトラック。@shared/captureTracks）。音は1本目の録画ウインドウが録るので、
+     * 相手の声の取り込み（session 全体の getDisplayMedia の受け口）には触らない
+     */
+    private readonly videoOnly = false
   ) {}
 
   get videoBytes(): number {
@@ -138,7 +149,7 @@ export class RecorderWindow {
      * 相手の声は getDisplayMedia で取る。映像はこのウインドウ自身（画面収録の許可が要らない）、音声は PC のループバック。
      * 同じ session のほかのページ（アプリの画面・プレビュー）の getDisplayMedia は、これまでどおり断る
      */
-    window.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
+    if (!this.videoOnly) window.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
       const plan = this.systemAudioPlan
       const own = this.window && !this.window.isDestroyed() ? this.window.webContents.mainFrame : null
       const fromRecorder = !!own && !!request.frame && request.frame.processId === own.processId && request.frame.routingId === own.routingId
@@ -227,8 +238,8 @@ export class RecorderWindow {
 
     // tab は自アプリ内の webContents を指す「タブ録画」のID。OSの画面収録権限は要らない
     const sourceId = source.kind === 'tab' ? source.contents.getMediaSourceId(window.webContents) : source.sourceId
-    const synthetic = options.syntheticSystemAudio
-    let captureSystemAudio = options.captureSystemAudio
+    const synthetic = this.videoOnly ? undefined : options.syntheticSystemAudio
+    let captureSystemAudio = options.captureSystemAudio && !this.videoOnly
     this.systemAudioPlan = null
     if (captureSystemAudio && synthetic) {
       // 検証用: 内蔵ブラウザのページの音を PC の音声の代わりにする（画面全体・別のウインドウのときは鳴らす元が無い）
@@ -247,17 +258,19 @@ export class RecorderWindow {
       sourceId,
       startedAtEpoch,
       platform: process.platform,
-      captureMic: options.captureMic,
-      syntheticMic: options.syntheticMic === true,
+      captureMic: options.captureMic && !this.videoOnly,
+      syntheticMic: options.syntheticMic === true && !this.videoOnly,
       syntheticMicWavBase64: options.syntheticMicWavBase64,
       captureSystemAudio,
       systemAudioSynthetic: !!synthetic,
+      ...(source.kind === 'desktop' && fakeCapturePath() ? { syntheticDesktop: true } : {}),
       ...(synthetic === 'ends' ? { systemAudioEndAfterMs: 2500 } : {}),
       micDeviceId: options.micDeviceId,
       videoBitsPerSecond: options.videoBitsPerSecond,
       videoMaxWidth: options.videoMaxWidth,
       videoMaxFrameRate: options.videoMaxFrameRate,
       videoTimesliceMs: options.videoTimesliceMs,
+      composite: source.kind === 'tab' && options.overlayCompositing === true,
       // {{message}} / {{source}} は録画ウィンドウ側で埋める
       messages: {
         videoEnded: t('recorder.videoEnded'),
@@ -275,6 +288,31 @@ export class RecorderWindow {
       this.startedResolve = () => { clearTimeout(timer); this.startedResolve = null; resolve() }
       window.webContents.send(RECORDER_CHANNELS.start, payload)
     })
+  }
+
+  /** 重ねている中身と、その取り込みの ID（同じ中身なら ID を作り直さない） */
+  private overlaySource: { contents: WebContents; id: string } | null = null
+
+  /**
+   * タブの映像の上に重ねるもの（拡張機能のポップアップ）を録画ウインドウへ渡す。null で外す。
+   * 映像はタブ録画と同じ取り込み（getMediaSourceId。OS の画面収録の許可は要らない）。合成しない録画（composite 切）では録画ウインドウが無視する
+   */
+  setOverlay(overlay: { contents: WebContents; rect: { x: number; y: number; width: number; height: number } } | null): void {
+    const window = this.window
+    if (!window || window.isDestroyed()) return
+    if (!overlay || overlay.contents.isDestroyed()) {
+      this.overlaySource = null
+      window.webContents.send(RECORDER_CHANNELS.overlay, null)
+      return
+    }
+    try {
+      if (this.overlaySource?.contents !== overlay.contents) this.overlaySource = { contents: overlay.contents, id: overlay.contents.getMediaSourceId(window.webContents) }
+      window.webContents.send(RECORDER_CHANNELS.overlay, { sourceId: this.overlaySource.id, rect: overlay.rect })
+    } catch (err) {
+      // ポップアップが閉じた直後など。重ねずに録画は続ける
+      this.overlaySource = null
+      reportHandled(err, { area: 'recording', op: 'overlay source' })
+    }
   }
 
   /** 録画用ウインドウが閉じた（静止画を撮れない） */
@@ -330,7 +368,8 @@ export class RecorderWindow {
 
   dispose(): void {
     this.systemAudioPlan = null
-    if (this.window && !this.window.isDestroyed()) this.window.webContents.session.setDisplayMediaRequestHandler(null)
+    this.overlaySource = null
+    if (!this.videoOnly && this.window && !this.window.isDestroyed()) this.window.webContents.session.setDisplayMediaRequestHandler(null)
     for (const [channel, handler] of this.listeners) ipcMain.off(channel, handler)
     this.listeners.length = 0
     for (const resolve of this.grabs.values()) resolve(null)

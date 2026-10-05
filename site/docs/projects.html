@@ -28,7 +28,7 @@
   <meta property="og:title" content="Projects and URLs · Ferret docs">
   <meta property="og:description" content="A project is a folder (usually your repo root). Each project keeps its own saved URLs, so local, dev, and production are one click apart.">
   <meta property="og:url" content="https://ferretade.dev/docs/projects">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="en_US">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Projects and URLs · Ferret docs">
   <meta name="twitter:description" content="A project is a folder (usually your repo root). Each project keeps its own saved URLs, so local, dev, and production are one click apart.">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -214,7 +214,7 @@
   <li><strong><span class="docs-ui">Files</span></strong>: the project folder. A file opens as a preview (Markdown and Mermaid rendered, other text read-only), so you can review docs too. The pencil (<span class="docs-ui">Open in editor</span>) opens it in the editor.</li>
 </ul>
 <p><span class="docs-ui">Filter targets</span> filters targets, pages, and files together, with the same fuzzy matching as <span class="docs-ui">Go to File…</span>. In the list, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> or <kbd>1</kbd>–<kbd>9</kbd> switch targets. <span class="docs-ui">Open URL…</span> opens a one-off URL, and <span class="docs-ui">Save to project URLs</span> keeps it.</p>
-<p>Targets come from <code>projects[].urls</code> in <code>settings.json</code> (see <a href="settings-json.html#example">the example</a>). Each entry needs a <code>url</code>, a <code>launchCommand</code> (run in a terminal, e.g. to start a desktop app), or a <code>windowMatch</code> (the window to record), and can have a <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> or <code>reference</code>). Picking a window target sets it as the recording source, so it can't be done while recording. Visited pages are remembered per project, on this machine only (up to 200).</p>
+<p>Targets come from <code>projects[].urls</code> in <code>settings.json</code> (see <a href="settings-json.html#example">the example</a>). Each entry needs a <code>url</code>, a <code>launchCommand</code> (run in a terminal, e.g. to start a desktop app), or a <code>windowMatch</code> (the window to record), and can have a <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> or <code>reference</code>). Picking a window target before recording sets it as the recording source; while recording, it adds that window to the recording and shows it (see <a href="recording.html#multi">Record several windows at once</a>). Visited pages are remembered per project, on this machine only (up to 200).</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">

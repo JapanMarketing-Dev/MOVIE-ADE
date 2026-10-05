@@ -16,7 +16,7 @@ describe.each([
   const html = read(file)
 
   it('og:image・og:url・canonical は config.js の SITE_URL から作った絶対 URL（ずれたら pnpm site:meta）', () => {
-    expect(attr(html, /<meta property="og:image" content="([^"]*)"/)).toMatch(new RegExp(`^${escapeRegExp(SITE_URL)}/assets/og\\.png\\?v=[0-9a-f]{8}$`))
+    expect(attr(html, /<meta property="og:image" content="([^"]*)"/)).toMatch(new RegExp(`^${escapeRegExp(SITE_URL)}/assets/ferret-og\\.png\\?v=[0-9a-f]{8}$`))
     expect(attr(html, /<meta property="og:url" content="([^"]*)"/)).toBe(`${SITE_URL}${path}`)
     expect(attr(html, /<link rel="canonical" href="([^"]*)"/)).toBe(`${SITE_URL}${path}`)
   })
@@ -28,9 +28,9 @@ describe.each([
     expect(attr(html, /<meta name="twitter:card" content="([^"]*)"/)).toBe('summary_large_image')
     expect(attr(html, /<meta name="twitter:title" content="([^"]*)"/)).toBe(attr(html, /<meta property="og:title" content="([^"]*)"/))
     expect(attr(html, /<meta name="twitter:description" content="([^"]*)"/)).toBe(attr(html, /<meta property="og:description" content="([^"]*)"/))
-    expect(attr(html, /<meta name="twitter:image" content="([^"]*)"/)).toMatch(new RegExp(`^${escapeRegExp(SITE_URL)}/assets/og\\.png\\?v=[0-9a-f]{8}$`))
+    expect(attr(html, /<meta name="twitter:image" content="([^"]*)"/)).toMatch(new RegExp(`^${escapeRegExp(SITE_URL)}/assets/ferret-og\\.png\\?v=[0-9a-f]{8}$`))
     // og.png の実寸がメタの寸法と合う（PNG の IHDR）
-    const png = readFileSync(resolve(__dirname, '../..', 'site/assets/og.png'))
+    const png = readFileSync(resolve(__dirname, '../..', 'site/assets/ferret-og.png'))
     expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1200, 630])
   })
 

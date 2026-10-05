@@ -28,6 +28,22 @@
 <p>游戏的用法相同。选择显示着游戏视图的 Unity、Unreal Engine 或 Godot 编辑器窗口，或者你构建的游戏的窗口（包括无边框窗口模式）。对于独占全屏的游戏，请在 <span class="docs-ui">整个屏幕</span> 下选择它所在的显示器。当窗口是这些编辑器之一时，<code>feedback.md</code> 会写明引擎，并让 Agent 修改游戏的代码、场景或资源。为了让文件保持较小，视频最多以每秒 10 帧录制；问题的图像也取自同一段视频，因此与时间轴上的那一刻一致。</p>
 <p>审查对象的 <span class="docs-ui">要录制的窗口</span> 既匹配窗口标题，也匹配应用名称，因此填写 <code>Simulator</code> 时，无论显示的是哪台设备，都会选中 iOS Simulator 的窗口。</p>
 
+<!-- @extensions b0aca6defb -->
+## 浏览器扩展
+<p>在 <span class="docs-ui">设置 → 浏览器扩展</span> 中为内置浏览器添加 Chrome 扩展：包含 <code>manifest.json</code> 的文件夹用 <span class="docs-ui">添加已解压的文件夹…</span>，已安装在 Chrome、Edge、Brave 或 Chromium 中的扩展用 <span class="docs-ui">从 Chrome 导入…</span> 复制过来。扩展只在内置浏览器中运行，不会进入 Ferret 自身的窗口。扩展可以读取和修改你在其中打开的所有页面，并使用其中的登录状态，所以请只添加你信任的扩展。</p>
+<p>用浏览器工具栏或反馈工具栏中的 <span class="docs-ui">扩展</span> 打开扩展的弹出窗口。它在页面右上角打开，点击其他地方或按 {{keys:Esc}} 即关闭。录制 <span class="docs-ui">内置浏览器</span> 时，扩展在页面中做出的变化和打开的弹出窗口都会出现在视频和图片中。Electron 只支持部分扩展 API：侧边栏、右键菜单、通知、键盘快捷键，以及扩展打开的标签页或窗口都无法使用，也无法加载打包的 <code>.crx</code> 文件。</p>
+<p>弹出窗口上也可以标注。录制时点击工具栏不会关闭扩展的弹出窗口。选中画笔或方框时，或 <span class="docs-ui">文字反馈</span> 打开时，点击页面也不会关闭它，{{keys:Esc}} 会关闭工具而不是关闭弹出窗口。在弹出窗口里画的标注会按弹出窗口的位置出现在视频和图片中。仅适用于开始录制或 <span class="docs-ui">文字反馈</span> 之后打开的弹出窗口。页面在单独窗口中打开的登录弹出窗口（例如使用 Google 登录）在打开期间会录制为单独的视频。它来到前台时，画笔和方框会画在其中；点击页面即切换回来。登录完成后它仍会自动关闭。</p>
+
+<!-- @multi b274435007 -->
+## 同时录制多个窗口
+<p>一次录制可以同时录下最多 4 个画面：内置浏览器、桌面应用的窗口和屏幕。每个画面都单独录成一个视频，直到停止录制，因此在它们之间来回切换的流程（例如 Web 应用打开桌面应用后再返回）也能从头到尾录下来。</p>
+<ol class="docs-steps">
+  <li>录制中，点击录制栏中的 <span class="docs-ui">+</span>（<span class="docs-ui">同时录制另一个窗口</span>），然后选择一个窗口、屏幕或内置浏览器。在 <span class="docs-ui">审查对象</span> 面板中点击窗口类目标也一样。</li>
+  <li>点击录制栏中的标签即可切换显示的画面。画笔和反馈的图片跟随当前显示的画面；其他画面在后台继续以每秒最多 5 帧录制。</li>
+</ol>
+<p>也可以等待尚未打开的窗口。在 <span class="docs-ui">编辑项目…</span> 中为目标填写 <span class="docs-ui">要录制的窗口</span>（应用名、窗口标题的一部分、<code>com.example.MyApp</code> 这样的 macOS bundle ID，或应用的路径），并把 <span class="docs-ui">录制中打开时</span> 设为 <span class="docs-ui">一起录制</span> 或 <span class="docs-ui">录制并切换过去</span>。在 <code>settings.json</code> 中对应 <code>"watch": "record"</code> 或 <code>"watch": "switch"</code>。录制中，Ferret 每秒检查一次窗口列表。窗口打开前，目标显示为虚线标签；应用关闭后再次打开时也会重新录制。</p>
+<p>每次切换都会写入操作日志，因此每条反馈都知道它针对的是哪个画面。显示应用窗口期间做出的反馈不带 URL 和元素信息，在 <span class="docs-ui">反馈</span> 和 <code>feedback.md</code> 中归到该窗口下，并告诉 Agent 这是一个应用窗口。额外的视频保存在审查文件夹的 <code>tracks/</code> 下，开始和结束时间记录在 <code>tracks.jsonl</code> 中。在 Windows 和 Linux 上只能得知窗口标题，所以用名称去匹配标题。在 Linux 的 Wayland 下无法等待窗口，因为每次列出窗口时都会要求你选择一个；请在窗口打开后用 <span class="docs-ui">+</span> 添加。</p>
+
 <!-- @record deb62ed37c -->
 ## 开始、暂停、停止
 {{clip:record|录制：一边讲解页面，一边用画笔圈出位置。}}
@@ -76,6 +92,10 @@
 ## 查看转写内容
 <p>录制时，打开反馈模式右侧面板顶部的 <span class="docs-ui">转写</span> 标签，就能以文字形式查看你说的话及其时间（同时录制会议对方的声音时，还会显示是谁说的）。说完稍作停顿，几秒后就会出现文字，因此可以尽早确认所说的内容是否被记录下来。顶部一行显示 <span class="docs-ui">正在转写</span>、等待中的段数，或转写停止的原因。</p>
 <p>如果转写失败、没有设置模型或密钥、约 2 分钟的语音没有转成文字，或麦克风没有收到声音，即使标签已关闭，Ferret 也会提示一次，并在右侧面板按钮上做标记。录制会继续，音频也会保留。要隐藏该标签，请在 <span class="docs-ui">设置 → 转写</span> 中关闭 <span class="docs-ui">录制时显示实时转写（反馈模式的右侧面板）</span>。警告仍会显示。</p>
+
+<!-- @feedback-terminal f54f6bbd16 -->
+## 录制时向 Agent 发话
+<p>反馈模式的右侧面板还有一个 <span class="docs-ui">终端</span> 标签。它不是新的 shell，而是与编辑器模式相同的终端：同样的标签、同样正在运行的 Agent（例如 Claude Code 或 Codex）及其历史。在顶部选择一个标签并输入，例如告诉 Agent <code>localhost</code> 没有启动。回到编辑器模式后，终端保持同样的状态。录制内置浏览器或其他应用的窗口时，不会录进终端。</p>
 
 <!-- @other-side bf51c46448 -->
 ## 录制会议中对方的声音

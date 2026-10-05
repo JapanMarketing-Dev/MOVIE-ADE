@@ -11,6 +11,7 @@ import type {
   NavEvent,
   ViewportEvent,
 } from './types'
+import { activeTrackAt } from '@shared/captureTracks'
 import { isAnnotation } from './types'
 // 直前の操作は feedback.md に入る。時刻を t と呼ぶ関数があるので別名にする
 import { t as translateMessage } from '@shared/i18n'
@@ -39,6 +40,12 @@ export function buildItemContext(
 ): ItemContext {
   const opt = { ...defaultContextOptions, ...options }
   const sorted = [...events].sort((a, b) => a.t - b.t)
+
+  // 複数の映像を録って切り替えた録画で、内蔵ブラウザ以外を映していた時刻の指摘。内蔵ブラウザの URL・要素・操作は付けない
+  const track = activeTrackAt(sorted, t)
+  if (track?.type === 'track' && track.kind !== 'browser') {
+    return { source: { track: track.track, kind: track.kind, label: track.label } }
+  }
 
   const nav = lastOfType(sorted, 'nav', t) as NavEvent | undefined
   const viewportEvent = lastOfType(sorted, 'viewport', t) as ViewportEvent | undefined

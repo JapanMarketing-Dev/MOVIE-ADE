@@ -13,6 +13,7 @@ import { AccountsSection } from './AccountsSection'
 import { AgentIcon } from './AgentIcon'
 import { AgentResourcesSection } from './AgentResourcesSection'
 import { CliToolsSection } from './CliToolsSection'
+import { BrowserExtensionsSection } from './BrowserExtensionsSection'
 import { LayoutSettings } from './LayoutSettings'
 import { TranscriptionSection } from './TranscriptionSection'
 import { OrganizeSection } from './OrganizeSection'
@@ -399,6 +400,10 @@ export function SettingsPage({
     accounts: <PageSection key="accounts" id="accounts" title={titleOf('accounts')} bare>
       {/* 外側の section・見出し・保存（IPC で即時）はアカウント欄が自分で持つ */}
       <AccountsSection />
+    </PageSection>,
+    extensions: <PageSection key="extensions" id="extensions" title={titleOf('extensions')}>
+      {/* 内蔵ブラウザの Chrome 拡張。読み込み・保存は main が行う（src/renderer/components/BrowserExtensionsSection.tsx） */}
+      <BrowserExtensionsSection recording={recording} />
     </PageSection>,
     cli: <PageSection key="cli" id="cli" title={titleOf('cli')}>
       {/* よく使うサービスの CLI。ボタンで公式のコマンドを内蔵ターミナルの新しいタブで走らせる（src/renderer/components/CliToolsSection.tsx） */}

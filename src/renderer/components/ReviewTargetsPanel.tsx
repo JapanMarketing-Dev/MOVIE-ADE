@@ -14,9 +14,9 @@ import {
   isCurrentEntry,
   moveSelection,
   type TargetEntry,
-  type UrlTreeGroup,
   type UrlTreeNode
 } from '@shared/reviewTarget'
+import { layoutReviewPanel, toggleExpanded, type LayoutItem } from '@shared/reviewPanelLayout'
 import { errorMessage } from '../lib/errors'
 import { useT } from '../lib/i18n'
 import { requestTerminalCommand } from '../lib/terminalCommand'
@@ -28,11 +28,12 @@ import { TargetPurposeIcon } from './TargetPurposeIcon'
  * フィードバックモードの右パネル（レビュー対象）。
  *
  * 事前に設定したものが最初から全部並んでいて、1クリックで切り替えられる（1件ずつ足す必要はない）。
- *   - 確認先: プロジェクトの確認先（local / dev / prd・自由な名前・ウインドウ）。URL の確認先の下には、
- *     このプロジェクトで見たページをパスの木にして並べる（URL ツリー。shared/reviewTarget.ts の buildUrlTree）
+ *   - 確認先: プロジェクトの確認先（local / dev / prd・自由な名前・ウインドウ）。登録したものは全部まとめて先頭に並べる
+ *   - 見たページ: 確認先ごとに、このプロジェクトで見たページをパスの木にして並べる（URL ツリー。shared/reviewTarget.ts の buildUrlTree）。
+ *     木と「最近開いた URL」は、まとまりごとに先頭の 5 件だけを出し、残りは「もっと表示」で開く（shared/reviewPanelLayout.ts）
  *   - ファイル: プロジェクトのフォルダツリー（右の Files パネルと同じ状態・同じ絞り込み。fileTree.tsx）。
  *     押すと ade-preview:// で開く（md / Mermaid は描画、それ以外のテキストは読み取り専用のコード）
- * 検索欄は1つで、確認先・ページ・ファイルをまとめて ⌘P と同じあいまい一致で探す（一致した文字を強調）。
+ * 検索欄は1つで、確認先・ページ（畳んだものも含む）・ファイルをまとめて ⌘P と同じあいまい一致で探す（一致した文字を強調）。
  * ↑↓ と Enter、一覧に焦点があるときは 1〜9（見えている先頭の対象）で切り替える。録画は止めない。
  *
  * 対象を切り替えると、録画側の「ページが変わったら書き込みを確定して消す」流れ（controller.ts）がそのまま働き、
@@ -62,14 +63,16 @@ function recentParts(url: string): { name: string; detail: string } {
 type PanelRow =
   | { type: 'section'; id: string; label: string }
   | { type: 'target'; id: string; entry: TargetEntry; registered: boolean }
+  | { type: 'pagesHead'; id: string; label: string; url: string }
   | { type: 'page'; id: string; node: UrlTreeNode }
+  | { type: 'more'; id: string; key: string; rest: number; expanded: boolean }
   | { type: 'recent'; id: string; url: string; saved: boolean }
   | { type: 'add'; id: string }
   | { type: 'file'; id: string; row: FileTreeRow }
   | { type: 'hit'; id: string; hit: PanelSearchHit }
   | { type: 'note'; id: string; text: string }
 
-const selectable = (row: PanelRow) => row.type !== 'section' && row.type !== 'note'
+const selectable = (row: PanelRow) => row.type !== 'section' && row.type !== 'note' && row.type !== 'pagesHead'
 /** 押すと対象を開く行（1〜9 の番号を振るもの）。フォルダと「URL を開く…」は開かない */
 const openable = (row: PanelRow) => row.type === 'target' || row.type === 'page' || row.type === 'recent' || row.type === 'hit' || (row.type === 'file' && row.row.entry.kind === 'file')
 
@@ -81,7 +84,6 @@ export function ReviewTargetsPanel({
   onOpenUrl,
   onOpenEditor,
   onSelectWindow,
-  recording = false,
   head,
   hidden
 }: {
@@ -98,8 +100,6 @@ export function ReviewTargetsPanel({
   onOpenEditor: (path: string) => void
   /** ウインドウの確認先を録画の対象に選ぶ（App の selectWindowTarget。許可の確認と照合を済ませる） */
   onSelectWindow?: (windowMatch: string, launched: boolean) => void
-  /** 録画中か。録画中は録画の対象（ウインドウ）を切り替えられない */
-  recording?: boolean
   /** パネルの頭に題の代わりに出すもの（「レビュー対象 | 文字起こし」のタブ）。省略時は題 */
   head?: ReactNode
   /** 文字起こしのタブを見ている間は隠す（検索の文字などは残す） */
@@ -111,6 +111,8 @@ export function ReviewTargetsPanel({
   const [selected, setSelected] = useState(-1)
   const [adding, setAdding] = useState<{ url: string; keep: boolean } | null>(null)
   const [allFiles, setAllFiles] = useState<string[] | null>(null)
+  /** 「もっと表示」で開いているまとまり（見たページは確認先ごと、最近開いた URL は1つ）。保存はしない */
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
   const tree = useFileTree(root, { expandedKey: project ? expandedStorageKey('feedbackTree', project.id) : null })
 
   // 検索に使うファイルの一覧（⌘P と同じ fs:files）。探し始めたときに1度だけ読む
@@ -128,33 +130,38 @@ export function ReviewTargetsPanel({
   const groups = useMemo(() => buildUrlTree(presets, history, kind), [presets, history, kind])
   const currentPath = previewPathFromUrl(currentUrl)
 
-  // 確認先ごとに、その下の URL ツリーを並べる。ウインドウの確認先は木を持たない
-  const targetRows = useMemo(() => {
-    const rows: PanelRow[] = []
-    const byId = new Map(groups.map((g) => [g.id, g]))
-    const pushGroup = (group: UrlTreeGroup | undefined) => {
-      for (const node of group?.nodes ?? []) rows.push({ type: 'page', id: `page:${node.key}`, node })
-    }
-    for (const entry of targets) {
-      rows.push({ type: 'target', id: entry.id, entry, registered: true })
-      const presetId = presets.find((p) => entry.id === `target:${p.id}` || (p.url && entry.url === p.url))?.id
-      pushGroup(presetId ? byId.get(presetId) : undefined)
-    }
-    return rows
-  }, [targets, groups, presets])
-
-  // 最近開いた URL（新しい順）。登録した確認先とは別に、そのまま押して開ける
-  const recentRows = useMemo<PanelRow[]>(() => {
+  // 最近開いた URL（新しい順・上限まで）。登録した確認先とは別に、そのまま押して開ける
+  const recentUrls = useMemo(() => {
     const list = Array.isArray(history) ? history.filter((u): u is string => typeof u === 'string' && u.length > 0) : []
-    return list.slice(0, RECENT_LIMIT).map((url) => ({
-      type: 'recent' as const,
-      id: `recent:${url}`,
-      url,
-      saved: presets.some((p) => p.url && pageKey(p.url) === pageKey(url))
-    }))
-  }, [history, presets])
+    return list.slice(0, RECENT_LIMIT)
+  }, [history])
 
-  const searchSources = useMemo<PanelSearchSource[]>(() => [...targetRows, ...recentRows].flatMap((row): PanelSearchSource[] => {
+  // 登録した確認先は全部まとめて先頭に。見たページと最近開いた URL は、まとまりごとに 5 件まで（残りは「もっと表示」）
+  const layout = useMemo(() => layoutReviewPanel({ targets, groups, recent: recentUrls, expanded }), [targets, groups, recentUrls, expanded])
+  const recentRow = (url: string): PanelRow => ({
+    type: 'recent',
+    id: `recent:${url}`,
+    url,
+    saved: presets.some((p) => p.url && pageKey(p.url) === pageKey(url))
+  })
+  const toRow = (item: LayoutItem): PanelRow => {
+    switch (item.type) {
+      case 'target': return { type: 'target', id: item.entry.id, entry: item.entry, registered: true }
+      case 'pagesHead': return { type: 'pagesHead', id: `pages:${item.groupId}`, label: item.label, url: item.url }
+      case 'page': return { type: 'page', id: `page:${item.node.key}`, node: item.node }
+      case 'recent': return recentRow(item.url)
+      case 'more': return { type: 'more', id: `more:${item.key}`, key: item.key, rest: item.rest, expanded: item.expanded }
+    }
+  }
+
+  // 検索と、検索の結果から開く行は、畳んだものも含めた全部から
+  const allRows = useMemo<PanelRow[]>(() => {
+    const full = layoutReviewPanel({ targets, groups, recent: recentUrls, expanded: new Set(), limit: Number.POSITIVE_INFINITY })
+    return [...full.targets, ...full.pages, ...full.recent].map(toRow)
+    // toRow は presets だけに依る
+  }, [targets, groups, recentUrls, presets])
+
+  const searchSources = useMemo<PanelSearchSource[]>(() => allRows.flatMap((row): PanelSearchSource[] => {
     if (row.type === 'target') return [{ id: row.id, kind: 'target', text: `${row.entry.title} ${row.entry.detail}` }]
     if (row.type === 'recent') return [{ id: row.id, kind: 'url', text: row.url }]
     if (row.type === 'page') {
@@ -162,7 +169,7 @@ export function ReviewTargetsPanel({
       return [{ id: row.id, kind: 'url', text: `${group?.label ?? ''} ${row.node.path}` }]
     }
     return []
-  }), [targetRows, recentRows, groups])
+  }), [allRows, groups])
 
   const searching = query.trim().length > 0
   const rows = useMemo<PanelRow[]>(() => {
@@ -172,17 +179,22 @@ export function ReviewTargetsPanel({
       return hits.map((hit) => ({ type: 'hit', id: `hit:${hit.id}`, hit }))
     }
     const out: PanelRow[] = [{ type: 'section', id: 's:targets', label: t('feedbackTargets.group.saved') }]
-    if (targetRows.length === 0) out.push({ type: 'note', id: 'n:targets', text: t('feedbackTargets.noSaved') })
-    out.push(...targetRows, { type: 'add', id: 'add' })
+    if (layout.targets.length === 0) out.push({ type: 'note', id: 'n:targets', text: t('feedbackTargets.noSaved') })
+    out.push(...layout.targets.map(toRow), { type: 'add', id: 'add' })
+    if (layout.pages.length > 0) {
+      out.push({ type: 'section', id: 's:pages', label: t('feedbackTargets.group.pages') })
+      out.push(...layout.pages.map(toRow))
+    }
     out.push({ type: 'section', id: 's:recent', label: t('feedbackTargets.group.recent') })
-    if (recentRows.length === 0) out.push({ type: 'note', id: 'n:recent', text: t('feedbackTargets.noRecent') })
-    else out.push(...recentRows)
+    if (layout.recent.length === 0) out.push({ type: 'note', id: 'n:recent', text: t('feedbackTargets.noRecent') })
+    else out.push(...layout.recent.map(toRow))
     out.push({ type: 'section', id: 's:files', label: t('feedbackTargets.group.file') })
     if (!root) out.push({ type: 'note', id: 'n:files', text: t('fileExplorer.empty') })
     else if (tree.error) out.push({ type: 'note', id: 'n:files', text: tree.error })
     else out.push(...tree.rows.map((row) => ({ type: 'file' as const, id: `file:${row.entry.path}`, row })))
     return out
-  }, [searching, query, searchSources, allFiles, targetRows, recentRows, root, tree.error, tree.rows, t])
+    // toRow は presets だけに依る
+  }, [searching, query, searchSources, allFiles, layout, presets, root, tree.error, tree.rows, t])
 
   // 1〜9 は、見えている先頭の「開く行」に振る
   const numbers = useMemo(() => {
@@ -208,9 +220,8 @@ export function ReviewTargetsPanel({
     }
     if (entry.url) onOpenUrl(entry.url)
     if (!entry.windowMatch) return
-    // 録画の対象は録画を始めるときに決まるので、録画中は切り替えない
-    if (recording) toast({ tone: 'warning', message: t('feedbackTargets.windowWhileRecording', { window: entry.windowMatch }) })
-    else onSelectWindow?.(entry.windowMatch, launched)
+    // 録画していなければ録画の対象に選ぶ。録画中は同時に録る映像として足し、画面もそちらへ切り替える（App の selectWindowTarget）
+    onSelectWindow?.(entry.windowMatch, launched)
   }
 
   const openFile = (path: string) => {
@@ -234,13 +245,16 @@ export function ReviewTargetsPanel({
       case 'add':
         setAdding({ url: '', keep: false })
         return
+      case 'more':
+        setExpanded((prev) => toggleExpanded(prev, row.key))
+        return
       case 'file':
         if (row.row.entry.kind === 'directory') tree.toggleDir(row.row.entry)
         else openFile(row.row.entry.path)
         return
       case 'hit': {
         if (row.hit.kind === 'file') return openFile(row.hit.text)
-        activate([...targetRows, ...recentRows].find((r) => r.id === row.hit.id))
+        activate(allRows.find((r) => r.id === row.hit.id))
         return
       }
     }
@@ -299,13 +313,19 @@ export function ReviewTargetsPanel({
     if (row.type === 'page') return !!currentUrl && pageKey(row.node.url) === pageKey(currentUrl)
     if (row.type === 'recent') return !!currentUrl && pageKey(row.url) === pageKey(currentUrl)
     if (row.type === 'file') return row.row.entry.path === currentPath
-    if (row.type === 'hit') return row.hit.kind === 'file' ? row.hit.text === currentPath : isCurrent([...targetRows, ...recentRows].find((r) => r.id === row.hit.id) ?? row)
+    if (row.type === 'hit') return row.hit.kind === 'file' ? row.hit.text === currentPath : isCurrent(allRows.find((r) => r.id === row.hit.id) ?? row)
     return false
   }
 
   const renderRow = (row: PanelRow, index: number): ReactNode => {
     if (row.type === 'section') return <div className="fb-targets__group">{row.label}</div>
     if (row.type === 'note') return <p className="fb-targets__empty" title={row.text}>{row.text}</p>
+    if (row.type === 'pagesHead') {
+      return <div className="fb-targets__subgroup" title={row.url}>
+        <span className="fb-targets__subgroup-name">{row.label}</span>
+        <span className="fb-targets__subgroup-detail">{row.url}</span>
+      </div>
+    }
     const current = isCurrent(row)
     const num = numbers.get(row.id)
     const className = `fb-target${current ? ' is-current' : ''}${index === selected ? ' is-selected' : ''}`
@@ -354,6 +374,13 @@ export function ReviewTargetsPanel({
             <BookmarkPlus size={13} strokeWidth={1.75} />
           </button>
         )}
+      </div>
+    }
+    if (row.type === 'more') {
+      const label = row.expanded ? t('feedbackTargets.less') : t('feedbackTargets.more', { rest: row.rest })
+      return <div {...common} className={`${className} fb-target--more`} aria-expanded={row.expanded} data-testid="feedback-targets-more">
+        {numCell}
+        <span className="fb-target__name">{label}</span>
       </div>
     }
     if (row.type === 'add') {

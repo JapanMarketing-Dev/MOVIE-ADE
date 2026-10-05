@@ -28,7 +28,7 @@
   <meta property="og:title" content="Dự án và URL · Tài liệu Ferret">
   <meta property="og:description" content="Một dự án là một thư mục (thường là thư mục gốc của repo). Mỗi dự án giữ các URL đã lưu của riêng nó, nên local, dev và production chỉ cách nhau một cú bấm.">
   <meta property="og:url" content="https://ferretade.dev/docs/vi/projects">
-  <meta property="og:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="vi_VN">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -37,7 +37,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Dự án và URL · Tài liệu Ferret">
   <meta name="twitter:description" content="Một dự án là một thư mục (thường là thư mục gốc của repo). Mỗi dự án giữ các URL đã lưu của riêng nó, nên local, dev và production chỉ cách nhau một cú bấm.">
-  <meta name="twitter:image" content="https://ferretade.dev/assets/og.png?v=07c6706b">
+  <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="../../favicon.svg?v=ad226cca" type="image/svg+xml">
   <link rel="icon" href="../../favicon-32.png?v=f16b20d2" type="image/png" sizes="32x32">
@@ -214,7 +214,7 @@
   <li><strong><span class="docs-ui">Tệp</span></strong>: thư mục dự án. Một tệp được mở dưới dạng xem trước (Markdown và Mermaid được hiển thị, văn bản khác ở chế độ chỉ đọc), nên bạn cũng có thể review tài liệu. Biểu tượng bút chì (<span class="docs-ui">Mở trong editor</span>) mở tệp trong editor.</li>
 </ul>
 <p><span class="docs-ui">Lọc mục tiêu</span> lọc cùng lúc mục tiêu, trang và tệp, với cách khớp gần đúng giống <span class="docs-ui">Đi đến tệp…</span>. Trong danh sách, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> hoặc <kbd>1</kbd>–<kbd>9</kbd> để chuyển mục tiêu. <span class="docs-ui">Mở URL…</span> mở một URL dùng một lần, và <span class="docs-ui">Lưu vào URL của dự án</span> giữ lại URL đó.</p>
-<p>Mục tiêu lấy từ <code>projects[].urls</code> trong <code>settings.json</code> (xem <a href="settings-json.html#example">ví dụ</a>). Mỗi mục cần một <code>url</code>, một <code>launchCommand</code> (chạy trong terminal, ví dụ để khởi động ứng dụng desktop), hoặc một <code>windowMatch</code> (cửa sổ cần ghi), và có thể có <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> hoặc <code>reference</code>). Chọn một mục tiêu là cửa sổ sẽ đặt nó làm nguồn ghi, nên không thể làm việc này trong lúc đang ghi. Các trang đã truy cập được ghi nhớ theo từng dự án, chỉ trên máy này (tối đa 200).</p>
+<p>Mục tiêu lấy từ <code>projects[].urls</code> trong <code>settings.json</code> (xem <a href="settings-json.html#example">ví dụ</a>). Mỗi mục cần một <code>url</code>, một <code>launchCommand</code> (chạy trong terminal, ví dụ để khởi động ứng dụng desktop), hoặc một <code>windowMatch</code> (cửa sổ cần ghi), và có thể có <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> hoặc <code>reference</code>). Chọn một mục tiêu là cửa sổ trước khi ghi sẽ đặt nó làm nguồn ghi; trong lúc ghi, thao tác này thêm cửa sổ đó vào bản ghi và hiển thị nó (xem <a href="recording.html#multi">Ghi nhiều cửa sổ cùng lúc</a>). Các trang đã truy cập được ghi nhớ theo từng dự án, chỉ trên máy này (tối đa 200).</p>
       </section>
 
       <section class="docs-section" aria-labelledby="switch-env">

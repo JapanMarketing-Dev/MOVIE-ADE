@@ -25,8 +25,10 @@ import { extractJson, spawnText, type SpawnTextOptions, type SpawnTextResult } f
 import { isInheritedAgentSessionEnv } from '../../../inheritedAgentEnv'
 
 interface ClaudeCodeRunnerOptions {
-  /** 実行パス。既定は PATH 上の claude */
+  /** 実行ファイルの名前か絶対パス。既定は claude。プロジェクトの外の絶対パスの PATH の項目からだけ探す（spawn.ts の resolveOrganizerCli。security-6 [6]） */
   binary?: string;
+  /** 開いているプロジェクトのフォルダ。この中の claude は起動しない */
+  project?: string
   /** 既定モデル */
   model?: string;
   /** 推論の深さ。構造化抽出なので既定は low（速度優先） */
@@ -84,6 +86,8 @@ export function childEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessE
 export class ClaudeCodeRunner implements LlmRunner {
   readonly id = 'claude-code'
   private readonly binary: string
+  /** 開いているプロジェクト。この中の CLI は起動しない（security-6 [6]） */
+  private readonly project: string | undefined
   private readonly defaultModel: string
   private readonly effort: string
   private readonly accountEnv: () => Record<string, string>
@@ -93,6 +97,7 @@ export class ClaudeCodeRunner implements LlmRunner {
     this.accountEnv = options.accountEnv ?? (() => ({}))
     this.spawn = options.spawn ?? spawnText
     this.binary = options.binary ?? 'claude'
+    this.project = options.project
     this.defaultModel = options.model ?? CLAUDE_CODE_ORGANIZE_DEFAULT_MODEL
     this.effort = options.effort ?? 'low'
   }
@@ -101,6 +106,7 @@ export class ClaudeCodeRunner implements LlmRunner {
     try {
       const r = await this.spawn({
         binary: this.binary,
+        ...(this.project ? { project: this.project } : {}),
         args: ['--version'],
         cwd: process.cwd(),
         timeoutMs: 15_000,
@@ -137,6 +143,7 @@ export class ClaudeCodeRunner implements LlmRunner {
     try {
       r = await this.spawn({
         binary: this.binary,
+        ...(this.project ? { project: this.project } : {}),
         args,
         cwd: workDir,
         timeoutMs: req.timeoutMs,

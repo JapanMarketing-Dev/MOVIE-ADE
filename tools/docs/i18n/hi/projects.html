@@ -43,7 +43,7 @@
 </table>
 {{shot:url-presets|ब्राउज़र टूलबार में सेव किए गए URL}}
 
-<!-- @review-targets 9c48e48820 -->
+<!-- @review-targets 5ca6dd4b29 -->
 ## Review targets पैनल
 {{clip:targets|रिकॉर्डिंग रोके बिना review targets और पेज बदलना।}}
 <p>Feedback मोड में, दाईं ओर का <span class="docs-ui">Review targets</span> पैनल मौजूदा प्रोजेक्ट में review की जा सकने वाली हर चीज़ की सूची दिखाता है। Target बदलने से रिकॉर्डिंग नहीं रुकती। पैनल को <span class="docs-ui">दृश्य → Review targets टॉगल करें</span> ({{keys:Mod+Shift+K}}) या <span class="docs-ui">पैनल छिपाएँ</span> से टॉगल करें।</p>
@@ -52,7 +52,7 @@
   <li><strong><span class="docs-ui">फ़ाइलें</span></strong>: प्रोजेक्ट फ़ोल्डर। फ़ाइल प्रीव्यू के रूप में खुलती है (Markdown और Mermaid render होकर, बाकी टेक्स्ट सिर्फ़ पढ़ने के लिए), ताकि आप दस्तावेज़ों का भी review कर सकें। पेंसिल (<span class="docs-ui">editor में खोलें</span>) उसे editor में खोलती है।</li>
 </ul>
 <p><span class="docs-ui">targets फ़िल्टर करें</span> targets, पेज और फ़ाइलें, तीनों को एक साथ फ़िल्टर करता है, <span class="docs-ui">फ़ाइल पर जाएँ…</span> जैसी ही fuzzy matching के साथ। सूची में <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> या <kbd>1</kbd>–<kbd>9</kbd> से targets बदलते हैं। <span class="docs-ui">URL खोलें…</span> एक बार के लिए कोई URL खोलता है, और <span class="docs-ui">प्रोजेक्ट URL में सहेजें</span> उसे रख लेता है।</p>
-<p>Targets <code>settings.json</code> के <code>projects[].urls</code> से आते हैं (<a href="settings-json.html#example">उदाहरण</a> देखें)। हर entry में एक <code>url</code>, एक <code>launchCommand</code> (टर्मिनल में चलता है, जैसे कोई डेस्कटॉप ऐप शुरू करने के लिए), या एक <code>windowMatch</code> (रिकॉर्ड की जाने वाली विंडो) होना चाहिए, और उसमें एक <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> या <code>reference</code>) भी हो सकता है। विंडो वाला target चुनने पर वह रिकॉर्डिंग का source बन जाता है, इसलिए यह रिकॉर्डिंग के दौरान नहीं किया जा सकता। देखे गए पेज हर प्रोजेक्ट के लिए सिर्फ़ इसी मशीन पर याद रखे जाते हैं (अधिकतम 200)।</p>
+<p>Targets <code>settings.json</code> के <code>projects[].urls</code> से आते हैं (<a href="settings-json.html#example">उदाहरण</a> देखें)। हर entry में एक <code>url</code>, एक <code>launchCommand</code> (टर्मिनल में चलता है, जैसे कोई डेस्कटॉप ऐप शुरू करने के लिए), या एक <code>windowMatch</code> (रिकॉर्ड की जाने वाली विंडो) होना चाहिए, और उसमें एक <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> या <code>reference</code>) भी हो सकता है। रिकॉर्डिंग से पहले विंडो वाला target चुनने पर वह रिकॉर्डिंग का source बन जाता है; रिकॉर्डिंग के दौरान चुनने पर वह विंडो रिकॉर्डिंग में जुड़ जाती है और दिखने लगती है (देखें <a href="recording.html#multi">कई विंडो एक साथ रिकॉर्ड करें</a>)। देखे गए पेज हर प्रोजेक्ट के लिए सिर्फ़ इसी मशीन पर याद रखे जाते हैं (अधिकतम 200)।</p>
 
 <!-- @switch-env 70e1c23f78 -->
 ## Environments खोलें और बदलें

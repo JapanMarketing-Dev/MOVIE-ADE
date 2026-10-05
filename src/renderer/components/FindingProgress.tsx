@@ -2,6 +2,7 @@ import { useState, type Ref } from 'react'
 import { Check, CheckCircle2, Circle, CircleDot, Eye, ListFilter, MessageSquare, Send, X } from 'lucide-react'
 import { countProgress, lastVerdict, type FindingProgress, type ProgressEntry, type ProgressMap, type ReviewVerdict } from '@shared/findingProgress'
 import { REPLY_MAX } from '@shared/agentPrompt'
+import { verdictKeySends } from '@shared/verdictKeys'
 import type { TranslationKey } from '@shared/i18n'
 import { Button, Tooltip } from '../ui'
 import { useT } from '../lib/i18n'
@@ -101,30 +102,39 @@ const VERDICT_LABEL: Record<ReviewVerdict, TranslationKey> = { ok: 'review.verdi
 
 /**
  * 「Agent が直しました。確認してください」（human_review）。人が OK（完了）/ NG（コメントつきで差し戻し）/ Comment（判断せずにメモ）を付ける。
- * NG と Comment は本文が必須。⌘Enter / Ctrl+Enter は Comment ではなく NG（差し戻し）として送る。BEFORE / AFTER の画像は ReviewShots が出す
+ * NG と Comment は本文が必須。コメントを書いて Enter・⌘/Ctrl+Enter・［Agent に送信］は、NG を付けてその1件をすぐ Agent へ送る（変換の確定の Enter は除く）。BEFORE / AFTER の画像は ReviewShots が出す
  */
 export function VerdictPanel({ n, entry, busy, onVerdict, inputRef }: {
   n: number
   entry: ProgressEntry
   busy?: boolean
-  onVerdict: (verdict: ReviewVerdict, text?: string) => Promise<boolean>
+  onVerdict: (verdict: ReviewVerdict, text?: string, sendNow?: boolean) => Promise<boolean>
+
   /** 確認モードで N を押したときに、ここへ入力を移す */
   inputRef?: Ref<HTMLTextAreaElement>
 }) {
   const t = useT()
   const [body, setBody] = useState('')
   const last = entry.history?.at(-1)
-  const submit = (verdict: ReviewVerdict) => void onVerdict(verdict, verdict === 'ok' ? body.trim() || undefined : body.trim()).then((ok) => ok && setBody(''))
+  const submit = (verdict: ReviewVerdict, sendNow?: boolean) => void onVerdict(verdict, verdict === 'ok' ? body.trim() || undefined : body.trim(), sendNow).then((ok) => ok && setBody(''))
   return <div className="rv-verdict" role="group" aria-label={t('review.verdict.title')} data-testid={`review-verdict-${n}`}>
     <p className="rv-verdict__title"><Eye size={14} strokeWidth={2.25} aria-hidden="true" />{t('review.verdict.title')}</p>
     {entry.note && <p className="rv-verdict__note">{entry.note}</p>}
     {last && <p className="rv-verdict__last">{t('review.verdict.last', { verdict: t(VERDICT_LABEL[last.verdict]) })}{last.text ? ` — ${last.text}` : ''}</p>}
-    <textarea ref={inputRef} className="rv-verdict__input" aria-label={t('review.verdict.label', { n })} placeholder={t('review.verdict.placeholder')}
+    <textarea ref={inputRef} className="rv-verdict__input" aria-label={t('review.verdict.label', { n })} placeholder={t('review.compare.placeholder')}
       value={body} maxLength={REPLY_MAX} rows={2} disabled={busy} onChange={(e) => setBody(e.target.value)} data-testid={`review-verdict-input-${n}`}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && body.trim()) { e.preventDefault(); submit('ng') }
+        /*
+         * コメントを書いて Enter（または ⌘/Ctrl+Enter）で、NG を付けてその1件をすぐ Agent へ送る（ユーザーの指示）。
+         * 日本語の変換を確定する Enter（isComposing・keyCode 229）では送らない。Shift+Enter は改行
+         */
+        if (verdictKeySends({ key: e.key, shiftKey: e.shiftKey, altKey: e.altKey, isComposing: e.nativeEvent.isComposing, keyCode: e.keyCode })) {
+          e.preventDefault()
+          if (body.trim() && !busy) submit('ng', true)
+        }
         // 確認モードの Esc（終了）より先に、入力欄から抜けるだけにする
-        if (e.key === 'Escape') { e.stopPropagation(); e.currentTarget.blur() }
+        // 比べる画面（dialog）でも、Esc は閉じずに入力欄から抜けるだけ（preventDefault で dialog の cancel を止める）
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); e.currentTarget.blur() }
       }} />
     <div className="rv-verdict__actions">
       <Tooltip side="bottom" label={t('review.verdict.okTip')}>
@@ -132,6 +142,9 @@ export function VerdictPanel({ n, entry, busy, onVerdict, inputRef }: {
       </Tooltip>
       <Tooltip side="bottom" label={t('review.verdict.ngTip')}>
         <Button variant="default" className="rv-verdict__ng" icon={<X size={13} />} disabled={busy || !body.trim()} data-testid={`review-verdict-ng-${n}`} onClick={() => submit('ng')}>{t('review.verdict.ng')}</Button>
+      </Tooltip>
+      <Tooltip side="bottom" label={t('review.verdict.sendNowTip')}>
+        <Button variant="default" className="rv-verdict__send" icon={<Send size={13} />} disabled={busy || !body.trim()} data-testid={`review-verdict-send-${n}`} onClick={() => submit('ng', true)}>{t('review.verdict.sendNow')}</Button>
       </Tooltip>
       <Tooltip side="bottom" label={t('review.verdict.commentTip')}>
         <Button variant="ghost" icon={<MessageSquare size={13} />} disabled={busy || !body.trim()} data-testid={`review-verdict-comment-${n}`} onClick={() => submit('comment')}>{t('review.verdict.comment')}</Button>

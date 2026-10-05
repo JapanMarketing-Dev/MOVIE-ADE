@@ -43,7 +43,7 @@ Một dự án là một thư mục (thường là thư mục gốc của repo).
 </table>
 {{shot:url-presets|URL đã lưu trên thanh công cụ của trình duyệt}}
 
-<!-- @review-targets 9c48e48820 -->
+<!-- @review-targets 5ca6dd4b29 -->
 ## Panel mục tiêu review
 {{clip:targets|Chuyển mục tiêu review và trang mà không dừng ghi.}}
 <p>Trong chế độ Feedback, panel <span class="docs-ui">Mục tiêu review</span> ở bên phải liệt kê mọi thứ bạn có thể review trong dự án hiện tại. Chuyển mục tiêu không làm dừng việc ghi. Bật/tắt panel bằng <span class="docs-ui">Xem → Bật/tắt mục tiêu review</span> ({{keys:Mod+Shift+K}}) hoặc <span class="docs-ui">Ẩn panel</span>.</p>
@@ -52,7 +52,7 @@ Một dự án là một thư mục (thường là thư mục gốc của repo).
   <li><strong><span class="docs-ui">Tệp</span></strong>: thư mục dự án. Một tệp được mở dưới dạng xem trước (Markdown và Mermaid được hiển thị, văn bản khác ở chế độ chỉ đọc), nên bạn cũng có thể review tài liệu. Biểu tượng bút chì (<span class="docs-ui">Mở trong editor</span>) mở tệp trong editor.</li>
 </ul>
 <p><span class="docs-ui">Lọc mục tiêu</span> lọc cùng lúc mục tiêu, trang và tệp, với cách khớp gần đúng giống <span class="docs-ui">Đi đến tệp…</span>. Trong danh sách, <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Enter</kbd> hoặc <kbd>1</kbd>–<kbd>9</kbd> để chuyển mục tiêu. <span class="docs-ui">Mở URL…</span> mở một URL dùng một lần, và <span class="docs-ui">Lưu vào URL của dự án</span> giữ lại URL đó.</p>
-<p>Mục tiêu lấy từ <code>projects[].urls</code> trong <code>settings.json</code> (xem <a href="settings-json.html#example">ví dụ</a>). Mỗi mục cần một <code>url</code>, một <code>launchCommand</code> (chạy trong terminal, ví dụ để khởi động ứng dụng desktop), hoặc một <code>windowMatch</code> (cửa sổ cần ghi), và có thể có <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> hoặc <code>reference</code>). Chọn một mục tiêu là cửa sổ sẽ đặt nó làm nguồn ghi, nên không thể làm việc này trong lúc đang ghi. Các trang đã truy cập được ghi nhớ theo từng dự án, chỉ trên máy này (tối đa 200).</p>
+<p>Mục tiêu lấy từ <code>projects[].urls</code> trong <code>settings.json</code> (xem <a href="settings-json.html#example">ví dụ</a>). Mỗi mục cần một <code>url</code>, một <code>launchCommand</code> (chạy trong terminal, ví dụ để khởi động ứng dụng desktop), hoặc một <code>windowMatch</code> (cửa sổ cần ghi), và có thể có <code>purpose</code> (<code>app</code>, <code>design</code>, <code>doc</code> hoặc <code>reference</code>). Chọn một mục tiêu là cửa sổ trước khi ghi sẽ đặt nó làm nguồn ghi; trong lúc ghi, thao tác này thêm cửa sổ đó vào bản ghi và hiển thị nó (xem <a href="recording.html#multi">Ghi nhiều cửa sổ cùng lúc</a>). Các trang đã truy cập được ghi nhớ theo từng dự án, chỉ trên máy này (tối đa 200).</p>
 
 <!-- @switch-env 70e1c23f78 -->
 ## Mở và chuyển môi trường

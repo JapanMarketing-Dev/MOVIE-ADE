@@ -28,6 +28,22 @@
 <p>遊戲的用法相同。選擇顯示著遊戲檢視的 Unity、Unreal Engine 或 Godot 編輯器視窗，或你建置的遊戲視窗（包括無邊框視窗模式）。若遊戲為獨占全螢幕，請在 <span class="docs-ui">整個螢幕</span> 下選擇它所在的顯示器。當視窗是這些編輯器之一時，<code>feedback.md</code> 會寫明引擎，並請 Agent 修改遊戲的程式碼、場景或素材。為了讓檔案保持精簡，影像最多以每秒 10 格錄製；問題的圖片也取自同一段影像，因此與時間軸上的那一刻一致。</p>
 <p>審查目標的 <span class="docs-ui">要錄製的視窗</span> 除了視窗標題，也會比對應用程式名稱，因此填入 <code>Simulator</code> 時，無論顯示的是哪個裝置，都會選到 iOS Simulator 的視窗。</p>
 
+<!-- @extensions b0aca6defb -->
+## 瀏覽器擴充功能
+<p>在 <span class="docs-ui">設定 → 瀏覽器擴充功能</span> 中為內建瀏覽器加入 Chrome 擴充功能：含有 <code>manifest.json</code> 的資料夾用 <span class="docs-ui">加入已解壓縮的資料夾…</span>，已安裝在 Chrome、Edge、Brave 或 Chromium 中的擴充功能用 <span class="docs-ui">從 Chrome 匯入…</span> 複製過來。擴充功能只在內建瀏覽器中執行，不會進入 Ferret 自身的視窗。擴充功能可以讀取與修改你在其中開啟的所有頁面，並使用其中的登入狀態，所以請只加入你信任的擴充功能。</p>
+<p>用瀏覽器工具列或回饋工具列中的 <span class="docs-ui">擴充功能</span> 開啟擴充功能的彈出視窗。它在頁面右上角開啟，點擊其他地方或按 {{keys:Esc}} 即關閉。錄製 <span class="docs-ui">內建瀏覽器</span> 時，擴充功能在頁面中造成的變化和開啟的彈出視窗都會出現在影片和圖片中。Electron 只支援部分擴充功能 API：側邊面板、右鍵選單、通知、鍵盤快捷鍵，以及擴充功能開啟的分頁或視窗都無法使用，也無法載入封裝的 <code>.crx</code> 檔案。</p>
+<p>彈出視窗上也可以標註。錄製時點選工具列不會關閉擴充功能的彈出視窗。選取畫筆或方框時，或 <span class="docs-ui">文字回饋</span> 開啟時，點選頁面也不會關閉它，{{keys:Esc}} 會關閉工具而不是關閉彈出視窗。在彈出視窗裡畫的標註會依彈出視窗的位置出現在影片和圖片中。僅適用於開始錄製或 <span class="docs-ui">文字回饋</span> 之後開啟的彈出視窗。頁面在獨立視窗中開啟的登入彈出視窗（例如使用 Google 登入）在開啟期間會錄製為獨立的影片。它來到前景時，畫筆和方框會畫在其中；點選頁面即切換回來。登入完成後它仍會自動關閉。</p>
+
+<!-- @multi b274435007 -->
+## 同時錄製多個視窗
+<p>一次錄製可以同時錄下最多 4 個畫面：內建瀏覽器、桌面應用程式的視窗與螢幕。每個畫面都各自錄成一個影片，直到停止錄製，因此在它們之間來回切換的流程（例如 Web 應用程式開啟桌面應用程式後再回來）也能從頭到尾錄下。</p>
+<ol class="docs-steps">
+  <li>錄製中，點選錄製列中的 <span class="docs-ui">+</span>（<span class="docs-ui">同時錄製另一個視窗</span>），然後選擇一個視窗、螢幕或內建瀏覽器。在 <span class="docs-ui">審查目標</span> 面板中點選視窗目標也一樣。</li>
+  <li>點選錄製列中的標籤即可切換顯示的畫面。畫筆與意見的圖片會跟著目前顯示的畫面；其他畫面在背景繼續以每秒最多 5 格錄製。</li>
+</ol>
+<p>也可以等待尚未開啟的視窗。在 <span class="docs-ui">編輯專案…</span> 中為目標填入 <span class="docs-ui">要錄製的視窗</span>（應用程式名稱、視窗標題的一部分、<code>com.example.MyApp</code> 這類 macOS bundle ID，或應用程式的路徑），並把 <span class="docs-ui">錄製中開啟時</span> 設為 <span class="docs-ui">一起錄製</span> 或 <span class="docs-ui">錄製並切換過去</span>。在 <code>settings.json</code> 中對應 <code>"watch": "record"</code> 或 <code>"watch": "switch"</code>。錄製中，Ferret 每秒檢查一次視窗清單。視窗開啟前，目標會以虛線標籤顯示；應用程式關閉後再次開啟時也會重新錄製。</p>
+<p>每次切換都會寫入操作記錄，因此每則意見都知道它針對哪個畫面。顯示應用程式視窗期間的意見不帶 URL 與元素資訊，在 <span class="docs-ui">意見</span> 與 <code>feedback.md</code> 中歸到該視窗之下，並告訴 Agent 這是應用程式視窗。額外的影片存放在審查資料夾的 <code>tracks/</code> 下，開始與結束時間記錄在 <code>tracks.jsonl</code>。在 Windows 與 Linux 上只能得知視窗標題，所以用名稱去比對標題。在 Linux 的 Wayland 下無法等待視窗，因為每次列出視窗都會要求你選擇一個；請在視窗開啟後用 <span class="docs-ui">+</span> 加入。</p>
+
 <!-- @record deb62ed37c -->
 ## 開始、暫停、停止
 {{clip:record|錄製：一邊談論頁面，一邊用畫筆圈出位置。}}
@@ -76,6 +92,10 @@
 ## 查看轉錄內容
 <p>錄製時，開啟回饋模式右側面板頂端的 <span class="docs-ui">轉錄</span> 分頁，就能以文字查看你說的話與說話的時間（同時錄製會議對方的聲音時，也會顯示是誰說的）。說完稍作停頓，幾秒後就會出現文字，因此能及早確認所說的內容有被記錄下來。頂端一行會顯示 <span class="docs-ui">正在轉錄</span>、等待中的段數，或轉錄停止的原因。</p>
 <p>若轉錄失敗、未設定模型或金鑰、約 2 分鐘的語音沒有轉成文字，或麥克風沒有收到聲音，即使分頁已關閉，Ferret 也會提示一次，並在右側面板按鈕上加上標記。錄製會繼續，音訊也會保留。若要隱藏該分頁，請在 <span class="docs-ui">設定 → 轉錄</span> 中關閉 <span class="docs-ui">錄製時顯示即時轉錄（回饋模式的右側面板）</span>。警告仍會顯示。</p>
+
+<!-- @feedback-terminal f54f6bbd16 -->
+## 錄製時向 Agent 說明
+<p>回饋模式的右側面板還有一個 <span class="docs-ui">終端機</span> 分頁。它不是新的 shell，而是與編輯器模式相同的終端機：同樣的分頁、同樣正在執行的 Agent（例如 Claude Code 或 Codex）及其歷史。在頂端選擇一個分頁並輸入，例如告訴 Agent <code>localhost</code> 沒有啟動。回到編輯器模式後，終端機維持同樣的狀態。錄製內建瀏覽器或其他應用程式的視窗時，不會錄進終端機。</p>
 
 <!-- @other-side bf51c46448 -->
 ## 錄下會議中對方的聲音
