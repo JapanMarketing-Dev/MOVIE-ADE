@@ -434,7 +434,10 @@ describe('security-7 [11] the Linux folder watcher stops discovery at an entry a
   it('streams directory entries with opendir and charges each one against the budget (shape check)', async () => {
     const text = read('src/main/linuxTreeWatch.ts')
     expect(text).not.toMatch(/readdir\(/)
-    expect(text).toMatch(/for await \(const entry of dir\) \{\n\s+if \(this\.closed\) return\n\s+this\.scanned \+= 1\n\s+if \(!this\.budgetLeft\(\)\) return/)
+    expect(text).toMatch(/for await \(const entry of dir\) \{\n\s+if \(this\.closed\) return\n\s+budget\.scanned \+= 1\n\s+if \(!this\.budgetLeft\(budget\)\) return/)
+    // 開いたときの枠は1つ。あとから増えたフォルダは、そのたびに新しい枠（30秒を過ぎても新しいフォルダを見張れる）
+    expect(text).toMatch(/void this\.addChildren\('', this\.initial\)/)
+    expect(text).toMatch(/this\.addChildren\(rel, newBudget\(\)\)/)
     const { MAX_SCANNED_ENTRIES, MAX_DISCOVERY_MS } = await import('../../src/main/linuxTreeWatch')
     expect(MAX_SCANNED_ENTRIES).toBeLessThanOrEqual(200_000)
     expect(MAX_DISCOVERY_MS).toBeLessThanOrEqual(30_000)

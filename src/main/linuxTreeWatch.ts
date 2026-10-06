@@ -31,21 +31,26 @@ export function shouldWatchDir(rel: string): boolean {
 
 type Listener = (event: string, filename: string) => void
 
+interface DiscoveryBudget {
+  scanned: number
+  startedAt: number
+}
+const newBudget = (): DiscoveryBudget => ({ scanned: 0, startedAt: Date.now() })
+
 export class LinuxTreeWatcher {
   private readonly watchers = new Map<string, FSWatcher>()
   private readonly errorListeners: Array<(err: unknown) => void> = []
   private closed = false
   private limitReported = false
-  /** 探すときに読んだ項目の数と、探し始めた時刻（上限は見張りの一生の分。security-7 [11]） */
-  private scanned = 0
-  private readonly startedAt = Date.now()
+  /** 開いたときの探索の枠（読んだ項目の数と、探し始めた時刻。security-7 [11]）。あとから増えたフォルダは、そのたびに新しい枠で探す */
+  private readonly initial: DiscoveryBudget = newBudget()
 
   constructor(private readonly root: string, private readonly listener: Listener,
     /** 上限に当たって一部を見張れなかったとき（1回だけ） */
     private readonly onLimit?: (err: unknown) => void) {
     // 直下は同期で張る（作れなければ fs.watch と同じく投げる）
     this.addDir('', true)
-    void this.addChildren('')
+    void this.addChildren('', this.initial)
   }
 
   on(event: 'error', listener: (err: unknown) => void): this {
@@ -100,14 +105,14 @@ export class LinuxTreeWatcher {
   }
 
   /** 探す枠（項目の数・時間）が残っているか。尽きたら1回だけ知らせる */
-  private budgetLeft(): boolean {
-    if (this.scanned < MAX_SCANNED_ENTRIES && Date.now() - this.startedAt < MAX_DISCOVERY_MS) return true
+  private budgetLeft(budget: DiscoveryBudget): boolean {
+    if (budget.scanned < MAX_SCANNED_ENTRIES && Date.now() - budget.startedAt < MAX_DISCOVERY_MS) return true
     this.reportLimit(new Error(`scanned more than ${MAX_SCANNED_ENTRIES} entries or ${MAX_DISCOVERY_MS / 1000}s`))
     return false
   }
 
-  private async addChildren(rel: string): Promise<void> {
-    if (!this.budgetLeft()) return
+  private async addChildren(rel: string, budget: DiscoveryBudget): Promise<void> {
+    if (!this.budgetLeft(budget)) return
     let dir
     try {
       dir = await opendir(rel ? join(this.root, rel) : this.root, { bufferSize: 64 })
@@ -119,8 +124,8 @@ export class LinuxTreeWatcher {
     try {
       for await (const entry of dir) {
         if (this.closed) return
-        this.scanned += 1
-        if (!this.budgetLeft()) return
+        budget.scanned += 1
+        if (!this.budgetLeft(budget)) return
         if (!entry.isDirectory()) continue
         const child = rel ? `${rel}/${entry.name}` : entry.name
         if (shouldWatchDir(child) && this.addDir(child)) subdirs.push(child)
@@ -133,7 +138,7 @@ export class LinuxTreeWatcher {
     }
     for (const child of subdirs) {
       if (this.closed) return
-      await this.addChildren(child)
+      await this.addChildren(child, budget)
     }
   }
 
@@ -145,7 +150,7 @@ export class LinuxTreeWatcher {
       this.removeTree(rel)
       return
     }
-    if (shouldWatchDir(rel) && this.addDir(rel)) await this.addChildren(rel)
+    if (shouldWatchDir(rel) && this.addDir(rel)) await this.addChildren(rel, newBudget())
   }
 
   private removeTree(rel: string): void {

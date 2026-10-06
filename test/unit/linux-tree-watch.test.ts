@@ -28,7 +28,8 @@ describe('LinuxTreeWatcher', () => {
   })
 
   const until = async (check: () => boolean): Promise<void> => {
-    const deadline = Date.now() + 3000
+    // 全部のテストを並べて流すと fs.watch の通知が遅れることがあるので、長めに待つ
+    const deadline = Date.now() + 8000
     while (!check() && Date.now() < deadline) await new Promise((done) => setTimeout(done, 25))
   }
 
