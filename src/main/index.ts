@@ -1659,8 +1659,49 @@ function registerIpc(): void {
       if (!ext || !window || window.isDestroyed()) return null
       const x = Number(at?.x)
       const y = Number(at?.y)
+      const { webStoreExtensionId } = await import('@shared/browserExtensions')
+      const onStorePage = !!webStoreExtensionId(browser?.state().url ?? '')
       return ext.showMenu(window, { x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0 },
-        { manage: t('browserExtensions.menu.manage'), options: t('browserExtensions.menu.options'), none: t('browserExtensions.menu.none') })
+        { manage: t('browserExtensions.menu.manage'), options: t('browserExtensions.menu.options'), none: t('browserExtensions.menu.none'),
+          ...(onStorePage ? { install: t('browserExtensions.menu.installThis') } : {}) })
+    },
+    'browserExtensions:installFromStore': async (input) => {
+      const ext = requireExtensionsEditable()
+      const { webStoreExtensionId } = await import('@shared/browserExtensions')
+      // 省いたら内蔵ブラウザでいま開いているストアのページ（URL は main が持つものを使う）
+      const id = webStoreExtensionId(typeof input === 'string' && input.trim() ? input : browser?.state().url ?? '')
+      if (!id) throw new UserFacingError(t('browserExtensions.errors.storeUrl'))
+      const { WebStoreNotFoundError } = await import('./browserExtensions')
+      const { CrxError } = await import('./crx')
+      let path: string
+      try {
+        // ストアは配布の置き場（googleusercontent など）へ転送する。行き先は1回ずつ Google の置き場かを確かめ、中身は署名で確かめる
+        const { downloadFromWebStore } = await import('./webStoreDownload')
+        path = await ext.installFromWebStore(id, downloadFromWebStore, process.versions.chrome ?? '130.0.0.0')
+      } catch (err) {
+        if (err instanceof WebStoreNotFoundError) throw new UserFacingError(t('browserExtensions.errors.storeNotFound'))
+        if (err instanceof CrxError) throw new UserFacingError(t('browserExtensions.errors.badPackage', { reason: err.message }))
+        throw new UserFacingError(t('browserExtensions.errors.storeFailed'))
+      }
+      return saveExtensionEntries(ext, (entries) => entries.some((e) => e.path === path) ? entries.map((e) => e.path === path ? { path } : e) : [...entries, { path }])
+    },
+    'browserExtensions:addCrx': async () => {
+      const ext = requireExtensionsEditable()
+      const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+      const options: Electron.OpenDialogOptions = { title: t('browserExtensions.pickCrx'), properties: ['openFile'], filters: [{ name: 'Chrome extension', extensions: ['crx'] }] }
+      const picked = parent ? await dialog.showOpenDialog(parent, options) : await dialog.showOpenDialog(options)
+      const file = picked.canceled ? undefined : picked.filePaths[0]
+      if (!file) return null
+      const { CRX_LIMITS, CrxError } = await import('./crx')
+      const { readFileBounded } = await import('./boundedFile')
+      let path: string
+      try {
+        path = await ext.installCrx(await readFileBounded(file, CRX_LIMITS.packageBytes))
+      } catch (err) {
+        if (err instanceof CrxError) throw new UserFacingError(t('browserExtensions.errors.badPackage', { reason: err.message }))
+        throw err
+      }
+      return saveExtensionEntries(ext, (entries) => entries.some((e) => e.path === path) ? entries.map((e) => e.path === path ? { path } : e) : [...entries, { path }])
     },
     'browser:state': () =>
       browser?.state() ?? {
