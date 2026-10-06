@@ -1,34 +1,34 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import Editor, { type OnMount } from '@monaco-editor/react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Columns2, ExternalLink, FileCode, FolderOpen, Globe, Save } from 'lucide-react'
 import { previewKind, previewUrl } from '@shared/preview'
 import { isRiskyToOpenExternally, isSvgPath } from '@shared/fileViewer'
 import { isHtmlPath } from '@shared/htmlPreview'
 import FileViewer from './FileViewer'
-import { monaco } from './monacoSetup'
-import { applyEditorTheme, useAppTheme } from './editorTheme'
 import { isMarkdownLanguage } from './language'
-import { registerModelDisposer, type OpenFilesApi, type OpenFile } from './useOpenFiles'
+import type { OpenFilesApi, OpenFile } from './useOpenFiles'
+import type { CodeEditorInstance } from './CodeEditor'
 import { registerMarkdownDropTarget } from './markdownDrop'
 import { markdownMediaSnippet, sourceInsertion } from '@shared/markdownMedia'
 import { Button, EmptyState, Spinner } from '../ui'
 import { useT } from '../lib/i18n'
+import { preloadable } from '../lib/preloadable'
 import { reportHandled } from '@shared/report'
-
-type CodeEditor = Parameters<OnMount>[0]
 
 /** 打鍵が止まってから横のプレビューを描き直すまでの待ち（数百ミリ秒で追従させる） */
 const LIVE_PREVIEW_DELAY_MS = 150
 
-/** モデルの URI。プロジェクトの根を含めて、別のプロジェクトの同名ファイルと分ける */
-function modelPath(file: OpenFile): string {
-  return monaco.Uri.file(file.id).toString()
-}
-
-registerModelDisposer((id) => monaco.editor.getModel(monaco.Uri.file(id))?.dispose())
-
 /** Markdown のプレビュー（そのまま編集できる。tiptap を含むので、開いたときだけ読む） */
-const RichMarkdownEditor = lazy(() => import('./richMarkdown/RichMarkdownEditor'))
+const { Component: RichMarkdownEditor, preload: loadRichMarkdownEditor } = preloadable(() => import('./richMarkdown/RichMarkdownEditor'))
+/** ソースの編集（Monaco。数MBあるので、ソースを開いたときだけ読む） */
+const { Component: CodeEditor, preload: loadCodeEditor } = preloadable(() => import('./CodeEditor'))
+
+/**
+ * 起動して手が空いたら、Markdown のプレビューの編集と Monaco を先に読んでおく
+ * （初めてファイルを開いたときに、読み込みを待たずにすぐ書けるように）。App から呼ぶ
+ */
+export function preloadEditors(): void {
+  void loadRichMarkdownEditor().then(() => loadCodeEditor()).catch(() => undefined)
+}
 /** Markdown をソースで開いているファイル（既定はプレビュー。タブを切り替えても残す） */
 const sourceFiles = new Set<string>()
 
@@ -42,32 +42,15 @@ const sourceFiles = new Set<string>()
  *   - 外部の変更で未保存の内容と食い違ったら、上書きせずに帯で知らせる
  * プレビューは renderer の DOM ではなく ade-preview://（main が描くページ）で、
  * 「横に並べる」は iframe、「内蔵ブラウザで開く」は録画でレビューできる内蔵ブラウザに出す。
- * monaco-editor を含むので、App からは React.lazy で遅れて読む（起動時間 NF-5 を守る）。
+ * App からは React.lazy で遅れて読む（起動時間 NF-5 を守る）。Monaco と tiptap は、それぞれ使うときに読む。
  */
 export default function FileEditor({ file, editor: api }: { file: OpenFile; editor: OpenFilesApi }) {
   const t = useT()
-  const theme = useAppTheme()
-  const [themeName, setThemeName] = useState(() => applyEditorTheme(monaco, theme))
   const frameRef = useRef<HTMLIFrameElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
-  const editorRef = useRef<CodeEditor | null>(null)
+  const editorRef = useRef<CodeEditorInstance | null>(null)
   const liveTimer = useRef<number | undefined>(undefined)
   const [, setRichVersion] = useState(0)
-
-  useEffect(() => setThemeName(applyEditorTheme(monaco, theme)), [theme])
-
-  // ディスクの内容で差し替えた（外部の変更の取り込み・再読込）。undo で戻れるよう編集として入れる
-  useEffect(() => {
-    const model = monaco.editor.getModel(monaco.Uri.parse(modelPath(file)))
-    const next = api.getDraft(file.id) ?? file.saved
-    if (!model || model.getValue() === next) return
-    // 全体を置き換えるとカーソルと選択が末尾へ飛ぶ。置き換えの前の位置・スクロールを戻す
-    // （行が減っていれば Monaco が範囲の中に丸める。Orca #13756）
-    const editor = editorRef.current?.getModel() === model ? editorRef.current : null
-    const view = editor?.saveViewState() ?? null
-    model.pushEditOperations([], [{ range: model.getFullModelRange(), text: next }], () => null)
-    if (editor && view) editor.restoreViewState(view)
-  }, [file.id, file.revision])
 
   /*
    * 横に並べたプレビューを打鍵に追従させる。編集中の内容を main で HTML にし（ファイルは読まない）、
@@ -144,7 +127,7 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
         const position = editor.getTargetAtClientPoint(point.x, point.y)?.position ?? editor.getPosition() ?? model.getFullModelRange().getEndPosition()
         const line = model.getLineContent(position.lineNumber)
         const text = sourceInsertion(media.map((m) => markdownMediaSnippet(m.kind, m.link)), line.slice(0, position.column - 1), line.slice(position.column - 1))
-        const range = new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column)
+        const range = { startLineNumber: position.lineNumber, startColumn: position.column, endLineNumber: position.lineNumber, endColumn: position.column }
         editor.pushUndoStop()
         editor.executeEdits('drop-media', [{ range, text, forceMoveMarkers: true }])
         editor.pushUndoStop()
@@ -255,41 +238,18 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
           </Suspense>
         ) : (
           <>
-            <Editor
-              path={modelPath(file)}
-              defaultValue={api.getDraft(file.id) ?? file.saved}
-              defaultLanguage={file.language}
-              language={file.language}
-              theme={themeName}
-              loading={<Spinner size={18} />}
-              onMount={(editor) => {
-                editorRef.current = editor
-                // プレビューで編集した後に戻ってきたとき、モデルを編集中の内容に合わせる（undo で戻れるよう編集として入れる）
-                const model = editor.getModel()
-                const next = api.getDraft(file.id) ?? file.saved
-                if (model && model.getValue() !== next) model.pushEditOperations([], [{ range: model.getFullModelRange(), text: next }], () => null)
-              }}
-              onChange={(value) => {
-                api.setDraft(file.id, value ?? '')
-                if (file.preview) sendLivePreview(LIVE_PREVIEW_DELAY_MS)
-              }}
-              options={{
-                automaticLayout: true,
-                fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--font-mono').trim() || undefined,
-                fontSize: 13,
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                renderWhitespace: 'selection',
-                tabSize: 2,
-                wordWrap: markdown ? 'on' : 'off',
-                contextmenu: true,
-                // 日本語の全角の括弧や記号を「紛らわしい文字」として枠で囲まない
-                unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false, nonBasicASCII: false },
-                // Monaco 0.57 の既定（EditContext）では、Windows の Microsoft Pinyin などが候補窓を出さない。
-                // 入力を従来の textarea で受ける（Orca #23360、microsoft/vscode#259380）
-                editContext: false
-              }}
-            />
+            <Suspense fallback={<div className="editor-body__center"><Spinner size={18} /></div>}>
+              <CodeEditor
+                file={file}
+                editor={api}
+                wordWrap={markdown}
+                onEditor={(editor) => { editorRef.current = editor }}
+                onChange={(value) => {
+                  api.setDraft(file.id, value)
+                  if (file.preview) sendLivePreview(LIVE_PREVIEW_DELAY_MS)
+                }}
+              />
+            </Suspense>
             {previewable && file.preview && (
               // 開いた直後はファイルの内容。未保存の編集があれば、読み込み終わりに編集中の内容へ差し替える
               <iframe

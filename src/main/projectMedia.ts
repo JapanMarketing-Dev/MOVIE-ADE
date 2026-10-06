@@ -10,6 +10,7 @@ import { relativeInside, resolveInside } from './files'
 import { openContained } from './containedFile'
 import { mediaResponseFromHandle } from './mediaRange'
 import { BINARY_HEAD_BYTES, MAX_VIEWER_BYTES, mediaTypeOf, projectMediaPathFromUrl, type FsFileInfo } from '@shared/fileViewer'
+import { MAX_OFFICE_BYTES, officeKindOf } from '@shared/office/kinds'
 import { UserFacingError } from '@shared/errors'
 import { t } from '@shared/i18n'
 
@@ -62,6 +63,29 @@ export async function inspectProjectFile(root: string, relPath: string): Promise
     const head = Buffer.alloc(Math.min(BINARY_HEAD_BYTES, info.size))
     const { bytesRead } = head.length > 0 ? await handle.read(head, 0, head.length, 0) : { bytesRead: 0 }
     return { path: relativeInside(root, file) ?? relPath, size: info.size, mtimeMs: info.mtimeMs, head: new Uint8Array(head.subarray(0, bytesRead)) }
+  } finally {
+    await handle.close()
+  }
+}
+
+/** Office の文書の中身（fs:readOffice）。Office の拡張子・普通のファイル・上限以下のものだけ */
+export async function readOfficeFile(root: string, relPath: string): Promise<Uint8Array> {
+  if (!officeKindOf(relPath)) throw new UserFacingError(t('viewer.loadFailed'))
+  const file = await resolveInside(root, relPath)
+  // 開いたものがプロジェクトの中の実体かを確かめ、その fd から読む（security-4 [5]）
+  const handle = await openContained(root, file, 'read')
+  try {
+    const info = await handle.stat()
+    if (!info.isFile()) throw new UserFacingError(t('files.errors.notRegular'))
+    if (info.size > MAX_OFFICE_BYTES) throw new UserFacingError(t('viewer.loadFailed'))
+    const buffer = Buffer.alloc(info.size)
+    let read = 0
+    while (read < buffer.length) {
+      const { bytesRead } = await handle.read(buffer, read, buffer.length - read, read)
+      if (bytesRead === 0) break
+      read += bytesRead
+    }
+    return new Uint8Array(buffer.buffer, buffer.byteOffset, read)
   } finally {
     await handle.close()
   }

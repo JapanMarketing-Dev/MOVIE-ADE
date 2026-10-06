@@ -1,9 +1,10 @@
 import { ExternalDropOverlay, useExternalDrop } from './hooks/useExternalDrop'
 import { planEditorDrop, readDrop } from './lib/externalDrop'
+import { preloadable } from './lib/preloadable'
 import { embedMedia, markdownDropTargetAt, planMediaDrop, planTreeMediaDrop } from './editor/markdownDrop'
 import { isMarkdownLanguage } from './editor/language'
 import { delay } from '@shared/delay'
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   DEFAULT_AGENT_PREFERENCES,
@@ -82,8 +83,26 @@ import { FeedbackDialogHost } from './components/FeedbackDialog'
 import { reportAnomaly, reportHandled } from '@shared/report'
 import type { SttLanguageCode } from '@shared/sttLanguages'
 
-/** Monaco は重いので、ファイルを初めて開いたときに読む（起動時間 NF-5） */
-const FileEditor = lazy(() => import('./editor/FileEditor'))
+/** エディタは重いので、起動の後で読む（起動時間 NF-5）。読み終わっていれば、開いたときに Suspense で待たせない */
+const { Component: FileEditor, preload: preloadFileEditor } = preloadable(() => import('./editor/FileEditor'))
+/** 起動してからエディタを先読みするまでの待ち（起動直後の描画・Agent の起動と重ねない） */
+const EDITOR_PRELOAD_DELAY_MS = 2500
+
+/**
+ * 起動して手が空いたら、エディタ（Markdown のプレビューの編集・Monaco）を先に読む。
+ * 初めて Markdown・HTML を開いて書き始めるときに、数MBの読み込みを待たせない
+ */
+function scheduleEditorPreload(): () => void {
+  let idle: number | undefined
+  const timer = window.setTimeout(() => {
+    const run = () => { void preloadFileEditor().then((m) => (m as typeof import('./editor/FileEditor')).preloadEditors()).catch(() => undefined) }
+    idle = typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(run, { timeout: 5000 }) : window.setTimeout(run, 0)
+  }, EDITOR_PRELOAD_DELAY_MS)
+  return () => {
+    window.clearTimeout(timer)
+    if (idle !== undefined && typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idle)
+  }
+}
 
 const INITIAL_BROWSER_STATE: BrowserState = {
   url: '',
@@ -160,6 +179,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const [onboarding, setOnboarding] = useState<OnboardingState | null | undefined>(undefined)
   const onboardingOpen = onboarding !== undefined && !gallery && shouldShowOnboarding(onboarding ?? undefined)
   const [terminalsAllowed, setTerminalsAllowed] = useState(false)
+  useEffect(() => scheduleEditorPreload(), [])
   useEffect(() => {
     if (onboarding === undefined || onboardingOpen || terminalsAllowed) return
     setTerminalsAllowed(true)

@@ -13,8 +13,8 @@ const MEDIA_SCHEME = 'ade-media'
 const PROJECT_MEDIA_HOST = 'project'
 
 type MediaViewerKind = 'image' | 'video' | 'audio' | 'pdf'
-/** エディタの中の見せ方。binary は大きさと先頭の16進数だけ */
-export type FileViewerKind = MediaViewerKind | 'binary'
+/** エディタの中の見せ方。office は Word・Excel・PowerPoint（@shared/office が HTML にする）。binary は大きさと先頭の16進数だけ */
+export type FileViewerKind = MediaViewerKind | 'office' | 'binary'
 
 /** 中身を返してよい拡張子と Content-Type。ここに無いもの（html・js など）は返さない */
 const MEDIA_TYPES: Record<string, { kind: MediaViewerKind; type: string }> = {
