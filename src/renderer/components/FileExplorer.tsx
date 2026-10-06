@@ -391,6 +391,16 @@ function useTreeOperations({
   const [busy, setBusy] = useState(false)
   /** アプリの中のクリップボード（切り取り・コピーしたパス） */
   const [clipboard, setClipboard] = useState<{ mode: 'copy' | 'cut'; paths: string[] } | null>(null)
+  /**
+   * ツリーでコピーしたあとに、ほかのアプリ（Finder など）へ移ったか。移ったなら、そこでコピーしたファイル・画像を先に貼る
+   * （OS のクリップボードの方が新しいことが多い。無ければツリーでコピーしたものを貼る）
+   */
+  const clipboardStale = useRef(false)
+  useEffect(() => {
+    const onBlur = () => { clipboardStale.current = true }
+    window.addEventListener('blur', onBlur)
+    return () => window.removeEventListener('blur', onBlur)
+  }, [])
   const [history, setHistory] = useState<HistoryEntry[]>([])
   /** ドラッグを落とす先のフォルダ（'' は根）。null なら落とす先なし */
   const [dropTarget, setDropTarget] = useState<string | null>(null)
@@ -623,13 +633,34 @@ function useTreeOperations({
     if (moves.some((m) => m.from !== m.to)) pushHistory({ kind: 'move', moves: moves.filter((m) => m.from !== m.to) })
   })
 
-  const cut = (paths: string[]) => { setMenu(null); if (paths.length > 0) setClipboard({ mode: 'cut', paths }) }
-  const copy = (paths: string[]) => { setMenu(null); if (paths.length > 0) setClipboard({ mode: 'copy', paths }) }
+  const cut = (paths: string[]) => { setMenu(null); if (paths.length > 0) { clipboardStale.current = false; setClipboard({ mode: 'cut', paths }) } }
+  const copy = (paths: string[]) => { setMenu(null); if (paths.length > 0) { clipboardStale.current = false; setClipboard({ mode: 'copy', paths }) } }
 
-  /** 貼り付け。コピーしたフォルダそのものの上なら、その隣（親）へ貼る */
+  /**
+   * 貼り付け。ツリーでコピー・切り取りしたものがあれば、それを貼る（ほかのアプリへ移ったあとなら、OS のクリップボードを先に見る）。
+   * 無ければ OS のクリップボードのファイル（Finder などでコピーした画像・動画・フォルダ）か画像を、このフォルダへ取り込む
+   * （main が読んで写し、作ったものの名前だけが返る。fs:pasteClipboard）
+   */
   const paste = (dest: string) => {
     const clip = clipboard
-    if (!clip) { setMenu(null); return }
+    setMenu(null)
+    if (!clip || clipboardStale.current) {
+      void run(async () => {
+        const pasted = await window.ade.invoke('fs:pasteClipboard', dest)
+        if (pasted.kind === 'none') {
+          if (clip) pasteTree(clip, dest)
+          else setNotice(t('fileExplorer.pasteNothing'))
+          return
+        }
+        afterCopied(dest, pasted.created.map((to) => ({ from: '', to })))
+      })
+      return
+    }
+    pasteTree(clip, dest)
+  }
+
+  /** ツリーでコピー・切り取りしたものを貼る。コピーしたフォルダそのものの上なら、その隣（親）へ貼る */
+  const pasteTree = (clip: { mode: 'copy' | 'cut'; paths: string[] }, dest: string) => {
     if (clip.mode === 'copy') {
       const target = clip.paths.includes(dest) ? parentDir(dest) : dest
       void copyTo(clip.paths, target)
@@ -1031,7 +1062,7 @@ function TreeMenu({ ops, showHidden, onToggleHidden }: { ops: TreeOps; showHidde
           <MenuItem icon={<Copy size={13} strokeWidth={1.75} />} label={t('fileExplorer.copy')} shortcut={KEYS.copy()} onClick={() => ops.copy(targets)} testId="explorer-menu-copy" />
         </>
       )}
-      <MenuItem icon={<ClipboardPaste size={13} strokeWidth={1.75} />} label={t('fileExplorer.paste')} shortcut={KEYS.paste()} disabled={!ops.clipboard} onClick={() => ops.paste(ops.targetDir(entry))} testId="explorer-menu-paste" />
+      <MenuItem icon={<ClipboardPaste size={13} strokeWidth={1.75} />} label={t('fileExplorer.paste')} shortcut={KEYS.paste()} onClick={() => ops.paste(ops.targetDir(entry))} testId="explorer-menu-paste" />
       {entry && <MenuItem icon={<CopyPlus size={13} strokeWidth={1.75} />} label={t('fileExplorer.duplicate')} onClick={() => void ops.duplicate(targets)} testId="explorer-menu-duplicate" />}
       {sep}
       <MenuItem icon={<Link size={13} strokeWidth={1.75} />} label={t('fileExplorer.copyPath')} shortcut={KEYS.copyPath()} onClick={() => void ops.copyPath(entry ? targets : [''], 'absolute')} testId="explorer-menu-copy-path" />

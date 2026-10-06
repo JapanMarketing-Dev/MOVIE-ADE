@@ -58,6 +58,8 @@ export class SttKeyStore {
   private readonly keys: Partial<Record<SttKeyProvider, string>> = {}
   /** 暗号化して保存できているキー */
   private readonly persisted = new Set<SttKeyProvider>()
+  /** キーが変わったら呼ぶ（security-7 [4]。キーを覚えて使う側が、古いキーと出した合言葉を捨てる） */
+  private readonly listeners = new Set<(provider: SttKeyProvider) => void>()
   private loaded = false
   /** 保存した提供元の名前（暗号化しない別のファイル）。起動時はこれだけを読み、復号しない */
   private index: Set<SttKeyProvider> | null = null
@@ -157,6 +159,12 @@ export class SttKeyStore {
     return provider === 'openai' && this.env.OPENAI_API_KEY ? 'env' : null
   }
 
+  /** キーが変わったときに呼ぶ関数を足す。戻り値で外す */
+  onChange(listener: (provider: SttKeyProvider) => void): () => void {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+
   /**
    * キーを設定する。空文字は解除。暗号化できれば保存し、できなければ起動中だけ持つ。
    * 形式が違えば日本語のエラーを投げる（キーの値はメッセージに含めない）。
@@ -173,6 +181,14 @@ export class SttKeyStore {
       delete this.keys[provider]
     }
     this.persisted.delete(provider)
+    // 書き込みを待つ前に、同期で知らせる（変更の IPC が戻る前に、古いキーを使う合言葉と依頼を止める）
+    for (const listener of this.listeners) {
+      try {
+        listener(provider)
+      } catch (err) {
+        reportHandled(errorKind(err), { area: 'stt', op: 'key change listener' })
+      }
+    }
     if (!this.cipher.available()) return { persisted: false }
     try {
       await this.write()

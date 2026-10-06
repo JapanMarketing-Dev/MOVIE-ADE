@@ -46,7 +46,7 @@ import { checkSshTarget, remoteWorkspaceDirName, sshDefaultName, type SshTarget 
 import { EmbeddedBrowser, browserSession } from './browser'
 import { BrowserExtensions } from './browserExtensions'
 import { MAX_BROWSER_EXTENSIONS, relativeRect, sanitizeBrowserExtensions, type BrowserExtensionEntry, type BrowserExtensionInfo } from '@shared/browserExtensions'
-import { APP_ALLOWED_PERMISSIONS, installPermissionPolicy, isAllowedExternalUrl, isAppPageUrl, isBrowserPageExternalUrl, type PermissionSessionLike } from './webPolicy'
+import { APP_ALLOWED_PERMISSIONS, installPermissionPolicy, isAllowedExternalUrl, isAppPageUrl, isBrowserPageExternalUrl, isSnapshotableBrowserUrl, type PermissionSessionLike } from './webPolicy'
 import { pathToFileURL } from 'node:url'
 import type { PcmBlock, RecordingController } from './recording'
 import { installMenu } from './menu'
@@ -84,6 +84,7 @@ import { inspectProjectFile, projectMediaResponse, readOfficeFile } from './proj
 import { isRiskyToOpenExternally } from '@shared/fileViewer'
 import { refreshPreviewIn, registerPreviewProtocol, renderPreviewSource } from './preview'
 import { PREVIEW_SCHEME, stripPreviewGrant } from '@shared/preview'
+import { PROJECT_PAGE_SCHEME } from '@shared/htmlPreview'
 import { crashReportsActive, initCrashReporting, maybeSendTestEvent, reportMainError, sentryTestKinds, setTelemetryContext, telemetryInstallId, trackIpc } from './telemetry'
 import { wrapIpcHandler } from '@shared/telemetry'
 import { flow, reportHandled } from '@shared/report'
@@ -96,7 +97,9 @@ import { syntheticSystemAudio, systemAudioFeatures } from '@shared/systemAudio'
 protocol.registerSchemesAsPrivileged([
   { scheme: 'ade-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } },
   // markdown / Mermaid のプレビュー（src/main/preview）。page.js が fetch で中身を取り直す
-  { scheme: PREVIEW_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }
+  { scheme: PREVIEW_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  // 内蔵ブラウザで開くプロジェクトの HTML（src/main/projectPage.ts。外へ通信させない CSP 付き。security-7 [2][6]）
+  { scheme: PROJECT_PAGE_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
 ])
 /*
  * userData は製品名（Ferret）ではなく、これまでと同じ「ade-movie」フォルダに固定する。
@@ -518,6 +521,9 @@ async function decision(): Promise<import('./decision/service').DecisionService>
       getEnv: (name) => envGetter(keyLookup())(name),
       onCall: recordCall
     })
+    // 保存したキーが変わったら、古いキーの合言葉と途中の依頼を止める（security-7 [4]。キーの保存先が同期で知らせる）
+    const service = decisionService
+    ;(await sttKeyStore()).onChange(() => service.credentialsChanged())
   }
   return decisionService
 }
@@ -733,6 +739,18 @@ function openFolderAsProject(folderPath: string): WorkspaceState {
 }
 
 /** clone したフォルダを「GitHub から取得」したプロジェクトとして開く（同じフォルダが登録済みならそれに印を付ける） */
+
+/** フッターの git（gitSync.ts）。裏の fetch の許可を userData に残す（security-7 [9]）。起動を重くしないよう、使うときに読む */
+let fetchConsentReady = false
+async function gitSyncModule(): Promise<typeof import('./github/gitSync')> {
+  const sync = await import('./github/gitSync')
+  if (!fetchConsentReady) {
+    const { FetchConsentStore } = await import('./github/fetchConsent')
+    sync.setFetchConsentStore(new FetchConsentStore(join(app.getPath('userData'), 'git-auto-fetch.json')))
+    fetchConsentReady = true
+  }
+  return sync
+}
 function openClonedProject(folderPath: string, remoteUrl: string): WorkspaceState {
   const { projects, project } = upsertProjectFolder(currentSettings().projects, folderPath)
   const marked = projects.map((p) => (p.id === project.id ? { ...p, source: 'github' as const, remoteUrl } : p))
@@ -1500,6 +1518,8 @@ function registerIpc(): void {
       const { cloneRepository } = await import('./projectSources')
       const outcome = await cloneRepository({ url, parent }, (progress) => send('project:cloneProgress', progress))
       if (!outcome.ok) return outcome
+      // 利用者が入れた URL のリモートは、裏で確認してよいものとして始める（security-7 [9]）
+      await (await gitSyncModule()).approveClonedRemote(outcome.path, outcome.url).catch(() => undefined)
       openClonedProject(outcome.path, outcome.url)
       return { ok: true as const, state: projectsState() }
     },
@@ -1662,7 +1682,15 @@ function registerIpc(): void {
     'terminal:screen': (id, text) => terminals?.updateScreen(id, text),
     'terminal:agentState': (id) => terminals?.agentState(id) ?? { kind: 'unknown', state: 'unknown' },
     'terminal:cwd': (id) => terminals?.currentCwd(id) ?? null,
-    'terminal:clipboardText': () => clipboard.readText(),
+    // 端末への貼り付け（Windows / Linux の Ctrl+V）。クリップボードの中身は renderer へ返さない（security-7 [1]）。
+    // キーを押した直後に1回だけ、アプリの窓にフォーカスがあり端末が選ばれているときに、OS の貼り付けをその窓に行わせる
+    // （中身はふつうの貼り付けとして、フォーカスのある端末の入力欄に届く）
+    'terminal:paste': () => {
+      const win = mainWindow
+      if (!win || win.isDestroyed() || !win.isFocused() || !terminalFocused || !gestures.consume('paste')) return false
+      win.webContents.paste()
+      return true
+    },
     // 選択範囲のコピー。キーを押した直後だけ書く（プログラムのコピーはこの道を通さない。terminal:programCopy）
     'terminal:writeClipboard': (text) => { if (typeof text === 'string' && text.length <= 8 * 1024 * 1024 && gestures.consume('copy')) clipboard.writeText(text) },
     // 端末のプログラムのコピー（OSC 52）。確認なしで写す。大きすぎるもの・アプリの窓にフォーカスが無いときは写さない（terminalClipboard.ts）
@@ -1916,7 +1944,7 @@ function registerIpc(): void {
       const downloads = await whisperModelDownloads()
       const models = await downloads.list()
       const current = localModel()
-      return { models, binaryFound: !!(await resolveWhisperBinary({ modelDir: '' }, nodeProbes())), installHint: whisperInstallHint(process.platform),
+      return { models, binaryFound: !!(await resolveWhisperBinary({ modelDir: '' }, nodeProbes(workspace.folderPath))), installHint: whisperInstallHint(process.platform),
         downloading: downloads.downloading(), selected: models.find((m) => m.downloaded && downloads.pathOf(m.id) === current)?.id ?? null }
     },
     'capture:downloadModel': async (id) => {
@@ -1942,7 +1970,7 @@ function registerIpc(): void {
       const configured = new Map<AiVendor, SttKeySource>()
       for (const p of ai.STT_REMOTE_PROVIDERS) { const found = sttRef(p); if (found) configured.set(ai.STT_PROVIDER_PRESETS[p].vendor, found.source) }
       for (const p of ai.LLM_API_PROVIDERS) { const found = llmRef(p); if (found) configured.set(ai.LLM_PROVIDER_PRESETS[p].vendor, found.source) }
-      return { localReady: !!(await resolveWhisperBinary({ modelDir: '' }, nodeProbes())) && existsSync(localModel()),
+      return { localReady: !!(await resolveWhisperBinary({ modelDir: '' }, nodeProbes(workspace.folderPath))) && existsSync(localModel()),
         // 復号しない（起動直後にも呼ばれるため）。dev 版は保存しないことを画面に出す
         keyStorage: IS_PACKAGED ? keys.storage() : 'dev' as const,
         keys: Object.fromEntries(ai.AI_VENDORS.map((v) => [v, configured.get(v) ?? keys.source(v)])) as Record<AiVendor, SttKeySource>,
@@ -2089,7 +2117,7 @@ function registerIpc(): void {
             }
           } else {
             const { nodeProbes, resolveWhisperBinary } = await import('./pipeline/environment')
-            const binary = await resolveWhisperBinary({ modelDir: '' }, nodeProbes())
+            const binary = await resolveWhisperBinary({ modelDir: '' }, nodeProbes(workspace.folderPath))
             const { WhisperCppEngine } = await import('./pipeline/stt/whisper')
             if (binary && existsSync(localModel())) transcriber = new IncrementalTranscriber(
               new WhisperCppEngine({ binary, model: localModel(), language: options.language ?? 'auto', greedy: true }), onSegments, onProgress)
@@ -2194,6 +2222,21 @@ function registerIpc(): void {
     'fs:copy': (relPaths, destRel) => copyEntries(projectRoot(), relPaths, destRel),
     'fs:move': (relPaths, destRel) => moveEntries(projectRoot(), relPaths, destRel),
     'fs:import': (absolutePaths, destRel) => importEntries(projectRoot(), absolutePaths, destRel),
+    // ファイルツリーの貼り付け（⌘V / Ctrl+V）。OS のクリップボードのファイル・画像を main が読んで取り込み、作ったものの相対パスだけを返す
+    // （クリップボードの中身・元のパスは renderer へ返さない。押した直後の1回だけ。security-7 [1]）
+    'fs:pasteClipboard': async (destRel) => {
+      if (typeof destRel !== 'string' || !gestures.consume('paste')) throw new UserFacingError(t('errors.needsUserAction'))
+      const root = projectRoot()
+      const { readClipboardPaste, writePastedImage } = await import('./clipboardFiles')
+      const found = await readClipboardPaste(clipboard)
+      if (found.kind === 'files') {
+        // 利用者が OS でコピーし、いま貼り付けを押したもの（main が読んだパスなので、落としたものの確認は要らない）
+        const done = await importEntries(root, found.paths, destRel, () => true)
+        return { kind: 'files' as const, created: done.map((d) => d.to) }
+      }
+      if (found.kind === 'image') return { kind: 'image' as const, created: [await writePastedImage(root, destRel, found.bytes, found.ext)] }
+      return { kind: 'none' as const, created: [] }
+    },
     'fs:importMedia': (markdownRel, absolutePaths) => importMediaForMarkdown(projectRoot(), markdownRel, absolutePaths),
     'fs:copyPath': async (relPaths, kind) => {
       const text = await pathsForClipboard(projectRoot(), relPaths, kind === 'relative' ? 'relative' : 'absolute')
@@ -2256,7 +2299,9 @@ function registerIpc(): void {
       const window = mainWindow
       const shot = await window.webContents.capturePage()
       // ウインドウの画像には内蔵ブラウザ（別のレイヤー）が写らないので、ビューも撮って同じ位置に重ねる（画面収録の許可は要らない）
-      const target = browser?.visibleSnapshotTarget() ?? null
+      // 手元のファイル（file:）を表示しているビューは重ねない（security-7 [2]。撮った画像は renderer へ返るので、手元のファイルの中身を読ませない）
+      const visible = browser?.visibleSnapshotTarget() ?? null
+      const target = visible && isSnapshotableBrowserUrl(visible.contents.getURL()) ? visible : null
       const viewShot = target ? await target.contents.capturePage().catch(() => null) : null
       const [width, height] = window.isDestroyed() ? [0, 0] : window.getContentSize()
       const merged = viewShot && target ? overlayView(shot, { width: width!, height: height! }, { image: viewShot, bounds: target.bounds }) : null
@@ -2268,6 +2313,7 @@ function registerIpc(): void {
       return fitScreenshot(withPopup ? nativeImage.createFromBitmap(Buffer.from(withPopup.data.buffer, withPopup.data.byteOffset, withPopup.data.byteLength), { width: withPopup.width, height: withPopup.height }) : withView)
     },
     'github:repoStatus': async () => {
+      await gitSyncModule()
       const { gitRepoStatus, watchGitHead } = await import('./github/repoStatus')
       void watchGitHead(workspace.folderPath, () => send('github:headChanged'))
       return gitRepoStatus(workspace.folderPath)
@@ -2275,8 +2321,14 @@ function registerIpc(): void {
     'github:autoFetch': async (trigger, visible) => {
       // 利用者が押す fetch は github:gitAction（manual はここでは受けない）
       if (trigger !== 'open' && trigger !== 'interval' && trigger !== 'focus') throw new Error('invalid fetch trigger')
-      const { autoFetch } = await import('./github/gitSync')
+      const { autoFetch } = await gitSyncModule()
       return autoFetch(workspace.folderPath, trigger, visible === true)
+    },
+    'github:autoFetchConsent': async (allowed) => {
+      // 裏の fetch を認める／認めないは、フッターで押した直後だけ（security-7 [9]）。行き先は main が今の設定から決める
+      if (typeof allowed !== 'boolean' || !gestures.consume('gitSync')) throw new UserFacingError(t('errors.needsUserAction'))
+      const { decideAutoFetch } = await gitSyncModule()
+      return decideAutoFetch(workspace.folderPath, allowed)
     },
     'github:gitAction': async (action, expectedHead) => {
       if (action !== 'fetch' && action !== 'pull' && action !== 'push') throw new Error('invalid git action')
@@ -2284,7 +2336,7 @@ function registerIpc(): void {
       if (action !== 'fetch' && !gestures.consume('gitSync')) throw new UserFacingError(t('errors.needsUserAction'))
       const head = typeof expectedHead === 'string' && /^[0-9a-f]{40,64}$/i.test(expectedHead) ? expectedHead : null
       if (action === 'push' && !head) throw new Error('push needs the confirmed HEAD')
-      const { runGitAction } = await import('./github/gitSync')
+      const { runGitAction } = await gitSyncModule()
       return runGitAction(workspace.folderPath, action, head)
     },
     'github:open': async (url) => {
@@ -2422,14 +2474,14 @@ async function main(): Promise<void> {
     const shot = /^\/(\d{8}-\d{6})\/file\/(.+)$/.exec(url.pathname)
     if (url.hostname === 'review' && shot && workspace.folderPath) {
       const { checkedPaths } = await import('./review')
-      const { afterContentType, resolveAfterFile } = await import('./afterShots')
+      const { afterContentType, readAfterFile, resolveAfterFile } = await import('./afterShots')
       let rel: string
       try { rel = decodeURIComponent(shot[2]!) } catch { return new Response('Not found', { status: 404 }) } // 壊れた URL（想定内）
-      const file = await resolveAfterFile(checkedPaths(workspace.folderPath, shot[1]!).dir, rel)
+      const reviewDir = checkedPaths(workspace.folderPath, shot[1]!).dir
+      const file = await resolveAfterFile(reviewDir, rel)
       if (!file) return new Response('Not found', { status: 404 })
-      // 確かめたあとに差し替えられても、末端のリンクはたどらずに読む
-      const { readFileNoFollow } = await import('./sessions/containment')
-      const bytes = await readFileNoFollow(file, null).catch(() => null)
+      // 確かめたあとに途中のフォルダを差し替えられても外を読まないよう、開いた fd を確かめてからその fd で読む（security-7 [13]）
+      const bytes = await readAfterFile(reviewDir, file)
       if (!bytes) return new Response('Not found', { status: 404 })
       return new Response(new Uint8Array(bytes), { headers: { 'content-type': afterContentType(file), 'cache-control': 'no-store' } })
     }
@@ -2443,15 +2495,25 @@ async function main(): Promise<void> {
     if (url.hostname !== 'review' || !match || !workspace.folderPath) return new Response('Not found', { status: 404 })
     const { checkedPaths } = await import('./review')
     const { takePaths } = await import('./sessions/paths')
-    const files = takePaths(checkedPaths(workspace.folderPath, match[1]!), Number(match[2] ?? 1))
+    const review = checkedPaths(workspace.folderPath, match[1]!)
+    const files = takePaths(review, Number(match[2] ?? 1))
     const file = match[3] ? files.trimmedRecording : files.recording
-    // 末端がリンクの動画は返さない（外のファイルを読ませない）
+    // 末端がリンクの動画は返さない（外のファイルを読ませない）。確かめたあとに差し替えられないよう、
+    // 開いた fd がレビューのフォルダの中の実体と同じかを確かめ、その fd から返す（security-7 [13]）
     const { lstat } = await import('node:fs/promises')
     const leaf = await lstat(file).catch(() => null)
     if (!leaf?.isFile()) return new Response('Not found', { status: 404 })
+    const { openContained } = await import('./containedFile')
+    const handle = await openContained(review.dir, file, 'read').catch(() => null)
+    if (!handle) return new Response('Not found', { status: 404 })
+    const opened = await handle.stat().catch(() => null)
+    if (!opened?.isFile()) {
+      await handle.close()
+      return new Response('Not found', { status: 404 })
+    }
     // Range に答えないと video が seek できず、▷ が指摘の時刻でなく 0 秒から始まる
-    const { mediaResponse } = await import('./mediaRange')
-    return mediaResponse(file, request.headers.get('range'))
+    const { mediaResponseFromHandle } = await import('./mediaRange')
+    return mediaResponseFromHandle(handle, request.headers.get('range'), 'video/webm')
   })
 
   // 起動時にプロジェクトフォルダ・URLを指定できる（E2Eと `ferret <folder>` 相当の用途）。
@@ -2529,6 +2591,16 @@ async function main(): Promise<void> {
   // プレビュー（ade-preview://）は内蔵ブラウザと、エディタの横並びの iframe（既定のセッション）の両方で開く。
   // 前回のURLがプレビューでも開けるよう、内蔵ブラウザを作る前に登録する
   registerPreviewProtocol([session.defaultSession, browserSession()], () => workspace.folderPath)
+  // プロジェクトの HTML は内蔵ブラウザの session でだけ返す（アプリの画面の session からは読めない。security-7 [2][6]）
+  if (!browserSession().protocol.isProtocolHandled(PROJECT_PAGE_SCHEME)) {
+    browserSession().protocol.handle(PROJECT_PAGE_SCHEME, async (request) => {
+      const { projectPageResponse } = await import('./projectPage')
+      return projectPageResponse(workspace.folderPath, request.url).catch((err: unknown) => {
+        reportHandled(err, { area: 'browser', op: 'serve project page' })
+        return new Response('Error', { status: 500, headers: { 'Content-Type': 'text/plain' } })
+      })
+    })
+  }
 
   // 内蔵ブラウザと renderer は並行して起動する（設計 1.3）
   browser = new EmbeddedBrowser()

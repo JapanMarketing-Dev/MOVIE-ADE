@@ -69,6 +69,13 @@ export interface GitFetchView {
   fetching: boolean
   lastFetchAt: number | null
   lastError: GitSyncErrorKind | null
+  /**
+   * 裏の fetch を利用者が認めたか（security-7 [9]）。unknown はまだ聞いていない（フッターで聞く）。
+   * リモートが無い・読めないときは null。省略は null と同じ
+   */
+  autoFetch?: 'approved' | 'declined' | 'unknown' | null
+  /** 裏の fetch の行き先（ホストとパス。認証情報は外したもの） */
+  remote?: string | null
 }
 
 /** フッターの「リモートの変更を確認」「最新を取得」「push」の結果 */

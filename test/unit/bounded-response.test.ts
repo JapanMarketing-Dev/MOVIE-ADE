@@ -24,6 +24,9 @@ import { ApiLlmRunner } from '../../src/main/pipeline/organize/runners/api'
 import { RunnerError } from '../../src/main/pipeline/organize/runner'
 import { DecisionRelay } from '../../src/main/decision/relay'
 
+/** 中継が受け付ける最小の System One の依頼（security-7 [7]。形の違う本文は送らずに断る） */
+const SYSTEM_ONE_BODY = JSON.stringify({ model: 'm', state: 's', questions: { ok: { type: 'noul' } } })
+
 setLocale('en')
 
 type Mode = 'declared-huge' | 'chunked-endless' | 'error-endless' | 'ok-json' | 'not-json'
@@ -159,7 +162,7 @@ describe('security-2 [12] 各クライアントが上限で止まる', () => {
       const relay = new DecisionRelay({ upstream: async () => ({ url: `${base}/up`, headers: {}, provider: 'p', model: 'm', timeoutMs: 10_000 }), maxResponseBytes: 1024 * 1024 })
       await relay.start()
       try {
-        const res = await fetch(relay.urlFor(relay.issue()), { method: 'POST', body: '{}' })
+        const res = await fetch(relay.urlFor(relay.issue()), { method: 'POST', body: SYSTEM_ONE_BODY })
         expect(res.status).toBe(502)
         expect(await res.json()).toMatchObject({ error_type: 'relay_upstream_too_large' })
       } finally {

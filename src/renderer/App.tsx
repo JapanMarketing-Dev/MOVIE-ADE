@@ -27,7 +27,7 @@ import { FileExplorer } from './components/FileExplorer'
 import { QuickOpen } from './components/QuickOpen'
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog'
 import { useOpenFiles } from './editor/useOpenFiles'
-import { isHtmlPath, projectPathFromFileUrl } from '@shared/htmlPreview'
+import { isHtmlPath, projectPathFromPageUrl } from '@shared/htmlPreview'
 import { FeedbackToolbar, type AnnotationTool } from './components/FeedbackToolbar'
 import { ReviewTargetsPanel } from './components/ReviewTargetsPanel'
 import { FeedbackSideTabs, LiveTranscriptPanel } from './components/LiveTranscriptPanel'
@@ -374,7 +374,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     }
   })().catch((err) => toast({ tone: 'warning', message: errorMessage(err) })))
   // 内蔵ブラウザで見ているのがプロジェクトの HTML なら、ツールバーに「ソースを開く」を出す
-  const browserFilePath = projectPathFromFileUrl(browserState.url, workspace.folderPath)
+  const browserFilePath = workspace.folderPath ? projectPathFromPageUrl(browserState.url) : null
   const htmlSourcePath = browserFilePath && isHtmlPath(browserFilePath) ? browserFilePath : null
   const markdownActive = centerTab.startsWith('file:') && !!files.activeFile && isMarkdownLanguage(files.activeFile.language) && files.activeFile.status === 'ready' && !files.activeFile.viewer
   // プロジェクトごとに、中央のタブ・開いていたファイル・表示中のレビューを覚えて戻す（URL は main が戻す）

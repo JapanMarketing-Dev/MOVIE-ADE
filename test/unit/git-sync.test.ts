@@ -222,19 +222,46 @@ describe('本物の git：fetch・最新の取得（fast-forward）・push', () 
     return import('../../src/main/github/gitSync')
   }
 
-  it('開いたときの fetch で遅れが分かる。続けての定期の fetch は走らせない', async () => {
-    const { autoFetch, readGitStatus } = await sync()
+  /** 裏の fetch の許可を一時フォルダに残す（security-7 [9]） */
+  async function withConsentStore() {
+    const { setFetchConsentStore } = await sync()
+    const { FetchConsentStore } = await import('../../src/main/github/fetchConsent')
+    setFetchConsentStore(new FetchConsentStore(join(root, `consent-${++seq}.json`)))
+  }
+  /** 通信しない宛先（閉じたポート）の https のリモート。fetch はすぐ失敗する */
+  const UNREACHABLE = 'https://127.0.0.1:9/acme/shop.git'
+
+  it('ローカルのパスのリモートは裏で fetch しない（upload-pack をこのパソコンで動かさない）。押した fetch で遅れが分かる', async () => {
+    await withConsentStore()
+    const { autoFetch, readGitStatus, runGitAction } = await sync()
     const { project, other } = setup()
     commitIn(other, 'b.txt', 'from other\n', true)
-    // fetch するまでは遅れが見えない（古い）
-    expect((await readGitStatus(project)).behind).toBe(0)
-    const fetched = await autoFetch(project, 'open', false)
-    expect(fetched).toMatchObject({ isGit: true, branch: 'main', upstream: 'origin/main', behind: 1, ahead: 0, hasRemote: true })
-    expect(fetched?.fetch.lastFetchAt).toEqual(expect.any(Number))
-    expect(fetched?.fetch.lastError).toBeNull()
+    const before = await readGitStatus(project)
+    expect(before.behind).toBe(0)
+    expect(before.fetch.autoFetch).toBeNull()
+    expect(await autoFetch(project, 'open', true)).toBeNull()
+    const fetched = await runGitAction(project, 'fetch', null)
+    expect(fetched.status).toMatchObject({ isGit: true, branch: 'main', upstream: 'origin/main', behind: 1, ahead: 0, hasRemote: true })
+  })
+
+  it('裏の fetch は、行き先を見せて認めてもらうまで走らせない。認めたら走り、続けての定期は間隔を待つ', async () => {
+    await withConsentStore()
+    const { autoFetch, readGitStatus, decideAutoFetch } = await sync()
+    const { project } = setup()
+    git(project, 'remote', 'set-url', 'origin', UNREACHABLE)
+    const before = await readGitStatus(project)
+    expect(before.fetch).toMatchObject({ autoFetch: 'unknown', remote: '127.0.0.1:9/acme/shop' })
+    expect(await autoFetch(project, 'open', true)).toBeNull()
+    expect((await decideAutoFetch(project, false)).fetch.autoFetch).toBe('declined')
+    expect(await autoFetch(project, 'open', true)).toBeNull()
+    expect((await decideAutoFetch(project, true)).fetch.autoFetch).toBe('approved')
+    const fetched = await autoFetch(project, 'open', true)
+    expect(fetched?.fetch.lastError).not.toBeNull()
     expect(await autoFetch(project, 'interval', true)).toBeNull()
-    // もう一度開けば（切り替えて戻った）また走る
-    expect(await autoFetch(project, 'open', true)).not.toBeNull()
+    // リモートの URL が変われば、また聞く
+    git(project, 'remote', 'set-url', 'origin', 'https://127.0.0.1:9/other/repo.git')
+    expect((await readGitStatus(project)).fetch.autoFetch).toBe('unknown')
+    expect(await autoFetch(project, 'open', true)).toBeNull()
   })
 
   it('最新を取得：fast-forward で取り込み、ファイルが変わる', async () => {
@@ -309,9 +336,11 @@ describe('本物の git：fetch・最新の取得（fast-forward）・push', () 
   })
 
   it('fetch の失敗は投げずに状態へ残す', async () => {
-    const { autoFetch } = await sync()
+    await withConsentStore()
+    const { autoFetch, decideAutoFetch } = await sync()
     const { project } = setup()
-    git(project, 'remote', 'set-url', 'origin', join(root, 'missing.git'))
+    git(project, 'remote', 'set-url', 'origin', UNREACHABLE)
+    await decideAutoFetch(project, true)
     const status = await autoFetch(project, 'open', true)
     expect(status?.fetch.lastError).not.toBeNull()
     expect(status?.fetch.fetching).toBe(false)

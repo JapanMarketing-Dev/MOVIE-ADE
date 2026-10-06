@@ -9,6 +9,7 @@
  * Electron に依存させない（単体テストで偽の session を渡して確かめるため）。
  */
 import { PREVIEW_SCHEME } from '@shared/preview'
+import { PROJECT_PAGE_SCHEME, isProjectPageUrl } from '@shared/htmlPreview'
 import { isPresetableUrl } from '@shared/projectUrl'
 
 /** session の権限ハンドラの最小の形（Electron の Session の一部） */
@@ -163,26 +164,32 @@ export function popupWindowAction(request: WindowOpenRequest): 'popup' | 'tab' |
 }
 
 /**
- * 利用者が URL 欄に入れて開けるもの。http / https / プレビュー / 手元のファイル / about:blank。
- * javascript: data: や独自スキーム（OS のアプリを起動する）は開かない
+ * 利用者が URL 欄に入れて開けるもの（renderer から届く遷移）。http / https / プレビュー / プロジェクトのページ / about:blank。
+ * javascript: data: や独自スキーム（OS のアプリを起動する）は開かない。
+ * file: も開かない（security-7 [2]。renderer が決めた絶対パスで手元の好きなファイルを開かせ、撮影で中身を読ませられた）。
+ * プロジェクトの HTML は ade-page://project/<相対パス> で開き、main がプロジェクトの中だけを返す（projectPage.ts）
  */
 export function isTypedNavigationAllowed(url: string): boolean {
   if (url === 'about:blank') return true
   const u = parse(url)
   if (!u) return false
-  return u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === 'file:' || u.protocol === `${PREVIEW_SCHEME}:`
+  return u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === `${PREVIEW_SCHEME}:` || isProjectPageUrl(url)
 }
 
 /**
  * ページが自分で始めた遷移（リンク・location の書き換え）で行ってよい先。
- * http / https / プレビューと about:blank。手元のファイルへは、いま手元のファイルを見ているときだけ
+ * http / https / プレビューと about:blank。手元のファイル（file:）へは行かない。
+ * プロジェクトのページ（ade-page://）からは、プロジェクトのページの中だけ
  */
 export function isPageNavigationAllowed(url: string, currentUrl: string): boolean {
   if (url === 'about:blank') return true
   const u = parse(url)
   if (!u) return false
-  if (u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === `${PREVIEW_SCHEME}:`) return true
-  return u.protocol === 'file:' && parse(currentUrl)?.protocol === 'file:'
+  // プロジェクトのページからは、プロジェクトのページの中だけ（security-7 [6]。ページのスクリプト・リンクで外へ通信させない。
+  // 外のページは利用者が URL 欄に入れて開く）。ほかのページからプロジェクトのページへは行かせない
+  if (isProjectPageUrl(currentUrl)) return isProjectPageUrl(url)
+  if (u.protocol === `${PROJECT_PAGE_SCHEME}:`) return false
+  return u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === `${PREVIEW_SCHEME}:`
 }
 
 interface ExternalOpenerDeps {
@@ -282,4 +289,15 @@ export class PageClipboardGrant {
     this.grant = null
     return true
   }
+}
+
+/**
+ * 指摘の画面の撮影に内蔵ブラウザのビューを重ねてよいページか（security-7 [2]）。撮った画像は renderer へ返るので、
+ * 手元のファイル（file:）などの、利用者が URL 欄から開いたウェブのページでないものは写さない
+ */
+export function isSnapshotableBrowserUrl(url: string): boolean {
+  if (url === '' || url === 'about:blank') return true
+  const u = parse(url)
+  if (!u) return false
+  return u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === `${PREVIEW_SCHEME}:` || isProjectPageUrl(url)
 }

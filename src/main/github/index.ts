@@ -37,7 +37,11 @@ export async function githubStatus(): Promise<GitHubStatus> {
 
 export async function githubRepo(folderPath: string | null): Promise<GitHubRepoResult> {
   if (!folderPath) return { repo: null, reason: t('github.errors.openProject') }
-  const result = await run('git', ['-C', folderPath, 'remote', 'get-url', 'origin'], { timeoutMs: 5_000 })
+  // git は信頼できる絶対パスで、リポジトリの設定のコマンドを動かさずに（security-7 [5]・[15]）。gitSync.ts は ./index を読むので遅れて読む
+  const { AUTOMATIC_GIT_CONFIG, trustedGit } = await import('./gitSync')
+  const git = await trustedGit(folderPath)
+  if (!git) return { repo: null, reason: t('github.errors.gitMissing') }
+  const result = await run(git, ['-C', folderPath, ...AUTOMATIC_GIT_CONFIG, 'remote', 'get-url', 'origin'], { timeoutMs: 5_000 })
   if (result.missing) return { repo: null, reason: t('github.errors.gitMissing') }
   if (result.failed) {
     return { repo: null, reason: /not a git repository/i.test(result.stderr) ? t('github.errors.notGitRepo') : t('github.errors.noOrigin') }

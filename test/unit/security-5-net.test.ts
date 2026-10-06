@@ -16,6 +16,9 @@ import { removeContained } from '../../src/main/sessions/containment'
 import { PinnedDir, removeIn, renameIn } from '../../src/main/pinnedDir'
 import { createEntry, moveEntries, renameEntry } from '../../src/main/fileOps'
 
+/** 中継が受け付ける最小の System One の依頼（security-7 [7]。形の違う本文は送らずに断る） */
+const SYSTEM_ONE_BODY = JSON.stringify({ model: 'm', state: 's', questions: { ok: { type: 'noul' } } })
+
 /**
  * Codex のセキュリティスキャン5回目のうち [4][6][7][11] を、同じ種類のコードが戻ったら落ちる形で止める。
  *   [4] 判定の中継は、合言葉・プロジェクトごとの総量（回数・1分あたり・トークン・費用）を送る前に予約する
@@ -47,7 +50,7 @@ const relayFor = (fetch: typeof globalThis.fetch, budget: Partial<RelayBudget>, 
   new DecisionRelay({ upstream: async () => ({ url: 'https://decision.example.test/v1/systemone', headers: {}, provider: 'p', model: 'm', timeoutMs: 5000 }), fetch, budget, ...extra })
 
 const post = async (url: string) => {
-  const res = await fetch(url, { method: 'POST', body: '{}' })
+  const res = await fetch(url, { method: 'POST', body: SYSTEM_ONE_BODY })
   const body = await res.json().catch(() => ({})) as { error_type?: string }
   return { status: res.status, type: body.error_type }
 }
@@ -111,12 +114,13 @@ describe('security-5 [4] the decision relay reserves a cumulative budget before 
   })
 
   it('stops a token at its token budget and limits calls per minute', async () => {
-    const up = fakeUpstream({ tokens: 600 })
-    const relay = relayFor(up.fetch, { tokensPerToken: 1000 })
+    // 1回の上限（security-7 [7]。最小の依頼で 4871 トークン）が収まる枠にする
+    const up = fakeUpstream({ tokens: 6000 })
+    const relay = relayFor(up.fetch, { tokensPerToken: 10_000 })
     await relay.start()
     const url = relay.urlFor(relay.issue())
     expect((await post(url)).status).toBe(200)
-    // 600 使った。次の1回で見込む 600 を足すと 1000 を超える
+    // 6000 使った。次の1回で見込む 6000 を足すと 10000 を超える
     expect(await post(url)).toEqual({ status: 429, type: 'relay_budget_exhausted' })
 
     let now = Date.parse('2026-10-04T00:00:00Z')

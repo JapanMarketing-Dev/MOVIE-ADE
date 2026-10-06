@@ -28,6 +28,9 @@ import { DecisionService } from '../../src/main/decision/service'
 import { CallLog, aggregateCalls, callLogFile, estimateCost, extractUsage, sanitizeCallRecord } from '../../src/main/decision/callLog'
 import { projectLabel, type ApiCallRecord } from '@shared/apiUsage'
 
+/** 中継が受け付ける最小の System One の依頼（security-7 [7]。形の違う本文は送らずに断る） */
+const SYSTEM_ONE_BODY = JSON.stringify({ model: 'm', state: 's', questions: { ok: { type: 'noul' } } })
+
 /**
  * feedback.md の受け入れ確認の手順は POSIX の sh で書いてある。Windows では Agent（Claude Code）と同じく Git for Windows の bash で流す
  * （PATH の bash は WSL の起動役（System32\bash.exe）のことがあるので、場所を決め打ちにする。無ければその1件だけ流さない）
@@ -345,14 +348,14 @@ describe('Agent の環境変数', () => {
     await service.sync()
     expect(service.port).toBeNull()
     expect(await service.launchEnv()).toEqual({})
-    await expect(fetch(url, { method: 'POST', body: '{}' })).rejects.toThrow()
+    await expect(fetch(url, { method: 'POST', body: SYSTEM_ONE_BODY })).rejects.toThrow()
     prefs = { ...prefs, enabled: true }
     await service.sync()
     const next = (await service.launchEnv())[DECISION_ENV.url]!
     expect(next).not.toBe(url)
     // 前の合言葉はもう使えない（同じポートが割り当たっても 401）
     const old = new URL(url)
-    const stale = await fetch(`${new URL(next).origin}${old.pathname}${old.search}`, { method: 'POST', body: '{}' })
+    const stale = await fetch(`${new URL(next).origin}${old.pathname}${old.search}`, { method: 'POST', body: SYSTEM_ONE_BODY })
     expect(stale.status).toBe(401)
     await service.stop()
   })

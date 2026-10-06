@@ -88,44 +88,27 @@ describe('GitHub Actions の固定', () => {
     }
   })
 
-  it('R2 のトークンを持つジョブはリポジトリへ書けず、OIDC も持たない。リポジトリへ書けるジョブは R2 のトークンを持たない', () => {
+  it('release は鍵も R2 のトークンも持たず、署名・下書き・R2 への公開をしない（security-7 [3][8]。公開は手元の手順だけ）', () => {
     const text = read(`${workflowDir}/release.yml`)
     expect(text).toMatch(/^permissions:\n {2}contents: read$/m)
-    const jobs = jobsOf(text)
-    const withR2 = [...jobs].filter(([, lines]) => lines.some((l) => /secrets\.CLOUDFLARE_/.test(l)))
-    expect(withR2.map(([n]) => n).sort()).toEqual(['promote', 'stage'])
-    for (const [name, lines] of jobs) {
-      const perms = block(lines, 'permissions').join('\n')
-      const hasR2 = lines.some((l) => /secrets\.CLOUDFLARE_/.test(l))
-      if (hasR2) {
-        expect(perms, name).toMatch(/contents: read/)
-        expect(perms, name).not.toMatch(/write/)
-      }
-      if (/write/.test(perms)) expect(hasR2, name).toBe(false)
-    }
-  })
-
-  it('release は SHA256SUMS とその署名だけを R2 の外（GitHub Release）に出し、stage / promote はそれと突き合わせる', () => {
-    const text = read(`${workflowDir}/release.yml`)
-    expect(text).toMatch(/sha256sum Ferret-\* > \.\.\/SHA256SUMS/)
-    // GitHub Release に付けるのは SHA256SUMS だけ（インストーラーは R2 だけ。attestation は入れない決定）
-    // 自動更新用の zip の sha256 と署名（UPDATE-SHA256SUMS(.sig)）も並べる。zip そのものは付けない
-    expect(text).toMatch(/gh release create "\$\{GITHUB_REF_NAME\}" SHA256SUMS SHA256SUMS\.sig UPDATE-SHA256SUMS UPDATE-SHA256SUMS\.sig --repo/)
-    expect(text).not.toMatch(/gh release (create|upload)[^\n]*\.(dmg|exe|AppImage|deb|zip)\b/)
-    // zip はインストーラーの SHA256SUMS に混ぜない（0.4.x のアプリが SHA256SUMS と latest.json の files の一致を求める）
-    expect(text).toMatch(/sha256sum Ferret-\*\.zip > \.\.\/UPDATE-SHA256SUMS/)
-    expect(text).toMatch(/node scripts\/release-signing\.mjs sign --sums UPDATE-SHA256SUMS --out UPDATE-SHA256SUMS\.sig/)
+    expect(text).not.toMatch(/secrets\./)
+    // コメントの説明は除いて、実際に動くところに署名・R2・下書きが無い
+    const code = text.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n')
+    expect(code).not.toMatch(/release-signing\.mjs|release-r2\.mjs|gh release (create|upload)|workflow_dispatch|environment:/)
     expect(text).not.toMatch(/attest-build-provenance|id-token:/)
-    const jobs = jobsOf(text)
-    expect(jobs.get('stage')!.join('\n')).toMatch(/--expect-sums release-meta\/SHA256SUMS/)
-    expect(jobs.get('promote')!.join('\n')).toMatch(/--expect-sums release-meta\/SHA256SUMS/)
-    expect(jobs.get('stage')!.join('\n')).toMatch(/--expect-update-sums release-meta\/UPDATE-SHA256SUMS\s+--update-sums-sig release-meta\/UPDATE-SHA256SUMS\.sig/)
-    expect(jobs.get('promote')!.join('\n')).toMatch(/--expect-update-sums release-meta\/UPDATE-SHA256SUMS\s+--update-sums-sig release-meta\/UPDATE-SHA256SUMS\.sig/)
+    // どのジョブもリポジトリへ書けない
+    for (const [name, lines] of jobsOf(text)) expect(block(lines, 'permissions').join('\n'), name).not.toMatch(/write/)
+    // 作ったジョブの中で sha256 を残す（受け渡しの後の値ではない）
+    expect(text).toMatch(/sha256sum Ferret-\*/)
     // workflow の入力や vars を run の中へ式で直接埋め込まない（env を通す）
-    for (const [name, lines] of jobs) {
+    for (const [name, lines] of jobsOf(text)) {
       const runs = lines.join('\n').split(/\n\s+(?=- |[\w-]+:)/).filter((b) => /^\s*run:/.test(b))
       for (const r of runs) expect(r, name).not.toMatch(/\$\{\{\s*(inputs|vars|github\.event)\./)
     }
+  })
+
+  it('どの workflow も署名の鍵・R2 のトークンを使わない（鍵を持つ処理がタグの中身を動かさない。security-7 [3]）', () => {
+    for (const file of workflows) expect(read(file), file).not.toMatch(/RELEASE_SIGNING_KEY|CLOUDFLARE_API_TOKEN/)
   })
 })
 
@@ -226,24 +209,9 @@ describe('secrets が無くても、タグの push で必ず落ちるワーク�
   /** ジョブの steps を、- で始まる step ごとに分ける */
   const stepsOf = (lines: string[]) => lines.join('\n').split(/\n(?= {6}- )/).filter((b) => /^ {6}- /.test(b))
 
-  it('checksums は鍵の有無を最初に調べ、鍵を使うステップと下書き・release-meta はそれで飛ばせる', () => {
-    const steps = stepsOf(jobs.get('checksums')!)
-    expect(steps[0]).toMatch(/id: key/)
-    expect(steps[0]).toMatch(/RELEASE_SIGNING_KEY: \$\{\{ secrets\.RELEASE_SIGNING_KEY \}\}/)
-    expect(steps[0]).toMatch(/::notice /)
-    expect(jobs.get('checksums')!.join('\n')).toMatch(/signed: \$\{\{ steps\.key\.outputs\.present \}\}/)
-    for (const step of steps.slice(1).filter((b) => /secrets\.|gh release create|name: release-meta/.test(b))) {
-      expect(step).toMatch(/if: steps\.key\.outputs\.present == 'true'/)
-    }
-  })
-
-  it('stage は署名があるときだけ動き、R2 の secrets が無ければ notice を出してほかのステップを飛ばす', () => {
-    const lines = jobs.get('stage')!
-    expect(lines.join('\n')).toMatch(/^ {4}if: github\.event_name == 'push' && needs\.checksums\.outputs\.signed == 'true'$/m)
-    const steps = stepsOf(lines)
-    expect(steps[0]).toMatch(/id: r2/)
-    expect(steps[0]).toMatch(/::notice /)
-    for (const step of steps.slice(1)) expect(step).toMatch(/if: steps\.r2\.outputs\.present == 'true'/)
+  it('release は secrets を使わないので、鍵が無くても落ちない（security-7 [3]）', () => {
+    expect(text).not.toMatch(/secrets\./)
+    expect([...jobs.keys()]).toEqual(['build'])
   })
 
   it('dependency review は依存グラフが切れているリポジトリでは notice を出して飛ばす', () => {

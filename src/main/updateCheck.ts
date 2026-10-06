@@ -172,7 +172,8 @@ function reportCheckFailure(reason: 'http' | 'bad-manifest' | 'bad-version' | 'n
 async function releaseSignature(fetcher: typeof net.fetch, manifest: ReleaseManifest, latest: string, signal: AbortSignal): Promise<SignedReleaseFile[] | 'unsigned' | number> {
   // latest は judgeManifest が版の形を確かめたもの。配信元の下の固定の名前だけを読む
   const base = new URL(`releases/${latest}/`, releaseBase())
-  const responses = await Promise.all(['SHA256SUMS', 'SHA256SUMS.sig'].map((name) => fetcher(new URL(name, base).toString(), { signal })))
+  // 配信元の外へのリダイレクトは追わない（security-7 [12]。中身の署名とは別に、行き先を配信元に留める）
+  const responses = await Promise.all(['SHA256SUMS', 'SHA256SUMS.sig'].map((name) => fetcher(new URL(name, base).toString(), { signal, redirect: 'error' })))
   const transient = responses.find((r) => r.status >= 500 || r.status === 429)
   if (transient) return transient.status
   const [sumsRes, sigRes] = responses as [Response, Response]
@@ -191,7 +192,7 @@ async function updateSignature(fetcher: typeof net.fetch, manifest: ReleaseManif
   if (!manifest.updates?.length) return []
   try {
     const base = new URL(`releases/${latest}/`, releaseBase())
-    const [sumsRes, sigRes] = await Promise.all([UPDATE_SUMS_NAME, `${UPDATE_SUMS_NAME}.sig`].map((name) => fetcher(new URL(name, base).toString(), { signal }))) as [Response, Response]
+    const [sumsRes, sigRes] = await Promise.all([UPDATE_SUMS_NAME, `${UPDATE_SUMS_NAME}.sig`].map((name) => fetcher(new URL(name, base).toString(), { signal, redirect: 'error' }))) as [Response, Response]
     if (!sumsRes.ok || !sigRes.ok) return []
     const sums = await readBoundedBytes(sumsRes, SIGNED_SUMS_MAX_BYTES)
     const signature = await readBoundedText(sigRes, SIGNED_SUMS_MAX_BYTES)
@@ -275,7 +276,7 @@ export async function checkForUpdate(
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const res = await fetcher(new URL('latest.json', releaseBase()).toString(), { headers: { Accept: 'application/json' }, signal: controller.signal })
+    const res = await fetcher(new URL('latest.json', releaseBase()).toString(), { headers: { Accept: 'application/json' }, signal: controller.signal, redirect: 'error' })
     // まだ latest.json を置いていない。失敗ではなく案内として出す
     if (res.status === 404 || res.status === 403) return { state: 'no-release', current }
     if (!res.ok) {

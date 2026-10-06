@@ -14,6 +14,8 @@
  *   - 合言葉を無効にしたら、受け付け済みで途中の依頼も切る。本文は RELAY_BODY_TIMEOUT_MS までに届かなければ切る。
  *     接続先とキーを決める直前と送る直前に、合言葉がまだ有効かを確かめ直す（security-6 [2]）
  *   - プロジェクトのその日の量は main のファイルにも残し、起動し直しても空に戻さない（projectLedger.ts。security-6 [8]）
+ *   - 本文は System One の形だけを受け付け、model を設定のものに書き換え、1回で使いうる量の上限（requestBound.ts）を
+ *     送る前にまるごと予約する。残りの枠に収まらなければ送らない。単価の分からない接続先も費用の枠で数える（security-7 [7]）
  * Ferret が自分から判定モデルを呼ぶことはない。利用者の支払いも今までどおりプロバイダへ直接。
  *
  * Electron に依存させない（単体テストでローカルの偽の接続先に向けるため）。
@@ -26,6 +28,7 @@ import type { ApiCallRecord } from '@shared/apiUsage'
 import { estimateCost, extractUsage } from './callLog'
 import type { ProjectLedgerEntry, ProjectUsageStore } from './projectLedger'
 import { AI_RESPONSE_MAX_BYTES, ResponseTooLargeError, readBoundedBytes } from '../boundedResponse'
+import { budgetPricing, checkDecisionRequest, costOf } from './requestBound'
 
 /** 画像を2枚含むので大きめ */
 const RELAY_MAX_BODY_BYTES = 32 * 1024 * 1024
@@ -133,6 +136,8 @@ interface Outcome {
 
 const NOT_SENT: Outcome = { dispatched: false, priced: false }
 
+type Refusal = 'token' | 'busy' | 'rate' | 'project' | 'request'
+
 /** 接続先を決められない（URL・アカウント ID・キーが無いなど）。Agent へは 400 と理由を返す */
 export class RelayConfigError extends Error {}
 
@@ -162,17 +167,6 @@ function sendJson(res: ServerResponse, status: number, body: Record<string, unkn
 }
 
 const relayError = (message: string, type: string) => ({ message, error_type: type, source: 'ferret-relay' })
-
-/** 依頼の本文から数だけ（画像の枚数）を読む。本文そのものは残さない */
-function countImages(body: Buffer): number | undefined {
-  try {
-    const images = (JSON.parse(body.toString('utf8')) as { images?: unknown }).images
-    return Array.isArray(images) ? images.length : 0
-  } catch {
-    // JSON でない依頼はそのまま送る（接続先が理由を返す）。枚数は分からない（想定内）
-    return undefined
-  }
-}
 
 export class DecisionRelay {
   private server: Server | null = null
@@ -349,7 +343,7 @@ export class DecisionRelay {
    * 送る前に枠を予約する（同期で数えるので、同時に来た依頼でも枠を超えない）。
    * 合言葉の枠を使い切っていれば合言葉を無効にする。断るときは理由の種類を返す
    */
-  private reserve(tokenKey: string, issued: IssuedToken): Reservation | { refused: 'token' | 'busy' | 'rate' | 'project' } {
+  private reserve(tokenKey: string, issued: IssuedToken): Reservation | { refused: Refusal } {
     const b = this.budget
     const now = this.nowMs()
     issued.recent = issued.recent.filter((at) => now - at < 60_000)
@@ -379,6 +373,41 @@ export class DecisionRelay {
     }
     this.writeLedger(issued.meta.projectId, project)
     return { token: issued, project, projectId: issued.meta.projectId, heldTokens, heldUsd }
+  }
+
+  /**
+   * 本文を読んで決めた1回の上限（tokens・usd）まで予約を増やす（security-7 [7]）。同期で数えるので、同時の依頼でも枠を超えない。
+   * 合言葉・プロジェクトの残りに収まらなければ増やさずに断る（送らない）。予約が上限より大きければそのまま
+   */
+  private raise(r: Reservation, tokens: number, usd: number): Refusal | null {
+    const b = this.budget
+    const u = r.token.usage
+    const extraTokens = Math.max(0, tokens - r.heldTokens)
+    const extraUsd = Math.max(0, usd - r.heldUsd)
+    // この1回だけで残りを超える（待っても収まらない）
+    if (u.tokens + Math.max(tokens, r.heldTokens) > b.tokensPerToken || u.usd + Math.max(usd, r.heldUsd) > b.usdPerToken) return 'request'
+    if (u.tokens + u.heldTokens + extraTokens > b.tokensPerToken || u.usd + u.heldUsd + extraUsd > b.usdPerToken) return 'busy'
+    if (r.project && r.project.usd + r.project.heldUsd + extraUsd > b.usdPerProjectPerDay) return 'project'
+    u.heldTokens += extraTokens
+    u.heldUsd += extraUsd
+    r.heldTokens += extraTokens
+    r.heldUsd += extraUsd
+    if (r.project) {
+      r.project.heldUsd += extraUsd
+      this.writeLedger(r.projectId, r.project)
+    }
+    return null
+  }
+
+  private refusalBody(kind: Refusal): Record<string, unknown> {
+    const refusals: Record<Refusal, Record<string, unknown>> = {
+      token: relayError('This terminal used up its decision-model budget, so Ferret ended its relay token. Open a new terminal tab to continue.', 'relay_budget_exhausted'),
+      busy: relayError('This terminal is close to its decision-model budget. Wait for the previous requests to finish.', 'relay_budget_pending'),
+      rate: relayError(`Too many decision requests in one minute (max ${this.budget.callsPerMinute}). Wait a minute and try again.`, 'relay_rate_limited'),
+      project: relayError('This project reached today\'s decision-model budget in Ferret. Try again tomorrow.', 'relay_project_budget'),
+      request: relayError('This request could use more than the remaining decision-model budget. Send a shorter state, fewer questions or fewer images, or open a new terminal tab.', 'relay_request_too_large')
+    }
+    return refusals[kind]
   }
 
   /**
@@ -443,13 +472,7 @@ export class DecisionRelay {
     const reservation = this.reserve(token, issued)
     if ('refused' in reservation) {
       req.resume()
-      const refusals = {
-        token: relayError('This terminal used up its decision-model budget, so Ferret ended its relay token. Open a new terminal tab to continue.', 'relay_budget_exhausted'),
-        busy: relayError('This terminal is close to its decision-model budget. Wait for the previous requests to finish.', 'relay_budget_pending'),
-        rate: relayError(`Too many decision requests in one minute (max ${this.budget.callsPerMinute}). Wait a minute and try again.`, 'relay_rate_limited'),
-        project: relayError('This project reached today\'s decision-model budget in Ferret. Try again tomorrow.', 'relay_project_budget')
-      }
-      return sendJson(res, 429, refusals[reservation.refused])
+      return sendJson(res, 429, this.refusalBody(reservation.refused))
     }
     this.inflight.set(token, inflight + 1)
     // 合言葉を無効にしたら、この依頼も切る（本文の途中でも、接続先の応答待ちでも。security-6 [2]）
@@ -458,7 +481,7 @@ export class DecisionRelay {
     controller.signal.addEventListener('abort', () => { req.destroy(); res.destroy() }, { once: true })
     let outcome: Outcome = NOT_SENT
     try {
-      outcome = await this.forward(req, res, issued, controller.signal)
+      outcome = await this.forward(req, res, issued, controller.signal, reservation)
     } finally {
       issued.active.delete(controller)
       this.settle(token, reservation, outcome)
@@ -469,7 +492,7 @@ export class DecisionRelay {
   }
 
   /** 送って応答を返す。精算のために、使ったトークン数と費用（分かった分）を返す */
-  private async forward(req: IncomingMessage, res: ServerResponse, issued: IssuedToken, signal: AbortSignal): Promise<Outcome> {
+  private async forward(req: IncomingMessage, res: ServerResponse, issued: IssuedToken, signal: AbortSignal, reservation: Reservation): Promise<Outcome> {
     const meta = issued.meta
     const none = NOT_SENT
     // 無効にした合言葉の依頼は、ここから先へ進めない（接続先とキーを決めない・送らない。security-6 [2]）
@@ -478,7 +501,6 @@ export class DecisionRelay {
     if (!body || !live()) return none
     const started = Date.now()
     const base = { kind: 'decision' as const, ...(meta.projectId ? { projectId: meta.projectId } : {}), ...(meta.agent ? { agent: meta.agent } : {}), requestBytes: body.length }
-    const images = countImages(body)
     let upstream: RelayUpstream
     try {
       upstream = await this.opt.upstream()
@@ -489,7 +511,21 @@ export class DecisionRelay {
     }
     // 接続先を決めているあいだ（キーの復号・確認）に無効にされたら、送らない
     if (!live()) return none
-    const priced = !!upstream.pricing && (upstream.pricing.inputPer1M !== undefined || upstream.pricing.outputPer1M !== undefined)
+    // 形を確かめ、モデルを設定のものにし、1回で使いうる量の上限をまるごと予約する（security-7 [7]）。収まらなければ送らない
+    const checked = checkDecisionRequest(body, upstream.model)
+    if (!checked.ok) {
+      sendJson(res, 400, relayError(checked.message, 'relay_invalid_request'))
+      return none
+    }
+    const price = budgetPricing(upstream.url, upstream.pricing)
+    const refused = this.raise(reservation, checked.inputTokens + checked.outputTokens, costOf({ input: checked.inputTokens, output: checked.outputTokens }, price))
+    if (refused) {
+      sendJson(res, 429, this.refusalBody(refused))
+      return none
+    }
+    const images = checked.images
+    // 費用を数える接続先（単価を設定した・ローカルでない）。数えない（ローカル）なら回数とトークン数の枠で止まる
+    const priced = price.inputPer1M > 0 || price.outputPer1M > 0
     const record = (status: number, extra: Partial<ApiCallRecord> = {}) => this.opt.onCall?.({
       ts: (this.opt.now?.() ?? new Date()).toISOString(), ...base, provider: upstream.provider, model: upstream.model,
       status, latencyMs: Date.now() - started, ...(images !== undefined ? { images } : {}), ...extra
@@ -500,9 +536,11 @@ export class DecisionRelay {
         method: 'POST',
         headers: { 'content-type': req.headers['content-type'] ?? 'application/json', ...upstream.headers },
         // Buffer は型の上で BodyInit にならない環境がある（DOM の型）。同じバイト列の Uint8Array で渡す
-        body: Uint8Array.from(body),
+        body: Uint8Array.from(checked.body),
         // 時間切れと、合言葉を無効にしたときの両方で切る
-        signal: AbortSignal.any([signal, AbortSignal.timeout(upstream.timeoutMs)])
+        signal: AbortSignal.any([signal, AbortSignal.timeout(upstream.timeoutMs)]),
+        // キーを付けた依頼は、確かめた接続元の外へのリダイレクトを追わない（security-7 [10]）
+        redirect: 'error'
       })
     } catch (err) {
       const timeout = (err as { name?: string } | null)?.name === 'TimeoutError'
@@ -544,11 +582,13 @@ export class DecisionRelay {
       ...(usage.costUsd !== undefined ? { costUsd: usage.costUsd, costSource: 'provider' as const } : estimated !== undefined ? { costUsd: estimated, costSource: 'estimate' as const } : {})
     })
     const tokensKnown = usage.inputTokens !== undefined || usage.outputTokens !== undefined
+    // 枠に数える費用。応答の費用・設定の単価の見積もりが無ければ、枠の単価（単価の分からない接続先は高めの既定）で見積もる
+    const budgetUsd = cost ?? (tokensKnown ? costOf({ input: usage.inputTokens ?? 0, output: usage.outputTokens ?? 0 }, price) : undefined)
     return {
       dispatched: true,
       priced,
       ...(tokensKnown ? { tokens: (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0) } : {}),
-      ...(cost !== undefined ? { usd: cost } : {})
+      ...(budgetUsd !== undefined ? { usd: budgetUsd } : {})
     }
   }
 

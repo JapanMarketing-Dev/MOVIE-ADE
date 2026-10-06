@@ -518,3 +518,14 @@
     animation: none;
   }
 }
+
+/* 裏の fetch を止めているときの「自動で確認する」（文中のリンクの形） */
+.gh-sync__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}

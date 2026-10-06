@@ -10,7 +10,8 @@ describe('main からの外向き HTTP（Orca #22456 #1378 #8695）', () => {
     vi.stubGlobal('fetch', fetchMock)
     const res = await mainFetch('https://api.example.test/v1/x', { method: 'POST', body: 'a' })
     expect(await res.text()).toBe('ok')
-    expect(fetchMock).toHaveBeenCalledWith('https://api.example.test/v1/x', { method: 'POST', body: 'a' })
+    // キーを送る依頼なので、リダイレクトは既定で追わない（security-7 [10]）
+    expect(fetchMock).toHaveBeenCalledWith('https://api.example.test/v1/x', { method: 'POST', body: 'a', redirect: 'error' })
   })
 
   it('ローカルのサーバーが失敗を返したら、読まない本文を捨ててから down を返す', async () => {

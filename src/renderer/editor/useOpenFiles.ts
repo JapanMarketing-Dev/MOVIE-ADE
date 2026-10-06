@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isSameOrUnder, movedPath, type FsChangedEvent } from '@shared/files'
 import { MAX_VIEWER_BYTES, formatByteSize, mediaKindOf, type FileViewerKind, type FsFileInfo } from '@shared/fileViewer'
 import { previewUrl } from '@shared/preview'
-import { isHtmlPath, projectFileUrl, projectPathFromFileUrl } from '@shared/htmlPreview'
+import { isHtmlPath, projectPageUrl, projectPathFromPageUrl } from '@shared/htmlPreview'
 import { canOpenTab } from '@shared/browserTabs'
 import { MAX_OFFICE_BYTES, isLegacyOffice, officeKindOf } from '@shared/office/kinds'
 import { googleFileUrl, isGoogleFile } from '@shared/googleFiles'
@@ -221,7 +221,7 @@ export function useOpenFiles({
   }, [root, load, setActiveTab])
 
   /*
-   * HTML は内蔵ブラウザのタブに file:// で開く（@shared/htmlPreview。録画・指摘の仕組みがそのまま使える）。
+   * HTML は内蔵ブラウザのタブに ade-page://project/ で開く（@shared/htmlPreview。録画・指摘の仕組みがそのまま使える）。
    * 同じファイルを開いたタブがあれば前に出して読み直し（Agent が書き換えた後の内容を見せる）、空のタブならそこへ開く
    */
   /** 内蔵ブラウザで url を開く。same に当たるタブがあれば前に出し、reload なら読み直す。空のタブならそこへ開く */
@@ -241,9 +241,10 @@ export function useOpenFiles({
 
   const previewHtml = useCallback((path: string) => {
     if (!root) return
-    const url = projectFileUrl(root, path)
+    // プロジェクトの中のファイルだけを main が返す ade-page://project/ で開く（手元の絶対パスの URL は渡さない。security-7 [2][6]）
+    const url = projectPageUrl(path)
     setActiveTab('browser')
-    void showInBrowser(url, (tabUrl) => projectPathFromFileUrl(tabUrl, root) === path, true).catch((err) => onError(errorMessage(err)))
+    void showInBrowser(url, (tabUrl) => projectPathFromPageUrl(tabUrl) === path, true).catch((err) => onError(errorMessage(err)))
   }, [root, setActiveTab, onError, showInBrowser])
 
   /*

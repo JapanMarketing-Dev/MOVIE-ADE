@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { realpath } from 'node:fs/promises'
 import { devNull } from 'node:os'
 import { delimiter } from 'node:path'
 import type { GitActionResult, GitRepoStatus } from '@shared/github'
@@ -10,6 +11,7 @@ import { resolveTrustedExecutable, windowsSearchPathEnv } from '../agentExecutab
 import { searchDirs } from '../agentDetection'
 import { redactGhOutput, toolEnv } from './gh'
 import { resolveRemote } from './index'
+import { canonicalRemote, remoteLabel, type FetchConsentStore } from './fetchConsent'
 
 /**
  * フッターの git：状態の読み取り・裏の fetch・最新の取得（fast-forward だけ）・push。
@@ -20,7 +22,9 @@ import { resolveRemote } from './index'
  *   （fetch は今のブランチの upstream のリモート、取り込みは @{upstream}、push は push.default=upstream で決める）
  * - 問い合わせは出さない：端末の問い合わせ・askpass・資格情報マネージャーの画面を切り、POSIX では端末から切り離して起動する。
  *   時間切れはプロセスのグループごと止める
- * - 裏の fetch はフック・fsmonitor を動かさない。利用者が押した取り込み・push は、利用者のフック（husky など）をそのまま動かす
+ * - 自動で走る git（状態・リモートの URL・裏の fetch）は、どれも AUTOMATIC_GIT_CONFIG を付けて、リポジトリの設定のコマンド
+ *   （フック・fsmonitor）を動かさない（security-7 [5]）。利用者が押した取り込み・push は、利用者のフック（husky など）をそのまま動かす
+ * - 裏の fetch は、行き先を見せて利用者が認めたリモートにだけ行う（fetchConsent.ts。security-7 [9]）
  * - 同じフォルダの git の操作は1つずつ（index.lock を取り合わない）
  */
 
@@ -78,8 +82,26 @@ export function gitSyncEnv(base: NodeJS.ProcessEnv = toolEnv(), platform: NodeJS
 
 /** どの呼び出しにも付ける設定 */
 const BASE_CONFIG = ['-c', 'credential.interactive=never', '-c', 'core.quotePath=false']
-/** 裏の fetch だけに付ける：フックと fsmonitor を動かさない */
-const QUIET_CONFIG = ['-c', `core.hooksPath=${devNull}`, '-c', 'core.fsmonitor=false']
+/**
+ * 利用者が押していない（自動で走る）git に必ず付ける設定。リポジトリの設定が決めるコマンドを動かさない（security-7 [5]）:
+ * フック・fsmonitor（status が呼ぶ）・ext:: の転送（任意のコマンドを動かせる）・ローカルのパスの転送（remote.*.uploadpack の
+ * コマンドをこのパソコンで動かす）。ファイルツリーの色分け（gitDecorations.ts）も同じものを使う
+ */
+export const AUTOMATIC_GIT_CONFIG: readonly string[] = [
+  '-c', `core.hooksPath=${devNull}`, '-c', 'core.fsmonitor=false', '-c', 'protocol.ext.allow=never', '-c', 'protocol.file.allow=never'
+]
+/** 利用者が押した「リモートの変更を確認」「最新を取得」の fetch。ローカルのパスのリモートは押せば取れる（フック・fsmonitor・ext:: は動かさない） */
+const MANUAL_FETCH_CONFIG: readonly string[] = ['-c', `core.hooksPath=${devNull}`, '-c', 'core.fsmonitor=false', '-c', 'protocol.ext.allow=never']
+
+let consentStore: FetchConsentStore | null = null
+/** 裏の fetch の許可を残す場所（index.ts が userData の下を渡す）。無ければ裏の fetch はしない */
+export function setFetchConsentStore(store: FetchConsentStore): void {
+  consentStore = store
+}
+
+async function realFolder(folder: string): Promise<string> {
+  return realpath(folder).catch(() => folder)
+}
 
 function runGit(git: string, folder: string, args: readonly string[], timeoutMs: number): Promise<GitRun> {
   return new Promise((resolve) => {
@@ -162,19 +184,27 @@ export async function readGitStatus(folder: string | null): Promise<GitRepoStatu
   if (!folder) return emptyStatus()
   const git = await trustedGit(folder)
   if (!git) return emptyStatus()
-  const [status, remote] = await Promise.all([
-    runGit(git, folder, ['status', '--porcelain=v2', '--branch', '--untracked-files=normal'], STATUS_TIMEOUT_MS),
-    runGit(git, folder, ['remote', 'get-url', 'origin'], STATUS_TIMEOUT_MS)
+  const [status, remote, fetchUrl] = await Promise.all([
+    runGit(git, folder, [...AUTOMATIC_GIT_CONFIG, 'status', '--porcelain=v2', '--branch', '--untracked-files=normal'], STATUS_TIMEOUT_MS),
+    runGit(git, folder, [...AUTOMATIC_GIT_CONFIG, 'remote', 'get-url', 'origin'], STATUS_TIMEOUT_MS),
+    // 引数の無い fetch が選ぶリモート（今のブランチの upstream のリモート、無ければ origin）の URL。通信はしない
+    runGit(git, folder, [...AUTOMATIC_GIT_CONFIG, 'ls-remote', '--get-url'], STATUS_TIMEOUT_MS)
   ])
   if (status.failed) return emptyStatus()
   const summary = parseGitStatus(status.stdout)
   const state = fetchState(folder)
+  const hasRemote = summary.hasUpstream || !remote.failed
+  const target = hasRemote && !fetchUrl.failed ? canonicalRemote(fetchUrl.stdout) : null
   return {
     isGit: true,
     repo: remote.failed ? null : await resolveRemote(remote.stdout),
     ...summary,
-    hasRemote: summary.hasUpstream || !remote.failed,
-    fetch: { fetching: state.fetching, lastFetchAt: state.lastFetchAt, lastError: state.lastError },
+    hasRemote,
+    fetch: {
+      fetching: state.fetching, lastFetchAt: state.lastFetchAt, lastError: state.lastError,
+      autoFetch: target && consentStore ? consentStore.consent(await realFolder(folder), target) : null,
+      remote: target ? remoteLabel(target) : null
+    },
     busy: busy.get(folder) ?? null
   }
 }
@@ -188,9 +218,10 @@ function failure(run: GitRun): { error: GitSyncErrorKind; detail: string | null 
 }
 
 /** fetch を1回（状態の記録を含む）。今のブランチの upstream のリモート（無ければ origin）を、引数を足さずに git に選ばせる */
-async function doFetch(folder: string, git: string): Promise<GitRun> {
+async function doFetch(folder: string, git: string, automatic: boolean): Promise<GitRun> {
   fetchStates.set(folder, { ...fetchState(folder), fetching: true })
-  const run = await runGit(git, folder, [...QUIET_CONFIG, 'fetch', '--quiet', '--no-recurse-submodules'], FETCH_TIMEOUT_MS)
+  const config = automatic ? AUTOMATIC_GIT_CONFIG : MANUAL_FETCH_CONFIG
+  const run = await runGit(git, folder, [...config, 'fetch', '--quiet', '--no-recurse-submodules'], FETCH_TIMEOUT_MS)
   fetchStates.set(folder, recordFetch(fetchState(folder), Date.now(), run.failed ? failure(run).error : null))
   return run
 }
@@ -212,16 +243,37 @@ export async function autoFetch(folder: string | null, trigger: FetchTrigger, vi
     const git = await trustedGit(folder)
     if (!git) return null
     const before = await readGitStatus(folder)
-    if (!before.isGit || !before.hasRemote) return null
+    // 行き先を見せて認めてもらったリモートだけ（security-7 [9]）。プロジェクトの設定が決めた相手へ、開いただけで通信しない
+    if (!before.isGit || !before.hasRemote || before.fetch.autoFetch !== 'approved') return null
     started = true
     return await exclusive(folder, async () => {
-      await doFetch(folder, git)
+      await doFetch(folder, git, true)
       return readGitStatus(folder)
     })
   } finally {
     // 走らせなかったときは、印だけ戻す（試した時刻は付けない）
     if (!started) fetchStates.set(folder, { ...fetchState(folder), fetching: false })
   }
+}
+
+/**
+ * フッターで「自動で確認する／しない」を選んだ。行き先は main が今の設定から決め直す（renderer からは受け取らない）。
+ * 決めた後の状態を返す（リモートが無い・読めないときは何も残さない）
+ */
+export async function decideAutoFetch(folder: string | null, allowed: boolean): Promise<GitRepoStatus> {
+  if (!folder) return emptyStatus()
+  const git = await trustedGit(folder)
+  if (!git) return emptyStatus()
+  const fetchUrl = await runGit(git, folder, [...AUTOMATIC_GIT_CONFIG, 'ls-remote', '--get-url'], STATUS_TIMEOUT_MS)
+  const target = fetchUrl.failed ? null : canonicalRemote(fetchUrl.stdout)
+  if (target && consentStore) consentStore.decide(await realFolder(folder), target, allowed)
+  return readGitStatus(folder)
+}
+
+/** Ferret で clone したプロジェクト。利用者が入れた URL のリモートを、自動で確認してよいものとして始める */
+export async function approveClonedRemote(folder: string, url: string): Promise<void> {
+  const target = canonicalRemote(url)
+  if (target && consentStore) consentStore.decide(await realFolder(folder), target, true)
 }
 
 /**
@@ -252,7 +304,7 @@ export async function runGitAction(folder: string | null, action: GitSyncAction,
         }
         return result(await readGitStatus(folder), null, null, status.ahead)
       }
-      const fetched = await doFetch(folder, git)
+      const fetched = await doFetch(folder, git, false)
       if (fetched.failed) {
         const { error, detail } = failure(fetched)
         return result(await readGitStatus(folder), error, detail)

@@ -9,6 +9,7 @@ import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import { reportHandled } from '@shared/report'
 import { normalizeUrl } from '@shared/projectUrl'
+import { isProjectPageUrl } from '@shared/htmlPreview'
 import {
   createExternalOpener,
   displayOrigin,
@@ -313,6 +314,11 @@ export class EmbeddedBrowser {
     // 普通の別タブ（target=_blank のリンクなど）は内蔵ブラウザの新しいタブで開く（opener は渡さない）。別のアプリへは mailto だけを、確認してから渡す。
     // file: data: javascript: や独自スキームは何もしない（ページから OS の URL ハンドラを呼ばせない）
     wc.setWindowOpenHandler((details) => {
+      // プロジェクトのページからは、外のページを別タブ・ポップアップ・外のアプリで開かせない（security-7 [6]。開くのは利用者が URL 欄に入れたときだけ）
+      if (isProjectPageUrl(wc.getURL()) && !isProjectPageUrl(details.url)) {
+        this.noticeBlockedExternal(details.url)
+        return { action: 'deny' }
+      }
       const action = popupWindowAction(details)
       if (action === 'popup') return { action: 'allow', overrideBrowserWindowOptions: popupWindowOptions() }
       if (action === 'tab') this.openTabFromPage(tab, details.url, details.disposition !== 'background-tab')
@@ -325,12 +331,17 @@ export class EmbeddedBrowser {
     wc.on('will-navigate', (event) => {
       if (isPageNavigationAllowed(event.url, wc.getURL())) return
       event.preventDefault()
+      if (isProjectPageUrl(wc.getURL())) {
+        this.noticeBlockedExternal(event.url)
+        return
+      }
       if (isAllowedExternalUrl(event.url)) void openExternalFromPage(event.url, wc.getURL())
     })
     // サーバーの転送（リダイレクト）にも同じ決まりを当てる。独自スキームへの転送は、外部アプリの起動の権限（確認付き）へ回る
     wc.on('will-redirect', (event) => {
       if (isPageNavigationAllowed(event.url, wc.getURL())) return
       event.preventDefault()
+      if (isProjectPageUrl(wc.getURL())) return
       if (isAllowedExternalUrl(event.url)) void openExternalFromPage(event.url, wc.getURL())
     })
 
@@ -740,6 +751,13 @@ export class EmbeddedBrowser {
 
   reload(): void {
     this.webContents?.reload()
+  }
+
+  /** プロジェクトのページが外のページへ移ろうとして止めた（行き先のホストだけ知らせる。security-7 [6]） */
+  private noticeBlockedExternal(url: string): void {
+    let host = ''
+    try { host = new URL(url).host } catch { /* 読めない URL（想定内）。ホストなしで知らせる */ }
+    this.onNotice?.(t('browser.projectPageBlockedExternal', { host: host || url.slice(0, 80) }))
   }
 
   /** 開いているログインのポップアップ。ビューを破棄するときに閉じる */

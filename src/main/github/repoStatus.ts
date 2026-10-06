@@ -1,7 +1,7 @@
 import { watch, type FSWatcher } from 'node:fs'
 import type { GitRepoStatus } from '@shared/github'
 import { run } from './gh'
-import { readGitStatus, trustedGit } from './gitSync'
+import { AUTOMATIC_GIT_CONFIG, readGitStatus, trustedGit } from './gitSync'
 
 /**
  * フッターの「どの GitHub / GitLab の、どのブランチか」。読み方と fetch・取り込み・push は gitSync.ts
@@ -28,7 +28,7 @@ export async function watchGitHead(folderPath: string | null, onChange: () => vo
   // worktree では .git がファイルなので、git に本当の置き場を聞く
   const git = await trustedGit(folderPath)
   if (!git || watched !== current) return
-  const gitDir = await run(git, ['-C', folderPath, 'rev-parse', '--absolute-git-dir'], { timeoutMs: 5_000 })
+  const gitDir = await run(git, ['-C', folderPath, ...AUTOMATIC_GIT_CONFIG, 'rev-parse', '--absolute-git-dir'], { timeoutMs: 5_000 })
   if (gitDir.failed || watched !== current) return
   let timer: NodeJS.Timeout | null = null
   try {

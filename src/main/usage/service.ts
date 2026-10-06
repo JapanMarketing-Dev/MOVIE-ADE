@@ -35,7 +35,8 @@ import { t } from '@shared/i18n'
 
 type Target = { key: string; dir: string | undefined }
 
-const request: UsageRequest = (url, init) => net.fetch(url, init)
+// 使用量の取得は OAuth のトークンを付ける。リダイレクトは追わない（security-7 [10]）
+const request: UsageRequest = (url, init) => net.fetch(url, { ...init, redirect: 'error' })
 
 function userDataDir(): string {
   return app.getPath('userData')
