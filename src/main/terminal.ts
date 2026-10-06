@@ -63,6 +63,13 @@ const FLUSH_INTERVAL_MS = 16
 const MAX_CHUNK = 256 * 1024
 /** ためこみの上限。これを超えたら古い側を捨てて入力の応答を守る */
 const MAX_BUFFER = 4 * 1024 * 1024
+/**
+ * 出力の流量制御。renderer がまだ描いていない（ack の来ていない）出力がこれを超えたら PTY を止め、
+ * FLOW_LOW_WATER を下回ったら再開する。ack を待たずに送り続けると、renderer が詰まったとき（重い描画・読み込み直し）に
+ * main の IPC の送り待ちが上限なく増える（0.4.16 の Windows の main のクラッシュの候補）。止めている間はシェルの書き込みが待つ
+ */
+export const FLOW_HIGH_WATER = 2 * 1024 * 1024
+export const FLOW_LOW_WATER = 256 * 1024
 /** 起動ファイルにフックを差し込めないシェルで、出力が止まってから起動コマンドを書き込むまでの間 */
 const STARTUP_WRITE_QUIET_MS = 300
 /** 出力が止まらなくても、ここまで待ったら書き込む */
@@ -186,6 +193,10 @@ interface Session {
   history: TerminalHistory
   /** 起動時の Agent の推定の段階（agent/launchPhase.ts） */
   launchAgent?: LaunchAgentPhase
+  /** 送ったが renderer の ack がまだの文字数（流量制御） */
+  unacked: number
+  /** 流量制御で PTY を止めているか */
+  paused: boolean
 }
 
 export type { TerminalSessionInfo } from '@shared/types'
@@ -356,6 +367,7 @@ export class TerminalManager {
         cwd,
         env: ptyEnv({ ...launchEnv, ...extraEnv })
       })
+      hardenWindowsPty(pty)
     } catch (err) {
       // シェルの名前だけを付ける（パスは送る前に落とす。src/main/telemetry.ts）
       reportMainError(err, { kind: 'pty-spawn', shell: shellLabel(shell.file) })
@@ -368,7 +380,7 @@ export class TerminalManager {
     const launched = options.accountLogin?.agent ?? agent ?? null
     const session: Session = { id, pty, buffer: [], bufferBytes: 0, timer: null,
       tail: '', readiness: new ComposerReadiness(), sending: false,
-      info: { id, pid: pty.pid, cwd, title, agent: launched }, history: new TerminalHistory() }
+      info: { id, pid: pty.pid, cwd, title, agent: launched }, history: new TerminalHistory(), unacked: 0, paused: false }
     this.sessions.set(id, session)
     if (agent) this.failover?.launched(id, agent, options.failoverToken ?? null)
 
@@ -381,6 +393,7 @@ export class TerminalManager {
     pty.onExit(({ exitCode }) => {
       // パンくず：Agent の異常終了（exit code≠0）が、このあとの失敗の手がかりになる
       flow('terminal exit', { exitCode, kind: launched ? (isBuiltinAgent(launched) ? launched : 'custom') : 'shell' })
+      releaseWindowsConout(pty)
       stopStartupWrite?.cancel()
       this.flush(session)
       this.sessions.delete(id)
@@ -482,6 +495,40 @@ export class TerminalManager {
       session.timer = setTimeout(() => this.flush(session), FLUSH_INTERVAL_MS)
     }
     this.onData(session.id, payload)
+    session.unacked += payload.length
+    if (!session.paused && session.unacked > FLOW_HIGH_WATER && this.sessions.get(session.id) === session) {
+      session.paused = true
+      try {
+        session.pty.pause()
+      } catch {
+        /* すでに終了している */
+      }
+    }
+  }
+
+  /** renderer が出力を描き終えた（terminal:ack）。止めていた PTY は、未処理が減ったら再開する */
+  ack(id: string, chars: number): void {
+    const session = this.sessions.get(id)
+    if (!session || !Number.isFinite(chars) || chars <= 0) return
+    session.unacked = Math.max(0, session.unacked - chars)
+    if (session.paused && session.unacked < FLOW_LOW_WATER) this.resumeFlow(session)
+  }
+
+  /** 画面を読み込み直した。前の画面に送った出力の ack は来ないので、数え直して全部再開する */
+  resetFlow(): void {
+    for (const session of this.sessions.values()) {
+      session.unacked = 0
+      if (session.paused) this.resumeFlow(session)
+    }
+  }
+
+  private resumeFlow(session: Session): void {
+    session.paused = false
+    try {
+      session.pty.resume()
+    } catch {
+      /* すでに終了している */
+    }
   }
 
   write(id: string, data: string): void {
@@ -692,11 +739,19 @@ export class TerminalManager {
  * シェルを落とすと子プロセスの親は init に付け替えられ、辿れなくなる。
  * そのため kill の**前**に呼び、結果を控えておく。
  */
+/** 直前の ps の結果。終了時に全部のタブを続けて閉じるとき、タブの数だけ同期の ps で main を止めない */
+let psListingCache: { at: number; listing: string } | null = null
+const PS_LISTING_REUSE_MS = 500
+
 function descendantPids(root: number): number[] {
   let listing: string
   try {
-    // 同期の ps（main が止まる）。重ければ手がかりとして控える
-    listing = timedSync('ps', () => execFileSync('ps', ['-Ao', 'pid=,ppid='], { encoding: 'utf8', timeout: 1000 }))
+    if (psListingCache && Date.now() - psListingCache.at < PS_LISTING_REUSE_MS) listing = psListingCache.listing
+    else {
+      // 同期の ps（main が止まる）。重ければ手がかりとして控える
+      listing = timedSync('ps', () => execFileSync('ps', ['-Ao', 'pid=,ppid='], { encoding: 'utf8', timeout: 1000 }))
+      psListingCache = { at: Date.now(), listing }
+    }
   } catch (err) {
     // 子プロセスを数えられないだけで、終了処理は pty.kill で続ける
     // 失敗の文は ps の stderr を含むので、種類だけを送る
@@ -745,7 +800,11 @@ function descendantPids(root: number): number[] {
  */
 function killPtyTree(pty: IPty, signal: NodeJS.Signals, known: readonly number[] = []): number[] {
   if (process.platform === 'win32') {
+    // 同じ PTY の kill は1回だけ（閉じるときの taskkill の後と、終了時の強制終了の両方から来る）。
+    // node-pty の kill は毎回ネイティブの表を引き、コンソールのプロセス一覧を取る子プロセスも起動する
     const killPty = () => {
+      if (killedWindowsPtys.has(pty)) return
+      killedWindowsPtys.add(pty)
       try {
         pty.kill()
       } catch {
@@ -780,6 +839,57 @@ function killPtyTree(pty: IPty, signal: NodeJS.Signals, known: readonly number[]
   }
 
   return descendants
+}
+
+/**
+ * Windows の node-pty の中（WindowsPtyAgent）の resize・kill を包む。
+ * - 同じ PTY の kill は1回だけにする。2回目の kill は ConPTY のハンドルを二重に閉じ、main がネイティブに落ちる
+ *   （ヒープ破損 0xC0000374。0.4.18 の前に Windows の VM で node-pty 1.1.0・1.2.0-beta.15 の両方で再現した。
+ *   0.4.16 は終了時に taskkill の後の kill と、強制終了への切り替えの kill が重なっていた）
+ * - node-pty は最初の出力が届くまで resize・kill を後回しにし、最初の出力の 'data' の中でまとめて実行する。
+ *   そのときにはシェルがもう終わっていると、resize は「Cannot resize a pty that has already exited」を投げ、
+ *   呼び出し側の try/catch の外（ソケットのイベントの中）なので main の捕まえていない例外になる。投げさせない
+ */
+export function hardenWindowsPty(pty: IPty, platform: NodeJS.Platform = process.platform): void {
+  if (platform !== 'win32') return
+  const agent = (pty as unknown as { _agent?: Record<string, unknown> })._agent
+  if (!agent) return
+  let killed = false
+  for (const name of ['resize', 'kill'] as const) {
+    const original = agent[name]
+    if (typeof original !== 'function') continue
+    agent[name] = (...args: unknown[]) => {
+      if (name === 'kill') {
+        if (killed) return undefined
+        killed = true
+      }
+      try {
+        return (original as (...a: unknown[]) => unknown).apply(agent, args)
+      } catch {
+        // 終わった PTY への resize・kill（想定内）
+        return undefined
+      }
+    }
+  }
+}
+
+/** Windows で kill 済みの PTY（killPtyTree の二重の kill を防ぐ） */
+const killedWindowsPtys = new WeakSet<IPty>()
+
+/**
+ * Windows: シェルが自分で終わったときも、node-pty が PTY ごとに main に作る出力用の Worker（V8 をもう1つ持つスレッド）を片付ける。
+ * node-pty（1.2.0-beta.15 まで）はこれを kill() の中でしか片付けず、`exit` で閉じたシェル・終わったら閉じる
+ * インストール・ログインのたびに main に Worker が残り続けた（メモリの増加。0.4.16 の Windows の main のクラッシュの候補）。
+ * kill() は呼ばない（終わった PTY の kill はコンソールのプロセス一覧を取る子プロセスを起動する）。dispose は何度呼んでもよい。
+ * 中の名前は版を固定して test/unit/terminal-windows-release.test.ts で確かめる
+ */
+export function releaseWindowsConout(pty: IPty, platform: NodeJS.Platform = process.platform): void {
+  if (platform !== 'win32') return
+  try {
+    (pty as unknown as { _agent?: { _conoutSocketWorker?: { dispose?: () => void } } })._agent?._conoutSocketWorker?.dispose?.()
+  } catch {
+    /* すでに片付いている */
+  }
 }
 
 function shellLabel(file: string): string {

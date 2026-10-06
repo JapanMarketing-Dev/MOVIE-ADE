@@ -33,7 +33,12 @@ Ferret のクラッシュと未処理のエラーは Sentry（組織 `workspacep
 - main・renderer・GPU などのネイティブのクラッシュは、`Native crash (<プロセス>, <理由>)` という題名のイベントで届く（main のものは次の起動で送られる）
 - **minidump（メモリの写し）は送らない**（security-2 [13]）。キー・パス・画面の文などが入りうるのに伏せ字を通せないため。届くのはプロセスの種類（tags の `event.process`。main-window / recorder など）・終了の理由（`exit.reason`）・版だけで、スタックは無い
   - 送らないことは `src/main/telemetry.ts` の beforeSend（届いた添付を全部捨てる・`minimizeNativeCrash`）と、transport の `filterEnvelope`（送ってよい項目と添付の名前だけを通す）の2か所で守る
-  - 原因を調べるには、再現した手元の minidump（Electron の crashDumps のフォルダ）を開発者が自分で読む
+  - 0.4.18 から、送る前に手元で minidump の例外の部分だけを読み（`src/shared/minidump.ts`）、短い値をタグにする。題名は `Native crash (<プロセス>, <理由>): <種類> in <モジュール>`
+    - `crash.kind`: 例外の種類（`oom`・`access-violation`・`stack-overflow`・`fast-fail`・macOS の `bad-access`・Linux の `sigsegv` など）。V8 のメモリ不足の注釈があれば `oom`
+    - `crash.code`: 例外の番号（16進）。`crash.module`: 落ちた場所のモジュールのファイル名（`pty.node`・`conpty.node`・`ferret.exe` など。パスは持たない）
+    - `mem.rss`・`mem.heap`・`uptime`: 落ちる前の main のメモリの量と起動からの時間の区分（30秒ごとに scope に控え、次の起動のクラッシュのイベントに付く）
+    - 2GB+ や `oom` ならメモリの増加、`conpty.node`・`pty.node` ならターミナル（node-pty）を疑う
+  - それでも足りなければ、再現した手元の minidump（Electron の crashDumps のフォルダ）を開発者が自分で読む
 - node-pty の記号（`scripts/sentry-sourcemaps.mjs` が上げる）は、minidump を送らないので今は使われない
 
 ## 5. 落ちたときの状況

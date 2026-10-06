@@ -100,6 +100,12 @@ const PS_TIMEOUT_MS = 5000
 const HISTORY_CAPACITY = 30
 const HISTORY_STALE_MS = 10 * 60 * 1000
 const OTHER_KEY = '__other__'
+/**
+ * Windows のプロセス一覧（PowerShell の CIM）は1回で1秒以上かかり、PowerShell を起動するたびに CPU とメモリを使う
+ * （FERRET-M: 0.4.15 の Windows で resources:snapshot が毎回 1.2〜1.4 秒）。続けて呼ばれても、この間は前回の一覧を使う。
+ * アプリ本体（getAppMetrics）は毎回取り直す
+ */
+export const WINDOWS_ENUMERATE_MIN_MS = 15_000
 
 /** ps が続けて失敗した回数。一時的な失敗（スリープ明け・ディスプレイの抜き差し・時間切れ）は送らず、続いたときだけ送る（FERRET-1M） */
 let psFailures = 0
@@ -146,19 +152,27 @@ export class ResourceCollector {
   /** 画面（renderer）を読み込み直した回数。ターミナルがどの読み込みで開かれたかと比べて、置き去りを見つける */
   private rendererEpoch = 0
   private createdEpoch = new Map<string, number>()
+  /** 前回のプロセス一覧（Windows で取り直しの間を空けるため） */
+  private lastRows: { rows: ProcRow[]; at: number } | null = null
 
   constructor(
     private readonly sources: ResourceSources,
     /** OS。単体テストから差し替えられるよう外から渡す */
     platform: NodeJS.Platform = process.platform,
-    windows?: WindowsProcessCollector
+    windows?: WindowsProcessCollector,
+    private readonly now: () => number = Date.now
   ) {
     this.windows = platform === 'win32' ? windows ?? new WindowsProcessCollector() : null
   }
 
-  /** ホスト全体のプロセス一覧。Windows は PowerShell/typeperf、それ以外は ps */
-  private enumerateProcesses(): Promise<ProcRow[]> {
-    return this.windows ? this.windows.enumerate() : enumerateWithPs()
+  /** ホスト全体のプロセス一覧。Windows は PowerShell/typeperf（WINDOWS_ENUMERATE_MIN_MS に1回まで）、それ以外は ps */
+  private async enumerateProcesses(): Promise<ProcRow[]> {
+    if (!this.windows) return enumerateWithPs()
+    const at = this.now()
+    if (this.lastRows && at - this.lastRows.at < WINDOWS_ENUMERATE_MIN_MS) return this.lastRows.rows
+    const rows = await this.windows.enumerate()
+    this.lastRows = { rows, at: this.now() }
+    return rows
   }
 
   /** 画面を読み込み直した（初回の読み込みも含む）。それより前のターミナルはどのタブにも付いていない */

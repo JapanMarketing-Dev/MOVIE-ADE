@@ -102,9 +102,10 @@ describe('security-2 [13] ネイティブのクラッシュ', () => {
 
   it('security-2 [13] プロセスの種類・終了の理由・版だけを残す', () => {
     const out = minimize(crashEvent())
-    expect(out.message).toBe('Native crash (main-window, crashed)')
-    expect(out.fingerprint).toEqual(['native-crash', 'main-window', 'crashed'])
-    expect(out.tags).toEqual({ 'event.environment': 'native', 'event.process': 'main-window', 'exit.reason': 'crashed', 'os.platform': 'darwin', arch: 'arm64' })
+    // 例の exception は V8 のメモリ不足（OutOfMemoryError）なので、種類 oom だけを残す（スタックは残さない）
+    expect(out.message).toBe('Native crash (main-window, crashed): oom')
+    expect(out.fingerprint).toEqual(['native-crash', 'main-window', 'crashed', 'oom'])
+    expect(out.tags).toEqual({ 'event.environment': 'native', 'event.process': 'main-window', 'exit.reason': 'crashed', 'os.platform': 'darwin', arch: 'arm64', 'crash.kind': 'oom' })
     expect(out.contexts).toEqual({ electron: { details: { reason: 'crashed', exitCode: 11 } }, app: { app_version: '0.2.0', app_arch: 'arm64' }, os: { name: 'macOS', version: '26.6.2' } })
     expect(out.release).toBe('ferret@0.2.0')
     expect(Object.keys(out).sort()).toEqual(['contexts', 'environment', 'event_id', 'fingerprint', 'level', 'message', 'platform', 'release', 'tags', 'timestamp', 'user'])
@@ -123,7 +124,7 @@ describe('security-2 [13] ネイティブのクラッシュ', () => {
     e.tags['exit.reason'] = '/Users/someone/x'
     e.contexts.electron.details.reason = 'x y'
     const out = minimize(e)
-    expect(out.message).toBe('Native crash (unknown)')
+    expect(out.message).toBe('Native crash (unknown): oom')
     expect(out.tags?.['event.process']).toBe('unknown')
   })
 
@@ -164,7 +165,7 @@ describe('security-2 [13] main の Sentry の設定（伏せ字を通らない�
   it('security-2 [13] beforeSend は届いた添付を全部捨て、ネイティブのクラッシュを小さくしてから伏せ字を通す', () => {
     const cleared = beforeSend.indexOf('hint.attachments = []')
     expect(cleared).toBeGreaterThan(-1)
-    expect(beforeSend.indexOf('minimizeNativeCrash(event)')).toBeGreaterThan(cleared)
+    expect(beforeSend.indexOf('minimizeNativeCrash(event, dump)')).toBeGreaterThan(cleared)
     // 後から足す添付は main のログだけで、ネイティブのクラッシュには付けない
     expect(beforeSend.match(/hint\.attachments = \[/g)).toHaveLength(2)
     expect(beforeSend).toMatch(/!native && isCrashEvent\(event, false\)[\s\S]*filename: 'main-log\.txt'/)

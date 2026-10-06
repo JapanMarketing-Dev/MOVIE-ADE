@@ -284,14 +284,16 @@ class ExtensionPopup {
     })
     // 文字で指摘の静止画の許可は、そのポップアップへの本物の入力からだけ作る
     wc.on('input-event', (_event, input) => { if (isGestureInput(input.type)) host.popupInput?.(wc) })
-    // window.close() ・拡張の再読み込みで中身が無くなった
-    wc.on('destroyed', () => this.close())
+    // window.close() ・拡張の再読み込みで中身が無くなった。
+    // その webContents 自身の destroyed・render-process-gone の中でビューを外したり閉じたりすると Electron のネイティブ側で
+    // 落ちることがあるので、イベントを抜けてから閉じる
+    wc.on('destroyed', () => setImmediate(() => this.close()))
     wc.on('did-finish-load', () => {
       this.shown = true
       this.layout()
       if (!wc.isDestroyed()) wc.focus()
     })
-    wc.on('render-process-gone', () => this.close())
+    wc.on('render-process-gone', () => setImmediate(() => this.close()))
     const window = host.window()
     if (window && !window.isDestroyed()) window.contentView.addChildView(this.view)
     void wc.loadURL(url).catch((err: unknown) => {

@@ -8,6 +8,7 @@
  * 送るのは「アプリが落ちた・例外が出た」という事実と、その場所（スタック）と、
  * OS・CPU・Electron の版だけ。画面の中身（URL・ターミナル・文字起こし・指摘）は送らない。
  */
+import type { MinidumpCrash } from './minidump'
 import { STALE_CHUNK_MESSAGE, isUserFacingError } from './errors'
 import { readBrandEnv } from './brandEnv'
 
@@ -410,12 +411,19 @@ export function eventLoopBlockThreshold(packaged: boolean): number {
 export const RESUME_GRACE_MS = 5000
 
 /**
+ * 閉じる操作（before-quit）からこの間は、終了の途中とみなす（will-quit の前の片付けの止まりを送らない。FERRET-M の 0.4.15）。
+ * 終了の確認で取り消されることがあるので、ずっとではなく時間で区切る
+ */
+export const QUIT_GRACE_MS = 30_000
+
+/**
  * タイマーの遅れを main の止まりとして送るか。
  * 送らないのは、利用者が待っていない・アプリの処理ではない遅れ（FERRET-M の 0.4.1・0.4.4 の macOS の事例）:
  *   quitting … 終了の途中（更新の入れ替え quitAndInstall でウィンドウを閉じた後に 5.2s）。画面は無く、誰も待っていない
  *   appActive … 遅れの前後ともアプリが前面か。裏にいる間は macOS の App Nap・タイマーのまとめでタイマーが数秒遅れる
  *     （前面に戻した瞬間に溜まった遅れで発火するので、前の回も前面だったかで見る。裏に回って数分後に 2.0s・4.0s）
  *   msSinceResume … スリープから戻ってからの時間（null は戻っていない）。戻った直後のタイマーの遅れは止まりではない
+ *   msSinceQuitRequest … 閉じる操作（before-quit）からの時間（null は閉じていない）。QUIT_GRACE_MS のあいだは終了の途中
  */
 export function shouldReportEventLoopBlock(s: {
   lagMs: number
@@ -423,9 +431,11 @@ export function shouldReportEventLoopBlock(s: {
   quitting: boolean
   appActive: boolean
   msSinceResume: number | null
+  msSinceQuitRequest?: number | null
 }): boolean {
   if (s.lagMs <= s.thresholdMs) return false
   if (s.quitting || !s.appActive) return false
+  if (s.msSinceQuitRequest != null && s.msSinceQuitRequest < QUIT_GRACE_MS + s.lagMs) return false
   if (s.msSinceResume !== null && s.msSinceResume < RESUME_GRACE_MS + s.lagMs) return false
   return true
 }
@@ -648,6 +658,14 @@ type NativeCrashLike = {
   [key: string]: unknown
 }
 
+/** Electron が V8 のメモリ不足で落ちたときに付ける crashpad の注釈があるか */
+function isV8OomCrash(event: NativeCrashLike): boolean {
+  const electron = event.contexts?.electron as Record<string, unknown> | undefined
+  if (electron && Object.keys(electron).some((k) => k.includes('v8-oom'))) return true
+  const values = (event.exception as { values?: Array<{ type?: unknown }> } | undefined)?.values
+  return Array.isArray(values) && values.some((v) => v?.type === 'OutOfMemoryError')
+}
+
 /** ネイティブのクラッシュ（minidump から作られたイベント）か */
 export function isNativeCrashEvent(event: { platform?: unknown; tags?: object }, hasMinidump: boolean): boolean {
   return hasMinidump || event.platform === 'native' || (event.tags as Record<string, unknown> | undefined)?.['event.environment'] === 'native'
@@ -657,12 +675,15 @@ const CRASH_VALUE = /^[A-Za-z0-9_.-]{1,40}$/
 const crashValue = (v: unknown): string | undefined => (typeof v === 'string' && CRASH_VALUE.test(v) ? v : undefined)
 /** ネイティブのクラッシュに残すタグ（どのプロセスが・なぜ・どの版と環境で） */
 const NATIVE_CRASH_TAGS = ['os.platform', 'arch', 'electron', 'build', 'app.mode']
+/** 落ちる前の main の様子（watchMainHealth が scope に付けた区分。memoryBucket・uptimeBucket の形だけ） */
+const NATIVE_CRASH_BUCKET_TAGS = ['mem.rss', 'mem.heap', 'uptime']
+const BUCKET_VALUES = new Set(['<256MB', '256-512MB', '512MB-1GB', '1-2GB', '2GB+', '<1m', '1-10m', '10-60m', '1-4h', '4-24h', '1d+'])
 
 /**
  * ネイティブのクラッシュは「起きたこと」だけを送る：プロセスの種類・終了の理由・版（security-2 [13]）。
  * crashpad の注釈・クラッシュした画面の URL・前の起動のパンくず・スタックは持たない
  */
-export function minimizeNativeCrash<E extends { tags?: object; contexts?: object }>(input: E): E {
+export function minimizeNativeCrash<E extends { tags?: object; contexts?: object }>(input: E, dump?: MinidumpCrash | null): E {
   const event = input as unknown as NativeCrashLike
   const proc = crashValue(event.tags?.['event.process']) ?? 'unknown'
   const electron = event.contexts?.electron as { details?: Record<string, unknown> } | undefined
@@ -674,6 +695,18 @@ export function minimizeNativeCrash<E extends { tags?: object; contexts?: object
     const v = crashValue(event.tags?.[k])
     if (v) tags[k] = v
   }
+  for (const k of NATIVE_CRASH_BUCKET_TAGS) {
+    const v = event.tags?.[k]
+    if (typeof v === 'string' && BUCKET_VALUES.has(v)) tags[k] = v
+  }
+  // なぜ落ちたか：minidump の例外の種類と落ちた場所のモジュール名、V8 のメモリ不足の印（注釈の有無だけ。中身は送らない）
+  const oom = isV8OomCrash(event) || dump?.kind === 'oom'
+  const code = crashValue(dump?.code)
+  const module = crashValue(dump?.module)
+  const kind = oom ? 'oom' : crashValue(dump?.kind)
+  if (code) tags['crash.code'] = code
+  if (kind) tags['crash.kind'] = kind
+  if (module) tags['crash.module'] = module
   const app = event.contexts?.app as Record<string, unknown> | undefined
   const os = event.contexts?.os as Record<string, unknown> | undefined
   const contexts: Record<string, unknown> = {
@@ -690,8 +723,8 @@ export function minimizeNativeCrash<E extends { tags?: object; contexts?: object
     environment: event.environment,
     user: event.user,
     sdk: event.sdk,
-    message: `Native crash (${proc}${reason ? `, ${reason}` : ''})`,
-    fingerprint: ['native-crash', proc, reason ?? 'unknown'],
+    message: `Native crash (${proc}${reason ? `, ${reason}` : ''})${kind || module ? `: ${[kind, module].filter(Boolean).join(' in ')}` : ''}`,
+    fingerprint: ['native-crash', proc, reason ?? 'unknown', ...(kind ? [kind] : []), ...(module ? [module] : [])],
     tags,
     contexts
   }
@@ -741,6 +774,16 @@ export function memoryBucket(mb: number): string {
   if (mb < 1024) return '512MB-1GB'
   if (mb < 2048) return '1-2GB'
   return '2GB+'
+}
+
+/** 起動からの時間のおおまかな区分（タグにする） */
+export function uptimeBucket(seconds: number): string {
+  if (seconds < 60) return '<1m'
+  if (seconds < 600) return '1-10m'
+  if (seconds < 3600) return '10-60m'
+  if (seconds < 4 * 3600) return '1-4h'
+  if (seconds < 24 * 3600) return '4-24h'
+  return '1d+'
 }
 
 /** GC の種類の名前（node:perf_hooks の entry.detail.kind。NODE_PERFORMANCE_GC_*） */

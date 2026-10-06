@@ -41,7 +41,7 @@ export function checkWinUnpacked(dir, arch) {
   if (!want) return [`知らない CPU です: ${arch}（x64 か arm64）`]
   const problems = []
   const pty = join(dir, 'resources', 'app.asar.unpacked', 'node_modules', 'node-pty')
-  const binaries = ['Ferret.exe', 'ffmpeg.dll', ...['pty.node', 'conpty.node', 'conpty/conpty.dll', 'conpty/OpenConsole.exe'].map((f) => join('resources', 'app.asar.unpacked', 'node_modules', 'node-pty', 'prebuilds', `win32-${arch}`, f))]
+  const binaries = ['Ferret.exe', 'ffmpeg.dll', ...['conpty.node', 'conpty_console_list.node', 'conpty/conpty.dll', 'conpty/OpenConsole.exe'].map((f) => join('resources', 'app.asar.unpacked', 'node_modules', 'node-pty', 'prebuilds', `win32-${arch}`, f))]
   for (const rel of binaries) {
     const path = join(dir, rel)
     if (!existsSync(path)) { problems.push(`${rel} がありません`); continue }

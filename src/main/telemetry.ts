@@ -40,8 +40,11 @@ import {
   gcKindName,
   isNativeCrashEvent,
   minimizeNativeCrash,
-  filterTransport
+  filterTransport,
+  memoryBucket,
+  uptimeBucket
 } from '@shared/telemetry'
+import { parseMinidumpCrash } from '@shared/minidump'
 import { flow, noteSlowOp, recentSlowOps, reportHandled, reportPerf, setReporter } from '@shared/report'
 import { version } from '../../package.json'
 import { configDir, currentSettings } from './settings'
@@ -215,10 +218,13 @@ function watchEventLoop(threshold: number): void {
   let expected = performance.now() + INTERVAL
   // 送らない遅れの見分け（shouldReportEventLoopBlock）：終了の途中・裏にいる間（App Nap）・スリープから戻った直後
   let quitting = false
+  // 閉じる操作（before-quit）から will-quit までの片付けの止まりは送らない（shouldReportEventLoopBlock の msSinceQuitRequest）
+  let quitRequestedAt: number | null = null
   let resumedAt: number | null = null
   const isActive = (): boolean => app.isReady() && BrowserWindow.getFocusedWindow() !== null
   let activeAtLastTick = false
   app.on('will-quit', () => { quitting = true })
+  app.on('before-quit', () => { quitRequestedAt = performance.now() })
   void app.whenReady().then(() => {
     // powerMonitor は ready の後でしか使えない
     powerMonitor.on('resume', () => { resumedAt = performance.now() })
@@ -246,7 +252,8 @@ function watchEventLoop(threshold: number): void {
     const appActive = activeAtLastTick && activeNow
     activeAtLastTick = activeNow
     const report = shouldReportEventLoopBlock({
-      lagMs: lag, thresholdMs: threshold, quitting, appActive, msSinceResume: resumedAt === null ? null : now - resumedAt
+      lagMs: lag, thresholdMs: threshold, quitting, appActive,
+      msSinceQuitRequest: quitRequestedAt === null ? null : now - quitRequestedAt, msSinceResume: resumedAt === null ? null : now - resumedAt
     })
     if (report && anomalyGate('event-loop')) {
       // 手がかり：まだ終わっていない IPC（長い順の上位3つ）、直前に終わった重い処理（同期の fs・ps・which・GC など）、メモリの量、補助技術
@@ -262,6 +269,25 @@ function watchEventLoop(threshold: number): void {
     }
   }, INTERVAL)
   timer.unref?.()
+}
+
+/**
+ * main のメモリの量と起動からの時間を、区分が変わったときだけ scope のタグにする。
+ * scope はディスクに控えられ、main がネイティブに落ちたときは次の起動でクラッシュのイベントに付く
+ * （落ちる直前のメモリの量が分かる。値は区分だけ）
+ */
+function watchMainHealth(): void {
+  let last = ''
+  const tick = (): void => {
+    const memory = process.memoryUsage()
+    const tags = { 'mem.rss': memoryBucket(memory.rss / 2 ** 20), 'mem.heap': memoryBucket(memory.heapUsed / 2 ** 20), uptime: uptimeBucket(process.uptime()) }
+    const key = JSON.stringify(tags)
+    if (key === last) return
+    last = key
+    Sentry.setTags(tags)
+  }
+  tick()
+  setInterval(tick, 30_000).unref?.()
 }
 
 function installProcessHooks(): void {
@@ -396,12 +422,15 @@ export function initCrashReporting(): void {
       const classified = classifyStaleBuild(event, packaged)
       if (!classified) return null
       event = classified
-      const native = isNativeCrashEvent(event, (hint.attachments ?? []).some((a) => a.attachmentType === 'event.minidump'))
+      const minidump = (hint.attachments ?? []).find((a) => a.attachmentType === 'event.minidump')
+      const native = isNativeCrashEvent(event, Boolean(minidump))
+      // minidump からは例外の種類と落ちた場所のモジュール名だけを読む（本体は送らない）
+      const dump = minidump && typeof minidump.data !== 'string' ? parseMinidumpCrash(minidump.data) : null
       // 届いた添付は全部捨てる（minidump のメモリの写し・renderer や scope からの添付は伏せ字を通せない。security-2 [13]）。
       // 送る添付は、このあと付ける伏せ字済みの main のログだけ（transport の filterEnvelope でも名前で絞る）
       hint.attachments = []
       // ネイティブのクラッシュは、プロセスの種類・終了の理由・版だけにする
-      if (native) event = minimizeNativeCrash(event)
+      if (native) event = minimizeNativeCrash(event, dump)
       // 確認用の起動（FERRET_SENTRY_FORCE=1）では間引かない
       if (!forced && !sampleEvent(native, Math.random, profile.sampleRate)) return null
       if (!packaged) await remapDevFrames(event, { appPath: app.getAppPath(), rendererUrl: process.env.ELECTRON_RENDERER_URL }).catch(() => undefined)
@@ -418,6 +447,7 @@ export function initCrashReporting(): void {
   })
   installProcessHooks()
   watchEventLoop(eventLoopBlockThreshold(packaged))
+  watchMainHealth()
   setReporter({
     handled: (err, tags, level) => Sentry.captureException(err instanceof Error ? err : new Error(String(err)), { level, tags }),
     // 例外ではない異常（性能など）はスタックを付けずにそのまま送る（題名が文のまま出る）
