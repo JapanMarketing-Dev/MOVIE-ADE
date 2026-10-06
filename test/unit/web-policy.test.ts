@@ -2,6 +2,8 @@
  * 内蔵ブラウザ・メインウィンドウの権限と、外部アプリへの受け渡しの決まり（レポート [3] [7]）。
  * Electron は使わず、session の権限ハンドラの形だけを持つ偽物に入れて確かめる
  */
+import { readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
   APP_ALLOWED_PERMISSIONS,
@@ -9,6 +11,7 @@ import {
   installPermissionPolicy,
   isAllowedExternalUrl,
   isAppPageUrl,
+  isBrowserPageExternalUrl,
   isPageNavigationAllowed,
   isTabCaptureRequest,
   isPopupUrlAllowed,
@@ -231,5 +234,26 @@ describe('ログインのポップアップ（Google でログインなど）', 
     expect(isPopupUrlAllowed('ade-preview://p/a.md')).toBe(false)
     expect(isPopupUrlAllowed('not a url')).toBe(false)
     expect(isPopupUrlAllowed(`https://a.example/${'x'.repeat(9000)}`)).toBe(false)
+  })
+})
+
+describe('内蔵ブラウザの「外部ブラウザで開く」', () => {
+  it('http / https のページだけを許し、mailto・file:・プレビュー・独自スキーム・認証情報付きは断る', () => {
+    for (const ok of ['https://example.com/a?b=1#c', 'http://localhost:3000/', 'http://127.0.0.1:5173/x']) expect(isBrowserPageExternalUrl(ok), ok).toBe(true)
+    for (const ng of ['mailto:a@example.com', 'file:///etc/passwd', 'ade-preview://local/x.md', 'about:blank', 'javascript:alert(1)', 'data:text/html,x',
+      'zoommtg://zoom.us/join', 'https://user:pass@example.com', `https://example.com/${'a'.repeat(2001)}`, 'not a url', '']) {
+      expect(isBrowserPageExternalUrl(ng), ng).toBe(false)
+    }
+  })
+
+  it('URL を同意にしない: browser:openExternal は renderer から URL を受け取らず、main が持つ今のタブの URL を確かめて開く', () => {
+    const ipc = readFileSync(join(resolve(__dirname, '../..'), 'src/shared/ipc.ts'), 'utf8')
+    expect(ipc).toMatch(/'browser:openExternal': \(\) => void/)
+    const main = readFileSync(join(resolve(__dirname, '../..'), 'src/main/index.ts'), 'utf8')
+    const handler = main.slice(main.indexOf("'browser:openExternal': async"), main.indexOf("'browser:setViewport'"))
+    expect(handler).toMatch(/'browser:openExternal': async \(\) =>/)
+    expect(handler).toContain('browser?.state().url')
+    expect(handler.indexOf('isBrowserPageExternalUrl(url)')).toBeGreaterThan(-1)
+    expect(handler.indexOf('isBrowserPageExternalUrl(url)')).toBeLessThan(handler.indexOf('shell.openExternal(url)'))
   })
 })

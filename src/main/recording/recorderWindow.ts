@@ -44,7 +44,9 @@ const RECORDER_CHANNELS = {
  * - tab: 内蔵ブラウザの webContents（タブ録画。OSの画面収録の許可は要らない）
  * - desktop: desktopCapturer の画面・ウインドウ（'screen:…' / 'window:…'）
  */
-export type VideoSource = { kind: 'tab'; contents: WebContents } | { kind: 'desktop'; sourceId: string }
+export type VideoSource = { kind: 'tab'; contents: WebContents } | { kind: 'desktop'; sourceId: string
+  /** 同時に録るほかの画面・ウインドウ。録画ウインドウが sourceId と横に並べて1本の動画にする（@shared/captureComposite） */
+  extraSourceIds?: string[] }
 
 interface RecorderWindowHandlers {
   onPcm(block: PcmBlock): void
@@ -52,11 +54,13 @@ interface RecorderWindowHandlers {
   onError(message: string): void
 }
 
-type RecorderMessageKey = 'videoEnded' | 'videoFailed' | 'micFailed' | 'systemAudioFailed' | 'systemAudioDenied' | 'systemAudioNoDevice' | 'systemAudioEnded' | 'noAudioTrack'
+type RecorderMessageKey = 'videoEnded' | 'videoPartEnded' | 'videoFailed' | 'micFailed' | 'systemAudioFailed' | 'systemAudioDenied' | 'systemAudioNoDevice' | 'systemAudioEnded' | 'noAudioTrack'
 
 interface StartPayload {
   sourceKind: 'tab' | 'desktop'
   sourceId: string
+  /** 同時に録るほかの画面・ウインドウ（desktop のときだけ）。sourceId と並べて1本の動画にする */
+  extraSourceIds?: string[]
   startedAtEpoch: number
   /** process.platform。相手の声を取り込む方法を OS で変える */
   platform: string
@@ -256,6 +260,7 @@ export class RecorderWindow {
     const payload: StartPayload = {
       sourceKind: source.kind,
       sourceId,
+      ...(source.kind === 'desktop' && source.extraSourceIds?.length ? { extraSourceIds: source.extraSourceIds } : {}),
       startedAtEpoch,
       platform: process.platform,
       captureMic: options.captureMic && !this.videoOnly,
@@ -274,6 +279,7 @@ export class RecorderWindow {
       // {{message}} / {{source}} は録画ウィンドウ側で埋める
       messages: {
         videoEnded: t('recorder.videoEnded'),
+        videoPartEnded: t('recorder.videoPartEnded'),
         videoFailed: t('recorder.videoFailed'),
         micFailed: t('recorder.micFailed'),
         systemAudioFailed: t('recorder.systemAudioFailed'),

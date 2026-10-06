@@ -3,7 +3,7 @@ import { ipcMain, type WebContents } from 'electron'
 import { appendFileNoFollow, mkdirContained } from '../sessions/containment'
 import { redactUrl } from '../pipeline/redact'
 import { basename, dirname, join } from 'node:path'
-import { captureTargetGap, captureTargetLabel, resolveCaptureTarget, targetFromSource } from '@shared/captureTarget'
+import { captureTargetGap, captureTargetLabel, resolveCaptureTarget, targetFromSource, targetParts, targetSourceIds } from '@shared/captureTarget'
 import {
   EXTRA_TRACK_BITS_PER_SECOND,
   EXTRA_TRACK_MAX_FPS,
@@ -22,6 +22,7 @@ import { isPageChange } from '@shared/page'
 import { DEFAULT_ANNOTATION_COLOR, type AnnotationColor } from '@shared/annotation'
 import { mapPopupBox, popupHost, popupReturnTrack, reviewSurfaceOf } from '@shared/popupAnnotation'
 import { RecorderWindow, type VideoSource } from './recorderWindow'
+import { mirrorSourceParam } from '@shared/captureComposite'
 import { listCaptureSources, screenAccess } from './sources'
 import { readDevice } from './devices'
 import { StillCapturer, mirrorStillSource, overlayStillSource, webContentsStillSource, type StillSource } from './stills'
@@ -74,6 +75,12 @@ const REVIEW_CHANNELS = {
 export type AnnotationMode = 'off' | 'pen' | 'rect'
 
 /** 画面収録の許可が無いときの案内。選択画面の案内（CaptureTargetPicker）と同じ手順を書く */
+/** 画面・ウインドウの取り込み元。複数選んだときは、ほかの画面・ウインドウも一緒に渡して1本の動画に並べる（recorder.ts） */
+function desktopVideo(target: CaptureTarget): VideoSource {
+  const [main = '', ...extra] = targetSourceIds(target)
+  return { kind: 'desktop', sourceId: main, ...(extra.length ? { extraSourceIds: extra } : {}) }
+}
+
 function screenAccessMessage(): string {
   return t('recording.errors.screenPermission')
 }
@@ -603,7 +610,7 @@ export class RecordingController {
     const controller = this
     this.tracks = [{ id: 'main', target: options.captureTarget, label: trackLabel(options.captureTarget), video, recorder,
       videoRel: basename(options.paths.videoPath), startMs: 0, live: true }]
-    if (video.kind === 'desktop') await this.openMirror(video.sourceId)
+    if (video.kind === 'desktop') await this.openMirror(mirrorSourceParam([video.sourceId, ...(video.extraSourceIds ?? [])]))
     // 静止画は、そのとき画面に映しているトラックから撮る（切り替えると撮る元も変わる）
     const stillSource: StillSource = {
       capture: () => this.activeStillSource().capture(),
@@ -687,7 +694,7 @@ export class RecordingController {
     }
     const resolved = await this.checkTarget(options.captureTarget)
     options.captureTarget = resolved
-    return { kind: 'desktop', sourceId: resolved.kind === 'browser' ? '' : resolved.sourceId }
+    return desktopVideo(resolved)
   }
 
   /**
@@ -703,6 +710,10 @@ export class RecordingController {
     if (!resolved) {
       throw new UserFacingError(t('recording.errors.targetGone', { target: captureTargetLabel(target) }))
     }
+    // 複数選んだうち、見つからないものがあれば始めない（選んだものの一部だけを黙って録らない）
+    const missing = targetParts(target).length > targetSourceIds(resolved).length
+      ? targetParts(target).find((part) => !resolveCaptureTarget(part, sources)) ?? targetParts(target).at(-1) : undefined
+    if (missing) throw new UserFacingError(t('recording.errors.targetGone', { target: captureTargetLabel(missing) }))
     if (resolved.kind !== 'window') return resolved
     // スマホのシミュレータ／エミュレータなら、端末名・OS の版・前面のアプリを指摘に添える（読むだけの命令。取れなくても録る）
     if (target.kind === 'window' && target.device && target.sourceId === resolved.sourceId) return { ...resolved, device: target.device }
@@ -793,9 +804,9 @@ export class RecordingController {
     } else {
       if (!opts.fresh) resolved = await this.checkTarget(target)
       const sourceId = resolved.kind === 'browser' ? '' : resolved.sourceId
-      const same = live.find((track) => track.video.kind === 'desktop' && track.video.sourceId === sourceId)
+      const same = live.find((track) => track.video.kind === 'desktop' && track.video.sourceId === sourceId && !track.video.extraSourceIds?.length)
       if (same) { if (opts.activate) await this.switchTrackNow(same.id); return same.id }
-      video = { kind: 'desktop', sourceId }
+      video = desktopVideo(resolved)
     }
     if (live.length >= MAX_CAPTURE_TRACKS) throw new UserFacingError(t('recording.tracks.limit', { n: MAX_CAPTURE_TRACKS }))
     return this.startTrack(video, resolved, trackLabel(resolved, opts.watch?.label), opts)
@@ -884,7 +895,7 @@ export class RecordingController {
       // ポップアップの窓そのものに書き込む。内蔵ブラウザの場所に映しているものはそのまま
     } else if (track.video.kind === 'desktop') {
       this.mirrorSwitched = true
-      await this.openMirror(track.video.sourceId)
+      await this.openMirror(mirrorSourceParam([track.video.sourceId, ...(track.video.extraSourceIds ?? [])]))
     } else {
       // 内蔵ブラウザへ戻す。映していたビューは閉じる
       this.mirrorSwitched = true

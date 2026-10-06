@@ -15,6 +15,7 @@
 
 import { init as initSentry } from '@sentry/electron/renderer'
 import { classifySystemAudioError } from '../shared/systemAudio'
+import { compositeLayout, fitInto, sourceMaxWidth, type Rect } from '../shared/captureComposite'
 
 export {} // このファイルをモジュールにする（declare global のため）
 
@@ -29,6 +30,8 @@ if ((window as { __SENTRY_IPC__?: unknown }).__SENTRY_IPC__) {
 interface StartPayload {
   sourceKind: 'tab' | 'desktop'
   sourceId: string
+  /** 同時に録るほかの画面・ウインドウ（desktop のときだけ）。sourceId と横に並べて1本の動画にする（DesktopCompositor） */
+  extraSourceIds?: string[]
   startedAtEpoch: number
   platform?: string
   captureMic: boolean
@@ -94,6 +97,7 @@ const bridge = window.adeRecorder
 let messages: NonNullable<StartPayload['messages']> = {}
 const DEFAULT_MESSAGES = {
   videoEnded: 'The recorded screen or window was closed, so video and image capture stopped. Audio and drawings are still being recorded.',
+  videoPartEnded: 'One of the screens or windows being recorded together was closed. The others are still being recorded.',
   videoFailed: "Couldn't capture video: {{message}}",
   micFailed: "Couldn't access the microphone: {{message}}",
   systemAudioFailed: "Couldn't capture system audio: {{message}}",
@@ -316,6 +320,121 @@ class OverlayCompositor {
   }
 }
 
+/**
+ * 複数の画面・ウインドウを横に並べて1本の映像にする（選択画面で複数選んだとき）。
+ *
+ * それぞれの映像をフレームごとに受け（MediaStreamTrackProcessor）、最新の1枚を持っておき、
+ * フレームレートの上限の間隔で OffscreenCanvas に並べて描いて新しい映像（MediaStreamTrackGenerator）にする。
+ * 動画の大きさは最初に全部の大きさが分かった時点（遅くても LAYOUT_WAIT_MS 後）で決め、録画の途中では変えない。
+ * 並びの計算は @shared/captureComposite（単体テストあり）。閉じた映像の枠は暗いままにして、ほかは録り続ける
+ */
+class DesktopCompositor {
+  static readonly LAYOUT_WAIT_MS = 1_500
+  readonly stream: MediaStream
+  readonly track: MediaStreamTrack
+  private readonly canvas = new OffscreenCanvas(2, 2)
+  private readonly context = this.canvas.getContext('2d', { alpha: false })
+  private readonly writer: WritableStreamDefaultWriter<VideoFrame>
+  private readonly frames: Array<VideoFrame | null>
+  private readonly sizes: Array<{ width: number; height: number }>
+  private readonly ended: boolean[]
+  private cells: Rect[] | null = null
+  private readonly timer: ReturnType<typeof setInterval>
+  private readonly layoutTimer: ReturnType<typeof setTimeout>
+  private stopped = false
+
+  static supported(): boolean {
+    return OverlayCompositor.supported()
+  }
+
+  constructor(
+    private readonly sources: MediaStreamTrack[],
+    private readonly maxWidth: number,
+    maxFrameRate: number,
+    private readonly onEnded: (all: boolean) => void
+  ) {
+    const generator = new MediaStreamTrackGenerator({ kind: 'video' })
+    this.track = generator
+    this.writer = generator.writable.getWriter()
+    this.stream = new MediaStream([generator])
+    this.frames = sources.map(() => null)
+    this.sizes = sources.map(() => ({ width: 0, height: 0 }))
+    this.ended = sources.map(() => false)
+    sources.forEach((track, i) => {
+      track.addEventListener('ended', () => this.end(i))
+      void this.pump(track, i)
+    })
+    this.layoutTimer = setTimeout(() => this.fixLayout(), DesktopCompositor.LAYOUT_WAIT_MS)
+    this.timer = setInterval(() => this.draw(), 1000 / Math.max(1, maxFrameRate))
+  }
+
+  private async pump(track: MediaStreamTrack, index: number): Promise<void> {
+    const reader = new MediaStreamTrackProcessor({ track }).readable.getReader()
+    try {
+      for (;;) {
+        const { value, done } = await reader.read()
+        if (done) break
+        if (this.stopped) { value.close(); break }
+        this.frames[index]?.close()
+        this.frames[index] = value
+        this.sizes[index] = { width: value.displayWidth, height: value.displayHeight }
+        if (!this.cells && this.sizes.every((size, i) => size.width > 0 || this.ended[i])) this.fixLayout()
+      }
+    } catch {
+      // 映像が途中で止まった（ウインドウが閉じた等）。その枠を暗くするだけ（想定内）
+    } finally {
+      reader.releaseLock()
+      this.end(index)
+    }
+  }
+
+  private end(index: number): void {
+    if (this.stopped || this.ended[index]) return
+    this.ended[index] = true
+    this.frames[index]?.close()
+    this.frames[index] = null
+    this.onEnded(this.ended.every(Boolean))
+  }
+
+  /** 動画の大きさと枠を決める（1回だけ） */
+  private fixLayout(): void {
+    if (this.cells || this.stopped) return
+    clearTimeout(this.layoutTimer)
+    const layout = compositeLayout(this.sizes, this.maxWidth)
+    this.canvas.width = layout.width
+    this.canvas.height = layout.height
+    this.cells = layout.cells
+  }
+
+  private draw(): void {
+    const context = this.context
+    const cells = this.cells
+    if (this.stopped || !context || !cells) return
+    context.fillStyle = '#111214'
+    context.fillRect(0, 0, this.canvas.width, this.canvas.height)
+    this.frames.forEach((frame, i) => {
+      const cell = cells[i]
+      if (!frame || !cell) return
+      const rect = fitInto({ width: frame.displayWidth, height: frame.displayHeight }, cell)
+      context.drawImage(frame, rect.x, rect.y, rect.width, rect.height)
+    })
+    const frame = new VideoFrame(this.canvas, { timestamp: Math.round(performance.now() * 1000) })
+    this.writer.write(frame).catch(() => frame.close())
+  }
+
+  stop(): void {
+    this.stopped = true
+    clearInterval(this.timer)
+    clearTimeout(this.layoutTimer)
+    for (const track of this.sources) track.stop()
+    this.frames.forEach((frame) => frame?.close())
+    this.frames.fill(null)
+    void this.writer.close().catch(() => undefined)
+  }
+}
+
+let desktopCompositor: DesktopCompositor | null = null
+
 let compositor: OverlayCompositor | null = null
 /** 録画を始める前に届いた重ねるもの（開いていたポップアップ） */
 let pendingOverlay: { sourceId: string; rect: OverlayRect } | null = null
@@ -388,6 +507,30 @@ function syntheticDesktopStream(sourceId: string, maxFrameRate: number): MediaSt
 }
 
 /**
+ * 複数の画面・ウインドウを並べた1本の映像。どれか1つでも取り込めなければ始めない（選んだものの一部だけを黙って録らない）。
+ * 合成が使えない環境では、最初の対象だけを録って知らせる
+ */
+async function compositeDesktopStream(payload: StartPayload, extra: string[]): Promise<MediaStream> {
+  const ids = [payload.sourceId, ...extra]
+  const width = sourceMaxWidth(ids.length, payload.videoMaxWidth)
+  const open = (id: string) => (payload.syntheticDesktop ? Promise.resolve(syntheticDesktopStream(id, payload.videoMaxFrameRate)) : captureVideo('desktop', id, width, payload.videoMaxFrameRate))
+  if (!DesktopCompositor.supported()) {
+    console.warn('[recorder] desktop compositing is not available; recording the first source only')
+    return open(payload.sourceId)
+  }
+  const streams: MediaStream[] = []
+  try {
+    for (const id of ids) streams.push(await open(id))
+  } catch (err) {
+    streams.forEach((stream) => stream.getTracks().forEach((track) => track.stop()))
+    throw err
+  }
+  const tracks = streams.map((stream) => stream.getVideoTracks()[0]).filter((track): track is MediaStreamTrack => !!track)
+  desktopCompositor = new DesktopCompositor(tracks, payload.videoMaxWidth, payload.videoMaxFrameRate, (all) => bridge.error(text(all ? 'videoEnded' : 'videoPartEnded')))
+  return desktopCompositor.stream
+}
+
+/**
  * PC音声（相手の声。AUD-1）。
  * getDisplayMedia で取る。main（recorderWindow.ts）の setDisplayMediaRequestHandler が、映像はこのウインドウ自身、
  * 音声は PC のループバックを返す（macOS 14.2+ は Core Audio の tap、Windows は再生デバイス、Linux は PulseAudio のモニター）。
@@ -422,16 +565,19 @@ async function start(payload: StartPayload): Promise<void> {
 
   // 映像
   try {
-    const stream = payload.syntheticDesktop && payload.sourceKind === 'desktop'
-      ? syntheticDesktopStream(payload.sourceId, payload.videoMaxFrameRate)
-      : await captureVideo(
-        payload.sourceKind,
-        payload.sourceId,
-        payload.videoMaxWidth,
-        payload.videoMaxFrameRate
-      )
+    const extra = payload.sourceKind === 'desktop' ? payload.extraSourceIds ?? [] : []
+    const stream = extra.length > 0 ? await compositeDesktopStream(payload, extra)
+      : payload.syntheticDesktop && payload.sourceKind === 'desktop'
+        ? syntheticDesktopStream(payload.sourceId, payload.videoMaxFrameRate)
+        : await captureVideo(
+          payload.sourceKind,
+          payload.sourceId,
+          payload.videoMaxWidth,
+          payload.videoMaxFrameRate
+        )
     videoTrack = stream.getVideoTracks()[0] ?? null
-    if (videoTrack && payload.sourceKind === 'desktop') {
+    // 並べた映像は、閉じたものを DesktopCompositor が知らせる（合成した映像そのものは終わらない）
+    if (videoTrack && payload.sourceKind === 'desktop' && !desktopCompositor) {
       // 録っていたウインドウが閉じられた。音声と書き込みの記録は続ける
       videoTrack.onended = () => bridge.error(text('videoEnded'))
     }
@@ -593,6 +739,8 @@ bridge.onStop(() => {
   stopping = true
   const done = async (): Promise<void> => {
     videoTrack?.stop()
+    desktopCompositor?.stop()
+    desktopCompositor = null
     compositor?.stop()
     compositor = null
     pendingOverlay = null

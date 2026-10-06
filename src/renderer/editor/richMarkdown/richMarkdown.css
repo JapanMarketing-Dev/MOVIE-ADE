@@ -275,8 +275,13 @@
   cursor: pointer;
 }
 
+.rich-md__slash-item:hover {
+  background: var(--color-surface-hover);
+}
+
+/* 選んでいる候補。--color-surface-selected は暗い配色でメニューの地（--color-bg-elevated）と同じ色で、↑↓で動かしても見えなかった */
 .rich-md__slash-item[aria-selected='true'] {
-  background: var(--color-surface-selected);
+  background: var(--color-surface-active);
 }
 
 .rich-md__slash-text {

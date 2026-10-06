@@ -178,8 +178,6 @@ export function sanitize(raw: unknown): Settings {
     // 未設定は ON のまま書かない。明示の OFF だけを残す
     ...(r.crashReports === false ? { crashReports: false } : {}),
     ...(r.crashReportsNoticeShown === true ? { crashReportsNoticeShown: true } : {}),
-    // 端末のプログラムのコピー（OSC 52）。既定の ask は書かない
-    ...(r.terminalClipboard === 'allow' || r.terminalClipboard === 'off' ? { terminalClipboard: r.terminalClipboard } : {}),
     // 内蔵ブラウザの拡張機能（展開済みのフォルダ）。空なら書かない
     ...(() => {
       const browserExtensions = sanitizeBrowserExtensions(r.browserExtensions)

@@ -3,12 +3,9 @@ import {
   DEFAULT_LAYOUT,
   FOOTER_ITEMS,
   FOOTER_PRIORITY,
-  pickFooterTier,
-  allowedDocks,
+  pickFooterOverflow,
   applyOrder,
-  dockFromPoint,
-  dropPanel,
-  dropPreviewRect,
+  browserFocusLayout,
   layoutSignature,
   layoutMinWidth,
   mainMinWidth,
@@ -16,7 +13,6 @@ import {
   SIDE_MIN_WIDTH,
   TERMINAL_MIN_WIDTH,
   WINDOW_MIN_WIDTH,
-  panelToggleOrder,
   togglePanel,
   mainSplitGrid,
   moveItem,
@@ -31,12 +27,12 @@ describe('sanitizeLayout', () => {
     expect(sanitizeLayout('x')).toEqual(DEFAULT_LAYOUT)
     expect(sanitizeLayout({ panels: { projects: { dock: 'middle', visible: 'no' } } }).panels.projects).toEqual({ dock: 'left', visible: true })
   })
-  it('置き場所・表示・フッターの項目を残す', () => {
+  it('表示・フッターの項目を残す', () => {
     const l = sanitizeLayout({
-      panels: { files: { dock: 'bottom', visible: false } },
+      panels: { files: { dock: 'right', visible: false } },
       footer: { dock: 'top', visible: false, items: { usage: false, bogus: false } }
     })
-    expect(l.panels.files).toEqual({ dock: 'bottom', visible: false })
+    expect(l.panels.files).toEqual({ dock: 'right', visible: false })
     // フッターは常に下（古い設定の top も下に戻す）
     expect(l.footer.dock).toBe('bottom')
     expect(l.footer.visible).toBe(false)
@@ -51,6 +47,24 @@ describe('sanitizeLayout', () => {
   })
   it('フッターは上か下だけ', () => {
     expect(sanitizeLayout({ footer: { dock: 'left' } }).footer.dock).toBe('bottom')
+  })
+  it('ドラッグで動かしていた古い置き場所は既定へ戻す（プロジェクト一覧は左・ファイルツリーは右・ターミナルは右か下）', () => {
+    const l = sanitizeLayout({
+      panels: { projects: { dock: 'bottom', visible: false }, files: { dock: 'left', visible: true }, terminal: { dock: 'top', visible: true } }
+    })
+    expect(l.panels).toEqual({
+      projects: { dock: 'left', visible: false },
+      files: { dock: 'right', visible: true },
+      terminal: { dock: 'right', visible: true }
+    })
+    expect(sanitizeLayout({ panels: { terminal: { dock: 'bottom' } } }).panels.terminal.dock).toBe('bottom')
+    expect(sanitizeLayout({ panels: { terminal: { dock: 'left' } } }).panels.terminal.dock).toBe('right')
+  })
+  it('withPanel でも左右のパネルの置き場所・ターミナルの左・上は変わらない', () => {
+    expect(withPanel(DEFAULT_LAYOUT, 'files', { dock: 'bottom' }).panels.files.dock).toBe('right')
+    expect(withPanel(DEFAULT_LAYOUT, 'projects', { dock: 'right' }).panels.projects.dock).toBe('left')
+    expect(withPanel(DEFAULT_LAYOUT, 'terminal', { dock: 'top' }).panels.terminal.dock).toBe('right')
+    expect(withPanel(DEFAULT_LAYOUT, 'terminal', { dock: 'bottom' }).panels.terminal.dock).toBe('bottom')
   })
 })
 
@@ -67,19 +81,28 @@ describe('workspaceGrid', () => {
     expect(g.columns).toBe('minmax(140px, var(--sidebar-width)) minmax(606px, 1fr) 0px')
     expect(g.areas).toBe('"projects main files"')
   })
-  it('上下に置いたパネルは横幅いっぱいの行になる', () => {
-    const l = withPanel(withPanel(DEFAULT_LAYOUT, 'projects', { dock: 'top' }), 'files', { dock: 'bottom' })
-    expect(workspaceGrid(l)).toEqual({
-      columns: 'minmax(606px, 1fr)',
-      rows: 'var(--size-panel-strip) minmax(0, 1fr) var(--size-panel-strip)',
-      areas: '"projects" "main" "files"'
-    })
+  it('プロジェクト一覧も閉じられる（幅 0）', () => {
+    expect(workspaceGrid(togglePanel(DEFAULT_LAYOUT, 'projects')).columns).toBe('0px minmax(606px, 1fr) minmax(140px, var(--size-sidebar))')
   })
-  it('同じ側に2つ置くと並びは プロジェクト一覧 → ファイルツリー', () => {
-    const l = withPanel(DEFAULT_LAYOUT, 'files', { dock: 'left' })
-    expect(workspaceGrid(l).areas).toBe('"projects files main"')
-    const top = withPanel(withPanel(DEFAULT_LAYOUT, 'files', { dock: 'top' }), 'projects', { dock: 'right' })
-    expect(workspaceGrid(top).areas).toBe('"files files" "main projects"')
+})
+
+describe('browserFocusLayout（ブラウザに集中）', () => {
+  it('ブラウザ以外のパネルを全部隠し、中央の列だけにする', () => {
+    const l = browserFocusLayout(DEFAULT_LAYOUT)
+    expect(Object.values(l.panels).map((p) => p.visible)).toEqual([false, false, false])
+    expect(workspaceGrid(l).columns).toBe('0px minmax(360px, 1fr) 0px')
+    expect(mainSplitGrid(l.panels.terminal.dock, l.panels.terminal.visible)).toMatchObject({ columns: 'minmax(0, 1fr)', rows: 'minmax(0, 1fr)', areas: '"center"' })
+    expect(layoutMinWidth(l)).toBe(CENTER_MIN_WIDTH)
+  })
+  it('元の配置は変えない（もう一度押すと元の配置で描く）', () => {
+    const base = togglePanel(DEFAULT_LAYOUT, 'files')
+    const copy = JSON.parse(JSON.stringify(base))
+    browserFocusLayout(base)
+    expect(base).toEqual(copy)
+    expect(browserFocusLayout(base).panels.terminal.dock).toBe('right')
+  })
+  it('配置の印が変わる（内蔵ブラウザの位置を測り直す）', () => {
+    expect(layoutSignature(browserFocusLayout(DEFAULT_LAYOUT))).not.toBe(layoutSignature(DEFAULT_LAYOUT))
   })
 })
 
@@ -118,10 +141,9 @@ describe('mainSplitGrid', () => {
 })
 
 describe('狭い窓での最小幅（中央の列を守る）', () => {
-  const combos = (['left', 'right', 'top', 'bottom'] as const).flatMap((t) =>
-    (['left', 'right', 'top', 'bottom'] as const).flatMap((p) =>
-      (['left', 'right', 'top', 'bottom'] as const).map((f) =>
-        withPanel(withPanel(withPanel(DEFAULT_LAYOUT, 'terminal', { dock: t }), 'projects', { dock: p }), 'files', { dock: f }))))
+  const combos = (['right', 'bottom'] as const).flatMap((t) =>
+    [true, false].flatMap((p) => [true, false].map((f) =>
+      withPanel(withPanel(withPanel(DEFAULT_LAYOUT, 'terminal', { dock: t }), 'projects', { visible: p }), 'files', { visible: f }))))
   it('窓の最小幅（900px）なら、どの配置でも中央の列 360px・ターミナル・左右のパネルの最小が収まる', () => {
     for (const l of combos) expect(layoutMinWidth(l)).toBeLessThanOrEqual(WINDOW_MIN_WIDTH)
   })
@@ -134,9 +156,9 @@ describe('狭い窓での最小幅（中央の列を守る）', () => {
     expect(mainMinWidth('bottom')).toBe(CENTER_MIN_WIDTH)
     expect(workspaceGrid(withPanel(DEFAULT_LAYOUT, 'terminal', { dock: 'bottom' })).columns).toContain('minmax(360px, 1fr)')
   })
-  it('閉じたパネル・上下に置いたパネルは横の最小に数えない', () => {
+  it('閉じたパネルは横の最小に数えない', () => {
     expect(layoutMinWidth(withPanel(DEFAULT_LAYOUT, 'files', { visible: false }))).toBe(SIDE_MIN_WIDTH + 606)
-    expect(layoutMinWidth(withPanel(DEFAULT_LAYOUT, 'projects', { dock: 'top' }))).toBe(SIDE_MIN_WIDTH + 606)
+    expect(layoutMinWidth(withPanel(DEFAULT_LAYOUT, 'projects', { visible: false }))).toBe(SIDE_MIN_WIDTH + 606)
   })
 })
 
@@ -144,16 +166,9 @@ describe('ターミナルは常に表示（閉じる手段を持たない）', (
   it('古い設定でターミナルを閉じていても、読み込むと表示になる', () => {
     expect(sanitizeLayout({ panels: { terminal: { dock: 'bottom', visible: false } } }).panels.terminal).toEqual({ dock: 'bottom', visible: true })
   })
-  it('ファイルツリーは閉じたまま残り、プロジェクト一覧は表示に戻る（プロジェクト一覧も常に表示）', () => {
+  it('プロジェクト一覧とファイルツリーは閉じたまま残る（タイトルバーのボタンで開閉する）', () => {
     expect(sanitizeLayout({ panels: { files: { dock: 'right', visible: false }, projects: { dock: 'left', visible: false } } }).panels)
-      .toMatchObject({ files: { visible: false }, projects: { visible: true } })
-  })
-  it('開閉ボタンの並びにターミナルとプロジェクト一覧は入らない', () => {
-    expect(panelToggleOrder(DEFAULT_LAYOUT)).toEqual(['files'])
-  })
-  it('プロジェクト一覧は閉じようとしても表示のまま', () => {
-    expect(togglePanel(DEFAULT_LAYOUT, 'projects').panels.projects.visible).toBe(true)
-    expect(withPanel(DEFAULT_LAYOUT, 'projects', { visible: false }).panels.projects.visible).toBe(true)
+      .toMatchObject({ files: { visible: false }, projects: { visible: false } })
   })
   it('閉じようとしても、保存し直す（sanitize）と表示に戻る', () => {
     expect(sanitizeLayout(togglePanel(DEFAULT_LAYOUT, 'terminal')).panels.terminal.visible).toBe(true)
@@ -186,90 +201,70 @@ describe('moveItem / applyOrder（タブの並べ替え）', () => {
   })
 })
 
-describe('dockFromPoint（ドラッグで落とす先）', () => {
-  const rect = { left: 100, top: 50, width: 1000, height: 500 }
-  it('一番近い端を選ぶ', () => {
-    expect(dockFromPoint(120, 300, rect)).toBe('left')
-    expect(dockFromPoint(1080, 300, rect)).toBe('right')
-    expect(dockFromPoint(600, 60, rect)).toBe('top')
-    expect(dockFromPoint(600, 540, rect)).toBe('bottom')
-  })
-  it('距離は幅・高さに対する割合で比べる（横長でも上下を選べる）', () => {
-    // 左端から 200px（20%）、上端から 50px（10%）→ 上
-    expect(dockFromPoint(300, 100, rect)).toBe('top')
-  })
-  it('中央寄り・枠の外は null（動かさない）', () => {
-    expect(dockFromPoint(600, 300, rect)).toBeNull()
-    expect(dockFromPoint(50, 300, rect)).toBeNull()
-    expect(dockFromPoint(600, 600, rect)).toBeNull()
-    expect(dockFromPoint(10, 10, { left: 0, top: 0, width: 0, height: 0 })).toBeNull()
-  })
-  it('選べる向きだけから選ぶ（フッターは上か下）', () => {
-    expect(allowedDocks('footer')).toEqual(['top', 'bottom'])
-    expect(dockFromPoint(120, 300, rect, allowedDocks('footer'))).toBeNull()
-    expect(dockFromPoint(120, 450, rect, allowedDocks('footer'))).toBe('bottom')
-  })
-})
-
-describe('dropPreviewRect', () => {
-  const rect = { left: 0, top: 0, width: 800, height: 400 }
-  it('落とす端に帯を出す', () => {
-    expect(dropPreviewRect('left', rect)).toEqual({ left: 0, top: 0, width: 200, height: 400 })
-    expect(dropPreviewRect('right', rect)).toEqual({ left: 600, top: 0, width: 200, height: 400 })
-    expect(dropPreviewRect('top', rect)).toEqual({ left: 0, top: 0, width: 800, height: 100 })
-    expect(dropPreviewRect('bottom', rect)).toEqual({ left: 0, top: 300, width: 800, height: 100 })
-  })
-})
-
-describe('dropPanel', () => {
-  it('落とした端へ移し、隠れていたら見えるようにする', () => {
-    const hidden = withPanel(DEFAULT_LAYOUT, 'terminal', { visible: false })
-    expect(dropPanel(hidden, 'terminal', 'top').panels.terminal).toEqual({ dock: 'top', visible: true })
-  })
-  it('フッターは上か下だけ', () => {
-    expect(dropPanel(DEFAULT_LAYOUT, 'footer', 'top')).toBe(DEFAULT_LAYOUT)
-    expect(dropPanel(DEFAULT_LAYOUT, 'footer', 'left')).toBe(DEFAULT_LAYOUT)
-  })
-})
-
-describe('togglePanel / panelToggleOrder（タイトルバーの開閉ボタン）', () => {
+describe('togglePanel（タイトルバーの開閉ボタン）', () => {
   it('開閉を切り替え、open を渡すとその状態にする', () => {
     expect(togglePanel(DEFAULT_LAYOUT, 'files').panels.files.visible).toBe(false)
     expect(togglePanel(togglePanel(DEFAULT_LAYOUT, 'files'), 'files').panels.files.visible).toBe(true)
     expect(togglePanel(DEFAULT_LAYOUT, 'files', false).panels.files.visible).toBe(false)
     expect(togglePanel(DEFAULT_LAYOUT, 'files', true).panels.files).toEqual(DEFAULT_LAYOUT.panels.files)
+    expect(togglePanel(DEFAULT_LAYOUT, 'projects').panels.projects).toEqual({ dock: 'left', visible: false })
   })
   it('置き場所は変えない', () => {
-    const l = withPanel(DEFAULT_LAYOUT, 'terminal', { dock: 'top' })
-    expect(togglePanel(l, 'terminal').panels.terminal.dock).toBe('top')
-  })
-  it('ボタンの並びは置き場所の順（左 → 上 → 下 → 右）', () => {
-    expect(panelToggleOrder(DEFAULT_LAYOUT)).toEqual(['files'])
-    expect(panelToggleOrder(withPanel(DEFAULT_LAYOUT, 'files', { dock: 'bottom' }))).toEqual(['files'])
+    const l = withPanel(DEFAULT_LAYOUT, 'terminal', { dock: 'bottom' })
+    expect(togglePanel(l, 'terminal').panels.terminal.dock).toBe('bottom')
   })
 })
 
-describe('pickFooterTier（フッターが狭いときに隠す順）', () => {
+describe('pickFooterOverflow（フッターが狭いときに「…」へ移す項目）', () => {
+  // 並びはフッターでの順。priority 0 は常に出す。数の大きいものほど先に移す
   const slots = [
-    { priority: 0, width: 100 },
-    { priority: 1, width: 100 },
-    { priority: 2, width: 100 },
-    { priority: 3, width: 100 }
-  ]
-  it('全部収まれば全部出す', () => {
-    expect(pickFooterTier(slots, 430, 10)).toBe(3)
+    { id: 'usage', priority: 0, width: 100 },
+    { id: 'mic', priority: 1, width: 100 },
+    { id: 'page', priority: 3, width: 100 },
+    { id: 'version', priority: 2, width: 100 }
+  ] as const
+  const gap = 10
+  const more = 20
+
+  it('全部収まれば何も移さない（「…」も出さない）', () => {
+    expect(pickFooterOverflow(slots, 430, gap, more)).toEqual([])
   })
-  it('足りなければ優先順位の低いものから隠す', () => {
-    expect(pickFooterTier(slots, 429, 10)).toBe(2)
-    expect(pickFooterTier(slots, 320, 10)).toBe(2)
-    expect(pickFooterTier(slots, 319, 10)).toBe(1)
-    expect(pickFooterTier(slots, 210, 10)).toBe(1)
+  it('足りなければ優先順位の低いものから1つずつ移し、「…」の幅も空ける', () => {
+    // 100+10+100+10+100 + 10 + 20 = 350 で usage・mic・version と「…」
+    expect(pickFooterOverflow(slots, 429, gap, more)).toEqual(['page'])
+    expect(pickFooterOverflow(slots, 350, gap, more)).toEqual(['page'])
+    expect(pickFooterOverflow(slots, 349, gap, more)).toEqual(['page', 'version'])
+    expect(pickFooterOverflow(slots, 240, gap, more)).toEqual(['page', 'version'])
+    expect(pickFooterOverflow(slots, 239, gap, more)).toEqual(['mic', 'page', 'version'])
   })
-  it('優先順位 0 は収まらなくても出す（段は 0）', () => {
-    expect(pickFooterTier(slots, 50, 10)).toBe(0)
+  it('段でまとめず、1つずつ移す（同じくらいの優先順位でも入るものは出したまま）', () => {
+    const many = [
+      { id: 'a', priority: 1, width: 50 },
+      { id: 'b', priority: 2, width: 50 },
+      { id: 'c', priority: 3, width: 50 },
+      { id: 'd', priority: 4, width: 50 }
+    ]
+    // 全部で 50*4+10*3 = 230。「…」込みで 3 つなら 50*3+10*3+20 = 200
+    expect(pickFooterOverflow(many, 229, gap, more)).toEqual(['d'])
+    expect(pickFooterOverflow(many, 200, gap, more)).toEqual(['d'])
+    expect(pickFooterOverflow(many, 199, gap, more)).toEqual(['c', 'd'])
   })
-  it('常に出すのは録画時間・使用量・設定、最初に隠すのはページ名・整理・ターミナルの配置', () => {
+  it('優先順位の高い大きな項目が入らなくても、後ろの小さな項目は入れば出す', () => {
+    const mixed = [
+      { id: 'usage', priority: 0, width: 100 },
+      { id: 'github', priority: 1, width: 300 },
+      { id: 'layout', priority: 2, width: 22 }
+    ]
+    // usage 100 + 隙間 10 + 「…」20 = 130。github は入らず、layout（22+10）は入る
+    expect(pickFooterOverflow(mixed, 200, gap, more)).toEqual(['github'])
+  })
+  it('優先順位 0 は収まらなくても出す', () => {
+    expect(pickFooterOverflow(slots, 50, gap, more)).toEqual(['mic', 'page', 'version'])
+  })
+  it('常に出すのは録画時間・使用量・設定、ほかは1つずつ違う順位で、最後に移すのはマイク', () => {
     expect(FOOTER_ITEMS.filter((id) => FOOTER_PRIORITY[id] === 0)).toEqual(['usage', 'recording', 'settings'])
-    expect(FOOTER_ITEMS.filter((id) => FOOTER_PRIORITY[id] === 3)).toEqual(['page', 'layout'])
+    const ranked = FOOTER_ITEMS.filter((id) => FOOTER_PRIORITY[id] > 0)
+    expect(new Set(ranked.map((id) => FOOTER_PRIORITY[id])).size).toBe(ranked.length)
+    expect([...ranked].sort((a, b) => FOOTER_PRIORITY[a] - FOOTER_PRIORITY[b])[0]).toBe('mic')
   })
 })

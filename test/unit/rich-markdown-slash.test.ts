@@ -11,6 +11,8 @@ import {
   slashDeletesSeparately,
   slashDescriptionKey,
   slashLabelKey,
+  slashMarkItem,
+  slashScrollTop,
   slashTableTemplate,
   type SlashItem
 } from '../../src/renderer/editor/richMarkdown/slashCommands'
@@ -72,6 +74,62 @@ describe('filterSlashItems', () => {
       expect(en[slashLabelKey(item.id)]).toBeTruthy()
       expect(en[slashDescriptionKey(item.id)]).toBeTruthy()
     }
+  })
+})
+
+describe('「/」の後の Markdown の記号', () => {
+  it('「/#」「/##」は記号がぴったりの見出しが先頭（「/」を消して # を打ち直さなくてよい）', () => {
+    expect(ids(filterSlashItems(SLASH_ITEMS, 'block', '#', jaLabel))).toEqual(['heading1', 'heading2', 'heading3'])
+    expect(ids(filterSlashItems(SLASH_ITEMS, 'block', '##', jaLabel))).toEqual(['heading2', 'heading3'])
+    expect(ids(filterSlashItems(SLASH_ITEMS, 'block', '###', enLabel))).toEqual(['heading3'])
+  })
+
+  it('「/-」は箇条書きが先頭、「/1.」は番号付き、「/>」は引用、「/```」はコード、「/[]」はチェックリスト、「/|」は表', () => {
+    expect(ids(filterSlashItems(SLASH_ITEMS, 'block', '-', jaLabel))[0]).toBe('bulletList')
+    expect(ids(filterSlashItems(SLASH_ITEMS, 'block', '-', jaLabel))).toContain('horizontalRule')
+    expect(ids(filterSlashItems(SLASH_ITEMS, 'block', '1.', jaLabel))).toEqual(['orderedList'])
+    expect(ids(filterSlashItems(SLASH_ITEMS, 'block', '>', jaLabel))).toEqual(['blockquote'])
+    expect(ids(filterSlashItems(SLASH_ITEMS, 'block', '```', jaLabel))).toEqual(['codeBlock'])
+    expect(ids(filterSlashItems(SLASH_ITEMS, 'block', '[]', jaLabel))).toEqual(['taskList'])
+    expect(ids(filterSlashItems(SLASH_ITEMS, 'block', '|', jaLabel))).toEqual(['table'])
+  })
+
+  it('全角の記号（日本語入力のまま）でも同じ', () => {
+    expect(ids(filterSlashItems(SLASH_ITEMS, 'block', '＃＃', jaLabel))).toEqual(['heading2', 'heading3'])
+    expect(ids(filterSlashItems(SLASH_ITEMS, 'block', '＞', jaLabel))).toEqual(['blockquote'])
+  })
+
+  it('記号そのものを打った後の空白で選ぶ候補（数字は何でもよい）', () => {
+    const pick = (query: string, context: 'block' | 'table' = 'block') => slashMarkItem(SLASH_ITEMS, context, query)?.id ?? null
+    expect(pick('#')).toBe('heading1')
+    expect(pick('##')).toBe('heading2')
+    expect(pick('＃＃＃')).toBe('heading3')
+    expect(pick('-')).toBe('bulletList')
+    expect(pick('*')).toBe('bulletList')
+    expect(pick('3.')).toBe('orderedList')
+    expect(pick('１．')).toBe('orderedList')
+    expect(pick('[x]')).toBe('taskList')
+    expect(pick('---')).toBe('horizontalRule')
+    expect(pick('```')).toBe('codeBlock')
+    // 名前・別名の途中では選ばない（空白は文字として入る）
+    expect(pick('')).toBeNull()
+    expect(pick('h1')).toBeNull()
+    expect(pick('見出し')).toBeNull()
+    expect(pick('--')).toBeNull()
+    // 表の中では表の外の塊を選ばない
+    expect(pick('#', 'table')).toBeNull()
+  })
+})
+
+describe('slashScrollTop', () => {
+  const view = { scrollTop: 100, height: 200 }
+  it('見えていればそのまま', () => {
+    expect(slashScrollTop({ top: 150, height: 40 }, view)).toBe(100)
+  })
+  it('上にはみ出したら上端へ、下にはみ出したら下端へ', () => {
+    expect(slashScrollTop({ top: 80, height: 40 }, view)).toBe(76)
+    expect(slashScrollTop({ top: 280, height: 40 }, view)).toBe(124)
+    expect(slashScrollTop({ top: 2, height: 40 }, view)).toBe(0)
   })
 })
 

@@ -16,7 +16,7 @@ import { useT } from '../lib/i18n'
  * 並びはベンチのADEに合わせる:
  *   左  … ロゴ / プロジェクト名（押すとプロジェクト一覧・切替・追加）
  *   中央… モード切替
- *   右  … パネルの開閉（プロジェクト一覧・ターミナル・ファイルツリー。VS Code と同じ位置）/ ● 録画 / 設定
+ *   右  … パネルの開閉（左のプロジェクト一覧・右のファイルツリー・ブラウザに集中。VS Code と同じ位置）/ ● 録画 / 設定
  *
  * macOS の信号機ボタンぶんの余白は CSS の --titlebar-inset が持つ。
  * ツールチップは下向き（下にあるのはタブ列＝DOMなので隠れない）。
@@ -30,6 +30,7 @@ export function TitleBar({
   onProjectMenuChange,
   onToggleRecording,
   onOpenSettings,
+  onFocusBrowser,
   busy = false
 }: {
   workspace: WorkspaceState
@@ -41,6 +42,8 @@ export function TitleBar({
   onProjectMenuChange?: (open: boolean) => void
   onToggleRecording: () => void
   onOpenSettings?: () => void
+  /** ブラウザに集中し始めたとき（中央のタブをブラウザへ） */
+  onFocusBrowser?: () => void
   busy?: boolean
 }) {
   const t = useT()
@@ -80,7 +83,7 @@ export function TitleBar({
       </div>
 
       <div className="titlebar__right">
-        <LayoutToggles />
+        <LayoutToggles onFocusBrowser={onFocusBrowser} />
         <RecordButton
           recording={recording}
           disabled={busy}

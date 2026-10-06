@@ -20,8 +20,7 @@ import {
 } from 'lucide-react'
 import type { BrowserState, SttAvailability } from '@shared/types'
 import { STT_PROVIDER_PRESETS, STT_REMOTE_PROVIDERS, providerLabel } from '@shared/aiProviders'
-import { DEFAULT_LAYOUT, FOOTER_ITEMS, FOOTER_PRIORITY, pickFooterTier, type Dock, type DragPanel, type FooterItemId } from '@shared/layout'
-import { PanelGrip } from './PanelDock'
+import { DEFAULT_LAYOUT, FOOTER_ITEMS, FOOTER_PRIORITY, pickFooterOverflow, type Dock, type FooterItemId } from '@shared/layout'
 import { GitHubStatusItem } from './GitHubStatusItem'
 import type { UpdateCheckResult } from '@shared/appVersion'
 import { checkOnUpdatePopoverOpen, type AutoUpdateStatus } from '@shared/appUpdate'
@@ -325,7 +324,6 @@ function UpdatePopover({ version, packaged, status }: { version: string; package
 
 export function StatusBar({
   items = DEFAULT_LAYOUT.footer.items,
-  onStartDrag,
   state,
   capture,
   recording,
@@ -345,8 +343,6 @@ export function StatusBar({
 }: {
   /** 出す項目（設定の「レイアウト」で選ぶ）。省略時はすべて */
   items?: Record<FooterItemId, boolean>
-  /** 左端のつまみを掴んで、フッターを上か下へ運ぶ */
-  onStartDrag?: (panel: DragPanel, e: React.PointerEvent) => void
   state: BrowserState
   capture: CaptureStatus
   recording: boolean
@@ -400,17 +396,17 @@ export function StatusBar({
   const toggle = (kind: PopoverKind) => setOpen((cur) => (cur === kind ? null : kind))
   const openSettings = () => { setOpen(null); onOpenSettings() }
 
-  // ── 幅が足りないときに隠す（優先順位の低いものから。src/shared/layout.ts の FOOTER_PRIORITY）──
+  // ── 幅が足りないときに「…」へ移す（優先順位の低いものから1つずつ。src/shared/layout.ts の pickFooterOverflow）──
   const footerRef = useRef<HTMLElement | null>(null)
   const moreRef = useRef<HTMLButtonElement | null>(null)
-  /** 出す項目の優先順位の上限。これより大きい項目は「…」へ */
-  const [tier, setTier] = useState(3)
+  /** 「…」へ移した項目（並びは FOOTER_ITEMS の順） */
+  const [hiddenIds, setHiddenIds] = useState<readonly FooterItemId[]>([])
   /** 項目ごとの「全部出したときの幅」。隠したあとも覚えておき、広がったときに戻せるか判断する */
   const widths = useRef<Partial<Record<FooterItemId, number>>>({})
-  const fits = (id: FooterItemId) => FOOTER_PRIORITY[id] <= tier
+  const fits = (id: FooterItemId) => !hiddenIds.includes(id)
   const overflowed = FOOTER_ITEMS.filter((id) => items[id] && !fits(id))
-  /** 使用量より優先順位の低い項目がまだ出ているあいだは、使用量を縮めない（先にそちらを隠す） */
-  const usageMayShrink = !FOOTER_ITEMS.some((id) => items[id] && FOOTER_PRIORITY[id] > FOOTER_PRIORITY.usage && fits(id) && (widths.current[id] ?? 0) > 0)
+  /** 常に出す項目のほかがまだフッターに出ているあいだは、使用量を縮めない（先にそちらを「…」へ移す） */
+  const usageMayShrink = !FOOTER_ITEMS.some((id) => items[id] && FOOTER_PRIORITY[id] > 0 && fits(id) && (widths.current[id] ?? 0) > 0)
 
   const evaluate = useCallback(() => {
     const footer = footerRef.current
@@ -432,13 +428,13 @@ export function StatusBar({
       fixed += el.classList.contains('statusbar__spacer') ? Number.parseFloat(getComputedStyle(el).minWidth) || 0 : el.getBoundingClientRect().width
       fixedCount += 1
     }
-    const moreWidth = 22 + gap
+    const moreWidth = 22
     const available = footer.clientWidth - (Number.parseFloat(style.paddingLeft) || 0) - (Number.parseFloat(style.paddingRight) || 0) - fixed - gap * fixedCount
     // 幅 0（git でないフォルダの GitHub など、何も出していない項目）は隙間も数えない
-    const slots = FOOTER_ITEMS.filter((id) => items[id] && (widths.current[id] ?? 0) > 0).map((id) => ({ priority: FOOTER_PRIORITY[id], width: widths.current[id] ?? 0 }))
-    // 全部出せるなら「…」は要らない。隠すときは「…」の分も空ける
-    const next = pickFooterTier(slots, available, gap) === 3 ? 3 : pickFooterTier(slots, available - moreWidth, gap)
-    setTier((cur) => (cur === next ? cur : next))
+    const slots = FOOTER_ITEMS.filter((id) => items[id] && (widths.current[id] ?? 0) > 0).map((id) => ({ id, priority: FOOTER_PRIORITY[id], width: widths.current[id] ?? 0 }))
+    // 全部出せるなら「…」は要らない。移すときは「…」の分も空ける
+    const next = pickFooterOverflow(slots, available, gap, moreWidth)
+    setHiddenIds((cur) => (cur.length === next.length && cur.every((id, i) => id === next[i]) ? cur : next))
   }, [items])
 
   useLayoutEffect(() => { evaluate() })
@@ -465,8 +461,7 @@ export function StatusBar({
   const openFromMore = (kind: PopoverKind) => setOpen(kind)
 
   return (
-    <footer ref={footerRef} className="statusbar" data-testid="statusbar" data-tier={tier}>
-      {onStartDrag && <PanelGrip panel="footer" onStart={onStartDrag} />}
+    <footer ref={footerRef} className="statusbar" data-testid="statusbar" data-overflow={overflowed.join(' ') || undefined}>
       {/* Agent の使用量とアカウント切り替え（Orca の左下と同じ位置） */}
       {slot('usage', <>
         <UsageMeter onManageAccounts={onManageAccounts} onOpenChange={setUsageOpen} shrink={usageMayShrink} />
@@ -606,23 +601,25 @@ export function StatusBar({
             const name = itemName(id)
             switch (id) {
               case 'mic':
-                return <button key={id} type="button" className="sb-more__row" onClick={() => openFromMore('mic')}><Mic size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{mic}</span></button>
-              case 'transcription':
-                return <button key={id} type="button" className="sb-more__row" onClick={() => openFromMore('mic')}><AudioLines size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{capture.transcription ?? t('capture.summary.notSet')}</span></button>
+                return <button key={id} type="button" className="sb-more__row" title={`${name}: ${mic}`} onClick={() => openFromMore('mic')}><Mic size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{mic}</span></button>
+              case 'transcription': {
+                const value = capture.transcription ?? t('capture.summary.notSet')
+                return <button key={id} type="button" className="sb-more__row" title={`${name}: ${value}`} onClick={() => openFromMore('mic')}><AudioLines size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{value}</span></button>
+              }
               case 'resources':
                 return <button key={id} type="button" className="sb-more__row" onClick={() => openFromMore('resources')}><MemoryStick size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span></button>
               case 'version':
-                return <button key={id} type="button" className="sb-more__row" onClick={() => openFromMore('update')}><RefreshCw size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{version.version ? `v${version.version}` : ''}</span></button>
+                return <button key={id} type="button" className="sb-more__row" onClick={() => openFromMore('update')}><RefreshCw size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value" title={version.version ? `v${version.version}` : undefined}>{version.version ? `v${version.version}` : ''}</span></button>
               case 'page':
-                return <div key={id} className="sb-more__row" title={state.url || undefined}><Globe size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{page || t('statusBar.notConnected')}</span></div>
+                return <div key={id} className="sb-more__row" title={state.url || page || undefined}><Globe size={13} aria-hidden="true" /><span className="sb-more__name">{name}</span><span className="sb-more__value">{page || t('statusBar.notConnected')}</span></div>
               case 'layout':
                 return <button key={id} type="button" className="sb-more__row" onClick={() => onTerminalDockChange(terminalDock === 'right' ? 'bottom' : 'right')}>{terminalDock === 'right' ? <PanelRight size={13} aria-hidden="true" /> : <PanelBottom size={13} aria-hidden="true" />}<span className="sb-more__name">{terminalDock === 'right' ? t('statusBar.dockBottom') : t('statusBar.dockRight')}</span></button>
               case 'theme':
-                return <div key={id} className="sb-more__row"><span className="sb-more__name">{name}</span><ThemeToggle /></div>
+                return <div key={id} className="sb-more__row"><span className="sb-more__name">{name}</span><span className="sb-more__control"><ThemeToggle /></span></div>
               case 'github':
-                return <div key={id} className="sb-more__row"><span className="sb-more__name">{name}</span><GitHubStatusItem /></div>
+                return <div key={id} className="sb-more__row"><span className="sb-more__name">{name}</span><span className="sb-more__control"><GitHubStatusItem /></span></div>
               case 'apiUsage':
-                return <div key={id} className="sb-more__row"><span className="sb-more__name">{name}</span><ApiUsageMeter onOpenChange={setApiUsageOpen} /></div>
+                return <div key={id} className="sb-more__row"><span className="sb-more__name">{name}</span><span className="sb-more__control"><ApiUsageMeter onOpenChange={setApiUsageOpen} /></span></div>
               default:
                 return null
             }

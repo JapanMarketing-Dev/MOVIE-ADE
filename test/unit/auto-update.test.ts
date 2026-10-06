@@ -15,7 +15,7 @@ import {
   validateManifest
 } from '../../scripts/release-r2-lib.mjs'
 import { setReporter } from '../../src/shared/report'
-import { INSTALL_KIND, checkOnUpdatePopoverOpen, installMethodFor, nsisInstallerArgs, type AutoUpdateStatus } from '../../src/shared/appUpdate'
+import { AUTO_UPDATE_RESUME_DELAY_MS, INSTALL_KIND, checkOnUpdatePopoverOpen, installMethodFor, nsisInstallerArgs, type AutoUpdateStatus } from '../../src/shared/appUpdate'
 import type { UpdateCheckResult } from '../../src/shared/appVersion'
 
 vi.mock('electron', () => ({ app: { getVersion: () => '0.0.1' }, net: { fetch: vi.fn() } }))
@@ -272,6 +272,39 @@ describe('AutoUpdater（裏での確認 → ダウンロード → 再起動し�
     // スリープ明け（maxAge 0）は必ず確かめる
     await updater.checkIfStale(0)
     expect(checks).toBe(3)
+  })
+
+  it('スリープ明け: すぐには確かめず、ネットワークが戻るのを待ってから確かめる。待つ間はウインドウに戻っても確かめない（FERRET-1N）', async () => {
+    vi.useFakeTimers()
+    try {
+      const check = vi.fn(async () => ({ state: 'latest', current: '1.0.0', latest: '1.0.0' }) as UpdateCheckResult)
+      const { updater } = setup({ check })
+      updater.resumed()
+      // 明けた直後（Wi-Fi・DNS がまだ戻っていない）には確かめない。ウインドウに戻ったときの確認も待つ
+      expect(updater.checkIfStale(0)).toBeNull()
+      await vi.advanceTimersByTimeAsync(AUTO_UPDATE_RESUME_DELAY_MS - 1)
+      expect(check).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
+      expect(check).toHaveBeenCalledTimes(1)
+      // 待ち終えたら、ふだんどおり（ウインドウに戻ったとき・一定間隔）
+      vi.setSystemTime(Date.now() + 1)
+      await updater.checkIfStale(0)
+      expect(check).toHaveBeenCalledTimes(2)
+      await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000)
+      expect(check).toHaveBeenCalledTimes(3)
+      // 利用者の［更新を確認］は待たない
+      updater.resumed()
+      await updater.checkNow()
+      expect(check).toHaveBeenCalledTimes(4)
+      updater.stop()
+      // 配布版でない起動は、明けても確かめない
+      const off = setup({ enabled: false, check })
+      off.updater.resumed()
+      await vi.advanceTimersByTimeAsync(AUTO_UPDATE_RESUME_DELAY_MS)
+      expect(check).toHaveBeenCalledTimes(4)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('checkIfStale: 配布版でない起動（enabled でない）では確かめない', () => {

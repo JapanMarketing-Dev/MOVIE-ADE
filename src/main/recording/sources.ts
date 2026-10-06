@@ -3,6 +3,7 @@ import type { CaptureSourceInfo, CaptureSourceList } from '@shared/types'
 import { t } from '@shared/i18n'
 import { reportHandled } from '@shared/report'
 import { windowNumberOf, withAppWindows } from '@shared/desktopApps'
+import { displayIdOfScreen, sortScreensByDisplay, withMissingDisplays } from '@shared/captureSources'
 import { captureMacWindowImage, listMacWindows } from './devices'
 import { fakeCapturePath, readFakeCapture } from './fakeCapture'
 
@@ -55,6 +56,9 @@ export async function openScreenSettings(): Promise<void> {
  * macOS では、desktopCapturer が出さない常に手前のウインドウ（alwaysOnTop・パネル）を足し、各ウインドウにアプリ名を付ける
  * （@shared/desktopApps の withAppWindows）。足したウインドウは desktopCapturer がサムネイルを作らないので、screencapture で撮って付ける。
  *
+ * 画面は、つないでいるディスプレイ（screen.getAllDisplays）と突き合わせ、一覧に無いディスプレイを足す（macOS。@shared/captureSources）。
+ * macOS の一覧に出るのは、いま表示しているデスクトップ（Spaces）のウインドウだけ。ほかのデスクトップ・しまったウインドウは出ない（OS の制約）。
+ *
  * @param thumbnail サムネイルの大きさ。0×0 なら作らない（録画開始時の存在確認用。速い）
  */
 export async function listCaptureSources(
@@ -81,7 +85,7 @@ export async function listCaptureSources(
     .filter((source) => !own.has(source.id))
     .map((source): CaptureSourceInfo => {
       const kind = source.id.startsWith('screen:') ? 'screen' : 'window'
-      const displayId = source.display_id || undefined
+      const displayId = kind === 'screen' ? displayIdOfScreen(source.id, source.display_id || undefined, process.platform) : source.display_id || undefined
       return {
         id: source.id,
         kind,
@@ -91,7 +95,11 @@ export async function listCaptureSources(
         ...(source.appIcon && !source.appIcon.isEmpty() ? { appIcon: source.appIcon.toDataURL() } : {})
       }
     })
-  const all = withAppWindows(listed, macWindows, process.pid)
+  // 一覧に無いディスプレイを足し（macOS）、「画面 1」「画面 2」の番号の順に並べる
+  const fallbackName = t('recording.source.screen')
+  const screens = sortScreensByDisplay(withMissingDisplays(listed, displays, process.platform, fallbackName), displays)
+    .map((source) => (source.kind === 'screen' && source.name === fallbackName ? { ...source, name: screenName(source.displayId, displays, primaryId, fallbackName) } : source))
+  const all = withAppWindows(screens, macWindows, process.pid)
   if (!withThumbnail) return all
   return Promise.all(all.map(async (source) => {
     if (source.thumbnail || source.kind !== 'window') return source

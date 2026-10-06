@@ -1,9 +1,11 @@
-import { useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { FileCode, FileText, Globe, ListChecks, Settings, X } from 'lucide-react'
 import { applyOrder, moveItem } from '@shared/layout'
 import { CountBadge } from '../ui'
 import { useT } from '../lib/i18n'
 import { fileTabId, type FileTabId, type OpenFile } from '../editor/useOpenFiles'
+import { CLOSE_TABS_ACTIONS, tabsToClose, type CloseTabsAction } from '../editor/closeTabs'
 import '../styles/editor.css'
 
 /**
@@ -37,6 +39,8 @@ export function CenterTabs({
   files = [],
   onChange,
   onCloseFile,
+  onCloseFiles,
+  onMenuOpenChange,
   order = [],
   onReorder,
   settingsOpen = false,
@@ -50,6 +54,10 @@ export function CenterTabs({
   files?: OpenFile[]
   onChange: (tab: CenterTab) => void
   onCloseFile?: (id: string) => void
+  /** 右クリックのメニューからまとめて閉じる（ファイルの id）。未保存の確認は呼び出し側 */
+  onCloseFiles?: (ids: string[]) => void
+  /** 右クリックのメニューの開閉。開いている間は内蔵ブラウザのビューを隠す（ネイティブのビューが DOM の上に重なるため） */
+  onMenuOpenChange?: (open: boolean) => void
   /** タブの並び（ドラッグで並べ替えた順）。無いものは後ろに付く */
   order?: readonly string[]
   /** ドラッグで並べ替えたとき、新しい並びを返す */
@@ -61,6 +69,16 @@ export function CenterTabs({
   const t = useT()
   // Orca のタブ列と同じく、タブをドラッグして別のタブの前後へ落とすと並びが変わる
   const [drop, setDrop] = useState<{ id: CenterTab; before: boolean } | null>(null)
+  // ファイルのタブの右クリックのメニュー（VS Code と同じ「閉じる」の並び。closeTabs.ts）
+  const [menu, setMenu] = useState<{ tab: FileTabId; x: number; y: number } | null>(null)
+  const menuOpenChange = useRef(onMenuOpenChange)
+  menuOpenChange.current = onMenuOpenChange
+  useEffect(() => {
+    menuOpenChange.current?.(menu !== null)
+  }, [menu !== null])
+  useEffect(() => () => menuOpenChange.current?.(false), [])
+  const closeMenu = useCallback(() => setMenu(null), [])
+  const isDirty = (tab: string) => files.some((file) => fileTabId(file.id) === tab && file.dirty)
   const ids = applyOrder<CenterTab>(['browser', 'findings', ...(settingsOpen ? ['settings' as const] : []), ...files.map((file) => fileTabId(file.id))], order)
   const dragProps = (id: CenterTab) => onReorder ? {
     draggable: true,
@@ -164,6 +182,7 @@ export function CenterTabs({
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(tab) } }}
                 // 中クリックで閉じる（ブラウザ・エディタと同じ）
                 onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); onCloseFile?.(file.id) } }}
+                onContextMenu={onCloseFiles ? (e) => { e.preventDefault(); setMenu({ tab, x: e.clientX, y: e.clientY }) } : undefined}
                 data-testid="ctab-file"
                 data-path={file.path}
                 {...dragProps(tab)}
@@ -184,7 +203,76 @@ export function CenterTabs({
             )
           })}
       </div>
-
+      {menu && onCloseFiles && (
+        <TabMenu
+          at={menu}
+          enabled={(action) => tabsToClose(action, menu.tab, ids, isDirty).length > 0}
+          onPick={(action) => {
+            setMenu(null)
+            onCloseFiles(tabsToClose(action, menu.tab, ids, isDirty).map((tab) => tab.slice('file:'.length)))
+          }}
+          onClose={closeMenu}
+        />
+      )}
     </div>
+  )
+}
+
+/** ファイルのタブの右クリックのメニュー。外を押す・Esc で閉じる。↑↓で項目を移る。窓の端では内側へ寄せる */
+function TabMenu({ at, enabled, onPick, onClose }: {
+  at: { x: number; y: number }
+  enabled: (action: CloseTabsAction) => boolean
+  onPick: (action: CloseTabsAction) => void
+  onClose: () => void
+}) {
+  const t = useT()
+  const ref = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState({ left: at.x, top: at.y })
+  useLayoutEffect(() => {
+    const node = ref.current
+    if (!node) return
+    const { width, height } = node.getBoundingClientRect()
+    setPosition({
+      left: Math.max(4, Math.min(at.x, window.innerWidth - width - 4)),
+      top: Math.max(4, Math.min(at.y, window.innerHeight - height - 4))
+    })
+  }, [at.x, at.y])
+  useEffect(() => { ref.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus() }, [])
+  useEffect(() => {
+    const down = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) onClose() }
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); onClose() } }
+    window.addEventListener('pointerdown', down, true)
+    window.addEventListener('keydown', key)
+    window.addEventListener('blur', onClose)
+    return () => {
+      window.removeEventListener('pointerdown', down, true)
+      window.removeEventListener('keydown', key)
+      window.removeEventListener('blur', onClose)
+    }
+  }, [onClose])
+  // body へ出す。中央のペインの中に置くと、祖先の封じ込め（@container など）で position: fixed がその枠の左上からになり、右クリックした場所からずれる
+  return createPortal(
+    <div
+      ref={ref}
+      className="sb-menu explorer-menu"
+      role="menu"
+      aria-label={t('centerTabs.menu.label')}
+      style={position}
+      data-testid="ctab-menu"
+      onKeyDown={(e) => {
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+        e.preventDefault()
+        const items = [...(ref.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])]
+        const index = items.indexOf(document.activeElement as HTMLButtonElement)
+        items[(index + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus()
+      }}
+    >
+      {CLOSE_TABS_ACTIONS.map((action) => (
+        <button key={action} type="button" role="menuitem" disabled={!enabled(action)} onClick={() => onPick(action)} data-testid={`ctab-menu-${action}`}>
+          {t(`centerTabs.menu.${action}`)}
+        </button>
+      ))}
+    </div>,
+    document.body
   )
 }

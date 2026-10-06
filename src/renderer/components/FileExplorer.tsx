@@ -1,12 +1,17 @@
 import { TREE_DRAG_TYPE } from '../lib/treeDrag'
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react'
-import { ChevronRight, ClipboardPaste, Copy, CopyPlus, ExternalLink, FilePlus, FileSearch, FileText, Folder, FolderOpen, FolderPlus, Link, ListCollapse, Pencil, RefreshCw, Scissors, Search, SquareTerminal, Trash2, Undo2 } from 'lucide-react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react'
+import { ChevronRight, ClipboardPaste, Copy, CopyPlus, ExternalLink, Eye, EyeOff, FileCode, FilePlus, FileSearch, FileText, Folder, FolderOpen, FolderPlus, Link, ListCollapse, Pencil, RefreshCw, Scissors, Search, SquareTerminal, Trash2, Undo2 } from 'lucide-react'
 import { ENTRY_NAME_PROBLEM_KEYS, isSameOrUnder, nestedNameParts, nestedNameProblem, type FsEntry, type FsTransfer } from '@shared/files'
+import { GIT_STATE_LETTER, gitStateFor, isHiddenByDefault, withoutHidden, type GitDecorations, type GitFileState } from '@shared/gitDecorations'
+import type { TranslationKey } from '@shared/i18n'
 import { errorMessage } from '../lib/errors'
+import { readLocal, writeLocal } from '../lib/localPref'
+import { useGitDecorations } from '../lib/useGitDecorations'
+import { FileIcon } from './FileIcon'
+import { isHtmlPath } from '@shared/htmlPreview'
 import { readDrop } from '../lib/externalDrop'
 import { requestTerminalAt } from '../lib/terminalCommand'
 import { SHORTCUTS, formatShortcut } from '../lib/shortcut'
-import { PanelCloseButton } from './LayoutToggles'
 import { Button, IconButton, Modal, Spinner } from '../ui'
 import { useFileTree, type FileTreeRow } from './fileTree'
 import { useT } from '../lib/i18n'
@@ -18,8 +23,13 @@ import { useT } from '../lib/i18n'
  *   - FileExplorer.tsx: フォルダは開いたときに読む。外部の変更で、読み込み済みのフォルダだけを読み直す
  *   - FileExplorerNameFilter.tsx: 名前で絞り込む欄
  *   - FileExplorerToolbar.tsx: Find files（⌘P）・再読込・すべて畳む
- * 内容検索・仮想スクロール・git の状態は持ち込まない（動画フィードバックに絞る）。
- * 変更ありの「M」は、エディタで未保存の変更があるファイルに付ける。
+ * 内容検索・仮想スクロールは持ち込まない（動画フィードバックに絞る）。
+ * 変更ありの「M」（黄）は、エディタで未保存の変更があるファイルに付ける。
+ *
+ * 見た目（VS Code のエクスプローラーと同じ感覚）:
+ *   - 決まったフォルダ名・ファイル名・拡張子でアイコンと色を変える（lib/fileIcons.ts・FileIcon.tsx）
+ *   - git の状態で名前に色を付け、右端に M・U・A・D・R を出す。変更を含むフォルダも色と点で示す（@shared/gitDecorations・lib/useGitDecorations.ts）
+ *   - .gitignore の対象は薄く出す。.env（.gitignore の対象）・.DS_Store・.git は既定で隠し、右クリックの「隠しファイルを表示」で出す
  *
  * ファイルの操作（VS Code のエクスプローラーと同じ感覚）:
  *   - 新しいファイル / フォルダ: ツリーの上のボタンか右クリック（一覧の下の空いた所でも）。名前はその場の欄に打つ。
@@ -72,6 +82,41 @@ type HistoryEntry =
   | { kind: 'copy'; created: string[] }
   | { kind: 'trash' }
 
+/** 既定で隠すもの（.env・.DS_Store・.git）も出すか（この端末に覚える） */
+const SHOW_HIDDEN_KEY = 'ferret.fileExplorer.showHidden'
+
+/** git の状態の説明（右端の文字に重ねて出す） */
+const GIT_STATE_LABEL: Record<GitFileState, TranslationKey> = {
+  conflicted: 'fileExplorer.gitConflicted',
+  deleted: 'fileExplorer.gitDeleted',
+  modified: 'fileExplorer.gitModified',
+  renamed: 'fileExplorer.gitRenamed',
+  added: 'fileExplorer.gitAdded',
+  untracked: 'fileExplorer.gitUntracked',
+  ignored: 'fileExplorer.gitIgnored'
+}
+
+/** 行の右端の git の印。ファイルは文字（M・U・A…）、変更を含むフォルダは点（VS Code と同じ） */
+function GitMark({ state, kind }: { state: GitFileState | null; kind: FsEntry['kind'] }) {
+  const t = useT()
+  if (!state || state === 'ignored') return null
+  const folder = kind === 'directory' && state !== 'untracked'
+  return (
+    <span className={`explorer__git explorer__git--${state}`} title={folder ? t('fileExplorer.gitFolder') : t(GIT_STATE_LABEL[state])} data-testid="explorer-git">
+      {folder ? '•' : GIT_STATE_LETTER[state]}
+    </span>
+  )
+}
+
+/** 行に付ける git の色のクラス */
+function gitClass(state: GitFileState | null): string {
+  return state ? ` git-${state}` : ''
+}
+
+function gitStateOf(git: GitDecorations | null, path: string, kind: FsEntry['kind']): GitFileState | null {
+  return git ? gitStateFor(git, path, kind) : null
+}
+
 /** 削除の確認に出す名前の数（多いときは先頭だけ） */
 const MAX_LISTED_DELETE_NAMES = 5
 
@@ -93,6 +138,7 @@ export function FileExplorer({
   activePath,
   dirtyPaths,
   onOpen,
+  onOpenSource,
   onQuickOpen,
   onRenamed,
   onDeleted
@@ -102,6 +148,8 @@ export function FileExplorer({
   activePath: string | null
   dirtyPaths: ReadonlySet<string>
   onOpen: (path: string) => void
+  /** 種類を問わずソース（コード）で開く。HTML は onOpen だと内蔵ブラウザのプレビューになる */
+  onOpenSource?: (path: string) => void
   onQuickOpen: () => void
   /** 名前を変えた・動かした（開いているタブを追従させる） */
   onRenamed?: (from: string, to: string) => void
@@ -111,7 +159,16 @@ export function FileExplorer({
   const t = useT()
   // ツリーの状態（開いたときに読む・外部の変更で読み直す）はフィードバックの右パネルと共用（fileTree.tsx）
   const tree = useFileTree(root)
-  const { rows, expanded, loading, toggleDir } = tree
+  const { expanded, loading, toggleDir } = tree
+  // git の色分け（変更・追跡外・.gitignore の対象）。git のリポジトリでなければ何も付けない
+  const git = useGitDecorations(root)
+  const [showHidden, setShowHidden] = useState(() => readLocal(SHOW_HIDDEN_KEY) === '1')
+  const toggleHidden = () => {
+    writeLocal(SHOW_HIDDEN_KEY, showHidden ? '0' : '1')
+    setShowHidden(!showHidden)
+  }
+  // .env（.gitignore の対象）・.DS_Store・.git は既定で出さない。隠したフォルダを開いていても中身ごと外す
+  const rows = useMemo(() => (showHidden ? tree.rows : withoutHidden(tree.rows, (entry) => isHiddenByDefault(entry, git))), [tree.rows, showHidden, git])
   const [searchError, setSearchError] = useState<string | null>(null)
   const error = tree.error ?? searchError
   const [query, setQuery] = useState('')
@@ -119,7 +176,7 @@ export function FileExplorer({
   const [searching, setSearching] = useState(false)
   const [truncated, setTruncated] = useState(false)
 
-  const ops = useTreeOperations({ root, tree, rows, dirtyPaths, onOpen, onRenamed, onDeleted })
+  const ops = useTreeOperations({ root, tree, rows, dirtyPaths, onOpen, onOpenSource, onRenamed, onDeleted })
 
   // プロジェクトが変わったら絞り込みも最初から
   useEffect(() => {
@@ -162,8 +219,6 @@ export function FileExplorer({
         <IconButton size="sm" label={t('fileExplorer.quickOpen', { shortcut: SHORTCUTS.quickOpen() })} icon={<FileSearch size={14} />} onClick={onQuickOpen} disabled={!root} />
         <IconButton size="sm" label={t('fileExplorer.refresh')} icon={<RefreshCw size={13} />} disabled={!root} onClick={tree.refresh} />
         <IconButton size="sm" label={t('fileExplorer.collapseAll')} icon={<ListCollapse size={14} />} disabled={!root} onClick={tree.collapseAll} />
-        {/* ファイルツリーを閉じる（layout-footer の部品。開き直すのはタイトルバー・⌘⇧E・中央のタブの右端・設定） */}
-        <PanelCloseButton panel="files" />
       </header>
 
       {root && (
@@ -206,16 +261,20 @@ export function FileExplorer({
           <p className="explorer__note">{error}</p>
         ) : searchingMode ? (
           <ul className="explorer__list">
-            {nameResults.map((path) => (
-              <li key={path}>
-                <button type="button" className={`explorer__row${path === activePath ? ' is-active' : ''}`} onClick={() => onOpen(path)} title={path}>
-                  <FileText size={13} aria-hidden="true" />
-                  <span className="explorer__name">{path.slice(path.lastIndexOf('/') + 1)}</span>
-                  <span className="explorer__dir">{parentDir(path)}</span>
-                  {dirtyPaths.has(path) && <span className="explorer__badge" title={t('fileExplorer.unsaved')}>M</span>}
-                </button>
-              </li>
-            ))}
+            {nameResults.map((path) => {
+              const gitState = gitStateOf(git, path, 'file')
+              return (
+                <li key={path}>
+                  <button type="button" className={`explorer__row${path === activePath ? ' is-active' : ''}${gitClass(gitState)}`} onClick={() => onOpen(path)} title={path}>
+                    <FileIcon name={baseName(path)} kind="file" />
+                    <span className="explorer__name">{baseName(path)}</span>
+                    <span className="explorer__dir">{parentDir(path)}</span>
+                    {dirtyPaths.has(path) && <span className="explorer__badge" title={t('fileExplorer.unsaved')}>M</span>}
+                    <GitMark state={gitState} kind="file" />
+                  </button>
+                </li>
+              )
+            })}
             {!searching && nameResults.length === 0 && <p className="explorer__note">{t('fileExplorer.noMatches')}</p>}
           </ul>
         ) : (
@@ -235,13 +294,14 @@ export function FileExplorer({
               const renaming = ops.editing?.mode === 'rename' && ops.editing.path === entry.path
               const cut = ops.clipboard?.mode === 'cut' && ops.clipboard.paths.some((p) => isSameOrUnder(entry.path, p))
               const dropping = ops.dropTarget !== null && ops.dropTarget !== '' && isSameOrUnder(entry.path, ops.dropTarget)
+              const gitState = gitStateOf(git, entry.path, entry.kind)
               return (
                 <Fragment key={entry.path}>
                 <li role="treeitem" aria-expanded={isDir ? open : undefined} aria-selected={selected}>
                   {renaming ? <NameInput ops={ops} depth={depth} entry={entry} /> : (
                   <button
                     type="button"
-                    className={`explorer__row${entry.path === activePath ? ' is-active' : ''}${selected ? ' is-selected' : ''}${entry.collapsed ? ' is-heavy' : ''}${cut ? ' is-cut' : ''}${dropping ? ' is-drop' : ''}`}
+                    className={`explorer__row${entry.path === activePath ? ' is-active' : ''}${selected ? ' is-selected' : ''}${entry.collapsed ? ' is-heavy' : ''}${cut ? ' is-cut' : ''}${dropping ? ' is-drop' : ''}${gitClass(gitState)}`}
                     style={{ '--depth': depth } as React.CSSProperties}
                     onClick={(e) => ops.onRowClick(e, entry, () => (isDir ? toggleDir(entry) : onOpen(entry.path)))}
                     onContextMenu={(e) => ops.openMenu(e, entry)}
@@ -250,24 +310,19 @@ export function FileExplorer({
                     onDragEnd={ops.onDragEnd}
                     onDragOver={(e) => ops.onDragOver(e, entry)}
                     onDrop={(e) => ops.onDrop(e, entry)}
-                    title={entry.path}
+                    title={gitState === 'ignored' ? `${entry.path}\n${t('fileExplorer.gitIgnored')}` : entry.path}
                     data-testid="explorer-row"
                     data-path={entry.path}
+                    data-git={gitState ?? undefined}
                   >
-                    {isDir ? (
-                      <>
-                        <ChevronRight size={12} className={`explorer__chevron${open ? ' is-open' : ''}`} aria-hidden="true" />
-                        {open ? <FolderOpen size={13} aria-hidden="true" /> : <Folder size={13} aria-hidden="true" />}
-                      </>
-                    ) : (
-                      <>
-                        <span className="explorer__chevron-space" />
-                        <FileText size={13} aria-hidden="true" />
-                      </>
-                    )}
+                    {isDir
+                      ? <ChevronRight size={12} className={`explorer__chevron${open ? ' is-open' : ''}`} aria-hidden="true" />
+                      : <span className="explorer__chevron-space" />}
+                    <FileIcon name={entry.name} kind={entry.kind} open={open} />
                     <span className="explorer__name">{entry.name}</span>
                     {loading.has(entry.path) && <Spinner size={10} />}
                     {dirtyPaths.has(entry.path) && <span className="explorer__badge" title={t('fileExplorer.unsaved')}>M</span>}
+                    <GitMark state={gitState} kind={entry.kind} />
                   </button>
                   )}
                 </li>
@@ -294,7 +349,7 @@ export function FileExplorer({
         {!searchingMode && ops.notice && <p className="explorer__note explorer__note--sticky" role="status" data-testid="explorer-notice">{ops.notice}</p>}
       </div>
 
-      {ops.menu && <TreeMenu ops={ops} />}
+      {ops.menu && <TreeMenu ops={ops} showHidden={showHidden} onToggleHidden={toggleHidden} />}
       {ops.confirmDelete && <DeleteDialog paths={ops.confirmDelete.paths} dirty={[...dirtyPaths].filter((p) => ops.confirmDelete!.paths.some((d) => isSameOrUnder(p, d)))} onCancel={() => ops.setConfirmDelete(null)} onConfirm={() => ops.trash(ops.confirmDelete!.paths, ops.confirmDelete!.record)} />}
     </aside>
   )
@@ -309,6 +364,7 @@ function useTreeOperations({
   rows,
   dirtyPaths,
   onOpen,
+  onOpenSource,
   onRenamed,
   onDeleted
 }: {
@@ -317,6 +373,7 @@ function useTreeOperations({
   rows: FileTreeRow[]
   dirtyPaths: ReadonlySet<string>
   onOpen: (path: string) => void
+  onOpenSource?: (path: string) => void
   onRenamed?: (from: string, to: string) => void
   onDeleted?: (paths: string[]) => void
 }) {
@@ -486,7 +543,8 @@ function useTreeOperations({
         setEditing(null)
         selectPaths([created.path])
         pushHistory({ kind: 'create', top: created.top })
-        if (editing.kind === 'file') onOpen(created.path)
+        // 作ったばかりのファイルは中身が無いので、HTML でもプレビューではなくソースで開く
+        if (editing.kind === 'file') (onOpenSource ?? onOpen)(created.path)
       } else {
         const from = editing.path
         const to = await window.ade.invoke('fs:rename', from, name)
@@ -841,7 +899,7 @@ function useTreeOperations({
     clipboard, history, dropTarget,
     targetDir, startCreate, startRename, askDelete, hintFor, cancelEdit, commit, trash, onRowClick, openMenu, onTreeKeyDown, onClipboardEvent, onBodyMouseDown,
     onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
-    cut, copy, paste, duplicate, copyPath, reveal, openExternally, openInTerminal, undo, onOpen, entryOf, dirtyPaths,
+    cut, copy, paste, duplicate, copyPath, reveal, openExternally, openInTerminal, undo, onOpen, onOpenSource, entryOf, dirtyPaths,
     closeMenu: () => setMenu(null)
   }
 }
@@ -914,7 +972,7 @@ function MenuItem({ icon, label, shortcut, onClick, disabled, danger, testId }: 
 }
 
 /** 右クリックのメニュー。行の上ならその項目（選択中なら選択全部）、空いた所ならプロジェクト直下が対象 */
-function TreeMenu({ ops }: { ops: TreeOps }) {
+function TreeMenu({ ops, showHidden, onToggleHidden }: { ops: TreeOps; showHidden: boolean; onToggleHidden: () => void }) {
   const t = useT()
   const menu = ops.menu!
   const entry = menu.entry
@@ -957,6 +1015,9 @@ function TreeMenu({ ops }: { ops: TreeOps }) {
       {entry?.kind === 'file' && single && (
         <>
           <MenuItem icon={<FileText size={13} strokeWidth={1.75} />} label={t('fileExplorer.open')} onClick={() => { ops.closeMenu(); ops.onOpen(entry.path) }} testId="explorer-menu-open" />
+          {ops.onOpenSource && isHtmlPath(entry.path) && (
+            <MenuItem icon={<FileCode size={13} strokeWidth={1.75} />} label={t('editor.openHtmlSource')} onClick={() => { ops.closeMenu(); ops.onOpenSource?.(entry.path) }} testId="explorer-menu-open-source" />
+          )}
           <MenuItem icon={<ExternalLink size={13} strokeWidth={1.75} />} label={t('viewer.openExternal')} onClick={() => void ops.openExternally(entry.path)} testId="explorer-menu-open-external" />
           {sep}
         </>
@@ -987,6 +1048,13 @@ function TreeMenu({ ops }: { ops: TreeOps }) {
       )}
       {sep}
       <MenuItem icon={<Undo2 size={13} strokeWidth={1.75} />} label={t('fileExplorer.undo')} shortcut={KEYS.undo()} disabled={ops.history.length === 0} onClick={ops.undo} testId="explorer-menu-undo" />
+      {sep}
+      <MenuItem
+        icon={showHidden ? <EyeOff size={13} strokeWidth={1.75} /> : <Eye size={13} strokeWidth={1.75} />}
+        label={showHidden ? t('fileExplorer.hideHidden') : t('fileExplorer.showHidden')}
+        onClick={() => { ops.closeMenu(); onToggleHidden() }}
+        testId="explorer-menu-toggle-hidden"
+      />
     </div>
   )
 }

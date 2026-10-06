@@ -35,7 +35,7 @@ const SECTION_KEYWORDS: Record<SettingsSectionId, readonly string[]> = {
     '保管', '保存期間', '削除', '日', '停止', 'フィードバック画面', 'クラッシュ', 'プライバシー'],
   appearance: ['theme', 'color', 'dark', 'light', 'system', 'テーマ', '配色', 'ダーク', 'ライト', '外観'],
   language: ['language', 'locale', 'english', 'japanese', 'interface', '言語', '英語', '日本語', '表示言語'],
-  layout: ['layout', 'panel', 'dock', 'footer', 'terminal', 'sidebar', 'files', 'position', 'drag', '配置', 'パネル', 'フッター', 'ターミナル', 'サイドバー', 'レイアウト', 'ドラッグ', '移動'],
+  layout: ['layout', 'panel', 'dock', 'footer', 'terminal', 'sidebar', 'files', 'position', '配置', 'パネル', 'フッター', 'ターミナル', 'サイドバー', 'レイアウト'],
   recording: ['microphone', 'mic', 'audio', 'voice', 'system audio', 'device', 'マイク', '音声', '声', '録音', '録画', 'デバイス'],
   transcription: ['transcription', 'speech', 'whisper', 'model', 'openai', 'api key', 'key', 'base url', 'cost', 'limit', 'compatible', 'local',
     'live transcript', 'show', 'hide', 'warning',

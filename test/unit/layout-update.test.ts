@@ -14,14 +14,16 @@ describe('sanitize の layout（以前の terminalDock からの引き継ぎ）'
     expect('terminalDock' in s).toBe(false)
   })
 
-  it('layout があれば terminalDock より優先する。閉じた状態は残さず表示にする（ターミナルは常に表示）', () => {
+  it('layout があれば terminalDock より優先する。閉じた状態は残さず表示にする（ターミナルは常に表示）。左・上は既定の右へ戻す', () => {
+    expect(sanitize({ terminalDock: 'right', layout: { panels: { terminal: { dock: 'bottom', visible: false } } } }).layout?.panels.terminal)
+      .toEqual({ dock: 'bottom', visible: true })
     expect(sanitize({ terminalDock: 'bottom', layout: { panels: { terminal: { dock: 'left', visible: false } } } }).layout?.panels.terminal)
-      .toEqual({ dock: 'left', visible: true })
+      .toEqual({ dock: 'right', visible: true })
   })
 
   it('未指定・壊れた値は既定（右・表示）', () => {
     expect(sanitize({}).layout?.panels.terminal).toEqual({ dock: 'right', visible: true })
-    expect(sanitize({ terminalDock: 'left' }).layout?.panels.terminal.dock).toBe('left')
+    expect(sanitize({ terminalDock: 'left' }).layout?.panels.terminal.dock).toBe('right')
     expect(sanitize({ terminalDock: 1 }).layout?.panels.terminal.dock).toBe('right')
     expect(sanitize(null).layout?.panels.terminal.dock ?? 'right').toBe('right')
   })

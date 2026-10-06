@@ -24,11 +24,9 @@ export const GESTURE_GRANT_MS = {
   record: 15_000,
   /** アプリの窓の撮影（1回だけ） */
   screenshot: 10_000,
-  /** 端末のプログラムのコピーを許す（1回だけ） */
-  programCopy: 10_000,
   /** 画面・ウインドウの一覧（サムネイル）。選択画面を開いている間に何度か呼ぶ */
   sources: 30_000,
-  /** 録る対象・音・コピーの扱いを選ぶ（利用者が切り替えた直後） */
+  /** 録る対象・音を選ぶ（利用者が切り替えた直後） */
   choice: 30_000,
   /** 端末の選択範囲のコピー（キーを押した直後） */
   copy: 5_000,
@@ -38,7 +36,7 @@ export const GESTURE_GRANT_MS = {
 
 export type GestureAction = keyof typeof GESTURE_GRANT_MS
 /** 1回の操作で1回しか使えないもの */
-const ONE_USE: ReadonlySet<GestureAction> = new Set(['record', 'screenshot', 'programCopy', 'gitSync'])
+const ONE_USE: ReadonlySet<GestureAction> = new Set(['record', 'screenshot', 'gitSync'])
 
 /**
  * 利用者の操作から作る、短い間だけ有効な許可。
@@ -131,6 +129,9 @@ export function captureRequestProblem(
   if (request.target.kind !== 'browser') {
     const chosen = consent.target
     if (chosen.kind !== request.target.kind || chosen.sourceId !== request.target.sourceId) return 'target'
+    // 複数選んだときは、同時に録るほかの画面・ウインドウも選んだものと同じ並びでなければ録らない
+    const also = (target: CaptureTarget) => (target.kind === 'browser' ? [] : (target.also ?? []).map((part) => `${part.kind}|${part.sourceId}`)).join('\n')
+    if (also(chosen) !== also(request.target)) return 'target'
   }
   if (request.mic && !consent.mic) return 'mic'
   if (request.systemAudio && !consent.systemAudio) return 'systemAudio'

@@ -468,7 +468,8 @@
 .url-form {
   position: relative;
   display: flex;
-  min-width: 0;
+  /* 狭いペインでも URL の頭が読める幅は残す（ボタンが増えても欄が消えない） */
+  min-width: 120px;
   flex: 1;
 }
 
@@ -486,7 +487,8 @@
     padding: 0 var(--space-4);
   }
 
-  .browser-toolbar__note .btn__label {
+  .browser-toolbar__note .btn__label,
+  .browser-toolbar__source .btn__label {
     display: none;
   }
 }
@@ -736,6 +738,94 @@ body[data-resizing='row'] * {
 
 .port-chip:active {
   transform: scale(0.97);
+}
+
+/* 開始画面の候補（BrowserSlot の StartUrls）。登録した URL → 最近開いた URL → localhost の補助 */
+.start-urls {
+  display: grid;
+  width: min(520px, 100%);
+  gap: var(--space-6);
+  justify-items: center;
+}
+
+.start-urls__group {
+  display: grid;
+  width: 100%;
+  gap: var(--space-3);
+  justify-items: center;
+}
+
+.start-urls__head {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+/* 登録した URL のチップは、名前を本文の字で、URL を薄く添える */
+.port-chip--preset {
+  max-width: 100%;
+}
+
+.port-chip__label {
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-weight: var(--font-weight-medium);
+}
+
+.port-chip__url {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.start-urls__recent {
+  display: grid;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  gap: 2px;
+  list-style: none;
+}
+
+.start-urls__row {
+  display: flex;
+  width: 100%;
+  height: 28px;
+  align-items: center;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  gap: var(--space-3);
+  text-align: left;
+}
+
+.start-urls__row > svg {
+  flex: none;
+  color: var(--color-text-faint);
+}
+
+.start-urls__row:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.start-urls__row:hover > svg {
+  color: var(--color-accent);
+}
+
+.start-urls__url {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── ターミナル ───────────────────────────────────────── */
@@ -1177,46 +1267,6 @@ body[data-resizing='row'] * {
 /* ドラッグ中のペインは薄くする（Orca の .pane.is-drag-source） */
 .terminal-leaf[data-drag-source] {
   opacity: 0.4 !important;
-}
-
-/* 端末のプログラムのコピー（OSC 52）の確認と知らせ（TerminalClipboardBar）。ペインの下端に重ね、xterm の器は動かさない */
-.terminal-clipboard-bar {
-  position: absolute;
-  right: var(--space-3);
-  bottom: var(--space-3);
-  left: var(--space-5);
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border: var(--size-border) solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-elevated);
-  color: var(--color-text);
-  font-size: var(--font-size-sm);
-  box-shadow: var(--shadow-md);
-}
-
-.terminal-clipboard-bar__icon {
-  flex: none;
-  color: var(--color-text-muted);
-}
-
-.terminal-clipboard-bar__text {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.terminal-clipboard-bar__preview {
-  overflow: hidden;
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 /* ドラッグ中、落とすとどうなるかの案内（Orca の .pane-drop-overlay）。マウスは下のペインに通す */
@@ -1842,13 +1892,6 @@ body[data-resizing='row'] * {
   transition: transform 80ms linear;
 }
 
-/* 狭いウィンドウでは、文字起こしと整理の文字を畳んでアイコンだけにする */
-@media (width < 1100px) {
-  .statusbar__item--ok:not(.statusbar__item--url) .statusbar__value {
-    display: none;
-  }
-}
-
 /* ── プロジェクト切替（タイトルバーのドロップダウン）──────────── */
 
 .project-menu {
@@ -1994,7 +2037,8 @@ body[data-resizing='row'] * {
   display: flex;
   min-width: 0;
   max-width: 40%;
-  flex: none;
+  /* 足りないときはチップの列のほうが縮んで横にスクロールする（URL 欄と右端の PC / スマホをはみ出させない） */
+  flex: 0 1 auto;
   align-items: center;
   overflow-x: auto;
   gap: var(--space-2);
@@ -2520,90 +2564,6 @@ body[data-resizing='row'] * {
   background: var(--color-border);
 }
 
-/* ── パネルのドラッグ（PanelDock.tsx）────────────────── */
-
-/*
- * つまみ。パネルと同じ grid-area に重ね、上端の中央に小さく出す。
- * ふだんは薄く、ホバーしたときだけはっきり見せる（パネルの中身の操作を邪魔しない）。
- */
-.panel-grip {
-  position: relative;
-  z-index: var(--z-toolbar);
-  display: grid;
-  width: 28px;
-  height: 12px;
-  align-self: start;
-  justify-self: center;
-  padding: 0;
-  border: 0;
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-faint);
-  cursor: grab;
-  opacity: 0.45;
-  place-items: center;
-  transition: opacity var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out);
-}
-
-.panel-grip:hover,
-.panel-grip:focus-visible {
-  background: var(--color-surface-hover);
-  color: var(--color-text);
-  opacity: 1;
-}
-
-.panel-grip[hidden] {
-  display: none;
-}
-
-/* フッターの中に置くつまみ（帯の左端） */
-.panel-grip--inline {
-  width: 16px;
-  height: 18px;
-  flex: none;
-  border-radius: var(--radius-sm);
-}
-
-body[data-panel-dragging],
-body[data-panel-dragging] * {
-  cursor: grabbing !important;
-  user-select: none;
-}
-
-/* ドラッグ中の覆い。ワークスペースの上に固定で出し、落とす先の端を半透明の帯で示す */
-.dock-overlay {
-  position: fixed;
-  z-index: var(--z-overlay);
-  pointer-events: none;
-}
-
-.dock-overlay__preview {
-  position: absolute;
-  border: 2px solid var(--color-accent);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
-  transition:
-    left var(--motion-fast) var(--ease-out),
-    top var(--motion-fast) var(--ease-out),
-    width var(--motion-fast) var(--ease-out),
-    height var(--motion-fast) var(--ease-out);
-}
-
-.dock-overlay__label {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  padding: var(--space-3) var(--space-5);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-pill);
-  background: var(--color-bg-elevated);
-  box-shadow: var(--shadow-md);
-  color: var(--color-text);
-  font-size: var(--font-size-xs);
-  transform: translate(-50%, -50%);
-  white-space: nowrap;
-}
-
 /* タイトルバーのパネル開閉ボタン（LayoutToggles）。録画ボタンの左に寄せて並べる */
 .layout-toggles {
   display: inline-flex;
@@ -2631,13 +2591,20 @@ body[data-panel-dragging] * {
   display: none;
 }
 
-/* 「…」メニュー。隠れた項目を1行ずつ並べる */
+/* 「…」メニュー。隠れた項目を1行ずつ並べる。名前は折り返さず、値は省略記号で切る（全文は title）。横には決してはみ出さない */
+.sb-pop:has(.sb-more) {
+  max-width: calc(100vw - 16px);
+  overflow-x: hidden;
+}
+
 .sb-more {
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
 }
 
 .sb-more__row {
   display: flex;
+  min-width: 0;
   min-height: 28px;
   align-items: center;
   padding: 0 var(--space-3);
@@ -2666,16 +2633,37 @@ button.sb-more__row:hover {
 }
 
 .sb-more__name {
-  flex: 1;
+  flex: none;
   color: var(--color-text);
+  white-space: nowrap;
 }
 
 .sb-more__value {
   overflow: hidden;
-  max-width: 60%;
+  min-width: 0;
+  flex: 1 1 auto;
   color: var(--color-text-faint);
+  text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* フッターの部品（API の使用量・GitHub・配色）をそのまま置く欄。右に寄せ、幅が足りなければ部品の中の値を省略記号で切る */
+.sb-more__control {
+  display: flex;
+  overflow: hidden;
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+.sb-more__control > .statusbar__btn {
+  max-width: 100%;
+}
+
+/* 部品が自分で出す区切り線は、メニューの中では要らない */
+.sb-more__control .statusbar__divider {
+  display: none;
 }
 
 /* ── プロジェクトの種類と確認先（ProjectTargetsEditor）──────── */
