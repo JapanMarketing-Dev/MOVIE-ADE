@@ -31,7 +31,28 @@ describe('子プロセスの失敗の種類', () => {
 })
 
 describe('CIM が時間切れになる環境', () => {
-  it('種類だけを1回だけ送り、コマンドの全文は送らない。typeperf に切り替えて行は出す', async () => {
+  it('1回きりの時間切れは送らない（スリープに入る・明けた直後。FERRET-1P）。typeperf に切り替えて行は出し、次に CIM が取れたら数え直す', async () => {
+    let cimFails = true
+    const exec = vi.fn(async (file: string) => {
+      if (file === 'powershell.exe') {
+        if (cimFails) throw timeoutError()
+        return '100\t4\t2048\t0\t0\t638000000000000000'
+      }
+      return TYPEPERF
+    })
+    let t = 0
+    const collector = new WindowsProcessCollector(exec, () => t, 8)
+    for (let round = 0; round < 3; round++) {
+      cimFails = true
+      expect(await collector.enumerate()).toEqual([{ pid: 1234, ppid: 1000, cpu: 0, memory: 52428800 }])
+      cimFails = false
+      t += 31_000
+      expect(await collector.enumerate()).toHaveLength(1)
+    }
+    expect(reportHandled).not.toHaveBeenCalled()
+  })
+
+  it('続けて失敗して CIM をやめるときに、種類だけを1回だけ送り、コマンドの全文は送らない', async () => {
     const exec = vi.fn(async (file: string, _args: string[], _options?: { timeoutMs?: number }) => {
       if (file === 'powershell.exe') throw timeoutError()
       return TYPEPERF
@@ -39,9 +60,10 @@ describe('CIM が時間切れになる環境', () => {
     let t = 0
     const collector = new WindowsProcessCollector(exec, () => t, 8)
     expect(await collector.enumerate()).toEqual([{ pid: 1234, ppid: 1000, cpu: 0, memory: 52428800 }])
-    // 再試行の時刻を過ぎて、もう一度 CIM が時間切れになっても、同じ種類は送らない
-    t += 31_000
-    await collector.enumerate()
+    for (let i = 0; i < 6; i++) {
+      t += 11 * 60_000
+      await collector.enumerate()
+    }
     expect(reportHandled).toHaveBeenCalledTimes(1)
     const [error, where] = reportHandled.mock.calls[0]!
     expect(error.message).toBe('powershell process sampling failed: timeout')
@@ -92,7 +114,7 @@ describe('CIM が時間切れになる環境', () => {
     const calls = exec.mock.calls.length
     await collector.enumerate()
     expect(exec.mock.calls.length).toBe(calls)
-    // 送ったのは powershell / typeperf の種類ごとに1件ずつ
-    expect(reportHandled.mock.calls.map(([e]) => e.message)).toEqual(['powershell process sampling failed: exit', 'typeperf process sampling failed: exit'])
+    // 送ったのは、やめたときの powershell / typeperf の種類ごとに1件ずつ（typeperf は3回、CIM は4回でやめる）
+    expect(reportHandled.mock.calls.map(([e]) => e.message).sort()).toEqual(['powershell process sampling failed: exit', 'typeperf process sampling failed: exit'])
   })
 })

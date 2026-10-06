@@ -92,8 +92,15 @@ export function applyClaudeFolderTrust(config: Record<string, unknown>, folderKe
   return { kind: 'changed', config: { ...config, projects } }
 }
 
+/**
+ * ~/.claude.json は会話の履歴を持ち、何十 MB にもなる。main で同期に読んで JSON にして書き直すので、
+ * 大きすぎるものは書き換えない（エージェントが自分で信頼の確認を出す）。main が長く止まる・メモリが跳ねるのを防ぐ
+ */
+const MAX_TRUST_CONFIG_BYTES = 32 * 1024 * 1024
+
 function readJsonObject(path: string): Record<string, unknown> | null {
   try {
+    if (statSync(path).size > MAX_TRUST_CONFIG_BYTES) return null
     const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'))
     return isPlainObject(parsed) ? parsed : null
   } catch {
@@ -263,6 +270,7 @@ export function grantCodexProjectTrust(configFile: string, projectPath: string):
   let content = ''
   if (target !== 'missing') {
     try {
+      if (statSync(target).size > MAX_TRUST_CONFIG_BYTES) return 'unreadable'
       content = readFileSync(target, 'utf8')
     } catch {
       // 読めない設定は書き換えず、エージェントに確認を出させる（呼び出し側が unreadable として扱う）

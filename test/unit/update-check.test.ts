@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setReporter, type Reporter } from '../../src/shared/report'
 
 vi.mock('electron', () => ({ app: { getVersion: () => '44.5.1' }, net: { fetch: vi.fn() } }))
-const { checkForUpdate } = await import('../../src/main/updateCheck')
+const { checkForUpdate, resetUpdateNetworkFailuresForTest, UPDATE_NETWORK_REPORT_AFTER } = await import('../../src/main/updateCheck')
 const { version } = await import('../../package.json')
 
 /**
@@ -20,7 +20,10 @@ function captured() {
   return handled
 }
 
-afterEach(() => setReporter(null))
+afterEach(() => {
+  setReporter(null)
+  resetUpdateNetworkFailuresForTest()
+})
 
 describe('checkForUpdate', () => {
   it('配信元の版が今と同じなら最新（dev 起動も package.json の版で比べる）', async () => {
@@ -34,29 +37,41 @@ describe('checkForUpdate', () => {
     expect((await checkForUpdate(respond(404, 'not found'))).state).toBe('no-release')
     expect(handled).not.toHaveBeenCalled()
   })
-  it('ネットワークの失敗は、静かな「確認できなかった」にして area: update で送る', async () => {
+  it('ネットワークの失敗は、静かな「確認できなかった」にし、続けて UPDATE_NETWORK_REPORT_AFTER 回のときに1度だけ area: update で送る', async () => {
     const handled = captured()
     const fail = (async () => { throw new Error('net::ERR_INTERNET_DISCONNECTED') }) as unknown as typeof fetch
-    const r = await checkForUpdate(fail)
-    expect(r.state).toBe('error')
+    for (let i = 1; i < UPDATE_NETWORK_REPORT_AFTER; i++) expect((await checkForUpdate(fail)).state).toBe('error')
+    expect(handled).not.toHaveBeenCalled()
+    await checkForUpdate(fail)
     expect(handled).toHaveBeenCalledWith(expect.objectContaining({ message: 'net::ERR_INTERNET_DISCONNECTED' }),
       { kind: 'handled', area: 'update', op: 'check update: network' }, 'warning')
+    // 続いても同じ失敗を何度も送らない
+    await checkForUpdate(fail)
+    expect(handled).toHaveBeenCalledTimes(1)
   })
-  it('端末がネットワークにつながっていないときの失敗は送らない（画面には「確認できなかった」を出す。FERRET-1N）', async () => {
+  it('スリープ明けなどの1回きりの失敗は送らない。配信元から返事が来たら数え直す（FERRET-1N: 0.4.16 で明けて1秒後）', async () => {
     const handled = captured()
     const fail = (async () => { throw new Error('net::ERR_NAME_NOT_RESOLVED') }) as unknown as typeof fetch
-    const r = await checkForUpdate(fail, 'darwin', () => false)
-    expect(r.state).toBe('error')
+    for (let round = 0; round < 3; round++) {
+      for (let i = 1; i < UPDATE_NETWORK_REPORT_AFTER; i++) await checkForUpdate(fail, 'darwin', () => true)
+      await checkForUpdate(respond(200, manifest(version)))
+    }
     expect(handled).not.toHaveBeenCalled()
-    // つながっているのに名前が引けないのは、配信元の不調かもしれないので送る
-    await checkForUpdate(fail, 'darwin', () => true)
+  })
+  it('端末がネットワークにつながっていないときの失敗は数えない・送らない（画面には「確認できなかった」を出す。FERRET-1N）', async () => {
+    const handled = captured()
+    const fail = (async () => { throw new Error('net::ERR_NAME_NOT_RESOLVED') }) as unknown as typeof fetch
+    for (let i = 0; i < UPDATE_NETWORK_REPORT_AFTER + 2; i++) expect((await checkForUpdate(fail, 'darwin', () => false)).state).toBe('error')
+    expect(handled).not.toHaveBeenCalled()
+    // つながっているのに名前が引けないのが続くのは、配信元の不調かもしれないので送る
+    for (let i = 0; i < UPDATE_NETWORK_REPORT_AFTER; i++) await checkForUpdate(fail, 'darwin', () => true)
     expect(handled.mock.calls.map((c) => c[1].op)).toEqual(['check update: network'])
   })
-  it('時間切れは timeout として送る', async () => {
+  it('時間切れが続けば timeout として送る', async () => {
     const handled = captured()
     const slow = (async () => { throw Object.assign(new Error('aborted'), { name: 'AbortError' }) }) as unknown as typeof fetch
-    expect((await checkForUpdate(slow)).state).toBe('error')
-    expect(handled.mock.calls[0]![1].op).toBe('check update: timeout')
+    for (let i = 0; i < UPDATE_NETWORK_REPORT_AFTER; i++) expect((await checkForUpdate(slow)).state).toBe('error')
+    expect(handled.mock.calls.map((c) => c[1].op)).toEqual(['check update: timeout'])
   })
   it('壊れた latest.json・HTTP の失敗・読めない版も送る', async () => {
     const handled = captured()

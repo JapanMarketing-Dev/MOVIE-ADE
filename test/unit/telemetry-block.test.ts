@@ -10,6 +10,7 @@ import {
   gcKindName,
   memoryBucket,
   RESUME_GRACE_MS,
+  QUIT_GRACE_MS,
   scrubEvent,
   shouldReportEventLoopBlock
 } from '../../src/shared/telemetry'
@@ -132,6 +133,13 @@ describe('送る止まりと送らない遅れ（FERRET-M: 0.4.1・0.4.4 の mac
     expect(shouldReportEventLoopBlock({ ...base, lagMs: 5200, quitting: true })).toBe(false)
     // ウィンドウを閉じた後（前面のウィンドウが無い）も同じ
     expect(shouldReportEventLoopBlock({ ...base, lagMs: 5200, appActive: false })).toBe(false)
+  })
+
+  it('閉じる操作（before-quit）から will-quit までの片付けの止まりは送らない（1.1s・ipc:update:install、0.4.15 の Windows）。取り消されて時間が経てば送る', () => {
+    expect(shouldReportEventLoopBlock({ ...base, lagMs: 1100, msSinceQuitRequest: 0 })).toBe(false)
+    expect(shouldReportEventLoopBlock({ ...base, lagMs: 1100, msSinceQuitRequest: QUIT_GRACE_MS })).toBe(false)
+    expect(shouldReportEventLoopBlock({ ...base, lagMs: 1100, msSinceQuitRequest: QUIT_GRACE_MS + 1100 + 1 })).toBe(true)
+    expect(shouldReportEventLoopBlock({ ...base, lagMs: 1100, msSinceQuitRequest: null })).toBe(true)
   })
 
   it('裏に回っている間のタイマーの遅れ（App Nap）は送らない（2.0s・4.0s、どちらも数分前から裏）', () => {

@@ -1719,6 +1719,7 @@ function registerIpc(): void {
     },
     'terminal:write': (id, data) => terminals?.write(id, data),
     'terminal:resize': (id, size) => terminals?.resize(id, size),
+    'terminal:ack': (id, chars) => { if (typeof id === 'string' && typeof chars === 'number') terminals?.ack(id, chars) },
     'terminal:close': (id) => terminals?.close(id),
     'terminal:screen': (id, text) => terminals?.updateScreen(id, text),
     'terminal:agentState': (id) => terminals?.agentState(id) ?? { kind: 'unknown', state: 'unknown' },
@@ -2612,7 +2613,10 @@ async function main(): Promise<void> {
     onUsageChanged(state)
   })
   // 読み込み直し（⌘R・開発時の再読込）より前のターミナルは、どのタブにも付かずに残る
-  mainWindow.webContents.on('did-start-loading', () => resources.markRendererLoad())
+  mainWindow.webContents.on('did-start-loading', () => {
+    resources.markRendererLoad()
+    terminals?.resetFlow()
+  })
   setWorkspace(loadedSettings.folderPath, startupProject)
   registerIpc()
   // 裏での更新。配布版だけ、起動から少し待って確かめ、あとは6時間ごと（開発版・E2E では動かさない）

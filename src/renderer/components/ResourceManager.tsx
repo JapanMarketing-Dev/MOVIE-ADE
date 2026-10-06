@@ -29,12 +29,19 @@ const CLOSED_POLL_MS = 5000
 function useResourceSnapshot(open: boolean): { snapshot: ResourceSnapshot | null; refresh: () => void } {
   const [snapshot, setSnapshot] = useState<ResourceSnapshot | null>(null)
   const refresh = useCallback(() => {
+    // 最小化・裏のあいだは取らない（Windows は取るたびに PowerShell を起動する）
+    if (document.hidden) return
     void window.ade.invoke('resources:snapshot').then(setSnapshot).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
   }, [])
   useEffect(() => {
     refresh()
     const timer = window.setInterval(refresh, open ? OPEN_POLL_MS : CLOSED_POLL_MS)
-    return () => window.clearInterval(timer)
+    // 表に戻ったらすぐ取り直す
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', refresh)
+    }
   }, [open, refresh])
   return { snapshot, refresh }
 }

@@ -428,9 +428,11 @@ export class TerminalHandle {
     return capScrollback(joinWrappedRows(rows).join('\n'))
   }
 
-  write(data: string): void {
+  /** written: xterm が書き終えたとき（main の流量制御への ack に使う） */
+  write(data: string, written?: () => void): void {
     this.outputSeq++
     this.term.write(data, () => {
+      written?.()
       if (this.screenTimer || !this.ptyId) return
       this.screenTimer = setTimeout(() => {
         this.screenTimer = null
@@ -509,12 +511,15 @@ function subscribe(): void {
   if (subscribed) return
   subscribed = true
   window.ade.on('terminal:data', (ptyId, data) => {
+    // 描き終えた量を main へ返す（返さないと main は未処理が溜まったとみなして PTY を止める）。表示先の無い出力もすぐ返す
+    const ack = (): void => { void window.ade.invoke('terminal:ack', ptyId, data.length).catch(() => undefined) }
     for (const handle of handles.values()) {
       if (handle.ptyId === ptyId) {
-        handle.write(data)
+        handle.write(data, ack)
         return
       }
     }
+    ack()
   })
   window.ade.on('terminal:exit', (ptyId, exitCode) => {
     for (const handle of handles.values()) {

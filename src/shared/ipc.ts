@@ -254,6 +254,8 @@ export interface IpcRequests {
   'terminal:writeClipboard': (text: string) => void
   /** 端末のプログラムのコピー（OSC 52）。確認なしで写す。写せたら true（src/main/terminalClipboard.ts） */
   'terminal:programCopy': (id: string, text: string) => boolean
+  /** renderer が terminal:data の出力を描き終えた文字数（main の流量制御。src/main/terminal.ts の FLOW_HIGH_WATER） */
+  'terminal:ack': (id: string, chars: number) => void
   /** ターミナルにフォーカスが入った・外れた。Windows / Linux でターミナルのキー（Ctrl+R など）をメニューに取らせない（terminalMenuKeys.ts） */
   'terminal:focused': (focused: boolean) => void
   /** 今開いているタブと画面の文字（終了したあとに戻すため。設定の agents.restoreTerminals が切なら main は捨てる） */
@@ -644,7 +646,7 @@ export const IPC_REQUEST_CHANNELS = [
   'terminal:write',
   'terminal:resize',
   'terminal:close',
-  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:paste', 'terminal:writeClipboard', 'terminal:programCopy', 'terminal:focused', 'terminal:restoreSave', 'terminal:restoreTake', 'terminal:closedPush', 'terminal:closedPop', 'terminal:restoreClear', 'review:send',
+  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:paste', 'terminal:writeClipboard', 'terminal:programCopy', 'terminal:ack', 'terminal:focused', 'terminal:restoreSave', 'terminal:restoreTake', 'terminal:closedPush', 'terminal:closedPop', 'terminal:restoreClear', 'review:send',
   'settings:splitRatio',
   'settings:layout',
   'settings:theme',

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', () => ({ app: { getAppMetrics: () => [] } }))
 const { WindowsProcessCollector, parseTypeperfProcessOutput, parseWindowsProcessSample } = await import('../../src/main/resourcesWindows')
-const { ResourceCollector } = await import('../../src/main/resources')
+const { ResourceCollector, WINDOWS_ENUMERATE_MIN_MS } = await import('../../src/main/resources')
 
 // pid ⇥ ppid ⇥ WorkingSet ⇥ KernelTime ⇥ UserTime ⇥ 起動時刻（100ns 単位）
 const cim = (kernel: number, user: number) => [
@@ -82,5 +82,27 @@ describe('ResourceCollector の OS 切り替え', () => {
     expect(snap.terminalCount).toBe(1)
     // 子プロセス（pid 200）が居るので「実行中」、RSS は親子の合計
     expect(snap.projects[0].terminals[0]).toMatchObject({ running: true, memory: 2048000 + 1024 })
+  })
+
+  it('win32 では続けて呼ばれても PowerShell は WINDOWS_ENUMERATE_MIN_MS に1回だけ（FERRET-M: 毎回 1.3 秒）', async () => {
+    let t = 0
+    const exec = vi.fn(async () => cim(0, 0))
+    const collector = new ResourceCollector({
+      terminals: () => [{ id: 't1', pid: 100, cwd: 'C:\\work', title: 'シェル' }],
+      projects: () => [],
+      activeProjectId: () => null,
+      page: () => null
+    }, 'win32', new WindowsProcessCollector(exec, () => t, 8), () => t)
+    await collector.collect()
+    t = 5_000
+    const cached = await collector.collect()
+    t = 10_000
+    await collector.collect()
+    expect(exec).toHaveBeenCalledTimes(1)
+    // 前回の一覧でもターミナルの数とメモリは出す
+    expect(cached.projects[0].terminals[0]).toMatchObject({ memory: 2048000 + 1024 })
+    t = WINDOWS_ENUMERATE_MIN_MS
+    await collector.collect()
+    expect(exec).toHaveBeenCalledTimes(2)
   })
 })

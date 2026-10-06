@@ -167,7 +167,8 @@ describe('git の子プロセスは問い合わせを出さない', () => {
 
 // ─── 本物の git で（リモートは手元の bare リポジトリ。ネットワークへは出ない） ─────────────
 
-describe('本物の git：fetch・最新の取得（fast-forward）・push', () => {
+// 1件で git を数十回起動する。Windows はプロセスの起動が遅く（ARM の VM で1回 130ms 以上）、10 秒の既定では足りないことがある
+describe('本物の git：fetch・最新の取得（fast-forward）・push', { timeout: 60_000 }, () => {
   let root = ''
   const saved: Record<string, string | undefined> = {}
   const ENV_KEYS = ['GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM', 'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL', 'ADE_E2E']
@@ -190,7 +191,8 @@ describe('本物の git：fetch・最新の取得（fast-forward）・push', () 
       if (saved[key] === undefined) delete process.env[key]
       else process.env[key] = saved[key]
     }
-    rmSync(root, { recursive: true, force: true })
+    // Windows は git の終わった直後にファイルを掴んだままのことがある（EBUSY）。少し待って消し直す
+    rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
   })
 
   const git = (cwd: string, ...args: string[]): string => execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()

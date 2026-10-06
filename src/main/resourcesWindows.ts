@@ -29,7 +29,8 @@ const CIM_MAX_FAILURES = 4
 const TYPEPERF_MAX_FAILURES = 3
 const QUERY_MAX_BUFFER = 10 * 1024 * 1024
 const CPU_MIN_SAMPLE_MS = 250
-const CPU_STALE_AFTER_MS = 10_000
+/** 取得は ResourceCollector が 15 秒に1回までに絞るので、それより長い間（スリープ・閉じていた）だけを古いとみなす */
+const CPU_STALE_AFTER_MS = 60_000
 const HUNDRED_NS_TICKS_PER_MS = 10_000
 const CIM_RETRY_AFTER_MS = 30_000
 const CIM_RETRY_MAX_MS = 10 * 60_000
@@ -215,7 +216,7 @@ export function resetReportedProbeFailuresForTest(): void {
  * Windows のプロセス一覧を取る係。CPU% は前回との累積CPU時間の差から出すので、前回の値を持つ。
  * CIM が失敗したら typeperf（メモリだけ）に切り替え、30秒後にまた CIM を試す。続けて失敗するたびに間を倍にし
  * （最長10分）、CIM_MAX_FAILURES 回でやめる。typeperf も TYPEPERF_MAX_FAILURES 回続けて失敗したら取得をやめる。
- * 失敗は種類だけを、1回の起動で1度だけ送る（reportProbeFailure）。
+ * 失敗は種類だけを、その取得方法をやめるとき（続けて失敗したとき）に、1回の起動で1度だけ送る（reportProbeFailure）。
  */
 export class WindowsProcessCollector {
   private backend: 'cim' | 'typeperf' = 'cim'
@@ -223,6 +224,8 @@ export class WindowsProcessCollector {
   private retryCimAtMs = 0
   private cimFailures = 0
   private typeperfFailures = 0
+  /** 直前の CIM の失敗の種類（やめるときに送る） */
+  private lastCimFailure: ReturnType<typeof execFailureKind> = 'other'
 
   constructor(
     private readonly exec: ExecText = defaultExec,
@@ -243,6 +246,8 @@ export class WindowsProcessCollector {
     }
     // CIM が詰まっているときに、毎回の取得でタイムアウトを待たない。続けて失敗するほど間を空ける
     this.cimFailures += 1
+    // 1回きりの失敗（スリープに入る・明けた直後、重い起動の最中。FERRET-1P は休止に入る瞬間だった）は送らず、やめるときに1度だけ送る
+    if (this.cimFailures === CIM_MAX_FAILURES) reportProbeFailure(new ResourceProbeError('powershell', this.lastCimFailure))
     this.backend = 'typeperf'
     this.retryCimAtMs = this.now() + Math.min(CIM_RETRY_MAX_MS, CIM_RETRY_AFTER_MS * 2 ** (this.cimFailures - 1))
     this.previous = null
@@ -259,13 +264,13 @@ export class WindowsProcessCollector {
       const stdout = await this.exec('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', CIM_COMMAND], { timeoutMs: CIM_TIMEOUT_MS })
       const parsed = parseWindowsProcessSample(stdout)
       if (parsed.rows.length > 0) return { ...parsed, sampledAtMs: this.now() }
-      reportProbeFailure(new ResourceProbeError('powershell', 'empty'))
+      this.lastCimFailure = 'empty'
       return null
     } catch (err) {
       const kind = execFailureKind(err)
       // コマンドの全文と出力はログにも出さない（種類だけ）
       console.warn(`[resources] PowerShell でプロセスを取れませんでした（${kind}）。typeperf に切り替えます`)
-      reportProbeFailure(new ResourceProbeError('powershell', kind))
+      this.lastCimFailure = kind
       return null
     }
   }
@@ -280,7 +285,7 @@ export class WindowsProcessCollector {
       const kind = execFailureKind(err)
       this.typeperfFailures += 1
       console.warn(`[resources] typeperf でプロセスを取れませんでした（${kind}）`)
-      reportProbeFailure(new ResourceProbeError('typeperf', kind))
+      if (this.typeperfFailures === TYPEPERF_MAX_FAILURES) reportProbeFailure(new ResourceProbeError('typeperf', kind))
       return []
     }
   }

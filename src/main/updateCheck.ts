@@ -158,7 +158,8 @@ export function judgeManifest(
 /**
  * 確認できなかったことを Sentry へ warning（area: update）で知らせる。理由の種類だけを付ける（URL・本文は付けない）。
  * ネットワークの失敗（network / timeout）も、配信元の不調に気づけるよう送る。ただし端末がネットワークにつながっていない
- * （net.isOnline() が false）ときの network は送らない（checkForUpdate）。利用者の側の事情で、配信元やアプリの不調ではない。
+ * （net.isOnline() が false）ときの network は送らず、つながっていても続けて UPDATE_NETWORK_REPORT_AFTER 回失敗したときだけ送る
+ * （checkForUpdate）。利用者の側の一時的な事情で、配信元やアプリの不調ではない。
  */
 function reportCheckFailure(reason: 'http' | 'bad-manifest' | 'bad-version' | 'network' | 'timeout' | 'unsigned' | 'unsigned-update', err?: unknown): void {
   // net の失敗の文（net::ERR_…）は手がかりになるので残す。URL は送る前の除去で落ちる
@@ -256,6 +257,20 @@ export function verifiedFileOfKind(kind: VerifiedDownload['kind']): VerifiedDown
   return pickVerifiedOfKind(verifiedSet, kind)
 }
 
+/**
+ * 続けてネットワークで確かめられなかった回数。スリープ明け・Wi-Fi の切り替え・VPN のつなぎ直しの直後は、
+ * つながっている（isOnline が true）のに DNS などがまだ戻っておらず失敗する（Sentry FERRET-1N: 0.4.16 で明けて1秒後、
+ * 期限の過ぎた定期の確認が復帰の通知より先に動いた）。1回きりは端末の事情なので送らず、
+ * UPDATE_NETWORK_REPORT_AFTER 回続いたときに1度だけ送る（配信元の不調には気づける）。配信元から返事が来たら数え直す
+ */
+let networkFailures = 0
+export const UPDATE_NETWORK_REPORT_AFTER = 3
+
+/** 単体テスト用 */
+export function resetUpdateNetworkFailuresForTest(): void {
+  networkFailures = 0
+}
+
 /** 端末がネットワークにつながっているか。分からなければ true（送る側に倒す） */
 function deviceOnline(): boolean {
   try {
@@ -277,6 +292,7 @@ export async function checkForUpdate(
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
     const res = await fetcher(new URL('latest.json', releaseBase()).toString(), { headers: { Accept: 'application/json' }, signal: controller.signal, redirect: 'error' })
+    networkFailures = 0
     // まだ latest.json を置いていない。失敗ではなく案内として出す
     if (res.status === 404 || res.status === 403) return { state: 'no-release', current }
     if (!res.ok) {
@@ -309,7 +325,8 @@ export async function checkForUpdate(
   } catch (err) {
     const aborted = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')
     // つながっていない端末の失敗（net::ERR_INTERNET_DISCONNECTED・ERR_NAME_NOT_RESOLVED など）は送らない。画面には「確認できなかった」を出す
-    if (aborted || isOnline()) reportCheckFailure(aborted ? 'timeout' : 'network', err)
+    // 続いたときだけ送る（networkFailures の説明）
+    if ((aborted || isOnline()) && ++networkFailures === UPDATE_NETWORK_REPORT_AFTER) reportCheckFailure(aborted ? 'timeout' : 'network', err)
     return { state: 'error', current, message: aborted ? t('update.errors.timeout') : t('update.errors.network') }
   } finally {
     clearTimeout(timer)
