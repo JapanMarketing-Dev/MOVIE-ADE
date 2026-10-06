@@ -187,6 +187,17 @@ export function GitHubStatusItem() {
     }
   }, [working, confirmPush, t])
 
+  /** 裏の fetch を、今のリモートに認める・認めない（押した直後に main が受ける。security-7 [9]） */
+  const decideAutoFetch = async (allowed: boolean) => {
+    try {
+      const next = await window.ade.invoke('github:autoFetchConsent', allowed)
+      setStatus(next)
+      if (allowed) void autoFetch('open')
+    } catch (err) {
+      setMessage({ text: errorMessage(err), tone: 'warn' })
+    }
+  }
+
   if (!status?.isGit) return null
 
   const { repo, branch, shortOid, changes, ahead, behind, hasUpstream } = status
@@ -248,6 +259,17 @@ export function GitHubStatusItem() {
           </p>}
           {!status.hasRemote && <p className="gh-sync__line gh-sync__muted">{t('git.sync.noRemote')}</p>}
         </div>
+        {status.fetch.remote && status.fetch.autoFetch === 'unknown' && <div className="gh-sync__confirm" role="group" aria-label={t('git.sync.autoFetchAsk', { remote: status.fetch.remote })} data-testid="git-auto-fetch-ask">
+          <p className="gh-sync__line">{t('git.sync.autoFetchAsk', { remote: status.fetch.remote })}</p>
+          <div className="gh-sync__buttons">
+            <button type="button" className="btn btn--ghost" onClick={() => void decideAutoFetch(false)} data-testid="git-auto-fetch-deny">{t('git.sync.autoFetchDeny')}</button>
+            <button type="button" className="btn btn--primary" onClick={() => void decideAutoFetch(true)} data-testid="git-auto-fetch-allow">{t('git.sync.autoFetchAllow')}</button>
+          </div>
+        </div>}
+        {status.fetch.remote && status.fetch.autoFetch === 'declined' && <p className="gh-menu__note" data-testid="git-auto-fetch-off">
+          {t('git.sync.autoFetchOff', { remote: status.fetch.remote })}{' '}
+          <button type="button" className="gh-sync__link" onClick={() => void decideAutoFetch(true)}>{t('git.sync.autoFetchTurnOn')}</button>
+        </p>}
         {status.hasRemote && <>
           <button type="button" className="gh-menu__item" disabled={busy} onClick={() => void run('fetch')} data-testid="git-sync-fetch">
             <RefreshCw size={12} aria-hidden="true" className={working === 'fetch' ? 'gh-status__spin' : undefined} /><span>{t('git.sync.fetch')}</span>

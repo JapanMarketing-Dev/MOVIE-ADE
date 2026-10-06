@@ -68,7 +68,8 @@ export async function downloadVerifiedTo(file: VerifiedDownload, dir: string, fe
 }
 
 async function fetchVerified(file: VerifiedDownload, dir: string, fetcher: typeof fetch, place: (temp: string) => Promise<string>, signal?: AbortSignal, onProgress?: DownloadProgress): Promise<string> {
-  const res = await fetcher(file.url, { signal })
+  // 配信元（file.url は配信元の下だけ。updateCheck.ts の toVerifiedDownload）の外へのリダイレクトは追わない（security-7 [12]）
+  const res = await fetcher(file.url, { signal, redirect: 'error' })
   if (!res.ok || !res.body) throw new UpdateDownloadError('http')
   const declared = Number(res.headers.get('content-length') ?? NaN)
   if (Number.isFinite(declared) && declared !== file.size) throw new UpdateDownloadError('size')

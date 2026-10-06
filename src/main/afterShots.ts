@@ -13,6 +13,7 @@ import { lstat, realpath, stat } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 import { sanitizeAfterPath } from '@shared/afterShot'
 import { assertContained } from './sessions/containment'
+import { openContained } from './containedFile'
 
 /** 画面に出す AFTER の大きさの上限。これより大きいファイルは出さない（Agent の撮り間違いで巨大な画像になることがある） */
 const AFTER_MAX_BYTES = 20 * 1024 * 1024
@@ -45,5 +46,32 @@ export async function resolveAfterFile(reviewDir: string, raw: unknown): Promise
   } catch {
     // まだ撮っていない・消された・読めない（想定内）
     return null
+  }
+}
+
+/**
+ * resolveAfterFile で確かめたファイルを読む（security-7 [13]）。確かめた文字列のパスを開き直すと、そのあいだに途中のフォルダを
+ * 差し替えて外のファイルを読ませられるので、開いた fd がレビューのフォルダの中の実体と同じかを確かめてから、その fd から読む。
+ * 普通のファイルでない・大きすぎる・確かめられなければ null
+ */
+export async function readAfterFile(reviewDir: string, file: string): Promise<Buffer | null> {
+  const handle = await openContained(reviewDir, file, 'read').catch(() => null)
+  if (!handle) return null
+  try {
+    const info = await handle.stat()
+    if (!info.isFile() || info.size <= 0 || info.size > AFTER_MAX_BYTES) return null
+    const bytes = Buffer.alloc(info.size)
+    let read = 0
+    while (read < bytes.length) {
+      const { bytesRead } = await handle.read(bytes, read, bytes.length - read, read)
+      if (bytesRead === 0) break
+      read += bytesRead
+    }
+    return bytes.subarray(0, read)
+  } catch {
+    // 読んでいる途中で消えた（想定内）
+    return null
+  } finally {
+    await handle.close()
   }
 }

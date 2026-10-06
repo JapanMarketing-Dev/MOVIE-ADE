@@ -1,5 +1,5 @@
 import { watch, type FSWatcher } from 'node:fs'
-import { readdir, stat } from 'node:fs/promises'
+import { opendir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { shouldIncludePath } from '@shared/files'
 
@@ -15,6 +15,13 @@ import { shouldIncludePath } from '@shared/files'
 
 /** 張るフォルダの数の上限。超えた分は見張らない（上限に当たってほかのアプリの見張りまで止めないため） */
 const MAX_WATCHED_DIRS = 8000
+/**
+ * 見張るフォルダを探すときに読む項目（ファイルも含む）の数と時間の上限（security-7 [11]）。
+ * 張る数の上限だけでは、1つのフォルダに何百万の項目があると、その名前を全部読むまで止まらない。
+ * 項目は opendir で少しずつ読み、上限に当たったらそこで探すのをやめる（見張れた分だけで動く）
+ */
+export const MAX_SCANNED_ENTRIES = 200_000
+export const MAX_DISCOVERY_MS = 30_000
 
 /** このフォルダ（`/` 区切りの相対パス。'' はプロジェクトの直下）に降りて見張るか */
 export function shouldWatchDir(rel: string): boolean {
@@ -29,6 +36,9 @@ export class LinuxTreeWatcher {
   private readonly errorListeners: Array<(err: unknown) => void> = []
   private closed = false
   private limitReported = false
+  /** 探すときに読んだ項目の数と、探し始めた時刻（上限は見張りの一生の分。security-7 [11]） */
+  private scanned = 0
+  private readonly startedAt = Date.now()
 
   constructor(private readonly root: string, private readonly listener: Listener,
     /** 上限に当たって一部を見張れなかったとき（1回だけ） */
@@ -89,18 +99,41 @@ export class LinuxTreeWatcher {
     return true
   }
 
+  /** 探す枠（項目の数・時間）が残っているか。尽きたら1回だけ知らせる */
+  private budgetLeft(): boolean {
+    if (this.scanned < MAX_SCANNED_ENTRIES && Date.now() - this.startedAt < MAX_DISCOVERY_MS) return true
+    this.reportLimit(new Error(`scanned more than ${MAX_SCANNED_ENTRIES} entries or ${MAX_DISCOVERY_MS / 1000}s`))
+    return false
+  }
+
   private async addChildren(rel: string): Promise<void> {
-    let entries
+    if (!this.budgetLeft()) return
+    let dir
     try {
-      entries = await readdir(rel ? join(this.root, rel) : this.root, { withFileTypes: true })
+      dir = await opendir(rel ? join(this.root, rel) : this.root, { bufferSize: 64 })
     } catch {
       return // 消えた・読めない（想定内）
     }
-    for (const entry of entries) {
+    // 下のフォルダは、このフォルダを読み終えて閉じてから降りる（開いたままのフォルダを深さの分だけ増やさない）
+    const subdirs: string[] = []
+    try {
+      for await (const entry of dir) {
+        if (this.closed) return
+        this.scanned += 1
+        if (!this.budgetLeft()) return
+        if (!entry.isDirectory()) continue
+        const child = rel ? `${rel}/${entry.name}` : entry.name
+        if (shouldWatchDir(child) && this.addDir(child)) subdirs.push(child)
+      }
+    } catch {
+      return // 読んでいる途中で消えた（想定内）
+    } finally {
+      // for await を途中で抜けても閉じる（抜けずに読み終えたときは自動で閉じている）
+      await dir.close().catch(() => undefined)
+    }
+    for (const child of subdirs) {
       if (this.closed) return
-      if (!entry.isDirectory()) continue
-      const child = rel ? `${rel}/${entry.name}` : entry.name
-      if (shouldWatchDir(child) && this.addDir(child)) await this.addChildren(child)
+      await this.addChildren(child)
     }
   }
 

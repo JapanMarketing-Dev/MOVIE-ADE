@@ -109,6 +109,7 @@ async function submit(request: Request, env: Env, deps: Deps): Promise<Response>
    * 送り主の枠（試みの数・送信の数）で断るときは、必ずここを通して全体の前処理の予約を戻す（security-5 [10]・security-6 [4]）。
    * 狭い枠で断った要求が全体の枠を減らすと、1つの送り主が全体の枠を使い切って、ほかの人の送信を止められる。
    * 枝ごとに戻す処理を書くと戻し忘れる（ipPeek で戻していなかった）ので、送り主の枠の断りはこの1つの口にまとめる。
+   * 本文を読んだあとの送り主の枠（admit）の断りも、ここを通す（security-7 [14]）。
    * 形の悪い送信（種類・大きさ・中身）は戻さない: 送り主ごとの limiter を作り、本文を読む・解く work をしたので、全体の枠で数える（security-4 [8]）
    */
   const refuseBySender = async (r: LimiterResult): Promise<Response> => {
@@ -143,8 +144,10 @@ async function submit(request: Request, env: Env, deps: Deps): Promise<Response>
     { name: ipKey, windows: PER_SENDER_LIMITS },
     ...(s.installId ? [{ name: await limiterKey(env.RATE_LIMIT_SALT, 'install', s.installId), windows: PER_SENDER_LIMITS }] : [])
   ]
+  // 送り主の枠（IP・インストール ID）で断るときも、全体の前処理の予約を戻す（security-7 [14]。本文を読んだあとでも、
+  // 狭い枠の断りで全体の枠を減らすと、枠を使い切ったインストール ID を別の IP から送り続けて全体を止められる）
   const admission = await admit(env, senders, now)
-  if (!admission.allowed) return fail('rate_limited', { 'retry-after': String(admission.retryAfterSec) })
+  if (!admission.allowed) return refuseBySender(admission)
   const release = (held: ReadonlyArray<{ name: string; windows: readonly Window[] }>) =>
     Promise.allSettled(held.map((c) => askLimiter(env, c.name, 'release', c.windows, now)))
 

@@ -238,7 +238,8 @@ export interface IpcRequests {
   /** 生きているターミナルにつなぎ直す（新しくは作らない）。終了していれば null */
   'terminal:attach': (id: string) => TerminalAttachInfo | null
   /** クリップボードの文字列（Windows / Linux のターミナルの Ctrl+V 貼り付け。renderer には読み取りの権限を渡していない） */
-  'terminal:clipboardText': () => string
+  /** Ctrl+V の貼り付けを main に頼む。中身は返さない（押した直後・端末にフォーカスがあるときだけ。security-7 [1]） */
+  'terminal:paste': () => boolean
   /** ターミナルの選択範囲のコピーをクリップボードへ（キーを押した直後だけ書く。security-5 [9]） */
   'terminal:writeClipboard': (text: string) => void
   /** 端末のプログラムのコピー（OSC 52）。確認なしで写す。写せたら true（src/main/terminalClipboard.ts） */
@@ -396,6 +397,11 @@ export interface IpcRequests {
   'fs:move': (relPaths: string[], destRel: string) => FsTransfer[]
   /** OS から落としたファイル・フォルダ（drop:inspect で確かめた絶対パスだけ）を destRel のフォルダへコピーする */
   'fs:import': (absolutePaths: string[], destRel: string) => FsTransfer[]
+  /**
+   * ファイルツリーの貼り付け。OS のクリップボードのファイル（Finder などでコピーしたもの）か画像を destRel のフォルダへ取り込む。
+   * 中身・元のパスは返さず、作ったものの相対パスだけ（押した直後だけ。src/main/clipboardFiles.ts）。何も無ければ kind: 'none'
+   */
+  'fs:pasteClipboard': (destRel: string) => { kind: 'files' | 'image' | 'none'; created: string[] }
   /** OS から Markdown のファイルへ落とした画像・動画（drop:inspect で確かめた絶対パスだけ）を、その隣の assets/ などへコピーする。コピーの相対パスを渡した順に返す */
   'fs:importMedia': (markdownRel: string, absolutePaths: string[]) => string[]
   /** パスをクリップボードへ書く（絶対パスか、プロジェクトからの相対パス）。書いた文字列を返す */
@@ -432,6 +438,8 @@ export interface IpcRequests {
   'github:autoFetch': (trigger: FetchTrigger, visible: boolean) => GitRepoStatus | null
   /** フッターの「リモートの変更を確認」「最新を取得」「push」。push は確認を出したときの HEAD を渡し、押した直後だけ受け付ける */
   'github:gitAction': (action: GitSyncAction, expectedHead: string | null) => GitActionResult
+  /** 裏の fetch を、今のリモートに認める（true）・認めない（false）。押した直後だけ（security-7 [9]） */
+  'github:autoFetchConsent': (allowed: boolean) => GitRepoStatus
 
   // GitHub の star のお願い（src/main/starPrompt.ts）。star するのは利用者が押したときだけ
   /** トーストの「Star」。gh で star できたら true（できなければ画面はブラウザの案内に切り替える） */
@@ -626,7 +634,7 @@ export const IPC_REQUEST_CHANNELS = [
   'terminal:write',
   'terminal:resize',
   'terminal:close',
-  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:clipboardText', 'terminal:writeClipboard', 'terminal:programCopy', 'terminal:focused', 'terminal:restoreSave', 'terminal:restoreTake', 'terminal:closedPush', 'terminal:closedPop', 'terminal:restoreClear', 'review:send',
+  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:paste', 'terminal:writeClipboard', 'terminal:programCopy', 'terminal:focused', 'terminal:restoreSave', 'terminal:restoreTake', 'terminal:closedPush', 'terminal:closedPop', 'terminal:restoreClear', 'review:send',
   'settings:splitRatio',
   'settings:layout',
   'settings:theme',
@@ -647,8 +655,8 @@ export const IPC_REQUEST_CHANNELS = [
   'annotation:redo',
   'review:list', 'review:activity', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
   'capture:screenAccess', 'capture:sources', 'capture:setTarget', 'capture:openScreenSettings', 'capture:apps', 'capture:launchApp',
-  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:readOffice', 'fs:gitStatus', 'fs:create', 'fs:copy', 'fs:move', 'fs:import', 'fs:importMedia', 'fs:copyPath', 'fs:terminalDir', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'editor:quitSave', 'preview:render',
-  'github:open', 'github:repoStatus', 'github:autoFetch', 'github:gitAction',
+  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:readOffice', 'fs:gitStatus', 'fs:create', 'fs:copy', 'fs:move', 'fs:import', 'fs:pasteClipboard', 'fs:importMedia', 'fs:copyPath', 'fs:terminalDir', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'editor:quitSave', 'preview:render',
+  'github:open', 'github:repoStatus', 'github:autoFetch', 'github:gitAction', 'github:autoFetchConsent',
   'star:star', 'star:openWeb', 'star:later', 'star:never', 'star:fromMenu',
   'feedback:environment', 'feedback:account', 'feedback:submit', 'feedback:captureWindow'
 ] as const satisfies readonly IpcRequestChannel[]

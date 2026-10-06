@@ -42,6 +42,8 @@ export class DecisionService {
   private cachedKey: { value: string | undefined } | null = null
   /** 前回の sync の設定（ハッシュ）。変わったら合言葉を切る */
   private prefsFingerprint: string | null = null
+  /** 保存したキーの世代。キーが変わるたびに進む。読み終わる前に変わったキーは覚えない（security-7 [4]） */
+  private keyGeneration = 0
 
   constructor(private readonly deps: DecisionServiceDeps) {}
 
@@ -64,6 +66,17 @@ export class DecisionService {
     this.prefsFingerprint = fingerprint
     if (!this.relay) this.relay = new DecisionRelay({ upstream: () => this.upstream(), onCall: this.deps.onCall, ...(this.deps.ledger ? { ledger: this.deps.ledger } : {}), ...(this.deps.fetch ? { fetch: this.deps.fetch } : {}) })
     await this.relay.start()
+  }
+
+  /**
+   * 保存したキーが変わった・消えた（キーの保存先が同期で呼ぶ。security-7 [4]）。
+   * 覚えている復号したキーを捨て、出した合言葉をすべて無効にし、受け付け済みで途中の依頼も切る（古いキーで送らせない）。
+   * 読んでいる途中の古いキーは、世代が変わったので覚えない
+   */
+  credentialsChanged(): void {
+    this.keyGeneration += 1
+    this.cachedKey = null
+    this.relay?.revokeAll()
   }
 
   /** 中継を止める（アプリの終了・テスト用）。出した合言葉もすべて無効になる */
@@ -112,7 +125,11 @@ export class DecisionService {
     await this.authorize(prefs, false)
     if (!this.cachedKey) {
       const resolved = resolveDecision(prefs, this.deps.getEnv)
-      this.cachedKey = { value: resolved.authScheme === 'none' ? undefined : await this.deps.readKey(prefs) }
+      const generation = this.keyGeneration
+      const value = resolved.authScheme === 'none' ? undefined : await this.deps.readKey(prefs)
+      // 読んでいる間にキーが変わった：古い世代のキーは覚えず、この依頼にも使わない
+      if (generation !== this.keyGeneration) throw new RelayConfigError(t('decision.test.config'))
+      this.cachedKey = { value }
     }
     return this.upstreamFor(prefs, this.cachedKey.value)
   }

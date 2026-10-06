@@ -257,16 +257,9 @@ describe('security-3 [2] 配布物の真正性を、R2 とは別の鍵の署名�
     for (const f of [...walk('build', /./), ...walk('scripts', /./), ...walk('src', /./)]) expect(read(f), f).not.toMatch(/BEGIN PRIVATE KEY|BEGIN OPENSSH PRIVATE KEY/)
   })
 
-  it('security-3 [2] 不変条件: 署名の鍵を持つのは R2 のトークンを持たないジョブだけ。stage / promote は署名を確かめ、promote は署名が無ければ止める', () => {
+  it('security-3 [2] 不変条件: 署名の鍵は CI に置かず（security-7 [3]）、stage / promote は署名を確かめ、promote は署名が無ければ止める', () => {
     const wf = read('.github/workflows/release.yml')
-    const jobs = wf.split(/\n {2}(?=[\w-]+:\n)/)
-    const withKey = jobs.filter((j) => /secrets\.RELEASE_SIGNING_KEY/.test(j))
-    expect(withKey).toHaveLength(1)
-    expect(withKey[0]).toMatch(/^checksums:/)
-    expect(withKey[0]).not.toMatch(/secrets\.CLOUDFLARE_/)
-    expect(withKey[0]).toMatch(/node scripts\/release-signing\.mjs sign --sums SHA256SUMS --out SHA256SUMS\.sig/)
-    expect(jobs.find((j) => j.startsWith('stage:'))).toMatch(/--sums-sig release-meta\/SHA256SUMS\.sig/)
-    expect(jobs.find((j) => j.startsWith('promote:'))).toMatch(/--sums-sig release-meta\/SHA256SUMS\.sig/)
+    expect(wf).not.toMatch(/secrets\.RELEASE_SIGNING_KEY|secrets\.CLOUDFLARE_/)
     const r2 = read('scripts/release-r2.mjs')
     expect(r2).toMatch(/checkExpectedSums\(manifest, args, true\)/)
     expect(r2).toMatch(/assertSignedSums\(/)

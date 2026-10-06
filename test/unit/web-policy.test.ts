@@ -167,11 +167,11 @@ describe('security-2 [11] 外部アプリへの受け渡し', () => {
 })
 
 describe('security-2 [11] 遷移の決まり', () => {
-  it('URL 欄からは http(s)・プレビュー・手元のファイル・空ページだけ', () => {
-    for (const ok of ['https://example.com', 'http://localhost:3000', 'file:///Users/me/site/index.html', 'ade-preview://p/README.md', 'about:blank']) {
+  it('URL 欄からは http(s)・プレビュー・プロジェクトのページ・空ページだけ。手元のファイル（file:）は開かない（security-7 [2]）', () => {
+    for (const ok of ['https://example.com', 'http://localhost:3000', 'ade-page://project/index.html', 'ade-preview://p/README.md', 'about:blank']) {
       expect(isTypedNavigationAllowed(ok), ok).toBe(true)
     }
-    for (const ng of ['javascript:alert(1)', 'data:text/html,x', 'zoommtg://x', 'chrome://settings', 'mailto:a@b.c']) {
+    for (const ng of ['javascript:alert(1)', 'data:text/html,x', 'zoommtg://x', 'chrome://settings', 'mailto:a@b.c', 'file:///Users/me/site/index.html', 'file:///etc/passwd', 'ade-page://other/x.html']) {
       expect(isTypedNavigationAllowed(ng), ng).toBe(false)
     }
   })
@@ -179,7 +179,12 @@ describe('security-2 [11] 遷移の決まり', () => {
   it('ページが始めた遷移では、web のページから手元のファイルへは行かせない', () => {
     expect(isPageNavigationAllowed('https://b.example', PAGE)).toBe(true)
     expect(isPageNavigationAllowed('file:///etc/passwd', PAGE)).toBe(false)
-    expect(isPageNavigationAllowed('file:///Users/me/site/b.html', 'file:///Users/me/site/a.html')).toBe(true)
+    expect(isPageNavigationAllowed('file:///Users/me/site/b.html', 'file:///Users/me/site/a.html')).toBe(false)
+    // プロジェクトのページからは、プロジェクトのページの中だけ（security-7 [6]）。web のページからプロジェクトのページへも行かない
+    expect(isPageNavigationAllowed('ade-page://project/b.html', 'ade-page://project/a.html')).toBe(true)
+    expect(isPageNavigationAllowed('https://evil.example/?leak=1', 'ade-page://project/a.html')).toBe(false)
+    expect(isPageNavigationAllowed('ade-preview://project/README.md', 'ade-page://project/a.html')).toBe(false)
+    expect(isPageNavigationAllowed('ade-page://project/a.html', PAGE)).toBe(false)
     expect(isPageNavigationAllowed('zoommtg://x', PAGE)).toBe(false)
     expect(isPageNavigationAllowed('javascript:alert(1)', PAGE)).toBe(false)
   })

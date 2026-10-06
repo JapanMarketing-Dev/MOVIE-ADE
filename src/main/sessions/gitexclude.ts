@@ -13,6 +13,7 @@ import { lstat } from 'node:fs/promises'
 import { readTextBounded } from '../boundedFile'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { ADE_DIR, LEGACY_ADE_DIR } from './paths'
+import { AUTOMATIC_GIT_CONFIG, trustedGit } from '../github/gitSync'
 import { assertContained, mkdirContained, writeFileNoFollow } from './containment'
 
 /** 除外するフォルダ。古いレビューが残る .ade-movie/ も外したままにする */
@@ -81,11 +82,14 @@ async function resolveGitDir(projectDir: string): Promise<string | null> {
 }
 
 /** git にリポジトリの場所を聞く（このフォルダを作業ツリーとして）。git が無い・リポジトリでなければ null */
-function gitRevParse(projectDir: string, args: string[]): Promise<string[] | null> {
+async function gitRevParse(projectDir: string, args: string[]): Promise<string[] | null> {
   // 呼び出し元の GIT_DIR などに引きずられないよう、git の場所を変える環境変数は外す
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^GIT_(DIR|WORK_TREE|COMMON_DIR|INDEX_FILE|CEILING_DIRECTORIES|DISCOVERY_ACROSS_FILESYSTEM)$/.test(key)))
+  // git は信頼できる絶対パスで、リポジトリの設定のコマンドを動かさずに（security-7 [5]・[15]）
+  const git = await trustedGit(projectDir)
+  if (!git) return null
   return new Promise((done) => {
-    execFile('git', ['-C', projectDir, 'rev-parse', ...args], { env, timeout: 5000, windowsHide: true }, (err, stdout) => {
+    execFile(git, ['-C', projectDir, ...AUTOMATIC_GIT_CONFIG, 'rev-parse', ...args], { env, timeout: 5000, windowsHide: true }, (err, stdout) => {
       done(err ? null : stdout.split(/\r?\n/).filter((line) => line.length > 0))
     })
   })
@@ -147,9 +151,11 @@ async function pointsBack(gitDir: string, projectDir: string, realProject: strin
     if (text && await real(isAbsolute(text) ? text : resolve(gitDir, text)) === await real(join(projectDir, '.git'))) return true
   }
   // submodule: git のフォルダの core.worktree がこのプロジェクト（相対なら gitdir から）
-  const worktree = await new Promise<string | null>((done) => {
-    execFile('git', ['config', '--file', join(gitDir, 'config'), '--get', 'core.worktree'], { timeout: 5000, windowsHide: true }, (err, stdout) => done(err ? null : stdout.trim() || null))
-  })
+  // git は信頼できる絶対パスで（security-7 [15]）
+  const git = await trustedGit(projectDir)
+  const worktree = git ? await new Promise<string | null>((done) => {
+    execFile(git, ['config', '--file', join(gitDir, 'config'), '--get', 'core.worktree'], { timeout: 5000, windowsHide: true }, (err, stdout) => done(err ? null : stdout.trim() || null))
+  }) : null
   return !!worktree && await real(isAbsolute(worktree) ? worktree : resolve(gitDir, worktree)) === realProject
 }
 

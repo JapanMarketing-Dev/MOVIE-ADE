@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, open, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { mediaResponse, parseByteRange } from '../../src/main/mediaRange'
+import { mediaResponseFromHandle, parseByteRange } from '../../src/main/mediaRange'
 
 describe('録画の動画を Range 付きで返す（▷ を指摘の時刻から開くため）', () => {
   it('bytes=start-end・start-・末尾 n バイトを読む', () => {
@@ -25,16 +25,16 @@ describe('録画の動画を Range 付きで返す（▷ を指摘の時刻か�
     try {
       const file = join(dir, 'recording.webm')
       await writeFile(file, Buffer.from('0123456789'))
-      const part = await mediaResponse(file, 'bytes=2-5')
+      const part = await mediaResponseFromHandle(await open(file, 'r'), 'bytes=2-5', 'video/webm')
       expect(part.status).toBe(206)
       expect(part.headers.get('content-range')).toBe('bytes 2-5/10')
       expect(part.headers.get('accept-ranges')).toBe('bytes')
       expect(await part.text()).toBe('2345')
-      const whole = await mediaResponse(file, null)
+      const whole = await mediaResponseFromHandle(await open(file, 'r'), null, 'video/webm')
       expect(whole.status).toBe(200)
       expect(whole.headers.get('accept-ranges')).toBe('bytes')
       expect(await whole.text()).toBe('0123456789')
-      expect((await mediaResponse(file, 'bytes=50-')).status).toBe(416)
+      expect((await mediaResponseFromHandle(await open(file, 'r'), 'bytes=50-', 'video/webm')).status).toBe(416)
     } finally { await rm(dir, { recursive: true, force: true }) }
   })
 })

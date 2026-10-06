@@ -6,8 +6,13 @@
  * Electron の main では net.fetch（Chromium のネットワーク）を使う。単体テスト（Electron の外）では Node の fetch。
  * Chromium が危ないとして断るポート（6000 など）のローカルのサーバーは、Node の fetch で送り直す。
  * redirect: 'manual' は net.fetch が例外にするので、使うところ（モデルの取得）はここを通さない。
+ *
+ * ここを通るのは、キー（Authorization・x-api-key・設定のヘッダー）と録音・指摘の中身を送る依頼。キーを送ってよい接続元は
+ * 最初の URL で確かめている（credentialOrigin.ts）ので、リダイレクトは既定で追わない（security-7 [10]。
+ * 追うと、確かめていない別の接続元へ同じヘッダーと本文が送られる）。リダイレクトが来たら例外になる
  */
 export async function mainFetch(url: string, init?: RequestInit): Promise<Response> {
+  init = { ...init, redirect: init?.redirect ?? 'error' }
   if (!process.versions.electron || process.type !== 'browser') return fetch(url, init)
   const { net } = await import('electron')
   try {

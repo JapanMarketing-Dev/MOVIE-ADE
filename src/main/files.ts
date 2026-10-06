@@ -1,9 +1,10 @@
 import { LinuxTreeWatcher } from './linuxTreeWatch'
+import { resolveTrustedExecutable } from './agentExecutable'
 import { spawn } from 'node:child_process'
 import { FileTooLargeError, NotRegularFileError, readFileBounded } from './boundedFile'
-import { assertHandleInside, createContained, openContained } from './containedFile'
-import { existsSync, watch, type FSWatcher } from 'node:fs'
-import { opendir, readdir, realpath, stat, type FileHandle } from 'node:fs/promises'
+import { assertHandleInside, assertStillInside, createContained, openContained } from './containedFile'
+import { constants as fsConstants, existsSync, watch, type FSWatcher } from 'node:fs'
+import { open, opendir, readdir, realpath, stat, type FileHandle } from 'node:fs/promises'
 import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import {
   MAX_LISTED_FILES,
@@ -101,35 +102,80 @@ function toRel(root: string, absolute: string): string {
 
 // ─── 一覧 ─────────────────────────────────────────────
 
-export async function listDirectory(root: string, relDir: string): Promise<FsEntry[]> {
-  const dir = await resolveInside(root, relDir)
-  // 全部を一度に読まず、上限まで順に読む（readdir は全項目の配列を作る）
-  const handle = await opendir(dir)
-  const entries: FsEntry[] = []
-  let seen = 0
-  for await (const dirent of handle) {
-    // for await を抜けると opendir の Dir は閉じる
-    if (++seen > MAX_DIRECTORY_ENTRIES) break
-    const absolute = join(dir, dirent.name)
-    let kind: FsEntry['kind'] | null = dirent.isDirectory() ? 'directory' : dirent.isFile() ? 'file' : null
-    if (dirent.isSymbolicLink()) {
-      // 外を指すリンクは一覧にも出さない（開けないものを見せない）
+/**
+ * 一覧を読むフォルダを開く（security-7 [13]）。確かめたパスを開き直すと、そのあいだに途中のフォルダを差し替えて
+ * 外のフォルダの名前を読ませられるので、読む前と読んだ後で実体（dev・ino）とプロジェクトの中であることを確かめる（finish）。
+ * Linux は、開いたフォルダの fd（/proc/self/fd/N）から読むので、差し替えても開いたものだけを読む
+ */
+async function openListedDir(root: string, dir: string): Promise<{ path: string; finish: () => Promise<void> }> {
+  const real = await assertStillInside(root, dir)
+  const before = await stat(real)
+  if (!before.isDirectory()) throw new UserFacingError(t('files.errors.notRegular'))
+  const same = (s: { dev: number; ino: number }) => s.dev === before.dev && s.ino === before.ino
+  let pinned: FileHandle | null = null
+  if (process.platform === 'linux') {
+    pinned = await open(real, fsConstants.O_RDONLY | (fsConstants.O_DIRECTORY ?? 0))
+    if (!same(await pinned.stat())) {
+      await pinned.close()
+      throw new UserFacingError(t('files.errors.outside'))
+    }
+  }
+  return {
+    path: pinned ? `/proc/self/fd/${pinned.fd}` : real,
+    finish: async () => {
       try {
-        await resolveInside(root, toRel(root, absolute))
-        kind = (await stat(absolute)).isDirectory() ? 'directory' : 'file'
-      } catch {
-        // 外を指す・切れたリンク（想定内）
-        kind = null
+        // 読み終えた時点でも同じフォルダで、プロジェクトの中にある。違えば読んだ名前は使わない
+        const now = await assertStillInside(root, dir)
+        if (now !== real || !same(await stat(now))) throw new UserFacingError(t('files.errors.outside'))
+      } finally {
+        await pinned?.close()
       }
     }
-    if (!kind) continue
-    entries.push({
-      name: dirent.name,
-      path: toRel(root, absolute),
-      kind,
-      ...(kind === 'directory' && isCollapsedByDefault(dirent.name) ? { collapsed: true } : {})
-    })
   }
+}
+
+export async function listDirectory(root: string, relDir: string): Promise<FsEntry[]> {
+  const dir = await resolveInside(root, relDir)
+  const listed = await openListedDir(root, dir)
+  // 全部を一度に読まず、上限まで順に読む（readdir は全項目の配列を作る）
+  let handle
+  try {
+    handle = await opendir(listed.path)
+  } catch (err) {
+    await listed.finish().catch(() => undefined)
+    throw err
+  }
+  const entries: FsEntry[] = []
+  try {
+    let seen = 0
+    for await (const dirent of handle) {
+      // for await を抜けると opendir の Dir は閉じる
+      if (++seen > MAX_DIRECTORY_ENTRIES) break
+      const absolute = join(dir, dirent.name)
+      let kind: FsEntry['kind'] | null = dirent.isDirectory() ? 'directory' : dirent.isFile() ? 'file' : null
+      if (dirent.isSymbolicLink()) {
+        // 外を指すリンクは一覧にも出さない（開けないものを見せない）
+        try {
+          await resolveInside(root, toRel(root, absolute))
+          kind = (await stat(absolute)).isDirectory() ? 'directory' : 'file'
+        } catch {
+          // 外を指す・切れたリンク（想定内）
+          kind = null
+        }
+      }
+      if (!kind) continue
+      entries.push({
+        name: dirent.name,
+        path: toRel(root, absolute),
+        kind,
+        ...(kind === 'directory' && isCollapsedByDefault(dirent.name) ? { collapsed: true } : {})
+      })
+    }
+  } catch (err) {
+    await listed.finish().catch(() => undefined)
+    throw err
+  }
+  await listed.finish()
   // フォルダが先、名前は自然順（file2 < file10）
   return entries.sort((a, b) =>
     a.kind !== b.kind ? (a.kind === 'directory' ? -1 : 1) : a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
@@ -213,15 +259,21 @@ async function openForWrite(root: string, file: string): Promise<FileHandle> {
 
 /**
  * rg の場所。Finder から起動するとシェルの PATH を引き継がないので、よくある場所も見る。
- * 見つからなければ null（Node で歩く遅い経路に切り替える）。
+ * Agent と同じ決まりで、絶対パスでプロジェクト（root）の外の、実行できるファイルだけを使う（security-7 [15]。
+ * PATH の `.`・相対の項目・プロジェクトの中のフォルダ・プロジェクトの中を指すリンクからは選ばない）。
+ * 見つからなければ null（Node で歩く遅い経路に切り替える）。プロジェクトごとに少しの間覚える
  */
-let rgPath: string | null | undefined
-function findRg(): string | null {
-  if (rgPath !== undefined) return rgPath
-  const name = process.platform === 'win32' ? 'rg.exe' : 'rg'
+const RG_CACHE_MS = 5 * 60_000
+const rgPaths = new Map<string, { path: string | null; at: number }>()
+export async function findRg(root: string): Promise<string | null> {
+  const hit = rgPaths.get(root)
+  if (hit && Date.now() - hit.at < RG_CACHE_MS) return hit.path
   const dirs = [...(process.env.PATH ?? '').split(delimiter), '/opt/homebrew/bin', '/usr/local/bin', '/usr/bin']
-  rgPath = dirs.filter((dir) => dir.length > 0).map((dir) => join(dir, name)).find((candidate) => existsSync(candidate)) ?? null
-  return rgPath
+  const resolved = await resolveTrustedExecutable('rg', { env: process.env, cwd: root, dirs: process.platform === 'win32' ? undefined : dirs })
+  // Windows で .cmd / .bat は cmd.exe を通すことになるので使わない
+  const path = resolved.ok && !/\.(cmd|bat)$/i.test(resolved.path) ? resolved.path : null
+  rgPaths.set(root, { path, at: Date.now() })
+  return path
 }
 
 /** 除外するディレクトリを rg のグロブにする */
@@ -291,7 +343,7 @@ async function walkFiles(root: string, limit: number): Promise<FsFileList> {
 
 export async function listFiles(root: string): Promise<FsFileList> {
   const realRoot = await realpath(root)
-  const rg = findRg()
+  const rg = await findRg(realRoot)
   if (!rg) return walkFiles(realRoot, MAX_LISTED_FILES)
   const files: string[] = []
   // .gitignore に従う。隠しファイル（.env.example など）は出す

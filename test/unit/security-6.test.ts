@@ -21,6 +21,9 @@ import { PER_SENDER_LIMITS } from '../../workers/feedback-relay/src/limits'
 import { buildIssue } from '../../workers/feedback-relay/src/github'
 import { literalInline } from '../../workers/feedback-relay/src/redact'
 
+/** 中継が受け付ける最小の System One の依頼（security-7 [7]。形の違う本文は送らずに断る） */
+const SYSTEM_ONE_BODY = JSON.stringify({ model: 'm', state: 's', questions: { ok: { type: 'noul' } } })
+
 /**
  * Codex のセキュリティスキャン6回目の [1]〜[8] を、同じ種類のコードが戻ったら落ちる形で止める。
  *   [1] 判定の中継は、最初の依頼（応答をまだ見ていない）でも枠から決めた下限を予約する。量が分からない応答は予約の分で精算する
@@ -44,7 +47,7 @@ const relayFor = (fetch: typeof globalThis.fetch, budget: Partial<RelayBudget>, 
   new DecisionRelay({ upstream: async () => upstreamOf(), fetch, budget, ...extra })
 
 const post = async (url: string) => {
-  const res = await fetch(url, { method: 'POST', body: '{}' })
+  const res = await fetch(url, { method: 'POST', body: SYSTEM_ONE_BODY })
   const body = await res.json().catch(() => ({})) as { error_type?: string }
   return { status: res.status, type: body.error_type }
 }
@@ -98,8 +101,8 @@ describe('security-6 [1] the decision relay reserves a positive amount even befo
 
   it('a response without usage is charged as its reservation, so it cannot erase the budget', async () => {
     const fetch = vi.fn(async () => json({})) as unknown as typeof globalThis.fetch
-    // 下限は 160 / 16 = 10 トークン。量が無い応答は 10 ずつ使ったことになる
-    const relay = relayFor(fetch, { tokensPerToken: 160, callsPerMinute: 1000 })
+    // 下限は 80000 / 16 = 5000 トークン（1回の上限 4871 より大きい。security-7 [7]）。量が無い応答は 5000 ずつ使ったことになる
+    const relay = relayFor(fetch, { tokensPerToken: 80_000, callsPerMinute: 1000 })
     await relay.start()
     const url = relay.urlFor(relay.issue())
     let ok = 0

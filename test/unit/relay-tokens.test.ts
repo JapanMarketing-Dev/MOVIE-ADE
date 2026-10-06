@@ -9,6 +9,9 @@ import { DECISION_ENV, type DecisionPreferences } from '@shared/decision'
 import { DecisionRelay, RELAY_MAX_CONCURRENT_PER_TOKEN, RELAY_TOKEN_MAX_AGE_MS } from '../../src/main/decision/relay'
 import { DecisionService } from '../../src/main/decision/service'
 
+/** 中継が受け付ける最小の System One の依頼（security-7 [7]。形の違う本文は送らずに断る） */
+const SYSTEM_ONE_BODY = JSON.stringify({ model: 'm', state: 's', questions: { ok: { type: 'noul' } } })
+
 let upstream: Server
 let upstreamUrl = ''
 
@@ -29,7 +32,7 @@ afterAll(async () => {
   await new Promise<void>((resolve) => upstream.close(() => resolve()))
 })
 
-const post = async (url: string) => (await fetch(url, { method: 'POST', body: '{}' })).status
+const post = async (url: string) => (await fetch(url, { method: 'POST', body: SYSTEM_ONE_BODY })).status
 
 describe('security-2 [6] 中継の合言葉', () => {
   it('ターミナルが閉じたら、そのターミナルの合言葉だけが無効になる', async () => {
@@ -76,12 +79,12 @@ describe('security-2 [6] 1つの合言葉で同時に送れる数', () => {
     await relay.start()
     try {
       const url = relay.urlFor(relay.issue())
-      const pending = Array.from({ length: RELAY_MAX_CONCURRENT_PER_TOKEN }, () => fetch(url, { method: 'POST', body: '{}' }))
+      const pending = Array.from({ length: RELAY_MAX_CONCURRENT_PER_TOKEN }, () => fetch(url, { method: 'POST', body: SYSTEM_ONE_BODY }))
       await new Promise((r) => setTimeout(r, 100))
       expect(await post(url)).toBe(429)
       // ほかの合言葉は影響を受けない
       const other = relay.urlFor(relay.issue())
-      const otherReq = fetch(other, { method: 'POST', body: '{}' })
+      const otherReq = fetch(other, { method: 'POST', body: SYSTEM_ONE_BODY })
       release()
       expect((await Promise.all(pending)).map((r) => r.status)).toEqual(Array(RELAY_MAX_CONCURRENT_PER_TOKEN).fill(200))
       expect((await otherReq).status).toBe(200)

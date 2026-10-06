@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { parseGitStatusZ, type FsGitStatus } from '@shared/gitDecorations'
-import { gitSyncEnv, trustedGit } from './github/gitSync'
+import { AUTOMATIC_GIT_CONFIG, gitSyncEnv, trustedGit } from './github/gitSync'
 
 /**
  * ファイルツリーの git の色分け（fs:gitStatus）。変更・追跡外・削除・.gitignore の対象を、プロジェクトからの相対パスで返す。
@@ -16,7 +16,7 @@ import { gitSyncEnv, trustedGit } from './github/gitSync'
 const STATUS_TIMEOUT_MS = 8_000
 /** 読む出力の上限。超えたら止めて、出来上がった分だけ使う */
 const MAX_STATUS_BYTES = 8 * 1024 * 1024
-const BASE_ARGS = ['-c', 'core.quotePath=false', '-c', 'core.fsmonitor=false']
+const BASE_ARGS = ['-c', 'core.quotePath=false', ...AUTOMATIC_GIT_CONFIG]
 
 interface Run { stdout: string; ok: boolean; truncated: boolean }
 

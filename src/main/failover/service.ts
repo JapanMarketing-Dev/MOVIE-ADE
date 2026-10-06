@@ -20,6 +20,7 @@ import { limitOnScreen, limitedUntil, maxUsedPercent, mentionsLimit } from './de
 import { changedFilesFrom, ferretNote, handoffFilePath, LastInputTracker, nextAgentPrompt, updateRequest } from './handoff'
 import { appendFileNoFollow, assertContained, isWithin, mkdirContained } from '../sessions/containment'
 import { ensureGitExclude } from '../sessions/gitexclude'
+import { AUTOMATIC_GIT_CONFIG, trustedGit } from '../github/gitSync'
 import {
   DEFAULT_LIMIT_COOLDOWN_MS,
   isAccountAgentId,
@@ -361,7 +362,10 @@ const execFileAsync = promisify(execFile)
 /** git status --porcelain の変更ファイル。git でなければ null */
 async function changedFiles(projectDir: string): Promise<string[] | null> {
   try {
-    const { stdout } = await execFileAsync('git', ['-C', projectDir, 'status', '--porcelain'], { timeout: 5000, maxBuffer: 1024 * 1024, windowsHide: true })
+    // git は信頼できる絶対パスで、リポジトリの fsmonitor・フックを動かさずに（security-7 [5]・[15]）
+    const git = await trustedGit(projectDir)
+    if (!git) return null
+    const { stdout } = await execFileAsync(git, ['-C', projectDir, ...AUTOMATIC_GIT_CONFIG, 'status', '--porcelain'], { timeout: 5000, maxBuffer: 1024 * 1024, windowsHide: true })
     return changedFilesFrom(stdout)
   } catch {
     // git ではない・git が無い（想定内）

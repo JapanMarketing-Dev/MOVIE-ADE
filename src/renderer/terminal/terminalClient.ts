@@ -376,10 +376,13 @@ export class TerminalHandle {
     this.sendInput(data)
   }
 
+  /**
+   * Ctrl+V（Windows / Linux）。クリップボードは読まず、main に OS の貼り付けを頼む（security-7 [1]）。
+   * 中身はふつうの貼り付け（paste のイベント）として入力欄に届き、onPaste が Agent 向けの包み方を決める
+   */
   private async pasteClipboard(): Promise<void> {
     try {
-      const text = await window.ade.invoke('terminal:clipboardText')
-      if (text) this.pasteText(text)
+      await window.ade.invoke('terminal:paste')
     } catch (err) {
       reportHandled(err, { area: 'terminal', op: 'paste clipboard' })
     }

@@ -1,72 +1,61 @@
 /**
  * プロジェクトの HTML ファイルを内蔵ブラウザで開くときの URL の規則（純粋な関数。単体テストの対象）。
  *
- * HTML は Monaco（コード）ではなく、内蔵ブラウザのタブに file:// で開く（利用者が URL 欄に手元のファイルを入れたときと同じ経路。
- * 遷移・権限の決まりは src/main/webPolicy.ts の isTypedNavigationAllowed / isPageNavigationAllowed）。
- * renderer の iframe には出さない（アプリの画面と同じ file: のオリジンになり、preload の口に届きうるため）。
+ * HTML は Monaco（コード）ではなく、内蔵ブラウザのタブに ade-page://project/<相対パス> で開く（security-7 [2][6]）。
+ *   - 中身は main が、いま開いているプロジェクトの中のファイルだけを返す（src/main/projectPage.ts。外・外を指すリンクは断る）。
+ *     renderer は絶対パスの file:// を渡せない（URL 欄の file:// も受け付けない。webPolicy.ts の isTypedNavigationAllowed）
+ *   - 外へは通信させない: 応答に CSP を付け（同じオリジンの中身・data: だけ）、ページが始めた外のページへの遷移・別タブも止める
+ *     （外のページは、利用者が URL 欄に入れたときだけ開く）
+ * renderer の iframe には出さない（アプリの画面と同じセッションに入れない）。
  * ade-preview:// でも返さない（あちらはプロジェクトのファイルを読める特権のスキームで、ファイルの中のスクリプトを動かさない約束）。
  */
+
+export const PROJECT_PAGE_SCHEME = 'ade-page'
+const PROJECT_PAGE_HOST = 'project'
 
 /** 内蔵ブラウザでプレビューして開く HTML か（.html / .htm） */
 export function isHtmlPath(path: string): boolean {
   return /\.html?$/i.test(path)
 }
 
-/** 区切りを / にそろえ、末尾の / を落とす（Windows の C:\a\b も C:/a/b にする） */
-function slashed(path: string): string {
-  return path.replace(/\\/g, '/').replace(/\/+$/, '')
-}
-
-/** Windows のドライブ（C:/…）か UNC（//server/share）か。大文字小文字を区別しない比べ方にする */
-function isWindowsLike(path: string): boolean {
-  return /^[A-Za-z]:\//.test(path) || path.startsWith('//')
-}
-
 /**
- * プロジェクトのフォルダ（絶対パス）と相対パスから file:// の URL を作る。区切りごとに符号化する（# ? % や空白を含む名前も開ける）。
- *   /Users/taro/site + docs/index.html → file:///Users/taro/site/docs/index.html
- *   C:\work\site + index.html       → file:///C:/work/site/index.html
- *   \\server\share\site + a.html    → file://server/share/site/a.html
+ * プロジェクトからの相対パスを、内蔵ブラウザで開く URL にする。区切りごとに符号化する（# ? % や空白を含む名前も開ける）。
+ *   docs/index.html → ade-page://project/docs/index.html
  */
-export function projectFileUrl(root: string, relPath: string): string {
-  const full = `${slashed(root)}/${relPath.replace(/\\/g, '/').replace(/^\/+/, '')}`
-  const encode = (segments: string[]) => segments.map(encodeURIComponent).join('/')
-  if (full.startsWith('//')) {
-    const [host = '', ...rest] = full.slice(2).split('/')
-    return `file://${encodeURIComponent(host)}/${encode(rest)}`
+export function projectPageUrl(relPath: string): string {
+  const segments = relPath.replace(/\\/g, '/').split('/').filter((s) => s.length > 0)
+  return `${PROJECT_PAGE_SCHEME}://${PROJECT_PAGE_HOST}/${segments.map(encodeURIComponent).join('/')}`
+}
+
+/** プロジェクトのページ（ade-page://project/）の URL か */
+export function isProjectPageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === `${PROJECT_PAGE_SCHEME}:` && parsed.hostname === PROJECT_PAGE_HOST
+  } catch {
+    return false
   }
-  const drive = /^([A-Za-z]:)\//.exec(full)
-  if (drive) return `file:///${drive[1]}/${encode(full.slice(3).split('/'))}`
-  return `file://${encode(full.split('/'))}`
 }
 
 /**
- * 内蔵ブラウザの URL（file://）が、このプロジェクトの中のファイルなら相対パスを返す。違えば null（クエリ・ハッシュは見ない）。
- * 「ソースを開く」のボタンを出すかの判定に使う
+ * 内蔵ブラウザの URL がプロジェクトのページなら、プロジェクトからの相対パスを返す。違えば null（クエリ・ハッシュは見ない）。
+ * 「ソースを開く」のボタンを出すかの判定と、main がどのファイルを返すかに使う。
+ * 空・`.`・`..` の区切り、符号化した区切り（%2F・%5C）、NUL は外へ出る形として null
  */
-export function projectPathFromFileUrl(url: string, root: string | null): string | null {
-  if (!root) return null
+export function projectPathFromPageUrl(url: string): string | null {
   let parsed: URL
   try {
     parsed = new URL(url)
   } catch {
     return null
   }
-  if (parsed.protocol !== 'file:') return null
-  let path: string
+  if (parsed.protocol !== `${PROJECT_PAGE_SCHEME}:` || parsed.hostname !== PROJECT_PAGE_HOST) return null
+  let segments: string[]
   try {
-    path = parsed.pathname.split('/').map(decodeURIComponent).join('/')
+    segments = parsed.pathname.replace(/^\/+/, '').split('/').map(decodeURIComponent)
   } catch {
     return null
   }
-  if (parsed.host) path = `//${parsed.host}${path}`
-  else if (/^\/[A-Za-z]:\//.test(path)) path = path.slice(1)
-  const base = slashed(root)
-  const windows = isWindowsLike(base)
-  const same = (a: string, b: string) => (windows ? a.toLowerCase() === b.toLowerCase() : a === b)
-  if (path.length <= base.length + 1 || !same(path.slice(0, base.length), base) || path[base.length] !== '/') return null
-  const rel = path.slice(base.length + 1)
-  // .. を含むものは中とみなさない（URL は正規化済みのはずだが、念のため）
-  if (rel.split('/').some((segment) => segment === '..' || segment === '')) return null
-  return rel
+  if (segments.some((s) => s === '' || s === '.' || s === '..' || s.includes('/') || s.includes('\\') || s.includes('\0'))) return null
+  return segments.join('/')
 }

@@ -6,8 +6,9 @@
  * `process.resourcesPath`）は引数で受け取るので、単体テストできる。
  */
 import { execFile } from 'node:child_process'
-import { accessSync, constants as fsConstants, existsSync, statSync } from 'node:fs'
+import { accessSync, constants as fsConstants, existsSync, realpathSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
+import { dirname, isAbsolute, relative, resolve as resolvePath } from 'node:path'
 import type { PlatformName } from '@shared/types'
 import type { WhisperModelId } from './stt/models'
 import { whisperModels } from './stt/models'
@@ -180,16 +181,32 @@ const whichCache = new Map<string, { value: Promise<string | null>; at: number }
 /** Windows の where を待つ上限 */
 const WHERE_TIMEOUT_MS = 2000
 
+/** path が dir そのものかその下か（実体のパスどうしで比べる） */
+function isInsideDir(path: string, dir: string): boolean {
+  const rel = relative(resolvePath(dir), resolvePath(path))
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
+}
+
 /**
  * which と同じ探し方（macOS / Linux）。PATH のフォルダを前から見て、実行できるファイルの最初のものを返す。
- * コマンドに区切りが入っていれば探さない（PATH の外のパスは扱わない）
+ * コマンドに区切りが入っていれば探さない（PATH の外のパスは扱わない）。
+ * 空・`.`・相対の項目は使わない（今のフォルダ＝プロジェクトを指す）。実体（リンクの先）が exclude（開いているプロジェクト）の
+ * 中のものも使わない（security-7 [15]。Agent の実行ファイルと同じ決まり。agentExecutable.ts）
  */
-export function findOnPath(command: string, pathValue: string, isExecutable: (path: string) => boolean): string | null {
+export function findOnPath(
+  command: string, pathValue: string, isExecutable: (path: string) => boolean,
+  options: { exclude?: string | null; realpath?: (path: string) => string | null } = {}
+): string | null {
   if (!command || command.includes('/')) return null
+  const real = options.realpath ?? ((p: string) => { try { return realpathSync(p) } catch { return null } })
+  const exclude = options.exclude ? (real(options.exclude) ?? options.exclude) : null
   for (const dir of pathValue.split(':')) {
-    if (!dir) continue
+    if (!dir || !dir.startsWith('/')) continue
     const candidate = `${dir.replace(/\/+$/, '')}/${command}`
-    if (isExecutable(candidate)) return candidate
+    if (!isExecutable(candidate)) continue
+    const target = real(candidate) ?? candidate
+    if (exclude && isInsideDir(target, exclude)) continue
+    return candidate
   }
   return null
 }
@@ -204,7 +221,11 @@ function isExecutableFile(path: string): boolean {
   }
 }
 
-export function nodeProbes(): EnvironmentProbes {
+/**
+ * project は開いているプロジェクト。その中の実行ファイルは PATH にあっても使わない（security-7 [15]）。
+ * Windows の where は今のフォルダを先に探すので、アプリのフォルダで動かし、プロジェクトの中の結果は捨てる
+ */
+export function nodeProbes(project: string | null = null): EnvironmentProbes {
   return {
     platform: process.platform as PlatformName,
     arch: process.arch,
@@ -217,17 +238,23 @@ export function nodeProbes(): EnvironmentProbes {
        * Windows の where は PATHEXT と npm のスクリプトの扱いがあるのでそのまま使うが、非同期で起動し、止まる上限を付ける
        * （同期で起動すると main が 0.1〜0.6 秒止まっていた。FERRET-M）。同期で見る macOS / Linux の時間は重い処理として控える
        */
-      const hit = whichCache.get(command)
+      const key = `${command}\0${project ?? ''}`
+      const hit = whichCache.get(key)
       if (hit && Date.now() - hit.at < WHICH_CACHE_MS) return hit.value
       const value = process.platform !== 'win32'
-        ? Promise.resolve(timedSync(`which:${command}`.slice(0, 40), () => findOnPath(command, process.env.PATH ?? '', isExecutableFile)))
+        ? Promise.resolve(timedSync(`which:${command}`.slice(0, 40), () => findOnPath(command, process.env.PATH ?? '', isExecutableFile, { exclude: project })))
         : new Promise<string | null>((resolve) => {
-          execFile('where', [command], { encoding: 'utf8', windowsHide: true, timeout: WHERE_TIMEOUT_MS }, (err, stdout) => {
-            // 見つからない・時間切れは null（想定内）。Windows の where は npm の拡張子なしのスクリプトを先に出すことがある。起動できるものを選ぶ
-            resolve(err ? null : pickWindowsWhereResult(stdout, process.env))
+          execFile('where', [command], { encoding: 'utf8', windowsHide: true, timeout: WHERE_TIMEOUT_MS, cwd: dirname(process.execPath) }, (err, stdout) => {
+            // 見つからない・時間切れは null（想定内）。Windows の where は npm の拡張子なしのスクリプトを先に出すことがある。起動できるものを選ぶ。
+            // 相対・プロジェクトの中の結果は使わない
+            const lines = err ? '' : stdout.split(/\r?\n/).filter((line) => {
+              const p = line.trim()
+              return /^[a-zA-Z]:[\\/]/.test(p) && !(project && p.toLowerCase().startsWith(`${project.replace(/[\\/]+$/, '').toLowerCase()}\\`))
+            }).join('\n')
+            resolve(lines ? pickWindowsWhereResult(lines, process.env) : null)
           })
         })
-      whichCache.set(command, { value, at: Date.now() })
+      whichCache.set(key, { value, at: Date.now() })
       return value
     },
     run: async (command, args) =>
