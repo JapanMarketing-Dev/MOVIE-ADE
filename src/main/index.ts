@@ -80,7 +80,7 @@ import { sanitizeLayout } from '@shared/layout'
 import { ResourceCollector } from './resources'
 import { ProjectWatcher, listDirectory, listFiles, readTextFile, resolveInside, searchFiles, writeTextFile } from './files'
 import { copyEntries, createEntry, importEntries, importMediaForMarkdown, moveEntries, pathsForClipboard, renameEntry, terminalDirFor, trashEntries, trashFor } from './fileOps'
-import { inspectProjectFile, projectMediaResponse } from './projectMedia'
+import { inspectProjectFile, projectMediaResponse, readOfficeFile } from './projectMedia'
 import { isRiskyToOpenExternally } from '@shared/fileViewer'
 import { refreshPreviewIn, registerPreviewProtocol, renderPreviewSource } from './preview'
 import { PREVIEW_SCHEME, stripPreviewGrant } from '@shared/preview'
@@ -2183,6 +2183,7 @@ function registerIpc(): void {
     'fs:files': () => listFiles(projectRoot()),
     'fs:search': (query, mode) => searchFiles(projectRoot(), query, mode),
     'fs:inspect': (relPath) => inspectProjectFile(projectRoot(), relPath),
+    'fs:readOffice': (relPath) => readOfficeFile(projectRoot(), relPath),
     // フッターの git と同じく、起動の後で読む（github/gitSync.ts を起動時に読み込まない）
     'fs:gitStatus': async () => {
       const root = projectRoot()

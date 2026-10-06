@@ -4,6 +4,8 @@ import { MAX_VIEWER_BYTES, formatByteSize, mediaKindOf, type FileViewerKind, typ
 import { previewUrl } from '@shared/preview'
 import { isHtmlPath, projectFileUrl, projectPathFromFileUrl } from '@shared/htmlPreview'
 import { canOpenTab } from '@shared/browserTabs'
+import { MAX_OFFICE_BYTES, isLegacyOffice, officeKindOf } from '@shared/office/kinds'
+import { googleFileUrl, isGoogleFile } from '@shared/googleFiles'
 import { errorMessage } from '../lib/errors'
 import { t } from '@shared/i18n'
 import { CLOSE_REQUEST_EVENT } from '../components/TerminalPane'
@@ -175,6 +177,17 @@ export function useOpenFiles({
         }))
         return
       }
+      // Word・Excel・PowerPoint はプレビュー（中身は OfficeViewer が fs:readOffice で読む）。古い形式は案内だけ
+      if (!asText && (officeKindOf(path) || isLegacyOffice(path))) {
+        const info = await window.ade.invoke('fs:inspect', path)
+        const tooLarge = info.size > MAX_OFFICE_BYTES
+        drafts.current.delete(id)
+        patch(id, (f) => ({
+          status: 'ready', viewer: officeKindOf(path) && !tooLarge ? 'office' : 'binary', info, saved: '', dirty: false, external: undefined, revision: f.revision + 1,
+          message: isLegacyOffice(path) ? t('viewer.legacyOffice') : tooLarge ? t('viewer.tooLargeToShow', { size: formatByteSize(info.size), limit: formatByteSize(MAX_OFFICE_BYTES) }) : undefined
+        }))
+        return
+      }
       const result = await window.ade.invoke('fs:read', path)
       if (result.kind === 'text') {
         drafts.current.set(id, result.content)
@@ -211,29 +224,58 @@ export function useOpenFiles({
    * HTML は内蔵ブラウザのタブに file:// で開く（@shared/htmlPreview。録画・指摘の仕組みがそのまま使える）。
    * 同じファイルを開いたタブがあれば前に出して読み直し（Agent が書き換えた後の内容を見せる）、空のタブならそこへ開く
    */
+  /** 内蔵ブラウザで url を開く。same に当たるタブがあれば前に出し、reload なら読み直す。空のタブならそこへ開く */
+  const showInBrowser = useCallback(async (url: string, same: (tabUrl: string) => boolean, reload: boolean) => {
+    const state = await window.ade.invoke('browser:state')
+    const tabs = state.tabs ?? []
+    const existing = tabs.find((tab) => same(tab.url))
+    if (existing) {
+      if (existing.id !== state.activeTabId) await window.ade.invoke('browser:activateTab', existing.id)
+      if (reload) await window.ade.invoke('browser:reload')
+      return
+    }
+    const blank = !state.url || state.url === 'about:blank'
+    if (blank || !canOpenTab(tabs.length)) await window.ade.invoke('browser:navigate', url)
+    else await window.ade.invoke('browser:newTab', url)
+  }, [])
+
   const previewHtml = useCallback((path: string) => {
     if (!root) return
     const url = projectFileUrl(root, path)
     setActiveTab('browser')
+    void showInBrowser(url, (tabUrl) => projectPathFromFileUrl(tabUrl, root) === path, true).catch((err) => onError(errorMessage(err)))
+  }, [root, setActiveTab, onError, showInBrowser])
+
+  /*
+   * Google ドライブのショートカット（.gdoc・.gsheet・.gslides など）は、内蔵ブラウザで Google ドキュメント・スプレッドシート・
+   * スライドを開く（そのまま見て編集できる）。同じ文書を開いたタブがあれば前に出す（読み直すと編集中の位置が飛ぶので読み直さない）
+   */
+  const openGoogle = useCallback((path: string) => {
     void (async () => {
-      const state = await window.ade.invoke('browser:state')
-      const tabs = state.tabs ?? []
-      const existing = tabs.find((tab) => projectPathFromFileUrl(tab.url, root) === path)
-      if (existing) {
-        if (existing.id !== state.activeTabId) await window.ade.invoke('browser:activateTab', existing.id)
-        await window.ade.invoke('browser:reload')
+      const result = await window.ade.invoke('fs:read', path)
+      const url = result.kind === 'text' ? googleFileUrl(path, result.content) : null
+      if (!url) {
+        onError(t('viewer.googleOpenFailed'))
         return
       }
-      const blank = !state.url || state.url === 'about:blank'
-      if (blank || !canOpenTab(tabs.length)) await window.ade.invoke('browser:navigate', url)
-      else await window.ade.invoke('browser:newTab', url)
+      const docPath = new URL(url).pathname.split('/').slice(0, 4).join('/')
+      setActiveTab('browser')
+      await showInBrowser(url, (tabUrl) => {
+        try {
+          const tab = new URL(tabUrl)
+          return tab.hostname === 'docs.google.com' && tab.pathname.startsWith(docPath)
+        } catch {
+          return false
+        }
+      }, false)
     })().catch((err) => onError(errorMessage(err)))
-  }, [root, setActiveTab, onError])
+  }, [setActiveTab, onError, showInBrowser])
 
   const open = useCallback((path: string) => {
     if (isHtmlPath(path)) previewHtml(path)
+    else if (isGoogleFile(path)) openGoogle(path)
     else openSource(path)
-  }, [previewHtml, openSource])
+  }, [previewHtml, openGoogle, openSource])
 
   /** 確認なしでまとめて閉じる。選択中が閉じたら、残ったファイルの隣（無ければブラウザ）へ移る */
   const removeMany = useCallback((ids: readonly string[]) => {

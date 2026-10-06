@@ -384,6 +384,8 @@ export interface IpcRequests {
   'fs:search': (query: string, mode: FsSearchMode) => FsSearchResult
   /** 文字として開けないファイルの大きさと先頭のバイト（画像・動画・バイナリの表示） */
   'fs:inspect': (relPath: string) => FsFileInfo
+  /** Office の文書（.docx・.xlsx・.pptx など）の中身。プレビューのために renderer で HTML にする（ほかの種類・上限を超えるものは断る） */
+  'fs:readOffice': (relPath: string) => Uint8Array
   /** ファイルツリーの git の色分け（変更・追跡外・削除・.gitignore の対象）。git のリポジトリでなければ isGit: false（src/main/gitDecorations.ts） */
   'fs:gitStatus': () => FsGitStatus
   /** ファイルツリーから空のファイル・フォルダを作る（名前の / で途中のフォルダも）。作ったものの相対パスを返す（既にあれば断る。src/main/fileOps.ts） */
@@ -645,7 +647,7 @@ export const IPC_REQUEST_CHANNELS = [
   'annotation:redo',
   'review:list', 'review:activity', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
   'capture:screenAccess', 'capture:sources', 'capture:setTarget', 'capture:openScreenSettings', 'capture:apps', 'capture:launchApp',
-  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:gitStatus', 'fs:create', 'fs:copy', 'fs:move', 'fs:import', 'fs:importMedia', 'fs:copyPath', 'fs:terminalDir', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'editor:quitSave', 'preview:render',
+  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:readOffice', 'fs:gitStatus', 'fs:create', 'fs:copy', 'fs:move', 'fs:import', 'fs:importMedia', 'fs:copyPath', 'fs:terminalDir', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'editor:quitSave', 'preview:render',
   'github:open', 'github:repoStatus', 'github:autoFetch', 'github:gitAction',
   'star:star', 'star:openWeb', 'star:later', 'star:never', 'star:fromMenu',
   'feedback:environment', 'feedback:account', 'feedback:submit', 'feedback:captureWindow'
