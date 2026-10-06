@@ -22,6 +22,7 @@ import {
 } from '@shared/browserExtensions'
 import { reportHandled } from '@shared/report'
 import { isGestureInput } from './captureConsent'
+import { CRX_LIMITS, extractCrx, parseCrx } from './crx'
 
 /**
  * 内蔵ブラウザのブラウザ拡張機能（Chrome 拡張）。
@@ -67,6 +68,14 @@ export interface ExtensionPopupTarget {
   contents: WebContents
   bounds: Rect
 }
+
+/** ウェブストアから拡張のパッケージを取る URL（Chrome の更新の口。Google の配布の置き場へ転送される） */
+export function webStoreCrxUrl(id: string, chromeVersion: string): string {
+  return `https://clients2.google.com/service/update2/crx?response=redirect&prodversion=${encodeURIComponent(chromeVersion)}&acceptformat=crx3&x=${encodeURIComponent(`id=${id}&uc`)}`
+}
+
+/** ウェブストアにその拡張が無い（ID の誤り・公開をやめた・この地域では出ていない） */
+export class WebStoreNotFoundError extends Error {}
 
 /** 上限付きで読む（大きすぎるファイル・シンボリックリンクは読まない） */
 async function readSmallFile(path: string): Promise<string | null> {
@@ -468,10 +477,12 @@ export class BrowserExtensions {
    * ツールバーの拡張機能のボタンのメニュー（ネイティブのメニュー。ビューの上にも出る）。
    * 選んだのが「拡張機能を管理」なら 'manage'
    */
-  showMenu(window: BaseWindow, at: { x: number; y: number }, labels: { manage: string; options: string; none: string }): Promise<'manage' | null> {
+  showMenu(window: BaseWindow, at: { x: number; y: number }, labels: { manage: string; options: string; none: string; install?: string }): Promise<'manage' | 'install' | null> {
     return new Promise((resolve) => {
-      let choice: 'manage' | null = null
+      let choice: 'manage' | 'install' | null = null
       const items: Electron.MenuItemConstructorOptions[] = []
+      // 内蔵ブラウザでウェブストアの拡張のページを開いているとき（ストアの「Chrome に追加」は Ferret では動かない）
+      if (labels.install) items.push({ label: labels.install, click: () => { choice = 'install' } }, { type: 'separator' })
       for (const info of this.list()) {
         if (!info.enabled || !info.id || (!info.hasPopup && !info.hasOptions)) continue
         if (info.hasPopup) items.push({ label: info.name, click: () => this.openPopup(info.path, 'popup') })
@@ -489,11 +500,10 @@ export class BrowserExtensions {
     return scanInstalledExtensions(defaultChromiumRoots(home), importedIds)
   }
 
-  /** 候補を設定フォルダへ写す（同じ ID の前の写しは置き換える）。写した先のパス */
-  async importInstalled(candidate: { id: string; dir: string }): Promise<string> {
-    if (!isChromeExtensionId(candidate.id)) throw new Error('invalid extension id')
-    const dest = join(this.deps.importDir(), candidate.id)
-    // 読み込み中の前の写しを外してから置き換える
+  /** 設定フォルダの <id> に写しを作る（同じ ID の前の写しは、読み込みを外してから置き換える）。写した先のパス */
+  private async replaceImported(id: string, write: (dest: string) => Promise<void>): Promise<string> {
+    if (!isChromeExtensionId(id)) throw new Error('invalid extension id')
+    const dest = join(this.deps.importDir(), id)
     const loaded = this.loaded.get(dest)
     if (loaded) {
       if (this.popup?.extensionId === loaded.id) this.closePopup()
@@ -501,9 +511,37 @@ export class BrowserExtensions {
       this.loaded.delete(dest)
     }
     await rm(dest, { recursive: true, force: true })
-    await copyExtensionDir(candidate.dir, dest)
+    await write(dest)
     this.manifests.delete(dest)
     return dest
+  }
+
+  /** 候補を設定フォルダへ写す（同じ ID の前の写しは置き換える）。写した先のパス */
+  async importInstalled(candidate: { id: string; dir: string }): Promise<string> {
+    return this.replaceImported(candidate.id, (dest) => copyExtensionDir(candidate.dir, dest))
+  }
+
+  /**
+   * .crx（CRX3）のバイト列を確かめて展開し、設定フォルダに置く（crx.ts。署名と ID を確かめる）。expectedId を渡せば、その拡張でなければ断る。
+   * 写した先のパス
+   */
+  async installCrx(bytes: Uint8Array, expectedId?: string): Promise<string> {
+    const crx = parseCrx(bytes, expectedId)
+    return this.replaceImported(crx.id, (dest) => extractCrx(crx, dest))
+  }
+
+  /**
+   * Chrome ウェブストアから拡張を取って入れる。取るのは Google の配布の置き場からだけで、届いたパッケージの署名が
+   * 指定した ID の拡張のものでなければ入れない（途中や配布元で別の拡張に差し替えられない）。写した先のパス
+   */
+  async installFromWebStore(id: string, download: (url: string, maxBytes: number) => Promise<{ status: number; body: Uint8Array }>, chromeVersion: string): Promise<string> {
+    if (!isChromeExtensionId(id)) throw new Error('invalid extension id')
+    const url = webStoreCrxUrl(id, chromeVersion)
+    // リダイレクトの行き先が Google の配布の置き場かは download（webStoreDownload.ts）が1回ずつ確かめる
+    const res = await download(url, CRX_LIMITS.packageBytes)
+    if (res.status === 204 || res.status === 404 || (res.status === 200 && res.body.length === 0)) throw new WebStoreNotFoundError()
+    if (res.status < 200 || res.status >= 300) throw new Error(`the Chrome Web Store answered ${res.status}`)
+    return this.installCrx(res.body, id)
   }
 
   /** 取り込んだ写しを消す（設定から外したあと）。利用者のフォルダ（展開済みの開発中のもの）は消さない */

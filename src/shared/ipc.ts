@@ -222,8 +222,18 @@ export interface IpcRequests {
   'browserExtensions:setEnabled': (path: string, enabled: boolean) => BrowserExtensionInfo[]
   /** 設定から外す（取り込んだ写しは消す。利用者のフォルダは消さない） */
   'browserExtensions:remove': (path: string) => BrowserExtensionInfo[]
-  /** ツールバーの拡張機能のボタンのメニュー（at はウインドウの中の位置）。「拡張機能を管理」を選んだら 'manage' */
-  'browserExtensions:menu': (at: { x: number; y: number }) => 'manage' | null
+  /**
+   * Chrome ウェブストアから入れる。input はストアの URL か拡張の ID。省けば内蔵ブラウザでいま開いているストアのページ。
+   * main が Google の配布の置き場から取り、署名と ID を確かめてから入れる（src/main/crx.ts）
+   */
+  'browserExtensions:installFromStore': (input?: string) => BrowserExtensionInfo[]
+  /** .crx を選んで入れる（ダイアログは main が出す。署名を確かめる）。やめたら null */
+  'browserExtensions:addCrx': () => BrowserExtensionInfo[] | null
+  /**
+   * ツールバーの拡張機能のボタンのメニュー（at はウインドウの中の位置）。「拡張機能を管理」は 'manage'、
+   * 「このページの拡張を入れる」（ストアのページを開いているとき）は 'install'
+   */
+  'browserExtensions:menu': (at: { x: number; y: number }) => 'manage' | 'install' | null
 
   'terminal:create': (options: TerminalCreateOptions) => TerminalTabInfo
   'terminal:write': (id: string, data: string) => void
@@ -629,7 +639,7 @@ export const IPC_REQUEST_CHANNELS = [
   'browser:openExternal',
   'browser:setViewport',
   'browser:state',
-  'browserExtensions:list', 'browserExtensions:addFolder', 'browserExtensions:scanInstalled', 'browserExtensions:import', 'browserExtensions:setEnabled', 'browserExtensions:remove', 'browserExtensions:menu',
+  'browserExtensions:list', 'browserExtensions:addFolder', 'browserExtensions:scanInstalled', 'browserExtensions:import', 'browserExtensions:setEnabled', 'browserExtensions:remove', 'browserExtensions:menu', 'browserExtensions:installFromStore', 'browserExtensions:addCrx',
   'terminal:create',
   'terminal:write',
   'terminal:resize',

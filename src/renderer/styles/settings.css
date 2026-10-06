@@ -458,3 +458,16 @@
   gap: var(--space-1);
   color: var(--color-success);
 }
+
+/* 拡張機能の「Chrome ウェブストアから入れる」の入力欄は、ボタンの残りの幅を使う */
+.st-page .st-row > .st-row__grow {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 拡張機能を足すボタンは左から並べる（折り返しても揃える） */
+.st-page .st-row.st-row--buttons {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--space-2);
+}

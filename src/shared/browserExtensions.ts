@@ -249,3 +249,33 @@ export function isOwnExtensionUrl(url: string, extensionId: string): boolean {
     return false
   }
 }
+
+/**
+ * Chrome ウェブストアの URL（chromewebstore.google.com/detail/<名前>/<ID>、旧 chrome.google.com/webstore/detail/…）か、
+ * 拡張の ID そのものから、拡張の ID を取り出す。読めなければ null
+ */
+export function webStoreExtensionId(input: unknown): string | null {
+  if (typeof input !== 'string') return null
+  const text = input.trim()
+  if (isChromeExtensionId(text)) return text
+  let url: URL
+  try {
+    url = new URL(text)
+  } catch {
+    return null
+  }
+  if (url.protocol !== 'https:') return null
+  const host = url.hostname.toLowerCase()
+  const segments = url.pathname.split('/').filter(Boolean)
+  const detail = host === 'chromewebstore.google.com' ? segments.indexOf('detail')
+    : host === 'chrome.google.com' && segments[0] === 'webstore' ? segments.indexOf('detail') : -1
+  if (detail < 0) return null
+  const id = segments.slice(detail + 1).find((s) => isChromeExtensionId(s))
+  return id ?? null
+}
+
+/** ウェブストアからパッケージを取ったあとの行き先として受け付けるホスト（Google の配布の置き場） */
+export function isWebStoreDownloadHost(hostname: string): boolean {
+  const h = hostname.toLowerCase()
+  return h === 'clients2.google.com' || h === 'clients2.googleusercontent.com' || h.endsWith('.gvt1.com') || h === 'edgedl.me.gvt1.com'
+}

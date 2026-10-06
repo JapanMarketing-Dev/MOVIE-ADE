@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { FolderPlus, Download } from 'lucide-react'
+import { FolderPlus, Download, PackagePlus, Store } from 'lucide-react'
 import type { InstalledBrowserExtension } from '@shared/browserExtensions'
-import { Button, useToast } from '../ui'
+import { Button, Field, useToast } from '../ui'
 import { useT } from '../lib/i18n'
 import { errorMessage } from '../lib/errors'
 import { useBrowserExtensions } from './BrowserExtensionsButton'
@@ -16,6 +16,8 @@ export function BrowserExtensionsSection({ recording }: { recording: boolean }) 
   const list = useBrowserExtensions()
   const [busy, setBusy] = useState(false)
   const [installed, setInstalled] = useState<InstalledBrowserExtension[] | null>(null)
+  /** Chrome ウェブストアの URL か拡張の ID */
+  const [storeInput, setStoreInput] = useState('')
 
   const run = async (work: () => Promise<unknown>) => {
     setBusy(true)
@@ -28,6 +30,17 @@ export function BrowserExtensionsSection({ recording }: { recording: boolean }) 
     }
   }
   const locked = recording || busy
+  /** ストアの URL か ID から入れる（取るのも確かめるのも main） */
+  const installFromStore = () => {
+    const input = storeInput.trim()
+    if (!input || locked) return
+    void run(async () => {
+      const next = await window.ade.invoke('browserExtensions:installFromStore', input)
+      setStoreInput('')
+      const added = next.at(-1)
+      if (added) toast({ tone: 'success', message: t('browserExtensions.installed', { name: added.name }) })
+    })
+  }
 
   return <div id="settings-extensions" className="st-page__group" data-testid="browser-extensions-settings">
     <p className="st-note">{t('browserExtensions.intro')}</p>
@@ -46,7 +59,17 @@ export function BrowserExtensionsSection({ recording }: { recording: boolean }) 
         <Button variant="ghost" disabled={locked} onClick={() => void run(() => window.ade.invoke('browserExtensions:remove', ext.path))}>{t('browserExtensions.remove')}</Button>
       </div>
     </div>)}
+    <h3 className="st-page__subheading">{t('browserExtensions.storeLabel')}</h3>
     <div className="st-row">
+      <Field className="st-row__grow" mono type="url" inputMode="url" spellCheck={false} value={storeInput} placeholder={t('browserExtensions.storePlaceholder')}
+        aria-label={t('browserExtensions.storeLabel')} disabled={locked} onChange={(e) => setStoreInput(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) installFromStore() }} data-testid="browser-extension-store-input" />
+      <Button icon={<Store size={14} strokeWidth={1.5} />} disabled={locked || !storeInput.trim()} onClick={installFromStore} data-testid="browser-extension-store-install">{t('browserExtensions.storeInstall')}</Button>
+    </div>
+    <p className="st-note">{t('browserExtensions.storeHint')}</p>
+    <div className="st-row st-row--buttons">
+      <Button icon={<PackagePlus size={14} strokeWidth={1.5} />} disabled={locked} data-testid="browser-extension-add-crx"
+        onClick={() => void run(() => window.ade.invoke('browserExtensions:addCrx'))}>{t('browserExtensions.addCrx')}</Button>
       <Button icon={<FolderPlus size={14} strokeWidth={1.5} />} disabled={locked} data-testid="browser-extension-add"
         onClick={() => void run(() => window.ade.invoke('browserExtensions:addFolder'))}>{t('browserExtensions.addFolder')}</Button>
       <Button icon={<Download size={14} strokeWidth={1.5} />} disabled={locked} data-testid="browser-extension-scan"

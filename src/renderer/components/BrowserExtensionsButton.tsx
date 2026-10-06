@@ -1,7 +1,8 @@
 import { useEffect, useState, type MouseEvent } from 'react'
 import { Puzzle } from 'lucide-react'
 import type { BrowserExtensionInfo } from '@shared/browserExtensions'
-import { IconButton } from '../ui'
+import { IconButton, useToast } from '../ui'
+import { errorMessage } from '../lib/errors'
 import { useT } from '../lib/i18n'
 
 /** 内蔵ブラウザの拡張機能の一覧（main の読み込みの結果）。変わるたびに届く */
@@ -16,18 +17,28 @@ export function useBrowserExtensions(): BrowserExtensionInfo[] {
 
 /**
  * ツールバーの拡張機能のボタン（Chrome のパズルのボタン）。押すとネイティブのメニュー（内蔵ブラウザのビューの上にも出る）で
- * 拡張を選び、そのポップアップを内蔵ブラウザの右上に開く。拡張が1つも無ければ出さない
+ * 拡張を選び、そのポップアップを内蔵ブラウザの右上に開く。内蔵ブラウザで Chrome ウェブストアの拡張のページを開いているときは、
+ * メニューの「このページの拡張を入れる」で入れられる（拡張がまだ1つも無いときも出す）
  */
 export function BrowserExtensionsButton({ className, size = 'sm', testId = 'browser-extensions' }: { className?: string; size?: 'sm' | 'md'; testId?: string }) {
   const t = useT()
-  const list = useBrowserExtensions()
-  if (!list.some((ext) => ext.enabled)) return null
+  const toast = useToast()
   const open = (event: MouseEvent<HTMLButtonElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
     void window.ade.invoke('browserExtensions:menu', { x: rect.left, y: rect.bottom })
-      .then((choice) => {
+      .then(async (choice) => {
         // 「拡張機能を管理」は設定のページの拡張機能の節へ
         if (choice === 'manage') window.dispatchEvent(new CustomEvent('ade:open-settings', { detail: { section: 'extensions' } }))
+        // 「このページの拡張を入れる」。どの拡張かは main がいま開いているストアのページから決める
+        if (choice === 'install') {
+          try {
+            const next = await window.ade.invoke('browserExtensions:installFromStore')
+            const added = next.at(-1)
+            if (added) toast({ tone: 'success', message: t('browserExtensions.installed', { name: added.name }) })
+          } catch (err) {
+            toast({ tone: 'warning', message: errorMessage(err) })
+          }
+        }
       })
       .catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
   }
