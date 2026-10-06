@@ -157,7 +157,8 @@ export function judgeManifest(
 
 /**
  * 確認できなかったことを Sentry へ warning（area: update）で知らせる。理由の種類だけを付ける（URL・本文は付けない）。
- * 確認は利用者が押したときだけなので、件数は少ない。オフライン（network / timeout）も、配信元の不調に気づけるよう送る。
+ * ネットワークの失敗（network / timeout）も、配信元の不調に気づけるよう送る。ただし端末がネットワークにつながっていない
+ * （net.isOnline() が false）ときの network は送らない（checkForUpdate）。利用者の側の事情で、配信元やアプリの不調ではない。
  */
 function reportCheckFailure(reason: 'http' | 'bad-manifest' | 'bad-version' | 'network' | 'timeout' | 'unsigned' | 'unsigned-update', err?: unknown): void {
   // net の失敗の文（net::ERR_…）は手がかりになるので残す。URL は送る前の除去で落ちる
@@ -254,7 +255,20 @@ export function verifiedFileOfKind(kind: VerifiedDownload['kind']): VerifiedDown
   return pickVerifiedOfKind(verifiedSet, kind)
 }
 
-export async function checkForUpdate(fetcher: typeof net.fetch = net.fetch, platform: NodeJS.Platform = process.platform): Promise<UpdateCheckResult> {
+/** 端末がネットワークにつながっているか。分からなければ true（送る側に倒す） */
+function deviceOnline(): boolean {
+  try {
+    return net.isOnline()
+  } catch {
+    return true
+  }
+}
+
+export async function checkForUpdate(
+  fetcher: typeof net.fetch = net.fetch,
+  platform: NodeJS.Platform = process.platform,
+  isOnline: () => boolean = deviceOnline
+): Promise<UpdateCheckResult> {
   const current = appVersion()
   verified = null
   verifiedSet = null
@@ -293,7 +307,8 @@ export async function checkForUpdate(fetcher: typeof net.fetch = net.fetch, plat
     return result
   } catch (err) {
     const aborted = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')
-    reportCheckFailure(aborted ? 'timeout' : 'network', err)
+    // つながっていない端末の失敗（net::ERR_INTERNET_DISCONNECTED・ERR_NAME_NOT_RESOLVED など）は送らない。画面には「確認できなかった」を出す
+    if (aborted || isOnline()) reportCheckFailure(aborted ? 'timeout' : 'network', err)
     return { state: 'error', current, message: aborted ? t('update.errors.timeout') : t('update.errors.network') }
   } finally {
     clearTimeout(timer)

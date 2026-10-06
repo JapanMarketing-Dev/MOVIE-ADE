@@ -371,17 +371,9 @@ export interface Settings {
   starPrompt?: StarPromptState
   /** フィードバックモードの右パネル（レビュー対象）の開閉と幅。省略時は開いていて 0.78 */
   feedbackTargets?: FeedbackTargetsPrefs
-  /** 端末のプログラムのコピー（OSC 52）。省略時は ask（src/main/terminalClipboard.ts） */
-  terminalClipboard?: TerminalClipboardMode
   /** 内蔵ブラウザに読み込むブラウザ拡張機能（展開済みのフォルダ）。省略時はなし（src/shared/browserExtensions.ts） */
   browserExtensions?: import('./browserExtensions').BrowserExtensionEntry[]
 }
-
-/** 端末のプログラムのコピー（OSC 52）の扱い。ask = 毎回確認 / allow = フォーカスのある手元の端末なら写して知らせる / off = 写さない */
-export type TerminalClipboardMode = 'ask' | 'allow' | 'off'
-
-/** 端末のプログラムのコピーを main が受けた結果。ask は写さずに預かり、帯で確かめる */
-export type ProgramCopyResult = { kind: 'copied'; chars: number } | { kind: 'ask'; chars: number; preview: string } | { kind: 'blocked' }
 
 export interface FeedbackTargetsPrefs {
   visible?: boolean
@@ -568,7 +560,21 @@ export type CaptureTarget =
     /** ウインドウのアプリ名（macOS で分かるとき）。ID・題名で見つからないとき、同じアプリのウインドウを探すのにも使う */
     appName?: string
     /** スマホのシミュレータ／エミュレータの端末の情報。録画を始めるときに読むだけの命令で取る（recording/devices.ts） */
-    device?: CaptureDevice }
+    device?: CaptureDevice
+    /**
+     * 同時に録るほかの画面・ウインドウ（選択画面で複数選んだとき）。録画ウインドウが横に並べて合成し、1本の動画にする
+     * （@shared/captureComposite）。最初の対象（sourceId）を含めて MAX_CAPTURE_TRACKS まで。1つだけなら無い
+     */
+    also?: CaptureSubTarget[] }
+
+/** 複数選んだときの2つ目以降の対象（CaptureTarget の画面・ウインドウと同じ項目。端末の情報は読まない） */
+export interface CaptureSubTarget {
+  kind: 'screen' | 'window'
+  sourceId: string
+  name: string
+  displayId?: string
+  appName?: string
+}
 
 /** 録っているスマホのシミュレータ／エミュレータの端末 */
 export interface CaptureDevice {
@@ -603,6 +609,27 @@ export interface CaptureSourceList {
   /** macOS の画面収録の許可。macOS 以外は常に 'granted' */
   screenAccess: 'granted' | 'denied' | 'not-determined' | 'restricted' | 'unknown'
   sources: CaptureSourceInfo[]
+  /**
+   * Ferret の窓が macOS のフルスクリーン（専用のデスクトップ）で開いている。
+   * そのデスクトップには Ferret しか無いので、ほかのウインドウが一覧に出ない（選択画面で理由を添える）
+   */
+  appFullScreen?: boolean
+}
+
+/** まだ開いていないデスクトップアプリ（選択画面の「アプリを開いて選ぶ」）。main が OS の決まった場所から並べる */
+export interface DesktopAppInfo {
+  /** 起動するときに main へ返す ID（main が並べた一覧にあるものだけ起動する） */
+  id: string
+  name: string
+  /** .app・ショートカット（.lnk）・.desktop のパス（題名に添えて見せる） */
+  path: string
+}
+
+/** アプリを起動した結果。ウインドウを探すのに使う手がかり */
+export interface DesktopAppLaunch {
+  name: string
+  /** macOS のバンドル ID（Info.plist から読めたとき） */
+  bundleId?: string
 }
 
 export const DEFAULT_URL = 'about:blank'

@@ -3,6 +3,7 @@ import Editor, { type OnMount } from '@monaco-editor/react'
 import { AlertTriangle, Columns2, ExternalLink, FileCode, FolderOpen, Globe, Save } from 'lucide-react'
 import { previewKind, previewUrl } from '@shared/preview'
 import { isRiskyToOpenExternally, isSvgPath } from '@shared/fileViewer'
+import { isHtmlPath } from '@shared/htmlPreview'
 import FileViewer from './FileViewer'
 import { monaco } from './monacoSetup'
 import { applyEditorTheme, useAppTheme } from './editorTheme'
@@ -28,8 +29,8 @@ registerModelDisposer((id) => monaco.editor.getModel(monaco.Uri.file(id))?.dispo
 
 /** Markdown のプレビュー（そのまま編集できる。tiptap を含むので、開いたときだけ読む） */
 const RichMarkdownEditor = lazy(() => import('./richMarkdown/RichMarkdownEditor'))
-/** プレビューで開いているファイル（タブを切り替えても残す） */
-const richFiles = new Set<string>()
+/** Markdown をソースで開いているファイル（既定はプレビュー。タブを切り替えても残す） */
+const sourceFiles = new Set<string>()
 
 /**
  * 開いたファイルを Monaco で編集する（中央のファイルタブの中身）。
@@ -118,12 +119,15 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
   // 読み取り専用のプレビュー（横に並べる・内蔵ブラウザで開く）は Markdown には出さない
   // （MDX は JSX を含むので、ソースだけで編集し、読み取り専用のプレビューで見る）
   const richable = file.language === 'markdown' && file.status === 'ready' && !file.viewer
-  const rich = richable && richFiles.has(file.id)
+  // 人は Markdown をほぼ手で直さない（声で Agent に頼む）ので、開いたら読みやすいプレビューを既定にする（ソースへ切り替えられる）
+  const rich = richable && !sourceFiles.has(file.id)
   const setRich = (on: boolean) => {
-    if (on) richFiles.add(file.id)
-    else richFiles.delete(file.id)
+    if (on) sourceFiles.delete(file.id)
+    else sourceFiles.add(file.id)
     setRichVersion((v) => v + 1)
   }
+  // HTML をソースで開いているときは、内蔵ブラウザのプレビューへ戻れるようにする
+  const htmlPreviewable = isHtmlPath(file.path) && file.status === 'ready' && !file.viewer
   const previewable = previewKind(file.path) !== null && file.language !== 'markdown' && file.status === 'ready' && !file.viewer
   const sourceDroppable = markdown && file.status === 'ready' && !file.viewer && !rich
 
@@ -188,6 +192,11 @@ export default function FileEditor({ file, editor: api }: { file: OpenFile; edit
               {t('editor.openPreview')}
             </Button>
           </>
+        )}
+        {htmlPreviewable && (
+          <Button variant="ghost" icon={<Globe size={13} />} title={t('editor.openPreviewTitle')} onClick={() => api.previewHtml(file.path)} data-testid="editor-html-preview">
+            {t('editor.openPreview')}
+          </Button>
         )}
         {file.viewer && file.status === 'ready' && (
           <>

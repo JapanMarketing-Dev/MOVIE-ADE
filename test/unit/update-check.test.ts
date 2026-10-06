@@ -42,6 +42,16 @@ describe('checkForUpdate', () => {
     expect(handled).toHaveBeenCalledWith(expect.objectContaining({ message: 'net::ERR_INTERNET_DISCONNECTED' }),
       { kind: 'handled', area: 'update', op: 'check update: network' }, 'warning')
   })
+  it('端末がネットワークにつながっていないときの失敗は送らない（画面には「確認できなかった」を出す。FERRET-1N）', async () => {
+    const handled = captured()
+    const fail = (async () => { throw new Error('net::ERR_NAME_NOT_RESOLVED') }) as unknown as typeof fetch
+    const r = await checkForUpdate(fail, 'darwin', () => false)
+    expect(r.state).toBe('error')
+    expect(handled).not.toHaveBeenCalled()
+    // つながっているのに名前が引けないのは、配信元の不調かもしれないので送る
+    await checkForUpdate(fail, 'darwin', () => true)
+    expect(handled.mock.calls.map((c) => c[1].op)).toEqual(['check update: network'])
+  })
   it('時間切れは timeout として送る', async () => {
     const handled = captured()
     const slow = (async () => { throw Object.assign(new Error('aborted'), { name: 'AbortError' }) }) as unknown as typeof fetch

@@ -2,6 +2,7 @@ import type { UpdateCheckResult } from '@shared/appVersion'
 import {
   AUTO_UPDATE_FIRST_CHECK_MS,
   AUTO_UPDATE_INTERVAL_MS,
+  AUTO_UPDATE_RESUME_DELAY_MS,
   INSTALL_KIND,
   type AutoUpdateProgress,
   type AutoUpdateStatus,
@@ -79,6 +80,8 @@ export class AutoUpdater {
   private lastChecked: number | null = null
   /** 入れ替えの準備（macOS は Squirrel.Mac への受け渡し）を済ませた。済ませた Squirrel.Mac は閉じたときに入れ替える */
   private staged = false
+  /** スリープ明けの確認を待っている間の終わり（ms）。それまではウインドウに戻ったときの確認をしない */
+  private resumeUntil: number | null = null
 
   constructor(private readonly deps: AutoUpdateDeps) {}
 
@@ -152,12 +155,25 @@ export class AutoUpdater {
   }
 
   /**
+   * スリープ明け。すぐには確かめず、ネットワークが戻るのを待って（AUTO_UPDATE_RESUME_DELAY_MS 後に）確かめ、そこから一定間隔の確認に戻る。
+   * 明けた直後に確かめると Wi-Fi・DNS がまだ戻っておらず net::ERR_NAME_NOT_RESOLVED で失敗していた（Sentry FERRET-1N）。
+   * 待つ間はウインドウに戻ったときの確認（checkIfStale）もしない。利用者の［更新を確認］（checkNow）は止めない
+   */
+  resumed(): void {
+    if (!this.deps.enabled) return
+    this.resumeUntil = (this.deps.now ?? Date.now)() + AUTO_UPDATE_RESUME_DELAY_MS
+    this.schedule(AUTO_UPDATE_RESUME_DELAY_MS)
+  }
+
+  /**
    * 前の確認から maxAgeMs 以上たっていれば確かめる（スリープ明け・ウインドウに戻ったとき）。
    * 開いたままのアプリは、スリープなどで一定間隔の確認が遅れ、新しい版に気づかないことがある（ユーザーの指摘）
    */
   checkIfStale(maxAgeMs: number): Promise<UpdateCheckResult> | null {
     if (!this.deps.enabled) return null
     const now = (this.deps.now ?? Date.now)()
+    // スリープ明けの確認（resumed）を待っている。ネットワークが戻る前に確かめると失敗する
+    if (this.resumeUntil !== null && now < this.resumeUntil) return null
     if (this.lastChecked !== null && now - this.lastChecked < maxAgeMs) return null
     return this.checkNow()
   }

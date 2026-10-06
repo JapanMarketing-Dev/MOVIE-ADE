@@ -3,7 +3,7 @@ import { planEditorDrop, readDrop } from './lib/externalDrop'
 import { embedMedia, markdownDropTargetAt, planMediaDrop, planTreeMediaDrop } from './editor/markdownDrop'
 import { isMarkdownLanguage } from './editor/language'
 import { delay } from '@shared/delay'
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   DEFAULT_AGENT_PREFERENCES,
@@ -20,13 +20,13 @@ import { BrowserToolbar } from './components/BrowserToolbar'
 import { BrowserTabs } from './components/BrowserTabs'
 import { UrlField } from './components/NavControls'
 import { CenterTabs, isFileTab, type CenterTab } from './components/CenterTabs'
-import { layoutSignature, mainSplitGrid, withPanel, workspaceGrid, type Dock } from '@shared/layout'
-import { initLayout, setLayout, useLayout } from './lib/layout'
-import { DockOverlay, PanelGrip, usePanelDrag } from './components/PanelDock'
+import { browserFocusLayout, layoutSignature, mainSplitGrid, withPanel, workspaceGrid, type Dock } from '@shared/layout'
+import { exitBrowserFocus, initLayout, setLayout, togglePanelShown, useBrowserFocus, useLayout } from './lib/layout'
 import { FileExplorer } from './components/FileExplorer'
 import { QuickOpen } from './components/QuickOpen'
 import { UnsavedChangesDialog } from './components/UnsavedChangesDialog'
 import { useOpenFiles } from './editor/useOpenFiles'
+import { isHtmlPath, projectPathFromFileUrl } from '@shared/htmlPreview'
 import { FeedbackToolbar, type AnnotationTool } from './components/FeedbackToolbar'
 import { ReviewTargetsPanel } from './components/ReviewTargetsPanel'
 import { FeedbackSideTabs, LiveTranscriptPanel } from './components/LiveTranscriptPanel'
@@ -36,6 +36,7 @@ import { useLiveTranscript } from './lib/liveTranscript'
 import { liveTranscriptProblem } from '@shared/liveTranscript'
 import { readLocal, writeLocal } from './lib/localPref'
 import { useUrlHistory } from './lib/urlHistory'
+import { startUrlChoices } from '@shared/startUrls'
 import { subscribeIpc } from './lib/ipcEvents'
 import { CaptureTargetPicker } from './components/CaptureTargetPicker'
 import { FindingsList } from './components/FindingsList'
@@ -130,6 +131,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   /** プロジェクト一覧・URL登録ダイアログ。開いている間はビューを隠す（ビューがDOMの上に重なるため） */
   const [projectMenuOpen, setProjectMenuOpen] = useState(false)
   const [urlDialogOpen, setUrlDialogOpen] = useState(false)
+  /** 中央のタブの右クリックのメニュー。開いている間は内蔵ブラウザのビューを隠す */
+  const [tabMenuOpen, setTabMenuOpen] = useState(false)
   /** サイドバーの「プロジェクトを編集」 */
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
   /** 設定とワークスペースを読み終えたか。終わるまでターミナルは作らない（projectId=null 用の余分なシェルを残さない） */
@@ -140,10 +143,11 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
    * パネルの置き場所と表示（設定の「レイアウト」・メニューの ⌘B / ⌘J と同じ値。lib/layout.ts）。
    * splitRatio は中央のタブ群の大きさで、ターミナルが左右なら幅、上下なら高さに使う
    */
-  const layout = useLayout()
+  const savedLayout = useLayout()
+  /** ブラウザに集中している（タイトルバーのボタン）間は、ブラウザ以外のパネルを隠した配置で描く。設定の配置は変えない */
+  const browserFocus = useBrowserFocus()
+  const layout = browserFocus ? browserFocusLayout(savedLayout) : savedLayout
   const terminalDock = layout.panels.terminal.dock
-  /** パネルのつまみをドラッグ中（画面の端へ運んで置き場所を変える）。その間はビューを隠す */
-  const panelDrag = usePanelDrag()
   /** フッターのポップオーバー。開いている間はビューを隠す（ビューがDOMの上に重なるため） */
   const [footerPopoverOpen, setFooterPopoverOpen] = useState(false)
   /** 境界をドラッグ中。ビューの上でポインターが途切れないよう、その間はビューを隠す */
@@ -267,14 +271,19 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   }, [tracks, toast, t])
   /** ファイルエディタ（中央のファイルタブ・右のファイルツリー・⌘P） */
   const explorerOpen = layout.panels.files.visible
-  const setExplorerOpen = (next: (open: boolean) => boolean) => setLayout((prev) => withPanel(prev, 'files', { visible: next(prev.panels.files.visible) }))
-  // 「Agentへ送信」で Agent を起動するときは、ターミナルの欄を隠していても出す（起動の様子と送った結果が見えるように）
-  useEffect(() => onAgentLaunchRequest(() => setLayout((prev) => (prev.panels.terminal.visible ? prev : withPanel(prev, 'terminal', { visible: true })))), [])
+  // 「Agentへ送信」で Agent を起動するときは、ターミナルの欄を隠していても出す（起動の様子と送った結果が見えるように。ブラウザへの集中もやめる）
+  useEffect(() => onAgentLaunchRequest(() => {
+    exitBrowserFocus()
+    setLayout((prev) => (prev.panels.terminal.visible ? prev : withPanel(prev, 'terminal', { visible: true })))
+  }), [])
   const [quickOpenOpen, setQuickOpenOpen] = useState(false)
   /** フィードバックモードの右パネル（レビュー対象）。開閉と幅はこの端末に覚える */
   // 正本は settings.json の feedbackTargets。以前は localStorage に置いていたので、設定に無ければ1度だけそこから移す
   /** 内蔵ブラウザで開いた URL の履歴（右パネルの URL ツリーの元。パネルを閉じていても積む） */
   const urlHistory = useUrlHistory(workspace.projectId ?? null, browserState.url)
+  /** 内蔵ブラウザの開始画面の候補（登録した URL・最近開いた URL・登録が無ければ localhost の補助） */
+  const startTargets = projects.projects.find((p) => p.id === workspace.projectId)?.urls
+  const startChoices = useMemo(() => startUrlChoices({ targets: startTargets ?? [], history: urlHistory }), [startTargets, urlHistory])
   const [targetsOpen, setTargetsOpenState] = useState(() => readLocal('ade.feedback.targetsOpen') !== 'false')
   const [targetsRatio, setTargetsRatio] = useState(() => Number(readLocal('ade.feedback.targetsRatio')) || 0.78)
   const setTargetsOpen = (next: (open: boolean) => boolean) => setTargetsOpenState((prev) => {
@@ -344,6 +353,9 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
       if (await window.ade.invoke('fs:inspect', path).then(() => true, () => false)) files.open(path)
     }
   })().catch((err) => toast({ tone: 'warning', message: errorMessage(err) })))
+  // 内蔵ブラウザで見ているのがプロジェクトの HTML なら、ツールバーに「ソースを開く」を出す
+  const browserFilePath = projectPathFromFileUrl(browserState.url, workspace.folderPath)
+  const htmlSourcePath = browserFilePath && isHtmlPath(browserFilePath) ? browserFilePath : null
   const markdownActive = centerTab.startsWith('file:') && !!files.activeFile && isMarkdownLanguage(files.activeFile.language) && files.activeFile.status === 'ready' && !files.activeFile.viewer
   // プロジェクトごとに、中央のタブ・開いていたファイル・表示中のレビューを覚えて戻す（URL は main が戻す）
   useProjectSession({
@@ -353,7 +365,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     centerTab,
     setCenterTab: (tab) => setCenterTab(tab as CenterTab),
     openPaths: files.files.map((file) => file.path),
-    openFile: files.open,
+    // 開いていたタブはそのまま戻す（HTML のソースのタブも、ブラウザで開き直さない）
+    openFile: files.openSource,
     reviewId: sessionId,
     onRestoreReview: (id) => {
       setSessionId(id)
@@ -396,7 +409,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const anyModalOpen = useAnyModalOpen()
   /** ビューに場所を譲ってよい条件。ひとつでも欠けたら 0 サイズにして隠す */
   const viewVisible =
-    !anyModalOpen && !gallery && !onboardingOpen && !targetPickerOpen && !addTrackOpen && !footerPopoverOpen && !splitDragging && !panelDrag.drag && !projectMenuOpen && !urlDialogOpen && !projectDialogOpen && !quickOpenOpen && !files.pendingClose && emptyReason === null && (mode === 'feedback' || centerTab === 'browser')
+    !anyModalOpen && !gallery && !onboardingOpen && !targetPickerOpen && !addTrackOpen && !footerPopoverOpen && !splitDragging && !projectMenuOpen && !urlDialogOpen && !tabMenuOpen && !projectDialogOpen && !quickOpenOpen && !files.pendingClose && emptyReason === null && (mode === 'feedback' || centerTab === 'browser')
 
   const layoutKey = [
     mode,
@@ -902,7 +915,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           if (files.activeFile) void files.save(files.activeFile.id)
           break
         case 'toggleExplorer':
-          setExplorerOpen((open) => !open)
+          togglePanelShown('files')
           break
         case 'toggleTargets':
           setTargetsOpen((open) => !open)
@@ -988,7 +1001,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const selectedSession = sessions.find((s) => s.id === sessionId)
 
   const wsGrid = workspaceGrid(layout)
-  const splitGrid = mainSplitGrid(terminalDock)
+  const splitGrid = mainSplitGrid(terminalDock, layout.panels.terminal.visible)
   const footer = layout.footer
 
   return (
@@ -1016,6 +1029,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           onProjectMenuChange={setProjectMenuOpen}
           onToggleRecording={toggleRecording}
           onOpenSettings={() => openSettings()}
+          onFocusBrowser={() => setCenterTab('browser')}
           busy={recordBusy}
         />
 
@@ -1029,7 +1043,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
             * 外すと格子の列がずれて、本体が幅0の列に落ちてしまう。
             * 枠（.sidebar-slot）が切り取り、中身は240pxのまま滑り出る。
             */}
-          <div className="sidebar-slot" aria-hidden={!sidebarOpen} style={{ gridArea: 'projects' }} data-dock={layout.panels.projects.dock}>
+          <div className="sidebar-slot" aria-hidden={!sidebarOpen} style={{ gridArea: 'projects' }}>
             <ErrorBoundary name="left-sidebar">
             <Sidebar
               projects={projects}
@@ -1055,7 +1069,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           </div>
 
           <div
-            className={`main-split main-split--${terminalDock}`}
+            className={`main-split main-split--${terminalDock}${layout.panels.terminal.visible ? '' : ' main-split--focus'}`}
             style={{
               '--split-left': `${(splitRatio * 100).toFixed(3)}%`,
               gridArea: 'main',
@@ -1074,6 +1088,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                 onChange={setCenterTab}
                 files={files.files}
                 onCloseFile={files.requestClose}
+                onCloseFiles={files.requestCloseMany}
+                onMenuOpenChange={setTabMenuOpen}
                 order={centerOrder}
                 onReorder={setCenterOrder}
                 settingsOpen={settingsOpen}
@@ -1120,6 +1136,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                     noteMode={noteMode}
                     noteDisabled={!noteAllowed}
                     onToggleNote={toggleNote}
+                    onOpenSource={htmlSourcePath ? () => files.openSource(htmlSourcePath) : undefined}
                   />
                   </div>
                   <BrowserSlot
@@ -1129,6 +1146,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                     loadError={browserState.loadError}
                     onOpenFolder={openFolder}
                     onNavigate={navigate}
+                    choices={startChoices}
                   />
                 </ErrorBoundary>
               ) : (
@@ -1150,11 +1168,10 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
 
             {/* ターミナルの置き場所。中身（.terminal-mount）は下の portal で描き、フィードバックの右パネルへも移す */}
             <div className="terminal-slot" ref={setEditorTerminalSlot} />
-            <PanelGrip panel="terminal" area="term" onStart={panelDrag.start} />
           </div>
 
           {/* 右のファイルツリー。閉じたら列の幅を 0 にして隠す（.sidebar-slot と同じ） */}
-          <div className="explorer-slot" aria-hidden={!explorerOpen} style={{ gridArea: 'files' }} data-dock={layout.panels.files.dock}>
+          <div className="explorer-slot" aria-hidden={!explorerOpen} style={{ gridArea: 'files' }}>
             <ErrorBoundary name="file-tree">
             {/* SSH のプロジェクトは、ローカルにはレビューの置き場しか無いので、ファイルツリーの代わりに案内を出す */}
             {(() => { const remote = projects.projects.find((p) => p.id === workspace.projectId && p.source === 'ssh'); return remote ? <RemoteFilesNotice project={remote} /> : null })() ?? <FileExplorer
@@ -1162,18 +1179,14 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
               activePath={files.activeFile?.path ?? null}
               dirtyPaths={files.dirtyPaths}
               onOpen={files.open}
+              onOpenSource={files.openSource}
               onQuickOpen={() => setQuickOpenOpen(true)}
               onRenamed={files.followRename}
               onDeleted={files.closeDeleted}
             />}
             </ErrorBoundary>
           </div>
-
-          {/* パネルのつまみ。掴んで画面の端へ運ぶと置き場所が変わる（PanelDock.tsx） */}
-          <PanelGrip panel="projects" area="projects" hidden={!sidebarOpen} onStart={panelDrag.start} />
-          <PanelGrip panel="files" area="files" hidden={!explorerOpen} onStart={panelDrag.start} />
         </div>
-        <DockOverlay drag={panelDrag.drag} />
 
         {footer.visible && <ErrorBoundary name="footer"><StatusBar
           items={footer.items}
@@ -1252,6 +1265,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
             loadError={browserState.loadError}
             onOpenFolder={openFolder}
             onNavigate={navigate}
+            choices={startChoices}
           />
           </div>
           </ErrorBoundary>

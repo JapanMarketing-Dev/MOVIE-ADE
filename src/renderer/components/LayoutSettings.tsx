@@ -1,12 +1,12 @@
-import { ALWAYS_VISIBLE_PANELS, DEFAULT_LAYOUT, DOCKS, FOOTER_ITEMS, PANEL_IDS, withPanel, type Dock, type PanelId } from '@shared/layout'
+import { CLOSABLE_PANELS, DEFAULT_LAYOUT, FOOTER_ITEMS, TERMINAL_DOCKS, withPanel, type Dock, type PanelId } from '@shared/layout'
 import { Button } from '../ui'
 import { useT } from '../lib/i18n'
 import { setLayout, useLayout } from '../lib/layout'
 
 /**
- * 設定の「レイアウト」欄の中身（行だけ）。パネルごとの置き場所（左・右・上・下）と表示、フッターに出す項目を選ぶ。
+ * 設定の「レイアウト」欄の中身（行だけ）。左右のパネルの表示、ターミナルの置き場所（右か下）、フッターに出す項目を選ぶ。
+ * 左右のパネルの置き場所は固定（プロジェクト一覧は左・ファイルツリーは右）。開閉はタイトルバーのボタンと同じ値。
  * 値は lib/layout.ts が持ち、変えたその場で画面に反映・保存する（閉じたときの一括保存の対象外）。
- * パネルの見出しのつまみをドラッグして画面の端へ運んでも、同じ値が変わる（PanelDock.tsx）。
  * 外側の section・見出しは設定ページ（SettingsPage）が出す。
  */
 export function LayoutSettings() {
@@ -33,13 +33,15 @@ export function LayoutSettings() {
 
   return <>
       <p className="st-note">{t('settings.layout.intro')}</p>
-      {PANEL_IDS.map((id) => <div key={id} className="st-layout__panel">
-        {/* ターミナルは常に表示する（閉じる手段を持たない）ので、表示の切り替えは出さない。置き場所だけ選べる */}
-        {!ALWAYS_VISIBLE_PANELS.includes(id) && toggle(t('settings.layout.show', { panel: panelName(id) }), layout.panels[id].visible,
+      {CLOSABLE_PANELS.map((id) => <div key={id} className="st-layout__panel">
+        {toggle(t('settings.layout.show', { panel: panelName(id) }), layout.panels[id].visible,
           (visible) => setLayout((prev) => withPanel(prev, id, { visible })), `layout-${id}-visible`)}
-        {dockSelect(t('settings.layout.position', { panel: panelName(id) }), layout.panels[id].dock, DOCKS,
-          (dock) => setLayout((prev) => withPanel(prev, id, { dock: dock as Dock })), `layout-${id}-dock`)}
       </div>)}
+      {/* ターミナルは常に表示する（閉じる手段を持たない）ので、表示の切り替えは出さない。置き場所（右か下）だけ選べる */}
+      <div className="st-layout__panel">
+        {dockSelect(t('settings.layout.position', { panel: panelName('terminal') }), layout.panels.terminal.dock, TERMINAL_DOCKS,
+          (dock) => setLayout((prev) => withPanel(prev, 'terminal', { dock: dock as Dock })), 'layout-terminal-dock')}
+      </div>
       <div className="st-layout__panel">
         {toggle(t('settings.layout.show', { panel: panelName('footer') }), layout.footer.visible,
           (visible) => setLayout((prev) => ({ ...prev, footer: { ...prev.footer, visible } })), 'layout-footer-visible')}

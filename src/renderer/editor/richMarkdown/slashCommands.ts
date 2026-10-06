@@ -36,19 +36,24 @@ export interface SlashItem {
   keywords: readonly string[]
   /** 説明に添える Markdown の書き方（ソースで同じものを書くとき） */
   syntax?: string
+  /**
+   * 「/」の後に打つ Markdown の記号（空白を含まない形）。「/##」と打てば見出し2が先頭に来て、続けて空白を打てばそのまま変わる。
+   * 「/」を消して記法を打ち直さなくてよいように（行の頭で「## 」と打てば、メニューを使わなくても入力規則で変わる）
+   */
+  marks?: readonly string[]
 }
 
 export const SLASH_ITEMS: readonly SlashItem[] = [
-  { id: 'heading1', context: 'block', keywords: ['h1', 'heading', 'title'], syntax: '# ' },
-  { id: 'heading2', context: 'block', keywords: ['h2', 'heading', 'subtitle'], syntax: '## ' },
-  { id: 'heading3', context: 'block', keywords: ['h3', 'heading'], syntax: '### ' },
-  { id: 'bulletList', context: 'block', keywords: ['ul', 'bullet', 'list', 'unordered'], syntax: '- ' },
-  { id: 'orderedList', context: 'block', keywords: ['ol', 'ordered', 'numbered', 'list'], syntax: '1. ' },
-  { id: 'taskList', context: 'block', keywords: ['todo', 'task', 'checkbox', 'checklist'], syntax: '- [ ] ' },
-  { id: 'table', context: 'block', keywords: ['table', 'grid'], syntax: '| a | b |' },
-  { id: 'codeBlock', context: 'block', keywords: ['code', 'pre', 'fence', 'mermaid'], syntax: '```' },
-  { id: 'blockquote', context: 'block', keywords: ['quote', 'blockquote'], syntax: '> ' },
-  { id: 'horizontalRule', context: 'block', keywords: ['hr', 'divider', 'rule', 'separator'], syntax: '---' },
+  { id: 'heading1', context: 'block', keywords: ['h1', 'heading', 'title'], syntax: '# ', marks: ['#'] },
+  { id: 'heading2', context: 'block', keywords: ['h2', 'heading', 'subtitle'], syntax: '## ', marks: ['##'] },
+  { id: 'heading3', context: 'block', keywords: ['h3', 'heading'], syntax: '### ', marks: ['###'] },
+  { id: 'bulletList', context: 'block', keywords: ['ul', 'bullet', 'list', 'unordered'], syntax: '- ', marks: ['-', '*', '+'] },
+  { id: 'orderedList', context: 'block', keywords: ['ol', 'ordered', 'numbered', 'list'], syntax: '1. ', marks: ['1.', '1)'] },
+  { id: 'taskList', context: 'block', keywords: ['todo', 'task', 'checkbox', 'checklist'], syntax: '- [ ] ', marks: ['[]', '[x]', '-[]', '-[x]'] },
+  { id: 'table', context: 'block', keywords: ['table', 'grid'], syntax: '| a | b |', marks: ['|'] },
+  { id: 'codeBlock', context: 'block', keywords: ['code', 'pre', 'fence', 'mermaid'], syntax: '```', marks: ['```', '~~~'] },
+  { id: 'blockquote', context: 'block', keywords: ['quote', 'blockquote'], syntax: '> ', marks: ['>'] },
+  { id: 'horizontalRule', context: 'block', keywords: ['hr', 'divider', 'rule', 'separator'], syntax: '---', marks: ['---', '***', '___'] },
   { id: 'addRowAfter', context: 'table', keywords: ['row', 'add', 'insert'] },
   { id: 'addColumnAfter', context: 'table', keywords: ['column', 'col', 'add', 'insert'] },
   { id: 'deleteRow', context: 'table', keywords: ['row', 'delete', 'remove'] },
@@ -69,8 +74,9 @@ function fold(text: string): string {
 }
 
 /**
- * 打った文字で絞る。空なら全部。名前（その言語）か英語の別名のどれかが、頭から一致するもの → 途中に含むものの順。
- * label は表示する名前（t で引いたもの）
+ * 打った文字で絞る。空なら全部。Markdown の記号（marks）とぴったり同じもの → 名前（その言語）・英語の別名・記号のどれかが
+ * 頭から一致するもの → 途中に含むものの順（「/#」は見出し1・2・3、「/##」は見出し2が先頭）。
+ * label は表示する名前（t で引いたもの）。全角の記号（＃ や －）も半角と同じに扱う
  */
 export function filterSlashItems(
   items: readonly SlashItem[],
@@ -81,14 +87,27 @@ export function filterSlashItems(
   const inContext = items.filter((item) => item.context === context)
   const q = fold(query)
   if (q === '') return inContext
+  const exact: SlashItem[] = []
   const prefix: SlashItem[] = []
   const contains: SlashItem[] = []
   for (const item of inContext) {
-    const words = [fold(label(item)), ...item.keywords.map(fold)]
-    if (words.some((w) => w.startsWith(q))) prefix.push(item)
+    const marks = (item.marks ?? []).map(fold)
+    const words = [fold(label(item)), ...item.keywords.map(fold), ...marks]
+    if (marks.includes(q)) exact.push(item)
+    else if (words.some((w) => w.startsWith(q))) prefix.push(item)
     else if (words.some((w) => w.includes(q))) contains.push(item)
   }
-  return [...prefix, ...contains]
+  return [...exact, ...prefix, ...contains]
+}
+
+/**
+ * 「/」の後に打ったのが、ある候補の Markdown の記号そのものか（「/##」「/-」「/1.」）。そうなら、続けて空白を打ったときに
+ * その候補を選ぶ（行の頭で「## 」と打ったのと同じになる）。数字は何でもよい（「/3.」も番号付きリスト）
+ */
+export function slashMarkItem(items: readonly SlashItem[], context: SlashContext, query: string): SlashItem | null {
+  const q = fold(query).replace(/^\d+([.)])$/, '1$1')
+  if (q === '') return null
+  return items.find((item) => item.context === context && (item.marks ?? []).some((mark) => fold(mark) === q)) ?? null
 }
 
 /** 「/」として受ける文字（日本語入力の全角の ／ も） */
@@ -137,4 +156,14 @@ export function slashTableTemplate(rows = 3, cols = 3): JSONContent {
       content: Array.from({ length: c }, () => cell(i === 0 ? 'tableHeader' : 'tableCell'))
     }))
   }
+}
+
+/**
+ * 選んだ候補が一覧の枠に見えるようにするスクロールの位置（上にはみ出したら上端へ、下にはみ出したら下端へ。見えていればそのまま）。
+ * scrollIntoView は一覧の外側（エディタのページ）までスクロールさせることがあるので、一覧の中だけを動かす
+ */
+export function slashScrollTop(item: { top: number; height: number }, view: { scrollTop: number; height: number }, padding = 4): number {
+  if (item.top - padding < view.scrollTop) return Math.max(0, item.top - padding)
+  if (item.top + item.height + padding > view.scrollTop + view.height) return item.top + item.height + padding - view.height
+  return view.scrollTop
 }

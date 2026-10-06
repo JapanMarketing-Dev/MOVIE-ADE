@@ -95,6 +95,18 @@ export function isAllowedExternalUrl(url: string): boolean {
 }
 
 /**
+ * 内蔵ブラウザのツールバーの「外部ブラウザで開く」で、表示中のページを OS の既定のブラウザへ渡してよいか。
+ * http / https だけ（mailto・file:・プレビュー（ade-preview:）・独自スキームは断る）。認証情報付き・長すぎるものも断る。
+ * URL は renderer から受け取らず、main が持つ表示中のタブの URL を使う（browser:openExternal）
+ */
+export function isBrowserPageExternalUrl(url: string): boolean {
+  if (typeof url !== 'string' || url.length > 2000) return false
+  const u = parse(url)
+  if (!u) return false
+  return (u.protocol === 'http:' || u.protocol === 'https:') && !!u.hostname && !u.username && !u.password
+}
+
+/**
  * 内蔵ブラウザの window.open / target=_blank の扱い。
  * - in-app: 同じビューで開く（http / https）
  * - external: 確認のうえ別のアプリへ（mailto）

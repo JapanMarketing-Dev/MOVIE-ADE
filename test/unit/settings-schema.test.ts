@@ -36,7 +36,6 @@ const FULL = {
   crashReports: false,
   crashReportsNoticeShown: true,
   autoUpdate: false,
-  terminalClipboard: 'allow',
   browserExtensions: [{ path: '/Users/me/ext/picker' }, { path: '/Users/me/ext/off', enabled: false }],
   onboarding: { completedAt: '2026-10-03T00:00:00.000Z' }
 }
@@ -46,6 +45,12 @@ describe('settings.json のスキーマ', () => {
     const written = Object.keys(splitSettings(sanitize(FULL)).config).sort()
     const declared = Object.keys(SETTINGS_SCHEMA.properties ?? {}).filter((k) => k !== '$schema').sort()
     expect(written).toEqual(declared)
+  })
+
+  it('やめた terminalClipboard（端末のコピーの確認）は読み込んでも書き戻さない', () => {
+    const s = sanitize({ ...FULL, terminalClipboard: 'ask' } as Record<string, unknown>)
+    expect('terminalClipboard' in s).toBe(false)
+    expect('terminalClipboard' in splitSettings({ ...s, terminalClipboard: 'off' } as typeof s).config).toBe(false)
   })
 
   it('sanitize の出力（既定値・全部入り）はスキーマに通る', () => {

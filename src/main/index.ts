@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { MAX_TEXT_FILE_SIZE } from '@shared/files'
 import { UNSAVED_LIST_LIMIT, describeUnsavedFile, planUnsavedQuit, quitActionFor, sanitizeUnsavedRefs, screenQuitSaveEntries, type QuitAction, type QuitSaveOutcome, type UnsavedFileRef, type UnsavedQuitItem } from '@shared/quitUnsaved'
 import { CAPTURE_INDICATOR, UserGestures, ViewInputGrant, appMediaAllowed, captureRequestProblem, indicatorTitle, isGestureInput, isRecorderContents, isTrustedIpcSender, nextAudioConsent, type CaptureConsentState } from './captureConsent'
-import { ProgramCopies, normalizeTerminalClipboardMode, programCopyDecision } from './terminalClipboard'
+import { programCopyText } from './terminalClipboard'
 import { showAgentNotification } from './agentNotify'
 import { failoverPrefs, initFailover, onUsageChanged, setFailoverPrefs } from './failover/service'
 import { droppedFolder, inspectDropped } from './droppedPaths'
@@ -13,7 +13,8 @@ import { homedir } from 'node:os'
 import type { SessionPaths } from './sessions/paths'
 import type { IncrementalTranscriber } from './pipeline/stt/engine'
 import { loadDevDotEnv, type SttKeyStore } from './pipeline/stt/keys'
-import { captureTargetLabel, resolveCaptureTarget, sanitizeCaptureTarget } from '@shared/captureTarget'
+import { captureTargetLabel, resolveCaptureTarget, sanitizeCaptureTarget, targetSourceIds } from '@shared/captureTarget'
+import { mirrorSourceParam } from '@shared/captureComposite'
 import { AGENT_SKILL_AGENTS, type AgentSkillAgent, type SkillContext } from '@shared/agentSkill'
 import { BrowserWindow, Notification, app, clipboard, dialog, ipcMain, nativeTheme, powerMonitor, safeStorage, shell, protocol, session } from 'electron'
 import { basename, dirname, isAbsolute, join } from 'node:path'
@@ -45,7 +46,7 @@ import { checkSshTarget, remoteWorkspaceDirName, sshDefaultName, type SshTarget 
 import { EmbeddedBrowser, browserSession } from './browser'
 import { BrowserExtensions } from './browserExtensions'
 import { MAX_BROWSER_EXTENSIONS, relativeRect, sanitizeBrowserExtensions, type BrowserExtensionEntry, type BrowserExtensionInfo } from '@shared/browserExtensions'
-import { APP_ALLOWED_PERMISSIONS, installPermissionPolicy, isAllowedExternalUrl, isAppPageUrl, type PermissionSessionLike } from './webPolicy'
+import { APP_ALLOWED_PERMISSIONS, installPermissionPolicy, isAllowedExternalUrl, isAppPageUrl, isBrowserPageExternalUrl, type PermissionSessionLike } from './webPolicy'
 import { pathToFileURL } from 'node:url'
 import type { PcmBlock, RecordingController } from './recording'
 import { installMenu } from './menu'
@@ -161,11 +162,6 @@ let textNotes: import('./textNotes').TextNotes | null = null
 let captureConsent: CaptureConsentState = { target: { kind: 'browser' }, mic: true, systemAudio: false }
 /** 録画中か（main が出す印。窓の題名と macOS の Dock） */
 let capturing = false
-/** 端末のプログラムのコピー（OSC 52）の確認待ち（terminalClipboard.ts） */
-const programCopies = new ProgramCopies()
-/** SSH のプロジェクトで開いたターミナル（プログラムのコピーをいつも確かめる） */
-const remoteTerminalIds = new Set<string>()
-let workspaceRemote = false
 let browser: EmbeddedBrowser | null = null
 /** 内蔵ブラウザの拡張機能（内蔵ブラウザの session にだけ読み込む。browserExtensions.ts） */
 let extensions: BrowserExtensions | null = null
@@ -590,7 +586,6 @@ function setWorkspace(folderPath: string | null, project: Project | null = null)
   }
   terminals?.setCwd(folderPath)
   terminals?.setRemote(project?.source === 'ssh' && project.ssh ? project.ssh : null)
-  workspaceRemote = project?.source === 'ssh' && !!project.ssh
   refreshWindowTitle()
   return workspace
 }
@@ -1071,7 +1066,8 @@ async function previewSourceId(): Promise<string | null> {
   if (screenAccess() !== 'granted') return null
   const sources = await listCaptureSources({ width: 0, height: 0 }).catch((err: unknown) => { reportHandled(err, { area: 'recording', op: 'list mirror sources' }); return [] })
   const resolved = resolveCaptureTarget(target, sources)
-  return resolved && resolved.kind === 'window' ? resolved.sourceId : target.sourceId
+  // 複数選んだときは並べて映す（mirror.js）
+  return mirrorSourceParam(targetSourceIds(resolved && resolved.kind === 'window' ? resolved : target))
 }
 
 /**
@@ -1592,6 +1588,12 @@ function registerIpc(): void {
     'browser:back': () => browser?.back(),
     'browser:forward': () => browser?.forward(),
     'browser:reload': () => browser?.reload(),
+    'browser:openExternal': async () => {
+      // renderer から URL を受け取らない（URL を同意にしない）。開くのは今のタブの URL で、http / https だけ
+      const url = browser?.state().url ?? ''
+      if (!isBrowserPageExternalUrl(url)) throw new UserFacingError(t('errors.unsafePage'))
+      await shell.openExternal(url)
+    },
     'browser:setViewport': (viewport) => {
       updateSettings({ viewport })
       browser?.setViewport(viewport)
@@ -1652,40 +1654,23 @@ function registerIpc(): void {
 
     'terminal:create': (options) => {
       if (!terminals) throw new UserFacingError(t('errors.terminalNotReady'))
-      const remote = workspaceRemote
-      return terminals.create(options).then((info) => { resources.noteTerminalCreated(info.id); if (remote) remoteTerminalIds.add(info.id); return info })
+      return terminals.create(options).then((info) => { resources.noteTerminalCreated(info.id); return info })
     },
     'terminal:write': (id, data) => terminals?.write(id, data),
     'terminal:resize': (id, size) => terminals?.resize(id, size),
-    'terminal:close': (id) => { programCopies.forget(id); remoteTerminalIds.delete(id); return terminals?.close(id) },
+    'terminal:close': (id) => terminals?.close(id),
     'terminal:screen': (id, text) => terminals?.updateScreen(id, text),
     'terminal:agentState': (id) => terminals?.agentState(id) ?? { kind: 'unknown', state: 'unknown' },
     'terminal:cwd': (id) => terminals?.currentCwd(id) ?? null,
     'terminal:clipboardText': () => clipboard.readText(),
     // 選択範囲のコピー。キーを押した直後だけ書く（プログラムのコピーはこの道を通さない。terminal:programCopy）
     'terminal:writeClipboard': (text) => { if (typeof text === 'string' && text.length <= 8 * 1024 * 1024 && gestures.consume('copy')) clipboard.writeText(text) },
-    // 端末のプログラムのコピー（OSC 52）。既定は預かって帯で確かめる。常に許可でも、手元の端末にフォーカスがあるときだけ（security-5 [9]）
-    'terminal:programCopy': (id, text) => {
-      const decision = programCopyDecision({ mode: normalizeTerminalClipboardMode(currentSettings().terminalClipboard), remote: remoteTerminalIds.has(String(id)),
-        windowFocused: !!mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused(), terminalFocused })
-      const { result, write } = programCopies.offer(String(id), text, decision)
-      if (write !== null) clipboard.writeText(write)
-      return result
-    },
-    'terminal:programCopyAccept': (id) => {
-      // 帯の［コピー］を押した直後だけ（renderer の求めだけでは写さない）
-      if (!gestures.consume('programCopy')) return false
-      const text = programCopies.take(String(id))
-      if (text === null) return false
-      clipboard.writeText(text)
+    // 端末のプログラムのコピー（OSC 52）。確認なしで写す。大きすぎるもの・アプリの窓にフォーカスが無いときは写さない（terminalClipboard.ts）
+    'terminal:programCopy': (_id, text) => {
+      const write = programCopyText(text, { windowFocused: !!mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused() })
+      if (write === null) return false
+      clipboard.writeText(write)
       return true
-    },
-    'terminal:programCopyDismiss': (id) => programCopies.forget(String(id)),
-    'settings:terminalClipboard': (mode) => {
-      const next = normalizeTerminalClipboardMode(mode)
-      // 確かめずに写す設定へ広げるのは、利用者の操作の直後だけ
-      if (next === 'allow' && !gestures.consume('choice')) throw new UserFacingError(t('errors.needsUserAction'))
-      updateSettings({ terminalClipboard: next === 'ask' ? undefined : next })
     },
     'terminal:focused': (focused) => { terminalFocused = focused === true },
     // 終了・閉じたあとに戻すタブと画面の文字（中身は main が確かめてから覚える。@shared/terminalRestore）
@@ -1897,7 +1882,9 @@ function registerIpc(): void {
         reportHandled(err, { area: 'recording', op: 'list capture sources' })
         return []
       })
-      return { screenAccess: screenAccess(), sources }
+      // macOS のフルスクリーンは専用のデスクトップ（Spaces）。そこにはほかのウインドウが無いので、一覧に出ない理由を選択画面に添える
+      const appFullScreen = process.platform === 'darwin' && !!mainWindow && !mainWindow.isDestroyed() && mainWindow.isFullScreen()
+      return { screenAccess: screenAccess(), sources, ...(appFullScreen ? { appFullScreen } : {}) }
     },
     'capture:setTarget': async (target) => {
       const captureTarget = sanitizeCaptureTarget(target)
@@ -1913,6 +1900,16 @@ function registerIpc(): void {
     },
     'capture:openScreenSettings': async () => (await import('./recording/sources')).openScreenSettings(),
     'capture:screenAccess': async () => (await import('./recording/sources')).screenAccess(),
+    // 入れてあるアプリの名前とパスだけ（中身は実行しない・画面に触れない）
+    'capture:apps': async () => (await import('./recording/apps')).listDesktopApps().catch((err: unknown) => {
+      reportHandled(err, { area: 'recording', op: 'list desktop apps' })
+      return []
+    }),
+    'capture:launchApp': async (id) => {
+      // アプリを起動するのは、利用者が選択画面で選んだ直後だけ。起動するのは main が並べた一覧にあるものだけ（apps.ts）
+      if (!gestures.consume('choice')) throw new UserFacingError(t('errors.needsUserAction'))
+      return (await import('./recording/apps')).launchDesktopApp(id)
+    },
     'capture:whisperModels': async () => {
       const { nodeProbes, resolveWhisperBinary } = await import('./pipeline/environment')
       const { whisperInstallHint } = await import('./pipeline/stt/modelManager')
@@ -2186,6 +2183,12 @@ function registerIpc(): void {
     'fs:files': () => listFiles(projectRoot()),
     'fs:search': (query, mode) => searchFiles(projectRoot(), query, mode),
     'fs:inspect': (relPath) => inspectProjectFile(projectRoot(), relPath),
+    // フッターの git と同じく、起動の後で読む（github/gitSync.ts を起動時に読み込まない）
+    'fs:gitStatus': async () => {
+      const root = projectRoot()
+      const { readGitDecorations } = await import('./gitDecorations')
+      return readGitDecorations(root)
+    },
     'fs:create': (parentRel, name, kind) => createEntry(projectRoot(), parentRel, name, kind),
     'fs:copy': (relPaths, destRel) => copyEntries(projectRoot(), relPaths, destRel),
     'fs:move': (relPaths, destRel) => moveEntries(projectRoot(), relPaths, destRel),
@@ -2511,7 +2514,8 @@ async function main(): Promise<void> {
   // 裏での更新。配布版だけ、起動から少し待って確かめ、あとは6時間ごと（開発版・E2E では動かさない）
   autoUpdater().start()
   // スリープ明けはすぐ、ウインドウに戻ったときは前の確認から1時間たっていれば確かめる（6時間ごとの確認はスリープで遅れる）
-  powerMonitor.on('resume', () => void autoUpdater().checkIfStale(0)?.catch(() => undefined))
+  // スリープ明けはネットワークが戻るのを待ってから確かめる（autoUpdate.ts の resumed）
+  powerMonitor.on('resume', () => autoUpdater().resumed())
   mainWindow.on('focus', () => void autoUpdater().checkIfStale(UPDATE_RECHECK_ON_FOCUS_MS)?.catch(() => undefined))
   // settings.json の外部の変更（利用者のエディタ・Claude Code など）をその場で反映する。壊れていれば画面に知らせるだけ
   watchSettings(applyExternalSettings, (error) => send('settingsFile:error', error))

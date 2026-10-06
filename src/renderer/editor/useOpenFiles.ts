@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isSameOrUnder, movedPath, type FsChangedEvent } from '@shared/files'
 import { MAX_VIEWER_BYTES, formatByteSize, mediaKindOf, type FileViewerKind, type FsFileInfo } from '@shared/fileViewer'
 import { previewUrl } from '@shared/preview'
+import { isHtmlPath, projectFileUrl, projectPathFromFileUrl } from '@shared/htmlPreview'
+import { canOpenTab } from '@shared/browserTabs'
 import { errorMessage } from '../lib/errors'
 import { t } from '@shared/i18n'
 import { CLOSE_REQUEST_EVENT } from '../components/TerminalPane'
 import { detectLanguage } from './language'
 import { canCloseAfterSave } from './closeAfterSave'
+import { nextActiveAfterClose } from './closeTabs'
 
 /**
  * 開いているファイル（中央のタブ）の状態。
@@ -90,9 +93,16 @@ export interface OpenFilesApi {
   /** 今のプロジェクトのファイルだけ（別のプロジェクトのタブは戻ってきたときに出す） */
   files: OpenFile[]
   activeFile: OpenFile | null
+  /** 利用者が開いた（ファイルツリー・クイックオープンなど）。HTML は内蔵ブラウザでプレビューし、ほかはタブで開く */
   open: (path: string) => void
+  /** 種類を問わずファイルのタブで開く（HTML のソース・開いていたタブの復元） */
+  openSource: (path: string) => void
+  /** HTML を内蔵ブラウザのタブで開く（同じファイルを開いたタブがあれば、それを前に出して読み直す） */
+  previewHtml: (path: string) => void
   /** 変更ありなら確認を出す */
   requestClose: (id: string) => void
+  /** まとめて閉じる（タブの右クリック）。変更の無いものはすぐ閉じ、変更ありは1つずつ確認を出す（キャンセルで残りもやめる） */
+  requestCloseMany: (ids: readonly string[]) => void
   save: (id: string) => Promise<boolean>
   /** Monaco の内容が変わった */
   setDraft: (id: string, value: string) => void
@@ -134,10 +144,14 @@ export function useOpenFiles({
   onError: (message: string) => void
 }): OpenFilesApi {
   const [allFiles, setAllFiles] = useState<OpenFile[]>([])
-  const [pendingCloseId, setPendingCloseId] = useState<string | null>(null)
+  /** 閉じる確認を待っているファイル（先頭から1つずつ聞く） */
+  const [closeQueue, setCloseQueue] = useState<readonly string[]>([])
   const drafts = useRef(new Map<string, string>())
   const filesRef = useRef(allFiles)
   filesRef.current = allFiles
+  // 保存してから閉じるときは、書き終わった時点の選択を見る（閉じる操作の時点の値は古い）
+  const activeTabRef = useRef(activeTab)
+  activeTabRef.current = activeTab
 
   const patch = useCallback((id: string, update: Partial<OpenFile> | ((file: OpenFile) => Partial<OpenFile>)) => {
     setAllFiles((files) => files.map((f) => (f.id === id ? { ...f, ...(typeof update === 'function' ? update(f) : update) } : f)))
@@ -179,7 +193,7 @@ export function useOpenFiles({
     }
   }, [patch])
 
-  const open = useCallback((path: string) => {
+  const openSource = useCallback((path: string) => {
     if (!root) return
     const id = fileId(root, path)
     if (!filesRef.current.some((f) => f.id === id)) {
@@ -193,20 +207,52 @@ export function useOpenFiles({
     setActiveTab(fileTabId(id))
   }, [root, load, setActiveTab])
 
-  const remove = useCallback((id: string) => {
+  /*
+   * HTML は内蔵ブラウザのタブに file:// で開く（@shared/htmlPreview。録画・指摘の仕組みがそのまま使える）。
+   * 同じファイルを開いたタブがあれば前に出して読み直し（Agent が書き換えた後の内容を見せる）、空のタブならそこへ開く
+   */
+  const previewHtml = useCallback((path: string) => {
+    if (!root) return
+    const url = projectFileUrl(root, path)
+    setActiveTab('browser')
+    void (async () => {
+      const state = await window.ade.invoke('browser:state')
+      const tabs = state.tabs ?? []
+      const existing = tabs.find((tab) => projectPathFromFileUrl(tab.url, root) === path)
+      if (existing) {
+        if (existing.id !== state.activeTabId) await window.ade.invoke('browser:activateTab', existing.id)
+        await window.ade.invoke('browser:reload')
+        return
+      }
+      const blank = !state.url || state.url === 'about:blank'
+      if (blank || !canOpenTab(tabs.length)) await window.ade.invoke('browser:navigate', url)
+      else await window.ade.invoke('browser:newTab', url)
+    })().catch((err) => onError(errorMessage(err)))
+  }, [root, setActiveTab, onError])
+
+  const open = useCallback((path: string) => {
+    if (isHtmlPath(path)) previewHtml(path)
+    else openSource(path)
+  }, [previewHtml, openSource])
+
+  /** 確認なしでまとめて閉じる。選択中が閉じたら、残ったファイルの隣（無ければブラウザ）へ移る */
+  const removeMany = useCallback((ids: readonly string[]) => {
     const list = filesRef.current
-    const index = list.findIndex((f) => f.id === id)
-    if (index === -1) return
-    drafts.current.delete(id)
-    modelDisposer?.(id)
-    setAllFiles((files) => files.filter((f) => f.id !== id))
-    // 閉じたのが選択中なら、隣のファイル（無ければブラウザ）へ移る
-    if (activeTab === fileTabId(id)) {
-      const siblings = list.filter((f) => f.root === list[index]!.root && f.id !== id)
-      const next = siblings[Math.min(index, siblings.length - 1)] ?? siblings.at(-1)
-      setActiveTab(next ? fileTabId(next.id) : 'browser')
+    const doomed = new Set(ids.filter((id) => list.some((f) => f.id === id)))
+    if (doomed.size === 0) return
+    for (const id of doomed) { drafts.current.delete(id); modelDisposer?.(id) }
+    setAllFiles((files) => files.filter((f) => !doomed.has(f.id)))
+    const current = activeTabRef.current
+    const activeId = list.find((f) => fileTabId(f.id) === current)?.id
+    if (activeId && doomed.has(activeId)) {
+      const siblings = list.filter((f) => f.root === list.find((x) => x.id === activeId)!.root).map((f) => f.id)
+      const next = nextActiveAfterClose(siblings, activeId, doomed)
+      const tab = next ? fileTabId(next) : 'browser'
+      activeTabRef.current = tab
+      setActiveTab(tab)
     }
-  }, [activeTab, setActiveTab])
+  }, [setActiveTab])
+  const remove = useCallback((id: string) => removeMany([id]), [removeMany])
 
   const save = useCallback(async (id: string): Promise<boolean> => {
     const file = filesRef.current.find((f) => f.id === id)
@@ -235,20 +281,25 @@ export function useOpenFiles({
 
   const getDraft = useCallback((id: string) => drafts.current.get(id), [])
 
-  const requestClose = useCallback((id: string) => {
-    const file = filesRef.current.find((f) => f.id === id)
-    if (!file) return
-    if (file.dirty) {
-      setActiveTab(fileTabId(id))
-      setPendingCloseId(id)
-    } else {
-      remove(id)
-    }
-  }, [remove, setActiveTab])
+  const requestCloseMany = useCallback((ids: readonly string[]) => {
+    const targets = filesRef.current.filter((f) => ids.includes(f.id))
+    const dirty = targets.filter((f) => f.dirty).map((f) => f.id)
+    removeMany(targets.filter((f) => !f.dirty).map((f) => f.id))
+    if (dirty.length > 0) setCloseQueue((queue) => [...queue, ...dirty.filter((id) => !queue.includes(id))])
+  }, [removeMany])
+  const requestClose = useCallback((id: string) => requestCloseMany([id]), [requestCloseMany])
+
+  // 確認しているファイルを前に出す（どのファイルを聞いているか見えるように）。閉じられたもの・別のプロジェクトへ切り替えて見えなくなったものは並びから落とす
+  const pendingCloseId = closeQueue.find((id) => files.some((f) => f.id === id)) ?? null
+  useEffect(() => {
+    if (closeQueue.length > 0 && closeQueue[0] !== pendingCloseId) setCloseQueue((queue) => queue.filter((id) => files.some((f) => f.id === id)))
+    if (pendingCloseId && activeTabRef.current !== fileTabId(pendingCloseId)) setActiveTab(fileTabId(pendingCloseId))
+  }, [closeQueue, pendingCloseId, files, setActiveTab])
 
   const resolveClose = useCallback((choice: 'save' | 'discard' | 'cancel') => {
     const id = pendingCloseId
-    setPendingCloseId(null)
+    // キャンセルは残りの確認もやめる（VS Code の「すべて閉じる」と同じ）
+    setCloseQueue((queue) => (choice === 'cancel' ? [] : queue.filter((x) => x !== id)))
     if (!id || choice === 'cancel') return
     if (choice === 'discard') { remove(id); return }
     // 保存に失敗したら閉じない（内容を失わない）。書き込み中に打った分があれば閉じない（closeAfterSave.ts）
@@ -413,25 +464,14 @@ export function useOpenFiles({
   }, [root, activeTab, setActiveTab])
 
   const closeDeleted = useCallback((paths: readonly string[]) => {
-    const list = filesRef.current
-    const doomed = new Set(list.filter((f) => f.root === root && paths.some((p) => isSameOrUnder(f.path, p))).map((f) => f.id))
-    if (doomed.size === 0) return
-    for (const id of doomed) { drafts.current.delete(id); modelDisposer?.(id) }
-    setAllFiles((files) => files.filter((f) => !doomed.has(f.id)))
-    // 選択中のタブを閉じたら、残ったファイルの隣（無ければブラウザ）へ移る
-    const activeIndex = list.findIndex((f) => fileTabId(f.id) === activeTab)
-    if (activeIndex !== -1 && doomed.has(list[activeIndex]!.id)) {
-      const rest = list.filter((f) => f.root === root && !doomed.has(f.id))
-      const next = rest.find((f) => list.indexOf(f) > activeIndex) ?? rest.at(-1)
-      setActiveTab(next ? fileTabId(next.id) : 'browser')
-    }
-  }, [root, activeTab, setActiveTab])
+    removeMany(filesRef.current.filter((f) => f.root === root && paths.some((p) => isSameOrUnder(f.path, p))).map((f) => f.id))
+  }, [root, removeMany])
 
   const dirtyPaths = useMemo(() => new Set(files.filter((f) => f.dirty).map((f) => f.path)), [files])
   const pendingClose = allFiles.find((f) => f.id === pendingCloseId) ?? null
 
   return {
-    files, activeFile, open, requestClose, save, setDraft, getDraft, togglePreview, openPreviewInBrowser,
+    files, activeFile, open, openSource, previewHtml, requestClose, requestCloseMany, save, setDraft, getDraft, togglePreview, openPreviewInBrowser,
     reloadFromDisk, keepMine, openAsText, reveal, openExternally, pendingClose, resolveClose, dirtyPaths, followRename, closeDeleted
   }
 }

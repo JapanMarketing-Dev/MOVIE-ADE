@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join, posix } from 'node:path'
 import { AGENT_SKILL_NAME, SKILL_MARKER, agentSkillPath, isFerretSkill, renderAgentSkill } from '../../src/shared/agentSkill'
-import { SETTINGS_SCHEMA } from '../../src/shared/settingsSchema'
+import { SETTINGS_SCHEMA, STATE_KEYS, type JsonSchema } from '../../src/shared/settingsSchema'
 import { agentSkillStatus, installAgentSkill, syncAgentSkill } from '../../src/main/agentSkill'
 
 const context = { settingsPath: '/home/taro/.ferret/settings.json', schemaPath: '/home/taro/.ferret/settings.schema.json', version: '9.9.9' }
@@ -38,8 +38,58 @@ describe('Ferret の設定を変える skill の中身', () => {
     expect(text).toContain('Decide the scope first')
   })
 
-  it('キーを設定ファイルに書かせない', () => {
-    expect(text).toMatch(/Do not write API keys into the file/)
+  it('キーを設定ファイルに書かせない。平文のキー（apiKey）は表に出さず、出さない理由を書く', () => {
+    expect(text).toMatch(/Do not write API keys or tokens into the file/)
+    expect(text).toContain('The plaintext `apiKey` fields are left out of this skill on purpose')
+    expect(text).not.toMatch(/apiKey` \|/)
+    expect(text).toContain('.apiKeyEnv` |')
+  })
+
+  it('アカウント（agentAccounts）は中の項目を出さず、Ferret の Accounts で変えるよう書く', () => {
+    expect(text).not.toContain('| `agentAccounts.')
+    expect(text).toMatch(/\| `agentAccounts` \| object \| Managed by Ferret, do not edit/)
+    expect(text).toMatch(/Do not edit `agentAccounts`/)
+  })
+
+  // スキーマの葉（入れ子・配列の中も）を別の書き方でたどり、どれも skill の表にあることを確かめる。
+  // 同じ形の子は <id> の1行にまとめるので、その段は <id> でもよく、そのときは元のキーが一覧にあること
+  const leafPaths = (properties: Record<string, JsonSchema>, prefix: string[]): string[][] =>
+    Object.entries(properties).flatMap(([key, value]) => {
+      const path = [...prefix, key]
+      const nested = value.properties ?? (value.type === 'array' ? value.items?.properties : undefined)
+      if (!nested) return [path]
+      return [path, ...leafPaths(nested, value.properties ? path : [...prefix, `${key}[]`])]
+    })
+  const listed = (path: string[]): boolean => {
+    const pattern = path.map((seg) => `(?:${seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}|<id>)`).join('\\.')
+    const row = new RegExp(`^\\| \`${pattern}\` \\|`, 'm')
+    if (!row.test(text)) return false
+    const generic = text.match(row)![0]
+    return generic.split('.').every((seg, i) => !seg.includes('<id>') || text.includes(`\`${path[i]}\``))
+  }
+
+  it('skill の表とスキーマが一致する: 秘密・アカウント・状態のほかは、どの階層の設定も漏れなく載る', () => {
+    const skip = new Set(['$schema', 'agentAccounts', ...STATE_KEYS])
+    // projects と projects[].urls そのものは表の前の文で説明する（中の項目は表に出る）
+    const containers = new Set(['projects', 'projects[].urls'])
+    const paths = leafPaths(SETTINGS_SCHEMA.properties!, []).filter((p) => !skip.has(p[0]) && !p.includes('apiKey') && !containers.has(p.join('.')))
+    const missing = paths.filter((p) => !listed(p))
+    expect(missing.map((p) => p.join('.'))).toEqual([])
+    expect(paths.length).toBeGreaterThan(100)
+  })
+
+  it('入れ子の設定が増えれば、その行も出る（手で一覧を直さなくてよい）', () => {
+    const capture = SETTINGS_SCHEMA.properties!.capture
+    const extra = renderAgentSkill({ ...context, schema: { ...SETTINGS_SCHEMA, properties: { ...SETTINGS_SCHEMA.properties, capture: { ...capture, properties: { ...capture.properties, brandNewNested: { type: 'integer', description: 'Nested.', minimum: 1, maximum: 9, default: 2 } } } } } })
+    expect(extra).toContain('| `capture.brandNewNested` | integer (1-9, default 2) | Nested. |')
+    const noFooter = renderAgentSkill({ ...context, schema: { ...SETTINGS_SCHEMA, properties: { ...SETTINGS_SCHEMA.properties, layout: { type: 'object', description: 'x' } } } })
+    expect(noFooter).not.toContain('layout.footer')
+  })
+
+  it('同じ形の子（提供元・パネル・フッターの項目）は <id> の1行にまとめ、キーの一覧を書く', () => {
+    expect(text).toMatch(/\| `layout\.footer\.items\.<id>` \| boolean \| <id> is one of `/)
+    expect(text).toMatch(/\| `organizer\.endpoints\.<id>\.baseUrl` \|/)
+    expect(text).toContain('| `decision.pricing.outputPer1M` |')
   })
 })
 

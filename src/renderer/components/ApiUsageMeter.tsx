@@ -54,7 +54,7 @@ export function ApiUsageMeter({ onOpenChange }: { onOpenChange?: (open: boolean)
 
   return <>
     <button ref={triggerRef} type="button" className="statusbar__btn sb-api" aria-haspopup="dialog" aria-expanded={open}
-      title={t('apiUsage.tooltip')} onClick={() => setOpen((v) => !v)} data-testid="statusbar-api-usage">
+      title={`${shortTotals(summary.today, t, model)}\n${t('apiUsage.tooltip')}`} onClick={() => setOpen((v) => !v)} data-testid="statusbar-api-usage">
       <Gauge size={12} strokeWidth={2} aria-hidden="true" />
       <span className="sb-api__text">{shortTotals(summary.today, t, model)}</span>
     </button>

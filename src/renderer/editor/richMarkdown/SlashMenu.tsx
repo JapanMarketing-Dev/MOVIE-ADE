@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Editor } from '@tiptap/core'
-import { detectSlashTrigger, slashDescriptionKey, slashLabelKey, type SlashContext, type SlashItem } from './slashCommands'
+import { detectSlashTrigger, slashDescriptionKey, slashLabelKey, slashScrollTop, type SlashContext, type SlashItem } from './slashCommands'
 import { useT } from '../../lib/i18n'
 
 /** 選んだ候補の実行は slashRun.ts（単体テストから流す） */
@@ -22,11 +22,14 @@ export interface SlashState {
   bottom: number
 }
 
-/** カーソルの位置から、メニューを開くか読む（選択の範囲がある・日本語入力の途中・コードの中では開かない） */
+/**
+ * カーソルの位置から、メニューを開くか読む（選択の範囲がある・コードの中では開かない）。
+ * 日本語入力の途中も開いたままにし、変換中の文字でも絞る（キーは入力の側が使うので、↑↓・Enter は変換が終わってから効く）
+ */
 export function readSlashState(editor: Editor): SlashState | null {
   const { state, view } = editor
   const selection = state.selection
-  if (!selection.empty || view.composing || !editor.isFocused) return null
+  if (!selection.empty || !editor.isFocused) return null
   const $from = selection.$from
   const parent = $from.parent
   if (!parent.isTextblock || parent.type.spec.code) return null
@@ -54,8 +57,12 @@ export function SlashMenu({ state, items, index, onPick, onHover }: {
 }) {
   const t = useT()
   const listRef = useRef<HTMLDivElement>(null)
+  // 選んだ候補が見えるよう、一覧の中だけをスクロールする（↑↓で枠の外へ出たとき）
   useEffect(() => {
-    listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
+    const list = listRef.current
+    const item = list?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (!list || !item) return
+    list.scrollTop = slashScrollTop({ top: item.offsetTop, height: item.offsetHeight }, { scrollTop: list.scrollTop, height: list.clientHeight })
   }, [index, items])
   if (items.length === 0) return null
   const MAX_HEIGHT = 320
@@ -78,7 +85,8 @@ export function SlashMenu({ state, items, index, onPick, onHover }: {
           role="option"
           aria-selected={i === index}
           className="rich-md__slash-item"
-          onMouseEnter={() => onHover(i)}
+          // マウスを実際に動かしたときだけ選び直す（↑↓で一覧がスクロールしたとき、止まったままのポインタの下の項目に選択を取られない）
+          onMouseMove={() => { if (i !== index) onHover(i) }}
           onClick={() => onPick(item)}
           data-testid={`rich-md-slash-${item.id}`}
         >

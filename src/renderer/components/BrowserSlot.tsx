@@ -1,5 +1,6 @@
-import { ArrowRight, FolderOpen, Globe, RotateCw } from 'lucide-react'
+import { ArrowRight, Clock, FolderOpen, Globe, RotateCw } from 'lucide-react'
 import { MOBILE_PRESET, type Viewport } from '@shared/types'
+import { DEV_URL_FALLBACKS, type StartUrlChoices } from '@shared/startUrls'
 import { SHORTCUTS } from '../lib/shortcut'
 import { Button, EmptyState, StepsArt } from '../ui'
 import { useT } from '../lib/i18n'
@@ -16,8 +17,8 @@ import { useT } from '../lib/i18n'
  */
 export type SlotEmptyReason = 'no-folder' | 'no-url' | 'load-failed'
 
-/** よく使う開発サーバー。入力の手間を1クリックに落とす */
-const DEV_URLS = ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080']
+/** 開始画面で URL を短く見せる（http:// / https:// と末尾の / を落とす） */
+const shortUrl = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '')
 
 export function BrowserSlot({
   viewport,
@@ -25,7 +26,8 @@ export function BrowserSlot({
   empty,
   loadError,
   onOpenFolder,
-  onNavigate
+  onNavigate,
+  choices
 }: {
   viewport: Viewport
   slotRef: (node: HTMLElement | null) => void
@@ -35,6 +37,11 @@ export function BrowserSlot({
   loadError?: string
   onOpenFolder?: () => void
   onNavigate?: (url: string) => void
+  /**
+   * 開始画面の候補（@shared/startUrls の startUrlChoices）。プロジェクトに登録した URL・最近開いた URL、
+   * 登録が無いときだけ localhost の補助。省略時は localhost の補助だけ
+   */
+  choices?: StartUrlChoices
 }) {
   const t = useT()
   if (empty) {
@@ -95,27 +102,7 @@ export function BrowserSlot({
             art={<StepsArt active={0} />}
             title={t('browser.noUrlTitle')}
             description={t('browser.noUrlDescription')}
-            actions={
-              <div className="port-suggestions">
-                {DEV_URLS.map((url) => (
-                  <button
-                    key={url}
-                    type="button"
-                    className="port-chip"
-                    onClick={() => onNavigate?.(url)}
-                  >
-                    <Globe size={12} strokeWidth={2} aria-hidden="true" />
-                    {url.replace('http://', '')}
-                    <ArrowRight
-                      className="port-chip__go"
-                      size={12}
-                      strokeWidth={2}
-                      aria-hidden="true"
-                    />
-                  </button>
-                ))}
-              </div>
-            }
+            actions={<StartUrls choices={choices ?? { presets: [], recent: [], fallback: [...DEV_URL_FALLBACKS] }} onNavigate={onNavigate} />}
             hints={
               <span className="hint">
                 <kbd className="kbd">{SHORTCUTS.focusUrl()}</kbd>{t('browser.hintUrl')}
@@ -135,6 +122,61 @@ export function BrowserSlot({
     )
   }
   return <div className="browser-slot" ref={slotRef} data-testid="browser-slot" />
+}
+
+/**
+ * 開始画面の候補。登録した URL（名前つきのチップ）→ 最近開いた URL（行）→ localhost の補助（チップ）の順。
+ * 登録した URL も履歴も無ければ、localhost の補助だけになる（以前と同じ見た目）
+ */
+function StartUrls({ choices, onNavigate }: { choices: StartUrlChoices; onNavigate?: (url: string) => void }) {
+  const t = useT()
+  const go = <ArrowRight className="port-chip__go" size={12} strokeWidth={2} aria-hidden="true" />
+  return (
+    <div className="start-urls" data-testid="start-urls">
+      {choices.presets.length > 0 && (
+        <section className="start-urls__group" aria-label={t('browser.start.presets')}>
+          <h3 className="start-urls__head">{t('browser.start.presets')}</h3>
+          <div className="port-suggestions">
+            {choices.presets.map((p) => (
+              <button key={p.url} type="button" className="port-chip port-chip--preset" title={p.url} onClick={() => onNavigate?.(p.url)} data-testid="start-preset">
+                <Globe size={12} strokeWidth={2} aria-hidden="true" />
+                <span className="port-chip__label">{p.label}</span>
+                <span className="port-chip__url">{shortUrl(p.url)}</span>
+                {go}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      {choices.recent.length > 0 && (
+        <section className="start-urls__group" aria-label={t('browser.start.recent')}>
+          <h3 className="start-urls__head">{t('browser.start.recent')}</h3>
+          <ul className="start-urls__recent">
+            {choices.recent.map((url) => (
+              <li key={url}>
+                <button type="button" className="start-urls__row" title={url} onClick={() => onNavigate?.(url)} data-testid="start-recent">
+                  <Clock size={12} strokeWidth={2} aria-hidden="true" />
+                  <span className="start-urls__url">{shortUrl(url)}</span>
+                  {go}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {choices.fallback.length > 0 && (
+        <div className="port-suggestions">
+          {choices.fallback.map((url) => (
+            <button key={url} type="button" className="port-chip" onClick={() => onNavigate?.(url)} data-testid="start-fallback">
+              <Globe size={12} strokeWidth={2} aria-hidden="true" />
+              {shortUrl(url)}
+              {go}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 /**

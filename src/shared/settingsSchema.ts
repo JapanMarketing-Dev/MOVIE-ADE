@@ -5,7 +5,7 @@ import { AGENT_CATALOG, BUILTIN_AGENTS, DEFAULT_AGENT_PREFERENCES } from './agen
 import { DECISION_PRESET_IDS } from './decision'
 import { LLM_API_PROVIDERS, STT_REMOTE_PROVIDERS } from './aiProviders'
 import { LOCALE_PREFERENCES } from './i18n'
-import { DEFAULT_LAYOUT, DOCKS, FOOTER_ITEMS, PANEL_IDS } from './layout'
+import { DEFAULT_LAYOUT, FIXED_DOCKS, FOOTER_ITEMS, PANEL_IDS, TERMINAL_DOCKS } from './layout'
 import { ONBOARDING_STEPS } from './onboarding'
 import { STT_LANGUAGE_CODES } from './sttLanguages'
 import { DEFAULT_PROJECT_KIND, DEFAULT_TARGET_PURPOSE, PROJECT_KINDS, TARGET_PURPOSES } from './projectTargets'
@@ -47,7 +47,7 @@ export type JsonSchema = {
 export const STATE_KEYS = ['folderPath', 'url', 'viewport', 'activeProjectId', 'starPrompt'] as const
 
 /** 読み込むときに移し替えるだけの古い項目。settings.json に書き戻さない */
-export const LEGACY_KEYS = ['terminalDock'] as const
+export const LEGACY_KEYS = ['terminalDock', 'terminalClipboard'] as const
 
 const str = (description: string, extra: Partial<JsonSchema> = {}): JsonSchema => ({ type: 'string', description, ...extra })
 const bool = (description: string, extra: Partial<JsonSchema> = {}): JsonSchema => ({ type: 'boolean', description, ...extra })
@@ -138,7 +138,7 @@ export const SETTINGS_SCHEMA: JsonSchema = {
     splitRatio: { type: 'number', description: 'Share of the main area taken by the center tabs when the terminal is docked beside or below them.', minimum: MIN_SPLIT_RATIO, maximum: MAX_SPLIT_RATIO, default: DEFAULT_SPLIT_RATIO },
     layout: {
       type: 'object',
-      description: 'Where each panel is docked, whether it is shown, and the footer items.',
+      description: 'Which panels are shown, where the terminal is docked, and the footer items.',
       default: DEFAULT_LAYOUT,
       properties: {
         panels: {
@@ -150,7 +150,9 @@ export const SETTINGS_SCHEMA: JsonSchema = {
             description: `Placement of the ${id} panel.`,
             additionalProperties: false,
             properties: {
-              dock: { type: 'string', description: 'Edge the panel is docked to.', enum: DOCKS },
+              dock: id === 'terminal'
+                ? { type: 'string', description: 'Edge the terminal is docked to (right or bottom).', enum: TERMINAL_DOCKS }
+                : { type: 'string', description: 'Edge the panel is docked to. Fixed; other values fall back to it.', enum: [FIXED_DOCKS[id]] },
               visible: bool('Show the panel.')
             }
           } satisfies JsonSchema]))
@@ -309,7 +311,12 @@ export const SETTINGS_SCHEMA: JsonSchema = {
             kind: { type: 'string', description: 'browser = built-in browser, screen = a whole display, window = another app window.', enum: ['browser', 'screen', 'window'] },
             sourceId: str('desktopCapturer source id (screen:... or window:...).'),
             name: str('Screen or window name, used to find it again after a restart.'),
-            displayId: str('Display id for screens.')
+            displayId: str('Display id for screens.'),
+            also: {
+              type: 'array',
+              description: 'Other screens or windows recorded side by side in the same video (checked in the capture picker). Up to 3, each with kind, sourceId and name.',
+              items: { type: 'object', description: 'One more screen or window.', required: ['kind', 'sourceId'], properties: { kind: { type: 'string', description: 'screen or window.', enum: ['screen', 'window'] }, sourceId: str('desktopCapturer source id.'), name: str('Screen or window name.') } }
+            }
           }
         },
         sttEndpoints: endpointMap(STT_REMOTE_PROVIDERS, 'transcription', 'Per-provider endpoint, model and key for transcription. Use "compatible" for any OpenAI-compatible /audio/transcriptions server (self-hosted Whisper, vLLM, LocalAI...).'),
@@ -373,7 +380,6 @@ export const SETTINGS_SCHEMA: JsonSchema = {
         }
       }
     },
-    terminalClipboard: { type: 'string', description: 'When a program in a terminal asks to copy text to the clipboard (OSC 52): "ask" shows a bar with a Copy button, "allow" copies right away when the terminal on this machine has focus and shows a notice (terminals on SSH hosts still ask), "off" never copies.', enum: ['ask', 'allow', 'off'], default: 'ask' },
     crashReports: bool('Send crash reports to Sentry. Reports never include API keys, file contents or recordings.', { default: true }),
     crashReportsNoticeShown: bool('The first-run crash report notice has been shown.'),
     autoUpdate: bool('Download new versions in the background, check each one against the signed SHA256SUMS, and install it the next time Ferret closes (Restart to update installs it right away). When off, nothing is downloaded or installed until you choose to.', { default: true }),

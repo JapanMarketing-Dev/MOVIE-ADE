@@ -4,7 +4,8 @@ import Image from '@tiptap/extension-image'
 import { Video, createMarkdownCodec, richMarkdownExtensions } from './codec'
 import { buildSourceModel, reconcileEdit, type SourceModel } from './reconcile'
 import { resolveRichImage } from './images'
-import { SLASH_ITEMS, filterSlashItems, moveSlashIndex, slashLabelKey } from './slashCommands'
+import { SLASH_ITEMS, filterSlashItems, moveSlashIndex, slashLabelKey, slashMarkItem, type SlashItem } from './slashCommands'
+import { MarkdownInputRules } from './inputRules'
 import { SlashMenu, readSlashState, runSlashItem, type SlashState } from './SlashMenu'
 import { registerDraftFlush, type OpenFile, type OpenFilesApi } from '../useOpenFiles'
 import { registerMarkdownDropTarget, type DropPoint, type MediaEmbed } from '../markdownDrop'
@@ -169,13 +170,25 @@ export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFi
     slashRef.current = next
     setSlash(next)
   }
-  const pickSlash = (index: number) => {
+  const pickSlashItem = (item: SlashItem | undefined) => {
     const editor = editorRef.current
     const state = slashRef.current
-    const item = slashItems[index]
     if (!editor || !state || !item) return
     closeSlash()
     runSlashItem(editor, item.id, state)
+  }
+  const pickSlash = (index: number) => pickSlashItem(slashItems[index])
+  /**
+   * 「/##」「/-」のように Markdown の記号を打った後の空白。行の頭で「## 」と打ったのと同じに、その塊へ変える（空白は入れない）。
+   * 全角の空白（日本語入力のまま）も同じ。扱ったら true
+   */
+  const slashText = (text: string): boolean => {
+    const state = slashRef.current
+    if (!state || (text !== ' ' && text !== '　')) return false
+    const item = slashMarkItem(SLASH_ITEMS, state.context, state.query)
+    if (!item) return false
+    pickSlashItem(item)
+    return true
   }
   /** メニューが開いているときの ↑↓・Enter・Tab・Esc（エディタの handleKeyDown から呼ぶ）。扱ったら true */
   const slashKey = (event: KeyboardEvent): boolean => {
@@ -199,6 +212,8 @@ export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFi
   }
   const slashKeyRef = useRef(slashKey)
   slashKeyRef.current = slashKey
+  const slashTextRef = useRef(slashText)
+  slashTextRef.current = slashText
   const refreshSlashRef = useRef(refreshSlash)
   refreshSlashRef.current = refreshSlash
 
@@ -258,11 +273,13 @@ export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFi
     setHosts(remoteHosts(model.nodes, file.path))
     const editor = new Editor({
       element: host,
-      extensions,
+      // 行の頭の Markdown の記法（「- [ ] 」・全角の「＃　」など）で塊に変える規則は、編集のエディタにだけ足す（スキーマは変えない）
+      extensions: [...extensions, MarkdownInputRules],
       content: contentOf(model.nodes),
       editorProps: {
         attributes: { class: 'rich-md markdown-body', spellcheck: 'false', 'data-testid': 'rich-md-editor' },
-        handleKeyDown: (_view, event) => slashKeyRef.current(event)
+        handleKeyDown: (_view, event) => slashKeyRef.current(event),
+        handleTextInput: (_view, _from, _to, text) => slashTextRef.current(text)
       },
       onUpdate: ({ transaction }) => { if (transaction.docChanged) schedule() },
       onTransaction: () => refreshSlashRef.current(),

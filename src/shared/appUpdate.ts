@@ -72,6 +72,11 @@ export function nsisInstallerArgs(when: 'restart' | 'quit'): string[] {
 export const AUTO_UPDATE_INTERVAL_MS = 6 * 60 * 60 * 1000
 /** 起動してから最初に確かめるまで（起動の重さに重ねない） */
 export const AUTO_UPDATE_FIRST_CHECK_MS = 20 * 1000
+/**
+ * スリープ明けから確かめるまで。明けた直後は Wi-Fi・DNS がまだ戻っておらず、すぐ確かめると
+ * net::ERR_NAME_NOT_RESOLVED などで失敗する（Sentry FERRET-1N。macOS・Windows とも明けて0〜3秒で失敗していた）
+ */
+export const AUTO_UPDATE_RESUME_DELAY_MS = 30 * 1000
 
 /**
  * バージョンの表示（フッターのポップオーバー）を開いたときに、［更新を確認］と同じ確認をするか。

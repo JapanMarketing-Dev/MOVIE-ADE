@@ -18,6 +18,8 @@ import type {
   AgentPreferences,
   CapturePreferences,
   CaptureSourceList,
+  DesktopAppInfo,
+  DesktopAppLaunch,
   CaptureTarget,
   SttAvailability,
   OrganizerPreferences,
@@ -45,8 +47,6 @@ import type {
   AccountAgent,
   AgentOption,
   TerminalAttachInfo,
-  ProgramCopyResult,
-  TerminalClipboardMode,
   TerminalSessionInfo,
   ViewBounds,
   Viewport,
@@ -70,6 +70,7 @@ import type { LocalePreference, SupportedLocale } from './i18n'
 import type { ResourceKillTarget, ResourceSnapshot } from './resources'
 import type { FsChangedEvent, FsCreated, FsEntry, FsFileList, FsReadResult, FsSearchMode, FsSearchResult, FsTransfer, FsWriteResult } from './files'
 import type { FsFileInfo } from './fileViewer'
+import type { FsGitStatus } from './gitDecorations'
 import type { StarActionResult, StarPromptMode } from './starPrompt'
 import type { FeedbackEnvironment, FeedbackSubmitInput, FeedbackSubmitResult } from './feedback'
 import type { GitActionResult, GitRepoStatus } from './github'
@@ -206,6 +207,8 @@ export interface IpcRequests {
   'browser:back': () => void
   'browser:forward': () => void
   'browser:reload': () => void
+  /** 表示中のタブのページを OS の既定のブラウザで開く。URL は渡さない（main が表示中のタブの URL を使い、http / https だけ通す） */
+  'browser:openExternal': () => void
   'browser:setViewport': (viewport: Viewport) => void
   'browser:state': () => BrowserState
   /** 内蔵ブラウザの拡張機能の一覧と読み込みの結果（src/main/browserExtensions.ts） */
@@ -238,14 +241,8 @@ export interface IpcRequests {
   'terminal:clipboardText': () => string
   /** ターミナルの選択範囲のコピーをクリップボードへ（キーを押した直後だけ書く。security-5 [9]） */
   'terminal:writeClipboard': (text: string) => void
-  /** 端末のプログラムのコピー（OSC 52）。main が設定とフォーカスで決め、既定では預かって帯で確かめる（src/main/terminalClipboard.ts） */
-  'terminal:programCopy': (id: string, text: string) => ProgramCopyResult
-  /** 帯の［コピー］。預かったコピーを写す（利用者の操作の直後だけ）。写せたら true */
-  'terminal:programCopyAccept': (id: string) => boolean
-  /** 帯を閉じた。預かったコピーを捨てる */
-  'terminal:programCopyDismiss': (id: string) => void
-  /** 端末のプログラムのコピーの扱い（設定の terminalClipboard） */
-  'settings:terminalClipboard': (mode: TerminalClipboardMode) => void
+  /** 端末のプログラムのコピー（OSC 52）。確認なしで写す。写せたら true（src/main/terminalClipboard.ts） */
+  'terminal:programCopy': (id: string, text: string) => boolean
   /** ターミナルにフォーカスが入った・外れた。Windows / Linux でターミナルのキー（Ctrl+R など）をメニューに取らせない（terminalMenuKeys.ts） */
   'terminal:focused': (focused: boolean) => void
   /** 今開いているタブと画面の文字（終了したあとに戻すため。設定の agents.restoreTerminals が切なら main は捨てる） */
@@ -373,6 +370,10 @@ export interface IpcRequests {
   'capture:setTarget': (target: CaptureTarget) => void
   /** macOS のシステム設定（画面収録）を開く */
   'capture:openScreenSettings': () => void
+  /** 入れてあるデスクトップアプリ（まだ開いていないものも名前で選べるように。recording/apps.ts） */
+  'capture:apps': () => DesktopAppInfo[]
+  /** capture:apps の1件を起動・前面へ出す（利用者が選んだ直後だけ）。ウインドウを探す手がかりを返す */
+  'capture:launchApp': (id: string) => DesktopAppLaunch
 
   // ファイルエディタ。パスはすべて開いているプロジェクトからの相対パス（外は main が断る）
   'fs:list': (relDir: string) => FsEntry[]
@@ -383,6 +384,8 @@ export interface IpcRequests {
   'fs:search': (query: string, mode: FsSearchMode) => FsSearchResult
   /** 文字として開けないファイルの大きさと先頭のバイト（画像・動画・バイナリの表示） */
   'fs:inspect': (relPath: string) => FsFileInfo
+  /** ファイルツリーの git の色分け（変更・追跡外・削除・.gitignore の対象）。git のリポジトリでなければ isGit: false（src/main/gitDecorations.ts） */
+  'fs:gitStatus': () => FsGitStatus
   /** ファイルツリーから空のファイル・フォルダを作る（名前の / で途中のフォルダも）。作ったものの相対パスを返す（既にあれば断る。src/main/fileOps.ts） */
   'fs:create': (parentRel: string, name: string, kind: 'file' | 'directory') => FsCreated
   /** 選んだものを destRel のフォルダへコピーする（貼り付け・複製。同じ名前は「名前 copy」にする） */
@@ -613,6 +616,7 @@ export const IPC_REQUEST_CHANNELS = [
   'browser:back',
   'browser:forward',
   'browser:reload',
+  'browser:openExternal',
   'browser:setViewport',
   'browser:state',
   'browserExtensions:list', 'browserExtensions:addFolder', 'browserExtensions:scanInstalled', 'browserExtensions:import', 'browserExtensions:setEnabled', 'browserExtensions:remove', 'browserExtensions:menu',
@@ -620,7 +624,7 @@ export const IPC_REQUEST_CHANNELS = [
   'terminal:write',
   'terminal:resize',
   'terminal:close',
-  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:clipboardText', 'terminal:writeClipboard', 'terminal:programCopy', 'terminal:programCopyAccept', 'terminal:programCopyDismiss', 'settings:terminalClipboard', 'terminal:focused', 'terminal:restoreSave', 'terminal:restoreTake', 'terminal:closedPush', 'terminal:closedPop', 'terminal:restoreClear', 'review:send',
+  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:clipboardText', 'terminal:writeClipboard', 'terminal:programCopy', 'terminal:focused', 'terminal:restoreSave', 'terminal:restoreTake', 'terminal:closedPush', 'terminal:closedPop', 'terminal:restoreClear', 'review:send',
   'settings:splitRatio',
   'settings:layout',
   'settings:theme',
@@ -640,8 +644,8 @@ export const IPC_REQUEST_CHANNELS = [
   'annotation:undo',
   'annotation:redo',
   'review:list', 'review:activity', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
-  'capture:screenAccess', 'capture:sources', 'capture:setTarget', 'capture:openScreenSettings',
-  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:create', 'fs:copy', 'fs:move', 'fs:import', 'fs:importMedia', 'fs:copyPath', 'fs:terminalDir', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'editor:quitSave', 'preview:render',
+  'capture:screenAccess', 'capture:sources', 'capture:setTarget', 'capture:openScreenSettings', 'capture:apps', 'capture:launchApp',
+  'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:gitStatus', 'fs:create', 'fs:copy', 'fs:move', 'fs:import', 'fs:importMedia', 'fs:copyPath', 'fs:terminalDir', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'editor:quitSave', 'preview:render',
   'github:open', 'github:repoStatus', 'github:autoFetch', 'github:gitAction',
   'star:star', 'star:openWeb', 'star:later', 'star:never', 'star:fromMenu',
   'feedback:environment', 'feedback:account', 'feedback:submit', 'feedback:captureWindow'

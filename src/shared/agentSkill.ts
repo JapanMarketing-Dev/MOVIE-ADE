@@ -67,10 +67,71 @@ function typeOf(schema: JsonSchema): string {
   return type === 'array' && schema.items?.type ? `array of ${schema.items.type}` : type
 }
 
+/** 型の後ろに添える範囲と既定値（表で値の幅が分かるように） */
+function detailsOf(schema: JsonSchema): string {
+  const parts: string[] = []
+  const { minimum: min, maximum: max } = schema
+  if (min !== undefined && max !== undefined) parts.push(`${min}-${max}`)
+  else if (min !== undefined) parts.push(`>= ${min}`)
+  else if (max !== undefined) parts.push(`<= ${max}`)
+  if (schema.default !== undefined && (schema.default === null || typeof schema.default !== 'object')) parts.push(`default ${JSON.stringify(schema.default)}`)
+  return parts.length ? ` (${parts.join(', ')})` : ''
+}
+
+/**
+ * skill に載せない項目。秘密（平文の API キー）は skill から書かせない。
+ * アカウント（agentAccounts）は Ferret の Accounts で作ったフォルダと対になるので、中の項目は出さず触らせない
+ */
+export const SKILL_SECRET_KEYS: ReadonlySet<string> = new Set(['apiKey'])
+export const SKILL_MANAGED_KEYS: ReadonlySet<string> = new Set(['agentAccounts'])
+
+/**
+ * 子がどれも同じ形（説明だけ違う）の object。提供元・パネル・フッターの項目など。<id> の1行にまとめる。
+ * 2つだけ（入力と出力の値段、2つの CLI のモデル）は意味が違うことが多いので、そのまま並べる
+ */
+function sameShapedChildren(schema: JsonSchema): string[] | null {
+  const entries = Object.entries(schema.properties ?? {})
+  if (entries.length < 3) return null
+  const shape = ({ description: _d, ...rest }: JsonSchema): string => JSON.stringify(rest)
+  const first = shape(entries[0][1])
+  return entries.every(([, v]) => shape(v) === first) ? entries.map(([k]) => k) : null
+}
+
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * スキーマをたどって、書き換えられる項目を1行ずつ（入れ子は a.b.c、配列の中は a[].b、同じ形の子は a.<id>.b）。
+ * スキーマから作るので、設定の項目が増えても減っても skill の表が追従する
+ */
 function rows(properties: Record<string, JsonSchema>, prefix: string, skip: ReadonlySet<string> = new Set()): string[] {
-  return Object.entries(properties)
-    .filter(([key]) => !skip.has(key))
-    .map(([key, value]) => `| \`${prefix}${key}\` | ${typeOf(value)} | ${oneLine(value.description)} |`)
+  const out: string[] = []
+  for (const [key, value] of Object.entries(properties)) {
+    if (skip.has(key) || SKILL_SECRET_KEYS.has(key)) continue
+    const path = `${prefix}${key}`
+    if (SKILL_MANAGED_KEYS.has(path)) {
+      out.push(`| \`${path}\` | ${typeOf(value)} | Managed by Ferret, do not edit (see above). ${oneLine(value.description)} |`)
+      continue
+    }
+    const ids = sameShapedChildren(value)
+    if (ids) {
+      const shared = value.properties![ids[0]]
+      out.push(`| \`${path}\` | ${typeOf(value)}${detailsOf(value)} | ${oneLine(value.description)} |`)
+      const keyWord = new RegExp(`\\b${escapeRegExp(ids[0])}\\b`, 'g')
+      const sharedText = oneLine(shared.description).replace(keyWord, '<id>')
+      out.push(`| \`${path}.<id>\` | ${typeOf(shared)}${detailsOf(shared)} | <id> is one of ${ids.map((id) => `\`${id}\``).join(', ')}. ${sharedText} |`)
+      out.push(...children(shared, `${path}.<id>`))
+      continue
+    }
+    out.push(`| \`${path}\` | ${typeOf(value)}${detailsOf(value)} | ${oneLine(value.description)} |`)
+    out.push(...children(value, path))
+  }
+  return out
+}
+
+function children(schema: JsonSchema, path: string): string[] {
+  if (schema.properties) return rows(schema.properties, `${path}.`)
+  if (schema.type === 'array' && schema.items?.properties) return rows(schema.items.properties, `${path}[].`)
+  return []
 }
 
 /** SKILL.md の本文。Agent が読む文なので英語（スキーマの説明も英語） */
@@ -83,10 +144,15 @@ export function renderAgentSkill(context: SkillContext): string {
   const globalRows = rows(top, '', new Set(['$schema', 'projects', ...STATE_KEYS]))
   const projectRows = rows(project, 'projects[].', new Set(['urls']))
   const targetRows = rows(target, 'projects[].urls[].')
+  const secretList = [...SKILL_SECRET_KEYS].map((k) => `\`${k}\``).join(', ')
+  const managed = [...SKILL_MANAGED_KEYS].filter((k) => k in top)
+  const managedNote = managed.length
+    ? `Do not edit ${managed.map((k) => `\`${k}\``).join(', ')} (signed-in agent accounts, managed by Ferret's Accounts section together with their login folders); its fields are not listed. Ask the user to add, switch or remove accounts in Ferret.`
+    : ''
 
   return `---
 name: ${AGENT_SKILL_NAME}
-description: Change settings of Ferret, the voice-and-annotation review app the user runs next to you (theme, language, layout, agents, recording, transcription, organizing, decision model, projects and their review targets such as URLs, launch commands and desktop/mobile/game windows). Use when the user asks to configure, change, turn on/off, add or remove anything "in Ferret", or to register a URL, app window, simulator or launch command for a project.
+description: Change settings of Ferret, the voice-and-annotation review app the user runs next to you (theme, language, layout, panels and footer, terminal, browser extensions, updates, crash reports, agents and usage-limit failover, recording, transcription, organizing, decision model, projects and their review targets such as URLs, launch commands and desktop/mobile/game windows). Use when the user asks to configure, change, turn on/off, add or remove anything "in Ferret", or to register a URL, app window, simulator or launch command for a project.
 ---
 
 ${SKILL_MARKER}
@@ -109,7 +175,9 @@ Every request is either **global** (the whole app, every project) or **project**
 
 ### Global scope
 
-Top-level keys of the settings file. Change only the keys you need and keep everything else as is.
+Every setting of the file except projects, generated from the schema: nested keys are written as \`a.b\`, keys inside array items as \`a[].b\`, and \`<id>\` stands for each of the listed keys (providers, panels, footer items, agents). Change only the keys you need and keep everything else as is.
+
+${managedNote}
 
 | Key | Type | Meaning |
 | --- | --- | --- |
@@ -132,9 +200,9 @@ ${targetRows.join('\n')}
 ## How to edit
 
 1. Read the settings file. If it does not exist yet, create it with only the keys you set (Ferret fills in the defaults).
-2. Read the JSON Schema file when you need allowed values, defaults or nested fields that the tables above do not show.
+2. Read the JSON Schema file when you need more detail (patterns, maximum lengths, defaults of whole objects) than the tables show.
 3. Make the smallest change: keep unknown keys, key order and the other projects untouched. Write valid JSON (no comments, no trailing commas).
-4. Do not write API keys into the file. Use the \`apiKeyEnv\` fields (the name of an environment variable, or a key in \`~/.ferret/.env\` or the project's \`.env\`), or ask the user to paste the key in Ferret's Settings page.
+4. Do not write API keys or tokens into the file. The plaintext ${secretList} fields are left out of this skill on purpose; never set them, even if the user pastes a key. Secret HTTP headers are only accepted as \`{"env": "VAR_NAME"}\`. Use the \`apiKeyEnv\` fields (the name of an environment variable, or a key in \`~/.ferret/.env\` or the project's \`.env\`), or ask the user to paste the key in Ferret's Settings page.
 5. Do not edit \`state.json\` next to the settings file (window state kept by the app).
 6. After saving, tell the user what you changed and in which scope. If Ferret rejects the file it shows the error in the app and keeps the previous settings; fix the file using the schema.
 `

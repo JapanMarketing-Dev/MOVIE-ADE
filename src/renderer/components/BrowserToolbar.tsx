@@ -1,12 +1,14 @@
-import { AppWindow, Globe, MessageSquarePlus, Monitor, Smartphone } from 'lucide-react'
+import { AppWindow, ExternalLink, FileCode, Globe, MessageSquarePlus, Monitor, Smartphone } from 'lucide-react'
 import { MOBILE_PRESET, type BrowserState, type CaptureTarget, type Project, type Viewport } from '@shared/types'
 import { captureTargetLabel } from '@shared/captureTarget'
+import { isPresetableUrl } from '@shared/projectUrl'
 import { SHORTCUTS } from '../lib/shortcut'
-import { Button, Segmented, Tooltip } from '../ui'
+import { Button, IconButton, Segmented, Tooltip, useToast } from '../ui'
 import { NavControls } from './NavControls'
 import { UrlPresets } from './UrlPresets'
 import { BrowserExtensionsButton } from './BrowserExtensionsButton'
 import { useT } from '../lib/i18n'
+import { errorMessage } from '../lib/errors'
 
 /**
  * エディタモードの内蔵ブラウザのツールバー（WS-2 / WS-3）。
@@ -24,7 +26,8 @@ export function BrowserToolbar({
   onShowBrowser,
   noteMode = false,
   noteDisabled = false,
-  onToggleNote
+  onToggleNote,
+  onOpenSource
 }: {
   state: BrowserState
   urlInputRef: React.RefObject<HTMLInputElement | null>
@@ -44,8 +47,11 @@ export function BrowserToolbar({
   noteDisabled?: boolean
   /** 文字で指摘の入・切。省けばボタンを出さない */
   onToggleNote?: () => void
+  /** 開いているのがプロジェクトの HTML のとき、そのファイルをソース（コード）で開く。省けばボタンを出さない */
+  onOpenSource?: () => void
 }) {
   const t = useT()
+  const toast = useToast()
   const setViewport = (viewport: Viewport) => {
     void window.ade.invoke('browser:setViewport', viewport)
   }
@@ -53,6 +59,16 @@ export function BrowserToolbar({
   return (
     <div className="browser-toolbar" data-testid="browser-toolbar">
       <NavControls state={state} urlInputRef={urlInputRef} tooltipSide="top" />
+      {/* 表示中のページを OS の既定のブラウザで開く。URL は送らず、main が今のタブの URL（http / https だけ）を開く */}
+      <Tooltip label={t('browser.openExternal')} side="top">
+        <IconButton
+          label={t('browser.openExternal')}
+          icon={<ExternalLink size={15} strokeWidth={1.75} />}
+          disabled={!isPresetableUrl(state.url)}
+          onClick={() => void window.ade.invoke('browser:openExternal').catch((err: unknown) => toast({ tone: 'warning', message: errorMessage(err) }))}
+          data-testid="browser-open-external"
+        />
+      </Tooltip>
       <UrlPresets project={project} currentUrl={state.url} onOverlayChange={onOverlayChange} onSelectWindow={onSelectWindow} />
       {shownTarget && shownTarget.kind !== 'browser' && (
         <span className="browser-toolbar__shown" data-testid="browser-shown-target">
@@ -60,6 +76,13 @@ export function BrowserToolbar({
           <span className="browser-toolbar__shown-name">{t('browser.showingTarget', { target: captureTargetLabel(shownTarget) })}</span>
           {onShowBrowser && <Button variant="ghost" icon={<Globe size={13} strokeWidth={1.75} />} data-testid="browser-show-browser" onClick={onShowBrowser}>{t('browser.backToBrowser')}</Button>}
         </span>
+      )}
+      {onOpenSource && (
+        <Tooltip label={t('editor.openHtmlSourceTitle')} side="top">
+          <Button variant="ghost" className="browser-toolbar__source" icon={<FileCode size={14} strokeWidth={1.75} aria-hidden="true" />} data-testid="browser-open-source" onClick={onOpenSource}>
+            {t('editor.openHtmlSource')}
+          </Button>
+        </Tooltip>
       )}
       {onToggleNote && (
         <Tooltip label={noteMode ? t('textNote.button.stopTitle') : t('textNote.button.title')} side="top">

@@ -393,6 +393,109 @@
   font-weight: var(--font-weight-bold);
 }
 
+/*
+ * ファイルのアイコンの色（lib/fileIcons.ts の tone）と git の色（VS Code の gitDecoration.* と同じ考え）。
+ * ダークが既定、ライトは濃くして白地でも読めるようにする
+ */
+:root {
+  --fi-blue: #60a5fa;
+  --fi-sky: #38bdf8;
+  --fi-cyan: #22d3ee;
+  --fi-teal: #2dd4bf;
+  --fi-green: #4ade80;
+  --fi-yellow: #facc15;
+  --fi-amber: #fbbf24;
+  --fi-orange: #fb923c;
+  --fi-red: #f87171;
+  --fi-pink: #f472b6;
+  --fi-purple: #c084fc;
+  --fi-slate: #94a3b8;
+  --git-modified: #e2c08d;
+  --git-added: #73c991;
+  --git-deleted: #e06c6c;
+  --git-conflicted: #e4676b;
+}
+
+:root[data-theme='light'] {
+  --fi-blue: #2563eb;
+  --fi-sky: #0284c7;
+  --fi-cyan: #0891b2;
+  --fi-teal: #0d9488;
+  --fi-green: #16a34a;
+  --fi-yellow: #ca8a04;
+  --fi-amber: #d97706;
+  --fi-orange: #ea580c;
+  --fi-red: #dc2626;
+  --fi-pink: #db2777;
+  --fi-purple: #9333ea;
+  --fi-slate: #64748b;
+  --git-modified: #895503;
+  --git-added: #587c0c;
+  --git-deleted: #ad0707;
+  --git-conflicted: #ad0707;
+}
+
+.file-icon {
+  flex: none;
+}
+
+.file-icon--blue { color: var(--fi-blue); }
+.file-icon--sky { color: var(--fi-sky); }
+.file-icon--cyan { color: var(--fi-cyan); }
+.file-icon--teal { color: var(--fi-teal); }
+.file-icon--green { color: var(--fi-green); }
+.file-icon--yellow { color: var(--fi-yellow); }
+.file-icon--amber { color: var(--fi-amber); }
+.file-icon--orange { color: var(--fi-orange); }
+.file-icon--red { color: var(--fi-red); }
+.file-icon--pink { color: var(--fi-pink); }
+.file-icon--purple { color: var(--fi-purple); }
+.file-icon--slate { color: var(--fi-slate); }
+
+/* git の印（右端の M・U・A…）。未保存の M の後ろに続ける */
+.explorer__git {
+  flex: none;
+  min-width: 1ch;
+  margin-left: auto;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-bold);
+  text-align: center;
+}
+
+.explorer__badge + .explorer__git {
+  margin-left: var(--space-2);
+}
+
+.explorer__row.git-modified > .explorer__name,
+.explorer__git--modified {
+  color: var(--git-modified);
+}
+
+.explorer__row.git-added > .explorer__name,
+.explorer__row.git-untracked > .explorer__name,
+.explorer__row.git-renamed > .explorer__name,
+.explorer__git--added,
+.explorer__git--untracked,
+.explorer__git--renamed {
+  color: var(--git-added);
+}
+
+.explorer__row.git-deleted > .explorer__name,
+.explorer__git--deleted {
+  color: var(--git-deleted);
+}
+
+.explorer__row.git-conflicted > .explorer__name,
+.explorer__git--conflicted {
+  color: var(--git-conflicted);
+}
+
+/* .gitignore の対象は薄く（VS Code の gitDecoration.ignoredResourceForeground） */
+.explorer__row.git-ignored > .explorer__name,
+.explorer__row.git-ignored > .file-icon {
+  opacity: 0.5;
+}
+
 
 
 

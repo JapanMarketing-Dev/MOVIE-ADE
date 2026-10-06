@@ -24,13 +24,19 @@ export function StatusPopover({ anchor: preferred, fallback = null, label, onClo
   const [pos, setPos] = useState<{ left: number; bottom?: number; top?: number } | null>(null)
 
   useLayoutEffect(() => {
-    if (!anchor || !ref.current) return
-    const a = anchor.getBoundingClientRect()
-    const w = ref.current.offsetWidth
-    const left = Math.max(8, Math.min(a.left, window.innerWidth - w - 8))
-    if (placement === 'below') return setPos({ left, top: a.bottom + 6 })
-    const footerTop = anchor.closest('.statusbar')?.getBoundingClientRect().top ?? a.top
-    setPos({ left, bottom: window.innerHeight - footerTop + 6 })
+    // 窓の幅が変わっても画面の内に収める（幅は CSS で 100vw - 16px まで）
+    const place = () => {
+      if (!anchor || !ref.current) return
+      const a = anchor.getBoundingClientRect()
+      const w = ref.current.offsetWidth
+      const left = Math.max(8, Math.min(a.left, window.innerWidth - w - 8))
+      if (placement === 'below') return setPos({ left, top: a.bottom + 6 })
+      const footerTop = anchor.closest('.statusbar')?.getBoundingClientRect().top ?? a.top
+      setPos({ left, bottom: window.innerHeight - footerTop + 6 })
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
   }, [anchor, placement])
 
   useEffect(() => {

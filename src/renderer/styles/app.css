@@ -232,19 +232,6 @@ button {
   grid-template: minmax(0, 1fr) / minmax(0, 1fr);
 }
 
-/* 横・縦に置いたパネルの高さ（プロジェクト一覧・ファイルツリーを上下に置いたとき） */
-.workspace {
-  --size-panel-strip: 220px;
-}
-
-/* 上下に置いたときは、中身を横幅いっぱいに広げる */
-.sidebar-slot[data-dock='top'] > *,
-.sidebar-slot[data-dock='bottom'] > *,
-.explorer-slot[data-dock='top'] > *,
-.explorer-slot[data-dock='bottom'] > * {
-  width: 100%;
-}
-
 /* フッターを上に置くと、タイトルバー → フッター → 本体の順に並べる */
 .shell--footer-top > .workspace {
   order: 1;
@@ -359,4 +346,10 @@ button {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* ブラウザに集中している間（タイトルバーのボタン）は、境界とターミナルを隠す。ターミナルは外さないので PTY・画面は残る */
+.main-split--focus > .splitter,
+.main-split--focus > .terminal-slot {
+  display: none;
 }
