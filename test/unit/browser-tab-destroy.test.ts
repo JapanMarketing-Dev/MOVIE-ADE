@@ -143,6 +143,45 @@ describe('プロジェクトを切り替えたときの古いタブの片付け'
   })
 })
 
+describe('ほかのビューの片付けも同じ順序（FERRET-1Q）', () => {
+  it('dispose は隠して外し、close は次のティック', async () => {
+    const browser = attach()
+    const [a, b] = state.views
+    state.log.length = 0
+    browser.dispose()
+    expect(state.log.filter((l) => l.startsWith('close'))).toEqual([])
+    for (const old of [a!, b!]) expect(state.log.indexOf(`remove ${old.id}`)).toBeGreaterThan(state.log.indexOf(`visible ${old.id} false`))
+    await nextTick()
+    expect(state.log.filter((l) => l.startsWith('close'))).toEqual([`close ${a!.id}`, `close ${b!.id}`])
+  })
+
+  it('retireView は同じ流れで close しない。先に閉じられていても触らない', async () => {
+    const { retireView } = await import('../../src/main/viewTeardown')
+    const { WebContentsView } = await import('electron')
+    const window = { contentView: { removeChildView: (v: { id: number }) => { state.log.push(`remove ${v.id}`) } }, isDestroyed: () => false }
+    const v = new WebContentsView() as unknown as (typeof state.views)[number]
+    const w = new WebContentsView() as unknown as (typeof state.views)[number]
+    state.log.length = 0
+    retireView(window as never, v as never, 'test')
+    retireView(window as never, w as never, 'test')
+    expect(state.log).toEqual([`visible ${v.id} false`, `bounds ${v.id} 0`, `remove ${v.id}`, `visible ${w.id} false`, `bounds ${w.id} 0`, `remove ${w.id}`])
+    w.webContents.closed = true
+    await nextTick()
+    expect(state.log.filter((l) => l.startsWith('close'))).toEqual([`close ${v.id}`])
+    expect(state.reported).toEqual([])
+  })
+
+  it('映し込み・拡張のポップアップの片付けも retireView を通る（同じティックの close を書かない）', async () => {
+    const { readFileSync } = await import('node:fs')
+    for (const file of ['src/main/browser.ts', 'src/main/browserExtensions.ts']) {
+      const src = readFileSync(file, 'utf8')
+      expect(src).not.toMatch(/removeChildView\([^)]*\)\s*\n\s*if \(![^\n]*isDestroyed\(\)\) [^\n]*webContents\.close\(\)/)
+    }
+    expect(readFileSync('src/main/browser.ts', 'utf8')).toMatch(/retireView\(this\.window, view, 'destroy capture mirror'\)/)
+    expect(readFileSync('src/main/browserExtensions.ts', 'utf8')).toMatch(/retireView\(this\.host\.window\(\), this\.view, 'close extension popup'\)/)
+  })
+})
+
 describe('読み込みの中断（ERR_ABORTED）は送らない（FERRET-1R）', () => {
   it('ERR_ABORTED (-3) の形を見分ける', () => {
     expect(isAbortedNavigation(Object.assign(new Error("ERR_ABORTED (-3) loading 'https://example.com/'"), { errno: -3, code: 'ERR_ABORTED' }))).toBe(true)
