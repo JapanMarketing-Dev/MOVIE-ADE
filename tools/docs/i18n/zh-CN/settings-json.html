@@ -25,7 +25,7 @@ Ferret 的所有设置都保存在一个 JSON 文件中，旁边附有 JSON Sche
 <p><code>settings.json</code> 的第一行是 <code>"$schema": "./settings.schema.json"</code>。VS Code 等编辑器和 Claude Code 等 Agent 会利用它进行补全、校验，并显示每个字段的说明。Schema 随应用一起发布，每次启动时都会写到该文件旁边，因此它始终与已安装的版本一致。</p>
 <p>Ferret 不认识的键在应用保存时会原样保留。打开的标签页、上次的 URL 和其他会话状态保存在 <code>state.json</code> 中，而不在这里。</p>
 
-<!-- @example a3549b8c04 -->
+<!-- @example 55cf9777fc -->
 ## 带注释的示例
 <p>JSON 不支持注释，所以说明写在示例下方。所有字段都是可选的；不需要的可以省略。</p>
 <pre><code>{
@@ -89,7 +89,7 @@ Ferret 的所有设置都保存在一个 JSON 文件中，旁边附有 JSON Sche
   <li><code>agents.customAgents</code>：任意 CLI 或包装脚本。<code>startupAgents</code> 按顺序列出随项目打开的 Agent 标签页。</li>
   <li><code>capture.sttEndpoints.compatible</code>：任何实现了 OpenAI <code>/v1/audio/transcriptions</code> 的服务器（speaches、vLLM、LocalAI…）。<code>costLimitUsd: null</code> 会关闭费用上限，这适合使用你自己的 GPU 的情况。参见<a href="transcription.html">转写与费用</a>。</li>
   <li><code>organizer</code>：<span class="docs-ui">整理反馈</span> 直接发送到兼容 OpenAI 的 <code>/v1/chat/completions</code> 服务器（此处为 Ollama）。如果想改用你自己的 CLI 登录，请使用 <code>"runner": "claude-code"</code> 或 <code>"codex"</code>，并用 <code>organizer.cliModels</code> 选择它们的模型。</li>
-  <li><code>decision</code>：检查每条反馈是否已修复的模型。在本地 Ollama 上运行的 Clef Flash 免费，并且能读取截图。<code>preset</code> 也可以是 <code>cloudflare</code>、<code>vercel</code>、<code>typesafe</code> 或 <code>custom</code>。</li>
+  <li><code>decision</code>：检查每条反馈是否已修复的模型。在本地 Ollama 上运行的 Clef Flash 免费，并且能读取截图。<code>preset</code> 也可以是 <code>cloudflare</code>、<code>vercel</code>、<code>typesafe</code>、<code>openai</code> 或 <code>custom</code>。</li>
   <li>每个提供商块（<code>sttEndpoints.*</code>、<code>organizer.endpoints.*</code>）还接受 <code>timeoutMs</code>、<code>headers</code>，对于 Azure 还接受 <code>apiVersion</code>。</li>
 </ul>
 <div class="docs-callout docs-callout-note"><p>Ferret 绝不会代你为 AI 付费。没有内置密钥，也没有中继服务器：每个请求都使用你的密钥，从你的电脑直接发送到你配置的端点。</p></div>

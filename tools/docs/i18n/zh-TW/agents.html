@@ -77,7 +77,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>若沒有 Agent 在執行，Ferret 會先啟動一個，並在它就緒後立即傳送。Agent 正在等待權限回覆時不會傳送任何內容，請先在終端機中回覆。</p>
 <p><span class="docs-ui">拷貝給 Agent</span> 會把同樣的指示放到剪貼簿，給在其他地方（其他終端機、IDE 或 App）執行的 Agent 使用。只有切換為 <span class="docs-ui">傳送</span> 的意見會被處理。影片絕不會包含在內。</p>
 
-<!-- @verify 6bb391611d -->
+<!-- @verify 205abd35bc -->
 ## 用判定模型做驗收檢查
 {{clip:verify|Agent 修正意見，並在你查看之前用判定模型逐一檢查。}}
 <p>開啟後，你的程式設計 Agent 會在你查看之前依每則意見把自己的成果檢查一次。Ferret 本身不做任何判定：它把<em>判定模型</em>（任何相容 System One 的 API）提供給 Agent，並在 <code>feedback.md</code> 中告訴它如何使用。判定模型是 Agent 自己的檢查，絕不是向你提問：Agent 不會問你任何問題。你只需比較 BEFORE 與 AFTER，然後按 <span class="docs-ui">OK</span> 或 <span class="docs-ui">NG</span>。</p>
@@ -97,9 +97,11 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
     <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>、<code>clef</code>（可讀圖片）</td><td><code>CLOUDFLARE_API_TOKEN</code>（Workers AI 權限）；帳戶 ID 來自欄位或 <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
     <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>、<code>convaiinnovations/laya</code>（僅文字）</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
     <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>、<code>jev-preview</code>（僅文字）</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>OpenAI</td><td><code>https://api.openai.com/v1/decisions</code></td><td><code>gpt-6-luna</code>（可讀圖片）</td><td><code>OPENAI_API_KEY</code></td></tr>
     <tr><td>自訂</td><td>任何完整 URL</td><td>任何</td><td>Bearer、自訂標頭或不使用；可加入額外標頭</td></tr>
   </tbody>
 </table>
+<p>OpenAI 預設使用 OpenAI 的 Decisions API，它有自己的請求格式（<code>input</code>、<code>questions</code> 清單和 <code>answers</code>）。代理程式仍以 System One 的格式傳送給中繼：只有在這個預設下，中繼會轉換請求（BEFORE/AFTER 圖片會變成 <code>input_image</code> 的 data URL），並把答案轉換回來，因此給代理程式的指示維持不變。它使用你的 OpenAI API 金鑰，與轉錄使用的相同。OpenAI 只對輸入 token 收費（每 100 萬 token $0.10）。</p>
 <p>使用 Ollama 時，請先安裝（Clef / Clef Flash 需要 0.35.1 以上），並在終端機中下載模型。Ferret 不會執行安裝程式：</p>
 <pre><code>ollama pull clef-flash</code></pre>
 <p>金鑰來自金鑰欄位（與你的其他 API 金鑰一起儲存）、你指定的環境變數（App 的環境、專案的 <code>.env</code> 或 <code>~/.ferret/.env</code>），或 <code>settings.json</code> 中的 <code>apiKey</code>。額外標頭可以用 <code>${VAR}</code> 讀取環境變數的值。</p>

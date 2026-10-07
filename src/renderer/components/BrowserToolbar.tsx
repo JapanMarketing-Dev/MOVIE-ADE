@@ -7,6 +7,7 @@ import { Button, IconButton, Segmented, Tooltip, useToast } from '../ui'
 import { NavControls } from './NavControls'
 import { UrlPresets } from './UrlPresets'
 import { BrowserExtensionsButton } from './BrowserExtensionsButton'
+import { PasswordFillButton } from './PasswordFillButton'
 import { useT } from '../lib/i18n'
 import { errorMessage } from '../lib/errors'
 
@@ -69,6 +70,8 @@ export function BrowserToolbar({
           data-testid="browser-open-external"
         />
       </Tooltip>
+      {/* 取り込んだパスワードがこのページにあるときだけ出る鍵のボタン（src/renderer/components/PasswordFillButton.tsx） */}
+      <PasswordFillButton state={state} />
       <UrlPresets project={project} currentUrl={state.url} onOverlayChange={onOverlayChange} onSelectWindow={onSelectWindow} />
       {shownTarget && shownTarget.kind !== 'browser' && (
         <span className="browser-toolbar__shown" data-testid="browser-shown-target">

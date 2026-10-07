@@ -243,7 +243,7 @@
   <li><code>agents.customAgents</code>: 任意の CLI やラッパースクリプト。<code>startupAgents</code> は、プロジェクトと一緒に開くエージェントのタブを順に並べたものです。</li>
   <li><code>capture.sttEndpoints.compatible</code>: OpenAI の <code>/v1/audio/transcriptions</code> を実装したサーバーならどれでも使えます（speaches、vLLM、LocalAI…）。<code>costLimitUsd: null</code> で費用の上限を外します。自前の GPU ならこれが妥当です。<a href="transcription.html">文字起こしと費用</a>を見てください。</li>
   <li><code>organizer</code>: <span class="docs-ui">指摘を整理</span> を OpenAI 互換の <code>/v1/chat/completions</code> サーバー（ここでは Ollama）に直接送ります。代わりに自分の CLI のログインを使うなら <code>"runner": "claude-code"</code> か <code>"codex"</code> にし、そのモデルは <code>organizer.cliModels</code> で選びます。</li>
-  <li><code>decision</code>: 各指摘が直ったかを判定するモデル。ローカルの Ollama で動く Clef Flash は無料で、スクリーンショットも読めます。<code>preset</code> には <code>cloudflare</code>、<code>vercel</code>、<code>typesafe</code>、<code>custom</code> も指定できます。</li>
+  <li><code>decision</code>: 各指摘が直ったかを判定するモデル。ローカルの Ollama で動く Clef Flash は無料で、スクリーンショットも読めます。<code>preset</code> には <code>cloudflare</code>、<code>vercel</code>、<code>typesafe</code>、<code>openai</code>、<code>custom</code> も指定できます。</li>
   <li>どの接続先のブロック（<code>sttEndpoints.*</code>、<code>organizer.endpoints.*</code>）も、<code>timeoutMs</code>、<code>headers</code>、Azure なら <code>apiVersion</code> を受け付けます。</li>
 </ul>
 <div class="docs-callout docs-callout-note"><p>Ferret があなたの代わりに AI の費用を払うことはありません。組み込みのキーも中継サーバーも無く、すべてのリクエストはあなたのマシンから、あなたが設定した接続先へ、あなたのキーで送られます。</p></div>

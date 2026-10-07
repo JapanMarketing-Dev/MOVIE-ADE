@@ -27,7 +27,7 @@ import type { BuiltinAgent } from '../../src/shared/types'
 vi.mock('electron', () => ({ app: { getPath: () => tmpdir(), getAppPath: () => tmpdir(), isPackaged: false } }))
 vi.mock('../../src/main/telemetry', () => ({ reportMainError: vi.fn() }))
 const state = vi.hoisted(() => ({ dirs: [] as string[], spawns: [] as Array<{ file: string; args: string[]; cwd: string; env: Record<string, string> }> }))
-vi.mock('../../src/main/agentDetection', () => ({ searchDirs: async () => state.dirs }))
+vi.mock('../../src/main/agentDetection', () => ({ searchDirs: async () => state.dirs, shellPathIsProvisional: () => false }))
 vi.mock('../../src/main/accounts', () => ({
   buildAccountLoginLaunch: () => ({ argv: ['claude', 'auth', 'login', '--claudeai'], env: {}, title: 'Claude Code login' }),
   resolveAgentEnv: () => ({}),

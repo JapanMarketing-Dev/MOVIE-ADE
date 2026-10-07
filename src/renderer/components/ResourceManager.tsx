@@ -24,7 +24,7 @@ import { useT } from '../lib/i18n'
 
 /** 開いている間は細かく、閉じている間はフッターの数字を保つだけの軽い間隔で取る */
 const OPEN_POLL_MS = 1500
-const CLOSED_POLL_MS = 5000
+const CLOSED_POLL_MS = 10_000
 
 function useResourceSnapshot(open: boolean): { snapshot: ResourceSnapshot | null; refresh: () => void } {
   const [snapshot, setSnapshot] = useState<ResourceSnapshot | null>(null)
@@ -134,6 +134,7 @@ export function ResourceManager({
             <span className={`rm-dot${term.running ? ' is-running' : ''}`} aria-label={term.running ? t('resources.running') : t('resources.idle')} />
             <SquareTerminal size={12} aria-hidden="true" />
             <span className="rm-name" title={term.title}>{term.title}</span>
+            {term.top && <span className="rm-sub" title={t('resources.topProcessHint', { name: term.top.name, cpu: formatCpu(term.top.cpu) })}>{term.top.name} {formatCpu(term.top.cpu)}</span>}
             {term.orphan && <span className="rm-badge" title={t('resources.orphanHint')}>{t('resources.orphan')}</span>}
           </button>
           <Metrics cpu={term.cpu} memory={term.memory} />
@@ -206,7 +207,7 @@ export function ResourceManager({
         <div className="rm-table">
           <div className="rm-row rm-row--head">
             <span className="rm-name">Name</span>
-            <span className="rm-col rm-col--cpu">CPU</span>
+            <span className="rm-col rm-col--cpu" title={snapshot ? t('resources.cpuColumnHint', { cores: snapshot.cores, max: `${snapshot.cores * 100}%` }) : undefined}>CPU</span>
             <span className="rm-col rm-col--rss">RSS</span>
             <span className="rm-gutter" />
           </div>

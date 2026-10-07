@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
-  EMPTY_GIT_DECORATIONS, buildGitDecorations, gitStateFor, isGitIgnored, isHiddenByDefault, isSecretEnvName, parseGitStatusZ, stateFromXY, withoutHidden,
+  EMPTY_GIT_DECORATIONS, buildGitDecorations, gitStateFor, isGitIgnored, isHiddenByDefault, parseGitStatusZ, stateFromXY, withoutHidden,
   type FsGitStatus
 } from '@shared/gitDecorations'
 import { fileIconFor, folderIconFor } from '../../src/renderer/lib/fileIcons'
@@ -117,31 +117,15 @@ describe('buildGitDecorations・gitStateFor（親への伝播）', () => {
 })
 
 describe('既定で隠すもの', () => {
-  it('秘密を含みうる .env と雛形を分ける', () => {
-    for (const name of ['.env', '.env.local', '.env.production', '.env.development.local', '.ENV']) expect(isSecretEnvName(name), name).toBe(true)
-    for (const name of ['.env.example', '.env.sample', '.env.template', '.env.dist', '.env.defaults', 'env', '.envrc', 'a.env', '.environment']) expect(isSecretEnvName(name), name).toBe(false)
-  })
-
-  it('.git・.DS_Store は常に、.env は .gitignore の対象のときだけ隠す（git で管理しているものは出す）', () => {
+  it('既定で隠すのは .git・.DS_Store だけ。.env は .gitignore の対象でも出す', () => {
     const deco = buildGitDecorations({ isGit: true, truncated: false, entries: [['.env', 'ignored'], ['.env.local', 'ignored'], ['secrets', 'ignored']] })
-    const hidden = (path: string) => isHiddenByDefault({ name: path.slice(path.lastIndexOf('/') + 1), path }, deco)
+    const hidden = (path: string) => isHiddenByDefault({ name: path.slice(path.lastIndexOf('/') + 1), path })
     expect(hidden('.git')).toBe(true)
     expect(hidden('.DS_Store')).toBe(true)
     expect(hidden('src/.DS_Store')).toBe(true)
-    expect(hidden('.env')).toBe(true)
-    expect(hidden('.env.local')).toBe(true)
-    expect(hidden('secrets/.env.production')).toBe(true)
-    // 追跡している .env.production・雛形・ふつうのファイルは出す
-    expect(hidden('.env.production')).toBe(false)
-    expect(hidden('.env.example')).toBe(false)
-    expect(hidden('.gitignore')).toBe(false)
-    expect(hidden('src/a.ts')).toBe(false)
-  })
-
-  it('git の状態がまだ分からない・リポジトリでないときは .env を念のため隠す', () => {
-    expect(isHiddenByDefault({ name: '.env', path: '.env' }, null)).toBe(true)
-    expect(isHiddenByDefault({ name: '.env', path: '.env' }, EMPTY_GIT_DECORATIONS)).toBe(true)
-    expect(isHiddenByDefault({ name: '.env.example', path: '.env.example' }, null)).toBe(false)
+    for (const path of ['.env', '.env.local', 'secrets/.env.production', '.env.example', '.gitignore', 'src/a.ts']) expect(hidden(path), path).toBe(false)
+    // .gitignore の対象は薄く出す印が付く
+    expect(gitStateFor(deco, '.env', 'file')).toBe('ignored')
   })
 
   it('withoutHidden は隠したフォルダの中の行も外す', () => {
@@ -275,8 +259,8 @@ describe.skipIf(!hasGit)('readGitDecorations（本物の git）', () => {
       ['src/a.ts', 'modified'], ['src/new.ts', 'untracked'], ['gone.md', 'deleted'], ['.env', 'ignored'], ['dist', 'ignored']
     ]))
     const deco = buildGitDecorations(status)
-    expect(isHiddenByDefault({ name: '.env', path: '.env' }, deco)).toBe(true)
-    expect(isHiddenByDefault({ name: '.env.example', path: '.env.example' }, deco)).toBe(false)
+    expect(isHiddenByDefault({ name: '.env', path: '.env' })).toBe(false)
+    expect(gitStateFor(deco, '.env', 'file')).toBe('ignored')
   })
 
   it('git のリポジトリでなければ isGit: false', async () => {

@@ -5,7 +5,7 @@ File e ambiente
 <!-- @lead b2a7619b5e -->
 Dove Ferret conserva i propri file, e le variabili d'ambiente che legge o imposta.
 
-<!-- @userdata ee70336b22 -->
+<!-- @userdata 71b30d8c35 -->
 ## Cartella userData
 <p>I dati dell'app si trovano nella cartella <code>userData</code> di Electron. Il suo nome è fissato su <code>ade-movie</code> (non sul nome del prodotto), così i dati sopravvivono ai cambi di nome. Puoi sovrascriverla con <code>--user-data-dir=&lt;path&gt;</code>.</p>
 <table>
@@ -18,13 +18,15 @@ Dove Ferret conserva i propri file, e le variabili d'ambiente che legge o impost
 </table>
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
+browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts
 accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
 <p>Le tue impostazioni non sono in questa cartella: si trovano in <code>~/.ferret/</code> (vedi <a href="settings-json.html">Configurare con settings.json</a>).</p>
 <p>Un modello scelto da te può trovarsi ovunque. Viene ancora controllato il vecchio percorso predefinito <code>~/.cache/ade-movie/models/ggml-small.bin</code>.</p>
 
-<!-- @env 1d9b0a6a78 -->
+<!-- @env 35e3e2ffb2 -->
 ## Variabili d'ambiente
 <table>
   <thead><tr><th>Variabile</th><th>Effetto</th></tr></thead>
@@ -36,6 +38,7 @@ accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
     <tr><td><code>ADE_PROJECT_DIR</code></td><td>Apre (e registra) questa cartella come progetto all'avvio</td></tr>
     <tr><td><code>ADE_INITIAL_URL</code></td><td>Carica questo URL nel browser integrato all'avvio</td></tr>
     <tr><td><code>ADE_WHISPER_MODEL</code></td><td>Percorso assoluto di un modello GGML da usare per la trascrizione sul dispositivo, al posto di quello predefinito scaricato</td></tr>
+    <tr><td><code>ADE_TERMINAL_PREWARM</code></td><td><code>0</code> impedisce a Ferret di tenere una shell pronta in background. Per impostazione predefinita la usa la successiva scheda di shell semplice, così il suo prompt compare subito</td></tr>
     <tr><td><code>FERRET_SENTRY_DSN</code> (o il vecchio <code>MOVIE_ADE_SENTRY_DSN</code>)</td><td>Dove vanno i report sugli arresti anomali. Se è vuota non viene inviato nulla (vedi <a href="privacy.html#crash-reports">Report sugli arresti anomali</a>)</td></tr>
     <tr><td><code>OPENAI_API_KEY</code></td><td>Letta da <code>.env</code> solo in sviluppo (<code>pnpm dev</code>), mai nelle build pacchettizzate</td></tr>
     <tr><td><code>PATH</code></td><td>Usata per trovare i comandi dei tuoi agent (<code>claude</code>, <code>codex</code>, <code>gemini</code>…), <code>gh</code>, <code>git</code>, <code>whisper-cli</code>. Su macOS e Linux vengono aggiunti i percorsi di Homebrew, linuxbrew e snap</td></tr>

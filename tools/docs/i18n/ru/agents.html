@@ -77,7 +77,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>Если ни один агент не запущен, Ferret сначала запускает его и отправляет, как только он будет готов. Пока агент ждёт ответа на запрос разрешения, ничего не отправляется. Сначала ответьте в терминале.</p>
 <p><span class="docs-ui">Копировать для агента</span> помещает ту же инструкцию в буфер обмена для агента, работающего в другом месте (в другом терминале, IDE или приложении). Учитываются только замечания, переключённые на <span class="docs-ui">Отправить</span>. Видео никогда не включается.</p>
 
-<!-- @verify 6bb391611d -->
+<!-- @verify 205abd35bc -->
 ## Проверка приёмки моделью решений
 {{clip:verify|Агент исправляет замечания и проверяет каждое моделью решений до того, как вы их посмотрите.}}
 <p>Включите эту функцию, и ваш агент для написания кода будет один раз проверять свою работу по каждому замечанию, прежде чем вы посмотрите. Сам Ferret ничего не оценивает: он даёт агенту <em>модель решений</em> (любой API, совместимый с System One) и в <code>feedback.md</code> объясняет, как ею пользоваться. Модель решений — это собственная проверка агента, а не вопрос к вам: агент ни о чём вас не спрашивает. Вы только сравниваете ДО и ПОСЛЕ и нажимаете <span class="docs-ui">OK</span> или <span class="docs-ui">NG</span>.</p>
@@ -97,9 +97,11 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
     <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (читают изображения)</td><td><code>CLOUDFLARE_API_TOKEN</code> (разрешение Workers AI); ID аккаунта из поля или <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
     <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (только текст)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
     <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (только текст)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>OpenAI</td><td><code>https://api.openai.com/v1/decisions</code></td><td><code>gpt-6-luna</code> (читает изображения)</td><td><code>OPENAI_API_KEY</code></td></tr>
     <tr><td>Свой</td><td>любой полный URL</td><td>любые</td><td>Bearer, свой заголовок или без ключа; допускаются дополнительные заголовки</td></tr>
   </tbody>
 </table>
+<p>Пресет OpenAI использует Decisions API от OpenAI с собственным форматом запроса (<code>input</code>, список <code>questions</code> и <code>answers</code>). Агенты по-прежнему отправляют ретранслятору формат System One: только для этого пресета ретранслятор преобразует запрос (изображения BEFORE/AFTER становятся data URL <code>input_image</code>) и преобразует ответы обратно, поэтому инструкции агента не меняются. Используется ваш ключ API OpenAI — тот же, что для распознавания речи. OpenAI берёт плату только за входные токены ($0.10 за 1 млн).</p>
 <p>Для Ollama установите его (0.35.1 или новее для Clef / Clef Flash) и скачайте модель в терминале. Ferret не запускает установщики:</p>
 <pre><code>ollama pull clef-flash</code></pre>
 <p>Ключи берутся из поля ключа (сохраняется вместе с другими вашими API-ключами), из указанной вами переменной окружения (окружение приложения, <code>.env</code> проекта или <code>~/.ferret/.env</code>) или из <code>apiKey</code> в <code>settings.json</code>. Дополнительные заголовки могут брать значения из переменных окружения через <code>${VAR}</code>.</p>

@@ -170,6 +170,8 @@
 </table>
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
+browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts
 accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
@@ -189,6 +191,7 @@ accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
     <tr><td><code>ADE_PROJECT_DIR</code></td><td>启动时将此文件夹作为项目打开（并登记）</td></tr>
     <tr><td><code>ADE_INITIAL_URL</code></td><td>启动时在内置浏览器中加载此 URL</td></tr>
     <tr><td><code>ADE_WHISPER_MODEL</code></td><td>用于本机转写的 GGML 模型的绝对路径，优先于下载的默认模型</td></tr>
+    <tr><td><code>ADE_TERMINAL_PREWARM</code></td><td>设为 <code>0</code> 时，Ferret 不再在后台预先准备一个 shell。默认情况下，下一个普通 shell 标签页会使用它，因此提示符会立即出现</td></tr>
     <tr><td><code>FERRET_SENTRY_DSN</code>（或旧的 <code>MOVIE_ADE_SENTRY_DSN</code>）</td><td>崩溃报告的发送目标。为空时不发送（参见<a href="privacy.html#crash-reports">崩溃报告</a>）</td></tr>
     <tr><td><code>OPENAI_API_KEY</code></td><td>仅在开发时（<code>pnpm dev</code>）从 <code>.env</code> 读取，打包后的版本从不读取</td></tr>
     <tr><td><code>PATH</code></td><td>用于查找你的 Agent 命令（<code>claude</code>、<code>codex</code>、<code>gemini</code>…）、<code>gh</code>、<code>git</code>、<code>whisper-cli</code>。在 macOS 和 Linux 上，会追加 Homebrew、linuxbrew 和 snap 的位置</td></tr>

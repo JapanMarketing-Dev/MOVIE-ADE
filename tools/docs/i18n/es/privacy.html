@@ -21,7 +21,7 @@ Las revisiones están en la carpeta de tu proyecto. Los ajustes están en <code>
 ## Conservación
 <p><span class="docs-ui">Conservar grabaciones</span> (7 días de forma predeterminada, 30 días o <span class="docs-ui">Siempre</span>): al iniciar, las revisiones completadas más antiguas que eso pierden <code>recording.webm</code> y <code>work/</code>. Se conservan <code>feedback.md</code> y las imágenes de los hallazgos. Las revisiones incompletas nunca se limpian. La limpieza se ejecuta al iniciar, para el último proyecto abierto.</p>
 
-<!-- @network e41bf8a43d -->
+<!-- @network 01317dfbcc -->
 ## Qué sale de tu equipo
 <table>
   <thead><tr><th>Cuándo</th><th>Destino</th><th>Datos</th></tr></thead>
@@ -30,7 +30,7 @@ Las revisiones están en la carpeta de tu proyecto. Los ajustes están en <code>
     <tr><td>Transcripción: OpenAI / compatible</td><td>OpenAI o tu Base URL</td><td>fragmentos de audio</td></tr>
     <tr><td>Descarga de modelos</td><td>Hugging Face</td><td>solicitud del archivo</td></tr>
     <tr><td><span class="docs-ui">Organizar</span></td><td>tu CLI de Claude Code / Codex, o el endpoint de LLM que definas en <code>organizer</code></td><td>solo texto y registro de acciones (sin imágenes, audio ni vídeo)</td></tr>
-    <tr><td>Comprobación de aceptación (modelo de decisión, desactivada de forma predeterminada)</td><td>tu agente, a través del relay local, a Ollama / Cloudflare / AI Gateway / TypeSafe / tu URL</td><td>lo que envía el agente: el texto del hallazgo, «Done when» y las capturas BEFORE/AFTER (solo modelos de imagen)</td></tr>
+    <tr><td>Comprobación de aceptación (modelo de decisión, desactivada de forma predeterminada)</td><td>tu agente, a través del relay local, a Ollama / Cloudflare / AI Gateway / TypeSafe / OpenAI / tu URL</td><td>lo que envía el agente: el texto del hallazgo, «Done when» y las capturas BEFORE/AFTER (solo modelos de imagen)</td></tr>
     <tr><td><span class="docs-ui">Enviar al agente</span></td><td>el agente de tu terminal</td><td>una instrucción que apunta a <code>feedback.md</code></td></tr>
     <tr><td>Uso en el pie de la ventana (solo Claude Code y Codex)</td><td>Anthropic, ChatGPT</td><td>solicitud de uso con tu propio inicio de sesión</td></tr>
     <tr><td>Petición de estrella en GitHub</td><td>GitHub mediante tu <code>gh</code></td><td>comprueba si diste estrella al repositorio, y solo la da si haces clic en <span class="docs-ui">Dar estrella en GitHub</span></td></tr>

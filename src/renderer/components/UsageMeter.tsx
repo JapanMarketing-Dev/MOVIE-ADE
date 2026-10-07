@@ -69,11 +69,12 @@ function chipLabel(section: UsageSection, now: number): string {
 /** フッターの1プロバイダ分（Orca の ProviderSegment） */
 function ProviderSegment({ p, agent, level, now }: { p: ProviderRateLimits | null; agent: AccountAgent; level: number; now: number }) {
   const t = useT()
+  // まだ読んでいない（idle）ときは読み込み中ではないので、点滅させない（何も読んでいないのに読み込み中に見えた）
   if (!p || p.status === 'idle') {
     return (
       <span className="usage-seg usage-seg--muted">
         <AgentIcon agent={agent} size={12} />
-        <span className="usage-seg__pulse">···</span>
+        <span>···</span>
       </span>
     )
   }

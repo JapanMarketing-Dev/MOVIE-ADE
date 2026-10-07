@@ -77,7 +77,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>Nếu chưa có agent nào chạy, Ferret khởi động một agent trước và gửi ngay khi nó sẵn sàng. Không có gì được gửi khi agent đang chờ trả lời về quyền. Hãy trả lời trong terminal trước.</p>
 <p><span class="docs-ui">Sao chép cho Agent</span> đưa cùng chỉ dẫn đó vào clipboard cho một agent chạy ở nơi khác (terminal khác, IDE hoặc ứng dụng khác). Chỉ những góp ý được bật <span class="docs-ui">Gửi</span> mới được xử lý. Video không bao giờ được đính kèm.</p>
 
-<!-- @verify 6bb391611d -->
+<!-- @verify 205abd35bc -->
 ## Kiểm tra nghiệm thu bằng model quyết định
 {{clip:verify|Agent sửa các góp ý và kiểm tra từng góp ý bằng model quyết định trước khi bạn xem chúng.}}
 <p>Bật tính năng này và coding agent của bạn sẽ tự kiểm tra công việc của mình một lần theo từng góp ý trước khi bạn xem. Ferret không tự đánh giá gì cả: nó cung cấp cho agent một <em>model quyết định</em> (bất kỳ API nào tương thích System One) và hướng dẫn agent cách dùng nó trong <code>feedback.md</code>. Model quyết định là bước tự kiểm tra của chính agent, không bao giờ là câu hỏi cho bạn: agent không hỏi bạn điều gì. Bạn chỉ so sánh BEFORE và AFTER rồi bấm <span class="docs-ui">OK</span> hoặc <span class="docs-ui">NG</span>.</p>
@@ -97,9 +97,11 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
     <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (đọc được ảnh)</td><td><code>CLOUDFLARE_API_TOKEN</code> (quyền Workers AI); account ID lấy từ trường nhập hoặc <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
     <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (chỉ văn bản)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
     <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (chỉ văn bản)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>OpenAI</td><td><code>https://api.openai.com/v1/decisions</code></td><td><code>gpt-6-luna</code> (đọc được ảnh)</td><td><code>OPENAI_API_KEY</code></td></tr>
     <tr><td>Tùy chỉnh</td><td>bất kỳ URL đầy đủ nào</td><td>bất kỳ</td><td>Bearer, header tùy chỉnh, hoặc không có; cho phép thêm header</td></tr>
   </tbody>
 </table>
+<p>Preset OpenAI dùng Decisions API của OpenAI, vốn có định dạng yêu cầu riêng (<code>input</code>, danh sách <code>questions</code> và <code>answers</code>). Agent vẫn gửi định dạng System One đến relay: chỉ với preset này, relay chuyển đổi yêu cầu (ảnh BEFORE/AFTER trở thành data URL <code>input_image</code>) và chuyển câu trả lời ngược lại, nên chỉ dẫn cho agent không đổi. Preset dùng khóa API OpenAI của bạn, giống với khóa dùng cho chuyển văn bản. OpenAI chỉ tính phí token đầu vào ($0.10 cho 1 triệu).</p>
 <p>Với Ollama, hãy cài đặt nó (0.35.1 trở lên cho Clef / Clef Flash) và pull model trong terminal. Ferret không chạy trình cài đặt:</p>
 <pre><code>ollama pull clef-flash</code></pre>
 <p>Key được lấy từ trường key (lưu cùng các API key khác của bạn), từ một biến môi trường do bạn đặt tên (môi trường của ứng dụng, <code>.env</code> của dự án, hoặc <code>~/.ferret/.env</code>), hoặc từ <code>apiKey</code> trong <code>settings.json</code>. Header bổ sung có thể đọc giá trị từ biến môi trường bằng <code>${VAR}</code>.</p>

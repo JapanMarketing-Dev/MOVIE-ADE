@@ -77,7 +77,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>エージェントが動いていなければ、Ferret が先に起動し、準備ができしだい送ります。エージェントが権限の確認への答えを待っている間は何も送りません。先にターミナルで答えてください。</p>
 <p><span class="docs-ui">Agent向けにコピー</span> は、ほかの場所（別のターミナル、IDE、アプリ）で動くエージェントのために、同じ指示をクリップボードに入れます。対象になるのは <span class="docs-ui">送信する</span> にした指摘だけです。動画は決して含めません。</p>
 
-<!-- @verify 6bb391611d -->
+<!-- @verify 205abd35bc -->
 ## 判定モデルでの受け入れ確認
 {{clip:verify|エージェントが指摘を直し、あなたが見る前に判定モデルで1件ずつ確かめる。}}
 <p>これを入にすると、コーディングエージェントはあなたが見る前に、自分の作業を指摘ごとに1回確かめます。Ferret 自身は何も判定しません。エージェントに<em>判定モデル</em>（System One 互換の API ならどれでも）を渡し、その使い方を <code>feedback.md</code> で指示します。判定モデルはエージェント自身の確認で、あなたへの質問にはなりません。エージェントはあなたに何も質問しません。あなたは BEFORE と AFTER を見比べて <span class="docs-ui">OK</span> か <span class="docs-ui">NG</span> を押すだけです。</p>
@@ -97,9 +97,11 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
     <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>、<code>clef</code>（画像を読める）</td><td><code>CLOUDFLARE_API_TOKEN</code>（Workers AI の権限）。アカウント ID は欄か <code>CLOUDFLARE_ACCOUNT_ID</code> から</td></tr>
     <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>、<code>convaiinnovations/laya</code>（テキストのみ）</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
     <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>、<code>jev-preview</code>（テキストのみ）</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>OpenAI</td><td><code>https://api.openai.com/v1/decisions</code></td><td><code>gpt-6-luna</code>（画像を読める）</td><td><code>OPENAI_API_KEY</code></td></tr>
     <tr><td>任意の接続先</td><td>任意の完全な URL</td><td>任意</td><td>Bearer、任意のヘッダー、またはなし。追加のヘッダーも使える</td></tr>
   </tbody>
 </table>
+<p>OpenAI のプリセットは OpenAI の Decisions API を使います。リクエストの形が独自です（<code>input</code>、<code>questions</code> の配列、<code>answers</code>）。エージェントは今までどおり System One の形で中継へ送り、このプリセットのときだけ中継がリクエストを写し替え（BEFORE/AFTER の画像は <code>input_image</code> の data URL になります）、答えを元の形に戻します。そのためエージェントへの指示は変わりません。キーは OpenAI の API キー（文字起こしと同じもの）を使います。OpenAI の料金は入力トークンだけです（100 万トークンあたり $0.10）。</p>
 <p>Ollama を使うときは、Ollama を入れ（Clef / Clef Flash には 0.35.1 以降が必要）、ターミナルでモデルを取得します。Ferret はインストーラーを実行しません。</p>
 <pre><code>ollama pull clef-flash</code></pre>
 <p>キーは、キーの欄（ほかの API キーと一緒に保存）、名前を指定した環境変数（アプリの環境、プロジェクトの <code>.env</code>、または <code>~/.ferret/.env</code>）、または <code>settings.json</code> の <code>apiKey</code> から読みます。追加のヘッダーでは <code>${VAR}</code> で環境変数の値を使えます。</p>

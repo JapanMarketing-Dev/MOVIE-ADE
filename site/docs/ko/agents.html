@@ -316,9 +316,11 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
     <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code>(이미지 읽기 가능)</td><td><code>CLOUDFLARE_API_TOKEN</code>(Workers AI 권한); 계정 ID는 필드 또는 <code>CLOUDFLARE_ACCOUNT_ID</code>에서</td></tr>
     <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code>(텍스트 전용)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
     <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code>(텍스트 전용)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>OpenAI</td><td><code>https://api.openai.com/v1/decisions</code></td><td><code>gpt-6-luna</code>(이미지 읽기 가능)</td><td><code>OPENAI_API_KEY</code></td></tr>
     <tr><td>사용자 지정</td><td>임의의 전체 URL</td><td>임의</td><td>Bearer, 사용자 지정 헤더, 또는 없음; 추가 헤더 사용 가능</td></tr>
   </tbody>
 </table>
+<p>OpenAI 프리셋은 OpenAI의 Decisions API를 씁니다. 이 API는 요청 형식이 따로 있습니다(<code>input</code>, <code>questions</code> 목록, <code>answers</code>). 에이전트는 지금처럼 System One 형식으로 중계에 보내며, 이 프리셋일 때만 중계가 요청을 변환하고(BEFORE/AFTER 이미지는 <code>input_image</code>의 data URL이 됩니다) 답을 원래 형식으로 되돌립니다. 그래서 에이전트에게 주는 지시는 바뀌지 않습니다. 키는 OpenAI API 키(음성 인식과 같은 키)를 씁니다. OpenAI는 입력 토큰에만 요금을 매깁니다(100만 토큰당 $0.10).</p>
 <p>Ollama를 쓰려면 설치하고(Clef / Clef Flash에는 0.35.1 이상) 터미널에서 모델을 내려받으세요. Ferret은 설치 프로그램을 실행하지 않습니다.</p>
 <pre><code>ollama pull clef-flash</code></pre>
 <p>키는 키 필드(다른 API 키와 함께 저장됨), 지정한 이름의 환경 변수(앱의 환경, 프로젝트의 <code>.env</code>, 또는 <code>~/.ferret/.env</code>), 또는 <code>settings.json</code>의 <code>apiKey</code>에서 가져옵니다. 추가 헤더는 <code>${VAR}</code>로 환경 변수의 값을 읽을 수 있습니다.</p>

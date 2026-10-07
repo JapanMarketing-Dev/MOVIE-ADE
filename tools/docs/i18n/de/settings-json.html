@@ -25,7 +25,7 @@ Alle Einstellungen von Ferret stehen in einer einzigen JSON-Datei, neben der ein
 <p>Die erste Zeile von <code>settings.json</code> lautet <code>"$schema": "./settings.schema.json"</code>. Editoren wie VS Code und Agents wie Claude Code nutzen sie für Vervollständigung, Validierung und die Beschreibung jedes Felds. Das Schema wird mit der App ausgeliefert und bei jedem Start neben die Datei geschrieben, sodass es immer zur installierten Version passt.</p>
 <p>Schlüssel, die Ferret nicht kennt, bleiben beim Speichern durch die App unverändert erhalten. Geöffnete Tabs, die letzte URL und anderer Sitzungszustand werden in <code>state.json</code> gespeichert, nicht hier.</p>
 
-<!-- @example a3549b8c04 -->
+<!-- @example 55cf9777fc -->
 ## Kommentiertes Beispiel
 <p>JSON kennt keine Kommentare, daher stehen die Erläuterungen unter dem Beispiel. Jedes Feld ist optional; lassen Sie weg, was Sie nicht brauchen.</p>
 <pre><code>{
@@ -89,7 +89,7 @@ Alle Einstellungen von Ferret stehen in einer einzigen JSON-Datei, neben der ein
   <li><code>agents.customAgents</code>: ein beliebiges CLI oder Wrapper-Skript. <code>startupAgents</code> listet die Agent-Tabs, die mit einem Projekt geöffnet werden, in dieser Reihenfolge.</li>
   <li><code>capture.sttEndpoints.compatible</code>: jeder Server, der OpenAIs <code>/v1/audio/transcriptions</code> implementiert (speaches, vLLM, LocalAI …). <code>costLimitUsd: null</code> schaltet das Kostenlimit ab, was bei Ihrer eigenen GPU sinnvoll ist. Siehe <a href="transcription.html">Transkription und Kosten</a>.</li>
   <li><code>organizer</code>: <span class="docs-ui">Befunde ordnen</span> wird direkt an einen OpenAI-kompatiblen <code>/v1/chat/completions</code>-Server gesendet (hier Ollama). Mit <code>"runner": "claude-code"</code> oder <code>"codex"</code> verwenden Sie stattdessen Ihr eigenes CLI-Login, mit <code>organizer.cliModels</code> wählen Sie deren Modell.</li>
-  <li><code>decision</code>: das Modell, das prüft, ob jeder Befund behoben wurde. Clef Flash auf einem lokalen Ollama ist kostenlos und liest Screenshots. <code>preset</code> kann auch <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code> oder <code>custom</code> sein.</li>
+  <li><code>decision</code>: das Modell, das prüft, ob jeder Befund behoben wurde. Clef Flash auf einem lokalen Ollama ist kostenlos und liest Screenshots. <code>preset</code> kann auch <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code>, <code>openai</code> oder <code>custom</code> sein.</li>
   <li>Jeder Anbieter-Block (<code>sttEndpoints.*</code>, <code>organizer.endpoints.*</code>) akzeptiert außerdem <code>timeoutMs</code>, <code>headers</code> und, für Azure, <code>apiVersion</code>.</li>
 </ul>
 <div class="docs-callout docs-callout-note"><p>Ferret bezahlt nie in Ihrem Namen für KI. Es gibt keinen eingebauten Schlüssel und keinen Relay-Server: Jede Anfrage geht von Ihrem Rechner an den von Ihnen konfigurierten Endpoint, mit Ihrem Schlüssel.</p></div>

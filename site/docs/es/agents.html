@@ -316,9 +316,11 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
     <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (leen imágenes)</td><td><code>CLOUDFLARE_API_TOKEN</code> (permiso de Workers AI); ID de cuenta del campo o de <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
     <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (solo texto)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
     <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (solo texto)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>OpenAI</td><td><code>https://api.openai.com/v1/decisions</code></td><td><code>gpt-6-luna</code> (lee imágenes)</td><td><code>OPENAI_API_KEY</code></td></tr>
     <tr><td>Personalizado</td><td>cualquier URL completa</td><td>cualquiera</td><td>Bearer, una cabecera personalizada o ninguna; se admiten cabeceras adicionales</td></tr>
   </tbody>
 </table>
+<p>El preajuste de OpenAI usa la Decisions API de OpenAI, que tiene su propio formato de solicitud (<code>input</code>, una lista de <code>questions</code> y <code>answers</code>). Los agentes siguen enviando el formato System One al relé: solo con este preajuste, el relé convierte la solicitud (las imágenes BEFORE/AFTER pasan a ser data URLs de <code>input_image</code>) y convierte las respuestas de vuelta, así que las instrucciones del agente no cambian. Usa tu clave de API de OpenAI, la misma que la transcripción. OpenAI solo cobra los tokens de entrada ($0.10 por 1M).</p>
 <p>Para Ollama, instálalo (0.35.1 o posterior para Clef / Clef Flash) y descarga el modelo en una terminal. Ferret no ejecuta instaladores:</p>
 <pre><code>ollama pull clef-flash</code></pre>
 <p>Las claves se toman del campo de clave (guardada con tus otras claves de API), de una variable de entorno que indiques (el entorno de la app, el <code>.env</code> del proyecto o <code>~/.ferret/.env</code>) o de <code>apiKey</code> en <code>settings.json</code>. Las cabeceras adicionales pueden leer valores de variables de entorno con <code>${VAR}</code>.</p>

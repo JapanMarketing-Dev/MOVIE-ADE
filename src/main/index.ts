@@ -26,6 +26,7 @@ import {
   DEFAULT_URL,
   type AnnotationMode,
   type AppMode,
+  type BrowserState,
   type CaptureTarget,
   type Project,
   type ProjectUpdate,
@@ -37,14 +38,15 @@ import {
   type SttProvider,
   type WorkspaceState
 } from '@shared/types'
-import { isRecordableUrl, sessionUrl, withProjectSession } from '@shared/projectSession'
+import { isRecordableUrl, recordableTabs, sessionTabs, withProjectSession } from '@shared/projectSession'
 import { THEME_BACKGROUND } from '@shared/theme'
 import { normalizeAnnotationColor } from '@shared/annotation'
 import { extensionPopupGetsReviewPreload, shouldCloseExtensionPopup, type AnnotationActivity, type PopupDismissCause } from '@shared/popupAnnotation'
 import { findProjectByFolder, markProjectOpened, newProject, reorderProjects, upsertProjectFolder } from './projects'
 import { checkSshTarget, remoteWorkspaceDirName, sshDefaultName, type SshTarget } from '@shared/sshCommand'
-import { EmbeddedBrowser, browserSession } from './browser'
+import { EmbeddedBrowser, browserSession, type ProjectTabs, type TabsSnapshot } from './browser'
 import { BrowserExtensions } from './browserExtensions'
+import { browserImportHandlers } from './browserImport/ipc'
 import { MAX_BROWSER_EXTENSIONS, relativeRect, sanitizeBrowserExtensions, type BrowserExtensionEntry, type BrowserExtensionInfo } from '@shared/browserExtensions'
 import { APP_ALLOWED_PERMISSIONS, installPermissionPolicy, isAllowedExternalUrl, isAppPageUrl, isBrowserPageExternalUrl, isSnapshotableBrowserUrl, type PermissionSessionLike } from './webPolicy'
 import { pathToFileURL } from 'node:url'
@@ -60,7 +62,7 @@ import { envGetter, keepKeyRefs, redactKeys, resolveApiKey, resolveConfiguredKey
 import { elapsedMs, mark, markOnce, reportInteractive, setStartupTags } from './startup'
 import { emulationKind } from './emulation'
 import { TerminalManager } from './terminal'
-import { listAgentOptions } from './agentDetection'
+import { listAgentOptions, warmLoginShellPath } from './agentDetection'
 import { listCliTools } from './cliTools'
 import {
   addAgentAccount,
@@ -703,14 +705,22 @@ function assertNotRecording(): void {
  * 内蔵ブラウザが空か、前のプロジェクトのURLを表示しているなら、このプロジェクトの先頭URLへ移る。
  */
 function openProject(project: Project): WorkspaceState {
+  const previousId = workspace.projectId
+  // 前のプロジェクトのタブ（戻る・進むの履歴ごと）は、このプロジェクトに切り替える前に写しておく
+  const previousTabs = browser && previousId && previousId !== project.id ? browser.snapshotTabs() : null
   const next = setWorkspace(project.folderPath, project)
   updateSettings({ activeProjectId: project.id, folderPath: project.folderPath, projects: markProjectOpened(currentSettings().projects, project.id) })
   send('workspace:changed', next)
   send('projects:changed', projectsState())
-  // 内蔵ブラウザもそのプロジェクトの状態に戻す。前に開いていた URL → 登録 URL の先頭 → 空の画面。
-  // 前のプロジェクトの URL は、表示が変わるたびに recordProjectUrl が覚えてある
-  const target = sessionUrl(currentSettings().projects.find((p) => p.id === project.id) ?? project)
-  if (browser && browser.state().url !== target) void browser.navigate(target)
+  // 内蔵ブラウザもそのプロジェクトのタブに入れ替える（ターミナルと同じく、プロジェクトごとに分ける）。
+  // この起動で開いていたなら履歴ごと → 前に開いていたタブの URL → 登録 URL の先頭 → 空の画面。
+  // 前のプロジェクトのタブの URL は、表示が変わるたびに recordProjectUrl が覚えてある
+  if (browser && previousId !== project.id) {
+    if (previousId && previousTabs) parkedBrowserTabs.set(previousId, previousTabs)
+    const parked = parkedBrowserTabs.get(project.id) ?? null
+    parkedBrowserTabs.delete(project.id)
+    browser.replaceTabs(parked, sessionTabs(currentSettings().projects.find((p) => p.id === project.id) ?? project))
+  }
   // 録画の対象の画面・ウインドウは前のプロジェクトで選んだもの。別のアプリを映したり録ったりしないよう、内蔵ブラウザに戻す
   if (captureConsent.target.kind !== 'browser') setCaptureTargetFromMain({ kind: 'browser' })
   return next
@@ -720,16 +730,25 @@ function openProject(project: Project): WorkspaceState {
  * 開いているプロジェクトに、内蔵ブラウザで表示している URL を覚える。
  * 読み込み途中は覚えない（切り替え直後は前のプロジェクトの URL がまだ出ているため）。
  */
-function recordProjectUrl(state: { url: string; loading: boolean }): void {
+function recordProjectUrl(state: BrowserState): void {
   const id = workspace.projectId
   if (!id || state.loading || !isRecordableUrl(state.url)) return
+  // 読み込み途中のタブがあれば、その URL が決まってから覚える（切り替え直後の空のタブで前の値を消さない）
+  if (state.tabs?.some((tab) => tab.loading)) return
   const { projects } = currentSettings()
   const project = projects.find((p) => p.id === id)
+  if (!project) return
   // プレビューの外部の画像の許可（使い切りの合言葉）は覚えない（security-4 [6]）
   const url = stripPreviewGrant(state.url)
-  if (!project || project.session?.url === url) return
-  updateSettings({ projects: withProjectSession(projects, id, { url }) })
+  const tabs = state.tabs ? recordableTabs(state.tabs, state.activeTabId) : null
+  const session = project.session
+  const sameTabs = !tabs || (JSON.stringify(session?.tabs ?? []) === JSON.stringify(tabs.tabs) && (session?.activeTab ?? 0) === (tabs.activeTab ?? 0))
+  if (session?.url === url && sameTabs) return
+  updateSettings({ projects: withProjectSession(projects, id, { url, ...(tabs ? { tabs: tabs.tabs, activeTab: tabs.activeTab } : {}) }) })
 }
+
+/** 切り替えて離れたプロジェクトの内蔵ブラウザのタブ（戻る・進むの履歴ごと）。アプリを開いている間だけ持つ */
+const parkedBrowserTabs = new Map<string, TabsSnapshot>()
 
 /** フォルダを登録して開く。同じフォルダが登録済みならそれを開く */
 function openFolderAsProject(folderPath: string): WorkspaceState {
@@ -1703,6 +1722,14 @@ function registerIpc(): void {
       }
       return saveExtensionEntries(ext, (entries) => entries.some((e) => e.path === path) ? entries.map((e) => e.path === path ? { path } : e) : [...entries, { path }])
     },
+    // ほかのブラウザからの取り込み（パスワードの CSV・履歴）と、保存したパスワードのログインの欄への入力（src/main/browserImport/ipc.ts）
+    ...browserImportHandlers({
+      window: () => mainWindow,
+      pageContents: () => browser?.contents ?? null,
+      userDataDir: () => app.getPath('userData'),
+      isPackaged: IS_PACKAGED,
+      isE2E: IS_E2E
+    }),
     'browser:state': () =>
       browser?.state() ?? {
         url: '',
@@ -2572,13 +2599,18 @@ async function main(): Promise<void> {
     startupProject = added.project
     if (!added.alreadyPresent) updateSettings({ projects: added.projects })
   }
+  /** 起動時に開くタブ（そのプロジェクトで前に開いていたタブ）。無ければ loadedSettings.url の1枚 */
+  let startupTabs: ProjectTabs | null = null
   if (startupProject) {
     updateSettings({ activeProjectId: startupProject.id, folderPath: startupProject.folderPath })
     loadedSettings = currentSettings()
     // そのプロジェクトで前に開いていた URL（無ければ登録 URL の先頭）から始める
     const saved = loadedSettings.projects.find((p) => p.id === startupProject!.id) ?? startupProject
-    const target = sessionUrl(saved)
-    if (target !== DEFAULT_URL || !loadedSettings.url) loadedSettings = { ...loadedSettings, url: target }
+    const tabs = sessionTabs(saved)
+    if (tabs.urls.length > 1 || tabs.urls[0] !== DEFAULT_URL || !loadedSettings.url) {
+      loadedSettings = { ...loadedSettings, url: tabs.urls[tabs.active] ?? DEFAULT_URL }
+      startupTabs = tabs
+    }
   }
   if (loadedSettings.folderPath) {
     // 保持期間を過ぎた動画の掃除は窓を開くのを待たせない。小さな切れに分けて、あとから少しずつ進める（security-5 [7]）
@@ -2587,8 +2619,13 @@ async function main(): Promise<void> {
       onError: (err) => reportHandled(err, { area: 'sessions', op: 'prune recordings' }) })
   }
   const presetUrl = process.env.ADE_INITIAL_URL
-  if (presetUrl && presetUrl.length > 0) loadedSettings.url = presetUrl
+  if (presetUrl && presetUrl.length > 0) {
+    loadedSettings.url = presetUrl
+    startupTabs = null
+  }
 
+  // Agent のタブで実行ファイルを探すためのログインシェルの PATH を、前回の起動の値ですぐ使えるようにし、裏で取り直す（agentDetection.ts）
+  void warmLoginShellPath(join(app.getPath('userData'), 'login-shell-path.json'))
   terminals = new TerminalManager(
     (id, data) => send('terminal:data', id, data),
     (id, code) => send('terminal:exit', id, code)
@@ -2599,6 +2636,9 @@ async function main(): Promise<void> {
     : {}
   // タブが閉じたら、そのタブに渡した中継の合言葉を無効にする（残った子プロセスが使い続けられないように）
   terminals.onSessionClosed = (sessionId) => decisionService?.revokeSession(sessionId)
+  // ターミナルを速く開く：次の素のシェルを先に起動しておく。タブの環境変数を決めるもの（プロジェクト・判定モデル）が変われば作り直す
+  terminals.spareShells = process.env.ADE_TERMINAL_PREWARM !== '0'
+  terminals.spareContext = () => JSON.stringify([workspace.projectId ?? null, currentSettings().decision ?? null])
   // 上限での自動切り替え。新しいタブは renderer が開き、引き継ぎは main が行う
   initFailover({ terminals, launch: (request) => send('failover:launch', request), notice: (notice) => send('failover:notice', notice) })
   // 文字起こし・整理の API 呼び出しも同じ記録へ（src/main/decision/callLog.ts の recordApiCall）
@@ -2618,6 +2658,8 @@ async function main(): Promise<void> {
     terminals?.resetFlow()
   })
   setWorkspace(loadedSettings.folderPath, startupProject)
+  // 最初のタブを開く要求が届く前に、node-pty の読み込みと最初のシェルの起動（rc の読み込み）を済ませておく
+  terminals.prewarm()
   registerIpc()
   // 裏での更新。配布版だけ、起動から少し待って確かめ、あとは6時間ごと（開発版・E2E では動かさない）
   autoUpdater().start()
@@ -2680,7 +2722,7 @@ async function main(): Promise<void> {
   browser.onPopupWindow = (contents, url) => recording?.attachPopupWindow(contents, url)
   // 内蔵ブラウザの拡張機能。content script を最初のページにも効かせるため、ページを開く前に読み込む（待つのは少しだけ）
   await startBrowserExtensions(loadedSettings.browserExtensions)
-  browser.attach(mainWindow, loadedSettings.url, loadedSettings.viewport)
+  browser.attach(mainWindow, startupTabs ?? loadedSettings.url, loadedSettings.viewport)
   browser.setBackgroundColor(nativeThemeBackground())
   mark('browser:attached')
   // 前回ウインドウを選んでいたなら、起動したときからそれを映す

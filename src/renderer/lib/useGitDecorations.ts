@@ -6,7 +6,7 @@ import { buildGitDecorations, type FsGitStatus, type GitDecorations } from '@sha
  *
  * 読み直すのは、ファイルの変更（fs:changed。保存・Agent の書き換え）、.git の HEAD・index の変化（github:headChanged。コミット・ステージ）、
  * ウインドウを前に出したとき。続けて起きたものはまとめ、git を重ねて走らせない（走っている間の変化は、終わってから1回だけ読み直す）。
- * null は「まだ分からない」（.env などを念のため隠す。@shared/gitDecorations の isHiddenByDefault）。
+ * null は「まだ分からない」（色を付けない）。
  */
 
 /** 変更の通知から git を呼ぶまでの待ち（Agent が続けて書くときに1回へまとめる） */

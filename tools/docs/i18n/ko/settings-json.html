@@ -25,7 +25,7 @@ Ferret의 모든 설정은 하나의 JSON 파일에 있고 그 옆에 JSON Schem
 <p><code>settings.json</code>의 첫 줄은 <code>"$schema": "./settings.schema.json"</code>입니다. VS Code 같은 에디터와 Claude Code 같은 에이전트는 이를 이용해 자동 완성, 검증, 각 필드의 설명을 제공합니다. 스키마는 앱에 포함되어 있고 실행할 때마다 파일 옆에 기록되므로, 항상 설치된 버전과 일치합니다.</p>
 <p>Ferret이 모르는 키는 앱이 저장할 때 그대로 유지됩니다. 열린 탭, 마지막 URL 등의 세션 상태는 이 파일이 아니라 <code>state.json</code>에 저장됩니다.</p>
 
-<!-- @example a3549b8c04 -->
+<!-- @example 55cf9777fc -->
 ## 설명이 달린 예
 <p>JSON에는 주석이 없으므로 설명은 예 아래에 적었습니다. 모든 필드는 선택 사항이며, 필요 없는 것은 생략하면 됩니다.</p>
 <pre><code>{
@@ -89,7 +89,7 @@ Ferret의 모든 설정은 하나의 JSON 파일에 있고 그 옆에 JSON Schem
   <li><code>agents.customAgents</code>: 임의의 CLI나 래퍼 스크립트입니다. <code>startupAgents</code>는 프로젝트를 열 때 함께 여는 에이전트 탭을 순서대로 나열합니다.</li>
   <li><code>capture.sttEndpoints.compatible</code>: OpenAI의 <code>/v1/audio/transcriptions</code>를 구현한 서버라면 무엇이든 됩니다(speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code>은 비용 한도를 끕니다. 자체 GPU를 쓸 때 적합합니다. <a href="transcription.html">음성 인식과 비용</a>을 참고하세요.</li>
   <li><code>organizer</code>: <span class="docs-ui">지적 사항 정리</span>를 OpenAI 호환 <code>/v1/chat/completions</code> 서버(여기서는 Ollama)로 직접 보냅니다. 대신 자신의 CLI 로그인을 쓰려면 <code>"runner": "claude-code"</code> 또는 <code>"codex"</code>를 지정하고, 그 모델은 <code>organizer.cliModels</code>로 고릅니다.</li>
-  <li><code>decision</code>: 각 지적 사항이 수정되었는지 확인하는 모델입니다. 로컬 Ollama의 Clef Flash는 무료이며 스크린샷을 읽을 수 있습니다. <code>preset</code>에는 <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code>, <code>custom</code>도 지정할 수 있습니다.</li>
+  <li><code>decision</code>: 각 지적 사항이 수정되었는지 확인하는 모델입니다. 로컬 Ollama의 Clef Flash는 무료이며 스크린샷을 읽을 수 있습니다. <code>preset</code>에는 <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code>, <code>openai</code>, <code>custom</code>도 지정할 수 있습니다.</li>
   <li>모든 제공자 블록(<code>sttEndpoints.*</code>, <code>organizer.endpoints.*</code>)은 <code>timeoutMs</code>, <code>headers</code>, 그리고 Azure의 경우 <code>apiVersion</code>도 받습니다.</li>
 </ul>
 <div class="docs-callout docs-callout-note"><p>Ferret이 사용자 대신 AI 비용을 내는 일은 없습니다. 내장된 키도 중계 서버도 없습니다. 모든 요청은 사용자의 키로, 사용자의 컴퓨터에서 직접 설정한 엔드포인트로 갑니다.</p></div>

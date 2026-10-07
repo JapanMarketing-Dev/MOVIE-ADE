@@ -316,9 +316,11 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
     <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (इमेज पढ़ते हैं)</td><td><code>CLOUDFLARE_API_TOKEN</code> (Workers AI अनुमति); account ID field से या <code>CLOUDFLARE_ACCOUNT_ID</code> से</td></tr>
     <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (सिर्फ़ टेक्स्ट)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
     <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (सिर्फ़ टेक्स्ट)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>OpenAI</td><td><code>https://api.openai.com/v1/decisions</code></td><td><code>gpt-6-luna</code> (इमेज पढ़ता है)</td><td><code>OPENAI_API_KEY</code></td></tr>
     <tr><td>Custom</td><td>कोई भी पूरा URL</td><td>कोई भी</td><td>Bearer, कोई custom header, या कुछ नहीं; अतिरिक्त headers की अनुमति है</td></tr>
   </tbody>
 </table>
+<p>OpenAI प्रीसेट OpenAI की Decisions API इस्तेमाल करता है, जिसका अपना रिक्वेस्ट फ़ॉर्मैट है (<code>input</code>, <code>questions</code> की सूची और <code>answers</code>)। एजेंट पहले की तरह रिले को System One फ़ॉर्मैट भेजते हैं: सिर्फ़ इस प्रीसेट में रिले रिक्वेस्ट को बदलता है (BEFORE/AFTER इमेज <code>input_image</code> के data URL बन जाती हैं) और जवाबों को वापस बदलता है, इसलिए एजेंट के निर्देश वही रहते हैं। यह आपकी OpenAI API key इस्तेमाल करता है, वही जो ट्रांसक्रिप्शन में है। OpenAI सिर्फ़ इनपुट टोकन का शुल्क लेता है (प्रति 1M $0.10)।</p>
 <p>Ollama के लिए उसे इंस्टॉल करें (Clef / Clef Flash के लिए 0.35.1 या बाद का) और टर्मिनल में मॉडल pull करें। Ferret installers नहीं चलाता:</p>
 <pre><code>ollama pull clef-flash</code></pre>
 <p>Keys key field से (आपकी दूसरी API keys के साथ सेव होती हैं), आपके बताए environment variable से (ऐप का environment, प्रोजेक्ट का <code>.env</code>, या <code>~/.ferret/.env</code>), या <code>settings.json</code> के <code>apiKey</code> से आती हैं। अतिरिक्त headers <code>${VAR}</code> के ज़रिए environment variables से मान पढ़ सकते हैं।</p>

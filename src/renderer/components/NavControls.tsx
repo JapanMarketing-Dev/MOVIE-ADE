@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Globe, RotateCw } from 'lucide-react'
 import type { BrowserState } from '@shared/types'
 import { SHORTCUTS } from '../lib/shortcut'
@@ -99,6 +99,8 @@ export function UrlField({
   const [draft, setDraft] = useState(displayed)
   const editing = useRef(false)
   const toast = useToast()
+  const suggestions = useImportedHistorySuggestions(draft, editing.current)
+  const listId = useId()
 
   // 入力中はユーザーの文字を上書きしない。遷移が起きたら表示を追従させる。
   // タブを切り替えたら、打ちかけの文字は捨てて、前に出たタブの URL を出す
@@ -131,6 +133,7 @@ export function UrlField({
         placeholder="http://localhost:3000"
         aria-label="URL"
         autoComplete="off"
+        list={suggestions.length > 0 ? listId : undefined}
         data-testid={testId}
         onChange={(event) => {
           editing.current = true
@@ -147,8 +150,36 @@ export function UrlField({
           }
         }}
       />
+      {/* 取り込んだ履歴の候補。DOM の一覧は内蔵ブラウザのビューの下に隠れるので、Chromium が窓の上に出す datalist を使う */}
+      {suggestions.length > 0 && <datalist id={listId}>
+        {suggestions.map((s) => <option key={s.url} value={s.url} label={s.title || undefined} />)}
+      </datalist>}
       {/* 読み込み中は URL欄の下端に線が流れる。文字で「読み込み中」と書くより静か */}
       <span className={`url-progress${state.loading ? ' is-loading' : ''}`} aria-hidden="true" />
     </form>
   )
+}
+
+/**
+ * URL 欄に打っている文字に合う、ほかのブラウザから取り込んだ履歴（全プロジェクト共通。src/main/browserImport/history.ts）。
+ * 打っている間だけ、少し待ってから main に聞く。取り込んでいなければ空
+ */
+function useImportedHistorySuggestions(draft: string, editing: boolean): Array<{ url: string; title: string }> {
+  const [list, setList] = useState<Array<{ url: string; title: string }>>([])
+  useEffect(() => {
+    const query = draft.trim()
+    if (!editing || !query) {
+      setList([])
+      return
+    }
+    let alive = true
+    const timer = window.setTimeout(() => {
+      void window.ade.invoke('browserImport:suggest', query).then((next) => { if (alive) setList(next) }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（候補なしで続ける）
+    }, 120)
+    return () => {
+      alive = false
+      window.clearTimeout(timer)
+    }
+  }, [draft, editing])
+  return list
 }

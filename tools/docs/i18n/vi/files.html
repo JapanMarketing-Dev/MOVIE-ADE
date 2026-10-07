@@ -5,7 +5,7 @@ Tệp và biến môi trường
 <!-- @lead b2a7619b5e -->
 Nơi Ferret lưu các tệp của chính nó, và các biến môi trường mà Ferret đọc hoặc đặt.
 
-<!-- @userdata ee70336b22 -->
+<!-- @userdata 71b30d8c35 -->
 ## Thư mục userData
 <p>Dữ liệu ứng dụng nằm trong thư mục <code>userData</code> của Electron. Tên thư mục được cố định là <code>ade-movie</code> (không phải tên sản phẩm), nên dữ liệu vẫn còn khi sản phẩm đổi tên. Có thể ghi đè bằng <code>--user-data-dir=&lt;path&gt;</code>.</p>
 <table>
@@ -18,13 +18,15 @@ Nơi Ferret lưu các tệp của chính nó, và các biến môi trường mà
 </table>
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
+browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts
 accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
 <p>Cài đặt của bạn không nằm trong thư mục này mà ở <code>~/.ferret/</code> (xem <a href="settings-json.html">Cấu hình bằng settings.json</a>).</p>
 <p>Model bạn tự chọn có thể nằm ở bất kỳ đâu. Vị trí mặc định cũ <code>~/.cache/ade-movie/models/ggml-small.bin</code> vẫn được kiểm tra.</p>
 
-<!-- @env 1d9b0a6a78 -->
+<!-- @env 35e3e2ffb2 -->
 ## Biến môi trường
 <table>
   <thead><tr><th>Biến</th><th>Tác dụng</th></tr></thead>
@@ -36,6 +38,7 @@ accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
     <tr><td><code>ADE_PROJECT_DIR</code></td><td>Mở (và đăng ký) thư mục này làm dự án khi khởi động</td></tr>
     <tr><td><code>ADE_INITIAL_URL</code></td><td>Tải URL này trong trình duyệt tích hợp khi khởi động</td></tr>
     <tr><td><code>ADE_WHISPER_MODEL</code></td><td>Đường dẫn tuyệt đối của model GGML dùng cho chuyển văn bản trên máy, thay cho model mặc định đã tải</td></tr>
+    <tr><td><code>ADE_TERMINAL_PREWARM</code></td><td><code>0</code> khiến Ferret thôi chuẩn bị sẵn một shell ở nền. Mặc định, tab shell thường tiếp theo sẽ dùng nó nên dấu nhắc hiện ra ngay</td></tr>
     <tr><td><code>FERRET_SENTRY_DSN</code> (hoặc tên cũ <code>MOVIE_ADE_SENTRY_DSN</code>)</td><td>Nơi gửi báo cáo crash. Để trống nghĩa là không gửi gì (xem <a href="privacy.html#crash-reports">Báo cáo crash</a>)</td></tr>
     <tr><td><code>OPENAI_API_KEY</code></td><td>Chỉ được đọc từ <code>.env</code> khi phát triển (<code>pnpm dev</code>), không bao giờ trong bản đóng gói</td></tr>
     <tr><td><code>PATH</code></td><td>Dùng để tìm lệnh của các agent (<code>claude</code>, <code>codex</code>, <code>gemini</code>…), <code>gh</code>, <code>git</code>, <code>whisper-cli</code>. Trên macOS và Linux, các vị trí của Homebrew, linuxbrew và snap được thêm vào</td></tr>

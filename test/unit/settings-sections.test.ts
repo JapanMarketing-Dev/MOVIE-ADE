@@ -35,7 +35,7 @@ describe('左の一覧の並び', () => {
   it('一番上にセットアップのチェックリスト、その下に一般 → Agent → 判定モデル', () => {
     expect(SETTINGS_SECTIONS.slice(0, 4)).toEqual(['setup', 'general', 'agents', 'verify'])
     expect(SETTINGS_SECTIONS).toEqual(['setup', 'general', 'agents', 'verify', 'recording', 'transcription', 'organize', 'accounts',
-      'appearance', 'language', 'layout', 'extensions', 'cli', 'about'])
+      'appearance', 'language', 'layout', 'extensions', 'browserImport', 'cli', 'about'])
   })
 
   it('CLI の節は wrangler・ollama・インストールで引ける', () => {

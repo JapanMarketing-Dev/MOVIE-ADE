@@ -17,7 +17,7 @@ import { resolveProcessCwd } from './processCwd'
 import { isInheritedAgentSessionEnv } from './inheritedAgentEnv'
 import { remoteTrustedLaunchLine, resolveTrustedExecutable, trustedLaunchLine, windowsSearchPathEnv } from './agentExecutable'
 import { executionSphere } from './executionSphere'
-import { searchDirs } from './agentDetection'
+import { searchDirs, shellPathIsProvisional } from './agentDetection'
 import { TerminalHistory } from './terminalHistory'
 import { defaultLocaleEnv, isHostTerminalEnv, stripAppImagePaths } from './terminalEnv'
 import { windowsTreeKillCommand } from './platform/windowsTreeKill'
@@ -140,6 +140,8 @@ async function loadNodePty(): Promise<typeof import('node-pty')> {
  * ps の結果。送信先を選ぶときは全タブを続けて調べるので、1秒だけ使い回す（タブの数だけ ps を起動しない）
  */
 let processCache: { at: number; rows: Promise<ProcessRow[]> } | null = null
+/** 前面のプロセス名からプロセスツリーで同定した Agent を使い回す間（Session.agentLookup。毎秒の問い合わせで ps を毎回起動しない） */
+const AGENT_LOOKUP_RETRY_MS = 5000
 function processRows(): Promise<ProcessRow[]> {
   if (!processCache || Date.now() - processCache.at > 1000) {
     const rows = promisify(execFile)('ps', ['-axo', 'pid=,ppid=,args='], { timeout: 1000, maxBuffer: 4 * 1024 * 1024 }).then(({ stdout }) => parseProcessRows(stdout))
@@ -193,11 +195,33 @@ interface Session {
   history: TerminalHistory
   /** 起動時の Agent の推定の段階（agent/launchPhase.ts） */
   launchAgent?: LaunchAgentPhase
+  /**
+   * 前面のプロセス名（pty.process）からプロセスツリーで同定した Agent。名前が同じ間は ps を引き直さない
+   * （公式インストーラの Claude Code は版番号の名前なので、毎秒の状態の問い合わせのたびに ps が走っていた）。
+   * 見つかった・見つからなかったどちらも AGENT_LOOKUP_RETRY_MS の間だけ使い回し、シェルに戻ったら忘れる
+   */
+  agentLookup?: { command: string; agent: TuiAgent | null; at: number }
   /** 送ったが renderer の ack がまだの文字数（流量制御） */
   unacked: number
   /** 流量制御で PTY を止めているか */
   paused: boolean
+  /** 先に起動しておいた、まだどのタブにも渡していないシェル（出力は履歴にだけためる。TerminalManager.spare） */
+  spare?: boolean
 }
+
+/** 次の素のシェルのタブのために先に起動しておくシェル */
+interface SpareShell {
+  session: Session
+  cwd: string
+  /** 起動したときの文脈（spareContext）。変わっていれば使わずに作り直す */
+  context: string
+  at: number
+}
+
+/** 先に起動しておいたシェルを使う上限（中継の合言葉の期限 24 時間より十分短く。古ければ捨てて普通に開く） */
+const SPARE_MAX_AGE_MS = 6 * 60 * 60 * 1000
+/** タブを開いてから、次のための先の起動を始めるまで（開いたばかりのシェルの rc と CPU を取り合わない） */
+const SPARE_REFILL_DELAY_MS = 1500
 
 export type { TerminalSessionInfo } from '@shared/types'
 
@@ -214,6 +238,18 @@ export class TerminalManager {
   private cwd: string = homedir()
   /** SSH のプロジェクトを開いているときの接続先。タブは ssh -t でリモートのシェルとして開く（src/shared/sshCommand.ts） */
   private remote: SshTarget | null = null
+  /**
+   * 先に起動しておいたシェル（ターミナルを速く開く）。素のシェルのタブを開くとき、rc（利用者のログインシェルの設定。
+   * 重いと 1 秒以上）を読み終えたこのシェルをそのまま渡し、次の分を裏で起動しておく。macOS・Linux の手元のプロジェクトだけ
+   */
+  private spare: SpareShell | null = null
+  private spareStarting = false
+  private spareTimer: NodeJS.Timeout | null = null
+  private disposed = false
+  /** 先に起動しておくか（main が有効にする。単体テストでは既定の無効のまま） */
+  spareShells = false
+  /** 先に起動したシェルを使ってよい文脈（プロジェクト・判定モデルの設定など、タブの環境変数を決めるもの）。変われば作り直す */
+  spareContext: () => string = () => ''
 
   constructor(
     private readonly onData: (id: string, data: string) => void,
@@ -248,17 +284,119 @@ export class TerminalManager {
    * 生きているものと、kill 済みで終了通知待ちのものの両方を数える。
    */
   pendingCount(): number {
-    return this.sessions.size + this.awaitingExit.size
+    return this.sessions.size + this.awaitingExit.size + (this.spare ? 1 : 0)
   }
 
   /** 開いたプロジェクトフォルダを、以降に作るタブのカレントにする */
   setCwd(dir: string | null): void {
-    this.cwd = dir ?? homedir()
+    const next = dir ?? homedir()
+    if (next !== this.cwd) this.discardSpare()
+    this.cwd = next
   }
 
   /** SSH のプロジェクトのときだけ渡す。null ならローカルのシェル */
   setRemote(target: SshTarget | null): void {
+    if (target) this.discardSpare()
     this.remote = target
+  }
+
+  /**
+   * 起動直後の先読み。node-pty を読み込み、開いているプロジェクトで次のシェルを先に起動しておく
+   * （最初のタブを開く要求が届くころには rc を読み終えている）
+   */
+  prewarm(size: TerminalSize = { cols: 80, rows: 24 }): void {
+    void loadNodePty().catch(() => undefined) // 読み込めなければタブを開くときに理由を出す
+    this.scheduleSpare(size, 0)
+  }
+
+  /** 先に起動しておいたシェルを捨てる（プロジェクトを替えた・使えなくなった） */
+  discardSpare(): void {
+    if (this.spareTimer) {
+      clearTimeout(this.spareTimer)
+      this.spareTimer = null
+    }
+    const spare = this.spare
+    this.spare = null
+    if (!spare) return
+    const { id, pty } = spare.session
+    this.onSessionClosed?.(id)
+    // 終了通知が kill の中で届いても待ちが残らないよう、先に登録してから kill する
+    const entry: { pty: IPty; descendants: number[] } = { pty, descendants: [] }
+    this.awaitingExit.set(id, entry)
+    entry.descendants = killPtyTree(pty, 'SIGHUP')
+  }
+
+  private spareEnabled(): boolean {
+    return this.spareShells && !this.disposed && process.platform !== 'win32' && this.remote === null
+  }
+
+  /** 次の素のシェルを、少し待ってから先に起動する（1つだけ） */
+  private scheduleSpare(size: TerminalSize, delayMs = SPARE_REFILL_DELAY_MS): void {
+    if (!this.spareEnabled() || this.spare || this.spareStarting || this.spareTimer) return
+    this.spareTimer = setTimeout(() => {
+      this.spareTimer = null
+      void this.startSpare(size).catch((err: unknown) => reportHandled(err, { area: 'terminal', op: 'prewarm shell' }))
+    }, delayMs)
+    this.spareTimer.unref?.()
+  }
+
+  private async startSpare(size: TerminalSize): Promise<void> {
+    if (!this.spareEnabled() || this.spare || this.spareStarting) return
+    const cwd = this.cwd
+    if (!existsSync(cwd)) return
+    this.spareStarting = true
+    const id = `t${++this.seq}`
+    try {
+      const nodePty = await loadNodePty()
+      const context = this.spareContext()
+      const launchEnv = this.launchEnv ? await this.launchEnv({ agent: null, sessionId: id }).catch(() => ({})) : {}
+      // 待っている間にプロジェクトを替えた・閉じ始めた：起動しない
+      if (!this.spareEnabled() || this.cwd !== cwd || this.spareContext() !== context) {
+        this.onSessionClosed?.(id)
+        return
+      }
+      const shell = resolveShell()
+      const pty = nodePty.spawn(shell.file, shell.args, {
+        name: 'xterm-256color',
+        cols: Math.max(2, size.cols),
+        rows: Math.max(1, size.rows),
+        cwd,
+        env: ptyEnv(launchEnv)
+      })
+      const session: Session = { id, pty, buffer: [], bufferBytes: 0, timer: null,
+        tail: '', readiness: new ComposerReadiness(), sending: false,
+        info: { id, pid: pty.pid, cwd, title: '', agent: null }, history: new TerminalHistory(), unacked: 0, paused: false, spare: true }
+      this.spare = { session, cwd, context, at: Date.now() }
+      this.wirePty(session, null, null)
+    } catch (err) {
+      this.onSessionClosed?.(id)
+      throw err
+    } finally {
+      this.spareStarting = false
+    }
+  }
+
+  /** 素のシェルのタブに、先に起動しておいたシェルを渡す。使えなければ null（普通に起動する） */
+  private claimSpare(cwd: string, size: TerminalSize, customTitle: string | undefined): TerminalTabInfo | null {
+    const spare = this.spare
+    if (!spare || !this.spareEnabled() || spare.cwd !== cwd) return null
+    if (spare.context !== this.spareContext() || Date.now() - spare.at > SPARE_MAX_AGE_MS) {
+      this.discardSpare()
+      return null
+    }
+    this.spare = null
+    const { session } = spare
+    session.spare = false
+    this.sessions.set(session.id, session)
+    try {
+      session.pty.resize(Math.max(2, size.cols), Math.max(1, size.rows))
+    } catch {
+      /* 寸法は表示したときに合わせ直す */
+    }
+    const title = customTitle?.trim() || `${session.id.slice(1)}: ${shellLabel(resolveShell().file)}`
+    session.info.title = title
+    flow('terminal create', { kind: 'shell', start: 'prewarmed' })
+    return { id: session.id, title, agent: null, cwd, history: session.history.snapshot() }
   }
 
   /**
@@ -274,6 +412,13 @@ export class TerminalManager {
     // SSH のプロジェクト：ssh -t -- <host> 'cd <path> && exec "$SHELL" -l'。Agent の起動はリモートの最初のプロンプトで打ち込む。
     // アカウントのログインは SSH のプロジェクトでも手元で動かす（security-5 [3]）
     const sphere = executionSphere({ accountLogin: Boolean(options.accountLogin), remote: this.remote })
+    // 素のシェルのタブは、先に起動しておいたシェルを渡す（rc を待たない）。次の分は裏で起動しておく
+    const plainShell = !options.accountLogin && !agent && !options.command?.trim() && sphere.kind === 'local'
+    if (plainShell) {
+      const claimed = this.claimSpare(cwd, size, options.title ?? undefined)
+      this.scheduleSpare(size)
+      if (claimed) return claimed
+    }
     let shell = sphere.kind === 'ssh' ? sshShellSpec(sphere.target) : resolveShell()
     const startupShell = startupShellForPath(shell.file)
     let extraEnv: Record<string, string> = {}
@@ -294,7 +439,11 @@ export class TerminalManager {
     // 見つからなければ起動しない（security-4 [1]・security-5 [5]）。リモートでは、リモートのシェルで同じ決まりで探す
     const trusted = async (argv: readonly string[], label: string): Promise<string> => {
       if (sphere.kind === 'ssh') return remoteTrustedLaunchLine(argv)
-      const resolved = await resolveTrustedExecutable(argv[0] ?? '', { env: ptyEnv(), cwd, dirs: process.platform === 'win32' ? undefined : await searchDirs() })
+      const resolve = async (fresh: boolean) =>
+        resolveTrustedExecutable(argv[0] ?? '', { env: ptyEnv(), cwd, dirs: process.platform === 'win32' ? undefined : await searchDirs({ fresh }) })
+      // 前回の起動のログインシェルの PATH で待たずに探す。見つからなければ今回の PATH を待って探し直す（agentDetection.ts）
+      let resolved = await resolve(false)
+      if (!resolved.ok && shellPathIsProvisional()) resolved = await resolve(true)
       if (!resolved.ok) throw new UserFacingError(t('terminal.errors.launch', { agent: label, error: t('settings.agents.notFound') }))
       return trustedLaunchLine(resolved.path, argv.slice(1), startupShell)
     }
@@ -376,25 +525,36 @@ export class TerminalManager {
     }
     const title =
       loginTitle ??
-      (options.title?.trim() || (agent ? agentLabel(agent, currentSettings().agents) : `${this.seq}: ${shellLabel(shell.file)}`))
+      (options.title?.trim() || (agent ? agentLabel(agent, currentSettings().agents) : `${id.slice(1)}: ${shellLabel(shell.file)}`))
     const launched = options.accountLogin?.agent ?? agent ?? null
     const session: Session = { id, pty, buffer: [], bufferBytes: 0, timer: null,
       tail: '', readiness: new ComposerReadiness(), sending: false,
       info: { id, pid: pty.pid, cwd, title, agent: launched }, history: new TerminalHistory(), unacked: 0, paused: false }
     this.sessions.set(id, session)
     if (agent) this.failover?.launched(id, agent, options.failoverToken ?? null)
+    this.wirePty(session, pendingWrite, launched)
+    flow('terminal create', { kind: launched ? 'agent' : 'shell' })
+    // 次に開く素のシェルを裏で先に起動しておく（Agent のタブを開いたあとも）
+    this.scheduleSpare(size)
 
+    return { id, title, agent: launched, cwd, ...(accountId !== undefined ? { accountId } : {}), ...(resumed ? { resumed } : {}) }
+  }
+
+  /** PTY の出力と終了をセッションにつなぐ（普通に開いたタブと、先に起動しておいたシェルで共通） */
+  private wirePty(session: Session, pendingWrite: string | null, launched: TuiAgent | null): void {
+    const { id, pty } = session
     const stopStartupWrite = pendingWrite ? this.scheduleStartupWrite(session, pendingWrite) : null
     pty.onData((data) => {
       stopStartupWrite?.touch()
       this.enqueue(session, data)
     })
-    flow('terminal create', { kind: launched ? 'agent' : 'shell' })
     pty.onExit(({ exitCode }) => {
       // パンくず：Agent の異常終了（exit code≠0）が、このあとの失敗の手がかりになる
       flow('terminal exit', { exitCode, kind: launched ? (isBuiltinAgent(launched) ? launched : 'custom') : 'shell' })
       releaseWindowsConout(pty)
       stopStartupWrite?.cancel()
+      // 渡す前に終わった先の起動のシェル（rc の中の exit など）。次は普通に開く
+      if (this.spare?.session === session) this.spare = null
       this.flush(session)
       this.sessions.delete(id)
       this.awaitingExit.delete(id)
@@ -403,8 +563,6 @@ export class TerminalManager {
       this.onExit(id, exitCode)
       this.notifyExitWaiters()
     })
-
-    return { id, title, agent: launched, cwd, ...(accountId !== undefined ? { accountId } : {}), ...(resumed ? { resumed } : {}) }
   }
 
   /**
@@ -468,6 +626,8 @@ export class TerminalManager {
     session.tail = (session.tail + stripAnsi(data)).slice(-8000)
     session.title = parseTitle(data) ?? session.title
     session.readiness.push(data)
+    // 先に起動しておいたシェル：どのタブにも渡していないので送らない（渡すときに履歴をまとめて返す）
+    if (session.spare) return
     session.buffer.push(data)
     session.bufferBytes += data.length
     while (session.bufferBytes > MAX_BUFFER && session.buffer.length > 1) {
@@ -569,10 +729,18 @@ export class TerminalManager {
         if (foreground) agent = agentInProcessTree(rows, session.pty.pid, (line) => agentForProcess(line, prefs))
       }
     }
+    // シェルに戻ったら忘れる（同じ名前の別のプロセス、例えば node で動く別のスクリプトを Agent と取り違えない）
+    if (!foreground) session.agentLookup = undefined
     if (!agent && foreground && process.platform !== 'win32') {
-      try {
-        agent = agentInProcessTree(await processRows(), session.pty.pid, (line) => agentForProcess(line, prefs))
-      } catch { /* ps が使えなければ下の起動時の Agent で判断する */ }
+      const cached = session.agentLookup
+      if (cached && cached.command === command && Date.now() - cached.at < AGENT_LOOKUP_RETRY_MS) {
+        agent = cached.agent
+      } else {
+        try {
+          agent = agentInProcessTree(await processRows(), session.pty.pid, (line) => agentForProcess(line, prefs))
+          session.agentLookup = { command, agent, at: Date.now() }
+        } catch { /* ps が使えなければ下の起動時の Agent で判断する */ }
+      }
     }
     // Agent として開いたタブで、シェルではない何かが前面で動いていれば、その Agent とみなす
     // （独自のラッパーや、名前を変えて動く版でも送れるように。シェルに戻っていれば送らない）。
@@ -676,6 +844,8 @@ export class TerminalManager {
    * 例外が外へ投げられてプロセスが abort する（SIGABRT）。
    */
   disposeAll(): void {
+    this.disposed = true
+    this.discardSpare()
     for (const id of [...this.sessions.keys()]) this.close(id)
   }
 

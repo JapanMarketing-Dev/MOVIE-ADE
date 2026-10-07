@@ -316,9 +316,11 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
     <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (read images)</td><td><code>CLOUDFLARE_API_TOKEN</code> (Workers AI permission); account ID from the field or <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
     <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (text only)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
     <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (text only)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>OpenAI</td><td><code>https://api.openai.com/v1/decisions</code></td><td><code>gpt-6-luna</code> (reads images)</td><td><code>OPENAI_API_KEY</code></td></tr>
     <tr><td>Custom</td><td>any full URL</td><td>any</td><td>Bearer, a custom header, or none; extra headers allowed</td></tr>
   </tbody>
 </table>
+<p>The OpenAI preset uses OpenAI's Decisions API, which has its own request format (<code>input</code>, a list of <code>questions</code>, and <code>answers</code>). Agents still send the System One format to the relay: for this preset only, the relay converts the request (BEFORE/AFTER images become <code>input_image</code> data URLs) and converts the answers back, so the agent instructions stay the same. It uses your OpenAI API key, the same one as transcription. OpenAI charges input tokens only ($0.10 per 1M).</p>
 <p>For Ollama, install it (0.35.1 or later for Clef / Clef Flash) and pull the model in a terminal. Ferret doesn't run installers:</p>
 <pre><code>ollama pull clef-flash</code></pre>
 <p>Keys come from the key field (saved with your other API keys), an environment variable you name (the app's environment, the project <code>.env</code>, or <code>~/.ferret/.env</code>), or <code>apiKey</code> in <code>settings.json</code>. Extra headers can read values from environment variables with <code>${VAR}</code>.</p>

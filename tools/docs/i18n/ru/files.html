@@ -5,7 +5,7 @@
 <!-- @lead b2a7619b5e -->
 Где Ferret хранит свои файлы и какие переменные окружения он читает или задаёт.
 
-<!-- @userdata ee70336b22 -->
+<!-- @userdata 71b30d8c35 -->
 ## Папка userData
 <p>Данные приложения хранятся в папке <code>userData</code> Electron. Её имя зафиксировано как <code>ade-movie</code> (а не название продукта), поэтому данные сохраняются при переименованиях. Её можно переопределить параметром <code>--user-data-dir=&lt;path&gt;</code>.</p>
 <table>
@@ -18,13 +18,15 @@
 </table>
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
+browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts
 accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
 <p>Ваших настроек в этой папке нет: они находятся в <code>~/.ferret/</code> (см. <a href="settings-json.html">Настройка через settings.json</a>).</p>
 <p>Модель, выбранная вами вручную, может лежать где угодно. Старое расположение по умолчанию <code>~/.cache/ade-movie/models/ggml-small.bin</code> по-прежнему проверяется.</p>
 
-<!-- @env 1d9b0a6a78 -->
+<!-- @env 35e3e2ffb2 -->
 ## Переменные окружения
 <table>
   <thead><tr><th>Переменная</th><th>Действие</th></tr></thead>
@@ -36,6 +38,7 @@ accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
     <tr><td><code>ADE_PROJECT_DIR</code></td><td>При запуске открыть (и зарегистрировать) эту папку как проект</td></tr>
     <tr><td><code>ADE_INITIAL_URL</code></td><td>При запуске загрузить этот URL во встроенном браузере</td></tr>
     <tr><td><code>ADE_WHISPER_MODEL</code></td><td>Абсолютный путь к модели GGML для распознавания на устройстве; заменяет скачанную модель по умолчанию</td></tr>
+    <tr><td><code>ADE_TERMINAL_PREWARM</code></td><td><code>0</code> отключает заранее подготовленную в фоне оболочку. По умолчанию её получает следующая обычная вкладка оболочки, поэтому приглашение появляется сразу</td></tr>
     <tr><td><code>FERRET_SENTRY_DSN</code> (или старая <code>MOVIE_ADE_SENTRY_DSN</code>)</td><td>Куда отправляются отчёты о сбоях. Пустое значение — ничего не отправляется (см. <a href="privacy.html#crash-reports">Отчёты о сбоях</a>)</td></tr>
     <tr><td><code>OPENAI_API_KEY</code></td><td>Читается из <code>.env</code> только при разработке (<code>pnpm dev</code>), никогда в собранных версиях</td></tr>
     <tr><td><code>PATH</code></td><td>Используется для поиска команд ваших агентов (<code>claude</code>, <code>codex</code>, <code>gemini</code>…), <code>gh</code>, <code>git</code>, <code>whisper-cli</code>. На macOS и Linux добавляются пути Homebrew, linuxbrew и snap</td></tr>

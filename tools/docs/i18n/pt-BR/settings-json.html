@@ -25,7 +25,7 @@ Todas as configurações do Ferret ficam em um único arquivo JSON com um JSON S
 <p>A primeira linha do <code>settings.json</code> é <code>"$schema": "./settings.schema.json"</code>. Editores como o VS Code e agentes como o Claude Code o usam para autocompletar, validar e descrever cada campo. O schema vem dentro do app e é gravado ao lado do arquivo a cada execução, então sempre corresponde à versão instalada.</p>
 <p>Chaves que o Ferret não conhece são mantidas como estão quando o app salva. Abas abertas, a última URL e outros estados da sessão ficam no <code>state.json</code>, não aqui.</p>
 
-<!-- @example a3549b8c04 -->
+<!-- @example 55cf9777fc -->
 ## Exemplo comentado
 <p>JSON não tem comentários, então as observações ficam abaixo do exemplo. Todos os campos são opcionais; deixe de fora o que você não precisa.</p>
 <pre><code>{
@@ -89,7 +89,7 @@ Todas as configurações do Ferret ficam em um único arquivo JSON com um JSON S
   <li><code>agents.customAgents</code>: qualquer CLI ou script wrapper. <code>startupAgents</code> lista, em ordem, as abas de agentes abertas com um projeto.</li>
   <li><code>capture.sttEndpoints.compatible</code>: qualquer servidor que implemente o <code>/v1/audio/transcriptions</code> da OpenAI (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> desativa o limite de custo, o que faz sentido para a sua própria GPU. Veja <a href="transcription.html">Transcrição e custos</a>.</li>
   <li><code>organizer</code>: <span class="docs-ui">Organizar apontamentos</span> enviado direto a um servidor <code>/v1/chat/completions</code> compatível com OpenAI (aqui, o Ollama). Use <code>"runner": "claude-code"</code> ou <code>"codex"</code> para usar o seu próprio login da CLI, e <code>organizer.cliModels</code> para escolher o modelo deles.</li>
-  <li><code>decision</code>: o modelo que verifica se cada apontamento foi corrigido. O Clef Flash em um Ollama local é gratuito e lê capturas de tela. <code>preset</code> também pode ser <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code> ou <code>custom</code>.</li>
+  <li><code>decision</code>: o modelo que verifica se cada apontamento foi corrigido. O Clef Flash em um Ollama local é gratuito e lê capturas de tela. <code>preset</code> também pode ser <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code>, <code>openai</code> ou <code>custom</code>.</li>
   <li>Todo bloco de provedor (<code>sttEndpoints.*</code>, <code>organizer.endpoints.*</code>) também aceita <code>timeoutMs</code>, <code>headers</code> e, para o Azure, <code>apiVersion</code>.</li>
 </ul>
 <div class="docs-callout docs-callout-note"><p>O Ferret nunca paga por IA em seu nome. Não há chave embutida nem servidor relay: cada requisição vai da sua máquina para o endpoint que você configurar, com a sua chave.</p></div>

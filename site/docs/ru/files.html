@@ -170,6 +170,8 @@
 </table>
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
+browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts
 accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
@@ -189,6 +191,7 @@ accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
     <tr><td><code>ADE_PROJECT_DIR</code></td><td>При запуске открыть (и зарегистрировать) эту папку как проект</td></tr>
     <tr><td><code>ADE_INITIAL_URL</code></td><td>При запуске загрузить этот URL во встроенном браузере</td></tr>
     <tr><td><code>ADE_WHISPER_MODEL</code></td><td>Абсолютный путь к модели GGML для распознавания на устройстве; заменяет скачанную модель по умолчанию</td></tr>
+    <tr><td><code>ADE_TERMINAL_PREWARM</code></td><td><code>0</code> отключает заранее подготовленную в фоне оболочку. По умолчанию её получает следующая обычная вкладка оболочки, поэтому приглашение появляется сразу</td></tr>
     <tr><td><code>FERRET_SENTRY_DSN</code> (или старая <code>MOVIE_ADE_SENTRY_DSN</code>)</td><td>Куда отправляются отчёты о сбоях. Пустое значение — ничего не отправляется (см. <a href="privacy.html#crash-reports">Отчёты о сбоях</a>)</td></tr>
     <tr><td><code>OPENAI_API_KEY</code></td><td>Читается из <code>.env</code> только при разработке (<code>pnpm dev</code>), никогда в собранных версиях</td></tr>
     <tr><td><code>PATH</code></td><td>Используется для поиска команд ваших агентов (<code>claude</code>, <code>codex</code>, <code>gemini</code>…), <code>gh</code>, <code>git</code>, <code>whisper-cli</code>. На macOS и Linux добавляются пути Homebrew, linuxbrew и snap</td></tr>

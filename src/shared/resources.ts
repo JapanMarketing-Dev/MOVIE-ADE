@@ -19,6 +19,8 @@ export interface ResourceTerminal {
   cpu: number
   /** 同じくプロセスツリー全体の RSS（バイト） */
   memory: number
+  /** ツリーの中で一番 CPU を使っているプロセス（シェルを除く・10% 以上のときだけ）。Agent が起動したビルドなどの分を見分ける */
+  top?: { name: string; cpu: number }
 }
 
 interface ResourcePage {
@@ -50,6 +52,8 @@ export interface ResourceSnapshot {
   totalMemory: number
   terminalCount: number
   orphanCount: number
+  /** この PC の論理コア数（CPU は1コア=100% なので、最大はコア数×100%） */
+  cores: number
   collectedAt: number
 }
 

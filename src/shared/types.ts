@@ -170,6 +170,10 @@ export interface ProjectSession {
   openFiles?: string[]
   /** 表示していたレビュー */
   reviewId?: string
+  /** 内蔵ブラウザで開いていたタブの URL（並び順）。プロジェクトを切り替えたら、そのプロジェクトのタブだけを開き直す */
+  tabs?: string[]
+  /** tabs のうち前に出ていたタブの番号（0 なら省く） */
+  activeTab?: number
 }
 
 export interface ProjectsState {
@@ -441,6 +445,8 @@ export interface TerminalTabInfo {
   accountId?: string | null
   /** 前の会話を続ける引数で起動した */
   resumed?: boolean
+  /** 先に起動しておいたシェルを渡したときの、それまでの出力（プロンプト）。renderer はつなぐ前に流し直す */
+  history?: string
 }
 
 export interface TerminalSize {

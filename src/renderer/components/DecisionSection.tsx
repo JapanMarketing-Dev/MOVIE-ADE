@@ -31,7 +31,7 @@ const CURL_PREVIEW = `curl -sS -X POST "$FERRET_DECISION_URL" \\
 #   "questions": { "done": noul, "status": choice } }`
 
 /**
- * 設定の「判定モデル」の節。利用者が自分の System One 互換 API を入れる。
+ * 設定の「判定モデル」の節。利用者が自分の System One 互換 API（または OpenAI の Decisions API。中継が形を写す）を入れる。
  * Ferret が自分から API を呼ぶのは「接続を確かめる」を押したときの1回だけ（合否の判定はしない）。有効にすると:
  *   - Agent のターミナルにローカル中継の URL・モデル・画像の可否を環境変数で渡す（キーは渡さない）
  *   - feedback.md と指示文に「指摘1件につき1回だけ判定し、結果からもう1回だけ直すかを決めて人に渡す」手順を足す
@@ -151,6 +151,8 @@ export function DecisionSection({ recording = false }: { recording?: boolean }) 
     <p className={`st-note${decisionModelSupportsImages(model) ? ' st-note--ok' : ' st-note--warn'}`}>
       {t(decisionModelSupportsImages(model) ? 'decision.settings.imagesOk' : 'decision.settings.imagesUnknown')}</p>
 
+    {/* OpenAI の Decisions API は形が違うので、中継が写し替えることと課金の形を添える */}
+    {prefs.preset === 'openai' && <p className="st-note" data-testid="decision-openai-hint">{t('decision.settings.openaiHint')}</p>}
     {prefs.preset === 'ollama' && <>
       <pre className="st-decision__cmd"><code>ollama pull {model || 'clef-flash'}</code></pre>
       <p className="st-note">{t('decision.settings.ollamaHint')}</p>

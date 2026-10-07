@@ -16,6 +16,7 @@
  *   - プロジェクトのその日の量は main のファイルにも残し、起動し直しても空に戻さない（projectLedger.ts。security-6 [8]）
  *   - 本文は System One の形だけを受け付け、model を設定のものに書き換え、1回で使いうる量の上限（requestBound.ts）を
  *     送る前にまるごと予約する。残りの枠に収まらなければ送らない。単価の分からない接続先も費用の枠で数える（security-7 [7]）
+ *   - 接続先が OpenAI の Decisions API（/v1/decisions）なら、System One の形を写して送り、応答を System One の形へ戻す（openaiDecisions.ts）
  * Ferret が自分から判定モデルを呼ぶことはない。利用者の支払いも今までどおりプロバイダへ直接。
  *
  * Electron に依存させない（単体テストでローカルの偽の接続先に向けるため）。
@@ -29,6 +30,7 @@ import { estimateCost, extractUsage } from './callLog'
 import type { ProjectLedgerEntry, ProjectUsageStore } from './projectLedger'
 import { AI_RESPONSE_MAX_BYTES, ResponseTooLargeError, readBoundedBytes } from '../boundedResponse'
 import { budgetPricing, checkDecisionRequest, costOf } from './requestBound'
+import { decisionWireFor, fromOpenAiDecisions, toOpenAiDecisions } from './openaiDecisions'
 
 /** 画像を2枚含むので大きめ */
 const RELAY_MAX_BODY_BYTES = 32 * 1024 * 1024
@@ -523,6 +525,19 @@ export class DecisionRelay {
       sendJson(res, 429, this.refusalBody(refused))
       return none
     }
+    // OpenAI の Decisions API へは、System One の形を写して送る（応答は System One の形へ戻す。openaiDecisions.ts）
+    const wire = decisionWireFor(upstream.url)
+    let sendBody: Buffer = checked.body
+    let names: Record<string, string> = {}
+    if (wire === 'openai-decisions') {
+      const converted = toOpenAiDecisions(JSON.parse(checked.body.toString('utf8')) as Record<string, unknown>, upstream.model)
+      if (!converted.ok) {
+        sendJson(res, 400, relayError(converted.message, 'relay_invalid_request'))
+        return none
+      }
+      sendBody = Buffer.from(JSON.stringify(converted.body), 'utf8')
+      names = converted.names
+    }
     const images = checked.images
     // 費用を数える接続先（単価を設定した・ローカルでない）。数えない（ローカル）なら回数とトークン数の枠で止まる
     const priced = price.inputPer1M > 0 || price.outputPer1M > 0
@@ -536,7 +551,7 @@ export class DecisionRelay {
         method: 'POST',
         headers: { 'content-type': req.headers['content-type'] ?? 'application/json', ...upstream.headers },
         // Buffer は型の上で BodyInit にならない環境がある（DOM の型）。同じバイト列の Uint8Array で渡す
-        body: Uint8Array.from(checked.body),
+        body: Uint8Array.from(sendBody),
         // 時間切れと、合言葉を無効にしたときの両方で切る
         signal: AbortSignal.any([signal, AbortSignal.timeout(upstream.timeoutMs)]),
         // キーを付けた依頼は、確かめた接続元の外へのリダイレクトを追わない（security-7 [10]）
@@ -564,16 +579,24 @@ export class DecisionRelay {
       // 本文を読み切れなかった（途中で切れた）ときは、空で返す（想定内）
       out = Buffer.alloc(0)
     }
+    let parsed: unknown
+    // JSON でない応答（エラーページなど）はトークン数が分からないだけ（想定内）
+    try { parsed = JSON.parse(out.toString('utf8')) } catch { parsed = undefined }
+    let contentType = upstreamRes.headers.get('content-type')
+    if (wire === 'openai-decisions' && upstreamRes.ok) {
+      const mapped = fromOpenAiDecisions(parsed, names)
+      if (mapped) {
+        out = Buffer.from(JSON.stringify(mapped), 'utf8')
+        contentType = 'application/json'
+      }
+    }
     const headers: Record<string, string> = { 'content-length': String(out.length) }
-    const contentType = upstreamRes.headers.get('content-type')
     if (contentType) headers['content-type'] = contentType
     if (!res.destroyed) {
       res.writeHead(upstreamRes.status, headers)
       res.end(out)
     }
-    let usage: ReturnType<typeof extractUsage> = {}
-    // JSON でない応答（エラーページなど）はトークン数が分からないだけ（想定内）
-    try { usage = extractUsage(JSON.parse(out.toString('utf8'))) } catch { usage = {} }
+    const usage = parsed === undefined ? {} : extractUsage(parsed)
     const estimated = usage.costUsd === undefined ? estimateCost(usage, upstream.pricing) : undefined
     const cost = usage.costUsd ?? estimated
     record(upstreamRes.status, {

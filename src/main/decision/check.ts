@@ -12,6 +12,7 @@ import { t } from '@shared/i18n'
 import { SMALL_JSON_MAX_BYTES, readBoundedJson } from '../boundedResponse'
 import { extractUsage } from './callLog'
 import type { RelayUpstream } from './relay'
+import { decisionWireFor, fromOpenAiDecisions, toOpenAiDecisions } from './openaiDecisions'
 
 export interface DecisionTestResult {
   ok: boolean
@@ -68,7 +69,11 @@ export async function checkDecision(opt: {
     return { ok: false, message: err instanceof Error && err.message ? err.message : t('decision.test.config') }
   }
   if (opt.fake) return { ok: true, message: t('decision.test.ok', { model: up.model, ms: 0 }), model: up.model, latencyMs: 0 }
-  const body = JSON.stringify(DECISION_TEST_BODY(up.model))
+  // OpenAI の Decisions API へは同じ問いを写して送る（応答も System One の形へ戻して確かめる）
+  const openai = decisionWireFor(up.url) === 'openai-decisions'
+  const systemOne = DECISION_TEST_BODY(up.model)
+  const converted = openai ? toOpenAiDecisions(systemOne, up.model) : null
+  const body = JSON.stringify(converted?.ok ? converted.body : systemOne)
   const started = Date.now()
   const record = (status: number, extra: Partial<ApiCallRecord> = {}) => opt.onCall?.({
     ts: (opt.now?.() ?? new Date()).toISOString(), kind: 'decision', agent: 'connection test', provider: up.provider, model: up.model,
@@ -84,7 +89,8 @@ export async function checkDecision(opt: {
   }
   const latencyMs = Date.now() - started
   // 本文が読めない・JSON でない・大きすぎる（上限は boundedResponse.ts）ときは、答えが無いものとして扱う（想定内）
-  const json: unknown = await readBoundedJson(res, SMALL_JSON_MAX_BYTES).catch(() => null)
+  const raw: unknown = await readBoundedJson(res, SMALL_JSON_MAX_BYTES).catch(() => null)
+  const json: unknown = converted?.ok ? fromOpenAiDecisions(raw, converted.names) ?? raw : raw
   const usage = extractUsage(json)
   record(res.status, { ...(usage.inputTokens !== undefined ? { inputTokens: usage.inputTokens } : {}), ...(usage.outputTokens !== undefined ? { outputTokens: usage.outputTokens } : {}),
     ...(usage.costUsd !== undefined ? { costUsd: usage.costUsd, costSource: 'provider' as const } : {}) })
