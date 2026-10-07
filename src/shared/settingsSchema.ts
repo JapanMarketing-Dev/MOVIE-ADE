@@ -195,6 +195,7 @@ export const SETTINGS_SCHEMA: JsonSchema = {
           name: str('Display name. Defaults to the folder name.'),
           folderPath: str('Absolute path of the project folder.'),
           starred: { type: 'boolean', description: 'Starred (favorite). Starred projects stay at the top of the sidebar and can be shown alone.' },
+          orchestrator: { type: 'boolean', description: 'Orchestrator. Projects in the subfolders (git repositories or registered projects) become Claude Code subagents in <folder>/.claude/agents/ferret-*.md, and reviews sent from here tell the agent to hand each finding to the right subagent. Ferret rewrites those files when the project is opened.' },
           addedAt: str('When the project was added (ISO 8601). Used by the "Date added" sort; set by the app.'),
           lastOpenedAt: str('When the project was last opened (ISO 8601). Used by the "Recently used" and "Active first" sorts; set by the app.'),
           kind: { type: 'string', description: 'Kind of app. Decides which target fields the UI shows; all fields are kept either way.', enum: PROJECT_KINDS, default: DEFAULT_PROJECT_KIND },

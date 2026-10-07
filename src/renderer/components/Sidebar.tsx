@@ -12,6 +12,7 @@ import {
   FolderOpen,
   FolderPlus,
   MessageCircleQuestionMark,
+  Network,
   Pencil,
   Plus,
   Settings2,
@@ -320,6 +321,15 @@ export function Sidebar({
   const stepOf = (id: string, delta: -1 | 1) => stepAmongVisible(projectIds, shownIds, id, delta, sameGroup(id))
   const moveProject = (id: string, delta: -1 | 1) => reorder(stepOf(id, delta))
   const toggleStar = (project: Project) => run(() => window.ade.invoke('project:update', { id: project.id, starred: !project.starred }))
+  /** オーケストレーターにする・やめる（すぐ下のフォルダのプロジェクトを subagent にする。src/main/orchestrator.ts） */
+  const toggleOrchestrator = (project: Project) => run(async () => {
+    const enabled = !project.orchestrator
+    const result = await window.ade.invoke('project:orchestrator', project.id, enabled)
+    if (!enabled) toast({ tone: 'success', message: t('orchestrator.disabled') })
+    else if (result.children.length === 0) toast({ tone: 'info', message: t('orchestrator.none') })
+    else toast({ tone: 'success', message: t('orchestrator.enabled', { count: result.children.length, names: result.children.map((c) => c.name).join(', ') }) })
+    if (result.skipped.length) toast({ tone: 'warning', message: t('orchestrator.skipped', { files: result.skipped.join(', ') }) })
+  })
   const endDrag = () => {
     setDragging(null)
     setDropAt(null)
@@ -527,6 +537,11 @@ export function Sidebar({
                           : active ? <FolderOpen size={14} strokeWidth={1.5} /> : <Folder size={14} strokeWidth={1.5} />}
                       </span>
                       <span className="sb-project__name" title={project.name}>{project.name}</span>
+                      {project.orchestrator && (
+                        <span className="sb-project__starred" role="img" aria-label={t('orchestrator.badge')} title={t('orchestrator.badge')} data-testid="sidebar-project-orchestrator">
+                          <Network size={11} strokeWidth={2} />
+                        </span>
+                      )}
                       {project.starred && (
                         <span className="sb-project__starred" role="img" aria-label={t('sidebar.starred')} title={t('sidebar.starred')} data-testid="sidebar-project-starred">
                           <Star size={11} strokeWidth={2} fill="currentColor" />
@@ -692,6 +707,9 @@ export function Sidebar({
           {/* SSH のプロジェクトは手元のフォルダがレビューの置き場なので出さない */}
           {menuProject.source !== 'ssh' && <>
             <div className="sb-menu__sep" role="separator" />
+            <button type="button" role="menuitem" onClick={() => { setMenu(null); toggleOrchestrator(menuProject) }} data-testid="sidebar-project-orchestrator-menu">
+              <Network size={13} strokeWidth={1.75} />{menuProject.orchestrator ? t('orchestrator.off') : t('orchestrator.on')}
+            </button>
             <button type="button" role="menuitem" onClick={() => { setMenu(null); openRepoCreate(menuProject.id) }} data-testid="sidebar-project-create-repo">
               <FolderGit2 size={13} strokeWidth={1.75} />{t('repoCreate.menu')}
             </button>

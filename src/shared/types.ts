@@ -154,6 +154,8 @@ export interface Project {
   session?: ProjectSession
   /** ☆（お気に入り）。一覧の上にまとめ、「☆ のみ」で絞り込める（src/shared/projectOrder.ts） */
   starred?: true
+  /** オーケストレーター。すぐ下のフォルダのプロジェクトを subagent として束ねる（src/shared/orchestrator.ts） */
+  orchestrator?: true
   /** 登録した時刻（ISO8601）。「追加した順」に使う。これより前に登録したものには無い */
   addedAt?: string
   /** 最後に開いた時刻（ISO8601）。「最近使った順」「動いている順」に使う */

@@ -63,6 +63,17 @@ if [[ "$(uname)" != "Darwin" ]]; then
   exit 1
 fi
 
+# 作業ツリーを写して作るので、commit していない変更（並行する別の作業の途中のものを含む）がそのまま配布物に入る。
+# 0.4.21 はそうして作られた（BUILD-PROVENANCE の uncommitted changes）。公開する commit と同じ中身で作るため、
+# 変更・追跡していないファイルがあれば止める。HEAD だけを作るには git worktree add で別の場所に出し、そこで流す
+if [[ -n "$(git -C "${REPO}" status --porcelain --untracked-files=normal 2>/dev/null)" && "${FERRET_RELEASE_ALLOW_DIRTY:-}" != "1" ]]; then
+  echo "commit していない変更があります。git worktree add --detach <場所> HEAD で HEAD だけを出し、そこで作ってください" >&2
+  echo "（試しに作るだけなら FERRET_RELEASE_ALLOW_DIRTY=1）" >&2
+  git -C "${REPO}" status --short >&2
+  rm -rf "${WORK}"
+  exit 1
+fi
+
 echo "== Ferret ${VERSION} を作ります（作業場所: ${WORK}）"
 mkdir -p "${SRC}"
 cd "${REPO}"
