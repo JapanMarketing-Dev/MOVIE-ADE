@@ -106,3 +106,8 @@ export function nestMembers(shown: readonly Project[], all: readonly Project[]):
   }
   return out
 }
+
+/** 「すべてのプロジェクト」（エディタ全体）を一番上に置く（ほかの並びは保つ） */
+export function editorFirst(projects: readonly Project[]): Project[] {
+  return [...projects.filter((p) => p.editorWorkspace), ...projects.filter((p) => !p.editorWorkspace)]
+}

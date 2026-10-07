@@ -223,3 +223,12 @@ describe('フォルダに書く', () => {
     }
   })
 })
+
+import { editorFirst } from '../../src/shared/projectOrder'
+
+describe('「すべてのプロジェクト」はサイドバーの一番上', () => {
+  it('どの並びでも一番上。ほかの並びは保つ', () => {
+    const p = (id: string, extra: Partial<Project> = {}): Project => ({ id, name: id, folderPath: `/${id}`, urls: [], ...extra })
+    expect(editorFirst([p('a'), p('b'), p('all', { editorWorkspace: true, orchestrator: true }), p('c')]).map((x) => x.id)).toEqual(['all', 'a', 'b', 'c'])
+  })
+})

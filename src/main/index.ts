@@ -746,9 +746,37 @@ function assertNotRecording(): void {
 function syncOrchestratorOnOpen(project: Project | null | undefined): void {
   if (!project?.orchestrator || project.source === 'ssh') return
   void import('./orchestrator')
-    .then(({ syncOrchestrator }) => syncOrchestrator(project.folderPath, currentSettings().projects, true, project.members ?? [], guideLanguage()))
+    .then(({ syncOrchestrator }) => syncOrchestrator(project.folderPath, currentSettings().projects, true, membersOf(project), guideLanguage()))
     // .claude がリンクなのは利用者の置き方（書かないのが正しい）。Sentry へは送らない
     .catch((err: unknown) => { if ((err as Error)?.name !== 'SubagentLinkError') reportHandled(err, { area: 'agent-launch', op: 'sync orchestrator subagents' }) })
+}
+
+/** オーケストレーターの子にするプロジェクト。「すべてのプロジェクト」は登録したプロジェクト全部（SSH を除く） */
+function membersOf(project: Project): string[] {
+  if (!project.editorWorkspace) return project.members ?? []
+  return currentSettings().projects.filter((p) => !p.editorWorkspace && !p.orchestrator && p.source !== 'ssh').map((p) => p.id)
+}
+
+/**
+ * 「すべてのプロジェクト」（エディタ全体）を用意する。Ferret のデータの下の隠れたフォルダを作り、プロジェクトとして登録する。
+ * 中には登録したプロジェクトが全部サブフォルダ（リンク）として入る。サブフォルダのことは画面に出さない
+ */
+async function ensureEditorWorkspace(): Promise<void> {
+  const settings = currentSettings()
+  if (settings.projects.some((p) => p.editorWorkspace)) return
+  const folder = join(app.getPath('userData'), 'editor-workspace')
+  const { mkdir } = await import('node:fs/promises')
+  await mkdir(folder, { recursive: true })
+  const { projects, project } = upsertProjectFolder(settings.projects, folder)
+  const editor: Project = { ...project, name: t('editorWorkspace.name'), orchestrator: true, editorWorkspace: true }
+  // 一覧の一番上に置く
+  updateSettings({ projects: [editor, ...projects.filter((p) => p.id !== editor.id)] })
+}
+
+/** 「すべてのプロジェクト」の中身（リンク・subagent）を、今の登録に合わせる（プロジェクトを足した・消した・開いたとき） */
+function syncEditorWorkspace(): void {
+  const editor = currentSettings().projects.find((p) => p.editorWorkspace)
+  if (editor) syncOrchestratorOnOpen(editor)
 }
 
 /** オーケストレーターの README・CLAUDE.md の人が書く部分の雛形の言語（画面の言語が日本語なら日本語） */
@@ -764,7 +792,7 @@ async function setProjectOrchestrator(id: unknown, enabled: unknown): Promise<{ 
   if (current.source === 'ssh') throw new UserFacingError(t('errors.folderNotRegistered'))
   const on = enabled === true
   const { SubagentLinkError, syncOrchestrator } = await import('./orchestrator')
-  const result = await syncOrchestrator(current.folderPath, settings.projects, on, current.members ?? [], guideLanguage()).catch((err: unknown) => {
+  const result = await syncOrchestrator(current.folderPath, settings.projects, on, membersOf(current), guideLanguage()).catch((err: unknown) => {
     if (err instanceof SubagentLinkError) throw new UserFacingError(t('orchestrator.linkRefused'))
     throw err
   })
@@ -774,61 +802,6 @@ async function setProjectOrchestrator(id: unknown, enabled: unknown): Promise<{ 
   updateSettings({ projects: currentSettings().projects.map((p) => (p.id === current.id ? merged : p)) })
   send('projects:changed', projectsState())
   return { children: result.children, skipped: result.skipped }
-}
-
-/**
- * オーケストレーターを新しく作る。<parent>/<name> のフォルダを作り（あれば空のときだけ使う）、
- * 選んだ既存のプロジェクトを入れて、subagent などを書き、開く
- */
-async function createOrchestrator(rawName: unknown, rawParent: unknown, rawMembers: unknown): Promise<WorkspaceState> {
-  const name = typeof rawName === 'string' ? rawName.trim() : ''
-  const parent = typeof rawParent === 'string' ? rawParent.trim() : ''
-  if (!name || /[\\/]/.test(name) || name === '.' || name === '..' || !parent || !isAbsolute(parent)) throw new UserFacingError(t('orchestrator.create.invalid'))
-  const folder = join(parent, name)
-  const { mkdir, readdir } = await import('node:fs/promises')
-  const entries = await readdir(folder).catch(() => null)
-  if (entries && entries.length > 0) throw new UserFacingError(t('orchestrator.create.exists', { path: folder }))
-  await mkdir(folder, { recursive: true })
-  const settings = currentSettings()
-  const members = Array.isArray(rawMembers) ? rawMembers.filter((id): id is string => typeof id === 'string' && settings.projects.some((p) => p.id === id && p.source !== 'ssh' && !p.orchestrator)) : []
-  const { projects, project } = upsertProjectFolder(settings.projects, folder)
-  const created: Project = { ...project, name, orchestrator: true, ...(members.length ? { members } : {}) }
-  // 入れたプロジェクトは、ほかのオーケストレーターからは外す（1つのプロジェクトは1つのオーケストレーターの下）
-  updateSettings({ projects: projects.map((p) => (p.id === created.id ? created : p.members ? withoutMembers(p, members) : p)) })
-  const { syncOrchestrator } = await import('./orchestrator')
-  await syncOrchestrator(folder, currentSettings().projects, true, members, guideLanguage())
-  return openProject(currentSettings().projects.find((p) => p.id === created.id) ?? created)
-}
-
-function withoutMembers(project: Project, ids: readonly string[]): Project {
-  const members = (project.members ?? []).filter((id) => !ids.includes(id))
-  const next: Project = { ...project }
-  if (members.length) next.members = members
-  else delete next.members
-  return next
-}
-
-/** プロジェクトをオーケストレーターに入れる（orchestratorId が null なら今のオーケストレーターから外す） */
-async function setOrchestratorMembership(rawProjectId: unknown, rawOrchestratorId: unknown): Promise<ProjectsState> {
-  const settings = currentSettings()
-  const project = settings.projects.find((p) => p.id === rawProjectId)
-  if (!project || project.orchestrator || project.source === 'ssh') throw new UserFacingError(t('errors.projectNotFound'))
-  const target = rawOrchestratorId === null ? null : settings.projects.find((p) => p.id === rawOrchestratorId && p.orchestrator)
-  if (rawOrchestratorId !== null && !target) throw new UserFacingError(t('errors.projectNotFound'))
-  const touched = settings.projects.filter((p) => p.orchestrator && (p.members?.includes(project.id) || p.id === target?.id))
-  updateSettings({
-    projects: settings.projects.map((p) => {
-      if (target && p.id === target.id) return { ...withoutMembers(p, [project.id]), members: [...(p.members ?? []).filter((id) => id !== project.id), project.id] }
-      return p.members?.includes(project.id) ? withoutMembers(p, [project.id]) : p
-    })
-  })
-  const { syncOrchestrator } = await import('./orchestrator')
-  for (const orchestrator of touched) {
-    const saved = currentSettings().projects.find((p) => p.id === orchestrator.id)
-    if (saved) await syncOrchestrator(saved.folderPath, currentSettings().projects, true, saved.members ?? [], guideLanguage()).catch((err: unknown) => { if ((err as Error)?.name !== 'SubagentLinkError') reportHandled(err, { area: 'agent-launch', op: 'sync orchestrator subagents' }) })
-  }
-  send('projects:changed', projectsState())
-  return projectsState()
 }
 
 /**
@@ -842,6 +815,8 @@ function openProject(project: Project): WorkspaceState {
   const next = setWorkspace(project.folderPath, project)
   updateSettings({ activeProjectId: project.id, folderPath: project.folderPath, projects: markProjectOpened(currentSettings().projects, project.id) })
   syncOrchestratorOnOpen(project)
+  // プロジェクトを足して開いたときも、「すべてのプロジェクト」の中身を合わせる
+  if (!project.editorWorkspace) syncEditorWorkspace()
   send('workspace:changed', next)
   send('projects:changed', projectsState())
   // 内蔵ブラウザもそのプロジェクトのタブに入れ替える（ターミナルと同じく、プロジェクトごとに分ける）。
@@ -958,6 +933,7 @@ function removeProject(id: string): ProjectsState {
   if (wasActive) assertNotRecording()
   const projects = settings.projects.filter((p) => p.id !== id)
   updateSettings({ projects, ...(wasActive ? { activeProjectId: null } : {}) })
+  syncEditorWorkspace()
   if (wasActive) {
     const fallback = projects[0]
     if (fallback) openProject(fallback)
@@ -1555,7 +1531,7 @@ async function withOrchestratorNote(text: string): Promise<string> {
   if (!project?.orchestrator || project.source === 'ssh') return text
   try {
     const [{ findOrchestratorChildren }, { childList }] = await Promise.all([import('./orchestrator'), import('@shared/orchestrator')])
-    const children = await findOrchestratorChildren(project.folderPath, currentSettings().projects, project.members ?? [])
+    const children = await findOrchestratorChildren(project.folderPath, currentSettings().projects, membersOf(project))
     return children.length ? `${text}\n\n${t('orchestrator.reviewNote', { children: childList(children) })}` : text
   } catch (err) {
     reportHandled(err, { area: 'review', op: 'list orchestrator children' })
@@ -1701,8 +1677,6 @@ function registerIpc(): void {
     },
     'project:update': (project) => updateProject(project),
     'project:orchestrator': (id, enabled) => setProjectOrchestrator(id, enabled),
-    'project:createOrchestrator': (name, parent, members) => createOrchestrator(name, parent, members),
-    'project:setMembership': (projectId, orchestratorId) => setOrchestratorMembership(projectId, orchestratorId),
     'project:remove': (id) => removeProject(id),
     'project:sshHosts': async () => (await import('./projectSources')).listSshHosts(),
     'project:githubRepos': async () => (await import('./projectSources')).listGitHubRepos(),
@@ -2913,6 +2887,9 @@ async function main(): Promise<void> {
   // 指定フォルダもプロジェクトとして登録し、2回目以降は同じプロジェクト（URLプリセット込み）を開く。
   const presetFolder = process.env.ADE_PROJECT_DIR
   const startupFolder = presetFolder && presetFolder.length > 0 ? presetFolder : loadedSettings.folderPath
+  // 「すべてのプロジェクト」（エディタ全体）を用意する（無ければ作る）
+  await ensureEditorWorkspace().catch((err: unknown) => reportHandled(err, { area: 'startup', op: 'prepare editor workspace' }))
+  loadedSettings = currentSettings()
   let startupProject = presetFolder && presetFolder.length > 0
     ? null
     : loadedSettings.projects.find((p) => p.id === loadedSettings.activeProjectId) ?? null
@@ -2981,6 +2958,8 @@ async function main(): Promise<void> {
   })
   setWorkspace(loadedSettings.folderPath, startupProject)
   syncOrchestratorOnOpen(startupProject)
+  // 起動の引数で開いて登録したプロジェクトも、「すべてのプロジェクト」に入れる
+  if (!startupProject?.editorWorkspace) syncEditorWorkspace()
   // 定期の依頼は10分ごとに確かめる（Agent が手すきのときだけ送る）
   setInterval(() => void runScheduledRequests().catch((err: unknown) => reportHandled(err, { area: 'agent-launch', op: 'send scheduled requests' })), 10 * 60 * 1000).unref?.()
   // 最初のタブを開く要求が届く前に、node-pty の読み込みと最初のシェルの起動（rc の読み込み）を済ませておく

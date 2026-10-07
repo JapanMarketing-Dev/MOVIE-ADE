@@ -158,6 +158,11 @@ export interface Project {
   orchestrator?: true
   /** オーケストレーターに入れた既存のプロジェクトの id（フォルダは動かさない。サイドバーではこの下に並ぶ） */
   members?: string[]
+  /**
+   * 「すべてのプロジェクト」（エディタ全体）。Ferret が持つ隠れたフォルダで、登録したプロジェクトが全部サブフォルダ（リンク）として入る。
+   * ここで起動した Agent に頼むと、各プロジェクトの subagent が動く（src/main/index.ts の ensureEditorWorkspace）
+   */
+  editorWorkspace?: true
   /** 登録した時刻（ISO8601）。「追加した順」に使う。これより前に登録したものには無い */
   addedAt?: string
   /** 最後に開いた時刻（ISO8601）。「最近使った順」「動いている順」に使う */

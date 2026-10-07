@@ -37,7 +37,7 @@ import { SetupProgressLink } from '../onboarding/SetupChecklist'
 import { FeedbackLink } from './FeedbackDialog'
 import { useProjectActivity } from '../terminal/agentActivity'
 import { dropPositionAt, moveAmongVisible, stepAmongVisible, type DropPosition } from '@shared/reorder'
-import { PROJECT_SORTS, filterProjects, memberParents, nestMembers, sanitizeProjectView, sortProjects, type ProjectListView } from '@shared/projectOrder'
+import { PROJECT_SORTS, editorFirst, filterProjects, memberParents, nestMembers, sanitizeProjectView, sortProjects, type ProjectListView } from '@shared/projectOrder'
 
 export { toReviewSession, type ReviewSession }
 
@@ -298,11 +298,11 @@ export function Sidebar({
       return next
     })
   }, [projectActivity])
-  const displayed = sortProjects(projects.projects, view.sort, { activity: projectActivity, agentActiveAt })
-  // オーケストレーターに入れたプロジェクトは、そのオーケストレーターのすぐ下に字下げして並べる
+  // 「すべてのプロジェクト」（エディタ全体）は、どの並び順でも一番上に置く
+  const displayed = editorFirst(sortProjects(projects.projects, view.sort, { activity: projectActivity, agentActiveAt }))
+  // オーケストレーターに入れたプロジェクトは、そのオーケストレーターのすぐ下に字下げして並べる（以前の版で入れたもの）
   const shown = nestMembers(filterProjects(displayed, view), projects.projects)
   const parentOf = memberParents(projects.projects)
-  const orchestrators = projects.projects.filter((p) => p.orchestrator)
 
   /**
    * 並べ替え。全体の並びは今の表示の順で、☆ の中・外のそれぞれの中で動かす（☆ は上にまとめるため）。
@@ -324,16 +324,10 @@ export function Sidebar({
   const stepOf = (id: string, delta: -1 | 1) => stepAmongVisible(projectIds, shownIds, id, delta, sameGroup(id))
   const moveProject = (id: string, delta: -1 | 1) => reorder(stepOf(id, delta))
   const toggleStar = (project: Project) => run(() => window.ade.invoke('project:update', { id: project.id, starred: !project.starred }))
-  /** オーケストレーターに入れる・外す（フォルダは動かさない） */
-  const setMembership = (project: Project, orchestratorId: string | null) => run(() => window.ade.invoke('project:setMembership', project.id, orchestratorId))
-  /** オーケストレーターにする・やめる（すぐ下のフォルダのプロジェクトを subagent にする。src/main/orchestrator.ts） */
-  const toggleOrchestrator = (project: Project) => run(async () => {
-    const enabled = !project.orchestrator
-    const result = await window.ade.invoke('project:orchestrator', project.id, enabled)
-    if (!enabled) toast({ tone: 'success', message: t('orchestrator.disabled') })
-    else if (result.children.length === 0) toast({ tone: 'info', message: t('orchestrator.none') })
-    else toast({ tone: 'success', message: t('orchestrator.enabled', { count: result.children.length, names: result.children.map((c) => c.name).join(', ') }) })
-    if (result.skipped.length) toast({ tone: 'warning', message: t('orchestrator.skipped', { files: result.skipped.join(', ') }) })
+  /** 以前の版で作ったオーケストレーターをやめる（Ferret が書いた subagent などを外す。いまは「すべてのプロジェクト」を使う） */
+  const stopOrchestrator = (project: Project) => run(async () => {
+    await window.ade.invoke('project:orchestrator', project.id, false)
+    toast({ tone: 'success', message: t('orchestrator.disabled') })
   })
   const endDrag = () => {
     setDragging(null)
@@ -544,7 +538,7 @@ export function Sidebar({
                       </span>
                       <span className="sb-project__name" title={project.name}>{project.name}</span>
                       {project.orchestrator && (
-                        <span className="sb-project__starred" role="img" aria-label={t('orchestrator.badge')} title={t('orchestrator.badge')} data-testid="sidebar-project-orchestrator">
+                        <span className="sb-project__starred" role="img" aria-label={t(project.editorWorkspace ? 'editorWorkspace.hint' : 'orchestrator.badge')} title={t(project.editorWorkspace ? 'editorWorkspace.hint' : 'orchestrator.badge')} data-testid={project.editorWorkspace ? 'sidebar-editor-workspace' : 'sidebar-project-orchestrator'}>
                           <Network size={11} strokeWidth={2} />
                         </span>
                       )}
@@ -713,24 +707,18 @@ export function Sidebar({
           {/* SSH のプロジェクトは手元のフォルダがレビューの置き場なので出さない */}
           {menuProject.source !== 'ssh' && <>
             <div className="sb-menu__sep" role="separator" />
-            <button type="button" role="menuitem" onClick={() => { setMenu(null); toggleOrchestrator(menuProject) }} data-testid="sidebar-project-orchestrator-menu">
-              <Network size={13} strokeWidth={1.75} />{menuProject.orchestrator ? t('orchestrator.off') : t('orchestrator.on')}
-            </button>
-            {/* 既存のプロジェクトをオーケストレーターに入れる・外す */}
-            {!menuProject.orchestrator && orchestrators.map((o) => {
-              const member = parentOf.get(menuProject.id) === o.id
-              return <button key={o.id} type="button" role="menuitem" onClick={() => { setMenu(null); setMembership(menuProject, member ? null : o.id) }} data-testid={`sidebar-project-member-${o.id}`}>
-                <Network size={13} strokeWidth={1.75} />{member ? t('orchestrator.removeFrom', { name: o.name }) : t('orchestrator.addTo', { name: o.name })}
-              </button>
-            })}
+            {menuProject.orchestrator && !menuProject.editorWorkspace && <button type="button" role="menuitem" onClick={() => { setMenu(null); stopOrchestrator(menuProject) }} data-testid="sidebar-project-orchestrator-menu">
+              <Network size={13} strokeWidth={1.75} />{t('orchestrator.off')}
+            </button>}
             <button type="button" role="menuitem" onClick={() => { setMenu(null); openRepoCreate(menuProject.id) }} data-testid="sidebar-project-create-repo">
               <FolderGit2 size={13} strokeWidth={1.75} />{t('repoCreate.menu')}
             </button>
           </>}
           <div className="sb-menu__sep" role="separator" />
-          <button type="button" role="menuitem" className="is-danger" onClick={() => { setMenu(null); setConfirmRemove(menuProject.id) }}>
+          {/* 「すべてのプロジェクト」は外せない（Ferret が持つエディタ全体） */}
+          {!menuProject.editorWorkspace && <button type="button" role="menuitem" className="is-danger" onClick={() => { setMenu(null); setConfirmRemove(menuProject.id) }}>
             <Trash2 size={13} strokeWidth={1.75} />{t('sidebar.removeFromList')}
-          </button>
+          </button>}
         </div>
       )}
       {/* セットアップが全部済むまで、下に小さな進み具合（Setup n/7）を出す。済んだら消える */}
