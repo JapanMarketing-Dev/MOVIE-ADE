@@ -24,6 +24,14 @@ export interface OrchestratorSync {
   skipped: string[]
 }
 
+/** .claude・.claude/agents・subagent のファイルがリンクだった（書かない。利用者に知らせる） */
+export class SubagentLinkError extends Error {
+  constructor(readonly path: string) {
+    super(`refusing to write subagents through a symbolic link: ${path}`)
+    this.name = 'SubagentLinkError'
+  }
+}
+
 async function isLink(path: string): Promise<boolean> {
   try { return (await lstat(path)).isSymbolicLink() } catch { return false }
 }
@@ -46,7 +54,7 @@ export async function findOrchestratorChildren(folder: string, registered: Reado
 async function agentsDir(folder: string): Promise<string> {
   const claude = join(folder, '.claude')
   const dir = join(claude, 'agents')
-  if (await isLink(claude) || await isLink(dir)) throw new Error(`refusing to write subagents through a symbolic link: ${dir}`)
+  if (await isLink(claude) || await isLink(dir)) throw new SubagentLinkError(dir)
   return dir
 }
 
@@ -76,7 +84,7 @@ export async function syncOrchestrator(folder: string, registered: ReadonlyArray
 
 async function writeAtomic(dir: string, file: string, text: string): Promise<void> {
   const path = join(dir, file)
-  if (await isLink(dir) || await isLink(path)) throw new Error(`refusing to write a subagent through a symbolic link: ${path}`)
+  if (await isLink(dir) || await isLink(path)) throw new SubagentLinkError(path)
   const tmp = join(dir, `.${file}.${process.pid}.${Date.now().toString(36)}.tmp`)
   try {
     await writeFile(tmp, text, { encoding: 'utf8', mode: 0o644, flag: 'wx' })

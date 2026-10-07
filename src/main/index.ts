@@ -747,7 +747,8 @@ function syncOrchestratorOnOpen(project: Project | null | undefined): void {
   if (!project?.orchestrator || project.source === 'ssh') return
   void import('./orchestrator')
     .then(({ syncOrchestrator }) => syncOrchestrator(project.folderPath, currentSettings().projects))
-    .catch((err: unknown) => reportHandled(err, { area: 'agent-launch', op: 'sync orchestrator subagents' }))
+    // .claude がリンクなのは利用者の置き方（書かないのが正しい）。Sentry へは送らない
+    .catch((err: unknown) => { if ((err as Error)?.name !== 'SubagentLinkError') reportHandled(err, { area: 'agent-launch', op: 'sync orchestrator subagents' }) })
 }
 
 /** オーケストレーターにする・やめる。子の subagent を書く・消す */
@@ -757,8 +758,11 @@ async function setProjectOrchestrator(id: unknown, enabled: unknown): Promise<{ 
   if (!current) throw new UserFacingError(t('errors.projectNotFound'))
   if (current.source === 'ssh') throw new UserFacingError(t('errors.folderNotRegistered'))
   const on = enabled === true
-  const { syncOrchestrator } = await import('./orchestrator')
-  const result = await syncOrchestrator(current.folderPath, settings.projects, on)
+  const { SubagentLinkError, syncOrchestrator } = await import('./orchestrator')
+  const result = await syncOrchestrator(current.folderPath, settings.projects, on).catch((err: unknown) => {
+    if (err instanceof SubagentLinkError) throw new UserFacingError(t('orchestrator.linkRefused'))
+    throw err
+  })
   const merged: Project = { ...current }
   if (on) merged.orchestrator = true
   else delete merged.orchestrator
