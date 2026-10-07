@@ -27,8 +27,12 @@ export interface ChildEntry {
 }
 
 export interface OrchestratorChild {
-  /** 親からの相対パス（すぐ下のフォルダの名前） */
+  /** 表示と指示文に使う場所。親の下なら相対パス（フォルダの名前）、入れた既存のプロジェクトなら絶対パス */
   dir: string
+  /** Agent が作業するフォルダの絶対パス（入れたプロジェクトはメインフォルダの下のリンク） */
+  path: string
+  /** 入れたプロジェクトの本当のフォルダ（メインフォルダの外。Claude Code の additionalDirectories に足す） */
+  outside?: string
   /** 表示名。登録済みのプロジェクトならその名前 */
   name: string
   /** subagent の名前（ferret-<英数字>） */
@@ -57,8 +61,59 @@ export function orchestratorChildren(
       let agent = base
       for (let n = 2; used.has(agent); n++) agent = `${base}-${n}`
       used.add(agent)
-      return [{ dir: e.name, name: projectName || e.name, agent }]
+      return [{ dir: e.name, path: join(parentFolder, e.name), name: projectName || e.name, agent }]
     })
+}
+
+/**
+ * 子のプロジェクトの全体。オーケストレーターに入れた既存のプロジェクト（members。フォルダはどこでもよい）と、
+ * 親のすぐ下のフォルダのプロジェクト。同じフォルダは1つにし、subagent の名前は重ならないよう番号を付ける。
+ * SSH のプロジェクト（手元にフォルダが無い）・消えたプロジェクト・自分自身は入れない
+ */
+export function allOrchestratorChildren(
+  parentFolder: string,
+  members: readonly string[],
+  registered: ReadonlyArray<{ id: string; folderPath: string; name: string; source?: string }>,
+  subfolders: readonly OrchestratorChild[],
+  /** 入れたプロジェクトの id → メインフォルダの下に作ったリンクの名前（作れなかったものは無い） */
+  links: ReadonlyMap<string, string> = new Map(),
+  join: (...parts: string[]) => string = (...parts) => parts.join('/')
+): OrchestratorChild[] {
+  const seen = new Set(subfolders.map((c) => normalizeFolder(c.path)))
+  seen.add(normalizeFolder(parentFolder))
+  const used = new Set(subfolders.map((c) => c.agent))
+  const added: OrchestratorChild[] = []
+  for (const id of members) {
+    const project = registered.find((p) => p.id === id)
+    if (!project || project.source === 'ssh' || seen.has(normalizeFolder(project.folderPath))) continue
+    seen.add(normalizeFolder(project.folderPath))
+    const base = `${SUBAGENT_PREFIX}${slug(project.name || folderName(project.folderPath))}`
+    let agent = base
+    for (let n = 2; used.has(agent); n++) agent = `${base}-${n}`
+    used.add(agent)
+    const link = links.get(id)
+    added.push(link
+      ? { dir: link, path: join(parentFolder, link), outside: project.folderPath, name: project.name || folderName(project.folderPath), agent }
+      : { dir: project.folderPath, path: project.folderPath, outside: project.folderPath, name: project.name || folderName(project.folderPath), agent })
+  }
+  return [...subfolders, ...added]
+}
+
+function folderName(path: string): string {
+  return path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? path
+}
+
+/** 子のフォルダのうち、親の外にあるもの（Claude Code の additionalDirectories に足す） */
+export function outsideFolders(children: readonly OrchestratorChild[]): string[] {
+  return children.flatMap((c) => (c.outside ? [c.outside] : []))
+}
+
+/** メインフォルダの下に作るリンクの名前（フォルダの名前。使えない文字は - に。重なれば番号） */
+export function memberLinkName(folderPath: string, taken: ReadonlySet<string>): string {
+  const base = (folderName(folderPath).replace(/[<>:"|?*\u0000-\u001f]/g, '-').replace(/^\.+/, '').trim() || 'project').slice(0, 80)
+  let name = base
+  for (let n = 2; taken.has(name.toLowerCase()); n++) name = `${base}-${n}`
+  return name
 }
 
 /** 比べるための形。区切りを / にそろえ、Windows のドライブのパス（大文字・小文字を区別しない）は小文字にする */
@@ -79,8 +134,8 @@ function oneLine(text: string): string {
 }
 
 /** <親>/.claude/agents/<agent>.md の中身（Claude Code の subagent） */
-export function renderSubagent(child: OrchestratorChild, parentFolder: string, join: (...parts: string[]) => string): string {
-  const abs = join(parentFolder, child.dir)
+export function renderSubagent(child: OrchestratorChild): string {
+  const abs = child.path
   const name = oneLine(child.name)
   return [
     '---',
@@ -91,9 +146,10 @@ export function renderSubagent(child: OrchestratorChild, parentFolder: string, j
     '',
     `You work only inside the ${name} project: \`${abs}\`.`,
     '',
-    `- Before changing anything, read \`${child.dir}/CLAUDE.md\` or \`${child.dir}/AGENTS.md\` if present and follow them.`,
+    `- Before changing anything, read \`${abs}/CLAUDE.md\` or \`${abs}/AGENTS.md\` if present and follow them, together with the shared rules the orchestrator gives you.`,
     `- Run commands from that folder (\`cd "${abs}"\` first). Do not edit files outside it. If the task also needs changes in another project, say so in your report instead of making them.`,
     '- When the task is a Ferret review finding, the request names the review folder (`.ferret/reviews/<id>/`). Fix only the findings that belong to this project and record each one\'s status in that review\'s `progress.json` as the request describes.',
+    '- Use the tools, connections and permissions this session already has (Claude in Chrome and other browser use, computer use, MCP servers, logins). Do not start a new connection or ask the user to approve again; if something is missing, report it to the orchestrator instead.',
     '- End with a short report: what you changed (files), how you checked it, and anything left for the orchestrator.',
     ''
   ].join('\n')
@@ -136,4 +192,130 @@ export function planSubagents(existing: ReadonlyArray<{ file: string; text: stri
 /** 子の一覧を、送る指示文に足す1行の形にする（例 `Shop (shop/) → ferret-shop`） */
 export function childList(children: readonly OrchestratorChild[]): string {
   return children.map((c) => `${c.name} (${c.dir}/) → ${c.agent}`).join(', ')
+}
+
+// ───────────── CLAUDE.md / AGENTS.md の Ferret の欄 ─────────────
+
+export const GUIDE_START = '<!-- ferret-orchestrator:start (generated by Ferret; edits inside this block are overwritten) -->'
+export const GUIDE_END = '<!-- ferret-orchestrator:end -->'
+
+/**
+ * オーケストレーターのフォルダの CLAUDE.md・AGENTS.md に入れる Ferret の欄。
+ * 1つの Agent とのやり取りで、共通の部分は1回で決め、プロダクトごとの部分は子の subagent に並行して任せる進め方を書く
+ */
+export function renderOrchestratorGuide(children: readonly OrchestratorChild[]): string {
+  const list = children.length
+    ? children.map((c) => `- ${oneLine(c.name)}: \`${c.path}\` (subagent: \`${c.agent}\`)`).join('\n')
+    : '- (no products yet. Add projects to this orchestrator in Ferret.)'
+  return [
+    GUIDE_START,
+    '## Orchestrator (managed by Ferret)',
+    '',
+    'This folder coordinates several products that are developed in parallel. Each product is its own project and has a subagent:',
+    '',
+    list,
+    '',
+    'How to work on a request:',
+    '',
+    '1. Split it into shared work and per-product work. Shared work is anything several products must agree on: conventions, API contracts, data models, shared libraries, design tokens, docs. Decide it once, write the decision in the "Shared rules" section of this file (outside this block), and do shared code changes once, in the product or shared package that owns it, before the per-product work. Keep separate what must stay separate per product: infrastructure (cloud accounts, deployments, databases, secrets and environment variables, CI/CD, domains, billing), each product\'s data, and its release timing. Never merge or share these across products unless the user asks for it.',
+    '2. Hand each product\'s part to that product\'s subagent, one task per product, and start the tasks for independent products together (several Task calls in one message) so they run in parallel. Tell each subagent the shared rules it must follow.',
+    '3. Subagents work only in their own folders and report back. Check the reports for consistency across products, fix any mismatch, and summarize for the user per product.',
+    '4. Ferret review findings name the product by URL, screen or file path. Route each finding to its product\'s subagent; findings for different products run in parallel.',
+    '5. Connections and permissions are set up once, here at the top: Claude in Chrome and other browser use, computer use, MCP servers, logins, and permission approvals. Subagents inherit this session\'s tools and approvals, so never set them up again per product and never ask the user to connect or approve again for each product.',
+    '6. Without subagents (for example Codex), do the same steps yourself, working in each product\'s folder in turn.',
+    GUIDE_END
+  ].join('\n')
+}
+
+/**
+ * Ferret の欄を差し替えた中身。無ければ末尾に足す。ファイルが無ければ欄と tail（人が書く部分の雛形）で作る。同じなら null。
+ * 人が書く部分は作るときの雛形だけで、そのあとは触らない
+ */
+export function withGuideBlock(existing: string | null, block: string, tail = ''): string | null {
+  if (existing === null) return `${block}\n${tail ? `\n${tail.replace(/\s*$/, '')}\n` : ''}`
+  const start = existing.indexOf(GUIDE_START)
+  const end = existing.indexOf(GUIDE_END, start + 1)
+  const next = start >= 0 && end > start
+    ? existing.slice(0, start) + block + existing.slice(end + GUIDE_END.length)
+    : `${existing.replace(/\s*$/, '')}\n\n${block}\n`
+  return next === existing ? null : next
+}
+
+/** Ferret の欄を外した中身（やめたとき）。欄が無ければ null */
+export function withoutGuideBlock(existing: string | null): string | null {
+  if (existing === null) return null
+  const start = existing.indexOf(GUIDE_START)
+  const end = existing.indexOf(GUIDE_END, start + 1)
+  if (start < 0 || end < start) return null
+  const before = existing.slice(0, start).replace(/\s*$/, '')
+  const after = existing.slice(end + GUIDE_END.length).replace(/^\s*/, '')
+  const rest = [before, after].filter(Boolean).join('\n\n')
+  return rest ? `${rest.replace(/\s*$/, '')}\n` : ''
+}
+
+// ───────────── .claude/settings.local.json の additionalDirectories ─────────────
+
+/**
+ * Claude Code が子のフォルダ（親の外）を読み書きできるよう、permissions.additionalDirectories を合わせる。
+ * 利用者が書いた値は残し、前回 Ferret が足したもの（managed）だけを入れ替える。読めない JSON は書き換えない（null）。
+ * 変わらなければ null
+ */
+export function withAdditionalDirectories(settingsText: string | null, previouslyManaged: readonly string[], wanted: readonly string[]): string | null {
+  let settings: Record<string, unknown> = {}
+  if (settingsText !== null && settingsText.trim()) {
+    try {
+      const parsed: unknown = JSON.parse(settingsText)
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+      settings = parsed as Record<string, unknown>
+    } catch {
+      return null
+    }
+  }
+  const permissions = settings.permissions && typeof settings.permissions === 'object' && !Array.isArray(settings.permissions) ? settings.permissions as Record<string, unknown> : {}
+  const current = Array.isArray(permissions.additionalDirectories) ? permissions.additionalDirectories.filter((d): d is string => typeof d === 'string') : []
+  const managed = new Set(previouslyManaged)
+  const next = [...current.filter((d) => !managed.has(d)), ...wanted.filter((d) => !current.includes(d) || managed.has(d))]
+  const unique = [...new Set(next)]
+  if (unique.length === current.length && unique.every((d, i) => d === current[i])) return null
+  const nextPermissions = { ...permissions }
+  if (unique.length) nextPermissions.additionalDirectories = unique
+  else delete nextPermissions.additionalDirectories
+  const nextSettings = { ...settings }
+  if (Object.keys(nextPermissions).length) nextSettings.permissions = nextPermissions
+  else delete nextSettings.permissions
+  return `${JSON.stringify(nextSettings, null, 2)}\n`
+}
+
+// ───────────── 人が書く部分の雛形（CLAUDE.md・AGENTS.md・README.md を最初に作るとき） ─────────────
+
+export type GuideLanguage = 'ja' | 'en'
+
+/** CLAUDE.md の人が書く部分：共通のルールと、プロダクトごとのルール（作った時点の子の見出し付き） */
+export function rulesTemplate(children: readonly OrchestratorChild[], lang: GuideLanguage): string {
+  const heads = children.map((c) => `### ${oneLine(c.name)}\n\n- `).join('\n\n')
+  return lang === 'ja'
+    ? ['## 共通のルール（すべてのプロダクト）', '', '<!-- 全プロダクトで揃えること（規約・API の約束・デザイン・ドキュメントなど）を人が書きます。Agent はこれに従い、共通の決定もここに追記します。 -->', '- ', '', '## プロダクトごとのルール', '', '<!-- プロダクトごとに分けること（インフラ・デプロイ・DB・秘密情報・リリースの時期など）を見出しの下に書きます。見出しはプロダクトの名前です。 -->', '', heads].join('\n')
+    : ['## Shared rules (all products)', '', '<!-- What all products must agree on (conventions, API contracts, design, docs). The agent follows these and adds shared decisions here. -->', '- ', '', '## Per-product rules', '', '<!-- What stays separate per product (infrastructure, deployment, databases, secrets, release timing). One heading per product name. -->', '', heads].join('\n')
+}
+
+/** AGENTS.md の人が書く部分：ルールは CLAUDE.md の1か所に書く */
+export function agentsTemplate(lang: GuideLanguage): string {
+  return lang === 'ja'
+    ? '共通のルールとプロダクトごとのルールは、このフォルダの CLAUDE.md にあります。作業の前に必ず読み、それに従ってください。'
+    : 'The shared rules and the per-product rules are in CLAUDE.md in this folder. Read it before any work and follow it.'
+}
+
+/** README.md の Ferret の欄（人向け：プロダクトの一覧） */
+export function renderReadmeBlock(children: readonly OrchestratorChild[], lang: GuideLanguage): string {
+  const list = children.length
+    ? children.map((c) => `- **${oneLine(c.name)}**: \`${c.path}\``).join('\n')
+    : (lang === 'ja' ? '- （まだありません。Ferret のサイドバーでプロジェクトを入れます）' : '- (None yet. Put projects under this orchestrator from the Ferret sidebar.)')
+  return [GUIDE_START, lang === 'ja' ? '## プロダクト' : '## Products', '', list, GUIDE_END].join('\n')
+}
+
+/** README.md の人が書く部分（使い方） */
+export function readmeTemplate(name: string, lang: GuideLanguage): string {
+  return lang === 'ja'
+    ? [`# ${oneLine(name)}`, '', '複数のプロダクトを1つの Agent で並行して開発するためのフォルダ（Ferret のオーケストレーター）です。', '', '- このフォルダで Claude Code に頼むと、共通の部分を先に決め、プロダクトごとの部分をそれぞれの subagent に並行して任せます。', '- 共通の指示とプロダクトごとの指示は **CLAUDE.md** に書きます（AGENTS.md は CLAUDE.md を読むよう Agent に伝えるだけです）。', '- インフラ・デプロイ・DB・秘密情報など、プロダクトごとに分けるものは「プロダクトごとのルール」に書きます。', '- Chrome・computer use・MCP・ログインなどの接続と許可は、このフォルダの Agent で1回だけ済ませます。subagent はそれを使います。', '- `.claude/agents/ferret-*.md` と、各ファイルの `ferret-orchestrator` の印の間は Ferret が書き直します。'].join('\n')
+    : [`# ${oneLine(name)}`, '', 'A folder for developing several products in parallel with one agent (a Ferret orchestrator).', '', '- Ask Claude Code in this folder: it settles the shared part first, then hands each product\'s part to that product\'s subagent in parallel.', '- Write shared and per-product instructions in **CLAUDE.md** (AGENTS.md only tells agents to read CLAUDE.md).', '- Infrastructure, deployment, databases, secrets and anything else that stays separate per product go under "Per-product rules".', '- Connections and permissions (Chrome, computer use, MCP, logins) are set up once with the agent in this folder; subagents use them.', '- Ferret rewrites `.claude/agents/ferret-*.md` and the part of each file between the `ferret-orchestrator` markers.'].join('\n')
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Folder, FolderGit2, KeyRound, Laptop, Lock, Server, X } from 'lucide-react'
+import { ArrowLeft, Folder, FolderGit2, KeyRound, Laptop, Lock, Network, Server, X } from 'lucide-react'
 import type { Project, ProjectsState } from '@shared/types'
 import { cloneRepoName, normalizeCloneUrl, tildePath, type CloneFailureKind, type GitHubRepoList, type ProjectSource, type SshConfigHost } from '@shared/projectSource'
 import { checkSshTarget } from '@shared/sshCommand'
@@ -20,7 +20,7 @@ import { GITLAB_COM, type Forge } from '@shared/forge'
  *
  * 開いている間は、呼び出し側が内蔵ブラウザのビューを隠す（Modal はネイティブのビューの下になるため）。
  */
-type Step = 'choose' | 'github' | 'ssh'
+type Step = 'choose' | 'github' | 'ssh' | 'orchestrator'
 
 /** 前回の保存先（この端末だけの好み） */
 const PARENT_KEY = 'ferret.cloneParent'
@@ -51,14 +51,16 @@ export function AddProjectDialog({ onClose, onAdded }: {
     <div className="rv-modal__panel apd" data-testid="add-project-dialog">
       <header className="rv-modal__head apd__head">
         {step !== 'choose' && <IconButton size="sm" label={t('projectSource.back')} icon={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => setStep('choose')} data-testid="add-project-back" />}
-        <h2>{t(step === 'github' ? 'projectSource.choose.github' : step === 'ssh' ? 'projectSource.choose.ssh' : 'projectSource.addTitle')}</h2>
+        <h2>{t(step === 'github' ? 'projectSource.choose.github' : step === 'ssh' ? 'projectSource.choose.ssh' : step === 'orchestrator' ? 'orchestrator.create.title' : 'projectSource.addTitle')}</h2>
         <IconButton label={t('common.close')} icon={<X size={16} />} onClick={onClose} />
       </header>
       {step === 'choose' && <div className="apd__choices">
         <ChoiceButton icon={<Laptop size={18} strokeWidth={1.5} />} title={t('projectSource.choose.local')} hint={t('projectSource.choose.localHint')} onClick={addLocal} testId="add-project-local" />
         <ChoiceButton icon={<FolderGit2 size={18} strokeWidth={1.5} />} title={t('projectSource.choose.github')} hint={t('projectSource.choose.githubHint')} onClick={() => setStep('github')} testId="add-project-github" />
         <ChoiceButton icon={<Server size={18} strokeWidth={1.5} />} title={t('projectSource.choose.ssh')} hint={t('projectSource.choose.sshHint')} onClick={() => setStep('ssh')} testId="add-project-ssh" />
+        <ChoiceButton icon={<Network size={18} strokeWidth={1.5} />} title={t('projectSource.choose.orchestrator')} hint={t('projectSource.choose.orchestratorHint')} onClick={() => setStep('orchestrator')} testId="add-project-orchestrator" />
       </div>}
+      {step === 'orchestrator' && <OrchestratorStep onDone={(state) => { onClose(); onAdded(state, 'local') }} />}
       {step === 'github' && <GitHubStep onDone={(state) => { onClose(); onAdded(state, 'github') }} />}
       {step === 'ssh' && <SshStep onDone={(state) => { onClose(); onAdded(state, 'ssh') }} />}
     </div>
@@ -248,4 +250,68 @@ export function RemoteFilesNotice({ project }: { project: Project }) {
   return <aside className="explorer apd-remote-files" data-testid="remote-files-notice">
     <p className="st-note"><Server size={12} aria-hidden="true" />{t('projectSource.remoteFiles', { host: project.ssh?.host ?? '' })}</p>
   </aside>
+}
+
+/** オーケストレーターを作る：名前・置き場所・下に入れる既存のプロジェクト（フォルダは動かさない） */
+function OrchestratorStep({ onDone }: { onDone: (state: ProjectsState) => void }) {
+  const t = useT()
+  const [name, setName] = useState('')
+  const [parent, setParent] = useState(loadParent)
+  const [home, setHome] = useState('')
+  const [projects, setProjects] = useState<Project[] | null>(null)
+  const [picked, setPicked] = useState<string[]>([])
+  const [busy, setBusy] = useState(false)
+  const [failure, setFailure] = useState<string | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void window.ade.invoke('project:cloneDefaults').then((d) => { if (!cancelled) { setHome(d.home); setParent((p) => p || d.parent) } }).catch(() => undefined)
+    void window.ade.invoke('project:list').then((state) => { if (!cancelled) setProjects(state.projects.filter((p) => p.source !== 'ssh' && !p.orchestrator)) }).catch(() => { if (!cancelled) setProjects([]) })
+    return () => { cancelled = true }
+  }, [])
+  const trimmed = name.trim()
+  const valid = trimmed !== '' && !/[\\/]/.test(trimmed) && trimmed !== '.' && trimmed !== '..' && parent !== ''
+  const destination = valid ? `${parent.replace(/[\\/]+$/, '')}/${trimmed}` : null
+  const toggle = (id: string) => setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  const create = () => {
+    if (!valid) return
+    setBusy(true)
+    setFailure(null)
+    void window.ade.invoke('project:createOrchestrator', trimmed, parent, picked)
+      .then(() => window.ade.invoke('project:list'))
+      .then((state) => { saveParent(parent); onDone(state) })
+      .catch((err) => { setBusy(false); setFailure(errorMessage(err)) })
+  }
+  return <div className="apd__body">
+    <label className="pt-field">
+      <span>{t('orchestrator.create.name')}</span>
+      <Field autoFocus value={name} disabled={busy} autoComplete="off" spellCheck={false} onChange={(e) => { setName(e.target.value); setFailure(null) }} data-testid="orchestrator-name" />
+    </label>
+    <label className="pt-field">
+      <span>{t('orchestrator.create.parent')}</span>
+      <span className="apd__parent">
+        <Field mono value={tildePath(parent, home)} readOnly title={parent} aria-label={t('orchestrator.create.parent')} data-testid="orchestrator-parent" />
+        <Button disabled={busy} onClick={() => void window.ade.invoke('project:pickParent', parent).then((p) => { if (p) setParent(p) })}>{t('projectSource.github.choose')}</Button>
+      </span>
+    </label>
+    {destination && <p className="st-note" data-testid="orchestrator-destination"><Folder size={11} aria-hidden="true" />{t('orchestrator.create.destination', { path: tildePath(destination, home) })}</p>}
+    <div className="apd__repos">
+      <span className="pt-editor__caption">{t('orchestrator.create.members')}</span>
+      <p className="st-note">{t('orchestrator.create.membersHint')}</p>
+      {projects === null ? <p className="st-note">{t('projectSource.github.loading')}</p>
+        : projects.length === 0 ? <p className="st-note">{t('orchestrator.create.noProjects')}</p>
+          : <ul className="apd__repo-list" data-testid="orchestrator-members">
+            {projects.map((project) => <li key={project.id}>
+              <label className={`apd__repo${picked.includes(project.id) ? ' is-selected' : ''}`} title={project.folderPath}>
+                <input type="checkbox" checked={picked.includes(project.id)} disabled={busy} onChange={() => toggle(project.id)} data-testid={`orchestrator-member-${project.id}`} />
+                <span className="apd__repo-name">{project.name}</span>
+                <span className="apd__repo-host">{tildePath(project.folderPath, home)}</span>
+              </label>
+            </li>)}
+          </ul>}
+    </div>
+    {failure && <p className="st-note st-note--warn" role="alert" data-testid="orchestrator-error">{failure}</p>}
+    <div className="apd__actions">
+      <Button variant="primary" disabled={!valid || busy} onClick={create} data-testid="orchestrator-create">{t('orchestrator.create.submit')}</Button>
+    </div>
+  </div>
 }

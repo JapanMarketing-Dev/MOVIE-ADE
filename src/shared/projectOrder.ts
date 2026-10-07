@@ -79,3 +79,30 @@ export function sortProjects(projects: readonly Project[], sort: ProjectSort, ct
 export function filterProjects(sorted: readonly Project[], view: ProjectListView): Project[] {
   return view.starredOnly ? sorted.filter((p) => p.starred) : [...sorted]
 }
+
+/** 入れたプロジェクト → そのオーケストレーター（先に並んでいるオーケストレーターが持つもの） */
+export function memberParents(projects: readonly Project[]): Map<string, string> {
+  const parents = new Map<string, string>()
+  for (const p of projects) {
+    if (!p.orchestrator) continue
+    for (const id of p.members ?? []) if (id !== p.id && !parents.has(id)) parents.set(id, p.id)
+  }
+  return parents
+}
+
+/**
+ * オーケストレーターに入れたプロジェクトを、そのオーケストレーターのすぐ下に並べ直す（並びの中の順は保つ）。
+ * オーケストレーターが絞り込みで出ていなければ、入れたプロジェクトは自分の位置に出る
+ */
+export function nestMembers(shown: readonly Project[], all: readonly Project[]): Project[] {
+  const parents = memberParents(all)
+  const shownIds = new Set(shown.map((p) => p.id))
+  const out: Project[] = []
+  for (const p of shown) {
+    const parent = parents.get(p.id)
+    if (parent && shownIds.has(parent)) continue
+    out.push(p)
+    if (p.orchestrator) out.push(...shown.filter((c) => parents.get(c.id) === p.id))
+  }
+  return out
+}

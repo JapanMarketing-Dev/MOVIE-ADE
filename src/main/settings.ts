@@ -24,6 +24,7 @@ import { normalizeLocalePreference } from '@shared/i18n'
 import { normalizeSttLanguage } from '@shared/sttLanguages'
 import { migrateLegacySettings } from './projects'
 import { sanitizeProjectSession } from '@shared/projectSession'
+import { sanitizeAgentRequestPrefs } from '@shared/agentRequests'
 import { sanitizeProjectKind, sanitizeProjectTargets } from '@shared/projectTargets'
 import { sanitizeProjectSource } from '@shared/projectSource'
 import { sanitizeAgentAccounts } from './accounts/sanitize'
@@ -91,7 +92,7 @@ function sanitizeProjects(raw: unknown): Project[] {
     const addedAt = stamp(r.addedAt)
     const lastOpenedAt = stamp(r.lastOpenedAt)
     return [{ id: r.id, name: str(r.name) ? r.name : r.folderPath.split(/[\\/]/).pop() ?? r.folderPath, folderPath: r.folderPath, kind, ...origin, urls, ...(session ? { session } : {}),
-      ...(r.starred === true ? { starred: true as const } : {}), ...(r.orchestrator === true ? { orchestrator: true as const } : {}), ...(addedAt ? { addedAt } : {}), ...(lastOpenedAt ? { lastOpenedAt } : {}) }]
+      ...(r.starred === true ? { starred: true as const } : {}), ...(r.orchestrator === true ? { orchestrator: true as const } : {}), ...(Array.isArray(r.members) && r.members.some(str) ? { members: [...new Set(r.members.filter(str))] } : {}), ...(addedAt ? { addedAt } : {}), ...(lastOpenedAt ? { lastOpenedAt } : {}) }]
   })
 }
 
@@ -200,6 +201,7 @@ export function sanitize(raw: unknown): Settings {
     ...(r.limitFailover && typeof r.limitFailover === 'object' ? { limitFailover: sanitizeLimitFailover(r.limitFailover) } : {}),
     // 空・空白だけは「未設定」（既定文を使う）。長すぎる値は切り詰める
     ...(typeof r.agentPrompt === 'string' && r.agentPrompt.trim() ? { agentPrompt: r.agentPrompt.trim().slice(0, 2000) } : {}),
+    ...(() => { const requests = sanitizeAgentRequestPrefs(r.agentRequests); return requests ? { agentRequests: requests } : {} })(),
     // 判定モデルの接続先。未設定は書かない（既定は Ollama + clef-flash、無効）。キー本体は入れない
     ...(r.decision && typeof r.decision === 'object' ? { decision: sanitizeDecisionPreferences(r.decision) } : {}),
     // 「指摘を整理」の実行方法と API の接続先。キー本体は入れない（pipeline/stt/keys.ts）

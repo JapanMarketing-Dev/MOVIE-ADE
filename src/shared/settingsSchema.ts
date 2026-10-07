@@ -195,6 +195,7 @@ export const SETTINGS_SCHEMA: JsonSchema = {
           name: str('Display name. Defaults to the folder name.'),
           folderPath: str('Absolute path of the project folder.'),
           starred: { type: 'boolean', description: 'Starred (favorite). Starred projects stay at the top of the sidebar and can be shown alone.' },
+          members: { type: 'array', items: { type: 'string', description: 'Id of a project put under this orchestrator.' }, description: 'Orchestrator only: ids of existing projects put under this orchestrator (their folders stay where they are). They appear under it in the sidebar and get a subagent like the subfolder projects.' },
           orchestrator: { type: 'boolean', description: 'Orchestrator. Projects in the subfolders (git repositories or registered projects) become Claude Code subagents in <folder>/.claude/agents/ferret-*.md, and reviews sent from here tell the agent to hand each finding to the right subagent. Ferret rewrites those files when the project is opened.' },
           addedAt: str('When the project was added (ISO 8601). Used by the "Date added" sort; set by the app.'),
           lastOpenedAt: str('When the project was last opened (ISO 8601). Used by the "Recently used" and "Active first" sorts; set by the app.'),
@@ -286,6 +287,30 @@ export const SETTINGS_SCHEMA: JsonSchema = {
         switchAccounts: bool('Try another signed-in account of the same agent (Claude Code, Codex) before moving to the next agent. Between accounts that Ferret manages, the same conversation is resumed.', { default: DEFAULT_LIMIT_FAILOVER.switchAccounts }),
         agentOrder: { type: 'array', description: 'Agents to hand the work to, highest priority first. Agents not listed are never used.', items: agentId, default: DEFAULT_LIMIT_FAILOVER.agentOrder },
         returnToPreferred: bool('When a higher agent in agentOrder is available again, move idle switched tabs back to it. Off keeps working with the current agent.', { default: DEFAULT_LIMIT_FAILOVER.returnToPreferred })
+      }
+    },
+    agentRequests: {
+      type: 'object',
+      description: 'Ready-made requests to the agent (Settings > Requests): memory tidy-up (dream), compacting instructions, security check, SEO, analytics, Sentry fixes, performance, accessibility, dependency updates, plus your own. Pressing Send only sends the text to the agent of the open project.',
+      properties: {
+        items: {
+          type: 'array',
+          description: 'Changes to the built-in requests and requests you added.',
+          items: {
+            type: 'object',
+            description: 'One request.',
+            required: ['id'],
+            properties: {
+              id: str('Built-in id (dream, compact, security, seo, analytics, sentry, performance, accessibility, dependencies) or any id for your own request.'),
+              title: str('Name of your own request.'),
+              text: str('Request text. For a built-in request, omit it to use the default.', { maxLength: 6000 }),
+              schedule: { type: 'string', description: 'Send it automatically when the agent is idle: daily or weekly. Omit for never.', enum: ['off', 'daily', 'weekly'] },
+              batch: bool('Include it in "Send selected together".'),
+              custom: bool('A request you added.')
+            }
+          }
+        },
+        lastRunAt: { type: 'object', description: 'When each scheduled request was last sent (ISO 8601). Set by the app.', additionalProperties: str('ISO 8601 time.') }
       }
     },
     agentPrompt: str('One-line instruction sent to the agent with a review. {{path}} is the absolute path of feedback.md, {{relpath}} the project-relative path. Omit for the default.', { maxLength: 2000 }),

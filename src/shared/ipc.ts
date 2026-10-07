@@ -140,6 +140,10 @@ export interface IpcRequests {
   'project:update': (project: ProjectUpdate) => ProjectsState
   /** オーケストレーターにする・やめる。子のプロジェクトの subagent を書く・消す（src/main/orchestrator.ts） */
   'project:orchestrator': (id: string, enabled: boolean) => { children: Array<{ dir: string; name: string; agent: string }>; skipped: string[] }
+  /** オーケストレーターを新しく作って開く（<parent>/<name> を作り、members の既存のプロジェクトを入れる） */
+  'project:createOrchestrator': (name: string, parent: string, members: string[]) => WorkspaceState
+  /** プロジェクトをオーケストレーターに入れる。null なら外す（フォルダは動かさない） */
+  'project:setMembership': (projectId: string, orchestratorId: string | null) => ProjectsState
   /** 登録を外すだけ。フォルダは消さない */
   'project:remove': (id: string) => ProjectsState
   /** 中央のタブ・開いているファイル・表示中のレビューを覚える（URL は main が自分で覚える）。通知は送らない */
@@ -177,6 +181,10 @@ export interface IpcRequests {
   'agents:resources': (agent: TuiAgent) => AgentResourceList
   /** 空文字で既定文に戻す */
   'settings:agentPrompt': (template: string) => void
+  /** Agent への依頼文の変更（src/shared/agentRequests.ts）。定期の送った時刻は main が持つ */
+  'settings:agentRequests': (prefs: import('./agentRequests').AgentRequestPrefs) => void
+  /** 選んだ依頼文を、開いているプロジェクトの Agent へ送る（複数ならまとめて1つの依頼） */
+  'agentRequests:send': (ids: string[]) => { ok: boolean; message: string; noAgent?: boolean }
 
   /** Claude Code / Codex のアカウント。一覧を読むたびにログインの済んだ行を登録し直す */
   'accounts:list': () => AgentAccountsState
@@ -654,6 +662,8 @@ export const IPC_REQUEST_CHANNELS = [
   'project:switch',
   'project:update',
   'project:orchestrator',
+  'project:createOrchestrator',
+  'project:setMembership',
   'project:remove',
   'project:saveSession',
   'project:sshHosts',
@@ -671,6 +681,8 @@ export const IPC_REQUEST_CHANNELS = [
   'cliTools:list',
   'agents:resources',
   'settings:agentPrompt',
+  'settings:agentRequests',
+  'agentRequests:send',
   'accounts:list',
   'accounts:add',
   'accounts:rename',

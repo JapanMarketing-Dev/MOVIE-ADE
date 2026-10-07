@@ -53,7 +53,7 @@ import { useViewBounds } from './hooks/useViewBounds'
 import { useAnyModalOpen } from './lib/openModals'
 import { useProjectSession } from './hooks/useProjectSession'
 import { matchWindowSource } from '@shared/projectTargets'
-import { planNewReview } from './lib/newReview'
+import { newReviewNeedsPage, planNewReview } from './lib/newReview'
 import { RemoteFilesNotice } from './components/AddProjectDialog'
 import { targetFromSource } from '@shared/captureTarget'
 import { installTestHooks } from './testHooks'
@@ -700,6 +700,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   toggleRecordingRef.current = toggleRecording
   const workspaceProjectRef = useRef<string | null>(workspace.projectId ?? null)
   workspaceProjectRef.current = workspace.projectId ?? null
+  const emptyReasonRef = useRef(emptyReason)
+  emptyReasonRef.current = emptyReason
   const startReviewIn = useCallback((projectId: string) => void run(async () => {
     const plan = planNewReview({ projectId, activeProjectId: workspaceProjectRef.current, projectIds: projects.projects.map((p) => p.id), recording })
     if (plan.action === 'busy') { toast({ tone: 'warning', message: t('sidebar.reviewBusy') }); return }
@@ -709,8 +711,15 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
       for (let i = 0; i < 40 && workspaceProjectRef.current !== plan.projectId; i++) await delay(50)
       await new Promise((done) => requestAnimationFrame(() => done(null)))
     }
+    // レビューするページがまだ無い（URL を入れていない）なら、警告は出さずにフィードバックの画面へ移るだけ。
+    // URL はそこで入れてから録画を始める
+    if (newReviewNeedsPage(emptyReasonRef.current, captureTargetRef.current.kind)) {
+      setCenterTab('browser')
+      changeMode('feedback')
+      return
+    }
     toggleRecordingRef.current()
-  }), [run, projects.projects, recording, toast, t])
+  }), [run, projects.projects, recording, toast, t, changeMode])
 
   /** 録画の対象を選んで、次回のために覚える */
   const chooseTarget = (target: CaptureTarget) => {

@@ -2302,6 +2302,11 @@ body[data-resizing='row'] * {
   min-width: 0;
 }
 
+/* オーケストレーターに入れたプロジェクト。オーケストレーターの下に字下げして並べる */
+.sb-project--member {
+  margin-left: var(--space-5);
+}
+
 /* 並べ替えのドラッグ: 動かしている行は薄く、落とす位置に線を出す（行の間の gap の中ほど） */
 .sb-project.is-dragging > .sb-project__row {
   opacity: 0.5;
