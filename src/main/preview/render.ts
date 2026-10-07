@@ -36,6 +36,14 @@ export function previewCsp(remoteImages = false): string {
   ].join('; ')
 }
 
+/**
+ * 同梱の Mermaid（約 5MB）の URL。版を付けると、main はその版の間ずっと変わらないものとしてキャッシュしてよいと返す
+ * （index.ts の immutable）。図ごと・ページごとに読み直さない。中身は同梱のファイルで、利用者の入力ではない
+ */
+export function mermaidScriptUrl(version?: string): string {
+  return `${PREVIEW_SCHEME}://assets/mermaid.js${version ? `?v=${encodeURIComponent(version)}` : ''}`
+}
+
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
@@ -122,12 +130,12 @@ export function renderPreviewMessage(message: string): string {
  * プレビューのページ全体。スタイルとスクリプトは同梱のもの（ade-preview://assets/…）だけを読む。
  * Mermaid（5MB 強）は図があるときだけ page.js が読み込む。
  */
-export function renderPreviewPage({ path, kind, body, remoteImages = false }: { path: string; kind: PreviewPageKind; body: string; remoteImages?: boolean }): string {
+export function renderPreviewPage({ path, kind, body, remoteImages = false, mermaidSrc = mermaidScriptUrl() }: { path: string; kind: PreviewPageKind; body: string; remoteImages?: boolean; mermaidSrc?: string }): string {
   const name = path.slice(path.lastIndexOf('/') + 1)
   // page.js は辞書を読めないので、ページで出す文は data 属性で渡す（言語はページを返した時点のもの）
   const messages = `data-msg-mermaid-load="${escapeHtml(t('preview.mermaidLoadFailed'))}" data-msg-diagram-failed="${escapeHtml(t('preview.diagramFailed', { error: '{{error}}' }))}"` +
     ` data-msg-remote-blocked="${escapeHtml(t('preview.remoteImagesBlocked', { hosts: '{{hosts}}' }))}" data-msg-remote-load="${escapeHtml(t('preview.remoteImagesLoad'))}"` +
-    ` data-remote-images="${remoteImages ? 'allow' : 'block'}"`
+    ` data-remote-images="${remoteImages ? 'allow' : 'block'}" data-mermaid-src="${escapeHtml(mermaidSrc)}"`
   return `<!doctype html>
 <html lang="${getLocale()}">
 <head>
@@ -140,6 +148,28 @@ export function renderPreviewPage({ path, kind, body, remoteImages = false }: { 
 <main id="ade-preview" class="markdown-body${kind === 'mermaid' ? ' markdown-body--diagram' : ''}" data-path="${escapeHtml(path)}" ${messages}>
 ${body}</main>
 <script src="ade-preview://assets/preview.js"></script>
+</body>
+</html>
+`
+}
+
+/**
+ * Markdown の編集画面の ```mermaid の図を描くページ（ade-preview://assets/mermaid-block.html）。
+ * 親（renderer）が隠した sandbox の iframe を1つだけ置き、図のソースを postMessage で渡す。描いた SVG を返すだけで、ここには表示しない（mermaidBlock.js）
+ */
+export function renderMermaidBlockPage(mermaidSrc: string = mermaidScriptUrl()): string {
+  return `<!doctype html>
+<html lang="${getLocale()}">
+<head>
+<meta charset="utf-8">
+<style>
+html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+#ade-mermaid { width: 1200px; }
+</style>
+</head>
+<body>
+<div id="ade-mermaid" data-msg-mermaid-load="${escapeHtml(t('preview.mermaidLoadFailed'))}" data-mermaid-src="${escapeHtml(mermaidSrc)}"></div>
+<script src="ade-preview://assets/mermaid-block.js"></script>
 </body>
 </html>
 `

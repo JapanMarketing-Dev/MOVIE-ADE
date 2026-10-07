@@ -253,13 +253,42 @@
 
       <section class="docs-section" aria-labelledby="type">
         <h2 id="type"><a class="docs-anchor" href="#type" aria-label="Tautan ke Mengetik alih-alih berbicara">#</a>Mengetik alih-alih berbicara</h2>
-        <p>Saat berbicara tidak memungkinkan, ketik temuannya. Ini hanya berfungsi di mode Editor, pada tab <span class="docs-ui">Browser</span>, saat tidak sedang merekam.</p>
+        <p>Jika berbicara tidak memungkinkan, ketik temuan Anda. Ini berfungsi di mode editor dan mode feedback, saat tidak merekam.</p>
 <ol class="docs-steps">
-  <li>Klik <span class="docs-ui">Masukan teks</span> di bilah alat browser.</li>
+  <li>Klik <span class="docs-ui">Masukan teks</span>: di kanan tombol rekam di kanan atas, di bilah alat browser, atau di bilah alat mode feedback. Di mode editor, tombol ini lebih dulu beralih ke tab <span class="docs-ui">Browser</span>; di mode feedback, tombol ini mematikan pena dan kotak.</li>
   <li>Seret kotak di sekitar bagian halaman, atau klik sebuah elemen untuk mengotakinya.</li>
   <li>Ketik apa yang perlu diubah. <kbd>Enter</kbd> menambahkannya, <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd><kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Enter</kbd></span></span> membuat baris baru, dan <kbd>Esc</kbd> membatalkan kotak. Enter untuk mengonfirmasi konversi metode input tidak menambahkannya.</li>
 </ol>
 <p>Masing-masing menjadi temuan dengan gambar halaman dan kotaknya, beserta URL dan elemen yang dikotaki, sama seperti temuan hasil rekaman. Temuan ditambahkan ke ulasan yang terbuka di <span class="docs-ui">Temuan</span>, atau ke ulasan baru jika tidak ada yang terbuka. Browser tetap di depan, jadi Anda bisa menambahkan beberapa sekaligus; <kbd>Esc</kbd> saat tidak ada kotak terbuka, atau menekan tombolnya lagi, akan menghentikannya. Ini juga berfungsi pada jendela aplikasi desktop atau simulator yang ditampilkan di tempat browser, tanpa URL.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="share">
+        <h2 id="share"><a class="docs-anchor" href="#share" aria-label="Tautan ke Mendapat masukan dari siapa saja dengan tautan berbagi">#</a>Mendapat masukan dari siapa saja dengan tautan berbagi</h2>
+        <p>Untuk mendapat masukan dari orang yang tidak memakai Ferret (klien, desainer, rekan tim), kirimkan tautan berbagi. Mereka tidak perlu akun atau aplikasi: mereka membuka tautan di browser, menandai screenshot halaman Anda, dan menulis apa yang perlu diubah. Nama bersifat opsional.</p>
+<ol class="docs-steps">
+  <li>Buka halaman di browser bawaan (hanya http atau https) lalu klik <span class="docs-ui">Bagikan</span> di bilah alat browser.</li>
+  <li>Jika mau, beri judul (jika tidak, dipakai judul halaman) dan aktifkan <span class="docs-ui">Izinkan peninjau melihat catatan satu sama lain</span>. Klik <span class="docs-ui">Buat tautan berbagi untuk halaman ini</span>. Ferret mengambil screenshot bagian halaman yang terlihat, mengunggahnya, dan menyalin tautannya (<code>https://share.ferretade.dev/s/…</code>).</li>
+  <li>Untuk menambahkan halaman lain ke tautan yang sama, buka halaman lain dan klik <span class="docs-ui">Tambahkan halaman ini</span> pada tautan itu (hingga 20 halaman).</li>
+</ol>
+<p>Di tautan itu, peninjau memasang pin, menggambar kotak, atau mencoret dengan pena di screenshot, lalu menulis catatan (hingga 2.000 karakter). <span class="docs-ui">Live page</span> membuka halaman asli dalam bingkai agar bisa dipakai, dan <span class="docs-ui">Annotate live</span> memungkinkan mereka memasang pin di atasnya; URL yang sedang dilihat dikirim bersama catatan. Beberapa situs menolak dimuat dalam bingkai; peninjau dapat membuka halaman di tab baru dan mengirim catatan sebagai teks. Halaman tampil dalam bahasa Jepang atau Inggris, mengikuti browser peninjau.</p>
+<p>Catatan masuk ke jendela <span class="docs-ui">Bagikan</span> yang sama. Pilih catatan lalu klik <span class="docs-ui">Impor yang dipilih</span>, atau klik <span class="docs-ui">Tolak</span> untuk yang tidak Anda inginkan (<span class="docs-ui">Urungkan</span> mengembalikannya). Catatan yang diimpor menjadi temuan di tinjauan baru, seperti <span class="docs-ui">Masukan teks</span>: screenshot dengan tanda dari peninjau menjadi gambar BEFORE, bersama URL halaman serta nama dan catatan peninjau. Pin yang dipasang di halaman langsung ditampilkan sebagai kotak di sekeliling seluruh screenshot, karena halaman langsung bisa saja digulir berbeda. Setelah itu, kirim ke agen Anda dan periksa BEFORE dan AFTER seperti biasa.</p>
+<ul>
+  <li>Siapa pun yang punya tautan dapat melihat screenshot dan mengirim catatan, jadi jangan bagikan halaman yang menampilkan data pribadi. Tautan kedaluwarsa setelah 30 hari. <span class="docs-ui">Hapus</span> langsung menghapus tautan, screenshot, dan catatannya.</li>
+  <li>Satu tautan menerima hingga 500 catatan, dan server membatasi seberapa sering catatan dapat dikirim dan tautan dibuat. Server tidak menyimpan alamat IP.</li>
+  <li>Tautan berbagi disimpan per proyek. Token pemilik yang dipakai Ferret untuk membaca dan mengelola tautan dienkripsi dengan <code>safeStorage</code> Electron di <code>&lt;userData&gt;/feedback-share/shares.bin</code>. Build pengembangan dan sistem tanpa <code>safeStorage</code> menyimpannya hanya sampai Ferret ditutup (tautannya sendiri tetap berfungsi sampai kedaluwarsa).</li>
+  <li>Kode server ada di <code>workers/feedback-share</code> di repositori.</li>
+</ul>
+      </section>
+
+      <section class="docs-section" aria-labelledby="meeting">
+        <h2 id="meeting"><a class="docs-anchor" href="#meeting" aria-label="Tautan ke Mengimpor rapat">#</a>Mengimpor rapat</h2>
+        <p>Ubah rapat tentang produk Anda menjadi temuan. Klik <span class="docs-ui">Impor Rapat</span> di bawah proyek yang terbuka di bilah samping, lalu tambahkan rekaman, transkrip, atau keduanya:</p>
+<ul>
+  <li>Rekaman: <span class="docs-ui">Pilih video atau audio…</span> (MP4, M4V, MOV, WebM, MKV, M4A, MP3, WAV, OGG, atau AAC). Rekaman disalin ke folder tinjauan baru.</li>
+  <li>Transkrip: <span class="docs-ui">Buka berkas transkrip…</span> (<code>.txt</code>, <code>.md</code>, <code>.vtt</code>, <code>.srt</code>, atau <code>.docx</code>), atau tempelkan. Ferret membaca teks WebVTT dan SRT (Zoom, Google Meet), transkrip dengan baris waktu yang diikuti baris <q>Nama: teks</q> (Google Meet, Gemini), baris <q>[00:12:34] Nama: teks</q>, baris <q>Nama 0:05</q> yang diikuti teks (Circleback, Otter), baris <q>Nama: teks</q> biasa, atau paragraf biasa. Ferret tidak terhubung ke layanan-layanan ini; ia hanya membaca teks yang Anda berikan.</li>
+</ul>
+<p>Klik <span class="docs-ui">Impor</span>. Tanpa transkrip, Ferret mentranskripsikan audio rekaman dengan pengaturan <span class="docs-ui">Transkripsi</span> Anda (rekaman hingga 3 jam). Lalu model <span class="docs-ui">Rapikan</span> Anda menulis kandidat temuan dari apa yang dibicarakan. Jika rekaman punya video dan transkrip punya waktu, bingkai dari saat setiap ucapan menjadi gambar BEFORE temuan itu. Transkrip tanpa waktu juga bisa, tanpa bingkai.</p>
+<p>Jika <a href="agents.html#verify">model keputusan</a> diaktifkan, Ferret menanyakan sekali per kandidat apakah rapat meminta perubahan konkret pada produk dan, dengan model gambar dan bingkai, apakah bingkai itu menampilkan layar yang dibahas. Setiap kandidat menampilkan <span class="docs-ui">Kemungkinan</span> dengan persentase; kandidat di bawah 50% mulai dalam keadaan tidak dicentang. Panggilan ini berjalan dari Ferret melalui relay lokal yang sama dengan pemeriksaan agen Anda, dengan batas panggilan dan biayanya. Tidak ada yang dikirim ke agen Anda sampai Anda memeriksa kandidatnya: sunting, hapus centang, atau pertahankan, lalu kirim seperti biasa.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="annotations-clear">
@@ -343,6 +372,8 @@
         <li><a href="#record">Mulai, jeda, berhenti</a></li>
         <li><a href="#pen">Pena</a></li>
         <li><a href="#type">Mengetik alih-alih berbicara</a></li>
+        <li><a href="#share">Mendapat masukan dari siapa saja dengan tautan berbagi</a></li>
+        <li><a href="#meeting">Mengimpor rapat</a></li>
         <li><a href="#annotations-clear">Kapan coretan menghilang</a></li>
         <li><a href="#mic">Mikrofon</a></li>
         <li><a href="#live-transcript">Lihat apa yang sedang ditranskripsi</a></li>

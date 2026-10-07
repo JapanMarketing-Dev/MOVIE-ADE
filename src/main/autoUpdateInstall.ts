@@ -1,11 +1,12 @@
 import { app, autoUpdater, shell } from 'electron'
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
-import { chmodSync, closeSync, constants, copyFileSync, createReadStream, openSync, readSync, renameSync, rmSync } from 'node:fs'
+import { chmodSync, closeSync, constants, copyFileSync, createReadStream, openSync, readSync, renameSync, rmSync, statSync, type BigIntStats } from 'node:fs'
 import { chmod, copyFile, link, mkdir, readdir, rename, rm, stat } from 'node:fs/promises'
 import { createServer, type Server } from 'node:http'
 import { basename, dirname, extname, isAbsolute, join } from 'node:path'
 import { nsisInstallerArgs, type InstallMethod } from '@shared/appUpdate'
+import { flow } from '@shared/report'
 import type { VerifiedDownload } from './updateCheck'
 
 /**
@@ -169,26 +170,54 @@ async function placeInDownloads(path: string, name: string): Promise<string> {
   throw new Error('no free file name')
 }
 
+/** ［再起動して更新］で選んだ NSIS のインストーラーと、sha256 を確かめたときのファイルの実体。app の quit（runPendingInstall）で起動する */
+let pendingNsis: { path: string; identity: string } | null = null
+
+/** ファイルの実体（dev・ino・大きさ・mtime・ctime）。同じなら、確かめたあとに書き換わっていない */
+function fileIdentity(path: string): string {
+  const s: BigIntStats = statSync(path, { bigint: true })
+  return [s.dev, s.ino, s.size, s.mtimeNs, s.ctimeNs].join(':')
+}
+
+/**
+ * ［再起動して更新］の入れ替えを始める。app の quit（終了の後始末が済んだあと）と、終了が止まったときの watchdog から呼ぶ。
+ * 画面なし（/S）で入れ替え、終わったら新しい版を起動する（--force-run）。--updated は「更新として入れる」の印。
+ * 選ばれていなければ false。1回だけ走る。中身が変わっていれば入れない（次に開いたとき、また準備から始める）
+ */
+export function runPendingInstall(): boolean {
+  const pending = pendingNsis
+  pendingNsis = null
+  if (!pending) return false
+  // sha256 は［再起動して更新］の直前に確かめた（installUpdate）。終了の途中で 100MB 超を読み直すと終了が遅れ、
+  // watchdog の強制終了に回るので、ここでは確かめたときと同じ実体かだけを見る
+  if (fileIdentity(pending.path) !== pending.identity) throw new Error('update file changed before restart install')
+  flow('update restart installer')
+  const child = spawn(pending.path, nsisInstallerArgs('restart'), { detached: true, stdio: 'ignore' })
+  // 走らせられなかったとき（error は後から届く）に、終了の途中で落ちない
+  child.once('error', () => undefined)
+  child.unref()
+  return true
+}
+
 /**
  * 入れ替える。呼ぶ前に、作業中の Agent・録画の確認（index.ts）を済ませておく。
  * 終了の後始末（PTY を閉じる・設定を書く）は app.quit() の before-quit（index.ts の beginShutdown）が行う
  */
 export async function installUpdate(method: InstallMethod, path: string, file: VerifiedDownload): Promise<void> {
-  // 入れ替える直前にもう一度 sha256 を確かめる
-  if ((await hashFile(path)) !== file.sha256) throw new Error('update file changed before install')
+  // 入れ替える直前にもう一度 sha256 を確かめる（確かめている間に入れ替わっていないかも、前後の実体で見る）
+  const before = fileIdentity(path)
+  if ((await hashFile(path)) !== file.sha256 || fileIdentity(path) !== before) throw new Error('update file changed before install')
   if (method === 'squirrel-mac') {
     // Squirrel.Mac が受け取り終えたもの（stageUpdate）を、終了のあとで入れ替えて起動し直す
     autoUpdater.quitAndInstall()
     return
   }
+  flow('update install', { method })
   if (method === 'nsis') {
-    // 画面なしで入れ替え（/S）、終わったら新しい版を起動する（--force-run）。--updated は「更新として入れる」の印
-    const child = spawn(path, nsisInstallerArgs('restart'), { detached: true, stdio: 'ignore' })
-    await new Promise<void>((resolve, reject) => {
-      child.once('spawn', () => resolve())
-      child.once('error', reject)
-    })
-    child.unref()
+    // インストーラーは、終了の後始末（PTY を閉じる・設定やタブを書く）が終わった app の quit で起動する（runPendingInstall）。
+    // 先に起動すると、--updated のインストーラーは約1.3秒後にインストール先の下のプロセスを止めにくるので、
+    // 後始末の途中の main とその子プロセスに割り込む（0.4.16〜0.4.18 の Windows の、更新のたびの main のクラッシュ FERRET-1Q の候補）
+    pendingNsis = { path, identity: before }
     app.quit()
     return
   }
@@ -225,6 +254,7 @@ export function installUpdateOnQuit(method: InstallMethod, path: string, file: V
   if (method === 'squirrel-mac' || method === 'deb') return false
   // 入れ替える直前にもう一度 sha256 を確かめる
   if (hashFileSync(path) !== file.sha256) throw new Error('update file changed before install on quit')
+  flow('update install on quit', { method })
   if (method === 'nsis') {
     // 画面なし（/S）で入れ替える。--force-run を付けないので、終わっても起動しない
     const child = spawn(path, nsisInstallerArgs('quit'), { detached: true, stdio: 'ignore' })

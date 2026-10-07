@@ -68,7 +68,7 @@ export const defaultSegmenterOptions: SegmenterOptions = {
 /** 1フレームの長さ(ms)。無音判定の粒度 */
 const FRAME_MS = 20
 
-type SttEngineKind = 'local-gpu' | 'local-cpu' | 'openai'
+export type SttEngineKind = 'local-gpu' | 'local-cpu' | 'openai'
 
 /**
  * エンジン別のチャンク上限。

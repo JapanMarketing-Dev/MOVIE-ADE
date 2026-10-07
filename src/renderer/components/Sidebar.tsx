@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Ellipsis,
   Folder,
+  FolderGit2,
   FolderOpen,
   FolderPlus,
   MessageCircleQuestionMark,
@@ -15,7 +16,8 @@ import {
   Plus,
   Settings2,
   Star,
-  Trash2
+  Trash2,
+  Users
 } from 'lucide-react'
 import type { Project, ProjectsState } from '@shared/types'
 import { formatShortcut } from '../lib/shortcut'
@@ -24,6 +26,7 @@ import { useT } from '../lib/i18n'
 import { Button, EmptyState, Field, IconButton, useToast } from '../ui'
 import { filterReviews, isEmptyDraft, reviewHosts, type ReviewFilter } from '@shared/reviewList'
 import { ProjectEditDialog } from './ProjectTargetsEditor'
+import { CreateRepoDialog } from './CreateRepoDialog'
 import { AddProjectDialog, ProjectSourceIcon } from './AddProjectDialog'
 import type { ProjectSource } from '@shared/projectSource'
 import { sshTargetLabel } from '@shared/sshCommand'
@@ -122,6 +125,7 @@ export function Sidebar({
   selectedId,
   onSelect,
   onNewReview,
+  onImportMeeting,
   recording = false,
   onHistoryChanged,
   onOverlayChange
@@ -134,6 +138,8 @@ export function Sidebar({
   onSelect: (id: string) => void
   /** そのプロジェクトで新しいレビュー（録画）を始める。開いていなければ切り替えてから（App が行う） */
   onNewReview: (projectId: string) => void
+  /** 開いているプロジェクトに mtg の録画・文字起こしを取り込む（MeetingImportDialog。App が開く） */
+  onImportMeeting?: () => void
   /** 録画中は ＋ を押せなくする（⌘⇧R と違い、＋ で録画を止めないため） */
   recording?: boolean
   /** 開いているプロジェクトの履歴を名前の変更・アーカイブ・削除したあと。消した ID を渡す */
@@ -163,6 +169,12 @@ export function Sidebar({
   const refocus = useRef<string | null>(null)
   const openEdit = (id: string | null) => {
     setEditingId(id)
+    onOverlayChange?.(id !== null)
+  }
+  /** 「GitHub で private リポジトリを作る」を開いているプロジェクト（ダイアログの間は内蔵ブラウザのビューを隠す） */
+  const [repoCreateId, setRepoCreateId] = useState<string | null>(null)
+  const openRepoCreate = (id: string | null) => {
+    setRepoCreateId(id)
     onOverlayChange?.(id !== null)
   }
 
@@ -627,6 +639,18 @@ export function Sidebar({
                         <span>{t('sidebar.newReview')}</span>
                         {active && <kbd className="sb-new-review__key">{recordKey}</kbd>}
                       </button>
+                      {/* mtg の録画・文字起こしから指摘の候補を作る。取り込み先は開いているプロジェクト */}
+                      {active && onImportMeeting && <button
+                        type="button"
+                        className="sb-new-review sb-new-review--import"
+                        title={t('sidebar.importMeetingTip')}
+                        disabled={recording}
+                        onClick={onImportMeeting}
+                        data-testid="sidebar-import-meeting"
+                      >
+                        <Users size={13} strokeWidth={1.75} />
+                        <span>{t('sidebar.importMeeting')}</span>
+                      </button>}
                       {items !== undefined && (
                         <ReviewList
                           filter={filter}
@@ -665,6 +689,13 @@ export function Sidebar({
           <button type="button" role="menuitem" disabled={!stepOf(menuProject.id, 1)} onClick={() => { setMenu(null); moveProject(menuProject.id, 1) }} data-testid="sidebar-project-move-down">
             <ArrowDown size={13} strokeWidth={1.75} />{t('sidebar.moveDown')}
           </button>
+          {/* SSH のプロジェクトは手元のフォルダがレビューの置き場なので出さない */}
+          {menuProject.source !== 'ssh' && <>
+            <div className="sb-menu__sep" role="separator" />
+            <button type="button" role="menuitem" onClick={() => { setMenu(null); openRepoCreate(menuProject.id) }} data-testid="sidebar-project-create-repo">
+              <FolderGit2 size={13} strokeWidth={1.75} />{t('repoCreate.menu')}
+            </button>
+          </>}
           <div className="sb-menu__sep" role="separator" />
           <button type="button" role="menuitem" className="is-danger" onClick={() => { setMenu(null); setConfirmRemove(menuProject.id) }}>
             <Trash2 size={13} strokeWidth={1.75} />{t('sidebar.removeFromList')}
@@ -675,6 +706,10 @@ export function Sidebar({
       <SetupProgressLink />
       <FeedbackLink />
       {editingProject && <ProjectEditDialog project={editingProject} onClose={() => openEdit(null)} />}
+      {(() => {
+        const repoProject = repoCreateId ? projects.projects.find((p) => p.id === repoCreateId) : undefined
+        return repoProject ? <CreateRepoDialog project={repoProject} onClose={() => openRepoCreate(null)} /> : null
+      })()}
       {adding && <AddProjectDialog
         onClose={() => { setAdding(false); onOverlayChange?.(false) }}
         onAdded={onAdded(new Set(projects.projects.map((p) => p.id)))}

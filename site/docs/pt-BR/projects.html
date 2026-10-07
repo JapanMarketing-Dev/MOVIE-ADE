@@ -181,6 +181,18 @@
 <p>Os terminais abrem na pasta do projeto, e as revisões são salvas em <code>&lt;project&gt;/.ferret/</code>.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="github-repo">
+        <h2 id="github-repo"><a class="docs-anchor" href="#github-repo" aria-label="Link para Criar um repositório privado no GitHub">#</a>Criar um repositório privado no GitHub</h2>
+        <p>Para colocar num repositório privado um projeto que ainda não está no GitHub, clique com o botão direito nele na barra lateral e escolha <span class="docs-ui">Criar um repositório privado no GitHub</span>. Ele usa o seu login do <code>gh</code>, então o <code>gh</code> precisa estar instalado e com login feito. Só o GitHub é suportado, não o GitLab.</p>
+<ol class="docs-steps">
+  <li>Escolha o <span class="docs-ui">Proprietário</span> (sua conta ou uma das suas organizações) e o <span class="docs-ui">Nome do repositório</span> (sugerido a partir do nome da pasta; letras, números, <code>.</code>, <code>_</code> e <code>-</code>). Você pode adicionar uma <span class="docs-ui">Descrição (opcional)</span>.</li>
+  <li>Se a pasta ainda não tem commits, <span class="docs-ui">Criar um primeiro commit e enviar</span> cria um primeiro commit sem os arquivos ignorados pelo <code>.gitignore</code> e sem arquivos que podem conter segredos: arquivos <code>.env</code> (modelos como <code>.env.example</code> ficam), chaves como <code>*.pem</code> ou <code>id_rsa</code>, <code>.npmrc</code>, <code>.netrc</code>, <code>credentials.json</code>, <code>*.tfstate</code> e parecidos. A janela lista o que ficou de fora. Esses caminhos são adicionados ao <code>.git/info/exclude</code>, então também ficam fora dos commits seguintes; seus arquivos e o <code>.gitignore</code> não mudam. Uma pasta que ainda não é um repositório git é inicializada com o branch <code>main</code>.</li>
+  <li>Clique em <span class="docs-ui">Avançar</span>, confira o repositório, a visibilidade e o envio, e clique em <span class="docs-ui">Criar</span>. O repositório é sempre privado. Ele vira o <code>origin</code> da pasta, e os commits da pasta são enviados.</li>
+</ol>
+<p>O Ferret não cria o repositório quando a pasta já tem um <code>origin</code>, quando está dentro de outro repositório git (por exemplo, uma pasta de um monorepo), quando já existe um repositório com esse nome, quando o primeiro commit teria mais de 20.000 arquivos, quando o git não tem nome de usuário e e-mail, ou quando o projeto está aberto por SSH.</p>
+<p>O proprietário escolhido primeiro é a sua própria conta. Para usar uma organização, defina <span class="docs-ui">Proprietário dos novos repositórios (GitHub)</span> em <span class="docs-ui">Configurações → CLIs de serviços</span> (<code>github.defaultOwner</code> no <code>settings.json</code>).</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="save-url">
         <h2 id="save-url"><a class="docs-anchor" href="#save-url" aria-label="Link para Salvar URLs">#</a>Salvar URLs</h2>
         <ol class="docs-steps">
@@ -270,6 +282,7 @@
       <p class="docs-toc-heading">Nesta página</p>
       <ul>
         <li><a href="#add-project">Adicionar um projeto</a></li>
+        <li><a href="#github-repo">Criar um repositório privado no GitHub</a></li>
         <li><a href="#save-url">Salvar URLs</a></li>
         <li><a href="#review-targets">Painel de alvos de revisão</a></li>
         <li><a href="#switch-env">Abrir e trocar de ambiente</a></li>

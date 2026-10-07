@@ -21,7 +21,7 @@ Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong
 ## Thời gian lưu giữ
 <p><span class="docs-ui">Giữ bản ghi</span> (mặc định 7 ngày, 30 ngày, hoặc <span class="docs-ui">Vĩnh viễn</span>): khi khởi động, các review đã hoàn tất cũ hơn mức đó sẽ bị xóa <code>recording.webm</code> và <code>work/</code>. <code>feedback.md</code> và ảnh của các góp ý được giữ lại. Review chưa hoàn tất không bao giờ bị dọn. Việc dọn chạy khi khởi động, cho dự án được mở gần nhất.</p>
 
-<!-- @network 01317dfbcc -->
+<!-- @network 43018284d4 -->
 ## Dữ liệu nào rời khỏi máy của bạn
 <table>
   <thead><tr><th>Khi nào</th><th>Đích đến</th><th>Dữ liệu</th></tr></thead>
@@ -31,6 +31,9 @@ Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong
     <tr><td>Tải model</td><td>Hugging Face</td><td>yêu cầu tải tệp</td></tr>
     <tr><td><span class="docs-ui">Sắp xếp</span></td><td>Claude Code / Codex CLI của bạn, hoặc endpoint LLM bạn đặt trong <code>organizer</code></td><td>chỉ văn bản và nhật ký thao tác (không có ảnh, âm thanh hay video)</td></tr>
     <tr><td>Kiểm tra nghiệm thu (model quyết định, mặc định tắt)</td><td>agent của bạn, qua relay cục bộ, đến Ollama / Cloudflare / AI Gateway / TypeSafe / OpenAI / URL của bạn</td><td>những gì agent gửi: văn bản góp ý, "Done when", và ảnh chụp màn hình BEFORE/AFTER (chỉ với model đọc được ảnh)</td></tr>
+    <tr><td>Chấm điểm phát hiện từ cuộc họp đã nhập (mô hình quyết định, chỉ khi bật)</td><td>Ferret, qua relay cục bộ, đến mô hình quyết định bạn đặt</td><td>tiêu đề và yêu cầu của mỗi ứng viên, các phát biểu gốc, và khung hình video của nó (chỉ mô hình đọc ảnh)</td></tr>
+    <tr><td>Liên kết chia sẻ (chỉ khi bạn tạo)</td><td><code>share.ferretade.dev</code> (một Cloudflare Worker do nhà phát triển vận hành)</td><td>tiêu đề, ảnh chụp phần đang hiển thị của trang kèm URL và tiêu đề, và ID cài đặt ngẫu nhiên (chỉ dùng dưới dạng hash có khóa để giới hạn số liên kết một bản cài có thể tạo). Ai có liên kết cũng xem được ảnh chụp; ghi chú và tên tùy chọn của người góp ý được gửi đến cùng máy chủ (xem <a href="recording.html#share">Liên kết chia sẻ</a>)</td></tr>
+    <tr><td><span class="docs-ui">Tạo kho riêng tư trên GitHub</span> (chỉ khi bạn nhấn <span class="docs-ui">Tạo</span>)</td><td>GitHub qua <code>gh</code> của bạn</td><td>tạo kho riêng tư với tên và mô tả bạn chọn và push các commit của thư mục (commit đầu tiên do Ferret tạo không gồm các tệp bị <code>.gitignore</code> bỏ qua và các tệp có thể chứa bí mật)</td></tr>
     <tr><td><span class="docs-ui">Gửi cho Agent</span></td><td>agent trong terminal của bạn</td><td>một chỉ dẫn trỏ đến <code>feedback.md</code></td></tr>
     <tr><td>Mức sử dụng ở footer (chỉ Claude Code và Codex)</td><td>Anthropic, ChatGPT</td><td>yêu cầu xem mức sử dụng bằng chính thông tin đăng nhập của bạn</td></tr>
     <tr><td>Lời mời gắn sao GitHub</td><td>GitHub qua <code>gh</code> của bạn</td><td>kiểm tra xem bạn đã gắn sao repo chưa, và chỉ gắn sao khi bạn nhấn <span class="docs-ui">Gắn sao trên GitHub</span></td></tr>
@@ -46,11 +49,11 @@ Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong
   <li>Website này (không phải ứng dụng) đếm lượt xem trang bằng Cloudflare Web Analytics: không dùng cookie, không theo dõi chéo giữa các trang web và không thu thập dữ liệu cá nhân.</li>
 </ul>
 
-<!-- @feedback 34fc2ebccc -->
+<!-- @feedback d13476a31d -->
 ## Feedback từ ứng dụng
 <p>Bạn có thể gửi báo cáo lỗi hoặc ý tưởng ngay trong Ferret mà không cần tài khoản GitHub (<span class="docs-ui">Gửi góp ý</span> ở cuối thanh bên). Nội dung chỉ được gửi khi bạn gửi, và sẽ trở thành một issue <strong>công khai</strong> trong <a href="https://github.com/JapanMarketing-Dev/ferret/issues">JapanMarketing-Dev/ferret</a>, gắn nhãn <code>from-app</code>. Đừng đưa vào bất cứ thứ gì bạn không muốn đăng công khai.</p>
 <ul>
-  <li>Ứng dụng gửi nội dung từ máy tính của bạn đến một relay nhỏ (một Cloudflare Worker do nhà phát triển vận hành), relay này mở issue bằng GitHub token của chính nó. Relay này là server duy nhất của nhà phát triển nhận bất cứ thứ gì bạn viết.</li>
+  <li>Ứng dụng gửi nội dung từ máy tính của bạn đến một relay nhỏ (một Cloudflare Worker do nhà phát triển vận hành), relay này mở issue bằng GitHub token của chính nó. Ngoài các <a href="recording.html#share">liên kết chia sẻ</a> bạn tạo, relay này là server duy nhất của nhà phát triển nhận bất cứ thứ gì bạn viết.</li>
   <li>Được gửi: tiêu đề và nội dung của bạn, đó là lỗi hay ý tưởng, phiên bản ứng dụng, và tối đa 3 ảnh chụp màn hình PNG hoặc JPEG bạn đính kèm. Tên và phiên bản hệ điều hành, kiến trúc CPU và ID cài đặt ngẫu nhiên chỉ được gửi nếu bạn để chúng được đính kèm. Không được gửi: tên, email, tài khoản GitHub, tệp dự án, bản ghi hay góp ý của bạn.</li>
   <li>Trước khi tạo issue, relay che các đoạn văn bản trông giống key hoặc token, địa chỉ email, và tên người dùng trong đường dẫn thư mục home, đồng thời ngăn <code>@mentions</code> gửi thông báo cho bất kỳ ai. Relay cũng xóa vị trí và các metadata khác khỏi ảnh chụp màn hình. Dù vậy, hãy tự kiểm tra văn bản của bạn: việc che không thể bắt được mọi thứ.</li>
   <li>Relay không lưu địa chỉ IP của bạn. Để giới hạn tần suất một người gửi có thể đăng (5 lần mỗi giờ, 20 lần mỗi ngày), relay đếm một hash có khóa của địa chỉ IP (và của ID cài đặt, nếu được gửi) trong tối đa 24 giờ, sau đó xóa đi. Cả hai đều không xuất hiện trong issue.</li>
@@ -58,7 +61,7 @@ Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong
   <li>Mã nguồn của relay nằm trong <code>workers/feedback-relay</code> của repository.</li>
 </ul>
 
-<!-- @crash-reports 3fdd78f6c3 -->
+<!-- @crash-reports 44454d7d22 -->
 ## Báo cáo crash
 <p>Khi ứng dụng bị crash hoặc gặp lỗi không được xử lý, Ferret gửi báo cáo crash đến <a href="https://sentry.io/">Sentry</a> để lỗi có thể được sửa. Tính năng này mặc định bật. Tắt nó trong <span class="docs-ui">Cài đặt → Quyền riêng tư → Gửi báo cáo crash</span>, hoặc bằng nút <span class="docs-ui">Tắt</span> trên thông báo hiển thị ở lần khởi chạy đầu tiên. Tắt có hiệu lực ngay lập tức. Bật lại có hiệu lực từ lần khởi chạy tiếp theo. Bản build phát triển (<code>pnpm dev</code>) cũng gửi, kèm thẻ <code>development</code>, để nhà phát triển có thể sửa các crash gặp phải khi làm việc. Các lần chạy E2E và unit test không bao giờ gửi.</p>
 <table>
@@ -68,7 +71,7 @@ Các review nằm trong thư mục dự án của bạn. Cài đặt nằm trong
       <ul>
         <li>Loại lỗi và thông điệp lỗi, với đường dẫn thư mục home hiển thị là <code>~</code></li>
         <li>Stack trace (vị trí trong mã của Ferret nơi lỗi xảy ra)</li>
-        <li>Với crash native: chỉ tiến trình nào bị crash, lý do thoát (ví dụ <q>crashed</q> hoặc <q>oom</q>), và phiên bản ứng dụng</li>
+        <li>Với sự cố native: tiến trình nào bị sập, vì sao thoát (ví dụ <q>crashed</q> hoặc <q>oom</q>), phiên bản ứng dụng, loại sự cố và tên tệp của module nơi xảy ra, cùng vị trí: offset bên trong module đó, các offset module tìm thấy trên stack của luồng bị sập (tối đa 20), các ID cần để tra symbol gỡ lỗi của module đó, và tên luồng. Cả các bước cuối cùng của chính Ferret trong lần khởi chạy đó (tối đa 30, ví dụ thoát hoặc cài bản cập nhật). Không bao giờ gửi nội dung bộ nhớ, địa chỉ thô hay đường dẫn tệp</li>
         <li>Tên và phiên bản hệ điều hành, kiến trúc CPU, phiên bản Electron / Chrome / Node, phiên bản ứng dụng, kích thước màn hình, dung lượng bộ nhớ</li>
         <li>Các sự kiện vòng đời ứng dụng ngay trước lỗi (ví dụ <q>app.ready</q>), và các lỗi khi khởi động</li>
         <li>Phần nào của ứng dụng bị lỗi: một vùng màn hình không hiển thị được (và tên các React component của nó), một lệnh gọi IPC, một terminal không khởi động được, một tiến trình bị crash hoặc treo, hoặc một trang của ứng dụng không tải được</li>

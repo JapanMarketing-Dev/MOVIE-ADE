@@ -393,6 +393,8 @@ function renderQuotes(quotes: Quote[], showSpeakers: boolean, tr: Tr): string {
     .map((q) => {
       const text = mdText(q.text)
       if (q.source === 'text') return tr('feedbackMd.quoteWritten', { text })
+      // 取り込んだ mtg の話者の名前があれば、自分・相手の代わりに出す（名前も文字起こしから来た文なので同じく文字として出す）
+      if (q.name) return tr('feedbackMd.quoteSpeaker', { speaker: mdText(q.name), text })
       return showSpeakers ? tr('feedbackMd.quoteSpeaker', { speaker: tr(speakerKey[q.speaker]), text }) : tr('feedbackMd.quote', { text })
     })
     .join(tr('feedbackMd.quoteSeparator'))

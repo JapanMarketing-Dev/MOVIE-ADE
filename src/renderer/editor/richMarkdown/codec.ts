@@ -73,8 +73,8 @@ export const Video = Node.create({
   renderMarkdown: (node) => videoHtml(typeof node.attrs?.src === 'string' ? node.attrs.src : '')
 })
 
-/** 編集と変換で共通の拡張。image・video には表示（nodeView）を足したものを渡せる（スキーマは変えないこと） */
-export function richMarkdownExtensions(image: typeof Image = Image, video: typeof Video = Video): AnyExtension[] {
+/** 編集と変換で共通の拡張。image・video・codeBlock には表示（nodeView）を足したものを渡せる（スキーマは変えないこと） */
+export function richMarkdownExtensions(image: typeof Image = Image, video: typeof Video = Video, codeBlock: typeof LabeledCodeBlock = LabeledCodeBlock): AnyExtension[] {
   return [
     StarterKit.configure({
       codeBlock: false,
@@ -82,7 +82,7 @@ export function richMarkdownExtensions(image: typeof Image = Image, video: typeo
       trailingNode: false,
       link: { openOnClick: false, autolink: false, linkOnPaste: true }
     }),
-    LabeledCodeBlock,
+    codeBlock,
     TableKit.configure({ table: { resizable: false } }),
     TaskList,
     TaskItem.configure({ nested: true }),

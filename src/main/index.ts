@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { sanitizeGithubPreferences } from '@shared/repoCreate'
 import { MAX_TEXT_FILE_SIZE } from '@shared/files'
 import { UNSAVED_LIST_LIMIT, describeUnsavedFile, planUnsavedQuit, quitActionFor, sanitizeUnsavedRefs, screenQuitSaveEntries, type QuitAction, type QuitSaveOutcome, type UnsavedFileRef, type UnsavedQuitItem } from '@shared/quitUnsaved'
 import { CAPTURE_INDICATOR, UserGestures, ViewInputGrant, appMediaAllowed, captureRequestProblem, indicatorTitle, isGestureInput, isRecorderContents, isTrustedIpcSender, nextAudioConsent, type CaptureConsentState } from './captureConsent'
@@ -47,6 +48,7 @@ import { checkSshTarget, remoteWorkspaceDirName, sshDefaultName, type SshTarget 
 import { EmbeddedBrowser, browserSession, type ProjectTabs, type TabsSnapshot } from './browser'
 import { BrowserExtensions } from './browserExtensions'
 import { browserImportHandlers } from './browserImport/ipc'
+import { feedbackShareHandlers } from './feedbackShare/ipc'
 import { MAX_BROWSER_EXTENSIONS, relativeRect, sanitizeBrowserExtensions, type BrowserExtensionEntry, type BrowserExtensionInfo } from '@shared/browserExtensions'
 import { APP_ALLOWED_PERMISSIONS, installPermissionPolicy, isAllowedExternalUrl, isAppPageUrl, isBrowserPageExternalUrl, isSnapshotableBrowserUrl, type PermissionSessionLike } from './webPolicy'
 import { pathToFileURL } from 'node:url'
@@ -59,7 +61,7 @@ import { UserFacingError, isStaleChunkError, toUserFacingFileError } from '@shar
 import { IS_PACKAGED } from './runtime'
 import { configDir, currentSettings, flushSettingsSync, loadSettings, readSettingsText, settingsFileInfo, updateSettings, watchSettings, writeSettingsText } from './settings'
 import { envGetter, keepKeyRefs, redactKeys, resolveApiKey, resolveConfiguredKey, resolveEndpointRefs, type KeyRef } from './settingsKeys'
-import { elapsedMs, mark, markOnce, reportInteractive, setStartupTags } from './startup'
+import { elapsedMs, mark, markOnce, noteLaunchedVersion, reportInteractive, setStartupTags } from './startup'
 import { emulationKind } from './emulation'
 import { TerminalManager } from './terminal'
 import { listAgentOptions, warmLoginShellPath } from './agentDetection'
@@ -534,6 +536,42 @@ async function decision(): Promise<import('./decision/service').DecisionService>
 function syncDecision(): void {
   if (!currentSettings().decision?.enabled && !decisionService) return
   void decision().then((d) => d.sync()).catch((err: unknown) => reportHandled(err, { area: 'settings', op: 'start decision relay' }))
+}
+
+/**
+ * 設定の文字起こしのエンジン（録画と mtg の取り込みで共通）。使えなければ engine は null で、warning に利用者向けの理由。
+ * キーが無ければ別のキーや接続先へ切り替えず、端末内の文字起こしを案内するだけにする
+ */
+async function sttEngineFor(transcription: import('@shared/types').SttProvider, language: string): Promise<{
+  engine: import('./pipeline/stt/engine').SttEngine | null; kind: import('./pipeline/stt/segmenter').SttEngineKind; warning?: string
+}> {
+  if (transcription !== 'local') {
+    const provider = transcription
+    const { STT_PROVIDER_PRESETS, providerLabel, resolveEndpoint } = await import('@shared/aiProviders')
+    const { createSttEngine } = await import('./pipeline/stt/cloud')
+    const preset = STT_PROVIDER_PRESETS[provider]
+    const capture = currentSettings().capture
+    // 認証情報は認めた接続元にだけ送る（security-5 [6]）。認めていなければ送らずに知らせ、端末内の文字起こしを案内する
+    const gate = await gateCredentials(`stt:${provider}`, resolveEndpoint(preset, resolveEndpointRefs(capture?.sttEndpoints?.[provider], keyLookup())).baseUrl,
+      capture?.sttEndpoints?.[provider], preset.vendor, [preset.baseUrl], false).then(() => null, (err: unknown) => err instanceof UserFacingError ? err.message : t('errors.endpointMissingWarning'))
+    const apiKey = gate ? undefined : await providerKey(capture?.sttEndpoints?.[provider], preset.vendor)
+    // 上限は設定の値（null は上限なし）。検証起動では実API保護のため $0.05 に固定する
+    const maxCostUsd = IS_E2E ? 0.05 : capture?.costLimitUsd
+    if (gate) return { engine: null, kind: 'openai', warning: gate }
+    if (preset.keyRequired && !apiKey) return { engine: null, kind: 'openai', warning: t('stt.errors.keyMissing', { label: providerLabel(preset, t) }) }
+    try {
+      return { engine: createSttEngine({ provider, endpoint: resolveEndpointRefs(capture?.sttEndpoints?.[provider], keyLookup()), apiKey, language, maxCostUsd }), kind: 'openai' }
+    } catch (err) {
+      // 接続先の設定の不足（UserFacingError）は送らない。それ以外の失敗だけが届く
+      reportHandled(err, { area: 'stt', op: 'create stt engine' })
+      return { engine: null, kind: 'openai', warning: t('errors.endpointMissingWarning') }
+    }
+  }
+  const { nodeProbes, resolveWhisperBinary } = await import('./pipeline/environment')
+  const binary = await resolveWhisperBinary({ modelDir: '' }, nodeProbes(workspace.folderPath))
+  const { WhisperCppEngine } = await import('./pipeline/stt/whisper')
+  if (binary && existsSync(localModel())) return { engine: new WhisperCppEngine({ binary, model: localModel(), language, greedy: true }), kind: 'local-cpu' }
+  return { engine: null, kind: 'local-cpu', warning: t('errors.localModelMissingWarning') }
 }
 
 let sttWarnings: string[] = []
@@ -1339,6 +1377,7 @@ function autoUpdater(): AutoUpdater {
     prepareDir: async (keep) => (await install()).prepareUpdateDir(app.getPath('userData'), keep),
     stage: async (method, path, file) => (await install()).stageUpdate(method, path, file),
     install: async (method, path, file) => (await install()).installUpdate(method, path, file),
+    runPendingInstall: () => (IS_PACKAGED && !IS_E2E ? installSync?.runPendingInstall() ?? false : false),
     installOnQuit: (method, path, file) => {
       if (!installSync) return false
       if (e2eInstaller && isAbsolute(e2eInstaller) && e2eInstaller.endsWith('.mjs')) return installSync.runE2eQuitInstaller(e2eInstaller, method, path)
@@ -1730,6 +1769,44 @@ function registerIpc(): void {
       isPackaged: IS_PACKAGED,
       isE2E: IS_E2E
     }),
+    // ログイン無しで誰でも指摘を送れる共有リンク（作る・届いた指摘を取り込む。src/main/feedbackShare/ipc.ts）
+    ...feedbackShareHandlers({
+      projectId: () => workspace.projectId ?? null,
+      projectDir: () => workspace.folderPath ?? null,
+      // 撮って外へ上げるのは、利用者がアプリの窓で押した直後の1回だけ（security-5 [1]）。http(s) のページだけ（手元のファイルは上げない）
+      snapshotPage: async () => {
+        if (!gestures.consume('screenshot')) throw new UserFacingError(t('errors.needsUserAction'))
+        const target = browser?.visibleSnapshotTarget() ?? null
+        const url = target?.contents.getURL() ?? ''
+        if (!target || !browser || !/^https?:\/\//i.test(url)) throw new UserFacingError(t('share.errors.noPage'))
+        const shot = await target.contents.capturePage()
+        if (shot.isEmpty()) throw new UserFacingError(t('share.errors.noPage'))
+        const resized = shot.getSize().width > 2000 ? shot.resize({ width: 2000, quality: 'better' }) : shot
+        // 4MB（Worker の上限）に収まるよう JPEG にする。収まらなければ質を下げる
+        let image = resized.toJPEG(85)
+        if (image.byteLength > 4 * 1024 * 1024) image = resized.toJPEG(60)
+        if (image.byteLength > 4 * 1024 * 1024) throw new UserFacingError(t('share.errors.image'))
+        return {
+          url, title: target.contents.getTitle().slice(0, 200), viewport: browser.state().viewport,
+          width: Math.max(1, Math.round(target.bounds.width)), height: Math.max(1, Math.round(target.bounds.height)),
+          image: new Uint8Array(image), type: 'image/jpeg' as const
+        }
+      },
+      fetch: (url, init) => import('electron').then(({ net }) => net.fetch(url, init)),
+      // 開発版だけ、手元で動かした Worker（127.0.0.1 / localhost）に向けて確かめられる。配布版は常に share.ferretade.dev
+      ...(!IS_PACKAGED && /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(process.env.FERRET_SHARE_BASE ?? '') ? { base: process.env.FERRET_SHARE_BASE } : {}),
+      userAgent: `${PRODUCT_NAME}/${app.getVersion()}`,
+      installId: () => telemetryInstallId(),
+      userDataDir: () => app.getPath('userData'),
+      isPackaged: IS_PACKAGED,
+      isE2E: IS_E2E,
+      addNote: async (dir, reviewId, request) => {
+        const { addTextNote } = await import('./review')
+        const urlPresets = currentSettings().projects.find((p) => p.id === workspace.projectId)?.urls ?? []
+        return addTextNote(dir, reviewId, { ...request, urlPresets })
+      },
+      onAdded: (result) => send('note:added', result)
+    }),
     'browser:state': () =>
       browser?.state() ?? {
         url: '',
@@ -1904,6 +1981,62 @@ function registerIpc(): void {
     'review:frames': async (id, itemId) => {
       const r = await import('./review')
       return r.previewFrames(r.checkedPaths(workspace.folderPath, id), itemId)
+    },
+    // mtg の取り込み（meeting/import.ts）。選んだファイルのパスは main だけが持つ
+    'meeting:pickMedia': async () => {
+      const { MEETING_MEDIA_EXTENSIONS } = await import('@shared/meetingImport')
+      const options: Electron.OpenDialogOptions = { title: t('meeting.dialog.media'), properties: ['openFile'], filters: [{ name: t('meeting.dialog.mediaFilter'), extensions: [...MEETING_MEDIA_EXTENSIONS] }] }
+      const chosen = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options)
+      if (chosen.canceled || !chosen.filePaths[0]) return null
+      return (await import('./meeting/import')).rememberMeetingMedia(chosen.filePaths[0])
+    },
+    'meeting:pickTranscript': async () => {
+      const { MEETING_TRANSCRIPT_EXTENSIONS } = await import('@shared/meetingImport')
+      const options: Electron.OpenDialogOptions = { title: t('meeting.dialog.transcript'), properties: ['openFile'], filters: [{ name: t('meeting.dialog.transcriptFilter'), extensions: [...MEETING_TRANSCRIPT_EXTENSIONS] }] }
+      const chosen = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options)
+      if (chosen.canceled || !chosen.filePaths[0]) return null
+      const m = await import('./meeting/import')
+      return m.readMeetingTranscriptFile(chosen.filePaths[0], m.readDocxFile)
+    },
+    'meeting:import': async (request) => {
+      if (!workspace.folderPath) throw new UserFacingError(t('errors.openProjectFolder'))
+      const { importMeeting } = await import('./meeting/import')
+      const r = await import('./review')
+      const safe = request && typeof request === 'object' ? request : {}
+      return importMeeting({
+        projectDir: workspace.folderPath,
+        request: {
+          ...(typeof safe.mediaToken === 'string' ? { mediaToken: safe.mediaToken } : {}),
+          ...(safe.transcript && typeof safe.transcript.text === 'string' ? { transcript: { text: safe.transcript.text, ...(typeof safe.transcript.name === 'string' ? { name: safe.transcript.name.slice(0, 200) } : {}) } } : {})
+        },
+        sttEngine: () => sttEngineFor(currentSettings().capture?.transcription ?? 'local', currentSettings().capture?.language ?? 'auto'),
+        urlPresets: (currentSettings().projects.find((p) => p.id === workspace.projectId)?.urls ?? []).flatMap((u) => (u.url ? [{ id: u.id, label: u.label, url: u.url, ...(u.purpose ? { purpose: u.purpose } : {}) }] : [])),
+        createReview: r.createImportedReview,
+        onProgress: (progress) => send('meeting:progress', progress)
+      })
+    },
+    'meeting:score': async (reviewId) => {
+      const r = await import('./review')
+      const { encodeFrameJpeg, scoreMeetingReview } = await import('./meeting/import')
+      const paths = r.checkedPaths(workspace.folderPath, reviewId)
+      const session = currentSettings().decision?.enabled
+        ? await (await decision()).openAskSession({ ...(workspace.projectId ? { projectId: workspace.projectId } : {}), agent: 'meeting import', sessionId: `meeting:${reviewId}` })
+        : null
+      let latest: import('@shared/review').ReviewData | null = null
+      try {
+        const result = await scoreMeetingReview({
+          paths, session, encodeFrame: encodeFrameJpeg,
+          save: async (scores, threshold) => {
+            const saved = await r.setMeetingScores(paths, scores, threshold)
+            latest = saved.review
+            return { excluded: saved.excluded }
+          },
+          onProgress: (done, total) => send('meeting:progress', { stage: 'score', done, total })
+        })
+        return { review: latest ?? await r.loadReviewAt(paths), result }
+      } finally {
+        session?.close()
+      }
     },
     'capture:apiKey': async (key, provider) => {
       if (recordingBusy || (recording && recording.status.state !== 'idle')) throw new UserFacingError(t('errors.stopRecordingBeforeSetup'))
@@ -2159,39 +2292,9 @@ function registerIpc(): void {
           const { IncrementalTranscriber } = await import('./pipeline/stt/engine')
           // 区切りごとの進み具合を右パネルの「文字起こし」タブへ（録画は待たせない）
           const onProgress = (progress: import('./pipeline/stt/engine').TranscriberProgress) => liveFeed?.progress(progress)
-          if (activeOptions.transcription !== 'local') {
-            const provider = activeOptions.transcription
-            const { STT_PROVIDER_PRESETS, providerLabel, resolveEndpoint } = await import('@shared/aiProviders')
-            const { createSttEngine } = await import('./pipeline/stt/cloud')
-            const preset = STT_PROVIDER_PRESETS[provider]
-            const capture = currentSettings().capture
-            // 認証情報は認めた接続元にだけ送る（security-5 [6]）。認めていなければ送らずに知らせ、端末内の文字起こしを案内する
-            const gate = await gateCredentials(`stt:${provider}`, resolveEndpoint(preset, resolveEndpointRefs(capture?.sttEndpoints?.[provider], keyLookup())).baseUrl,
-              capture?.sttEndpoints?.[provider], preset.vendor, [preset.baseUrl], false).then(() => null, (err: unknown) => err instanceof UserFacingError ? err.message : t('errors.endpointMissingWarning'))
-            const apiKey = gate ? undefined : await providerKey(capture?.sttEndpoints?.[provider], preset.vendor)
-            // 上限は設定の値（null は上限なし）。検証起動では実API保護のため $0.05 に固定する
-            const maxCostUsd = IS_E2E ? 0.05 : capture?.costLimitUsd
-            // キーが無ければ別のキーや接続先へ切り替えず、端末内の文字起こしを案内するだけにする
-            if (gate) sttWarnings.push(gate)
-            else if (preset.keyRequired && !apiKey) sttWarnings.push(t('stt.errors.keyMissing', { label: providerLabel(preset, t) }))
-            else {
-              try {
-                transcriber = new IncrementalTranscriber(createSttEngine({ provider, endpoint: resolveEndpointRefs(capture?.sttEndpoints?.[provider], keyLookup()), apiKey,
-                  language: options.language ?? 'auto', maxCostUsd }), onSegments, onProgress)
-              } catch (err) {
-                // 接続先の設定の不足（UserFacingError）は送らない。それ以外の失敗だけが届く
-                reportHandled(err, { area: 'stt', op: 'create stt engine' })
-                sttWarnings.push(t('errors.endpointMissingWarning'))
-              }
-            }
-          } else {
-            const { nodeProbes, resolveWhisperBinary } = await import('./pipeline/environment')
-            const binary = await resolveWhisperBinary({ modelDir: '' }, nodeProbes(workspace.folderPath))
-            const { WhisperCppEngine } = await import('./pipeline/stt/whisper')
-            if (binary && existsSync(localModel())) transcriber = new IncrementalTranscriber(
-              new WhisperCppEngine({ binary, model: localModel(), language: options.language ?? 'auto', greedy: true }), onSegments, onProgress)
-            else sttWarnings.push(t('errors.localModelMissingWarning'))
-          }
+          const stt = await sttEngineFor(activeOptions.transcription, options.language ?? 'auto')
+          if (stt.engine) transcriber = new IncrementalTranscriber(stt.engine, onSegments, onProgress)
+          else if (stt.warning) sttWarnings.push(stt.warning)
         }
         flow('stt start', { engine: transcriber ? (options.transcription ?? 'local') : 'none' })
         const { LiveTranscriptFeed } = await import('./pipeline/stt/liveFeed')
@@ -2387,6 +2490,32 @@ function registerIpc(): void {
       void watchGitHead(workspace.folderPath, () => send('github:headChanged'))
       return gitRepoStatus(workspace.folderPath)
     },
+    // プロジェクトの右クリックの「GitHub で private リポジトリを作る」。フォルダは main が設定から決める（renderer からパスを受けない）。
+    // SSH のプロジェクトは手元のフォルダがレビューの置き場なので扱わない
+    'github:repoCreateInfo': async (projectId) => {
+      const project = currentSettings().projects.find((p) => p.id === projectId)
+      if (!project || project.source === 'ssh') throw new UserFacingError(t('repoCreate.errors.unsupported'))
+      const { repoCreateInfo } = await import('./github/createRepo')
+      return repoCreateInfo(project.folderPath, currentSettings().github?.defaultOwner)
+    },
+    'github:createPrivateRepo': async (projectId, request) => {
+      // 外へ出る操作なので、確認の「作成」を押した直後だけ（gitSync と同じ1回きりの許可。security-7 [9]）
+      if (!gestures.consume('gitSync')) throw new UserFacingError(t('errors.needsUserAction'))
+      const project = currentSettings().projects.find((p) => p.id === projectId)
+      if (!project || project.source === 'ssh') throw new UserFacingError(t('repoCreate.errors.unsupported'))
+      const { createPrivateRepo } = await import('./github/createRepo')
+      const result = await createPrivateRepo(project.folderPath, {
+        owner: String(request?.owner ?? ''), name: String(request?.name ?? ''),
+        description: typeof request?.description === 'string' ? request.description : '', initialCommit: request?.initialCommit === true
+      })
+      // フッターの git（ブランチ・リモート）を読み直させる。git init したばかりのフォルダは HEAD の見張りがまだ無い
+      if (project.folderPath === workspace.folderPath) send('github:headChanged')
+      return result
+    },
+    'settings:github': (prefs) => {
+      const github = sanitizeGithubPreferences(prefs)
+      updateSettings({ github })
+    },
     'github:autoFetch': async (trigger, visible) => {
       // 利用者が押す fetch は github:gitAction（manual はここでは受けない）
       if (trigger !== 'open' && trigger !== 'interval' && trigger !== 'focus') throw new Error('invalid fetch trigger')
@@ -2499,6 +2628,8 @@ async function main(): Promise<void> {
   mark('app:ready')
   // エミュレーション（Rosetta / Prism）で動いているかを、性能の報告のタグに付ける
   setStartupTags({ emulation: emulationKind(process.platform, app.runningUnderARM64Translation) })
+  // 入れた・更新した直後の初回は、JS より前の遅れ（OS の検査）を数えない（startup.ts）
+  noteLaunchedVersion(join(app.getPath('userData'), 'last-launch-version'), app.getVersion())
   // 既定のセッション（アプリの画面・録画ウインドウ・プレビューの iframe）の権限。アプリ自身の画面の本体だけに、
   // 要るものだけを許す。プレビュー（プロジェクトの HTML）や外のページには何も許さない。読み込みの前に入れる
   // media はアプリの窓には音だけ、映像（画面・タブ）は録画ウインドウだけ。カメラはどこにも許さない（captureConsent.ts）
@@ -2558,6 +2689,34 @@ async function main(): Promise<void> {
     if (url.hostname === 'review' && url.pathname === '/trim-host') {
       const { TRIM_HOST_HTML } = await import('./trimVideo')
       return new Response(TRIM_HOST_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+    }
+    // 取り込んだ mtg の動画からコマ・音声を取り出す非表示ウィンドウのページ（meeting/media.ts）
+    if (url.hostname === 'review' && url.pathname === '/meeting-host') {
+      const { MEETING_HOST_HTML } = await import('./meeting/media')
+      return new Response(MEETING_HOST_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+    }
+    // 取り込んだ mtg の動画（/<id>/meeting.<拡張子>）。録画と同じく、中の実体を開いた fd から返す
+    const meeting = /^\/(\d{8}-\d{6})\/meeting\.([a-z0-9]{2,4})$/.exec(url.pathname)
+    if (url.hostname === 'review' && meeting && workspace.folderPath) {
+      const { meetingMediaExtension, meetingMediaType } = await import('@shared/meetingImport')
+      const ext = meetingMediaExtension(`meeting.${meeting[2]!}`)
+      if (!ext) return new Response('Not found', { status: 404 })
+      const { checkedPaths } = await import('./review')
+      const review = checkedPaths(workspace.folderPath, meeting[1]!)
+      const file = join(review.dir, `meeting.${ext}`)
+      const { lstat } = await import('node:fs/promises')
+      const leaf = await lstat(file).catch(() => null)
+      if (!leaf?.isFile()) return new Response('Not found', { status: 404 })
+      const { openContained } = await import('./containedFile')
+      const handle = await openContained(review.dir, file, 'read').catch(() => null)
+      if (!handle) return new Response('Not found', { status: 404 })
+      const opened = await handle.stat().catch(() => null)
+      if (!opened?.isFile()) {
+        await handle.close()
+        return new Response('Not found', { status: 404 })
+      }
+      const { mediaResponseFromHandle } = await import('./mediaRange')
+      return mediaResponseFromHandle(handle, request.headers.get('range'), meetingMediaType(ext))
     }
     // 追記した録画は /<id>/takes/<n>/recording.webm。何もない時間を削った版は recording.trimmed.webm
     const match = /^\/(\d{8}-\d{6})\/(?:takes\/(\d{1,4})\/)?recording(\.trimmed)?\.webm$/.exec(url.pathname)
@@ -2793,6 +2952,8 @@ function beginShutdown(): boolean {
     return true
   }
   shuttingDown = true
+  // ネイティブのクラッシュのイベントにも残るパンくず（終了のどの段階で落ちたかを追う。FERRET-1Q）
+  if (shutdownPhase === 'running') flow('quit begin', { terminals: terminals?.pendingCount() ?? 0 })
 
   if (shutdownPhase === 'draining') {
     // すでに後始末中。終わるまで待たせる
@@ -2874,6 +3035,7 @@ function drainTerminalsNow(): void {
      */
     const watchdog = setTimeout(() => {
       console.warn(`[quit] ${QUIT_WATCHDOG_MS}ms 経っても終了できないため、強制的に終了します`)
+      flow('quit watchdog')
       // app.exit では quit が届かないので、閉じたときの更新はここで入れる
       autoUpdates?.installOnQuit()
       app.exit(0)
@@ -2892,6 +3054,7 @@ function drainTerminalsNow(): void {
       timeoutMs: QUIT_PTY_TIMEOUT_MS
     })
     .then(({ clean, pending: left, waitedMs }) => {
+      flow('quit terminals', { closed: pending, left, waitedMs })
       if (clean) {
         console.log(`[terminal] 終了前にPTYを片付けました（${pending}件 / ${waitedMs}ms）`)
       } else {

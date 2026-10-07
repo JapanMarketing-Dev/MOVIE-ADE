@@ -23,6 +23,17 @@ Một dự án là một thư mục (thường là thư mục gốc của repo).
 <p>Nút lọc cạnh ô tìm review cũng cho chọn <span class="docs-ui">Sắp xếp dự án</span>: <span class="docs-ui">Thủ công (thứ tự kéo)</span>, <span class="docs-ui">Đang hoạt động trước</span> (dự án có Agent đang chờ bạn, đang làm việc hoặc vừa xong lên trước), <span class="docs-ui">Dùng gần đây</span>, <span class="docs-ui">Tên</span> hoặc <span class="docs-ui">Ngày thêm</span>. Nếu bạn kéo một dự án khi đang chọn cách sắp xếp khác, danh sách đang hiện sẽ thành thứ tự thủ công và cách sắp xếp chuyển sang <span class="docs-ui">Thủ công (thứ tự kéo)</span>. Bấm ngôi sao trên hàng của dự án, hoặc <span class="docs-ui">Gắn sao</span> trong menu của nó, để giữ dự án ở đầu danh sách với mọi cách sắp xếp; <span class="docs-ui">Chỉ dự án gắn sao</span> ẩn các dự án còn lại. Sao và cách sắp xếp được giữ sau khi khởi động lại.</p>
 <p>Terminal mở trong thư mục dự án, và các review được lưu dưới <code>&lt;project&gt;/.ferret/</code>.</p>
 
+<!-- @github-repo 4596ca5d7c -->
+## Tạo kho GitHub riêng tư
+<p>Để đưa một dự án chưa có trên GitHub vào kho riêng tư, nhấp chuột phải vào dự án trên thanh bên và chọn <span class="docs-ui">Tạo kho riêng tư trên GitHub</span>. Tính năng dùng đăng nhập <code>gh</code> của bạn, nên <code>gh</code> phải được cài và đã đăng nhập. Chỉ hỗ trợ GitHub, không hỗ trợ GitLab.</p>
+<ol class="docs-steps">
+  <li>Chọn <span class="docs-ui">Chủ sở hữu</span> (tài khoản của bạn hoặc một tổ chức của bạn) và <span class="docs-ui">Tên kho</span> (gợi ý từ tên thư mục; chữ, số, <code>.</code>, <code>_</code> và <code>-</code>). Bạn có thể thêm <span class="docs-ui">Mô tả (không bắt buộc)</span>.</li>
+  <li>Nếu thư mục chưa có commit, <span class="docs-ui">Tạo commit đầu tiên và push</span> tạo commit đầu tiên không gồm các tệp bị <code>.gitignore</code> bỏ qua và các tệp có thể chứa bí mật: tệp <code>.env</code> (mẫu như <code>.env.example</code> vẫn được giữ), khóa như <code>*.pem</code> hoặc <code>id_rsa</code>, <code>.npmrc</code>, <code>.netrc</code>, <code>credentials.json</code>, <code>*.tfstate</code> và tương tự. Hộp thoại liệt kê những gì bị bỏ ra. Các đường dẫn đó được ghi vào <code>.git/info/exclude</code>, nên cũng không vào các commit sau; tệp của bạn và <code>.gitignore</code> không bị thay đổi. Thư mục chưa phải là kho git sẽ được khởi tạo với nhánh <code>main</code>.</li>
+  <li>Nhấn <span class="docs-ui">Tiếp</span>, kiểm tra kho, chế độ hiển thị và việc push, rồi nhấn <span class="docs-ui">Tạo</span>. Kho luôn là riêng tư. Kho trở thành <code>origin</code> của thư mục, và các commit của thư mục được push.</li>
+</ol>
+<p>Ferret không tạo kho khi thư mục đã có <code>origin</code>, nằm trong một kho git khác (ví dụ một thư mục trong monorepo), đã có kho cùng tên, commit đầu tiên sẽ chứa hơn 20.000 tệp, git chưa có tên người dùng và email, hoặc dự án được mở qua SSH.</p>
+<p>Chủ sở hữu được chọn đầu tiên là tài khoản của bạn. Để dùng một tổ chức, đặt <span class="docs-ui">Chủ sở hữu kho mới (GitHub)</span> trong <span class="docs-ui">Cài đặt → CLI của dịch vụ</span> (<code>github.defaultOwner</code> trong <code>settings.json</code>).</p>
+
 <!-- @save-url cb8cafed1c -->
 ## Lưu URL
 <ol class="docs-steps">

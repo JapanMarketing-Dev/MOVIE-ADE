@@ -181,6 +181,18 @@
 <p>终端在项目文件夹中打开，审查保存在 <code>&lt;project&gt;/.ferret/</code> 下。</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="github-repo">
+        <h2 id="github-repo"><a class="docs-anchor" href="#github-repo" aria-label="指向“创建私有 GitHub 仓库”的链接">#</a>创建私有 GitHub 仓库</h2>
+        <p>要把尚未放到 GitHub 上的项目放进私有仓库，在侧边栏中右键点击它并选择 <span class="docs-ui">在 GitHub 上创建私有仓库</span>。它使用你的 <code>gh</code> 登录，因此需要安装 <code>gh</code> 并登录。只支持 GitHub，不支持 GitLab。</p>
+<ol class="docs-steps">
+  <li>选择 <span class="docs-ui">所有者</span>（你的账号或你所属的组织）和 <span class="docs-ui">仓库名称</span>（根据文件夹名建议；字母、数字、<code>.</code>、<code>_</code> 和 <code>-</code>）。还可以添加 <span class="docs-ui">描述（可选）</span>。</li>
+  <li>如果文件夹还没有提交，<span class="docs-ui">创建首个提交并推送</span> 会创建首个提交，不包含 <code>.gitignore</code> 忽略的文件和可能含有机密的文件：<code>.env</code> 文件（<code>.env.example</code> 等模板会保留）、<code>*.pem</code> 或 <code>id_rsa</code> 等密钥、<code>.npmrc</code>、<code>.netrc</code>、<code>credentials.json</code>、<code>*.tfstate</code> 等。对话框会列出被排除的文件。这些路径会写入 <code>.git/info/exclude</code>，因此以后的提交也不会包含它们；你的文件和 <code>.gitignore</code> 不会被修改。还不是 git 仓库的文件夹会以分支 <code>main</code> 初始化。</li>
+  <li>点击 <span class="docs-ui">下一步</span>，确认仓库、可见性和推送，然后点击 <span class="docs-ui">创建</span>。仓库始终是私有的。它会成为该文件夹的 <code>origin</code>，并推送文件夹的提交。</li>
+</ol>
+<p>以下情况下 Ferret 不会创建仓库：文件夹已有 <code>origin</code>、位于另一个 git 仓库中（例如单仓库中的某个文件夹）、同名仓库已存在、首个提交将包含超过 20,000 个文件、git 没有设置用户名和邮箱，或项目是通过 SSH 打开的。</p>
+<p>默认选择的所有者是你自己的账号。要改用组织，请在 <span class="docs-ui">设置 → 常用服务的 CLI</span> 中设置 <span class="docs-ui">新仓库的所有者（GitHub）</span>（<code>settings.json</code> 中的 <code>github.defaultOwner</code>）。</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="save-url">
         <h2 id="save-url"><a class="docs-anchor" href="#save-url" aria-label="指向“保存 URL”的链接">#</a>保存 URL</h2>
         <ol class="docs-steps">
@@ -270,6 +282,7 @@
       <p class="docs-toc-heading">本页内容</p>
       <ul>
         <li><a href="#add-project">添加项目</a></li>
+        <li><a href="#github-repo">创建私有 GitHub 仓库</a></li>
         <li><a href="#save-url">保存 URL</a></li>
         <li><a href="#review-targets">审查对象面板</a></li>
         <li><a href="#switch-env">打开和切换环境</a></li>

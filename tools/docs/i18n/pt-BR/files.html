@@ -5,7 +5,7 @@ Arquivos e ambiente
 <!-- @lead b2a7619b5e -->
 Onde o Ferret guarda os próprios arquivos e quais variáveis de ambiente ele lê ou define.
 
-<!-- @userdata 71b30d8c35 -->
+<!-- @userdata d8a259644b -->
 ## Pasta userData
 <p>Os dados do app ficam na pasta <code>userData</code> do Electron. O nome dela é fixo em <code>ade-movie</code> (não o nome do produto), para que os dados sobrevivam a mudanças de nome. Substitua-a com <code>--user-data-dir=&lt;path&gt;</code>.</p>
 <table>
@@ -19,6 +19,7 @@ Onde o Ferret guarda os próprios arquivos e quais variáveis de ambiente ele l�
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
 browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+feedback-share/     # share links you made (shares.bin; owner tokens encrypted with safeStorage)
 login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts

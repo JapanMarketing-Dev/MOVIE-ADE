@@ -67,14 +67,14 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   <li><span class="docs-ui">整理</span>: Claude Code か Codex のログイン、または自分で設定した LLM API で動きます。</li>
 </ul>
 
-<!-- @send d320d66d74 -->
+<!-- @send 137ad9da03 -->
 ## Agentへ送信 / Agent向けにコピー
 {{clip:send|指摘タブから「Agentへ送信」で、内蔵のターミナルのエージェントへ送る。}}
 <ol class="docs-steps">
   <li><span class="docs-ui">Agentへ送信</span> を押します。既定（<span class="docs-ui">自動（今のタブか、動いている Agent）</span>）では、いま開いているターミナルのタブのエージェントか、動いているエージェントに届きます。ボタンの横の矢印（<span class="docs-ui">送り先の Agent を選ぶ</span>）で、送り先のエージェントやタブを選べます。</li>
   <li>Ferret はエージェントの入力欄に指示を書き込んで送信します。進み具合はターミナルで追います。</li>
 </ol>
-<p>エージェントが動いていなければ、Ferret が先に起動し、準備ができしだい送ります。エージェントが権限の確認への答えを待っている間は何も送りません。先にターミナルで答えてください。</p>
+<p>エージェントが動いていなければ、Ferret が先に起動し、準備ができしだい送ります。エージェントが作業中でも送り、エージェントは今の作業のあとに読みます。エージェントが権限の確認や質問への答えを待っている間は何も送りません。先にターミナルで答えてください。</p>
 <p><span class="docs-ui">Agent向けにコピー</span> は、ほかの場所（別のターミナル、IDE、アプリ）で動くエージェントのために、同じ指示をクリップボードに入れます。対象になるのは <span class="docs-ui">送信する</span> にした指摘だけです。動画は決して含めません。</p>
 
 <!-- @verify 205abd35bc -->

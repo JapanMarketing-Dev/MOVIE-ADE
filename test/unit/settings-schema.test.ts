@@ -35,6 +35,7 @@ const FULL = {
   decision: { enabled: true, preset: 'cloudflare', model: 'clef-flash', accountId: 'abc', headers: { 'cf-aig-authorization': { env: 'CF_AIG_TOKEN' }, 'X-Team': 'ui' }, apiKeyEnv: 'CLOUDFLARE_API_TOKEN' },
   crashReports: false,
   crashReportsNoticeShown: true,
+  github: { defaultOwner: 'acme-inc' },
   autoUpdate: false,
   browserExtensions: [{ path: '/Users/me/ext/picker' }, { path: '/Users/me/ext/off', enabled: false }],
   onboarding: { completedAt: '2026-10-03T00:00:00.000Z' }

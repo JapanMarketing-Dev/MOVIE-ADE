@@ -181,6 +181,18 @@
 <p>Les terminaux s'ouvrent dans le dossier du projet, et les relectures sont enregistrées sous <code>&lt;project&gt;/.ferret/</code>.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="github-repo">
+        <h2 id="github-repo"><a class="docs-anchor" href="#github-repo" aria-label="Lien vers Créer un dépôt GitHub privé">#</a>Créer un dépôt GitHub privé</h2>
+        <p>Pour mettre dans un dépôt privé un projet qui n'est pas encore sur GitHub, faites un clic droit dessus dans la barre latérale et choisissez <span class="docs-ui">Créer un dépôt privé sur GitHub</span>. Cela utilise votre connexion <code>gh</code> : <code>gh</code> doit être installé et connecté. Seul GitHub est pris en charge, pas GitLab.</p>
+<ol class="docs-steps">
+  <li>Choisissez le <span class="docs-ui">Propriétaire</span> (votre compte ou l'une de vos organisations) et le <span class="docs-ui">Nom du dépôt</span> (proposé à partir du nom du dossier ; lettres, chiffres, <code>.</code>, <code>_</code> et <code>-</code>). Vous pouvez ajouter une <span class="docs-ui">Description (facultatif)</span>.</li>
+  <li>Si le dossier n'a pas encore de commit, <span class="docs-ui">Créer un premier commit et le pousser</span> crée un premier commit sans les fichiers ignorés par <code>.gitignore</code> ni les fichiers qui peuvent contenir des secrets : fichiers <code>.env</code> (les modèles comme <code>.env.example</code> sont gardés), clés comme <code>*.pem</code> ou <code>id_rsa</code>, <code>.npmrc</code>, <code>.netrc</code>, <code>credentials.json</code>, <code>*.tfstate</code>, etc. La boîte de dialogue liste ce qui est laissé de côté. Ces chemins sont ajoutés à <code>.git/info/exclude</code> : ils restent aussi hors des commits suivants ; vos fichiers et <code>.gitignore</code> ne sont pas modifiés. Un dossier qui n'est pas encore un dépôt git est initialisé avec la branche <code>main</code>.</li>
+  <li>Cliquez sur <span class="docs-ui">Suivant</span>, vérifiez le dépôt, la visibilité et le push, puis cliquez sur <span class="docs-ui">Créer</span>. Le dépôt est toujours privé. Il devient l'<code>origin</code> du dossier, et les commits du dossier sont poussés.</li>
+</ol>
+<p>Ferret ne crée pas le dépôt si le dossier a déjà un <code>origin</code>, s'il se trouve dans un autre dépôt git (par exemple un dossier d'un monorepo), si un dépôt de ce nom existe déjà, si le premier commit contiendrait plus de 20 000 fichiers, si git n'a ni nom d'utilisateur ni e-mail, ou si le projet est ouvert en SSH.</p>
+<p>Le propriétaire choisi d'abord est votre propre compte. Pour utiliser une organisation, réglez <span class="docs-ui">Propriétaire des nouveaux dépôts (GitHub)</span> dans <span class="docs-ui">Réglages → CLI des services</span> (<code>github.defaultOwner</code> dans <code>settings.json</code>).</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="save-url">
         <h2 id="save-url"><a class="docs-anchor" href="#save-url" aria-label="Lien vers Enregistrer des URL">#</a>Enregistrer des URL</h2>
         <ol class="docs-steps">
@@ -270,6 +282,7 @@
       <p class="docs-toc-heading">Sur cette page</p>
       <ul>
         <li><a href="#add-project">Ajouter un projet</a></li>
+        <li><a href="#github-repo">Créer un dépôt GitHub privé</a></li>
         <li><a href="#save-url">Enregistrer des URL</a></li>
         <li><a href="#review-targets">Panneau des cibles de relecture</a></li>
         <li><a href="#switch-env">Ouvrir et changer d'environnement</a></li>

@@ -71,6 +71,11 @@ describe('slowStartupReport', () => {
     expect(slowStartupReport(startupBreakdown(timing()), T)).toEqual({ perf: 'slow-pre-js', ms: 7000 })
   })
 
+  it('その版の初めての起動（入れた・更新した直後）は、JS より前の遅れを数えない。JS より後の遅れは数える', () => {
+    expect(slowStartupReport(startupBreakdown(timing()), T, { firstLaunchOfVersion: true })).toBeNull()
+    expect(slowStartupReport(startupBreakdown(timing({ totalMs: 8000, moduleLoadedAt: ORIGIN + 2000 })), T, { firstLaunchOfVersion: true })).toEqual({ perf: 'slow-startup', ms: 6000 })
+  })
+
   it('境界：ちょうど閾値は報告しない', () => {
     expect(slowStartupReport(startupBreakdown(timing({ totalMs: 5000, moduleLoadedAt: ORIGIN })), T)).toBeNull()
     expect(slowStartupReport(startupBreakdown(timing({ totalMs: 5001, moduleLoadedAt: ORIGIN })), T)).toEqual({ perf: 'slow-startup', ms: 5001 })

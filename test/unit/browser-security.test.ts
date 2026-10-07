@@ -290,10 +290,14 @@ describe('内蔵ブラウザのタブ', () => {
     expect(browser.state().tabs).toHaveLength(MAX_BROWSER_TABS)
     await expect(browser.newTab()).rejects.toThrow(String(MAX_BROWSER_TABS))
     for (const tab of browser.state().tabs!.slice(1)) browser.closeTab(tab.id)
+    // 閉じたタブの webContents の close は次のティック（外す処理と重ねない。browser-tab-destroy.test.ts）
+    await new Promise((r) => setImmediate(r))
     const only = browser.state().tabs!
     expect(only).toHaveLength(1)
     const last = state.views.slice(base).find((view) => !view.webContents.closed)!
     browser.closeTab(only[0]!.id)
+    expect(last.webContents.closed).toBe(false)
+    await new Promise((r) => setImmediate(r))
     expect(last.webContents.closed).toBe(true)
     expect(browser.state().tabs).toHaveLength(1)
     expect(browser.state().tabs![0]!.id).not.toBe(only[0]!.id)

@@ -83,15 +83,42 @@ Ghi trình duyệt tích hợp, toàn màn hình, một cửa sổ khác, ứng 
 </ul>
 <p>Hãy khoanh vùng chỗ bạn đang nói tới: lời nói và nét bút sẽ nằm trong cùng một góp ý. Bút chỉ dùng được trong lúc ghi, và trong lúc ghi không có công cụ văn bản: hãy nói ra, hoặc gõ sau bằng <a href="#type">Góp ý bằng chữ</a>. Phím tắt cho bút, khung và màu có trong <a href="keyboard.html#drawing">Phím tắt</a>.</p>
 
-<!-- @type 20180cf30c -->
+<!-- @type 43633faf9a -->
 ## Gõ thay vì nói
-<p>Khi không tiện nói, hãy gõ góp ý. Chỉ dùng được ở chế độ Editor, trên tab <span class="docs-ui">Trình duyệt</span>, khi không đang ghi.</p>
+<p>Khi không tiện nói, hãy gõ góp ý. Tính năng này dùng được ở chế độ biên tập và chế độ phản hồi, khi không ghi hình.</p>
 <ol class="docs-steps">
-  <li>Bấm <span class="docs-ui">Góp ý bằng chữ</span> trên thanh công cụ của trình duyệt.</li>
+  <li>Nhấn <span class="docs-ui">Góp ý bằng chữ</span>: ở bên phải nút ghi hình góc trên bên phải, trên thanh công cụ trình duyệt, hoặc trên thanh công cụ của chế độ phản hồi. Ở chế độ biên tập, nút sẽ chuyển sang tab <span class="docs-ui">Trình duyệt</span> trước; ở chế độ phản hồi, nút sẽ tắt bút và khung.</li>
   <li>Kéo một khung quanh chỗ cần sửa trên trang, hoặc bấm vào một phần tử để đóng khung nó.</li>
   <li>Gõ điều cần sửa. {{keys:Enter}} để thêm, {{keys:Shift+Enter}} để xuống dòng, {{keys:Esc}} để hủy khung. Phím Enter dùng để xác nhận chuyển đổi của bộ gõ sẽ không thêm góp ý.</li>
 </ol>
 <p>Mỗi lần gõ thành một góp ý kèm ảnh trang và khung, cùng URL và phần tử được đóng khung, giống như góp ý ghi hình. Góp ý được thêm vào bản review đang mở ở <span class="docs-ui">Góp ý</span>, hoặc vào một bản review mới nếu chưa mở bản nào. Trình duyệt vẫn ở phía trước nên bạn có thể thêm nhiều góp ý liên tiếp; nhấn {{keys:Esc}} khi không có khung nào, hoặc bấm lại nút để dừng. Cách này cũng dùng được trên cửa sổ ứng dụng desktop hay trình giả lập hiển thị thay cho trình duyệt, khi đó không có URL.</p>
+
+<!-- @share 9d75d7e7e6 -->
+## Nhận góp ý từ bất kỳ ai bằng liên kết chia sẻ
+<p>Để nhận góp ý từ người không dùng Ferret (khách hàng, nhà thiết kế, đồng đội), hãy gửi họ liên kết chia sẻ. Họ không cần tài khoản hay ứng dụng: họ mở liên kết trong trình duyệt, đánh dấu trên ảnh chụp trang của bạn và viết điều cần thay đổi. Tên là tùy chọn.</p>
+<ol class="docs-steps">
+  <li>Mở trang trong trình duyệt tích hợp (chỉ http hoặc https) và nhấn <span class="docs-ui">Chia sẻ</span> trên thanh công cụ trình duyệt.</li>
+  <li>Nếu muốn, đặt tiêu đề (nếu không sẽ dùng tiêu đề trang) và bật <span class="docs-ui">Cho người xem thấy ghi chú của nhau</span>. Nhấn <span class="docs-ui">Tạo liên kết cho trang này</span>. Ferret chụp phần đang hiển thị của trang, tải lên và sao chép liên kết (<code>https://share.ferretade.dev/s/…</code>).</li>
+  <li>Để thêm trang khác vào cùng liên kết, mở trang khác và nhấn <span class="docs-ui">Thêm trang này</span> ở liên kết đó (tối đa 20 trang).</li>
+</ol>
+<p>Trên liên kết, người góp ý ghim, vẽ khung hoặc vẽ bằng bút trên ảnh chụp và viết ghi chú (tối đa 2.000 ký tự). <span class="docs-ui">Live page</span> mở trang gốc trong một khung để họ dùng thử, và <span class="docs-ui">Annotate live</span> cho phép họ ghim lên đó; URL họ đang xem được gửi kèm ghi chú. Một số trang không cho tải trong khung; khi đó người góp ý có thể mở trang trong tab mới và gửi ghi chú bằng chữ. Trang hiển thị bằng tiếng Nhật hoặc tiếng Anh, theo trình duyệt của người góp ý.</p>
+<p>Ghi chú đến trong cùng cửa sổ <span class="docs-ui">Chia sẻ</span>. Chọn ghi chú rồi nhấn <span class="docs-ui">Nhập mục đã chọn</span>, hoặc nhấn <span class="docs-ui">Từ chối</span> với những ghi chú không cần (<span class="docs-ui">Hoàn tác</span> đưa chúng trở lại). Ghi chú đã nhập trở thành phát hiện trong một bản xem xét mới, giống <span class="docs-ui">Góp ý bằng chữ</span>: ảnh chụp có dấu của người góp ý trở thành ảnh BEFORE, kèm URL trang cùng tên và ghi chú của người góp ý. Ghim đặt trên trang trực tiếp được hiển thị thành khung bao toàn bộ ảnh chụp, vì trang trực tiếp có thể cuộn khác đi. Sau đó, gửi cho agent và kiểm tra BEFORE và AFTER như thường lệ.</p>
+<ul>
+  <li>Ai có liên kết cũng xem được ảnh chụp và gửi được ghi chú, vì vậy đừng chia sẻ trang có dữ liệu riêng tư. Liên kết hết hạn sau 30 ngày. <span class="docs-ui">Xóa</span> xóa ngay liên kết, ảnh chụp và ghi chú của nó.</li>
+  <li>Một liên kết nhận tối đa 500 ghi chú, và máy chủ giới hạn tần suất gửi ghi chú và tạo liên kết. Máy chủ không lưu địa chỉ IP.</li>
+  <li>Liên kết chia sẻ được lưu theo từng dự án. Token chủ sở hữu mà Ferret dùng để đọc và quản lý liên kết được mã hóa bằng <code>safeStorage</code> của Electron trong <code>&lt;userData&gt;/feedback-share/shares.bin</code>. Bản dựng phát triển và hệ thống không có <code>safeStorage</code> chỉ giữ nó đến khi thoát Ferret (liên kết vẫn hoạt động đến khi hết hạn).</li>
+  <li>Mã của máy chủ nằm trong <code>workers/feedback-share</code> của kho mã.</li>
+</ul>
+
+<!-- @meeting 9194136fce -->
+## Nhập cuộc họp
+<p>Biến một cuộc họp về sản phẩm thành phát hiện. Nhấn <span class="docs-ui">Nhập cuộc họp</span> bên dưới dự án đang mở trên thanh bên, rồi thêm bản ghi, bản chép lời hoặc cả hai:</p>
+<ul>
+  <li>Bản ghi: <span class="docs-ui">Chọn video hoặc âm thanh…</span> (MP4, M4V, MOV, WebM, MKV, M4A, MP3, WAV, OGG hoặc AAC). Tệp được sao chép vào thư mục của bản xem xét mới.</li>
+  <li>Bản chép lời: <span class="docs-ui">Mở tệp chép lời…</span> (<code>.txt</code>, <code>.md</code>, <code>.vtt</code>, <code>.srt</code> hoặc <code>.docx</code>), hoặc dán vào. Ferret đọc phụ đề WebVTT và SRT (Zoom, Google Meet), bản chép lời có dòng thời gian theo sau là các dòng <q>Tên: nội dung</q> (Google Meet, Gemini), dòng <q>[00:12:34] Tên: nội dung</q>, dòng <q>Tên 0:05</q> theo sau là nội dung (Circleback, Otter), dòng <q>Tên: nội dung</q> đơn thuần, hoặc đoạn văn thường. Ferret không kết nối với các dịch vụ này; nó chỉ đọc văn bản bạn đưa vào.</li>
+</ul>
+<p>Nhấn <span class="docs-ui">Nhập</span>. Nếu không có bản chép lời, Ferret chuyển âm thanh của bản ghi thành văn bản theo cài đặt <span class="docs-ui">Chuyển văn bản</span> (bản ghi tối đa 3 giờ). Sau đó mô hình <span class="docs-ui">Sắp xếp</span> của bạn viết các phát hiện ứng viên từ những gì đã nói. Nếu bản ghi có video và bản chép lời có thời gian, khung hình tại thời điểm mỗi phát biểu trở thành ảnh BEFORE của phát hiện. Bản chép lời không có thời gian vẫn dùng được, nhưng không có khung hình.</p>
+<p>Nếu <a href="agents.html#verify">mô hình quyết định</a> đang bật, Ferret hỏi nó một lần cho mỗi ứng viên xem cuộc họp có yêu cầu thay đổi cụ thể cho sản phẩm không, và với mô hình đọc được ảnh khi có khung hình, xem khung hình có hiển thị màn hình đang bàn không. Mỗi ứng viên hiện <span class="docs-ui">Khả năng</span> kèm phần trăm; ứng viên dưới 50% bắt đầu ở trạng thái bỏ chọn. Các lời gọi này đi từ Ferret qua cùng relay cục bộ với bước kiểm tra của agent, với cùng giới hạn số lần gọi và chi phí. Không có gì được gửi cho agent cho đến khi bạn kiểm tra các ứng viên: sửa, bỏ chọn hoặc giữ lại, rồi gửi như thường lệ.</p>
 
 <!-- @annotations-clear ea2e57b47b -->
 ## Khi nào nét bút biến mất

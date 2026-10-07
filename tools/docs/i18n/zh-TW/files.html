@@ -5,7 +5,7 @@
 <!-- @lead b2a7619b5e -->
 Ferret 自己的檔案存放在哪裡，以及它讀取或設定的環境變數。
 
-<!-- @userdata 71b30d8c35 -->
+<!-- @userdata d8a259644b -->
 ## userData 資料夾
 <p>App 資料存放在 Electron 的 <code>userData</code> 資料夾中。資料夾名稱固定為 <code>ade-movie</code>（而非產品名稱），因此即使改名，資料也會保留。可以用 <code>--user-data-dir=&lt;path&gt;</code> 覆寫。</p>
 <table>
@@ -19,6 +19,7 @@ Ferret 自己的檔案存放在哪裡，以及它讀取或設定的環境變數�
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
 browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+feedback-share/     # share links you made (shares.bin; owner tokens encrypted with safeStorage)
 login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts

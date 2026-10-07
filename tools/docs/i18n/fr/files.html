@@ -5,7 +5,7 @@ Fichiers et environnement
 <!-- @lead b2a7619b5e -->
 Où Ferret conserve ses propres fichiers, et les variables d'environnement qu'il lit ou définit.
 
-<!-- @userdata 71b30d8c35 -->
+<!-- @userdata d8a259644b -->
 ## Dossier userData
 <p>Les données de l'application se trouvent dans le dossier <code>userData</code> d'Electron. Son nom est figé à <code>ade-movie</code> (et non au nom du produit), pour que les données survivent aux changements de nom. Remplacez-le avec <code>--user-data-dir=&lt;path&gt;</code>.</p>
 <table>
@@ -19,6 +19,7 @@ Où Ferret conserve ses propres fichiers, et les variables d'environnement qu'il
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
 browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+feedback-share/     # share links you made (shares.bin; owner tokens encrypted with safeStorage)
 login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts

@@ -23,6 +23,17 @@
 <p>리뷰 검색창 옆의 필터 버튼에서 <span class="docs-ui">프로젝트 정렬</span>도 정할 수 있습니다: <span class="docs-ui">수동(끌어 놓은 순서)</span>, <span class="docs-ui">활동 중 먼저</span>(에이전트가 나를 기다리거나, 작업 중이거나, 방금 작업을 마친 프로젝트가 위), <span class="docs-ui">최근 사용 순</span>, <span class="docs-ui">이름 순</span>, <span class="docs-ui">추가한 순</span>. 수동이 아닌 정렬에서 프로젝트를 끌면 지금 보이는 순서가 수동 순서가 되고 정렬은 <span class="docs-ui">수동(끌어 놓은 순서)</span>으로 바뀝니다. 프로젝트 행의 별표나 메뉴의 <span class="docs-ui">별표 달기</span>로 별표를 달면 어떤 정렬에서도 목록 맨 위에 놓입니다. <span class="docs-ui">별표만 표시</span>을 켜면 나머지 프로젝트는 숨겨집니다. 별표와 정렬은 다시 시작한 뒤에도 유지됩니다.</p>
 <p>터미널은 프로젝트 폴더에서 열리고, 리뷰는 <code>&lt;project&gt;/.ferret/</code> 아래에 저장됩니다.</p>
 
+<!-- @github-repo 4596ca5d7c -->
+## GitHub에 비공개 저장소 만들기
+<p>아직 GitHub에 없는 프로젝트를 비공개 저장소로 만들려면, 사이드바에서 프로젝트를 오른쪽 클릭하고 <span class="docs-ui">GitHub에 비공개 저장소 만들기</span>를 고릅니다. 자신의 <code>gh</code> 로그인을 쓰므로 <code>gh</code>를 설치하고 로그인해 두어야 합니다. GitHub만 지원하며 GitLab은 지원하지 않습니다.</p>
+<ol class="docs-steps">
+  <li><span class="docs-ui">소유자</span>(자신의 계정이나 소속 조직)와 <span class="docs-ui">저장소 이름</span>(폴더 이름에서 제안. 영문자, 숫자, <code>.</code>, <code>_</code>, <code>-</code>)을 고릅니다. <span class="docs-ui">설명(선택)</span>도 붙일 수 있습니다.</li>
+  <li>폴더에 아직 커밋이 없으면 <span class="docs-ui">첫 커밋을 만들고 push</span>로 첫 커밋을 만듭니다. <code>.gitignore</code> 대상과 비밀을 담을 수 있는 파일은 넣지 않습니다: <code>.env</code> 파일(<code>.env.example</code> 같은 템플릿은 넣음), <code>*.pem</code>이나 <code>id_rsa</code> 같은 키, <code>.npmrc</code>, <code>.netrc</code>, <code>credentials.json</code>, <code>*.tfstate</code> 등. 빠진 파일은 대화 상자에 목록으로 나옵니다. 그 경로는 <code>.git/info/exclude</code>에 적으므로 이후 커밋에도 들어가지 않습니다. 프로젝트의 파일과 <code>.gitignore</code>는 바꾸지 않습니다. 아직 git 저장소가 아닌 폴더는 브랜치 <code>main</code>으로 초기화합니다.</li>
+  <li><span class="docs-ui">다음</span>을 누르고 저장소, 공개 범위, push를 확인한 뒤 <span class="docs-ui">만들기</span>를 누릅니다. 저장소는 항상 비공개입니다. 폴더의 <code>origin</code>이 되고, 폴더의 커밋을 push합니다.</li>
+</ol>
+<p>폴더에 이미 <code>origin</code>이 있을 때, 다른 git 저장소 안에 있을 때(모노레포 안의 폴더 등), 같은 이름의 저장소가 이미 있을 때, 첫 커밋의 파일이 20,000개를 넘을 때, git에 사용자 이름과 이메일이 없을 때, SSH로 연 프로젝트일 때는 만들지 않고 거절합니다.</p>
+<p>처음 선택되는 소유자는 자신의 계정입니다. 조직으로 하려면 <span class="docs-ui">설정 → 자주 쓰는 서비스 CLI</span>에서 <span class="docs-ui">새 저장소의 소유자(GitHub)</span>(<code>settings.json</code>의 <code>github.defaultOwner</code>)를 정합니다.</p>
+
 <!-- @save-url cb8cafed1c -->
 ## URL 저장하기
 <ol class="docs-steps">

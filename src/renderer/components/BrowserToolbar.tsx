@@ -8,6 +8,7 @@ import { NavControls } from './NavControls'
 import { UrlPresets } from './UrlPresets'
 import { BrowserExtensionsButton } from './BrowserExtensionsButton'
 import { PasswordFillButton } from './PasswordFillButton'
+import { ShareButton } from './ShareButton'
 import { useT } from '../lib/i18n'
 import { errorMessage } from '../lib/errors'
 
@@ -72,6 +73,8 @@ export function BrowserToolbar({
       </Tooltip>
       {/* 取り込んだパスワードがこのページにあるときだけ出る鍵のボタン（src/renderer/components/PasswordFillButton.tsx） */}
       <PasswordFillButton state={state} />
+      {/* ログイン無しで誰でも指摘を送れる共有リンクを作り、届いた指摘を取り込む（src/renderer/components/ShareButton.tsx） */}
+      <ShareButton state={state} />
       <UrlPresets project={project} currentUrl={state.url} onOverlayChange={onOverlayChange} onSelectWindow={onSelectWindow} />
       {shownTarget && shownTarget.kind !== 'browser' && (
         <span className="browser-toolbar__shown" data-testid="browser-shown-target">

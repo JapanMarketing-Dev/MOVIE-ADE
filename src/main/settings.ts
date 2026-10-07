@@ -1,4 +1,5 @@
 import { sanitizeBrowserExtensions } from '@shared/browserExtensions'
+import { sanitizeGithubPreferences } from '@shared/repoCreate'
 import { sanitizeLimitFailover } from '@shared/failover'
 import { app } from 'electron'
 import { dirname, join } from 'node:path'
@@ -178,6 +179,11 @@ export function sanitize(raw: unknown): Settings {
     // 未設定は ON のまま書かない。明示の OFF だけを残す
     ...(r.crashReports === false ? { crashReports: false } : {}),
     ...(r.crashReportsNoticeShown === true ? { crashReportsNoticeShown: true } : {}),
+    // GitHub のリポジトリの既定の置き場。決めていなければ書かない
+    ...(() => {
+      const github = sanitizeGithubPreferences(r.github)
+      return github ? { github } : {}
+    })(),
     // 内蔵ブラウザの拡張機能（展開済みのフォルダ）。空なら書かない
     ...(() => {
       const browserExtensions = sanitizeBrowserExtensions(r.browserExtensions)

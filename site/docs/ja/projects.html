@@ -181,6 +181,18 @@
 <p>ターミナルはプロジェクトのフォルダで開き、レビューは <code>&lt;project&gt;/.ferret/</code> の下に保存します。</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="github-repo">
+        <h2 id="github-repo"><a class="docs-anchor" href="#github-repo" aria-label="「GitHub に private のリポジトリを作る」へのリンク">#</a>GitHub に private のリポジトリを作る</h2>
+        <p>まだ GitHub に無いプロジェクトを private のリポジトリにするには、サイドバーでプロジェクトを右クリックし、<span class="docs-ui">GitHub に private で作る</span> を選びます。自分の <code>gh</code> のログインを使うので、<code>gh</code> を入れてログインしておく必要があります。対応しているのは GitHub だけで、GitLab には対応していません。</p>
+<ol class="docs-steps">
+  <li><span class="docs-ui">置き場</span>（自分のアカウントか所属する組織）と <span class="docs-ui">リポジトリ名</span>（フォルダ名から候補を出します。英数字・<code>.</code>・<code>_</code>・<code>-</code>）を選びます。<span class="docs-ui">説明（任意）</span> も付けられます。</li>
+  <li>フォルダにまだコミットが無ければ、<span class="docs-ui">最初のコミットを作って push する</span> で最初のコミットを作ります。<code>.gitignore</code> の対象と、秘密を含みうるファイルは入れません: <code>.env</code> のファイル（<code>.env.example</code> などの雛形は入れます）、<code>*.pem</code> や <code>id_rsa</code> などの鍵、<code>.npmrc</code>、<code>.netrc</code>、<code>credentials.json</code>、<code>*.tfstate</code> など。外したものは画面に一覧で出ます。そのパスは <code>.git/info/exclude</code> に書くので、あとのコミットにも入りません。プロジェクトのファイルと <code>.gitignore</code> は変えません。まだ git のリポジトリでないフォルダは、ブランチ <code>main</code> で初期化します。</li>
+  <li><span class="docs-ui">次へ</span> を押し、リポジトリ・公開範囲・push を確かめてから <span class="docs-ui">作成</span> を押します。リポジトリは必ず private です。フォルダの <code>origin</code> になり、フォルダのコミットを push します。</li>
+</ol>
+<p>フォルダに <code>origin</code> が既にあるとき、別の git のリポジトリの中にあるとき（モノレポの中のフォルダなど）、同じ名前のリポジトリが既にあるとき、最初のコミットのファイルが 20,000 を超えるとき、git にユーザー名とメールが設定されていないとき、SSH で開いたプロジェクトのときは、作らずに断ります。</p>
+<p>最初に選ばれる置き場は自分のアカウントです。組織にしたいときは、<span class="docs-ui">設定 → よく使うサービスの CLI</span> の <span class="docs-ui">新しいリポジトリの置き場（GitHub）</span>（<code>settings.json</code> の <code>github.defaultOwner</code>）で決めます。</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="save-url">
         <h2 id="save-url"><a class="docs-anchor" href="#save-url" aria-label="「URL を登録する」へのリンク">#</a>URL を登録する</h2>
         <ol class="docs-steps">
@@ -270,6 +282,7 @@
       <p class="docs-toc-heading">このページの内容</p>
       <ul>
         <li><a href="#add-project">プロジェクトを追加する</a></li>
+        <li><a href="#github-repo">GitHub に private のリポジトリを作る</a></li>
         <li><a href="#save-url">URL を登録する</a></li>
         <li><a href="#review-targets">レビュー対象のパネル</a></li>
         <li><a href="#switch-env">開く・環境を切り替える</a></li>

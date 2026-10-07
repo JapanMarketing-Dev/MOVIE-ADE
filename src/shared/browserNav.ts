@@ -35,3 +35,13 @@ export function browserNavKeys(direction: BrowserNavDirection, platform: string)
   if (platform === 'darwin') return ['Mod', direction === 'back' ? '[' : ']']
   return ['Alt', direction === 'back' ? 'ArrowLeft' : 'ArrowRight']
 }
+
+/**
+ * 読み込みが中断された（Chromium の net::ERR_ABORTED、-3）か。次の読み込み・タブの入れ替え・閉じたタブで起きる想定内のもの。
+ * Sentry へは送らない（FERRET-1R。loadURL・navigationHistory.restore の失敗に使う）
+ */
+export function isAbortedNavigation(err: unknown): boolean {
+  const e = err as { errno?: unknown; code?: unknown; message?: unknown } | null
+  if (!e || typeof e !== 'object') return false
+  return e.errno === -3 || e.code === 'ERR_ABORTED' || (typeof e.message === 'string' && /^ERR_ABORTED \(-3\)/.test(e.message))
+}

@@ -38,7 +38,16 @@ Ferret のクラッシュと未処理のエラーは Sentry（組織 `workspacep
     - `crash.code`: 例外の番号（16進）。`crash.module`: 落ちた場所のモジュールのファイル名（`pty.node`・`conpty.node`・`ferret.exe` など。パスは持たない）
     - `mem.rss`・`mem.heap`・`uptime`: 落ちる前の main のメモリの量と起動からの時間の区分（30秒ごとに scope に控え、次の起動のクラッシュのイベントに付く）
     - 2GB+ や `oom` ならメモリの増加、`conpty.node`・`pty.node` ならターミナル（node-pty）を疑う
-  - それでも足りなければ、再現した手元の minidump（Electron の crashDumps のフォルダ）を開発者が自分で読む
+  - 0.4.19 の次の版から、落ちた場所を symbols で関数に戻せる値も送る（FERRET-1Q で手がかりが無かったため）。どれもモジュールの名前と、モジュールの先頭からの位置だけで、アドレスそのもの・メモリの中身・パスは送らない（`test/unit/minidump-crash.test.ts` が確かめる）
+    - `contexts.crash.location`: 落ちた場所（例 `ferret.exe+0x1a2b3c`）。`debug_id`・`code_id`: そのモジュールの symbols を引く ID（Windows の PDB の GUID＋age と、TimeDateStamp＋SizeOfImage）。`thread`: 落ちたスレッドの名前（`CrBrowserMain` など）
+    - `contexts.crash.stack`: 落ちたスレッドのスタックの中で、読み込んだモジュールの中を指していた値を上から20件（戻り先の候補。データへのポインタも混ざる）
+    - パンくず: 前の起動のパンくずのうち、Ferret 自身の `flow` だけ（`quit begin`・`quit terminals`・`quit watchdog`・`update install`・`terminal exit` など）を直近30件。終了や更新のどの段階で落ちたかが分かる。Electron のパンくず（URL・ウインドウの題名を含みうる）は捨てる
+  - symbols で関数に戻す手順（`ferret.exe` は Electron の `electron.exe` の名前を変えたもの）:
+    1. Electron の版（tags の `electron`）と CPU（`build`）に合う symbols を取る。例: `https://github.com/electron/electron/releases/download/v44.5.1/electron-v44.5.1-win32-x64-symbols.zip`（breakpad の `.sym`）
+    2. 展開した `breakpad_symbols/electron.exe.pdb/<debug_id>/electron.exe.sym` の `<debug_id>` が `contexts.crash.debug_id` と同じかを確かめる（違えば別のビルド）
+    3. `.sym` の `FUNC <位置> <長さ> <引数> <名前>` の行から、`location`・`stack` の位置（16進）を含む関数を探す（`awk` で十分。`PUBLIC` の行は長さが無いので、位置以下で一番近いもの）
+    4. `pty.node`・`conpty.node` は node-pty の版の PDB（`scripts/sentry-sourcemaps.mjs` が上げるもの）で同じように読む
+  - それでも足りなければ、再現した手元の minidump（Electron の crashDumps のフォルダ。旧名のまま `%APPDATA%\ade-movie\Crashpad\reports` のこともある）を開発者が自分で読む（`minidump-stackwalk <dump> <symbols のフォルダ>`）
 - node-pty の記号（`scripts/sentry-sourcemaps.mjs` が上げる）は、minidump を送らないので今は使われない
 
 ## 5. 落ちたときの状況

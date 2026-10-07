@@ -281,7 +281,14 @@ export interface AgentPreferences {
    * 切にすると書いたものも消す（main の terminalRestore.ts）
    */
   restoreTerminals: boolean
+  /**
+   * Windows のターミナルのシェル（既定は PowerShell）。cmd.exe は履歴を残さないので ↑ で前のコマンドが出ない（main の resolveWindowsShell）
+   */
+  windowsShell: WindowsShell
 }
+
+/** Windows のターミナルのシェル */
+export type WindowsShell = 'powershell' | 'cmd'
 
 /** 設定画面・メニューに出す1件（main が検出結果と設定を合わせて返す） */
 export interface AgentOption {
@@ -377,6 +384,8 @@ export interface Settings {
   feedbackTargets?: FeedbackTargetsPrefs
   /** 内蔵ブラウザに読み込むブラウザ拡張機能（展開済みのフォルダ）。省略時はなし（src/shared/browserExtensions.ts） */
   browserExtensions?: import('./browserExtensions').BrowserExtensionEntry[]
+  /** GitHub のリポジトリを作るときの既定の置き場（src/shared/repoCreate.ts）。省略時は自分のアカウント */
+  github?: import('./repoCreate').GithubPreferences
 }
 
 export interface FeedbackTargetsPrefs {

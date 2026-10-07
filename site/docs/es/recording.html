@@ -253,13 +253,42 @@
 
       <section class="docs-section" aria-labelledby="type">
         <h2 id="type"><a class="docs-anchor" href="#type" aria-label="Enlace a Escribir en lugar de hablar">#</a>Escribir en lugar de hablar</h2>
-        <p>Cuando no te venga bien hablar, escribe el hallazgo. Solo funciona en el modo Editor, en la pestaña <span class="docs-ui">Navegador</span>, mientras no estás grabando.</p>
+        <p>Cuando no es cómodo hablar, escribe el hallazgo. Funciona en el modo editor y en el modo de feedback, mientras no grabas.</p>
 <ol class="docs-steps">
-  <li>Haz clic en <span class="docs-ui">Escribir comentario</span> en la barra de herramientas del navegador.</li>
+  <li>Haz clic en <span class="docs-ui">Escribir comentario</span>: a la derecha del botón de grabar arriba a la derecha, en la barra del navegador o en la barra del modo de feedback. En el modo editor primero cambia a la pestaña <span class="docs-ui">Navegador</span>; en el modo de feedback apaga el lápiz y el recuadro.</li>
   <li>Arrastra un recuadro alrededor del punto de la página, o haz clic en un elemento para enmarcarlo.</li>
   <li>Escribe qué debe cambiar. <kbd>Enter</kbd> lo añade, <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd><kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Enter</kbd></span></span> empieza una línea nueva y <kbd>Esc</kbd> cancela el recuadro. El Enter con el que confirmas una conversión del método de entrada no lo añade.</li>
 </ol>
 <p>Cada uno se convierte en un hallazgo con una imagen de la página y el recuadro, además de la URL y el elemento enmarcado, como un hallazgo grabado. Se añade a la revisión abierta en <span class="docs-ui">Hallazgos</span>, o a una revisión nueva si no hay ninguna abierta. El navegador sigue delante, así que puedes añadir varios seguidos; <kbd>Esc</kbd> sin recuadro abierto, o volver a pulsar el botón, termina. También funciona en la ventana de una app de escritorio o de un simulador mostrada en lugar del navegador, sin la URL.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="share">
+        <h2 id="share"><a class="docs-anchor" href="#share" aria-label="Enlace a Recibir feedback de cualquiera con un enlace compartido">#</a>Recibir feedback de cualquiera con un enlace compartido</h2>
+        <p>Para recibir feedback de personas que no usan Ferret (un cliente, un diseñador, alguien del equipo), envíales un enlace compartido. No necesitan cuenta ni app: abren el enlace en su navegador, marcan una captura de tu página y escriben qué debería cambiar. El nombre es opcional.</p>
+<ol class="docs-steps">
+  <li>Abre la página en el navegador integrado (solo http o https) y haz clic en <span class="docs-ui">Compartir</span> en la barra del navegador.</li>
+  <li>Si quieres, ponle un título (si no, se usa el de la página) y activa <span class="docs-ui">Permitir que los revisores vean las notas de los demás</span>. Haz clic en <span class="docs-ui">Crear enlace para esta página</span>. Ferret hace una captura de la parte visible de la página, la sube y copia el enlace (<code>https://share.ferretade.dev/s/…</code>).</li>
+  <li>Para añadir más páginas al mismo enlace, abre otra página y haz clic en <span class="docs-ui">Añadir esta página</span> en ese enlace (hasta 20 páginas).</li>
+</ol>
+<p>En el enlace, los revisores colocan un pin, dibujan un recuadro o trazan con un lápiz sobre la captura y escriben una nota (hasta 2.000 caracteres). <span class="docs-ui">Live page</span> abre la página original en un marco para que la usen, y <span class="docs-ui">Annotate live</span> les permite colocar un pin sobre ella; la URL que estaban viendo se envía con la nota. Algunos sitios no se cargan dentro de un marco; en ese caso pueden abrir la página en una pestaña nueva y enviar la nota como texto. La página aparece en japonés o en inglés, según el navegador del revisor.</p>
+<p>Las notas llegan a la misma ventana de <span class="docs-ui">Compartir</span>. Selecciona notas y haz clic en <span class="docs-ui">Importar seleccionados</span>, o usa <span class="docs-ui">Rechazar</span> en las que no quieras (<span class="docs-ui">Deshacer</span> las recupera). Las notas importadas se convierten en hallazgos de una revisión nueva, como con <span class="docs-ui">Escribir comentario</span>: la captura con la marca del revisor pasa a ser la imagen BEFORE, junto con la URL de la página y el nombre y la nota del revisor. Un pin colocado en la página en vivo se muestra como un recuadro alrededor de toda la captura, porque la página en vivo puede tener otro desplazamiento. A partir de ahí, envíalos a tu agente y compara BEFORE y AFTER como siempre.</p>
+<ul>
+  <li>Cualquiera con el enlace puede ver las capturas y enviar notas, así que no compartas páginas que muestren datos privados. El enlace caduca a los 30 días. <span class="docs-ui">Eliminar</span> borra al instante el enlace, sus capturas y sus notas.</li>
+  <li>Un enlace admite hasta 500 notas, y el servidor limita con qué frecuencia se pueden enviar notas y crear enlaces. No guarda direcciones IP.</li>
+  <li>Los enlaces compartidos se guardan por proyecto. El token de propietario con el que Ferret lee y gestiona un enlace se cifra con <code>safeStorage</code> de Electron en <code>&lt;userData&gt;/feedback-share/shares.bin</code>. Las versiones de desarrollo y los sistemas sin <code>safeStorage</code> lo conservan solo hasta que Ferret se cierra (el enlace sigue funcionando hasta que caduca).</li>
+  <li>El código del servidor está en <code>workers/feedback-share</code> en el repositorio.</li>
+</ul>
+      </section>
+
+      <section class="docs-section" aria-labelledby="meeting">
+        <h2 id="meeting"><a class="docs-anchor" href="#meeting" aria-label="Enlace a Importar una reunión">#</a>Importar una reunión</h2>
+        <p>Convierte una reunión sobre tu producto en hallazgos. Haz clic en <span class="docs-ui">Importar reunión</span> bajo el proyecto abierto en la barra lateral y añade una grabación, una transcripción o ambas:</p>
+<ul>
+  <li>Grabación: <span class="docs-ui">Elegir vídeo o audio…</span> (MP4, M4V, MOV, WebM, MKV, M4A, MP3, WAV, OGG o AAC). Se copia a la carpeta de la revisión nueva.</li>
+  <li>Transcripción: <span class="docs-ui">Abrir archivo de transcripción…</span> (<code>.txt</code>, <code>.md</code>, <code>.vtt</code>, <code>.srt</code> o <code>.docx</code>), o pégala. Ferret lee subtítulos WebVTT y SRT (Zoom, Google Meet), transcripciones con una línea de hora seguida de líneas <q>Nombre: texto</q> (Google Meet, Gemini), líneas <q>[00:12:34] Nombre: texto</q>, una línea <q>Nombre 0:05</q> seguida del texto (Circleback, Otter), líneas <q>Nombre: texto</q> sin más, o párrafos. Ferret no se conecta a estos servicios; solo lee el texto que le das.</li>
+</ul>
+<p>Haz clic en <span class="docs-ui">Importar</span>. Sin transcripción, Ferret transcribe el audio de la grabación con tu ajuste de <span class="docs-ui">Transcripción</span> (grabaciones de hasta 3 horas). Después tu modelo de <span class="docs-ui">Organizar</span> redacta hallazgos candidatos a partir de lo que se dijo. Si la grabación tiene vídeo y la transcripción tiene horas, un fotograma del momento de cada intervención pasa a ser la imagen BEFORE del hallazgo. Las transcripciones sin horas también sirven, sin fotogramas.</p>
+<p>Si el <a href="agents.html#verify">modelo de decisión</a> está activado, Ferret le pregunta una vez por candidato si en la reunión se pidió un cambio concreto en el producto y, con un modelo de imágenes y un fotograma, si el fotograma muestra la pantalla de la que se habla. Cada candidato muestra <span class="docs-ui">Probable</span> con un porcentaje; los que quedan por debajo del 50 % empiezan desmarcados. Estas llamadas van de Ferret por el mismo relé local que las comprobaciones de tus agentes, con sus límites de llamadas y de coste. No se envía nada a tu agente hasta que revises los candidatos: edítalos, desmárcalos o déjalos y envíalos como siempre.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="annotations-clear">
@@ -343,6 +372,8 @@
         <li><a href="#record">Iniciar, pausar, detener</a></li>
         <li><a href="#pen">Lápiz</a></li>
         <li><a href="#type">Escribir en lugar de hablar</a></li>
+        <li><a href="#share">Recibir feedback de cualquiera con un enlace compartido</a></li>
+        <li><a href="#meeting">Importar una reunión</a></li>
         <li><a href="#annotations-clear">Cuándo desaparecen los trazos</a></li>
         <li><a href="#mic">Micrófono</a></li>
         <li><a href="#live-transcript">Ver lo que se está transcribiendo</a></li>

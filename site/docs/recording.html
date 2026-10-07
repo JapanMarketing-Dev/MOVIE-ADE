@@ -253,13 +253,42 @@
 
       <section class="docs-section" aria-labelledby="type">
         <h2 id="type"><a class="docs-anchor" href="#type" aria-label="Link to Type feedback instead of talking">#</a>Type feedback instead of talking</h2>
-        <p>When talking isn't convenient, type the finding instead. This works only in Editor mode, on the <span class="docs-ui">Browser</span> tab, while not recording.</p>
+        <p>When talking isn't convenient, type the finding instead. This works in Editor mode and in Feedback mode, while not recording.</p>
 <ol class="docs-steps">
-  <li>Click <span class="docs-ui">Type feedback</span> in the browser toolbar.</li>
+  <li>Click <span class="docs-ui">Type feedback</span>: right of the record button at the top right, in the browser toolbar, or in the Feedback mode toolbar. In Editor mode it switches to the <span class="docs-ui">Browser</span> tab first; in Feedback mode it turns the pen and the box off.</li>
   <li>Drag a box around the spot on the page, or click an element to box it.</li>
   <li>Type what should change. <kbd>Enter</kbd> adds it, <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd><kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Enter</kbd></span></span> starts a new line, and <kbd>Esc</kbd> cancels the box. Enter while converting text with an input method doesn't add it.</li>
 </ol>
 <p>Each one becomes a finding with an image of the page and the box, plus the URL and the boxed element, like a recorded finding. It is added to the review open in <span class="docs-ui">Findings</span>, or to a new review if none is open. The browser stays in front, so you can add several in a row; <kbd>Esc</kbd> with no box open, or the button again, stops. It also works on a desktop app or simulator window shown in place of the browser, without the URL.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="share">
+        <h2 id="share"><a class="docs-anchor" href="#share" aria-label="Link to Get feedback from anyone with a share link">#</a>Get feedback from anyone with a share link</h2>
+        <p>To get feedback from people who don't use Ferret (a client, a designer, a teammate), send them a share link. They need no account and no app: they open the link in their browser, mark up a screenshot of your page and write what should change. Giving a name is optional.</p>
+<ol class="docs-steps">
+  <li>Open the page in the built-in browser (http or https only) and click <span class="docs-ui">Share</span> in the browser toolbar.</li>
+  <li>Optionally give it a title (the page title is used otherwise) and turn on <span class="docs-ui">Let reviewers see each other’s notes</span>. Click <span class="docs-ui">Make a share link for this page</span>. Ferret takes a screenshot of the visible part of the page, uploads it, and copies the link (<code>https://share.ferretade.dev/s/…</code>).</li>
+  <li>To add more pages to the same link, open another page and click <span class="docs-ui">Add this page</span> on that share (up to 20 pages).</li>
+</ol>
+<p>On the link, reviewers drop a pin, draw a box, or draw with a pen on the screenshot and type a note (up to 2,000 characters). <span class="docs-ui">Live page</span> opens the original page in a frame so they can use it, and <span class="docs-ui">Annotate live</span> lets them drop a pin on it; the URL they were looking at is sent with the note. Some sites refuse to load in a frame; reviewers can open the page in a new tab and send the note as text. The page is in Japanese or English, following the reviewer's browser.</p>
+<p>Notes arrive in the same <span class="docs-ui">Share</span> window. Select notes and click <span class="docs-ui">Import selected</span>, or <span class="docs-ui">Decline</span> the ones you don't want (<span class="docs-ui">Undo</span> brings them back). Imported notes become findings in a new review, like <span class="docs-ui">Type feedback</span>: the screenshot with the reviewer's mark becomes the BEFORE image, with the page URL and the reviewer's name and note. A pin dropped on the live page is shown as a box around the whole screenshot, because the live page can scroll differently. From there, send them to your agent and check BEFORE and AFTER as usual.</p>
+<ul>
+  <li>Anyone with the link can see the screenshots and send notes, so don't share pages that show private data. A link expires after 30 days. <span class="docs-ui">Delete</span> removes the link, its screenshots and its notes at once.</li>
+  <li>One link takes up to 500 notes, and the server limits how often notes and links can be sent. It does not store IP addresses.</li>
+  <li>Share links are kept per project. The owner token that lets Ferret read and manage a link is encrypted with Electron <code>safeStorage</code> in <code>&lt;userData&gt;/feedback-share/shares.bin</code>. Development builds and systems without <code>safeStorage</code> keep it only until Ferret quits (the link itself keeps working until it expires).</li>
+  <li>The server's code is in <code>workers/feedback-share</code> in the repository.</li>
+</ul>
+      </section>
+
+      <section class="docs-section" aria-labelledby="meeting">
+        <h2 id="meeting"><a class="docs-anchor" href="#meeting" aria-label="Link to Import a meeting">#</a>Import a meeting</h2>
+        <p>Turn a meeting about your product into findings. Click <span class="docs-ui">Import Meeting</span> under the open project in the sidebar, then add a recording, a transcript, or both:</p>
+<ul>
+  <li>Recording: <span class="docs-ui">Choose video or audio…</span> (MP4, M4V, MOV, WebM, MKV, M4A, MP3, WAV, OGG or AAC). It is copied into the new review's folder.</li>
+  <li>Transcript: <span class="docs-ui">Open transcript file…</span> (<code>.txt</code>, <code>.md</code>, <code>.vtt</code>, <code>.srt</code> or <code>.docx</code>), or paste it. Ferret reads WebVTT and SRT captions (Zoom, Google Meet), transcripts with a time line followed by <q>Name: text</q> lines (Google Meet, Gemini), <q>[00:12:34] Name: text</q> lines, a <q>Name 0:05</q> line followed by the text (Circleback, Otter), plain <q>Name: text</q> lines, or plain paragraphs. Ferret doesn't connect to these services; it only reads the text you give it.</li>
+</ul>
+<p>Click <span class="docs-ui">Import</span>. Without a transcript, Ferret transcribes the recording's audio with your <span class="docs-ui">Transcription</span> setting (recordings up to 3 hours). Your <span class="docs-ui">Organize</span> model then writes candidate findings from what was said. When the recording has video and the transcript has times, a frame from the moment of each remark becomes the finding's BEFORE image. Transcripts without times still work, without frames.</p>
+<p>If the <a href="agents.html#verify">decision model</a> is turned on, Ferret asks it once per candidate whether the meeting asked for a concrete change to the product, and, with an image model and a frame, whether the frame shows the screen being discussed. Each candidate shows <span class="docs-ui">Likely</span> with a percentage; candidates below 50% start unchecked. These calls go from Ferret through the same local relay as your agents' checks, with its call and cost limits. Nothing is sent to your agent until you have checked the candidates: edit, uncheck or keep them, then send as usual.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="annotations-clear">
@@ -343,6 +372,8 @@
         <li><a href="#record">Start, pause, stop</a></li>
         <li><a href="#pen">Pen</a></li>
         <li><a href="#type">Type feedback instead of talking</a></li>
+        <li><a href="#share">Get feedback from anyone with a share link</a></li>
+        <li><a href="#meeting">Import a meeting</a></li>
         <li><a href="#annotations-clear">When marks disappear</a></li>
         <li><a href="#mic">Microphone</a></li>
         <li><a href="#live-transcript">See what is being transcribed</a></li>

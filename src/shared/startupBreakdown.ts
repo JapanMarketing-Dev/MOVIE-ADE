@@ -63,11 +63,15 @@ export function startupBreakdown(t: StartupTiming): StartupBreakdown {
 
 /**
  * どの名前で報告するか。JS より後の遅れが閾値を超えたときだけ slow-startup として数える。
- * 全体は超えたが JS より後は超えていない（JS より前の遅れで超えた）ときは slow-pre-js として別に数える
+ * 全体は超えたが JS より後は超えていない（JS より前の遅れで超えた）ときは slow-pre-js として別に数える。
+ * その版の初めての起動（firstLaunchOfVersion）では slow-pre-js を出さない
  */
-export function slowStartupReport(b: StartupBreakdown, thresholdMs: number): { perf: 'slow-startup' | 'slow-pre-js'; ms: number } | null {
+export function slowStartupReport(b: StartupBreakdown, thresholdMs: number, options: { firstLaunchOfVersion?: boolean } = {}): { perf: 'slow-startup' | 'slow-pre-js'; ms: number } | null {
   const totalMs = b.jsMs + (b.preJsMs ?? 0)
   if (b.jsMs > thresholdMs) return { perf: 'slow-startup', ms: b.jsMs }
+  // 入れた・更新した直後の初回は、OS が新しい実行ファイルを検査する（Windows Defender・Gatekeeper）ので JS より前が遅い。
+  // Ferret では直せないので数えない（Sentry FERRET-1C: 更新直後の Windows で 5.7 秒）
+  if (options.firstLaunchOfVersion) return null
   if (totalMs > thresholdMs) return { perf: 'slow-pre-js', ms: totalMs }
   return null
 }

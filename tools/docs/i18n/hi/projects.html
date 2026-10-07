@@ -23,6 +23,17 @@
 <p>review खोज के पास वाले फ़िल्टर बटन से <span class="docs-ui">प्रोजेक्ट का क्रम</span> भी चुना जा सकता है: <span class="docs-ui">मैन्युअल (खींचने का क्रम)</span>, <span class="docs-ui">सक्रिय पहले</span> (जिन प्रोजेक्ट का Agent आपका इंतज़ार कर रहा है, काम कर रहा है या अभी-अभी काम पूरा किया है, वे पहले), <span class="docs-ui">हाल ही में इस्तेमाल</span>, <span class="docs-ui">नाम</span> या <span class="docs-ui">जोड़ने की तारीख</span>। कोई दूसरा क्रम चुना हो और आप कोई प्रोजेक्ट खींचें, तो जैसी सूची दिख रही है वही मैन्युअल क्रम बन जाती है और क्रम <span class="docs-ui">मैन्युअल (खींचने का क्रम)</span> पर चला जाता है। किसी प्रोजेक्ट की पंक्ति के स्टार पर, या उसके मेन्यू में <span class="docs-ui">स्टार लगाएँ</span> पर क्लिक करें, तो वह हर क्रम में सूची में सबसे ऊपर रहता है; <span class="docs-ui">केवल स्टार वाले</span> बाकी को छिपा देता है। स्टार और क्रम रीस्टार्ट के बाद भी बने रहते हैं।</p>
 <p>टर्मिनल प्रोजेक्ट फ़ोल्डर में खुलते हैं, और reviews <code>&lt;project&gt;/.ferret/</code> के अंदर सेव होते हैं।</p>
 
+<!-- @github-repo 4596ca5d7c -->
+## GitHub पर प्राइवेट रिपॉज़िटरी बनाएँ
+<p>जो प्रोजेक्ट अभी GitHub पर नहीं है, उसे प्राइवेट रिपॉज़िटरी में रखने के लिए साइडबार में उस पर राइट-क्लिक करें और <span class="docs-ui">GitHub पर प्राइवेट रिपॉज़िटरी बनाएँ</span> चुनें। यह आपका <code>gh</code> लॉगिन इस्तेमाल करता है, इसलिए <code>gh</code> इंस्टॉल और साइन-इन होना चाहिए। सिर्फ़ GitHub समर्थित है, GitLab नहीं।</p>
+<ol class="docs-steps">
+  <li><span class="docs-ui">मालिक</span> (आपका अकाउंट या आपका कोई संगठन) और <span class="docs-ui">रिपॉज़िटरी का नाम</span> (फ़ोल्डर के नाम से सुझाया गया; अक्षर, अंक, <code>.</code>, <code>_</code> और <code>-</code>) चुनें। आप <span class="docs-ui">विवरण (वैकल्पिक)</span> भी जोड़ सकते हैं।</li>
+  <li>अगर फ़ोल्डर में अभी कोई commit नहीं है, तो <span class="docs-ui">पहला commit बनाएँ और push करें</span> पहला commit बनाता है, जिसमें <code>.gitignore</code> से अनदेखी फ़ाइलें और वे फ़ाइलें नहीं होतीं जिनमें secrets हो सकते हैं: <code>.env</code> फ़ाइलें (<code>.env.example</code> जैसे टेम्पलेट रहते हैं), <code>*.pem</code> या <code>id_rsa</code> जैसी keys, <code>.npmrc</code>, <code>.netrc</code>, <code>credentials.json</code>, <code>*.tfstate</code> वगैरह। डायलॉग दिखाता है कि क्या छोड़ा गया। वे पाथ <code>.git/info/exclude</code> में लिखे जाते हैं, ताकि बाद के commits में भी न आएँ; आपकी फ़ाइलें और <code>.gitignore</code> नहीं बदलते। जो फ़ोल्डर अभी git रिपॉज़िटरी नहीं है, उसे ब्रांच <code>main</code> के साथ शुरू किया जाता है।</li>
+  <li><span class="docs-ui">आगे</span> पर क्लिक करें, रिपॉज़िटरी, दृश्यता और push जाँचें, फिर <span class="docs-ui">बनाएँ</span> पर क्लिक करें। रिपॉज़िटरी हमेशा प्राइवेट होती है। यह फ़ोल्डर का <code>origin</code> बनती है, और फ़ोल्डर के commits push होते हैं।</li>
+</ol>
+<p>Ferret रिपॉज़िटरी नहीं बनाता जब फ़ोल्डर में पहले से <code>origin</code> हो, वह किसी दूसरी git रिपॉज़िटरी के अंदर हो (जैसे monorepo का कोई फ़ोल्डर), उसी नाम की रिपॉज़िटरी पहले से हो, पहले commit में 20,000 से ज़्यादा फ़ाइलें हों, git में user name और email न हों, या प्रोजेक्ट SSH से खुला हो।</p>
+<p>पहले से चुना गया मालिक आपका अपना अकाउंट है। संगठन इस्तेमाल करने के लिए <span class="docs-ui">Settings → सेवाओं के CLI</span> में <span class="docs-ui">नई रिपॉज़िटरी का मालिक (GitHub)</span> सेट करें (<code>settings.json</code> में <code>github.defaultOwner</code>)।</p>
+
 <!-- @save-url cb8cafed1c -->
 ## URL सेव करें
 <ol class="docs-steps">

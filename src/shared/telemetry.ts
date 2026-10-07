@@ -677,11 +677,48 @@ const crashValue = (v: unknown): string | undefined => (typeof v === 'string' &&
 const NATIVE_CRASH_TAGS = ['os.platform', 'arch', 'electron', 'build', 'app.mode']
 /** 落ちる前の main の様子（watchMainHealth が scope に付けた区分。memoryBucket・uptimeBucket の形だけ） */
 const NATIVE_CRASH_BUCKET_TAGS = ['mem.rss', 'mem.heap', 'uptime']
+/** ネイティブのクラッシュに残す flow のパンくずの数（直近から） */
+export const NATIVE_CRASH_FLOW_LIMIT = 30
+const FLOW_MESSAGE = /^[a-z][a-z0-9 :_-]{0,39}$/
+const STACK_ENTRY = /^[a-z0-9_.+-]{1,40}\+0x[0-9a-f]{1,12}$/
+const HEX_ID = /^[0-9A-F]{8,48}$/
+const THREAD_NAME = /^[A-Za-z0-9 _.:#/-]{1,40}$/
+
+/** 前の起動のパンくずから、Ferret の flow だけを形を確かめて残す */
+function nativeCrashFlow(breadcrumbs: unknown): Array<Record<string, unknown>> {
+  const list = Array.isArray(breadcrumbs) ? breadcrumbs : (breadcrumbs as { values?: unknown } | undefined)?.values
+  if (!Array.isArray(list)) return []
+  const out: Array<Record<string, unknown>> = []
+  for (const b of list as Array<Record<string, unknown>>) {
+    if (b?.category !== 'flow' || typeof b.message !== 'string' || !FLOW_MESSAGE.test(b.message)) continue
+    const data = b.data && typeof b.data === 'object' ? flowData(b.data as Record<string, unknown>) : undefined
+    out.push({ category: 'flow', message: b.message, ...(typeof b.timestamp === 'number' ? { timestamp: b.timestamp } : {}), ...(data && Object.keys(data).length ? { data } : {}) })
+  }
+  return out.slice(-NATIVE_CRASH_FLOW_LIMIT)
+}
+
+/** minidump から読んだ落ちた場所の手がかり（形を確かめたものだけ） */
+function nativeCrashContext(dump: MinidumpCrash | null | undefined): Record<string, unknown> | null {
+  if (!dump) return null
+  const out: Record<string, unknown> = {}
+  if (dump.module && crashValue(dump.module) && dump.offset && /^0x[0-9a-f]{1,12}$/.test(dump.offset)) out.location = `${dump.module}+${dump.offset}`
+  if (dump.debugId && HEX_ID.test(dump.debugId)) out.debug_id = dump.debugId
+  if (dump.codeId && HEX_ID.test(dump.codeId)) out.code_id = dump.codeId
+  if (dump.thread && THREAD_NAME.test(dump.thread)) out.thread = dump.thread
+  const stack = (dump.stack ?? []).filter((e) => STACK_ENTRY.test(e))
+  if (stack.length) out.stack = stack
+  return Object.keys(out).length ? out : null
+}
 const BUCKET_VALUES = new Set(['<256MB', '256-512MB', '512MB-1GB', '1-2GB', '2GB+', '<1m', '1-10m', '10-60m', '1-4h', '4-24h', '1d+'])
 
 /**
  * ネイティブのクラッシュは「起きたこと」だけを送る：プロセスの種類・終了の理由・版（security-2 [13]）。
- * crashpad の注釈・クラッシュした画面の URL・前の起動のパンくず・スタックは持たない
+ * crashpad の注釈・クラッシュした画面の URL・スタックのメモリの中身は持たない。
+ * 原因を追えるように、次の2つだけは残す（2026-10-07、FERRET-1Q で手がかりが無かったため）:
+ *   - contexts.crash: minidump から読んだ、落ちた場所と、落ちたスレッドのスタックの中のモジュールの位置（`name+0xoffset`）・
+ *     symbols を引く ID・スレッド名（@shared/minidump。アドレスそのもの・メモリの中身・パスは含まない）
+ *   - 前の起動のパンくずのうち、Ferret 自身の flow（@shared/report の flow。固定の文と列挙した値）だけを直近 NATIVE_CRASH_FLOW_LIMIT 件。
+ *     Electron が付けるパンくず（URL・ウインドウの題名を含みうる）は捨てる
  */
 export function minimizeNativeCrash<E extends { tags?: object; contexts?: object }>(input: E, dump?: MinidumpCrash | null): E {
   const event = input as unknown as NativeCrashLike
@@ -714,6 +751,9 @@ export function minimizeNativeCrash<E extends { tags?: object; contexts?: object
   }
   if (app) contexts.app = { app_version: app.app_version, app_arch: app.app_arch }
   if (os) contexts.os = { name: os.name, version: os.version }
+  const crash = nativeCrashContext(dump)
+  if (crash) contexts.crash = crash
+  const flow = nativeCrashFlow(event.breadcrumbs)
   const out: NativeCrashLike = {
     event_id: event.event_id,
     timestamp: event.timestamp,
@@ -726,7 +766,8 @@ export function minimizeNativeCrash<E extends { tags?: object; contexts?: object
     message: `Native crash (${proc}${reason ? `, ${reason}` : ''})${kind || module ? `: ${[kind, module].filter(Boolean).join(' in ')}` : ''}`,
     fingerprint: ['native-crash', proc, reason ?? 'unknown', ...(kind ? [kind] : []), ...(module ? [module] : [])],
     tags,
-    contexts
+    contexts,
+    ...(flow.length ? { breadcrumbs: flow } : {})
   }
   for (const k of Object.keys(out)) if (out[k] === undefined) delete out[k]
   return out as unknown as E

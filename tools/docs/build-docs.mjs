@@ -255,6 +255,15 @@ page('projects.html', `Using ${APP}`, 'Projects and URLs',
 <p>To change the order of the list, drag a project up or down (a line shows where it will go), press ${keys('Alt+Up')} / ${keys('Alt+Down')} on a selected project, or use ${ui('Move Up')} / ${ui('Move Down')} in its menu. The order is saved and kept after a restart.</p>
 <p>The filter button next to the review search also sets ${ui('Sort projects')}: ${ui('Manual (drag order)')}, ${ui('Active first')} (projects whose agent waits for you, is working, or just finished come first), ${ui('Recently used')}, ${ui('Name')}, or ${ui('Date added')}. If you drag a project while another sort is selected, the list as shown becomes the manual order and the sort switches to ${ui('Manual (drag order)')}. Click the star on a project row, or ${ui('Star')} in its menu, to keep it at the top of the list in every sort; ${ui('Starred only')} hides the rest. Stars and the sort are kept after a restart.</p>
 <p>Terminals open in the project folder, and reviews are saved under <code>&lt;project&gt;/.ferret/</code>.</p>`],
+    ['github-repo', 'Create a private GitHub repository', `
+<p>To put a project that isn't on GitHub yet into a private repository, right-click it in the sidebar and choose ${ui('Create private GitHub repo')}. It uses your <code>gh</code> login, so <code>gh</code> must be installed and signed in. Only GitHub is supported, not GitLab.</p>
+<ol class="docs-steps">
+  <li>Pick the ${ui('Owner')} (your account or one of your organizations) and the ${ui('Repository name')} (suggested from the folder name; letters, numbers, <code>.</code>, <code>_</code> and <code>-</code>). You can add a ${ui('Description (optional)')}.</li>
+  <li>If the folder has no commits yet, ${ui('Make a first commit and push it')} makes a first commit without the files that <code>.gitignore</code> ignores and without files that may hold secrets: <code>.env</code> files (templates such as <code>.env.example</code> are kept), keys such as <code>*.pem</code> or <code>id_rsa</code>, <code>.npmrc</code>, <code>.netrc</code>, <code>credentials.json</code>, <code>*.tfstate</code> and similar. The dialog lists what is left out. Those paths are added to <code>.git/info/exclude</code>, so they stay out of later commits too; your files and <code>.gitignore</code> are not changed. A folder that isn't a git repository yet is initialized with the branch <code>main</code>.</li>
+  <li>Click ${ui('Next')}, check the repository, visibility and push, then click ${ui('Create')}. The repository is always private. It becomes the folder's <code>origin</code>, and the folder's commits are pushed.</li>
+</ol>
+<p>${APP} doesn't create the repository when the folder already has an <code>origin</code>, when it is inside another git repository (for example a folder in a monorepo), when a repository with that name already exists, when the first commit would hold more than 20,000 files, when git has no user name and email, or when the project is opened over SSH.</p>
+<p>The owner picked first is your own account. To use an organization instead, set ${ui('Owner for new repositories (GitHub)')} in ${ui('Settings → Service CLIs')} (<code>github.defaultOwner</code> in <code>settings.json</code>).</p>`],
     ['save-url', 'Save URLs', `
 <ol class="docs-steps">
   <li>Open the page in the built-in browser.</li>
@@ -382,13 +391,36 @@ ${shot('feedback-toolbar', 'Feedback mode toolbar')}`],
 </ul>
 <p>Circle the spot while you talk about it: the words and the marks end up in the same finding. The pen is available only while recording, and there is no text tool while recording: say it instead, or type it afterwards with <a href="#type">Type feedback</a>. Keys for the pen, the box, and colors are listed in <a href="keyboard.html#drawing">Keyboard shortcuts</a>.</p>`],
     ['type', 'Type feedback instead of talking', `
-<p>When talking isn't convenient, type the finding instead. This works only in Editor mode, on the ${ui('Browser')} tab, while not recording.</p>
+<p>When talking isn't convenient, type the finding instead. This works in Editor mode and in Feedback mode, while not recording.</p>
 <ol class="docs-steps">
-  <li>Click ${ui('Type feedback')} in the browser toolbar.</li>
+  <li>Click ${ui('Type feedback')}: right of the record button at the top right, in the browser toolbar, or in the Feedback mode toolbar. In Editor mode it switches to the ${ui('Browser')} tab first; in Feedback mode it turns the pen and the box off.</li>
   <li>Drag a box around the spot on the page, or click an element to box it.</li>
   <li>Type what should change. ${keys('Enter')} adds it, ${keys('Shift+Enter')} starts a new line, and ${keys('Esc')} cancels the box. Enter while converting text with an input method doesn't add it.</li>
 </ol>
 <p>Each one becomes a finding with an image of the page and the box, plus the URL and the boxed element, like a recorded finding. It is added to the review open in ${ui('Findings')}, or to a new review if none is open. The browser stays in front, so you can add several in a row; ${keys('Esc')} with no box open, or the button again, stops. It also works on a desktop app or simulator window shown in place of the browser, without the URL.</p>`],
+    ['share', 'Get feedback from anyone with a share link', `
+<p>To get feedback from people who don't use ${APP} (a client, a designer, a teammate), send them a share link. They need no account and no app: they open the link in their browser, mark up a screenshot of your page and write what should change. Giving a name is optional.</p>
+<ol class="docs-steps">
+  <li>Open the page in the built-in browser (http or https only) and click ${ui('Share')} in the browser toolbar.</li>
+  <li>Optionally give it a title (the page title is used otherwise) and turn on ${ui('Let reviewers see each other’s notes')}. Click ${ui('Make a share link for this page')}. ${APP} takes a screenshot of the visible part of the page, uploads it, and copies the link (<code>https://share.ferretade.dev/s/…</code>).</li>
+  <li>To add more pages to the same link, open another page and click ${ui('Add this page')} on that share (up to 20 pages).</li>
+</ol>
+<p>On the link, reviewers drop a pin, draw a box, or draw with a pen on the screenshot and type a note (up to 2,000 characters). ${ui('Live page')} opens the original page in a frame so they can use it, and ${ui('Annotate live')} lets them drop a pin on it; the URL they were looking at is sent with the note. Some sites refuse to load in a frame; reviewers can open the page in a new tab and send the note as text. The page is in Japanese or English, following the reviewer's browser.</p>
+<p>Notes arrive in the same ${ui('Share')} window. Select notes and click ${ui('Import selected')}, or ${ui('Decline')} the ones you don't want (${ui('Undo')} brings them back). Imported notes become findings in a new review, like ${ui('Type feedback')}: the screenshot with the reviewer's mark becomes the BEFORE image, with the page URL and the reviewer's name and note. A pin dropped on the live page is shown as a box around the whole screenshot, because the live page can scroll differently. From there, send them to your agent and check BEFORE and AFTER as usual.</p>
+<ul>
+  <li>Anyone with the link can see the screenshots and send notes, so don't share pages that show private data. A link expires after 30 days. ${ui('Delete')} removes the link, its screenshots and its notes at once.</li>
+  <li>One link takes up to 500 notes, and the server limits how often notes and links can be sent. It does not store IP addresses.</li>
+  <li>Share links are kept per project. The owner token that lets ${APP} read and manage a link is encrypted with Electron <code>safeStorage</code> in <code>&lt;userData&gt;/feedback-share/shares.bin</code>. Development builds and systems without <code>safeStorage</code> keep it only until ${APP} quits (the link itself keeps working until it expires).</li>
+  <li>The server's code is in <code>workers/feedback-share</code> in the repository.</li>
+</ul>`],
+    ['meeting', 'Import a meeting', `
+<p>Turn a meeting about your product into findings. Click ${ui('Import Meeting')} under the open project in the sidebar, then add a recording, a transcript, or both:</p>
+<ul>
+  <li>Recording: ${ui('Choose video or audio…')} (MP4, M4V, MOV, WebM, MKV, M4A, MP3, WAV, OGG or AAC). It is copied into the new review's folder.</li>
+  <li>Transcript: ${ui('Open transcript file…')} (<code>.txt</code>, <code>.md</code>, <code>.vtt</code>, <code>.srt</code> or <code>.docx</code>), or paste it. ${APP} reads WebVTT and SRT captions (Zoom, Google Meet), transcripts with a time line followed by <q>Name: text</q> lines (Google Meet, Gemini), <q>[00:12:34] Name: text</q> lines, a <q>Name 0:05</q> line followed by the text (Circleback, Otter), plain <q>Name: text</q> lines, or plain paragraphs. ${APP} doesn't connect to these services; it only reads the text you give it.</li>
+</ul>
+<p>Click ${ui('Import')}. Without a transcript, ${APP} transcribes the recording's audio with your ${ui('Transcription')} setting (recordings up to 3 hours). Your ${ui('Organize')} model then writes candidate findings from what was said. When the recording has video and the transcript has times, a frame from the moment of each remark becomes the finding's BEFORE image. Transcripts without times still work, without frames.</p>
+<p>If the <a href="agents.html#verify">decision model</a> is turned on, ${APP} asks it once per candidate whether the meeting asked for a concrete change to the product, and, with an image model and a frame, whether the frame shows the screen being discussed. Each candidate shows ${ui('Likely')} with a percentage; candidates below 50% start unchecked. These calls go from ${APP} through the same local relay as your agents' checks, with its call and cost limits. Nothing is sent to your agent until you have checked the candidates: edit, uncheck or keep them, then send as usual.</p>`],
     ['annotations-clear', 'When marks disappear', `
 <p>Marks belong to the screen they were drawn on. They are recorded into the current finding, then cleared, when:</p>
 <ul>
@@ -491,7 +523,7 @@ ${clip('send', 'From the Findings tab to the agent in the built-in terminal with
   <li>Click ${ui('Send to Agent')}. By default (${ui('Auto (current tab or a running agent)')}) it goes to the agent in the current terminal tab, or to one that is running. Use the arrow next to the button (${ui('Choose the agent to send to')}) to pick a specific agent or tab.</li>
   <li>${APP} writes the instruction into the agent's input and submits it. Follow progress in the terminal.</li>
 </ol>
-<p>If no agent is running, ${APP} starts one first and sends as soon as it is ready. Nothing is sent while the agent is waiting for a permission answer. Answer in the terminal first.</p>
+<p>If no agent is running, ${APP} starts one first and sends as soon as it is ready. If the agent is busy working, the instruction is sent anyway and the agent reads it after its current task. Nothing is sent while the agent is waiting for a permission or an answer. Answer in the terminal first.</p>
 <p>${ui('Copy for Agent')} puts the same instruction on the clipboard for an agent running elsewhere (another terminal, IDE, or app). Only findings toggled to ${ui('Send')} are addressed. The video is never included.</p>`],
     ['verify', 'Acceptance check with a decision model', `
 ${clip('verify', 'The agent fixes the findings and checks each one with the decision model before you look at them.')}
@@ -593,7 +625,7 @@ page('editor.html', `Using ${APP}`, 'Editor and preview',
 <ul>
   <li>Type straight into headings, paragraphs, lists, checkboxes, tables, links, and bold, italic, or inline code. Typing <code>#</code>, <code>-</code>, <code>1.</code>, or <code>&gt;</code> and a space at the start of a line starts a heading, list, or quote.</li>
   <li>Type <code>/</code> at the start of a line (or after a space) to pick a block from a list: headings, bulleted, numbered, or check lists, a table, a code block, a quote, or a divider. Each entry says what it makes and how it is written in Markdown. Keep typing to filter, use ${keys('Up')} ${keys('Down')} and ${keys('Enter')} to choose, or ${keys('Esc')} to keep the <code>/</code> as text. A table starts as 3 × 3 with a header row; ${keys('Tab')} moves to the next cell and adds a row at the end. Typing <code>/</code> inside a table adds or deletes rows and columns, or deletes the table.</li>
-  <li>Code blocks and Mermaid diagrams are edited as their source, with the language shown in the corner. To see the diagram drawn, open the file from ${ui('Files')} in the <a href="projects.html#review-targets">${ui('Review targets')}</a> panel.</li>
+  <li>Code blocks are edited as their source, with the language shown in the corner. A Mermaid code block (<code>mermaid</code> or <code>mmd</code>) shows the diagram by default. Click ${ui('Code')} at its top right, or double-click the diagram, to edit the source; moving the cursor out of the block shows the diagram again. If the source has an error, the message is shown with ${ui('Fix the code')}. Diagrams are drawn inside a sandboxed frame, and the saved Markdown stays as written.</li>
   <li>Front matter (the <code>---</code> block at the top) is shown as text above the document and can be edited there.</li>
   <li>Parts you don't change are saved exactly as written, including heading style, list markers, blank lines, table alignment, and line endings. A block you edit keeps its style where possible; otherwise that block is written in a standard Markdown form, with <code>-</code> for lists and <code>#</code> for headings.</li>
   <li>Images and videos in the project are shown. Images from other sites are not loaded; their host name is shown instead. Other HTML in the file is shown as text.</li>
@@ -794,6 +826,7 @@ page('settings.html', 'Configure', 'Settings reference',
     <tr><td>${ui('Command')} / ${ui('arguments')} (per agent)</td><td>The agent's own command (for example <code>claude</code>, <code>codex</code>, <code>gemini</code>) / <code>--chrome</code> for Claude Code, none for the others</td></tr>
     <tr><td>${ui('Custom Agents')}</td><td>None (${ui('Add Custom Agent')} registers any CLI)</td></tr>
     <tr><td>${ui('Instructions for Agent')}</td><td>Built-in text (<a href="agents.html#prompt">variables</a>)</td></tr>
+    <tr><td>${ui('Terminal shell (Windows)')}</td><td>PowerShell: PowerShell 7 (<code>pwsh</code>) when installed, otherwise Windows PowerShell. It keeps your command history across tabs and restarts. <code>cmd.exe</code> is the other choice (<code>agents.windowsShell</code> in <code>settings.json</code>). Applies to tabs opened afterwards</td></tr>
   </tbody>
 </table>`],
     ['failover', 'Switch on usage limits', `
@@ -1010,6 +1043,9 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
     <tr><td>Model download</td><td>Hugging Face</td><td>file request</td></tr>
     <tr><td>${ui('Organize')}</td><td>your Claude Code / Codex CLI, or the LLM endpoint you set in <code>organizer</code></td><td>text and action log only (no images, audio, or video)</td></tr>
     <tr><td>Acceptance check (decision model, off by default)</td><td>your agent, through the local relay, to Ollama / Cloudflare / AI Gateway / TypeSafe / OpenAI / your URL</td><td>what the agent sends: finding text, "Done when", and BEFORE/AFTER screenshots (image models only)</td></tr>
+    <tr><td>Rating imported meeting findings (decision model, only when it is turned on)</td><td>${APP}, through the local relay, to the decision model you set</td><td>each candidate's title and request, the remarks it came from, and its video frame (image models only)</td></tr>
+    <tr><td>Share links (only when you make one)</td><td><code>share.ferretade.dev</code> (a Cloudflare Worker run by the developer)</td><td>the title, a screenshot of the visible part of the page with its URL and title, and the random install ID (used only, as a keyed hash, to limit how many links one install can make). Anyone with the link can see the screenshots; reviewers' notes and optional names are sent to the same server (see <a href="recording.html#share">Share links</a>)</td></tr>
+    <tr><td>${ui('Create private GitHub repo')} (only when you click ${ui('Create')})</td><td>GitHub via your <code>gh</code></td><td>creates a private repository with the name and description you chose and pushes the folder's commits (a first commit made by ${APP} leaves out files ignored by <code>.gitignore</code> and files that may hold secrets)</td></tr>
     <tr><td>${ui('Send to Agent')}</td><td>the agent in your terminal</td><td>one instruction pointing at <code>feedback.md</code></td></tr>
     <tr><td>Footer usage (Claude Code and Codex only)</td><td>Anthropic, ChatGPT</td><td>usage request with your own login</td></tr>
     <tr><td>GitHub star prompt</td><td>GitHub via your <code>gh</code></td><td>checks whether you starred the repo, and stars it only if you click ${ui('Star on GitHub')}</td></tr>
@@ -1027,7 +1063,7 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
     ['feedback', 'Feedback from the app', `
 <p>You can send a bug report or an idea from inside ${APP} without a GitHub account (${ui('Send Feedback')} at the bottom of the sidebar). It is sent only when you send it, and it becomes a <strong>public</strong> issue in <a href="${REPO}/issues">${REPO.replace('https://github.com/', '')}</a>, labeled <code>from-app</code>. Do not include anything you would not post in public.</p>
 <ul>
-  <li>The app sends it from your computer to a small relay (a Cloudflare Worker run by the developer), which opens the issue with its own GitHub token. This relay is the only server of the developer's that receives anything you write.</li>
+  <li>The app sends it from your computer to a small relay (a Cloudflare Worker run by the developer), which opens the issue with its own GitHub token. Apart from <a href="recording.html#share">share links</a> you make, this relay is the only server of the developer's that receives anything you write.</li>
   <li>Sent: your title and text, whether it is a bug or an idea, the app version, and up to 3 PNG or JPEG screenshots you attach. The OS name and version, CPU architecture, and the random install ID are sent only if you leave them included. Not sent: your name, email, GitHub account, project files, recordings, or findings.</li>
   <li>Before the issue is created, the relay masks text that looks like keys or tokens, email addresses, and the user name in home-folder paths, and stops <code>@mentions</code> from notifying anyone. It also removes location and other metadata from screenshots. Check your text anyway: masking cannot catch everything.</li>
   <li>The relay does not store your IP address. To limit how often one sender can post (5 per hour, 20 per day), it counts a keyed hash of the IP address (and of the install ID, if sent) for up to 24 hours, then deletes it. Neither appears in the issue.</li>
@@ -1043,7 +1079,7 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
       <ul>
         <li>Error type and message, with home-folder paths shown as <code>~</code></li>
         <li>Stack trace (where in ${APP}'s code it happened)</li>
-        <li>For native crashes: only which process crashed, why it exited (for example <q>crashed</q> or <q>oom</q>), and the app version</li>
+        <li>For native crashes: which process crashed, why it exited (for example <q>crashed</q> or <q>oom</q>), the app version, the kind of crash and the file name of the module it happened in, and where: the offset inside that module, the module offsets found on the crashed thread's stack (up to 20), the IDs needed to look up that module's debug symbols, and the thread's name. Also ${APP}'s own last steps from that launch (up to 30, for example quitting or installing an update). Never memory contents, raw addresses or file paths</li>
         <li>OS name and version, CPU architecture, Electron / Chrome / Node versions, app version, screen size, memory size</li>
         <li>App lifecycle events right before the error (for example <q>app.ready</q>), and startup failures</li>
         <li>Which part of the app failed: a screen area that could not render (and its React component names), an IPC call, a terminal that could not start, a crashed or hung process, or a page of the app that failed to load</li>
@@ -1085,6 +1121,7 @@ page('files.html', 'Reference', 'Files and environment',
 ${code(`settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
 browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+feedback-share/     # share links you made (shares.bin; owner tokens encrypted with safeStorage)
 login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts

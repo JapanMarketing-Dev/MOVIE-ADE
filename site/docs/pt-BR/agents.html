@@ -289,7 +289,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   <li>Clique em <span class="docs-ui">Enviar ao Agent</span>. Por padrão (<span class="docs-ui">Automático (aba atual ou um agent em execução)</span>), o envio vai para o agente da aba de terminal atual ou para um que esteja em execução. Use a seta ao lado do botão (<span class="docs-ui">Escolha o agent de destino</span>) para escolher um agente ou uma aba específica.</li>
   <li>O Ferret escreve a instrução na entrada do agente e a envia. Acompanhe o progresso no terminal.</li>
 </ol>
-<p>Se nenhum agente estiver em execução, o Ferret inicia um primeiro e envia assim que ele estiver pronto. Nada é enviado enquanto o agente aguarda uma resposta a um pedido de permissão. Responda no terminal primeiro.</p>
+<p>Se nenhum agente estiver rodando, o Ferret inicia um primeiro e envia assim que ele estiver pronto. Se o agente estiver trabalhando, a instrução é enviada mesmo assim e o agente a lê depois da tarefa atual. Nada é enviado enquanto o agente espera uma permissão ou uma resposta. Responda primeiro no terminal.</p>
 <p><span class="docs-ui">Copiar para o Agent</span> coloca a mesma instrução na área de transferência para um agente que roda em outro lugar (outro terminal, IDE ou app). Só os apontamentos marcados como <span class="docs-ui">Enviar</span> são incluídos. O vídeo nunca é incluído.</p>
       </section>
 

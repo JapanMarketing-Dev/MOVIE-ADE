@@ -136,7 +136,7 @@ export function validateOrganizeOutput(
         continue
       }
       if (quotes.some((q) => q.t === seg.t0)) continue
-      quotes.push({ speaker: seg.speaker, t: seg.t0, text: seg.text })
+      quotes.push({ speaker: seg.speaker, t: seg.t0, text: seg.text, ...(seg.speakerName ? { name: seg.speakerName } : {}) })
     }
 
     // 書き込みID

@@ -4,6 +4,8 @@
  * 基準はプロセス生成時刻。Electron の `process.getCreationTime()` は
  * 3つのOSで利用できるが、取得できない場合はモジュール読み込み時刻へ退避する。
  */
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
 import { reportPerf } from '@shared/report'
 import { SLOW_STARTUP_MS } from '@shared/telemetry'
 import { slowStartupReport, startupBreakdown } from '@shared/startupBreakdown'
@@ -53,6 +55,32 @@ export function setStartupTags(tags: Record<string, string>): void {
   startupTags = { ...tags }
 }
 
+/** この起動がその版の初めての起動か（入れた・更新した直後）。noteLaunchedVersion が決める */
+let firstLaunchOfVersion = false
+
+/**
+ * 前回起動した版をファイル（userData/last-launch-version）と比べて覚え直す。違えば（初めて・更新した直後）true。
+ * 読み書きできなければ false（遅い起動を今までどおり数える）
+ */
+export function noteLaunchedVersion(file: string, version: string): boolean {
+  let previous = ''
+  try {
+    previous = readFileSync(file, 'utf8').trim()
+  } catch {
+    // 初めての起動（想定内）
+  }
+  firstLaunchOfVersion = previous !== version
+  if (firstLaunchOfVersion) {
+    try {
+      mkdirSync(dirname(file), { recursive: true })
+      writeFileSync(file, version)
+    } catch {
+      // 書けなければ次の起動もまた初回として扱われるだけ（想定内）
+    }
+  }
+  return firstLaunchOfVersion
+}
+
 /**
  * renderer から「操作可能になった」通知を受けた時点で1度だけログへ出す。
  * 目標未達のときは警告にして、原因の切り分けに内訳を併記する。
@@ -71,7 +99,7 @@ export function reportInteractive(): { totalMs: number; marks: Record<string, nu
     // 目標を大きく超えたら Sentry へ warning を1件（1回の起動で1度だけ。内訳の名前と時間だけを付ける）。
     // JS より後の遅れだけを slow-startup として数え、JS より前（Gatekeeper の検査・dyld など）で超えたものは slow-pre-js に分ける
     const timing = startupBreakdown({ totalMs, origin, moduleLoadedAt, originSource: creationTime === null ? 'module' : 'process', marks: marksSnapshot() })
-    const slow = slowStartupReport(timing, SLOW_STARTUP_MS)
+    const slow = slowStartupReport(timing, SLOW_STARTUP_MS, { firstLaunchOfVersion })
     if (slow) reportPerf(slow.perf, slow.ms, { tags: { ...startupTags, ...timing.tags }, context: timing.context })
   }
   return { totalMs, marks: marksSnapshot() }

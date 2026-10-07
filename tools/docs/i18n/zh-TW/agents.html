@@ -67,14 +67,14 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   <li><span class="docs-ui">整理</span>：使用你的 Claude Code 或 Codex 登入執行，或使用你設定的 LLM API。</li>
 </ul>
 
-<!-- @send d320d66d74 -->
+<!-- @send 137ad9da03 -->
 ## 傳送給 Agent / 拷貝給 Agent
 {{clip:send|在意見分頁按「傳送給 Agent」，交給內建終端機中的 Agent。}}
 <ol class="docs-steps">
   <li>按 <span class="docs-ui">傳送給 Agent</span>。預設（<span class="docs-ui">自動（目前分頁或執行中的 Agent）</span>）會送到目前終端機分頁中的 Agent，或正在執行的 Agent。用按鈕旁的箭頭（<span class="docs-ui">選擇要傳送的 Agent</span>）可以指定特定的 Agent 或分頁。</li>
   <li>Ferret 會把指示寫入 Agent 的輸入欄並送出。請在終端機中查看進度。</li>
 </ol>
-<p>若沒有 Agent 在執行，Ferret 會先啟動一個，並在它就緒後立即傳送。Agent 正在等待權限回覆時不會傳送任何內容，請先在終端機中回覆。</p>
+<p>如果沒有代理程式在執行，Ferret 會先啟動一個，準備好後立即傳送。如果代理程式正在工作，指示也會照常傳送，代理程式會在完成目前的工作後讀取。代理程式在等待權限或回答時不會傳送任何內容。請先在終端機中回答。</p>
 <p><span class="docs-ui">拷貝給 Agent</span> 會把同樣的指示放到剪貼簿，給在其他地方（其他終端機、IDE 或 App）執行的 Agent 使用。只有切換為 <span class="docs-ui">傳送</span> 的意見會被處理。影片絕不會包含在內。</p>
 
 <!-- @verify 205abd35bc -->

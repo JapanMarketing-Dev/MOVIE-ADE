@@ -18,6 +18,20 @@ import { t } from '@shared/i18n'
 import { checkDecision, type DecisionTestResult } from './check'
 import { DecisionRelay, RelayConfigError, type RelayTokenMeta, type RelayUpstream } from './relay'
 import type { ProjectUsageStore } from './projectLedger'
+import { SMALL_JSON_MAX_BYTES, readBoundedJson } from '../boundedResponse'
+
+/** Ferret 自身が判定モデルに問う1回の取り込みの口（DecisionService.openAskSession） */
+export interface DecisionAskSession {
+  /** 設定のモデル（中継が送る前に設定のものへ書き換えるので、表示と記録のため） */
+  model: string
+  /** 画像を送ってよいか（設定）と、その渡し方 */
+  images: boolean
+  imageFormat: import('@shared/decision').DecisionImageFormat
+  /** System One の形で1回送る。status は中継の応答の状態コード */
+  ask: (body: Record<string, unknown>) => Promise<{ status: number; json: unknown }>
+  /** 合言葉を無効にする（取り込みが終わったら必ず呼ぶ） */
+  close: () => void
+}
 
 interface DecisionServiceDeps {
   prefs: () => DecisionPreferences | undefined
@@ -115,6 +129,35 @@ export class DecisionService {
       env[LEGACY_DECISION_ENV[key]] = values[key]
     }
     return env
+  }
+
+  /**
+   * Ferret 自身が判定モデルに問う口（mtg の取り込みの候補の判定。meeting/import.ts）。
+   * Agent と同じく中継を通して送る（キー・接続先・回数と費用の枠・呼び出しの記録を1か所にする）。
+   * 合言葉は1回の取り込みに1つ出し、close で無効にする。判定を有効にしていなければ null
+   */
+  async openAskSession(meta: RelayTokenMeta, deps: { fetch?: typeof fetch } = {}): Promise<DecisionAskSession | null> {
+    const prefs = this.enabledPrefs()
+    if (!prefs) return null
+    if (!this.relay?.running) await this.sync()
+    const relay = this.relay
+    if (!relay?.running) return null
+    const resolved = resolveDecision(prefs, this.deps.getEnv)
+    const token = relay.issue(meta)
+    const url = relay.urlFor(token)
+    const doFetch = deps.fetch ?? fetch
+    return {
+      model: resolved.model,
+      images: resolved.images,
+      imageFormat: resolved.imageFormat,
+      ask: async (body) => {
+        const res = await doFetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+        // 中継は接続先の応答を変えずに返す（OpenAI の Decisions は System One の形へ戻したもの）。大きすぎる・JSON でなければ null
+        const json: unknown = await readBoundedJson(res, SMALL_JSON_MAX_BYTES).catch(() => null)
+        return { status: res.status, json }
+      },
+      close: () => relay.revoke(token)
+    }
   }
 
   /** 中継が送る先。依頼のたびに設定を読み直す（キーだけは覚えておく） */

@@ -253,13 +253,42 @@
 
       <section class="docs-section" aria-labelledby="type">
         <h2 id="type"><a class="docs-anchor" href="#type" aria-label="Lien vers Écrire au lieu de parler">#</a>Écrire au lieu de parler</h2>
-        <p>Quand parler n'est pas pratique, tapez la remarque. Cela ne fonctionne qu'en mode Éditeur, dans l'onglet <span class="docs-ui">Navigateur</span>, hors enregistrement.</p>
+        <p>Quand parler n'est pas pratique, tapez le constat. Cela fonctionne en mode éditeur et en mode feedback, hors enregistrement.</p>
 <ol class="docs-steps">
-  <li>Cliquez sur <span class="docs-ui">Retour écrit</span> dans la barre d'outils du navigateur.</li>
+  <li>Cliquez sur <span class="docs-ui">Retour écrit</span> : à droite du bouton d'enregistrement en haut à droite, dans la barre d'outils du navigateur ou dans la barre d'outils du mode feedback. En mode éditeur, il passe d'abord à l'onglet <span class="docs-ui">Navigateur</span> ; en mode feedback, il désactive le stylo et le cadre.</li>
   <li>Tracez un cadre autour de l'endroit sur la page, ou cliquez sur un élément pour l'encadrer.</li>
   <li>Tapez ce qu'il faut changer. <kbd>Enter</kbd> l'ajoute, <span class="docs-kbd"><span class="os-mac"><kbd>⇧</kbd><kbd>Enter</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Shift</kbd><kbd>Enter</kbd></span></span> passe à la ligne et <kbd>Esc</kbd> annule le cadre. La touche Entrée qui valide une conversion de la méthode de saisie ne l'ajoute pas.</li>
 </ol>
 <p>Chacune devient une remarque avec une image de la page et du cadre, ainsi que l'URL et l'élément encadré, comme une remarque enregistrée. Elle est ajoutée à la revue ouverte dans <span class="docs-ui">Remarques</span>, ou à une nouvelle revue si aucune n'est ouverte. Le navigateur reste au premier plan, vous pouvez donc en ajouter plusieurs à la suite ; <kbd>Esc</kbd> sans cadre ouvert, ou un nouveau clic sur le bouton, arrête. Cela fonctionne aussi sur la fenêtre d'une application de bureau ou d'un simulateur affichée à la place du navigateur, sans l'URL.</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="share">
+        <h2 id="share"><a class="docs-anchor" href="#share" aria-label="Lien vers Recevoir des retours de n'importe qui avec un lien de partage">#</a>Recevoir des retours de n'importe qui avec un lien de partage</h2>
+        <p>Pour recevoir des retours de personnes qui n'utilisent pas Ferret (un client, un designer, un collègue), envoyez-leur un lien de partage. Ils n'ont besoin ni de compte ni d'application : ils ouvrent le lien dans leur navigateur, annotent une capture de votre page et écrivent ce qui doit changer. Le nom est facultatif.</p>
+<ol class="docs-steps">
+  <li>Ouvrez la page dans le navigateur intégré (http ou https uniquement) et cliquez sur <span class="docs-ui">Partager</span> dans la barre d'outils du navigateur.</li>
+  <li>Donnez-lui éventuellement un titre (sinon, celui de la page) et activez <span class="docs-ui">Les relecteurs voient les notes des autres</span>. Cliquez sur <span class="docs-ui">Créer un lien pour cette page</span>. Ferret capture la partie visible de la page, l'envoie et copie le lien (<code>https://share.ferretade.dev/s/…</code>).</li>
+  <li>Pour ajouter d'autres pages au même lien, ouvrez une autre page et cliquez sur <span class="docs-ui">Ajouter cette page</span> sur ce partage (jusqu'à 20 pages).</li>
+</ol>
+<p>Sur le lien, les relecteurs posent une épingle, tracent un cadre ou dessinent au stylo sur la capture, puis écrivent une note (jusqu'à 2 000 caractères). <span class="docs-ui">Live page</span> ouvre la page d'origine dans un cadre pour qu'ils puissent l'utiliser, et <span class="docs-ui">Annotate live</span> leur permet d'y poser une épingle ; l'URL qu'ils consultaient est envoyée avec la note. Certains sites refusent de s'afficher dans un cadre ; les relecteurs peuvent alors ouvrir la page dans un nouvel onglet et envoyer la note en texte. La page s'affiche en japonais ou en anglais, selon le navigateur du relecteur.</p>
+<p>Les notes arrivent dans la même fenêtre <span class="docs-ui">Partager</span>. Sélectionnez des notes et cliquez sur <span class="docs-ui">Importer la sélection</span>, ou cliquez sur <span class="docs-ui">Refuser</span> pour celles dont vous ne voulez pas (<span class="docs-ui">Annuler</span> les rétablit). Les notes importées deviennent des constats dans une nouvelle revue, comme avec <span class="docs-ui">Retour écrit</span> : la capture avec la marque du relecteur devient l'image BEFORE, avec l'URL de la page et le nom et la note du relecteur. Une épingle posée sur la page en direct est affichée comme un cadre autour de toute la capture, car la page en direct peut défiler autrement. Ensuite, envoyez-les à votre agent et comparez BEFORE et AFTER comme d'habitude.</p>
+<ul>
+  <li>Toute personne qui a le lien peut voir les captures et envoyer des notes : ne partagez pas de pages qui montrent des données privées. Un lien expire au bout de 30 jours. <span class="docs-ui">Supprimer</span> efface aussitôt le lien, ses captures et ses notes.</li>
+  <li>Un lien accepte jusqu'à 500 notes, et le serveur limite la fréquence d'envoi des notes et de création des liens. Il ne conserve pas les adresses IP.</li>
+  <li>Les liens de partage sont conservés par projet. Le jeton de propriétaire qui permet à Ferret de lire et gérer un lien est chiffré avec <code>safeStorage</code> d'Electron dans <code>&lt;userData&gt;/feedback-share/shares.bin</code>. Les versions de développement et les systèmes sans <code>safeStorage</code> ne le gardent que jusqu'à la fermeture de Ferret (le lien lui-même fonctionne jusqu'à son expiration).</li>
+  <li>Le code du serveur se trouve dans <code>workers/feedback-share</code> du dépôt.</li>
+</ul>
+      </section>
+
+      <section class="docs-section" aria-labelledby="meeting">
+        <h2 id="meeting"><a class="docs-anchor" href="#meeting" aria-label="Lien vers Importer une réunion">#</a>Importer une réunion</h2>
+        <p>Transformez une réunion sur votre produit en constats. Cliquez sur <span class="docs-ui">Importer une réunion</span> sous le projet ouvert dans la barre latérale, puis ajoutez un enregistrement, une transcription ou les deux :</p>
+<ul>
+  <li>Enregistrement : <span class="docs-ui">Choisir une vidéo ou un audio…</span> (MP4, M4V, MOV, WebM, MKV, M4A, MP3, WAV, OGG ou AAC). Il est copié dans le dossier de la nouvelle revue.</li>
+  <li>Transcription : <span class="docs-ui">Ouvrir un fichier de transcription…</span> (<code>.txt</code>, <code>.md</code>, <code>.vtt</code>, <code>.srt</code> ou <code>.docx</code>), ou collez-la. Ferret lit les sous-titres WebVTT et SRT (Zoom, Google Meet), les transcriptions avec une ligne d'heure suivie de lignes <q>Nom : texte</q> (Google Meet, Gemini), les lignes <q>[00:12:34] Nom : texte</q>, une ligne <q>Nom 0:05</q> suivie du texte (Circleback, Otter), de simples lignes <q>Nom : texte</q>, ou des paragraphes. Ferret ne se connecte pas à ces services ; il lit seulement le texte que vous lui donnez.</li>
+</ul>
+<p>Cliquez sur <span class="docs-ui">Importer</span>. Sans transcription, Ferret transcrit l'audio de l'enregistrement avec votre réglage <span class="docs-ui">Transcription</span> (enregistrements jusqu'à 3 heures). Votre modèle <span class="docs-ui">Organiser</span> rédige ensuite des constats candidats à partir de ce qui a été dit. Si l'enregistrement contient de la vidéo et que la transcription a des heures, une image du moment de chaque remarque devient l'image BEFORE du constat. Les transcriptions sans heures fonctionnent aussi, sans images.</p>
+<p>Si le <a href="agents.html#verify">modèle de décision</a> est activé, Ferret lui demande une fois par candidat si la réunion a demandé un changement concret du produit et, avec un modèle d'images et une image, si l'image montre l'écran dont on parle. Chaque candidat affiche <span class="docs-ui">Probable</span> avec un pourcentage ; ceux sous 50 % commencent décochés. Ces appels partent de Ferret par le même relais local que les vérifications de vos agents, avec ses limites d'appels et de coût. Rien n'est envoyé à votre agent avant que vous ayez vérifié les candidats : modifiez-les, décochez-les ou gardez-les, puis envoyez comme d'habitude.</p>
       </section>
 
       <section class="docs-section" aria-labelledby="annotations-clear">
@@ -343,6 +372,8 @@
         <li><a href="#record">Démarrer, mettre en pause, arrêter</a></li>
         <li><a href="#pen">Stylo</a></li>
         <li><a href="#type">Écrire au lieu de parler</a></li>
+        <li><a href="#share">Recevoir des retours de n'importe qui avec un lien de partage</a></li>
+        <li><a href="#meeting">Importer une réunion</a></li>
         <li><a href="#annotations-clear">Quand les traits disparaissent</a></li>
         <li><a href="#mic">Microphone</a></li>
         <li><a href="#live-transcript">Voir ce qui est transcrit</a></li>

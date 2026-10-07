@@ -5,7 +5,7 @@
 <!-- @lead b2a7619b5e -->
 Ferret이 자체 파일을 보관하는 위치와, 읽거나 설정하는 환경 변수입니다.
 
-<!-- @userdata 71b30d8c35 -->
+<!-- @userdata d8a259644b -->
 ## userData 폴더
 <p>앱 데이터는 Electron의 <code>userData</code> 폴더에 있습니다. 폴더 이름은 제품 이름이 아니라 <code>ade-movie</code>로 고정되어 있으므로, 이름이 바뀌어도 데이터가 유지됩니다. <code>--user-data-dir=&lt;path&gt;</code>로 바꿀 수 있습니다.</p>
 <table>
@@ -19,6 +19,7 @@ Ferret이 자체 파일을 보관하는 위치와, 읽거나 설정하는 환경
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
 browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+feedback-share/     # share links you made (shares.bin; owner tokens encrypted with safeStorage)
 login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts

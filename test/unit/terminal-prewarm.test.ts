@@ -69,17 +69,29 @@ describe.runIf(posix)('先に起動しておくシェル', () => {
     // 一覧（Resource Manager・送信先）にも、渡すまでは出さない
     expect(manager.list()).toHaveLength(0)
 
-    const tab = await manager.create({ size: { cols: 120, rows: 40 } })
+    const tab = await manager.create({ size: { cols: 100, rows: 40 } })
     expect(ptys).toHaveLength(1)
     expect(tab.history).toBe('prompt$ ')
     expect(tab.title).toMatch(/^\d+: /)
-    expect(ptys[0]!.resize).toHaveBeenCalledWith(120, 40)
+    expect(ptys[0]!.resize).toHaveBeenCalledWith(100, 40)
     expect(manager.list().map((s) => s.id)).toEqual([tab.id])
 
     // 渡したあとの出力は普通に送る
     ptys[0]!.data?.('ls\r\n')
     await vi.advanceTimersByTimeAsync(100)
     expect(sent).toEqual([[tab.id, 'ls\r\n']])
+  })
+
+  it('起動したときと幅が違うタブには、前の幅で描いた出力を流し直さない（zsh の行末の印 % が残らない）。次は最後のタブの寸法で起動する', async () => {
+    await warm()
+    ptys[0]!.data?.('%' + ' '.repeat(99) + '\rprompt$ ')
+    const tab = await manager.create({ size: { cols: 60, rows: 20 } })
+    expect(tab.history).toBeFalsy()
+    expect(ptys[0]!.resize).toHaveBeenCalledWith(60, 20)
+    // 幅を合わせたあとに描き直したプロンプトは普通に送る
+    ptys[0]!.data?.('prompt$ ')
+    await vi.advanceTimersByTimeAsync(100)
+    expect(sent).toEqual([[tab.id, 'prompt$ ']])
   })
 
   it('渡したあと、次の分を少し待ってから裏で起動する', async () => {

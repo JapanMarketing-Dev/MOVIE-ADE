@@ -55,7 +55,8 @@ const SECTION_KEYWORDS: Record<SettingsSectionId, readonly string[]> = {
     '取り込み', 'パスワード', '履歴', '自動入力', 'ブラウザ', 'ログイン'],
   cli: ['cli', 'command line', 'install', 'login', 'sign in', 'wrangler', 'cloudflare', 'ollama', 'github', 'gitlab', 'glab', 'gh', 'vercel', 'netlify',
     'supabase', 'firebase', 'fly', 'railway', 'heroku', 'stripe', 'gcloud', 'google cloud', 'aws', 'azure', 'docker',
-    'コマンドライン', 'インストール', 'ログイン', 'ツール'],
+    'repository', 'private', 'owner', 'organization', 'org',
+    'コマンドライン', 'インストール', 'ログイン', 'ツール', 'リポジトリ', '組織', '置き場'],
   about: ['about', 'version', 'update', 'ferret', 'movie-ade', 'バージョン', '更新', 'について']
 }
 

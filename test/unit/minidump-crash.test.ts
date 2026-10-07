@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parseMinidumpCrash } from '../../src/shared/minidump'
-import { memoryBucket, minimizeNativeCrash, scrubEvent, uptimeBucket } from '../../src/shared/telemetry'
+import { STACK_LIMIT, parseMinidumpCrash } from '../../src/shared/minidump'
+import { NATIVE_CRASH_FLOW_LIMIT, memoryBucket, minimizeNativeCrash, scrubEvent, uptimeBucket } from '../../src/shared/telemetry'
 
 /**
  * main のネイティブのクラッシュ（FERRET-12、0.4.16 の Windows）は、minidump を捨てていたので原因が分からなかった。
@@ -60,12 +60,12 @@ const MODULES = [
 describe('minidump から落ちた理由を読む', () => {
   it('Windows のアクセス違反と、落ちた場所のモジュールのファイル名（パスは持たない）', () => {
     const out = parseMinidumpCrash(minidump({ code: 0xc0000005, address: 0x7ffa00000123n, modules: MODULES }))
-    expect(out).toEqual({ code: '0xc0000005', kind: 'access-violation', module: 'pty.node' })
+    expect(out).toEqual({ code: '0xc0000005', kind: 'access-violation', module: 'pty.node', offset: '0x123' })
     expect(JSON.stringify(out)).not.toContain('someone')
   })
 
   it('Chromium のメモリ不足（0xe0000008）は oom', () => {
-    expect(parseMinidumpCrash(minidump({ code: 0xe0000008, address: 0x7ff600000010n, modules: MODULES }))).toEqual({ code: '0xe0000008', kind: 'oom', module: 'ferret.exe' })
+    expect(parseMinidumpCrash(minidump({ code: 0xe0000008, address: 0x7ff600000010n, modules: MODULES }))).toEqual({ code: '0xe0000008', kind: 'oom', module: 'ferret.exe', offset: '0x10' })
   })
 
   it('macOS と Linux は番号の意味が違う', () => {
@@ -87,6 +87,128 @@ describe('minidump から落ちた理由を読む', () => {
     expect(parseMinidumpCrash(new TextEncoder().encode('not a minidump at all, just text....'))).toBeNull()
     const full = minidump({ code: 0xc0000005, address: 0x7ffa00000123n, modules: MODULES })
     expect(parseMinidumpCrash(full.subarray(0, 80))).toBeNull()
+  })
+})
+
+/**
+ * 例外・スレッド一覧・スレッド名・モジュール一覧（CodeView 付き）を持つ minidump（FERRET-1Q の再発防止で読むようにしたもの）。
+ * 落ちたスレッドは id 7、スタックは8バイトの値の並び
+ */
+function richMinidump(opts: { address: bigint; stack: bigint[]; threadName?: string; modules: Array<{ base: bigint; size: number; name: string; stamp?: number; guid?: number[]; age?: number }> }): Uint8Array {
+  const parts: Buffer[] = []
+  let cursor = 32 + 5 * 12
+  const place = (b: Buffer): number => { const at = cursor; parts.push(b); cursor += b.length; return at }
+  const str16 = (text: string): Buffer => { const body = Buffer.from(text, 'utf16le'); const b = Buffer.alloc(4 + body.length); b.writeUInt32LE(body.length, 0); body.copy(b, 4); return b }
+  const exception = Buffer.alloc(168)
+  exception.writeUInt32LE(7, 0)
+  exception.writeUInt32LE(0xc0000005, 8)
+  exception.writeBigUInt64LE(opts.address, 24)
+  const exceptionAt = place(exception)
+  const system = Buffer.alloc(56)
+  system.writeUInt32LE(2, 24)
+  const systemAt = place(system)
+  const stackBytes = Buffer.alloc(opts.stack.length * 8)
+  opts.stack.forEach((v, i) => stackBytes.writeBigUInt64LE(v, i * 8))
+  const stackAt = place(stackBytes)
+  const threads = Buffer.alloc(4 + 2 * 48)
+  threads.writeUInt32LE(2, 0)
+  threads.writeUInt32LE(3, 4) // ほかのスレッド（スタックなし）
+  threads.writeUInt32LE(7, 4 + 48)
+  threads.writeUInt32LE(stackBytes.length, 4 + 48 + 32)
+  threads.writeUInt32LE(stackAt, 4 + 48 + 36)
+  const threadsAt = place(threads)
+  const nameAt = place(str16(opts.threadName ?? 'CrBrowserMain'))
+  const names = Buffer.alloc(4 + 12)
+  names.writeUInt32LE(1, 0)
+  names.writeUInt32LE(7, 4)
+  names.writeBigUInt64LE(BigInt(nameAt), 8)
+  const namesAt = place(names)
+  const moduleNames = opts.modules.map((m) => place(str16(m.name)))
+  const cvs = opts.modules.map((m) => {
+    if (!m.guid) return null
+    const b = Buffer.alloc(24 + 12)
+    b.write('RSDS', 0, 'latin1')
+    Buffer.from(m.guid).copy(b, 4)
+    b.writeUInt32LE(m.age ?? 1, 20)
+    b.write('C:\\build\\electron.exe.pdb', 24, 'latin1')
+    return { at: place(b), size: b.length }
+  })
+  const modules = Buffer.alloc(4 + opts.modules.length * 108)
+  modules.writeUInt32LE(opts.modules.length, 0)
+  opts.modules.forEach((m, i) => {
+    const at = 4 + i * 108
+    modules.writeBigUInt64LE(m.base, at)
+    modules.writeUInt32LE(m.size, at + 8)
+    modules.writeUInt32LE(m.stamp ?? 0, at + 16)
+    modules.writeUInt32LE(moduleNames[i], at + 20)
+    const cv = cvs[i]
+    if (cv) { modules.writeUInt32LE(cv.size, at + 76); modules.writeUInt32LE(cv.at, at + 80) }
+  })
+  const modulesAt = place(modules)
+  const head = Buffer.alloc(32 + 5 * 12)
+  head.write('MDMP', 0, 'latin1')
+  head.writeUInt32LE(5, 8)
+  head.writeUInt32LE(32, 12)
+  ;[[6, exceptionAt], [7, systemAt], [3, threadsAt], [24, namesAt], [4, modulesAt]].forEach(([type, rva], i) => {
+    head.writeUInt32LE(type, 32 + i * 12)
+    head.writeUInt32LE(rva, 32 + i * 12 + 8)
+  })
+  const buf = Buffer.concat([head, ...parts])
+  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
+}
+
+describe('minidump から落ちた場所の手がかりを読む（FERRET-1Q の再発防止）', () => {
+  const guid = [0x78, 0x56, 0x34, 0x12, 0xbc, 0x9a, 0xf0, 0xde, 1, 2, 3, 4, 5, 6, 7, 8]
+  const modules = [
+    { base: 0x7ff600000000n, size: 0x9000000, name: 'C:\\Users\\someone\\AppData\\Local\\Programs\\Ferret\\Ferret.exe', stamp: 0x6543abcd, guid, age: 2 },
+    { base: 0x7ffa00000000n, size: 0x100000, name: 'C:\\Windows\\System32\\ntdll.dll' }
+  ]
+
+  it('落ちた場所のオフセット・symbols の ID・スレッド名・スタックの中のモジュールの位置を返す', () => {
+    const stack = [0x1234n, 0x7ff600001000n, 0xdeadbeefn, 0x7ffa00000040n, 0x7ff600abcdefn]
+    const out = parseMinidumpCrash(richMinidump({ address: 0x7ff600000123n, stack, modules }))
+    expect(out).toEqual({
+      code: '0xc0000005', kind: 'access-violation', module: 'ferret.exe', offset: '0x123',
+      debugId: '123456789ABCDEF001020304050607082', codeId: '6543ABCD9000000', thread: 'CrBrowserMain',
+      stack: ['ferret.exe+0x1000', 'ntdll.dll+0x40', 'ferret.exe+0xabcdef']
+    })
+    // パス・PDB の場所・ユーザー名・アドレスそのものは出ない
+    const text = JSON.stringify(out)
+    for (const leak of ['someone', 'build', 'pdb', '7ff6', 'deadbeef']) expect(text).not.toContain(leak)
+  })
+
+  it('スタックから拾うのは上から STACK_LIMIT 件まで', () => {
+    const stack = Array.from({ length: 50 }, (_, i) => 0x7ff600000000n + BigInt(i * 16))
+    expect(parseMinidumpCrash(richMinidump({ address: 0x7ff600000123n, stack, modules }))?.stack).toHaveLength(STACK_LIMIT)
+  })
+
+  it('形の違うスレッド名は送らない', () => {
+    expect(parseMinidumpCrash(richMinidump({ address: 0x7ff600000123n, stack: [], threadName: 'C:\\Users\\someone\\x', modules }))?.thread).toBeUndefined()
+  })
+
+  it('送るイベントでは contexts.crash にまとめ、Ferret の flow のパンくずだけを残す', () => {
+    const dump = parseMinidumpCrash(richMinidump({ address: 0x7ff600000123n, stack: [0x7ff600001000n], modules }))
+    const event = {
+      level: 'fatal', platform: 'native', tags: { 'event.process': 'browser' }, contexts: {},
+      breadcrumbs: [
+        { category: 'electron', message: 'main-window.focus https://example.com/?token=abc' },
+        { category: 'flow', message: 'update install', data: { method: 'nsis' }, timestamp: 1 },
+        { category: 'flow', message: 'terminal exit', data: { exitCode: 0, kind: 'shell', path: 'C:\\Users\\someone' } },
+        { category: 'flow', message: 'C:\\Users\\someone opened' }
+      ]
+    }
+    const out = minimizeNativeCrash(event, dump) as unknown as { contexts: { crash: Record<string, unknown> }; breadcrumbs: Array<Record<string, unknown>> }
+    expect(out.contexts.crash).toEqual({ location: 'ferret.exe+0x123', debug_id: '123456789ABCDEF001020304050607082', code_id: '6543ABCD9000000', thread: 'CrBrowserMain', stack: ['ferret.exe+0x1000'] })
+    expect(out.breadcrumbs.map((b) => b.message)).toEqual(['update install', 'terminal exit'])
+    const text = JSON.stringify(scrubEvent(out))
+    for (const leak of ['someone', 'example.com', 'token']) expect(text).not.toContain(leak)
+  })
+
+  it('flow のパンくずは直近 NATIVE_CRASH_FLOW_LIMIT 件まで', () => {
+    const breadcrumbs = Array.from({ length: 50 }, (_, i) => ({ category: 'flow', message: `step ${i}` }))
+    const out = minimizeNativeCrash({ tags: {}, contexts: {}, breadcrumbs }, null) as unknown as { breadcrumbs: Array<{ message: string }> }
+    expect(out.breadcrumbs).toHaveLength(NATIVE_CRASH_FLOW_LIMIT)
+    expect(out.breadcrumbs.at(-1)?.message).toBe('step 49')
   })
 })
 

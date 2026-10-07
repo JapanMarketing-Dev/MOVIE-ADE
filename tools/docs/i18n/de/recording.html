@@ -83,15 +83,42 @@ Nehmen Sie den integrierten Browser, einen ganzen Bildschirm, ein anderes Fenste
 </ul>
 <p>Kreisen Sie die Stelle ein, während Sie darüber sprechen: Worte und Markierungen landen im selben Befund. Der Stift ist nur während einer Aufnahme verfügbar, und während der Aufnahme gibt es kein Textwerkzeug: Sagen Sie es stattdessen, oder tippen Sie es danach mit <a href="#type">Feedback tippen</a>. Die Tasten für Stift, Rahmen und Farben finden Sie unter <a href="keyboard.html#drawing">Tastenkürzel</a>.</p>
 
-<!-- @type 20180cf30c -->
+<!-- @type 43633faf9a -->
 ## Tippen statt sprechen
-<p>Wenn Sprechen gerade unpraktisch ist, tippen Sie den Befund. Das geht nur im Editor-Modus, im Tab <span class="docs-ui">Browser</span>, und nicht während einer Aufnahme.</p>
+<p>Wenn Sprechen gerade unpraktisch ist, tippen Sie den Befund. Das geht im Editor-Modus und im Feedback-Modus, aber nicht während einer Aufnahme.</p>
 <ol class="docs-steps">
-  <li>Klicken Sie in der Browser-Symbolleiste auf <span class="docs-ui">Feedback tippen</span>.</li>
+  <li>Klicken Sie auf <span class="docs-ui">Feedback tippen</span>: rechts neben der Aufnahmetaste oben rechts, in der Browser-Symbolleiste oder in der Symbolleiste des Feedback-Modus. Im Editor-Modus wechselt es zuerst zum Tab <span class="docs-ui">Browser</span>; im Feedback-Modus schaltet es Stift und Rahmen aus.</li>
   <li>Ziehen Sie einen Rahmen um die Stelle auf der Seite, oder klicken Sie auf ein Element, um es einzurahmen.</li>
   <li>Tippen Sie, was sich ändern soll. {{keys:Enter}} fügt es hinzu, {{keys:Shift+Enter}} beginnt eine neue Zeile, {{keys:Esc}} verwirft den Rahmen. Ein Enter, mit dem Sie eine Umwandlung der Eingabemethode bestätigen, fügt nichts hinzu.</li>
 </ol>
 <p>Jeder wird zu einem Befund mit einem Bild der Seite und des Rahmens, dazu URL und eingerahmtes Element, wie ein aufgenommener Befund. Er wird dem unter <span class="docs-ui">Befunde</span> geöffneten Review hinzugefügt, oder einem neuen Review, wenn keines geöffnet ist. Der Browser bleibt vorne, sodass Sie mehrere nacheinander hinzufügen können; {{keys:Esc}} ohne offenen Rahmen oder ein erneuter Klick auf die Schaltfläche beendet es. Es funktioniert auch auf dem Fenster einer Desktop-App oder eines Simulators, das an Stelle des Browsers angezeigt wird, dann ohne URL.</p>
+
+<!-- @share 9d75d7e7e6 -->
+## Feedback von beliebigen Personen per Freigabelink
+<p>Um Feedback von Personen zu bekommen, die Ferret nicht nutzen (Kunden, Designer, Teammitglieder), schicken Sie ihnen einen Freigabelink. Sie brauchen weder Konto noch App: Sie öffnen den Link im Browser, markieren einen Screenshot Ihrer Seite und schreiben, was sich ändern soll. Ein Name ist optional.</p>
+<ol class="docs-steps">
+  <li>Öffnen Sie die Seite im integrierten Browser (nur http oder https) und klicken Sie in der Browser-Symbolleiste auf <span class="docs-ui">Teilen</span>.</li>
+  <li>Geben Sie bei Bedarf einen Titel an (sonst der Seitentitel) und schalten Sie <span class="docs-ui">Prüfende sehen die Hinweise der anderen</span> ein. Klicken Sie auf <span class="docs-ui">Freigabelink für diese Seite erstellen</span>. Ferret nimmt einen Screenshot des sichtbaren Teils der Seite auf, lädt ihn hoch und kopiert den Link (<code>https://share.ferretade.dev/s/…</code>).</li>
+  <li>Um demselben Link weitere Seiten hinzuzufügen, öffnen Sie eine andere Seite und klicken bei dieser Freigabe auf <span class="docs-ui">Diese Seite hinzufügen</span> (bis zu 20 Seiten).</li>
+</ol>
+<p>Über den Link setzen Prüfende auf dem Screenshot eine Pin, ziehen einen Rahmen oder zeichnen mit einem Stift und schreiben eine Notiz (bis zu 2.000 Zeichen). <span class="docs-ui">Live page</span> öffnet die Originalseite in einem Frame, damit sie sie benutzen können, und mit <span class="docs-ui">Annotate live</span> setzen sie darauf eine Pin; die URL, die sie gerade sahen, wird mit der Notiz gesendet. Manche Websites lassen sich nicht in einem Frame laden; dann können Prüfende die Seite in einem neuen Tab öffnen und die Notiz als Text senden. Die Seite erscheint je nach Browser der prüfenden Person auf Japanisch oder Englisch.</p>
+<p>Notizen kommen im selben Fenster <span class="docs-ui">Teilen</span> an. Wählen Sie Notizen aus und klicken Sie auf <span class="docs-ui">Ausgewählte importieren</span>, oder klicken Sie bei unerwünschten auf <span class="docs-ui">Ablehnen</span> (<span class="docs-ui">Rückgängig</span> holt sie zurück). Importierte Notizen werden wie bei <span class="docs-ui">Feedback tippen</span> zu Befunden in einer neuen Prüfung: Der Screenshot mit der Markierung wird zum BEFORE-Bild, dazu kommen die URL der Seite sowie Name und Notiz der prüfenden Person. Eine Pin auf der Live-Seite wird als Rahmen um den ganzen Screenshot gezeigt, weil die Live-Seite anders gescrollt sein kann. Danach senden Sie sie wie gewohnt an Ihren Agent und vergleichen BEFORE und AFTER.</p>
+<ul>
+  <li>Jede Person mit dem Link kann die Screenshots sehen und Notizen senden; teilen Sie also keine Seiten mit privaten Daten. Ein Link läuft nach 30 Tagen ab. <span class="docs-ui">Löschen</span> entfernt den Link, seine Screenshots und seine Notizen sofort.</li>
+  <li>Ein Link nimmt bis zu 500 Notizen an, und der Server begrenzt, wie oft Notizen gesendet und Links erstellt werden können. IP-Adressen speichert er nicht.</li>
+  <li>Freigabelinks werden pro Projekt gespeichert. Das Besitzer-Token, mit dem Ferret einen Link liest und verwaltet, wird mit Electron <code>safeStorage</code> verschlüsselt in <code>&lt;userData&gt;/feedback-share/shares.bin</code> gespeichert. Entwicklungs-Builds und Systeme ohne <code>safeStorage</code> behalten es nur, bis Ferret beendet wird (der Link selbst funktioniert bis zum Ablauf).</li>
+  <li>Der Code des Servers liegt im Repository unter <code>workers/feedback-share</code>.</li>
+</ul>
+
+<!-- @meeting 9194136fce -->
+## Ein Meeting importieren
+<p>Machen Sie aus einem Meeting über Ihr Produkt Befunde. Klicken Sie in der Seitenleiste unter dem geöffneten Projekt auf <span class="docs-ui">Meeting importieren</span> und fügen Sie eine Aufnahme, ein Transkript oder beides hinzu:</p>
+<ul>
+  <li>Aufnahme: <span class="docs-ui">Video oder Audio wählen…</span> (MP4, M4V, MOV, WebM, MKV, M4A, MP3, WAV, OGG oder AAC). Sie wird in den Ordner der neuen Prüfung kopiert.</li>
+  <li>Transkript: <span class="docs-ui">Transkriptdatei öffnen…</span> (<code>.txt</code>, <code>.md</code>, <code>.vtt</code>, <code>.srt</code> oder <code>.docx</code>), oder fügen Sie es ein. Ferret liest WebVTT- und SRT-Untertitel (Zoom, Google Meet), Transkripte mit einer Zeitzeile gefolgt von Zeilen <q>Name: Text</q> (Google Meet, Gemini), Zeilen <q>[00:12:34] Name: Text</q>, eine Zeile <q>Name 0:05</q> gefolgt vom Text (Circleback, Otter), einfache Zeilen <q>Name: Text</q> oder Absätze. Ferret verbindet sich nicht mit diesen Diensten; es liest nur den Text, den Sie ihm geben.</li>
+</ul>
+<p>Klicken Sie auf <span class="docs-ui">Importieren</span>. Ohne Transkript transkribiert Ferret den Ton der Aufnahme mit Ihrer Einstellung <span class="docs-ui">Transkription</span> (Aufnahmen bis 3 Stunden). Danach schreibt Ihr Modell für <span class="docs-ui">Ordnen</span> aus dem Gesagten Befundkandidaten. Hat die Aufnahme Video und das Transkript Zeiten, wird ein Bild vom Moment jeder Äußerung zum BEFORE-Bild des Befunds. Transkripte ohne Zeiten funktionieren auch, dann ohne Bilder.</p>
+<p>Ist das <a href="agents.html#verify">Entscheidungsmodell</a> eingeschaltet, fragt Ferret es pro Kandidat einmal, ob im Meeting eine konkrete Änderung am Produkt gewünscht wurde, und mit einem Bildmodell und einem Bild auch, ob das Bild den besprochenen Bildschirm zeigt. Jeder Kandidat zeigt <span class="docs-ui">Wahrscheinlich</span> mit einem Prozentwert; Kandidaten unter 50 % sind zu Beginn abgewählt. Diese Aufrufe gehen von Ferret über dasselbe lokale Relay wie die Prüfungen Ihrer Agents, mit dessen Grenzen für Aufrufe und Kosten. An Ihren Agent wird nichts gesendet, bis Sie die Kandidaten geprüft haben: Bearbeiten, abwählen oder behalten Sie sie und senden Sie dann wie gewohnt.</p>
 
 <!-- @annotations-clear ea2e57b47b -->
 ## Wann Markierungen verschwinden

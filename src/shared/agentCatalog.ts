@@ -583,7 +583,8 @@ export const DEFAULT_AGENT_PREFERENCES: AgentPreferences = {
   startupAgents: ['claude', 'codex'],
   skipPermissions: true,
   notify: false,
-  restoreTerminals: true
+  restoreTerminals: true,
+  windowsShell: 'powershell'
 }
 
 // ───────────────────────── 権限確認を省く引数 ─────────────────────────
@@ -875,6 +876,7 @@ export function sanitizeAgentPreferences(raw: unknown): AgentPreferences {
     startupAgents: list(r.startupAgents, DEFAULT_AGENT_PREFERENCES.startupAgents).filter(launchable),
     skipPermissions,
     notify: typeof r.notify === 'boolean' ? r.notify : DEFAULT_AGENT_PREFERENCES.notify,
-    restoreTerminals: typeof r.restoreTerminals === 'boolean' ? r.restoreTerminals : DEFAULT_AGENT_PREFERENCES.restoreTerminals
+    restoreTerminals: typeof r.restoreTerminals === 'boolean' ? r.restoreTerminals : DEFAULT_AGENT_PREFERENCES.restoreTerminals,
+    windowsShell: r.windowsShell === 'cmd' || r.windowsShell === 'powershell' ? r.windowsShell : DEFAULT_AGENT_PREFERENCES.windowsShell
   }
 }

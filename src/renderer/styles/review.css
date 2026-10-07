@@ -679,6 +679,26 @@ div.rv-card__shot {
   -webkit-line-clamp: 2;
 }
 
+/* 取り込んだ mtg の候補の確からしさ（判定モデル）。低いものは控えめに */
+.rv-score {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-quiet);
+  color: var(--color-accent);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.rv-score.is-low {
+  background: transparent;
+  color: var(--color-text-muted);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
 .rv-flag {
   display: inline-flex;
   flex: none;

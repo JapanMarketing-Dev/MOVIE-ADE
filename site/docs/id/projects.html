@@ -181,6 +181,18 @@
 <p>Terminal dibuka di folder proyek, dan tinjauan disimpan di bawah <code>&lt;project&gt;/.ferret/</code>.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="github-repo">
+        <h2 id="github-repo"><a class="docs-anchor" href="#github-repo" aria-label="Tautan ke Membuat repositori GitHub privat">#</a>Membuat repositori GitHub privat</h2>
+        <p>Untuk memasukkan proyek yang belum ada di GitHub ke repositori privat, klik kanan proyek itu di bilah samping dan pilih <span class="docs-ui">Buat repositori privat di GitHub</span>. Fitur ini memakai login <code>gh</code> Anda, jadi <code>gh</code> harus terpasang dan sudah masuk. Hanya GitHub yang didukung, bukan GitLab.</p>
+<ol class="docs-steps">
+  <li>Pilih <span class="docs-ui">Pemilik</span> (akun Anda atau salah satu organisasi Anda) dan <span class="docs-ui">Nama repositori</span> (disarankan dari nama folder; huruf, angka, <code>.</code>, <code>_</code>, dan <code>-</code>). Anda dapat menambahkan <span class="docs-ui">Deskripsi (opsional)</span>.</li>
+  <li>Jika folder belum punya commit, <span class="docs-ui">Buat commit pertama lalu push</span> membuat commit pertama tanpa berkas yang diabaikan <code>.gitignore</code> dan tanpa berkas yang mungkin berisi rahasia: berkas <code>.env</code> (templat seperti <code>.env.example</code> tetap ikut), kunci seperti <code>*.pem</code> atau <code>id_rsa</code>, <code>.npmrc</code>, <code>.netrc</code>, <code>credentials.json</code>, <code>*.tfstate</code>, dan sejenisnya. Dialog menampilkan apa yang ditinggalkan. Path tersebut ditambahkan ke <code>.git/info/exclude</code> sehingga juga tidak masuk commit berikutnya; berkas Anda dan <code>.gitignore</code> tidak diubah. Folder yang belum menjadi repositori git diinisialisasi dengan branch <code>main</code>.</li>
+  <li>Klik <span class="docs-ui">Berikutnya</span>, periksa repositori, visibilitas, dan push, lalu klik <span class="docs-ui">Buat</span>. Repositori selalu privat. Repositori itu menjadi <code>origin</code> folder, dan commit folder di-push.</li>
+</ol>
+<p>Ferret tidak membuat repositori jika folder sudah punya <code>origin</code>, berada di dalam repositori git lain (misalnya folder di monorepo), repositori dengan nama itu sudah ada, commit pertama akan berisi lebih dari 20.000 berkas, git belum punya nama pengguna dan email, atau proyek dibuka lewat SSH.</p>
+<p>Pemilik yang dipilih pertama adalah akun Anda sendiri. Untuk memakai organisasi, atur <span class="docs-ui">Pemilik repositori baru (GitHub)</span> di <span class="docs-ui">Pengaturan → CLI layanan</span> (<code>github.defaultOwner</code> di <code>settings.json</code>).</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="save-url">
         <h2 id="save-url"><a class="docs-anchor" href="#save-url" aria-label="Tautan ke Menyimpan URL">#</a>Menyimpan URL</h2>
         <ol class="docs-steps">
@@ -270,6 +282,7 @@
       <p class="docs-toc-heading">Di halaman ini</p>
       <ul>
         <li><a href="#add-project">Menambahkan proyek</a></li>
+        <li><a href="#github-repo">Membuat repositori GitHub privat</a></li>
         <li><a href="#save-url">Menyimpan URL</a></li>
         <li><a href="#review-targets">Panel target tinjauan</a></li>
         <li><a href="#switch-env">Membuka dan berpindah lingkungan</a></li>
