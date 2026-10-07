@@ -59,6 +59,46 @@ export async function finishReview(paths: SessionPaths, result: RecordingResult,
   return loadReviewAt(paths)
 }
 
+/**
+ * 取り込んだ mtg の素材（meeting/import.ts）から、録画と同じレビューを作る。発話から下書きを作り、画像を書き出す。
+ * 指摘の整理（review:organize）と判定（setMeetingScores）は、このあと画面が順に呼ぶ
+ */
+export async function createImportedReview(paths: SessionPaths, material: Material, warnings: string[]): Promise<ReviewData> {
+  const stage = buildDraftDocument(material)
+  // 取り込んだ候補は、人が確かめるまで送る対象に入れない（判定モデルの点が付いたら、しきい値で入れ直す）
+  const document = { ...stage.document, items: stage.document.items.map((item) => ({ ...item, include: false })) }
+  const record: SessionRecord = { version: 1, meta: material.meta, transcript: material.transcript, removedDuplicates: [], frames: material.frames,
+    draft: stage.draft.items, originalDocument: document, document, edits: [], captureGaps: warnings }
+  await persist(paths, record)
+  return loadReviewAt(paths)
+}
+
+/**
+ * 判定モデルの点を候補に付ける（mtg の取り込み）。まだ編集していなければ、しきい値で送る対象を決め直す
+ * （編集のあとは送る対象を変えない。人の決めたことを上書きしない）
+ */
+export async function setMeetingScores(paths: SessionPaths, scores: ReadonlyMap<string, import('@shared/meetingImport').MeetingItemScore>, threshold: number): Promise<{ review: ReviewData; excluded: number }> {
+  const { applyMeetingScores } = await import('@shared/meetingImport')
+  return inReviewQueue(paths, async () => {
+    const record = await loadSession(paths)
+    if (!record) throw new UserFacingError(t('review.errors.notFound'))
+    const setInclude = record.edits.length === 0
+    const scored = applyMeetingScores(record.document.items, scores, threshold, setInclude)
+    record.document = { ...record.document, items: scored.items }
+    if (record.originalDocument) record.originalDocument = { ...record.originalDocument, items: applyMeetingScores(record.originalDocument.items, scores, threshold, setInclude).items }
+    await persist(paths, record)
+    return { review: await loadReviewAt(paths), excluded: scored.excluded }
+  })
+}
+
+/** 取り込んだ mtg の動画（meeting.<拡張子>）の名前。無ければ null */
+async function meetingVideoName(dir: string): Promise<string | null> {
+  const { existsSync } = await import('node:fs')
+  const { MEETING_MEDIA_EXTENSIONS } = await import('@shared/meetingImport')
+  for (const ext of MEETING_MEDIA_EXTENSIONS) if (existsSync(join(dir, `meeting.${ext}`))) return `meeting.${ext}`
+  return null
+}
+
 /** capture.json に控えた登録URL。形の合うものだけ */
 function urlPresetsOf(value: unknown): NonNullable<Material['meta']['urlPresets']> {
   return Array.isArray(value)
@@ -97,7 +137,7 @@ export async function loadReviewAt(paths: SessionPaths): Promise<ReviewData> {
   // 追記した録画があれば、録画ごとの動画と時刻の範囲を渡す（▷ で正しい録画の正しい時刻を開く）
   const takes = listTakes(record)
   const { sentAt } = await readLabel(paths)
-  return { id: paths.id, document: record.document, images, progress, canUndo: record.edits.length > 0 && !!record.originalDocument, canOrganize: record.edits.length === 0 && hasRecordedItems(record.document) && !record.document.organizedByLlm, ...(existsSync(paths.recording) ? { videoUrl: `ade-media://review/${paths.id}/recording.webm` } : {}), warnings: record.captureGaps ?? [],
+  return { id: paths.id, document: record.document, images, progress, canUndo: record.edits.length > 0 && !!record.originalDocument, canOrganize: record.edits.length === 0 && hasRecordedItems(record.document) && !record.document.organizedByLlm, ...(existsSync(paths.recording) ? { videoUrl: `ade-media://review/${paths.id}/recording.webm` } : await meetingVideoName(paths.dir).then((name) => (name ? { videoUrl: `ade-media://review/${paths.id}/${name}` } : {}))), warnings: record.captureGaps ?? [],
     // 何もない時間を削った版ができていれば、▷ はそちらを開く（削った区間で再生位置を読み替える）。無ければ元の動画
     ...(takes.length > 1 || takes.some((take) => take.trim) ? { takes: takes.map(({ trim, ...take }) => {
       const files = takePaths(paths, take.n)

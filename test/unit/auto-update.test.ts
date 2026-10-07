@@ -479,6 +479,20 @@ describe('AutoUpdater（裏での確認 → ダウンロード → 再起動し�
     expect(restarted.updater.status().installOnQuit).toBe(false)
   })
 
+  it('［再起動して更新］のあとの quit では、選んだ入れ替え（NSIS のインストーラー）を後始末が済んだここで1回だけ起動する（FERRET-1Q）', async () => {
+    let pending = 1
+    const pendingCalls: string[] = []
+    const { updater, calls } = nsis({ runPendingInstall: () => { pendingCalls.push('pending install'); return pending-- > 0 } })
+    await ready(updater)
+    expect(await updater.install()).toBe(true)
+    expect(pendingCalls).toEqual([])
+    expect(updater.installOnQuit()).toBe(true)
+    expect(updater.installOnQuit()).toBe(false)
+    expect(pendingCalls).toEqual(['pending install', 'pending install'])
+    // 閉じたときの入れ替え（起動し直さない方）は走らせない
+    expect(calls.filter((c) => c.startsWith('quit'))).toEqual([])
+  })
+
   it('閉じたとき: 自動の更新がオフなら入れない（手動で落としたものも）。macOS は［再起動して更新］まで Squirrel.Mac に渡さない', async () => {
     const off = nsis()
     off.updater.setAutoDownload(false)

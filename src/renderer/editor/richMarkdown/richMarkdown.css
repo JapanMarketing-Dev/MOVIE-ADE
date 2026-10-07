@@ -170,7 +170,7 @@
   line-height: 1.55;
 }
 
-/* コードブロックの言語（mermaid など）を右上に出す。図はソースのまま編集し、横のプレビューで描かれる */
+/* コードブロックの言語（mermaid など）を右上に出す。mermaid は既定で図として出す（mermaidBlock.ts。下の .rich-md__mermaid） */
 .rich-md pre[data-language]::before {
   content: attr(data-language);
   position: absolute;
@@ -309,4 +309,105 @@
   font-family: var(--font-mono);
   font-size: 11px;
   white-space: pre;
+}
+
+/* ```mermaid（mermaidBlock.ts）。既定は図（iframe）、「コード」かカーソルが中に入るとソース */
+.rich-md__mermaid {
+  position: relative;
+  margin: 1em 0;
+}
+
+.rich-md__mermaid > pre {
+  margin: 0;
+}
+
+.rich-md__mermaid[data-mode='diagram'] > pre {
+  display: none;
+}
+
+.rich-md__mermaid[data-mode='code'] > .rich-md__mermaid-view {
+  display: none;
+}
+
+.rich-md__mermaid-view {
+  border: var(--size-border) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  padding: 4px 8px;
+}
+
+/* 図（SVG の画像）。描き終えるまでは高さを空けておく */
+.rich-md__mermaid-view {
+  min-height: 48px;
+  text-align: center;
+}
+
+.rich-md__mermaid-image {
+  max-width: 100%;
+  height: auto;
+  margin: 8px auto;
+}
+
+.rich-md__mermaid-view:not([data-state='ok']) > .rich-md__mermaid-image,
+.rich-md__mermaid-view:not([data-state='error']) > .rich-md__mermaid-error,
+.rich-md__mermaid-view:not([data-state='error']) > .rich-md__mermaid-fix {
+  display: none;
+}
+
+.rich-md__mermaid-error {
+  margin: 8px 12px 0;
+  color: var(--color-danger);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 図を描く隠した iframe（文書で1つ。mermaidBlock.ts の renderer）。文字の大きさを測れるよう、描画はするが見えない場所に置く */
+.rich-md__mermaid-renderer {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 1200px;
+  height: 800px;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rich-md__mermaid-toggle {
+  position: absolute;
+  z-index: 1;
+  top: 4px;
+  right: 6px;
+  padding: 1px 8px;
+  border: var(--size-border) solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg-panel);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.rich-md__mermaid-toggle:hover {
+  color: var(--color-text);
+}
+
+/* コードの表示では、右上の言語の文字（mermaid）が切り替えと重ならないよう左へ寄せる */
+.rich-md__mermaid[data-mode='code'] > pre[data-language]::before {
+  right: 72px;
+}
+
+.rich-md__mermaid-fix {
+  display: block;
+  margin: 6px 12px 8px;
+  padding: 2px 10px;
+  border: var(--size-border) solid var(--color-border);
+  border-radius: 4px;
+  background: none;
+  color: var(--color-text);
+  font-size: 12px;
+  cursor: pointer;
 }

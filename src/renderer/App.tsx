@@ -80,6 +80,7 @@ import { notifySetupChanged } from './onboarding/useSetupChecklist'
 import { OnboardingStore } from './onboarding/onboardingStore'
 import { StarPromptHost } from './components/StarPrompt'
 import { FeedbackDialogHost } from './components/FeedbackDialog'
+import { MeetingImportDialog } from './components/MeetingImportDialog'
 import { reportAnomaly, reportHandled } from '@shared/report'
 import type { SttLanguageCode } from '@shared/sttLanguages'
 
@@ -154,6 +155,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const [tabMenuOpen, setTabMenuOpen] = useState(false)
   /** サイドバーの「プロジェクトを編集」 */
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
+  /** mtg の録画・文字起こしの取り込み（MeetingImportDialog） */
+  const [meetingOpen, setMeetingOpen] = useState(false)
   /** 設定とワークスペースを読み終えたか。終わるまでターミナルは作らない（projectId=null 用の余分なシェルを残さない） */
   const [projectsLoaded, setProjectsLoaded] = useState(false)
   const [browserState, setBrowserState] = useState<BrowserState>(INITIAL_BROWSER_STATE)
@@ -604,10 +607,15 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
    * 足しても画面はブラウザのまま（続けて何件も足せる）。Esc（ページ）かボタンでやめる
    */
   const [noteMode, setNoteMode] = useState(false)
-  const noteAllowed = mode === 'editor' && centerTab === 'browser' && !recording && !recordBusy && workspace.folderPath !== null && emptyReason === null
+  // エディタのブラウザのタブと、フィードバックモード（大きなページ）の両方で使える。右上の［文字で指摘］はエディタの別のタブからでも押せて、ブラウザのタブへ移ってから始める
+  const noteAllowed = (mode === 'feedback' || (mode === 'editor' && centerTab === 'browser')) && !recording && !recordBusy && workspace.folderPath !== null && emptyReason === null
+  const noteStartable = !recording && !recordBusy && workspace.folderPath !== null && emptyReason === null
   const openReviewForNote = review?.id ?? null
   const toggleNote = () => {
     const next = !noteMode
+    if (next && mode === 'editor' && centerTab !== 'browser') setCenterTab('browser')
+    // フィードバックモードの書き込みの道具とは同時に使わない（文字で指摘の枠と線が重なる）
+    if (next && mode === 'feedback') setTool('none')
     void window.ade.invoke('note:setMode', next, openReviewForNote).then(setNoteMode).catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
   }
   // 使えない場面（タブ・モードの切り替え・録画の開始）になったら切る
@@ -1051,6 +1059,9 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           onOpenSettings={() => openSettings()}
           onFocusBrowser={() => setCenterTab('browser')}
           busy={recordBusy}
+          noteMode={noteMode}
+          noteDisabled={!noteStartable}
+          onToggleNote={toggleNote}
         />
 
         {/* 列と行は配置（layout）から作る。隠したパネルも大きさ 0 で残す（src/shared/layout.ts） */}
@@ -1077,6 +1088,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                 if (!(showDemo && !history.length && DEMO_SESSION_IDS.includes(id))) void run(async () => { setReview(await window.ade.invoke('review:load', id)); await refreshHistory() })
               }}
               onNewReview={startReviewIn}
+              onImportMeeting={() => setMeetingOpen(true)}
               recording={recording}
               onHistoryChanged={(deleted) => {
                 // 開いているレビューを消したら、確認画面も閉じる
@@ -1250,6 +1262,9 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           onUndo={() => void run(async () => { await window.ade.invoke('annotation:undo') })}
           onRedo={() => void run(async () => { await window.ade.invoke('annotation:redo') })}
           onToggleRecording={toggleRecording}
+          noteMode={noteMode}
+          noteDisabled={!noteAllowed}
+          onToggleNote={toggleNote}
           onBackToEditor={() => changeMode('editor')}
           target={captureTarget}
           onPickTarget={() => setTargetPickerOpen(true)}
@@ -1347,6 +1362,13 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         terminalHost
       )}
       {quickOpenOpen && <QuickOpen onOpen={(path) => files.open(path)} onClose={() => setQuickOpenOpen(false)} />}
+      {/* 取り込んだら、そのレビューの指摘（候補）を開く。人が確かめてから Agent へ送る */}
+      {meetingOpen && <MeetingImportDialog onClose={() => setMeetingOpen(false)} onImported={(imported) => {
+        setSessionId(imported.id)
+        setReview(imported)
+        setCenterTab('findings')
+        void run(refreshHistory)
+      }} />}
       {files.pendingClose && <UnsavedChangesDialog name={files.pendingClose.name} onChoose={files.resolveClose} />}
       {addTrackOpen && recording && <CaptureTargetPicker
         value={{ kind: 'browser' }}

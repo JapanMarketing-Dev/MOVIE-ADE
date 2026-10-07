@@ -83,15 +83,42 @@ Grave o navegador integrado, a tela inteira, outra janela, um app para desktop, 
 </ul>
 <p>Circule o ponto enquanto fala sobre ele: as palavras e as marcas ficam no mesmo apontamento. A caneta só está disponível durante a gravação, e durante a gravação não há ferramenta de texto: diga em voz alta ou digite depois com <a href="#type">Feedback por texto</a>. As teclas da caneta, da caixa e das cores estão em <a href="keyboard.html#drawing">Atalhos de teclado</a>.</p>
 
-<!-- @type 20180cf30c -->
+<!-- @type 43633faf9a -->
 ## Digitar em vez de falar
-<p>Quando falar não for prático, digite o apontamento. Funciona só no modo Editor, na aba <span class="docs-ui">Navegador</span>, quando não estiver gravando.</p>
+<p>Quando falar não é prático, digite o achado. Funciona no modo editor e no modo de feedback, quando não está gravando.</p>
 <ol class="docs-steps">
-  <li>Clique em <span class="docs-ui">Feedback por texto</span> na barra de ferramentas do navegador.</li>
+  <li>Clique em <span class="docs-ui">Feedback por texto</span>: à direita do botão de gravar no canto superior direito, na barra do navegador ou na barra do modo de feedback. No modo editor ele muda antes para a aba <span class="docs-ui">Navegador</span>; no modo de feedback ele desliga a caneta e a caixa.</li>
   <li>Arraste uma caixa em volta do ponto na página, ou clique em um elemento para enquadrá-lo.</li>
   <li>Digite o que deve mudar. {{keys:Enter}} adiciona, {{keys:Shift+Enter}} começa uma nova linha e {{keys:Esc}} cancela a caixa. O Enter que confirma uma conversão do método de entrada não adiciona.</li>
 </ol>
 <p>Cada um vira um apontamento com uma imagem da página e da caixa, mais a URL e o elemento enquadrado, como um apontamento gravado. Ele é adicionado à revisão aberta em <span class="docs-ui">Apontamentos</span>, ou a uma revisão nova se nenhuma estiver aberta. O navegador continua na frente, então você pode adicionar vários seguidos; {{keys:Esc}} sem caixa aberta, ou clicar no botão de novo, encerra. Também funciona na janela de um app desktop ou de um simulador mostrada no lugar do navegador, sem a URL.</p>
+
+<!-- @share 9d75d7e7e6 -->
+## Receber feedback de qualquer pessoa com um link de compartilhamento
+<p>Para receber feedback de quem não usa o Ferret (um cliente, um designer, alguém da equipe), envie um link de compartilhamento. Não é preciso conta nem app: a pessoa abre o link no navegador, marca uma captura da sua página e escreve o que deve mudar. O nome é opcional.</p>
+<ol class="docs-steps">
+  <li>Abra a página no navegador integrado (só http ou https) e clique em <span class="docs-ui">Compartilhar</span> na barra do navegador.</li>
+  <li>Se quiser, dê um título (senão, é usado o da página) e ative <span class="docs-ui">Permitir que revisores vejam as notas uns dos outros</span>. Clique em <span class="docs-ui">Criar link para esta página</span>. O Ferret captura a parte visível da página, envia e copia o link (<code>https://share.ferretade.dev/s/…</code>).</li>
+  <li>Para adicionar mais páginas ao mesmo link, abra outra página e clique em <span class="docs-ui">Adicionar esta página</span> nesse compartilhamento (até 20 páginas).</li>
+</ol>
+<p>No link, os revisores colocam um alfinete, desenham uma caixa ou traçam com uma caneta sobre a captura e escrevem uma nota (até 2.000 caracteres). <span class="docs-ui">Live page</span> abre a página original num quadro para que possam usá-la, e <span class="docs-ui">Annotate live</span> permite colocar um alfinete nela; a URL que estavam vendo é enviada com a nota. Alguns sites não carregam dentro de um quadro; nesse caso, dá para abrir a página numa nova aba e enviar a nota como texto. A página aparece em japonês ou em inglês, conforme o navegador do revisor.</p>
+<p>As notas chegam na mesma janela de <span class="docs-ui">Compartilhar</span>. Selecione notas e clique em <span class="docs-ui">Importar selecionados</span>, ou clique em <span class="docs-ui">Recusar</span> nas que não quiser (<span class="docs-ui">Desfazer</span> as traz de volta). As notas importadas viram achados numa nova revisão, como com <span class="docs-ui">Feedback por texto</span>: a captura com a marca do revisor vira a imagem BEFORE, junto com a URL da página e o nome e a nota do revisor. Um alfinete colocado na página ao vivo aparece como uma caixa em volta da captura inteira, porque a página ao vivo pode estar rolada de outro jeito. Depois, envie-os ao seu agente e compare BEFORE e AFTER como de costume.</p>
+<ul>
+  <li>Qualquer pessoa com o link pode ver as capturas e enviar notas, então não compartilhe páginas que mostrem dados privados. O link expira em 30 dias. <span class="docs-ui">Excluir</span> apaga na hora o link, as capturas e as notas.</li>
+  <li>Um link aceita até 500 notas, e o servidor limita a frequência de envio de notas e de criação de links. Ele não guarda endereços IP.</li>
+  <li>Os links de compartilhamento são guardados por projeto. O token de dono com que o Ferret lê e gerencia um link é criptografado com o <code>safeStorage</code> do Electron em <code>&lt;userData&gt;/feedback-share/shares.bin</code>. Builds de desenvolvimento e sistemas sem <code>safeStorage</code> o mantêm só até o Ferret ser fechado (o link continua funcionando até expirar).</li>
+  <li>O código do servidor fica em <code>workers/feedback-share</code> no repositório.</li>
+</ul>
+
+<!-- @meeting 9194136fce -->
+## Importar uma reunião
+<p>Transforme uma reunião sobre o seu produto em achados. Clique em <span class="docs-ui">Importar reunião</span> abaixo do projeto aberto na barra lateral e adicione uma gravação, uma transcrição ou as duas:</p>
+<ul>
+  <li>Gravação: <span class="docs-ui">Escolher vídeo ou áudio…</span> (MP4, M4V, MOV, WebM, MKV, M4A, MP3, WAV, OGG ou AAC). Ela é copiada para a pasta da nova revisão.</li>
+  <li>Transcrição: <span class="docs-ui">Abrir arquivo de transcrição…</span> (<code>.txt</code>, <code>.md</code>, <code>.vtt</code>, <code>.srt</code> ou <code>.docx</code>), ou cole o texto. O Ferret lê legendas WebVTT e SRT (Zoom, Google Meet), transcrições com uma linha de horário seguida de linhas <q>Nome: texto</q> (Google Meet, Gemini), linhas <q>[00:12:34] Nome: texto</q>, uma linha <q>Nome 0:05</q> seguida do texto (Circleback, Otter), linhas simples <q>Nome: texto</q> ou parágrafos. O Ferret não se conecta a esses serviços; ele só lê o texto que você fornece.</li>
+</ul>
+<p>Clique em <span class="docs-ui">Importar</span>. Sem transcrição, o Ferret transcreve o áudio da gravação com a sua configuração de <span class="docs-ui">Transcrição</span> (gravações de até 3 horas). Depois, o seu modelo de <span class="docs-ui">Organizar</span> escreve achados candidatos a partir do que foi dito. Se a gravação tem vídeo e a transcrição tem horários, um quadro do momento de cada fala vira a imagem BEFORE do achado. Transcrições sem horários também funcionam, sem quadros.</p>
+<p>Se o <a href="agents.html#verify">modelo de decisão</a> estiver ativado, o Ferret pergunta a ele uma vez por candidato se a reunião pediu uma mudança concreta no produto e, com um modelo de imagens e um quadro, se o quadro mostra a tela em discussão. Cada candidato mostra <span class="docs-ui">Provável</span> com uma porcentagem; os abaixo de 50% começam desmarcados. Essas chamadas vão do Ferret pelo mesmo relay local das verificações dos seus agentes, com os mesmos limites de chamadas e de custo. Nada é enviado ao seu agente até você conferir os candidatos: edite, desmarque ou mantenha, e envie como de costume.</p>
 
 <!-- @annotations-clear ea2e57b47b -->
 ## Quando as marcas somem

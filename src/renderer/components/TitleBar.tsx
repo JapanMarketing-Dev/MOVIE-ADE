@@ -1,11 +1,12 @@
 import {
+  MessageSquarePlus,
   MessageSquareQuote,
   PanelsTopLeft,
   Settings
 } from 'lucide-react'
 import type { AppMode, ProjectsState, WorkspaceState } from '@shared/types'
 import { SHORTCUTS } from '../lib/shortcut'
-import { IconButton, Logo, RecordButton, Segmented, Tooltip } from '../ui'
+import { Button, IconButton, Logo, RecordButton, Segmented, Tooltip } from '../ui'
 import { ProjectMenu } from './ProjectMenu'
 import { LayoutToggles } from './LayoutToggles'
 import { useT } from '../lib/i18n'
@@ -31,7 +32,10 @@ export function TitleBar({
   onToggleRecording,
   onOpenSettings,
   onFocusBrowser,
-  busy = false
+  busy = false,
+  noteMode = false,
+  noteDisabled = false,
+  onToggleNote
 }: {
   workspace: WorkspaceState
   projects: ProjectsState
@@ -45,6 +49,10 @@ export function TitleBar({
   /** ブラウザに集中し始めたとき（中央のタブをブラウザへ） */
   onFocusBrowser?: () => void
   busy?: boolean
+  /** 文字で指摘（録画の右。音声の代わりに枠と文字で指摘する）。押せないとき（録画中・プロジェクト未選択）は disabled */
+  noteMode?: boolean
+  noteDisabled?: boolean
+  onToggleNote?: () => void
 }) {
   const t = useT()
   return (
@@ -90,6 +98,21 @@ export function TitleBar({
           onClick={onToggleRecording}
           data-testid="record-button"
         />
+        {onToggleNote && (
+          <Tooltip label={noteMode ? t('textNote.button.stopTitle') : t('textNote.button.title')}>
+            <Button
+              variant="ghost"
+              className="titlebar__note"
+              icon={<MessageSquarePlus size={14} strokeWidth={1.75} aria-hidden="true" />}
+              selected={noteMode}
+              disabled={noteDisabled && !noteMode}
+              onClick={onToggleNote}
+              data-testid="titlebar-text-note"
+            >
+              {t('textNote.button.label')}
+            </Button>
+          </Tooltip>
+        )}
         <Tooltip label={t('common.settings')}>
           <IconButton
             label={t('common.settings')}

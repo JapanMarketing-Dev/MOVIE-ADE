@@ -28,6 +28,7 @@ import { isUnsentTake, playbackAt, takeAt, type ReviewData, type ReviewEdit, typ
 import { LLM_API_PROVIDERS, LLM_PROVIDER_PRESETS, RECOMMENDED_ORGANIZE_PROVIDER, isOrganizeRunnerId, providerLabel, type LlmApiProvider, type OrganizeRunnerId } from '@shared/aiProviders'
 import { organizeModelChoice, organizeModelPatch, organizeRunnerSummary, type OrganizerModelPrefs } from '@shared/organizeModels'
 import { notifyOrganizerChanged, onOrganizerChanged } from '../lib/organizerEvents'
+import { MEETING_SCORE_THRESHOLD } from '@shared/meetingImport'
 import { Button, EmptyState, IconButton, Modal, Tooltip, useToast } from '../ui'
 import { FindingsEmptyArt } from './reviewArt'
 import { FindingShots } from './ReviewShots'
@@ -577,6 +578,9 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
                   onUpdate({ ...review, progress })
                 })} />
               {checking &&<span className="rv-flag"><Flag size={11} />{t('review.needsCheck')}</span>}
+              {/* 取り込んだ mtg の候補に、判定モデルが付けた確からしさ（低いものは送る対象から外してある） */}
+              {item.meetingScore && <span className={`rv-score${item.meetingScore.request < MEETING_SCORE_THRESHOLD ? ' is-low' : ''}`} data-testid="review-item-score"
+                title={t('meeting.score.tip')}>{t('meeting.score.badge', { pct: Math.round(item.meetingScore.request * 100) })}</span>}
               {/* 追記した録画の指摘。まだ Agent へ送っていなければ強調する */}
               {take?.addedAt && <span className={`rv-added${unsent ? ' is-unsent' : ''}`} data-testid="review-item-added"
                 title={t(unsent ? 'review.addedUnsentTip' : 'review.addedTip', { n: take.n })}>{t('review.addedBadge')}</span>}
@@ -592,7 +596,7 @@ export function ReviewFindings({ review, onUpdate, terminalId, onRecord, recordi
                 if (e.target.value !== item.request) void edit({ kind: 'text', id: item.id, request: e.target.value.trim() })
               }} />
             {/* 話した言葉（文字起こし）。要望と同じなら出さない */}
-            {quotes.length > 0 && <p className="rv-card__quote rv-card__transcript"><Mic size={11} aria-hidden="true" /><span className="rv-card__transcript-label">{t('review.transcriptLabel')}</span>{quotes.map((q) => t('review.quote', { text: q.text })).join(' ')}</p>}
+            {quotes.length > 0 && <p className="rv-card__quote rv-card__transcript"><Mic size={11} aria-hidden="true" /><span className="rv-card__transcript-label">{t('review.transcriptLabel')}</span>{quotes.map((q) => (q.name ? t('review.quoteNamed', { name: q.name, text: q.text }) : t('review.quote', { text: q.text }))).join(' ')}</p>}
 
             <div className="rv-card__foot">
               <div className="rv-card__chips">

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Editor, type JSONContent } from '@tiptap/core'
 import Image from '@tiptap/extension-image'
-import { Video, createMarkdownCodec, richMarkdownExtensions } from './codec'
+import { LabeledCodeBlock, Video, createMarkdownCodec, richMarkdownExtensions } from './codec'
+import { codeBlockNodeView } from './mermaidBlock'
 import { buildSourceModel, reconcileEdit, type SourceModel } from './reconcile'
 import { resolveRichImage } from './images'
 import { SLASH_ITEMS, filterSlashItems, moveSlashIndex, slashLabelKey, slashMarkItem, type SlashItem } from './slashCommands'
@@ -79,6 +80,13 @@ function videoExtension(markdownPath: string) {
   })
 }
 
+/** コードブロックの表示。```mermaid は既定で図として出し、「コード」で編集する（mermaidBlock.ts）。ほかの言語は素のまま */
+const codeBlockExtension = LabeledCodeBlock.extend({
+  addNodeView() {
+    return ({ editor, node, getPos }) => codeBlockNodeView(editor, node, getPos)
+  }
+})
+
 /** 落とした画像・動画を入れる。画像は落とした位置の行の中へ、動画（塊）はその位置を含む最上位の塊の後ろへ */
 function insertMedia(editor: Editor, media: readonly MediaEmbed[], point: DropPoint): void {
   const found = editor.view.posAtCoords({ left: point.x, top: point.y })
@@ -143,7 +151,7 @@ export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFi
   const savedRef = useRef<{ text: string; model: SourceModel } | null>(null)
   const [frontmatter, setFrontmatter] = useState('')
   const [hosts, setHosts] = useState<string[]>([])
-  const extensions = useMemo(() => richMarkdownExtensions(imageExtension(file.path) as typeof Image, videoExtension(file.path) as typeof Video), [file.path])
+  const extensions = useMemo(() => richMarkdownExtensions(imageExtension(file.path) as typeof Image, videoExtension(file.path) as typeof Video, codeBlockExtension), [file.path])
   const codec = useMemo(() => createMarkdownCodec(extensions), [extensions])
   const fileRef = useRef(file)
   fileRef.current = file

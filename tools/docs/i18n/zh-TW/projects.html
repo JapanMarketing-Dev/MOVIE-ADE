@@ -23,6 +23,17 @@
 <p>審查搜尋欄旁的篩選按鈕也可以設定 <span class="docs-ui">專案排序</span>：<span class="docs-ui">手動（拖曳順序）</span>、<span class="docs-ui">活動中優先</span>（Agent 正在等你、正在工作或剛完成的專案排在前面）、<span class="docs-ui">最近使用</span>、<span class="docs-ui">名稱</span> 或 <span class="docs-ui">新增時間</span>。在其他排序下拖曳專案時，目前顯示的順序會成為手動順序，排序也會切換為 <span class="docs-ui">手動（拖曳順序）</span>。按專案列上的星號，或使用選單中的 <span class="docs-ui">加上星號</span>，可讓專案在任何排序下都固定在清單頂端；選擇 <span class="docs-ui">僅顯示星號</span> 會隱藏其他專案。星號與排序在重新啟動後依然保留。</p>
 <p>終端機會在專案資料夾中開啟，審查則儲存在 <code>&lt;project&gt;/.ferret/</code> 底下。</p>
 
+<!-- @github-repo 4596ca5d7c -->
+## 建立私人 GitHub 儲存庫
+<p>要把尚未放到 GitHub 的專案放進私人儲存庫，在側邊欄中對它按右鍵並選擇 <span class="docs-ui">在 GitHub 建立私人儲存庫</span>。它使用你的 <code>gh</code> 登入，因此需要安裝 <code>gh</code> 並登入。只支援 GitHub，不支援 GitLab。</p>
+<ol class="docs-steps">
+  <li>選擇 <span class="docs-ui">擁有者</span>（你的帳號或你所屬的組織）和 <span class="docs-ui">儲存庫名稱</span>（依資料夾名稱建議；英數字、<code>.</code>、<code>_</code> 和 <code>-</code>）。也可以加上 <span class="docs-ui">說明（選填）</span>。</li>
+  <li>如果資料夾還沒有提交，<span class="docs-ui">建立第一個提交並推送</span> 會建立第一個提交，不包含 <code>.gitignore</code> 忽略的檔案和可能含有機密的檔案：<code>.env</code> 檔案（<code>.env.example</code> 等範本會保留）、<code>*.pem</code> 或 <code>id_rsa</code> 等金鑰、<code>.npmrc</code>、<code>.netrc</code>、<code>credentials.json</code>、<code>*.tfstate</code> 等。對話框會列出排除的檔案。這些路徑會寫入 <code>.git/info/exclude</code>，因此之後的提交也不會包含它們；你的檔案和 <code>.gitignore</code> 不會被修改。還不是 git 儲存庫的資料夾會以分支 <code>main</code> 初始化。</li>
+  <li>點選 <span class="docs-ui">下一步</span>，確認儲存庫、可見性和推送，然後點選 <span class="docs-ui">建立</span>。儲存庫一律為私人。它會成為該資料夾的 <code>origin</code>，並推送資料夾的提交。</li>
+</ol>
+<p>以下情況 Ferret 不會建立儲存庫：資料夾已有 <code>origin</code>、位於另一個 git 儲存庫中（例如單一儲存庫中的某個資料夾）、同名儲存庫已存在、第一個提交將包含超過 20,000 個檔案、git 沒有設定使用者名稱和電子郵件，或專案是透過 SSH 開啟的。</p>
+<p>預設選擇的擁有者是你自己的帳號。要改用組織，請在 <span class="docs-ui">設定 → 常用服務的 CLI</span> 中設定 <span class="docs-ui">新儲存庫的擁有者（GitHub）</span>（<code>settings.json</code> 中的 <code>github.defaultOwner</code>）。</p>
+
 <!-- @save-url cb8cafed1c -->
 ## 儲存 URL
 <ol class="docs-steps">

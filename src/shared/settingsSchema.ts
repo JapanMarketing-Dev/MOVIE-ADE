@@ -267,7 +267,8 @@ export const SETTINGS_SCHEMA: JsonSchema = {
         startupAgents: { type: 'array', description: 'Agent tabs opened automatically when a project opens, in order. Empty means one plain shell. They start with the same arguments as agents you open yourself.', items: agentId },
         skipPermissions: bool(`Start Claude Code with ${AGENT_CATALOG.claude.yoloArgs} and Codex with ${AGENT_CATALOG.codex.yoloArgs}, added before your launch args, and mark registered project folders as trusted for both. Not added when your args already choose a permission mode. Turn off to start them in their normal mode.`, { default: true }),
         notify: bool('Show a system notification when all agents in a project have finished, or when an agent is waiting for a permission or an answer. Nothing is shown for the tab you are looking at. Clicking the notification opens that tab.', { default: false }),
-        restoreTerminals: bool('Remember terminal tabs (order, split, folder, agent and account) and the text on their screens, and bring them back when Ferret starts again and when you reopen a closed terminal (Cmd/Ctrl+Shift+T). Claude Code reopens with --continue and Codex with resume --last. Up to 2,000 lines per terminal are kept in Ferret\'s own data folder, never in the project. Turning this off deletes what was saved.', { default: true })
+        restoreTerminals: bool('Remember terminal tabs (order, split, folder, agent and account) and the text on their screens, and bring them back when Ferret starts again and when you reopen a closed terminal (Cmd/Ctrl+Shift+T). Claude Code reopens with --continue and Codex with resume --last. Up to 2,000 lines per terminal are kept in Ferret\'s own data folder, never in the project. Turning this off deletes what was saved.', { default: true }),
+        windowsShell: { type: 'string', description: 'Windows only: the shell for terminal tabs. powershell (default) uses PowerShell 7 (pwsh) when installed, otherwise Windows PowerShell, and keeps command history between tabs and restarts (Up arrow). cmd uses cmd.exe, which forgets history when a tab closes. Applies to tabs opened afterwards.', enum: ['powershell', 'cmd'], default: 'powershell' }
       }
     },
     agentAccounts: {
@@ -378,6 +379,14 @@ export const SETTINGS_SCHEMA: JsonSchema = {
           path: str('Absolute path of the unpacked extension folder (the folder with manifest.json). Packed .crx files are not supported.', { maxLength: 1000 }),
           enabled: bool('Load this extension. Omit for true.')
         }
+      }
+    },
+    github: {
+      type: 'object',
+      description: 'GitHub repositories created from a project (right-click a project > Create a private repository on GitHub). They are always private.',
+      additionalProperties: false,
+      properties: {
+        defaultOwner: str('Account or organization where new repositories go by default. Omit to use your own account. The list to choose from comes from gh (your account and your organizations).', { pattern: '^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$' })
       }
     },
     crashReports: bool('Send crash reports to Sentry. Reports never include API keys, file contents or recordings.', { default: true }),

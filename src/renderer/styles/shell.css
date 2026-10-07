@@ -488,7 +488,19 @@
   }
 
   .browser-toolbar__note .btn__label,
+  .browser-toolbar__share .btn__label,
   .browser-toolbar__source .btn__label {
+    display: none;
+  }
+}
+
+/* さらに狭いときは、ほかの場所からも操作できるものを隠し、隣のターミナルの上へはみ出させない
+   （外のブラウザで開く・拡張機能・共有は幅を広げれば戻る。文字で指摘は右上にもある） */
+@container pane (width < 520px) {
+  .browser-toolbar [data-testid='browser-open-external'],
+  .browser-toolbar .browser-toolbar__extensions,
+  .browser-toolbar .browser-toolbar__share,
+  .browser-toolbar .browser-toolbar__note {
     display: none;
   }
 }
@@ -2822,6 +2834,11 @@ button.sb-more__row:hover {
 
 .sb-new-review > svg {
   flex: none;
+}
+
+/* 「mtg を取り込む」は新しいレビューのすぐ下に詰めて置く */
+.sb-new-review--import {
+  margin-top: 0;
 }
 
 .sb-new-review__key {

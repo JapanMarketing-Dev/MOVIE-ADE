@@ -1,6 +1,6 @@
 import { BrowserExtensionsButton } from './BrowserExtensionsButton'
 import { useCallback, useEffect, useRef, useState, type FocusEvent, type PointerEvent, type ReactNode } from 'react'
-import { AppWindow, ArrowLeft, ArrowRight, CodeXml, Eraser, Globe, Hourglass, MicOff, Monitor, MousePointer2, PanelRight, Pause, Play, PenTool, Plus, Redo2, Square, TriangleAlert, Undo2 } from 'lucide-react'
+import { AppWindow, ArrowLeft, ArrowRight, CodeXml, Eraser, Globe, Hourglass, MessageSquarePlus, MicOff, Monitor, MousePointer2, PanelRight, Pause, Play, PenTool, Plus, Redo2, Square, TriangleAlert, Undo2 } from 'lucide-react'
 import { MicPopover, type FooterCapture } from './StatusBar'
 import { StatusPopover } from './StatusPopover'
 import { micDeviceName } from '../lib/micDevice'
@@ -109,6 +109,9 @@ export function FeedbackToolbar({
   color = DEFAULT_ANNOTATION_COLOR,
   onColorChange,
   onToggleRecording,
+  noteMode = false,
+  noteDisabled = false,
+  onToggleNote,
   onBackToEditor,
   paused = false,
   busy = false,
@@ -141,6 +144,10 @@ export function FeedbackToolbar({
   color?: AnnotationColor
   onColorChange?: (color: AnnotationColor) => void
   onToggleRecording: () => void
+  /** 文字で指摘（録画の右。録画していないときに枠と文字で指摘する。音声の代わり） */
+  noteMode?: boolean
+  noteDisabled?: boolean
+  onToggleNote?: () => void
   onBackToEditor: () => void
   paused?: boolean
   busy?: boolean
@@ -259,6 +266,7 @@ export function FeedbackToolbar({
     target: { label: t('feedback.target', { target: captureTargetLabel(target) }) },
     extensions: { label: t('browserExtensions.buttonTitle') },
     record: { label: recording ? t('feedback.stop') : t('feedback.record'), keys: KEYS.record },
+    note: { label: noteMode ? t('textNote.button.stopTitle') : t('textNote.button.title') },
     pause: { label: paused ? t('feedback.resume') : t('feedback.pause') },
     browse: { label: t('feedback.browse'), keys: KEYS.browse, hold: ['Escape'] },
     pen: { label: t('feedback.pen'), keys: KEYS.pen, hold: KEYS.holdPen, note: t('feedback.whileHeld') },
@@ -409,6 +417,19 @@ export function FeedbackToolbar({
             disabled={busy}
             onClick={onToggleRecording}
             data-testid="feedback-record"
+          />
+        )}
+        {onToggleNote && slot(
+          'note',
+          <IconButton
+            label={noteMode ? t('textNote.button.stopTitle') : t('textNote.button.label')}
+            size="sm"
+            className="fb-btn"
+            selected={noteMode}
+            disabled={noteDisabled && !noteMode}
+            onClick={onToggleNote}
+            data-testid="feedback-text-note"
+            icon={<MessageSquarePlus size={18} strokeWidth={1.75} />}
           />
         )}
         {slot(

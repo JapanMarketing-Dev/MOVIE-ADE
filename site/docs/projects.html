@@ -181,6 +181,18 @@
 <p>Terminals open in the project folder, and reviews are saved under <code>&lt;project&gt;/.ferret/</code>.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="github-repo">
+        <h2 id="github-repo"><a class="docs-anchor" href="#github-repo" aria-label="Link to Create a private GitHub repository">#</a>Create a private GitHub repository</h2>
+        <p>To put a project that isn't on GitHub yet into a private repository, right-click it in the sidebar and choose <span class="docs-ui">Create private GitHub repo</span>. It uses your <code>gh</code> login, so <code>gh</code> must be installed and signed in. Only GitHub is supported, not GitLab.</p>
+<ol class="docs-steps">
+  <li>Pick the <span class="docs-ui">Owner</span> (your account or one of your organizations) and the <span class="docs-ui">Repository name</span> (suggested from the folder name; letters, numbers, <code>.</code>, <code>_</code> and <code>-</code>). You can add a <span class="docs-ui">Description (optional)</span>.</li>
+  <li>If the folder has no commits yet, <span class="docs-ui">Make a first commit and push it</span> makes a first commit without the files that <code>.gitignore</code> ignores and without files that may hold secrets: <code>.env</code> files (templates such as <code>.env.example</code> are kept), keys such as <code>*.pem</code> or <code>id_rsa</code>, <code>.npmrc</code>, <code>.netrc</code>, <code>credentials.json</code>, <code>*.tfstate</code> and similar. The dialog lists what is left out. Those paths are added to <code>.git/info/exclude</code>, so they stay out of later commits too; your files and <code>.gitignore</code> are not changed. A folder that isn't a git repository yet is initialized with the branch <code>main</code>.</li>
+  <li>Click <span class="docs-ui">Next</span>, check the repository, visibility and push, then click <span class="docs-ui">Create</span>. The repository is always private. It becomes the folder's <code>origin</code>, and the folder's commits are pushed.</li>
+</ol>
+<p>Ferret doesn't create the repository when the folder already has an <code>origin</code>, when it is inside another git repository (for example a folder in a monorepo), when a repository with that name already exists, when the first commit would hold more than 20,000 files, when git has no user name and email, or when the project is opened over SSH.</p>
+<p>The owner picked first is your own account. To use an organization instead, set <span class="docs-ui">Owner for new repositories (GitHub)</span> in <span class="docs-ui">Settings → Service CLIs</span> (<code>github.defaultOwner</code> in <code>settings.json</code>).</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="save-url">
         <h2 id="save-url"><a class="docs-anchor" href="#save-url" aria-label="Link to Save URLs">#</a>Save URLs</h2>
         <ol class="docs-steps">
@@ -270,6 +282,7 @@
       <p class="docs-toc-heading">On this page</p>
       <ul>
         <li><a href="#add-project">Add a project</a></li>
+        <li><a href="#github-repo">Create a private GitHub repository</a></li>
         <li><a href="#save-url">Save URLs</a></li>
         <li><a href="#review-targets">Review targets panel</a></li>
         <li><a href="#switch-env">Open and switch environments</a></li>

@@ -11,6 +11,7 @@ import { reportHandled } from '@shared/report'
 import { normalizeUrl } from '@shared/projectUrl'
 import { isProjectPageUrl } from '@shared/htmlPreview'
 import { restorableHistory } from '@shared/projectSession'
+import { isAbortedNavigation } from '@shared/browserNav'
 import {
   createExternalOpener,
   displayOrigin,
@@ -203,6 +204,11 @@ interface BrowserTab {
   loadError: string | null
   /** 利用者がこのタブに最後に本物の入力をした時刻（ページが新しいタブを開くときの許可） */
   gestureAt: number
+  /**
+   * 閉じ始めた（destroyTab）。ビューは外し、webContents の close は次のティック。
+   * 印の付いたタブは、前に出す・配置・エミュレーションの対象にしない（閉じかけのビューを触らない。0.4.19 の Windows のクラッシュの候補）
+   */
+  destroyed: boolean
 }
 
 export class EmbeddedBrowser {
@@ -372,6 +378,8 @@ export class EmbeddedBrowser {
       const history = restorableHistory(saved.entries, saved.index, (url) => isNavigableUrl(url) && isTypedNavigationAllowed(url))
       if (history) {
         void wc.navigationHistory.restore(history).then(() => this.emitState()).catch((err: unknown) => {
+          // 次の読み込み・タブの入れ替えで中断された（ERR_ABORTED）・閉じたタブは想定内。送らず、開き直しもしない（FERRET-1R）
+          if (isAbortedNavigation(err) || wc.isDestroyed()) return
           reportHandled(err, { area: 'browser', op: 'restore tab history' })
           if (isRecordableTabUrl(saved.url)) void this.load(wc, saved.url).then(() => this.emitState())
         })
@@ -412,7 +420,7 @@ export class EmbeddedBrowser {
         webSecurity: true
       }
     })
-    const tab: BrowserTab = { id: nextTabId(++this.tabCounter), view, rendererReady: false, emulating: false, loadError: null, gestureAt: 0 }
+    const tab: BrowserTab = { id: nextTabId(++this.tabCounter), view, rendererReady: false, emulating: false, loadError: null, gestureAt: 0, destroyed: false }
     view.setBackgroundColor(this.background)
     // 映した映像・拡張機能のポップアップより下に置く（いちばん下のタブの位置に差し込む）
     const children = window.contentView.children ?? []
@@ -516,7 +524,7 @@ export class EmbeddedBrowser {
 
   /** 前に出ているタブ */
   private get activeTab(): BrowserTab | undefined {
-    return this.tabs.find((tab) => tab.id === this.activeId)
+    return this.tabs.find((tab) => tab.id === this.activeId && !tab.destroyed)
   }
 
   private get view(): WebContentsView | null {
@@ -615,18 +623,38 @@ export class EmbeddedBrowser {
     this.retired.clear()
   }
 
+  /**
+   * タブを閉じる。先に印を付けて隠し、ウインドウから外す（以後どの処理も触らない）。webContents の close は次のティックに回す
+   * （外す処理と close を同じ流れで重ねない。プロジェクトの切り替え・タブを閉じる操作のどちらもここを通る）
+   */
   private destroyTab(tab: BrowserTab): void {
+    if (tab.destroyed) return
+    tab.destroyed = true
     const wc = tab.view.webContents
     try {
+      // 録画が使っているタブは、録画が終わるまで中身を残す（隠すと録っている映像が止まるので、表示のまま外すだけ）
+      const keep = !wc.isDestroyed() && (this.keepClosedTab?.(wc) ?? false)
+      if (!wc.isDestroyed() && !keep) {
+        tab.view.setVisible(false)
+        tab.view.setBounds({ x: 0, y: 0, width: 0, height: 0 })
+      }
       if (this.window && !this.window.isDestroyed()) this.window.contentView.removeChildView(tab.view)
-      if (!wc.isDestroyed()) {
-        this.onTabClosed?.(wc)
-        if (this.keepClosedTab?.(wc)) this.retired.add(wc)
-        else wc.close()
+      if (wc.isDestroyed()) return
+      this.onTabClosed?.(wc)
+      if (keep) {
+        this.retired.add(wc)
+        return
       }
     } catch (err) {
       reportHandled(err, { area: 'browser', op: 'close tab' })
     }
+    setImmediate(() => {
+      try {
+        if (!wc.isDestroyed()) wc.close()
+      } catch (err) {
+        reportHandled(err, { area: 'browser', op: 'close tab' })
+      }
+    })
   }
 
   /** ページのキー（⌘T・⌘W・⌘1〜9・Ctrl+Tab） */
@@ -773,7 +801,7 @@ export class EmbeddedBrowser {
   private placeViews(): void {
     // 前に出ていないタブは隠す（ページはそのまま。切り替えても読み込み直さない）
     for (const tab of this.tabs) {
-      if (tab.id === this.activeId || tab.view.webContents.isDestroyed()) continue
+      if (tab.id === this.activeId || tab.destroyed || tab.view.webContents.isDestroyed()) continue
       tab.view.setVisible(false)
       tab.view.setBounds({ x: 0, y: 0, width: 0, height: 0 })
     }
@@ -829,7 +857,7 @@ export class EmbeddedBrowser {
    */
   private applyEmulation(tab: BrowserTab): void {
     const wc = tab.view.webContents
-    if (wc.isDestroyed() || !tab.rendererReady) return
+    if (tab.destroyed || wc.isDestroyed() || !tab.rendererReady) return
     try {
       if (this.viewport === 'mobile') {
         if (tab.emulating) return
@@ -871,8 +899,7 @@ export class EmbeddedBrowser {
     try {
       await wc.loadURL(url)
     } catch (err) {
-      const code = (err as { errno?: number }).errno
-      if (code !== -3) console.warn(`[browser] 遷移できませんでした: ${url}`, err)
+      if (!isAbortedNavigation(err)) console.warn(`[browser] 遷移できませんでした: ${url}`, err)
     }
   }
 

@@ -2,10 +2,11 @@ import { delay } from '@shared/delay'
 import { shellQuote, sshShellSpec, type SshTarget } from '@shared/sshCommand'
 import { execFile, execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { win32 } from 'node:path'
 import { promisify } from 'node:util'
 import { homedir } from 'node:os'
 import type { IPty } from 'node-pty'
-import { type TerminalAttachInfo, type TerminalCreateOptions, type TerminalSessionInfo, type TerminalSize, type TerminalTabInfo, type TuiAgent } from '@shared/types'
+import { type TerminalAttachInfo, type TerminalCreateOptions, type TerminalSessionInfo, type TerminalSize, type TerminalTabInfo, type TuiAgent, type WindowsShell } from '@shared/types'
 import { buildAgentLaunchCommand, startupShellForPath } from '@shared/agentLaunch'
 import { agentForProcess, agentLabel, findCustomAgent, isBuiltinAgent } from '@shared/agentCatalog'
 import { resolveAgentLaunchPolicy } from '@shared/agentPolicy'
@@ -81,14 +82,32 @@ export interface ShellSpec {
 }
 
 /**
+ * Windows のシェル（設定の agents.windowsShell）。既定は PowerShell（7 の pwsh があればそれ、無ければ Windows に入っている 5.1）。
+ * cmd.exe は終了すると履歴を残さないので、新しいタブ・再起動のあとに ↑ で前のコマンドが出ない。PowerShell は PSReadLine が
+ * 履歴をファイルに残す（Windows Terminal・VS Code と同じ履歴）。PowerShell が見つからなければ cmd.exe。
+ * どれも OS の決まった場所の絶対パスだけを使う（PATH やプロジェクトのフォルダからは探さない。security-4 [1]）
+ */
+export function resolveWindowsShell(preference: WindowsShell, env: NodeJS.ProcessEnv, exists: (path: string) => boolean = existsSync): ShellSpec {
+  const systemRoot = env.SystemRoot && win32.isAbsolute(env.SystemRoot) ? env.SystemRoot : 'C:\\Windows'
+  const comspec = env.COMSPEC && win32.isAbsolute(env.COMSPEC) ? env.COMSPEC : win32.join(systemRoot, 'System32', 'cmd.exe')
+  if (preference === 'powershell') {
+    const programFiles = env.ProgramFiles && win32.isAbsolute(env.ProgramFiles) ? env.ProgramFiles : 'C:\\Program Files'
+    const candidates = [win32.join(programFiles, 'PowerShell', '7', 'pwsh.exe'), win32.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')]
+    const found = candidates.find((path) => exists(path))
+    if (found) return { file: found, args: ['-NoLogo'] }
+  }
+  return { file: comspec, args: [] }
+}
+
+/**
  * ユーザーのログインシェルを決める。3つのOSで動く書き方にする。
- * - Windows: COMSPEC（cmd.exe）。ログインシェルの概念がないので引数なし
+ * - Windows: 設定の windowsShell（既定は PowerShell。resolveWindowsShell）。ログインシェルの概念がないので引数は -NoLogo だけ
  * - macOS / Linux: $SHELL をログインシェル（-l）として起動し、
  *   .zprofile / .bash_profile で入るPATH（nvm、Homebrew など）を反映させる
  */
 function resolveShell(platform: NodeJS.Platform = process.platform): ShellSpec {
   if (platform === 'win32') {
-    return { file: process.env.COMSPEC ?? 'cmd.exe', args: [] }
+    return resolveWindowsShell(currentSettings().agents.windowsShell, process.env)
   }
   const fallback = platform === 'darwin' ? '/bin/zsh' : '/bin/bash'
   const shell = process.env.SHELL && process.env.SHELL.length > 0 ? process.env.SHELL : fallback
@@ -216,6 +235,8 @@ interface SpareShell {
   /** 起動したときの文脈（spareContext）。変わっていれば使わずに作り直す */
   context: string
   at: number
+  /** 起動したときの幅。渡すタブの幅と違えば、それまでの出力を流し直さない（claimSpare） */
+  cols: number
 }
 
 /** 先に起動しておいたシェルを使う上限（中継の合言葉の期限 24 時間より十分短く。古ければ捨てて普通に開く） */
@@ -244,6 +265,8 @@ export class TerminalManager {
    */
   private spare: SpareShell | null = null
   private spareStarting = false
+  /** 最後に開いた・合わせたタブの寸法。次のシェルはこの寸法で先に起動する（違う幅で起動すると、渡したときにプロンプトの行が崩れる） */
+  private lastSize: TerminalSize | null = null
   private spareTimer: NodeJS.Timeout | null = null
   private disposed = false
   /** 先に起動しておくか（main が有効にする。単体テストでは既定の無効のまま） */
@@ -335,7 +358,7 @@ export class TerminalManager {
     if (!this.spareEnabled() || this.spare || this.spareStarting || this.spareTimer) return
     this.spareTimer = setTimeout(() => {
       this.spareTimer = null
-      void this.startSpare(size).catch((err: unknown) => reportHandled(err, { area: 'terminal', op: 'prewarm shell' }))
+      void this.startSpare(this.lastSize ?? size).catch((err: unknown) => reportHandled(err, { area: 'terminal', op: 'prewarm shell' }))
     }, delayMs)
     this.spareTimer.unref?.()
   }
@@ -366,7 +389,7 @@ export class TerminalManager {
       const session: Session = { id, pty, buffer: [], bufferBytes: 0, timer: null,
         tail: '', readiness: new ComposerReadiness(), sending: false,
         info: { id, pid: pty.pid, cwd, title: '', agent: null }, history: new TerminalHistory(), unacked: 0, paused: false, spare: true }
-      this.spare = { session, cwd, context, at: Date.now() }
+      this.spare = { session, cwd, context, at: Date.now(), cols: Math.max(2, size.cols) }
       this.wirePty(session, null, null)
     } catch (err) {
       this.onSessionClosed?.(id)
@@ -388,6 +411,10 @@ export class TerminalManager {
     const { session } = spare
     session.spare = false
     this.sessions.set(session.id, session)
+    // 起動したときと幅が違えば、それまでの出力（前の幅で折り返したプロンプトと zsh の行末の印 %）は流し直さない。
+    // 幅を合わせると、シェルが SIGWINCH で今の行（プロンプト）を描き直す
+    const sameWidth = spare.cols === Math.max(2, size.cols)
+    if (!sameWidth) session.history = new TerminalHistory()
     try {
       session.pty.resize(Math.max(2, size.cols), Math.max(1, size.rows))
     } catch {
@@ -406,6 +433,7 @@ export class TerminalManager {
    */
   async create(options: TerminalCreateOptions): Promise<TerminalTabInfo> {
     const { size, agent } = options
+    this.lastSize = { cols: size.cols, rows: size.rows }
     const nodePty = await loadNodePty()
     // アカウントのログインは、プロジェクトではないフォルダで動かす（プロジェクトに置かれた同じ名前のコマンドを拾わない。security-4 [1]）
     const cwd = options.accountLogin ? homedir() : options.cwd && existsSync(options.cwd) ? options.cwd : this.cwd
@@ -781,13 +809,18 @@ export class TerminalManager {
     // Claude Code / Codex 以外は待機中の見え方を知らないので、確認待ちでなく、出力が落ち着いていれば送る
     // （Orca が個別の合図を持たないエージェントに使う quiet-render と同じ考え方）。結果は「確かめられない」と伝える
     const generic = kind === 'generic'
+    // 作業中の Agent にもそのまま送る（Claude Code・Codex は作業中に受けた入力を積んでおき、今の作業のあとに読む）。
+    // 入力欄が落ち着くのを待って断ることはしない。断るのは許可・質問の確認を出しているときだけ（本文が答えとして入ってしまう）。
+    // 起動の直後など入力欄がまだ出ていないときだけ、少し（最大 5 秒）待ってから送る
     const deadline = Date.now() + 5000
+    let queued = false
     while (session.readiness.status() !== 'ready') {
       const state = await this.agentState(id)
       if (state.state === 'blocked') return { ok: false, message: t('terminal.send.blocked') }
+      if (state.state === 'working') { queued = true; break }
       const quiet = session.screen && Date.now() - session.screen.at >= 1500
       if (quiet && (state.state === 'idle' || (generic && state.state === 'unknown'))) break
-      if (Date.now() >= deadline) return { ok: false, message: t('terminal.send.notReady') }
+      if (Date.now() >= deadline) break
       await delay(100)
     }
     session.sending = true
@@ -801,13 +834,14 @@ export class TerminalManager {
         } })
       if (result.ok) this.failover?.sent(id, text)
       if (result.ok && !result.submitted) return { ok: true, submitted: false, message: t('terminal.send.pastedNoEnter', { agent: agentLabel(agent, currentSettings().agents) }) }
-      return { ok: result.ok, submitted: result.ok, message: result.ok ? t(generic ? 'terminal.send.doneUnverified' : 'terminal.send.done') : result.message }
+      return { ok: result.ok, submitted: result.ok, message: result.ok ? t(queued ? 'terminal.send.queued' : generic ? 'terminal.send.doneUnverified' : 'terminal.send.done') : result.message }
     } finally { session.sending = false }
   }
 
   resize(id: string, size: TerminalSize): void {
     const session = this.sessions.get(id)
     if (!session) return
+    this.lastSize = { cols: size.cols, rows: size.rows }
     try {
       session.pty.resize(Math.max(2, size.cols), Math.max(1, size.rows))
     } catch (err) {
@@ -895,7 +929,12 @@ export class TerminalManager {
       }, escalateAfterMs)
       escalateTimer.unref?.()
 
-      const giveUpTimer = setTimeout(() => finish(false), timeoutMs)
+      // 打ち切るときは、終了の通知が来なかった PTY の出力用の Worker（Windows。main の中の V8 のスレッド）を片付けてから返す。
+      // 生きた Worker を残したまま Node の環境の解体に入らない（FERRET-1Q の候補）
+      const giveUpTimer = setTimeout(() => {
+        for (const entry of this.awaitingExit.values()) releaseWindowsConout(entry.pty)
+        finish(false)
+      }, timeoutMs)
       giveUpTimer.unref?.()
 
       this.exitWaiters.add(waiter)

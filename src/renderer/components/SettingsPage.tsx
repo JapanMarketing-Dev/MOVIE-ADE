@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { isValidOwner } from '@shared/repoCreate'
 import { Lock, Plus, Search, Star } from 'lucide-react'
 import { DEFAULT_AGENT_PREFERENCES, TUI_AGENT_LABEL, type AgentLaunchConfig, type AgentOption, type AgentPreferences, type BuiltinAgent, type CustomAgent, type CustomAgentId, type SttAvailability, type SttProvider, type TuiAgent } from '@shared/types'
 import { AGENT_CATALOG, BUILTIN_AGENTS, agentLabel, firstCommandWord, isBuiltinAgent } from '@shared/agentCatalog'
@@ -59,6 +60,31 @@ function Switch({ label, hint, checked, disabled, onChange }: { label: string; h
     <span className="st-row__label">{label}{hint}</span>
     <input type="checkbox" role="switch" className="st-switch" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
   </label>
+}
+
+/**
+ * プロジェクトの右クリックの「GitHub で private リポジトリを作る」の既定の置き場（settings.json の github.defaultOwner）。
+ * 空なら自分のアカウント。名前の形は main（@shared/repoCreate）が確かめ、違えば捨てる
+ */
+function GithubRepoDefaults() {
+  const t = useT()
+  const [owner, setOwner] = useState('')
+  useEffect(() => {
+    void window.ade.invoke('app:settings').then((s) => setOwner(s.github?.defaultOwner ?? '')).catch(() => undefined) // 読めなければ空のまま
+  }, [])
+  const valid = owner === '' || isValidOwner(owner)
+  const save = (next: string) => {
+    if (next !== '' && !isValidOwner(next)) return
+    void window.ade.invoke('settings:github', next ? { defaultOwner: next } : {}).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
+  }
+  return <div className="st-page__group" data-testid="settings-github-owner">
+    <SelectRow label={t('repoCreate.settings.owner')}>
+      <Field mono value={owner} placeholder={t('repoCreate.settings.ownerPlaceholder')} spellCheck={false} autoComplete="off" maxLength={39}
+        aria-label={t('repoCreate.settings.owner')} onChange={(e) => setOwner(e.target.value.trim())} onBlur={() => save(owner)} />
+    </SelectRow>
+    {!valid && <p className="st-note st-note--warn">{t('repoCreate.errors.owner')}</p>}
+    <p className="st-note">{t('repoCreate.settings.ownerNote')}</p>
+  </div>
 }
 
 function SelectRow({ label, children }: { label: string; children: ReactNode }) {
@@ -132,6 +158,17 @@ function AgentSection({ value, onChange, prompt, onPromptChange }: {
       <Switch label={t('settings.agents.notify')} checked={value.notify} onChange={(notify) => onChange({ ...value, notify })} />
       <p className="st-note">{t('settings.agents.notifyNote')}</p>
     </div>
+
+    {/* Windows のターミナルのシェル（既定は PowerShell。cmd.exe は履歴を残さない。main の resolveWindowsShell） */}
+    {window.ade.platform === 'win32' && <div data-testid="agent-windows-shell">
+      <SelectRow label={t('settings.agents.windowsShell')}>
+        <select className="st-select" aria-label={t('settings.agents.windowsShell')} value={value.windowsShell} onChange={(e) => onChange({ ...value, windowsShell: e.target.value === 'cmd' ? 'cmd' : 'powershell' })}>
+          <option value="powershell">PowerShell</option>
+          <option value="cmd">cmd.exe</option>
+        </select>
+      </SelectRow>
+      <p className="st-note">{t('settings.agents.windowsShellNote')}</p>
+    </div>}
 
     {/* ターミナルのタブと画面の文字を覚えて、再起動・閉じたあとに戻す（既定は入。切にすると main が書いたものも消す） */}
     <div data-testid="agent-restore-terminals">
@@ -425,6 +462,7 @@ export function SettingsPage({
     cli: <PageSection key="cli" id="cli" title={titleOf('cli')}>
       {/* よく使うサービスの CLI。ボタンで公式のコマンドを内蔵ターミナルの新しいタブで走らせる（src/renderer/components/CliToolsSection.tsx） */}
       <CliToolsSection />
+      <GithubRepoDefaults />
     </PageSection>,
     about: <PageSection key="about" id="about" title={titleOf('about')}>
       <AboutSection />

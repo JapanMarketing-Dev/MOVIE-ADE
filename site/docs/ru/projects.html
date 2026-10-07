@@ -181,6 +181,18 @@
 <p>Терминалы открываются в папке проекта, а ревью сохраняются в <code>&lt;project&gt;/.ferret/</code>.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="github-repo">
+        <h2 id="github-repo"><a class="docs-anchor" href="#github-repo" aria-label="Ссылка на «Создание приватного репозитория на GitHub»">#</a>Создание приватного репозитория на GitHub</h2>
+        <p>Чтобы поместить в приватный репозиторий проект, которого ещё нет на GitHub, щёлкните его правой кнопкой на боковой панели и выберите <span class="docs-ui">Создать приватный репозиторий на GitHub</span>. Используется ваш вход в <code>gh</code>, поэтому <code>gh</code> должен быть установлен и авторизован. Поддерживается только GitHub, не GitLab.</p>
+<ol class="docs-steps">
+  <li>Выберите <span class="docs-ui">Владелец</span> (ваш аккаунт или одна из ваших организаций) и <span class="docs-ui">Имя репозитория</span> (предлагается по имени папки; буквы, цифры, <code>.</code>, <code>_</code> и <code>-</code>). Можно добавить <span class="docs-ui">Описание (необязательно)</span>.</li>
+  <li>Если в папке ещё нет коммитов, <span class="docs-ui">Создать первый коммит и отправить его</span> создаёт первый коммит без файлов, которые игнорирует <code>.gitignore</code>, и без файлов, где могут быть секреты: файлов <code>.env</code> (шаблоны вроде <code>.env.example</code> остаются), ключей вроде <code>*.pem</code> или <code>id_rsa</code>, <code>.npmrc</code>, <code>.netrc</code>, <code>credentials.json</code>, <code>*.tfstate</code> и подобных. Окно показывает, что не вошло. Эти пути записываются в <code>.git/info/exclude</code>, поэтому они не попадут и в следующие коммиты; ваши файлы и <code>.gitignore</code> не меняются. Папка, которая ещё не является репозиторием git, инициализируется с веткой <code>main</code>.</li>
+  <li>Нажмите <span class="docs-ui">Далее</span>, проверьте репозиторий, видимость и отправку, затем нажмите <span class="docs-ui">Создать</span>. Репозиторий всегда приватный. Он становится <code>origin</code> папки, и коммиты папки отправляются.</li>
+</ol>
+<p>Ferret не создаёт репозиторий, если у папки уже есть <code>origin</code>, если она находится внутри другого репозитория git (например, папка в монорепозитории), если репозиторий с таким именем уже существует, если в первом коммите было бы больше 20 000 файлов, если в git не заданы имя пользователя и почта, или если проект открыт по SSH.</p>
+<p>Сначала выбран ваш собственный аккаунт. Чтобы использовать организацию, задайте <span class="docs-ui">Владелец новых репозиториев (GitHub)</span> в <span class="docs-ui">Настройки → CLI сервисов</span> (<code>github.defaultOwner</code> в <code>settings.json</code>).</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="save-url">
         <h2 id="save-url"><a class="docs-anchor" href="#save-url" aria-label="Ссылка на «Сохранение URL»">#</a>Сохранение URL</h2>
         <ol class="docs-steps">
@@ -270,6 +282,7 @@
       <p class="docs-toc-heading">На этой странице</p>
       <ul>
         <li><a href="#add-project">Добавление проекта</a></li>
+        <li><a href="#github-repo">Создание приватного репозитория на GitHub</a></li>
         <li><a href="#save-url">Сохранение URL</a></li>
         <li><a href="#review-targets">Панель целей ревью</a></li>
         <li><a href="#switch-env">Открытие и переключение сред</a></li>

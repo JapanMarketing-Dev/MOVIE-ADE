@@ -1,15 +1,16 @@
 /// <reference types="electron-vite/node" />
 import { readFile } from 'node:fs/promises'
-import type { Session, WebContents } from 'electron'
+import { app, type Session, type WebContents } from 'electron'
 import mermaidScript from 'mermaid/dist/mermaid.min.js?asset'
 // 小さいページのスタイルとスクリプトは文字列として埋め込む（CSS は ?asset だと Vite の CSS 処理に取られる）
 import pageScript from './page.js?raw'
 import pageStyle from './page.css?raw'
+import mermaidBlockScript from './mermaidBlock.js?raw'
 import { PREVIEW_ASSET_HOST, PREVIEW_PROJECT_HOST, PREVIEW_SCHEME, previewKind, previewPathFromUrl } from '@shared/preview'
 import { readTextFile } from '../files'
 import { previewImageType, readPreviewImage } from './image'
 import { consumeRemoteImagesGrant, isRemoteImagesGrantRequest, issueRemoteImagesGrant } from './remoteGrant'
-import { previewCsp, REMOTE_IMAGES_PARAM, renderPreviewBody, renderPreviewMessage, renderPreviewPage } from './render'
+import { mermaidScriptUrl, previewCsp, REMOTE_IMAGES_PARAM, renderMermaidBlockPage, renderPreviewBody, renderPreviewMessage, renderPreviewPage } from './render'
 import { t } from '@shared/i18n'
 import { reportHandled } from '@shared/report'
 
@@ -22,17 +23,38 @@ import { reportHandled } from '@shared/report'
  * Mermaid は npm の同梱版を返す（CDN は使わない。オフラインでも描ける）。
  */
 
+/** 同梱の Mermaid の版付きの URL（アプリの版。更新すれば URL が変わるので、古いキャッシュを使わない） */
+// 版が取れない（Electron の外の単体テストなど）ときは版なしの URL（キャッシュさせない今までの形）
+const mermaidSrc = (): string => {
+  let version: string | undefined
+  try {
+    version = app.getVersion()
+  } catch {
+    version = undefined
+  }
+  return mermaidScriptUrl(version)
+}
+
+/**
+ * 版付きの URL で読んだ同梱の Mermaid は、その版の間ずっと同じなのでキャッシュしてよい（図ごと・ページごとに 5MB を読み直さない）。
+ * 中身はアプリに同梱したファイルだけで、利用者の入力・プロジェクトのファイルではない。ほかの応答は今までどおり no-store
+ */
+export const IMMUTABLE_ASSET_CACHE = 'public, max-age=31536000, immutable'
+
 /** 同梱のアセット。Mermaid（5MB 強）はファイルのまま置き、使うときだけ読む */
 const ASSETS: Record<string, { load: () => Promise<string | Buffer>; type: string }> = {
   'mermaid.js': { load: () => readFile(mermaidScript), type: 'text/javascript; charset=utf-8' },
   'preview.js': { load: async () => pageScript, type: 'text/javascript; charset=utf-8' },
-  'preview.css': { load: async () => pageStyle, type: 'text/css; charset=utf-8' }
+  'preview.css': { load: async () => pageStyle, type: 'text/css; charset=utf-8' },
+  // Markdown の編集画面の ```mermaid の図を1つだけ描くページ（renderer が sandbox の iframe に入れる。mermaidBlock.js）
+  'mermaid-block.html': { load: async () => renderMermaidBlockPage(mermaidSrc()), type: 'text/html; charset=utf-8' },
+  'mermaid-block.js': { load: async () => mermaidBlockScript, type: 'text/javascript; charset=utf-8' }
 }
 
-function respond(body: string | Buffer, type: string, status = 200, remoteImages = false): Response {
+function respond(body: string | Buffer, type: string, status = 200, remoteImages = false, cache = 'no-store'): Response {
   return new Response(typeof body === 'string' ? body : new Uint8Array(body), {
     status,
-    headers: { 'Content-Type': type, 'Content-Security-Policy': previewCsp(remoteImages), 'Cache-Control': 'no-store' }
+    headers: { 'Content-Type': type, 'Content-Security-Policy': previewCsp(remoteImages), 'Cache-Control': cache }
   })
 }
 
@@ -42,9 +64,12 @@ async function handle(request: Request, getRoot: () => string | null): Promise<R
   const url = new URL(request.url)
 
   if (url.hostname === PREVIEW_ASSET_HOST) {
-    const asset = ASSETS[url.pathname.replace(/^\/+/, '')]
+    const name = url.pathname.replace(/^\/+/, '')
+    const asset = ASSETS[name]
     if (!asset) return respond('Not found', 'text/plain', 404)
-    return respond(await asset.load(), asset.type)
+    // 同梱の Mermaid を今の版の URL で読んだときだけ、キャッシュしてよいと返す（違う版・版なしは no-store）
+    const cache = name === 'mermaid.js' && `${url.protocol}//${url.host}${url.pathname}${url.search}` === mermaidSrc() ? IMMUTABLE_ASSET_CACHE : 'no-store'
+    return respond(await asset.load(), asset.type, 200, false, cache)
   }
 
   const root = getRoot()
@@ -82,7 +107,7 @@ async function handle(request: Request, getRoot: () => string | null): Promise<R
   if (url.searchParams.get('fragment') === '1') return respond(body, HTML)
   // URL の値そのものは権限にしない。main が出した、この文書の使い切りの合言葉のときだけ https の画像を許す
   const remoteImages = consumeRemoteImagesGrant(url.searchParams.get(REMOTE_IMAGES_PARAM), path)
-  return respond(renderPreviewPage({ path, kind, body, remoteImages }), HTML, 200, remoteImages)
+  return respond(renderPreviewPage({ path, kind, body, remoteImages, mermaidSrc: mermaidSrc() }), HTML, 200, remoteImages)
 }
 
 /**

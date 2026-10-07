@@ -23,6 +23,17 @@
 <p>评审搜索框旁边的筛选按钮还可以设置 <span class="docs-ui">项目排序</span>：<span class="docs-ui">手动（拖动顺序）</span>、<span class="docs-ui">活动优先</span>（Agent 正在等你、正在工作或刚完成的项目排在前面）、<span class="docs-ui">最近使用</span>、<span class="docs-ui">名称</span> 或 <span class="docs-ui">添加时间</span>。在其他排序下拖动项目时，当前显示的顺序会成为手动顺序，排序也会切换为 <span class="docs-ui">手动（拖动顺序）</span>。点击项目行上的星标，或使用菜单中的 <span class="docs-ui">加星标</span>，可让项目在任何排序下都固定在列表顶部；选择 <span class="docs-ui">仅显示星标</span> 会隐藏其他项目。星标和排序在重启后依然保留。</p>
 <p>终端在项目文件夹中打开，审查保存在 <code>&lt;project&gt;/.ferret/</code> 下。</p>
 
+<!-- @github-repo 4596ca5d7c -->
+## 创建私有 GitHub 仓库
+<p>要把尚未放到 GitHub 上的项目放进私有仓库，在侧边栏中右键点击它并选择 <span class="docs-ui">在 GitHub 上创建私有仓库</span>。它使用你的 <code>gh</code> 登录，因此需要安装 <code>gh</code> 并登录。只支持 GitHub，不支持 GitLab。</p>
+<ol class="docs-steps">
+  <li>选择 <span class="docs-ui">所有者</span>（你的账号或你所属的组织）和 <span class="docs-ui">仓库名称</span>（根据文件夹名建议；字母、数字、<code>.</code>、<code>_</code> 和 <code>-</code>）。还可以添加 <span class="docs-ui">描述（可选）</span>。</li>
+  <li>如果文件夹还没有提交，<span class="docs-ui">创建首个提交并推送</span> 会创建首个提交，不包含 <code>.gitignore</code> 忽略的文件和可能含有机密的文件：<code>.env</code> 文件（<code>.env.example</code> 等模板会保留）、<code>*.pem</code> 或 <code>id_rsa</code> 等密钥、<code>.npmrc</code>、<code>.netrc</code>、<code>credentials.json</code>、<code>*.tfstate</code> 等。对话框会列出被排除的文件。这些路径会写入 <code>.git/info/exclude</code>，因此以后的提交也不会包含它们；你的文件和 <code>.gitignore</code> 不会被修改。还不是 git 仓库的文件夹会以分支 <code>main</code> 初始化。</li>
+  <li>点击 <span class="docs-ui">下一步</span>，确认仓库、可见性和推送，然后点击 <span class="docs-ui">创建</span>。仓库始终是私有的。它会成为该文件夹的 <code>origin</code>，并推送文件夹的提交。</li>
+</ol>
+<p>以下情况下 Ferret 不会创建仓库：文件夹已有 <code>origin</code>、位于另一个 git 仓库中（例如单仓库中的某个文件夹）、同名仓库已存在、首个提交将包含超过 20,000 个文件、git 没有设置用户名和邮箱，或项目是通过 SSH 打开的。</p>
+<p>默认选择的所有者是你自己的账号。要改用组织，请在 <span class="docs-ui">设置 → 常用服务的 CLI</span> 中设置 <span class="docs-ui">新仓库的所有者（GitHub）</span>（<code>settings.json</code> 中的 <code>github.defaultOwner</code>）。</p>
+
 <!-- @save-url cb8cafed1c -->
 ## 保存 URL
 <ol class="docs-steps">

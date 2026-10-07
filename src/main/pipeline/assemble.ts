@@ -201,7 +201,7 @@ export function assembleFromDraft(
     title: draftTitle(d),
     request: spokenText(d),
     status: 'decided' as const,
-    quotes: d.segments.map((s) => ({ speaker: s.speaker, t: s.t0, text: s.text })),
+    quotes: d.segments.map((s) => ({ speaker: s.speaker, t: s.t0, text: s.text, ...(s.speakerName ? { name: s.speakerName } : {}) })),
     frameTimes: d.frameTimes,
     annotationIds: d.annotationIds,
     draftIds: [d.id],

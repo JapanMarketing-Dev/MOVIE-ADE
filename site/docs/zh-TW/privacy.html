@@ -185,6 +185,9 @@
     <tr><td>下載模型</td><td>Hugging Face</td><td>檔案請求</td></tr>
     <tr><td><span class="docs-ui">整理</span></td><td>你的 Claude Code / Codex CLI，或你在 <code>organizer</code> 中設定的 LLM 端點</td><td>僅文字與操作記錄（不含圖片、音訊或影片）</td></tr>
     <tr><td>驗收檢查（判定模型，預設關閉）</td><td>你的 Agent 經由本機中繼送到 Ollama / Cloudflare / AI Gateway / TypeSafe / OpenAI / 你的 URL</td><td>Agent 送出的內容：意見文字、「完成條件」，以及 BEFORE/AFTER 螢幕截圖（僅限圖片模型）</td></tr>
+    <tr><td>為匯入的會議候選評分（判定模型，僅在開啟時）</td><td>Ferret 經過本機中繼，傳送到你設定的判定模型</td><td>每個候選的標題和請求、它來源的發言，以及對應的影片畫面（僅限能讀圖片的模型）</td></tr>
+    <tr><td>分享連結（僅在你建立時）</td><td><code>share.ferretade.dev</code>（由開發者營運的 Cloudflare Worker）</td><td>標題、頁面可見部分的截圖及其 URL 和標題，以及隨機安裝 ID（僅以帶金鑰的雜湊形式用於限制一個安裝能建立的連結數）。任何拿到連結的人都能看到截圖；對方的意見和選填的名字也會傳送到同一伺服器（參閱<a href="recording.html#share">分享連結</a>）</td></tr>
+    <tr><td><span class="docs-ui">在 GitHub 建立私人儲存庫</span>（僅在點選 <span class="docs-ui">建立</span> 時）</td><td>透過你的 <code>gh</code> 傳送到 GitHub</td><td>用你選擇的名稱和說明建立私人儲存庫，並推送資料夾的提交（Ferret 建立的第一個提交不包含 <code>.gitignore</code> 忽略的檔案和可能含有機密的檔案）</td></tr>
     <tr><td><span class="docs-ui">傳送給 Agent</span></td><td>你終端機中的 Agent</td><td>一則指向 <code>feedback.md</code> 的指示</td></tr>
     <tr><td>頁尾的用量（僅限 Claude Code 與 Codex）</td><td>Anthropic、ChatGPT</td><td>以你自己的登入發出的用量請求</td></tr>
     <tr><td>GitHub 加星提示</td><td>透過你的 <code>gh</code> 送到 GitHub</td><td>檢查你是否已為儲存庫加星，只有在你按下 <span class="docs-ui">在 GitHub 上加星</span> 時才會加星</td></tr>
@@ -205,7 +208,7 @@
         <h2 id="feedback"><a class="docs-anchor" href="#feedback" aria-label="連結至「從 App 傳送意見回饋」">#</a>從 App 傳送意見回饋</h2>
         <p>你可以在 Ferret 內傳送錯誤回報或想法，不需要 GitHub 帳號（側邊欄底部的 <span class="docs-ui">傳送意見</span>）。只有在你傳送時才會送出，並會成為 <a href="https://github.com/JapanMarketing-Dev/ferret/issues" target="_blank" rel="noopener noreferrer">JapanMarketing-Dev/ferret<span class="sr-only"> （在新分頁中開啟）</span></a> 中加上 <code>from-app</code> 標籤的<strong>公開</strong> issue。請勿包含任何你不會公開發表的內容。</p>
 <ul>
-  <li>App 會從你的電腦把內容送到一個小型中繼（由開發者營運的 Cloudflare Worker），由它用自己的 GitHub 權杖建立 issue。這個中繼是開發者唯一會收到你所寫內容的伺服器。</li>
+  <li>App 會從你的電腦把內容送到一個小型中繼（由開發者營運的 Cloudflare Worker），由它用自己的 GitHub 權杖建立 issue。除了你自己建立的<a href="recording.html#share">分享連結</a>，這個中繼是開發者唯一會收到你所寫內容的伺服器。</li>
   <li>會傳送：你的標題與文字、屬於錯誤或想法、App 版本，以及你附加的最多 3 張 PNG 或 JPEG 螢幕截圖。作業系統名稱與版本、CPU 架構與隨機安裝 ID 只有在你保留勾選時才會傳送。不會傳送：你的姓名、電子郵件、GitHub 帳號、專案檔案、錄影或意見。</li>
   <li>在建立 issue 之前，中繼會遮蔽看起來像金鑰或權杖的文字、電子郵件地址，以及主資料夾路徑中的使用者名稱，並避免 <code>@mentions</code> 通知任何人。它也會移除螢幕截圖中的位置資訊與其他中繼資料。不過仍請自行檢查你的文字：遮蔽無法攔截所有內容。</li>
   <li>中繼不會儲存你的 IP 位址。為了限制單一傳送者的發文頻率（每小時 5 則、每天 20 則），它會以帶金鑰的雜湊計算 IP 位址（以及安裝 ID，若有傳送），最多保留 24 小時後刪除。兩者都不會出現在 issue 中。</li>
@@ -224,7 +227,7 @@
       <ul>
         <li>錯誤類型與訊息，主資料夾路徑會顯示為 <code>~</code></li>
         <li>Stack trace（發生在 Ferret 程式碼的哪個位置）</li>
-        <li>原生當機時：只有哪個程序當機、結束原因（例如 <q>crashed</q> 或 <q>oom</q>）以及 App 版本</li>
+        <li>原生當機時：哪個程序當機、為何結束（例如 <q>crashed</q> 或 <q>oom</q>）、App 版本、當機的類型和發生當機的模組的檔名，以及位置：該模組內的位移、當機執行緒的堆疊上找到的模組位移（最多 20 個）、查詢該模組偵錯符號所需的 ID，以及執行緒名稱。也會傳送那次啟動中 Ferret 自身的最後幾個步驟（最多 30 個，例如結束或安裝更新）。絕不傳送記憶體內容、原始位址或檔案路徑</li>
         <li>作業系統名稱與版本、CPU 架構、Electron / Chrome / Node 版本、App 版本、螢幕大小、記憶體大小</li>
         <li>錯誤發生前的 App 生命週期事件（例如 <q>app.ready</q>），以及啟動失敗</li>
         <li>App 的哪個部分失敗：無法繪製的畫面區域（及其 React 元件名稱）、IPC 呼叫、無法啟動的終端機、當機或停止回應的程序，或載入失敗的 App 頁面</li>

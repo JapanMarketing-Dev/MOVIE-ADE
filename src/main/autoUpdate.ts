@@ -55,6 +55,11 @@ export interface AutoUpdateDeps {
    * 本物の入れ替えができない起動（E2E・開発版）では何もせず false（E2E の偽のインストーラーだけは呼ぶ）
    */
   installOnQuit(method: InstallMethod, path: string, file: VerifiedDownload): boolean
+  /**
+   * ［再起動して更新］で選んだ入れ替えを、app の quit で始める（Windows の NSIS。autoUpdateInstall.ts の runPendingInstall）。
+   * 選ばれていなければ false
+   */
+  runPendingInstall?(): boolean
   getAutoDownload(): boolean
   setAutoDownload(on: boolean): void
   emit(status: AutoUpdateStatus): void
@@ -304,7 +309,16 @@ export class AutoUpdater {
    */
   installOnQuit(): boolean {
     const method = this.deps.method
-    if (!method || method === 'deb' || !this.downloaded || this.progress.phase !== 'ready' || this.installing) return false
+    // ［再起動して更新］を押したあとの終了: 選んだ入れ替え（NSIS は後始末が済んだここで起動する）だけを走らせる
+    if (this.installing) {
+      try {
+        return this.deps.runPendingInstall?.() ?? false
+      } catch (err) {
+        this.deps.report(err, `auto update restart install: ${method}`)
+        return false
+      }
+    }
+    if (!method || method === 'deb' || !this.downloaded || this.progress.phase !== 'ready') return false
     if (!this.deps.getAutoDownload()) return false
     const { path, file } = this.downloaded
     this.installing = true

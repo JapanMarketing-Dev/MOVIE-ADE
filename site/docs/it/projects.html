@@ -181,6 +181,18 @@
 <p>I terminali si aprono nella cartella del progetto, e le revisioni vengono salvate in <code>&lt;project&gt;/.ferret/</code>.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="github-repo">
+        <h2 id="github-repo"><a class="docs-anchor" href="#github-repo" aria-label="Link a Creare un repository GitHub privato">#</a>Creare un repository GitHub privato</h2>
+        <p>Per mettere in un repository privato un progetto che non è ancora su GitHub, fai clic destro su di esso nella barra laterale e scegli <span class="docs-ui">Crea un repository privato su GitHub</span>. Usa il tuo accesso a <code>gh</code>, quindi <code>gh</code> deve essere installato e con l'accesso effettuato. È supportato solo GitHub, non GitLab.</p>
+<ol class="docs-steps">
+  <li>Scegli il <span class="docs-ui">Proprietario</span> (il tuo account o una delle tue organizzazioni) e il <span class="docs-ui">Nome del repository</span> (proposto dal nome della cartella; lettere, numeri, <code>.</code>, <code>_</code> e <code>-</code>). Puoi aggiungere una <span class="docs-ui">Descrizione (facoltativa)</span>.</li>
+  <li>Se la cartella non ha ancora commit, <span class="docs-ui">Crea un primo commit e fai il push</span> crea un primo commit senza i file ignorati da <code>.gitignore</code> e senza i file che possono contenere segreti: file <code>.env</code> (i modelli come <code>.env.example</code> restano), chiavi come <code>*.pem</code> o <code>id_rsa</code>, <code>.npmrc</code>, <code>.netrc</code>, <code>credentials.json</code>, <code>*.tfstate</code> e simili. La finestra elenca ciò che viene escluso. Questi percorsi vengono aggiunti a <code>.git/info/exclude</code>, così restano fuori anche dai commit successivi; i tuoi file e <code>.gitignore</code> non cambiano. Una cartella che non è ancora un repository git viene inizializzata con il branch <code>main</code>.</li>
+  <li>Fai clic su <span class="docs-ui">Avanti</span>, controlla repository, visibilità e push, poi fai clic su <span class="docs-ui">Crea</span>. Il repository è sempre privato. Diventa l'<code>origin</code> della cartella, e i commit della cartella vengono inviati.</li>
+</ol>
+<p>Ferret non crea il repository se la cartella ha già un <code>origin</code>, se si trova dentro un altro repository git (per esempio una cartella di un monorepo), se esiste già un repository con quel nome, se il primo commit conterrebbe più di 20.000 file, se git non ha nome utente ed email, o se il progetto è aperto via SSH.</p>
+<p>Il proprietario scelto per primo è il tuo account. Per usare un'organizzazione, imposta <span class="docs-ui">Proprietario dei nuovi repository (GitHub)</span> in <span class="docs-ui">Impostazioni → CLI dei servizi</span> (<code>github.defaultOwner</code> in <code>settings.json</code>).</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="save-url">
         <h2 id="save-url"><a class="docs-anchor" href="#save-url" aria-label="Link a Salvare gli URL">#</a>Salvare gli URL</h2>
         <ol class="docs-steps">
@@ -270,6 +282,7 @@
       <p class="docs-toc-heading">In questa pagina</p>
       <ul>
         <li><a href="#add-project">Aggiungere un progetto</a></li>
+        <li><a href="#github-repo">Creare un repository GitHub privato</a></li>
         <li><a href="#save-url">Salvare gli URL</a></li>
         <li><a href="#review-targets">Pannello dei target di revisione</a></li>
         <li><a href="#switch-env">Aprire e cambiare ambiente</a></li>

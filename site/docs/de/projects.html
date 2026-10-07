@@ -181,6 +181,18 @@
 <p>Terminals öffnen sich im Projektordner, und Reviews werden unter <code>&lt;project&gt;/.ferret/</code> gespeichert.</p>
       </section>
 
+      <section class="docs-section" aria-labelledby="github-repo">
+        <h2 id="github-repo"><a class="docs-anchor" href="#github-repo" aria-label="Link zu „Ein privates GitHub-Repository erstellen“">#</a>Ein privates GitHub-Repository erstellen</h2>
+        <p>Um ein Projekt, das noch nicht auf GitHub liegt, in ein privates Repository zu bringen, klicken Sie es in der Seitenleiste mit der rechten Maustaste an und wählen <span class="docs-ui">Privates Repository auf GitHub erstellen</span>. Dabei wird Ihre <code>gh</code>-Anmeldung verwendet; <code>gh</code> muss also installiert und angemeldet sein. Unterstützt wird nur GitHub, nicht GitLab.</p>
+<ol class="docs-steps">
+  <li>Wählen Sie den <span class="docs-ui">Besitzer</span> (Ihr Konto oder eine Ihrer Organisationen) und den <span class="docs-ui">Repository-Name</span> (vorgeschlagen aus dem Ordnernamen; Buchstaben, Ziffern, <code>.</code>, <code>_</code> und <code>-</code>). Eine <span class="docs-ui">Beschreibung (optional)</span> können Sie hinzufügen.</li>
+  <li>Hat der Ordner noch keine Commits, erstellt <span class="docs-ui">Ersten Commit erstellen und pushen</span> einen ersten Commit ohne die von <code>.gitignore</code> ignorierten Dateien und ohne Dateien, die Geheimnisse enthalten können: <code>.env</code>-Dateien (Vorlagen wie <code>.env.example</code> bleiben drin), Schlüssel wie <code>*.pem</code> oder <code>id_rsa</code>, <code>.npmrc</code>, <code>.netrc</code>, <code>credentials.json</code>, <code>*.tfstate</code> und Ähnliches. Der Dialog listet auf, was weggelassen wird. Diese Pfade werden in <code>.git/info/exclude</code> eingetragen und bleiben so auch aus späteren Commits heraus; Ihre Dateien und <code>.gitignore</code> werden nicht geändert. Ein Ordner, der noch kein git-Repository ist, wird mit dem Branch <code>main</code> initialisiert.</li>
+  <li>Klicken Sie auf <span class="docs-ui">Weiter</span>, prüfen Sie Repository, Sichtbarkeit und Push und klicken Sie dann auf <span class="docs-ui">Erstellen</span>. Das Repository ist immer privat. Es wird zum <code>origin</code> des Ordners, und die Commits des Ordners werden gepusht.</li>
+</ol>
+<p>Ferret erstellt das Repository nicht, wenn der Ordner bereits ein <code>origin</code> hat, in einem anderen git-Repository liegt (etwa ein Ordner in einem Monorepo), ein Repository mit diesem Namen schon existiert, der erste Commit mehr als 20.000 Dateien enthielte, git weder Benutzername noch E-Mail hat oder das Projekt über SSH geöffnet ist.</p>
+<p>Als Besitzer ist zuerst Ihr eigenes Konto gewählt. Um stattdessen eine Organisation zu verwenden, stellen Sie <span class="docs-ui">Besitzer neuer Repositorys (GitHub)</span> unter <span class="docs-ui">Einstellungen → Dienst-CLIs</span> ein (<code>github.defaultOwner</code> in <code>settings.json</code>).</p>
+      </section>
+
       <section class="docs-section" aria-labelledby="save-url">
         <h2 id="save-url"><a class="docs-anchor" href="#save-url" aria-label="Link zu „URLs speichern“">#</a>URLs speichern</h2>
         <ol class="docs-steps">
@@ -270,6 +282,7 @@
       <p class="docs-toc-heading">Auf dieser Seite</p>
       <ul>
         <li><a href="#add-project">Projekt hinzufügen</a></li>
+        <li><a href="#github-repo">Ein privates GitHub-Repository erstellen</a></li>
         <li><a href="#save-url">URLs speichern</a></li>
         <li><a href="#review-targets">Bereich „Review-Ziele“</a></li>
         <li><a href="#switch-env">Umgebungen öffnen und wechseln</a></li>

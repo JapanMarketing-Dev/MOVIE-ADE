@@ -26,7 +26,8 @@
       mermaidLoading ||
       new Promise(function (resolve, reject) {
         var script = document.createElement('script')
-        script.src = 'ade-preview://assets/mermaid.js'
+        // 版付きの URL（main がキャッシュしてよいと返す）。無ければ版なし
+        script.src = root.dataset.mermaidSrc || 'ade-preview://assets/mermaid.js'
         script.onload = function () {
           resolve(window.mermaid)
         }

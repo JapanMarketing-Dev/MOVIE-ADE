@@ -27,6 +27,8 @@ export interface TranscriptSegment {
    * マイク1本に複数人が入る場合に、speaker（self/other）だけでは表せない区別を保持する。
    */
   speakerLabel?: string
+  /** 取り込んだ mtg の文字起こしに書かれていた話者の名前（meeting/import.ts）。引用の名前（Quote.name）になる */
+  speakerName?: string
 }
 
 // ───────────────────────── 操作ログ ─────────────────────────
@@ -264,6 +266,8 @@ export interface Quote {
   speaker: Speaker
   t: number
   text: string
+  /** 取り込んだ mtg の話者の名前（TranscriptSegment.speakerName）。あれば自分・相手の代わりに出す */
+  name?: string
 }
 
 export interface OrganizedItem {
@@ -332,6 +336,8 @@ export interface FeedbackItem {
   annotationIds: string[]
   /** 送信対象に含めるか（REV-2。要確認を外せる） */
   include: boolean
+  /** 取り込んだ mtg の候補に、判定モデルが付けた確からしさ（@shared/meetingImport） */
+  meetingScore?: import('@shared/meetingImport').MeetingItemScore
 }
 
 export interface FeedbackDocument {

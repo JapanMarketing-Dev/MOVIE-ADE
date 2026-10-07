@@ -5,7 +5,7 @@ File e ambiente
 <!-- @lead b2a7619b5e -->
 Dove Ferret conserva i propri file, e le variabili d'ambiente che legge o imposta.
 
-<!-- @userdata 71b30d8c35 -->
+<!-- @userdata d8a259644b -->
 ## Cartella userData
 <p>I dati dell'app si trovano nella cartella <code>userData</code> di Electron. Il suo nome è fissato su <code>ade-movie</code> (non sul nome del prodotto), così i dati sopravvivono ai cambi di nome. Puoi sovrascriverla con <code>--user-data-dir=&lt;path&gt;</code>.</p>
 <table>
@@ -19,6 +19,7 @@ Dove Ferret conserva i propri file, e le variabili d'ambiente che legge o impost
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
 browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+feedback-share/     # share links you made (shares.bin; owner tokens encrypted with safeStorage)
 login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts

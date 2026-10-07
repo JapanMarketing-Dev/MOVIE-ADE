@@ -1,5 +1,8 @@
 import type { BrowserExtensionInfo, InstalledBrowserExtension } from './browserExtensions'
+import type { GithubPreferences, RepoCreateInfo, RepoCreateRequest, RepoCreateResult } from './repoCreate'
 import type { BrowserImportStatus, HistorySourceInfo, PageLogins } from './browserImport'
+import type { ShareCommentStatus, SharePage, ShareSnapshot, ShareSummaryInfo } from './feedbackShare'
+import type { MeetingImportProgress, MeetingImportRequest, MeetingMediaPick, MeetingScoreResult, MeetingTranscriptPick } from './meetingImport'
 import type { AgentNotifyOpen, AgentNotifyRequest } from './agentNotify'
 import type { FailoverLaunchRequest, FailoverNotice, LimitFailoverPrefs } from './failover'
 import type { CliToolStatus } from './cliTools'
@@ -253,6 +256,20 @@ export interface IpcRequests {
   'passwords:fill': (id: string) => number
   /** 資格情報が複数あるときのネイティブのメニュー（at はウインドウの中の位置）。選んだものを入れたら true、管理を選んだら 'manage' */
   'passwords:menu': (at: { x: number; y: number }) => boolean | 'manage'
+  /** ログイン無しで誰でも指摘を送れる共有リンク（src/main/feedbackShare/）。このプロジェクトの共有の一覧 */
+  'share:list': () => { shares: ShareSummaryInfo[]; persisted: boolean }
+  /** 押した直後の1回だけ、表示中のタブを撮って共有を作る */
+  'share:create': (input: { title: string; showOthers: boolean }) => ShareSummaryInfo
+  /** 押した直後の1回だけ、表示中のタブを撮って共有に足す */
+  'share:addPage': (shareId: string) => SharePage
+  /** 共有の中身と届いた指摘（静止画は data URL） */
+  'share:open': (shareId: string) => { snapshot: ShareSnapshot; images: Record<string, string> }
+  /** 指摘を断る・断ったのを戻す */
+  'share:setStatus': (shareId: string, commentId: string, status: Extract<ShareCommentStatus, 'new' | 'rejected'>) => void
+  /** 選んだ指摘をレビュー（文字で指摘と同じ形）に取り込む。取り込めるものが無ければ null */
+  'share:import': (shareId: string, commentIds: string[]) => { review: ReviewData; count: number } | null
+  /** 共有を消す（相手の画面も見られなくなる） */
+  'share:delete': (shareId: string) => void
 
   'terminal:create': (options: TerminalCreateOptions) => TerminalTabInfo
   'terminal:write': (id: string, data: string) => void
@@ -367,6 +384,12 @@ export interface IpcRequests {
   /** CLI（各自の契約）か、API キーで直接（api:anthropic など） */
   'review:organize': (id: string, runner: OrganizeRunnerId) => ReviewData
   'review:frames': (id: string, itemId: string) => ReviewFrame[]
+  /** mtg の取り込み（@shared/meetingImport）。動画・文字起こしのファイルは main のダイアログで選ぶ（パスは画面へ渡さない） */
+  'meeting:pickMedia': () => MeetingMediaPick | null
+  'meeting:pickTranscript': () => MeetingTranscriptPick | null
+  'meeting:import': (request: MeetingImportRequest) => ReviewData
+  /** 取り込んだ候補を判定モデルで確かめ、点を付ける（判定を有効にしていなければ skipped） */
+  'meeting:score': (reviewId: string) => { review: ReviewData; result: MeetingScoreResult }
   'settings:capture': (preferences: CapturePreferences) => void
   'capture:devices': () => Array<{ id: string; label: string }>
   /** 空文字は解除。persisted は暗号化して保存できたか（false なら起動中だけ保持） */
@@ -471,6 +494,12 @@ export interface IpcRequests {
   'github:gitAction': (action: GitSyncAction, expectedHead: string | null) => GitActionResult
   /** 裏の fetch を、今のリモートに認める（true）・認めない（false）。押した直後だけ（security-7 [9]） */
   'github:autoFetchConsent': (allowed: boolean) => GitRepoStatus
+  /** 右クリックの「GitHub で private リポジトリを作る」の下調べ（何も変えない。src/main/github/createRepo.ts） */
+  'github:repoCreateInfo': (projectId: string) => RepoCreateInfo
+  /** private のリポジトリを作り、このフォルダの origin にする（コミットがあれば push） */
+  'github:createPrivateRepo': (projectId: string, request: RepoCreateRequest) => RepoCreateResult
+  /** 新しいリポジトリの既定の置き場（settings.json の github） */
+  'settings:github': (prefs: GithubPreferences) => void
 
   // GitHub の star のお願い（src/main/starPrompt.ts）。star するのは利用者が押したときだけ
   /** トーストの「Star」。gh で star できたら true（できなければ画面はブラウザの案内に切り替える） */
@@ -531,6 +560,7 @@ export interface IpcEvents {
   /** API の呼び出しを記録したあとの集計（フッターの使用量を更新する） */
   'usage:apiCallsChanged': (summary: ApiUsageSummary) => void
   'review:ready': (review: ReviewData) => void
+  'meeting:progress': (progress: MeetingImportProgress) => void
   /** 文字で指摘を足した（足した後のレビューと、その中の打った指摘の数）。画面はブラウザのまま */
   'note:added': (result: { review: ReviewData; count: number }) => void
   /** 文字で指摘の入・切を main が変えた（ページの Esc・録画の開始・プロジェクトの切り替え） */
@@ -662,6 +692,7 @@ export const IPC_REQUEST_CHANNELS = [
   'browser:state',
   'browserExtensions:list', 'browserExtensions:addFolder', 'browserExtensions:scanInstalled', 'browserExtensions:import', 'browserExtensions:setEnabled', 'browserExtensions:remove', 'browserExtensions:menu', 'browserExtensions:installFromStore', 'browserExtensions:addCrx',
   'browserImport:status', 'browserImport:importPasswords', 'browserImport:clearPasswords', 'browserImport:historySources', 'browserImport:importHistory', 'browserImport:clearHistory', 'browserImport:suggest', 'passwords:forPage', 'passwords:fill', 'passwords:menu',
+  'share:list', 'share:create', 'share:addPage', 'share:open', 'share:setStatus', 'share:import', 'share:delete',
   'terminal:create',
   'terminal:write',
   'terminal:resize',
@@ -685,10 +716,11 @@ export const IPC_REQUEST_CHANNELS = [
   'note:setMode',
   'annotation:undo',
   'annotation:redo',
-  'review:list', 'review:activity', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
+  'review:list', 'review:activity', 'review:label', 'review:delete', 'review:load', 'review:edit', 'review:progress', 'review:verdict', 'review:ngPrompt', 'review:resent', 'review:copy', 'review:folder', 'review:frames', 'review:organize', 'review:restore', 'meeting:pickMedia', 'meeting:pickTranscript', 'meeting:import', 'meeting:score', 'capture:model', 'capture:apiKey', 'capture:devices', 'settings:capture', 'capture:availability', 'capture:testConnection', 'settings:stt', 'settings:organizer', 'organize:testConnection', 'settings:decision', 'decision:testConnection', 'usage:apiCalls', 'usage:openApiLog', 'capture:whisperModels', 'capture:downloadModel', 'capture:cancelModelDownload',
   'capture:screenAccess', 'capture:sources', 'capture:setTarget', 'capture:openScreenSettings', 'capture:apps', 'capture:launchApp',
   'fs:list', 'fs:read', 'fs:write', 'fs:files', 'fs:search', 'fs:inspect', 'fs:readOffice', 'fs:gitStatus', 'fs:create', 'fs:copy', 'fs:move', 'fs:import', 'fs:pasteClipboard', 'fs:importMedia', 'fs:copyPath', 'fs:terminalDir', 'fs:rename', 'fs:trash', 'fs:reveal', 'fs:openExternal', 'editor:unsaved', 'editor:quitSave', 'preview:render',
   'github:open', 'github:repoStatus', 'github:autoFetch', 'github:gitAction', 'github:autoFetchConsent',
+  'github:repoCreateInfo', 'github:createPrivateRepo', 'settings:github',
   'star:star', 'star:openWeb', 'star:later', 'star:never', 'star:fromMenu',
   'feedback:environment', 'feedback:account', 'feedback:submit', 'feedback:captureWindow'
 ] as const satisfies readonly IpcRequestChannel[]
@@ -709,7 +741,7 @@ export const IPC_EVENT_CHANNELS = [
   'recording:status',
   'recording:tracksChanged',
   'recording:level',
-  'recording:warning', 'transcript:status', 'transcript:segments', 'capture:targetChanged', 'annotation:history', 'annotation:shortcut', 'capture:modelProgress', 'usage:apiCallsChanged', 'review:ready', 'review:progressChanged',
+  'recording:warning', 'transcript:status', 'transcript:segments', 'capture:targetChanged', 'annotation:history', 'annotation:shortcut', 'capture:modelProgress', 'usage:apiCallsChanged', 'review:ready', 'review:progressChanged', 'meeting:progress',
   'note:added', 'note:mode', 'note:error',
   'fs:changed',
   'theme:changed',

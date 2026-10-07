@@ -5,7 +5,7 @@
 <!-- @lead b2a7619b5e -->
 Где Ferret хранит свои файлы и какие переменные окружения он читает или задаёт.
 
-<!-- @userdata 71b30d8c35 -->
+<!-- @userdata d8a259644b -->
 ## Папка userData
 <p>Данные приложения хранятся в папке <code>userData</code> Electron. Её имя зафиксировано как <code>ade-movie</code> (а не название продукта), поэтому данные сохраняются при переименованиях. Её можно переопределить параметром <code>--user-data-dir=&lt;path&gt;</code>.</p>
 <table>
@@ -19,6 +19,7 @@
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
 browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+feedback-share/     # share links you made (shares.bin; owner tokens encrypted with safeStorage)
 login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts

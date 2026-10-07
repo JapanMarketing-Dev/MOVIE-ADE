@@ -289,7 +289,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   <li>Click <span class="docs-ui">Send to Agent</span>. By default (<span class="docs-ui">Auto (current tab or a running agent)</span>) it goes to the agent in the current terminal tab, or to one that is running. Use the arrow next to the button (<span class="docs-ui">Choose the agent to send to</span>) to pick a specific agent or tab.</li>
   <li>Ferret writes the instruction into the agent's input and submits it. Follow progress in the terminal.</li>
 </ol>
-<p>If no agent is running, Ferret starts one first and sends as soon as it is ready. Nothing is sent while the agent is waiting for a permission answer. Answer in the terminal first.</p>
+<p>If no agent is running, Ferret starts one first and sends as soon as it is ready. If the agent is busy working, the instruction is sent anyway and the agent reads it after its current task. Nothing is sent while the agent is waiting for a permission or an answer. Answer in the terminal first.</p>
 <p><span class="docs-ui">Copy for Agent</span> puts the same instruction on the clipboard for an agent running elsewhere (another terminal, IDE, or app). Only findings toggled to <span class="docs-ui">Send</span> are addressed. The video is never included.</p>
       </section>
 

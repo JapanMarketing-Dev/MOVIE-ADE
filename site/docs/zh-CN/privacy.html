@@ -185,6 +185,9 @@
     <tr><td>模型下载</td><td>Hugging Face</td><td>文件请求</td></tr>
     <tr><td><span class="docs-ui">整理</span></td><td>你的 Claude Code / Codex CLI，或你在 <code>organizer</code> 中设置的 LLM 端点</td><td>仅文本和操作日志（不含图片、音频或视频）</td></tr>
     <tr><td>验收检查（判定模型，默认关闭）</td><td>你的 Agent，经由本地中继，发送到 Ollama / Cloudflare / AI Gateway / TypeSafe / OpenAI / 你的 URL</td><td>Agent 发送的内容：反馈文本、“完成条件”以及 BEFORE/AFTER 截图（仅限图像模型）</td></tr>
+    <tr><td>为导入的会议候选打分（判定模型，仅在打开时）</td><td>Ferret 经过本地中继，发送到你设置的判定模型</td><td>每个候选的标题和请求、它来源的发言，以及对应的视频画面（仅限能读图片的模型）</td></tr>
+    <tr><td>分享链接（仅在你创建时）</td><td><code>share.ferretade.dev</code>（由开发者运行的 Cloudflare Worker）</td><td>标题、页面可见部分的截图及其 URL 和标题，以及随机安装 ID（仅以带密钥的哈希形式用于限制一个安装能创建的链接数）。任何拿到链接的人都能看到截图；对方的意见和可选的名字也会发送到同一服务器（参见<a href="recording.html#share">分享链接</a>）</td></tr>
+    <tr><td><span class="docs-ui">在 GitHub 上创建私有仓库</span>（仅在点击 <span class="docs-ui">创建</span> 时）</td><td>通过你的 <code>gh</code> 发送到 GitHub</td><td>用你选择的名称和描述创建私有仓库，并推送文件夹的提交（Ferret 创建的首个提交不包含 <code>.gitignore</code> 忽略的文件和可能含有机密的文件）</td></tr>
     <tr><td><span class="docs-ui">发送给 Agent</span></td><td>你终端中的 Agent</td><td>一条指向 <code>feedback.md</code> 的指令</td></tr>
     <tr><td>底部栏用量显示（仅 Claude Code 和 Codex）</td><td>Anthropic、ChatGPT</td><td>使用你自己的登录发出的用量请求</td></tr>
     <tr><td>GitHub 点星提示</td><td>通过你的 <code>gh</code> 发送到 GitHub</td><td>检查你是否已为仓库点星，只有在你点击 <span class="docs-ui">在 GitHub 上点星</span> 时才会点星</td></tr>
@@ -205,7 +208,7 @@
         <h2 id="feedback"><a class="docs-anchor" href="#feedback" aria-label="指向“从应用发送反馈”的链接">#</a>从应用发送反馈</h2>
         <p>你可以在 Ferret 内发送问题报告或想法，无需 GitHub 账户（侧边栏底部的 <span class="docs-ui">发送反馈</span>）。只有在你发送时才会发出，并且它会成为 <a href="https://github.com/JapanMarketing-Dev/ferret/issues" target="_blank" rel="noopener noreferrer">JapanMarketing-Dev/ferret<span class="sr-only"> （在新标签页中打开）</span></a> 中带有 <code>from-app</code> 标签的<strong>公开</strong> issue。请不要包含任何你不愿公开发布的内容。</p>
 <ul>
-  <li>应用从你的电脑将其发送到一个小型中继（由开发者运行的 Cloudflare Worker），中继使用自己的 GitHub 令牌创建 issue。在开发者的服务器中，只有这个中继会接收你写的内容。</li>
+  <li>应用从你的电脑将其发送到一个小型中继（由开发者运行的 Cloudflare Worker），中继使用自己的 GitHub 令牌创建 issue。除了你自己创建的<a href="recording.html#share">分享链接</a>，在开发者的服务器中，只有这个中继会接收你写的内容。</li>
   <li>会发送：你的标题和正文、它是问题还是想法、应用版本，以及你附加的最多 3 张 PNG 或 JPEG 截图。操作系统名称和版本、CPU 架构以及随机的安装 ID 只有在你保留勾选时才会发送。不会发送：你的姓名、电子邮件、GitHub 账户、项目文件、录制内容或反馈。</li>
   <li>在创建 issue 之前，中继会遮盖看起来像密钥或令牌的文本、电子邮件地址以及主文件夹路径中的用户名，并阻止 <code>@mentions</code> 通知任何人。它还会移除截图中的位置信息和其他元数据。即便如此，也请检查你的文字：遮盖无法覆盖所有情况。</li>
   <li>中继不会保存你的 IP 地址。为了限制同一发送者的发送频率（每小时 5 次、每天 20 次），它会对 IP 地址（以及安装 ID，如果已发送）的带密钥哈希计数，最多保留 24 小时后删除。两者都不会出现在 issue 中。</li>
@@ -224,7 +227,7 @@
       <ul>
         <li>错误类型和消息，其中主文件夹路径显示为 <code>~</code></li>
         <li>堆栈跟踪（错误发生在 Ferret 代码中的位置）</li>
-        <li>对于原生崩溃：仅包括哪个进程崩溃、退出原因（例如 <q>crashed</q> 或 <q>oom</q>）以及应用版本</li>
+        <li>原生崩溃时：哪个进程崩溃、为何退出（例如 <q>crashed</q> 或 <q>oom</q>）、应用版本、崩溃的类型和发生崩溃的模块的文件名，以及位置：该模块内的偏移量、崩溃线程的栈上找到的模块偏移量（最多 20 个）、查找该模块调试符号所需的 ID，以及线程名。还会发送那次启动中 Ferret 自身的最后几个步骤（最多 30 个，例如退出或安装更新）。绝不发送内存内容、原始地址或文件路径</li>
         <li>操作系统名称和版本、CPU 架构、Electron / Chrome / Node 版本、应用版本、屏幕尺寸、内存大小</li>
         <li>错误发生前不久的应用生命周期事件（例如 <q>app.ready</q>），以及启动失败</li>
         <li>应用中出错的部分：无法渲染的界面区域（及其 React 组件名称）、IPC 调用、无法启动的终端、崩溃或无响应的进程，或加载失败的应用页面</li>

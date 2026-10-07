@@ -67,14 +67,14 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
   <li><span class="docs-ui">整理</span>：使用你的 Claude Code 或 Codex 登录运行，或使用你配置的 LLM API。</li>
 </ul>
 
-<!-- @send d320d66d74 -->
+<!-- @send 137ad9da03 -->
 ## 发送给 Agent / 拷贝给 Agent
 {{clip:send|在反馈标签页中按“发送给 Agent”，发送给内置终端中的 Agent。}}
 <ol class="docs-steps">
   <li>点击 <span class="docs-ui">发送给 Agent</span>。默认（<span class="docs-ui">自动（当前标签页或正在运行的 Agent）</span>）会发送给当前终端标签页中的 Agent，或某个正在运行的 Agent。使用按钮旁边的箭头（<span class="docs-ui">选择要发送给的 Agent</span>）可以指定某个 Agent 或标签页。</li>
   <li>Ferret 会把指令写入 Agent 的输入框并提交。在终端中查看进度。</li>
 </ol>
-<p>如果没有正在运行的 Agent，Ferret 会先启动一个，并在它就绪后立即发送。当 Agent 正在等待权限确认的回答时，不会发送任何内容。请先在终端中回答。</p>
+<p>如果没有智能体在运行，Ferret 会先启动一个，准备好后立即发送。如果智能体正在工作，指令也会照常发送，智能体会在完成当前任务后读取。智能体在等待权限或回答时不会发送任何内容。请先在终端中回答。</p>
 <p><span class="docs-ui">拷贝给 Agent</span> 会把同样的指令放到剪贴板，供在其他地方（另一个终端、IDE 或应用）运行的 Agent 使用。只有切换为 <span class="docs-ui">发送</span> 的反馈会被处理。视频永远不会包含在内。</p>
 
 <!-- @verify 205abd35bc -->

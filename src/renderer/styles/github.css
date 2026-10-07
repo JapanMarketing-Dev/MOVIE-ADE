@@ -529,3 +529,55 @@
   font: inherit;
   text-decoration: underline;
 }
+
+/* mtg の取り込み（MeetingImportDialog.tsx） */
+.meeting-import__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.meeting-import__file {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  overflow-wrap: anywhere;
+}
+
+.meeting-import__text {
+  min-height: 140px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  resize: vertical;
+}
+
+.meeting-import__progress {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* プロジェクトの右クリックの「GitHub で private リポジトリを作る」（CreateRepoDialog.tsx） */
+.repo-create__summary {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+.repo-create__summary dt {
+  color: var(--color-text-muted);
+}
+.repo-create__summary dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.repo-create__secrets {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+  max-height: 120px;
+  overflow: auto;
+}

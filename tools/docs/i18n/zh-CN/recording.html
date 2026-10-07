@@ -83,15 +83,42 @@
 </ul>
 <p>一边讲解一边圈出位置：话语和标记会进入同一条反馈。画笔仅在录制时可用。录制时没有文字工具：请直接说出来，或之后用<a href="#type">文字反馈</a>输入。画笔、方框和颜色的按键见<a href="keyboard.html#drawing">键盘快捷键</a>。</p>
 
-<!-- @type 20180cf30c -->
+<!-- @type 43633faf9a -->
 ## 不说话，用文字反馈
-<p>不方便说话时，可以把反馈打出来。仅在编辑器模式的 <span class="docs-ui">浏览器</span> 标签页、且未在录制时可用。</p>
+<p>不方便说话时，可以改为输入反馈。在编辑模式和反馈模式下都可以使用，但不能在录制时使用。</p>
 <ol class="docs-steps">
-  <li>点击浏览器工具栏中的 <span class="docs-ui">文字反馈</span>。</li>
+  <li>点击 <span class="docs-ui">文字反馈</span>：它位于右上角录制按钮的右侧、浏览器工具栏，以及反馈模式的工具栏中。在编辑模式下会先切换到 <span class="docs-ui">浏览器</span> 标签页；在反馈模式下会关闭画笔和框。</li>
   <li>在页面上拖动，框住要改的位置；也可以点击某个元素，直接把它框住。</li>
   <li>输入要怎么改。{{keys:Enter}} 添加，{{keys:Shift+Enter}} 换行，{{keys:Esc}} 取消方框。使用输入法选字时按下的 Enter 不会添加。</li>
 </ol>
 <p>每一条都会成为一条反馈，附带页面和方框的图片、URL 以及框住的元素，和录制得到的反馈一样。它会添加到 <span class="docs-ui">反馈</span> 中打开的评审；没有打开的评审时会新建一个。浏览器保持在前面，可以连续添加多条；在没有方框时按 {{keys:Esc}}，或再次点击按钮即可结束。在浏览器位置显示的桌面应用或模拟器窗口上也能同样使用（不带 URL）。</p>
+
+<!-- @share 9d75d7e7e6 -->
+## 用分享链接收集任何人的反馈
+<p>想从不使用 Ferret 的人（客户、设计师、同事）那里获得反馈，就把分享链接发给他们。对方不需要账号，也不需要安装应用：在浏览器中打开链接，在页面截图上做标记，并写下需要修改的地方。名字可以不填。</p>
+<ol class="docs-steps">
+  <li>在内置浏览器中打开页面（仅限 http 或 https），然后点击浏览器工具栏中的 <span class="docs-ui">分享</span>。</li>
+  <li>可以填写标题（不填则使用页面标题），并打开 <span class="docs-ui">允许反馈者互相看到彼此的意见</span>。点击 <span class="docs-ui">为此页面创建分享链接</span>，Ferret 会截取页面的可见部分并上传，然后复制链接（<code>https://share.ferretade.dev/s/…</code>）。</li>
+  <li>要向同一个链接添加更多页面，打开另一个页面，然后在该分享上点击 <span class="docs-ui">添加此页面</span>（最多 20 个页面）。</li>
+</ol>
+<p>打开链接的人可以在截图上放置图钉、画框或用画笔绘制，并输入意见（最多 2,000 个字符）。<span class="docs-ui">Live page</span> 会在框架中打开原始页面供对方操作，<span class="docs-ui">Annotate live</span> 可以在上面放置图钉；当时查看的 URL 会随意见一起发送。有些网站拒绝在框架中加载，此时对方可以在新标签页中打开页面，只用文字发送意见。对方的页面会根据其浏览器显示为日语或英语。</p>
+<p>收到的意见会显示在同一个 <span class="docs-ui">分享</span> 窗口中。选择意见后点击 <span class="docs-ui">导入所选</span>，或对不需要的意见点击 <span class="docs-ui">拒绝</span>（<span class="docs-ui">撤销</span> 可以恢复）。导入的意见会像 <span class="docs-ui">文字反馈</span> 一样成为新审查中的发现：带有对方标记的截图成为 BEFORE 图片，并附上页面 URL 以及对方的名字和意见。在实时页面上放置的图钉会显示为围住整张截图的框，因为实时页面的滚动位置可能与截图不同。之后照常发送给智能体，并检查 BEFORE 和 AFTER。</p>
+<ul>
+  <li>任何拿到链接的人都能看到截图并发送意见，所以不要分享显示私密数据的页面。链接 30 天后过期。<span class="docs-ui">删除</span> 会立即删除链接、截图和意见。</li>
+  <li>一个链接最多接收 500 条意见，服务器还会限制发送意见和创建链接的频率。服务器不保存 IP 地址。</li>
+  <li>分享链接按项目保存。Ferret 用来读取和管理链接的所有者令牌会用 Electron 的 <code>safeStorage</code> 加密，保存在 <code>&lt;userData&gt;/feedback-share/shares.bin</code>。在开发版本和无法使用 <code>safeStorage</code> 的系统上，它只保留到 Ferret 退出为止（链接本身在过期前仍可使用）。</li>
+  <li>服务器的代码位于仓库的 <code>workers/feedback-share</code>。</li>
+</ul>
+
+<!-- @meeting 9194136fce -->
+## 导入会议
+<p>可以把关于产品的会议变成发现。在侧边栏中点击当前项目下的 <span class="docs-ui">导入会议</span>，然后添加录制、文字记录或两者：</p>
+<ul>
+  <li>录制：<span class="docs-ui">选择视频或音频…</span>（MP4、M4V、MOV、WebM、MKV、M4A、MP3、WAV、OGG 或 AAC）。它会被复制到新审查的文件夹中。</li>
+  <li>文字记录：<span class="docs-ui">打开文字记录文件…</span>（<code>.txt</code>、<code>.md</code>、<code>.vtt</code>、<code>.srt</code> 或 <code>.docx</code>），或直接粘贴。Ferret 能读取 WebVTT 和 SRT 字幕（Zoom、Google Meet）、时间行后接 <q>名字: 内容</q> 行的文字记录（Google Meet、Gemini）、<q>[00:12:34] 名字: 内容</q> 行、<q>名字 0:05</q> 行后接内容（Circleback、Otter）、只有 <q>名字: 内容</q> 的行，或普通段落。Ferret 不连接这些服务，只读取你提供的文字。</li>
+</ul>
+<p>点击 <span class="docs-ui">导入</span>。没有文字记录时，Ferret 会按 <span class="docs-ui">转写</span> 设置转写录制的音频（最长 3 小时的录制）。然后由 <span class="docs-ui">整理</span> 模型根据会议内容写出候选发现。如果录制有视频且文字记录带时间，每次发言时刻的画面会成为该发现的 BEFORE 图片。没有时间的文字记录也能导入，但没有画面。</p>
+<p>如果打开了<a href="agents.html#verify">判定模型</a>，Ferret 会对每个候选询问一次会议是否要求对产品做具体修改；在使用能读图片的模型且有画面时，还会询问画面是否显示了所讨论的界面。每个候选会显示 <span class="docs-ui">可能性</span> 百分比，低于 50% 的候选开始时为未勾选。这些调用从 Ferret 经过与智能体检查相同的本地中继，并计入相同的调用和费用上限。在你检查候选之前，不会向智能体发送任何内容：编辑、取消勾选或保留它们，然后照常发送。</p>
 
 <!-- @annotations-clear ea2e57b47b -->
 ## 标记何时消失
