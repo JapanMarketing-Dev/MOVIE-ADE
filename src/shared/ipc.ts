@@ -140,10 +140,6 @@ export interface IpcRequests {
   'project:update': (project: ProjectUpdate) => ProjectsState
   /** オーケストレーターにする・やめる。子のプロジェクトの subagent を書く・消す（src/main/orchestrator.ts） */
   'project:orchestrator': (id: string, enabled: boolean) => { children: Array<{ dir: string; name: string; agent: string }>; skipped: string[] }
-  /** オーケストレーターを新しく作って開く（<parent>/<name> を作り、members の既存のプロジェクトを入れる） */
-  'project:createOrchestrator': (name: string, parent: string, members: string[]) => WorkspaceState
-  /** プロジェクトをオーケストレーターに入れる。null なら外す（フォルダは動かさない） */
-  'project:setMembership': (projectId: string, orchestratorId: string | null) => ProjectsState
   /** 登録を外すだけ。フォルダは消さない */
   'project:remove': (id: string) => ProjectsState
   /** 中央のタブ・開いているファイル・表示中のレビューを覚える（URL は main が自分で覚える）。通知は送らない */
@@ -662,8 +658,6 @@ export const IPC_REQUEST_CHANNELS = [
   'project:switch',
   'project:update',
   'project:orchestrator',
-  'project:createOrchestrator',
-  'project:setMembership',
   'project:remove',
   'project:saveSession',
   'project:sshHosts',

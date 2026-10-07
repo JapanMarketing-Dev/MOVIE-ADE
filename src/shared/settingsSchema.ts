@@ -196,6 +196,7 @@ export const SETTINGS_SCHEMA: JsonSchema = {
           folderPath: str('Absolute path of the project folder.'),
           starred: { type: 'boolean', description: 'Starred (favorite). Starred projects stay at the top of the sidebar and can be shown alone.' },
           members: { type: 'array', items: { type: 'string', description: 'Id of a project put under this orchestrator.' }, description: 'Orchestrator only: ids of existing projects put under this orchestrator (their folders stay where they are). They appear under it in the sidebar and get a subagent like the subfolder projects.' },
+          editorWorkspace: { type: 'boolean', description: 'The built-in "All projects" entry (set by the app). Its hidden folder links every registered project as a subfolder; the agent started there hands work to each project\'s subagent.' },
           orchestrator: { type: 'boolean', description: 'Orchestrator. Projects in the subfolders (git repositories or registered projects) become Claude Code subagents in <folder>/.claude/agents/ferret-*.md, and reviews sent from here tell the agent to hand each finding to the right subagent. Ferret rewrites those files when the project is opened.' },
           addedAt: str('When the project was added (ISO 8601). Used by the "Date added" sort; set by the app.'),
           lastOpenedAt: str('When the project was last opened (ISO 8601). Used by the "Recently used" and "Active first" sorts; set by the app.'),

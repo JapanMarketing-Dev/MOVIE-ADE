@@ -92,7 +92,7 @@ function sanitizeProjects(raw: unknown): Project[] {
     const addedAt = stamp(r.addedAt)
     const lastOpenedAt = stamp(r.lastOpenedAt)
     return [{ id: r.id, name: str(r.name) ? r.name : r.folderPath.split(/[\\/]/).pop() ?? r.folderPath, folderPath: r.folderPath, kind, ...origin, urls, ...(session ? { session } : {}),
-      ...(r.starred === true ? { starred: true as const } : {}), ...(r.orchestrator === true ? { orchestrator: true as const } : {}), ...(Array.isArray(r.members) && r.members.some(str) ? { members: [...new Set(r.members.filter(str))] } : {}), ...(addedAt ? { addedAt } : {}), ...(lastOpenedAt ? { lastOpenedAt } : {}) }]
+      ...(r.starred === true ? { starred: true as const } : {}), ...(r.orchestrator === true ? { orchestrator: true as const } : {}), ...(r.editorWorkspace === true ? { editorWorkspace: true as const } : {}), ...(Array.isArray(r.members) && r.members.some(str) ? { members: [...new Set(r.members.filter(str))] } : {}), ...(addedAt ? { addedAt } : {}), ...(lastOpenedAt ? { lastOpenedAt } : {}) }]
   })
 }
 
