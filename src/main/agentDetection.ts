@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { errorKind, reportHandled } from '@shared/report'
 import { constants } from 'node:fs'
-import { access, readdir, stat } from 'node:fs/promises'
+import { access, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import {
@@ -52,14 +52,62 @@ let shellPathPromise: Promise<string> | null = null
 let shellPathFailedAt = 0
 let shellPathReported = false
 const SHELL_PATH_RETRY_MS = 60_000
+/** 前回の起動で取れた PATH があるときの、裏での取り直しの上限（誰も待たないので長めでよい） */
+const SHELL_PATH_REFRESH_TIMEOUT_MS = 10_000
+/** 前回の起動で取れたログインシェルの PATH（userData に覚える）。null は無い */
+let cachedShellPath: string | null = null
+/** 今回の起動で取れた PATH（取れたら以後はこれ） */
+let freshShellPath: string | null = null
+let shellPathCacheFile: string | null = null
 
-/** ログインシェルが持つ PATH（取れなければ空） */
-function loginShellPath(): Promise<string> {
+/** 覚えておける PATH か（壊れた・大きすぎる値は使わない） */
+const usableShellPath = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length < 64 * 1024 && !value.includes('\0')
+
+/**
+ * ターミナルを速く開くための先読み（起動直後に1回）。前回の起動で取れたログインシェルの PATH を読み、裏で取り直しを始める。
+ * ログインシェル（-il）の起動は利用者の rc 次第で 1〜3 秒かかり、Agent のタブを開くたびにそれを待っていた。
+ * 前回の値があれば、Agent のタブは待たずにそれで実行ファイルを探す（今回の値が取れたら以後はそれを使い、ファイルも更新する）
+ */
+export async function warmLoginShellPath(cacheFile: string): Promise<void> {
+  if (process.platform === 'win32') return
+  shellPathCacheFile = cacheFile
+  try {
+    const raw = JSON.parse(await readFile(cacheFile, 'utf8')) as { shell?: unknown; path?: unknown }
+    if (raw.shell === loginShell() && usableShellPath(raw.path) && freshShellPath === null) cachedShellPath = raw.path
+  } catch {
+    /* 初回の起動・壊れたファイル（想定内。今回取れたら作る） */
+  }
+  void loginShellPath()
+}
+
+/** 今は前回の起動の PATH で探している（今回の値がまだ取れていない）。見つからなければ fresh で探し直す価値がある */
+export function shellPathIsProvisional(): boolean {
+  return freshShellPath === null && cachedShellPath !== null
+}
+
+function loginShell(): string {
+  return process.env.SHELL || (process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash')
+}
+
+/** 今回取れた PATH を次の起動のために覚える（失敗しても使うときに取り直すだけ） */
+function rememberShellPath(value: string): void {
+  if (!shellPathCacheFile || value === cachedShellPath) return
+  cachedShellPath = value
+  void writeFile(shellPathCacheFile, JSON.stringify({ shell: loginShell(), path: value }), { mode: 0o600 }).catch(() => undefined)
+}
+
+/**
+ * ログインシェルが持つ PATH（取れなければ空）。前回の起動の値があれば、今回の値を待たずにそれを返す
+ * （今回の値は裏で取り、取れた時点から使う）
+ */
+function loginShellPath(waitFresh = false): Promise<string> {
   if (process.platform === 'win32') return Promise.resolve('')
-  if (!shellPathPromise && Date.now() - shellPathFailedAt < SHELL_PATH_RETRY_MS) return Promise.resolve('')
+  if (freshShellPath !== null) return Promise.resolve(freshShellPath)
+  const fallback = waitFresh ? null : cachedShellPath
+  if (!shellPathPromise && Date.now() - shellPathFailedAt < SHELL_PATH_RETRY_MS) return Promise.resolve(fallback ?? cachedShellPath ?? '')
   shellPathPromise ??= new Promise<string>((resolve) => {
-    const shell = process.env.SHELL || (process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash')
-    execFile(shell, ['-ilc', 'printf "__ADE_PATH__%s" "$PATH"'], { timeout: SHELL_PATH_TIMEOUT_MS, encoding: 'utf8' }, (error, stdout) => {
+    const timeout = cachedShellPath !== null ? SHELL_PATH_REFRESH_TIMEOUT_MS : SHELL_PATH_TIMEOUT_MS
+    execFile(loginShell(), ['-ilc', 'printf "__ADE_PATH__%s" "$PATH"'], { timeout, encoding: 'utf8' }, (error, stdout) => {
       const marker = error ? -1 : stdout.lastIndexOf('__ADE_PATH__')
       if (marker < 0) {
         // 取れなかった（rc が重くて時間切れ・nushell など）。失敗を使い回さず、次に探すときに取り直す。
@@ -70,17 +118,23 @@ function loginShellPath(): Promise<string> {
           shellPathReported = true
           reportHandled(error ? errorKind(error) : new Error('login shell PATH marker missing'), { area: 'agent-launch', op: 'read login shell PATH' })
         }
-        return resolve('')
+        return resolve(cachedShellPath ?? '')
       }
-      resolve(stdout.slice(marker + '__ADE_PATH__'.length).trim())
+      const value = stdout.slice(marker + '__ADE_PATH__'.length).trim()
+      freshShellPath = value
+      if (usableShellPath(value)) rememberShellPath(value)
+      resolve(value)
     })
   })
-  return shellPathPromise
+  return fallback !== null ? Promise.resolve(fallback) : shellPathPromise
 }
 
-/** 探すフォルダ（重なりは除く） */
-export async function searchDirs(): Promise<string[]> {
-  const fromShell = await loginShellPath()
+/**
+ * 探すフォルダ（重なりは除く）。前回の起動のログインシェルの PATH があればそれで待たずに返す。
+ * fresh なら今回のログインシェルの PATH を待つ（前回の値で見つからなかったときの探し直し）
+ */
+export async function searchDirs(options: { fresh?: boolean } = {}): Promise<string[]> {
+  const fromShell = await loginShellPath(options.fresh === true)
   const dirs = [...(process.env.PATH ?? '').split(delimiter), ...fromShell.split(':'), ...extraInstallDirs()]
   return [...new Set(dirs.filter(Boolean))]
 }

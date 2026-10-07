@@ -14,6 +14,7 @@ import { AgentIcon } from './AgentIcon'
 import { AgentResourcesSection } from './AgentResourcesSection'
 import { CliToolsSection } from './CliToolsSection'
 import { BrowserExtensionsSection } from './BrowserExtensionsSection'
+import { BrowserImportSection } from './BrowserImportSection'
 import { LayoutSettings } from './LayoutSettings'
 import { TranscriptionSection } from './TranscriptionSection'
 import { OrganizeSection } from './OrganizeSection'
@@ -416,6 +417,10 @@ export function SettingsPage({
     extensions: <PageSection key="extensions" id="extensions" title={titleOf('extensions')}>
       {/* 内蔵ブラウザの Chrome 拡張。読み込み・保存は main が行う（src/renderer/components/BrowserExtensionsSection.tsx） */}
       <BrowserExtensionsSection recording={recording} />
+    </PageSection>,
+    browserImport: <PageSection key="browserImport" id="browserImport" title={titleOf('browserImport')}>
+      {/* ほかのブラウザのパスワードの CSV・履歴の取り込み。読み込み・保存は main が行う（src/renderer/components/BrowserImportSection.tsx） */}
+      <BrowserImportSection />
     </PageSection>,
     cli: <PageSection key="cli" id="cli" title={titleOf('cli')}>
       {/* よく使うサービスの CLI。ボタンで公式のコマンドを内蔵ターミナルの新しいタブで走らせる（src/renderer/components/CliToolsSection.tsx） */}

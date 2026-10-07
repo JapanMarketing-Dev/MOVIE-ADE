@@ -192,6 +192,19 @@
         <p>內建瀏覽器支援分頁：編輯器模式下位於瀏覽器工具列上方，回饋模式下位於 URL 欄旁邊。點選<span class="docs-ui">新分頁</span>（<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span>）開啟空白分頁，再輸入 URL，例如開啟網頁郵件查看登入驗證碼。點選分頁或按 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>1</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>1</kbd></span></span> 到 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>9</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>9</kbd></span></span>、<span class="docs-kbd"><span class="os-mac"><kbd>⌃</kbd><kbd>Tab</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>Tab</kbd></span></span> 切換，點選分頁上的 × 或按 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span> 關閉。焦點在頁面、分頁或 URL 欄時，以及在回饋模式下，<span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>T</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>T</kbd></span></span> 與 <span class="docs-kbd"><span class="os-mac"><kbd>⌘</kbd><kbd>W</kbd></span><span class="os-sep"> / </span><span class="os-win"><kbd>Ctrl</kbd><kbd>W</kbd></span></span> 會作用於分頁；在終端機中仍用於開啟與關閉終端機。在新分頁開啟的連結（<code>target="_blank"</code>）和未指定大小的 <code>window.open</code> 會在新分頁中開啟。指定大小的登入彈出視窗仍會在獨立的視窗中開啟。</p>
 <p>所有分頁共用相同的登入狀態與 Cookie，可以在一個分頁複製、在另一個分頁貼上。最多可開啟 20 個分頁。頁面只有在你剛點選或在其中輸入後才能開啟分頁，否則連結會在目前的分頁中開啟。</p>
 <p>錄製<span class="docs-ui">內建瀏覽器</span>時切換分頁，會把切換到的分頁錄成獨立的影片（請參閱<a href="#multi">同時錄製多個視窗</a>），操作記錄會記下切換與頁面，因此每則回饋都與其頁面相連。畫筆與方框在每個分頁都能使用。空白分頁會在載入頁面後開始錄製。</p>
+<p>分頁依專案區分。切換專案時，會關閉目前開啟的分頁，並開啟目標專案的分頁；切換回來時分頁會還原，在 Ferret 未關閉期間，上一頁和下一頁的紀錄也會還原（重新啟動後只還原頁面，不還原這些紀錄）。回饋模式中審查目標下列出的已造訪頁面也依專案保存。登入狀態和 Cookie 仍由所有專案共用。</p>
+<p>如果網站回傳 Cloudflare 的驗證（<q>Verify you are human</q>），Ferret 會用表明自己是 Electron 的使用者代理重新載入該頁面一次，並在 Ferret 結束前對該網站一直使用它。在其他網站上，內建瀏覽器以與 Chrome 相同的方式標識自己，讓 Google 等登入頁面能正常運作。</p>
+      </section>
+
+      <section class="docs-section" aria-labelledby="import">
+        <h2 id="import"><a class="docs-anchor" href="#import" aria-label="連結至「從瀏覽器匯入密碼和瀏覽紀錄」">#</a>從瀏覽器匯入密碼和瀏覽紀錄</h2>
+        <p>在 <span class="docs-ui">設定 → 從瀏覽器匯入</span> 中，可以把常用瀏覽器的登入資訊和瀏覽紀錄匯入進來。</p>
+<ul>
+  <li><strong>密碼</strong>：先用瀏覽器內建的功能把密碼匯出為 CSV，再點選 <span class="docs-ui">匯入密碼 CSV…</span> 並選擇它。Chrome / Edge：密碼管理工具 → 設定 → 匯出密碼。Safari：檔案 → 輸出 → 密碼。Firefox：密碼 → ⋯ → 匯出密碼。Ferret 不會讀取瀏覽器加密儲存的密碼。匯出的 CSV 中密碼是明文，匯入後請刪除它（並清空垃圾桶）。</li>
+  <li>在有已儲存密碼的網站頁面上，編輯模式的瀏覽器工具列會出現一個鑰匙按鈕。點選它即可填入使用者名稱和密碼（有多個帳號時可選擇）。只會填入來源與儲存的一致的頁面（通訊協定、主機和連接埠相同；<code>www.</code> 可以不同），而且只填入最上層的框架，不會填入 iframe 中的登入表單。</li>
+  <li><strong>瀏覽紀錄</strong>：<span class="docs-ui">尋找瀏覽器</span> 會列出這台電腦上 Chrome、Edge、Brave、Chromium、Arc（macOS）和 Safari（macOS）的設定檔，<span class="docs-ui">匯入瀏覽紀錄</span> 會把它們的瀏覽紀錄匯入為 URL 列的建議。匯入的瀏覽紀錄由所有專案共用，只用於建議。讀取 Safari 瀏覽紀錄需要為 Ferret 開啟完整磁碟取用權限（系統設定 → 隱私權與安全性）。</li>
+</ul>
+<p>密碼用 Electron 的 <code>safeStorage</code> 加密，儲存在 <code>&lt;userData&gt;/browser-import/passwords.bin</code>；匯入的瀏覽紀錄儲存在 <code>browser-import/history.json</code>。用 <span class="docs-ui">全部刪除</span> 和 <span class="docs-ui">刪除匯入的瀏覽紀錄</span> 可以刪除它們。在開發版本和無法使用 <code>safeStorage</code> 的系統上，匯入的密碼只保留到 Ferret 結束為止。</p>
       </section>
 
       <section class="docs-section" aria-labelledby="extensions">
@@ -324,6 +337,7 @@
         <li><a href="#target">選擇要錄製的內容</a></li>
         <li><a href="#desktop-mobile">桌面應用程式、遊戲與行動應用程式</a></li>
         <li><a href="#tabs">用分頁開啟多個頁面</a></li>
+        <li><a href="#import">從瀏覽器匯入密碼和瀏覽紀錄</a></li>
         <li><a href="#extensions">瀏覽器擴充功能</a></li>
         <li><a href="#multi">同時錄製多個視窗</a></li>
         <li><a href="#record">開始、暫停、停止</a></li>

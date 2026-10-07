@@ -1,6 +1,6 @@
 import { fakeCapturePath } from './recording/fakeCapture'
 import { isGestureInput, registerRecorderContents } from './captureConsent'
-import { cleanElectronUserAgent } from './browserUserAgent'
+import { BrowserIdentity, cleanElectronUserAgent, electronUserAgent } from './browserUserAgent'
 import { WebContentsView, dialog, session, shell, type BaseWindow, type BrowserWindow, type Session, type WebContents } from 'electron'
 import { join } from 'node:path'
 import { MOBILE_PRESET, type BrowserState, type ViewBounds, type Viewport } from '@shared/types'
@@ -10,6 +10,7 @@ import { UserFacingError } from '@shared/errors'
 import { reportHandled } from '@shared/report'
 import { normalizeUrl } from '@shared/projectUrl'
 import { isProjectPageUrl } from '@shared/htmlPreview'
+import { restorableHistory } from '@shared/projectSession'
 import {
   createExternalOpener,
   displayOrigin,
@@ -58,11 +59,60 @@ export function browserSession(confirmWindow?: () => BaseWindow | null): Session
     installPermissionPolicy(ses as unknown as PermissionSessionLike,
       (query) => pageClipboard.allow(query) || isTabCaptureRequest(query),
       (url, origin) => void openExternalFromPage(url, origin))
-    // Google などのログインに断られないよう、Chrome と同じ形の UA にする（browserUserAgent.ts）
-    ses.setUserAgent(cleanElectronUserAgent(ses.getUserAgent()))
+    // Google などのログインに断られないよう、既定は Chrome と同じ形の UA。
+    // Cloudflare の確認を返したホストだけ Electron の印を残した UA で開き直す（browserUserAgent.ts の BrowserIdentity）
+    const native = ses.getUserAgent()
+    identity = new BrowserIdentity(cleanElectronUserAgent(native), electronUserAgent(native))
+    ses.setUserAgent(identity.chromeUserAgent)
+    installIdentityHeaders(ses, identity)
   }
   if (confirmWindow) confirmWindowOf = confirmWindow
   return ses
+}
+
+/** ページごとに名乗る UA（browserSession で作る） */
+let identity: BrowserIdentity | null = null
+
+/**
+ * ページ本体の読み込みのリクエストの UA を行き先のホストに合わせ、Cloudflare の確認が返ったら Electron の UA で1回だけ開き直す。
+ * GET 以外（フォームの送信）は開き直さない（同じ内容を勝手に送り直さない。次に開いたときから Electron の UA になる）
+ */
+function installIdentityHeaders(ses: Session, id: BrowserIdentity): void {
+  ses.webRequest.onBeforeSendHeaders((details, callback) => {
+    const wc = details.webContents
+    const ua = wc && !wc.isDestroyed() ? id.requestUserAgent({ url: details.url, resourceType: details.resourceType, currentUserAgent: wc.getUserAgent() }) : null
+    if (!ua) return callback({})
+    const requestHeaders = Object.fromEntries(Object.entries(details.requestHeaders).filter(([name]) => name.toLowerCase() !== 'user-agent'))
+    callback({ requestHeaders: { ...requestHeaders, 'User-Agent': ua } })
+  })
+  ses.webRequest.onHeadersReceived((details, callback) => {
+    callback({})
+    const wc = details.webContents
+    if (!wc || wc.isDestroyed() || details.resourceType !== 'mainFrame') return
+    const current = wc.getUserAgent()
+    const sent = id.owns(current) ? id.userAgentFor(details.url) : current
+    if (!id.noteResponse({ url: details.url, resourceType: details.resourceType, sentUserAgent: sent, headers: details.responseHeaders })) return
+    if (details.method !== 'GET') return
+    setImmediate(() => {
+      if (wc.isDestroyed()) return
+      wc.setUserAgent(id.electronUserAgent)
+      void wc.loadURL(details.url).catch(() => undefined)
+    })
+  })
+}
+
+/**
+ * タブ・ポップアップの UA を、遷移が始まるたびに行き先のホストのもの（BrowserIdentity）にする。
+ * ページの JS から見える navigator.userAgent を、送るヘッダーの UA と揃えるため。モバイルの表示の UA には手を出さない
+ */
+function followIdentity(wc: WebContents): void {
+  wc.on('did-start-navigation', (details) => {
+    if (!identity || !details.isMainFrame || details.isSameDocument) return
+    const current = wc.getUserAgent()
+    if (!identity.owns(current)) return
+    const next = identity.userAgentFor(details.url)
+    if (next !== current) wc.setUserAgent(next)
+  })
 }
 
 let confirmWindowOf: () => BaseWindow | null = () => null
@@ -116,6 +166,21 @@ const openExternalFromPage = createExternalOpener({
 
 /** ページが新しいタブを開いてよい、利用者がそのタブを操作してからの時間（ページのスクリプトだけではタブを増やせない） */
 const PAGE_TAB_GESTURE_MS = 5_000
+
+/** タブを URL の並びで開くときの形（プロジェクトごとに覚えたタブ。@shared/projectSession の sessionTabs） */
+export interface ProjectTabs {
+  urls: string[]
+  /** 前に出すタブの番号 */
+  active: number
+}
+
+/** 戻る・進むの履歴ごと写したタブ（アプリを開いている間だけ main が持つ。設定には書かない） */
+export interface TabsSnapshot {
+  tabs: Array<{ url: string; entries: import('electron').NavigationEntry[]; index: number }>
+  active: number
+}
+
+const isRecordableTabUrl = (url: string): boolean => !!url && url !== 'about:blank' && isNavigableUrl(url)
 
 /** 内蔵ブラウザのタブ1枚 */
 interface BrowserTab {
@@ -246,15 +311,83 @@ export class EmbeddedBrowser {
     for (const tab of this.tabs) tab.view.setBackgroundColor(color)
   }
 
-  attach(window: BaseWindow, initialUrl: string, viewport: Viewport): void {
+  attach(window: BaseWindow, initial: string | ProjectTabs, viewport: Viewport): void {
     this.window = window
     this.viewport = viewport
-    const tab = this.createTab()
+    this.openTabs(typeof initial === 'string' ? { urls: [initial], active: 0 } : initial)
+  }
+
+  /**
+   * 開いているタブを、戻る・進むの履歴とページの状態（スクロール・フォームの値）ごと写す。
+   * プロジェクトを切り替えるときに main が前のプロジェクトの分として持っておき、戻ってきたら replaceTabs で開き直す
+   */
+  snapshotTabs(): TabsSnapshot {
+    const tabs = this.tabs.filter((tab) => !tab.view.webContents.isDestroyed())
+    return {
+      tabs: tabs.map((tab) => {
+        const history = tab.view.webContents.navigationHistory
+        return { url: tab.view.webContents.getURL(), entries: history.getAllEntries(), index: history.getActiveIndex() }
+      }),
+      active: Math.max(0, tabs.findIndex((tab) => tab.id === this.activeId))
+    }
+  }
+
+  /**
+   * いまのタブをすべて閉じ、別のプロジェクトのタブに入れ替える（プロジェクトの切り替え）。
+   * 写し（snapshot）があれば履歴ごと、無ければ URL の並び（fallback）で開く。前のプロジェクトのタブ・履歴は残さない
+   */
+  replaceTabs(snapshot: TabsSnapshot | null, fallback: ProjectTabs): void {
+    if (!this.window || this.window.isDestroyed()) return
+    // 前のタブは、新しいタブを作り終えてから外す（新しいタブを映した映像・拡張機能のポップアップより下に差し込むため）
+    const old = [...this.tabs]
+    for (const popup of this.popups) if (!popup.isDestroyed()) popup.close()
+    this.popups.clear()
+    if (snapshot && snapshot.tabs.length > 0) this.restoreSnapshot(snapshot)
+    else this.openTabs(fallback)
+    this.tabs = this.tabs.filter((tab) => !old.includes(tab))
+    for (const tab of old) this.destroyTab(tab)
+    this.emitState()
+  }
+
+  /** URL の並びでタブを開き、active 番目を前に出す。開けない URL のタブは空のまま（URL 欄から直せる） */
+  private openTabs({ urls, active }: ProjectTabs): void {
+    const list = (urls.length ? urls : ['']).slice(0, MAX_BROWSER_TABS)
+    const created = list.map(() => this.createTab())
+    this.activateFirst(created[Math.min(Math.max(0, active), created.length - 1)]!)
+    list.forEach((url, i) => {
+      const wc = created[i]!.view.webContents
+      const target = url ? normalizeUrl(url) : ''
+      // 前回の URL が開けない（形式が違う・許さないスキーム）なら空のまま
+      if (target && isNavigableUrl(target) && isTypedNavigationAllowed(target)) void this.load(wc, target).then(() => this.emitState())
+    })
+  }
+
+  /** 写したタブを、戻る・進むの履歴ごと開き直す。開いてよい URL の項目だけを戻す */
+  private restoreSnapshot(snapshot: TabsSnapshot): void {
+    const list = snapshot.tabs.slice(0, MAX_BROWSER_TABS)
+    const created = list.map(() => this.createTab())
+    this.activateFirst(created[Math.min(Math.max(0, snapshot.active), created.length - 1)]!)
+    list.forEach((saved, i) => {
+      const wc = created[i]!.view.webContents
+      const history = restorableHistory(saved.entries, saved.index, (url) => isNavigableUrl(url) && isTypedNavigationAllowed(url))
+      if (history) {
+        void wc.navigationHistory.restore(history).then(() => this.emitState()).catch((err: unknown) => {
+          reportHandled(err, { area: 'browser', op: 'restore tab history' })
+          if (isRecordableTabUrl(saved.url)) void this.load(wc, saved.url).then(() => this.emitState())
+        })
+      } else if (isRecordableTabUrl(saved.url) && isTypedNavigationAllowed(saved.url)) {
+        void this.load(wc, saved.url).then(() => this.emitState())
+      }
+    })
+  }
+
+  /** 作ったばかりのタブを前に出す（attach・入れ替えの直後。activateTab と違い前のタブを見ない） */
+  private activateFirst(tab: BrowserTab): void {
     this.activeId = tab.id
     this.placeViews()
+    this.onLayout?.()
+    this.applyEmulation(tab)
     this.onActiveTab?.(tab.view.webContents)
-    // 前回の URL が開けない（形式が違う・許さないスキーム）なら空のまま。URL 欄から直せる
-    void this.navigate(initialUrl).catch(() => undefined)
   }
 
   /**
@@ -344,6 +477,8 @@ export class EmbeddedBrowser {
       if (isProjectPageUrl(wc.getURL())) return
       if (isAllowedExternalUrl(event.url)) void openExternalFromPage(event.url, wc.getURL())
     })
+
+    followIdentity(wc)
 
     const emit = (): void => this.emitState()
     wc.on('did-start-loading', () => {
@@ -713,7 +848,7 @@ export class EmbeddedBrowser {
           tab.emulating = false
           wc.disableDeviceEmulation()
         }
-        wc.setUserAgent(wc.session.getUserAgent())
+        wc.setUserAgent(identity?.userAgentFor(wc.getURL()) ?? wc.session.getUserAgent())
       }
     } catch (err) {
       console.warn('[browser] 表示幅の切り替えに失敗しました', err)
@@ -782,6 +917,7 @@ export class EmbeddedBrowser {
     }
     pwc.on('will-navigate', guard)
     pwc.on('will-redirect', guard)
+    followIdentity(pwc)
     // 文字で指摘の静止画の許可（そのポップアップへの本物の入力だけ。captureConsent.ts の ViewInputGrant）
     pwc.on('input-event', (_event, input) => { if (isGestureInput(input.type)) this.onPageInput?.(pwc) })
     // 録画中はこのポップアップも録り、前に出たら書き込む先をそちらへ切り替える（recording/controller.ts の attachPopupWindow）

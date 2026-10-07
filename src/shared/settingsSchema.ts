@@ -345,14 +345,14 @@ export const SETTINGS_SCHEMA: JsonSchema = {
       description: 'Decision model (System One compatible API) used by your coding agent to check each finding after implementing it. Ferret does not judge by itself: when enabled, agents get FERRET_DECISION_URL (a local relay that adds the key and logs usage), FERRET_DECISION_MODEL and FERRET_DECISION_IMAGES, and feedback.md gets an acceptance check that judges each finding once (the agent may improve it once more from that result, then hands it to you). Presets only prefill fields; any compatible API works with "custom".',
       properties: {
         enabled: bool('Use the decision model (local relay + a one-judgement-per-finding acceptance check in the agent prompt).', { default: false }),
-        preset: { type: 'string', description: 'Which preset prefilled the fields: ollama (local, free), cloudflare (Workers AI), vercel (AI Gateway), typesafe, custom.', enum: DECISION_PRESET_IDS, default: 'ollama' },
+        preset: { type: 'string', description: 'Which preset prefilled the fields: ollama (local, free), cloudflare (Workers AI), vercel (AI Gateway), typesafe, openai (OpenAI Decisions API, gpt-6-luna; reads images), custom.', enum: DECISION_PRESET_IDS, default: 'ollama' },
         endpoint: str('Full request URL. {account_id} and {model} are replaced. e.g. "http://localhost:11434/v1/systemone", "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}". Omit for the preset.', { pattern: '^https?://' }),
-        model: str('Model name, e.g. "clef-flash", "clef", "typesafe-ai/jev", "jev-latest".', { maxLength: 200 }),
+        model: str('Model name, e.g. "clef-flash", "clef", "typesafe-ai/jev", "jev-latest", "gpt-6-luna".', { maxLength: 200 }),
         imageFormat: { type: 'string', description: 'How the agent encodes images: "base64" (plain, Ollama) or "data-uri" (data:image/jpeg;base64,..., required by Cloudflare Workers AI). Omit for the preset. Passed to agents as FERRET_DECISION_IMAGE_FORMAT.', enum: ['base64', 'data-uri'] },
         images: bool('Send BEFORE/AFTER screenshots. Only models that read images (Clef / Clef Flash) should have this on. Omit for the preset.'),
         passThreshold: { type: 'number', description: 'A finding passes when P(done) is at least this and the choice is "done". 0.5-0.99, default 0.7. Shown to the agent as {{threshold}}.', minimum: 0.5, maximum: 0.99 },
         timeoutMs: { type: 'integer', description: 'Relay timeout per request in milliseconds (1000-600000). Default 120000.', minimum: 1000, maximum: 600000 },
-        apiKeyEnv: str('Name of an environment variable that holds the API key (e.g. CLOUDFLARE_API_TOKEN, AI_GATEWAY_API_KEY, TYPESAFE_API_KEY). Looked up in the app\'s environment, then the project .env, then ~/.ferret/.env.', { pattern: ENV_NAME }),
+        apiKeyEnv: str('Name of an environment variable that holds the API key (e.g. CLOUDFLARE_API_TOKEN, AI_GATEWAY_API_KEY, TYPESAFE_API_KEY, OPENAI_API_KEY). Looked up in the app\'s environment, then the project .env, then ~/.ferret/.env.', { pattern: ENV_NAME }),
         apiKey: str('WARNING: plaintext API key stored in this file. Prefer apiKeyEnv or the key field in the Settings page. Takes precedence over apiKeyEnv and the saved key. Never passed to agents.', { maxLength: 500 }),
         pricing: {
           type: 'object',

@@ -29,7 +29,7 @@ import { useT } from '../lib/i18n'
  * 見た目（VS Code のエクスプローラーと同じ感覚）:
  *   - 決まったフォルダ名・ファイル名・拡張子でアイコンと色を変える（lib/fileIcons.ts・FileIcon.tsx）
  *   - git の状態で名前に色を付け、右端に M・U・A・D・R を出す。変更を含むフォルダも色と点で示す（@shared/gitDecorations・lib/useGitDecorations.ts）
- *   - .gitignore の対象は薄く出す。.env（.gitignore の対象）・.DS_Store・.git は既定で隠し、右クリックの「隠しファイルを表示」で出す
+ *   - .gitignore の対象（.env など）は薄く出す。.DS_Store・.git は既定で隠し、右クリックの「隠しファイルを表示」で出す
  *
  * ファイルの操作（VS Code のエクスプローラーと同じ感覚）:
  *   - 新しいファイル / フォルダ: ツリーの上のボタンか右クリック（一覧の下の空いた所でも）。名前はその場の欄に打つ。
@@ -82,7 +82,7 @@ type HistoryEntry =
   | { kind: 'copy'; created: string[] }
   | { kind: 'trash' }
 
-/** 既定で隠すもの（.env・.DS_Store・.git）も出すか（この端末に覚える） */
+/** 既定で隠すもの（.DS_Store・.git）も出すか（この端末に覚える） */
 const SHOW_HIDDEN_KEY = 'ferret.fileExplorer.showHidden'
 
 /** git の状態の説明（右端の文字に重ねて出す） */
@@ -167,8 +167,8 @@ export function FileExplorer({
     writeLocal(SHOW_HIDDEN_KEY, showHidden ? '0' : '1')
     setShowHidden(!showHidden)
   }
-  // .env（.gitignore の対象）・.DS_Store・.git は既定で出さない。隠したフォルダを開いていても中身ごと外す
-  const rows = useMemo(() => (showHidden ? tree.rows : withoutHidden(tree.rows, (entry) => isHiddenByDefault(entry, git))), [tree.rows, showHidden, git])
+  // .DS_Store・.git は既定で出さない。隠したフォルダを開いていても中身ごと外す
+  const rows = useMemo(() => (showHidden ? tree.rows : withoutHidden(tree.rows, isHiddenByDefault)), [tree.rows, showHidden])
   const [searchError, setSearchError] = useState<string | null>(null)
   const error = tree.error ?? searchError
   const [query, setQuery] = useState('')

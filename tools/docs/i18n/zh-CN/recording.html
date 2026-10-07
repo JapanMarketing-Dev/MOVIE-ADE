@@ -28,11 +28,23 @@
 <p>游戏的用法相同。选择显示着游戏视图的 Unity、Unreal Engine 或 Godot 编辑器窗口，或者你构建的游戏的窗口（包括无边框窗口模式）。对于独占全屏的游戏，请在 <span class="docs-ui">整个屏幕</span> 下选择它所在的显示器。当窗口是这些编辑器之一时，<code>feedback.md</code> 会写明引擎，并让 Agent 修改游戏的代码、场景或资源。为了让文件保持较小，视频最多以每秒 10 帧录制；问题的图像也取自同一段视频，因此与时间轴上的那一刻一致。</p>
 <p>审查对象的 <span class="docs-ui">要录制的窗口</span> 既匹配窗口标题，也匹配应用名称，因此填写 <code>Simulator</code> 时，无论显示的是哪台设备，都会选中 iOS Simulator 的窗口。</p>
 
-<!-- @tabs 3195fb06ec -->
+<!-- @tabs 40ea855fec -->
 ## 用标签页打开多个页面
 <p>内置浏览器支持标签页：编辑器模式下在浏览器工具栏上方，反馈模式下在 URL 栏旁边。点击<span class="docs-ui">新标签页</span>（{{keys:Mod+T}}）打开一个空标签页，然后输入 URL，例如打开网页邮箱查看登录验证码。点击标签页或按 {{keys:Mod+1}} 到 {{keys:Mod+9}}、{{keys:Ctrl+Tab}} 切换，点击标签页上的 × 或按 {{keys:Mod+W}} 关闭。当焦点在页面、标签页或 URL 栏上时，以及在反馈模式下，{{keys:Mod+T}} 和 {{keys:Mod+W}} 作用于标签页；在终端中它们仍然用于打开和关闭终端。在新标签页中打开的链接（<code>target="_blank"</code>）和未指定大小的 <code>window.open</code> 会在新标签页中打开。指定了大小的登录弹窗仍在单独的窗口中打开。</p>
 <p>所有标签页共享相同的登录状态和 Cookie，可以在一个标签页中复制、在另一个标签页中粘贴。最多可打开 20 个标签页。页面只有在你刚点击或在其中输入后才能打开新标签页，否则链接会在当前标签页中打开。</p>
 <p>录制<span class="docs-ui">内置浏览器</span>时切换标签页，会把切换到的标签页录制为单独的视频（参见<a href="#multi">同时录制多个窗口</a>），操作日志会记录切换和页面，因此每条反馈都与其页面关联。画笔和方框在每个标签页中都可用。空标签页会在加载页面后开始录制。</p>
+<p>标签页按项目区分。切换项目时，会关闭当前打开的标签页，并打开目标项目的标签页；切换回来时标签页会恢复，在 Ferret 未关闭期间，后退和前进的历史也会恢复（重启后只恢复页面，不恢复这些历史）。反馈模式中审查目标下列出的已访问页面也按项目保存。登录状态和 Cookie 仍由所有项目共用。</p>
+<p>如果网站返回 Cloudflare 的验证（<q>Verify you are human</q>），Ferret 会用表明自己是 Electron 的用户代理重新加载该页面一次，并在 Ferret 退出前对该网站一直使用它。在其他网站上，内置浏览器以与 Chrome 相同的方式标识自己，以便 Google 等登录页面正常工作。</p>
+
+<!-- @import 9c13c67f7e -->
+## 从浏览器导入密码和历史记录
+<p>在 <span class="docs-ui">设置 → 从浏览器导入</span> 中，可以把常用浏览器的登录信息和历史记录导入进来。</p>
+<ul>
+  <li><strong>密码</strong>：先用浏览器自带的功能把密码导出为 CSV，再点击 <span class="docs-ui">导入密码 CSV…</span> 并选择它。Chrome / Edge：密码管理器 → 设置 → 导出密码。Safari：文件 → 导出 → 密码。Firefox：密码 → ⋯ → 导出密码。Ferret 不会读取浏览器加密保存的密码。导出的 CSV 中密码是明文，导入后请删除它（并清空废纸篓）。</li>
+  <li>在有已保存密码的网站页面上，编辑模式的浏览器工具栏会出现一个钥匙按钮。点击它即可填入用户名和密码（有多个账号时可选择）。只会填入来源与保存的一致的页面（协议、主机和端口相同；<code>www.</code> 可以不同），并且只填入顶层框架，不会填入 iframe 中的登录表单。</li>
+  <li><strong>历史记录</strong>：<span class="docs-ui">查找浏览器</span> 会列出这台电脑上 Chrome、Edge、Brave、Chromium、Arc（macOS）和 Safari（macOS）的配置文件，<span class="docs-ui">导入历史记录</span> 会把它们的历史记录导入为 URL 栏的建议。导入的历史记录由所有项目共用，只用于建议。读取 Safari 历史记录需要为 Ferret 开启完全磁盘访问权限（系统设置 → 隐私与安全性）。</li>
+</ul>
+<p>密码用 Electron 的 <code>safeStorage</code> 加密，保存在 <code>&lt;userData&gt;/browser-import/passwords.bin</code>；导入的历史记录保存在 <code>browser-import/history.json</code>。用 <span class="docs-ui">全部删除</span> 和 <span class="docs-ui">删除导入的历史记录</span> 可以删除它们。在开发版本和无法使用 <code>safeStorage</code> 的系统上，导入的密码只保留到 Ferret 退出为止。</p>
 
 <!-- @extensions b0aca6defb -->
 ## 浏览器扩展

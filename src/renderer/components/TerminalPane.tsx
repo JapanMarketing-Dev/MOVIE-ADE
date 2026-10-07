@@ -896,7 +896,9 @@ export function TerminalPane({
             void window.ade.invoke('terminal:close', info.id)
             return
           }
-          handle.bindPty(info.id)
+          // 先に起動しておいたシェル（main の TerminalManager.spare）は、それまでの出力（プロンプト）を流し直してからつなぐ
+          if (info.history) handle.reattach(info.id, info.history, undefined, false)
+          else handle.bindPty(info.id)
           if (pane.key === focusedPaneRef.current) onActiveTerminal?.(info.id)
           fitPane(pane.key)
           setPanes((prev) =>

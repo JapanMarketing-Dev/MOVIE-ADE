@@ -243,7 +243,7 @@
   <li><code>agents.customAgents</code>：任何 CLI 或包裝腳本。<code>startupAgents</code> 依序列出開啟專案時要開啟的 Agent 分頁。</li>
   <li><code>capture.sttEndpoints.compatible</code>：任何實作 OpenAI <code>/v1/audio/transcriptions</code> 的伺服器（speaches、vLLM、LocalAI…）。<code>costLimitUsd: null</code> 會關閉費用上限，適合使用自己的 GPU 時。請參閱<a href="transcription.html">轉錄與費用</a>。</li>
   <li><code>organizer</code>：將 <span class="docs-ui">整理意見</span> 直接送到相容 OpenAI 的 <code>/v1/chat/completions</code> 伺服器（此例為 Ollama）。若要改用你自己的 CLI 登入，請使用 <code>"runner": "claude-code"</code> 或 <code>"codex"</code>，並用 <code>organizer.cliModels</code> 選擇其模型。</li>
-  <li><code>decision</code>：檢查每則意見是否已修正的模型。在本機 Ollama 上執行的 Clef Flash 免費，且能讀取螢幕截圖。<code>preset</code> 也可以是 <code>cloudflare</code>、<code>vercel</code>、<code>typesafe</code> 或 <code>custom</code>。</li>
+  <li><code>decision</code>：檢查每則意見是否已修正的模型。在本機 Ollama 上執行的 Clef Flash 免費，且能讀取螢幕截圖。<code>preset</code> 也可以是 <code>cloudflare</code>、<code>vercel</code>、<code>typesafe</code>、<code>openai</code> 或 <code>custom</code>。</li>
   <li>每個供應商區塊（<code>sttEndpoints.*</code>、<code>organizer.endpoints.*</code>）也接受 <code>timeoutMs</code>、<code>headers</code>，以及 Azure 用的 <code>apiVersion</code>。</li>
 </ul>
 <div class="docs-callout docs-callout-note"><p>Ferret 絕不會代你支付 AI 費用。沒有內建金鑰，也沒有中繼伺服器：每個請求都是用你的金鑰，從你的電腦直接送到你設定的端點。</p></div>

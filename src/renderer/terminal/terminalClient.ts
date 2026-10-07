@@ -12,6 +12,7 @@ import { reportAnomaly, reportHandled } from '@shared/report'
 import { ImeInputGuard } from './imeInputGuard'
 import { isWebglUnavailable } from './rendererFallback'
 import { RESTORE_LINE_LIMIT, capScrollback, joinWrappedRows } from '@shared/terminalRestore'
+import { selectionTextForCopy } from './wrappedCopy'
 
 /**
  * renderer 側のターミナル実体（xterm.js）を管理する。
@@ -166,13 +167,23 @@ export class TerminalHandle {
       event.stopPropagation()
       this.pasteText(text)
     }
+    // ⌘C（macOS の編集メニューのコピー）は xterm の入力欄の copy として届く。xterm より先に受けて、
+    // TUI が自分で折り返した行を1行に戻して写す（wrappedCopy.ts）
+    const onCopy = (event: ClipboardEvent) => {
+      if (!this.term.hasSelection() || !event.clipboardData) return
+      event.clipboardData.setData('text/plain', this.selectionForCopy())
+      event.preventDefault()
+      event.stopPropagation()
+    }
     this.host.addEventListener('focusin', onFocusIn)
     this.host.addEventListener('focusout', onFocusOut)
     this.host.addEventListener('paste', onPaste, true)
+    this.host.addEventListener('copy', onCopy, true)
     this.disposers.push(() => {
       this.host.removeEventListener('focusin', onFocusIn)
       this.host.removeEventListener('focusout', onFocusOut)
       this.host.removeEventListener('paste', onPaste, true)
+      this.host.removeEventListener('copy', onCopy, true)
       if (this.focused) this.reportFocus(false)
     })
     // 入力は開く前から受けられるようにしておく（PTYができる前の打鍵は pending にためる）
@@ -295,10 +306,11 @@ export class TerminalHandle {
    * 画面を読み込み直したあと、生きている PTY につなぎ直す。直近の出力を流し直し、
    * 表示したときに TUI へ描き直しを頼む（流し直した出力は途中から始まることがあるため）
    */
-  reattach(ptyId: string, history: string, size?: TerminalSize): void {
+  reattach(ptyId: string, history: string, size?: TerminalSize, redraw = true): void {
     // 出力は PTY の今の幅で折り返されているので、同じ大きさにしてから流し直す（違う幅だと崩れる）
     if (size && size.cols >= 2 && size.rows >= 1) this.term.resize(size.cols, size.rows)
-    this.redrawPending = true
+    // 先に起動しておいたシェル（TerminalPane）は rc を読み終えたプロンプトだけなので、描き直しは頼まない
+    this.redrawPending = redraw
     this.outputSeq++
     if (!history) {
       this.bindPty(ptyId)
@@ -338,8 +350,13 @@ export class TerminalHandle {
     }))
   }
 
+  /** 写す文字列。狭い窓で TUI が折り返したコマンドも、貼ればそのまま1つのコマンドとして動くようにつなぐ */
+  private selectionForCopy(): string {
+    return selectionTextForCopy(this.term, window.ade.platform === 'win32' ? '\r\n' : '\n')
+  }
+
   private copySelection(): void {
-    const text = this.term.getSelection()
+    const text = this.selectionForCopy()
     if (!text) return
     // Windows Terminal と同じく、写したら選択を外す（次の Ctrl+C は中断として届く）
     this.term.clearSelection()

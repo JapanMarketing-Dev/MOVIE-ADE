@@ -10,7 +10,7 @@ import { authHeaders, fillAccountId, resolveHeaderValues, sanitizeHeaders, type 
  * プリセットは入力欄を埋めるだけで、どの値も書き換えられる（Custom で System One 互換の API ならどこでも使える）。
  */
 
-export type DecisionPreset = 'ollama' | 'cloudflare' | 'vercel' | 'typesafe' | 'custom'
+export type DecisionPreset = 'ollama' | 'cloudflare' | 'vercel' | 'typesafe' | 'openai' | 'custom'
 
 /** キーの付け方。bearer は Authorization: Bearer、header は authHeader の名前のヘッダーにキーをそのまま、none は付けない（3機能で共通の AuthScheme） */
 export type DecisionAuthScheme = AuthScheme
@@ -82,6 +82,12 @@ export const DECISION_PRESETS: Record<DecisionPreset, DecisionPresetDef> = {
   typesafe: { id: 'typesafe', label: 'TypeSafe', vendor: 'typesafe', endpoint: 'https://api.typesafe.ai/v1/systemone', model: 'jev-latest', images: false, imageFormat: 'base64', authScheme: 'bearer', apiKeyEnv: 'TYPESAFE_API_KEY',
     envVar: 'TYPESAFE_API_KEY', keyUrl: 'https://console.typesafe.ai', docsUrl: 'https://docs.typesafe.ai',
     models: [{ id: 'jev-latest', images: false }, { id: 'jev-preview', images: false }] },
+  // OpenAI の Decisions API は System One と形が違う（input / questions の配列 / answers の配列）。中継が写し合う（src/main/decision/openaiDecisions.ts）。
+  // 画像は data URL だけを受け付ける。料金は入力 $0.10 / 1M（出力・キャッシュの課金なし。2026-10-07 の公式ガイド）
+  openai: { id: 'openai', label: 'OpenAI', vendor: 'openai', endpoint: 'https://api.openai.com/v1/decisions', model: 'gpt-6-luna', images: true, imageFormat: 'data-uri', authScheme: 'bearer', apiKeyEnv: 'OPENAI_API_KEY',
+    envVar: 'OPENAI_API_KEY', keyUrl: 'https://platform.openai.com/api-keys', docsUrl: 'https://developers.openai.com/api/docs/guides/decisions',
+    pricing: { inputPer1M: 0.1, outputPer1M: 0 },
+    models: [{ id: 'gpt-6-luna', images: true }] },
   custom: { id: 'custom', label: 'Custom', vendor: 'decision-custom', endpoint: '', model: '', images: false, imageFormat: 'base64', authScheme: 'bearer', models: [] }
 }
 
@@ -243,10 +249,10 @@ export function decisionAuthHeader(resolved: Pick<ResolvedDecision, 'authScheme'
   return authHeaders({ authScheme: resolved.authScheme, authHeader: resolved.authHeader }, key, {})
 }
 
-/** 画像を読めると知られているモデルか（Clef / Clef Flash）。設定の画面の目安に使う */
+/** 画像を読めると知られているモデルか（Clef / Clef Flash / OpenAI の gpt-6-luna）。設定の画面の目安に使う */
 export function decisionModelSupportsImages(model: string): boolean {
   const base = model.trim().toLowerCase().split('/').pop()!.split(':')[0]!
-  return base === 'clef' || base === 'clef-flash'
+  return base === 'clef' || base === 'clef-flash' || base === 'gpt-6-luna'
 }
 
 /** Agent の PTY に渡す環境変数（キーは入れない） */

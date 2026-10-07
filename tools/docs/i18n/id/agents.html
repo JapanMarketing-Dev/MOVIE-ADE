@@ -77,7 +77,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>Jika tidak ada agent yang berjalan, Ferret menjalankannya terlebih dahulu dan mengirim begitu agent siap. Tidak ada yang dikirim selama agent menunggu jawaban izin. Jawab di terminal terlebih dahulu.</p>
 <p><span class="docs-ui">Salin untuk Agent</span> menaruh instruksi yang sama di clipboard untuk agent yang berjalan di tempat lain (terminal lain, IDE, atau aplikasi). Hanya temuan yang disetel ke <span class="docs-ui">Kirim</span> yang disertakan. Videonya tidak pernah disertakan.</p>
 
-<!-- @verify 6bb391611d -->
+<!-- @verify 205abd35bc -->
 ## Pemeriksaan penerimaan dengan model keputusan
 {{clip:verify|Agent memperbaiki temuan dan memeriksa masing-masing dengan model keputusan sebelum Anda melihatnya.}}
 <p>Aktifkan fitur ini, dan agent coding Anda akan memeriksa hasil kerjanya sendiri satu kali terhadap setiap temuan sebelum Anda melihatnya. Ferret sendiri tidak menilai apa pun: Ferret memberi agent sebuah <em>model keputusan</em> (API apa pun yang kompatibel dengan System One) dan, di <code>feedback.md</code>, menjelaskan cara menggunakannya. Model keputusan adalah pemeriksaan milik agent sendiri, bukan pertanyaan untuk Anda: agent tidak menanyakan apa pun kepada Anda. Anda hanya membandingkan BEFORE dan AFTER lalu menekan <span class="docs-ui">OK</span> atau <span class="docs-ui">NG</span>.</p>
@@ -97,9 +97,11 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
     <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (membaca gambar)</td><td><code>CLOUDFLARE_API_TOKEN</code> (izin Workers AI); account ID dari field atau <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
     <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (hanya teks)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
     <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (hanya teks)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>OpenAI</td><td><code>https://api.openai.com/v1/decisions</code></td><td><code>gpt-6-luna</code> (membaca gambar)</td><td><code>OPENAI_API_KEY</code></td></tr>
     <tr><td>Kustom</td><td>URL lengkap apa pun</td><td>apa pun</td><td>Bearer, header kustom, atau tidak ada; header tambahan diperbolehkan</td></tr>
   </tbody>
 </table>
+<p>Preset OpenAI memakai Decisions API dari OpenAI, yang punya format permintaan sendiri (<code>input</code>, daftar <code>questions</code>, dan <code>answers</code>). Agen tetap mengirim format System One ke relay: hanya untuk preset ini, relay mengubah permintaan (gambar BEFORE/AFTER menjadi data URL <code>input_image</code>) dan mengubah jawabannya kembali, sehingga instruksi untuk agen tidak berubah. Preset ini memakai kunci API OpenAI Anda, sama dengan transkripsi. OpenAI hanya menagih token input ($0.10 per 1 juta).</p>
 <p>Untuk Ollama, instal (0.35.1 atau lebih baru untuk Clef / Clef Flash) lalu tarik modelnya di terminal. Ferret tidak menjalankan installer:</p>
 <pre><code>ollama pull clef-flash</code></pre>
 <p>Key diambil dari field key (disimpan bersama API key Anda yang lain), dari variabel lingkungan yang Anda sebutkan (lingkungan aplikasi, <code>.env</code> proyek, atau <code>~/.ferret/.env</code>), atau dari <code>apiKey</code> di <code>settings.json</code>. Header tambahan bisa membaca nilai dari variabel lingkungan dengan <code>${VAR}</code>.</p>

@@ -341,7 +341,17 @@ page('recording.html', `Using ${APP}`, 'Recording',
     ['tabs', 'Open several pages in tabs', `
 <p>The built-in browser has tabs: in Editor mode above the browser toolbar, in Feedback mode next to the URL field. Click ${ui('New tab')} (${keys('Mod+T')}) to open an empty tab, then type a URL, for example your webmail to fetch a sign-in code. Click a tab or press ${keys('Mod+1')} to ${keys('Mod+9')} or ${keys('Ctrl+Tab')} to switch, and click its × or press ${keys('Mod+W')} to close it. ${keys('Mod+T')} and ${keys('Mod+W')} act on tabs while the page, the tabs, or the URL field has focus, and in Feedback mode; in the terminal they still open and close terminals. Links that open a new tab (<code>target="_blank"</code>) and <code>window.open</code> without a size open in a new tab. Sign-in popups that ask for a size still open in their own window.</p>
 <p>All tabs share the same logins and cookies, and you can copy in one tab and paste in another. Up to 20 tabs can be open. A page can open a tab only right after you click or type in it; otherwise the link opens in the same tab.</p>
-<p>While you record the ${ui('Built-in Browser')}, switching tabs records the tab you switch to as a separate video (see <a href="#multi">Record several windows at once</a>), and the action log notes the switch and the page, so each finding stays tied to its page. The pen and the box work in every tab. An empty tab is recorded once a page loads in it.</p>`],
+<p>While you record the ${ui('Built-in Browser')}, switching tabs records the tab you switch to as a separate video (see <a href="#multi">Record several windows at once</a>), and the action log notes the switch and the page, so each finding stays tied to its page. The pen and the box work in every tab. An empty tab is recorded once a page loads in it.</p>
+<p>Tabs belong to the project. Switching projects closes the open tabs and opens that project's tabs; switching back restores them, with their back and forward history while ${APP} stays open (after a restart, the pages come back without that history). The visited pages listed under the review targets in Feedback mode are also kept per project. Logins and cookies are still shared by all projects.</p>
+<p>If a site answers with a Cloudflare check (<q>Verify you are human</q>), ${APP} reloads it once with a user agent that says it is Electron, and keeps using that for the site until ${APP} quits. Elsewhere the built-in browser presents itself like Chrome, so that sign-in pages such as Google's work.</p>`],
+    ['import', 'Import passwords and history from your browser', `
+<p>Bring sign-ins and history from your usual browser in ${ui('Settings → Import from browsers')}.</p>
+<ul>
+  <li><strong>Passwords</strong>: export a password CSV with your browser's own feature, then click ${ui('Import password CSV…')} and choose it. Chrome / Edge: Password Manager → Settings → Export passwords. Safari: File → Export → Passwords. Firefox: Passwords → ⋯ → Export Passwords. ${APP} never reads a browser's encrypted password storage. The exported CSV holds your passwords in plain text, so delete it (and empty the Trash) once it is imported.</li>
+  <li>On a page whose site has a saved password, a key button appears in the browser toolbar in Editor mode. Click it to fill in the username and password (pick the account when there are several). It fills only a page whose origin matches the saved one (the same scheme, host and port; <code>www.</code> may differ) and only the top frame, not sign-in forms inside an iframe.</li>
+  <li><strong>History</strong>: ${ui('Find browsers')} lists Chrome, Edge, Brave, Chromium, Arc (macOS) and Safari (macOS) profiles on this computer, and ${ui('Import history')} copies their history into the URL bar's suggestions. Imported history is shared by all projects and used only for suggestions. Reading Safari's history needs Full Disk Access for ${APP} (System Settings → Privacy &amp; Security).</li>
+</ul>
+<p>Passwords are encrypted with Electron <code>safeStorage</code> in <code>&lt;userData&gt;/browser-import/passwords.bin</code>; the imported history is in <code>browser-import/history.json</code>. ${ui('Delete all')} and ${ui('Delete imported history')} remove them. Development builds and systems without <code>safeStorage</code> keep imported passwords only until ${APP} quits.</p>`],
     ['extensions', 'Browser extensions', `
 <p>Add Chrome extensions to the built-in browser in ${ui('Settings → Browser extensions')}: ${ui('Add unpacked folder…')} for a folder that contains <code>manifest.json</code>, or ${ui('Import from Chrome…')} to copy one already installed in Chrome, Edge, Brave or Chromium. Extensions run only in the built-in browser, never in ${APP}'s own windows. They can read and change every page you open there and use its sign-ins, so add only extensions you trust.</p>
 <p>Open an extension's popup with ${ui('Extensions')} in the browser toolbar or the feedback toolbar. It opens at the top right of the page and closes when you click elsewhere or press ${keys('Esc')}. When you record the ${ui('Built-in Browser')}, what an extension changes inside the page and the open popup are both in the video and the images. Electron supports only part of the extension APIs: side panels, context menus, notifications, keyboard shortcuts, and tabs or windows opened by an extension don't work, and packed <code>.crx</code> files can't be loaded.</p>
@@ -502,9 +512,11 @@ ${clip('verify', 'The agent fixes the findings and checks each one with the deci
     <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (read images)</td><td><code>CLOUDFLARE_API_TOKEN</code> (Workers AI permission); account ID from the field or <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
     <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (text only)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
     <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (text only)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>OpenAI</td><td><code>https://api.openai.com/v1/decisions</code></td><td><code>gpt-6-luna</code> (reads images)</td><td><code>OPENAI_API_KEY</code></td></tr>
     <tr><td>Custom</td><td>any full URL</td><td>any</td><td>Bearer, a custom header, or none; extra headers allowed</td></tr>
   </tbody>
 </table>
+<p>The OpenAI preset uses OpenAI's Decisions API, which has its own request format (<code>input</code>, a list of <code>questions</code>, and <code>answers</code>). Agents still send the System One format to the relay: for this preset only, the relay converts the request (BEFORE/AFTER images become <code>input_image</code> data URLs) and converts the answers back, so the agent instructions stay the same. It uses your OpenAI API key, the same one as transcription. OpenAI charges input tokens only ($0.10 per 1M).</p>
 <p>For Ollama, install it (0.35.1 or later for Clef / Clef Flash) and pull the model in a terminal. ${APP} doesn't run installers:</p>
 ${code('ollama pull clef-flash')}
 <p>Keys come from the key field (saved with your other API keys), an environment variable you name (the app's environment, the project <code>.env</code>, or <code>~/.ferret/.env</code>), or <code>apiKey</code> in <code>settings.json</code>. Extra headers can read values from environment variables with <code>\${VAR}</code>.</p>
@@ -800,6 +812,7 @@ page('settings.html', 'Configure', 'Settings reference',
 <ul>
   <li>${ui('Accounts')}: see <a href="accounts.html">Accounts and usage</a>.</li>
   <li>${ui('Service CLIs')}: install and sign in to service CLIs. See <a href="agents.html#cli-tools">Service CLIs</a>.</li>
+  <li>${ui('Import from browsers')}: bring passwords (from an exported CSV) and history into the built-in browser. See <a href="recording.html#import">Import passwords and history</a>.</li>
   <li>${ui('Appearance → Theme')}: ${ui('System')} (default), ${ui('Light')}, ${ui('Dark')}.</li>
   <li>${ui('Language → Interface')}: ${ui('System')} (default; follows the OS language when ${APP} has it, English otherwise) or one of 14 languages: English, 日本語, 简体中文, 繁體中文, 한국어, Español, Français, Deutsch, Italiano, Português (Brasil), Русский, हिन्दी, Bahasa Indonesia, Tiếng Việt.</li>
 </ul>
@@ -890,7 +903,7 @@ ${code(`{
   <li><code>agents.customAgents</code>: any CLI or wrapper script. <code>startupAgents</code> lists the agent tabs opened with a project, in order.</li>
   <li><code>capture.sttEndpoints.compatible</code>: any server that implements OpenAI's <code>/v1/audio/transcriptions</code> (speaches, vLLM, LocalAI…). <code>costLimitUsd: null</code> turns off the cost cap, which makes sense for your own GPU. See <a href="transcription.html">Transcription and costs</a>.</li>
   <li><code>organizer</code>: ${ui('Organize findings')} sent straight to an OpenAI-compatible <code>/v1/chat/completions</code> server (here Ollama). Use <code>"runner": "claude-code"</code> or <code>"codex"</code> to use your own CLI login instead, and <code>organizer.cliModels</code> to pick their model.</li>
-  <li><code>decision</code>: the model that checks whether each finding was fixed. Clef Flash on a local Ollama is free and reads screenshots. <code>preset</code> can also be <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code> or <code>custom</code>.</li>
+  <li><code>decision</code>: the model that checks whether each finding was fixed. Clef Flash on a local Ollama is free and reads screenshots. <code>preset</code> can also be <code>cloudflare</code>, <code>vercel</code>, <code>typesafe</code>, <code>openai</code> or <code>custom</code>.</li>
   <li>Every provider block (<code>sttEndpoints.*</code>, <code>organizer.endpoints.*</code>) also takes <code>timeoutMs</code>, <code>headers</code> and, for Azure, <code>apiVersion</code>.</li>
 </ul>
 ${note(`<p>${APP} never pays for AI on your behalf. There is no built-in key and no relay server: every request goes from your machine to the endpoint you configure, with your key.</p>`)}`],
@@ -996,7 +1009,7 @@ ${code(`&lt;project&gt;/.ferret/reviews/20261003-104500/
     <tr><td>Transcription: OpenAI / compatible</td><td>OpenAI or your Base URL</td><td>audio chunks</td></tr>
     <tr><td>Model download</td><td>Hugging Face</td><td>file request</td></tr>
     <tr><td>${ui('Organize')}</td><td>your Claude Code / Codex CLI, or the LLM endpoint you set in <code>organizer</code></td><td>text and action log only (no images, audio, or video)</td></tr>
-    <tr><td>Acceptance check (decision model, off by default)</td><td>your agent, through the local relay, to Ollama / Cloudflare / AI Gateway / TypeSafe / your URL</td><td>what the agent sends: finding text, "Done when", and BEFORE/AFTER screenshots (image models only)</td></tr>
+    <tr><td>Acceptance check (decision model, off by default)</td><td>your agent, through the local relay, to Ollama / Cloudflare / AI Gateway / TypeSafe / OpenAI / your URL</td><td>what the agent sends: finding text, "Done when", and BEFORE/AFTER screenshots (image models only)</td></tr>
     <tr><td>${ui('Send to Agent')}</td><td>the agent in your terminal</td><td>one instruction pointing at <code>feedback.md</code></td></tr>
     <tr><td>Footer usage (Claude Code and Codex only)</td><td>Anthropic, ChatGPT</td><td>usage request with your own login</td></tr>
     <tr><td>GitHub star prompt</td><td>GitHub via your <code>gh</code></td><td>checks whether you starred the repo, and stars it only if you click ${ui('Star on GitHub')}</td></tr>
@@ -1071,6 +1084,8 @@ page('files.html', 'Reference', 'Files and environment',
 </table>
 ${code(`settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
+browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts
 accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts`)}
@@ -1087,6 +1102,7 @@ accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts`)}
     <tr><td><code>ADE_PROJECT_DIR</code></td><td>Open (and register) this folder as the project on launch</td></tr>
     <tr><td><code>ADE_INITIAL_URL</code></td><td>Load this URL in the built-in browser on launch</td></tr>
     <tr><td><code>ADE_WHISPER_MODEL</code></td><td>Absolute path of a GGML model to use for on-device transcription, overriding the downloaded default</td></tr>
+    <tr><td><code>ADE_TERMINAL_PREWARM</code></td><td><code>0</code> stops ${APP} from keeping one shell ready in the background. By default the next plain shell tab uses it, so its prompt appears at once</td></tr>
     <tr><td><code>FERRET_SENTRY_DSN</code> (or the old <code>MOVIE_ADE_SENTRY_DSN</code>)</td><td>Where crash reports go. Empty means none are sent (see <a href="privacy.html#crash-reports">Crash reports</a>)</td></tr>
     <tr><td><code>OPENAI_API_KEY</code></td><td>Read from <code>.env</code> in development only (<code>pnpm dev</code>), never in packaged builds</td></tr>
     <tr><td><code>PATH</code></td><td>Used to find your agents' commands (<code>claude</code>, <code>codex</code>, <code>gemini</code>…), <code>gh</code>, <code>git</code>, <code>whisper-cli</code>. On macOS and Linux, Homebrew, linuxbrew, and snap locations are added</td></tr>

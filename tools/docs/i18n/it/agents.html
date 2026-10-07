@@ -77,7 +77,7 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
 <p>Se nessun agent è in esecuzione, Ferret ne avvia uno e invia appena è pronto. Non viene inviato nulla mentre l'agent attende una risposta a una richiesta di autorizzazione: rispondi prima nel terminale.</p>
 <p><span class="docs-ui">Copia per l'Agent</span> mette la stessa istruzione negli appunti per un agent che gira altrove (un altro terminale, un IDE o un'app). Vengono considerate solo le segnalazioni impostate su <span class="docs-ui">Invia</span>. Il video non è mai incluso.</p>
 
-<!-- @verify 6bb391611d -->
+<!-- @verify 205abd35bc -->
 ## Verifica di accettazione con un modello di decisione
 {{clip:verify|L'agent corregge le segnalazioni e verifica ciascuna con il modello di decisione prima che tu le guardi.}}
 <p>Attiva questa opzione e il tuo coding agent controlla il proprio lavoro una volta rispetto a ogni segnalazione prima che tu lo guardi. Ferret non giudica nulla da solo: dà all'agent un <em>modello di decisione</em> (qualsiasi API compatibile con System One) e gli spiega, in <code>feedback.md</code>, come usarlo. Il modello di decisione è la verifica dell'agent stesso, mai una domanda per te: l'agent non ti chiede nulla. Tu confronti solo PRIMA e DOPO e premi <span class="docs-ui">OK</span> o <span class="docs-ui">NG</span>.</p>
@@ -97,9 +97,11 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
     <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>, <code>clef</code> (leggono immagini)</td><td><code>CLOUDFLARE_API_TOKEN</code> (permesso Workers AI); ID account dal campo o da <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
     <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>, <code>convaiinnovations/laya</code> (solo testo)</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
     <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>, <code>jev-preview</code> (solo testo)</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>OpenAI</td><td><code>https://api.openai.com/v1/decisions</code></td><td><code>gpt-6-luna</code> (legge immagini)</td><td><code>OPENAI_API_KEY</code></td></tr>
     <tr><td>Personalizzato</td><td>qualsiasi URL completo</td><td>qualsiasi</td><td>Bearer, un header personalizzato o nessuna; header aggiuntivi consentiti</td></tr>
   </tbody>
 </table>
+<p>Il preset OpenAI usa la Decisions API di OpenAI, che ha un proprio formato di richiesta (<code>input</code>, un elenco di <code>questions</code> e <code>answers</code>). Gli agenti inviano sempre il formato System One al relay: solo per questo preset, il relay converte la richiesta (le immagini BEFORE/AFTER diventano data URL <code>input_image</code>) e riconverte le risposte, quindi le istruzioni per l'agente non cambiano. Usa la tua chiave API di OpenAI, la stessa della trascrizione. OpenAI addebita solo i token di input (0,10 $ per 1M).</p>
 <p>Per Ollama, installalo (0.35.1 o successivo per Clef / Clef Flash) e scarica il modello in un terminale. Ferret non esegue programmi di installazione:</p>
 <pre><code>ollama pull clef-flash</code></pre>
 <p>Le chiavi provengono dal campo della chiave (salvata con le altre chiavi API), da una variabile d'ambiente che indichi tu (l'ambiente dell'app, il <code>.env</code> del progetto oppure <code>~/.ferret/.env</code>), oppure da <code>apiKey</code> in <code>settings.json</code>. Gli header aggiuntivi possono leggere valori dalle variabili d'ambiente con <code>${VAR}</code>.</p>

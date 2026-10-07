@@ -4,7 +4,7 @@
  * - main は `git status --porcelain=v1 -z --untracked-files=normal --ignored=matching -- .` を走らせ、
  *   parseGitStatusZ でプロジェクトからの相対パスと状態の組にして送る（src/main/gitDecorations.ts）
  * - renderer は buildGitDecorations で、変更を含むフォルダへ状態を伝える（親へ伝播）
- * - .gitignore の対象は薄く出す。.env などの秘密を含みうるもの・.DS_Store・.git は既定で隠す（isHiddenByDefault）
+ * - .gitignore の対象は薄く出す。.DS_Store・.git は既定で隠す（isHiddenByDefault）
  */
 
 /** 1つのパスの git の状態。並びは強い順（フォルダには、中で一番強いものを付ける） */
@@ -146,26 +146,16 @@ export function gitStateFor(deco: GitDecorations, path: string, kind: 'file' | '
 
 // ─── 既定で隠すもの ─────────────────────────────
 
-/** 雛形として git で配る .env（中身は秘密でない） */
-const ENV_TEMPLATE = /\.(example|sample|template|dist|defaults?|schema)$/i
-
-/** 秘密を含みうる .env（.env・.env.local・.env.production.local など。.env.example などの雛形は除く） */
-export function isSecretEnvName(name: string): boolean {
-  return /^\.env(\..+)?$/i.test(name) && !ENV_TEMPLATE.test(name)
-}
-
 /** どこにあっても既定で隠す名前 */
 const ALWAYS_HIDDEN: ReadonlySet<string> = new Set(['.git', '.DS_Store'])
 
 /**
- * 既定でツリーに出さないか。.git・.DS_Store は常に、.env などは .gitignore の対象のとき（git で管理しているものは出す）。
- * git の状態がまだ分からない（null）・git のリポジトリでないときは、秘密を含みうる .env を念のため隠す。
+ * 既定でツリーに出さないか。.git・.DS_Store だけ。
+ * .env などは .gitignore の対象でも出す（以前は秘密を含みうるとして隠していたが、編集したいファイルが見えないので 2026-10-07 にやめた。
+ * .gitignore の対象は gitStateFor の 'ignored' で薄く出る）
  */
-export function isHiddenByDefault(entry: { name: string; path: string }, deco: GitDecorations | null): boolean {
-  if (ALWAYS_HIDDEN.has(entry.name)) return true
-  if (!isSecretEnvName(entry.name)) return false
-  if (!deco || !deco.isGit) return true
-  return isGitIgnored(deco, entry.path)
+export function isHiddenByDefault(entry: { name: string; path: string }): boolean {
+  return ALWAYS_HIDDEN.has(entry.name)
 }
 
 /**

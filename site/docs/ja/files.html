@@ -170,6 +170,8 @@
 </table>
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
+browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts
 accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
@@ -189,6 +191,7 @@ accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
     <tr><td><code>ADE_PROJECT_DIR</code></td><td>起動時にこのフォルダをプロジェクトとして開きます（登録もします）</td></tr>
     <tr><td><code>ADE_INITIAL_URL</code></td><td>起動時にこの URL を内蔵ブラウザで開きます</td></tr>
     <tr><td><code>ADE_WHISPER_MODEL</code></td><td>端末内の文字起こしに使う GGML モデルの絶対パス。ダウンロードした既定のモデルより優先します</td></tr>
+    <tr><td><code>ADE_TERMINAL_PREWARM</code></td><td><code>0</code> にすると、Ferret がシェルを1つ裏で用意しておくのをやめます。既定では次に開く素のシェルのタブがそれを使うので、プロンプトがすぐに出ます</td></tr>
     <tr><td><code>FERRET_SENTRY_DSN</code>（または以前の <code>MOVIE_ADE_SENTRY_DSN</code>）</td><td>クラッシュレポートの送り先。空なら何も送りません（<a href="privacy.html#crash-reports">クラッシュレポート</a>を参照）</td></tr>
     <tr><td><code>OPENAI_API_KEY</code></td><td>開発時（<code>pnpm dev</code>）だけ <code>.env</code> から読みます。配布用のビルドでは読みません</td></tr>
     <tr><td><code>PATH</code></td><td>エージェントのコマンド（<code>claude</code>、<code>codex</code>、<code>gemini</code>…）、<code>gh</code>、<code>git</code>、<code>whisper-cli</code> を探すのに使います。macOS と Linux では Homebrew、linuxbrew、snap の場所も足します</td></tr>

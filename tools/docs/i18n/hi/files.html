@@ -5,7 +5,7 @@
 <!-- @lead b2a7619b5e -->
 Ferret अपनी फ़ाइलें कहाँ रखता है, और कौन-से environment variables पढ़ता या सेट करता है।
 
-<!-- @userdata ee70336b22 -->
+<!-- @userdata 71b30d8c35 -->
 ## userData फ़ोल्डर
 <p>ऐप का डेटा Electron के <code>userData</code> फ़ोल्डर में रहता है। इसका नाम <code>ade-movie</code> पर तय है (प्रोडक्ट का नाम नहीं), ताकि नाम बदलने पर भी डेटा बचा रहे। इसे <code>--user-data-dir=&lt;path&gt;</code> से बदलें।</p>
 <table>
@@ -18,13 +18,15 @@ Ferret अपनी फ़ाइलें कहाँ रखता है, औ�
 </table>
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
+browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts
 accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
 <p>आपकी सेटिंग्स इस फ़ोल्डर में नहीं हैं: वे <code>~/.ferret/</code> में रहती हैं (<a href="settings-json.html">settings.json से कॉन्फ़िगर करें</a> देखें)।</p>
 <p>आपका खुद चुना हुआ मॉडल कहीं भी रह सकता है। पुरानी डिफ़ॉल्ट जगह <code>~/.cache/ade-movie/models/ggml-small.bin</code> भी अब तक जाँची जाती है।</p>
 
-<!-- @env 1d9b0a6a78 -->
+<!-- @env 35e3e2ffb2 -->
 ## Environment variables
 <table>
   <thead><tr><th>Variable</th><th>असर</th></tr></thead>
@@ -36,6 +38,7 @@ accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
     <tr><td><code>ADE_PROJECT_DIR</code></td><td>Launch पर इस फ़ोल्डर को प्रोजेक्ट के रूप में खोलें (और रजिस्टर करें)</td></tr>
     <tr><td><code>ADE_INITIAL_URL</code></td><td>Launch पर बिल्ट-इन ब्राउज़र में यह URL लोड करें</td></tr>
     <tr><td><code>ADE_WHISPER_MODEL</code></td><td>डिवाइस पर ट्रांसक्रिप्शन के लिए इस्तेमाल होने वाले GGML मॉडल का absolute path, जो डाउनलोड किए गए डिफ़ॉल्ट की जगह लेता है</td></tr>
+    <tr><td><code>ADE_TERMINAL_PREWARM</code></td><td><code>0</code> करने पर Ferret बैकग्राउंड में एक शेल तैयार रखना बंद कर देता है। डिफ़ॉल्ट रूप से अगला सामान्य शेल टैब उसी को इस्तेमाल करता है, इसलिए उसका प्रॉम्प्ट तुरंत दिखता है</td></tr>
     <tr><td><code>FERRET_SENTRY_DSN</code> (या पुराना <code>MOVIE_ADE_SENTRY_DSN</code>)</td><td>Crash reports कहाँ जाती हैं। खाली होने का मतलब कोई नहीं भेजी जाती (<a href="privacy.html#crash-reports">Crash reports</a> देखें)</td></tr>
     <tr><td><code>OPENAI_API_KEY</code></td><td>सिर्फ़ development (<code>pnpm dev</code>) में <code>.env</code> से पढ़ा जाता है, पैकेज किए गए builds में कभी नहीं</td></tr>
     <tr><td><code>PATH</code></td><td>आपके agents के commands (<code>claude</code>, <code>codex</code>, <code>gemini</code>…), <code>gh</code>, <code>git</code>, <code>whisper-cli</code> ढूँढने के लिए इस्तेमाल होता है। macOS और Linux पर Homebrew, linuxbrew और snap की जगहें जोड़ी जाती हैं</td></tr>

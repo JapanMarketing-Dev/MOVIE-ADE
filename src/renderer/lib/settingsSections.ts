@@ -22,6 +22,8 @@ export const SETTINGS_SECTIONS = [
   'layout',
   // 内蔵ブラウザに読み込む Chrome 拡張
   'extensions',
+  // ほかのブラウザ（Chrome・Edge・Safari など）のパスワードの CSV と履歴の取り込み
+  'browserImport',
   // よく使うサービスの CLI（gh・wrangler・Ollama・クラウド・デプロイ先）のインストールとログイン
   'cli',
   'about'
@@ -42,13 +44,15 @@ const SECTION_KEYWORDS: Record<SettingsSectionId, readonly string[]> = {
     '文字起こし', 'モデル', 'キー', '費用', '上限', '接続', '端末内', '言語', '表示', '非表示', '警告'],
   organize: ['organize', 'findings', 'llm', 'anthropic', 'claude api', 'gemini', 'openrouter', 'api key', 'model', 'split',
     '整理', '指摘', 'キー', 'モデル', '分割'],
-  verify: ['decision', 'verify', 'judge', 'done', 'ollama', 'clef', 'typesafe', 'jev', 'vercel', 'gateway', 'system one', 'api key',
+  verify: ['decision', 'verify', 'judge', 'done', 'ollama', 'clef', 'typesafe', 'jev', 'openai', 'gpt-6-luna', 'luna', 'vercel', 'gateway', 'system one', 'api key',
     '判定', '検証', '完了', 'キー'],
   agents: ['agent', 'claude', 'codex', 'gemini', 'opencode', 'cursor', 'copilot', 'aider', 'grok', 'qwen', 'amp', 'custom', 'install',
     'command', 'args', 'arguments', 'prompt', 'instruction', 'startup', 'エージェント', 'カスタム', 'インストール', 'コマンド', '引数', '指示', 'プロンプト', '起動'],
   accounts: ['account', 'login', 'sign in', 'usage', 'manage', 'limit', 'failover', 'switch', 'アカウント', 'ログイン', '使用量', '管理', '上限', '切り替え'],
   extensions: ['extension', 'extensions', 'chrome', 'add-on', 'addon', 'plugin', 'browser', 'popup', 'crx', 'edge', 'brave',
     '拡張', '拡張機能', 'ブラウザ', 'アドオン', 'プラグイン', 'ポップアップ'],
+  browserImport: ['import', 'password', 'passwords', 'csv', 'history', 'autofill', 'login', 'chrome', 'edge', 'safari', 'firefox', 'brave', 'arc', 'browser',
+    '取り込み', 'パスワード', '履歴', '自動入力', 'ブラウザ', 'ログイン'],
   cli: ['cli', 'command line', 'install', 'login', 'sign in', 'wrangler', 'cloudflare', 'ollama', 'github', 'gitlab', 'glab', 'gh', 'vercel', 'netlify',
     'supabase', 'firebase', 'fly', 'railway', 'heroku', 'stripe', 'gcloud', 'google cloud', 'aws', 'azure', 'docker',
     'コマンドライン', 'インストール', 'ログイン', 'ツール'],

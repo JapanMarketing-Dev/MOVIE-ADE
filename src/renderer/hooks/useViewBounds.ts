@@ -71,7 +71,10 @@ export function useViewBounds(
      * 違う位置で測った）と、ビューがツールバーに重なったまま残る（録画のツールバーが消えて見えた）。
      * 見せている間は 1 秒ごとに測って置き直し、ずれても自分で戻す（main 側のビューだけがずれた場合も戻すため、同じ値でも送る）
      */
-    const healer = window.setInterval(() => schedule(true), 1000)
+    // 最小化・裏の間は置き直さない（毎秒の IPC とビューの置き直しを止める。表に戻ったら visibilitychange ですぐ置き直す）
+    const healer = window.setInterval(() => { if (!document.hidden) schedule(true) }, 1000)
+    const onVisible = () => { if (!document.hidden) schedule(true) }
+    document.addEventListener('visibilitychange', onVisible)
     const onFocus = () => schedule(true)
     window.addEventListener('focus', onFocus)
     return () => {
@@ -79,6 +82,7 @@ export function useViewBounds(
       window.removeEventListener('resize', schedule)
       window.removeEventListener('focus', onFocus)
       window.clearInterval(healer)
+      document.removeEventListener('visibilitychange', onVisible)
       window.clearTimeout(timer)
       if (frameRef.current !== null) {
         cancelAnimationFrame(frameRef.current)

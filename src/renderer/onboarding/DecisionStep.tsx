@@ -99,6 +99,7 @@ export function DecisionStep() {
       </label>}
       {prefs.preset === 'ollama' && <p className="ob-note">{t('onboarding.decision.ollamaHint', { model: prefs.model || def.model })}</p>}
       {prefs.preset === 'custom' && <p className="ob-note">{t('onboarding.decision.customHint')}</p>}
+      {prefs.preset === 'openai' && <p className="ob-note">{t('decision.settings.openaiHint')}</p>}
       {/* キーは OS の鍵で保存する（設定の節と同じ部品）。値は画面にも settings.json にも出さない */}
       {available && def.vendor && <KeyField key={`key-${def.vendor}`} vendor={def.vendor} label={label(prefs.preset)} envVar={prefs.apiKeyEnv} optional={false}
         placeholder="" available={available} disabled={false}

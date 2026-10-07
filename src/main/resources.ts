@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import { execFile } from 'node:child_process'
+import { cpus } from 'node:os'
 import { promisify } from 'node:util'
 import type { Project } from '@shared/types'
 import type { ResourceProject, ResourceSnapshot, ResourceTerminal } from '@shared/resources'
@@ -27,6 +28,8 @@ export interface ProcRow {
   cpu: number
   /** RSS（バイト） */
   memory: number
+  /** 実行ファイルの名前（ps の comm の最後の部分）。取れない OS（Windows）では無い */
+  name?: string
 }
 
 interface ProcIndex {
@@ -34,7 +37,7 @@ interface ProcIndex {
   childrenOf: Map<number, number[]>
 }
 
-/** `ps -eo pid=,ppid=,pcpu=,rss=` の出力を読む（単体テストから使うため export） */
+/** `ps -eo pid=,ppid=,pcpu=,rss=,comm=` の出力を読む（comm は無くてもよい。単体テストから使うため export） */
 export function parsePsOutput(stdout: string): ProcRow[] {
   const rows: ProcRow[] = []
   for (const line of stdout.split(/\r?\n/)) {
@@ -45,11 +48,14 @@ export function parsePsOutput(stdout: string): ProcRow[] {
     const cpu = Number.parseFloat(fields[2])
     const rssKb = Number.parseInt(fields[3], 10)
     if (Number.isNaN(pid) || Number.isNaN(ppid)) continue
+    // comm は空白を含むことがある（「Ferret Helper (Renderer)」）ので、5列目以降をまとめてから最後の / の後ろを取る
+    const name = fields.slice(4).join(' ').split('/').pop()?.slice(0, 64)
     rows.push({
       pid,
       ppid,
       cpu: Number.isFinite(cpu) && cpu > 0 ? cpu : 0,
-      memory: Number.isFinite(rssKb) && rssKb > 0 ? rssKb * 1024 : 0
+      memory: Number.isFinite(rssKb) && rssKb > 0 ? rssKb * 1024 : 0,
+      ...(name ? { name } : {})
     })
   }
   return rows
@@ -100,6 +106,22 @@ const PS_TIMEOUT_MS = 5000
 const HISTORY_CAPACITY = 30
 const HISTORY_STALE_MS = 10 * 60 * 1000
 const OTHER_KEY = '__other__'
+/** ターミナルの中で一番重いプロセスの名前を添えるのは、これ以上 CPU を使っているときだけ（Agent が走らせたビルド・テストなどを見分けるため） */
+export const TOP_PROCESS_MIN_CPU = 10
+
+/**
+ * ターミナルのプロセスツリーで一番 CPU を使っているプロセス（シェル自身を除く）。
+ * 行の CPU はツリーの合計なので、Agent が起動したビルド・テスト・スクリプトの分も含む。どれが重いかを見せるため
+ */
+export function topProcess(index: ProcIndex, pids: readonly number[], root: number): { name: string; cpu: number } | null {
+  let best: ProcRow | null = null
+  for (const pid of pids) {
+    if (pid === root) continue
+    const row = index.byPid.get(pid)
+    if (row?.name && row.cpu >= TOP_PROCESS_MIN_CPU && (!best || row.cpu > best.cpu)) best = row
+  }
+  return best?.name ? { name: best.name, cpu: best.cpu } : null
+}
 /**
  * Windows のプロセス一覧（PowerShell の CIM）は1回で1秒以上かかり、PowerShell を起動するたびに CPU とメモリを使う
  * （FERRET-M: 0.4.15 の Windows で resources:snapshot が毎回 1.2〜1.4 秒）。続けて呼ばれても、この間は前回の一覧を使う。
@@ -120,7 +142,7 @@ export function shouldReportPsFailure(err: unknown, consecutive: number): boolea
 async function enumerateWithPs(): Promise<ProcRow[]> {
   try {
     // pcpu はロケールによって小数点が「,」になるので C ロケールに固定する（Orca と同じ）
-    const { stdout } = await execFileAsync('ps', ['-eo', 'pid=,ppid=,pcpu=,rss='], {
+    const { stdout } = await execFileAsync('ps', ['-eo', 'pid=,ppid=,pcpu=,rss=,comm='], {
       maxBuffer: 10 * 1024 * 1024,
       timeout: PS_TIMEOUT_MS,
       env: { ...process.env, LC_ALL: 'C', LANG: 'C' }
@@ -265,6 +287,7 @@ export class ResourceCollector {
         cpu += row.cpu
         memory += row.memory
       }
+      const top = topProcess(index, pids, term.pid)
       const terminal: ResourceTerminal = {
         id: term.id,
         pid: term.pid,
@@ -272,7 +295,8 @@ export class ResourceCollector {
         running: pids.some((pid) => pid !== term.pid),
         orphan: this.isOrphan(term.id),
         cpu,
-        memory
+        memory,
+        ...(top ? { top } : {})
       }
       const bucket = bucketFor(projectForCwd(term.cwd, projects))
       bucket.terminals.push(terminal)
@@ -303,6 +327,7 @@ export class ResourceCollector {
       totalMemory: appMemory + list.reduce((sum, p) => sum + p.memory, 0),
       terminalCount: terminals.length,
       orphanCount: terminals.filter((t) => t.orphan).length,
+      cores: Math.max(1, cpus().length),
       collectedAt: now
     }
   }

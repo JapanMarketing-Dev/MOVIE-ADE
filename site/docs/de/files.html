@@ -170,6 +170,8 @@
 </table>
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
+browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts
 accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
@@ -189,6 +191,7 @@ accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
     <tr><td><code>ADE_PROJECT_DIR</code></td><td>Diesen Ordner beim Start als Projekt öffnen (und registrieren)</td></tr>
     <tr><td><code>ADE_INITIAL_URL</code></td><td>Diese URL beim Start im integrierten Browser laden</td></tr>
     <tr><td><code>ADE_WHISPER_MODEL</code></td><td>Absoluter Pfad eines GGML-Modells für die Transkription auf dem Gerät; hat Vorrang vor dem heruntergeladenen Standardmodell</td></tr>
+    <tr><td><code>ADE_TERMINAL_PREWARM</code></td><td><code>0</code> verhindert, dass Ferret im Hintergrund eine Shell bereithält. Standardmäßig nutzt der nächste einfache Shell-Tab sie, sodass seine Eingabeaufforderung sofort erscheint</td></tr>
     <tr><td><code>FERRET_SENTRY_DSN</code> (oder das alte <code>MOVIE_ADE_SENTRY_DSN</code>)</td><td>Ziel der Absturzberichte. Leer bedeutet, dass keine gesendet werden (siehe <a href="privacy.html#crash-reports">Absturzberichte</a>)</td></tr>
     <tr><td><code>OPENAI_API_KEY</code></td><td>Wird nur in der Entwicklung (<code>pnpm dev</code>) aus <code>.env</code> gelesen, nie in paketierten Builds</td></tr>
     <tr><td><code>PATH</code></td><td>Dient zum Finden der Befehle Ihrer Agents (<code>claude</code>, <code>codex</code>, <code>gemini</code>…), von <code>gh</code>, <code>git</code> und <code>whisper-cli</code>. Unter macOS und Linux werden die Orte von Homebrew, linuxbrew und snap ergänzt</td></tr>

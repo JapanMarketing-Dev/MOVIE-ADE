@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { pushRecentUrl, sanitizeUrlHistory } from '@shared/reviewTarget'
 import { readLocal, writeLocal } from './localPref'
 
@@ -24,8 +24,13 @@ function load(key: string): string[] {
 export function useUrlHistory(projectId: string | null, currentUrl: string): string[] {
   const key = urlHistoryKey(projectId ?? 'none')
   const [history, setHistory] = useState<string[]>(() => load(key))
+  /** いまの鍵で最後に見た URL。プロジェクトを切り替えた直後は前のプロジェクトの URL がまだ出ているので、鍵が変わった時点の URL は積まない */
+  const seen = useRef<{ key: string; url: string } | null>(null)
   useEffect(() => setHistory(load(key)), [key])
   useEffect(() => {
+    const previous = seen.current
+    seen.current = { key, url: currentUrl }
+    if (previous && previous.key !== key) return
     // プロジェクトを開いていなくても覚える（'none' の鍵）。右パネルの「最近開いた URL」に出す
     if (!currentUrl || currentUrl === 'about:blank') return
     setHistory((prev) => {

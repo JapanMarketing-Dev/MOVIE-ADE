@@ -170,6 +170,8 @@
 </table>
 <pre><code>settings.json       # settings before 0.1.1, kept as a backup (now ~/.ferret/settings.json)
 stt-keys.bin        # API keys, encrypted with safeStorage
+browser-import/     # imported passwords (passwords.bin, encrypted with safeStorage) and history (history.json)
+login-shell-path.json  # your login shell's PATH from the last launch, so agent tabs start without waiting
 models/             # downloaded whisper models (ggml-*.bin)
 accounts/claude/&lt;id&gt;/   # CLAUDE_CONFIG_DIR for added accounts
 accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
@@ -189,6 +191,7 @@ accounts/codex/&lt;id&gt;/    # CODEX_HOME for added accounts</code></pre>
     <tr><td><code>ADE_PROJECT_DIR</code></td><td>Apre (e registra) questa cartella come progetto all'avvio</td></tr>
     <tr><td><code>ADE_INITIAL_URL</code></td><td>Carica questo URL nel browser integrato all'avvio</td></tr>
     <tr><td><code>ADE_WHISPER_MODEL</code></td><td>Percorso assoluto di un modello GGML da usare per la trascrizione sul dispositivo, al posto di quello predefinito scaricato</td></tr>
+    <tr><td><code>ADE_TERMINAL_PREWARM</code></td><td><code>0</code> impedisce a Ferret di tenere una shell pronta in background. Per impostazione predefinita la usa la successiva scheda di shell semplice, così il suo prompt compare subito</td></tr>
     <tr><td><code>FERRET_SENTRY_DSN</code> (o il vecchio <code>MOVIE_ADE_SENTRY_DSN</code>)</td><td>Dove vanno i report sugli arresti anomali. Se è vuota non viene inviato nulla (vedi <a href="privacy.html#crash-reports">Report sugli arresti anomali</a>)</td></tr>
     <tr><td><code>OPENAI_API_KEY</code></td><td>Letta da <code>.env</code> solo in sviluppo (<code>pnpm dev</code>), mai nelle build pacchettizzate</td></tr>
     <tr><td><code>PATH</code></td><td>Usata per trovare i comandi dei tuoi agent (<code>claude</code>, <code>codex</code>, <code>gemini</code>…), <code>gh</code>, <code>git</code>, <code>whisper-cli</code>. Su macOS e Linux vengono aggiunti i percorsi di Homebrew, linuxbrew e snap</td></tr>

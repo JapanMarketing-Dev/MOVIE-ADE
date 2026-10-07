@@ -1,4 +1,5 @@
 import type { BrowserExtensionInfo, InstalledBrowserExtension } from './browserExtensions'
+import type { BrowserImportStatus, HistorySourceInfo, PageLogins } from './browserImport'
 import type { AgentNotifyOpen, AgentNotifyRequest } from './agentNotify'
 import type { FailoverLaunchRequest, FailoverNotice, LimitFailoverPrefs } from './failover'
 import type { CliToolStatus } from './cliTools'
@@ -234,6 +235,24 @@ export interface IpcRequests {
    * 「このページの拡張を入れる」（ストアのページを開いているとき）は 'install'
    */
   'browserExtensions:menu': (at: { x: number; y: number }) => 'manage' | 'install' | null
+  /** ほかのブラウザからの取り込み（パスワードの CSV・履歴）の件数（src/main/browserImport/） */
+  'browserImport:status': () => BrowserImportStatus
+  /** パスワードの CSV を選んで取り込む（ダイアログは main が出す。パスは画面から受け取らない）。やめたら null */
+  'browserImport:importPasswords': () => { added: number; updated: number; skipped: number } | null
+  'browserImport:clearPasswords': () => BrowserImportStatus
+  /** 履歴を取り込める元（Chromium 系のプロフィール・Safari）。取り込みは key で選ぶ */
+  'browserImport:historySources': () => HistorySourceInfo[]
+  /** 直前の historySources の key の履歴を取り込む。read は読んだ件数 */
+  'browserImport:importHistory': (key: string) => { read: number; status: BrowserImportStatus }
+  'browserImport:clearHistory': () => BrowserImportStatus
+  /** URL 欄の入力に合う、取り込んだ履歴（全プロジェクト共通） */
+  'browserImport:suggest': (query: string) => Array<{ url: string; title: string }>
+  /** 内蔵ブラウザの表示中のタブのページに使える保存した資格情報（ユーザー名だけ。パスワードは返さない） */
+  'passwords:forPage': () => PageLogins
+  /** 選んだ1件を表示中のタブのページへ入れる（オリジンは main が確かめる）。入れた欄の数 */
+  'passwords:fill': (id: string) => number
+  /** 資格情報が複数あるときのネイティブのメニュー（at はウインドウの中の位置）。選んだものを入れたら true、管理を選んだら 'manage' */
+  'passwords:menu': (at: { x: number; y: number }) => boolean | 'manage'
 
   'terminal:create': (options: TerminalCreateOptions) => TerminalTabInfo
   'terminal:write': (id: string, data: string) => void
@@ -642,6 +661,7 @@ export const IPC_REQUEST_CHANNELS = [
   'browser:setViewport',
   'browser:state',
   'browserExtensions:list', 'browserExtensions:addFolder', 'browserExtensions:scanInstalled', 'browserExtensions:import', 'browserExtensions:setEnabled', 'browserExtensions:remove', 'browserExtensions:menu', 'browserExtensions:installFromStore', 'browserExtensions:addCrx',
+  'browserImport:status', 'browserImport:importPasswords', 'browserImport:clearPasswords', 'browserImport:historySources', 'browserImport:importHistory', 'browserImport:clearHistory', 'browserImport:suggest', 'passwords:forPage', 'passwords:fill', 'passwords:menu',
   'terminal:create',
   'terminal:write',
   'terminal:resize',

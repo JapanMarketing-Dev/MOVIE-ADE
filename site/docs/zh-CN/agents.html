@@ -316,9 +316,11 @@ codex --dangerously-bypass-approvals-and-sandbox</code></pre>
     <tr><td>Cloudflare Workers AI</td><td><code>https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/cloudflare/{model}</code></td><td><code>clef-flash</code>、<code>clef</code>（可读图片）</td><td><code>CLOUDFLARE_API_TOKEN</code>（Workers AI 权限）；账户 ID 来自字段或 <code>CLOUDFLARE_ACCOUNT_ID</code></td></tr>
     <tr><td>Vercel AI Gateway</td><td><code>https://ai-gateway.vercel.sh/typesafe/v1/systemone</code></td><td><code>typesafe-ai/jev</code>、<code>convaiinnovations/laya</code>（仅文本）</td><td><code>AI_GATEWAY_API_KEY</code></td></tr>
     <tr><td>TypeSafe</td><td><code>https://api.typesafe.ai/v1/systemone</code></td><td><code>jev-latest</code>、<code>jev-preview</code>（仅文本）</td><td><code>TYPESAFE_API_KEY</code></td></tr>
+    <tr><td>OpenAI</td><td><code>https://api.openai.com/v1/decisions</code></td><td><code>gpt-6-luna</code>（可读图片）</td><td><code>OPENAI_API_KEY</code></td></tr>
     <tr><td>自定义</td><td>任意完整 URL</td><td>任意</td><td>Bearer、自定义请求头或无；可添加额外请求头</td></tr>
   </tbody>
 </table>
+<p>OpenAI 预设使用 OpenAI 的 Decisions API，它有自己的请求格式（<code>input</code>、<code>questions</code> 列表和 <code>answers</code>）。智能体仍按 System One 的格式发送给中继：仅在这个预设下，中继会转换请求（BEFORE/AFTER 图片会变成 <code>input_image</code> 的 data URL），并把答案转换回来，因此给智能体的指示保持不变。它使用你的 OpenAI API 密钥，与转写使用的相同。OpenAI 只对输入 token 收费（每 100 万 token $0.10）。</p>
 <p>使用 Ollama 时，先安装它（Clef / Clef Flash 需要 0.35.1 或更高版本），然后在终端中拉取模型。Ferret 不会运行安装程序：</p>
 <pre><code>ollama pull clef-flash</code></pre>
 <p>密钥来自密钥字段（与你的其他 API 密钥一起保存）、你指定的环境变量（应用的环境、项目的 <code>.env</code> 或 <code>~/.ferret/.env</code>），或 <code>settings.json</code> 中的 <code>apiKey</code>。额外请求头可以用 <code>${VAR}</code> 从环境变量读取值。</p>

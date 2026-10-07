@@ -28,7 +28,9 @@ vi.mock('electron', () => {
     setPermissionRequestHandler: (h: typeof state.requestHandler) => { state.order.push('request-handler'); state.requestHandler = h },
     setPermissionCheckHandler: (h: typeof state.checkHandler) => { state.order.push('check-handler'); state.checkHandler = h },
     getUserAgent: () => 'UA',
-    setUserAgent: () => undefined
+    setUserAgent: () => undefined,
+    // UA の切り替え（browserUserAgent.ts の BrowserIdentity）が付けるヘッダーの書き換え
+    webRequest: { onBeforeSendHeaders: () => undefined, onHeadersReceived: () => undefined }
   }
   class WebContentsView {
     visible = true

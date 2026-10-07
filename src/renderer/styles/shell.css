@@ -1814,6 +1814,17 @@ body[data-resizing='row'] * {
   visibility: hidden;
 }
 
+.rm-sub {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .rm-badge {
   flex: none;
   padding: 0 var(--space-2);

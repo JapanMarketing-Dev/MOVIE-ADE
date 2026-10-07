@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { formatCpu, formatMemory } from '@shared/resources'
 
 vi.mock('electron', () => ({ app: { getAppMetrics: () => [] } }))
-const { collectSubtree, indexProcesses, parsePsOutput, projectForCwd } = await import('../../src/main/resources')
+const { collectSubtree, indexProcesses, parsePsOutput, projectForCwd, topProcess } = await import('../../src/main/resources')
 
 const PS = `
     1     0   0.0   1024
@@ -20,6 +20,24 @@ describe('parsePsOutput', () => {
     expect(rows[1]).toEqual({ pid: 100, ppid: 1, cpu: 2.5, memory: 2048 * 1024 })
     // 「,」区切りの CPU は小数部を落とす（実際は C ロケールで実行するので出ない）
     expect(rows[2].cpu).toBe(10)
+  })
+})
+
+describe('parsePsOutput の comm', () => {
+  it('5列目以降を実行ファイルの名前として読む（空白入り・パスは最後の部分）', () => {
+    const rows = parsePsOutput(`  10 1 3.0 100 /Applications/Ferret.app/Contents/Frameworks/Ferret Helper (Renderer).app/Contents/MacOS/Ferret Helper (Renderer)\n  11 10 185.4 200 /tmp/venv/bin/python\n`)
+    expect(rows.map((r) => r.name)).toEqual(['Ferret Helper (Renderer)', 'python'])
+  })
+})
+
+describe('topProcess', () => {
+  // Claude Code（ターミナルの子）が起動した python が CPU のほとんどを使っている形（リソースマネージャで 202% と出た例）
+  const index = indexProcesses(parsePsOutput(`  1 0 0 1 zsh\n  2 1 3.3 1 claude\n  3 2 185.4 1 python\n  4 2 0.5 1 node\n`))
+  it('シェル自身を除いて、一番 CPU を使っているプロセスを返す', () => {
+    expect(topProcess(index, [1, 2, 3, 4], 1)).toEqual({ name: 'python', cpu: 185.4 })
+  })
+  it('10% に満たなければ出さない', () => {
+    expect(topProcess(index, [1, 2, 4], 1)).toBeNull()
   })
 })
 
