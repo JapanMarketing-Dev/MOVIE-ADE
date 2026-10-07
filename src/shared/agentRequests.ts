@@ -2,7 +2,8 @@
  * Agent への依頼文（設定の「Agent への依頼」）。人が良い依頼をするための、よく使う依頼の雛形。
  * Ferret はコーディング Agent の邪魔をしない：機能として作業を肩代わりせず、ボタンを押すとこの文を Agent に送るだけ。
  *
- * - 組み込みの依頼文（記憶の整理 dream・コンパクト化・セキュリティ・SEO・分析・Sentry のクラッシュ・性能・アクセシビリティ・依存関係）と、利用者が足した依頼文
+ * - 組み込みの依頼文（記憶の整理 dream・コンパクト化・セキュリティ・SEO・分析・Sentry のクラッシュ・Sentry / GA / Search Console / インフラの登録・
+ *   性能・アクセシビリティ・依存関係）と、利用者が足した依頼文。接続とログインは全体で1回、設定はプロダクトごと
  * - 文面は編集できる（組み込みは変えた分だけ保存し、「既定に戻す」で戻る）
  * - 選んだものをまとめて1つの依頼にできる。毎日・毎週の定期にもできる（Agent が手すきのときに main が送る）
  * - オーケストレーターから送ると、すべてのプロダクトに subagent で並行して行うよう添える
@@ -139,6 +140,38 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
     text: {
       ja: 'Sentry（使っていればその CLI か API）で、このプロジェクトの未解決の issue・新しいエラー・クラッシュを、影響の大きい順に調べて直してください。各 issue について、スタック・パンくず・リリース・環境から原因を特定し、再現するテストを書いてから直す。想定内のもの（中断・利用者の操作）は送らないようにし、送る情報に個人情報が入っていないかも確かめる。直したものは次のリリースで解決の扱いにしてください（本番の設定は変えない）。',
       en: 'Using Sentry (its CLI or API if available), investigate this project\'s unresolved issues, new errors and crashes, highest impact first, and fix them. For each issue, find the cause from the stack, breadcrumbs, release and environment, write a test that reproduces it, then fix it. Stop reporting expected cases (aborts, user actions), and check that no personal data is sent. Mark fixed issues as resolved in the next release (do not change production settings).'
+    }
+  },
+  {
+    id: 'sentry-setup',
+    title: { ja: 'Sentry を登録する', en: 'Set up Sentry' },
+    text: {
+      ja: 'Sentry でエラーとクラッシュを受け取れるようにしてください。Sentry の CLI・ログイン・組織への接続は全体で1回だけ行い、各プロダクトでは、そのプロダクト用の Sentry のプロジェクトを作る（あれば使う）・SDK と DSN を組み込む・リリース名と環境（本番・開発）を付ける・ソースマップを上げる・個人情報を送らない設定にする、をプロダクトごとに行ってください。DSN などの値は各プロダクトの環境変数に置き、ほかのプロダクトと混ぜないでください。最後にテストのエラーを1件送って届くことを確かめ、送ったものは解決にしてください。',
+      en: 'Make errors and crashes reach Sentry. Connect the Sentry CLI, login and organization once for everything; then, per product, create (or reuse) that product\'s Sentry project, add the SDK and DSN, set the release name and environments (production, development), upload source maps, and turn off sending personal data. Keep the DSN and other values in each product\'s own environment variables, never shared between products. Finally send one test error to confirm it arrives, then resolve it.'
+    }
+  },
+  {
+    id: 'analytics-setup',
+    title: { ja: 'Google Analytics を入れる', en: 'Set up Google Analytics' },
+    text: {
+      ja: 'Google Analytics（GA4）で計測できるようにしてください。Google のアカウントへの接続は全体で1回だけ行い、各プロダクトでは、そのプロダクト用のプロパティとデータストリームを作る（あれば使う）・計測 ID をそのプロダクトの設定に置く・大事な操作のイベントを送る・同意（Cookie）と開発環境の除外を入れる、をプロダクトごとに行ってください。計測 ID はプロダクトごとに分け、混ぜないでください。最後にリアルタイムのレポートで届くことを確かめてください。',
+      en: 'Set up Google Analytics (GA4). Connect the Google account once for everything; then, per product, create (or reuse) that product\'s property and data stream, put the measurement ID in that product\'s config, send events for the key actions, and add consent (cookies) and the exclusion of development environments. Keep measurement IDs separate per product. Finally confirm the data arrives in the realtime report.'
+    }
+  },
+  {
+    id: 'search-console',
+    title: { ja: 'Search Console に登録する', en: 'Register in Search Console' },
+    text: {
+      ja: 'Google Search Console に登録してください。Google のアカウントへの接続は全体で1回だけ行い、公開しているプロダクトごとに、そのドメインのプロパティを作る（あれば使う）・所有権を確認する（DNS か HTML のファイル）・sitemap.xml を送る・robots.txt とインデックスさせないページを確かめる、を行ってください。公開していないプロダクトは飛ばし、理由を書いてください。',
+      en: 'Register with Google Search Console. Connect the Google account once for everything; then, for each public product, create (or reuse) the property for its domain, verify ownership (DNS or HTML file), submit sitemap.xml, and check robots.txt and the pages that must not be indexed. Skip products that are not public and say why.'
+    }
+  },
+  {
+    id: 'infra',
+    title: { ja: 'インフラを登録・確かめる', en: 'Register and check infrastructure' },
+    text: {
+      ja: 'インフラを登録して確かめてください。クラウドの CLI・ログイン・アカウントへの接続は全体で1回だけ行い、各プロダクトでは、そのプロダクトのインフラ（アカウント・プロジェクト・リージョン・インスタンス・DB・ドメイン・タグ・秘密情報・CI/CD）を一覧にし、足りないものを作り、タグと名前の付け方を揃えてください。インフラはプロダクトごとに分け、ほかのプロダクトと共有しないでください。費用と公開の範囲（外から見えるもの）も確かめてください。',
+      en: 'Register and check the infrastructure. Connect the cloud CLIs, logins and accounts once for everything; then, per product, list that product\'s infrastructure (account, project, region, instances, databases, domains, tags, secrets, CI/CD), create what is missing, and make tags and names consistent. Keep infrastructure separate per product, never shared with other products. Also check costs and what is exposed to the outside.'
     }
   },
   {

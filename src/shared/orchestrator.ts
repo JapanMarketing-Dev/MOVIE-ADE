@@ -33,6 +33,8 @@ export interface OrchestratorChild {
   path: string
   /** 入れたプロジェクトの本当のフォルダ（メインフォルダの外。Claude Code の additionalDirectories に足す） */
   outside?: string
+  /** 登録したプロジェクトの id（プロダクトごとのルールを引く） */
+  projectId?: string
   /** 表示名。登録済みのプロジェクトならその名前 */
   name: string
   /** subagent の名前（ferret-<英数字>） */
@@ -93,8 +95,8 @@ export function allOrchestratorChildren(
     used.add(agent)
     const link = links.get(id)
     added.push(link
-      ? { dir: link, path: join(parentFolder, link), outside: project.folderPath, name: project.name || folderName(project.folderPath), agent }
-      : { dir: project.folderPath, path: project.folderPath, outside: project.folderPath, name: project.name || folderName(project.folderPath), agent })
+      ? { dir: link, path: join(parentFolder, link), outside: project.folderPath, projectId: id, name: project.name || folderName(project.folderPath), agent }
+      : { dir: project.folderPath, path: project.folderPath, outside: project.folderPath, projectId: id, name: project.name || folderName(project.folderPath), agent })
   }
   return [...subfolders, ...added]
 }
@@ -134,7 +136,19 @@ function oneLine(text: string): string {
 }
 
 /** <親>/.claude/agents/<agent>.md の中身（Claude Code の subagent） */
-export function renderSubagent(child: OrchestratorChild): string {
+/** 人が Ferret の設定に書いた、共通のルールとプロダクトごとのルール（設定の「オーケストラ」） */
+export interface OrchestraRules {
+  shared?: string
+  /** プロジェクトの id → そのプロダクトだけのルール（インフラ・タグ・インスタンスなど） */
+  products?: Record<string, string>
+}
+
+function rulesBlock(title: string, text: string | undefined): string[] {
+  const body = text?.trim()
+  return body ? ['', title, '', body] : []
+}
+
+export function renderSubagent(child: OrchestratorChild, rules?: OrchestraRules): string {
   const abs = child.path
   const name = oneLine(child.name)
   return [
@@ -151,6 +165,8 @@ export function renderSubagent(child: OrchestratorChild): string {
     '- When the task is a Ferret review finding, the request names the review folder (`.ferret/reviews/<id>/`). Fix only the findings that belong to this project and record each one\'s status in that review\'s `progress.json` as the request describes.',
     '- Use the tools, connections and permissions this session already has (Claude in Chrome and other browser use, computer use, MCP servers, logins). Do not start a new connection or ask the user to approve again; if something is missing, report it to the orchestrator instead.',
     '- End with a short report: what you changed (files), how you checked it, and anything left for the orchestrator.',
+    ...rulesBlock('Shared rules for all products (set by the human in Ferret):', rules?.shared),
+    ...rulesBlock(`Rules only for ${name} (set by the human in Ferret; infrastructure and other per-product settings):`, child.projectId ? rules?.products?.[child.projectId] : undefined),
     ''
   ].join('\n')
 }
@@ -203,7 +219,7 @@ export const GUIDE_END = '<!-- ferret-orchestrator:end -->'
  * オーケストレーターのフォルダの CLAUDE.md・AGENTS.md に入れる Ferret の欄。
  * 1つの Agent とのやり取りで、共通の部分は1回で決め、プロダクトごとの部分は子の subagent に並行して任せる進め方を書く
  */
-export function renderOrchestratorGuide(children: readonly OrchestratorChild[]): string {
+export function renderOrchestratorGuide(children: readonly OrchestratorChild[], rules?: OrchestraRules): string {
   const list = children.length
     ? children.map((c) => `- ${oneLine(c.name)}: \`${c.path}\` (subagent: \`${c.agent}\`)`).join('\n')
     : '- (no products yet. Add projects to this orchestrator in Ferret.)'
@@ -223,6 +239,8 @@ export function renderOrchestratorGuide(children: readonly OrchestratorChild[]):
     '4. Ferret review findings name the product by URL, screen or file path. Route each finding to its product\'s subagent; findings for different products run in parallel.',
     '5. Connections and permissions are set up once, here at the top: Claude in Chrome and other browser use, computer use, MCP servers, logins, and permission approvals. Subagents inherit this session\'s tools and approvals, so never set them up again per product and never ask the user to connect or approve again for each product.',
     '6. Without subagents (for example Codex), do the same steps yourself, working in each product\'s folder in turn.',
+    ...rulesBlock('### Shared rules (set by the human in Ferret)', rules?.shared),
+    ...children.flatMap((c) => rulesBlock(`### Rules only for ${oneLine(c.name)} (set by the human in Ferret)`, c.projectId ? rules?.products?.[c.projectId] : undefined)),
     GUIDE_END
   ].join('\n')
 }
@@ -318,4 +336,17 @@ export function readmeTemplate(name: string, lang: GuideLanguage): string {
   return lang === 'ja'
     ? [`# ${oneLine(name)}`, '', '複数のプロダクトを1つの Agent で並行して開発するためのフォルダ（Ferret のオーケストレーター）です。', '', '- このフォルダで Claude Code に頼むと、共通の部分を先に決め、プロダクトごとの部分をそれぞれの subagent に並行して任せます。', '- 共通の指示とプロダクトごとの指示は **CLAUDE.md** に書きます（AGENTS.md は CLAUDE.md を読むよう Agent に伝えるだけです）。', '- インフラ・デプロイ・DB・秘密情報など、プロダクトごとに分けるものは「プロダクトごとのルール」に書きます。', '- Chrome・computer use・MCP・ログインなどの接続と許可は、このフォルダの Agent で1回だけ済ませます。subagent はそれを使います。', '- `.claude/agents/ferret-*.md` と、各ファイルの `ferret-orchestrator` の印の間は Ferret が書き直します。'].join('\n')
     : [`# ${oneLine(name)}`, '', 'A folder for developing several products in parallel with one agent (a Ferret orchestrator).', '', '- Ask Claude Code in this folder: it settles the shared part first, then hands each product\'s part to that product\'s subagent in parallel.', '- Write shared and per-product instructions in **CLAUDE.md** (AGENTS.md only tells agents to read CLAUDE.md).', '- Infrastructure, deployment, databases, secrets and anything else that stays separate per product go under "Per-product rules".', '- Connections and permissions (Chrome, computer use, MCP, logins) are set up once with the agent in this folder; subagents use them.', '- Ferret rewrites `.claude/agents/ferret-*.md` and the part of each file between the `ferret-orchestrator` markers.'].join('\n')
+}
+
+const MAX_RULE_CHARS = 8000
+
+export function sanitizeOrchestraRules(raw: unknown): OrchestraRules | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const r = raw as OrchestraRules
+  const shared = typeof r.shared === 'string' && r.shared.trim() ? r.shared.slice(0, MAX_RULE_CHARS) : undefined
+  const products = r.products && typeof r.products === 'object' && !Array.isArray(r.products)
+    ? Object.fromEntries(Object.entries(r.products).filter((e): e is [string, string] => /^[\w-]{1,128}$/.test(e[0]) && typeof e[1] === 'string' && e[1].trim() !== '').slice(0, 200).map(([k, v]) => [k, v.slice(0, MAX_RULE_CHARS)]))
+    : {}
+  if (!shared && !Object.keys(products).length) return undefined
+  return { ...(shared ? { shared } : {}), ...(Object.keys(products).length ? { products } : {}) }
 }

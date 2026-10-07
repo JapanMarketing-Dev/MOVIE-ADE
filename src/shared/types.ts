@@ -159,7 +159,7 @@ export interface Project {
   /** オーケストレーターに入れた既存のプロジェクトの id（フォルダは動かさない。サイドバーではこの下に並ぶ） */
   members?: string[]
   /**
-   * 「すべてのプロジェクト」（エディタ全体）。Ferret が持つ隠れたフォルダで、登録したプロジェクトが全部サブフォルダ（リンク）として入る。
+   * 「すべてのプロダクト」（エディタ全体）。Ferret が持つ隠れたフォルダで、登録したプロジェクトが全部サブフォルダ（リンク）として入る。
    * ここで起動した Agent に頼むと、各プロジェクトの subagent が動く（src/main/index.ts の ensureEditorWorkspace）
    */
   editorWorkspace?: true
@@ -375,6 +375,8 @@ export interface Settings {
   limitFailover?: LimitFailoverPrefs
   /** Agentへ渡す1行の指示のテンプレート（{{path}} = feedback.md の絶対パス、{{relpath}} = 相対パス）。未設定・空なら既定文 */
   agentPrompt?: string
+  /** 全体（すべてのプロダクト）で人が書く、共通のルールとプロダクトごとのルール（src/shared/orchestrator.ts） */
+  orchestra?: import('./orchestrator').OrchestraRules
   /** Agent への依頼文（dream・コンパクト・セキュリティなど。src/shared/agentRequests.ts） */
   agentRequests?: import('./agentRequests').AgentRequestPrefs
   /** 「指摘を整理」の実行方法と、API の接続先 */

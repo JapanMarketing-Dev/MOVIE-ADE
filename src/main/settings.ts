@@ -25,6 +25,7 @@ import { normalizeSttLanguage } from '@shared/sttLanguages'
 import { migrateLegacySettings } from './projects'
 import { sanitizeProjectSession } from '@shared/projectSession'
 import { sanitizeAgentRequestPrefs } from '@shared/agentRequests'
+import { sanitizeOrchestraRules } from '@shared/orchestrator'
 import { sanitizeProjectKind, sanitizeProjectTargets } from '@shared/projectTargets'
 import { sanitizeProjectSource } from '@shared/projectSource'
 import { sanitizeAgentAccounts } from './accounts/sanitize'
@@ -202,6 +203,7 @@ export function sanitize(raw: unknown): Settings {
     // 空・空白だけは「未設定」（既定文を使う）。長すぎる値は切り詰める
     ...(typeof r.agentPrompt === 'string' && r.agentPrompt.trim() ? { agentPrompt: r.agentPrompt.trim().slice(0, 2000) } : {}),
     ...(() => { const requests = sanitizeAgentRequestPrefs(r.agentRequests); return requests ? { agentRequests: requests } : {} })(),
+    ...(() => { const orchestra = sanitizeOrchestraRules(r.orchestra); return orchestra ? { orchestra } : {} })(),
     // 判定モデルの接続先。未設定は書かない（既定は Ollama + clef-flash、無効）。キー本体は入れない
     ...(r.decision && typeof r.decision === 'object' ? { decision: sanitizeDecisionPreferences(r.decision) } : {}),
     // 「指摘を整理」の実行方法と API の接続先。キー本体は入れない（pipeline/stt/keys.ts）

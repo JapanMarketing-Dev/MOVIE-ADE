@@ -61,8 +61,8 @@ describe('入れた既存のプロジェクト（フォルダはどこでもよ�
     const all = allOrchestratorChildren('/w', ['p1', 'p2', 'p3', 'p4', 'gone'], registered, sub)
     expect(all).toEqual([
       sub[0],
-      { dir: '/code/abm-targeting', path: '/code/abm-targeting', outside: '/code/abm-targeting', name: 'abm-targeting', agent: 'ferret-abm-targeting' },
-      { dir: '/code/shop', path: '/code/shop', outside: '/code/shop', name: 'shop', agent: 'ferret-shop-2' }
+      { dir: '/code/abm-targeting', path: '/code/abm-targeting', outside: '/code/abm-targeting', projectId: 'p1', name: 'abm-targeting', agent: 'ferret-abm-targeting' },
+      { dir: '/code/shop', path: '/code/shop', outside: '/code/shop', projectId: 'p2', name: 'shop', agent: 'ferret-shop-2' }
     ])
     expect(outsideFolders(all)).toEqual(['/code/abm-targeting', '/code/shop'])
   })
@@ -81,7 +81,7 @@ describe('入れた既存のプロジェクト（フォルダはどこでもよ�
     expect(created).toContain('### shop')
     // リンクを作れたものは、メインフォルダの下のサブフォルダとして扱う
     const linked = allOrchestratorChildren('/w', ['p1'], [{ id: 'p1', folderPath: '/code/abm', name: 'abm' }], [], new Map([['p1', 'abm']]), posix.join)
-    expect(linked).toEqual([{ dir: 'abm', path: '/w/abm', outside: '/code/abm', name: 'abm', agent: 'ferret-abm' }])
+    expect(linked).toEqual([{ dir: 'abm', path: '/w/abm', outside: '/code/abm', projectId: 'p1', name: 'abm', agent: 'ferret-abm' }])
     const userFile = `# My rules\n\nUse pnpm.\n`
     const merged = withGuideBlock(userFile, block)!
     expect(merged.startsWith('# My rules\n\nUse pnpm.\n\n' + GUIDE_START)).toBe(true)

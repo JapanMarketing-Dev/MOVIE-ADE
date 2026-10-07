@@ -28,6 +28,7 @@ const FULL = {
   agentAccounts: { claude: { accounts: [], activeAccountId: null }, codex: { accounts: [], activeAccountId: null } },
   limitFailover: { enabled: true, thresholdPercent: 90, switchAccounts: true, agentOrder: ['claude', 'codex', 'gemini'], returnToPreferred: false },
   agentPrompt: 'Read {{path}}',
+  orchestra: { shared: 'Security first', products: { p1: 'AWS tag team=shop' } },
   agentRequests: { items: [{ id: 'security', schedule: 'weekly', batch: true }, { id: 'custom-1', title: 'Lint', text: 'Run the linter', custom: true }], lastRunAt: { security: '2026-10-01T00:00:00.000Z' } },
   whisperModel: '/models/ggml-small.bin',
   capture: { captureMic: true, captureSystemAudio: false, transcription: 'compatible', language: 'en', keepDays: 7, stayFeedbackOnStop: true,

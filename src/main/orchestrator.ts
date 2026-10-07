@@ -19,6 +19,7 @@ import {
   withoutGuideBlock,
   type ChildEntry,
   type GuideLanguage,
+  type OrchestraRules,
   type OrchestratorChild
 } from '@shared/orchestrator'
 import { basename } from 'node:path'
@@ -169,20 +170,20 @@ async function existingSubagents(dir: string): Promise<Array<{ file: string; tex
 /**
  * 子ごとの subagent・追加のフォルダ・Ferret の欄を、今の子に合わせる。enabled が false なら Ferret が書いたものを全部外す
  */
-export async function syncOrchestrator(folder: string, registered: Registered, enabled = true, members: readonly string[] = [], lang: GuideLanguage = 'en'): Promise<OrchestratorSync> {
+export async function syncOrchestrator(folder: string, registered: Registered, enabled = true, members: readonly string[] = [], lang: GuideLanguage = 'en', rules?: OrchestraRules): Promise<OrchestratorSync> {
   const claude = await claudeDir(folder)
   const managed = await readManaged(folder)
   const links = await syncMemberLinks(folder, registered, enabled ? members : [], managed.links)
   const children = enabled ? await findOrchestratorChildren(folder, registered, members, links) : []
   const agents = join(claude, 'agents')
-  const plan = planSubagents(await existingSubagents(agents), children.map((c) => ({ file: `${c.agent}.md`, text: renderSubagent(c) })))
+  const plan = planSubagents(await existingSubagents(agents), children.map((c) => ({ file: `${c.agent}.md`, text: renderSubagent(c, rules) })))
   if (plan.write.length) await mkdir(agents, { recursive: true, mode: 0o755 })
   for (const w of plan.write) await writeAtomic(agents, w.file, w.text)
   for (const file of plan.remove) await rm(join(agents, file), { force: true })
   await syncAdditionalDirectories(claude, outsideFolders(children), links)
   // CLAUDE.md: Agent への進め方（Ferret の欄）＋人が書く共通・プロダクトごとのルール。AGENTS.md は CLAUDE.md を読むよう伝える。
   // README.md: 人向けの使い方とプロダクトの一覧。人が書く部分は最初に作るときの雛形だけ
-  const guide = renderOrchestratorGuide(children)
+  const guide = renderOrchestratorGuide(children, rules)
   await syncGuide(folder, 'CLAUDE.md', enabled ? guide : null, rulesTemplate(children, lang))
   await syncGuide(folder, 'AGENTS.md', enabled ? guide : null, agentsTemplate(lang))
   await syncGuide(folder, 'README.md', enabled ? renderReadmeBlock(children, lang) : null, readmeTemplate(basename(folder), lang), 'before')
