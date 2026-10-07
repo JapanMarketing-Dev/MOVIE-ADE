@@ -746,24 +746,31 @@ function assertNotRecording(): void {
 function syncOrchestratorOnOpen(project: Project | null | undefined): void {
   if (!project?.orchestrator || project.source === 'ssh') return
   void import('./orchestrator')
-    .then(({ syncOrchestrator }) => syncOrchestrator(project.folderPath, currentSettings().projects, true, membersOf(project), guideLanguage()))
+    .then(({ syncOrchestrator }) => syncOrchestrator(project.folderPath, currentSettings().projects, true, membersOf(project), guideLanguage(), currentSettings().orchestra))
     // .claude がリンクなのは利用者の置き方（書かないのが正しい）。Sentry へは送らない
     .catch((err: unknown) => { if ((err as Error)?.name !== 'SubagentLinkError') reportHandled(err, { area: 'agent-launch', op: 'sync orchestrator subagents' }) })
 }
 
-/** オーケストレーターの子にするプロジェクト。「すべてのプロジェクト」は登録したプロジェクト全部（SSH を除く） */
+/** オーケストレーターの子にするプロジェクト。「すべてのプロダクト」は登録したプロジェクト全部（SSH を除く） */
 function membersOf(project: Project): string[] {
   if (!project.editorWorkspace) return project.members ?? []
   return currentSettings().projects.filter((p) => !p.editorWorkspace && !p.orchestrator && p.source !== 'ssh').map((p) => p.id)
 }
 
 /**
- * 「すべてのプロジェクト」（エディタ全体）を用意する。Ferret のデータの下の隠れたフォルダを作り、プロジェクトとして登録する。
+ * 「すべてのプロダクト」（エディタ全体）を用意する。Ferret のデータの下の隠れたフォルダを作り、プロジェクトとして登録する。
  * 中には登録したプロジェクトが全部サブフォルダ（リンク）として入る。サブフォルダのことは画面に出さない
  */
 async function ensureEditorWorkspace(): Promise<void> {
   const settings = currentSettings()
-  if (settings.projects.some((p) => p.editorWorkspace)) return
+  const existing = settings.projects.find((p) => p.editorWorkspace)
+  if (existing) {
+    // 0.4.26 の既定の名前（すべてのプロジェクト）は今の名前（すべてのプロダクト）に揃える。利用者が付けた名前は変えない
+    if (['すべてのプロジェクト', 'All projects'].includes(existing.name) && existing.name !== t('editorWorkspace.name')) {
+      updateSettings({ projects: settings.projects.map((p) => (p.id === existing.id ? { ...p, name: t('editorWorkspace.name') } : p)) })
+    }
+    return
+  }
   const folder = join(app.getPath('userData'), 'editor-workspace')
   const { mkdir } = await import('node:fs/promises')
   await mkdir(folder, { recursive: true })
@@ -792,7 +799,7 @@ async function setProjectOrchestrator(id: unknown, enabled: unknown): Promise<{ 
   if (current.source === 'ssh') throw new UserFacingError(t('errors.folderNotRegistered'))
   const on = enabled === true
   const { SubagentLinkError, syncOrchestrator } = await import('./orchestrator')
-  const result = await syncOrchestrator(current.folderPath, settings.projects, on, membersOf(current), guideLanguage()).catch((err: unknown) => {
+  const result = await syncOrchestrator(current.folderPath, settings.projects, on, membersOf(current), guideLanguage(), currentSettings().orchestra).catch((err: unknown) => {
     if (err instanceof SubagentLinkError) throw new UserFacingError(t('orchestrator.linkRefused'))
     throw err
   })
@@ -1508,6 +1515,37 @@ async function sendAgentRequests(ids: unknown, scheduled = false): Promise<{ ok:
   return { ok, message }
 }
 
+/** 「すべてのプロダクト」で動いている Agent（プロダクトに Agent がいないときの渡し先） */
+async function orchestraTarget(): Promise<{ terminalId: string; folder: string } | null> {
+  const editor = currentSettings().projects.find((p) => p.editorWorkspace)
+  if (!editor || !terminals || editor.folderPath === workspace.folderPath) return null
+  const id = await terminals.resolveSendTarget(null, editor.folderPath)
+  return id ? { terminalId: id, folder: editor.folderPath } : null
+}
+
+/** 全体の Agent に渡すとき添える一文：このレビューはどのプロダクトのもので、どの subagent に任せるか */
+async function orchestraNote(productFolder: string | null): Promise<string> {
+  const settings = currentSettings()
+  const editor = settings.projects.find((p) => p.editorWorkspace)
+  const product = settings.projects.find((p) => p.folderPath === productFolder)
+  if (!editor || !product) return ''
+  const children = await (await import('./orchestrator')).findOrchestratorChildren(editor.folderPath, settings.projects, membersOf(editor)).catch(() => [])
+  const child = children.find((c) => c.outside === product.folderPath || c.path === product.folderPath)
+  return t('orchestra.relayNote', { name: product.name, path: product.folderPath, agent: child?.agent ?? 'general-purpose' })
+}
+
+/** 全プロダクトの確認待ち（before / after の確認）。確認の巡回に使う */
+async function pendingAcross(): Promise<Array<{ projectId: string; reviewId: string; count: number }>> {
+  const { listSessions } = await import('./sessions')
+  const out: Array<{ projectId: string; reviewId: string; count: number }> = []
+  for (const project of currentSettings().projects) {
+    if (project.editorWorkspace || project.orchestrator || project.source === 'ssh') continue
+    const sessions = await listSessions(project.folderPath).catch(() => [])
+    for (const s of sessions) if ((s.humanReviewCount ?? 0) > 0) out.push({ projectId: project.id, reviewId: s.id, count: s.humanReviewCount ?? 0 })
+  }
+  return out
+}
+
 /** 定期の依頼（毎日・毎週）。時期が来たものを、Agent が手すきのときにまとめて送り、送った時刻を覚える */
 async function runScheduledRequests(): Promise<void> {
   const prefs = currentSettings().agentRequests
@@ -1748,6 +1786,13 @@ function registerIpc(): void {
       updateSettings({ agentRequests: next ? { items: next.items, ...(lastRunAt ? { lastRunAt } : {}) } : undefined })
     },
     'agentRequests:send': (ids) => sendAgentRequests(ids),
+    'review:pendingAcross': () => pendingAcross(),
+    'settings:orchestra': async (rules) => {
+      const { sanitizeOrchestraRules } = await import('@shared/orchestrator')
+      updateSettings({ orchestra: sanitizeOrchestraRules(rules) })
+      // 全体の CLAUDE.md・subagent に書き直す
+      syncEditorWorkspace()
+    },
 
     // Claude Code / Codex のアカウント（src/main/accounts）。renderer からの値は種類を確かめてから使う
     'accounts:list': () => listAgentAccounts(),
@@ -2021,11 +2066,18 @@ function registerIpc(): void {
       if (terminals && want.kind === 'auto') target = await terminals.resolveSendTarget(request.focusedTerminalId ?? null, workspace.folderPath)
       if (terminals && want.kind === 'agent') target = await terminals.findAgentTerminal(want.agent, workspace.folderPath)
       if (terminals && want.kind === 'terminal' && (await terminals.agentState(want.terminalId)).kind !== 'unknown') target = want.terminalId
+      // このプロダクトに Agent がいなければ、「すべてのプロダクト」の Agent に渡す（そのプロダクトの subagent に任せる一文を添える）
+      let viaOrchestra: string | null = null
+      if (!target && terminals && want.kind === 'auto') {
+        const relay = await orchestraTarget()
+        if (relay) { target = relay.terminalId; viaOrchestra = await orchestraNote(workspace.folderPath) }
+      }
       if (!target) {
         const launchAgent = want.kind === 'agent' ? want.agent : want.kind === 'terminal' ? want.agent ?? undefined : undefined
         return { ok: false, message: t('terminal.send.noAgent'), noAgent: true, ...(launchAgent ? { launchAgent } : {}) }
       }
-      const result: { ok: boolean; message: string; terminalId?: string; submitted?: boolean } = { ...(await terminals!.sendReview(target, request.text ?? (isRemoteWorkspace() ? await remoteReviewInstruction(paths) : await withOrchestratorNote(await reviewInstruction(paths, currentSettings().agentPrompt))))), terminalId: target }
+      const instruction = request.text ?? (isRemoteWorkspace() ? await remoteReviewInstruction(paths) : await withOrchestratorNote(await reviewInstruction(paths, currentSettings().agentPrompt)))
+      const result: { ok: boolean; message: string; terminalId?: string; submitted?: boolean } = { ...(await terminals!.sendReview(target, viaOrchestra ? `${instruction}\n\n${viaOrchestra}` : instruction)), terminalId: target }
       // 一覧の「送信済み」に使う。記録できなくても送信の結果は変えない
       if (result.ok) await (await import('./sessions')).updateLabel(paths, { sentAt: new Date().toISOString() }).catch((err: unknown) => reportHandled(err, { area: 'review', op: 'record sent label' }))
       // 送った指摘を対応中にする（Agent が progress.json で done にするまで）。書けなくても送信の結果は変えない。
@@ -2898,6 +2950,8 @@ async function main(): Promise<void> {
     startupProject = added.project
     if (!added.alreadyPresent) updateSettings({ projects: added.projects })
   }
+  // 開いていたプロジェクトが無ければ、全体（すべてのプロダクト）を開く。ふだんは1つのフォルダではなく全体で頼む
+  if (!startupProject && !(presetFolder && presetFolder.length > 0)) startupProject = currentSettings().projects.find((p) => p.editorWorkspace) ?? null
   /** 起動時に開くタブ（そのプロジェクトで前に開いていたタブ）。無ければ loadedSettings.url の1枚 */
   let startupTabs: ProjectTabs | null = null
   if (startupProject) {

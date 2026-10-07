@@ -290,6 +290,14 @@ export const SETTINGS_SCHEMA: JsonSchema = {
         returnToPreferred: bool('When a higher agent in agentOrder is available again, move idle switched tabs back to it. Off keeps working with the current agent.', { default: DEFAULT_LIMIT_FAILOVER.returnToPreferred })
       }
     },
+    orchestra: {
+      type: 'object',
+      description: 'Rules people write for All products (Settings > Orchestra). Ferret puts them in the All products CLAUDE.md / AGENTS.md and in each product\'s subagent.',
+      properties: {
+        shared: str('Rules shared by all products (conventions, security, design, docs).', { maxLength: 8000 }),
+        products: { type: 'object', description: 'Project id → rules only for that product (infrastructure, tags, instances, deployment).', additionalProperties: str('Rules for one product.', { maxLength: 8000 }) }
+      }
+    },
     agentRequests: {
       type: 'object',
       description: 'Ready-made requests to the agent (Settings > Requests): memory tidy-up (dream), compacting instructions, security check, SEO, analytics, Sentry fixes, performance, accessibility, dependency updates, plus your own. Pressing Send only sends the text to the agent of the open project.',

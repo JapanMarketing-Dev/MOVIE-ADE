@@ -11,10 +11,12 @@ import {
   FolderGit2,
   FolderOpen,
   FolderPlus,
+  ListChecks,
   MessageCircleQuestionMark,
   Network,
   Pencil,
   Plus,
+  Repeat,
   Settings2,
   Star,
   Trash2,
@@ -127,6 +129,7 @@ export function Sidebar({
   onSelect,
   onNewReview,
   onImportMeeting,
+  onStartRound,
   recording = false,
   onHistoryChanged,
   onOverlayChange
@@ -141,6 +144,8 @@ export function Sidebar({
   onNewReview: (projectId: string) => void
   /** 開いているプロジェクトに mtg の録画・文字起こしを取り込む（MeetingImportDialog。App が開く） */
   onImportMeeting?: () => void
+  /** プロダクトの巡回を始める（録画：全プロダクトを順にレビュー／確認：確認待ちを順に。src/renderer/hooks/useProductRound.ts） */
+  onStartRound?: (kind: 'record' | 'confirm') => void
   /** 録画中は ＋ を押せなくする（⌘⇧R と違い、＋ で録画を止めないため） */
   recording?: boolean
   /** 開いているプロジェクトの履歴を名前の変更・アーカイブ・削除したあと。消した ID を渡す */
@@ -641,6 +646,17 @@ export function Sidebar({
 
                   {expanded && (
                     <div className="sb-project__children" role="group">
+                      {/* 全体（すべてのプロダクト）：プロダクトを順に回ってレビュー・確認する（終わったら次のプロダクトへ） */}
+                      {project.editorWorkspace && onStartRound && <>
+                        <button type="button" className="sb-new-review sb-new-review--round" title={t('round.startRecordTip')} disabled={recording} onClick={() => onStartRound('record')} data-testid="sidebar-round-record">
+                          <Repeat size={13} strokeWidth={1.75} />
+                          <span>{t('round.startRecord')}</span>
+                        </button>
+                        <button type="button" className="sb-new-review sb-new-review--round" title={t('round.startConfirmTip')} disabled={recording} onClick={() => onStartRound('confirm')} data-testid="sidebar-round-confirm">
+                          <ListChecks size={13} strokeWidth={1.75} />
+                          <span>{t('round.startConfirm')}</span>
+                        </button>
+                      </>}
                       {/* このプロジェクトで新しいレビューを始める。開いているプロジェクトには ⌘⇧R も出す */}
                       <button
                         type="button"

@@ -181,6 +181,10 @@ export interface IpcRequests {
   'settings:agentRequests': (prefs: import('./agentRequests').AgentRequestPrefs) => void
   /** 選んだ依頼文を、開いているプロジェクトの Agent へ送る（複数ならまとめて1つの依頼） */
   'agentRequests:send': (ids: string[]) => { ok: boolean; message: string; noAgent?: boolean }
+  /** 全プロダクトの確認待ちのレビュー（確認の巡回。src/shared/productRound.ts） */
+  'review:pendingAcross': () => Array<{ projectId: string; reviewId: string; count: number }>
+  /** 全体（すべてのプロダクト）の共通のルールとプロダクトごとのルール */
+  'settings:orchestra': (rules: import('./orchestrator').OrchestraRules) => void
 
   /** Claude Code / Codex のアカウント。一覧を読むたびにログインの済んだ行を登録し直す */
   'accounts:list': () => AgentAccountsState
@@ -677,6 +681,8 @@ export const IPC_REQUEST_CHANNELS = [
   'settings:agentPrompt',
   'settings:agentRequests',
   'agentRequests:send',
+  'review:pendingAcross',
+  'settings:orchestra',
   'accounts:list',
   'accounts:add',
   'accounts:rename',

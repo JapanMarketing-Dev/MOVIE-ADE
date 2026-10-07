@@ -6,8 +6,16 @@ import { BUILTIN_REQUESTS, composeAgentRequest, dueRequests, resolveAgentRequest
 
 describe('組み込みの依頼文', () => {
   it('dream・コンパクト・セキュリティ・SEO・分析・Sentry・性能・アクセシビリティ・依存関係がそろい、日本語と英語がある', () => {
-    expect(BUILTIN_REQUESTS.map((b) => b.id)).toEqual(['dream', 'compact', 'security', 'seo', 'analytics', 'sentry', 'performance', 'accessibility', 'dependencies'])
+    expect(BUILTIN_REQUESTS.map((b) => b.id)).toEqual(['dream', 'compact', 'security', 'seo', 'analytics', 'sentry', 'sentry-setup', 'analytics-setup', 'search-console', 'infra', 'performance', 'accessibility', 'dependencies'])
     for (const b of BUILTIN_REQUESTS) for (const lang of ['ja', 'en'] as const) expect(b.text[lang].length).toBeGreaterThan(80)
+  })
+
+  it('登録系は、接続を全体で1回にして、プロダクトごとに設定し、値を混ぜない', () => {
+    for (const id of ['sentry-setup', 'analytics-setup', 'search-console', 'infra']) {
+      const text = BUILTIN_REQUESTS.find((b) => b.id === id)!.text.en
+      expect(text).toMatch(/once for everything/)
+      expect(text).toMatch(/per product|for each public product/)
+    }
   })
 
   it('dream は記事の4つの手順（統合・刈り込み・発見・索引）と、好みと出どころを残す決まりを持つ', () => {

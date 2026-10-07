@@ -3,7 +3,9 @@
  * 選んでいない（システムの既定）ときは、Chromium の一覧の 'default'（「Default - MacBook Pro のマイク」など）から実際の機器の名前を取る。
  * 名前が分からなければ null（呼び出し側が「システムの既定」と出す）
  */
-export function micDeviceName(deviceId: string, devices: ReadonlyArray<{ id: string; label: string }>): string | null {
+export function micDeviceName(deviceId: string, devices: ReadonlyArray<{ id: string; label: string }> | null | undefined): string | null {
+  // マイクの一覧はまだ読み込み中のことがある（起動直後にフィードバックの画面を開いたとき）
+  if (!devices) return null
   if (deviceId) return devices.find((d) => d.id === deviceId)?.label ?? null
   const fallback = devices.find((d) => d.id === 'default')?.label
   if (!fallback) return null

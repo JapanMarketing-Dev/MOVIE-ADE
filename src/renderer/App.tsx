@@ -54,6 +54,8 @@ import { useAnyModalOpen } from './lib/openModals'
 import { useProjectSession } from './hooks/useProjectSession'
 import { matchWindowSource } from '@shared/projectTargets'
 import { newReviewNeedsPage, planNewReview } from './lib/newReview'
+import { useProductRound } from './hooks/useProductRound'
+import { RoundBar } from './components/RoundBar'
 import { RemoteFilesNotice } from './components/AddProjectDialog'
 import { targetFromSource } from '@shared/captureTarget'
 import { installTestHooks } from './testHooks'
@@ -710,6 +712,15 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
       await window.ade.invoke('project:switch', plan.projectId)
       for (let i = 0; i < 40 && workspaceProjectRef.current !== plan.projectId; i++) await delay(50)
       await new Promise((done) => requestAnimationFrame(() => done(null)))
+      // 確認先の URL があるプロダクトは、そのページが読み込まれるまで少し待つ（巡回で次のプロダクトへ移った直後）
+      const hasTarget = projects.projects.find((p) => p.id === plan.projectId)?.urls.some((u) => !!u.url)
+      // 画面の状態は少し遅れて届くので、main の内蔵ブラウザの実際の状態で、ページが読み込まれるまで待つ
+      for (let i = 0; hasTarget && i < 50; i++) {
+        const state = await window.ade.invoke('browser:state')
+        if (state.url && state.url !== 'about:blank' && !state.loading) break
+        await delay(100)
+      }
+      await new Promise((done) => requestAnimationFrame(() => done(null)))
     }
     // レビューするページがまだ無い（URL を入れていない）なら、警告は出さずにフィードバックの画面へ移るだけ。
     // URL はそこで入れてから録画を始める
@@ -720,6 +731,44 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     }
     toggleRecordingRef.current()
   }), [run, projects.projects, recording, toast, t, changeMode])
+
+  /**
+   * プロダクトの巡回（オーケストラ）。録画の巡回は止めるたびに Agent へ渡して次のプロダクトへ、
+   * 確認の巡回は確認待ちが無くなったら次へ（src/renderer/hooks/useProductRound.ts）
+   */
+  const openReviewIn = useCallback(async (projectId: string, reviewId: string) => {
+    if (workspaceProjectRef.current !== projectId) {
+      await window.ade.invoke('project:switch', projectId)
+      for (let i = 0; i < 40 && workspaceProjectRef.current !== projectId; i++) await delay(50)
+      await new Promise((done) => requestAnimationFrame(() => done(null)))
+    }
+    setSessionId(reviewId)
+    setReview(await window.ade.invoke('review:load', reviewId))
+    setCenterTab('findings')
+    changeMode('editor')
+  }, [changeMode])
+  const productRound = useProductRound({
+    projects: projects.projects,
+    review,
+    startReviewIn,
+    openReview: (projectId, reviewId) => run(() => openReviewIn(projectId, reviewId)),
+    openOverview: () => {
+      const editor = projects.projects.find((p) => p.editorWorkspace)
+      if (editor) void window.ade.invoke('project:switch', editor.id).catch(() => undefined)
+    },
+    notify: (tone, message) => toast({ tone, message }),
+    messages: {
+      recordDone: (count) => t('round.recordDone', { count }),
+      confirmDone: () => t('round.confirmDone'),
+      nothingToConfirm: () => t('round.nothingToConfirm'),
+      noProducts: () => t('round.noProducts'),
+      sendFailed: (message) => t('round.sendFailed', { message })
+    }
+  })
+  const productRoundRef = useRef(productRound)
+  productRoundRef.current = productRound
+  const roundBar = productRound.round && <RoundBar round={productRound.round} projects={projects.projects} recording={recording}
+    onNext={() => (recording ? toggleRecording() : productRound.skip())} onStop={productRound.stop} />
 
   /** 録画の対象を選んで、次回のために覚える */
   const chooseTarget = (target: CaptureTarget) => {
@@ -783,6 +832,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         setReview(data); setSessionId(data.id); setCenterTab('findings'); setTool('none')
         if (!stayFeedbackOnStop) changeMode('editor')
         void refreshHistory()
+        // 録画の巡回なら、このレビューを Agent に渡して次のプロダクトへ
+        productRoundRef.current.onReviewReady(data)
       })
     ]
     void run(async () => { setAvailable(await window.ade.invoke('capture:availability')); setMicDevices(await window.ade.invoke('capture:devices')); await refreshHistory() })
@@ -1071,6 +1122,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
           noteMode={noteMode}
           noteDisabled={!noteStartable}
           onToggleNote={toggleNote}
+          round={mode === 'editor' && roundBar}
         />
 
         {/* 列と行は配置（layout）から作る。隠したパネルも大きさ 0 で残す（src/shared/layout.ts） */}
@@ -1097,6 +1149,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                 if (!(showDemo && !history.length && DEMO_SESSION_IDS.includes(id))) void run(async () => { setReview(await window.ade.invoke('review:load', id)); await refreshHistory() })
               }}
               onNewReview={startReviewIn}
+              onStartRound={(kind) => void run(() => productRound.start(kind))}
               onImportMeeting={() => setMeetingOpen(true)}
               recording={recording}
               onHistoryChanged={(deleted) => {
@@ -1251,7 +1304,9 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         /></ErrorBoundary>}
       </div>
 
-      <div className="shell shell--feedback" hidden={mode !== 'feedback'}>
+      <div className={`shell shell--feedback${productRound.round ? ' shell--round' : ''}`} hidden={mode !== 'feedback'}>
+        {/* 巡回の帯（フィードバックの画面では、上の帯とブラウザの間の段に出す。ブラウザの枠は測り直される） */}
+        {mode === 'feedback' && roundBar && <div className="round-dock">{roundBar}</div>}
         <FeedbackToolbar
           state={browserState}
           recording={recording}

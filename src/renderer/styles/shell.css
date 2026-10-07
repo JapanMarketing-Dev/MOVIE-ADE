@@ -3195,3 +3195,47 @@ button.sb-more__row:hover {
   align-self: center;
   margin-left: var(--space-1);
 }
+
+/* 巡回の帯（RoundBar.tsx）。上部のバーの中央、エディタ／フィードバックの切り替えの隣 */
+.round-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: var(--space-3);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  font-size: 12px;
+  -webkit-app-region: no-drag;
+}
+
+.round-bar__label,
+.round-bar__pos {
+  color: var(--color-text-muted);
+}
+
+.round-bar__name {
+  max-width: 160px;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.round-bar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-hover);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.round-bar__btn--quiet {
+  background: none;
+}
