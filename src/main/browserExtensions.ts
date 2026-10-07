@@ -22,6 +22,7 @@ import {
 } from '@shared/browserExtensions'
 import { reportHandled } from '@shared/report'
 import { isGestureInput } from './captureConsent'
+import { retireView } from './viewTeardown'
 import { CRX_LIMITS, extractCrx, parseCrx } from './crx'
 
 /**
@@ -330,13 +331,7 @@ class ExtensionPopup {
   close(): void {
     if (this.closed) return
     this.closed = true
-    try {
-      const window = this.host.window()
-      if (window && !window.isDestroyed()) window.contentView.removeChildView(this.view)
-      if (!this.view.webContents.isDestroyed()) this.view.webContents.close()
-    } catch (err) {
-      reportHandled(err, { area: 'browser', op: 'close extension popup' })
-    }
+    retireView(this.host.window(), this.view, 'close extension popup')
     this.onClosed(this)
   }
 }

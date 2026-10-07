@@ -8,6 +8,7 @@ import { MAX_BROWSER_TABS, browserTabKeyAction, canOpenTab, cycleTab, nextTabId,
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import { reportHandled } from '@shared/report'
+import { retireView } from './viewTeardown'
 import { normalizeUrl } from '@shared/projectUrl'
 import { isProjectPageUrl } from '@shared/htmlPreview'
 import { restorableHistory } from '@shared/projectSession'
@@ -779,12 +780,7 @@ export class EmbeddedBrowser {
     this.mirrorSource = null
     if (!view) return
     this.onLayout?.()
-    try {
-      if (this.window && !this.window.isDestroyed()) this.window.contentView.removeChildView(view)
-      if (!view.webContents.isDestroyed()) view.webContents.close()
-    } catch (err) {
-      reportHandled(err, { area: 'browser', op: 'destroy capture mirror' })
-    }
+    retireView(this.window, view, 'destroy capture mirror')
   }
 
   /** renderer が実測した領域。スマホ幅のときは中央に寄せて端末幅に収める */
@@ -968,13 +964,8 @@ export class EmbeddedBrowser {
     this.tabs = []
     this.activeId = ''
     for (const tab of tabs) {
-      try {
-        if (this.window && !this.window.isDestroyed()) this.window.contentView.removeChildView(tab.view)
-        if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close()
-      } catch (err) {
-        console.warn('[browser] ビューの破棄中にエラーが出ました', err)
-        reportHandled(err, { area: 'browser', op: 'destroy view' })
-      }
+      tab.destroyed = true
+      retireView(this.window, tab.view, 'destroy view')
     }
     this.releaseClosedTabs()
     this.window = null
