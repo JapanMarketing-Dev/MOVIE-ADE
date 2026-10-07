@@ -62,6 +62,8 @@ export interface AgentAccountsView {
   accounts: AgentAccountSummary[]
   activeAccountId: string | null
   systemDefault: SystemDefaultAccount
+  /** この読み込みで、すでにあるログインと同じだったので外したアカウント（表示名）。画面で知らせる */
+  removedDuplicates?: string[]
 }
 
 export type AgentAccountsState = Record<AccountAgent, AgentAccountsView>
@@ -76,6 +78,56 @@ export interface AgentAccountAddResult {
 export interface AccountLoginRequest {
   agent: AccountAgent
   accountId: string
+}
+
+function loginKey(email: string | null | undefined, workspaceLabel: string | null | undefined): string | null {
+  return email ? `${email.trim().toLowerCase()}|${(workspaceLabel ?? '').trim().toLowerCase()}` : null
+}
+
+/**
+ * 外すアカウント（同じログインを2つ以上登録しない）。ログインが済んでメールが分かるものだけを比べる。
+ * 同じログインの中で残すのは、選択中のもの → 無ければ（システムの既定が同じログインなら）どれも残さない → 先に追加したもの。
+ * システムの既定と同じログインを追加しても使える量は増えない（切り替えの意味が無い）ので外す
+ */
+export function duplicateAccountIds(
+  accounts: ReadonlyArray<Pick<AgentAccount, 'id' | 'email' | 'workspaceLabel' | 'createdAt'> & { signedIn: boolean }>,
+  activeAccountId: string | null,
+  systemDefault: { signedIn: boolean; email: string | null; workspaceLabel: string | null } | null
+): string[] {
+  const systemKey = systemDefault?.signedIn ? loginKey(systemDefault.email, systemDefault.workspaceLabel) : null
+  const groups = new Map<string, typeof accounts[number][]>()
+  for (const account of accounts) {
+    const key = account.signedIn ? loginKey(account.email, account.workspaceLabel) : null
+    if (!key) continue
+    groups.set(key, [...(groups.get(key) ?? []), account])
+  }
+  const drop: string[] = []
+  for (const [key, members] of groups) {
+    const active = members.find((m) => m.id === activeAccountId)
+    const keeper = active ?? (key === systemKey ? null : [...members].sort((a, b) => a.createdAt - b.createdAt)[0])
+    for (const m of members) if (m !== keeper) drop.push(m.id)
+  }
+  return drop
+}
+
+/**
+ * 一覧に出す行。同じログイン（メールと組織が同じ）が重なれば1行にする。
+ * 同じアカウントを2回追加した・システムの既定も同じログイン、のときに同じ行が並ばないように（足元のアカウントの内訳）。
+ * 残すのは選択中の行。選択中が無ければ先の行（システムの既定 → 先に追加したもの）。メールが分からない行はまとめない
+ */
+export function dedupeAccountRows<T extends { accountId: string | null; email: string | null; workspaceLabel: string | null }>(rows: readonly T[], activeAccountId: string | null): T[] {
+  const keyOf = (row: T) => loginKey(row.email, row.workspaceLabel)
+  const keep = new Map<string, T>()
+  for (const row of rows) {
+    const key = keyOf(row)
+    if (!key) continue
+    const kept = keep.get(key)
+    if (!kept || (row.accountId === activeAccountId && kept.accountId !== activeAccountId)) keep.set(key, row)
+  }
+  return rows.filter((row) => {
+    const key = keyOf(row)
+    return !key || keep.get(key) === row
+  })
 }
 
 /** 表示名。名前 → メール → 「ログイン待ち」の順 */

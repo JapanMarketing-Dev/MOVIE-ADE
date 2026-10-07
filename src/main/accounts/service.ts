@@ -4,6 +4,8 @@ import { userInfo } from 'node:os'
 import { app } from 'electron'
 import {
   EMPTY_AGENT_ACCOUNTS,
+  accountDisplayName,
+  duplicateAccountIds,
   type AccountLoginRequest,
   type AgentAccount,
   type AgentAccountAddResult,
@@ -72,7 +74,7 @@ async function readIdentity(agent: AccountAgent, dir: string): Promise<AccountId
   return agent === 'codex' ? readCodexIdentity(dir) : readClaudeIdentity(dir)
 }
 
-async function readSystemDefault(agent: AccountAgent): Promise<AccountIdentity> {
+export async function readSystemDefault(agent: AccountAgent): Promise<AccountIdentity> {
   return agent === 'codex' ? readCodexIdentity(systemConfigDir('codex')) : readClaudeSystemIdentity()
 }
 
@@ -106,15 +108,37 @@ async function refreshAgent(agent: AccountAgent): Promise<AgentAccountsView> {
       return { account: next, signedIn: identity.signedIn, problem: null }
     })
   )
-  const accounts = summaries.map((s) => s.account)
-  if (changed) saveList(agent, { accounts, activeAccountId })
   const systemDefault = await readSystemDefault(agent)
+  // 同じログインを2つ登録しない。追加してログインした先が、登録済みかシステムの既定と同じなら外す（フォルダと Keychain の項目も消す）。
+  // 消せなかったものは一覧に残す（認証情報の入ったフォルダを消す手段を無くさない）
+  const removed = new Set<string>()
+  for (const id of duplicateAccountIds(summaries.map((s) => ({ ...s.account, signedIn: s.signedIn })), activeAccountId, systemDefault)) {
+    if (await removeOwnedAccountFolder(agent, id)) removed.add(id)
+  }
+  const kept = summaries.filter((s) => !removed.has(s.account.id))
+  const accounts = kept.map((s) => s.account)
+  if (changed || removed.size > 0) saveList(agent, { accounts, activeAccountId })
   return {
-    accounts: summaries
+    accounts: kept
       .map((s) => ({ ...s.account, signedIn: s.signedIn, problem: s.problem }))
       .sort((a, b) => a.createdAt - b.createdAt),
     activeAccountId,
-    systemDefault: { signedIn: systemDefault.signedIn, email: systemDefault.email }
+    systemDefault: { signedIn: systemDefault.signedIn, email: systemDefault.email },
+    ...(removed.size > 0 ? { removedDuplicates: summaries.filter((s) => removed.has(s.account.id)).map((s) => accountDisplayName(s.account)) } : {})
+  }
+}
+
+/** 重なったアカウントの設定フォルダ（と macOS の Keychain の項目）を消す。消せたら true */
+async function removeOwnedAccountFolder(agent: AccountAgent, accountId: string): Promise<boolean> {
+  const verdict = verifyManagedAccountDir({ userDataDir: userDataDir(), agent, accountId })
+  if (verdict.kind !== 'owned') return false
+  try {
+    if (agent === 'claude') await deleteScopedClaudeKeychainItem(verdict.dir)
+    removeManagedAccountDir(userDataDir(), agent, accountId)
+    return true
+  } catch (err) {
+    reportHandled(errorKind(err), { area: 'accounts', op: 'remove duplicate account' })
+    return false
   }
 }
 
