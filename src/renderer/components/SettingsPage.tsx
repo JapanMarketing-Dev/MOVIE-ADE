@@ -11,6 +11,7 @@ import { Button, Field, LocaleSelect, ThemeSegmented, useToast } from '../ui'
 import { starFromMenu } from './StarPrompt'
 import { useLocale, useT } from '../lib/i18n'
 import { AccountsSection } from './AccountsSection'
+import { AgentRequestsSection } from './AgentRequestsSection'
 import { AgentIcon } from './AgentIcon'
 import { AgentResourcesSection } from './AgentResourcesSection'
 import { CliToolsSection } from './CliToolsSection'
@@ -446,6 +447,10 @@ export function SettingsPage({
     </PageSection>,
     agents: <PageSection key="agents" id="agents" title={titleOf('agents')}>
       <AgentSection value={agents} onChange={onAgentsChange} prompt={agentPrompt} onPromptChange={onAgentPromptChange} />
+    </PageSection>,
+    requests: <PageSection key="requests" id="requests" title={titleOf('requests')}>
+      {/* Agent への依頼文。読み込み・保存は自分で行う（src/renderer/components/AgentRequestsSection.tsx） */}
+      <AgentRequestsSection />
     </PageSection>,
     accounts: <PageSection key="accounts" id="accounts" title={titleOf('accounts')} bare>
       {/* 外側の section・見出し・保存（IPC で即時）はアカウント欄が自分で持つ */}

@@ -13,6 +13,8 @@ export const SETTINGS_SECTIONS = [
   // よく使う・大事なもの（Agent と判定モデル）を一般のすぐ下に置く
   'agents',
   'verify',
+  // Agent への依頼文（dream・コンパクト・セキュリティ・SEO・分析・Sentry など）
+  'requests',
   'recording',
   'transcription',
   'organize',
@@ -46,6 +48,8 @@ const SECTION_KEYWORDS: Record<SettingsSectionId, readonly string[]> = {
     '整理', '指摘', 'キー', 'モデル', '分割'],
   verify: ['decision', 'verify', 'judge', 'done', 'ollama', 'clef', 'typesafe', 'jev', 'openai', 'gpt-6-luna', 'luna', 'vercel', 'gateway', 'system one', 'api key',
     '判定', '検証', '完了', 'キー'],
+  requests: ['request', 'prompt', 'dream', 'memory', 'compact', 'security', 'seo', 'analytics', 'sentry', 'crash', 'performance', 'accessibility', 'dependencies', 'schedule',
+    '依頼', 'プロンプト', '記憶', 'コンパクト', 'セキュリティ', '分析', 'クラッシュ', '性能', 'アクセシビリティ', '依存', '定期'],
   agents: ['agent', 'claude', 'codex', 'gemini', 'opencode', 'cursor', 'copilot', 'aider', 'grok', 'qwen', 'amp', 'custom', 'install',
     'command', 'args', 'arguments', 'prompt', 'instruction', 'startup', 'エージェント', 'カスタム', 'インストール', 'コマンド', '引数', '指示', 'プロンプト', '起動'],
   accounts: ['account', 'login', 'sign in', 'usage', 'manage', 'limit', 'failover', 'switch', 'アカウント', 'ログイン', '使用量', '管理', '上限', '切り替え'],

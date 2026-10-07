@@ -746,9 +746,14 @@ function assertNotRecording(): void {
 function syncOrchestratorOnOpen(project: Project | null | undefined): void {
   if (!project?.orchestrator || project.source === 'ssh') return
   void import('./orchestrator')
-    .then(({ syncOrchestrator }) => syncOrchestrator(project.folderPath, currentSettings().projects))
+    .then(({ syncOrchestrator }) => syncOrchestrator(project.folderPath, currentSettings().projects, true, project.members ?? [], guideLanguage()))
     // .claude がリンクなのは利用者の置き方（書かないのが正しい）。Sentry へは送らない
     .catch((err: unknown) => { if ((err as Error)?.name !== 'SubagentLinkError') reportHandled(err, { area: 'agent-launch', op: 'sync orchestrator subagents' }) })
+}
+
+/** オーケストレーターの README・CLAUDE.md の人が書く部分の雛形の言語（画面の言語が日本語なら日本語） */
+function guideLanguage(): 'ja' | 'en' {
+  return getLocale() === 'ja' ? 'ja' : 'en'
 }
 
 /** オーケストレーターにする・やめる。子の subagent を書く・消す */
@@ -759,7 +764,7 @@ async function setProjectOrchestrator(id: unknown, enabled: unknown): Promise<{ 
   if (current.source === 'ssh') throw new UserFacingError(t('errors.folderNotRegistered'))
   const on = enabled === true
   const { SubagentLinkError, syncOrchestrator } = await import('./orchestrator')
-  const result = await syncOrchestrator(current.folderPath, settings.projects, on).catch((err: unknown) => {
+  const result = await syncOrchestrator(current.folderPath, settings.projects, on, current.members ?? [], guideLanguage()).catch((err: unknown) => {
     if (err instanceof SubagentLinkError) throw new UserFacingError(t('orchestrator.linkRefused'))
     throw err
   })
@@ -769,6 +774,61 @@ async function setProjectOrchestrator(id: unknown, enabled: unknown): Promise<{ 
   updateSettings({ projects: currentSettings().projects.map((p) => (p.id === current.id ? merged : p)) })
   send('projects:changed', projectsState())
   return { children: result.children, skipped: result.skipped }
+}
+
+/**
+ * オーケストレーターを新しく作る。<parent>/<name> のフォルダを作り（あれば空のときだけ使う）、
+ * 選んだ既存のプロジェクトを入れて、subagent などを書き、開く
+ */
+async function createOrchestrator(rawName: unknown, rawParent: unknown, rawMembers: unknown): Promise<WorkspaceState> {
+  const name = typeof rawName === 'string' ? rawName.trim() : ''
+  const parent = typeof rawParent === 'string' ? rawParent.trim() : ''
+  if (!name || /[\\/]/.test(name) || name === '.' || name === '..' || !parent || !isAbsolute(parent)) throw new UserFacingError(t('orchestrator.create.invalid'))
+  const folder = join(parent, name)
+  const { mkdir, readdir } = await import('node:fs/promises')
+  const entries = await readdir(folder).catch(() => null)
+  if (entries && entries.length > 0) throw new UserFacingError(t('orchestrator.create.exists', { path: folder }))
+  await mkdir(folder, { recursive: true })
+  const settings = currentSettings()
+  const members = Array.isArray(rawMembers) ? rawMembers.filter((id): id is string => typeof id === 'string' && settings.projects.some((p) => p.id === id && p.source !== 'ssh' && !p.orchestrator)) : []
+  const { projects, project } = upsertProjectFolder(settings.projects, folder)
+  const created: Project = { ...project, name, orchestrator: true, ...(members.length ? { members } : {}) }
+  // 入れたプロジェクトは、ほかのオーケストレーターからは外す（1つのプロジェクトは1つのオーケストレーターの下）
+  updateSettings({ projects: projects.map((p) => (p.id === created.id ? created : p.members ? withoutMembers(p, members) : p)) })
+  const { syncOrchestrator } = await import('./orchestrator')
+  await syncOrchestrator(folder, currentSettings().projects, true, members, guideLanguage())
+  return openProject(currentSettings().projects.find((p) => p.id === created.id) ?? created)
+}
+
+function withoutMembers(project: Project, ids: readonly string[]): Project {
+  const members = (project.members ?? []).filter((id) => !ids.includes(id))
+  const next: Project = { ...project }
+  if (members.length) next.members = members
+  else delete next.members
+  return next
+}
+
+/** プロジェクトをオーケストレーターに入れる（orchestratorId が null なら今のオーケストレーターから外す） */
+async function setOrchestratorMembership(rawProjectId: unknown, rawOrchestratorId: unknown): Promise<ProjectsState> {
+  const settings = currentSettings()
+  const project = settings.projects.find((p) => p.id === rawProjectId)
+  if (!project || project.orchestrator || project.source === 'ssh') throw new UserFacingError(t('errors.projectNotFound'))
+  const target = rawOrchestratorId === null ? null : settings.projects.find((p) => p.id === rawOrchestratorId && p.orchestrator)
+  if (rawOrchestratorId !== null && !target) throw new UserFacingError(t('errors.projectNotFound'))
+  const touched = settings.projects.filter((p) => p.orchestrator && (p.members?.includes(project.id) || p.id === target?.id))
+  updateSettings({
+    projects: settings.projects.map((p) => {
+      if (target && p.id === target.id) return { ...withoutMembers(p, [project.id]), members: [...(p.members ?? []).filter((id) => id !== project.id), project.id] }
+      return p.members?.includes(project.id) ? withoutMembers(p, [project.id]) : p
+    })
+  })
+  const { syncOrchestrator } = await import('./orchestrator')
+  for (const orchestrator of touched) {
+    const saved = currentSettings().projects.find((p) => p.id === orchestrator.id)
+    if (saved) await syncOrchestrator(saved.folderPath, currentSettings().projects, true, saved.members ?? [], guideLanguage()).catch((err: unknown) => { if ((err as Error)?.name !== 'SubagentLinkError') reportHandled(err, { area: 'agent-launch', op: 'sync orchestrator subagents' }) })
+  }
+  send('projects:changed', projectsState())
+  return projectsState()
 }
 
 /**
@@ -1453,6 +1513,40 @@ async function confirmRestartForUpdate(): Promise<boolean> {
 }
 
 /**
+ * 依頼文（設定の「Agent への依頼」）を、開いているプロジェクトの Agent へ送る。宛先は「Agent へ送信」の auto と同じ。
+ * オーケストレーターからなら、すべてのプロダクトに subagent で並行して行うよう添える（@shared/agentRequests）
+ */
+async function sendAgentRequests(ids: unknown, scheduled = false): Promise<{ ok: boolean; message: string; noAgent?: boolean }> {
+  const { composeAgentRequest, resolveAgentRequests } = await import('@shared/agentRequests')
+  const lang = guideLanguage()
+  const wanted = Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : []
+  const picked = resolveAgentRequests(currentSettings().agentRequests, lang).filter((r) => wanted.includes(r.id) && r.text.trim())
+  if (!picked.length) throw new UserFacingError(t('errors.emptyText'))
+  const project = currentSettings().projects.find((p) => p.id === workspace.projectId)
+  const text = composeAgentRequest(picked, lang, !!project?.orchestrator)
+  const target = terminals ? await terminals.resolveSendTarget(null, workspace.folderPath) : null
+  if (!target) return { ok: false, message: t('terminal.send.noAgent'), noAgent: true }
+  // 定期の依頼は、Agent が手すきのときだけ送る（作業中の Agent の邪魔をしない）
+  if (scheduled && (await terminals!.agentState(target)).state !== 'idle') return { ok: false, message: 'busy' }
+  const { ok, message } = await terminals!.sendReview(target, text)
+  return { ok, message }
+}
+
+/** 定期の依頼（毎日・毎週）。時期が来たものを、Agent が手すきのときにまとめて送り、送った時刻を覚える */
+async function runScheduledRequests(): Promise<void> {
+  const prefs = currentSettings().agentRequests
+  if (!prefs?.items.some((i) => i.schedule && i.schedule !== 'off')) return
+  const { dueRequests, resolveAgentRequests } = await import('@shared/agentRequests')
+  const due = dueRequests(resolveAgentRequests(prefs, guideLanguage()), prefs.lastRunAt, Date.now())
+  if (!due.length) return
+  const result = await sendAgentRequests(due.map((r) => r.id), true)
+  if (!result.ok) return
+  const now = new Date().toISOString()
+  const latest = currentSettings().agentRequests ?? prefs
+  updateSettings({ agentRequests: { ...latest, lastRunAt: { ...latest.lastRunAt, ...Object.fromEntries(due.map((r) => [r.id, now])) } } })
+}
+
+/**
  * オーケストレーターのプロジェクトから送るとき、指示文の後ろに「どの子の subagent に任せるか」を足す。
  * 子が見つからない・読めないときはそのまま
  */
@@ -1461,7 +1555,7 @@ async function withOrchestratorNote(text: string): Promise<string> {
   if (!project?.orchestrator || project.source === 'ssh') return text
   try {
     const [{ findOrchestratorChildren }, { childList }] = await Promise.all([import('./orchestrator'), import('@shared/orchestrator')])
-    const children = await findOrchestratorChildren(project.folderPath, currentSettings().projects)
+    const children = await findOrchestratorChildren(project.folderPath, currentSettings().projects, project.members ?? [])
     return children.length ? `${text}\n\n${t('orchestrator.reviewNote', { children: childList(children) })}` : text
   } catch (err) {
     reportHandled(err, { area: 'review', op: 'list orchestrator children' })
@@ -1607,6 +1701,8 @@ function registerIpc(): void {
     },
     'project:update': (project) => updateProject(project),
     'project:orchestrator': (id, enabled) => setProjectOrchestrator(id, enabled),
+    'project:createOrchestrator': (name, parent, members) => createOrchestrator(name, parent, members),
+    'project:setMembership': (projectId, orchestratorId) => setOrchestratorMembership(projectId, orchestratorId),
     'project:remove': (id) => removeProject(id),
     'project:sshHosts': async () => (await import('./projectSources')).listSshHosts(),
     'project:githubRepos': async () => (await import('./projectSources')).listGitHubRepos(),
@@ -1670,6 +1766,14 @@ function registerIpc(): void {
     'cliTools:list': (refresh) => listCliTools(refresh === true),
     'agents:resources': (agent) => listAgentResources(String(agent) as Parameters<typeof listAgentResources>[0], workspace.folderPath ?? null),
     'settings:agentPrompt': (template) => updateSettings({ agentPrompt: typeof template === 'string' ? template : undefined }),
+    'settings:agentRequests': async (prefs) => {
+      const { sanitizeAgentRequestPrefs } = await import('@shared/agentRequests')
+      const next = sanitizeAgentRequestPrefs(prefs)
+      // 定期の送った時刻は main だけが書く（画面の古い値で戻さない）
+      const lastRunAt = currentSettings().agentRequests?.lastRunAt
+      updateSettings({ agentRequests: next ? { items: next.items, ...(lastRunAt ? { lastRunAt } : {}) } : undefined })
+    },
+    'agentRequests:send': (ids) => sendAgentRequests(ids),
 
     // Claude Code / Codex のアカウント（src/main/accounts）。renderer からの値は種類を確かめてから使う
     'accounts:list': () => listAgentAccounts(),
@@ -2877,6 +2981,8 @@ async function main(): Promise<void> {
   })
   setWorkspace(loadedSettings.folderPath, startupProject)
   syncOrchestratorOnOpen(startupProject)
+  // 定期の依頼は10分ごとに確かめる（Agent が手すきのときだけ送る）
+  setInterval(() => void runScheduledRequests().catch((err: unknown) => reportHandled(err, { area: 'agent-launch', op: 'send scheduled requests' })), 10 * 60 * 1000).unref?.()
   // 最初のタブを開く要求が届く前に、node-pty の読み込みと最初のシェルの起動（rc の読み込み）を済ませておく
   terminals.prewarm()
   registerIpc()

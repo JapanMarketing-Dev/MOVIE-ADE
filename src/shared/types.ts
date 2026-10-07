@@ -156,6 +156,8 @@ export interface Project {
   starred?: true
   /** オーケストレーター。すぐ下のフォルダのプロジェクトを subagent として束ねる（src/shared/orchestrator.ts） */
   orchestrator?: true
+  /** オーケストレーターに入れた既存のプロジェクトの id（フォルダは動かさない。サイドバーではこの下に並ぶ） */
+  members?: string[]
   /** 登録した時刻（ISO8601）。「追加した順」に使う。これより前に登録したものには無い */
   addedAt?: string
   /** 最後に開いた時刻（ISO8601）。「最近使った順」「動いている順」に使う */
@@ -368,6 +370,8 @@ export interface Settings {
   limitFailover?: LimitFailoverPrefs
   /** Agentへ渡す1行の指示のテンプレート（{{path}} = feedback.md の絶対パス、{{relpath}} = 相対パス）。未設定・空なら既定文 */
   agentPrompt?: string
+  /** Agent への依頼文（dream・コンパクト・セキュリティなど。src/shared/agentRequests.ts） */
+  agentRequests?: import('./agentRequests').AgentRequestPrefs
   /** 「指摘を整理」の実行方法と、API の接続先 */
   organizer?: OrganizerPreferences
   /** 判定モデル（「フィードバックどおりにできたか」の判定）の接続先。キーは入れない（src/shared/decision.ts） */

@@ -361,7 +361,8 @@ export function ReviewList({
   /** 全プロジェクト共通の絞り込み（ReviewFilterBar） */
   filter: ReviewFilter
   selectedId: string | null
-  emptyText: string
+  /** 0件のときの文言。無ければ何も出さない（開いているプロジェクトは「新しいレビュー」のボタンが案内になる） */
+  emptyText?: string
   onSelect: (id: string) => void
   /** 名前の変更・アーカイブ・削除のあと。消した ID を渡す */
   onChanged: (deletedIds: string[]) => void
@@ -420,7 +421,7 @@ export function ReviewList({
     label(current.id, { name: name || null })
   }
 
-  if (items.length === 0) return <p className="sb-project__empty">{emptyText}</p>
+  if (items.length === 0) return emptyText ? <p className="sb-project__empty">{emptyText}</p> : null
 
   const shown = filterReviews(sortReviews(items), filter)
   const menuSession = menu ? items.find((s) => s.id === menu.id) : undefined

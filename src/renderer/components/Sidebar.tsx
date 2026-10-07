@@ -37,7 +37,7 @@ import { SetupProgressLink } from '../onboarding/SetupChecklist'
 import { FeedbackLink } from './FeedbackDialog'
 import { useProjectActivity } from '../terminal/agentActivity'
 import { dropPositionAt, moveAmongVisible, stepAmongVisible, type DropPosition } from '@shared/reorder'
-import { PROJECT_SORTS, filterProjects, sanitizeProjectView, sortProjects, type ProjectListView } from '@shared/projectOrder'
+import { PROJECT_SORTS, filterProjects, memberParents, nestMembers, sanitizeProjectView, sortProjects, type ProjectListView } from '@shared/projectOrder'
 
 export { toReviewSession, type ReviewSession }
 
@@ -299,7 +299,10 @@ export function Sidebar({
     })
   }, [projectActivity])
   const displayed = sortProjects(projects.projects, view.sort, { activity: projectActivity, agentActiveAt })
-  const shown = filterProjects(displayed, view)
+  // オーケストレーターに入れたプロジェクトは、そのオーケストレーターのすぐ下に字下げして並べる
+  const shown = nestMembers(filterProjects(displayed, view), projects.projects)
+  const parentOf = memberParents(projects.projects)
+  const orchestrators = projects.projects.filter((p) => p.orchestrator)
 
   /**
    * 並べ替え。全体の並びは今の表示の順で、☆ の中・外のそれぞれの中で動かす（☆ は上にまとめるため）。
@@ -321,6 +324,8 @@ export function Sidebar({
   const stepOf = (id: string, delta: -1 | 1) => stepAmongVisible(projectIds, shownIds, id, delta, sameGroup(id))
   const moveProject = (id: string, delta: -1 | 1) => reorder(stepOf(id, delta))
   const toggleStar = (project: Project) => run(() => window.ade.invoke('project:update', { id: project.id, starred: !project.starred }))
+  /** オーケストレーターに入れる・外す（フォルダは動かさない） */
+  const setMembership = (project: Project, orchestratorId: string | null) => run(() => window.ade.invoke('project:setMembership', project.id, orchestratorId))
   /** オーケストレーターにする・やめる（すぐ下のフォルダのプロジェクトを subagent にする。src/main/orchestrator.ts） */
   const toggleOrchestrator = (project: Project) => run(async () => {
     const enabled = !project.orchestrator
@@ -348,10 +353,11 @@ export function Sidebar({
     setAdding(true)
     onOverlayChange?.(true)
   }
-  // 足したら、種類と確認先を決めてもらうため「プロジェクトを編集」を開く（SSH はリモートの開発サーバーが分からないので開かない）
+  // 足したら、種類と確認先を決めてもらうため「プロジェクトを編集」を開く（SSH はリモートの開発サーバーが分からないので開かない。
+  // オーケストレーターは確認先を持たない（レビューは下のプロダクトで行う）ので開かない）
   const onAdded = (before: ReadonlySet<string>) => (state: ProjectsState, source: ProjectSource) => {
     const added = state.projects.find((p) => !before.has(p.id))
-    if (added && source !== 'ssh') openEdit(added.id)
+    if (added && source !== 'ssh' && !added.orchestrator) openEdit(added.id)
   }
 
   const switchTo = (project: Project) => run(async () => {
@@ -454,7 +460,7 @@ export function Sidebar({
               return (
                 <div
                   key={project.id}
-                  className={`sb-project${active ? ' is-active' : ''}${dragging === project.id ? ' is-dragging' : ''}${dropAt?.id === project.id ? ` is-drop-${dropAt.position}` : ''}`}
+                  className={`sb-project${parentOf.has(project.id) && shownIds.includes(parentOf.get(project.id)!) ? ' sb-project--member' : ''}${active ? ' is-active' : ''}${dragging === project.id ? ' is-dragging' : ''}${dropAt?.id === project.id ? ` is-drop-${dropAt.position}` : ''}`}
                   data-testid="sidebar-project"
                   onDragOver={(e) => {
                     if (!dragging || !Array.from(e.dataTransfer.types).includes(PROJECT_DRAG_TYPE) || starredOf(dragging) !== !!project.starred) return
@@ -673,7 +679,7 @@ export function Sidebar({
                           active={active}
                           items={items}
                           selectedId={selectedId}
-                          emptyText={active ? t('sidebar.emptyActive') : t('sidebar.emptyOther')}
+                          {...(active ? {} : { emptyText: t('sidebar.emptyOther') })}
                           onSelect={(id) => selectSession(project, id)}
                           onChanged={(deleted) => (active ? onHistoryChanged?.(deleted) : reloadOther(project))}
                         />
@@ -710,6 +716,13 @@ export function Sidebar({
             <button type="button" role="menuitem" onClick={() => { setMenu(null); toggleOrchestrator(menuProject) }} data-testid="sidebar-project-orchestrator-menu">
               <Network size={13} strokeWidth={1.75} />{menuProject.orchestrator ? t('orchestrator.off') : t('orchestrator.on')}
             </button>
+            {/* 既存のプロジェクトをオーケストレーターに入れる・外す */}
+            {!menuProject.orchestrator && orchestrators.map((o) => {
+              const member = parentOf.get(menuProject.id) === o.id
+              return <button key={o.id} type="button" role="menuitem" onClick={() => { setMenu(null); setMembership(menuProject, member ? null : o.id) }} data-testid={`sidebar-project-member-${o.id}`}>
+                <Network size={13} strokeWidth={1.75} />{member ? t('orchestrator.removeFrom', { name: o.name }) : t('orchestrator.addTo', { name: o.name })}
+              </button>
+            })}
             <button type="button" role="menuitem" onClick={() => { setMenu(null); openRepoCreate(menuProject.id) }} data-testid="sidebar-project-create-repo">
               <FolderGit2 size={13} strokeWidth={1.75} />{t('repoCreate.menu')}
             </button>
