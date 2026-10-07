@@ -138,6 +138,8 @@ export interface IpcRequests {
   /** 名前・URLの変更。id で既存を置き換える */
   /** 名前・種類・確認先の変更。送った項目だけが変わる（Project をそのまま渡してもよい） */
   'project:update': (project: ProjectUpdate) => ProjectsState
+  /** オーケストレーターにする・やめる。子のプロジェクトの subagent を書く・消す（src/main/orchestrator.ts） */
+  'project:orchestrator': (id: string, enabled: boolean) => { children: Array<{ dir: string; name: string; agent: string }>; skipped: string[] }
   /** 登録を外すだけ。フォルダは消さない */
   'project:remove': (id: string) => ProjectsState
   /** 中央のタブ・開いているファイル・表示中のレビューを覚える（URL は main が自分で覚える）。通知は送らない */
@@ -651,6 +653,7 @@ export const IPC_REQUEST_CHANNELS = [
   'project:add',
   'project:switch',
   'project:update',
+  'project:orchestrator',
   'project:remove',
   'project:saveSession',
   'project:sshHosts',

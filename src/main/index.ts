@@ -740,6 +740,34 @@ function assertNotRecording(): void {
 }
 
 /**
+ * オーケストレーターの subagent（<フォルダ>/.claude/agents/ferret-*.md）を、今のサブフォルダに合わせる。
+ * オーケストレーターにしたプロジェクトを開いたとき・起動したとき。SSH のプロジェクトは手元のフォルダが置き場なので書かない
+ */
+function syncOrchestratorOnOpen(project: Project | null | undefined): void {
+  if (!project?.orchestrator || project.source === 'ssh') return
+  void import('./orchestrator')
+    .then(({ syncOrchestrator }) => syncOrchestrator(project.folderPath, currentSettings().projects))
+    .catch((err: unknown) => reportHandled(err, { area: 'agent-launch', op: 'sync orchestrator subagents' }))
+}
+
+/** オーケストレーターにする・やめる。子の subagent を書く・消す */
+async function setProjectOrchestrator(id: unknown, enabled: unknown): Promise<{ children: Array<{ dir: string; name: string; agent: string }>; skipped: string[] }> {
+  const settings = currentSettings()
+  const current = settings.projects.find((p) => p.id === id)
+  if (!current) throw new UserFacingError(t('errors.projectNotFound'))
+  if (current.source === 'ssh') throw new UserFacingError(t('errors.folderNotRegistered'))
+  const on = enabled === true
+  const { syncOrchestrator } = await import('./orchestrator')
+  const result = await syncOrchestrator(current.folderPath, settings.projects, on)
+  const merged: Project = { ...current }
+  if (on) merged.orchestrator = true
+  else delete merged.orchestrator
+  updateSettings({ projects: currentSettings().projects.map((p) => (p.id === current.id ? merged : p)) })
+  send('projects:changed', projectsState())
+  return { children: result.children, skipped: result.skipped }
+}
+
+/**
  * プロジェクトを開く。ターミナルの起動先（cwd）と保存先をそのフォルダに切り替える。
  * 内蔵ブラウザが空か、前のプロジェクトのURLを表示しているなら、このプロジェクトの先頭URLへ移る。
  */
@@ -749,6 +777,7 @@ function openProject(project: Project): WorkspaceState {
   const previousTabs = browser && previousId && previousId !== project.id ? browser.snapshotTabs() : null
   const next = setWorkspace(project.folderPath, project)
   updateSettings({ activeProjectId: project.id, folderPath: project.folderPath, projects: markProjectOpened(currentSettings().projects, project.id) })
+  syncOrchestratorOnOpen(project)
   send('workspace:changed', next)
   send('projects:changed', projectsState())
   // 内蔵ブラウザもそのプロジェクトのタブに入れ替える（ターミナルと同じく、プロジェクトごとに分ける）。
@@ -1420,6 +1449,23 @@ async function confirmRestartForUpdate(): Promise<boolean> {
 }
 
 /**
+ * オーケストレーターのプロジェクトから送るとき、指示文の後ろに「どの子の subagent に任せるか」を足す。
+ * 子が見つからない・読めないときはそのまま
+ */
+async function withOrchestratorNote(text: string): Promise<string> {
+  const project = currentSettings().projects.find((p) => p.id === workspace.projectId)
+  if (!project?.orchestrator || project.source === 'ssh') return text
+  try {
+    const [{ findOrchestratorChildren }, { childList }] = await Promise.all([import('./orchestrator'), import('@shared/orchestrator')])
+    const children = await findOrchestratorChildren(project.folderPath, currentSettings().projects)
+    return children.length ? `${text}\n\n${t('orchestrator.reviewNote', { children: childList(children) })}` : text
+  } catch (err) {
+    reportHandled(err, { area: 'review', op: 'list orchestrator children' })
+    return text
+  }
+}
+
+/**
  * レビュー履歴を読む・整理するフォルダ。省略時は開いているプロジェクト。
  * 別フォルダは登録済みプロジェクトに限る（renderer から任意のパスを読ませない・消させない）。
  */
@@ -1556,6 +1602,7 @@ function registerIpc(): void {
       return openProject(project)
     },
     'project:update': (project) => updateProject(project),
+    'project:orchestrator': (id, enabled) => setProjectOrchestrator(id, enabled),
     'project:remove': (id) => removeProject(id),
     'project:sshHosts': async () => (await import('./projectSources')).listSshHosts(),
     'project:githubRepos': async () => (await import('./projectSources')).listGitHubRepos(),
@@ -1896,7 +1943,7 @@ function registerIpc(): void {
         const launchAgent = want.kind === 'agent' ? want.agent : want.kind === 'terminal' ? want.agent ?? undefined : undefined
         return { ok: false, message: t('terminal.send.noAgent'), noAgent: true, ...(launchAgent ? { launchAgent } : {}) }
       }
-      const result: { ok: boolean; message: string; terminalId?: string; submitted?: boolean } = { ...(await terminals!.sendReview(target, request.text ?? (isRemoteWorkspace() ? await remoteReviewInstruction(paths) : await reviewInstruction(paths, currentSettings().agentPrompt)))), terminalId: target }
+      const result: { ok: boolean; message: string; terminalId?: string; submitted?: boolean } = { ...(await terminals!.sendReview(target, request.text ?? (isRemoteWorkspace() ? await remoteReviewInstruction(paths) : await withOrchestratorNote(await reviewInstruction(paths, currentSettings().agentPrompt))))), terminalId: target }
       // 一覧の「送信済み」に使う。記録できなくても送信の結果は変えない
       if (result.ok) await (await import('./sessions')).updateLabel(paths, { sentAt: new Date().toISOString() }).catch((err: unknown) => reportHandled(err, { area: 'review', op: 'record sent label' }))
       // 送った指摘を対応中にする（Agent が progress.json で done にするまで）。書けなくても送信の結果は変えない。
@@ -2825,6 +2872,7 @@ async function main(): Promise<void> {
     terminals?.resetFlow()
   })
   setWorkspace(loadedSettings.folderPath, startupProject)
+  syncOrchestratorOnOpen(startupProject)
   // 最初のタブを開く要求が届く前に、node-pty の読み込みと最初のシェルの起動（rc の読み込み）を済ませておく
   terminals.prewarm()
   registerIpc()
