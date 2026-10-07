@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { app, net, type BrowserWindow } from 'electron'
-import { accountDisplayName, EMPTY_AGENT_ACCOUNTS } from '@shared/accounts'
+import { accountDisplayName, dedupeAccountRows, EMPTY_AGENT_ACCOUNTS } from '@shared/accounts'
 import type { AccountUsage, ProviderRateLimits, UsageState } from '@shared/usage'
 import type { AccountAgent } from '@shared/types'
 import { currentSettings } from '../settings'
@@ -223,10 +223,12 @@ export async function refreshUsage(force: boolean): Promise<UsageState> {
 export async function getAccountUsage(agent: AccountAgent, force = false): Promise<AccountUsage[]> {
   const list = accounts()[agent]
   const active = activeAccountId(agent)
-  const rows: Array<{ accountId: string | null; label: string }> = [
-    { accountId: null, label: t('accounts.systemDefault') },
-    ...list.accounts.filter((a) => a.lastAuthenticatedAt !== null).map((a) => ({ accountId: a.id, label: accountDisplayName(a) }))
-  ]
+  // システムの既定が登録したアカウントと同じログインなら1行にする（同じアカウントを2回追加したときも）
+  const system = await (await import('../accounts')).readSystemDefault(agent).catch(() => null)
+  const rows = dedupeAccountRows([
+    { accountId: null, label: t('accounts.systemDefault'), email: system?.signedIn ? system.email : null, workspaceLabel: system?.workspaceLabel ?? null },
+    ...list.accounts.filter((a) => a.lastAuthenticatedAt !== null).map((a) => ({ accountId: a.id, label: accountDisplayName(a), email: a.email, workspaceLabel: a.workspaceLabel }))
+  ], active)
   return Promise.all(
     rows.map(async ({ accountId, label }): Promise<AccountUsage> => {
       const isActive = accountId === active

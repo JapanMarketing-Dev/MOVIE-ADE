@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AgentAccountsState } from '@shared/accounts'
 import type { AccountAgent } from '@shared/types'
 import { errorMessage } from '../lib/errors'
+import { t } from '@shared/i18n'
 import { onAccountsStateChanged, publishAccountsState, requestAccountLogin } from '../lib/accountLogin'
 
 /**
@@ -48,6 +49,9 @@ export function useAgentAccounts(): {
   const apply = useCallback((next: AgentAccountsState) => {
     if (mountedRef.current) setState(next)
     publishAccountsState(next)
+    // 追加したアカウントが、すでにあるログインと同じだったので main が外した
+    const removed = (['claude', 'codex'] as const).flatMap((agent) => next[agent].removedDuplicates ?? [])
+    if (removed.length && mountedRef.current) setError(t('accounts.duplicateRemoved', { names: removed.join(', ') }))
   }, [])
 
   const reload = useCallback(async () => {

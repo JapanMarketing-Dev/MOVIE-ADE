@@ -6,6 +6,7 @@ export {
   addAgentAccount,
   buildAccountLoginLaunch,
   listAgentAccounts,
+  readSystemDefault,
   reloginAgentAccount,
   removeAgentAccount,
   renameAgentAccount,
