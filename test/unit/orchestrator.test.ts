@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join, posix, win32 } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { SUBAGENT_MARKER, childList, isFerretSubagent, orchestratorChildren, planSubagents, renderSubagent, slug } from '../../src/shared/orchestrator'
-import { syncOrchestrator } from '../../src/main/orchestrator'
+import { SubagentLinkError, syncOrchestrator } from '../../src/main/orchestrator'
 
 describe('子のプロジェクトを決める', () => {
   it('git のリポジトリか登録済みのプロジェクトだけ。隠しフォルダ・node_modules は外し、名前の順', () => {
@@ -110,7 +110,7 @@ describe('フォルダに書く', () => {
     const elsewhere = await mkdtemp(join(tmpdir(), 'ferret-orch-elsewhere-'))
     try {
       await symlink(elsewhere, join(root, '.claude'))
-      await expect(syncOrchestrator(root, [])).rejects.toThrow(/symbolic link/)
+      await expect(syncOrchestrator(root, [])).rejects.toThrow(SubagentLinkError)
       expect(await readdir(elsewhere)).toEqual([])
     } finally {
       await rm(elsewhere, { recursive: true, force: true })

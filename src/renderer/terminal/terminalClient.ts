@@ -13,6 +13,7 @@ import { ImeInputGuard } from './imeInputGuard'
 import { isWebglUnavailable } from './rendererFallback'
 import { RESTORE_LINE_LIMIT, capScrollback, joinWrappedRows } from '@shared/terminalRestore'
 import { selectionTextForCopy } from './wrappedCopy'
+import { isScrolledUp } from './jumpToBottom'
 
 /**
  * renderer 側のターミナル実体（xterm.js）を管理する。
@@ -66,6 +67,8 @@ export class TerminalHandle {
    * 作り直されても、この器を新しい場所へ移すだけで画面と履歴を保つ
    */
   private readonly host: HTMLDivElement
+  /** 上へスクロールしている間だけ右下に出す「一番下へ」のボタン */
+  private readonly jumpButton: HTMLButtonElement
   private screenTimer: ReturnType<typeof setTimeout> | null = null
   private fitFrame = 0
   /** 器が 0px（非表示のタブ・閉じたターミナル）から見える大きさに戻った。次の fit で全面を描き直す */
@@ -108,6 +111,33 @@ export class TerminalHandle {
     this.term.loadAddon(this.fitAddon)
     this.host = document.createElement('div')
     this.host.className = 'terminal-host'
+    // Agent が出力し続けている間に上を読んでいても、1回押せば最新の行まで移れる（ホイールで下まで送り続けなくてよい）
+    this.jumpButton = document.createElement('button')
+    this.jumpButton.type = 'button'
+    this.jumpButton.className = 'terminal-jump'
+    this.jumpButton.textContent = '↓'
+    this.jumpButton.title = t('terminal.jumpToBottom')
+    this.jumpButton.setAttribute('aria-label', t('terminal.jumpToBottom'))
+    this.jumpButton.dataset.testid = 'terminal-jump-to-bottom'
+    this.jumpButton.hidden = true
+    // 押してもターミナルの入力の焦点を奪わない
+    this.jumpButton.addEventListener('mousedown', (event) => event.preventDefault())
+    this.jumpButton.addEventListener('click', () => {
+      this.term.scrollToBottom()
+      this.updateJumpButton()
+      this.term.focus()
+    })
+    this.host.appendChild(this.jumpButton)
+    const onViewportScroll = () => this.updateJumpButton()
+    // ホイール・スクロールバーでの移動（xterm の .xterm-viewport の scroll は泡立たないので capture で受ける）
+    this.host.addEventListener('scroll', onViewportScroll, true)
+    const scrolled = this.term.onScroll(onViewportScroll)
+    const written = this.term.onWriteParsed(onViewportScroll)
+    this.disposers.push(() => {
+      this.host.removeEventListener('scroll', onViewportScroll, true)
+      scrolled.dispose()
+      written.dispose()
+    })
     // ライト／ダークの切り替えに追従する（tokens.css の --term-* を読み直す）
     const onTheme = () => {
       const next = theme()
@@ -259,6 +289,11 @@ export class TerminalHandle {
       reportHandled(err, { area: 'terminal', op: 'load canvas renderer' })
       this.renderer = 'dom'
     }
+  }
+
+  private updateJumpButton(): void {
+    const show = isScrolledUp(this.term.buffer.active)
+    if (this.jumpButton.hidden === show) this.jumpButton.hidden = !show
   }
 
   /** 次のフレームで寸法を合わせ、変わっていればPTYにも伝える（非表示のあいだは何もしない） */

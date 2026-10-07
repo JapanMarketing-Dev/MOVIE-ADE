@@ -1229,6 +1229,34 @@ body[data-resizing='row'] * {
   left: var(--space-5);
 }
 
+/* 上へスクロールしている間だけ出す「一番下へ」のボタン（terminalClient.ts） */
+.terminal-jump {
+  position: absolute;
+  right: var(--space-5);
+  bottom: var(--space-3);
+  z-index: 10;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  background: var(--color-bg-elevated);
+  color: var(--term-fg);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.85;
+  box-shadow: var(--shadow-sm);
+}
+
+.terminal-jump:hover,
+.terminal-jump:focus-visible {
+  opacity: 1;
+}
+
+.terminal-jump[hidden] {
+  display: none;
+}
+
 /* 変換中の文字。xterm の既定は黒地に白で、ライト配色では黒い箱に見える。ターミナルの色に合わせる（Orca #12729 #19742） */
 .terminal-host .xterm .composition-view {
   background: var(--term-bg);
@@ -1284,7 +1312,7 @@ body[data-resizing='row'] * {
 /* ドラッグ中、落とすとどうなるかの案内（Orca の .pane-drop-overlay）。マウスは下のペインに通す */
 .terminal-drop-overlay {
   position: absolute;
-  z-index: 5;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
