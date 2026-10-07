@@ -24,6 +24,7 @@ import { AUTOMATIC_GIT_CONFIG, trustedGit } from '../github/gitSync'
 import {
   DEFAULT_LIMIT_COOLDOWN_MS,
   isAccountAgentId,
+  tabsToSwitch,
   limitKey,
   planFailover,
   planReturn,
@@ -215,11 +216,12 @@ function markLimited(target: FailoverTarget, until: number): void {
   limited.set(key, Math.max(limited.get(key) ?? 0, until))
 }
 
-async function switchFrom(id: string, cwd: string, from: FailoverTarget, reason: 'limit' | 'return', planned?: FailoverTarget): Promise<void> {
+async function switchFrom(id: string, cwd: string, from: FailoverTarget, reason: 'limit' | 'return' | 'switch', planned?: FailoverTarget): Promise<void> {
   if (busy.has(cwd)) return
   const now = Date.now()
   if (reason === 'limit') markLimited(from, now + DEFAULT_LIMIT_COOLDOWN_MS)
-  const allowed = switchAllowed(history.get(cwd) ?? [], now)
+  // 利用者がフッター・設定で選び直した（switch）ときは、回数の制限をかけない（自動の切り替えの暴走を止めるためのもの）
+  const allowed = reason === 'switch' ? { ok: true as const } : switchAllowed(history.get(cwd) ?? [], now)
   if (!allowed.ok) {
     if (reason === 'limit') notify({ message: t('failover.notice.paused', { time: formatTime(allowed.retryAt) }), toLabel: null, toTerminalId: null, fromTerminalId: null })
     return
@@ -236,14 +238,14 @@ async function switchFrom(id: string, cwd: string, from: FailoverTarget, reason:
       }
       return
     }
-    history.set(cwd, [...(history.get(cwd) ?? []).filter((at) => now - at < 60 * 60 * 1000), now])
+    if (reason !== 'switch') history.set(cwd, [...(history.get(cwd) ?? []).filter((at) => now - at < 60 * 60 * 1000), now])
     await launchTarget(id, cwd, from, target, reason)
   } finally {
     busy.delete(cwd)
   }
 }
 
-async function launchTarget(fromId: string, cwd: string, from: FailoverTarget, target: FailoverTarget, reason: 'limit' | 'return'): Promise<void> {
+async function launchTarget(fromId: string, cwd: string, from: FailoverTarget, target: FailoverTarget, reason: 'limit' | 'return' | 'switch'): Promise<void> {
   if (!terminals) return
   const sameAgent = target.agent === from.agent
   const fromLabel = label(from.agent)
@@ -282,7 +284,9 @@ async function launchTarget(fromId: string, cwd: string, from: FailoverTarget, t
   }
   const message = !sent?.ok
     ? t('failover.notice.notReady', { agent: toLabel })
-    : reason === 'return'
+    : reason === 'switch' && isAccountAgentId(target.agent)
+      ? t('failover.notice.switched', { agent: toLabel, account: accountLabel(target.agent, target.accountId ?? null) })
+      : reason === 'return'
       ? t('failover.notice.return', { from: fromLabel, to: toLabel })
       : sameAgent && isAccountAgentId(target.agent)
         ? t('failover.notice.account', { agent: toLabel, account: accountLabel(target.agent, target.accountId ?? null) })
@@ -398,6 +402,50 @@ async function waitReady(id: string): Promise<boolean> {
     // 確認待ち（フォルダの信頼など）は利用者に任せる
     if (state.state === 'blocked') return false
     await delay(500)
+  }
+  return false
+}
+
+// ───────────────────────── 利用者が選び直したとき ─────────────────────────
+
+/**
+ * フッター・設定でアカウントを選び直したとき。選んだアカウントは新しく開くタブだけでなく、
+ * いま動いているその Agent のタブにも効かせる（以前は新しいタブだけで、動いているタブは前のアカウントのままだった）。
+ * 上限での切り替えと同じく、引き継ぎのファイルを書かせてから選んだアカウントで開き直し、続きを頼んで古いタブを閉じる。
+ * 同じフォルダのタブは1つずつ順に（switchFrom はフォルダごとに1つしか同時に動かない）。戻り値は切り替えるタブの数
+ */
+export async function switchRunningAgents(agent: AccountAgent, accountId: string | null): Promise<number> {
+  if (!terminals) return 0
+  const tabs = await Promise.all(terminals.list().map(async (info) => {
+    const state = await terminals!.agentState(info.id).catch(() => null)
+    return { id: info.id, cwd: info.cwd, agent: state && state.kind !== 'unknown' ? state.agent : null, launchedAccount: launchedAccount.get(info.id) }
+  }))
+  const targets = tabsToSwitch(tabs, agent, accountId).map((tab) => ({ id: tab.id, cwd: tab.cwd, from: tab.launchedAccount ?? null }))
+  if (targets.length > 0) notify({ message: t('failover.notice.switching', { count: targets.length, agent: label(agent), account: accountLabel(agent, accountId) }), toLabel: null, toTerminalId: null, fromTerminalId: null })
+  void (async () => {
+    for (const target of targets) {
+      // 作業の途中では切り替えない（途中で切れる）。待機に戻るまで待ち、そのあいだに閉じた・選び直したなら何もしない
+      if (!(await waitIdleForSwitch(target.id, agent, accountId))) continue
+      await switchFrom(target.id, target.cwd, { agent, accountId: target.from }, 'switch', { agent, accountId })
+        .catch((err: unknown) => reportHandled(errorKind(err), { area: 'accounts', op: 'switch running agent' }))
+    }
+  })()
+  return targets.length
+}
+
+/** 作業中のタブを切り替えるまで待つ上限 */
+const SWITCH_WAIT_MS = 60 * 60 * 1000
+
+/** タブが待機中になるまで待つ。閉じた・その間に別のアカウントを選び直した・上限を過ぎたら false */
+async function waitIdleForSwitch(id: string, agent: AccountAgent, accountId: string | null): Promise<boolean> {
+  const deadline = Date.now() + SWITCH_WAIT_MS
+  while (terminals && Date.now() < deadline) {
+    if (activeAccountId(agent) !== accountId) return false
+    if (!terminals.list().some((s) => s.id === id)) return false
+    const state = await terminals.agentState(id).catch(() => null)
+    if (!state || state.agent !== agent) return false
+    if (state.state === 'idle') return true
+    await delay(2000)
   }
   return false
 }

@@ -129,3 +129,13 @@ export function switchAllowed(history: readonly number[], now: number): { ok: tr
 
 /** 上限とみなす間。使用量から戻る時刻が分かればそこまで、分からなければ1時間 */
 export const DEFAULT_LIMIT_COOLDOWN_MS = HOUR_MS
+
+/**
+ * 利用者がアカウントを選び直したときに開き直すタブ。その Agent のタブで、起動したアカウントが選んだものと違うもの。
+ * 起動したアカウントが分からない（undefined）タブはシステムの既定で開いたものとみなす
+ */
+export function tabsToSwitch<T extends { id: string; agent: TuiAgent | null; launchedAccount: string | null | undefined }>(
+  tabs: readonly T[], agent: AccountAgent, accountId: string | null
+): T[] {
+  return tabs.filter((tab) => tab.agent === agent && (tab.launchedAccount ?? null) !== accountId)
+}

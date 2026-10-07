@@ -30,7 +30,8 @@ export function updateRequest(path: string): string {
 }
 
 /** 次の Agent へ送る「まずこのファイルを読んで続けて」 */
-export function nextAgentPrompt(input: { reason: 'limit' | 'return'; from: string; to: string; path: string }): string {
+export function nextAgentPrompt(input: { reason: 'limit' | 'return' | 'switch'; from: string; to: string; path: string }): string {
+  if (input.reason === 'switch') return t('failover.handoff.readSwitch', { to: input.to, path: input.path })
   return input.reason === 'return'
     ? t('failover.handoff.readReturn', { from: input.from, to: input.to, path: input.path })
     : t('failover.handoff.readLimit', { from: input.from, to: input.to, path: input.path })
