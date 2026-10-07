@@ -4,7 +4,7 @@ import { setLocale } from '../../src/shared/i18n'
 import { DEFAULT_LIMIT_FAILOVER, sanitizeLimitFailover, type LimitFailoverPrefs } from '../../src/shared/failover'
 import type { ProviderRateLimits } from '../../src/shared/usage'
 import { limitOnScreen, limitedUntil, maxUsedPercent, mentionsLimit } from '../../src/main/failover/detect'
-import { MAX_SWITCHES_PER_HOUR, MIN_SWITCH_INTERVAL_MS, limitKey, planFailover, planReturn, switchAllowed, type PlanInput } from '../../src/main/failover/plan'
+import { MAX_SWITCHES_PER_HOUR, MIN_SWITCH_INTERVAL_MS, limitKey, planFailover, planReturn, switchAllowed, tabsToSwitch, type PlanInput } from '../../src/main/failover/plan'
 import { LastInputTracker, changedFilesFrom, ferretNote, findFeedbackPath, handoffFilePath, nextAgentPrompt, updateRequest } from '../../src/main/failover/handoff'
 import { renderAgentPrompt } from '../../src/shared/agentPrompt'
 
@@ -167,6 +167,26 @@ describe('切り替えの回数と間隔の上限', () => {
     const now = history[history.length - 1]! + 10 * 60_000
     expect(switchAllowed(history, now)).toEqual({ ok: false, retryAt: 60 * 60_000 })
     expect(switchAllowed(history, 60 * 60_000 + 1)).toEqual({ ok: true })
+  })
+})
+
+describe('フッター・設定でアカウントを選び直したとき', () => {
+  it('その Agent のタブのうち、起動したアカウントが違うものだけを開き直す（起動したアカウントが分からないものは既定とみなす）', () => {
+    const tabs = [
+      { id: 't1', agent: 'claude' as const, launchedAccount: 'a' },
+      { id: 't2', agent: 'claude' as const, launchedAccount: 'b' },
+      { id: 't3', agent: 'codex' as const, launchedAccount: 'a' },
+      { id: 't4', agent: 'claude' as const, launchedAccount: undefined },
+      { id: 't5', agent: null, launchedAccount: undefined }
+    ]
+    expect(tabsToSwitch(tabs, 'claude', 'b').map((t) => t.id)).toEqual(['t1', 't4'])
+    expect(tabsToSwitch(tabs, 'claude', null).map((t) => t.id)).toEqual(['t1', 't2'])
+  })
+
+  it('開き直したタブには、選んだアカウントで続けるよう送る', () => {
+    const prompt = nextAgentPrompt({ reason: 'switch', from: 'Claude Code', to: 'Claude Code (work)', path: '/p/.ferret/handoff.md' })
+    expect(prompt).toContain('/p/.ferret/handoff.md')
+    expect(prompt).toContain('Claude Code (work)')
   })
 })
 

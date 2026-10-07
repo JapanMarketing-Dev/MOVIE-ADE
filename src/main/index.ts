@@ -5,7 +5,8 @@ import { UNSAVED_LIST_LIMIT, describeUnsavedFile, planUnsavedQuit, quitActionFor
 import { CAPTURE_INDICATOR, UserGestures, ViewInputGrant, appMediaAllowed, captureRequestProblem, indicatorTitle, isGestureInput, isRecorderContents, isTrustedIpcSender, nextAudioConsent, type CaptureConsentState } from './captureConsent'
 import { programCopyText } from './terminalClipboard'
 import { showAgentNotification } from './agentNotify'
-import { failoverPrefs, initFailover, onUsageChanged, setFailoverPrefs } from './failover/service'
+import { failoverPrefs, initFailover, onUsageChanged, setFailoverPrefs, switchRunningAgents } from './failover/service'
+import { isAccountAgent } from '@shared/agentCatalog'
 import { droppedFolder, inspectDropped } from './droppedPaths'
 import { terminalOwnsMenuKey } from '@shared/terminalMenuKeys'
 import { existsSync } from 'node:fs'
@@ -1624,7 +1625,14 @@ function registerIpc(): void {
     'accounts:add': (agent) => addAgentAccount(requireTuiAgent(agent)),
     'accounts:rename': (agent, accountId, label) => renameAgentAccount(requireTuiAgent(agent), String(accountId), String(label ?? '')),
     'accounts:remove': (agent, accountId) => removeAgentAccount(requireTuiAgent(agent), String(accountId)),
-    'accounts:select': (agent, accountId) => selectAgentAccount(requireTuiAgent(agent), accountId === null ? null : String(accountId)),
+    'accounts:select': async (agent, accountId) => {
+      const target = requireTuiAgent(agent)
+      const id = accountId === null ? null : String(accountId)
+      const state = await selectAgentAccount(target, id)
+      // 選んだアカウントを、いま動いているその Agent のタブにも効かせる（待機中になったものから引き継いで開き直す。failover/service.ts）
+      if (isAccountAgent(target)) await switchRunningAgents(target, id).catch((err: unknown) => reportHandled(err, { area: 'accounts', op: 'switch running agents' }))
+      return state
+    },
     'accounts:relogin': (agent, accountId) => reloginAgentAccount(requireTuiAgent(agent), String(accountId)),
     'usage:get': () => getUsageState(),
     'usage:refresh': (force) => refreshUsage(force === true),
