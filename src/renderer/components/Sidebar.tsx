@@ -6,6 +6,7 @@ import {
   ArrowUp,
   Check,
   ChevronDown,
+  CircleSlash,
   Ellipsis,
   Folder,
   FolderGit2,
@@ -542,6 +543,11 @@ export function Sidebar({
                           : active ? <FolderOpen size={14} strokeWidth={1.5} /> : <Folder size={14} strokeWidth={1.5} />}
                       </span>
                       <span className="sb-project__name" title={project.name}>{project.name}</span>
+                      {project.orchestraExcluded && (
+                        <span className="sb-project__starred sb-project__excluded" role="img" aria-label={t('orchestra.excludedBadge')} title={t('orchestra.excludedBadge')} data-testid="sidebar-project-excluded">
+                          <CircleSlash size={11} strokeWidth={2} />
+                        </span>
+                      )}
                       {project.orchestrator && (
                         <span className="sb-project__starred" role="img" aria-label={t(project.editorWorkspace ? 'editorWorkspace.hint' : 'orchestrator.badge')} title={t(project.editorWorkspace ? 'editorWorkspace.hint' : 'orchestrator.badge')} data-testid={project.editorWorkspace ? 'sidebar-editor-workspace' : 'sidebar-project-orchestrator'}>
                           <Network size={11} strokeWidth={2} />
@@ -711,6 +717,10 @@ export function Sidebar({
           <button type="button" role="menuitem" onClick={() => { setMenu(null); openEdit(menuProject.id) }} data-testid="sidebar-project-edit">
             <Settings2 size={13} strokeWidth={1.75} />{t('projectTargets.edit')}
           </button>
+          {/* オーケストラの対象・対象外（全体の subagent・巡回・全体への依頼に巻き込まない） */}
+          {!menuProject.editorWorkspace && !menuProject.orchestrator && menuProject.source !== 'ssh' && <button type="button" role="menuitem" onClick={() => { setMenu(null); run(() => window.ade.invoke('project:update', { id: menuProject.id, orchestraExcluded: !menuProject.orchestraExcluded })) }} data-testid="sidebar-project-orchestra-toggle">
+            <Network size={13} strokeWidth={1.75} />{menuProject.orchestraExcluded ? t('orchestra.include') : t('orchestra.exclude')}
+          </button>}
           <button type="button" role="menuitem" onClick={() => { setMenu(null); toggleStar(menuProject) }} data-testid="sidebar-project-star-menu">
             <Star size={13} strokeWidth={1.75} />{menuProject.starred ? t('sidebar.unstar') : t('sidebar.star')}
           </button>

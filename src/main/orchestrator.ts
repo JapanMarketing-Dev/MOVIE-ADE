@@ -41,7 +41,7 @@ export interface OrchestratorSync {
   skipped: string[]
 }
 
-type Registered = ReadonlyArray<{ id: string; folderPath: string; name: string; source?: string }>
+type Registered = ReadonlyArray<{ id: string; folderPath: string; name: string; source?: string; urls?: ReadonlyArray<{ url?: string }> }>
 
 /** .claude・.claude/agents・書き先がリンクだった（書かない。利用者に知らせる） */
 export class SubagentLinkError extends Error {

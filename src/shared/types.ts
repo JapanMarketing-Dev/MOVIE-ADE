@@ -133,6 +133,8 @@ export type ProjectTarget = ProjectUrl
 export type ProjectUpdate = Pick<Project, 'id'> & Partial<Pick<Project, 'name' | 'kind' | 'urls'>> & {
   /** ☆ の付け外し（false で外す） */
   starred?: boolean
+  /** オーケストラの対象から外す（false で戻す） */
+  orchestraExcluded?: boolean
 }
 
 /** 事前に登録したフォルダ。ターミナルは常にここをカレントにして起動する（worktreeは使わない） */
@@ -163,6 +165,8 @@ export interface Project {
    * ここで起動した Agent に頼むと、各プロジェクトの subagent が動く（src/main/index.ts の ensureEditorWorkspace）
    */
   editorWorkspace?: true
+  /** オーケストラの対象から外す（全体の subagent・巡回・全体への依頼に巻き込まない。今は更新しないサイトなど） */
+  orchestraExcluded?: true
   /** 登録した時刻（ISO8601）。「追加した順」に使う。これより前に登録したものには無い */
   addedAt?: string
   /** 最後に開いた時刻（ISO8601）。「最近使った順」「動いている順」に使う */

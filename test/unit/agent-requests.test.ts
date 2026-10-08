@@ -6,7 +6,7 @@ import { BUILTIN_REQUESTS, composeAgentRequest, dueRequests, resolveAgentRequest
 
 describe('組み込みの依頼文', () => {
   it('dream・コンパクト・セキュリティ・SEO・分析・Sentry・性能・アクセシビリティ・依存関係がそろい、日本語と英語がある', () => {
-    expect(BUILTIN_REQUESTS.map((b) => b.id)).toEqual(['dream', 'compact', 'security', 'seo', 'analytics', 'sentry', 'sentry-setup', 'analytics-setup', 'search-console', 'infra', 'performance', 'accessibility', 'dependencies'])
+    expect(BUILTIN_REQUESTS.map((b) => b.id)).toEqual(['dream', 'learn-human', 'dev-servers', 'schedule', 'compact', 'security', 'seo', 'analytics', 'sentry', 'sentry-setup', 'analytics-setup', 'search-console', 'infra', 'security-deep', 'test-deep', 'blog', 'youtube', 'ads', 'dm-sales', 'data-analysis', 'performance', 'accessibility', 'dependencies'])
     for (const b of BUILTIN_REQUESTS) for (const lang of ['ja', 'en'] as const) expect(b.text[lang].length).toBeGreaterThan(80)
   })
 
@@ -18,9 +18,51 @@ describe('組み込みの依頼文', () => {
     }
   })
 
+  it('徹底検査は全プロダクトを並列に、独立した2つの検査で突き合わせ、インフラも含める', () => {
+    const sec = BUILTIN_REQUESTS.find((b) => b.id === 'security-deep')!.text.en
+    expect(sec).toMatch(/in parallel/)
+    expect(sec).toMatch(/two independent checks/)
+    expect(sec).toMatch(/codex exec/)
+    expect(sec).toMatch(/Infrastructure/)
+    expect(BUILTIN_REQUESTS.find((b) => b.id === 'test-deep')!.text.en).toMatch(/fails once against a broken version/)
+  })
+
+  it('外へ出すもの（公開・投稿・送信・予算）は人の承認を human.md で待つ', () => {
+    for (const id of ['blog', 'youtube', 'ads', 'dm-sales']) expect(BUILTIN_REQUESTS.find((b) => b.id === id)!.text.en).toMatch(/human\.md/)
+    expect(BUILTIN_REQUESTS.find((b) => b.id === 'dm-sales')!.text.en).toMatch(/Do not send anything/)
+  })
+
   it('dream は記事の4つの手順（統合・刈り込み・発見・索引）と、好みと出どころを残す決まりを持つ', () => {
     const dream = BUILTIN_REQUESTS.find((b) => b.id === 'dream')!.text.en
     for (const word of ['Consolidate', 'Prune', 'Discover', 'Index', 'explicit preferences', 'source']) expect(dream).toContain(word)
+    // Devin の dreaming：毎日・使われない記録を外す・矛盾は人が決める・変更の記録を残す
+    for (const word of ['daily', 'no task has used', 'not captured during the original work', 'a person can decide', 'dated log']) expect(dream).toContain(word)
+  })
+
+  it('人から学ぶは、過去の依頼とフィードバックを材料に、繰り返すものだけを決まりにして小さく保つ', () => {
+    const text = BUILTIN_REQUESTS.find((b) => b.id === 'learn-human')!.text.en
+    for (const word of ['.ferret/reviews', '~/.claude/projects', 'land the first time', 'only for what repeats', 'within 40 lines', 'Do not copy the content']) expect(text).toContain(word)
+  })
+
+  it('ダッシュボードの既定の依頼（人から学ぶ）は組み込みにあり、全体から送るとすべてのプロダクトへの添え書きが付く', async () => {
+    const { readFile } = await import('node:fs/promises')
+    const picker = await readFile(new URL('../../src/renderer/components/OrchestraRequestPicker.tsx', import.meta.url), 'utf8')
+    const id = /useState\('([a-z-]+)'\)/.exec(picker)![1]!
+    expect(BUILTIN_REQUESTS.some((b) => b.id === id)).toBe(true)
+    const main = await readFile(new URL('../../src/main/index.ts', import.meta.url), 'utf8')
+    expect(main).toContain('composeAgentRequest(picked, lang, !!(project?.orchestrator || project?.editorWorkspace))')
+    const text = composeAgentRequest(resolveAgentRequests(undefined, 'en').filter((r) => r.id === id), 'en', true)
+    expect(text).toContain('every product in parallel')
+  })
+
+  it('localhost の一括起動は、subagent に並行で任せ、ポートを重ねず、裏で動かし、確かめて human.md に一覧を書く', () => {
+    const text = BUILTIN_REQUESTS.find((b) => b.id === 'dev-servers')!.text.en
+    for (const word of ['subagent in parallel', 'Never share ports', 'Reuse a server that is already running', 'background', 'open each URL', 'human.md', 'never production']) expect(text).toContain(word)
+  })
+
+  it('定期実行の設定は、Agent 自身の仕組みで定期にし、送信・公開・課金などはしない決まりと止め方の記録を持つ', () => {
+    const text = BUILTIN_REQUESTS.find((b) => b.id === 'schedule')!.text.en
+    for (const word of ['dreaming', 'once a day', 'never send messages', 'human.md', 'how to stop', 'never runs twice']) expect(text).toContain(word)
   })
 })
 

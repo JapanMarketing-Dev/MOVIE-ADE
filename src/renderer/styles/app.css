@@ -371,3 +371,272 @@ button {
 .round-dock .round-bar {
   margin-left: 0;
 }
+
+/* ───── オーケストラ（全体）：ダッシュボード・指示の欄・フィードバックの帯・右下のターミナルのボタン ───── */
+.orchestra {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: 100%;
+  max-width: 1100px;
+  height: 100%;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-6) 96px;
+  overflow: auto;
+}
+
+.orchestra__head,
+.orchestra__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.orchestra__title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.orchestra__stats {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.orchestra__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  background: var(--color-bg-elevated);
+}
+
+.orchestra__stat-value {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.orchestra__stat-label {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.orchestra__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.orchestra__section h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 14px;
+}
+
+.orchestra__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.orchestra__table th,
+.orchestra__table td {
+  padding: 6px var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.orchestra__table th {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.orchestra__table tr.is-excluded {
+  opacity: 0.5;
+}
+
+.orchestra__key {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.orchestra__name {
+  font-weight: 600;
+}
+
+.orchestra__note {
+  color: var(--color-text-muted);
+}
+
+.orchestra__cell-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.orchestra__state--working {
+  color: var(--color-primary, #4f8cff);
+}
+
+.orchestra__state--blocked {
+  color: var(--color-warning);
+}
+
+.orchestra-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 22px;
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-sm);
+}
+
+.orchestra-composer__input {
+  flex: 1;
+  min-width: 0;
+  min-height: 24px;
+  max-height: 160px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  resize: none;
+  outline: none;
+}
+
+.orchestra-composer__send {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-text, #fff);
+  color: var(--color-bg-app, #111);
+  cursor: pointer;
+}
+
+.orchestra-composer__send:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.orchestra-composer--compact {
+  width: min(420px, 40vw);
+  padding: 2px 2px 2px var(--space-3);
+}
+
+.orchestra-composer--compact .orchestra-composer__send {
+  width: 24px;
+  height: 24px;
+}
+
+.orchestra-dock {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+}
+
+.orchestra-dock__tour {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.orchestra-dock__chips {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: var(--space-1);
+  overflow-x: auto;
+}
+
+.orchestra-dock__chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.orchestra-dock__chip.is-current {
+  border-color: var(--color-border-focus, #4f8cff);
+  background: var(--color-surface-selected);
+}
+
+.orchestra-dock__key {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.orchestra-dock__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orchestra-peek {
+  position: fixed;
+  right: 16px;
+  bottom: 40px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--color-bg-elevated);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.orchestra-peek__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+
+.orchestra-peek.is-busy .orchestra-peek__dot {
+  background: var(--color-primary, #4f8cff);
+}
+
+/* ダッシュボード：用意した依頼を選んで送る */
+.orchestra-requests {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.orchestra-requests__select {
+  max-width: 260px;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: var(--size-border) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: inherit;
+  font: inherit;
+}

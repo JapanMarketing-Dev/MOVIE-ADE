@@ -25,9 +25,9 @@ export interface ProductRound {
   sent: number
 }
 
-/** 巡回に入れるプロダクト（全体・以前のオーケストレーター・SSH は除く）。並びはサイドバーの順 */
+/** 巡回に入れるプロダクト（全体・以前のオーケストレーター・オーケストラの対象外・SSH は除く）。並びはサイドバーの順 */
 export function roundProducts(projects: readonly Project[]): Project[] {
-  return projects.filter((p) => !p.editorWorkspace && !p.orchestrator && p.source !== 'ssh')
+  return projects.filter((p) => !p.editorWorkspace && !p.orchestrator && !p.orchestraExcluded && p.source !== 'ssh')
 }
 
 export function recordRound(projects: readonly Project[], only?: readonly string[]): ProductRound | null {
