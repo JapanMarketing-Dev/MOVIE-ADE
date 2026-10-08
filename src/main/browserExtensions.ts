@@ -90,6 +90,26 @@ async function readSmallFile(path: string): Promise<string | null> {
   }
 }
 
+/** ツールバーのアイコンの大きさの上限（これより大きい画像は出さない） */
+const MAX_ICON_BYTES = 256 * 1024
+const ICON_TYPES: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', ico: 'image/x-icon' }
+
+/** 拡張のフォルダの中のアイコンを data: URL にする（無い・大きすぎる・リンク・画像でないものは null） */
+export async function readExtensionIcon(dir: string, relative: string | null): Promise<string | null> {
+  if (!relative) return null
+  const type = ICON_TYPES[relative.split('.').pop()?.toLowerCase() ?? '']
+  if (!type) return null
+  try {
+    const path = join(dir, relative)
+    const info = await lstat(path)
+    if (!info.isFile() || info.size > MAX_ICON_BYTES) return null
+    return `data:${type};base64,${(await readFile(path)).toString('base64')}`
+  } catch {
+    // 無い・読めないアイコンは出さない（想定内。名前の頭文字を出す）
+    return null
+  }
+}
+
 function parseJson(text: string | null): unknown {
   if (text === null) return null
   try {
@@ -353,6 +373,8 @@ export class BrowserExtensions {
   private readonly loaded = new Map<string, LoadedExtension>()
   private readonly manifests = new Map<string, ParsedManifest | null>()
   private readonly errors = new Map<string, string>()
+  /** ツールバーのボタンのアイコン（data: URL） */
+  private readonly icons = new Map<string, string>()
   private entries: BrowserExtensionEntry[] = []
   private queue: Promise<void> = Promise.resolve()
   private popup: ExtensionPopup | null = null
@@ -366,7 +388,10 @@ export class BrowserExtensions {
 
   constructor(
     private readonly deps: {
+      /** いま開いているプロジェクトのログインの組の session（ポップアップを開く先） */
       session: () => Session
+      /** 用意した内蔵ブラウザの session すべて（ログインの組ごと。拡張はどれにも読み込む）。省けば session だけ */
+      sessions?: () => Session[]
       host: ExtensionHost
       /** Chrome から取り込んだ拡張を写す場所（設定フォルダの中） */
       importDir: () => string
@@ -382,7 +407,8 @@ export class BrowserExtensions {
   }
 
   private async apply(entries: BrowserExtensionEntry[]): Promise<void> {
-    const ses = this.deps.session()
+    const sessions = this.allSessions()
+    const ses = sessions[0]!
     const wanted = new Set(entries.filter((e) => e.enabled !== false).map((e) => e.path))
     const reloadOf = new Map(entries.map((e) => [e.path, e.reload ?? 0]))
     let reloaded = false
@@ -392,10 +418,14 @@ export class BrowserExtensions {
       if (wanted.has(path) && !stale) continue
       if (stale) reloaded = true
       if (this.popup?.extensionId === ext.id) this.closePopup()
-      try {
-        ses.extensions.removeExtension(ext.id)
-      } catch (err) {
-        reportHandled(err, { area: 'browser', op: 'remove extension' })
+      for (const s of sessions) {
+        // 共有の組には必ず読み込んである。ほかの組は読み込んだものだけ外す
+        if (s !== ses && !s.extensions.getExtension(ext.id)) continue
+        try {
+          s.extensions.removeExtension(ext.id)
+        } catch (err) {
+          reportHandled(err, { area: 'browser', op: 'remove extension' })
+        }
       }
       this.loaded.delete(path)
     }
@@ -404,6 +434,9 @@ export class BrowserExtensions {
       // 無効のものも名前・版を出すため読む（読み込みはしない）
       const manifest = await readExtensionManifest(entry.path)
       this.manifests.set(entry.path, manifest)
+      const icon = await readExtensionIcon(entry.path, manifest?.icon ?? null)
+      if (icon) this.icons.set(entry.path, icon)
+      else this.icons.delete(entry.path)
       if (!wanted.has(entry.path)) { this.errors.delete(entry.path); continue }
       if (!manifest) { this.errors.set(entry.path, 'manifest.json was not found or is not a Chrome extension (manifest_version 2 or 3).'); continue }
       try {
@@ -416,10 +449,28 @@ export class BrowserExtensions {
         this.errors.set(entry.path, (err instanceof Error ? err.message : String(err)).slice(0, 500))
       }
     }
-    for (const path of [...this.manifests.keys()]) if (!entries.some((e) => e.path === path)) { this.manifests.delete(path); this.errors.delete(path) }
+    // ログインの組ごとの session にも読み込む（同じフォルダは同じ ID になる）
+    for (const [path, ext] of this.loaded) {
+      for (const other of sessions.slice(1)) {
+        if (other.extensions.getExtension(ext.id)) continue
+        try {
+          await other.extensions.loadExtension(path, { allowFileAccess: false })
+        } catch (err) {
+          // 最初の session では読めたので、ここで失敗するのは想定外
+          reportHandled(err, { area: 'browser', op: 'load extension in profile' })
+        }
+      }
+    }
+    for (const path of [...this.manifests.keys()]) if (!entries.some((e) => e.path === path)) { this.manifests.delete(path); this.errors.delete(path); this.icons.delete(path) }
     this.onChange?.()
     // 読み込み直したら、開いているページも読み込み直す（コンテンツスクリプトの変更をすぐ見られるように）
     if (reloaded) this.onReloaded?.()
+  }
+
+  /** 読み込む先の session（共有の組が先。重複なし） */
+  private allSessions(): Session[] {
+    const list = this.deps.sessions?.() ?? []
+    return list.length ? [...new Set(list)] : [this.deps.session()]
   }
 
   /** 画面に出す一覧（設定の順） */
@@ -438,6 +489,7 @@ export class BrowserExtensions {
         hasPopup: !!manifest?.popup,
         hasOptions: !!manifest?.options,
         imported: isInside(entry.path, importDir),
+        ...(this.icons.has(entry.path) ? { icon: this.icons.get(entry.path)! } : {}),
         ...(error ? { error } : {})
       }
     })
@@ -517,7 +569,11 @@ export class BrowserExtensions {
     const loaded = this.loaded.get(dest)
     if (loaded) {
       if (this.popup?.extensionId === loaded.id) this.closePopup()
-      try { this.deps.session().extensions.removeExtension(loaded.id) } catch (err) { reportHandled(err, { area: 'browser', op: 'remove extension' }) }
+      const sessions = this.allSessions()
+      for (const s of sessions) {
+        if (s !== sessions[0] && !s.extensions.getExtension(loaded.id)) continue
+        try { s.extensions.removeExtension(loaded.id) } catch (err) { reportHandled(err, { area: 'browser', op: 'remove extension' }) }
+      }
       this.loaded.delete(dest)
     }
     await rm(dest, { recursive: true, force: true })

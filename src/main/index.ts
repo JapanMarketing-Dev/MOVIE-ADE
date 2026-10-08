@@ -46,7 +46,8 @@ import { normalizeAnnotationColor } from '@shared/annotation'
 import { extensionPopupGetsReviewPreload, shouldCloseExtensionPopup, type AnnotationActivity, type PopupDismissCause } from '@shared/popupAnnotation'
 import { findProjectByFolder, markProjectOpened, newProject, reorderProjects, upsertProjectFolder } from './projects'
 import { checkSshTarget, remoteWorkspaceDirName, sshDefaultName, type SshTarget } from '@shared/sshCommand'
-import { EmbeddedBrowser, browserSession, type ProjectTabs, type TabsSnapshot } from './browser'
+import { EmbeddedBrowser, browserSession, browserSessions, onBrowserSessionReady, type ProjectTabs, type TabsSnapshot } from './browser'
+import { browserPartition, sanitizeBrowserProfile } from '@shared/browserProfile'
 import { BrowserExtensions } from './browserExtensions'
 import { browserImportHandlers } from './browserImport/ipc'
 import { feedbackShareHandlers } from './feedbackShare/ipc'
@@ -685,7 +686,9 @@ function browserOverlay(): { contents: Electron.WebContents; rect: { x: number; 
  */
 async function startBrowserExtensions(entries: BrowserExtensionEntry[] | undefined): Promise<void> {
   const ext = new BrowserExtensions({
-    session: () => browserSession(),
+    // いま開いているプロジェクトのログインの組（ポップアップ）と、用意したすべての組（読み込み）
+    session: () => browser?.activeSession() ?? browserSession(),
+    sessions: () => browserSessions(),
     importDir: () => join(configDir(), 'browser-extensions'),
     host: {
       window: () => mainWindow,
@@ -854,7 +857,10 @@ function openProject(project: Project): WorkspaceState {
     if (previousId && previousTabs) parkedBrowserTabs.set(previousId, previousTabs)
     const parked = parkedBrowserTabs.get(project.id) ?? null
     parkedBrowserTabs.delete(project.id)
-    browser.replaceTabs(parked, sessionTabs(currentSettings().projects.find((p) => p.id === project.id) ?? project))
+    const saved = currentSettings().projects.find((p) => p.id === project.id) ?? project
+    // ログインの組（既定は全プロジェクトで共有。設定で分けたプロジェクトはその組の session）
+    browser.setPartition(browserPartition(saved.browserProfile))
+    browser.replaceTabs(parked, sessionTabs(saved))
   }
   // 録画の対象の画面・ウインドウは前のプロジェクトで選んだもの。別のアプリを映したり録ったりしないよう、内蔵ブラウザに戻す
   if (captureConsent.target.kind !== 'browser') setCaptureTargetFromMain({ kind: 'browser' })
@@ -992,6 +998,13 @@ function updateProject(next: ProjectUpdate): ProjectsState {
   const orchestraChanged = typeof next.orchestraExcluded === 'boolean' && next.orchestraExcluded !== !!current.orchestraExcluded
   if (next.orchestraExcluded === true) merged.orchestraExcluded = true
   else if (next.orchestraExcluded === false) delete merged.orchestraExcluded
+  // ブラウザのログインの組（空で共有に戻す）。開いているプロジェクトなら、タブを新しい組で開き直す
+  if (typeof next.browserProfile === 'string') {
+    const profile = sanitizeBrowserProfile(next.browserProfile)
+    if (profile) merged.browserProfile = profile
+    else delete merged.browserProfile
+  }
+  const partitionChanged = browserPartition(merged.browserProfile) !== browserPartition(current.browserProfile)
   updateSettings({ projects: settings.projects.map((p) => (p.id === next.id ? merged : p)) })
   // 表示名が変わったらタイトルバーにも反映する
   if (workspace.projectId === next.id) {
@@ -999,6 +1012,15 @@ function updateProject(next: ProjectUpdate): ProjectsState {
     send('workspace:changed', setWorkspace(saved.folderPath, saved))
   }
   if (orchestraChanged) syncEditorWorkspace()
+  if (partitionChanged) {
+    // 切り替えて戻ったときに前の組のタブを開かないよう、覚えた写しを捨てる
+    parkedBrowserTabs.delete(next.id)
+    if (browser && workspace.projectId === next.id) {
+      const tabs = browser.snapshotTabs()
+      browser.setPartition(browserPartition(merged.browserProfile))
+      browser.replaceTabs(tabs, sessionTabs(merged))
+    }
+  }
   send('projects:changed', projectsState())
   return projectsState()
 }
@@ -2003,6 +2025,15 @@ function registerIpc(): void {
       return ext.showMenu(window, { x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0 },
         { manage: t('browserExtensions.menu.manage'), options: t('browserExtensions.menu.options'), none: t('browserExtensions.menu.none'),
           ...(onStorePage ? { install: t('browserExtensions.menu.installThis') } : {}) })
+    },
+    'browserExtensions:open': (path) => {
+      const ext = extensions
+      if (!ext || typeof path !== 'string') return 'none'
+      const info = ext.list().find((e) => e.path === path)
+      if (!info?.id) return 'none'
+      if (info.hasPopup) return ext.openPopup(path, 'popup') ? 'popup' : 'closed'
+      if (info.hasOptions) return ext.openPopup(path, 'options') ? 'options' : 'closed'
+      return 'none'
     },
     'browserExtensions:installFromStore': async (input) => {
       const ext = requireExtensionsEditable()
@@ -3153,17 +3184,21 @@ async function main(): Promise<void> {
 
   // プレビュー（ade-preview://）は内蔵ブラウザと、エディタの横並びの iframe（既定のセッション）の両方で開く。
   // 前回のURLがプレビューでも開けるよう、内蔵ブラウザを作る前に登録する
-  registerPreviewProtocol([session.defaultSession, browserSession()], () => workspace.folderPath)
-  // プロジェクトの HTML は内蔵ブラウザの session でだけ返す（アプリの画面の session からは読めない。security-7 [2][6]）
-  if (!browserSession().protocol.isProtocolHandled(PROJECT_PAGE_SCHEME)) {
-    browserSession().protocol.handle(PROJECT_PAGE_SCHEME, async (request) => {
+  registerPreviewProtocol([session.defaultSession], () => workspace.folderPath)
+  // 内蔵ブラウザの session（ログインの組ごと）を用意したら、プレビューとプロジェクトのページを返せるようにし、拡張機能を読み込む
+  onBrowserSessionReady((ses) => {
+    registerPreviewProtocol([ses], () => workspace.folderPath)
+    // プロジェクトの HTML は内蔵ブラウザの session でだけ返す（アプリの画面の session からは読めない。security-7 [2][6]）
+    if (!ses.protocol.isProtocolHandled(PROJECT_PAGE_SCHEME)) ses.protocol.handle(PROJECT_PAGE_SCHEME, async (request) => {
       const { projectPageResponse } = await import('./projectPage')
       return projectPageResponse(workspace.folderPath, request.url).catch((err: unknown) => {
         reportHandled(err, { area: 'browser', op: 'serve project page' })
         return new Response('Error', { status: 500, headers: { 'Content-Type': 'text/plain' } })
       })
     })
-  }
+    void extensions?.sync(currentSettings().browserExtensions)
+  })
+  browserSession()
 
   // 内蔵ブラウザと renderer は並行して起動する（設計 1.3）
   browser = new EmbeddedBrowser()
@@ -3198,6 +3233,7 @@ async function main(): Promise<void> {
   browser.onPopupWindow = (contents, url) => recording?.attachPopupWindow(contents, url)
   // 内蔵ブラウザの拡張機能。content script を最初のページにも効かせるため、ページを開く前に読み込む（待つのは少しだけ）
   await startBrowserExtensions(loadedSettings.browserExtensions)
+  browser.setPartition(browserPartition(currentSettings().projects.find((p) => p.id === currentSettings().activeProjectId)?.browserProfile))
   browser.attach(mainWindow, startupTabs ?? loadedSettings.url, loadedSettings.viewport)
   browser.setBackgroundColor(nativeThemeBackground())
   mark('browser:attached')
