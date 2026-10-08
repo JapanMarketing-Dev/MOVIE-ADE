@@ -56,6 +56,10 @@ import { matchWindowSource } from '@shared/projectTargets'
 import { newReviewNeedsPage, planNewReview } from './lib/newReview'
 import { useProductRound } from './hooks/useProductRound'
 import { RoundBar } from './components/RoundBar'
+import { OrchestraDashboard } from './components/OrchestraDashboard'
+import { useProjectActivity } from './terminal/agentActivity'
+import { OrchestraDock, type DockTarget } from './components/OrchestraDock'
+import type { ChecklistItem } from '@shared/humanChecklist'
 import { RemoteFilesNotice } from './components/AddProjectDialog'
 import { targetFromSource } from '@shared/captureTarget'
 import { installTestHooks } from './testHooks'
@@ -170,7 +174,12 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const savedLayout = useLayout()
   /** ブラウザに集中している（タイトルバーのボタン）間は、ブラウザ以外のパネルを隠した配置で描く。設定の配置は変えない */
   const browserFocus = useBrowserFocus()
-  const layout = browserFocus ? browserFocusLayout(savedLayout) : savedLayout
+  /** 全体（すべてのプロダクト）を開いているか。オーケストラの画面（ダッシュボード・指示の欄・確認リストの帯）にする */
+  const isOrchestra = !!projects.projects.find((p) => p.id === workspace.projectId)?.editorWorkspace
+  /** 全体では、フィードバックの対象を大きく見せるためターミナルの欄を閉じる（右下のボタンで開く。設定の配置は変えない） */
+  const [terminalPeek, setTerminalPeek] = useState(false)
+  const baseLayout = browserFocus ? browserFocusLayout(savedLayout) : savedLayout
+  const layout = isOrchestra && !terminalPeek ? { ...baseLayout, panels: { ...baseLayout.panels, terminal: { ...baseLayout.panels.terminal, visible: false } } } : baseLayout
   const terminalDock = layout.panels.terminal.dock
   /** フッターのポップオーバー。開いている間はビューを隠す（ビューがDOMの上に重なるため） */
   const [footerPopoverOpen, setFooterPopoverOpen] = useState(false)
@@ -299,6 +308,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   // 「Agentへ送信」で Agent を起動するときは、ターミナルの欄を隠していても出す（起動の様子と送った結果が見えるように。ブラウザへの集中もやめる）
   useEffect(() => onAgentLaunchRequest(() => {
     exitBrowserFocus()
+    setTerminalPeek(true)
     setLayout((prev) => (prev.panels.terminal.visible ? prev : withPanel(prev, 'terminal', { visible: true })))
   }), [])
   const [quickOpenOpen, setQuickOpenOpen] = useState(false)
@@ -388,7 +398,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     root: workspace.folderPath,
     ready: projectsLoaded,
     centerTab,
-    setCenterTab: (tab) => setCenterTab(tab as CenterTab),
+    // 全体（すべてのプロダクト）はダッシュボードがトップ。前に開いていたブラウザ・指摘のタブで上書きしない
+    setCenterTab: (tab) => setCenterTab(isOrchestra && (tab === 'browser' || tab === 'findings') ? 'dashboard' : tab as CenterTab),
     openPaths: files.files.map((file) => file.path),
     // 開いていたタブはそのまま戻す（HTML のソースのタブも、ブラウザで開き直さない）
     openFile: files.openSource,
@@ -767,6 +778,78 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   })
   const productRoundRef = useRef(productRound)
   productRoundRef.current = productRound
+
+  const recordingRef = useRef(recording)
+  recordingRef.current = recording
+  /** 全体の Agent が動いているか（右下のボタンの印） */
+  const allActivity = useProjectActivity()
+  const orchestraBusy = isOrchestra && !!workspace.projectId && allActivity[workspace.projectId] === 'working'
+
+  // 全体へ切り替えたらダッシュボードを開く。全体から離れたらダッシュボードのタブは無いのでブラウザへ
+  useEffect(() => {
+    if (isOrchestra) setCenterTab((tab) => (tab === 'browser' || tab === 'findings' ? 'dashboard' : tab))
+    else { setCenterTab((tab) => (tab === 'dashboard' ? 'browser' : tab)); setTerminalPeek(false) }
+  }, [isOrchestra, workspace.projectId])
+
+  /** フィードバックの画面でそのページを開く（録画中なら止めずに移る。1回のフィードバックで全部のプロダクトを確かめる） */
+  const openForFeedback = useCallback((url: string) => {
+    setCenterTab('browser')
+    changeMode('feedback')
+    void window.ade.invoke('browser:navigate', url).catch(() => undefined)
+  }, [changeMode])
+  /** 確認リストを順に開く（human.md）。1件目を開いて録画を始め、「次へ」で次のページへ。最後で録画を止める */
+  const [checklistTour, setChecklistTour] = useState<{ urls: string[]; index: number } | null>(null)
+  const startChecklistTour = useCallback((urls: string[]) => {
+    if (!urls.length) return
+    setChecklistTour({ urls, index: 0 })
+    openForFeedback(urls[0]!)
+    void run(async () => {
+      for (let i = 0; i < 50; i++) {
+        const state = await window.ade.invoke('browser:state')
+        if (state.url && state.url !== 'about:blank' && !state.loading) break
+        await delay(100)
+      }
+      if (!recordingRef.current) toggleRecordingRef.current()
+    })
+  }, [openForFeedback, run])
+  const stopAfterStart = useRef(false)
+  useEffect(() => {
+    if (recordBusy || !stopAfterStart.current) return
+    stopAfterStart.current = false
+    if (recording) toggleRecordingRef.current()
+  }, [recordBusy, recording])
+  const tourRef = useRef(checklistTour)
+  tourRef.current = checklistTour
+  const moveTour = useCallback((delta: 1 | -1) => {
+    // 録画の停止とページの移動は state の更新関数の外で行う（更新関数は2回呼ばれることがある）
+    const tour = tourRef.current
+    if (!tour) return
+    const index = tour.index + delta
+    if (index < 0) return
+    if (index >= tour.urls.length) {
+      // 最後のページのあと：録画を止める（止めると全体の Agent に渡せる指摘の一覧になる）。
+      // 録画の開始がまだ終わっていなければ、終わってから止める
+      setChecklistTour(null)
+      if (recordLock.current) stopAfterStart.current = true
+      else if (recordingRef.current) toggleRecordingRef.current()
+      return
+    }
+    setChecklistTour({ ...tour, index })
+    void window.ade.invoke('browser:navigate', tour.urls[index]!).catch(() => undefined)
+  }, [])
+  /** 全体のフィードバックの帯に出すページ：確認リスト（human.md）と、対象のプロジェクトの確認先 */
+  const [dockChecklist, setDockChecklist] = useState<ChecklistItem[]>([])
+  useEffect(() => {
+    if (!isOrchestra || mode !== 'feedback') return
+    let cancelled = false
+    void window.ade.invoke('orchestra:overview').then((o) => { if (!cancelled) setDockChecklist(o.checklist) }).catch(() => undefined)
+    return () => { cancelled = true }
+  }, [isOrchestra, mode])
+  const dockTargets: DockTarget[] = isOrchestra ? [
+    ...dockChecklist.map((c) => ({ key: c.key, label: c.label || c.url, url: c.url })),
+    ...projects.projects.filter((p) => !p.editorWorkspace && !p.orchestrator && !p.orchestraExcluded).flatMap((p) => p.urls.filter((u) => u.url && !dockChecklist.some((c) => c.url === u.url)).slice(0, 2)
+      .map((u) => ({ key: p.name.slice(0, 2).toUpperCase(), label: `${p.name}${u.label ? ` · ${u.label}` : ''}`, url: u.url! })))
+  ] : []
   const roundBar = productRound.round && <RoundBar round={productRound.round} projects={projects.projects} recording={recording}
     onNext={() => (recording ? toggleRecording() : productRound.skip())} onStop={productRound.stop} />
 
@@ -1188,8 +1271,19 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                 onReorder={setCenterOrder}
                 settingsOpen={settingsOpen}
                 onCloseSettings={closeSettings}
+                dashboard={isOrchestra}
               />
-              {centerTab === 'settings' && settingsOpen ? (
+              {centerTab === 'dashboard' && isOrchestra ? (
+                <ErrorBoundary name="orchestra">
+                  <OrchestraDashboard
+                    projects={projects.projects}
+                    onOpenProject={(id) => void window.ade.invoke('project:switch', id).catch(() => undefined)}
+                    onOpenUrl={openForFeedback}
+                    onReviewChecklist={startChecklistTour}
+                    onStartRound={(kind) => void run(() => productRound.start(kind))}
+                  />
+                </ErrorBoundary>
+              ) : centerTab === 'settings' && settingsOpen ? (
                 <ErrorBoundary name="settings">
                 <SettingsPage
               value={{ captureMic, micDeviceId, captureSystemAudio, language, transcription, keepDays, stayFeedbackOnStop, showLiveTranscript }}
@@ -1304,9 +1398,19 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         /></ErrorBoundary>}
       </div>
 
-      <div className={`shell shell--feedback${productRound.round ? ' shell--round' : ''}`} hidden={mode !== 'feedback'}>
-        {/* 巡回の帯（フィードバックの画面では、上の帯とブラウザの間の段に出す。ブラウザの枠は測り直される） */}
-        {mode === 'feedback' && roundBar && <div className="round-dock">{roundBar}</div>}
+      {/* 全体では、ターミナルの欄を閉じて右下の小さなボタンにする（フィードバックの対象を大きく見せる。ChatGPT の画面のように） */}
+      {isOrchestra && mode === 'editor' && <button type="button" className={`orchestra-peek${orchestraBusy ? ' is-busy' : ''}`} onClick={() => setTerminalPeek((v) => !v)}
+        aria-pressed={terminalPeek} title={t(terminalPeek ? 'orchestra.hideTerminal' : 'orchestra.showTerminal')} data-testid="orchestra-terminal-toggle">
+        <span className="orchestra-peek__dot" aria-hidden="true" />{t(terminalPeek ? 'orchestra.hideTerminal' : 'orchestra.showTerminal')}
+      </button>}
+      <div className={`shell shell--feedback${productRound.round || (isOrchestra && mode === 'feedback') ? ' shell--round' : ''}`} hidden={mode !== 'feedback'}>
+        {/* 巡回の帯と、全体のフィードバックの帯（上の帯とブラウザの間の段に出す。ブラウザの枠は測り直される） */}
+        {mode === 'feedback' && (roundBar || isOrchestra) && <div className="round-dock">
+          {roundBar}
+          {isOrchestra && <OrchestraDock targets={dockTargets} currentUrl={browserState.url} onOpen={(url) => void window.ade.invoke('browser:navigate', url).catch(() => undefined)}
+            tour={checklistTour ? { index: checklistTour.index, total: checklistTour.urls.length } : null}
+            onPrev={() => moveTour(-1)} onNext={() => moveTour(1)} onEndTour={() => setChecklistTour(null)} />}
+        </div>}
         <FeedbackToolbar
           state={browserState}
           recording={recording}

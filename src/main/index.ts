@@ -754,7 +754,7 @@ function syncOrchestratorOnOpen(project: Project | null | undefined): void {
 /** オーケストレーターの子にするプロジェクト。「すべてのプロダクト」は登録したプロジェクト全部（SSH を除く） */
 function membersOf(project: Project): string[] {
   if (!project.editorWorkspace) return project.members ?? []
-  return currentSettings().projects.filter((p) => !p.editorWorkspace && !p.orchestrator && p.source !== 'ssh').map((p) => p.id)
+  return currentSettings().projects.filter((p) => !p.editorWorkspace && !p.orchestrator && !p.orchestraExcluded && p.source !== 'ssh').map((p) => p.id)
 }
 
 /**
@@ -967,12 +967,17 @@ function updateProject(next: ProjectUpdate): ProjectsState {
   }
   if (next.starred === true) merged.starred = true
   else if (next.starred === false) delete merged.starred
+  // オーケストラの対象・対象外。変えたら全体の subagent を合わせる
+  const orchestraChanged = typeof next.orchestraExcluded === 'boolean' && next.orchestraExcluded !== !!current.orchestraExcluded
+  if (next.orchestraExcluded === true) merged.orchestraExcluded = true
+  else if (next.orchestraExcluded === false) delete merged.orchestraExcluded
   updateSettings({ projects: settings.projects.map((p) => (p.id === next.id ? merged : p)) })
   // 表示名が変わったらタイトルバーにも反映する
   if (workspace.projectId === next.id) {
     const saved = currentSettings().projects.find((p) => p.id === next.id) ?? merged
     send('workspace:changed', setWorkspace(saved.folderPath, saved))
   }
+  if (orchestraChanged) syncEditorWorkspace()
   send('projects:changed', projectsState())
   return projectsState()
 }
@@ -1506,7 +1511,7 @@ async function sendAgentRequests(ids: unknown, scheduled = false): Promise<{ ok:
   const picked = resolveAgentRequests(currentSettings().agentRequests, lang).filter((r) => wanted.includes(r.id) && r.text.trim())
   if (!picked.length) throw new UserFacingError(t('errors.emptyText'))
   const project = currentSettings().projects.find((p) => p.id === workspace.projectId)
-  const text = composeAgentRequest(picked, lang, !!project?.orchestrator)
+  const text = composeAgentRequest(picked, lang, !!(project?.orchestrator || project?.editorWorkspace))
   const target = terminals ? await terminals.resolveSendTarget(null, workspace.folderPath) : null
   if (!target) return { ok: false, message: t('terminal.send.noAgent'), noAgent: true }
   // 定期の依頼は、Agent が手すきのときだけ送る（作業中の Agent の邪魔をしない）
@@ -1787,6 +1792,10 @@ function registerIpc(): void {
     },
     'agentRequests:send': (ids) => sendAgentRequests(ids),
     'review:pendingAcross': () => pendingAcross(),
+    'orchestra:overview': async () => {
+      const [{ orchestraOverview }, { listSessions }] = await Promise.all([import('./orchestraOverview'), import('./sessions')])
+      return orchestraOverview(currentSettings().projects, listSessions)
+    },
     'settings:orchestra': async (rules) => {
       const { sanitizeOrchestraRules } = await import('@shared/orchestrator')
       updateSettings({ orchestra: sanitizeOrchestraRules(rules) })

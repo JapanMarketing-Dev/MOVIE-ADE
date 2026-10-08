@@ -183,6 +183,8 @@ export interface IpcRequests {
   'agentRequests:send': (ids: string[]) => { ok: boolean; message: string; noAgent?: boolean }
   /** 全プロダクトの確認待ちのレビュー（確認の巡回。src/shared/productRound.ts） */
   'review:pendingAcross': () => Array<{ projectId: string; reviewId: string; count: number }>
+  /** 全体のダッシュボード：プロジェクトごとの進み具合・コスト、人の確認リスト（human.md）。src/main/orchestraOverview.ts */
+  'orchestra:overview': () => import('./agentCost').OrchestraOverview
   /** 全体（すべてのプロダクト）の共通のルールとプロダクトごとのルール */
   'settings:orchestra': (rules: import('./orchestrator').OrchestraRules) => void
 
@@ -682,6 +684,7 @@ export const IPC_REQUEST_CHANNELS = [
   'settings:agentRequests',
   'agentRequests:send',
   'review:pendingAcross',
+  'orchestra:overview',
   'settings:orchestra',
   'accounts:list',
   'accounts:add',

@@ -3239,3 +3239,8 @@ button.sb-more__row:hover {
 .round-bar__btn--quiet {
   background: none;
 }
+
+/* オーケストラの対象外のプロジェクトの印（薄く） */
+.sb-project__excluded {
+  opacity: 0.6;
+}

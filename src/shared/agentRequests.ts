@@ -2,7 +2,7 @@
  * Agent への依頼文（設定の「Agent への依頼」）。人が良い依頼をするための、よく使う依頼の雛形。
  * Ferret はコーディング Agent の邪魔をしない：機能として作業を肩代わりせず、ボタンを押すとこの文を Agent に送るだけ。
  *
- * - 組み込みの依頼文（記憶の整理 dream・コンパクト化・セキュリティ・SEO・分析・Sentry のクラッシュ・Sentry / GA / Search Console / インフラの登録・
+ * - 組み込みの依頼文（記憶の整理 dream・人から学ぶ・localhost の一括起動・定期実行の設定・コンパクト化・セキュリティ・SEO・分析・Sentry のクラッシュ・Sentry / GA / Search Console / インフラの登録・
  *   性能・アクセシビリティ・依存関係）と、利用者が足した依頼文。接続とログインは全体で1回、設定はプロダクトごと
  * - 文面は編集できる（組み込みは変えた分だけ保存し、「既定に戻す」で戻る）
  * - 選んだものをまとめて1つの依頼にできる。毎日・毎週の定期にもできる（Agent が手すきのときに main が送る）
@@ -65,20 +65,102 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
     title: { ja: '記憶を整理する（dream）', en: 'Tidy up memory (dream)' },
     text: {
       ja: [
-        'このプロジェクトの記憶（CLAUDE.md・AGENTS.md・メモリのフォルダ・docs の決まりごとなど、Agent が毎回読むもの）を整理してください。記憶は会話のまとめではなく、作業から学んだ教訓です。',
+        'このプロジェクトの記憶（CLAUDE.md・AGENTS.md・メモリのフォルダ・docs の決まりごとなど、Agent が毎回読むもの）を整理してください（dreaming）。記憶は会話のまとめではなく、作業から学んだ教訓です。',
+        '材料は、直近（目安は1週間）の会話の記録・各作業が残した短いメモ・コミット・レビューの指摘と、今の記憶です。動いている作業の邪魔をしないよう、ほかの作業が触っているファイルは書き換えずに後回しにしてください。',
         '1. 統合：重なっているメモを1つにまとめる。',
-        '2. 刈り込み：一時的な細部と、最近の作業で使われていない古い記録を外す。',
-        '3. 発見：最近の会話・コミット・レビューの指摘から、まだ書かれていない役に立つ教訓を拾って、短いメモにする。',
+        '2. 刈り込み：一時的な細部と、どの作業にも使われていない古い記録を外す。',
+        '3. 発見：作業の最中には書かれなかった役に立つ教訓を拾って、短いメモにする（何が起き・なぜ・次にどうするか）。',
         '4. 索引：次の作業で必要なものが見つけやすいよう、メモと索引（MEMORY.md など）を並べ直す。',
-        '人が明示した好み・決まりと、出どころ（どの作業で学んだか）は必ず残し、矛盾するものは新しいほうに揃えて理由を書いてください。手順の決まりは skill、文脈は記憶、と分けてください。'
+        '人が明示した好み・決まりと、出どころ（どの作業で学んだか）は必ず残してください。矛盾する記録は勝手に消さず、新しいほうを案にして、人が決められるよう報告に並べてください。手順の決まりは skill、文脈は記憶、と分けてください。',
+        '最後に、何をまとめ・外し・足したかを日付付きで短く記録に残し（人が後で見返せるように）、報告にも書いてください。毎日1回の定期の依頼にするのがおすすめです。'
       ].join('\n'),
       en: [
-        'Tidy up this project\'s memory (CLAUDE.md, AGENTS.md, memory folders, rules in docs: what agents read every time). Memories are lessons learned from the work, not summaries of conversations.',
+        'Tidy up this project\'s memory (CLAUDE.md, AGENTS.md, memory folders, rules in docs: what agents read every time). This is a dreaming pass. Memories are lessons learned from the work, not summaries of conversations.',
+        'Inputs: recent conversation transcripts (about the past week), the short notes individual tasks left behind, commits, review findings, and the current memory. Do not disturb work in progress: leave files that another task is editing for later.',
         '1. Consolidate: merge overlapping notes into one.',
-        '2. Prune: remove transient details and stale records that recent work has not used.',
-        '3. Discover: from recent conversations, commits and review findings, pick up useful lessons not yet written down, as short notes.',
+        '2. Prune: remove transient details and stale records that no task has used.',
+        '3. Discover: pick up useful lessons that were not captured during the original work, as short notes (what happened, why, what to do next time).',
         '4. Index: reorganize the notes and their index (MEMORY.md and the like) so the next task finds what it needs.',
-        'Always keep explicit preferences and rules from people and the source of each lesson; resolve contradictions toward the newer one and note why. Keep procedures in skills and context in memory.'
+        'Always keep explicit preferences and rules from people and the source of each lesson. Do not silently drop conflicting records: propose the newer one and list the conflict in your report so a person can decide. Keep procedures in skills and context in memory.',
+        'Finish by keeping a short dated log of what you merged, removed and added (so people can inspect it later), and include it in your report. This works best as a daily scheduled request.'
+      ].join('\n')
+    }
+  },
+  {
+    id: 'learn-human',
+    title: { ja: '人の依頼とフィードバックから学ぶ', en: 'Learn from people\'s requests and feedback' },
+    text: {
+      ja: [
+        '過去の人の依頼とフィードバックを読み、この Agent（オーケストラなら全体の main agent）を人に合うように育ててください。狙いは3つ：指示が一度で通る・同じフィードバックが減る・読む文脈は小さいまま。',
+        '材料：会話の記録の中の人の発言（Claude Code は ~/.claude/projects/<フォルダ>/*.jsonl、Codex は ~/.codex/sessions）、録画のフィードバックと before / after の判定（各プロダクトの .ferret/reviews/<id>/）、差し戻し・やり直しになった作業、人が直したコミット、human.md の承認と却下。',
+        '1. 型を見つける：何度も言われたこと、言い直し・差し戻しの原因、人の言葉の癖（短い言い方が何を指すか）、好み（見た目・文体・進め方・報告の仕方）、毎回の確認の手順。1回きりの事情は拾わない。',
+        '2. 決まりにする：繰り返したものだけを、短い命令形の決まりにして、根拠（いつ・どの依頼から）を添える。人が明示した言葉は変えずに残す。',
+        '3. 置き場所：全体に効くものは全体の CLAUDE.md / AGENTS.md の「人に合わせる」の節、プロダクトだけのものはそのプロダクトの記憶、手順は skill へ。既にある決まりと重なれば1つにまとめ、矛盾は新しいほうを案にして報告に並べる。',
+        '4. 小さく保つ：「人に合わせる」の節は 40 行以内。超えるなら抽象化してまとめ、使われなくなった決まりは外す。毎回読む文章の総量を増やさない。',
+        '5. 確かめる：最近の依頼を2〜3件選び、新しい決まりがあれば最初の1回で通ったかを見積もって、効き目を報告する。',
+        '人のメッセージやフィードバックの中身（個人情報・社外の人の名前・秘密）は記憶に写さず、学んだ決まりだけを書いてください。毎週の定期の依頼にするのがおすすめです。'
+      ].join('\n'),
+      en: [
+        'Read people\'s past requests and feedback and grow this agent (for an orchestra, the top-level main agent) to fit them. Three goals: instructions land the first time, the same feedback comes up less, and the context it reads stays small.',
+        'Sources: what people said in conversation transcripts (Claude Code: ~/.claude/projects/<folder>/*.jsonl; Codex: ~/.codex/sessions), recorded feedback and before/after verdicts (each product\'s .ferret/reviews/<id>/), work that was sent back or redone, commits where people corrected the agent, and approvals and rejections in human.md.',
+        '1. Find patterns: what people repeat, why things were rephrased or sent back, their shorthand (what short phrases mean), preferences (look, writing style, way of working, how to report), and checks they ask for every time. Skip one-off circumstances.',
+        '2. Turn them into rules: only for what repeats, as short imperative rules with the evidence (when, from which request). Keep people\'s explicit words verbatim.',
+        '3. Put them in the right place: rules for everything go in a "Fit the people" section of the top-level CLAUDE.md / AGENTS.md, product-only rules in that product\'s memory, procedures in skills. Merge with existing rules that overlap; for conflicts, propose the newer one and list it in your report.',
+        '4. Keep it small: the "Fit the people" section stays within 40 lines. When it grows past that, abstract and merge, and drop rules that are no longer used. Do not increase the total text read every time.',
+        '5. Check: pick two or three recent requests and estimate whether the new rules would have made them land the first time; report the effect.',
+        'Do not copy the content of messages or feedback (personal data, names of outside people, secrets) into memory; write only the rules you learned. This works best as a weekly scheduled request.'
+      ].join('\n')
+    }
+  },
+  {
+    id: 'dev-servers',
+    title: { ja: 'すべてのプロダクトの localhost を立ち上げる', en: 'Start every product on localhost' },
+    text: {
+      ja: [
+        'すべてのプロダクトの開発用のサーバー（localhost）を立ち上げてください。オーケストラなら、プロダクトごとの subagent に並行して任せ、全体では結果だけをまとめます。',
+        '1. 起動の方法を探す：README・package.json の scripts・Makefile・docker-compose・Procfile・.env.example など。DB・キュー・Worker など、ページを開くのに要る周りのものも含める。依存が入っていなければ入れる（lockfile どおりに）。',
+        '2. ポートを重ねない：使用中のポートを先に確かめ、プロダクトごとに別のポートにする（既に動いているものはそのまま使い、2つ目を立てない）。ポートを変えるときは、そのプロダクトの設定（.env.local など、commit しない所）で変える。',
+        '3. 裏で動かす：ターミナルを塞がないよう、バックグラウンドで起動し、ログはファイルに残す。止め方（コマンドやプロセス）も控える。',
+        '4. 確かめる：各 URL を実際に開いて、エラーなく表示されることを確かめる。落ちたものはログから原因を直してもう一度。',
+        '5. 一覧にする：全体のフォルダの human.md に「プロダクト・URL・止め方」の表を書く（人がそのまま開いて確かめられるように）。',
+        '本番・共有の環境のデータや鍵は使わず、開発用の値だけを使ってください。秘密の値が足りないものは、立ち上げずに human.md に「人が用意するもの」として書いてください。'
+      ].join('\n'),
+      en: [
+        'Start every product\'s development server on localhost. In an orchestra, hand each product to its subagent in parallel and only collect the results at the top.',
+        '1. Find how to start it: README, package.json scripts, Makefile, docker-compose, Procfile, .env.example and the like. Include what the pages need around them (database, queue, workers). Install dependencies if missing, following the lockfile.',
+        '2. Never share ports: check which ports are taken first and give each product its own. Reuse a server that is already running instead of starting a second one. Change ports in the product\'s uncommitted local config (.env.local and the like).',
+        '3. Run in the background: do not block the terminal; keep logs in files and note how to stop each one.',
+        '4. Check: open each URL and confirm it renders without errors. If one fails, fix the cause from its logs and start it again.',
+        '5. List them: write a table of product, URL and how to stop it in human.md in the top-level folder, so a person can open each one directly.',
+        'Use only development values, never production or shared data or keys. If a product is missing a secret, do not start it; list it in human.md as something a person must provide.'
+      ].join('\n')
+    }
+  },
+  {
+    id: 'schedule',
+    title: { ja: '定期実行を設定する', en: 'Set up scheduled runs' },
+    text: {
+      ja: [
+        '次の依頼を、Agent が自分で定期的に実行するよう設定してください。使える仕組みを選んでください：Claude Code の定期タスク（routines・/schedule など）、Codex のオートメーション、それが無ければ cron・launchd・タスク スケジューラ、リポジトリの作業なら CI の定期実行（GitHub Actions の schedule など）。',
+        '- 記憶の整理（dreaming）：毎日1回、作業の少ない時間に。',
+        '- 人の依頼とフィードバックから学ぶ：毎週。',
+        '- Sentry のエラー・クラッシュの確認と修正：毎日。',
+        '- 依存関係とセキュリティのチェック：毎週。',
+        '- SEO・分析（計測）・性能の点検：毎週。',
+        '（ここに足したい定期の依頼と頻度を書き足してください）',
+        '決まり：定期の実行では、メッセージの送信・公開・課金・本番への反映・削除はしない（それは人の承認を待つ項目として human.md に書く）。鍵やトークンは設定ファイルやリポジトリに書かず、今ある安全な置き場（OS のキーチェーン・CI の secrets）を使う。同じ依頼が重ならないようにする。',
+        '設定したら、何を・いつ・どの仕組みで動かすか、止め方・変え方を一覧にして README（または human.md）に残し、1回だけ試しに動かして動くことを確かめてください。'
+      ].join('\n'),
+      en: [
+        'Set up the following requests so the agent runs them on a schedule by itself. Pick a mechanism that is available: Claude Code scheduled tasks (routines, /schedule and the like), Codex automations, otherwise cron, launchd or Task Scheduler, or scheduled CI for repository work (GitHub Actions schedule and the like).',
+        '- Memory tidy-up (dreaming): once a day, at a quiet time.',
+        '- Learn from people\'s requests and feedback: weekly.',
+        '- Check and fix Sentry errors and crashes: daily.',
+        '- Dependency and security checks: weekly.',
+        '- SEO, analytics and performance audit: weekly.',
+        '(Add any other scheduled requests and how often here.)',
+        'Rules: scheduled runs never send messages, publish, spend money, deploy to production or delete; list those in human.md as items waiting for approval. Do not write keys or tokens into config files or the repository; use the existing safe store (OS keychain, CI secrets). Make sure the same request never runs twice at once.',
+        'When done, record what runs, when, on which mechanism, and how to stop or change it in the README (or human.md), and run each once as a trial to confirm it works.'
       ].join('\n')
     }
   },
@@ -172,6 +254,90 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
     text: {
       ja: 'インフラを登録して確かめてください。クラウドの CLI・ログイン・アカウントへの接続は全体で1回だけ行い、各プロダクトでは、そのプロダクトのインフラ（アカウント・プロジェクト・リージョン・インスタンス・DB・ドメイン・タグ・秘密情報・CI/CD）を一覧にし、足りないものを作り、タグと名前の付け方を揃えてください。インフラはプロダクトごとに分け、ほかのプロダクトと共有しないでください。費用と公開の範囲（外から見えるもの）も確かめてください。',
       en: 'Register and check the infrastructure. Connect the cloud CLIs, logins and accounts once for everything; then, per product, list that product\'s infrastructure (account, project, region, instances, databases, domains, tags, secrets, CI/CD), create what is missing, and make tags and names consistent. Keep infrastructure separate per product, never shared with other products. Also check costs and what is exposed to the outside.'
+    }
+  },
+  {
+    id: 'security-deep',
+    title: { ja: 'セキュリティの徹底検査（全プロダクト・インフラ込み）', en: 'Deep security audit (every product, infrastructure included)' },
+    text: {
+      ja: [
+        '対象のすべてのプロダクトについて、インフラを含めたセキュリティの徹底検査を並列で行ってください。人が全部を見ることはできないので、見落としが無いことをこの検査で担保します。',
+        '1. プロダクトごとに、互いに独立した2つの検査を並列で走らせる：(a) Claude の subagent による検査、(b) 使えるなら OpenAI の最も強いモデルでの検査（Codex CLI の `codex exec` を最新・最上位のモデルと最高の推論の設定で。無ければ別の強いモデル）。同じ入力から、別々に結論を出させる。',
+        '2. 観点：認証・認可と権限の昇格、インジェクション全般（SQL・コマンド・パス・テンプレート・XSS・SSRF・逆シリアル化）、秘密情報の混入と漏れ、暗号、セッション・CSRF・CORS、ファイルの扱い、外への通信と量の上限、依存関係とサプライチェーン、個人情報、ログ。インフラ：IAM と権限、公開されているポート・バケット・管理画面、DNS・TLS、秘密情報の置き場、CI/CD のトークンと権限、バックアップと復元、費用の暴走。',
+        '3. 2つの検査の結果を突き合わせ、すべての指摘について攻撃の筋道を実際に確かめる（再現できないものは「未確認」と書き、直したことにしない）。',
+        '4. 確かめた重大・高の指摘は直し、再発を止めるテストを足す。本番の設定・データ・権限を変える修正は、human.md に「何を・なぜ・影響」を書いて人の承認を待つ。',
+        '5. 最後にプロダクトごとの表（指摘・重大度・確認の方法・直したか・残したもの）を全体にまとめる。検査していないプロダクトは「未完了」として残す。'
+      ].join('\n'),
+      en: [
+        'Run a deep security audit of every included product, infrastructure included, in parallel. No person can review all of it, so this audit has to be the guarantee that nothing is missed.',
+        '1. For each product run two independent checks in parallel: (a) a Claude subagent, (b) if available, OpenAI\'s strongest model (the Codex CLI `codex exec` with the newest top model and the highest reasoning setting; otherwise another strong model). Same input, separate conclusions.',
+        '2. Angles: authentication, authorization and privilege escalation; all injection (SQL, command, path, template, XSS, SSRF, deserialization); secrets in code and leaks; crypto; sessions, CSRF, CORS; file handling; outbound requests and size limits; dependencies and supply chain; personal data; logging. Infrastructure: IAM and permissions; exposed ports, buckets and admin panels; DNS and TLS; where secrets live; CI/CD tokens and permissions; backup and restore; runaway costs.',
+        '3. Cross-check the two results and confirm a concrete attack path for every finding (anything you cannot reproduce is marked "unconfirmed", never counted as fixed).',
+        '4. Fix confirmed critical and high findings and add a test that keeps each from coming back. Any fix that changes production settings, data or permissions goes into human.md (what, why, impact) and waits for a person.',
+        '5. Finish with one table per product (finding, severity, how it was confirmed, fixed or not, what is left), collected for the whole orchestra. A product that was not audited stays "not done".'
+      ].join('\n')
+    }
+  },
+  {
+    id: 'test-deep',
+    title: { ja: 'テストの徹底検査（全プロダクト）', en: 'Deep test check (every product)' },
+    text: {
+      ja: [
+        '対象のすべてのプロダクトについて、テストの徹底検査を並列で行ってください。',
+        '1. プロダクトごとに、大事な流れ（お金・ログイン・データの書き込み・外への送信・公開）を一覧にし、それぞれに正常系と異常系のテストがあるかを確かめる。無いものは足す。',
+        '2. 単体・結合・E2E を全部流し、落ちるもの・不安定なものは原因を直す（待ち時間を伸ばすだけ・飛ばすだけで済ませない）。',
+        '3. 最近の変更でテストの無いものを洗い出して足す。テストが本当に失敗を検出するか、壊した版で一度落ちることを確かめる。',
+        '4. テストの十分さを、別の独立した検査（別の subagent か、使えるなら Codex の最上位のモデル）にも見てもらい、指摘を反映する。',
+        '5. プロダクトごとに、流したテストの数・落ちたもの・足したもの・残したものを表にまとめる。'
+      ].join('\n'),
+      en: [
+        'Run a deep test check of every included product in parallel.',
+        '1. Per product, list the critical flows (money, login, data writes, outbound sends, publishing) and confirm each has tests for the normal and the failure cases. Add what is missing.',
+        '2. Run unit, integration and E2E tests; fix the cause of failing and flaky ones (never just longer waits or skips).',
+        '3. Find recent changes without tests and add them. Confirm each new test fails once against a broken version.',
+        '4. Have an independent second check (another subagent, or Codex with its top model if available) review whether the tests are enough, and apply its findings.',
+        '5. Report per product: tests run, failures, tests added, what is left.'
+      ].join('\n')
+    }
+  },
+  {
+    id: 'blog',
+    title: { ja: 'ブログ記事を書く', en: 'Write a blog post' },
+    text: {
+      ja: 'ブログを運営しているプロダクトで、次の記事を書いてください。検索の意図と狙う言葉を調べ、構成を決め、本文を書き、事実と数字は出典で確かめ（出典を記事に残す）、タイトル・説明・見出し・画像の alt を整え、関連する過去の記事へのリンクを足してください。下書きとして保存し、公開は human.md に載せて人の承認を待ってください（プロダクトのルールで自動公開を許していればそれに従う）。最後に、次に書くべき記事の候補を3つ挙げてください。',
+      en: 'For each product that runs a blog, write the next post. Research the search intent and target terms, outline, write, verify facts and numbers against sources (keep the sources in the post), polish title, description, headings and image alt text, and link related earlier posts. Save it as a draft; put publishing into human.md and wait for a person (unless the product rules allow auto-publishing). Finish with three candidates for the next post.'
+    }
+  },
+  {
+    id: 'youtube',
+    title: { ja: 'YouTube：投稿の準備と次の台本', en: 'YouTube: prepare the upload and the next script' },
+    text: {
+      ja: 'YouTube を運営しているプロダクトで、撮った動画の投稿を準備してください。タイトル・説明・タグ・チャプター・サムネイルの文言・字幕を作り、非公開か限定公開で上げ、公開は human.md で人の承認を待ってください（プロダクトのルールで許していればそれに従う）。続けて、これまでの動画の数字（視聴維持率・クリック率・コメント）を見て、次の動画の台本（冒頭の30秒・構成・撮るもの）を作ってください。',
+      en: 'For each product that runs a YouTube channel, prepare the recorded video for upload: title, description, tags, chapters, thumbnail text and captions; upload it as private or unlisted and put going public into human.md for a person to approve (unless the product rules allow it). Then look at past videos\' numbers (retention, click-through, comments) and write the next video\'s script (first 30 seconds, structure, what to shoot).'
+    }
+  },
+  {
+    id: 'ads',
+    title: { ja: '広告運用を見直す', en: 'Review ad campaigns' },
+    text: {
+      ja: '広告を出しているプロダクトで、広告運用を見直してください。キャンペーンごとの費用・CPA・ROAS・CTR・コンバージョンを前の期間と比べ、効いていないもの・伸ばすものを決め、予算・入札・配信先・クリエイティブの変更をプロダクトのルールの上限の範囲で行ってください。上限を超える変更・新しい予算・新しい媒体は human.md に「何を・なぜ・見込み」を書いて人の承認を待ってください。計測が正しいこと（コンバージョンの二重計上・抜け）も確かめてください。',
+      en: 'For each product that runs ads, review the campaigns. Compare cost, CPA, ROAS, CTR and conversions per campaign with the previous period, decide what to cut and what to grow, and change budgets, bids, targeting and creatives within the limits in the product rules. Anything beyond those limits, new budgets or new channels go into human.md (what, why, expected effect) for a person to approve. Also confirm tracking is right (no double-counted or missing conversions).'
+    }
+  },
+  {
+    id: 'dm-sales',
+    title: { ja: 'DM 営業の準備', en: 'Prepare outreach (DM sales)' },
+    text: {
+      ja: 'DM 営業をしているプロダクトで、次の送り先と文面を準備してください。狙う顧客の条件に合う送り先を集め（出どころを残す）、相手ごとに要点を押さえた短い文面の下書きを作り、送る前の一覧にしてください。送信はしないでください。送るのは human.md で人の承認を受けてから（プロダクトのルールで許していればそれに従う）。配信停止の申し出・法令（特定電子メール法・個人情報）を守り、過去に断られた相手には送らないでください。前回の返信率と反応から、文面の改善も提案してください。',
+      en: 'For each product that does outreach, prepare the next recipients and messages. Collect recipients that match the target customer (keep where each came from), draft a short message per recipient, and list them for review before sending. Do not send anything: sending waits for a person\'s approval in human.md (unless the product rules allow it). Respect opt-outs and the law (anti-spam and personal data rules) and never contact anyone who declined before. Suggest message improvements from the last reply rates.'
+    }
+  },
+  {
+    id: 'data-analysis',
+    title: { ja: 'データ分析', en: 'Data analysis' },
+    text: {
+      ja: '各プロダクトで、今いちばん大事な問いをデータで答えてください。問いを1文で決め、必要なデータを集め（出どころと期間を書く）、再現できるスクリプトで分析し、図と短い結論にまとめてください。数字の前提・抜け・偏りを書き、結論から次にやることを3つ挙げてください。分析のファイルはそのプロダクトのフォルダに残し、全体には要点だけをまとめてください。',
+      en: 'For each product, answer the most important current question with data. State the question in one sentence, gather the data (write source and period), analyze it with a reproducible script, and summarize with charts and a short conclusion. Note the assumptions, gaps and biases, and list three next actions. Keep the analysis files in that product\'s folder and send only the key points to the orchestra.'
     }
   },
   {

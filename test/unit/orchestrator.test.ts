@@ -35,7 +35,7 @@ describe('子のプロジェクトを決める', () => {
   it('subagent の中身：名前・説明・印・そのフォルダだけで作業する決まり', () => {
     const text = renderSubagent({ dir: 'shop', path: '/w/shop', name: 'Shop "EC"', agent: 'ferret-shop' })
     expect(text.startsWith('---\nname: ferret-shop\ndescription: "')).toBe(true)
-    expect(text).toContain("Works in the Shop 'EC' project (folder shop/)")
+    expect(text).toContain("Lead for the Shop 'EC' project (folder shop/)")
     expect(isFerretSubagent(text)).toBe(true)
     expect(text).toContain('`/w/shop`')
     expect(text).toContain('Do not edit files outside it')

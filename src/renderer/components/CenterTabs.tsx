@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { FileCode, FileText, Globe, ListChecks, Settings, X } from 'lucide-react'
+import { FileCode, FileText, Globe, LayoutDashboard, ListChecks, Settings, X } from 'lucide-react'
 import { applyOrder, moveItem } from '@shared/layout'
 import { CountBadge } from '../ui'
 import { useT } from '../lib/i18n'
@@ -13,7 +13,7 @@ import '../styles/editor.css'
  * ファイルは `file:<プロジェクトの根>/<相対パス>`。
  */
 /** settings … 設定のページ（⌘, で開閉。開いている間だけタブを出す） */
-export type CenterTab = 'browser' | 'findings' | 'settings' | FileTabId
+export type CenterTab = 'dashboard' | 'browser' | 'findings' | 'settings' | FileTabId
 
 /** タブのドラッグで運ぶデータの種類（ほかの DnD と混ざらないように） */
 const DRAG_TYPE = 'application/x-ade-center-tab'
@@ -44,8 +44,11 @@ export function CenterTabs({
   order = [],
   onReorder,
   settingsOpen = false,
+  dashboard = false,
   onCloseSettings
 }: {
+  /** 全体（すべてのプロダクト）を開いている間だけ、先頭にダッシュボードのタブを出す */
+  dashboard?: boolean
   active: CenterTab
   /** ブラウザタブに出すページ名 */
   pageTitle: string
@@ -79,7 +82,7 @@ export function CenterTabs({
   useEffect(() => () => menuOpenChange.current?.(false), [])
   const closeMenu = useCallback(() => setMenu(null), [])
   const isDirty = (tab: string) => files.some((file) => fileTabId(file.id) === tab && file.dirty)
-  const ids = applyOrder<CenterTab>(['browser', 'findings', ...(settingsOpen ? ['settings' as const] : []), ...files.map((file) => fileTabId(file.id))], order)
+  const ids = [...(dashboard ? ['dashboard' as const] : []), ...applyOrder<CenterTab>(['browser', 'findings', ...(settingsOpen ? ['settings' as const] : []), ...files.map((file) => fileTabId(file.id))], order).filter((tab) => tab !== 'dashboard')]
   const dragProps = (id: CenterTab) => onReorder ? {
     draggable: true,
     onDragStart: (e: DragEvent<HTMLElement>) => {
@@ -123,6 +126,12 @@ export function CenterTabs({
               >
                 <Globe size={13} strokeWidth={1.75} />
                 <span className="ctab__label">{pageTitle || t('centerTabs.browser')}</span>
+              </button>
+            )
+            if (tab === 'dashboard') return (
+              <button key={tab} type="button" role="tab" className="ctab" aria-selected={active === 'dashboard'} onClick={() => onChange('dashboard')} data-testid="ctab-dashboard">
+                <LayoutDashboard size={13} strokeWidth={1.75} />
+                <span className="ctab__label">{t('orchestra.dashboard')}</span>
               </button>
             )
             if (tab === 'findings') return (

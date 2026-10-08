@@ -35,6 +35,8 @@ export interface OrchestratorChild {
   outside?: string
   /** 登録したプロジェクトの id（プロダクトごとのルールを引く） */
   projectId?: string
+  /** そのプロジェクトの確認先の URL（Web・デザイン・設計）。全体のフィードバックの指摘をどのプロジェクトに任せるかの手がかり */
+  urls?: string[]
   /** 表示名。登録済みのプロジェクトならその名前 */
   name: string
   /** subagent の名前（ferret-<英数字>） */
@@ -75,7 +77,7 @@ export function orchestratorChildren(
 export function allOrchestratorChildren(
   parentFolder: string,
   members: readonly string[],
-  registered: ReadonlyArray<{ id: string; folderPath: string; name: string; source?: string }>,
+  registered: ReadonlyArray<{ id: string; folderPath: string; name: string; source?: string; urls?: ReadonlyArray<{ url?: string }> }>,
   subfolders: readonly OrchestratorChild[],
   /** 入れたプロジェクトの id → メインフォルダの下に作ったリンクの名前（作れなかったものは無い） */
   links: ReadonlyMap<string, string> = new Map(),
@@ -94,9 +96,12 @@ export function allOrchestratorChildren(
     for (let n = 2; used.has(agent); n++) agent = `${base}-${n}`
     used.add(agent)
     const link = links.get(id)
-    added.push(link
-      ? { dir: link, path: join(parentFolder, link), outside: project.folderPath, projectId: id, name: project.name || folderName(project.folderPath), agent }
-      : { dir: project.folderPath, path: project.folderPath, outside: project.folderPath, projectId: id, name: project.name || folderName(project.folderPath), agent })
+    const urls = (project.urls ?? []).flatMap((u) => (u.url ? [u.url] : [])).slice(0, 8)
+    added.push({
+      ...(link ? { dir: link, path: join(parentFolder, link) } : { dir: project.folderPath, path: project.folderPath }),
+      outside: project.folderPath, projectId: id, name: project.name || folderName(project.folderPath), agent,
+      ...(urls.length ? { urls } : {})
+    })
   }
   return [...subfolders, ...added]
 }
@@ -154,12 +159,14 @@ export function renderSubagent(child: OrchestratorChild, rules?: OrchestraRules)
   return [
     '---',
     `name: ${child.agent}`,
-    `description: "Works in the ${name} project (folder ${oneLine(child.dir)}/). Use it for any request, bug, review finding, or file that concerns ${name} or paths under ${oneLine(child.dir)}/."`,
+    `description: "Lead for the ${name} project (folder ${oneLine(child.dir)}/${child.urls?.length ? `; pages ${child.urls.map(oneLine).join(', ')}` : ''}). Use it for any request, bug, review finding, page or file that concerns ${name}${child.urls?.length ? ' or those URLs' : ''} or paths under ${oneLine(child.dir)}/."`,
     '---',
     SUBAGENT_MARKER,
     '',
-    `You work only inside the ${name} project: \`${abs}\`.`,
+    `You lead the ${name} project: \`${abs}\`. A project may be software or a business (blog, YouTube, ads, sales, data analysis); work the way its own files describe.`,
     '',
+    '- You are the second level of three. The orchestrator (first level) gives you this project\'s part; you plan it and, when it is large, split it into independent pieces and run each piece as a third-level worker in this project\'s folder, in parallel: `cd "' + abs + '" && claude -p "<one piece, with the shared and project rules it must follow>"` (run them in the background and wait for all). Each worker uses this project\'s own CLAUDE.md, skills and subagents. Small tasks you do yourself.',
+    '- Check every worker\'s result before reporting; nothing goes back to the orchestrator unverified.',
     `- Before changing anything, read \`${abs}/CLAUDE.md\` or \`${abs}/AGENTS.md\` if present and follow them, together with the shared rules the orchestrator gives you.`,
     `- Run commands from that folder (\`cd "${abs}"\` first). Do not edit files outside it. If the task also needs changes in another project, say so in your report instead of making them.`,
     '- When the task is a Ferret review finding, the request names the review folder (`.ferret/reviews/<id>/`). Fix only the findings that belong to this project and record each one\'s status in that review\'s `progress.json` as the request describes.',
@@ -236,9 +243,12 @@ export function renderOrchestratorGuide(children: readonly OrchestratorChild[], 
     '1. Split it into shared work and per-product work. Shared work is anything several products must agree on: conventions, API contracts, data models, shared libraries, design tokens, docs. Decide it once, write the decision in the "Shared rules" section of this file (outside this block), and do shared code changes once, in the product or shared package that owns it, before the per-product work. Keep separate what must stay separate per product: infrastructure (cloud accounts, deployments, databases, secrets and environment variables, CI/CD, domains, billing), each product\'s data, and its release timing. Never merge or share these across products unless the user asks for it.',
     '2. Hand each product\'s part to that product\'s subagent, one task per product, and start the tasks for independent products together (several Task calls in one message) so they run in parallel. Tell each subagent the shared rules it must follow.',
     '3. Subagents work only in their own folders and report back. Check the reports for consistency across products, fix any mismatch, and summarize for the user per product.',
-    '4. Ferret review findings name the product by URL, screen or file path. Route each finding to its product\'s subagent; findings for different products run in parallel.',
-    '5. Connections and permissions are set up once, here at the top: Claude in Chrome and other browser use, computer use, MCP servers, logins, and permission approvals. Subagents inherit this session\'s tools and approvals, so never set them up again per product and never ask the user to connect or approve again for each product.',
-    '6. Without subagents (for example Codex), do the same steps yourself, working in each product\'s folder in turn.',
+    '4. Ferret reviews can cover many products in one recording. Each finding names its product by URL, screen or file path (each subagent\'s description lists its pages). Route each finding to its product\'s subagent; findings for different products run in parallel.',
+    '5. Work in three levels: you (orchestra) → one subagent per product (its lead) → workers the lead starts inside that product\'s folder for independent pieces. A product can be software or a business (blog, YouTube, ads, sales outreach, data analysis); the lead works the way that product\'s own files describe.',
+    '6. Anything that needs a person (a decision, a login, a value check, an approval) goes into human.md in this folder as a table row: | # | product | URL | what to check |. Keep one row per thing, update it when the state changes, and delete it once it is done. Ferret shows human.md as a checklist and lets the person open every URL in one feedback session.',
+    '7. Connections and permissions are set up once, here at the top: Claude in Chrome and other browser use, computer use, MCP servers, logins, and permission approvals. Subagents inherit this session\'s tools and approvals, so never set them up again per product and never ask the user to connect or approve again for each product.',
+    '8. Security, tests and anything else that must not be missed: run them for every included product in parallel, each with an independent second check, and treat an unchecked product as not done.',
+    '9. Without subagents (for example Codex), do the same steps yourself, working in each product\'s folder in turn.',
     ...rulesBlock('### Shared rules (set by the human in Ferret)', rules?.shared),
     ...children.flatMap((c) => rulesBlock(`### Rules only for ${oneLine(c.name)} (set by the human in Ferret)`, c.projectId ? rules?.products?.[c.projectId] : undefined)),
     GUIDE_END
