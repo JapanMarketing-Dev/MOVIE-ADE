@@ -9,6 +9,7 @@ import {
 } from '@shared/resources'
 import { Button } from '../ui'
 import { StatusPopover } from './StatusPopover'
+import { firstSnapshotDelay } from '../lib/resourceSnapshot'
 import { useT } from '../lib/i18n'
 
 /**
@@ -34,11 +35,13 @@ function useResourceSnapshot(open: boolean): { snapshot: ResourceSnapshot | null
     void window.ade.invoke('resources:snapshot').then(setSnapshot).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る（ここは既定のまま続ける）
   }, [])
   useEffect(() => {
-    refresh()
+    // 開いたときはすぐ取る。閉じたまま（フッターの数字だけ）なら、起動の直後は少し待ってから
+    const first = window.setTimeout(refresh, open ? 0 : firstSnapshotDelay(performance.now()))
     const timer = window.setInterval(refresh, open ? OPEN_POLL_MS : CLOSED_POLL_MS)
     // 表に戻ったらすぐ取り直す
     document.addEventListener('visibilitychange', refresh)
     return () => {
+      window.clearTimeout(first)
       window.clearInterval(timer)
       document.removeEventListener('visibilitychange', refresh)
     }

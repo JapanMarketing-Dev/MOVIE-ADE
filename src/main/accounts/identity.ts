@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { homedir, userInfo } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -144,10 +145,52 @@ async function keychainItemExists(service: string): Promise<boolean> {
 }
 
 /** .claude.json（または .config.json）の oauthAccount。トークンは入っていない */
-function readClaudeOauthAccount(configPaths: string[]): Record<string, unknown> | null {
+/**
+ * JSON の文字列から、"key": に続くオブジェクトの部分だけを切り出す（文字列の中の括弧は数えない）。見つからなければ null。
+ * Claude Code の .claude.json は会話の履歴まで入って数 MB〜数十 MB になるので、丸ごと JSON.parse すると
+ * main が止まる（FERRET-M：アカウントの一覧を出すたびに 1 秒以上）。要るのは oauthAccount だけ
+ */
+export function extractJsonObject(text: string, key: string): string | null {
+  const needle = `"${key}"`
+  let at = text.indexOf(needle)
+  while (at >= 0) {
+    let i = at + needle.length
+    while (i < text.length && /\s/.test(text[i]!)) i++
+    if (text[i] === ':') {
+      i++
+      while (i < text.length && /\s/.test(text[i]!)) i++
+      if (text[i] !== '{') return null
+      let depth = 0
+      let inString = false
+      for (let j = i; j < text.length; j++) {
+        const ch = text[j]!
+        if (inString) {
+          if (ch === '\\') j++
+          else if (ch === '"') inString = false
+        } else if (ch === '"') inString = true
+        else if (ch === '{') depth++
+        else if (ch === '}' && --depth === 0) return text.slice(i, j + 1)
+      }
+      return null
+    }
+    at = text.indexOf(needle, at + needle.length)
+  }
+  return null
+}
+
+/** .claude.json の oauthAccount を読む（非同期で読み、その部分だけを解析する） */
+async function readClaudeOauthAccount(configPaths: string[]): Promise<Record<string, unknown> | null> {
   for (const path of configPaths) {
-    const oauth = asRecord(readJsonFile(path)?.oauthAccount)
-    if (oauth) return oauth
+    const text = await readFile(path, 'utf8').catch(() => null) // 未ログイン（ファイルが無い）は想定内
+    if (!text) continue
+    const slice = extractJsonObject(text, 'oauthAccount')
+    if (!slice) continue
+    try {
+      const oauth = asRecord(JSON.parse(slice))
+      if (oauth) return oauth
+    } catch {
+      // 壊れた設定は「分からない」として扱う（想定内）
+    }
   }
   return null
 }
@@ -163,7 +206,7 @@ function claudeIdentityFrom(oauth: Record<string, unknown> | null, signedIn: boo
 
 /** 管理アカウントの CLAUDE_CONFIG_DIR を読む */
 export async function readClaudeIdentity(configDir: string): Promise<AccountIdentity> {
-  const oauth = readClaudeOauthAccount([join(configDir, '.claude.json'), join(configDir, '.config.json')])
+  const oauth = await readClaudeOauthAccount([join(configDir, '.claude.json'), join(configDir, '.config.json')])
   // Linux / Windows はファイル、macOS は Keychain に認証情報を置く
   const signedIn =
     existsSync(join(configDir, '.credentials.json')) ||
@@ -179,7 +222,7 @@ export async function readClaudeSystemIdentity(env: NodeJS.ProcessEnv = process.
   const inherited = env.CLAUDE_CONFIG_DIR?.trim()
   if (inherited) return readClaudeIdentity(inherited)
   const configDir = join(homedir(), '.claude')
-  const oauth = readClaudeOauthAccount([join(configDir, '.claude.json'), join(homedir(), '.claude.json')])
+  const oauth = await readClaudeOauthAccount([join(configDir, '.claude.json'), join(homedir(), '.claude.json')])
   const signedIn =
     existsSync(join(configDir, '.credentials.json')) ||
     (oauth !== null && (process.platform !== 'darwin' || (await keychainItemExists(claudeKeychainService()))))

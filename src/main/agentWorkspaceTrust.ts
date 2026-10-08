@@ -316,6 +316,17 @@ export function registeredProjectIdFor(cwd: string, projects: ReadonlyArray<{ id
  *
  * @param env 起動するエージェントの環境変数（アカウント切り替えの CLAUDE_CONFIG_DIR / CODEX_HOME を含む）
  */
+/**
+ * この起動の間に信頼を書いた（または既に信頼済みだった）設定ファイルとフォルダ。同じ組み合わせは2回目から読まない。
+ * ~/.claude.json は何十 MB にもなり、同期で読んで JSON にするので、オーケストラで何十もの Agent を開き直すたびに main が止まっていた
+ */
+const trustedThisSession = new Set<string>()
+
+/** テスト用：覚えた組み合わせを忘れる */
+export function resetTrustMemo(): void {
+  trustedThisSession.clear()
+}
+
 export async function applyAgentWorkspaceTrust(args: {
   agent: string
   cwd: string
@@ -326,14 +337,18 @@ export async function applyAgentWorkspaceTrust(args: {
   if (args.agent !== 'claude' && args.agent !== 'codex') return 'skipped'
   if (!isRegisteredProjectFolder(args.cwd, args.projectFolders)) return 'skipped'
   const home = args.homeDir ?? args.env.HOME ?? homedir()
+  const configFile = args.agent === 'claude'
+    ? resolveClaudeGlobalConfigFile({ env: args.env, homeDir: home, exists: existsSync })
+    : join(args.env.CODEX_HOME || join(home, '.codex'), 'config.toml')
+  const memo = `${args.agent}\0${configFile}\0${canonical(args.cwd)}`
+  if (trustedThisSession.has(memo)) return 'unchanged'
   const write = async (): Promise<TrustOutcome> => {
-    if (args.agent === 'claude') {
-      const configFile = resolveClaudeGlobalConfigFile({ env: args.env, homeDir: home, exists: existsSync })
-      return grantClaudeFolderTrust(configFile, claudeTrustKeys(args.cwd))
-    }
-    // Codex はプロジェクトのパスを realpath で照らし合わせる（Orca の canonicalize と同じ）
-    const codexHome = args.env.CODEX_HOME || join(home, '.codex')
-    return grantCodexProjectTrust(join(codexHome, 'config.toml'), canonical(args.cwd))
+    const outcome = args.agent === 'claude'
+      ? await grantClaudeFolderTrust(configFile, claudeTrustKeys(args.cwd))
+      // Codex はプロジェクトのパスを realpath で照らし合わせる（Orca の canonicalize と同じ）
+      : grantCodexProjectTrust(configFile, canonical(args.cwd))
+    if (outcome === 'granted' || outcome === 'unchanged') trustedThisSession.add(memo)
+    return outcome
   }
   try {
     return await Promise.race([
