@@ -14,6 +14,8 @@ import { isWebglUnavailable } from './rendererFallback'
 import { RESTORE_LINE_LIMIT, capScrollback, joinWrappedRows } from '@shared/terminalRestore'
 import { selectionTextForCopy } from './wrappedCopy'
 import { isScrolledUp } from './jumpToBottom'
+import { shellPathsText, shellQuotingFor } from '@shared/externalDrop'
+import { hasClipboardFiles } from './clipboardPaste'
 
 /**
  * renderer 側のターミナル実体（xterm.js）を管理する。
@@ -218,6 +220,14 @@ export class TerminalHandle {
     // 右クリックや編集メニューの貼り付けも、Ctrl+V と同じ経路で送る（Windows の Agent への複数行の貼り付け）
     const onPaste = (event: ClipboardEvent) => {
       const text = event.clipboardData?.getData('text/plain')
+      // クリップボードにファイル（Finder・エクスプローラーでコピーした動画・画像）や画像（スクリーンショット）があれば、
+      // main がプロジェクトの .ferret/pasted/ に写し、そのパスを入れる（デスクトップから落としたときと同じ）
+      if (hasClipboardFiles(event.clipboardData)) {
+        event.preventDefault()
+        event.stopPropagation()
+        void this.pasteClipboardFiles(text ?? '')
+        return
+      }
       if (!text || !this.agentPasteData(text)) return
       event.preventDefault()
       event.stopPropagation()
@@ -507,6 +517,22 @@ export class TerminalHandle {
   }
 
   /**
+   * クリップボードのファイル・画像を貼る。main が写したファイルの絶対パスを、落としたときと同じ形（シェルのクォート）で入れる。
+   * 取り込めなかったら（SSH のプロジェクトなど）、文字の部分だけをふつうに貼る
+   */
+  private async pasteClipboardFiles(fallbackText: string): Promise<void> {
+    try {
+      const paths = await window.ade.invoke('terminal:pasteFiles')
+      const text = paths?.length ? shellPathsText(paths, shellQuotingFor(window.ade.platform)) : ''
+      if (text) this.insertText(text)
+      else if (fallbackText) this.pasteText(fallbackText)
+    } catch {
+      // 大きすぎる・多すぎるなど（想定外の失敗は main の IPC が Sentry へ送る）。文字の部分だけ貼る
+      if (fallbackText) this.pasteText(fallbackText)
+    }
+  }
+
+  /**
    * Ctrl+V（Windows / Linux）。クリップボードは読まず、main に OS の貼り付けを頼む（security-7 [1]）。
    * 中身はふつうの貼り付け（paste のイベント）として入力欄に届き、onPaste が Agent 向けの包み方を決める
    */
@@ -716,3 +742,4 @@ export function releaseTerminal(key: string): void {
 export function getTerminal(key: string): TerminalHandle | undefined {
   return handles.get(key)
 }
+

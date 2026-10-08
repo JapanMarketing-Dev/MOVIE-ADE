@@ -155,6 +155,8 @@ mark('main:loaded')
 let mainWindow: BrowserWindow | null = null
 /** 画面のターミナルにフォーカスがあるか（renderer が terminal:focused で知らせる） */
 let terminalFocused = false
+/** terminal:paste（Windows / Linux の Ctrl+V）で OS の貼り付けをさせた時刻。続く terminal:pasteFiles を1回だけ許す */
+let terminalPasteGrantAt = 0
 /**
  * 録画・撮影・端末のプログラムのコピーの同意（security-5 [1][9]。captureConsent.ts）。
  * 窓に届いた本物の入力とメニューの操作からだけ作り、renderer の求めは同意にしない
@@ -2147,12 +2149,27 @@ function registerIpc(): void {
     'terminal:cwd': (id) => terminals?.currentCwd(id) ?? null,
     // 端末への貼り付け（Windows / Linux の Ctrl+V）。クリップボードの中身は renderer へ返さない（security-7 [1]）。
     // キーを押した直後に1回だけ、アプリの窓にフォーカスがあり端末が選ばれているときに、OS の貼り付けをその窓に行わせる
-    // （中身はふつうの貼り付けとして、フォーカスのある端末の入力欄に届く）
+    // （中身はふつうの貼り付けとして、フォーカスのある端末の入力欄に届く）。
+    // その paste のイベントからは、クリップボードのファイル・画像を1回だけ取り込める（terminalPasteGrantAt → terminal:pasteFiles）
     'terminal:paste': () => {
       const win = mainWindow
       if (!win || win.isDestroyed() || !win.isFocused() || !terminalFocused || !gestures.consume('paste')) return false
+      terminalPasteGrantAt = Date.now()
       win.webContents.paste()
       return true
+    },
+    // ターミナルへの貼り付けで、クリップボードのファイル・画像（スクリーンショット・動画）をプロジェクトの .ferret/pasted/ に写す。
+    // 返すのは作ったものの絶対パスだけ（クリップボードの中身・元のパスは返さない。security-7 [1]）。押した直後の1回だけ
+    'terminal:pasteFiles': async () => {
+      const granted = Date.now() - terminalPasteGrantAt < 2000
+      terminalPasteGrantAt = 0
+      const win = mainWindow
+      if (!win || win.isDestroyed() || !win.isFocused() || !terminalFocused || !(granted || gestures.consume('paste'))) return null
+      // SSH のプロジェクトは Agent がリモートで動くので、手元に写したパスは使えない（ふつうの貼り付けにする）
+      if (!workspace.folderPath || isRemoteWorkspace()) return null
+      const root = projectRoot()
+      const { pasteClipboardForTerminal } = await import('./clipboardFiles')
+      return pasteClipboardForTerminal(root, clipboard, async (paths, destRel) => (await importEntries(root, paths, destRel, () => true)).map((d) => d.to))
     },
     // 選択範囲のコピー。キーを押した直後だけ書く（プログラムのコピーはこの道を通さない。terminal:programCopy）
     'terminal:writeClipboard': (text) => { if (typeof text === 'string' && text.length <= 8 * 1024 * 1024 && gestures.consume('copy')) clipboard.writeText(text) },
