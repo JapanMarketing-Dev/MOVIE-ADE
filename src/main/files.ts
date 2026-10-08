@@ -4,7 +4,8 @@ import { spawn } from 'node:child_process'
 import { FileTooLargeError, NotRegularFileError, readFileBounded } from './boundedFile'
 import { assertHandleInside, assertStillInside, createContained, openContained } from './containedFile'
 import { constants as fsConstants, existsSync, watch, type FSWatcher } from 'node:fs'
-import { open, opendir, readdir, realpath, stat, type FileHandle } from 'node:fs/promises'
+import { open, readdir, realpath, stat, type FileHandle } from 'node:fs/promises'
+import { readDirEntries } from './dirEntries'
 import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import {
   MAX_LISTED_FILES,
@@ -137,20 +138,11 @@ async function openListedDir(root: string, dir: string): Promise<{ path: string;
 export async function listDirectory(root: string, relDir: string): Promise<FsEntry[]> {
   const dir = await resolveInside(root, relDir)
   const listed = await openListedDir(root, dir)
-  // 全部を一度に読まず、上限まで順に読む（readdir は全項目の配列を作る）
-  let handle
-  try {
-    handle = await opendir(listed.path)
-  } catch (err) {
-    await listed.finish().catch(() => undefined)
-    throw err
-  }
+  // 上限まで読む（macOS・Linux は opendir で少しずつ。Windows は readdir。dirEntries.ts・FERRET-1Q）
   const entries: FsEntry[] = []
   try {
-    let seen = 0
-    for await (const dirent of handle) {
-      // for await を抜けると opendir の Dir は閉じる
-      if (++seen > MAX_DIRECTORY_ENTRIES) break
+    const { entries: dirents } = await readDirEntries(listed.path, MAX_DIRECTORY_ENTRIES)
+    for (const dirent of dirents) {
       const absolute = join(dir, dirent.name)
       let kind: FsEntry['kind'] | null = dirent.isDirectory() ? 'directory' : dirent.isFile() ? 'file' : null
       if (dirent.isSymbolicLink()) {

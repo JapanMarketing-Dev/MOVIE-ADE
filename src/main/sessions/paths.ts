@@ -16,7 +16,8 @@
  *                          （recording.webm・events.jsonl・transcript.jsonl・capture.json・work/）
  */
 import { existsSync } from 'node:fs'
-import { lstat, opendir } from 'node:fs/promises'
+import { lstat } from 'node:fs/promises'
+import { readDirEntries } from '../dirEntries'
 import { assertContained } from './containment'
 import { HISTORY_LIMITS } from './limits'
 import { basename, join } from 'node:path'
@@ -91,21 +92,13 @@ export async function listSessionIdsPage(projectDir: string, options: { max?: nu
   let truncated = false
   for (const root of reviewsRoots(projectDir)) {
     try { assertContained(projectDir, root) } catch { continue }
-    const dir = await opendir(root).catch(() => null)
-    if (!dir) continue
-    let seen = 0
-    try {
-      for await (const entry of dir) {
-        if (++seen > scanLimit) {
-          truncated = true
-          break
-        }
-        if (isSessionId(entry.name) && !candidates.has(entry.name)) candidates.set(entry.name, root)
-      }
-    } catch {
-      // 読んでいる途中で消えたフォルダ（想定内）
+    // 上限まで読む（Windows は opendir を使わない。dirEntries.ts・FERRET-1Q）
+    const read = await readDirEntries(root, scanLimit).catch(() => null)
+    if (!read) continue
+    if (read.truncated) truncated = true
+    for (const entry of read.entries) {
+      if (isSessionId(entry.name) && !candidates.has(entry.name)) candidates.set(entry.name, root)
     }
-    // break で抜けると for await が閉じる。最後まで読んだときも閉じ済み
   }
   // ID は日時の形（20261002-104012）なので、文字の順がそのまま時刻の順
   const sorted = [...candidates.keys()].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0))
