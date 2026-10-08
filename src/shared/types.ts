@@ -352,6 +352,8 @@ export interface TerminalCreateOptions {
    * 消したアカウントなら今選んでいるアカウント（タブを戻したとき、前と同じアカウントで開くため）
    */
   accountId?: string | null
+  /** 決まった起動（@shared/codexAudit。今は Codex のセキュリティ監査だけ）。引数は main が作る */
+  preset?: import('./codexAudit').TerminalPreset | null
 }
 
 /** 復元対象の設定（WS-1 ＋ 分割幅） */

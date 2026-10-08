@@ -1207,6 +1207,8 @@ export const id: LocaleMessages = {
   'orchestra.composerSend': "Kirim ke orkestra",
   'orchestra.requestPick': "Pilih permintaan siap pakai",
   'orchestra.requestSend': "Kirim permintaan",
+  'orchestra.codexAudit': "Audit keamanan dengan Codex",
+  'orchestra.codexAuditHint': "Membuka Codex dengan Daybreak Blue pada Extra high dan mengaudit app, infrastruktur, database, dll. setiap produk; hanya temuan, tanpa perbaikan",
   'orchestra.composerSent': "Terkirim ke agent orkestra.",
   'orchestra.tourPrev': "Halaman sebelumnya",
   'orchestra.tourNext': "Halaman berikutnya",

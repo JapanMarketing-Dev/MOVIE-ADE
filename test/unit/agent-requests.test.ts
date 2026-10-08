@@ -6,7 +6,7 @@ import { BUILTIN_REQUESTS, composeAgentRequest, dueRequests, resolveAgentRequest
 
 describe('組み込みの依頼文', () => {
   it('dream・コンパクト・セキュリティ・SEO・分析・Sentry・性能・アクセシビリティ・依存関係がそろい、日本語と英語がある', () => {
-    expect(BUILTIN_REQUESTS.map((b) => b.id)).toEqual(['dream', 'learn-human', 'dev-servers', 'schedule', 'compact', 'security', 'seo', 'analytics', 'sentry', 'sentry-setup', 'analytics-setup', 'search-console', 'infra', 'security-deep', 'test-deep', 'blog', 'youtube', 'ads', 'dm-sales', 'data-analysis', 'performance', 'accessibility', 'dependencies'])
+    expect(BUILTIN_REQUESTS.map((b) => b.id)).toEqual(['dream', 'learn-human', 'dev-servers', 'schedule', 'compact', 'security', 'seo', 'analytics', 'sentry', 'sentry-setup', 'analytics-setup', 'search-console', 'infra', 'security-deep', 'security-codex', 'test-deep', 'blog', 'youtube', 'ads', 'dm-sales', 'data-analysis', 'performance', 'accessibility', 'dependencies'])
     for (const b of BUILTIN_REQUESTS) for (const lang of ['ja', 'en'] as const) expect(b.text[lang].length).toBeGreaterThan(80)
   })
 

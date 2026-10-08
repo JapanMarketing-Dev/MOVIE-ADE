@@ -1207,6 +1207,8 @@ export const vi: LocaleMessages = {
   'orchestra.composerSend': "Gửi cho dàn nhạc",
   'orchestra.requestPick': "Chọn yêu cầu có sẵn",
   'orchestra.requestSend': "Gửi yêu cầu",
+  'orchestra.codexAudit': "Kiểm tra bảo mật bằng Codex",
+  'orchestra.codexAuditHint': "Mở Codex với Daybreak Blue ở Extra high để kiểm tra ứng dụng, hạ tầng, cơ sở dữ liệu… của mọi sản phẩm; chỉ nêu vấn đề, không sửa",
   'orchestra.composerSent': "Đã gửi cho agent của dàn nhạc.",
   'orchestra.tourPrev': "Trang trước",
   'orchestra.tourNext': "Trang sau",

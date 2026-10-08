@@ -183,7 +183,9 @@ describe('security-5 [2] 権限確認を省く引数・フォルダの信頼は�
     const terminal = read('src/main/terminal.ts')
     expect(terminal.match(/buildAgentLaunchCommand\(/g)).toHaveLength(1)
     expect(terminal).toMatch(/\} else \{\s*\/\/ カスタムの Agent[^\n]*\n\s*const custom = buildAgentLaunchCommand\(agent, configured, startupShell\)/)
-    expect(terminal).toMatch(/launchLine = await trusted\(policy\.argv, label\)/)
+    // 後ろに足せるのは main が作る決まった起動（@shared/codexAudit）の引数だけ。権限の引数は含まない
+    expect(terminal).toMatch(/launchLine = await trusted\(\[\.\.\.policy\.argv, \.\.\.\(internal\.extraArgs \?\? \[\]\)\], label\)/)
+    expect(read('src/main/index.ts').match(/terminals\.create\(options, \{ extraArgs \}\)/g)).toHaveLength(1)
     // 引数の決まりは一か所だけ（catalog に古い文字列の決まりを残さない）
     expect(read('src/shared/agentCatalog.ts')).not.toMatch(/export function resolveAgentLaunchPolicy/)
     expect(read('src/main/accounts/service.ts')).toMatch(/canonicalLaunchCommand\(agent,/)

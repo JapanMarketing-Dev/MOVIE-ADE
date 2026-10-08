@@ -791,6 +791,25 @@ function guideLanguage(): 'ja' | 'en' {
   return getLocale() === 'ja' ? 'ja' : 'en'
 }
 
+/**
+ * 決まった起動（@shared/codexAudit）の引数。Codex のセキュリティ監査は、依頼文を開くフォルダの .ferret/requests/ に書き、
+ * モデル・考える深さ・そのファイルを読む短い依頼を引数にする。preset が無い・Codex でないときは何も足さない
+ */
+async function terminalPresetArgs(options: import('@shared/types').TerminalCreateOptions): Promise<string[]> {
+  const { isTerminalPreset, codexAuditArgs, CODEX_AUDIT_FILE } = await import('@shared/codexAudit')
+  if (!isTerminalPreset(options.preset)) return []
+  if (options.agent !== 'codex') return []
+  const folder = typeof options.cwd === 'string' && options.cwd ? options.cwd : workspace.folderPath
+  if (!folder || !currentSettings().projects.some((p) => p.folderPath === folder)) throw new UserFacingError(t('errors.openProjectFolder'))
+  const { composeAgentRequest, resolveAgentRequests } = await import('@shared/agentRequests')
+  const lang = guideLanguage()
+  const request = resolveAgentRequests(currentSettings().agentRequests, lang).filter((r) => r.id === 'security-codex')
+  const file = join(folder, ...CODEX_AUDIT_FILE.split('/'))
+  await mkdir(dirname(file), { recursive: true })
+  await (await import('./sessions/containment')).writeFileNoFollow(file, composeAgentRequest(request, lang, false) + '\n')
+  return codexAuditArgs(lang)
+}
+
 /** オーケストレーターにする・やめる。子の subagent を書く・消す */
 async function setProjectOrchestrator(id: unknown, enabled: unknown): Promise<{ children: Array<{ dir: string; name: string; agent: string }>; skipped: string[] }> {
   const settings = currentSettings()
@@ -2008,9 +2027,10 @@ function registerIpc(): void {
         viewport: 'desktop' as const
       },
 
-    'terminal:create': (options) => {
+    'terminal:create': async (options) => {
       if (!terminals) throw new UserFacingError(t('errors.terminalNotReady'))
-      return terminals.create(options).then((info) => { resources.noteTerminalCreated(info.id); return info })
+      const extraArgs = await terminalPresetArgs(options)
+      return terminals.create(options, { extraArgs }).then((info) => { resources.noteTerminalCreated(info.id); return info })
     },
     'terminal:write': (id, data) => terminals?.write(id, data),
     'terminal:resize': (id, size) => terminals?.resize(id, size),

@@ -1207,6 +1207,8 @@ export const hi: LocaleMessages = {
   'orchestra.composerSend': "ऑर्केस्ट्रा को भेजें",
   'orchestra.requestPick': "तैयार अनुरोध चुनें",
   'orchestra.requestSend': "अनुरोध भेजें",
+  'orchestra.codexAudit': "Codex से सुरक्षा ऑडिट",
+  'orchestra.codexAuditHint': "Codex को Daybreak Blue और Extra high पर खोलता है और हर उत्पाद के ऐप, इन्फ्रास्ट्रक्चर, डेटाबेस आदि की सुरक्षा जाँचकर केवल समस्याएँ बताता है, ठीक नहीं करता",
   'orchestra.composerSent': "ऑर्केस्ट्रा agent को भेजा गया।",
   'orchestra.tourPrev': "पिछला पेज",
   'orchestra.tourNext': "अगला पेज",

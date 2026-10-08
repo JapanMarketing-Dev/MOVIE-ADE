@@ -1207,6 +1207,8 @@ export const ko: LocaleMessages = {
   'orchestra.composerSend': "오케스트라에 보내기",
   'orchestra.requestPick': "준비된 요청 선택",
   'orchestra.requestSend': "요청 보내기",
+  'orchestra.codexAudit': "Codex 보안 감사",
+  'orchestra.codexAuditHint': "Codex를 Daybreak Blue・Extra high로 열어 모든 제품의 앱・인프라・DB 등의 보안을 점검하고 지적만 합니다(수정하지 않음)",
   'orchestra.composerSent': "전체 agent에게 보냈습니다.",
   'orchestra.tourPrev': "이전 페이지",
   'orchestra.tourNext': "다음 페이지",

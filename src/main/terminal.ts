@@ -431,7 +431,8 @@ export class TerminalManager {
    * agent を指定すると、ログインシェルが立ち上がった最初のプロンプトでそのAgentを起動する
    * （Agentを終了するとシェルに戻る。Orcaと同じ）。
    */
-  async create(options: TerminalCreateOptions): Promise<TerminalTabInfo> {
+  /** extraArgs は main だけが渡す（決まった起動の preset。renderer からは渡せない） */
+  async create(options: TerminalCreateOptions, internal: { extraArgs?: readonly string[] } = {}): Promise<TerminalTabInfo> {
     const { size, agent } = options
     this.lastSize = { cols: size.cols, rows: size.rows }
     const nodePty = await loadNodePty()
@@ -503,7 +504,7 @@ export class TerminalManager {
         if (!policy.ok) throw new UserFacingError(t('terminal.errors.launch', { agent: label, error: policy.error }))
         trustFolder = policy.trustFolder
         resumed = policy.resumed === true
-        launchLine = await trusted(policy.argv, label)
+        launchLine = await trusted([...policy.argv, ...(internal.extraArgs ?? [])], label)
       } else {
         // カスタムの Agent は利用者が書いたコマンドそのまま（引数だけ語に分けて引用し直す）
         const custom = buildAgentLaunchCommand(agent, configured, startupShell)

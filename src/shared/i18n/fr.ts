@@ -1207,6 +1207,8 @@ export const fr: LocaleMessages = {
   'orchestra.composerSend': "Envoyer à l'orchestre",
   'orchestra.requestPick': "Choisir une demande préparée",
   'orchestra.requestSend': "Envoyer la demande",
+  'orchestra.codexAudit': "Audit de sécurité avec Codex",
+  'orchestra.codexAuditHint': "Ouvre Codex avec Daybreak Blue en Extra high et audite l'app, l'infrastructure, la base de données, etc. de chaque produit ; constats seulement, sans correction",
   'orchestra.composerSent': "Envoyé à l'agent de l'orchestre.",
   'orchestra.tourPrev': "Page précédente",
   'orchestra.tourNext': "Page suivante",
