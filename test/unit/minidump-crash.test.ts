@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { STACK_LIMIT, parseMinidumpCrash } from '../../src/shared/minidump'
-import { NATIVE_CRASH_FLOW_LIMIT, memoryBucket, minimizeNativeCrash, scrubEvent, uptimeBucket } from '../../src/shared/telemetry'
+import { NATIVE_CRASH_FLOW_LIMIT, memoryBucket, minimizeNativeCrash, scrubEvent, shouldSendNativeCrash, uptimeBucket } from '../../src/shared/telemetry'
 
 /**
  * main のネイティブのクラッシュ（FERRET-12、0.4.16 の Windows）は、minidump を捨てていたので原因が分からなかった。
@@ -200,7 +200,10 @@ describe('minidump から落ちた場所の手がかりを読む（FERRET-1Q の
     const out = minimizeNativeCrash(event, dump) as unknown as { contexts: { crash: Record<string, unknown> }; breadcrumbs: Array<Record<string, unknown>> }
     expect(out.contexts.crash).toEqual({ location: 'ferret.exe+0x123', debug_id: '123456789ABCDEF001020304050607082', code_id: '6543ABCD9000000', thread: 'CrBrowserMain', stack: ['ferret.exe+0x1000'] })
     expect(out.breadcrumbs.map((b) => b.message)).toEqual(['update install', 'terminal exit'])
-    const text = JSON.stringify(scrubEvent(out))
+    const scrubbed = scrubEvent(out) as unknown as { contexts: { crash?: Record<string, unknown> } }
+    // 送る直前の伏せ字でも落とさない（0.4.21〜0.6.2 は ALLOWED_CONTEXTS に無く、FERRET-1Q に場所が届かなかった）
+    expect(scrubbed.contexts.crash).toEqual(out.contexts.crash)
+    const text = JSON.stringify(scrubbed)
     for (const leak of ['someone', 'example.com', 'token']) expect(text).not.toContain(leak)
   })
 
@@ -252,5 +255,28 @@ describe('ネイティブのクラッシュに理由と落ちる前の様子を�
       const out = minimizeNativeCrash(e) as { tags: Record<string, string> }
       expect(out.tags['mem.rss']).toBe(v)
     }
+  })
+})
+
+describe('外から止められた子のプロセスは送らない（FERRET-1V）', () => {
+  const event = (proc: string, reason: string, exitCode?: number) => ({
+    level: 'fatal',
+    platform: 'native',
+    tags: { 'event.environment': 'native', 'event.process': proc, 'exit.reason': reason, 'os.platform': 'darwin' },
+    contexts: { electron: { details: { reason, ...(exitCode !== undefined ? { exitCode } : {}) } } }
+  })
+
+  it('Utility が SIGTERM で止められた（killed・exitCode 15）ものは送らない', () => {
+    const out = minimizeNativeCrash(event('Utility', 'killed', 15), { code: '0x0', module: 'dyld' })
+    expect(shouldSendNativeCrash(out)).toBe(false)
+    expect(shouldSendNativeCrash(minimizeNativeCrash(event('GPU', 'clean-exit', 0)))).toBe(false)
+  })
+
+  it('落ちたもの・main のクラッシュは送る（main は理由が分からなくても送る）', () => {
+    expect(shouldSendNativeCrash(minimizeNativeCrash(event('Utility', 'crashed', 11)))).toBe(true)
+    expect(shouldSendNativeCrash(minimizeNativeCrash(event('renderer', 'oom')))).toBe(true)
+    expect(shouldSendNativeCrash(minimizeNativeCrash(event('browser', 'killed')))).toBe(true)
+    const main = minimizeNativeCrash({ level: 'fatal', platform: 'native', tags: { 'event.process': 'browser' }, contexts: { electron: { details: { reason: 'unknown' } } } }, { code: '0xc0000005', kind: 'access-violation', module: 'ferret.exe' })
+    expect(shouldSendNativeCrash(scrubEvent(main))).toBe(true)
   })
 })

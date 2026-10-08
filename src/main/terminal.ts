@@ -59,9 +59,14 @@ function oneShotCommand(command: string): string {
  */
 
 /** PTY出力をまとめる間隔。xterm.js 側の描画が1フレームに1回で足りる */
-const FLUSH_INTERVAL_MS = 16
+export const FLUSH_INTERVAL_MS = 16
+/**
+ * 画面に出ていないターミナル（裏のタブ・プロジェクト）の出力をまとめる間隔。多くの Agent を並べて動かすと、
+ * 見ていないタブまで毎フレーム IPC と xterm の解析が走って CPU を使う。見えるようになったら、ためた分をすぐ送る（setVisible）
+ */
+export const HIDDEN_FLUSH_INTERVAL_MS = 250
 /** 1回のフラッシュで送る上限。超えた分は次のフラッシュへ回す */
-const MAX_CHUNK = 256 * 1024
+export const MAX_CHUNK = 256 * 1024
 /** ためこみの上限。これを超えたら古い側を捨てて入力の応答を守る */
 const MAX_BUFFER = 4 * 1024 * 1024
 /**
@@ -203,6 +208,8 @@ interface Session {
   buffer: string[]
   bufferBytes: number
   timer: NodeJS.Timeout | null
+  /** 今の timer の待ち（裏のターミナルのゆっくりのフラッシュを、たまったときに早めるかの判断） */
+  timerDelay?: number
   tail: string
   screen?: { text: string; at: number }
   title?: string
@@ -246,6 +253,14 @@ const SPARE_REFILL_DELAY_MS = 1500
 
 export type { TerminalSessionInfo } from '@shared/types'
 
+/**
+ * 次のフラッシュまでの待ち。見えているターミナルは毎フレーム、裏のターミナルは HIDDEN_FLUSH_INTERVAL_MS。
+ * 裏でも 1 回で送る上限（MAX_CHUNK）以上たまっていればすぐ送る（大量の出力で MAX_BUFFER を超えて古い出力を捨てない）
+ */
+export function flushDelayMs(hidden: boolean, bufferedBytes: number): number {
+  return hidden && bufferedBytes < MAX_CHUNK ? HIDDEN_FLUSH_INTERVAL_MS : FLUSH_INTERVAL_MS
+}
+
 export class TerminalManager {
   private sessions = new Map<string, Session>()
   /**
@@ -256,6 +271,11 @@ export class TerminalManager {
   /** 「全部の終了通知が届いた」を待っている人たち */
   private exitWaiters = new Set<() => void>()
   private seq = 0
+  /**
+   * renderer が最後に知らせたとき（terminal:visible）に画面に出ていなかったターミナル。出力をゆっくりまとめる。
+   * 知らせたあとに開いたターミナルは、次の知らせまで見えているものとして扱う（開いた直後のプロンプトを待たせない）
+   */
+  private hidden = new Set<string>()
   private cwd: string = homedir()
   /** SSH のプロジェクトを開いているときの接続先。タブは ssh -t でリモートのシェルとして開く（src/shared/sshCommand.ts） */
   private remote: SshTarget | null = null
@@ -586,6 +606,7 @@ export class TerminalManager {
       if (this.spare?.session === session) this.spare = null
       this.flush(session)
       this.sessions.delete(id)
+      this.hidden.delete(id)
       this.awaitingExit.delete(id)
       this.onSessionClosed?.(id)
       this.failover?.closed(id)
@@ -663,14 +684,40 @@ export class TerminalManager {
       const dropped = session.buffer.shift()
       session.bufferBytes -= dropped?.length ?? 0
     }
-    if (session.timer) return
-    session.timer = setTimeout(() => this.flush(session), FLUSH_INTERVAL_MS)
+    const delay = flushDelayMs(this.hidden.has(session.id), session.bufferBytes)
+    if (session.timer) {
+      // 裏のターミナルで 1 回分を超えてたまった。待たずに送る（古い出力を捨てない）
+      if (delay === FLUSH_INTERVAL_MS && session.timerDelay !== FLUSH_INTERVAL_MS) this.flush(session)
+      return
+    }
+    session.timerDelay = delay
+    session.timer = setTimeout(() => this.flush(session), delay)
+  }
+
+  /**
+   * 画面に出ているターミナル（renderer の terminal:visible）。それ以外の今あるターミナルは出力をゆっくりまとめる。
+   * 見えるようになったターミナルは、ためていた出力をすぐ送る（表示を切り替えた直後に古い画面を見せない）
+   */
+  setVisible(ids: readonly string[]): void {
+    const shown = new Set(ids)
+    const hidden = new Set<string>()
+    for (const session of this.sessions.values()) {
+      if (session.spare || shown.has(session.id)) continue
+      hidden.add(session.id)
+    }
+    const revealed = [...this.hidden].filter((id) => !hidden.has(id))
+    this.hidden = hidden
+    for (const id of revealed) {
+      const session = this.sessions.get(id)
+      if (session?.timer) this.flush(session)
+    }
   }
 
   private flush(session: Session): void {
     if (session.timer) {
       clearTimeout(session.timer)
       session.timer = null
+      session.timerDelay = undefined
     }
     if (session.buffer.length === 0) return
     let payload = session.buffer.join('')
@@ -681,6 +728,8 @@ export class TerminalManager {
       payload = payload.slice(0, MAX_CHUNK)
       session.buffer.push(rest)
       session.bufferBytes = rest.length
+      // 残りは見えているかに関わらず次のフレームで送る（ためたまま次の出力を待たない）
+      session.timerDelay = FLUSH_INTERVAL_MS
       session.timer = setTimeout(() => this.flush(session), FLUSH_INTERVAL_MS)
     }
     this.onData(session.id, payload)
@@ -705,6 +754,8 @@ export class TerminalManager {
 
   /** 画面を読み込み直した。前の画面に送った出力の ack は来ないので、数え直して全部再開する */
   resetFlow(): void {
+    // 前の画面が知らせた表示の状態も忘れる（新しい画面がつなぎ直してから知らせ直す）
+    this.hidden.clear()
     for (const session of this.sessions.values()) {
       session.unacked = 0
       if (session.paused) this.resumeFlow(session)
@@ -778,6 +829,14 @@ export class TerminalManager {
     if (!agent && foreground && session.info.agent && session.launchAgent !== 'ended') agent = session.info.agent
     const kind: AgentKind = agent === 'claude' ? 'claude-code' : agent === 'codex' ? 'codex' : agent ? 'generic' : 'unknown'
     return { kind, agent, state: kind === 'unknown' ? 'unknown' : detectState(kind, { title: session.title, tail: session.screen?.text ?? session.tail }) }
+  }
+
+  /**
+   * 複数のターミナルの状態をまとめて調べる（renderer の毎秒の問い合わせを1回の IPC に。terminal:agentStates）。
+   * ps の結果は processRows が使い回すので、タブの数だけ ps を起動しない。返す順は ids と同じ
+   */
+  async agentStates(ids: readonly string[]): Promise<Array<{ kind: AgentKind; state: string; agent: TuiAgent | null }>> {
+    return Promise.all(ids.map((id) => this.agentState(id)))
   }
 
   /** その Agent が動いている、同じプロジェクトのターミナル（待機中を先に）。無ければ null */
@@ -856,6 +915,7 @@ export class TerminalManager {
     if (!session) return
     this.flush(session)
     this.sessions.delete(id)
+    this.hidden.delete(id)
     // 閉じた時点で、このタブに渡した合言葉などを無効にする（SIGHUP を無視するシェルや残った子プロセスに使わせない）
     this.onSessionClosed?.(id)
     this.failover?.closed(id)

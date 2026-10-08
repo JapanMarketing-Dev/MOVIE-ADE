@@ -29,7 +29,7 @@ const FULL = {
   limitFailover: { enabled: true, thresholdPercent: 90, switchAccounts: true, agentOrder: ['claude', 'codex', 'gemini'], returnToPreferred: false },
   agentPrompt: 'Read {{path}}',
   orchestra: { shared: 'Security first', products: { p1: 'AWS tag team=shop' } },
-  agentRequests: { items: [{ id: 'security', schedule: 'weekly', batch: true }, { id: 'custom-1', title: 'Lint', text: 'Run the linter', custom: true }], lastRunAt: { security: '2026-10-01T00:00:00.000Z' } },
+  agentRequests: { items: [{ id: 'security', batch: true }, { id: 'sentry-setup', hidden: true }, { id: 'custom-1', title: 'Lint', text: 'Run the linter', custom: true }] },
   whisperModel: '/models/ggml-small.bin',
   capture: { captureMic: true, captureSystemAudio: false, transcription: 'compatible', language: 'en', keepDays: 7, stayFeedbackOnStop: true,
     sttEndpoints: { compatible: { baseUrl: 'http://localhost:8000/v1', model: 'whisper', apiKeyEnv: 'STT_KEY' } }, costLimitUsd: 2 },

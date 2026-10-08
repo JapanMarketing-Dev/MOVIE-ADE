@@ -185,6 +185,8 @@ export interface IpcRequests {
   'review:pendingAcross': () => Array<{ projectId: string; reviewId: string; count: number }>
   /** 全体のダッシュボード：プロジェクトごとの進み具合・コスト、人の確認リスト（human.md）。src/main/orchestraOverview.ts */
   'orchestra:overview': () => import('./agentCost').OrchestraOverview
+  /** 全体の human.md の確認リストだけ（フィードバックの帯。コストは数えない） */
+  'orchestra:checklist': () => import('./humanChecklist').ChecklistItem[]
   /** 全体（すべてのプロダクト）の共通のルールとプロダクトごとのルール */
   'settings:orchestra': (rules: import('./orchestrator').OrchestraRules) => void
 
@@ -252,8 +254,16 @@ export interface IpcRequests {
   'browserExtensions:menu': (at: { x: number; y: number }) => 'manage' | 'install' | null
   /** ほかのブラウザからの取り込み（パスワードの CSV・履歴）の件数（src/main/browserImport/） */
   'browserImport:status': () => BrowserImportStatus
-  /** パスワードの CSV を選んで取り込む（ダイアログは main が出す。パスは画面から受け取らない）。やめたら null */
-  'browserImport:importPasswords': () => { added: number; updated: number; skipped: number } | null
+  /**
+   * パスワードの CSV を取り込む。key が無ければダイアログで選ぶ（main が出す。パスは画面から受け取らない）、
+   * あれば直前の findExports で見つけたファイル。同じブラウザから前に取り込んだものは置き換える（同期）。やめたら null。
+   * file は取り込んだファイルの key（ごみ箱へ移すのに使う）
+   */
+  'browserImport:importPasswords': (key?: string) => { added: number; updated: number; removed: number; skipped: number; file: string } | null
+  /** ダウンロード・デスクトップにある、ここ 14 日のパスワードの書き出しの CSV（新しい順） */
+  'browserImport:findExports': () => import('./browserImport').PasswordExportFile[]
+  /** 取り込んだ（この起動で選んだ・見つけた）CSV をごみ箱へ移す。平文のパスワードを残さない */
+  'browserImport:trashExport': (key: string) => boolean
   'browserImport:clearPasswords': () => BrowserImportStatus
   /** 履歴を取り込める元（Chromium 系のプロフィール・Safari）。取り込みは key で選ぶ */
   'browserImport:historySources': () => HistorySourceInfo[]
@@ -289,6 +299,12 @@ export interface IpcRequests {
   'terminal:close': (id: string) => void
   'terminal:screen': (id: string, text: string) => void
   'terminal:agentState': (id: string) => { kind: string; state: string; agent?: TuiAgent | null }
+  /** 複数のターミナルの状態をまとめて調べる（ペインごとの毎秒の問い合わせを1回に）。返す順は ids と同じ */
+  'terminal:agentStates': (ids: string[]) => Array<{ kind: string; state: string; agent?: TuiAgent | null }>
+  /** 画面に出ているターミナル。それ以外は main が出力をゆっくりまとめて送る（src/main/terminal.ts の HIDDEN_FLUSH_INTERVAL_MS） */
+  'terminal:visible': (ids: string[]) => void
+  /** 閉じたとき作業の途中だった Agent に、入力欄が出たら続きから再開するよう頼む（戻したタブ。送ったら true） */
+  'terminal:continueWork': (id: string) => boolean
   /** シェルの今のカレント（分割したペインに引き継ぐ）。終了済みなら null */
   'terminal:cwd': (id: string) => string | null
   /** 開いているターミナルの一覧（画面を読み込み直したあと、つなぎ直す先を探す） */
@@ -541,6 +557,8 @@ export interface IpcEvents {
   'browser:notice': (message: string) => void
   /** 拡張機能の一覧・読み込みの結果が変わった */
   'browserExtensions:changed': (list: BrowserExtensionInfo[]) => void
+  /** 取り込んだパスワードが変わった（鍵のボタンを出し直す） */
+  'passwords:changed': () => void
   'mode:changed': (mode: AppMode) => void
   'terminal:data': (id: string, data: string) => void
   'terminal:exit': (id: string, exitCode: number) => void
@@ -685,6 +703,7 @@ export const IPC_REQUEST_CHANNELS = [
   'agentRequests:send',
   'review:pendingAcross',
   'orchestra:overview',
+  'orchestra:checklist',
   'settings:orchestra',
   'accounts:list',
   'accounts:add',
@@ -709,13 +728,13 @@ export const IPC_REQUEST_CHANNELS = [
   'browser:setViewport',
   'browser:state',
   'browserExtensions:list', 'browserExtensions:addFolder', 'browserExtensions:scanInstalled', 'browserExtensions:import', 'browserExtensions:setEnabled', 'browserExtensions:remove', 'browserExtensions:menu', 'browserExtensions:installFromStore', 'browserExtensions:addCrx',
-  'browserImport:status', 'browserImport:importPasswords', 'browserImport:clearPasswords', 'browserImport:historySources', 'browserImport:importHistory', 'browserImport:clearHistory', 'browserImport:suggest', 'passwords:forPage', 'passwords:fill', 'passwords:menu',
+  'browserImport:status', 'browserImport:importPasswords', 'browserImport:findExports', 'browserImport:trashExport', 'browserImport:clearPasswords', 'browserImport:historySources', 'browserImport:importHistory', 'browserImport:clearHistory', 'browserImport:suggest', 'passwords:forPage', 'passwords:fill', 'passwords:menu',
   'share:list', 'share:create', 'share:addPage', 'share:open', 'share:setStatus', 'share:import', 'share:delete',
   'terminal:create',
   'terminal:write',
   'terminal:resize',
   'terminal:close',
-  'terminal:screen', 'terminal:agentState', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:paste', 'terminal:writeClipboard', 'terminal:programCopy', 'terminal:ack', 'terminal:focused', 'terminal:restoreSave', 'terminal:restoreTake', 'terminal:closedPush', 'terminal:closedPop', 'terminal:restoreClear', 'review:send',
+  'terminal:screen', 'terminal:agentState', 'terminal:agentStates', 'terminal:visible', 'terminal:continueWork', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:paste', 'terminal:writeClipboard', 'terminal:programCopy', 'terminal:ack', 'terminal:focused', 'terminal:restoreSave', 'terminal:restoreTake', 'terminal:closedPush', 'terminal:closedPop', 'terminal:restoreClear', 'review:send',
   'settings:splitRatio',
   'settings:layout',
   'settings:theme',
@@ -747,6 +766,7 @@ export const IPC_EVENT_CHANNELS = [
   'browser:stateChanged',
   'browser:notice',
   'browserExtensions:changed',
+  'passwords:changed',
   'mode:changed',
   'terminal:data',
   'terminal:exit',

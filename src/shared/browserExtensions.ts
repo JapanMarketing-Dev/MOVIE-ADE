@@ -11,6 +11,11 @@ export interface BrowserExtensionEntry {
   /** 展開済みの拡張のフォルダ（manifest.json がある場所）の絶対パス */
   path: string
   enabled?: boolean
+  /**
+   * 読み込み直しの合図。値が変わると、そのフォルダから拡張を読み込み直す（拡張を作っているプロジェクトで、直したら最新にする）。
+   * Agent が settings.json のこの値を今の時刻などに変えるだけで、ターミナルから更新できる（ferret-settings skill）
+   */
+  reload?: number
 }
 
 /** 画面に出す1件の状態（main が読み込みの結果を足したもの） */
@@ -65,7 +70,8 @@ export function sanitizeBrowserExtensions(raw: unknown): BrowserExtensionEntry[]
     const path = typeof r?.path === 'string' ? r.path.trim() : ''
     if (!path || path.length > 1000 || !isAbsolutePath(path) || path.includes('\0') || seen.has(path)) continue
     seen.add(path)
-    out.push(r?.enabled === false ? { path, enabled: false } : { path })
+    const reload = typeof r?.reload === 'number' && Number.isSafeInteger(r.reload) && r.reload >= 0 ? r.reload : undefined
+    out.push({ path, ...(r?.enabled === false ? { enabled: false } : {}), ...(reload !== undefined ? { reload } : {}) })
   }
   return out.length ? out : undefined
 }

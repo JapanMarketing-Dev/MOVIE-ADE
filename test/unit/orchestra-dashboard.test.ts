@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { parseHumanChecklist, uniqueByUrl } from '../../src/shared/humanChecklist'
-import { EMPTY_TOTALS, addTranscriptLine, formatUsd, priceFor, transcriptDirName } from '../../src/shared/agentCost'
+import { EMPTY_PERIODS, EMPTY_TOTALS, addTranscriptLine, addTranscriptLineByPeriod, formatUsd, periodStarts, priceFor, sumTotals, transcriptDirName } from '../../src/shared/agentCost'
 import { projectCost, readChecklist } from '../../src/main/orchestraOverview'
 
 const HUMAN = `# 人が確かめること
@@ -61,18 +61,42 @@ describe('コストの概算', () => {
     expect(transcriptDirName('/Users/taro/my.app')).toBe('-Users-taro-my-app')
   })
 
-  it('そのフォルダの直近の記録を数える。古い記録は数えない', async () => {
+  it('今月・今年・総額に分け、モデル別・種類別の内訳も数える', () => {
+    const now = new Date(2026, 9, 8, 12).getTime()
+    const starts = periodStarts(now)
+    expect(starts).toEqual({ month: new Date(2026, 9, 1).getTime(), year: new Date(2026, 0, 1).getTime() })
+    const line = (model: string, at: string | null, input: number, output: number, cacheRead = 0) =>
+      JSON.stringify({ ...(at ? { timestamp: at } : {}), message: { model, usage: { input_tokens: input, output_tokens: output, cache_read_input_tokens: cacheRead } } })
+    let p = EMPTY_PERIODS
+    p = addTranscriptLineByPeriod(p, line('claude-haiku-4-5', new Date(2026, 9, 3).toISOString(), 1_000_000, 0), now, starts) // 今月 $1
+    p = addTranscriptLineByPeriod(p, line('claude-sonnet-5-5', new Date(2026, 2, 3).toISOString(), 0, 1_000_000), now, starts) // 今年 $15
+    p = addTranscriptLineByPeriod(p, line('claude-opus-5-5', new Date(2025, 11, 31).toISOString(), 0, 0, 1_000_000), now, starts) // 去年 $1.5
+    p = addTranscriptLineByPeriod(p, line('<script>', null, 1_000_000, 0), new Date(2026, 9, 5).getTime(), starts) // 時刻なし → ファイルの時刻（今月）$3
+    expect(p.month.usd).toBeCloseTo(4, 5)
+    expect(p.year.usd).toBeCloseTo(19, 5)
+    expect(p.total.usd).toBeCloseTo(20.5, 5)
+    expect(Object.keys(p.total.models).sort()).toEqual(['claude-haiku-4-5', 'claude-opus-5-5', 'claude-sonnet-5-5', 'other'])
+    expect(p.total.usdBy.cacheRead).toBeCloseTo(1.5, 5)
+    expect(p.total.usdBy.output).toBeCloseTo(15, 5)
+    expect(p.month.models['claude-sonnet-5-5']).toBeUndefined()
+    const both = sumTotals([p.month, p.month])
+    expect(both.usd).toBeCloseTo(8, 5)
+    expect(both.models['claude-haiku-4-5']).toBeCloseTo(2, 5)
+  })
+
+  it('そのフォルダの記録を新しいものから数える。無いフォルダは 0', async () => {
     const home = await mkdtemp(join(tmpdir(), 'ferret-cost-'))
     try {
       const folder = join(home, 'shop')
       await mkdir(folder)
       const dir = join(home, 'config', 'projects', transcriptDirName(folder))
       await mkdir(dir, { recursive: true })
-      await writeFile(join(dir, 'a.jsonl'), `${JSON.stringify({ message: { model: 'claude-haiku-4-5', usage: { input_tokens: 1_000_000, output_tokens: 200_000 } } })}\n`)
-      const totals = await projectCost(folder, [join(home, 'config')])
-      expect(totals.input).toBe(1_000_000)
-      expect(totals.usd).toBeCloseTo(2, 5)
-      expect((await projectCost(join(home, 'none'), [join(home, 'config')], Date.now() + 1)).usd).toBe(0)
+      await writeFile(join(dir, 'a.jsonl'), `${JSON.stringify({ timestamp: new Date().toISOString(), message: { model: 'claude-haiku-4-5', usage: { input_tokens: 1_000_000, output_tokens: 200_000 } } })}\n`)
+      const periods = await projectCost(folder, [join(home, 'config')])
+      expect(periods.total.input).toBe(1_000_000)
+      expect(periods.month.usd).toBeCloseTo(2, 5)
+      expect(periods.year.usd).toBeCloseTo(2, 5)
+      expect((await projectCost(join(home, 'none'), [join(home, 'config')], Date.now() + 1)).total.usd).toBe(0)
     } finally {
       await rm(home, { recursive: true, force: true })
     }
@@ -100,7 +124,7 @@ describe('全体のフィードバックの帯（OrchestraDock）', () => {
     expect(block('.shell')).toContain('grid-template-columns: minmax(0, 1fr)')
     expect(block('.round-dock')).toContain('min-width: 0')
     expect(block('.orchestra-dock')).toContain('min-width: 0')
-    expect(block('.orchestra-dock__chips')).toMatch(/min-width: 0[\s\S]*overflow-x: auto/)
+    expect(css).toMatch(/\.orchestra-dock__groups,\n\.orchestra-dock__items \{[^}]*min-width: 0[^}]*overflow-x: auto/)
   })
 })
 

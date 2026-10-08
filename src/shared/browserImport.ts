@@ -20,6 +20,18 @@ export interface ImportedLogin {
 export interface SavedLoginAccount {
   id: string
   username: string
+  /** 同じサイトの別のサブドメインで保存したもの（login.example.com で保存し example.com で使うなど）。そのホスト名。同じオリジンなら無い */
+  site?: string
+}
+
+/** 書き出した CSV の元のブラウザ（見出しの形で見分ける）。取り込み直すと、同じ元から前に取り込んだものを置き換える */
+export type PasswordCsvSource = 'chromium' | 'safari' | 'firefox' | 'other'
+
+/** ダウンロード・デスクトップで見つけた、パスワードの書き出しの CSV（画面へは key だけを返してもらう） */
+export interface PasswordExportFile {
+  key: string
+  name: string
+  modifiedAt: number
 }
 
 /** いま内蔵ブラウザで開いているページに使える資格情報 */
@@ -148,10 +160,14 @@ export function loginOrigin(url: string): string | null {
  * http / https でない行（android:// など）・パスワードが空の行・長すぎる行は飛ばして数える。
  * 同じオリジン＋ユーザー名は後の行で上書きする
  */
-export function parsePasswordCsv(text: string): { logins: ImportedLogin[]; skipped: number } | null {
+export function parsePasswordCsv(text: string): { logins: ImportedLogin[]; skipped: number; source: PasswordCsvSource } | null {
   const rows = parseCsv(text)
   const header = rows[0]?.map((cell) => cell.trim().toLowerCase())
   if (!header) return null
+  const source: PasswordCsvSource = header.includes('httprealm') || header.includes('formactionorigin') ? 'firefox'
+    : header.includes('otpauth') || (header.includes('title') && header.includes('notes')) ? 'safari'
+      : header.includes('name') && header.includes('note') ? 'chromium'
+        : 'other'
   const column = (names: readonly string[]) => header.findIndex((name) => names.includes(name))
   const urlAt = column(HEADER_ALIASES.url)
   const usernameAt = column(HEADER_ALIASES.username)
@@ -175,7 +191,7 @@ export function parsePasswordCsv(text: string): { logins: ImportedLogin[]; skipp
     byKey.delete(key)
     byKey.set(key, { origin, username, password })
   }
-  return { logins: [...byKey.values()], skipped }
+  return { logins: [...byKey.values()], skipped, source }
 }
 
 /** 先頭の www. だけを外す（www の有無は同じサイトとみなす） */
@@ -200,6 +216,57 @@ export function originMatches(savedOrigin: string, pageUrl: string): boolean {
   }
   if (saved.protocol !== current.protocol || saved.port !== current.port) return false
   return saved.hostname === current.hostname || withoutWww(saved.hostname) === withoutWww(current.hostname)
+}
+
+/**
+ * 2段の公開ドメイン（co.jp・com.au など）。ここに無いものは最後の2つのラベルをサイトとする（Chrome の公開サフィックスの近似）
+ */
+const SECOND_LEVEL = /^(?:co|ne|or|ac|go|ed|gr|lg|ad|com|net|org|gov|edu|ac|mil)\.[a-z]{2}$/
+/**
+ * 誰でもサブドメインを作れる共有の置き場。ここでは別のサブドメインを同じサイトとみなさない（他人のページに出さない）
+ */
+const SHARED_HOSTS = /(?:^|\.)(?:github\.io|gitlab\.io|vercel\.app|netlify\.app|pages\.dev|workers\.dev|herokuapp\.com|web\.app|firebaseapp\.com|cloudfront\.net|amazonaws\.com|azurewebsites\.net|appspot\.com|onrender\.com|fly\.dev|ngrok\.io|ngrok-free\.app|blogspot\.com|wordpress\.com|myshopify\.com|glitch\.me|repl\.co|run\.app|trycloudflare\.com)$/
+
+/** ホスト名のサイト（example.com・example.co.jp）。IP・localhost・共有の置き場・ラベルが1つなら null */
+export function siteOf(hostname: string): string | null {
+  const host = hostname.toLowerCase().replace(/\.$/, '')
+  if (!host.includes('.') || /^[\d.]+$/.test(host) || host.includes(':') || host === 'localhost' || host.endsWith('.localhost') || SHARED_HOSTS.test(host)) return null
+  const labels = host.split('.')
+  const lastTwo = labels.slice(-2).join('.')
+  const take = SECOND_LEVEL.test(lastTwo) ? 3 : 2
+  return labels.length >= take ? labels.slice(-take).join('.') : null
+}
+
+/**
+ * 保存した資格情報をそのページに使えるか。
+ * - exact: 同じオリジン（www の有無は同じ）。http で保存したものを同じホストの https のページで使うのも exact（Chrome と同じ格上げ）
+ * - site: 同じサイトの別のサブドメイン（Chrome の公開サフィックスでの照合と同じく、利用者が選んだときだけ入れる）。
+ *   スキームは同じか http→https。ポートは同じ。共有の置き場（github.io など）は使わない
+ * 使えなければ null
+ */
+export function loginMatch(savedOrigin: string, pageUrl: string): 'exact' | 'site' | null {
+  if (originMatches(savedOrigin, pageUrl)) return 'exact'
+  const page = loginOrigin(pageUrl)
+  if (!page || !/^https?:\/\//.test(pageUrl.trim())) return null
+  let saved: URL
+  let current: URL
+  try {
+    saved = new URL(savedOrigin)
+    current = new URL(page)
+  } catch {
+    return null
+  }
+  const upgrade = saved.protocol === 'http:' && current.protocol === 'https:' && !saved.port && !current.port
+  if (saved.protocol !== current.protocol && !upgrade) return null
+  if (!upgrade && saved.port !== current.port) return null
+  if (withoutWww(saved.hostname) === withoutWww(current.hostname)) return upgrade ? 'exact' : null
+  const site = siteOf(saved.hostname)
+  return site && site === siteOf(current.hostname) ? 'site' : null
+}
+
+/** パスワードの書き出しらしいファイル名（Chrome・Edge・Brave・Safari・Firefox の既定の名前と、各言語の「パスワード」） */
+export function isPasswordExportName(name: string): boolean {
+  return /\.csv$/i.test(name) && /(passwords?|パスワード|密码|密碼|비밀번호|contraseñas|mots de passe|passwörter|kennwörter|senhas|password|пароли|mật khẩu|kata sandi|पासवर्ड|logins)/i.test(name)
 }
 
 /** Chromium の時刻（1601-01-01 からのミリ秒。SQL でマイクロ秒を 1000 で割ったもの）を UNIX 時刻のミリ秒へ */

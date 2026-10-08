@@ -1,15 +1,14 @@
 import type { Project } from './types'
 
 /**
- * プロダクトの巡回（オーケストラ）。複数のプロダクトを1人で順に見て回り、終わったプロダクトから Agent に渡す。
- * - 録画の巡回（record）: プロダクトごとに確認先を開き、声とペンで録る。止めるとそのレビューを Agent に渡して次のプロダクトへ
- * - 確認の巡回（confirm）: 全プロダクトの確認待ち（before / after）を、プロダクトごとに順に確かめる。そのレビューの確認待ちが
- *   無くなったら次へ
- * 渡したプロダクトの Agent はその間に並行して直す（全体の Agent が各プロダクトの subagent に任せる）。
+ * 確認の巡回（オーケストラ）。全プロダクトの確認待ち（before / after）を、プロダクトごとに順に確かめる。
+ * 人が「次へ」を押したときだけ進む（自動では進まない）。
+ * 録画の巡回（止めるたびに次のプロダクトへ進む形）は 0.6.5 で無くした。録画は全体のフィードバックの画面で1回のまま、
+ * 帯のタブでプロダクトを切り替えると、その間の指摘の宛先も切り替わる（@shared/productSplit）。
  * 画面に依存しない純粋な処理だけを置く（進めるのは src/renderer/hooks/useProductRound.ts）。
  */
 
-export type RoundKind = 'record' | 'confirm'
+export type RoundKind = 'confirm'
 
 export interface RoundStep {
   projectId: string
@@ -21,18 +20,12 @@ export interface ProductRound {
   kind: RoundKind
   steps: RoundStep[]
   index: number
-  /** 録画の巡回で Agent に渡したレビューの数 */
   sent: number
 }
 
-/** 巡回に入れるプロダクト（全体・以前のオーケストレーター・オーケストラの対象外・SSH は除く）。並びはサイドバーの順 */
+/** オーケストラのプロダクト（全体・以前のオーケストレーター・オーケストラの対象外・SSH は除く）。並びはサイドバーの順 */
 export function roundProducts(projects: readonly Project[]): Project[] {
   return projects.filter((p) => !p.editorWorkspace && !p.orchestrator && !p.orchestraExcluded && p.source !== 'ssh')
-}
-
-export function recordRound(projects: readonly Project[], only?: readonly string[]): ProductRound | null {
-  const steps = roundProducts(projects).filter((p) => !only || only.includes(p.id)).map((p) => ({ projectId: p.id }))
-  return steps.length ? { kind: 'record', steps, index: 0, sent: 0 } : null
 }
 
 export interface PendingReview {
@@ -64,10 +57,4 @@ export function currentStep(round: ProductRound | null): RoundStep | null {
 export function nextRound(round: ProductRound, sentNow = false): ProductRound | null {
   const sent = round.sent + (sentNow ? 1 : 0)
   return round.index + 1 < round.steps.length ? { ...round, index: round.index + 1, sent } : null
-}
-
-/** 確認の巡回で、開いているレビューの確認待ちが無くなったか */
-export function confirmStepDone(progress: Record<string, { status?: string } | string | undefined> | undefined, includedIds: readonly string[]): boolean {
-  const statusOf = (v: { status?: string } | string | undefined) => (typeof v === 'string' ? v : v?.status)
-  return !includedIds.some((id) => statusOf(progress?.[id]) === 'human_review')
 }

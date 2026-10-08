@@ -1,31 +1,37 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ExternalLink, ListChecks, Play, RefreshCw, Repeat, ShieldCheck } from 'lucide-react'
+import { ExternalLink, FileText, ListChecks, Play, RefreshCw, ShieldCheck, Video } from 'lucide-react'
 import type { Project } from '@shared/types'
-import { formatUsd, type OrchestraOverview } from '@shared/agentCost'
+import { formatUsd, type CostPeriod, type OrchestraOverview } from '@shared/agentCost'
+import { pageItems } from '@shared/humanChecklist'
 import { CODEX_AUDIT_PRESET } from '@shared/codexAudit'
 import { requestAgentLaunch } from '../lib/agentLaunchRequest'
 import { errorMessage } from '../lib/errors'
 import { useT } from '../lib/i18n'
 import { useProjectActivity } from '../terminal/agentActivity'
 import { Button, useToast } from '../ui'
+import { AgentRequestsSection } from './AgentRequestsSection'
 import { OrchestraComposer } from './OrchestraComposer'
-import { OrchestraRequestPicker } from './OrchestraRequestPicker'
+import { OrchestraCost, periodUsd } from './OrchestraCost'
 
 /**
  * 全体（すべてのプロダクト）のダッシュボード。オーケストラ全体を見て、まとめて指示する。
- * - 上：全体の数字（対象のプロダクト・未対応・確認待ち・概算のコスト）と、全体への指示の欄・用意した依頼（人から学ぶ・dream・定期実行など）を選んで送る欄
- * - 人の確認リスト（全体の Agent が human.md に書いたもの）。開くとフィードバックの画面でそのページを開く。
- *   録画を止めずに次のページへ移れるので、1回のフィードバックで全部のプロダクトを確かめられる
- * - プロジェクトの表：オーケストラの対象・対象外、Agent の動き、未対応・確認待ち、コスト
+ * - 一番上：人が確認すべきこと（全体の Agent が human.md に書いたもの。URL の無い承認・用意・決めることも）。
+ *   「Agent に書き出してもらう」で全プロダクトから集めて human.md に書く依頼を送る。開くとフィードバックの画面でそのページを開く
+ * - 全体の数字（対象のプロダクト・未対応・確認待ち・今月のコスト）と、全体への指示の欄
+ * - 全プロダクトを1回の録画でフィードバック（帯のタブでプロダクトを切り替えると、指摘の宛先も切り替わる）・確認の巡回・Codex の監査
+ * - Agent への依頼（雛形を選んで送る・まとめて送る・1回きりのものは隠す）
+ * - プロジェクトの表：オーケストラの対象・対象外、Agent の動き、未対応・確認待ち、コスト（インフラなどを含む）
  */
-export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onReviewChecklist, onStartRound }: {
+export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onReviewChecklist, onRecordAll, onStartRound }: {
   projects: readonly Project[]
   onOpenProject: (projectId: string) => void
   /** フィードバックの画面でそのページを開く（録画中なら録画を止めずに移る） */
   onOpenUrl: (url: string) => void
   /** 確認リストを上から順に開きながら、1回の録画でフィードバックする */
   onReviewChecklist: (urls: string[]) => void
-  onStartRound: (kind: 'record' | 'confirm') => void
+  /** 全体のフィードバックの画面で録画を始める（1回の録画で全プロダクト） */
+  onRecordAll: () => void
+  onStartRound: (kind: 'confirm') => void
 }) {
   const t = useT()
   const toast = useToast()
@@ -42,7 +48,7 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
   }, [toast])
   useEffect(() => { load() }, [load, projects])
   useEffect(() => {
-    const timer = setInterval(load, 60_000)
+    const timer = setInterval(load, 30_000)
     return () => clearInterval(timer)
   }, [load])
 
@@ -55,8 +61,20 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
 
   const rows = overview?.projects ?? []
   const included = rows.filter((r) => r.included)
-  const totalCost = (overview?.orchestraCost.usd ?? 0) + rows.reduce((n, r) => n + r.cost.usd, 0)
+  const monthCost = periodUsd(overview, 'month')
   const checklist = overview?.checklist ?? []
+  const pages = pageItems(checklist)
+  const rowUsd = (r: (typeof rows)[number], p: CostPeriod) => r.cost[p].usd + r.extra[p].usd
+  const [asking, setAsking] = useState(false)
+  /** 人が確認すべきことを全プロダクトから集めて human.md に書く依頼（@shared/agentRequests の human-checklist）を送る */
+  const askChecklist = () => {
+    if (asking) return
+    setAsking(true)
+    void window.ade.invoke('agentRequests:send', ['human-checklist'])
+      .then((result) => toast({ tone: result.ok ? 'success' : 'warning', message: result.ok ? t('orchestra.checklistAsked') : result.message }))
+      .catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
+      .finally(() => setAsking(false))
+  }
 
   return <div className="orchestra" data-testid="orchestra-dashboard">
     <header className="orchestra__head">
@@ -64,42 +82,50 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
       <Button variant="ghost" icon={<RefreshCw size={13} />} disabled={loading} onClick={load} data-testid="orchestra-reload">{t('common.reload')}</Button>
     </header>
 
-    <div className="orchestra__stats">
-      <Stat label={t('orchestra.statProducts')} value={`${included.length}/${rows.length}`} testId="orchestra-stat-products" />
-      <Stat label={t('orchestra.statOpen')} value={String(included.reduce((n, r) => n + r.open, 0))} testId="orchestra-stat-open" />
-      <Stat label={t('orchestra.statPending')} value={String(included.reduce((n, r) => n + r.pending, 0))} testId="orchestra-stat-pending" />
-      <Stat label={t('orchestra.statCost', { days: overview?.costDays ?? 30 })} value={formatUsd(totalCost)} testId="orchestra-stat-cost" />
-    </div>
-
-    <OrchestraComposer />
-    <div className="orchestra__actions">
-      <Button icon={<Repeat size={13} />} onClick={() => onStartRound('record')} data-testid="orchestra-round-record">{t('round.startRecord')}</Button>
-      <Button icon={<ListChecks size={13} />} onClick={() => onStartRound('confirm')} data-testid="orchestra-round-confirm">{t('round.startConfirm')}</Button>
-      <Button icon={<ShieldCheck size={13} />} title={t('orchestra.codexAuditHint')} onClick={() => requestAgentLaunch('codex', CODEX_AUDIT_PRESET)} data-testid="orchestra-codex-audit">{t('orchestra.codexAudit')}</Button>
-      <OrchestraRequestPicker />
-    </div>
-
     <section className="orchestra__section" data-testid="orchestra-checklist">
       <div className="orchestra__section-head">
         <h3>{t('orchestra.checklistTitle')}</h3>
-        {checklist.length > 0 && <Button variant="primary" icon={<Play size={13} />} onClick={() => onReviewChecklist(checklist.map((c) => c.url))} data-testid="orchestra-checklist-review">{t('orchestra.checklistReview', { count: checklist.length })}</Button>}
+        <div className="orchestra__section-actions">
+          <Button icon={<FileText size={13} />} disabled={asking} title={t('orchestra.checklistAskHint')} onClick={askChecklist} data-testid="orchestra-checklist-ask">{t('orchestra.checklistAsk')}</Button>
+          {pages.length > 0 && <Button variant="primary" icon={<Play size={13} />} onClick={() => onReviewChecklist(pages.map((c) => c.url))} data-testid="orchestra-checklist-review">{t('orchestra.checklistReview', { count: pages.length })}</Button>}
+        </div>
       </div>
       {checklist.length === 0
         ? <p className="st-note">{t('orchestra.checklistEmpty')}</p>
         : <table className="orchestra__table">
           <tbody>
-            {checklist.map((item) => <tr key={item.url} data-testid={`orchestra-check-${item.key}`}>
+            {checklist.map((item, i) => <tr key={`${item.key}-${i}`} data-testid={`orchestra-check-${item.key}`}>
               <td className="orchestra__key">{item.key}</td>
               <td>{item.label}</td>
               <td className="orchestra__note">{item.note}</td>
               <td className="orchestra__cell-actions">
-                <button type="button" className="st-link" title={item.url} onClick={() => onOpenUrl(item.url)} data-testid={`orchestra-check-open-${item.key}`}>
+                {item.url && <button type="button" className="st-link" title={item.url} onClick={() => onOpenUrl(item.url)} data-testid={`orchestra-check-open-${item.key}`}>
                   {t('orchestra.open')}<ExternalLink size={11} aria-hidden="true" />
-                </button>
+                </button>}
               </td>
             </tr>)}
           </tbody>
         </table>}
+    </section>
+
+
+    <div className="orchestra__stats">
+      <Stat label={t('orchestra.statProducts')} value={`${included.length}/${rows.length}`} testId="orchestra-stat-products" />
+      <Stat label={t('orchestra.statOpen')} value={String(included.reduce((n, r) => n + r.open, 0))} testId="orchestra-stat-open" />
+      <Stat label={t('orchestra.statPending')} value={String(included.reduce((n, r) => n + r.pending, 0))} testId="orchestra-stat-pending" />
+      <Stat label={t('orchestra.statCostMonth')} value={formatUsd(monthCost)} testId="orchestra-stat-cost" />
+    </div>
+
+    <OrchestraComposer />
+    <div className="orchestra__actions">
+      <Button icon={<Video size={13} />} title={t('orchestra.recordAllHint')} onClick={onRecordAll} data-testid="orchestra-record-all">{t('orchestra.recordAll')}</Button>
+      <Button icon={<ListChecks size={13} />} onClick={() => onStartRound('confirm')} data-testid="orchestra-round-confirm">{t('round.startConfirm')}</Button>
+      <Button icon={<ShieldCheck size={13} />} title={t('orchestra.codexAuditHint')} onClick={() => requestAgentLaunch('codex', CODEX_AUDIT_PRESET)} data-testid="orchestra-codex-audit">{t('orchestra.codexAudit')}</Button>
+    </div>
+
+    <section className="orchestra__section" data-testid="orchestra-requests">
+      <h3>{t('orchestra.requestsTitle')}</h3>
+      <AgentRequestsSection />
     </section>
 
     <section className="orchestra__section" data-testid="orchestra-projects">
@@ -112,7 +138,9 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
             <th>{t('orchestra.colAgent')}</th>
             <th>{t('orchestra.colOpen')}</th>
             <th>{t('orchestra.colPending')}</th>
-            <th>{t('orchestra.colCost')}</th>
+            <th>{t('orchestra.costMonth')}</th>
+            <th>{t('orchestra.costYear')}</th>
+            <th>{t('orchestra.costTotal')}</th>
             <th />
           </tr>
         </thead>
@@ -125,14 +153,17 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
               <td><span className={`orchestra__state orchestra__state--${state ?? 'idle'}`}>{t(state === 'working' ? 'orchestra.stateWorking' : state === 'blocked' ? 'orchestra.stateBlocked' : 'orchestra.stateIdle')}</span></td>
               <td>{r.open}</td>
               <td>{r.pending}</td>
-              <td title={`${r.cost.input + r.cost.cacheRead + r.cost.cacheWrite} in / ${r.cost.output} out`}>{formatUsd(r.cost.usd)}</td>
+              <td>{formatUsd(rowUsd(r, 'month'))}</td>
+              <td>{formatUsd(rowUsd(r, 'year'))}</td>
+              <td>{formatUsd(rowUsd(r, 'total'))}</td>
               <td className="orchestra__cell-actions"><button type="button" className="st-link" onClick={() => onOpenProject(r.id)} data-testid={`orchestra-open-${r.id}`}>{t('orchestra.openProject')}</button></td>
             </tr>
           })}
         </tbody>
       </table>}
-      <p className="st-note">{t('orchestra.costNote')}</p>
     </section>
+
+    <OrchestraCost overview={overview} />
   </div>
 }
 

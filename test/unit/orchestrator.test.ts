@@ -203,6 +203,24 @@ describe('フォルダに書く', () => {
     }
   })
 
+  it('同じフォルダへ同時に何回呼んでも、一時ファイルがぶつからず全部終わる（Sentry FERRET-1T: EEXIST）', async () => {
+    const outside = await mkdtemp(join(tmpdir(), 'ferret-orch-member-'))
+    try {
+      const registered = [{ id: 'm1', folderPath: outside, name: 'abm-targeting' }]
+      // プロジェクトを消す・開くと「すべてのプロダクト」の合わせが同じミリ秒に重なる
+      const results = await Promise.all(Array.from({ length: 6 }, () => syncOrchestrator(root, registered, true, ['m1'], 'ja')))
+      expect(results.map((r) => r.children.length)).toEqual([3, 3, 3, 3, 3, 3])
+      expect(JSON.parse(await readFile(join(root, '.claude', 'settings.local.json'), 'utf8')).permissions.additionalDirectories).toEqual([outside])
+      // 一時ファイルは残らない
+      const left = [...await readdir(root), ...await readdir(join(root, '.claude')), ...await readdir(join(root, '.claude', 'agents'))]
+      expect(left.filter((n) => n.endsWith('.tmp'))).toEqual([])
+      // 1つが失敗しても、続く呼び出しは動く
+      await expect(Promise.all([syncOrchestrator(join(root, 'missing'), []), syncOrchestrator(root, registered, true, ['m1'], 'ja')].map((p) => p.then(() => 'ok', () => 'failed')))).resolves.toEqual(['failed', 'ok'])
+    } finally {
+      await rm(outside, { recursive: true, force: true })
+    }
+  })
+
   it('利用者が同じ名前で置いたファイルは上書きしない', async () => {
     const dir = join(root, '.claude', 'agents')
     await mkdir(dir, { recursive: true })

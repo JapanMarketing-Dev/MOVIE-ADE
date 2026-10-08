@@ -13,8 +13,6 @@ export const SETTINGS_SECTIONS = [
   // よく使う・大事なもの（Agent と判定モデル）を一般のすぐ下に置く
   'agents',
   'verify',
-  // Agent への依頼文（dream・コンパクト・セキュリティ・SEO・分析・Sentry など）
-  'requests',
   // 全体（すべてのプロダクト）の共通のルールとプロダクトごとのルール
   'orchestra',
   'recording',
@@ -52,8 +50,6 @@ const SECTION_KEYWORDS: Record<SettingsSectionId, readonly string[]> = {
     '判定', '検証', '完了', 'キー'],
   orchestra: ['orchestra', 'orchestrator', 'all products', 'shared rules', 'per-product', 'infrastructure', 'tags', 'instances', 'common',
     'オーケストラ', '全体', '共通', '個別', 'ルール', 'インフラ', 'タグ', 'インスタンス', 'プロダクト'],
-  requests: ['request', 'prompt', 'dream', 'memory', 'compact', 'security', 'seo', 'analytics', 'sentry', 'crash', 'performance', 'accessibility', 'dependencies', 'schedule',
-    '依頼', 'プロンプト', '記憶', 'コンパクト', 'セキュリティ', '分析', 'クラッシュ', '性能', 'アクセシビリティ', '依存', '定期'],
   agents: ['agent', 'claude', 'codex', 'gemini', 'opencode', 'cursor', 'copilot', 'aider', 'grok', 'qwen', 'amp', 'custom', 'install',
     'command', 'args', 'arguments', 'prompt', 'instruction', 'startup', 'エージェント', 'カスタム', 'インストール', 'コマンド', '引数', '指示', 'プロンプト', '起動'],
   accounts: ['account', 'login', 'sign in', 'usage', 'manage', 'limit', 'failover', 'switch', 'アカウント', 'ログイン', '使用量', '管理', '上限', '切り替え'],

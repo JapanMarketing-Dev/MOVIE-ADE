@@ -2,6 +2,8 @@
  * ほかのブラウザから取り込んだパスワードの保管と、内蔵ブラウザのログインの欄への入力。
  *
  * - 取り込みの元は、利用者がブラウザの公式の機能で書き出した CSV だけ（src/shared/browserImport.ts の parsePasswordCsv）
+ * - 同期：同じブラウザ（CSV の見出しの形で見分ける）から取り込み直すと、前にそのブラウザから取り込んだものをその CSV の中身に置き換える
+ *   （ブラウザで消したものは消え、変えたものは新しくなる。別のブラウザから取り込んだものは残す）
  * - 保存は OS の鍵の仕組み（safeStorage）で暗号化した userData/browser-import/passwords.bin。
  *   暗号化できない環境・dev 起動・E2E では保存せず、その起動の間だけ持つ（文字起こしのキーと同じ。pipeline/stt/keys.ts の chooseKeyCipher）
  * - 復号は最初に要るとき（ページの照合・件数の表示）に1回だけ。以後はメモリに持つ
@@ -14,12 +16,16 @@ import { existsSync } from 'node:fs'
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { WebContents } from 'electron'
-import { loginOrigin, originMatches, type ImportedLogin, type SavedLoginAccount } from '@shared/browserImport'
+import { loginMatch, loginOrigin, type ImportedLogin, type PasswordCsvSource, type SavedLoginAccount } from '@shared/browserImport'
 import type { KeyCipher } from '../pipeline/stt/keys'
 
 interface StoredLogin extends ImportedLogin {
   id: string
+  /** 取り込んだ元のブラウザ（同期で置き換える範囲）。0.6.5 より前に取り込んだものには無い */
+  source?: PasswordCsvSource
 }
+
+const SOURCES: readonly PasswordCsvSource[] = ['chromium', 'safari', 'firefox', 'other']
 
 /** 保存するファイルの形（暗号化する前の JSON） */
 interface StoredFile {
@@ -32,30 +38,37 @@ export function sanitizeStoredLogins(raw: unknown): StoredLogin[] {
   const list: unknown = (raw as Partial<StoredFile> | null)?.logins
   if (!Array.isArray(list)) return []
   return list.flatMap((item: unknown) => {
-    const { id, origin, username, password } = (item ?? {}) as Record<string, unknown>
+    const { id, origin, username, password, source } = (item ?? {}) as Record<string, unknown>
     if (typeof id !== 'string' || typeof origin !== 'string' || typeof username !== 'string' || typeof password !== 'string') return []
     if (!password || loginOrigin(origin) !== origin) return []
-    return [{ id, origin, username, password }]
+    return [{ id, origin, username, password, ...(SOURCES.includes(source as PasswordCsvSource) ? { source: source as PasswordCsvSource } : {}) }]
   })
 }
 
-/** 取り込んだ分を足す。同じオリジン＋ユーザー名は新しいパスワードで置き換える（id はそのまま） */
-export function mergeLogins(existing: readonly StoredLogin[], incoming: readonly ImportedLogin[], newId: () => string = randomUUID): { logins: StoredLogin[]; added: number; updated: number } {
-  const byKey = new Map(existing.map((login) => [`${login.origin}\n${login.username}`, login]))
+/**
+ * 取り込んだ分を足す。同じオリジン＋ユーザー名は新しいパスワードで置き換える（id はそのまま）。
+ * source を渡すと同期：前にその元から取り込んだもののうち、今回の CSV に無いものを消す（removed）
+ */
+export function mergeLogins(existing: readonly StoredLogin[], incoming: readonly ImportedLogin[], newId: () => string = randomUUID, source?: PasswordCsvSource): { logins: StoredLogin[]; added: number; updated: number; removed: number } {
+  const keyOf = (login: ImportedLogin) => `${login.origin}\n${login.username}`
+  const incomingKeys = new Set(incoming.map(keyOf))
+  const kept = source ? existing.filter((login) => login.source !== source || incomingKeys.has(keyOf(login))) : existing
+  const removed = existing.length - kept.length
+  const byKey = new Map(kept.map((login) => [keyOf(login), login]))
   let added = 0
   let updated = 0
   for (const login of incoming) {
-    const key = `${login.origin}\n${login.username}`
+    const key = keyOf(login)
     const prev = byKey.get(key)
     if (prev) {
       if (prev.password !== login.password) updated++
-      byKey.set(key, { ...prev, password: login.password })
+      byKey.set(key, { ...prev, password: login.password, ...(source ? { source } : {}) })
     } else {
       added++
-      byKey.set(key, { id: newId(), ...login })
+      byKey.set(key, { id: newId(), ...login, ...(source ? { source } : {}) })
     }
   }
-  return { logins: [...byKey.values()], added, updated }
+  return { logins: [...byKey.values()], added, updated, removed }
 }
 
 export class SavedLoginStore {
@@ -118,10 +131,10 @@ export class SavedLoginStore {
     return this.unreadable
   }
 
-  async importLogins(incoming: readonly ImportedLogin[]): Promise<{ added: number; updated: number }> {
-    const merged = mergeLogins(await this.load(), incoming)
+  async importLogins(incoming: readonly ImportedLogin[], source?: PasswordCsvSource): Promise<{ added: number; updated: number; removed: number }> {
+    const merged = mergeLogins(await this.load(), incoming, randomUUID, source)
     await this.save(merged.logins)
-    return { added: merged.added, updated: merged.updated }
+    return { added: merged.added, updated: merged.updated, removed: merged.removed }
   }
 
   async clear(): Promise<void> {
@@ -130,19 +143,20 @@ export class SavedLoginStore {
     await rm(this.path, { force: true })
   }
 
-  /** そのページで使える資格情報（ユーザー名と id だけ）。ユーザー名の順 */
+  /** そのページで使える資格情報（ユーザー名と id だけ）。同じオリジンのものが先、同じサイトの別のサブドメインのものは後ろにホスト名を付けて。ユーザー名の順 */
   async accountsFor(pageUrl: string): Promise<SavedLoginAccount[]> {
     if (!loginOrigin(pageUrl)) return []
-    return (await this.load())
-      .filter((login) => originMatches(login.origin, pageUrl))
-      .map(({ id, username }) => ({ id, username }))
-      .sort((a, b) => a.username.localeCompare(b.username))
+    const matched = (await this.load()).flatMap((login) => {
+      const match = loginMatch(login.origin, pageUrl)
+      return match ? [{ id: login.id, username: login.username, ...(match === 'site' ? { site: new URL(login.origin).hostname } : {}) }] : []
+    })
+    return matched.sort((a, b) => Number(!!a.site) - Number(!!b.site) || a.username.localeCompare(b.username))
   }
 
-  /** 選んだ1件。ページのオリジンに使えるものだけ（違えば null） */
+  /** 選んだ1件。ページに使えるもの（同じオリジンか同じサイト）だけ（違えば null） */
   async loginFor(id: string, pageUrl: string): Promise<ImportedLogin | null> {
     const login = (await this.load()).find((l) => l.id === id)
-    return login && originMatches(login.origin, pageUrl) ? login : null
+    return login && loginMatch(login.origin, pageUrl) ? login : null
   }
 }
 

@@ -14,6 +14,9 @@ import { setViewBoundsForToasts } from '../lib/toastPlacement'
  * 戻り値を置き場所の要素の `ref` に渡す。モード切替で要素が入れ替わっても、
  * 新しい要素の位置を測り直すだけで、ビュー自体は作り直さない（ページは再読込されない）。
  */
+/** 同じ値でも置き直す間隔（1 秒ごとの測り直しの何回に1回か） */
+const HEAL_EVERY = 5
+
 export function useViewBounds(
   layoutKey: string,
   /**
@@ -69,10 +72,16 @@ export function useViewBounds(
     /*
      * ResizeObserver は大きさしか見ない。大きさが同じまま位置だけが動く（上のツールバーの高さが変わる・一時的に
      * 違う位置で測った）と、ビューがツールバーに重なったまま残る（録画のツールバーが消えて見えた）。
-     * 見せている間は 1 秒ごとに測って置き直し、ずれても自分で戻す（main 側のビューだけがずれた場合も戻すため、同じ値でも送る）
+     * 見せている間は 1 秒ごとに測り、変わったときだけ置き直す。main 側のビューだけがずれた場合も戻すため、
+     * HEAL_EVERY 回に1回は同じ値でも送る（毎秒の IPC とビューの置き直しを減らす）
      */
-    // 最小化・裏の間は置き直さない（毎秒の IPC とビューの置き直しを止める。表に戻ったら visibilitychange ですぐ置き直す）
-    const healer = window.setInterval(() => { if (!document.hidden) schedule(true) }, 1000)
+    // 最小化・裏の間は置き直さない（表に戻ったら visibilitychange ですぐ置き直す）
+    let tick = 0
+    const healer = window.setInterval(() => {
+      if (document.hidden) return
+      tick += 1
+      schedule(tick % HEAL_EVERY === 0)
+    }, 1000)
     const onVisible = () => { if (!document.hidden) schedule(true) }
     document.addEventListener('visibilitychange', onVisible)
     const onFocus = () => schedule(true)

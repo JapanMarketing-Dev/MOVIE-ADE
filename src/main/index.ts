@@ -700,6 +700,8 @@ async function startBrowserExtensions(entries: BrowserExtensionEntry[] | undefin
   })
   extensions = ext
   ext.onChange = () => send('browserExtensions:changed', ext.list())
+  // 拡張を作っているプロジェクトで読み込み直したら、開いているページも読み込み直す（録画中は触らない）
+  ext.onReloaded = () => { if (!recording || recording.status.state === 'idle') browser?.reload() }
   // ポップアップは別のビューなので、録画（タブ録画・静止画）にはビューの上の位置を割合で渡して重ねる
   ext.onPopupChange = () => recording?.setBrowserOverlay(browserOverlay())
   if (browser) browser.onLayout = () => ext.relayout()
@@ -1205,7 +1207,7 @@ async function ensureRecording(): Promise<RecordingController> {
 /** Agent に入れる設定の skill に書く、この Ferret の設定ファイルの場所 */
 function agentSkillContext(): SkillContext {
   const dir = configDir()
-  return { settingsPath: join(dir, 'settings.json'), schemaPath: join(dir, 'settings.schema.json'), version: app.getVersion() }
+  return { settingsPath: join(dir, 'settings.json'), schemaPath: join(dir, 'settings.schema.json'), version: app.getVersion(), editorWorkspacePath: join(app.getPath('userData'), 'editor-workspace') }
 }
 
 /**
@@ -1523,7 +1525,7 @@ async function confirmRestartForUpdate(): Promise<boolean> {
  * 依頼文（設定の「Agent への依頼」）を、開いているプロジェクトの Agent へ送る。宛先は「Agent へ送信」の auto と同じ。
  * オーケストレーターからなら、すべてのプロダクトに subagent で並行して行うよう添える（@shared/agentRequests）
  */
-async function sendAgentRequests(ids: unknown, scheduled = false): Promise<{ ok: boolean; message: string; noAgent?: boolean }> {
+async function sendAgentRequests(ids: unknown): Promise<{ ok: boolean; message: string; noAgent?: boolean }> {
   const { composeAgentRequest, resolveAgentRequests } = await import('@shared/agentRequests')
   const lang = guideLanguage()
   const wanted = Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : []
@@ -1533,10 +1535,109 @@ async function sendAgentRequests(ids: unknown, scheduled = false): Promise<{ ok:
   const text = composeAgentRequest(picked, lang, !!(project?.orchestrator || project?.editorWorkspace))
   const target = terminals ? await terminals.resolveSendTarget(null, workspace.folderPath) : null
   if (!target) return { ok: false, message: t('terminal.send.noAgent'), noAgent: true }
-  // 定期の依頼は、Agent が手すきのときだけ送る（作業中の Agent の邪魔をしない）
-  if (scheduled && (await terminals!.agentState(target)).state !== 'idle') return { ok: false, message: 'busy' }
   const { ok, message } = await terminals!.sendReview(target, text)
   return { ok, message }
+}
+
+/**
+ * 長い依頼の途中で PC を閉じた・Ferret を終了したときに、開き直したら続きから再開する。
+ * - 終了：戻したタブは会話を続けて起動し（--continue / resume --last）、閉じたとき作業の途中だったペインには、入力欄が出たら続きを頼む
+ * - スリープ：眠る前に作業の途中だった Agent を覚え、戻って少し待っても止まっていれば続きを頼む（通信が切れて止まった Agent など）
+ * どちらも、もう動き出している Agent・確認を出している Agent には送らない
+ */
+const RESUME_AFTER_WAKE_MS = 20_000
+const CONTINUE_WAIT_MS = 3 * 60_000
+let workingBeforeSleep: string[] = []
+
+async function continueInterruptedWork(id: string): Promise<boolean> {
+  if (!terminals) return false
+  const deadline = Date.now() + CONTINUE_WAIT_MS
+  // 会話を開き直して入力を待つまで待つ（起動直後は unknown・作業中のことがある）
+  for (;;) {
+    const state = await terminals.agentState(id).catch(() => null)
+    if (!state) return false
+    if (state.kind !== 'unknown' && state.state === 'idle') break
+    if (state.state === 'blocked' || Date.now() > deadline) return false
+    await new Promise((done) => setTimeout(done, 2000))
+  }
+  const result = await terminals.sendReview(id, t('terminal.continueWork'))
+  return result.ok
+}
+
+async function rememberWorkBeforeSleep(): Promise<void> {
+  if (!terminals) return
+  const list = terminals.list()
+  const states = await Promise.all(list.map((info) => terminals!.agentState(info.id).catch(() => null)))
+  workingBeforeSleep = list.filter((_, i) => states[i]?.state === 'working').map((info) => info.id)
+}
+
+async function resumeWorkAfterSleep(): Promise<void> {
+  const ids = workingBeforeSleep
+  workingBeforeSleep = []
+  if (!terminals || !ids.length) return
+  const alive = new Set(terminals.list().map((info) => info.id))
+  await Promise.all(ids.filter((id) => alive.has(id)).map(async (id) => {
+    const state = await terminals!.agentState(id).catch(() => null)
+    // 戻ってからも動いている Agent はそのまま。止まって入力を待っているものだけに頼む
+    if (state && state.kind !== 'unknown' && state.state === 'idle') await terminals!.sendReview(id, t('terminal.continueWork')).catch(() => undefined)
+  }))
+}
+
+/** 開いているのが「すべてのプロダクト」か */
+function isEditorWorkspaceOpen(): boolean {
+  return !!currentSettings().projects.find((p) => p.id === workspace.projectId)?.editorWorkspace
+}
+
+/**
+ * 全体で録った1回のフィードバックを、指摘の URL でプロダクトごとに分けて送る（@shared/productSplit）。
+ * そのプロダクトに Agent が動いていればその Agent へ直接（そのプロダクトの番号だけを直すよう添える）、
+ * 残り（Agent の居ないプロダクト・決まらなかった指摘）は全体の Agent へ、プロダクトごとの subagent に並行して任せるよう添えて送る。
+ * どれも同時に送る。プロダクトが1つも決まらなければ null（ふつうの送信に任せる）
+ */
+async function sendSplitByProduct(
+  paths: import('./sessions/paths').SessionPaths,
+  items: ReadonlyArray<{ id: string; index: number; t: number; include: boolean; context: { url?: string } }>,
+  pending: ReadonlySet<string>
+): Promise<{ ok: boolean; message: string; terminalId?: string } | null> {
+  const settings = currentSettings()
+  const products = settings.projects.filter((p) => !p.editorWorkspace && !p.orchestrator && p.source !== 'ssh')
+  const { splitByProduct, itemList } = await import('@shared/productSplit')
+  const shares = splitByProduct(products, items.filter((it) => it.include && pending.has(it.id)).map((it) => ({ index: it.index, t: it.t, url: it.context.url })))
+  if (!shares.some((s) => s.projectId)) return null
+  const { reviewInstruction } = await import('./review')
+  const instruction = await reviewInstruction(paths, settings.agentPrompt)
+  const direct: Array<{ name: string; indexes: number[]; terminalId: string }> = []
+  const relay: Array<{ name: string; path: string; indexes: number[] }> = []
+  const unknown: number[] = []
+  for (const share of shares) {
+    const product = products.find((p) => p.id === share.projectId)
+    if (!product) { unknown.push(...share.indexes); continue }
+    const id = await terminals!.resolveSendTarget(null, product.folderPath)
+    if (id) direct.push({ name: product.name, indexes: share.indexes, terminalId: id })
+    else relay.push({ name: product.name, path: product.folderPath, indexes: share.indexes })
+  }
+  const jobs: Array<Promise<{ ok: boolean; message: string; terminalId: string }>> = direct.map(async (d) => ({
+    ...(await terminals!.sendReview(d.terminalId, `${instruction}\n\n${t('orchestra.splitDirectNote', { name: d.name, items: itemList(d.indexes), path: paths.feedbackMd })}`)),
+    terminalId: d.terminalId
+  }))
+  if (relay.length || unknown.length) {
+    const top = await terminals!.resolveSendTarget(null, workspace.folderPath)
+    if (top) {
+      const lines = [
+        ...relay.map((r) => t('orchestra.splitRelayLine', { name: r.name, path: r.path, items: itemList(r.indexes) })),
+        ...direct.map((d) => t('orchestra.splitDoneLine', { name: d.name, items: itemList(d.indexes) })),
+        ...(unknown.length ? [t('orchestra.splitUnknownLine', { items: itemList(unknown) })] : [])
+      ]
+      jobs.push(terminals!.sendReview(top, `${instruction}\n\n${t('orchestra.splitRelayNote')}\n${lines.join('\n')}`).then((r) => ({ ...r, terminalId: top })))
+    } else if (!direct.length) {
+      return { ok: false, message: t('terminal.send.noAgent') }
+    }
+  }
+  const results = await Promise.all(jobs)
+  const failed = results.filter((r) => !r.ok)
+  return failed.length
+    ? { ok: results.length > failed.length, message: failed.map((r) => r.message).join(' / '), terminalId: results[0]?.terminalId }
+    : { ok: true, message: t('orchestra.splitSent', { count: results.length }), terminalId: results[0]?.terminalId }
 }
 
 /** 「すべてのプロダクト」で動いている Agent（プロダクトに Agent がいないときの渡し先） */
@@ -1568,20 +1669,6 @@ async function pendingAcross(): Promise<Array<{ projectId: string; reviewId: str
     for (const s of sessions) if ((s.humanReviewCount ?? 0) > 0) out.push({ projectId: project.id, reviewId: s.id, count: s.humanReviewCount ?? 0 })
   }
   return out
-}
-
-/** 定期の依頼（毎日・毎週）。時期が来たものを、Agent が手すきのときにまとめて送り、送った時刻を覚える */
-async function runScheduledRequests(): Promise<void> {
-  const prefs = currentSettings().agentRequests
-  if (!prefs?.items.some((i) => i.schedule && i.schedule !== 'off')) return
-  const { dueRequests, resolveAgentRequests } = await import('@shared/agentRequests')
-  const due = dueRequests(resolveAgentRequests(prefs, guideLanguage()), prefs.lastRunAt, Date.now())
-  if (!due.length) return
-  const result = await sendAgentRequests(due.map((r) => r.id), true)
-  if (!result.ok) return
-  const now = new Date().toISOString()
-  const latest = currentSettings().agentRequests ?? prefs
-  updateSettings({ agentRequests: { ...latest, lastRunAt: { ...latest.lastRunAt, ...Object.fromEntries(due.map((r) => [r.id, now])) } } })
 }
 
 /**
@@ -1804,16 +1891,17 @@ function registerIpc(): void {
     'settings:agentPrompt': (template) => updateSettings({ agentPrompt: typeof template === 'string' ? template : undefined }),
     'settings:agentRequests': async (prefs) => {
       const { sanitizeAgentRequestPrefs } = await import('@shared/agentRequests')
-      const next = sanitizeAgentRequestPrefs(prefs)
-      // 定期の送った時刻は main だけが書く（画面の古い値で戻さない）
-      const lastRunAt = currentSettings().agentRequests?.lastRunAt
-      updateSettings({ agentRequests: next ? { items: next.items, ...(lastRunAt ? { lastRunAt } : {}) } : undefined })
+      updateSettings({ agentRequests: sanitizeAgentRequestPrefs(prefs) })
     },
     'agentRequests:send': (ids) => sendAgentRequests(ids),
     'review:pendingAcross': () => pendingAcross(),
     'orchestra:overview': async () => {
       const [{ orchestraOverview }, { listSessions }] = await Promise.all([import('./orchestraOverview'), import('./sessions')])
       return orchestraOverview(currentSettings().projects, listSessions)
+    },
+    'orchestra:checklist': async () => {
+      const editor = currentSettings().projects.find((p) => p.editorWorkspace)
+      return editor ? (await (await import('./orchestraOverview')).readChecklist(editor.folderPath)).items : []
     },
     'settings:orchestra': async (rules) => {
       const { sanitizeOrchestraRules } = await import('@shared/orchestrator')
@@ -1977,7 +2065,8 @@ function registerIpc(): void {
       pageContents: () => browser?.contents ?? null,
       userDataDir: () => app.getPath('userData'),
       isPackaged: IS_PACKAGED,
-      isE2E: IS_E2E
+      isE2E: IS_E2E,
+      notifyChanged: () => send('passwords:changed')
     }),
     // ログイン無しで誰でも指摘を送れる共有リンク（作る・届いた指摘を取り込む。src/main/feedbackShare/ipc.ts）
     ...feedbackShareHandlers({
@@ -2038,6 +2127,9 @@ function registerIpc(): void {
     'terminal:close': (id) => terminals?.close(id),
     'terminal:screen': (id, text) => terminals?.updateScreen(id, text),
     'terminal:agentState': (id) => terminals?.agentState(id) ?? { kind: 'unknown', state: 'unknown' },
+    'terminal:agentStates': (ids) => (Array.isArray(ids) ? terminals?.agentStates(ids.filter((id): id is string => typeof id === 'string').slice(0, 512)) : null) ?? [],
+    'terminal:visible': (ids) => { if (Array.isArray(ids)) terminals?.setVisible(ids.filter((id): id is string => typeof id === 'string')) },
+    'terminal:continueWork': (id) => (typeof id === 'string' ? continueInterruptedWork(id) : false),
     'terminal:cwd': (id) => terminals?.currentCwd(id) ?? null,
     // 端末への貼り付け（Windows / Linux の Ctrl+V）。クリップボードの中身は renderer へ返さない（security-7 [1]）。
     // キーを押した直後に1回だけ、アプリの窓にフォーカスがあり端末が選ばれているときに、OS の貼り付けをその窓に行わせる
@@ -2085,12 +2177,25 @@ function registerIpc(): void {
       // 判定モデルの受け入れ確認の節を今の設定に合わせる。
       // 既定の送信は未対応の指摘だけを送る（done・in_progress・human_review は送らない）。feedback.md もその指摘だけを詳しく書く。
       // 本文を差し替えた送信（確認への返答）は1件だけを指すので、全件の feedback.md のまま
+      let sendIds: string[] | null = null
       if (request.text) await refreshFeedbackMarkdown(paths)
-      else if (!(await prepareSendFeedback(paths)).length) return { ok: false, message: t('review.nothingPending') }
+      else if (!(sendIds = await prepareSendFeedback(paths)).length) return { ok: false, message: t('review.nothingPending') }
       // auto: 選んでいるターミナル → 同じプロジェクトの Agent。どこにも居なければ noAgent（renderer が既定の Agent を起動して送り直す）
       // agent: その Agent が動いているタブ。無ければ launchAgent（renderer がその Agent のタブを開いて送り直す）
       // terminal: そのタブ。Agent が抜けていれば、覚えていた Agent を launchAgent で返す
       const want = request.target
+      // 全体（すべてのプロダクト）で録ったものは、指摘をプロダクトごとに分けて、それぞれの Agent へ並行して渡す（@shared/productSplit）
+      if (terminals && want.kind === 'auto' && !request.text && isEditorWorkspaceOpen()) {
+        const split = await sendSplitByProduct(paths, data.document.items, new Set(sendIds ?? []))
+        if (split) {
+          if (split.ok) {
+            await (await import('./sessions')).updateLabel(paths, { sentAt: new Date().toISOString() }).catch((err: unknown) => reportHandled(err, { area: 'review', op: 'record sent label' }))
+            await markSentInProgress(paths).catch((err: unknown) => reportHandled(err, { area: 'review', op: 'mark sent in progress' }))
+            recordStarMoment('first-send')
+          }
+          return split
+        }
+      }
       let target: string | null = null
       if (terminals && want.kind === 'auto') target = await terminals.resolveSendTarget(request.focusedTerminalId ?? null, workspace.folderPath)
       if (terminals && want.kind === 'agent') target = await terminals.findAgentTerminal(want.agent, workspace.folderPath)
@@ -3043,8 +3148,6 @@ async function main(): Promise<void> {
   syncOrchestratorOnOpen(startupProject)
   // 起動の引数で開いて登録したプロジェクトも、「すべてのプロジェクト」に入れる
   if (!startupProject?.editorWorkspace) syncEditorWorkspace()
-  // 定期の依頼は10分ごとに確かめる（Agent が手すきのときだけ送る）
-  setInterval(() => void runScheduledRequests().catch((err: unknown) => reportHandled(err, { area: 'agent-launch', op: 'send scheduled requests' })), 10 * 60 * 1000).unref?.()
   // 最初のタブを開く要求が届く前に、node-pty の読み込みと最初のシェルの起動（rc の読み込み）を済ませておく
   terminals.prewarm()
   registerIpc()
@@ -3053,6 +3156,9 @@ async function main(): Promise<void> {
   // スリープ明けはすぐ、ウインドウに戻ったときは前の確認から1時間たっていれば確かめる（6時間ごとの確認はスリープで遅れる）
   // スリープ明けはネットワークが戻るのを待ってから確かめる（autoUpdate.ts の resumed）
   powerMonitor.on('resume', () => autoUpdater().resumed())
+  // PC を閉じた（スリープ）ときに作業の途中だった Agent は、戻ったあと止まっていれば続きから再開するよう頼む
+  powerMonitor.on('suspend', () => void rememberWorkBeforeSleep())
+  powerMonitor.on('resume', () => { setTimeout(() => void resumeWorkAfterSleep(), RESUME_AFTER_WAKE_MS).unref?.() })
   mainWindow.on('focus', () => void autoUpdater().checkIfStale(UPDATE_RECHECK_ON_FOCUS_MS)?.catch(() => undefined))
   // settings.json の外部の変更（利用者のエディタ・Claude Code など）をその場で反映する。壊れていれば画面に知らせるだけ
   watchSettings(applyExternalSettings, (error) => send('settingsFile:error', error))

@@ -301,7 +301,7 @@ export const SETTINGS_SCHEMA: JsonSchema = {
     },
     agentRequests: {
       type: 'object',
-      description: 'Ready-made requests to the agent (Settings > Requests): memory tidy-up (dream), compacting instructions, security check, SEO, analytics, Sentry fixes, performance, accessibility, dependency updates, plus your own. Pressing Send only sends the text to the agent of the open project.',
+      description: 'Ready-made requests to the agent (on the All products dashboard): writing what people must check into human.md, recording costs, memory tidy-up (dream), compacting instructions, security check, SEO, analytics, Sentry fixes, performance, accessibility, dependency updates, plus your own. Pressing Send only sends the text to the agent of the open project.',
       properties: {
         items: {
           type: 'array',
@@ -311,16 +311,15 @@ export const SETTINGS_SCHEMA: JsonSchema = {
             description: 'One request.',
             required: ['id'],
             properties: {
-              id: str('Built-in id (dream, compact, security, seo, analytics, sentry, performance, accessibility, dependencies) or any id for your own request.'),
+              id: str('Built-in id (human-checklist, costs, dream, learn-human, dev-servers, chrome-extension, compact, security, seo, analytics, sentry, sentry-setup, analytics-setup, search-console, infra, performance, accessibility, dependencies and others) or any id for your own request.'),
               title: str('Name of your own request.'),
               text: str('Request text. For a built-in request, omit it to use the default.', { maxLength: 6000 }),
-              schedule: { type: 'string', description: 'Send it automatically when the agent is idle: daily or weekly. Omit for never.', enum: ['off', 'daily', 'weekly'] },
               batch: bool('Include it in "Send selected together".'),
-              custom: bool('A request you added.')
+              custom: bool('A request you added.'),
+              hidden: bool('Hide it from the list on the All products dashboard (for one-time requests that are done).')
             }
           }
-        },
-        lastRunAt: { type: 'object', description: 'When each scheduled request was last sent (ISO 8601). Set by the app.', additionalProperties: str('ISO 8601 time.') }
+        }
       }
     },
     agentPrompt: str('One-line instruction sent to the agent with a review. {{path}} is the absolute path of feedback.md, {{relpath}} the project-relative path. Omit for the default.', { maxLength: 2000 }),
@@ -413,7 +412,8 @@ export const SETTINGS_SCHEMA: JsonSchema = {
         additionalProperties: false,
         properties: {
           path: str('Absolute path of the unpacked extension folder (the folder with manifest.json). Packed .crx files are not supported.', { maxLength: 1000 }),
-          enabled: bool('Load this extension. Omit for true.')
+          enabled: bool('Load this extension. Omit for true.'),
+          reload: { type: 'integer', minimum: 0, maximum: Number.MAX_SAFE_INTEGER, description: 'Reload signal. Change this number (for example to the current Unix time in seconds) after editing or rebuilding the extension, and Ferret loads it again from the folder and reloads the open page. Ferret does not watch the folder by itself.' }
         }
       }
     },

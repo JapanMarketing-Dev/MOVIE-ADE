@@ -18,6 +18,21 @@ describe('Ferret の設定を変える skill の中身', () => {
     expect(text).toContain(SKILL_MARKER)
   })
 
+  it('作っている Chrome 拡張の登録・最新にする（reload）・外すをターミナルからできる手順を書く', () => {
+    const section = text.slice(text.indexOf('## Chrome extensions you are building'), text.indexOf('## How to edit'))
+    for (const word of ['**Register**', '`browserExtensions`', 'absolute path', '**Update to the latest build**', '`reload`', 'Unix time', '**Turn off / remove**', '"enabled": false', 'delete the entry']) expect(section).toContain(word)
+    expect(section).toMatch(/at most \d+\)/)
+    expect(text).toContain('`browserExtensions[].reload`')
+  })
+
+  it('オーケストラ（ダッシュボード・human.md・コスト・対象外・ルール・依頼）を Agent が直接変えられる手順を書く', () => {
+    const section = text.slice(text.indexOf('## Orchestra (All products dashboard)'), text.indexOf('## How to edit'))
+    for (const word of ['human.md', '| No. | Product | URL | What to check |', 'B1', 'A1', 'P1', 'D1', '.ferret/costs.json', 'monthlyUsd', '`projects[].orchestraExcluded: true`', '`orchestra.shared`', '`agentRequests.items`', '`hidden: true`', 'in parallel', 'Interrupted work']) expect(section).toContain(word)
+    expect(section).toContain('<Ferret user data>/editor-workspace')
+    expect(renderAgentSkill({ ...context, editorWorkspacePath: '/home/taro/Library/Ferret/editor-workspace' })).toContain('`/home/taro/Library/Ferret/editor-workspace`')
+    expect(text.split('\n')[2]).toMatch(/orchestra/)
+  })
+
   it('この Ferret の設定ファイルとスキーマの場所を書く', () => {
     expect(text).toContain('`/home/taro/.ferret/settings.json`')
     expect(text).toContain('`/home/taro/.ferret/settings.schema.json`')

@@ -68,6 +68,12 @@ describe('設定の browserExtensions', () => {
     ])).toEqual([{ path: '/ext/a' }, { path: 'C:\\ext\\c', enabled: false }, { path: '/ext/d' }])
   })
 
+  it('読み込み直しの合図（reload）は 0 以上の整数だけ残す', () => {
+    expect(shared.sanitizeBrowserExtensions([
+      { path: '/ext/a', reload: 1760000000 }, { path: '/ext/b', reload: -1 }, { path: '/ext/c', reload: 1.5 }, { path: '/ext/d', reload: '9' }, { path: '/ext/e', enabled: false, reload: 0 }
+    ])).toEqual([{ path: '/ext/a', reload: 1760000000 }, { path: '/ext/b' }, { path: '/ext/c' }, { path: '/ext/d' }, { path: '/ext/e', enabled: false, reload: 0 }])
+  })
+
   it('上限より多くは持たない', () => {
     const many = Array.from({ length: shared.MAX_BROWSER_EXTENSIONS + 5 }, (_, i) => ({ path: `/ext/${i}` }))
     expect(shared.sanitizeBrowserExtensions(many)).toHaveLength(shared.MAX_BROWSER_EXTENSIONS)
@@ -224,6 +230,28 @@ describe('読み込み（内蔵ブラウザの session だけ）', () => {
     await ext.sync([{ path: b }])
     expect(ses.calls.slice(1)).toEqual([{ op: 'remove', id: 'a'.repeat(32) }, { op: 'load', path: b, options: { allowFileAccess: false } }])
     expect(ext.hasPopupExtensions()).toBe(false)
+  })
+
+  it('reload の値が変わったものだけを外して読み込み直し、manifest も読み直して、ページの読み込み直しを知らせる', async () => {
+    const a = makeExtension(join(root, 'ra'), { manifest_version: 3, name: 'A', version: '1' })
+    const b = makeExtension(join(root, 'rb'), { manifest_version: 3, name: 'B', version: '1' })
+    const ses = fakeSession()
+    const ext = new main.BrowserExtensions({ session: () => ses as never, host: host(), importDir: () => join(root, 'imports') })
+    const reloaded = vi.fn()
+    ext.onReloaded = reloaded
+    await ext.sync([{ path: a }, { path: b }])
+    await ext.sync([{ path: a }, { path: b }])
+    expect(ses.calls.map((c) => c.op)).toEqual(['load', 'load'])
+    expect(reloaded).not.toHaveBeenCalled()
+    makeExtension(a, { manifest_version: 3, name: 'A', version: '2' })
+    await ext.sync([{ path: a, reload: 1760000000 }, { path: b }])
+    expect(ses.calls.slice(2)).toEqual([{ op: 'remove', id: 'a'.repeat(32) }, { op: 'load', path: a, options: { allowFileAccess: false } }])
+    expect(ext.list().find((e) => e.path === a)?.version).toBe('2')
+    expect(reloaded).toHaveBeenCalledTimes(1)
+    // 同じ値のままなら読み込み直さない
+    await ext.sync([{ path: a, reload: 1760000000 }, { path: b }])
+    expect(ses.calls).toHaveLength(4)
+    expect(reloaded).toHaveBeenCalledTimes(1)
   })
 
   it('ポップアップは preload なし・sandbox・内蔵ブラウザの session のビューで、ビューの右上に開く', async () => {

@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { closeSync, constants, fsyncSync, openSync, readdirSync, realpathSync, renameSync, rmSync, writeSync } from 'node:fs'
+import { open as openAsync, rm as rmAsync } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import {
@@ -24,7 +25,8 @@ import { reportHandled } from '@shared/report'
  * ターミナルのタブと画面の文字を userData/terminal-restore.json に書いておく（@shared/terminalRestore）。
  *
  * - renderer がときどき（タブが変わったとき・出力があったとき）今のタブと画面の文字を送り、ここでは確かめてから覚える。
- *   ファイルへは少しまとめてから書き、終了のときは最後にもう一度 renderer に頼んでから同期で書く（index.ts）
+ *   ファイルへは少しまとめてから書き、終了のときは最後にもう一度 renderer に頼んでから同期で書く（index.ts）。
+ *   ふだんの書き込みは main の処理を止めないよう非同期で書く（書き終えた一時ファイルの rename だけは同期。下の flush）
  * - 閉じたタブは CLOSED_STACK_LIMIT 枚まで覚え、開き直すときに新しいものから渡す
  * - 書くのはプロジェクトの外（userData）だけ。所有者だけが読める 0600 で、一時ファイルを O_EXCL・O_NOFOLLOW で作ってから
  *   rename で置き換える（途中で落ちても前のファイルか新しいファイルのどちらかが残り、置いてあったリンクの先には書かない）
@@ -41,6 +43,15 @@ export class TerminalRestoreStore {
   private sessionTaken = false
   private dirty = false
   private timer: NodeJS.Timeout | null = null
+  /** 非同期で書いている途中の書き込み（flush）。終わるまで次は始めない */
+  private inflight: Promise<void> | null = null
+  /** 書き込みに振った番号（非同期・同期・消去の順を決める） */
+  private writeSeq = 0
+  /**
+   * これ以下の番号の書き込みは古い。同期の書き込み（終了のとき）や消去のあとに、それより前に始めた非同期の書き込みが
+   * 終わっても、古い中身で置き換えない・消したファイルを作り直さない
+   */
+  private settledSeq = 0
   /** 終了のときに書き終えた。以後に届いたもの（PTY の終了で変わった画面など）は覚えない */
   private finished = false
 
@@ -110,6 +121,7 @@ export class TerminalRestoreStore {
     if (this.timer) clearTimeout(this.timer)
     this.timer = null
     this.dirty = false
+    this.settledSeq = ++this.writeSeq
     this.loaded = true
     this.data = emptyRestoreFile()
     try {
@@ -125,21 +137,50 @@ export class TerminalRestoreStore {
     this.finished = true
   }
 
-  /** まだ書いていない変更を、すぐに書く */
+  /**
+   * まだ書いていない変更を、すぐに同期で書く（終了のとき）。非同期で書いている途中のものがあれば、それも含めた今の中身を書く
+   * （終了までに非同期の書き込みが終わらなくても、最後の分を失わない。途中のものは古いとして置き換えない）
+   */
   flushSync(): void {
     if (this.timer) clearTimeout(this.timer)
     this.timer = null
+    if (!this.dirty && !this.inflight) return
+    this.dirty = false
+    if (!this.enabled()) {
+      this.clear()
+      return
+    }
+    const seq = ++this.writeSeq
+    try {
+      writePrivateFileAtomicSync(this.file, serializeRestoreFile(this.data))
+      this.settledSeq = seq
+    } catch (err) {
+      reportHandled(err, { area: 'terminal', op: 'write terminal restore' })
+    }
+  }
+
+  /** まだ書いていない変更を、main の処理を止めずに書く（ふだんの書き込み）。書いている途中なら、終わってから続けて書く */
+  async flush(): Promise<void> {
+    if (this.timer) clearTimeout(this.timer)
+    this.timer = null
+    while (this.inflight) await this.inflight
     if (!this.dirty) return
     this.dirty = false
     if (!this.enabled()) {
       this.clear()
       return
     }
-    try {
-      writePrivateFileAtomicSync(this.file, serializeRestoreFile(this.data))
-    } catch (err) {
-      reportHandled(err, { area: 'terminal', op: 'write terminal restore' })
-    }
+    const seq = ++this.writeSeq
+    const write = writePrivateFileAtomic(this.file, serializeRestoreFile(this.data), () => seq > this.settledSeq && this.enabled())
+      .then((replaced) => {
+        if (replaced) this.settledSeq = seq
+      })
+      .catch((err: unknown) => reportHandled(err, { area: 'terminal', op: 'write terminal restore' }))
+      .finally(() => {
+        if (this.inflight === write) this.inflight = null
+      })
+    this.inflight = write
+    await write
   }
 
   private schedule(): void {
@@ -147,7 +188,7 @@ export class TerminalRestoreStore {
     if (this.timer) return
     this.timer = setTimeout(() => {
       this.timer = null
-      this.flushSync()
+      void this.flush()
     }, WRITE_DELAY_MS)
     this.timer.unref?.()
   }
@@ -171,6 +212,35 @@ export function writePrivateFileAtomicSync(target: string, text: string): void {
     renameSync(tmp, target)
   } catch (err) {
     rmSync(tmp, { force: true })
+    throw err
+  }
+}
+
+/**
+ * writePrivateFileAtomicSync の非同期版（書き込みと fsync は main の処理を止めない）。作り方の決まりは同じ
+ * （O_EXCL・O_NOFOLLOW・0600 の一時ファイルに書いてから rename）。
+ * commit が false を返したら（書いている間に、より新しい書き込みや消去があった）置き換えずに一時ファイルを消す。
+ * 確かめてから置き換えるまでは同期で行い（renameSync）、その間に同期の書き込み・消去が割り込まないようにする。置き換えたら true
+ */
+export async function writePrivateFileAtomic(target: string, text: string, commit: () => boolean = () => true): Promise<boolean> {
+  const tmp = join(dirname(target), `.${basename(target)}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`)
+  const noFollow = (constants as { O_NOFOLLOW?: number }).O_NOFOLLOW ?? 0
+  const handle = await openAsync(tmp, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | noFollow, 0o600)
+  try {
+    try {
+      await handle.writeFile(text)
+      await handle.sync()
+    } finally {
+      await handle.close()
+    }
+    if (!commit()) {
+      await rmAsync(tmp, { force: true })
+      return false
+    }
+    renameSync(tmp, target)
+    return true
+  } catch (err) {
+    await rmAsync(tmp, { force: true })
     throw err
   }
 }

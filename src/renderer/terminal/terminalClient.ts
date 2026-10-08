@@ -26,6 +26,25 @@ import { isScrolledUp } from './jumpToBottom'
 
 type RendererKind = 'webgl' | 'canvas' | 'dom'
 
+/** 1つのペインが覚えておく行数。多くの Agent のタブを並べると、ペインの数だけ renderer のメモリを使う */
+export const TERMINAL_SCROLLBACK = 5000
+/**
+ * 画面の文字（terminal:screen。main の Agent の状態の判定に使う）を送る間隔。
+ * 画面に出ていないペインは間を空ける（出力のたびに画面の全行を文字に直すのが重い）
+ */
+export const SCREEN_REPORT_MS = 200
+export const HIDDEN_SCREEN_REPORT_MS = 1000
+/**
+ * 隠れたペインの WebGL の描画を手放すまでの待ち。WebGL の文脈はペインごとに GPU のメモリを使い、
+ * 数に上限もある（多いと古いものから失われる）。タブを行き来するたびに作り直さないよう、しばらく隠れたままのものだけ手放す
+ */
+export const WEBGL_RELEASE_DELAY_MS = 10_000
+
+/** 画面の文字を送るまでの待ち */
+export function screenReportDelay(visible: boolean): number {
+  return visible ? SCREEN_REPORT_MS : HIDDEN_SCREEN_REPORT_MS
+}
+
 function cssVar(name: string, fallback: string): string {
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
   return value.length > 0 ? value : fallback
@@ -75,6 +94,13 @@ export class TerminalHandle {
   private revealPending = false
   /** 読み込み直しのあと、保存した出力を流し直している間（中の問い合わせへの xterm の返事を PTY へ送らない） */
   private replaying = false
+  /** 器に大きさがある（画面に出ている）。変わったら main へ知らせる（terminal:visible。裏のペインは出力をゆっくりまとめる） */
+  visible = false
+  /** 使っている WebGL の描画（隠れている間は手放す） */
+  private webgl: { dispose: () => void } | null = null
+  /** 隠れている間に WebGL を手放した。見えるようになったら作り直す */
+  private webglReleased = false
+  private webglReleaseTimer: ReturnType<typeof setTimeout> | null = null
 
   ptyId: string | null = null
   /** 画面に書いた回数。終了・閉じたあとに戻すための画面の文字を、変わったときだけ取り出し直す（TerminalPane） */
@@ -98,7 +124,7 @@ export class TerminalHandle {
       fontFamily: cssVar('--font-mono', 'monospace'),
       fontSize: Number.parseInt(cssVar('--term-font-size', '12px'), 10) || 12,
       lineHeight: Number.parseFloat(cssVar('--term-line-height', '1.2')) || 1.2,
-      scrollback: 10000,
+      scrollback: TERMINAL_SCROLLBACK,
       // 大量出力時のちらつきを抑える（PTY側でまとめているので描画も1回で足りる）
       smoothScrollDuration: 0,
       // Windows の ConPTY の折り返しの扱いを合わせる（幅を変えたときの崩れを防ぐ）
@@ -227,7 +253,14 @@ export class TerminalHandle {
     // 器の大きさが変わるたびに（分割・ドラッグ・ウィンドウ・ターミナルの配置の変更・表示の切り替え）、
     // まだ開いていなければ開き、開いていれば寸法を合わせ直す
     const observer = new ResizeObserver(() => {
-      if (this.host.clientWidth === 0 || this.host.clientHeight === 0) this.revealPending = this.opened
+      const visible = this.host.isConnected && this.host.clientWidth > 0 && this.host.clientHeight > 0
+      if (!visible) this.revealPending = this.opened
+      if (visible !== this.visible) {
+        this.visible = visible
+        reportVisibility()
+        if (visible) this.restoreWebgl()
+        else this.scheduleWebglRelease()
+      }
       this.tryOpen()
       this.scheduleFit()
     })
@@ -260,16 +293,7 @@ export class TerminalHandle {
   /** WebGL → Canvas → DOM の順に試す。読み込みは遅延させて起動を軽くする */
   private async loadRenderer(): Promise<void> {
     try {
-      const { WebglAddon } = await import('@xterm/addon-webgl')
-      const addon = new WebglAddon()
-      addon.onContextLoss(() => {
-        // GPU のリセットなどで WebGL の描画が失われた。Canvas へ切り替えて続ける
-        reportAnomaly('xterm webgl context lost', { kind: 'render', area: 'terminal' })
-        addon.dispose()
-        void this.loadCanvas()
-      })
-      this.term.loadAddon(addon)
-      this.renderer = 'webgl'
+      await this.loadWebgl()
       return
     } catch (err) {
       console.warn('[terminal] WebGL描画を使えません。Canvasへ切り替えます', err)
@@ -277,6 +301,59 @@ export class TerminalHandle {
       if (!isWebglUnavailable(err)) reportHandled(err, { area: 'terminal', op: 'load webgl renderer' })
     }
     await this.loadCanvas()
+  }
+
+  private async loadWebgl(): Promise<void> {
+    const { WebglAddon } = await import('@xterm/addon-webgl')
+    const addon = new WebglAddon()
+    addon.onContextLoss(() => {
+      // GPU のリセットなどで WebGL の描画が失われた。Canvas へ切り替えて続ける
+      reportAnomaly('xterm webgl context lost', { kind: 'render', area: 'terminal' })
+      if (this.webgl === addon) this.webgl = null
+      addon.dispose()
+      void this.loadCanvas()
+    })
+    this.term.loadAddon(addon)
+    this.webgl = addon
+    this.renderer = 'webgl'
+    // 読み込みを待つ間に隠れた：しばらくしたら手放す
+    if (!this.visible) this.scheduleWebglRelease()
+  }
+
+  /** 隠れたまま WEBGL_RELEASE_DELAY_MS たったら WebGL の描画を手放す（その間は xterm の DOM の描画のまま。隠れているので描かない） */
+  private scheduleWebglRelease(): void {
+    if (!this.webgl || this.webglReleaseTimer) return
+    this.webglReleaseTimer = setTimeout(() => {
+      this.webglReleaseTimer = null
+      const addon = this.webgl
+      if (this.visible || !addon) return
+      this.webgl = null
+      this.webglReleased = true
+      try {
+        addon.dispose()
+      } catch (err) {
+        reportHandled(err, { area: 'terminal', op: 'release webgl renderer' })
+      }
+    }, WEBGL_RELEASE_DELAY_MS)
+  }
+
+  /** 見えるようになった。手放していた WebGL の描画を作り直す（作り直せなければ Canvas へ） */
+  private restoreWebgl(): void {
+    if (this.webglReleaseTimer) {
+      clearTimeout(this.webglReleaseTimer)
+      this.webglReleaseTimer = null
+    }
+    if (!this.webglReleased || !this.opened) return
+    this.webglReleased = false
+    void this.loadWebgl()
+      .catch(async (err: unknown) => {
+        if (!isWebglUnavailable(err)) reportHandled(err, { area: 'terminal', op: 'reload webgl renderer' })
+        await this.loadCanvas()
+      })
+      .then(() => {
+        this.revealPending = true
+        this.scheduleFit()
+      })
   }
 
   private async loadCanvas(): Promise<void> {
@@ -356,6 +433,7 @@ export class TerminalHandle {
     // ptyId は先に付ける（流し直しの間に届いた新しい出力も、履歴のあとに順に書かれる）
     this.replaying = true
     this.ptyId = ptyId
+    reportVisibility()
     this.term.write(history, () => {
       this.replaying = false
       if (this.ptyId === ptyId) this.bindPty(ptyId)
@@ -442,6 +520,7 @@ export class TerminalHandle {
 
   bindPty(ptyId: string): void {
     this.ptyId = ptyId
+    reportVisibility()
     this.ptySized = false
     this.scheduleFit()
     if (this.pending.length > 0) {
@@ -486,6 +565,7 @@ export class TerminalHandle {
     this.term.write(data, () => {
       written?.()
       if (this.screenTimer || !this.ptyId) return
+      // 画面に出ていないペインは間を空ける（Agent の状態の判定が少し遅れるだけ）
       this.screenTimer = setTimeout(() => {
         this.screenTimer = null
         if (!this.ptyId) return
@@ -493,7 +573,7 @@ export class TerminalHandle {
         const lines: string[] = []
         for (let i = buffer.baseY; i < buffer.baseY + this.term.rows; i++) lines.push(buffer.getLine(i)?.translateToString(true) ?? '')
         void window.ade.invoke('terminal:screen', this.ptyId, lines.join('\n'))
-      }, 200)
+      }, screenReportDelay(this.visible))
     })
   }
 
@@ -533,6 +613,7 @@ export class TerminalHandle {
 
   dispose(): void {
     if (this.screenTimer) clearTimeout(this.screenTimer)
+    if (this.webglReleaseTimer) clearTimeout(this.webglReleaseTimer)
     cancelAnimationFrame(this.fitFrame)
     for (const dispose of this.disposers) dispose()
     this.disposers = []
@@ -548,6 +629,34 @@ export class TerminalHandle {
 }
 
 const handles = new Map<string, TerminalHandle>()
+
+/** 最後に main へ知らせた、画面に出ているターミナル（同じなら送らない） */
+let lastVisible: string | null = null
+let visibilityQueued = false
+
+/** 画面に出ているターミナルの PTY の id（並びは決まった順） */
+export function visiblePtyIds(entries: Iterable<{ ptyId: string | null; visible: boolean }>): string[] {
+  const ids: string[] = []
+  for (const entry of entries) if (entry.visible && entry.ptyId) ids.push(entry.ptyId)
+  return ids.sort()
+}
+
+/**
+ * 画面に出ているターミナルを main へ知らせる（terminal:visible）。同じ処理の中の変化はまとめて1回にする。
+ * 見えるようになったターミナルは、main がためていた出力をすぐ送る
+ */
+function reportVisibility(): void {
+  if (visibilityQueued) return
+  visibilityQueued = true
+  queueMicrotask(() => {
+    visibilityQueued = false
+    const ids = visiblePtyIds(handles.values())
+    const key = ids.join('\n')
+    if (key === lastVisible) return
+    lastVisible = key
+    void window.ade.invoke('terminal:visible', ids).catch(() => undefined /* 画面の閉じかけ（想定内） */)
+  })
+}
 
 let subscribed = false
 let ptyResizeHeld = false
@@ -578,6 +687,7 @@ function subscribe(): void {
       if (handle.ptyId === ptyId) {
         handle.write(`\r\n\u001b[2m${t('terminal.processExited', { code: exitCode })}\u001b[0m\r\n`)
         handle.ptyId = null
+        reportVisibility()
         return
       }
     }
@@ -600,6 +710,7 @@ export function releaseTerminal(key: string): void {
   handles.delete(key)
   if (handle.ptyId) void window.ade.invoke('terminal:close', handle.ptyId)
   handle.dispose()
+  reportVisibility()
 }
 
 export function getTerminal(key: string): TerminalHandle | undefined {
