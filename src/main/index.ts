@@ -1526,17 +1526,14 @@ async function confirmRestartForUpdate(): Promise<boolean> {
  * オーケストレーターからなら、すべてのプロダクトに subagent で並行して行うよう添える（@shared/agentRequests）
  */
 async function sendAgentRequests(ids: unknown): Promise<{ ok: boolean; message: string; noAgent?: boolean }> {
-  const { composeAgentRequest, resolveAgentRequests } = await import('@shared/agentRequests')
-  const lang = guideLanguage()
-  const wanted = Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : []
-  const picked = resolveAgentRequests(currentSettings().agentRequests, lang).filter((r) => wanted.includes(r.id) && r.text.trim())
-  if (!picked.length) throw new UserFacingError(t('errors.emptyText'))
-  const project = currentSettings().projects.find((p) => p.id === workspace.projectId)
-  const text = composeAgentRequest(picked, lang, !!(project?.orchestrator || project?.editorWorkspace))
-  const target = terminals ? await terminals.resolveSendTarget(null, workspace.folderPath) : null
-  if (!target) return { ok: false, message: t('terminal.send.noAgent'), noAgent: true }
-  const { ok, message } = await terminals!.sendReview(target, text)
-  return { ok, message }
+  const { sendAgentRequestsTo } = await import('./agentRequestSend')
+  const result = await sendAgentRequestsTo({
+    resolveTarget: async (folder) => (terminals ? terminals.resolveSendTarget(null, folder) : null),
+    send: (id, text) => terminals!.sendReview(id, text),
+    noAgentMessage: t('terminal.send.noAgent')
+  }, { ids, prefs: currentSettings().agentRequests, lang: guideLanguage(), project: currentSettings().projects.find((p) => p.id === workspace.projectId), folder: workspace.folderPath })
+  if (result === 'empty') throw new UserFacingError(t('errors.emptyText'))
+  return result
 }
 
 /**

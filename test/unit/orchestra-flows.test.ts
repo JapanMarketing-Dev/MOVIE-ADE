@@ -157,3 +157,27 @@ describe('Chrome の書き出しの CSV で同期する（IPC の入口から）
     expect(await h['browserImport:trashExport']('not-a-key')).toBe(false)
   })
 })
+
+describe('ダッシュボードの「Agent に全部書き出してもらう」（通し）', () => {
+  it('全体から押すと、全プロダクトを並行して集め human.md の表に書く依頼が、全体の Agent に1回で届く', async () => {
+    const { sendAgentRequestsTo } = await import('../../src/main/agentRequestSend')
+    const { readFile } = await import('node:fs/promises')
+    const dashboard = await readFile(new URL('../../src/renderer/components/OrchestraDashboard.tsx', import.meta.url), 'utf8')
+    const id = /'agentRequests:send', \['([a-z-]+)'\]/.exec(dashboard)![1]!
+    const sent: Array<{ id: string; text: string }> = []
+    const result = await sendAgentRequestsTo({
+      resolveTarget: async (folder) => (folder === '/all-products' ? 'term-top' : null),
+      send: async (terminal, text) => { sent.push({ id: terminal, text }); return { ok: true, message: 'ok' } },
+      noAgentMessage: 'no agent'
+    }, { ids: [id], prefs: undefined, lang: 'en', project: { editorWorkspace: true }, folder: '/all-products' })
+    expect(result).toEqual({ ok: true, message: 'ok' })
+    expect(sent).toHaveLength(1)
+    expect(sent[0]!.id).toBe('term-top')
+    for (const word of ['one subagent per included product', 'Inside each product too', 'human.md', '| No. | Product | URL | What to check |', 'top of the All products dashboard']) expect(sent[0]!.text).toContain(word)
+    // Agent が居なければ、画面に既定の Agent を開かせる（noAgent）。隠した・知らない依頼は送らない
+    expect(await sendAgentRequestsTo({ resolveTarget: async () => null, send: async () => ({ ok: true, message: '' }), noAgentMessage: 'no agent' },
+      { ids: [id], prefs: undefined, lang: 'en', project: { editorWorkspace: true }, folder: '/all-products' })).toEqual({ ok: false, message: 'no agent', noAgent: true })
+    expect(await sendAgentRequestsTo({ resolveTarget: async () => 'x', send: async () => ({ ok: true, message: '' }), noAgentMessage: '' },
+      { ids: ['nope'], prefs: undefined, lang: 'en', project: undefined, folder: null })).toBe('empty')
+  })
+})
