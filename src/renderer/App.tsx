@@ -181,7 +181,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   /** 全体では、フィードバックの対象を大きく見せるためターミナルの欄を閉じる（右下のボタンで開く。設定の配置は変えない） */
   const [terminalPeek, setTerminalPeek] = useState(false)
   const baseLayout = browserFocus ? browserFocusLayout(savedLayout) : savedLayout
-  const layout = isOrchestra && !terminalPeek ? { ...baseLayout, panels: { ...baseLayout.panels, terminal: { ...baseLayout.panels.terminal, visible: false } } } : baseLayout
+  // オーケストラ前提：どのプロジェクトでも、ターミナルの欄は閉じておき右下の小さなボタンで開く（フィードバックの対象を大きく見せる）
+  const layout = !terminalPeek ? { ...baseLayout, panels: { ...baseLayout.panels, terminal: { ...baseLayout.panels.terminal, visible: false } } } : baseLayout
   const terminalDock = layout.panels.terminal.dock
   /** フッターのポップオーバー。開いている間はビューを隠す（ビューがDOMの上に重なるため） */
   const [footerPopoverOpen, setFooterPopoverOpen] = useState(false)
@@ -321,22 +322,14 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   /** 内蔵ブラウザの開始画面の候補（登録した URL・最近開いた URL・登録が無ければ localhost の補助） */
   const startTargets = projects.projects.find((p) => p.id === workspace.projectId)?.urls
   const startChoices = useMemo(() => startUrlChoices({ targets: startTargets ?? [], history: urlHistory }), [startTargets, urlHistory])
-  const [savedTargetsOpen, setTargetsOpenState] = useState(() => readLocal('ade.feedback.targetsOpen') !== 'false')
   /**
-   * 全体（すべてのプロダクト）のフィードバックの画面では、エディタと同じく右のパネル（確認先・ターミナル）を閉じておき、
-   * 右下の小さなボタンで開く（フィードバックの対象を大きく見せる）。開いた状態は覚えない
+   * フィードバックの画面の右のパネル（確認先・文字起こし・ターミナル）。オーケストラ前提で、どのプロジェクトでもエディタと同じく閉じておき、
+   * 右下の小さなボタン（またはツールバーの開閉）で開く。フィードバックの対象を大きく見せる。開いた状態は覚えない
    */
   const [orchestraSideOpen, setOrchestraSideOpen] = useState(false)
-  const targetsOpen = isOrchestra ? orchestraSideOpen : savedTargetsOpen
+  const targetsOpen = orchestraSideOpen
   const [targetsRatio, setTargetsRatio] = useState(() => Number(readLocal('ade.feedback.targetsRatio')) || 0.78)
-  const setTargetsOpen = (next: (open: boolean) => boolean) => {
-    if (isOrchestra) { setOrchestraSideOpen(next); return }
-    setTargetsOpenState((prev) => {
-      const value = next(prev)
-      void window.ade.invoke('settings:feedbackTargets', { visible: value }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
-      return value
-    })
-  }
+  const setTargetsOpen = (next: (open: boolean) => boolean) => setOrchestraSideOpen(next)
   /*
    * 録画中の文字起こし（右パネルの「文字起こし」タブ）。パネルを閉じていても受け取る。
    * 止まった・声が文字にならない・マイクに音が来ないときは、パネルを見ていなくても1回だけ知らせ、右パネルの開閉ボタンに印を付ける
@@ -786,12 +779,12 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   recordingRef.current = recording
   /** 全体の Agent が動いているか（右下のボタンの印） */
   const allActivity = useProjectActivity()
-  const orchestraBusy = isOrchestra && !!workspace.projectId && allActivity[workspace.projectId] === 'working'
+  const orchestraBusy = !!workspace.projectId && allActivity[workspace.projectId] === 'working'
 
   // 全体へ切り替えたらダッシュボードを開く。全体から離れたらダッシュボードのタブは無いのでブラウザへ
   useEffect(() => {
     if (isOrchestra) setCenterTab((tab) => (tab === 'browser' || tab === 'findings' ? 'dashboard' : tab))
-    else { setCenterTab((tab) => (tab === 'dashboard' ? 'browser' : tab)); setTerminalPeek(false) }
+    else setCenterTab((tab) => (tab === 'dashboard' ? 'browser' : tab))
   }, [isOrchestra, workspace.projectId])
 
   /** フィードバックの画面でそのページを開く（録画中なら止めずに移る。1回のフィードバックで全部のプロダクトを確かめる） */
@@ -975,7 +968,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
    * 最初の描画が終わった時点を「操作可能」として記録する。
    */
   const applyFeedbackTargets = (prefs: FeedbackTargetsPrefs) => {
-    setTargetsOpenState(prefs.visible !== false)
+    // 開閉は覚えない（右下のボタンで開く）。幅だけ戻す
     if (prefs.ratio) setTargetsRatio(prefs.ratio)
   }
 
@@ -1399,6 +1392,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
             {/* SSH のプロジェクトは、ローカルにはレビューの置き場しか無いので、ファイルツリーの代わりに案内を出す */}
             {(() => { const remote = projects.projects.find((p) => p.id === workspace.projectId && p.source === 'ssh'); return remote ? <RemoteFilesNotice project={remote} /> : null })() ?? <FileExplorer
               root={workspace.folderPath}
+              projectId={workspace.projectId ?? null}
               activePath={files.activeFile?.path ?? null}
               dirtyPaths={files.dirtyPaths}
               onOpen={files.open}
@@ -1434,11 +1428,11 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
       </div>
 
       {/* 全体では、ターミナルの欄を閉じて右下の小さなボタンにする（フィードバックの対象を大きく見せる。ChatGPT の画面のように） */}
-      {isOrchestra && mode === 'editor' && <button type="button" className={`orchestra-peek${orchestraBusy ? ' is-busy' : ''}`} onClick={() => setTerminalPeek((v) => !v)}
+      {mode === 'editor' && <button type="button" className={`orchestra-peek${orchestraBusy ? ' is-busy' : ''}`} onClick={() => setTerminalPeek((v) => !v)}
         aria-pressed={terminalPeek} title={t(terminalPeek ? 'orchestra.hideTerminal' : 'orchestra.showTerminal')} data-testid="orchestra-terminal-toggle">
         <span className="orchestra-peek__dot" aria-hidden="true" />{t(terminalPeek ? 'orchestra.hideTerminal' : 'orchestra.showTerminal')}
       </button>}
-      {isOrchestra && mode === 'feedback' && <div className="orchestra-peeks">
+      {mode === 'feedback' && <div className="orchestra-peeks">
         <button type="button" className={`orchestra-peek orchestra-peek--inline${orchestraBusy ? ' is-busy' : ''}`} aria-pressed={orchestraSideOpen && shownSideTab === 'terminal'}
           onClick={() => { const open = !(orchestraSideOpen && shownSideTab === 'terminal'); if (open) chooseSideTab('terminal'); setOrchestraSideOpen(open) }} data-testid="orchestra-feedback-terminal">
           <span className="orchestra-peek__dot" aria-hidden="true" />{t('orchestra.showTerminal')}

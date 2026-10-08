@@ -35,3 +35,16 @@ describe('Codex のセキュリティ監査（全体のダッシュボードの�
     expect(terminal).toContain('launchLine = await trusted([...policy.argv, ...(internal.extraArgs ?? [])], label)')
   })
 })
+
+describe('Codex の監査はあらゆる基準と道具で調べる', () => {
+  it('CIS Benchmarks・CIS Controls・OWASP・CWE・NIST・SLSA などの基準ごとに判定し、道具で検査し、報告に基準の番号を付ける', () => {
+    for (const lang of ['en', 'ja'] as const) {
+      const text = BUILTIN_REQUESTS.find((b) => b.id === 'security-codex')!.text[lang]
+      for (const word of ['CIS Benchmarks', 'CIS Controls v8', 'OWASP Top 10', 'OWASP API Security Top 10', 'OWASP ASVS', 'OWASP MASVS', 'CWE Top 25', 'NIST CSF 2.0', 'SLSA', 'OpenSSF Scorecard', 'Prowler', 'kube-bench', 'Docker Bench', 'Trivy', 'Checkov', 'Semgrep', 'gitleaks', 'osv-scanner', 'testssl.sh', 'OWASP ZAP']) expect(text).toContain(word)
+      expect(text.length).toBeLessThan(5500)
+    }
+    const en = BUILTIN_REQUESTS.find((b) => b.id === 'security-codex')!.text.en
+    expect(en).toContain('localhost and development only')
+    expect(en).toContain('pass and fail counts by CIS Benchmark item')
+  })
+})

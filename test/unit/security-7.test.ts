@@ -419,7 +419,9 @@ describe('security-7 [10][12] credential-bearing and update requests do not foll
 
   it('update metadata, signatures, installers and usage requests pass redirect: error (shape check)', () => {
     const check = read('src/main/updateCheck.ts')
-    expect(check.match(/fetcher\([^\n]*redirect: 'error'/g)).toHaveLength(3)
+    // 一覧（versions.json）と選んだ版（releases/<版>/manifest.json）を含め、すべての取得が redirect: error
+    expect(check.match(/fetcher\([^\n]*redirect: 'error'/g)).toHaveLength(check.match(/fetcher\(/g)!.length)
+    expect(check.match(/fetcher\(/g)!.length).toBeGreaterThanOrEqual(5)
     expect(check).not.toMatch(/fetcher\((?![^\n]*redirect: 'error')[^\n]*\{ signal/)
     expect(read('src/main/updateDownload.ts')).toMatch(/fetcher\(file\.url, \{ signal, redirect: 'error' \}\)/)
     expect(read('src/main/usage/service.ts')).toMatch(/net\.fetch\(url, \{ \.\.\.init, redirect: 'error' \}\)/)

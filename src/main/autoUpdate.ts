@@ -38,6 +38,8 @@ export interface AutoUpdateDeps {
   canInstall: boolean
   /** 更新の確認（updateCheck.ts の checkForUpdate） */
   check(): Promise<UpdateCheckResult>
+  /** 選んだ版を入れられるか確かめる（updateCheck.ts の checkForVersion。古い版へ戻すことも含む） */
+  checkVersion?(version: string): Promise<UpdateCheckResult>
   /** 最後の確認で署名を確かめた、この OS・CPU 向けの決まった種類のファイル */
   verifiedFile(kind: VerifiedDownload['kind']): VerifiedDownload | null
   /** 確かめた大きさと sha256 で落とし、合ったものだけを dir/<名前> に置く（updateDownload.ts の downloadVerifiedTo） */
@@ -87,6 +89,11 @@ export class AutoUpdater {
   private staged = false
   /** スリープ明けの確認を待っている間の終わり（ms）。それまではウインドウに戻ったときの確認をしない */
   private resumeUntil: number | null = null
+  /**
+   * 利用者が選んだ版（chooseVersion）。選んでいる間は、定期の確認で最新の版に置き換えない（古い版へ戻したのに、
+   * 次の確認でまた最新を落として閉じたときに入れてしまわないように）。自動の更新をオンに戻すと外れる
+   */
+  private pinned: string | null = null
 
   constructor(private readonly deps: AutoUpdateDeps) {}
 
@@ -192,6 +199,11 @@ export class AutoUpdater {
     this.checking = (async () => {
       try {
         const result = await this.deps.check()
+        // 版を選んでいる間は、選んだ版のまま（定期の確認の結果で置き換えない）
+        if (this.pinned) {
+          this.lastChecked = (this.deps.now ?? Date.now)()
+          return result
+        }
         // 落とし終えた版より新しい版が出たら、古い方は入れ替えに使わない
         if (result.state === 'available' && this.downloaded && this.downloaded.file.version !== result.latest && this.progress.phase !== 'downloading') {
           this.downloaded = null
@@ -218,10 +230,48 @@ export class AutoUpdater {
    */
   setAutoDownload(on: boolean): void {
     this.deps.setAutoDownload(on)
+    if (on && this.pinned) {
+      // 自動の更新に戻す：選んだ版を外し、最新の版を確かめ直す
+      this.pinned = null
+      void this.checkNow()
+      return
+    }
     this.emit()
     if (!on) return
     if (this.progress.phase === 'ready' && this.downloaded && !this.staged) void this.stageReady()
     else void this.download()
+  }
+
+  /**
+   * 版を選んで入れる（古い版へ戻すことも含む）。選んだ版を署名で確かめて落とし、「準備ができた」にする。
+   * 入れ替えは［再起動して更新］で行う。今の版より古い版を選んだら、自動の更新をオフにする（最新へ戻されないように）。
+   * 選んだのが最新の版なら、固定せずにふつうの更新として扱う
+   */
+  async chooseVersion(version: string, latestKnown: string | null): Promise<AutoUpdateStatus> {
+    if (!this.deps.enabled || !this.deps.checkVersion) return this.status()
+    if (this.checking) await this.checking.catch(() => undefined)
+    this.downloadAbort?.abort()
+    const result = await this.deps.checkVersion(version)
+    this.check = result
+    this.downloaded = null
+    this.staged = false
+    this.progress = { phase: 'idle' }
+    if (result.state !== 'available') {
+      this.pinned = null
+      this.emit()
+      return this.status()
+    }
+    const older = latestKnown !== null && latestKnown !== version
+    this.pinned = older ? version : null
+    if (older && this.deps.getAutoDownload()) this.deps.setAutoDownload(false)
+    this.emit()
+    await this.download()
+    return this.status()
+  }
+
+  /** 選んでいる版（無ければ null） */
+  pinnedVersion(): string | null {
+    return this.pinned
   }
 
   /** 準備のできたものを入れ替えの準備に進める（閉じたときに入るように）。失敗したら「失敗」にする */
