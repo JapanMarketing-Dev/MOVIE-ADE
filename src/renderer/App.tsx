@@ -848,7 +848,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   const dockTargets: DockTarget[] = isOrchestra ? [
     ...dockChecklist.map((c) => ({ key: c.key, label: c.label || c.url, url: c.url })),
     ...projects.projects.filter((p) => !p.editorWorkspace && !p.orchestrator && !p.orchestraExcluded).flatMap((p) => p.urls.filter((u) => u.url && !dockChecklist.some((c) => c.url === u.url)).slice(0, 2)
-      .map((u) => ({ key: p.name.slice(0, 2).toUpperCase(), label: `${p.name}${u.label ? ` · ${u.label}` : ''}`, url: u.url! })))
+      .map((u) => ({ key: '', label: `${p.name}${u.label ? ` · ${u.label}` : ''}`, url: u.url! })))
   ] : []
   const roundBar = productRound.round && <RoundBar round={productRound.round} projects={projects.projects} recording={recording}
     onNext={() => (recording ? toggleRecording() : productRound.skip())} onStop={productRound.stop} />

@@ -124,6 +124,8 @@ button {
   overflow: clip;
   min-width: 0;
   min-height: 0;
+  /* 列は窓の幅に固定する（中身が長くても広がらない。広がるとブラウザの枠が窓の外へずれる） */
+  grid-template-columns: minmax(0, 1fr);
   grid-area: 1 / 1;
 }
 
@@ -361,6 +363,7 @@ button {
 
 .round-dock {
   display: flex;
+  min-width: 0;
   grid-row: 2;
   justify-content: center;
   padding: var(--space-1) 0;
@@ -528,7 +531,8 @@ button {
 }
 
 .orchestra-composer--compact {
-  width: min(420px, 40vw);
+  flex: none;
+  width: min(360px, 32vw);
   padding: 2px 2px 2px var(--space-3);
 }
 
@@ -540,6 +544,7 @@ button {
 .orchestra-dock {
   display: flex;
   width: 100%;
+  min-width: 0;
   align-items: center;
   gap: var(--space-3);
   padding: 0 var(--space-4);
@@ -557,7 +562,14 @@ button {
   flex: 1;
   min-width: 0;
   gap: var(--space-1);
+  padding: 2px 0;
   overflow-x: auto;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+}
+
+.orchestra-dock__chips::-webkit-scrollbar {
+  display: none;
 }
 
 .orchestra-dock__chip {
@@ -574,6 +586,11 @@ button {
   font: inherit;
   font-size: 12px;
   cursor: pointer;
+}
+
+.orchestra-dock__chip--project {
+  border-style: dashed;
+  color: var(--color-text-muted);
 }
 
 .orchestra-dock__chip.is-current {
