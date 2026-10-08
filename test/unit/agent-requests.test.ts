@@ -50,7 +50,7 @@ describe('組み込みの依頼文', () => {
     const id = /'agentRequests:send', \['([a-z-]+)'\]/.exec(dashboard)![1]!
     expect(id).toBe('human-checklist')
     expect(dashboard).toContain('<AgentRequestsSection />')
-    const main = await readFile(new URL('../../src/main/index.ts', import.meta.url), 'utf8')
+    const main = await readFile(new URL('../../src/main/agentRequestSend.ts', import.meta.url), 'utf8')
     expect(main).toContain('composeAgentRequest(picked, lang, !!(project?.orchestrator || project?.editorWorkspace))')
     const text = composeAgentRequest(resolveAgentRequests(undefined, 'en').filter((r) => r.id === id), 'en', true)
     expect(text).toContain('run all products at the same time in parallel')

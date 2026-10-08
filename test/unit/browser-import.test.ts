@@ -51,6 +51,24 @@ describe('パスワードの CSV', () => {
     expect(parsePasswordCsv(csv)).toEqual({ logins: [{ origin: 'https://example.com', username: 'alice', password: FAKE_PASSWORD }], skipped: 0, source: 'chromium' })
   })
 
+  it('Chrome の書き出しの引用（カンマ・改行・"" を含む値、メモの複数行、CRLF、android の行）をそのまま読む', () => {
+    const tricky = ['a,b', 'q"x'].join('')
+    const csv = [
+      'name,url,username,password,note',
+      `"Example, Inc.",https://example.com/signin?next=/a,"alice, admin","${tricky.replace(/"/g, '""')}","line1\nline2, with comma"`,
+      `app,android://hash@com.example.app/,bob,${FAKE_PASSWORD},`,
+      `shop.example.net,https://shop.example.net/,,${FAKE_PASSWORD},`
+    ].join('\r\n')
+    expect(parsePasswordCsv(csv)).toEqual({
+      logins: [
+        { origin: 'https://example.com', username: 'alice, admin', password: tricky },
+        { origin: 'https://shop.example.net', username: '', password: FAKE_PASSWORD }
+      ],
+      skipped: 1,
+      source: 'chromium'
+    })
+  })
+
   it('Safari の見出し（Title,URL,Username,Password,Notes,OTPAuth）', () => {
     const csv = `Title,URL,Username,Password,Notes,OTPAuth\nExample,https://www.example.com:8443/a,bob,${FAKE_PASSWORD},memo,\n`
     expect(parsePasswordCsv(csv)?.logins).toEqual([{ origin: 'https://www.example.com:8443', username: 'bob', password: FAKE_PASSWORD }])

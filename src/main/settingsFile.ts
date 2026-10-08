@@ -446,12 +446,52 @@ export class SettingsFileStore {
     return `${JSON.stringify(ordered, null, 2)}\n`
   }
 
+  /**
+   * 保存の直前に、settings.json が外から変わっていないかを見る（Claude Code などが書いた直後で、監視がまだ取り込んでいない）。
+   * 変わっていれば、上の階層の項目ごとに3方向でまとめる：アプリが前の内容から変えた項目はアプリの値、それ以外は外の値。
+   * まとめたものを書いて、外部の変更として取り込み直す。外のファイルが壊れていれば書かずに監視に任せる。
+   * 変わっていなければ null（ふつうに書く）。
+   * 前は確かめずに書いていたので、Agent が browserExtensions の enabled を false にした直後にアプリが別の理由で保存すると、
+   * Agent の変更が古い値で上書きされて消えた（0.6.6 の確認で見つけた）
+   */
+  private mergeExternalBeforeSave(ours: string): 'merged' | 'deferred' | null {
+    if (this.lastText === null) return null
+    let disk: string
+    try {
+      disk = readFileSync(this.settingsPath, 'utf8')
+    } catch {
+      return null
+    }
+    if (disk === this.lastText) return null
+    const theirs = parseSettingsText(disk)
+    if (!theirs.ok) {
+      // 外のファイルが壊れている。上書きせず、監視（checkNow）がエラーとして出す
+      setImmediate(() => this.checkNow())
+      return 'deferred'
+    }
+    let base: Record<string, unknown> = {}
+    try { base = JSON.parse(this.lastText) as Record<string, unknown> } catch { /* 前の内容が読めなければ外の値を優先 */ }
+    const mine = JSON.parse(ours) as Record<string, unknown>
+    const merged: Record<string, unknown> = { ...theirs.value }
+    for (const key of new Set([...Object.keys(mine), ...Object.keys(base)])) {
+      if (key === '$schema' || JSON.stringify(mine[key]) === JSON.stringify(base[key])) continue
+      if (mine[key] === undefined) delete merged[key]
+      else merged[key] = mine[key]
+    }
+    const text = `${JSON.stringify(merged, null, 2)}\n`
+    this.remember(merged, text)
+    if (text !== disk) writeFileAtomicSync(this.settingsPath, text)
+    // 取り込みは今の保存が終わってから（保存の途中で設定を差し替えない）
+    setImmediate(() => this.opt.onExternalChange?.(merged))
+    return 'merged'
+  }
+
   /** 保存する。settings.json が壊れている間は state.json だけを書く。変わっていなければ書かない */
   saveSync(settings: Settings): void {
     mkdirSync(this.opt.dir, { recursive: true })
     if (!this.errorValue) {
       const text = this.configText(settings)
-      if (text !== this.lastText) {
+      if (text !== this.lastText && this.mergeExternalBeforeSave(text) === null) {
         // 先に覚えてから書く（監視が書き込みに先に気づいても、自分の書き込みと分かる）。
         // 書けなければ元に戻す。戻さないと「書いた」扱いのままになり、同じ内容では終了時にも書き直さない（Orca #18271）
         const previous = this.lastText

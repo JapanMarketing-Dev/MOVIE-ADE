@@ -352,3 +352,39 @@ describe('直下に書かれた開発版の設定を dev/ へ移す（1度だけ
     expect(existsSync(join(already, 'settings.json'))).toBe(true)
   })
 })
+
+describe('保存の直前に外の変更とまとめる（Agent の書き込みを古い値で上書きしない）', () => {
+  it('外で変わった項目は外の値、アプリが変えた項目はアプリの値で書き、まとめたものを取り込み直す', async () => {
+    const dir = join(root, 'cfg')
+    const applied: Array<Record<string, unknown>> = []
+    const store = newStore(dir, { onExternalChange: (config) => applied.push(config) })
+    const { settings } = store.load()
+    const ext = '/work/ext/dist'
+    store.saveSync({ ...settings, theme: 'light', browserExtensions: [{ path: ext, reload: 1 }] })
+    // Agent が settings.json を直接書いた（監視が取り込む前）
+    const onDisk = JSON.parse(readFileSync(store.settingsPath, 'utf8')) as Record<string, unknown>
+    writeFileSync(store.settingsPath, JSON.stringify({ ...onDisk, browserExtensions: [{ path: ext, enabled: false }] }, null, 2))
+    // 同じ時にアプリが別の理由（配色）で、外の変更を知らない古い設定のまま保存した
+    store.saveSync({ ...settings, theme: 'dark', browserExtensions: [{ path: ext, reload: 1 }] })
+    const written = JSON.parse(readFileSync(store.settingsPath, 'utf8')) as Record<string, unknown>
+    expect(written.browserExtensions).toEqual([{ path: ext, enabled: false }])
+    expect(written.theme).toBe('dark')
+    await new Promise((r) => setImmediate(r))
+    expect(applied.at(-1)).toMatchObject({ theme: 'dark', browserExtensions: [{ path: ext, enabled: false }] })
+    // まとめたあとは自分の書き込みとして扱う（監視は取り込み直さない）
+    expect(store.checkNow()).toBe('unchanged')
+  })
+
+  it('外のファイルが壊れていれば上書きせず、監視がエラーとして出す', async () => {
+    const dir = join(root, 'cfg2')
+    const errors: unknown[] = []
+    const store = newStore(dir, { onErrorChange: (e) => errors.push(e) })
+    const { settings } = store.load()
+    store.saveSync({ ...settings, theme: 'light' })
+    writeFileSync(store.settingsPath, '{ "theme": ')
+    store.saveSync({ ...settings, theme: 'dark' })
+    expect(readFileSync(store.settingsPath, 'utf8')).toBe('{ "theme": ')
+    await new Promise((r) => setImmediate(r))
+    expect(errors.at(-1)).toBeTruthy()
+  })
+})
