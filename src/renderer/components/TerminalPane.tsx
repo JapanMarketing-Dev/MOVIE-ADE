@@ -14,6 +14,7 @@ import { AttentionThrottle, INITIAL_TRACK, advancePaneState, attentionEvents, ty
 import { onAccountLoginRequest } from '../lib/accountLogin'
 import { onTerminalCommandRequest } from '../lib/terminalCommand'
 import { onAgentLaunchRequest } from '../lib/agentLaunchRequest'
+import type { TerminalPreset } from '@shared/codexAudit'
 import {
   ACTIVE_PANE_OPACITY,
   DIVIDER_HIT_PADDING_PX,
@@ -122,6 +123,8 @@ interface Pane {
   autoStart?: boolean
   /** 上限での自動切り替えで開くタブ（main の failover:launch の token） */
   failoverToken?: string | null
+  /** 決まった起動（@shared/codexAudit）。開くときに1回だけ使う */
+  preset?: TerminalPreset
   /** 起動したアカウント（Claude Code / Codex。main の返事）。null はシステムの既定。戻したタブではこのアカウントで開く */
   accountId?: string | null
   /** 戻したタブ: 前の会話を続けて起動する（@shared/terminalRestore の panesToResume） */
@@ -215,13 +218,14 @@ interface PaneSpec {
   title?: string | null
   autoStart?: boolean
   failoverToken?: string | null
+  preset?: TerminalPreset | null
 }
 
-function newPane({ launch = null, cwd, accountLogin = null, command = null, title = null, autoStart = false, failoverToken = null }: PaneSpec): Pane {
+function newPane({ launch = null, cwd, accountLogin = null, command = null, title = null, autoStart = false, failoverToken = null, preset = null }: PaneSpec): Pane {
   const label =
     title ||
     (accountLogin ? tNow('terminal.loginTitle', { agent: TUI_AGENT_LABEL[accountLogin.agent] }) : launch ? agentLabel(launch) : tNow('terminal.shell'))
-  return { key: `pane${++paneSeq}`, title: label, state: 'unknown', launch, cwd, accountLogin, command, customTitle: title, autoStart, failoverToken }
+  return { key: `pane${++paneSeq}`, title: label, state: 'unknown', launch, cwd, accountLogin, command, customTitle: title, autoStart, failoverToken, ...(preset ? { preset } : {}) }
 }
 
 /** 読み込み直しの前に書いた記録（同じウインドウの読み込み直しでは残る sessionStorage）。読めなければ null */
@@ -535,7 +539,7 @@ export function TerminalPane({
     []
   )
   // 「Agentへ送信」でどこにも Agent が居なかったとき、既定の Agent のタブを開く（ReviewFindings）
-  useEffect(() => onAgentLaunchRequest((agent) => addTabRef.current(agent)), [])
+  useEffect(() => onAgentLaunchRequest((agent, preset) => addTabRef.current(agent, preset ? { preset } : {})), [])
 
   // メニューの「右に分割／下に分割」をクリックしたとき（キーは下の onKeyDownCapture が拾う）
   const splitPaneRef = useRef<(direction: PaneSplitDirection) => void>(() => undefined)
@@ -886,6 +890,7 @@ export function TerminalPane({
           title: pane.customTitle ?? null,
           autoStart: pane.autoStart === true,
           failoverToken: pane.failoverToken ?? null,
+          ...(pane.preset ? { preset: pane.preset } : {}),
           // 戻したタブ: 前の会話を続け、前と同じアカウントで開く
           ...(pane.resume ? { resume: true } : {}),
           ...(pane.accountId !== undefined ? { accountId: pane.accountId } : {})

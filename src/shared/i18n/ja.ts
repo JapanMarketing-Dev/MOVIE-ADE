@@ -1207,6 +1207,8 @@ export const ja: Messages = {
   'orchestra.composerSend': "オーケストラに送る",
   'orchestra.requestPick': "用意した依頼を選ぶ",
   'orchestra.requestSend': "依頼を送る",
+  'orchestra.codexAudit': "Codex でセキュリティ監査",
+  'orchestra.codexAuditHint': "Codex を Daybreak Blue・Extra high で開き、すべてのプロダクトのアプリ・インフラ・DB などのセキュリティを調べて指摘させます（直しはしません）",
   'orchestra.composerSent': "全体の Agent に送りました。",
   'orchestra.tourPrev': "前のページ",
   'orchestra.tourNext': "次のページ",

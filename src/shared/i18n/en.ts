@@ -1212,6 +1212,8 @@ export const en = {
   'orchestra.composerSend': "Send to the orchestra",
   'orchestra.requestPick': "Pick a prepared request",
   'orchestra.requestSend': "Send request",
+  'orchestra.codexAudit': "Codex security audit",
+  'orchestra.codexAuditHint': "Opens Codex with Daybreak Blue at Extra high and has it audit every product's app, infrastructure, database and more, reporting findings without fixing them",
   'orchestra.composerSent': "Sent to the orchestra agent.",
   'orchestra.tourPrev': "Previous page",
   'orchestra.tourNext': "Next page",

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ExternalLink, ListChecks, Play, RefreshCw, Repeat } from 'lucide-react'
+import { ExternalLink, ListChecks, Play, RefreshCw, Repeat, ShieldCheck } from 'lucide-react'
 import type { Project } from '@shared/types'
 import { formatUsd, type OrchestraOverview } from '@shared/agentCost'
+import { CODEX_AUDIT_PRESET } from '@shared/codexAudit'
+import { requestAgentLaunch } from '../lib/agentLaunchRequest'
 import { errorMessage } from '../lib/errors'
 import { useT } from '../lib/i18n'
 import { useProjectActivity } from '../terminal/agentActivity'
@@ -73,6 +75,7 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
     <div className="orchestra__actions">
       <Button icon={<Repeat size={13} />} onClick={() => onStartRound('record')} data-testid="orchestra-round-record">{t('round.startRecord')}</Button>
       <Button icon={<ListChecks size={13} />} onClick={() => onStartRound('confirm')} data-testid="orchestra-round-confirm">{t('round.startConfirm')}</Button>
+      <Button icon={<ShieldCheck size={13} />} title={t('orchestra.codexAuditHint')} onClick={() => requestAgentLaunch('codex', CODEX_AUDIT_PRESET)} data-testid="orchestra-codex-audit">{t('orchestra.codexAudit')}</Button>
       <OrchestraRequestPicker />
     </div>
 

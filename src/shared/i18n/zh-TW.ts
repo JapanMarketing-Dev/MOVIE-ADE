@@ -1207,6 +1207,8 @@ export const zhTW: LocaleMessages = {
   'orchestra.composerSend': "傳送給編排",
   'orchestra.requestPick': "選擇預設的請求",
   'orchestra.requestSend': "傳送請求",
+  'orchestra.codexAudit': "用 Codex 做安全稽核",
+  'orchestra.codexAuditHint': "以 Daybreak Blue・Extra high 開啟 Codex，稽核所有產品的應用、基礎設施、資料庫等的安全問題，只指出不修改",
   'orchestra.composerSent': "已傳送給總 agent。",
   'orchestra.tourPrev': "上一頁",
   'orchestra.tourNext': "下一頁",

@@ -279,6 +279,24 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
     }
   },
   {
+    id: 'security-codex',
+    title: { ja: 'Codex で全体のセキュリティ監査（指摘だけ）', en: 'Codex security audit of everything (findings only)' },
+    text: {
+      ja: [
+        'あなたはセキュリティ監査の担当です。このフォルダにある、すべてのプロダクト（リンクで入っているフォルダを含む。一覧は AGENTS.md）のセキュリティを、あらゆる層で調べて指摘してください。直さずに、指摘だけを出します。',
+        '範囲：アプリ（認証・認可・権限の昇格・入力の検証・インジェクション（SQL・コマンド・パス・テンプレート）・XSS・CSRF・SSRF・逆シリアル化・ファイルの扱い・暗号と乱数・セッションと Cookie・CORS・レート制限）／DB（公開の範囲・権限・RLS やロール・接続の暗号化・バックアップ・個人情報の保存と削除・マイグレーションの危険）／インフラ（IaC・クラウドの IAM・ネットワーク・公開されたポートやバケット・DNS・TLS・コンテナとイメージ・既定の設定）／CI/CD（ワークフローの権限・secrets の扱い・外から来る PR での実行・配布物の署名）／秘密情報（リポジトリや履歴・ログ・エラー・クライアントへの漏れ）／依存関係とサプライチェーン（既知の脆弱性・固定されていない版・インストールのスクリプト）／監視とログ／プライバシー。プロダクト同士のつながり（共有の鍵・共有の DB・信頼の境界）も見る。',
+        '進め方：プロダクトごとに、互いに関係しないものは並行して調べる（必要なら `codex exec` で作業を分ける）。各指摘は、コードや設定の該当箇所を示し、攻撃の筋道を具体的に確かめてから出す（推測だけの指摘はしない）。クラウドや DB は読み取りだけで調べ、設定を変えない・データを書き換えない・本番に負荷をかけない。',
+        '出力：全体のフォルダの .ferret/security/ に日付の付いた報告（Markdown）を1つ書く。指摘ごとに、重大度（Critical・High・Medium・Low）・プロダクト・場所・攻撃の筋道・影響・直し方の案・再発を止めるテストの案。重大度の高い順。最後に、人が判断すべきこと（鍵の作り直し・公開の範囲など）を human.md の確認リストに足す。'
+      ].join('\n'),
+      en: [
+        'You are the security auditor. Examine the security of every product in this folder (including linked folders; AGENTS.md lists them) at every layer, and report findings. Do not fix anything; produce findings only.',
+        'Scope: application (authentication, authorization, privilege escalation, input validation, injection (SQL, command, path, template), XSS, CSRF, SSRF, deserialization, file handling, crypto and randomness, sessions and cookies, CORS, rate limits); database (exposure, privileges, RLS and roles, encrypted connections, backups, storing and deleting personal data, risky migrations); infrastructure (IaC, cloud IAM, networking, exposed ports and buckets, DNS, TLS, containers and images, defaults); CI/CD (workflow permissions, secret handling, running code from outside PRs, signing of releases); secrets (in the repository or its history, logs, errors, the client); dependencies and supply chain (known vulnerabilities, unpinned versions, install scripts); monitoring and logging; privacy. Also check how the products connect to each other (shared keys, shared databases, trust boundaries).',
+        'How: go product by product, in parallel where they do not depend on each other (split the work with `codex exec` if needed). For each finding, point to the code or configuration and confirm a concrete attack path before reporting it (no findings on speculation). Inspect cloud and databases read-only: change no settings, write no data, put no load on production.',
+        'Output: write one dated report (Markdown) in .ferret/security/ in the top-level folder. For each finding: severity (Critical, High, Medium, Low), product, location, attack path, impact, a suggested fix and a test that would stop it coming back, most severe first. Finally, add what a person must decide (rotating keys, what is exposed and so on) to the checklist in human.md.'
+      ].join('\n')
+    }
+  },
+  {
     id: 'test-deep',
     title: { ja: 'テストの徹底検査（全プロダクト）', en: 'Deep test check (every product)' },
     text: {

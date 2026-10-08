@@ -32,7 +32,7 @@ describe('security-4 [1] built-in agents never resolve from the project folder',
   it('every built-in launch and account login goes through resolveTrustedExecutable; logins run outside the project', () => {
     const terminal = read('src/main/terminal.ts')
     expect(terminal).toMatch(/deliver\(await trusted\(login\.argv/)
-    expect(terminal).toMatch(/launchLine = await trusted\(policy\.argv/)
+    expect(terminal).toMatch(/launchLine = await trusted\(\[\.\.\.policy\.argv/)
     expect(terminal).toMatch(/resolveTrustedExecutable\(argv\[0\]/)
     expect(terminal).toMatch(/const cwd = options\.accountLogin \? homedir\(\)/)
     // PTY の環境には、cmd.exe に今のフォルダを探させない印が必ず入る
