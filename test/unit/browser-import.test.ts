@@ -382,3 +382,17 @@ describe('履歴の DB の読み取り（偽の DB）', () => {
     await expect(readHistorySource({ kind: 'chromium', path: join(await tempDir(), 'missing', 'History') })).rejects.toThrow()
   })
 })
+
+describe('Chrome が実際に書き出す CSV（Chromium の password_csv_writer_unittest.cc の期待値そのもの）', () => {
+  // https://chromium.googlesource.com/chromium/src/+/refs/heads/main/components/password_manager/core/browser/export/password_csv_writer_unittest.cc
+  for (const [os, eol] of [['mac / Linux', '\n'], ['Windows', '\r\n']] as const) {
+    it(`SerializePasswords_SinglePassword・SerializePasswordsWritesNames の出力を読む（${os}）`, () => {
+      const single = `name,url,username,password,note${eol}example.com,https://example.com/,Someone,Secret,"Note Line 1${eol}Note Line 2"${eol}`
+      expect(parsePasswordCsv(single)).toEqual({ logins: [{ origin: 'https://example.com', username: 'Someone', password: 'Secret' }], skipped: 0, source: 'chromium' })
+      const names = `name,url,username,password,note${eol}Netflix,android://Jzj5T2E45Hb33D-lk-EHZVCrb7a064dEicTwrTYQYGXO99JqE2YERhbMP1qLogwJiy87OsBzC09Gk094Z-U_hg==@com.netflix.mediaclient,a,b,${eol}example.com,https://example.com/,a,b,${eol}`
+      expect(parsePasswordCsv(names)).toEqual({ logins: [{ origin: 'https://example.com', username: 'a', password: 'b' }], skipped: 1, source: 'chromium' })
+      const sorted = `name,url,username,password,note${eol}example.com,https://example.com/,a,b,${eol}example.com,https://example.com/,someone,secret,${eol}example.org,https://example.org/,a,b,${eol}other.org,https://other.org/,a,b,${eol}`
+      expect(parsePasswordCsv(sorted)?.logins.map((l) => `${l.origin} ${l.username}`)).toEqual(['https://example.com a', 'https://example.com someone', 'https://example.org a', 'https://other.org a'])
+    })
+  }
+})
