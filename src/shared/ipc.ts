@@ -320,6 +320,8 @@ export interface IpcRequests {
   /** クリップボードの文字列（Windows / Linux のターミナルの Ctrl+V 貼り付け。renderer には読み取りの権限を渡していない） */
   /** Ctrl+V の貼り付けを main に頼む。中身は返さない（押した直後・端末にフォーカスがあるときだけ。security-7 [1]） */
   'terminal:paste': () => boolean
+  /** ターミナルへの貼り付けで、クリップボードのファイル・画像をプロジェクトの .ferret/pasted/ に写し、作ったものの絶対パスだけを返す。無ければ null */
+  'terminal:pasteFiles': () => string[] | null
   /** ターミナルの選択範囲のコピーをクリップボードへ（キーを押した直後だけ書く。security-5 [9]） */
   'terminal:writeClipboard': (text: string) => void
   /** 端末のプログラムのコピー（OSC 52）。確認なしで写す。写せたら true（src/main/terminalClipboard.ts） */
@@ -740,7 +742,7 @@ export const IPC_REQUEST_CHANNELS = [
   'terminal:write',
   'terminal:resize',
   'terminal:close',
-  'terminal:screen', 'terminal:agentState', 'terminal:agentStates', 'terminal:visible', 'terminal:continueWork', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:paste', 'terminal:writeClipboard', 'terminal:programCopy', 'terminal:ack', 'terminal:focused', 'terminal:restoreSave', 'terminal:restoreTake', 'terminal:closedPush', 'terminal:closedPop', 'terminal:restoreClear', 'review:send',
+  'terminal:screen', 'terminal:agentState', 'terminal:agentStates', 'terminal:visible', 'terminal:continueWork', 'terminal:cwd', 'terminal:list', 'terminal:attach', 'terminal:paste', 'terminal:pasteFiles', 'terminal:writeClipboard', 'terminal:programCopy', 'terminal:ack', 'terminal:focused', 'terminal:restoreSave', 'terminal:restoreTake', 'terminal:closedPush', 'terminal:closedPop', 'terminal:restoreClear', 'review:send',
   'settings:splitRatio',
   'settings:layout',
   'settings:theme',

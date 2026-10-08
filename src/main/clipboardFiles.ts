@@ -9,6 +9,7 @@
  *
  * 読み方の部分は Electron に依存させない（単体テストで OS ごとの形を確かめる）。
  */
+import { mkdir } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createContained } from './containedFile'
@@ -157,4 +158,26 @@ export async function writePastedImage(root: string, destRel: string, bytes: Buf
     return destRel ? `${destRel}/${name}` : name
   }
   throw new UserFacingError(t('fileExplorer.pasteImageTooLarge'))
+}
+
+/** ターミナルへの貼り付けで写す先（プロジェクトの中。.ferret/ は git の対象外。sessions/gitexclude.ts） */
+export const TERMINAL_PASTE_DIR = '.ferret/pasted'
+
+/**
+ * ターミナルへの貼り付け（⌘V / Ctrl+V）で、クリップボードのファイル・画像（スクリーンショット・動画など）を Agent に渡せるようにする。
+ * ファイルはプロジェクトの .ferret/pasted/ に写し、画像は pasted-<日時>.png で置く。返すのは作ったものの絶対パスだけ
+ * （クリップボードの中身・元のパスは renderer へ返さない。security-7 [1]）。ファイルも画像も無ければ null（ふつうの文字の貼り付け）
+ */
+export async function pasteClipboardForTerminal(
+  root: string,
+  cb: ClipboardLike,
+  importFiles: (paths: string[], destRel: string) => Promise<string[]>
+): Promise<string[] | null> {
+  const found = await readClipboardPaste(cb)
+  if (found.kind === 'none') return null
+  await mkdir(join(root, ...TERMINAL_PASTE_DIR.split('/')), { recursive: true })
+  const created = found.kind === 'files'
+    ? await importFiles(found.paths, TERMINAL_PASTE_DIR)
+    : [await writePastedImage(root, TERMINAL_PASTE_DIR, found.bytes, found.ext)]
+  return Promise.all(created.map(async (rel) => resolveInside(root, rel)))
 }
