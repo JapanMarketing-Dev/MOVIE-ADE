@@ -1588,56 +1588,26 @@ function isEditorWorkspaceOpen(): boolean {
   return !!currentSettings().projects.find((p) => p.id === workspace.projectId)?.editorWorkspace
 }
 
-/**
- * 全体で録った1回のフィードバックを、指摘の URL でプロダクトごとに分けて送る（@shared/productSplit）。
- * そのプロダクトに Agent が動いていればその Agent へ直接（そのプロダクトの番号だけを直すよう添える）、
- * 残り（Agent の居ないプロダクト・決まらなかった指摘）は全体の Agent へ、プロダクトごとの subagent に並行して任せるよう添えて送る。
- * どれも同時に送る。プロダクトが1つも決まらなければ null（ふつうの送信に任せる）
- */
+/** 全体で録った1回のフィードバックを、プロダクトごとに分けて各 Agent へ並行して送る（src/main/productSplitSend.ts） */
 async function sendSplitByProduct(
   paths: import('./sessions/paths').SessionPaths,
   items: ReadonlyArray<{ id: string; index: number; t: number; include: boolean; context: { url?: string } }>,
   pending: ReadonlySet<string>
 ): Promise<{ ok: boolean; message: string; terminalId?: string } | null> {
   const settings = currentSettings()
-  const products = settings.projects.filter((p) => !p.editorWorkspace && !p.orchestrator && p.source !== 'ssh')
-  const { splitByProduct, itemList } = await import('@shared/productSplit')
-  const shares = splitByProduct(products, items.filter((it) => it.include && pending.has(it.id)).map((it) => ({ index: it.index, t: it.t, url: it.context.url })))
-  if (!shares.some((s) => s.projectId)) return null
-  const { reviewInstruction } = await import('./review')
-  const instruction = await reviewInstruction(paths, settings.agentPrompt)
-  const direct: Array<{ name: string; indexes: number[]; terminalId: string }> = []
-  const relay: Array<{ name: string; path: string; indexes: number[] }> = []
-  const unknown: number[] = []
-  for (const share of shares) {
-    const product = products.find((p) => p.id === share.projectId)
-    if (!product) { unknown.push(...share.indexes); continue }
-    const id = await terminals!.resolveSendTarget(null, product.folderPath)
-    if (id) direct.push({ name: product.name, indexes: share.indexes, terminalId: id })
-    else relay.push({ name: product.name, path: product.folderPath, indexes: share.indexes })
-  }
-  const jobs: Array<Promise<{ ok: boolean; message: string; terminalId: string }>> = direct.map(async (d) => ({
-    ...(await terminals!.sendReview(d.terminalId, `${instruction}\n\n${t('orchestra.splitDirectNote', { name: d.name, items: itemList(d.indexes), path: paths.feedbackMd })}`)),
-    terminalId: d.terminalId
-  }))
-  if (relay.length || unknown.length) {
-    const top = await terminals!.resolveSendTarget(null, workspace.folderPath)
-    if (top) {
-      const lines = [
-        ...relay.map((r) => t('orchestra.splitRelayLine', { name: r.name, path: r.path, items: itemList(r.indexes) })),
-        ...direct.map((d) => t('orchestra.splitDoneLine', { name: d.name, items: itemList(d.indexes) })),
-        ...(unknown.length ? [t('orchestra.splitUnknownLine', { items: itemList(unknown) })] : [])
-      ]
-      jobs.push(terminals!.sendReview(top, `${instruction}\n\n${t('orchestra.splitRelayNote')}\n${lines.join('\n')}`).then((r) => ({ ...r, terminalId: top })))
-    } else if (!direct.length) {
-      return { ok: false, message: t('terminal.send.noAgent') }
-    }
-  }
-  const results = await Promise.all(jobs)
-  const failed = results.filter((r) => !r.ok)
-  return failed.length
-    ? { ok: results.length > failed.length, message: failed.map((r) => r.message).join(' / '), terminalId: results[0]?.terminalId }
-    : { ok: true, message: t('orchestra.splitSent', { count: results.length }), terminalId: results[0]?.terminalId }
+  const [{ sendSplitByProduct: send }, { reviewInstruction }] = await Promise.all([import('./productSplitSend'), import('./review')])
+  return send({
+    resolveTarget: (folder) => terminals!.resolveSendTarget(null, folder),
+    send: (id, text) => terminals!.sendReview(id, text),
+    t: (key, values) => t(key as Parameters<typeof t>[0], values)
+  }, {
+    products: settings.projects.filter((p) => !p.editorWorkspace && !p.orchestrator && p.source !== 'ssh'),
+    items,
+    pending,
+    orchestraFolder: workspace.folderPath,
+    instruction: await reviewInstruction(paths, settings.agentPrompt),
+    feedbackPath: paths.feedbackMd
+  })
 }
 
 /** 「すべてのプロダクト」で動いている Agent（プロダクトに Agent がいないときの渡し先） */
