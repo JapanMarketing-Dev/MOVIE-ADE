@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -323,6 +323,54 @@ describe('TerminalRestoreStore（userData のファイル）', () => {
     store.save(snapshot({ tabs: [], panes: [], activeByProject: {} }))
     store.flushSync()
     expect(new TerminalRestoreStore(file, () => true).takeSession(new Set(['p1']))?.tabs).toHaveLength(1)
+  })
+
+  posixOnly('ふだんの書き込みは非同期（flush）。所有者だけが読め、一時ファイルを残さない', async () => {
+    const dir = fresh()
+    const file = join(dir, 'terminal-restore.json')
+    const store = new TerminalRestoreStore(file, () => true)
+    store.save(snapshot())
+    await store.flush()
+    expect(statSync(file).mode & 0o777).toBe(0o600)
+    expect(readdirSync(dir)).toEqual(['terminal-restore.json'])
+    expect(new TerminalRestoreStore(file, () => true).takeSession(new Set(['p1']))).toEqual(snapshot())
+  })
+
+  it('非同期の書き込みの途中で終了しても（flushSync）、最後の中身が残り、途中のもので戻さない', async () => {
+    const dir = fresh()
+    const file = join(dir, 'terminal-restore.json')
+    const store = new TerminalRestoreStore(file, () => true)
+    store.save(snapshot({ savedAt: 1 }))
+    const pending = store.flush()
+    store.save(snapshot({ savedAt: 2 }))
+    store.finish()
+    await pending
+    expect(parseRestoreFile(readFileSync(file, 'utf8')).session?.savedAt).toBe(2)
+    expect(readdirSync(dir)).toEqual(['terminal-restore.json'])
+  })
+
+  it('非同期の書き込みが終わる前に終了しても、その中身を失わない（同期で書き直す）', async () => {
+    const dir = fresh()
+    const file = join(dir, 'terminal-restore.json')
+    const store = new TerminalRestoreStore(file, () => true)
+    store.save(snapshot({ savedAt: 3 }))
+    const pending = store.flush()
+    store.flushSync()
+    expect(parseRestoreFile(readFileSync(file, 'utf8')).session?.savedAt).toBe(3)
+    await pending
+    expect(parseRestoreFile(readFileSync(file, 'utf8')).session?.savedAt).toBe(3)
+  })
+
+  it('非同期の書き込みの途中で消したら、終わったあとにファイルを作り直さない', async () => {
+    const dir = fresh()
+    const file = join(dir, 'terminal-restore.json')
+    const store = new TerminalRestoreStore(file, () => true)
+    store.save(snapshot())
+    const pending = store.flush()
+    store.clear()
+    await pending
+    expect(existsSync(file)).toBe(false)
+    expect(readdirSync(dir)).toEqual([])
   })
 
   posixOnly('置いてあったリンクの先には書かない・リンクは読まない', () => {

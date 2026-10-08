@@ -652,11 +652,11 @@ export function Sidebar({
 
                   {expanded && (
                     <div className="sb-project__children" role="group">
-                      {/* 全体（すべてのプロダクト）：プロダクトを順に回ってレビュー・確認する（終わったら次のプロダクトへ） */}
+                      {/* 全体（すべてのプロダクト）：1回の録画で全プロダクトをレビューする（帯のタブでプロダクトを切り替える）・確認待ちを順に確かめる */}
                       {project.editorWorkspace && onStartRound && <>
-                        <button type="button" className="sb-new-review sb-new-review--round" title={t('round.startRecordTip')} disabled={recording} onClick={() => onStartRound('record')} data-testid="sidebar-round-record">
+                        <button type="button" className="sb-new-review sb-new-review--round" title={t('orchestra.recordAllHint')} disabled={recording} onClick={() => onStartRound('record')} data-testid="sidebar-round-record">
                           <Repeat size={13} strokeWidth={1.75} />
-                          <span>{t('round.startRecord')}</span>
+                          <span>{t('orchestra.recordAll')}</span>
                         </button>
                         <button type="button" className="sb-new-review sb-new-review--round" title={t('round.startConfirmTip')} disabled={recording} onClick={() => onStartRound('confirm')} data-testid="sidebar-round-confirm">
                           <ListChecks size={13} strokeWidth={1.75} />

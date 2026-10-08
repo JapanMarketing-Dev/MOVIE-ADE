@@ -396,6 +396,13 @@ button {
   gap: var(--space-3);
 }
 
+.orchestra__section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .orchestra__title {
   margin: 0;
   font-size: 20px;
@@ -545,9 +552,16 @@ button {
   display: flex;
   width: 100%;
   min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--space-4);
+}
+
+.orchestra-dock__row {
+  display: flex;
+  min-width: 0;
   align-items: center;
   gap: var(--space-3);
-  padding: 0 var(--space-4);
 }
 
 .orchestra-dock__tour {
@@ -557,19 +571,54 @@ button {
   gap: var(--space-1);
 }
 
-.orchestra-dock__chips {
+/* 上の段（プロダクト）・下の段（prd・local・確認リスト）。多いときは横に流す */
+.orchestra-dock__groups,
+.orchestra-dock__items {
   display: flex;
-  flex: 1;
   min-width: 0;
   gap: var(--space-1);
-  padding: 2px 0;
   overflow-x: auto;
   scrollbar-width: none;
   mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 }
 
-.orchestra-dock__chips::-webkit-scrollbar {
+.orchestra-dock__groups {
+  flex: 1;
+}
+
+.orchestra-dock__groups::-webkit-scrollbar,
+.orchestra-dock__items::-webkit-scrollbar {
   display: none;
+}
+
+.orchestra-dock__group {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  max-width: 240px;
+  padding: 4px var(--space-2);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.orchestra-dock__group:hover {
+  color: var(--color-text);
+}
+
+.orchestra-dock__group.is-selected {
+  border-bottom-color: var(--color-border-focus, #4f8cff);
+  color: var(--color-text);
+}
+
+.orchestra-dock__items {
+  padding: 2px 0 4px;
 }
 
 .orchestra-dock__chip {
@@ -577,25 +626,25 @@ button {
   flex: none;
   align-items: center;
   gap: 4px;
-  max-width: 220px;
-  padding: 2px var(--space-2);
+  max-width: 260px;
+  padding: 1px var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: none;
-  color: inherit;
+  color: var(--color-text-muted);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
 }
 
-.orchestra-dock__chip--project {
-  border-style: dashed;
-  color: var(--color-text-muted);
+.orchestra-dock__chip:hover {
+  color: var(--color-text);
 }
 
 .orchestra-dock__chip.is-current {
   border-color: var(--color-border-focus, #4f8cff);
   background: var(--color-surface-selected);
+  color: var(--color-text);
 }
 
 .orchestra-dock__key {
@@ -628,6 +677,24 @@ button {
   cursor: pointer;
 }
 
+/* 全体のフィードバックの画面：右下の小さなボタン（ターミナル・確認先） */
+.orchestra-peeks {
+  position: fixed;
+  right: 16px;
+  bottom: 40px;
+  z-index: 30;
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.orchestra-peek.orchestra-peek--inline {
+  position: static;
+}
+
+.orchestra-peek[aria-pressed='true'] {
+  border-color: var(--color-primary, #4f8cff);
+}
+
 .orchestra-peek__dot {
   width: 8px;
   height: 8px;
@@ -639,21 +706,94 @@ button {
   background: var(--color-primary, #4f8cff);
 }
 
-/* ダッシュボード：用意した依頼を選んで送る */
-.orchestra-requests {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-left: auto;
+/* ダッシュボード：コスト（今月・今年・総額の切り替えと内訳） */
+.orchestra-cost__periods {
+  display: inline-flex;
+  gap: var(--space-1);
 }
 
-.orchestra-requests__select {
-  max-width: 260px;
-  height: 28px;
-  padding: 0 var(--space-2);
+.orchestra-cost__period {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 96px;
+  padding: var(--space-1) var(--space-3);
   border: var(--size-border) solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: var(--color-bg-elevated);
-  color: inherit;
+  background: none;
+  color: var(--color-text-muted);
   font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.orchestra-cost__period strong {
+  color: var(--color-text);
+  font-size: 15px;
+}
+
+.orchestra-cost__period.is-selected {
+  border-color: var(--color-border-focus, #4f8cff);
+  background: var(--color-surface-selected);
+}
+
+.orchestra-cost__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.orchestra-cost__card {
+  min-width: 0;
+  padding: var(--space-3);
+  border: var(--size-border) solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.orchestra-cost__card h4 {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.orchestra-cost__card ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orchestra-cost__card li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+}
+
+.orchestra-cost__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orchestra-cost__bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-surface-hover);
+}
+
+.orchestra-cost__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--color-border-focus, #4f8cff);
+}
+
+.orchestra-cost__usd {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }

@@ -51,6 +51,8 @@ export interface RestorePane {
   accountId: string | null
   /** 画面に出ていた文字（制御文字なし。行は \n で区切る） */
   scrollback: string
+  /** 閉じたとき Agent が作業の途中だった（実行中・確認待ち）。開き直したら会話を続け、続きから再開するよう頼む */
+  working?: true
 }
 
 export interface RestoreTab {
@@ -208,7 +210,8 @@ function parsePane(value: unknown): RestorePane | null {
     launch,
     cwd,
     accountId,
-    scrollback: typeof value.scrollback === 'string' ? capScrollback(value.scrollback) : ''
+    scrollback: typeof value.scrollback === 'string' ? capScrollback(value.scrollback) : '',
+    ...(value.working === true && launch ? { working: true as const } : {})
   }
 }
 

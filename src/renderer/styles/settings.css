@@ -538,3 +538,11 @@
   gap: var(--space-2);
   margin-top: var(--space-4);
 }
+
+.agent-requests__item.is-hidden {
+  opacity: 0.6;
+}
+
+.agent-requests__add > summary {
+  cursor: pointer;
+}

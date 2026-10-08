@@ -108,15 +108,17 @@ function loginShellPath(waitFresh = false): Promise<string> {
   shellPathPromise ??= new Promise<string>((resolve) => {
     const timeout = cachedShellPath !== null ? SHELL_PATH_REFRESH_TIMEOUT_MS : SHELL_PATH_TIMEOUT_MS
     execFile(loginShell(), ['-ilc', 'printf "__ADE_PATH__%s" "$PATH"'], { timeout, encoding: 'utf8' }, (error, stdout) => {
-      const marker = error ? -1 : stdout.lastIndexOf('__ADE_PATH__')
+      // 印が出ていれば、終了コードが 0 でなくても PATH は取れている（.zlogout・rc の最後のコマンドの失敗などで 0 以外になる）
+      const marker = typeof stdout === 'string' ? stdout.lastIndexOf('__ADE_PATH__') : -1
       if (marker < 0) {
         // 取れなかった（rc が重くて時間切れ・nushell など）。失敗を使い回さず、次に探すときに取り直す。
         // 使い回すと、ログインシェルの PATH にだけある Agent が＋メニューから消えたままになる（Orca #16340）
         shellPathPromise = null
         shellPathFailedAt = Date.now()
-        if (!shellPathReported) {
+        const failure = loginShellPathFailure(error)
+        if (failure && !shellPathReported) {
           shellPathReported = true
-          reportHandled(error ? errorKind(error) : new Error('login shell PATH marker missing'), { area: 'agent-launch', op: 'read login shell PATH' })
+          reportHandled(failure, { area: 'agent-launch', op: 'read login shell PATH' })
         }
         return resolve(cachedShellPath ?? '')
       }
@@ -127,6 +129,19 @@ function loginShellPath(waitFresh = false): Promise<string> {
     })
   })
   return fallback !== null ? Promise.resolve(fallback) : shellPathPromise
+}
+
+/**
+ * ログインシェルから PATH が取れなかったときに送る失敗（送らないなら null）。
+ * 時間切れ（rc が重い）は利用者の環境の都合で、次に探すときに取り直すので送らない。
+ * それ以外は終了コード・シグナルだけを題名にする（以前は errorKind で「Error」だけになり、何の失敗か分からなかった。Sentry FERRET-1S）
+ */
+export function loginShellPathFailure(error: (Error & { code?: unknown; killed?: boolean; signal?: unknown }) | null): Error | null {
+  if (!error) return new Error('login shell PATH marker missing')
+  if (error.killed || error.signal === 'SIGTERM') return null
+  if (typeof error.code === 'number') return new Error(`login shell PATH exit ${error.code}`)
+  if (typeof error.signal === 'string' && /^SIG[A-Z0-9]+$/.test(error.signal)) return new Error(`login shell PATH signal ${error.signal}`)
+  return errorKind(error)
 }
 
 /**

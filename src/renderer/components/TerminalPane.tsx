@@ -12,6 +12,8 @@ import { acquireTerminal, getTerminal, holdPtyResize, releaseTerminal } from '..
 import { hasBusyAgent, publishAgentActivity } from '../terminal/agentActivity'
 import { AttentionThrottle, INITIAL_TRACK, advancePaneState, attentionEvents, type AttentionPane, type PaneTrack } from '../terminal/agentAttention'
 import { onAccountLoginRequest } from '../lib/accountLogin'
+import { SpawnQueue, partitionSpawns, type SpawnCandidate } from '../terminal/spawnQueue'
+import { panesDueForPoll } from '../terminal/pollSchedule'
 import { onTerminalCommandRequest } from '../lib/terminalCommand'
 import { onAgentLaunchRequest } from '../lib/agentLaunchRequest'
 import type { TerminalPreset } from '@shared/codexAudit'
@@ -129,6 +131,8 @@ interface Pane {
   accountId?: string | null
   /** 戻したタブ: 前の会話を続けて起動する（@shared/terminalRestore の panesToResume） */
   resume?: boolean
+  /** 戻したタブ: 閉じたとき作業の途中だった。起動したら続きから再開するよう Agent に頼む（main の terminal:continueWork） */
+  continueWork?: boolean
   /** 戻したタブ: PTY を作る前に xterm に書く、前の画面の文字と区切りの行 */
   restoreText?: string | null
   /** 戻したタブ: まだ xterm を作っていない間に、覚え直すときに使う前の画面の文字 */
@@ -141,7 +145,9 @@ function isRestorable(pane: Pane): boolean {
 }
 
 function toRestorePane(pane: Pane, scrollback: string): RestorePane {
-  return { key: pane.key, title: pane.title, launch: pane.launch, cwd: pane.cwd, accountId: pane.accountId ?? null, scrollback }
+  // 作業の途中（実行中・確認待ち）か。戻したばかりでまだ状態が分からないペインは、前の印を引き継ぐ
+  const working = pane.launch && (pane.state === 'working' || pane.state === 'blocked' || (pane.state === 'unknown' && pane.continueWork))
+  return { key: pane.key, title: pane.title, launch: pane.launch, cwd: pane.cwd, accountId: pane.accountId ?? null, scrollback, ...(working ? { working: true as const } : {}) }
 }
 
 /** 覚えていたペインから、戻すペインを作る（前の画面の文字を書いてから PTY を作る） */
@@ -154,13 +160,17 @@ function paneFromRestore(saved: RestorePane, banner: string, resume: boolean): P
     cwd: saved.cwd,
     accountId: saved.accountId,
     resume,
+    ...(resume && saved.working ? { continueWork: true } : {}),
     restoreText: restoreReplayText(saved.scrollback, banner),
     savedScrollback: saved.scrollback
   }
 }
 
-/** 戻すときの今のスクロールバックを、変わったときだけ取り出し直す間隔 */
-const RESTORE_PUSH_MS = 10_000
+/**
+ * 戻すときの今のスクロールバックを、変わったときだけ取り出し直す間隔。取り出しは全ペインの画面の文字を読むので重い。
+ * タブを開いた・閉じた・切り替えたときと終了の直前（terminal:restoreCollect）は、この間隔を待たずに送る
+ */
+const RESTORE_PUSH_MS = 60_000
 
 /** 閉じたターミナルを開き直すキーの表示 */
 function reopenShortcut(): string {
@@ -822,7 +832,7 @@ export function TerminalPane({
     const signature = JSON.stringify([
       tabsRef.current.map((tab) => [tab.key, tab.projectId, tab.layout, tab.activePane]),
       activeByProjectRef.current,
-      Object.values(panesRef.current).map((pane) => [pane.key, pane.title, pane.accountId ?? null, getTerminal(pane.key)?.outputSeq ?? -1])
+      Object.values(panesRef.current).map((pane) => [pane.key, pane.title, pane.accountId ?? null, pane.state, getTerminal(pane.key)?.outputSeq ?? -1])
     ])
     if (!force && signature === lastRestoreRef.current) return
     lastRestoreRef.current = signature
@@ -866,65 +876,94 @@ export function TerminalPane({
     setActiveKey(tab.key)
   }, [projectId, setActiveKey])
 
+  const onReadyRef = useRef(onReady)
+  onReadyRef.current = onReady
+  const onActiveTerminalRef = useRef(onActiveTerminal)
+  onActiveTerminalRef.current = onActiveTerminal
+  /** ペインの PTY を作る（1 ペイン 1 回だけ）。作り終える（失敗も含む）と解決する */
+  const spawnPane = useCallback((key: string): Promise<void> => {
+    const pane = panesRef.current[key]
+    const node = nodesRef.current.get(key)
+    const handle = getTerminal(key)
+    if (!pane || !node || !handle || handle.ptyId !== null || spawnedRef.current.has(key)) return Promise.resolve()
+    spawnedRef.current.add(pane.key)
+    // 戻したタブ: 前の画面の文字と区切りの行を先に書く
+    if (pane.restoreText) handle.restoreScreen(pane.restoreText)
+    const measurable = node.offsetWidth > 0 && node.offsetHeight > 0
+    const size = (measurable ? handle.fit() : null) ?? FALLBACK_SIZE
+    return window.ade
+      .invoke('terminal:create', {
+        size,
+        cwd: pane.cwd,
+        agent: pane.launch,
+        accountLogin: pane.accountLogin ?? null,
+        command: pane.command ?? null,
+        title: pane.customTitle ?? null,
+        autoStart: pane.autoStart === true,
+        failoverToken: pane.failoverToken ?? null,
+        ...(pane.preset ? { preset: pane.preset } : {}),
+        // 戻したタブ: 前の会話を続け、前と同じアカウントで開く
+        ...(pane.resume ? { resume: true } : {}),
+        ...(pane.accountId !== undefined ? { accountId: pane.accountId } : {})
+      })
+      .then((info) => {
+        // 作っている間にペインを閉じたら、できたPTYもすぐ閉じる
+        if (getTerminal(pane.key) !== handle) {
+          void window.ade.invoke('terminal:close', info.id)
+          return
+        }
+        // 先に起動しておいたシェル（main の TerminalManager.spare）は、それまでの出力（プロンプト）を流し直してからつなぐ
+        if (info.history) handle.reattach(info.id, info.history, undefined, false)
+        else handle.bindPty(info.id)
+        if (pane.key === focusedPaneRef.current) onActiveTerminalRef.current?.(info.id)
+        getTerminal(pane.key)?.scheduleFit()
+        // 閉じたとき作業の途中だった Agent：会話を続けて起動したので、入力欄が出たら続きから再開するよう頼む（main が待って送る）
+        if (pane.continueWork) {
+          void window.ade.invoke('terminal:continueWork', info.id).catch((err: unknown) => reportHandled(err, { area: 'terminal', op: 'continue interrupted work' }))
+        }
+        setPanes((prev) =>
+          prev[pane.key]
+            ? { ...prev, [pane.key]: { ...prev[pane.key]!, title: info.title, accountId: info.accountId ?? null, restoreText: null, savedScrollback: null } }
+            : prev
+        )
+        onReadyRef.current?.()
+      })
+      .catch((err: unknown) => {
+        // IPC の前置き（Error invoking remote method '…': Error:）を外して本文だけを出す
+        const message = errorMessage(err)
+        handle.write(`\r\n\u001b[31m${tNow('terminal.startFailed', { message })}\u001b[0m\r\n`)
+        if (message.includes('node-pty')) {
+          handle.write(
+            `\u001b[2m${tNow('terminal.nodePtyHint')}\u001b[0m\r\n`
+          )
+        }
+      })
+  }, [])
+
   // ペインごとに xterm を開き、PTYを結びつける。
-  // 非表示のペイン（裏のタブ・プロジェクトを含む）もすぐPTYを作る。寸法が測れなければ 80x24 で作り、表示時に合わせる
+  // 非表示のペイン（裏のタブ）もPTYを作る。寸法が測れなければ 80x24 で作り、表示時に合わせる。
+  // 表示中のプロジェクトのペインはすぐ作り、裏のプロジェクトのペイン（戻したタブなど）は順に作る（terminal/spawnQueue.ts）
+  const spawnQueueRef = useRef<SpawnQueue | null>(null)
+  spawnQueueRef.current ??= new SpawnQueue()
+  useEffect(() => () => spawnQueueRef.current?.dispose(), [])
   useEffect(() => {
+    const queue = spawnQueueRef.current!
+    const candidates: SpawnCandidate[] = []
     for (const pane of Object.values(panes)) {
       const node = nodesRef.current.get(pane.key)
       if (!node) continue
       const handle = acquireTerminal(pane.key)
       handle.open(node)
       if (handle.ptyId !== null || spawnedRef.current.has(pane.key)) continue
-      spawnedRef.current.add(pane.key)
-      // 戻したタブ: 前の画面の文字と区切りの行を先に書く
-      if (pane.restoreText) handle.restoreScreen(pane.restoreText)
-      const measurable = node.offsetWidth > 0 && node.offsetHeight > 0
-      const size = (measurable ? handle.fit() : null) ?? FALLBACK_SIZE
-      void window.ade
-        .invoke('terminal:create', {
-          size,
-          cwd: pane.cwd,
-          agent: pane.launch,
-          accountLogin: pane.accountLogin ?? null,
-          command: pane.command ?? null,
-          title: pane.customTitle ?? null,
-          autoStart: pane.autoStart === true,
-          failoverToken: pane.failoverToken ?? null,
-          ...(pane.preset ? { preset: pane.preset } : {}),
-          // 戻したタブ: 前の会話を続け、前と同じアカウントで開く
-          ...(pane.resume ? { resume: true } : {}),
-          ...(pane.accountId !== undefined ? { accountId: pane.accountId } : {})
-        })
-        .then((info) => {
-          // 作っている間にペインを閉じたら、できたPTYもすぐ閉じる
-          if (getTerminal(pane.key) !== handle) {
-            void window.ade.invoke('terminal:close', info.id)
-            return
-          }
-          // 先に起動しておいたシェル（main の TerminalManager.spare）は、それまでの出力（プロンプト）を流し直してからつなぐ
-          if (info.history) handle.reattach(info.id, info.history, undefined, false)
-          else handle.bindPty(info.id)
-          if (pane.key === focusedPaneRef.current) onActiveTerminal?.(info.id)
-          fitPane(pane.key)
-          setPanes((prev) =>
-            prev[pane.key]
-              ? { ...prev, [pane.key]: { ...prev[pane.key]!, title: info.title, accountId: info.accountId ?? null, restoreText: null, savedScrollback: null } }
-              : prev
-          )
-          onReady?.()
-        })
-        .catch((err: unknown) => {
-          // IPC の前置き（Error invoking remote method '…': Error:）を外して本文だけを出す
-          const message = errorMessage(err)
-          handle.write(`\r\n\u001b[31m${tNow('terminal.startFailed', { message })}\u001b[0m\r\n`)
-          if (message.includes('node-pty')) {
-            handle.write(
-              `\u001b[2m${tNow('terminal.nodePtyHint')}\u001b[0m\r\n`
-            )
-          }
-        })
+      candidates.push({ key: pane.key, projectId: tabsRef.current.find((tab) => hasLeaf(tab.layout, pane.key))?.projectId ?? null })
     }
-  }, [panes, tabs, onReady, onActiveTerminal, fitPane])
+    const { now, queued } = partitionSpawns(candidates, projectId)
+    for (const key of now) {
+      // 待っていたペインのプロジェクトを表示した：すぐ作る
+      if (!queue.promote(key)) void spawnPane(key)
+    }
+    for (const key of queued) queue.enqueue(key, () => spawnPane(key))
+  }, [panes, tabs, projectId, spawnPane])
 
   // 「Agentへ送信」の宛先は、フォーカス中のペインのPTY
   useEffect(() => {
@@ -941,6 +980,11 @@ export function TerminalPane({
   const shownPanesRef = useRef<string[]>([])
   shownPanesRef.current = activeTab ? leafIds(activeTab.layout) : []
 
+  /** 各ペインの Agent の状態を最後に調べた時刻（裏のプロジェクトのペインは間を空けて調べる） */
+  const lastPolledRef = useRef(new Map<string, number>())
+  const projectKeyRef = useRef(projectKey)
+  projectKeyRef.current = projectKey
+
   const paneKeys = Object.keys(panes).join(':')
   useEffect(() => {
     let stopped = false
@@ -952,23 +996,45 @@ export function TerminalPane({
       // 通知が入なら、終わった・確認待ちを知らせるため、裏でも BACKGROUND_POLL_EVERY 秒ごとに読む
       const background = document.visibilityState === 'hidden' || (window.ade.platform === 'win32' && !document.hasFocus())
       if (background && (!notifyRef.current || tick % BACKGROUND_POLL_EVERY !== 0)) return
-      const states = await Promise.all(Object.keys(panesRef.current).map(async (key) => {
+      // 表示中のプロジェクトのペインは毎回、裏のプロジェクトのペインは間を空けて調べる（terminal/pollSchedule.ts）。
+      // 調べるペインはまとめて1回の IPC で問い合わせる
+      const now = Date.now()
+      const keys = Object.keys(panesRef.current)
+      const foreground = new Set(tabsRef.current.filter((tab) => (tab.projectId ?? '') === projectKeyRef.current).flatMap((tab) => leafIds(tab.layout)))
+      const due = panesDueForPoll(keys, foreground, lastPolledRef.current, now)
+      for (const key of due) lastPolledRef.current.set(key, now)
+      for (const key of lastPolledRef.current.keys()) if (!(key in panesRef.current)) lastPolledRef.current.delete(key)
+      const asked = due.flatMap((key) => {
+        const id = getTerminal(key)?.ptyId
+        return id ? [{ key, id }] : []
+      })
+      const results = asked.length > 0
+        ? await window.ade.invoke('terminal:agentStates', asked.map((entry) => entry.id)).catch(() => null /* 画面の閉じかけなど（想定内） */)
+        : []
+      const byKey = new Map(asked.map((entry, index) => [entry.key, results?.[index] ?? null]))
+      const states = due.map((key) => {
         const handle = getTerminal(key)
-        const id = handle?.ptyId
-        const result = id ? await window.ade.invoke('terminal:agentState', id).catch(() => null /* 終了済み（想定内） */) : null
+        const result = byKey.get(key) ?? null
         if (handle) handle.foregroundAgent = foregroundAgentOf(result)
         return [key, result?.state ?? 'unknown'] as const
-      }))
+      })
       if (stopped) return
       // 見ているペインは「終わった」にせず、見たら done を消す
       const looking = document.visibilityState === 'visible' && document.hasFocus()
       const shown = new Set(shownPanesRef.current)
+      const polled = new Set(due)
       const tracked = states.map(([key, detected]) => {
         const seen = looking && shown.has(key)
         const track = advancePaneState(tracksRef.current.get(key) ?? INITIAL_TRACK, detected, seen)
         tracksRef.current.set(key, track)
         return { key, state: track.state, seen }
       })
+      // 今回調べなかった（裏のプロジェクトの）ペインは、前の状態のまま通知の判定に含める
+      for (const key of keys) {
+        if (polled.has(key)) continue
+        const track = tracksRef.current.get(key)
+        if (track) tracked.push({ key, state: track.state, seen: false })
+      }
       for (const key of tracksRef.current.keys()) if (!(key in panesRef.current)) tracksRef.current.delete(key)
       setPanes((current) => {
         let changed = false

@@ -2865,6 +2865,14 @@ button.sb-more__row:hover {
   opacity: 0.5;
 }
 
+/* 長い名前（「1回の録画で全プロダクトをレビュー」など）は1行に収めて … で切る（全文は title） */
+.sb-new-review > span:not(.sb-new-review__key) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sb-new-review > svg {
   flex: none;
 }

@@ -243,7 +243,9 @@ function pick(obj: Record<string, unknown>, keys: string[]): Record<string, unkn
 }
 
 /** 残してよい contexts（OS・端末・アプリ・実行環境の版）。それ以外は落とす */
-const ALLOWED_CONTEXTS = new Set(['os', 'device', 'app', 'runtime', 'electron', 'chrome', 'node', 'gpu', 'culture', 'trace', 'react', 'block', 'startup'])
+// crash は minimizeNativeCrash が形を確かめて作る落ちた場所（モジュール名+位置・symbols の ID・スレッド名）。
+// ここで落としていたため、FERRET-1Q は 0.4.21 から 0.6.2 まで場所が届かなかった
+const ALLOWED_CONTEXTS = new Set(['os', 'device', 'app', 'runtime', 'electron', 'chrome', 'node', 'gpu', 'culture', 'trace', 'react', 'block', 'startup', 'crash'])
 
 type EventLike = {
   user?: unknown
@@ -355,6 +357,18 @@ export function shouldReportLoadFailure(f: { ownPage: boolean; errorCode: number
 /** render-process-gone / child-process-gone を送るか。正常終了と、利用者が止めた（killed）ものは送らない */
 export function shouldReportProcessGone(reason: string): boolean {
   return reason !== 'clean-exit' && reason !== 'killed'
+}
+
+/**
+ * minimizeNativeCrash を通したネイティブのクラッシュを送るか。main（browser）以外のプロセスが外から止められた（killed）・
+ * 正常に終わった（clean-exit）ものは、shouldReportProcessGone と同じく送らない。
+ * macOS の Utility が SIGTERM（exitCode 15）で止められたときも crashpad が報告を作り、SDK が「Native crash (Utility, killed)」として送っていた（Sentry FERRET-1V）。
+ * main は前の起動の理由が分からない（unknown）ことが多いので、理由では捨てない
+ */
+export function shouldSendNativeCrash(event: { tags?: object }): boolean {
+  const tags = (event.tags ?? {}) as Record<string, unknown>
+  if (tags['event.process'] === 'browser') return true
+  return typeof tags['exit.reason'] !== 'string' || shouldReportProcessGone(tags['exit.reason'])
 }
 
 /** 確認用（FERRET_SENTRY_TEST。以前の MOVIE_ADE_SENTRY_TEST も可）。`1`/`all` は全部、`main,renderer` のように選べる */

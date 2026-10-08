@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import { lstat, mkdir, readdir, readFile, readlink, rename, rm, symlink, unlink, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { join } from 'node:path'
@@ -167,10 +168,26 @@ async function existingSubagents(dir: string): Promise<Array<{ file: string; tex
   }))
 }
 
+/** フォルダごとの合わせる処理の列（同じフォルダを2つ同時に読み書きしない） */
+const syncQueues = new Map<string, Promise<unknown>>()
+
 /**
- * 子ごとの subagent・追加のフォルダ・Ferret の欄を、今の子に合わせる。enabled が false なら Ferret が書いたものを全部外す
+ * 子ごとの subagent・追加のフォルダ・Ferret の欄を、今の子に合わせる。enabled が false なら Ferret が書いたものを全部外す。
+ * 同じフォルダへの呼び出しは1本の列に並べる。プロジェクトを消す・開くと「すべてのプロダクト」の合わせが同時に2回走り、
+ * settings.local.json の読み書きが重なって一時ファイルの名前もぶつかっていた（Sentry FERRET-1T: EEXIST）
  */
-export async function syncOrchestrator(folder: string, registered: Registered, enabled = true, members: readonly string[] = [], lang: GuideLanguage = 'en', rules?: OrchestraRules): Promise<OrchestratorSync> {
+export function syncOrchestrator(folder: string, registered: Registered, enabled = true, members: readonly string[] = [], lang: GuideLanguage = 'en', rules?: OrchestraRules): Promise<OrchestratorSync> {
+  const key = resolve(folder)
+  const run = () => syncOrchestratorNow(folder, registered, enabled, members, lang, rules)
+  const next = (syncQueues.get(key) ?? Promise.resolve()).then(run, run)
+  // 失敗は呼び出し側へ返す。列には順番待ちのためだけに残し、終わったら外す（想定内）
+  const tail = next.catch(() => undefined)
+  syncQueues.set(key, tail)
+  void tail.then(() => { if (syncQueues.get(key) === tail) syncQueues.delete(key) })
+  return next
+}
+
+async function syncOrchestratorNow(folder: string, registered: Registered, enabled: boolean, members: readonly string[], lang: GuideLanguage, rules?: OrchestraRules): Promise<OrchestratorSync> {
   const claude = await claudeDir(folder)
   const managed = await readManaged(folder)
   const links = await syncMemberLinks(folder, registered, enabled ? members : [], managed.links)
@@ -218,12 +235,16 @@ async function syncGuide(folder: string, file: string, block: string | null, tai
 async function writeAtomic(dir: string, file: string, text: string): Promise<void> {
   const path = join(dir, file)
   if (await isLink(dir) || await isLink(path)) throw new SubagentLinkError(path)
-  const tmp = join(dir, `.${file}.${process.pid}.${Date.now().toString(36)}.tmp`)
+  // 名前に乱数を足す（同じミリ秒の書き込みでもぶつけない）。消すのは自分が作った一時ファイルだけ。
+  // 以前は EEXIST でも相手の一時ファイルを消し、相手の rename まで失敗させていた（FERRET-1T）
+  const tmp = join(dir, `.${file}.${process.pid}.${Date.now().toString(36)}.${randomBytes(4).toString('hex')}.tmp`)
+  let created = false
   try {
     await writeFile(tmp, text, { encoding: 'utf8', mode: 0o644, flag: 'wx' })
+    created = true
     await rename(tmp, path)
   } catch (err) {
-    await rm(tmp, { force: true })
+    if (created) await rm(tmp, { force: true })
     throw err
   }
 }

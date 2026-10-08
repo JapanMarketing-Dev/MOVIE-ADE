@@ -4,16 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="msvalidate.01" content="5875590F51EEA0F785E5083EA4265906">
-  <title>Ferret — The ADE for feedback by voice and screen</title>
-  <meta name="description" content="Ferret is an Agentic Development Environment (ADE) for feedback by voice and screen. Instead of typing instructions, point at the real screen, say what’s wrong, and hand your coding agent dozens of precise findings at once, even live in meetings. A decision model checks each fix. Free and open source (MIT).">
+  <title>Ferret — The ADE that builds many products at once</title>
+  <meta name="description" content="Ferret is an Agentic Development Environment (ADE) for building many products at once. One orchestrator runs every product’s coding agent in parallel; you review all of them in one recording by voice and screen, and one dashboard shows what needs you and what everything costs. Free and open source (MIT).">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#050508">
   <!-- Absolute URLs come from SITE_URL in js/config.js; run `pnpm site:meta` after changing it -->
   <link rel="canonical" href="https://ferretade.dev/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ferret">
-  <meta property="og:title" content="Ferret — The ADE for feedback by voice and screen">
-  <meta property="og:description" content="Stop typing instructions. Point at the real screen, say what’s wrong, and hand your agent dozens of precise findings at once. Free and open source.">
+  <meta property="og:title" content="Ferret — The ADE that builds many products at once">
+  <meta property="og:description" content="One orchestrator runs every product’s agent in parallel. Review them all in one recording by voice and screen. Free and open source.">
   <meta property="og:url" content="https://ferretade.dev/">
   <meta property="og:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta property="og:locale" content="en_US">
@@ -22,8 +22,8 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Ferret — The ADE for feedback by voice and screen">
-  <meta name="twitter:description" content="Stop typing instructions. Point at the real screen, say what’s wrong, and hand your agent dozens of precise findings at once. Free and open source.">
+  <meta name="twitter:title" content="Ferret — The ADE that builds many products at once">
+  <meta name="twitter:description" content="One orchestrator runs every product’s agent in parallel. Review them all in one recording by voice and screen. Free and open source.">
   <meta name="twitter:image" content="https://ferretade.dev/assets/ferret-og.png?v=07c6706b">
   <meta name="twitter:image:alt" content="Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.">
   <link rel="icon" href="favicon.svg?v=ad226cca" type="image/svg+xml">
@@ -31,7 +31,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png?v=5434b34e">
   <link rel="preload" href="assets/hero-poster.webp?v=1f015646" as="image" type="image/webp">
   <script src="js/theme.js?v=28aec166"></script>
-  <link rel="stylesheet" href="style.css?v=f7689cba">
+  <link rel="stylesheet" href="style.css?v=a7d2c774">
   <script type="module" src="js/app.js?v=189b428c"></script>
   <script type="module" src="js/hero.js?v=7c5eaf24"></script>
   <script type="module" src="js/scenes.js?v=b987e51b"></script>
@@ -94,8 +94,8 @@
       <div class="wrap hero-inner">
         <div class="hero-copy">
           <p class="eyebrow">Ferret is an Agentic Development Environment (ADE) · Open source · Bring your own keys</p>
-          <h1>The ADE for feedback by voice and screen.</h1>
-          <p class="lede">Stop typing instructions. Point at the real screen, say what’s wrong, and hand your agent dozens of precise findings at once. Do it live in meetings, then let a decision model check every fix.</p>
+          <h1>Build many products at once.</h1>
+          <p class="lede">One orchestrator runs every product’s coding agent in parallel. Review all of them in a single recording by voice and screen, and see what needs you and what it all costs on one dashboard.</p>
           <div class="hero-actions">
             <a class="btn btn-lg btn-primary" href="download.html" data-hero-download>
               <svg class="icon"><use href="#i-download"/></svg><span data-hero-label>Download</span>
@@ -135,6 +135,45 @@
         </div>
         <p class="demo-caption" aria-live="polite">Point and talk on the real screen. No typing.</p>
         <p class="demo-note">An animated model of the app, not a recording.</p>
+      </div>
+    </section>
+
+    <section class="section" id="orchestra">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="kicker">Orchestra</p>
+          <h2>One person. Every product. At the same time.</h2>
+          <p>Ferret’s orchestrator puts all of your products under one top-level agent with a subagent per product. Ask once and every product moves in parallel, with independent work inside each product running in parallel too.</p>
+        </div>
+        <figure class="orchestra-shot reveal">
+          <img src="assets/shots/orchestra.webp?v=725d55e1" width="960" height="600" loading="lazy" decoding="async" alt="The Orchestra dashboard: a list of what you need to check across acme-shop, acme-crm and acme-blog (screens, an approval, a key to provide, a decision), the number of products, open findings and this month’s cost, a box to ask the whole orchestra, and ready-made requests to the agent.">
+        </figure>
+        <ul class="feat-grid feat-grid--text reveal">
+          <li class="feat">
+            <h3>One recording, every product</h3>
+            <p>Switch product tabs while you record. Each finding goes to the product whose page was open, and each product’s agent starts fixing in parallel.</p>
+          </li>
+          <li class="feat">
+            <h3>Everything that needs you, on top</h3>
+            <p>Screens to check, approvals, keys to provide and decisions, collected from every product into one list.</p>
+          </li>
+          <li class="feat">
+            <h3>Every cost, broken down</h3>
+            <p>This month, this year and in total, by product, category, item and model — agents, infrastructure and services.</p>
+          </li>
+          <li class="feat">
+            <h3>Requests you send again and again</h3>
+            <p>Security audits, Sentry fixes, SEO, localhost for every product and more, one click from the dashboard.</p>
+          </li>
+          <li class="feat">
+            <h3>Picks up where it stopped</h3>
+            <p>Closed the lid in the middle of a long request? Ferret reopens the conversation and asks the agent to continue.</p>
+          </li>
+          <li class="feat">
+            <h3>Light with dozens of agents</h3>
+            <p>Background terminals, transcripts and polling are throttled so many products can run side by side.</p>
+          </li>
+        </ul>
       </div>
     </section>
 

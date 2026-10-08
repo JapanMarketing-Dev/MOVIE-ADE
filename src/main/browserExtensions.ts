@@ -318,6 +318,8 @@ class ExtensionPopup {
   /** ビューの位置・大きさが変わった。ビューが隠れたら閉じる */
   layout(): void {
     if (this.closed) return
+    // 中身が先に壊れたビュー（destroyed のあと、次のティックの close の前）に位置を入れない。FERRET-1Q（Windows の main の access-violation）
+    if (this.view.webContents.isDestroyed()) return this.close()
     const view = this.host.viewBounds()
     if (!view) return this.close()
     const rect = this.bounds()
@@ -339,6 +341,8 @@ class ExtensionPopup {
 interface LoadedExtension {
   id: string
   manifest: ParsedManifest
+  /** 読み込んだときの読み込み直しの合図（BrowserExtensionEntry.reload。無ければ 0） */
+  reload: number
 }
 
 /**
@@ -355,6 +359,8 @@ export class BrowserExtensions {
 
   /** 一覧（読み込みの結果）が変わった */
   onChange?: () => void
+  /** 読み込み直しの合図（reload）で拡張を読み込み直した */
+  onReloaded?: () => void
   /** 開いているポップアップの位置・中身が変わった（録画に重ねる位置を直す）。閉じたら null */
   onPopupChange?: (popup: ExtensionPopupTarget | null) => void
 
@@ -378,8 +384,13 @@ export class BrowserExtensions {
   private async apply(entries: BrowserExtensionEntry[]): Promise<void> {
     const ses = this.deps.session()
     const wanted = new Set(entries.filter((e) => e.enabled !== false).map((e) => e.path))
+    const reloadOf = new Map(entries.map((e) => [e.path, e.reload ?? 0]))
+    let reloaded = false
     for (const [path, ext] of [...this.loaded]) {
-      if (wanted.has(path)) continue
+      // 読み込み直しの合図（reload）が変わったものは、外してからもう一度読み込む（フォルダの最新の中身になる）
+      const stale = wanted.has(path) && (reloadOf.get(path) ?? 0) !== ext.reload
+      if (wanted.has(path) && !stale) continue
+      if (stale) reloaded = true
       if (this.popup?.extensionId === ext.id) this.closePopup()
       try {
         ses.extensions.removeExtension(ext.id)
@@ -398,7 +409,7 @@ export class BrowserExtensions {
       try {
         // 手元のファイル（file:）には触らせない
         const ext = await ses.extensions.loadExtension(entry.path, { allowFileAccess: false })
-        this.loaded.set(entry.path, { id: ext.id, manifest })
+        this.loaded.set(entry.path, { id: ext.id, manifest, reload: entry.reload ?? 0 })
         this.errors.delete(entry.path)
       } catch (err) {
         // 拡張の誤り（利用者のもの）。画面に理由を出すので送らない
@@ -407,6 +418,8 @@ export class BrowserExtensions {
     }
     for (const path of [...this.manifests.keys()]) if (!entries.some((e) => e.path === path)) { this.manifests.delete(path); this.errors.delete(path) }
     this.onChange?.()
+    // 読み込み直したら、開いているページも読み込み直す（コンテンツスクリプトの変更をすぐ見られるように）
+    if (reloaded) this.onReloaded?.()
   }
 
   /** 画面に出す一覧（設定の順） */

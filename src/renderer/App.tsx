@@ -58,7 +58,9 @@ import { useProductRound } from './hooks/useProductRound'
 import { RoundBar } from './components/RoundBar'
 import { OrchestraDashboard } from './components/OrchestraDashboard'
 import { useProjectActivity } from './terminal/agentActivity'
-import { OrchestraDock, type DockTarget } from './components/OrchestraDock'
+import { OrchestraDock } from './components/OrchestraDock'
+import { currentDockGroup, groupDockTargets } from '@shared/dockGroups'
+import { pageItems } from '@shared/humanChecklist'
 import type { ChecklistItem } from '@shared/humanChecklist'
 import { RemoteFilesNotice } from './components/AddProjectDialog'
 import { targetFromSource } from '@shared/captureTarget'
@@ -319,13 +321,22 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   /** 内蔵ブラウザの開始画面の候補（登録した URL・最近開いた URL・登録が無ければ localhost の補助） */
   const startTargets = projects.projects.find((p) => p.id === workspace.projectId)?.urls
   const startChoices = useMemo(() => startUrlChoices({ targets: startTargets ?? [], history: urlHistory }), [startTargets, urlHistory])
-  const [targetsOpen, setTargetsOpenState] = useState(() => readLocal('ade.feedback.targetsOpen') !== 'false')
+  const [savedTargetsOpen, setTargetsOpenState] = useState(() => readLocal('ade.feedback.targetsOpen') !== 'false')
+  /**
+   * 全体（すべてのプロダクト）のフィードバックの画面では、エディタと同じく右のパネル（確認先・ターミナル）を閉じておき、
+   * 右下の小さなボタンで開く（フィードバックの対象を大きく見せる）。開いた状態は覚えない
+   */
+  const [orchestraSideOpen, setOrchestraSideOpen] = useState(false)
+  const targetsOpen = isOrchestra ? orchestraSideOpen : savedTargetsOpen
   const [targetsRatio, setTargetsRatio] = useState(() => Number(readLocal('ade.feedback.targetsRatio')) || 0.78)
-  const setTargetsOpen = (next: (open: boolean) => boolean) => setTargetsOpenState((prev) => {
-    const value = next(prev)
-    void window.ade.invoke('settings:feedbackTargets', { visible: value }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
-    return value
-  })
+  const setTargetsOpen = (next: (open: boolean) => boolean) => {
+    if (isOrchestra) { setOrchestraSideOpen(next); return }
+    setTargetsOpenState((prev) => {
+      const value = next(prev)
+      void window.ade.invoke('settings:feedbackTargets', { visible: value }).catch(() => undefined) // 失敗は main の IPC が Sentry へ送る
+      return value
+    })
+  }
   /*
    * 録画中の文字起こし（右パネルの「文字起こし」タブ）。パネルを閉じていても受け取る。
    * 止まった・声が文字にならない・マイクに音が来ないときは、パネルを見ていなくても1回だけ知らせ、右パネルの開閉ボタンに印を付ける
@@ -744,8 +755,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   }), [run, projects.projects, recording, toast, t, changeMode])
 
   /**
-   * プロダクトの巡回（オーケストラ）。録画の巡回は止めるたびに Agent へ渡して次のプロダクトへ、
-   * 確認の巡回は確認待ちが無くなったら次へ（src/renderer/hooks/useProductRound.ts）
+   * 確認の巡回（オーケストラ）。全プロダクトの確認待ちを順に開き、「次へ」で進む（src/renderer/hooks/useProductRound.ts）
    */
   const openReviewIn = useCallback(async (projectId: string, reviewId: string) => {
     if (workspaceProjectRef.current !== projectId) {
@@ -760,8 +770,6 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   }, [changeMode])
   const productRound = useProductRound({
     projects: projects.projects,
-    review,
-    startReviewIn,
     openReview: (projectId, reviewId) => run(() => openReviewIn(projectId, reviewId)),
     openOverview: () => {
       const editor = projects.projects.find((p) => p.editorWorkspace)
@@ -769,15 +777,10 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     },
     notify: (tone, message) => toast({ tone, message }),
     messages: {
-      recordDone: (count) => t('round.recordDone', { count }),
       confirmDone: () => t('round.confirmDone'),
-      nothingToConfirm: () => t('round.nothingToConfirm'),
-      noProducts: () => t('round.noProducts'),
-      sendFailed: (message) => t('round.sendFailed', { message })
+      nothingToConfirm: () => t('round.nothingToConfirm')
     }
   })
-  const productRoundRef = useRef(productRound)
-  productRoundRef.current = productRound
 
   const recordingRef = useRef(recording)
   recordingRef.current = recording
@@ -842,16 +845,49 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
   useEffect(() => {
     if (!isOrchestra || mode !== 'feedback') return
     let cancelled = false
-    void window.ade.invoke('orchestra:overview').then((o) => { if (!cancelled) setDockChecklist(o.checklist) }).catch(() => undefined)
+    void window.ade.invoke('orchestra:checklist').then((items) => { if (!cancelled) setDockChecklist(items) }).catch(() => undefined)
     return () => { cancelled = true }
   }, [isOrchestra, mode])
-  const dockTargets: DockTarget[] = isOrchestra ? [
-    ...dockChecklist.map((c) => ({ key: c.key, label: c.label || c.url, url: c.url })),
-    ...projects.projects.filter((p) => !p.editorWorkspace && !p.orchestrator && !p.orchestraExcluded).flatMap((p) => p.urls.filter((u) => u.url && !dockChecklist.some((c) => c.url === u.url)).slice(0, 2)
-      .map((u) => ({ key: '', label: `${p.name}${u.label ? ` · ${u.label}` : ''}`, url: u.url! })))
-  ] : []
-  const roundBar = productRound.round && <RoundBar round={productRound.round} projects={projects.projects} recording={recording}
-    onNext={() => (recording ? toggleRecording() : productRound.skip())} onStop={productRound.stop} />
+  const dockGroups = isOrchestra
+    ? groupDockTargets(projects.projects.filter((p) => !p.editorWorkspace && !p.orchestrator && !p.orchestraExcluded), pageItems(dockChecklist))
+    : []
+  const dockGroupsRef = useRef(dockGroups)
+  dockGroupsRef.current = dockGroups
+  /** 帯で開いているプロダクト（文字のフィードバックの宛先） */
+  const dockProduct = (() => {
+    const id = currentDockGroup(dockGroups, browserState.url)
+    const group = dockGroups.find((g) => g.id === id)
+    return group ? { name: group.label, url: browserState.url } : null
+  })()
+  const roundBar = productRound.round && <RoundBar round={productRound.round} projects={projects.projects}
+    onNext={productRound.skip} onStop={productRound.stop} />
+
+  /**
+   * 全プロダクトを1回の録画でフィードバックする。全体（すべてのプロダクト）のフィードバックの画面を開き、
+   * 最初のプロダクトのページで録画を始める。録画は止めずに帯のタブでプロダクトを切り替えると、その間の指摘はそのプロダクトのものになる
+   * （送るときに main がプロダクトごとに分けて、それぞれの Agent へ並行して渡す。@shared/productSplit）
+   */
+  const recordAll = useCallback(() => void run(async () => {
+    if (recordingRef.current) { setCenterTab('browser'); changeMode('feedback'); return }
+    const editor = projects.projects.find((p) => p.editorWorkspace)
+    if (editor && workspaceProjectRef.current !== editor.id) {
+      await window.ade.invoke('project:switch', editor.id)
+      for (let i = 0; i < 40 && workspaceProjectRef.current !== editor.id; i++) await delay(50)
+    }
+    setCenterTab('browser')
+    changeMode('feedback')
+    const state = await window.ade.invoke('browser:state')
+    const first = dockGroupsRef.current[0]?.items[0]?.url
+    if ((!state.url || state.url === 'about:blank') && first) await window.ade.invoke('browser:navigate', first).catch(() => undefined)
+    for (let i = 0; i < 50; i++) {
+      const now = await window.ade.invoke('browser:state')
+      if (now.url && now.url !== 'about:blank' && !now.loading) break
+      await delay(100)
+    }
+    await new Promise((done) => requestAnimationFrame(() => done(null)))
+    if (newReviewNeedsPage(emptyReasonRef.current, captureTargetRef.current.kind)) return
+    if (!recordingRef.current) toggleRecordingRef.current()
+  }), [run, projects.projects, changeMode])
 
   /** 録画の対象を選んで、次回のために覚える */
   const chooseTarget = (target: CaptureTarget) => {
@@ -915,8 +951,6 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         setReview(data); setSessionId(data.id); setCenterTab('findings'); setTool('none')
         if (!stayFeedbackOnStop) changeMode('editor')
         void refreshHistory()
-        // 録画の巡回なら、このレビューを Agent に渡して次のプロダクトへ
-        productRoundRef.current.onReviewReady(data)
       })
     ]
     void run(async () => { setAvailable(await window.ade.invoke('capture:availability')); setMicDevices(await window.ade.invoke('capture:devices')); await refreshHistory() })
@@ -1232,7 +1266,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                 if (!(showDemo && !history.length && DEMO_SESSION_IDS.includes(id))) void run(async () => { setReview(await window.ade.invoke('review:load', id)); await refreshHistory() })
               }}
               onNewReview={startReviewIn}
-              onStartRound={(kind) => void run(() => productRound.start(kind))}
+              onStartRound={(kind) => (kind === 'record' ? recordAll() : void run(() => productRound.start()))}
               onImportMeeting={() => setMeetingOpen(true)}
               recording={recording}
               onHistoryChanged={(deleted) => {
@@ -1280,7 +1314,8 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
                     onOpenProject={(id) => void window.ade.invoke('project:switch', id).catch(() => undefined)}
                     onOpenUrl={openForFeedback}
                     onReviewChecklist={startChecklistTour}
-                    onStartRound={(kind) => void run(() => productRound.start(kind))}
+                    onRecordAll={recordAll}
+                    onStartRound={() => void run(() => productRound.start())}
                   />
                 </ErrorBoundary>
               ) : centerTab === 'settings' && settingsOpen ? (
@@ -1403,11 +1438,21 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
         aria-pressed={terminalPeek} title={t(terminalPeek ? 'orchestra.hideTerminal' : 'orchestra.showTerminal')} data-testid="orchestra-terminal-toggle">
         <span className="orchestra-peek__dot" aria-hidden="true" />{t(terminalPeek ? 'orchestra.hideTerminal' : 'orchestra.showTerminal')}
       </button>}
+      {isOrchestra && mode === 'feedback' && <div className="orchestra-peeks">
+        <button type="button" className={`orchestra-peek orchestra-peek--inline${orchestraBusy ? ' is-busy' : ''}`} aria-pressed={orchestraSideOpen && shownSideTab === 'terminal'}
+          onClick={() => { const open = !(orchestraSideOpen && shownSideTab === 'terminal'); if (open) chooseSideTab('terminal'); setOrchestraSideOpen(open) }} data-testid="orchestra-feedback-terminal">
+          <span className="orchestra-peek__dot" aria-hidden="true" />{t('orchestra.showTerminal')}
+        </button>
+        <button type="button" className="orchestra-peek orchestra-peek--inline" aria-pressed={orchestraSideOpen && shownSideTab === 'targets'}
+          onClick={() => { const open = !(orchestraSideOpen && shownSideTab === 'targets'); if (open) chooseSideTab('targets'); setOrchestraSideOpen(open) }} data-testid="orchestra-feedback-targets">
+          {t('orchestra.showTargets')}
+        </button>
+      </div>}
       <div className={`shell shell--feedback${productRound.round || (isOrchestra && mode === 'feedback') ? ' shell--round' : ''}`} hidden={mode !== 'feedback'}>
         {/* 巡回の帯と、全体のフィードバックの帯（上の帯とブラウザの間の段に出す。ブラウザの枠は測り直される） */}
         {mode === 'feedback' && (roundBar || isOrchestra) && <div className="round-dock">
           {roundBar}
-          {isOrchestra && <OrchestraDock targets={dockTargets} currentUrl={browserState.url} onOpen={(url) => void window.ade.invoke('browser:navigate', url).catch(() => undefined)}
+          {isOrchestra && <OrchestraDock groups={dockGroups} currentUrl={browserState.url} product={dockProduct} onOpen={(url) => void window.ade.invoke('browser:navigate', url).catch(() => undefined)}
             tour={checklistTour ? { index: checklistTour.index, total: checklistTour.urls.length } : null}
             onPrev={() => moveTour(-1)} onNext={() => moveTour(1)} onEndTour={() => setChecklistTour(null)} />}
         </div>}

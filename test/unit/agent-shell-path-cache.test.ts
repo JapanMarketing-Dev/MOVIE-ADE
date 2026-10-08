@@ -73,4 +73,34 @@ describe.runIf(posix)('ログインシェルの PATH を前回の起動の値で
     calls[0]!(new Error('timeout'), '')
     expect(await mod.searchDirs()).not.toContain('/cached/bin')
   })
+
+  it('終了コードが 0 でなくても、印が出ていれば PATH を使う（.zlogout・rc の失敗。Sentry FERRET-1S）', async () => {
+    const mod = await import('../../src/main/agentDetection')
+    const { reportHandled } = await import('@shared/report')
+    vi.mocked(reportHandled).mockClear()
+    await mod.warmLoginShellPath(join(dir, 'missing.json'))
+    const pending = mod.searchDirs()
+    calls[0]!(Object.assign(new Error('Command failed'), { code: 1 }), '__ADE_PATH__/fresh/bin')
+    expect(await pending).toContain('/fresh/bin')
+    expect(reportHandled).not.toHaveBeenCalled()
+  })
+
+  it('取れなかったときに送るもの：時間切れは送らない。終了コード・シグナルを題名にする', async () => {
+    const { loginShellPathFailure } = await import('../../src/main/agentDetection')
+    expect(loginShellPathFailure(Object.assign(new Error('x'), { killed: true, signal: 'SIGTERM', code: null }))).toBeNull()
+    expect(loginShellPathFailure(Object.assign(new Error('x'), { code: 127 }))?.message).toBe('login shell PATH exit 127')
+    expect(loginShellPathFailure(Object.assign(new Error('x'), { code: null, signal: 'SIGKILL' }))?.message).toBe('login shell PATH signal SIGKILL')
+    expect(loginShellPathFailure(null)?.message).toBe('login shell PATH marker missing')
+  })
+
+  it('時間切れでは Sentry へ送らない', async () => {
+    const mod = await import('../../src/main/agentDetection')
+    const { reportHandled } = await import('@shared/report')
+    vi.mocked(reportHandled).mockClear()
+    await mod.warmLoginShellPath(join(dir, 'missing.json'))
+    const pending = mod.searchDirs()
+    calls[0]!(Object.assign(new Error('Command failed'), { killed: true, signal: 'SIGTERM', code: null }), '')
+    await pending
+    expect(reportHandled).not.toHaveBeenCalled()
+  })
 })

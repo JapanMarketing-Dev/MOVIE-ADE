@@ -1,3 +1,4 @@
+import { MAX_BROWSER_EXTENSIONS } from './browserExtensions'
 import { SETTINGS_SCHEMA, STATE_KEYS, type JsonSchema } from './settingsSchema'
 
 /**
@@ -53,6 +54,8 @@ export interface SkillContext {
   schemaPath: string
   /** 作った Ferret の版 */
   version: string
+  /** 「すべてのプロダクト」（オーケストラ）のフォルダ。human.md・全体の .ferret/costs.json の置き場 */
+  editorWorkspacePath?: string
   schema?: JsonSchema
 }
 
@@ -152,7 +155,7 @@ export function renderAgentSkill(context: SkillContext): string {
 
   return `---
 name: ${AGENT_SKILL_NAME}
-description: Change settings of Ferret, the voice-and-annotation review app the user runs next to you (theme, language, layout, panels and footer, terminal, browser extensions, updates, crash reports, agents and usage-limit failover, recording, transcription, organizing, decision model, projects and their review targets such as URLs, launch commands and desktop/mobile/game windows). Use when the user asks to configure, change, turn on/off, add or remove anything "in Ferret", or to register a URL, app window, simulator or launch command for a project.
+description: Change settings of Ferret, the voice-and-annotation review app the user runs next to you (theme, language, layout, panels and footer, terminal, browser extensions, updates, crash reports, agents and usage-limit failover, recording, transcription, organizing, decision model, projects and their review targets such as URLs, launch commands and desktop/mobile/game windows) and drive its orchestra (the All products dashboard: the human.md list of what people must check, costs including infrastructure in .ferret/costs.json, ready-made requests, products in or out of the orchestra, shared and per-product rules). Use when the user asks to configure, change, turn on/off, add or remove anything "in Ferret", to register a URL, app window, simulator or launch command for a project, or to update the orchestra dashboard, human.md or costs.
 ---
 
 ${SKILL_MARKER}
@@ -196,6 +199,28 @@ Review targets are \`projects[].urls\` (the first one opens by default). Each ne
 | Key | Type | Meaning |
 | --- | --- | --- |
 ${targetRows.join('\n')}
+
+## Chrome extensions you are building
+
+When a project builds a Chrome extension, load it into Ferret's built-in browser and keep it current from the terminal, without opening Ferret's settings. Entries live in the global \`browserExtensions\` array (at most ${MAX_BROWSER_EXTENSIONS}); each \`path\` is the absolute path of the unpacked folder that contains manifest.json (the build output such as \`dist/\`, not the source folder when they differ).
+
+- **Register**: build the extension, then add \`{"path": "<absolute folder>"}\` to \`browserExtensions\`. If the same path is already there, do not add it twice.
+- **Update to the latest build**: rebuild, then set that entry's \`reload\` to the current Unix time in seconds (any new number works). Ferret loads the extension again from the folder and reloads the open page. Ferret does not watch the folder by itself, so change \`reload\` after every rebuild you want to see.
+- **Turn off / remove**: set \`"enabled": false\` to keep it listed but unloaded, or delete the entry to remove it.
+- While Ferret is recording it reloads the extension but leaves the open page alone, so the recording is not interrupted. The result (name, version or a load error) shows in Ferret's Settings > Browser extensions.
+
+## Orchestra (All products dashboard)
+
+Ferret's All products view runs one top-level agent over every registered product, with one subagent per product. Its dashboard is built from plain files and settings that you can change directly; it re-reads them every 30 seconds and when the user presses Reload.
+
+- **All products folder**: \`${context.editorWorkspacePath ?? '<Ferret user data>/editor-workspace'}\`. Each registered project appears inside it as a link to its real folder.
+- **What people must check** (top of the dashboard): \`human.md\` in the All products folder. Write one row per item in a table \`| No. | Product | URL | What to check |\` (the line after the header must be \`|---|---|---|---|\`). Numbers: B1, B2 … for screens to check, A1 … for approvals, P1 … for things a person must provide, D1 … for decisions. Rows with an http(s) URL get an Open button and are included in the one-recording review; use \`-\` in the URL column when there is none. Unchecked \`- [ ] …\` bullets also count. Remove rows that are done. Never write secrets.
+- **Costs** (this month, this year, total, broken down by product, category, item, model and token type): Ferret counts Claude Code conversations by itself. Everything else goes in \`.ferret/costs.json\` — in a product's folder for that product, in the All products folder for shared costs: \`{"items":[{"name":"Cloudflare Workers Paid","category":"infra","monthlyUsd":5,"since":"2026-01"},{"name":"Domain","category":"infra","usd":12,"date":"2026-03-01","estimate":true}]}\`. \`category\` is infra, service, ai or other; recurring costs use \`monthlyUsd\` + \`since\` (and \`until\` when they ended, both YYYY-MM); one-off costs use \`usd\` + \`date\` (YYYY-MM-DD). Amounts are USD.
+- **Products in or out**: set \`projects[].orchestraExcluded: true\` to leave a product out of the orchestra (no subagent, not in reviews or requests); remove it to bring the product back.
+- **Rules**: \`orchestra.shared\` (rules for every product) and \`orchestra.products.<project id>\` (rules for one product). Ferret writes them into the All products CLAUDE.md / AGENTS.md and each product's subagent.
+- **Ready-made requests** (the Requests list on the dashboard): \`agentRequests.items\`. Change a built-in request's \`text\`, add your own with \`custom: true\` + \`title\` + \`text\` (any id such as \`custom-weekly-report\`), and set \`hidden: true\` on one-time requests that are done (for example \`sentry-setup\`, \`analytics-setup\`, \`search-console\`, \`infra\`). People send them from the dashboard; you do not need to send them yourself.
+- **Feedback from one recording across products**: reviews recorded in All products are split by the page URL of each finding; each product's own agent gets its findings directly, and the rest come to the top-level agent with the product named. When you get such a request, run the products in parallel through their subagents, and inside each product run independent work in parallel too.
+- **Interrupted work**: when Ferret was closed or the computer slept in the middle of a request, Ferret reopens the conversation and asks you to continue. Check what is already done (git status, files, the last report) before continuing, and do not redo finished steps.
 
 ## How to edit
 

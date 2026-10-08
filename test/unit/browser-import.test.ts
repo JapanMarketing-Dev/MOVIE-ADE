@@ -8,6 +8,9 @@ import {
   loginOrigin,
   mergeHistory,
   originMatches,
+  loginMatch,
+  siteOf,
+  isPasswordExportName,
   parseCsv,
   parsePasswordCsv,
   safariSecondsToUnixMs,
@@ -45,17 +48,19 @@ describe('CSV の読み取り', () => {
 describe('パスワードの CSV', () => {
   it('Chrome / Edge の見出し（name,url,username,password,note）', () => {
     const csv = `name,url,username,password,note\nexample.com,https://example.com/login,alice,${FAKE_PASSWORD},\n`
-    expect(parsePasswordCsv(csv)).toEqual({ logins: [{ origin: 'https://example.com', username: 'alice', password: FAKE_PASSWORD }], skipped: 0 })
+    expect(parsePasswordCsv(csv)).toEqual({ logins: [{ origin: 'https://example.com', username: 'alice', password: FAKE_PASSWORD }], skipped: 0, source: 'chromium' })
   })
 
   it('Safari の見出し（Title,URL,Username,Password,Notes,OTPAuth）', () => {
     const csv = `Title,URL,Username,Password,Notes,OTPAuth\nExample,https://www.example.com:8443/a,bob,${FAKE_PASSWORD},memo,\n`
     expect(parsePasswordCsv(csv)?.logins).toEqual([{ origin: 'https://www.example.com:8443', username: 'bob', password: FAKE_PASSWORD }])
+    expect(parsePasswordCsv(csv)?.source).toBe('safari')
   })
 
   it('Firefox の見出し（"url","username","password","httpRealm",…）', () => {
     const csv = `"url","username","password","httpRealm","formActionOrigin","guid","timeCreated","timeLastUsed","timePasswordChanged"\n"http://localhost:3000","dev","${FAKE_PASSWORD}",,"http://localhost:3000","{1}","1","1","1"\n`
     expect(parsePasswordCsv(csv)?.logins).toEqual([{ origin: 'http://localhost:3000', username: 'dev', password: FAKE_PASSWORD }])
+    expect(parsePasswordCsv(csv)?.source).toBe('firefox')
   })
 
   it('http / https でない行・パスワードが空の行は飛ばし、同じオリジン＋ユーザー名は後の行で上書きする', () => {
@@ -66,7 +71,7 @@ describe('パスワードの CSV', () => {
       'old,https://example.com,erin,first-value',
       'new,https://example.com/other,erin,second-value'
     ].join('\n')
-    expect(parsePasswordCsv(csv)).toEqual({ logins: [{ origin: 'https://example.com', username: 'erin', password: 'second-value' }], skipped: 2 })
+    expect(parsePasswordCsv(csv)).toEqual({ logins: [{ origin: 'https://example.com', username: 'erin', password: 'second-value' }], skipped: 2, source: 'other' })
   })
 
   it('URL とパスワードの列が無ければパスワードの CSV ではない（null）', () => {
@@ -119,8 +124,46 @@ describe('保存した資格情報', () => {
     expect(next).toEqual({
       logins: [{ id: 'id1', origin: 'https://a.test', username: 'u', password: 'p2' }, { id: 'id2', origin: 'https://b.test', username: 'u', password: 'p3' }],
       added: 1,
-      updated: 1
+      updated: 1,
+      removed: 0
     })
+  })
+
+  it('同期：同じブラウザから取り込み直すと、そのブラウザの前の取り込みのうち CSV に無いものを消す。ほかのブラウザ・元の分からないものは残す', () => {
+    let n = 0
+    const id = () => `id${++n}`
+    const chrome = mergeLogins([], [{ origin: 'https://a.test', username: 'u', password: 'p1' }, { origin: 'https://gone.test', username: 'u', password: 'p2' }], id, 'chromium')
+    const withSafari = mergeLogins([...chrome.logins, { id: 'old', origin: 'https://legacy.test', username: 'u', password: 'p0' }], [{ origin: 'https://s.test', username: 'u', password: 'p3' }], id, 'safari')
+    const again = mergeLogins(withSafari.logins, [{ origin: 'https://a.test', username: 'u', password: 'p1b' }], id, 'chromium')
+    expect(again.removed).toBe(1)
+    expect(again.updated).toBe(1)
+    expect(again.logins.map((l) => [l.origin, l.source ?? null])).toEqual([
+      ['https://a.test', 'chromium'],
+      ['https://legacy.test', null],
+      ['https://s.test', 'safari']
+    ])
+  })
+
+  it('照合：同じオリジン・www・http で保存したものの https は exact、同じサイトの別のサブドメインは site。共有の置き場・IP・ポート違いは使わない', () => {
+    expect(loginMatch('https://example.com', 'https://www.example.com/a')).toBe('exact')
+    expect(loginMatch('http://example.com', 'https://example.com/login')).toBe('exact')
+    expect(loginMatch('https://example.com', 'http://example.com/login')).toBeNull()
+    expect(loginMatch('https://accounts.example.com', 'https://login.example.com/')).toBe('site')
+    expect(loginMatch('https://example.co.jp', 'https://shop.example.co.jp/')).toBe('site')
+    expect(loginMatch('https://a.co.jp', 'https://b.co.jp/')).toBeNull()
+    expect(loginMatch('https://alice.github.io', 'https://mallory.github.io/')).toBeNull()
+    expect(loginMatch('https://app.vercel.app', 'https://evil.vercel.app/')).toBeNull()
+    expect(loginMatch('https://example.com', 'https://example.com.evil.test/')).toBeNull()
+    expect(loginMatch('http://localhost:3000', 'http://localhost:3001/')).toBeNull()
+    expect(loginMatch('http://127.0.0.1', 'http://127.0.0.2/')).toBeNull()
+    expect(loginMatch('https://a.example.com:8443', 'https://b.example.com/')).toBeNull()
+    expect(siteOf('www.shop.example.co.uk')).toBe('example.co.uk')
+    expect(siteOf('localhost')).toBeNull()
+  })
+
+  it('書き出しらしいファイル名（各ブラウザ・各言語）', () => {
+    for (const name of ['Chrome Passwords.csv', 'Microsoft Edge Passwords.csv', 'Passwords.csv', 'Chrome のパスワード.csv', 'logins.csv']) expect(isPasswordExportName(name)).toBe(true)
+    for (const name of ['report.csv', 'Passwords.txt', 'sales.xlsx']) expect(isPasswordExportName(name)).toBe(false)
   })
 
   it('壊れた行は読まない', () => {
@@ -135,7 +178,7 @@ describe('保存した資格情報', () => {
     expect(await store.importLogins([
       { origin: 'https://example.com', username: 'alice', password: FAKE_PASSWORD },
       { origin: 'https://other.test', username: 'bob', password: 'another-value' }
-    ])).toEqual({ added: 2, updated: 0 })
+    ])).toEqual({ added: 2, updated: 0, removed: 0 })
     const raw = await readFile(path)
     expect(raw.includes(Buffer.from(FAKE_PASSWORD))).toBe(false)
     expect(raw.includes(Buffer.from('alice'))).toBe(false)
@@ -149,7 +192,9 @@ describe('保存した資格情報', () => {
     expect(await reopened.loginFor(accounts[0]!.id, 'https://example.com/')).toMatchObject({ password: FAKE_PASSWORD })
     // 別のオリジンのページには渡さない
     expect(await reopened.loginFor(accounts[0]!.id, 'https://other.test/')).toBeNull()
-    expect(await reopened.loginFor(accounts[0]!.id, 'https://login.example.com/')).toBeNull()
+    // 同じサイトの別のサブドメインは、ホスト名を付けて出す（選んだときだけ入れる）
+    expect(await reopened.accountsFor('https://login.example.com/')).toEqual([{ id: accounts[0]!.id, username: 'alice', site: 'example.com' }])
+    expect(await reopened.loginFor(accounts[0]!.id, 'https://login.example.com/')).toMatchObject({ username: 'alice' })
 
     await reopened.clear()
     expect(existsSync(path)).toBe(false)

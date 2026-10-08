@@ -180,6 +180,14 @@ describe('ほかのビューの片付けも同じ順序（FERRET-1Q）', () => {
     expect(readFileSync('src/main/browser.ts', 'utf8')).toMatch(/retireView\(this\.window, view, 'destroy capture mirror'\)/)
     expect(readFileSync('src/main/browserExtensions.ts', 'utf8')).toMatch(/retireView\(this\.host\.window\(\), this\.view, 'close extension popup'\)/)
   })
+  it('拡張のポップアップは、中身が壊れたあとの配置で位置を入れずに閉じる（destroyed から次のティックの close までの間。0.6.2 の FERRET-1Q）', async () => {
+    const { readFileSync } = await import('node:fs')
+    const src = readFileSync('src/main/browserExtensions.ts', 'utf8')
+    const layout = /  layout\(\): void \{([\s\S]*?)\n  \}/.exec(src)?.[1] ?? ''
+    const guard = layout.indexOf('if (this.view.webContents.isDestroyed()) return this.close()')
+    expect(guard).toBeGreaterThan(-1)
+    expect(guard).toBeLessThan(layout.indexOf('this.view.setBounds('))
+  })
 })
 
 describe('読み込みの中断（ERR_ABORTED）は送らない（FERRET-1R）', () => {

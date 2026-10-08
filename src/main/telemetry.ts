@@ -40,6 +40,7 @@ import {
   gcKindName,
   isNativeCrashEvent,
   minimizeNativeCrash,
+  shouldSendNativeCrash,
   filterTransport,
   memoryBucket,
   uptimeBucket
@@ -431,6 +432,8 @@ export function initCrashReporting(): void {
       hint.attachments = []
       // ネイティブのクラッシュは、プロセスの種類・終了の理由・版だけにする
       if (native) event = minimizeNativeCrash(event, dump)
+      // 外から止められた子のプロセス（killed）はクラッシュではない（FERRET-1V）
+      if (native && !shouldSendNativeCrash(event)) return null
       // 確認用の起動（FERRET_SENTRY_FORCE=1）では間引かない
       if (!forced && !sampleEvent(native, Math.random, profile.sampleRate)) return null
       if (!packaged) await remapDevFrames(event, { appPath: app.getAppPath(), rendererUrl: process.env.ELECTRON_RENDERER_URL }).catch(() => undefined)

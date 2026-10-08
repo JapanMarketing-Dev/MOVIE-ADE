@@ -1067,6 +1067,26 @@ p {
 
 /* ── Feature grid (Orca-style: picture, short title, one line) ── */
 
+/* オーケストラ：ダッシュボードの画面と、文字だけの特長 */
+.orchestra-shot {
+  margin: 0 auto 48px;
+  max-width: 960px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.orchestra-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.feat-grid--text .feat h3 {
+  margin-top: 0;
+}
+
 .feat-grid {
   list-style: none;
   margin: 0;

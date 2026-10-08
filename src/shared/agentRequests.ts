@@ -2,24 +2,21 @@
  * Agent への依頼文（設定の「Agent への依頼」）。人が良い依頼をするための、よく使う依頼の雛形。
  * Ferret はコーディング Agent の邪魔をしない：機能として作業を肩代わりせず、ボタンを押すとこの文を Agent に送るだけ。
  *
- * - 組み込みの依頼文（記憶の整理 dream・人から学ぶ・localhost の一括起動・定期実行の設定・コンパクト化・セキュリティ・SEO・分析・Sentry のクラッシュ・Sentry / GA / Search Console / インフラの登録・
+ * - 組み込みの依頼文（人の確認リストの書き出し・コストの記録・記憶の整理 dream・人から学ぶ・localhost の一括起動・Chrome 拡張の登録と更新・コンパクト化・セキュリティ・SEO・分析・Sentry のクラッシュ・Sentry / GA / Search Console / インフラの登録・
  *   性能・アクセシビリティ・依存関係）と、利用者が足した依頼文。接続とログインは全体で1回、設定はプロダクトごと
  * - 文面は編集できる（組み込みは変えた分だけ保存し、「既定に戻す」で戻る）
- * - 選んだものをまとめて1つの依頼にできる。毎日・毎週の定期にもできる（Agent が手すきのときに main が送る）
- * - オーケストレーターから送ると、すべてのプロダクトに subagent で並行して行うよう添える
+ * - 選んだものをまとめて1つの依頼にできる。1回きりの依頼（登録など）は済んだら隠せる
+ * - オーケストレーターから送ると、すべてのプロダクトに subagent で並行して行い、プロダクトの中でも独立した作業を並行するよう添える
+ * - 定期の送信は持たない（0.6.5 で外した。古い設定の schedule・lastRunAt は読み捨てる）
  * Electron に依存しない純粋な処理だけを置く（送るのは src/main/agentRequests.ts）。
  */
 
-export type AgentRequestSchedule = 'off' | 'daily' | 'weekly'
-export const AGENT_REQUEST_SCHEDULES: readonly AgentRequestSchedule[] = ['off', 'daily', 'weekly']
 export type RequestLanguage = 'ja' | 'en'
 
 /** 保存する形（settings.json の agentRequests） */
 export interface AgentRequestPrefs {
   /** 組み込みの変更分と、利用者が足した依頼文（custom）。並びは組み込み → 足したもの */
   items: AgentRequestItemPrefs[]
-  /** 定期の依頼を最後に送った時刻（ISO8601） */
-  lastRunAt?: Record<string, string>
 }
 
 export interface AgentRequestItemPrefs {
@@ -28,11 +25,12 @@ export interface AgentRequestItemPrefs {
   title?: string
   /** 変えた文面。無ければ組み込みの文面 */
   text?: string
-  schedule?: AgentRequestSchedule
   /** 「まとめて送る」に入れる */
   batch?: boolean
   /** 利用者が足した依頼文 */
   custom?: true
+  /** 一覧から隠した（1回きりの登録など、済んだもの） */
+  hidden?: true
 }
 
 /** 画面に出す1件（組み込みと変更分を合わせたもの） */
@@ -40,18 +38,20 @@ export interface AgentRequest {
   id: string
   title: string
   text: string
-  schedule: AgentRequestSchedule
   batch: boolean
   custom: boolean
   /** 組み込みの文面から変えている */
   edited: boolean
+  hidden: boolean
+  /** 1回きりの依頼（登録・設定など）。済んだら隠せるよう印を出す */
+  once: boolean
 }
 
 export const MAX_REQUEST_CHARS = 6000
 const MAX_TITLE_CHARS = 80
 const MAX_ITEMS = 50
 
-type Builtin = { id: string; title: Record<RequestLanguage, string>; text: Record<RequestLanguage, string> }
+type Builtin = { id: string; title: Record<RequestLanguage, string>; text: Record<RequestLanguage, string>; once?: true }
 
 /** どの依頼にも付ける決まり（Agent は人に質問しない・結果は短く） */
 const CLOSING: Record<RequestLanguage, string> = {
@@ -60,6 +60,44 @@ const CLOSING: Record<RequestLanguage, string> = {
 }
 
 export const BUILTIN_REQUESTS: readonly Builtin[] = [
+  {
+    id: 'human-checklist',
+    title: { ja: '人が確認すべきことを全部 Markdown に書き出す', en: 'Write everything people must check into Markdown' },
+    text: {
+      ja: [
+        '人が確認・判断すべきことを、すべてのプロダクトから集めて、全体のフォルダの human.md に Markdown でまとめてください。Ferret の全体のダッシュボードの一番上に、この一覧がそのまま出ます（人はそこだけを見れば足りるようにします）。',
+        '集めるもの：画面・動きの確認（before / after）、人の承認が要るもの（公開・課金・本番の設定・データの削除・外への送信）、人が用意するもの（鍵・アカウント・契約・ドメイン）、決めてほしいこと（仕様・優先順位・文言）、Agent が止まっている・失敗しているもの。各プロダクトの human.md・TODO・確認待ちの指摘（.ferret/reviews/<id>/progress.json の human_review）・直近の会話の最後の報告から拾い、プロダクトごとの subagent に並行して集めさせてください。',
+        '書き方：表 `| 番号 | プロダクト | URL | 見てほしいこと |` に1行1件。番号は B1, B2 …（画面の確認）・A1 …（承認）・P1 …（人が用意するもの）・D1 …（決めること）。画面で確かめるものは開く URL（localhost・dev・prd）を必ず入れ、URL の無いものは URL の列を「-」にする。見てほしいことは1文で、何を見て何を判断すればよいかが分かるように書く。',
+        '済んだもの・古いものは消し、重なっているものは1つにまとめ、急ぐもの・大事なものを上に並べてください。秘密の値（鍵・パスワード）は書かないでください。'
+      ].join('\n'),
+      en: [
+        'Collect everything a person must check or decide, across every product, and write it as Markdown into human.md in the top-level folder. Ferret shows this list as-is at the top of the All products dashboard, so it should be the only place a person needs to look.',
+        'Collect: screens and behavior to check (before / after); things that need a person\'s approval (publishing, spending money, production settings, deleting data, sending anything outside); things a person must provide (keys, accounts, contracts, domains); decisions (spec, priorities, wording); and agents that are stuck or failing. Gather them from each product\'s human.md, TODOs, findings waiting for a person (human_review in .ferret/reviews/<id>/progress.json) and the final reports of recent conversations, with each product\'s subagent working in parallel.',
+        'Format: one row per item in a table `| No. | Product | URL | What to check |`. Numbers are B1, B2 … (check a screen), A1 … (approve), P1 … (provide), D1 … (decide). Always include the URL to open (localhost, dev, prd) for anything checked on screen; use "-" in the URL column when there is none. Write what to check in one sentence that says what to look at and what to decide.',
+        'Remove what is done or stale, merge duplicates, and put urgent and important items first. Never write secret values (keys, passwords).'
+      ].join('\n')
+    }
+  },
+  {
+    id: 'costs',
+    title: { ja: 'すべてのコストを記録する（インフラ込み）', en: 'Record every cost (infrastructure included)' },
+    text: {
+      ja: [
+        'このプロダクト（オーケストラならすべてのプロダクトと全体）にかかっているコストをすべて調べ、Ferret のダッシュボードで今月・今年・総額と内訳を見られるよう `.ferret/costs.json` に書いてください。全体で共有しているもの（Agent のサブスクリプション・共通のドメインやツール）は全体のフォルダの `.ferret/costs.json` に、プロダクトだけのものは各プロダクトのフォルダの `.ferret/costs.json` に分け、プロダクトごとの subagent に並行して調べさせてください。',
+        '対象：インフラ（クラウド・ホスティング・DB・ストレージ・CDN・ドメイン・メール）、外部サービス（Sentry・分析・認証・決済の手数料・API）、AI（Agent のサブスクリプション・API の利用料。Claude Code の会話の分は Ferret が記録から数えるので入れない）、そのほか。',
+        '調べ方：各サービスの CLI・API・請求の書き出しを使う。分からない金額は料金表とプランから見積もり、"estimate": true を付ける。',
+        '形：{"items":[{"name":"Cloudflare Workers Paid","category":"infra","monthlyUsd":5,"since":"2026-01"},{"name":"example.com のドメイン","category":"infra","usd":12,"date":"2026-03-01","estimate":true}]}。category は infra・service・ai・other のどれか。毎月かかるものは monthlyUsd と since（YYYY-MM。終わったものは until も）、1回きりのものは usd と date（YYYY-MM-DD）。金額は USD にそろえ、ほかの通貨はその日のレートで換算して note に元の額を書く。',
+        '鍵・カード・請求先の個人情報は書かないでください。.ferret/ が .gitignore に無ければ足してください。最後に今月・今年・総額の合計を報告してください。'
+      ].join('\n'),
+      en: [
+        'Find every cost of this product (in an orchestra: every product and the shared top level) and write it to `.ferret/costs.json` so Ferret\'s dashboard can show this month, this year, the total and the breakdown. Shared costs (agent subscriptions, shared domains or tools) go in the top-level folder\'s `.ferret/costs.json`; product-only costs go in each product folder\'s `.ferret/costs.json`. Let each product\'s subagent work in parallel.',
+        'Include: infrastructure (cloud, hosting, databases, storage, CDN, domains, email), external services (Sentry, analytics, auth, payment fees, APIs), AI (agent subscriptions and API usage; leave out Claude Code conversations, which Ferret counts from the transcripts) and anything else.',
+        'How: use each service\'s CLI, API or billing export. When an amount is unknown, estimate it from the price list and plan and add "estimate": true.',
+        'Shape: {"items":[{"name":"Cloudflare Workers Paid","category":"infra","monthlyUsd":5,"since":"2026-01"},{"name":"example.com domain","category":"infra","usd":12,"date":"2026-03-01","estimate":true}]}. category is one of infra, service, ai, other. Recurring costs use monthlyUsd and since (YYYY-MM; add until when it ended); one-off costs use usd and date (YYYY-MM-DD). Convert everything to USD at that day\'s rate and put the original amount in note.',
+        'Never write keys, card details or billing contacts. Add .ferret/ to .gitignore if it is missing. Finish by reporting the totals for this month, this year and overall.'
+      ].join('\n')
+    }
+  },
   {
     id: 'dream',
     title: { ja: '記憶を整理する（dream）', en: 'Tidy up memory (dream)' },
@@ -72,7 +110,7 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
         '3. 発見：作業の最中には書かれなかった役に立つ教訓を拾って、短いメモにする（何が起き・なぜ・次にどうするか）。',
         '4. 索引：次の作業で必要なものが見つけやすいよう、メモと索引（MEMORY.md など）を並べ直す。',
         '人が明示した好み・決まりと、出どころ（どの作業で学んだか）は必ず残してください。矛盾する記録は勝手に消さず、新しいほうを案にして、人が決められるよう報告に並べてください。手順の決まりは skill、文脈は記憶、と分けてください。',
-        '最後に、何をまとめ・外し・足したかを日付付きで短く記録に残し（人が後で見返せるように）、報告にも書いてください。毎日1回の定期の依頼にするのがおすすめです。'
+        '最後に、何をまとめ・外し・足したかを日付付きで短く記録に残し（人が後で見返せるように）、報告にも書いてください。'
       ].join('\n'),
       en: [
         'Tidy up this project\'s memory (CLAUDE.md, AGENTS.md, memory folders, rules in docs: what agents read every time). This is a dreaming pass. Memories are lessons learned from the work, not summaries of conversations.',
@@ -82,7 +120,7 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
         '3. Discover: pick up useful lessons that were not captured during the original work, as short notes (what happened, why, what to do next time).',
         '4. Index: reorganize the notes and their index (MEMORY.md and the like) so the next task finds what it needs.',
         'Always keep explicit preferences and rules from people and the source of each lesson. Do not silently drop conflicting records: propose the newer one and list the conflict in your report so a person can decide. Keep procedures in skills and context in memory.',
-        'Finish by keeping a short dated log of what you merged, removed and added (so people can inspect it later), and include it in your report. This works best as a daily scheduled request.'
+        'Finish by keeping a short dated log of what you merged, removed and added (so people can inspect it later), and include it in your report.'
       ].join('\n')
     }
   },
@@ -98,7 +136,7 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
         '3. 置き場所：全体に効くものは全体の CLAUDE.md / AGENTS.md の「人に合わせる」の節、プロダクトだけのものはそのプロダクトの記憶、手順は skill へ。既にある決まりと重なれば1つにまとめ、矛盾は新しいほうを案にして報告に並べる。',
         '4. 小さく保つ：「人に合わせる」の節は 40 行以内。超えるなら抽象化してまとめ、使われなくなった決まりは外す。毎回読む文章の総量を増やさない。',
         '5. 確かめる：最近の依頼を2〜3件選び、新しい決まりがあれば最初の1回で通ったかを見積もって、効き目を報告する。',
-        '人のメッセージやフィードバックの中身（個人情報・社外の人の名前・秘密）は記憶に写さず、学んだ決まりだけを書いてください。毎週の定期の依頼にするのがおすすめです。'
+        '人のメッセージやフィードバックの中身（個人情報・社外の人の名前・秘密）は記憶に写さず、学んだ決まりだけを書いてください。'
       ].join('\n'),
       en: [
         'Read people\'s past requests and feedback and grow this agent (for an orchestra, the top-level main agent) to fit them. Three goals: instructions land the first time, the same feedback comes up less, and the context it reads stays small.',
@@ -108,7 +146,7 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
         '3. Put them in the right place: rules for everything go in a "Fit the people" section of the top-level CLAUDE.md / AGENTS.md, product-only rules in that product\'s memory, procedures in skills. Merge with existing rules that overlap; for conflicts, propose the newer one and list it in your report.',
         '4. Keep it small: the "Fit the people" section stays within 40 lines. When it grows past that, abstract and merge, and drop rules that are no longer used. Do not increase the total text read every time.',
         '5. Check: pick two or three recent requests and estimate whether the new rules would have made them land the first time; report the effect.',
-        'Do not copy the content of messages or feedback (personal data, names of outside people, secrets) into memory; write only the rules you learned. This works best as a weekly scheduled request.'
+        'Do not copy the content of messages or feedback (personal data, names of outside people, secrets) into memory; write only the rules you learned.'
       ].join('\n')
     }
   },
@@ -137,30 +175,24 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
     }
   },
   {
-    id: 'schedule',
-    title: { ja: '定期実行を設定する', en: 'Set up scheduled runs' },
+    id: 'chrome-extension',
+    title: { ja: 'Chrome 拡張を Ferret のブラウザで動かす', en: 'Run this Chrome extension in Ferret\'s browser' },
     text: {
       ja: [
-        '次の依頼を、Agent が自分で定期的に実行するよう設定してください。使える仕組みを選んでください：Claude Code の定期タスク（routines・/schedule など）、Codex のオートメーション、それが無ければ cron・launchd・タスク スケジューラ、リポジトリの作業なら CI の定期実行（GitHub Actions の schedule など）。',
-        '- 記憶の整理（dreaming）：毎日1回、作業の少ない時間に。',
-        '- 人の依頼とフィードバックから学ぶ：毎週。',
-        '- Sentry のエラー・クラッシュの確認と修正：毎日。',
-        '- 依存関係とセキュリティのチェック：毎週。',
-        '- SEO・分析（計測）・性能の点検：毎週。',
-        '（ここに足したい定期の依頼と頻度を書き足してください）',
-        '決まり：定期の実行では、メッセージの送信・公開・課金・本番への反映・削除はしない（それは人の承認を待つ項目として human.md に書く）。鍵やトークンは設定ファイルやリポジトリに書かず、今ある安全な置き場（OS のキーチェーン・CI の secrets）を使う。同じ依頼が重ならないようにする。',
-        '設定したら、何を・いつ・どの仕組みで動かすか、止め方・変え方を一覧にして README（または human.md）に残し、1回だけ試しに動かして動くことを確かめてください。'
+        'このプロジェクトの Chrome 拡張を、Ferret の内蔵ブラウザで動かして確かめられるようにしてください。ferret-settings skill の「Chrome extensions you are building」の手順に従います。',
+        '1. 拡張をビルドし、manifest.json のある展開済みのフォルダ（dist など）を確かめる。',
+        '2. そのフォルダの絶対パスを Ferret の設定の browserExtensions に登録する（同じパスが既にあれば足さない）。',
+        '3. 以後、拡張を直したら、ビルドしてからそのエントリの reload を今の Unix 時刻（秒）に変える。Ferret が拡張を読み込み直し、開いているページも読み込み直す。',
+        '4. 読み込みに失敗したら、Ferret の設定 > ブラウザ拡張に出る理由を見て直す。',
+        '要らなくなったら、エントリの enabled を false にするか、エントリを消してください。'
       ].join('\n'),
       en: [
-        'Set up the following requests so the agent runs them on a schedule by itself. Pick a mechanism that is available: Claude Code scheduled tasks (routines, /schedule and the like), Codex automations, otherwise cron, launchd or Task Scheduler, or scheduled CI for repository work (GitHub Actions schedule and the like).',
-        '- Memory tidy-up (dreaming): once a day, at a quiet time.',
-        '- Learn from people\'s requests and feedback: weekly.',
-        '- Check and fix Sentry errors and crashes: daily.',
-        '- Dependency and security checks: weekly.',
-        '- SEO, analytics and performance audit: weekly.',
-        '(Add any other scheduled requests and how often here.)',
-        'Rules: scheduled runs never send messages, publish, spend money, deploy to production or delete; list those in human.md as items waiting for approval. Do not write keys or tokens into config files or the repository; use the existing safe store (OS keychain, CI secrets). Make sure the same request never runs twice at once.',
-        'When done, record what runs, when, on which mechanism, and how to stop or change it in the README (or human.md), and run each once as a trial to confirm it works.'
+        'Make this project\'s Chrome extension run in Ferret\'s built-in browser so it can be checked there. Follow "Chrome extensions you are building" in the ferret-settings skill.',
+        '1. Build the extension and find the unpacked folder that contains manifest.json (dist or similar).',
+        '2. Register that folder\'s absolute path in Ferret\'s browserExtensions setting (skip it if the same path is already there).',
+        '3. From then on, after every change, rebuild and set that entry\'s reload to the current Unix time in seconds. Ferret loads the extension again and reloads the open page.',
+        '4. If it fails to load, read the reason in Ferret\'s Settings > Browser extensions and fix it.',
+        'When it is no longer needed, set the entry\'s enabled to false or delete the entry.'
       ].join('\n')
     }
   },
@@ -226,6 +258,7 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
   },
   {
     id: 'sentry-setup',
+    once: true,
     title: { ja: 'Sentry を登録する', en: 'Set up Sentry' },
     text: {
       ja: 'Sentry でエラーとクラッシュを受け取れるようにしてください。Sentry の CLI・ログイン・組織への接続は全体で1回だけ行い、各プロダクトでは、そのプロダクト用の Sentry のプロジェクトを作る（あれば使う）・SDK と DSN を組み込む・リリース名と環境（本番・開発）を付ける・ソースマップを上げる・個人情報を送らない設定にする、をプロダクトごとに行ってください。DSN などの値は各プロダクトの環境変数に置き、ほかのプロダクトと混ぜないでください。最後にテストのエラーを1件送って届くことを確かめ、送ったものは解決にしてください。',
@@ -234,6 +267,7 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
   },
   {
     id: 'analytics-setup',
+    once: true,
     title: { ja: 'Google Analytics を入れる', en: 'Set up Google Analytics' },
     text: {
       ja: 'Google Analytics（GA4）で計測できるようにしてください。Google のアカウントへの接続は全体で1回だけ行い、各プロダクトでは、そのプロダクト用のプロパティとデータストリームを作る（あれば使う）・計測 ID をそのプロダクトの設定に置く・大事な操作のイベントを送る・同意（Cookie）と開発環境の除外を入れる、をプロダクトごとに行ってください。計測 ID はプロダクトごとに分け、混ぜないでください。最後にリアルタイムのレポートで届くことを確かめてください。',
@@ -242,6 +276,7 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
   },
   {
     id: 'search-console',
+    once: true,
     title: { ja: 'Search Console に登録する', en: 'Register in Search Console' },
     text: {
       ja: 'Google Search Console に登録してください。Google のアカウントへの接続は全体で1回だけ行い、公開しているプロダクトごとに、そのドメインのプロパティを作る（あれば使う）・所有権を確認する（DNS か HTML のファイル）・sitemap.xml を送る・robots.txt とインデックスさせないページを確かめる、を行ってください。公開していないプロダクトは飛ばし、理由を書いてください。',
@@ -250,6 +285,7 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
   },
   {
     id: 'infra',
+    once: true,
     title: { ja: 'インフラを登録・確かめる', en: 'Register and check infrastructure' },
     text: {
       ja: 'インフラを登録して確かめてください。クラウドの CLI・ログイン・アカウントへの接続は全体で1回だけ行い、各プロダクトでは、そのプロダクトのインフラ（アカウント・プロジェクト・リージョン・インスタンス・DB・ドメイン・タグ・秘密情報・CI/CD）を一覧にし、足りないものを作り、タグと名前の付け方を揃えてください。インフラはプロダクトごとに分け、ほかのプロダクトと共有しないでください。費用と公開の範囲（外から見えるもの）も確かめてください。',
@@ -406,15 +442,12 @@ export function sanitizeAgentRequestPrefs(raw: unknown): AgentRequestPrefs | und
       id: i.id,
       ...(title && custom ? { title } : {}),
       ...(text !== undefined ? { text } : {}),
-      ...(i.schedule && AGENT_REQUEST_SCHEDULES.includes(i.schedule) && i.schedule !== 'off' ? { schedule: i.schedule } : {}),
       ...(i.batch === true ? { batch: true } : {}),
-      ...(custom ? { custom: true as const } : {})
+      ...(custom ? { custom: true as const } : {}),
+      ...(i.hidden === true ? { hidden: true as const } : {})
     }]
   })
-  const lastRunAt = r.lastRunAt && typeof r.lastRunAt === 'object' && !Array.isArray(r.lastRunAt)
-    ? Object.fromEntries(Object.entries(r.lastRunAt).filter((e): e is [string, string] => seen.has(e[0]) && str(e[1]) && Number.isFinite(Date.parse(e[1]))))
-    : {}
-  return { items, ...(Object.keys(lastRunAt).length ? { lastRunAt } : {}) }
+  return { items }
 }
 
 /** 画面に出す一覧（組み込み → 足したもの） */
@@ -423,10 +456,10 @@ export function resolveAgentRequests(prefs: AgentRequestPrefs | undefined, lang:
   const builtins = BUILTIN_REQUESTS.map((b): AgentRequest => {
     const s = saved.get(b.id)
     const text = s?.text ?? b.text[lang]
-    return { id: b.id, title: b.title[lang], text, schedule: s?.schedule ?? 'off', batch: s?.batch ?? false, custom: false, edited: s?.text !== undefined && s.text !== b.text[lang] }
+    return { id: b.id, title: b.title[lang], text, batch: s?.batch ?? false, custom: false, edited: s?.text !== undefined && s.text !== b.text[lang], hidden: s?.hidden === true, once: b.once === true }
   })
   const custom = (prefs?.items ?? []).filter((i) => i.custom).map((i): AgentRequest => ({
-    id: i.id, title: i.title ?? '', text: i.text ?? '', schedule: i.schedule ?? 'off', batch: i.batch ?? false, custom: true, edited: false
+    id: i.id, title: i.title ?? '', text: i.text ?? '', batch: i.batch ?? false, custom: true, edited: false, hidden: i.hidden === true, once: false
   }))
   return [...builtins, ...custom]
 }
@@ -437,8 +470,33 @@ export function builtinRequestText(id: string, lang: RequestLanguage): string | 
 }
 
 /**
+ * オーケストレーターからの依頼に添える一文。プロダクトごとに subagent を立てて全部を同時に進め、
+ * プロダクトの中でも独立した作業を並行させる（1つずつ順に進めない）
+ */
+export const ORCHESTRA_FAN_OUT: Record<RequestLanguage, string> = {
+  ja: 'これはオーケストレーターからの依頼です。対象のプロダクトごとに subagent を1つずつ立て、すべてのプロダクトを同時に並行して進めてください（1つずつ順に進めない）。各プロダクトの中でも、互いに関係しない作業は subagent や並行のタスクに分けて同時に進めてください。共通の部分（共通のルール・共有のコード）は先に1回で済ませ、インフラなどプロダクトごとに分けるものは混ぜないでください。最後にプロダクトごとの結果をまとめてください。',
+  en: 'This request comes from the orchestrator. Start one subagent per included product and run all products at the same time in parallel (never one after another). Inside each product too, split work that does not depend on each other into parallel subagents or tasks. Do the shared part (shared rules, shared code) once first, and keep infrastructure and other per-product things separate. Finish with the results per product.'
+}
+
+/**
+ * 全体（すべてのプロダクト）の指示の欄から送る文。
+ * プロダクトを開いているとき（フィードバックの帯）はそのプロダクトへの指示として送り、ほかのプロダクトの作業と並行させる。
+ * ダッシュボードからは全プロダクトへの指示として、並行の決まりを添える
+ */
+export function orchestraMessage(text: string, lang: RequestLanguage, product?: { name: string; url?: string } | null): string {
+  const body = text.trim()
+  if (product) {
+    const where = product.url ? `${product.name} (${product.url})` : product.name
+    return lang === 'ja'
+      ? `[${where}] へのフィードバックです。このプロダクトの subagent に任せ、ほかのプロダクトの作業と並行して進めてください。プロダクトの中でも独立した作業は並行してください。\n\n${body}`
+      : `Feedback for [${where}]. Hand it to this product's subagent and run it in parallel with the other products' work. Inside the product, run independent work in parallel too.\n\n${body}`
+  }
+  return `${ORCHESTRA_FAN_OUT[lang]}\n\n${body}`
+}
+
+/**
  * 送る文。1件ならその文、複数なら番号付きでまとめる。最後に共通の決まり。
- * オーケストレーターから送るときは、すべてのプロダクトに subagent で並行して行うよう添える
+ * オーケストレーターから送るときは、すべてのプロダクトに subagent で並行して行い、プロダクトの中でも並行するよう添える
  */
 export function composeAgentRequest(requests: ReadonlyArray<Pick<AgentRequest, 'title' | 'text'>>, lang: RequestLanguage, orchestrator: boolean): string {
   const body = requests.length === 1
@@ -447,28 +505,12 @@ export function composeAgentRequest(requests: ReadonlyArray<Pick<AgentRequest, '
   const intro = requests.length > 1
     ? (lang === 'ja' ? '次の依頼をまとめて行ってください。互いに関係しないものは並行して進めてください。' : 'Do the following requests together. Run the ones that do not depend on each other in parallel.')
     : ''
-  const fanOut = orchestrator
-    ? (lang === 'ja'
-      ? 'これはオーケストレーターからの依頼です。共通の部分（共通のルール・共有のコード）を先に1回で済ませてから、すべてのプロダクトにそれぞれの subagent で並行して行ってください。インフラなどプロダクトごとに分けるものは混ぜないでください。最後にプロダクトごとの結果をまとめてください。'
-      : 'This request comes from the orchestrator. Do the shared part (shared rules, shared code) once first, then do it for every product in parallel through each product\'s subagent. Keep infrastructure and other per-product things separate. Finish with the results per product.')
-    : ''
+  const fanOut = orchestrator ? ORCHESTRA_FAN_OUT[lang] : ''
   return [intro, fanOut, body, CLOSING[lang]].filter(Boolean).join('\n\n').slice(0, 8000)
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000
-
-/** 定期の依頼のうち、送る時期が来たもの（一度も送っていなければすぐ） */
-export function dueRequests(requests: readonly AgentRequest[], lastRunAt: Record<string, string> | undefined, now: number): AgentRequest[] {
-  return requests.filter((r) => {
-    if (r.schedule === 'off' || !r.text.trim()) return false
-    const last = Date.parse(lastRunAt?.[r.id] ?? '')
-    const every = r.schedule === 'daily' ? DAY_MS : 7 * DAY_MS
-    return !Number.isFinite(last) || now - last >= every
-  })
-}
-
 /** 画面の変更を保存の形に戻す（組み込みの文面が既定と同じなら text を持たない） */
-export function toPrefs(requests: readonly AgentRequest[], lang: RequestLanguage, lastRunAt?: Record<string, string>): AgentRequestPrefs {
+export function toPrefs(requests: readonly AgentRequest[], lang: RequestLanguage): AgentRequestPrefs {
   const items = requests.flatMap((r): AgentRequestItemPrefs[] => {
     const builtin = builtinRequestText(r.id, lang)
     const text = r.custom || r.text !== builtin ? r.text : undefined
@@ -476,10 +518,10 @@ export function toPrefs(requests: readonly AgentRequest[], lang: RequestLanguage
       id: r.id,
       ...(r.custom ? { title: r.title, custom: true as const } : {}),
       ...(text !== undefined ? { text } : {}),
-      ...(r.schedule !== 'off' ? { schedule: r.schedule } : {}),
-      ...(r.batch ? { batch: true } : {})
+      ...(r.batch ? { batch: true } : {}),
+      ...(r.hidden ? { hidden: true as const } : {})
     }
     return r.custom || Object.keys(item).length > 1 ? [item] : []
   })
-  return { items, ...(lastRunAt && Object.keys(lastRunAt).length ? { lastRunAt } : {}) }
+  return { items }
 }
