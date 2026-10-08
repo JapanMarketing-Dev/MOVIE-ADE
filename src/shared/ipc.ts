@@ -116,6 +116,10 @@ export interface IpcRequests {
   'update:install': () => boolean
   /** 新しい版を自動でダウンロードするか（設定の autoUpdate） */
   'update:setAutoDownload': (on: boolean) => AutoUpdateStatus
+  /** 配信元にある版の一覧（新しい順）と、今の版・選んでいる版 */
+  'update:versions': () => { current: string; pinned: string | null; versions: Array<{ version: string; date: string; prerelease: boolean }> }
+  /** 版を選んで落とす（署名で確かめる）。入れ替えは update:install。古い版を選ぶと自動の更新はオフになる */
+  'update:chooseVersion': (version: string) => AutoUpdateStatus
   /** 設定の案内のリンク（キーを作るページなど）を外部のブラウザで開く。https だけ（src/shared/setupGuide.ts） */
   'app:openExternal': (url: string) => void
   /** 文を Agent のターミナルへ送る（Agent に設定を頼む指示文）。宛先は「Agent へ送信」と同じ選び方 */
@@ -671,7 +675,7 @@ export const IPC_REQUEST_CHANNELS = [
   'app:version',
   'app:checkUpdate',
   'app:openUpdate', 'app:openExternal', 'agent:sendText',
-  'update:status', 'update:download', 'update:install', 'update:setAutoDownload',
+  'update:status', 'update:download', 'update:install', 'update:setAutoDownload', 'update:versions', 'update:chooseVersion',
   'resources:snapshot',
   'resources:kill',
   'resources:cleanup',

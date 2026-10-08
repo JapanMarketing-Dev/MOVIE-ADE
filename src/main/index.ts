@@ -1471,6 +1471,11 @@ function autoUpdater(): AutoUpdater {
       latestReleaseUrl = result.state === 'available' ? result.url : null
       return result
     },
+    checkVersion: async (version) => {
+      const result = await (await import('./updateCheck')).checkForVersion(version)
+      latestReleaseUrl = result.state === 'available' ? result.url : latestReleaseUrl
+      return result
+    },
     verifiedFile: (kind) => verifiedFileOfKind(kind),
     download: async (file, dir, onProgress, signal) => {
       const [{ downloadVerifiedTo }, { net }] = await Promise.all([import('./updateDownload'), import('electron')])
@@ -1726,6 +1731,17 @@ function registerIpc(): void {
     'update:setAutoDownload': (on) => {
       autoUpdater().setAutoDownload(on === true)
       return autoUpdater().status()
+    },
+    // 版を選んで入れる（配信元の versions.json の版から。古い版へ戻すことも含む）。中身は新しい版と同じく署名で確かめる
+    'update:versions': async () => {
+      const { listReleaseVersions } = await import('./updateCheck')
+      return { current: appVersion(), pinned: autoUpdater().pinnedVersion(), versions: await listReleaseVersions() }
+    },
+    'update:chooseVersion': async (version) => {
+      if (typeof version !== 'string') throw new UserFacingError(t('update.errors.badVersion', { tag: String(version) }))
+      const { listReleaseVersions } = await import('./updateCheck')
+      const latest = (await listReleaseVersions())[0]?.version ?? null
+      return autoUpdater().chooseVersion(version, latest)
     },
     'resources:snapshot': () => resources.collect(),
     'resources:kill': (target) => {

@@ -1642,6 +1642,19 @@ body[data-resizing='row'] * {
   font-size: var(--font-size-xs);
 }
 
+/* 更新のポップオーバー：版を選んで入れる */
+.sb-pop__versions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.sb-pop__versions .st-select {
+  flex: 1;
+  min-width: 0;
+}
+
 .sb-pop__foot {
   display: flex;
   justify-content: flex-end;

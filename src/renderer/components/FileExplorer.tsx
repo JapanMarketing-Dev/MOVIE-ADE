@@ -1,3 +1,4 @@
+import { expandedStorageKey } from '@shared/fileTreeState'
 import { TREE_DRAG_TYPE } from '../lib/treeDrag'
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react'
 import { ChevronRight, ClipboardPaste, Copy, CopyPlus, ExternalLink, Eye, EyeOff, FileCode, FilePlus, FileSearch, FileText, Folder, FolderOpen, FolderPlus, Link, ListCollapse, Pencil, RefreshCw, Scissors, Search, SquareTerminal, Trash2, Undo2 } from 'lucide-react'
@@ -135,6 +136,7 @@ const KEYS = {
 
 export function FileExplorer({
   root,
+  projectId = null,
   activePath,
   dirtyPaths,
   onOpen,
@@ -145,6 +147,8 @@ export function FileExplorer({
 }: {
   /** 開いているプロジェクトのフォルダ。null なら案内だけ */
   root: string | null
+  /** 開いているプロジェクト。開いたフォルダをプロジェクトごとに覚える（更新・再起動のあとも閉じない） */
+  projectId?: string | null
   activePath: string | null
   dirtyPaths: ReadonlySet<string>
   onOpen: (path: string) => void
@@ -158,7 +162,7 @@ export function FileExplorer({
 }) {
   const t = useT()
   // ツリーの状態（開いたときに読む・外部の変更で読み直す）はフィードバックの右パネルと共用（fileTree.tsx）
-  const tree = useFileTree(root)
+  const tree = useFileTree(root, { expandedKey: root ? expandedStorageKey('files', projectId ?? root) : null })
   const { expanded, loading, toggleDir } = tree
   // git の色分け（変更・追跡外・.gitignore の対象）。git のリポジトリでなければ何も付けない
   const git = useGitDecorations(root)

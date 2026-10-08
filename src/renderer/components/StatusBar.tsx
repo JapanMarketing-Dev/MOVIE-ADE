@@ -316,9 +316,52 @@ function UpdatePopover({ version, packaged, status }: { version: string; package
       <p className="st-note">{t('statusBar.autoDownloadHint')}</p>
     </>}
     {!packaged && !status?.supported && <p className="st-note">{t('statusBar.devBuild')}</p>}
+    {status?.supported && <VersionPicker current={version} />}
     <div className="sb-pop__foot">
       <Button busy={checking || !!status?.checking} icon={<RefreshCw size={14} />} onClick={check} data-testid="statusbar-check-update">{t('statusBar.checkForUpdates')}</Button>
     </div>
+  </div>
+}
+
+/**
+ * 版を選んで入れる（配信元の直近の版から。古い版へ戻すことも含む）。選んだ版も署名した SHA256SUMS で確かめてから落とし、
+ * 上の［再起動して更新］で入れ替える。古い版を選ぶと自動の更新はオフになる（最新へ戻されないように）。オンに戻すと最新へ
+ */
+function VersionPicker({ current }: { current: string }) {
+  const t = useT()
+  const [data, setData] = useState<{ current: string; pinned: string | null; versions: Array<{ version: string; date: string; prerelease: boolean }> } | null>(null)
+  const [picked, setPicked] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    void window.ade.invoke('update:versions').then((d) => { if (alive) { setData(d); setPicked(d.pinned ?? d.versions.find((v) => v.version !== current)?.version ?? '') } }).catch(() => undefined)
+    return () => { alive = false }
+  }, [current])
+  if (!data || data.versions.length === 0) return null
+  const latest = data.versions[0]?.version
+  const choose = () => {
+    if (!picked || picked === current) return
+    setBusy(true)
+    setError(null)
+    void window.ade.invoke('update:chooseVersion', picked)
+      .then((s) => { if (s.check?.state === 'error') setError(s.check.message); else if (s.check?.state === 'unverified') setError(t('statusBar.updateUnverified', { version: picked })) })
+      .then(() => window.ade.invoke('update:versions').then(setData))
+      .catch((err: unknown) => setError(errorMessage(err)))
+      .finally(() => setBusy(false))
+  }
+  return <div className="sb-pop__versions" data-testid="statusbar-update-versions">
+    <span className="st-row__label">{t('statusBar.chooseVersion')}</span>
+    <div className="st-row">
+      <select className="st-select" value={picked} aria-label={t('statusBar.chooseVersion')} onChange={(e) => setPicked(e.target.value)} data-testid="statusbar-update-version-select">
+        {data.versions.map((v) => <option key={v.version} value={v.version} disabled={v.version === current}>
+          {`v${v.version}${v.version === latest ? ` (${t('statusBar.versionLatest')})` : ''}${v.version === current ? ` (${t('statusBar.versionCurrent')})` : ''}${v.date ? ` — ${v.date.slice(0, 10)}` : ''}`}
+        </option>)}
+      </select>
+      <Button busy={busy} disabled={!picked || picked === current} onClick={choose} data-testid="statusbar-update-version-choose">{t('statusBar.chooseVersionDownload')}</Button>
+    </div>
+    {data.pinned && <p className="st-note" data-testid="statusbar-update-version-pinned">{t('statusBar.versionPinned', { version: data.pinned })}</p>}
+    {error && <p className="st-note st-note--warn">{error}</p>}
   </div>
 }
 

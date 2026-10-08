@@ -307,26 +307,108 @@ export async function checkForUpdate(
     const result = judgeManifest(current, manifest)
     if (result.state === 'error') reportCheckFailure('bad-version')
     if (result.state !== 'available') return result
-    const signed = await releaseSignature(fetcher, manifest, result.latest, controller.signal)
-    // 配信元の一時的な不調（5xx・429）は、ネットワークの失敗と同じく「あとで試す」
-    if (typeof signed === 'number') {
-      reportCheckFailure('http', new Error(`update check failed: HTTP ${signed} (signature)`))
-      return { state: 'error', current, message: t('update.errors.http', { status: signed }) }
-    }
-    if (signed === 'unsigned') {
-      reportCheckFailure('unsigned')
-      return { state: 'unverified', current, latest: result.latest }
-    }
-    verified = pickVerifiedDownload(result.latest, signed)
-    // 自動更新用のファイル（macOS の zip）は、mac のときだけ取りに行く。確かめられなければ自動更新をせずに案内だけ
-    const updates = platform === 'darwin' ? await updateSignature(fetcher, manifest, result.latest, controller.signal) : []
-    verifiedSet = { version: result.latest, files: [...signed, ...updates] }
-    return result
+    return await verifyAvailable(fetcher, manifest, result, controller.signal, platform)
   } catch (err) {
     const aborted = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')
     // つながっていない端末の失敗（net::ERR_INTERNET_DISCONNECTED・ERR_NAME_NOT_RESOLVED など）は送らない。画面には「確認できなかった」を出す
     // 続いたときだけ送る（networkFailures の説明）
     if ((aborted || isOnline()) && ++networkFailures === UPDATE_NETWORK_REPORT_AFTER) reportCheckFailure(aborted ? 'timeout' : 'network', err)
+    return { state: 'error', current, message: aborted ? t('update.errors.timeout') : t('update.errors.network') }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** 入れる版の署名を確かめ、この OS 向けのファイルを覚える（新しい版の案内と、選んだ版の両方で使う） */
+async function verifyAvailable(
+  fetcher: typeof net.fetch,
+  manifest: ReleaseManifest,
+  result: Extract<UpdateCheckResult, { state: 'available' }>,
+  signal: AbortSignal,
+  platform: NodeJS.Platform
+): Promise<UpdateCheckResult> {
+  const current = result.current
+  const signed = await releaseSignature(fetcher, manifest, result.latest, signal)
+  // 配信元の一時的な不調（5xx・429）は、ネットワークの失敗と同じく「あとで試す」
+  if (typeof signed === 'number') {
+    reportCheckFailure('http', new Error(`update check failed: HTTP ${signed} (signature)`))
+    return { state: 'error', current, message: t('update.errors.http', { status: signed }) }
+  }
+  if (signed === 'unsigned') {
+    reportCheckFailure('unsigned')
+    return { state: 'unverified', current, latest: result.latest }
+  }
+  verified = pickVerifiedDownload(result.latest, signed)
+  // 自動更新用のファイル（macOS の zip）は、mac のときだけ取りに行く。確かめられなければ自動更新をせずに案内だけ
+  const updates = platform === 'darwin' ? await updateSignature(fetcher, manifest, result.latest, signal) : []
+  verifiedSet = { version: result.latest, files: [...signed, ...updates] }
+  return result
+}
+
+/** 配信元に置いてある版（versions.json。直近の版から）。選んで入れるのに使う */
+export interface ReleaseVersionInfo {
+  version: string
+  date: string
+  prerelease: boolean
+}
+
+const MAX_LISTED_VERSIONS = 20
+
+/** versions.json を確かめる。形の違う行は捨てる（単体テストから使うため export） */
+export function parseVersionsIndex(raw: unknown): ReleaseVersionInfo[] {
+  const list = raw && typeof raw === 'object' ? (raw as { versions?: unknown }).versions : null
+  if (!Array.isArray(list)) return []
+  const seen = new Set<string>()
+  return list.flatMap((item): ReleaseVersionInfo[] => {
+    const r = item && typeof item === 'object' ? (item as Record<string, unknown>) : null
+    const version = typeof r?.version === 'string' ? r.version.trim().replace(/^v/i, '') : ''
+    if (!isValidAppVersion(version) || seen.has(version)) return []
+    seen.add(version)
+    const date = typeof r?.date === 'string' && Number.isFinite(Date.parse(r.date)) ? r.date : ''
+    return [{ version, date, prerelease: r?.prerelease === true }]
+  }).sort((a, b) => compareAppVersions(b.version, a.version)).slice(0, MAX_LISTED_VERSIONS)
+}
+
+/** 配信元の版の一覧。取れなければ空 */
+export async function listReleaseVersions(fetcher: typeof net.fetch = net.fetch): Promise<ReleaseVersionInfo[]> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  try {
+    const res = await fetcher(new URL('versions.json', releaseBase()).toString(), { headers: { Accept: 'application/json' }, signal: controller.signal, redirect: 'error' })
+    if (!res.ok) return []
+    return parseVersionsIndex(await readBoundedJson(res, SMALL_JSON_MAX_BYTES).catch(() => null))
+  } catch {
+    // つながらない（想定内）。一覧を出さないだけ
+    return []
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
+ * 選んだ版（古い版へ戻すことも含む）を入れられるか確かめる。releases/<版>/manifest.json を読み、新しい版の案内と同じく
+ * 署名した SHA256SUMS で中身を確かめてから、この OS 向けのファイルを覚える。今と同じ版なら latest
+ */
+export async function checkForVersion(version: string, fetcher: typeof net.fetch = net.fetch, platform: NodeJS.Platform = process.platform): Promise<UpdateCheckResult> {
+  const current = appVersion()
+  const wanted = version.trim().replace(/^v/i, '')
+  if (!isValidAppVersion(wanted)) return { state: 'error', current, message: t('update.errors.badVersion', { tag: version }) }
+  if (compareAppVersions(wanted, current) === 0) return { state: 'latest', current, latest: wanted }
+  verified = null
+  verifiedSet = null
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  try {
+    const res = await fetcher(new URL(`releases/${wanted}/manifest.json`, releaseBase()).toString(), { headers: { Accept: 'application/json' }, signal: controller.signal, redirect: 'error' })
+    if (!res.ok) return { state: 'error', current, message: t('update.errors.http', { status: res.status }) }
+    const manifest = parseManifest(await readBoundedJson(res, SMALL_JSON_MAX_BYTES).catch(() => null))
+    if (!manifest || manifest.version.trim().replace(/^v/i, '') !== wanted) return { state: 'error', current, message: t('update.errors.badManifest') }
+    // 新しい版の案内と同じ形にする（古い版でも available として扱い、確かめたファイルを落とす）
+    const judged = judgeManifest('0.0.0', manifest, platform)
+    if (judged.state !== 'available') return { state: 'error', current, message: t('update.errors.badManifest') }
+    return await verifyAvailable(fetcher, manifest, { ...judged, current }, controller.signal, platform)
+  } catch (err) {
+    const aborted = err instanceof Error && (err.name === 'AbortError' || err.name === 'TimeoutError')
     return { state: 'error', current, message: aborted ? t('update.errors.timeout') : t('update.errors.network') }
   } finally {
     clearTimeout(timer)
