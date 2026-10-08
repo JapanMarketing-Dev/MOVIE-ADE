@@ -1,8 +1,10 @@
+import { useEffect, useRef } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useT } from '../lib/i18n'
 import { OrchestraComposer } from './OrchestraComposer'
 
 export interface DockTarget {
+  /** 確認リストの番号（B1 など）。プロジェクトの確認先は空 */
   key: string
   label: string
   url: string
@@ -24,6 +26,11 @@ export function OrchestraDock({ targets, currentUrl, onOpen, tour, onPrev, onNex
 }) {
   const t = useT()
   const same = (a: string, b: string) => a.replace(/\/$/, '') === b.replace(/\/$/, '')
+  // 札が多いときは横に流す。開いているページの札が見えるように寄せる
+  const chipsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    chipsRef.current?.querySelector('.is-current')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [currentUrl])
   return <div className="orchestra-dock" data-testid="orchestra-dock">
     {tour && <div className="orchestra-dock__tour" data-testid="orchestra-tour">
       <button type="button" className="round-bar__btn" disabled={tour.index === 0} onClick={onPrev} aria-label={t('orchestra.tourPrev')} data-testid="orchestra-tour-prev"><ChevronLeft size={12} /></button>
@@ -31,11 +38,11 @@ export function OrchestraDock({ targets, currentUrl, onOpen, tour, onPrev, onNex
       <button type="button" className="round-bar__btn" onClick={onNext} data-testid="orchestra-tour-next">{t(tour.index + 1 < tour.total ? 'orchestra.tourNext' : 'orchestra.tourFinish')}<ChevronRight size={12} /></button>
       <button type="button" className="round-bar__btn round-bar__btn--quiet" onClick={onEndTour} aria-label={t('orchestra.tourEnd')} title={t('orchestra.tourEnd')} data-testid="orchestra-tour-end"><X size={12} /></button>
     </div>}
-    <div className="orchestra-dock__chips" role="toolbar" aria-label={t('orchestra.dockLabel')}>
+    <div ref={chipsRef} className="orchestra-dock__chips" role="toolbar" aria-label={t('orchestra.dockLabel')}>
       {targets.map((target) => (
-        <button key={target.url} type="button" className={`orchestra-dock__chip${same(target.url, currentUrl) ? ' is-current' : ''}`} title={target.url}
-          onClick={() => onOpen(target.url)} data-testid={`orchestra-chip-${target.key}`}>
-          <span className="orchestra-dock__key">{target.key}</span>
+        <button key={target.url} type="button" className={`orchestra-dock__chip${target.key ? '' : ' orchestra-dock__chip--project'}${same(target.url, currentUrl) ? ' is-current' : ''}`} title={target.url}
+          onClick={() => onOpen(target.url)} data-testid={`orchestra-chip-${target.key || target.url}`}>
+          {target.key && <span className="orchestra-dock__key">{target.key}</span>}
           <span className="orchestra-dock__label">{target.label}</span>
         </button>
       ))}
