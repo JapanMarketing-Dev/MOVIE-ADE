@@ -103,8 +103,13 @@ describe('security-4 [5][9] project file I/O is bound to the opened file and bou
     expect(Number.isFinite(MAX_DIRECTORY_ENTRIES)).toBe(true)
     const files = read('src/main/files.ts')
     const list = files.slice(files.indexOf('export async function listDirectory'), files.indexOf('// ─── 読み書き'))
-    expect(list).toMatch(/opendir\(/)
-    expect(list).not.toMatch(/readdir\(/)
+    // 読むのは dirEntries.ts の readDirEntries だけ（上限で切る）。macOS・Linux は opendir で少しずつ読む。
+    // Windows は opendir の DirHandle の生成でアプリごと落ちたので readdir で読み、返す数は同じ上限で切る（FERRET-1Q）
+    expect(list).toMatch(/readDirEntries\(listed\.path, MAX_DIRECTORY_ENTRIES\)/)
+    expect(list).not.toMatch(/readdir\(|opendir\(/)
+    const dirEntries = read('src/main/dirEntries.ts')
+    expect(dirEntries).toMatch(/if \(platform === 'win32'\) \{\n\s+const all = await readdir\(path, \{ withFileTypes: true \}\)\n\s+return \{ entries: all\.slice\(0, max\)/)
+    expect(dirEntries).toMatch(/const dir = await opendir\(path\)/)
   })
 })
 
