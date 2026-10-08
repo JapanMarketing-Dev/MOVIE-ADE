@@ -34,6 +34,8 @@ export interface BrowserExtensionInfo {
   imported: boolean
   /** 読み込めなかった理由（manifest が無い・壊れている・Electron が断った） */
   error?: string
+  /** ツールバーのボタンに出すアイコン（data: URL。読めなければ無し） */
+  icon?: string
 }
 
 /** Chrome などに入っている拡張（取り込みの候補）。key は main が一覧を作るたびに振る */
@@ -106,6 +108,19 @@ export interface ParsedManifest {
   defaultLocale: string | null
   /** テーマ・アプリは拡張としては使えない（取り込みの候補から外す） */
   kind: 'extension' | 'theme' | 'app'
+  /** ツールバーに出すアイコン（拡張のフォルダの中の相対パス。action.default_icon → icons の順で 32px に近いもの） */
+  icon: string | null
+}
+
+/** アイコンの指定（文字列か { "16": "...", "32": "..." }）から、want px に近いもの（足りなければ一番大きいもの）を選ぶ */
+export function pickExtensionIcon(value: unknown, want = 32): string | null {
+  if (typeof value === 'string') return extensionRelativePath(value)
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const sizes = Object.entries(value as Record<string, unknown>)
+    .map(([size, path]) => ({ size: Number.parseInt(size, 10), path: extensionRelativePath(path) }))
+    .filter((e): e is { size: number; path: string } => Number.isFinite(e.size) && e.size > 0 && !!e.path)
+    .sort((a, b) => a.size - b.size)
+  return (sizes.find((e) => e.size >= want) ?? sizes.at(-1))?.path ?? null
 }
 
 const clip = (value: unknown, max: number): string => (typeof value === 'string' ? value.trim().slice(0, max) : '')
@@ -129,7 +144,12 @@ export function parseExtensionManifest(raw: unknown): ParsedManifest | null {
     popup: manifestVersion === 3 ? popupOf('action') : popupOf('browser_action') ?? popupOf('page_action'),
     options: extensionRelativePath(optionsUi) ?? extensionRelativePath(m.options_page),
     defaultLocale: typeof m.default_locale === 'string' && /^[A-Za-z]{2,3}([_-][A-Za-z0-9]{2,8})?$/.test(m.default_locale) ? m.default_locale : null,
-    kind: m.theme ? 'theme' : m.app ? 'app' : 'extension'
+    kind: m.theme ? 'theme' : m.app ? 'app' : 'extension',
+    icon: (() => {
+      const action = m[manifestVersion === 3 ? 'action' : 'browser_action'] ?? m.page_action
+      const fromAction = action && typeof action === 'object' ? pickExtensionIcon((action as Record<string, unknown>).default_icon) : null
+      return fromAction ?? pickExtensionIcon(m.icons)
+    })()
   }
 }
 

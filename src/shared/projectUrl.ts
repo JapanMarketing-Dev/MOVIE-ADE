@@ -112,3 +112,45 @@ export function normalizeUrl(input: string): string {
   if (value.startsWith('/')) return `file://${value}`
   return `http://${value}`
 }
+
+/** URL 欄で URL の形でない入力を調べる先 */
+export const SEARCH_URL = 'https://www.google.com/search?q='
+
+/** スキームとして扱う名前（これ以外の「名前:」は、// が続かなければ検索の言葉とみなす） */
+const KNOWN_SCHEMES = new Set(['http', 'https', 'file', 'about', 'mailto', 'data', 'javascript', 'blob', 'view-source', 'chrome', 'chrome-extension', 'devtools', 'ftp', 'ws', 'wss'])
+
+/** ファイル名の拡張子でトップレベルドメインには無いもの（「node.js」「package.json」は検索する） */
+const NOT_TLDS = new Set(['js', 'jsx', 'ts', 'tsx', 'mjs', 'cjs', 'json', 'yaml', 'yml', 'txt', 'lock', 'exe', 'dll', 'html', 'css'])
+
+/** ホスト名として読めるか（localhost・IPv4・[IPv6]・ドットを含み最後が英字 2 文字以上か xn-- の名前） */
+function looksLikeHost(host: string): boolean {
+  const h = host.toLowerCase()
+  if (h === 'localhost' || h.endsWith('.localhost')) return true
+  if (/^\[[0-9a-f:.]+\]$/.test(h)) return true
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(h)) return true
+  const labels = h.split('.')
+  if (labels.length < 2 || labels.some((l) => !/^[a-z0-9\u00a1-\uffff](?:[a-z0-9\u00a1-\uffff-]*[a-z0-9\u00a1-\uffff])?$/.test(l))) return false
+  const tld = labels[labels.length - 1]!
+  if (NOT_TLDS.has(tld)) return false
+  return /^[a-z\u00a1-\uffff]{2,}$/.test(tld) || tld.startsWith('xn--')
+}
+
+/**
+ * URL 欄の入力を開く先にする。URL の形（スキーム付き・ホスト名・localhost・IP・ポート・絶対パス）なら normalizeUrl、
+ * それ以外（空白を含む・ドットの無い言葉・知らない「名前:」）は Google で検索する。
+ * 先頭の ? は「必ず検索」（Chrome と同じ）
+ */
+export function addressBarUrl(input: string): string {
+  const value = input.trim()
+  if (value.length === 0) return 'about:blank'
+  const search = (q: string) => `${SEARCH_URL}${encodeURIComponent(q)}`
+  if (value.startsWith('?')) return search(value.slice(1).trim())
+  if (/^[^\s/:]+:\d+(?:[/?#]|$)/.test(value)) return normalizeUrl(value)
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(value)
+  // スキーム付きは空白があってもそのまま（読み込むときに %20 になる）
+  if (scheme && (KNOWN_SCHEMES.has(scheme[1]!.toLowerCase()) || value.slice(scheme[0].length).startsWith('//'))) return value
+  if (scheme || /\s/.test(value)) return search(value)
+  if (value.startsWith('/')) return normalizeUrl(value)
+  const host = value.split(/[/?#]/, 1)[0]!.replace(/^[^@]*@/, '')
+  return looksLikeHost(host) ? normalizeUrl(value) : search(value)
+}

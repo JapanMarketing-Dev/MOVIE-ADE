@@ -135,6 +135,8 @@ export type ProjectUpdate = Pick<Project, 'id'> & Partial<Pick<Project, 'name' |
   starred?: boolean
   /** オーケストラの対象から外す（false で戻す） */
   orchestraExcluded?: boolean
+  /** 内蔵ブラウザのログインの組（空文字で共有に戻す。@shared/browserProfile） */
+  browserProfile?: string
 }
 
 /** 事前に登録したフォルダ。ターミナルは常にここをカレントにして起動する（worktreeは使わない） */
@@ -167,6 +169,11 @@ export interface Project {
   editorWorkspace?: true
   /** オーケストラの対象から外す（全体の subagent・巡回・全体への依頼に巻き込まない。今は更新しないサイトなど） */
   orchestraExcluded?: true
+  /**
+   * 内蔵ブラウザのログインの組。無ければすべてのプロジェクトで共有（一度ログインすればどこでもログインしたまま）。
+   * クライアントが違うなど分けたいときに名前を付け、同じ名前のプロジェクト同士で共有する（@shared/browserProfile）
+   */
+  browserProfile?: string
   /** 登録した時刻（ISO8601）。「追加した順」に使う。これより前に登録したものには無い */
   addedAt?: string
   /** 最後に開いた時刻（ISO8601）。「最近使った順」「動いている順」に使う */

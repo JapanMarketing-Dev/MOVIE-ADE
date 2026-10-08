@@ -355,7 +355,8 @@ describe('配線の不変条件', () => {
   it('拡張を読み込むのは browserExtensions.ts だけで、渡す session は内蔵ブラウザのもの', () => {
     const files = ['main/index.ts', 'main/browser.ts', 'main/recording/recorderWindow.ts', 'main/recording/controller.ts', 'main/preview/index.ts']
     for (const f of files) expect(src(f), f).not.toMatch(/loadExtension\(/)
-    expect(src('main/index.ts')).toMatch(/new BrowserExtensions\(\{\s*session: \(\) => browserSession\(\)/)
+    // 渡すのは内蔵ブラウザの session（いまのログインの組）と、用意した内蔵ブラウザの session すべて（browser.ts の browserSessions）
+    expect(src('main/index.ts')).toMatch(/new BrowserExtensions\(\{[^}]*session: \(\) => browser\?\.activeSession\(\) \?\? browserSession\(\),\s*sessions: \(\) => browserSessions\(\)/)
   })
 
   it('拡張機能の IPC は宣言済みのチャネルとして、アプリの窓の本体のフレームからだけ受ける（dispatcher を通る）', () => {
@@ -404,5 +405,75 @@ describe('静止画にポップアップを重ねる（overlayStillSource）', (
     const source = overlayStillSource({ capture: async () => base as never, gone: false }, () => null, fromBitmap)
     expect(await source.capture()).toBe(base)
     expect(fromBitmap).not.toHaveBeenCalled()
+  })
+})
+
+describe('ツールバーの拡張のボタンとログインの組（0.6.9）', () => {
+  function multiSession(loaded = new Set<string>()) {
+    const calls: Array<{ op: string; path?: string; id?: string }> = []
+    return {
+      calls,
+      extensions: {
+        loadExtension: async (path: string) => { calls.push({ op: 'load', path }); const id = /[\\/]a$/.test(path) ? 'a'.repeat(32) : 'b'.repeat(32); loaded.add(id); return { id } },
+        removeExtension: (id: string) => { calls.push({ op: 'remove', id }); loaded.delete(id) },
+        getExtension: (id: string) => (loaded.has(id) ? { id } : null)
+      }
+    }
+  }
+  const host = { window: () => null as never, viewBounds: () => ({ x: 0, y: 40, width: 1000, height: 700 }), navigate: vi.fn() }
+
+  it('アイコンは action.default_icon → icons の順で 32px に近いもの（足りなければ一番大きいもの）。外へ出るパスは使わない', () => {
+    expect(shared.pickExtensionIcon({ 16: 'i16.png', 48: 'i48.png', 128: 'i128.png' })).toBe('i48.png')
+    expect(shared.pickExtensionIcon({ 16: 'i16.png', 19: 'i19.png' })).toBe('i19.png')
+    expect(shared.pickExtensionIcon('icon.png')).toBe('icon.png')
+    expect(shared.pickExtensionIcon({ 32: '../x.png' })).toBeNull()
+    expect(shared.pickExtensionIcon(null)).toBeNull()
+    expect(shared.parseExtensionManifest({ manifest_version: 3, name: 'T', action: { default_icon: { 32: 'a32.png' } }, icons: { 128: 'big.png' } })!.icon).toBe('a32.png')
+    expect(shared.parseExtensionManifest({ manifest_version: 2, name: 'T', icons: { 128: 'big.png' } })!.icon).toBe('big.png')
+  })
+
+  it('アイコンは data: URL で一覧に載る。大きすぎる・画像でない・リンクは載せない', async () => {
+    const a = makeExtension(join(root, 'a'), { manifest_version: 3, name: 'Translate', version: '1', action: { default_popup: 'popup.html', default_icon: 'icon.png' } }, { 'icon.png': 'PNGDATA' })
+    expect(await main.readExtensionIcon(a, 'icon.png')).toBe(`data:image/png;base64,${Buffer.from('PNGDATA').toString('base64')}`)
+    expect(await main.readExtensionIcon(a, 'manifest.json')).toBeNull()
+    writeFileSync(join(a, 'big.png'), Buffer.alloc(300 * 1024))
+    expect(await main.readExtensionIcon(a, 'big.png')).toBeNull()
+    symlinkSync(join(a, 'icon.png'), join(a, 'link.png'))
+    expect(await main.readExtensionIcon(a, 'link.png')).toBeNull()
+    const ses = multiSession()
+    const ext = new main.BrowserExtensions({ session: () => ses as never, host, importDir: () => join(root, 'imports') })
+    await ext.sync([{ path: a }])
+    expect(ext.list()[0]).toMatchObject({ name: 'Translate', hasPopup: true, icon: expect.stringMatching(/^data:image\/png;base64,/) })
+  })
+
+  it('拡張はログインの組ごとの session すべてに読み込み、外すときもすべてから外す', async () => {
+    const a = makeExtension(join(root, 'a'), { manifest_version: 3, name: 'A', version: '1' })
+    const shared1 = multiSession()
+    const client = multiSession()
+    const sessions = [shared1]
+    const ext = new main.BrowserExtensions({ session: () => client as never, sessions: () => sessions as never, host, importDir: () => join(root, 'imports') })
+    await ext.sync([{ path: a }])
+    expect(shared1.calls).toEqual([{ op: 'load', path: a }])
+    // 別の組の session ができたら、もう一度 sync すればそこにも読み込む（index.ts の onBrowserSessionReady）
+    sessions.push(client)
+    await ext.sync([{ path: a }])
+    expect(client.calls).toEqual([{ op: 'load', path: a }])
+    expect(shared1.calls).toHaveLength(1)
+    await ext.sync([])
+    expect(shared1.calls.at(-1)).toEqual({ op: 'remove', id: 'a'.repeat(32) })
+    expect(client.calls.at(-1)).toEqual({ op: 'remove', id: 'a'.repeat(32) })
+  })
+
+  it('配線：ボタンは browserExtensions:open で開き、ポップアップは開いているタブと同じ組の session', () => {
+    const src = (p: string) => readFileSync(join(__dirname, '../../src', p), 'utf8')
+    expect(src('shared/ipc.ts')).toContain("'browserExtensions:open'")
+    expect(src('main/index.ts')).toMatch(/'browserExtensions:open': \(path\) => \{/)
+    expect(src('renderer/components/BrowserToolbar.tsx')).toContain('<BrowserExtensionActions />')
+    const browser = src('main/browser.ts')
+    expect(browser).toContain('overrideBrowserWindowOptions: popupWindowOptions(this.partition)')
+    expect(browser).toContain('session: browserSession(() => this.window, this.partition)')
+    const index = src('main/index.ts')
+    expect(index).toMatch(/browser\.setPartition\(browserPartition\(saved\.browserProfile\)\)\n\s*browser\.replaceTabs\(parked/)
+    expect(index).toMatch(/onBrowserSessionReady\(\(ses\) => \{\n\s*registerPreviewProtocol\(\[ses\]/)
   })
 })

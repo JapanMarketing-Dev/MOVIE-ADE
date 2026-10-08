@@ -447,6 +447,48 @@
   gap: var(--space-3);
 }
 
+/* 拡張機能のボタン（Chrome の URL 欄の右のアイコン） */
+.browser-ext-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.browser-ext-actions__btn {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+.browser-ext-actions__btn:hover {
+  background: var(--color-surface-hover);
+}
+
+.browser-ext-actions__btn:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 1px;
+}
+
+.browser-ext-actions__letter {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
 /* 文字で指摘が入のあいだは、ページを操作できない（枠を引く）ことを面で示す（録画の道具と同じ塗り） */
 .browser-toolbar__note {
   flex: none;
@@ -499,6 +541,7 @@
 @container pane (width < 520px) {
   .browser-toolbar [data-testid='browser-open-external'],
   .browser-toolbar .browser-toolbar__extensions,
+  .browser-toolbar .browser-ext-actions,
   .browser-toolbar .browser-toolbar__share,
   .browser-toolbar .browser-toolbar__note {
     display: none;

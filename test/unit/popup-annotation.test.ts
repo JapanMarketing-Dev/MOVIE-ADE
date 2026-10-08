@@ -121,7 +121,7 @@ describe('配線の不変条件', () => {
 
   it('ログインのポップアップは同じ sandbox の窓で、内蔵ブラウザのページと同じ注入スクリプトだけを持つ', () => {
     const src = read('src/main/browser.ts')
-    const options = src.slice(src.indexOf('function popupWindowOptions()'), src.indexOf('/** 表示中のページが別のアプリ'))
+    const options = src.slice(src.indexOf('function popupWindowOptions('), src.indexOf('/** 表示中のページが別のアプリ'))
     expect(options).toMatch(/preload: join\(__dirname, '\.\.\/preload\/review\.js'\)/)
     expect(options).toMatch(/sandbox: true/)
     expect(options).toMatch(/contextIsolation: true/)

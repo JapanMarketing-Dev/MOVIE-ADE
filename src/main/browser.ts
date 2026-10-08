@@ -1,6 +1,7 @@
 import { fakeCapturePath } from './recording/fakeCapture'
 import { isGestureInput, registerRecorderContents } from './captureConsent'
 import { BrowserIdentity, cleanElectronUserAgent, electronUserAgent } from './browserUserAgent'
+import { SHARED_BROWSER_PARTITION } from '@shared/browserProfile'
 import { WebContentsView, dialog, session, shell, type BaseWindow, type BrowserWindow, type Session, type WebContents } from 'electron'
 import { join } from 'node:path'
 import { MOBILE_PRESET, type BrowserState, type ViewBounds, type Viewport } from '@shared/types'
@@ -9,7 +10,7 @@ import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import { reportHandled } from '@shared/report'
 import { retireView } from './viewTeardown'
-import { normalizeUrl } from '@shared/projectUrl'
+import { addressBarUrl, normalizeUrl } from '@shared/projectUrl'
 import { isProjectPageUrl } from '@shared/htmlPreview'
 import { restorableHistory } from '@shared/projectSession'
 import { isAbortedNavigation } from '@shared/browserNav'
@@ -37,8 +38,8 @@ import {
  * どのタブも同じ永続の session と同じ守り（権限・遷移・window.open・注入スクリプト）で作る（createTab の1か所だけ）
  */
 
-/** WS-2 ログイン状態（Cookie）を保持する永続パーティション */
-export const PARTITION = 'persist:ade-browser'
+/** WS-2 ログイン状態（Cookie）を保持する永続パーティション。既定はすべてのプロジェクトで共有（@shared/browserProfile） */
+export const PARTITION = SHARED_BROWSER_PARTITION
 
 /**
  * 内蔵ブラウザで許す権限。レビューするページは信用しないので、既定ですべて断る。
@@ -48,32 +49,52 @@ export const PARTITION = 'persist:ade-browser'
  */
 const pageClipboard = new PageClipboardGrant()
 
-let browserSessionReady = false
+/** 用意した内蔵ブラウザの session（組ごと。partition の名前 → session） */
+const readySessions = new Map<string, Session>()
+/** session ごとの UA の決まり（browserSession で作る） */
+const identities = new WeakMap<Session, BrowserIdentity>()
+/** session を用意したときに入れるもの（プレビュー・プロジェクトのページの配信・拡張機能。index.ts が登録する） */
+const sessionReadyListeners: Array<(ses: Session) => void> = []
 
 /**
  * 内蔵ブラウザの session。権限の決まり（既定で拒否）と外部アプリの確認を、読み込みの前に必ず入れてから返す。
- * 内蔵ブラウザの session は必ずここから取ること
+ * 内蔵ブラウザの session は必ずここから取ること。partition を省くと共有の組（すべてのプロジェクトで共有）
  */
-export function browserSession(confirmWindow?: () => BaseWindow | null): Session {
-  const ses = session.fromPartition(PARTITION)
-  if (!browserSessionReady) {
-    browserSessionReady = true
+export function browserSession(confirmWindow?: () => BaseWindow | null, partition: string = PARTITION): Session {
+  const ses = session.fromPartition(partition)
+  if (!readySessions.has(partition)) {
+    readySessions.set(partition, ses)
     installPermissionPolicy(ses as unknown as PermissionSessionLike,
       (query) => pageClipboard.allow(query) || isTabCaptureRequest(query),
       (url, origin) => void openExternalFromPage(url, origin))
     // Google などのログインに断られないよう、既定は Chrome と同じ形の UA。
     // Cloudflare の確認を返したホストだけ Electron の印を残した UA で開き直す（browserUserAgent.ts の BrowserIdentity）
     const native = ses.getUserAgent()
-    identity = new BrowserIdentity(cleanElectronUserAgent(native), electronUserAgent(native))
-    ses.setUserAgent(identity.chromeUserAgent)
-    installIdentityHeaders(ses, identity)
+    const id = new BrowserIdentity(cleanElectronUserAgent(native), electronUserAgent(native))
+    identities.set(ses, id)
+    ses.setUserAgent(id.chromeUserAgent)
+    installIdentityHeaders(ses, id)
+    for (const listener of sessionReadyListeners) listener(ses)
   }
   if (confirmWindow) confirmWindowOf = confirmWindow
   return ses
 }
 
-/** ページごとに名乗る UA（browserSession で作る） */
-let identity: BrowserIdentity | null = null
+/** 用意した内蔵ブラウザの session すべて（共有の組が先） */
+export function browserSessions(): Session[] {
+  return [...readySessions.values()]
+}
+
+/** 内蔵ブラウザの session を用意したときに呼ぶ（すでに用意したものにもすぐ呼ぶ） */
+export function onBrowserSessionReady(listener: (ses: Session) => void): void {
+  sessionReadyListeners.push(listener)
+  for (const ses of readySessions.values()) listener(ses)
+}
+
+/** その画面の session の UA の決まり（内蔵ブラウザの session でなければ null） */
+function identityOf(wc: WebContents): BrowserIdentity | null {
+  return identities.get(wc.session) ?? null
+}
 
 /**
  * ページ本体の読み込みのリクエストの UA を行き先のホストに合わせ、Cloudflare の確認が返ったら Electron の UA で1回だけ開き直す。
@@ -109,6 +130,7 @@ function installIdentityHeaders(ses: Session, id: BrowserIdentity): void {
  */
 function followIdentity(wc: WebContents): void {
   wc.on('did-start-navigation', (details) => {
+    const identity = identityOf(wc)
     if (!identity || !details.isMainFrame || details.isSameDocument) return
     const current = wc.getUserAgent()
     if (!identity.owns(current)) return
@@ -128,14 +150,15 @@ const HIDE_POPUPS = process.env.ADE_E2E === '1' && process.env.ADE_E2E_SHOW !== 
  * 内蔵ブラウザのページと同じ書き込みの注入スクリプト（preload/review）を入れ、録画中はポップアップの上にもペン・枠・文字で指摘を引ける。
  * main が受けるのは、いま前に出ているポップアップからの書き込みのチャネルだけ（recording/controller.ts・textNotes.ts）
  */
-function popupWindowOptions(): Electron.BrowserWindowConstructorOptions {
+function popupWindowOptions(partition: string): Electron.BrowserWindowConstructorOptions {
   return {
     width: 520,
     height: 680,
     show: false,
     autoHideMenuBar: true,
     webPreferences: {
-      partition: PARTITION,
+      // 開いたタブと同じ組の session（ログインの結果がそのタブに届く）
+      partition,
       preload: join(__dirname, '../preload/review.js'),
       sandbox: true,
       contextIsolation: true,
@@ -318,6 +341,27 @@ export class EmbeddedBrowser {
     for (const tab of this.tabs) tab.view.setBackgroundColor(color)
   }
 
+  /** いま開いているプロジェクトのログインの組（session の名前）。新しいタブ・ポップアップはこの組で作る */
+  private partition: string = PARTITION
+
+  /**
+   * ログインの組を変える（プロジェクトの切り替え・組の変更の前に呼ぶ）。開いているタブはそのまま。
+   * 入れ替えるのは replaceTabs（新しいタブを新しい組で作る）
+   */
+  setPartition(partition: string): void {
+    this.partition = partition
+  }
+
+  /** いまのログインの組の session（拡張機能のポップアップなど） */
+  activeSession(): Session {
+    return browserSession(undefined, this.partition)
+  }
+
+  /** いまのログインの組 */
+  activePartition(): string {
+    return this.partition
+  }
+
   attach(window: BaseWindow, initial: string | ProjectTabs, viewport: Viewport): void {
     this.window = window
     this.viewport = viewport
@@ -409,7 +453,7 @@ export class EmbeddedBrowser {
     const view = new WebContentsView({
       webPreferences: {
         // 権限の決まり（既定で拒否）を入れた session。ビューを作る＝読み込む前に入れる
-        session: browserSession(() => this.window),
+        session: browserSession(() => this.window, this.partition),
         // ペン・操作ログの注入スクリプト（設計4章）。
         // preload なのでページ本体のスクリプトとは別の世界で動き、遷移のたびに読み直される。
         preload: join(__dirname, '../preload/review.js'),
@@ -462,7 +506,7 @@ export class EmbeddedBrowser {
         return { action: 'deny' }
       }
       const action = popupWindowAction(details)
-      if (action === 'popup') return { action: 'allow', overrideBrowserWindowOptions: popupWindowOptions() }
+      if (action === 'popup') return { action: 'allow', overrideBrowserWindowOptions: popupWindowOptions(this.partition) }
       if (action === 'tab') this.openTabFromPage(tab, details.url, details.disposition !== 'background-tab')
       else if (action === 'in-app') void wc.loadURL(details.url).catch(() => undefined)
       else if (action === 'external') void openExternalFromPage(details.url, wc.getURL())
@@ -544,7 +588,8 @@ export class EmbeddedBrowser {
    */
   async newTab(input = ''): Promise<string> {
     if (!canOpenTab(this.tabs.length)) throw new UserFacingError(t('browser.tabs.limit', { n: MAX_BROWSER_TABS }))
-    const url = input.trim() ? normalizeUrl(input) : ''
+    // URL 欄から（URL の形でなければ Google で検索）
+    const url = input.trim() ? addressBarUrl(input) : ''
     if (url && (!isNavigableUrl(url) || !isTypedNavigationAllowed(url))) throw new UserFacingError(t('browser.errors.invalidUrl'))
     const tab = this.createTab()
     this.activateTab(tab.id)
@@ -872,7 +917,7 @@ export class EmbeddedBrowser {
           tab.emulating = false
           wc.disableDeviceEmulation()
         }
-        wc.setUserAgent(identity?.userAgentFor(wc.getURL()) ?? wc.session.getUserAgent())
+        wc.setUserAgent(identityOf(wc)?.userAgentFor(wc.getURL()) ?? wc.session.getUserAgent())
       }
     } catch (err) {
       console.warn('[browser] 表示幅の切り替えに失敗しました', err)
@@ -883,7 +928,8 @@ export class EmbeddedBrowser {
   async navigate(input: string): Promise<void> {
     const wc = this.webContents
     if (!wc) return
-    const url = normalizeUrl(input)
+    // URL の形でない入力（言葉・空白を含む）は Google で検索する
+    const url = addressBarUrl(input)
     // javascript: data: や独自スキーム（OS のアプリを起動する）は開かない
     if (!isNavigableUrl(url) || !isTypedNavigationAllowed(url)) throw new UserFacingError(t('browser.errors.invalidUrl'))
     await this.load(wc, url)

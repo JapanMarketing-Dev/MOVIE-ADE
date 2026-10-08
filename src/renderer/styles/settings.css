@@ -546,3 +546,9 @@
 .agent-requests__add > summary {
   cursor: pointer;
 }
+
+/* 設定の「ブラウザのログイン」：プロジェクトごとの組の名前 */
+.browser-profiles__field {
+  width: 200px;
+  flex: none;
+}

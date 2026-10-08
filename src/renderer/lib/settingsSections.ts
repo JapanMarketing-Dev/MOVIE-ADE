@@ -24,6 +24,8 @@ export const SETTINGS_SECTIONS = [
   'layout',
   // 内蔵ブラウザに読み込む Chrome 拡張
   'extensions',
+  // 内蔵ブラウザのログインをプロジェクトで共有するか（既定は共有。クライアントごとに分けられる）
+  'browserProfiles',
   // ほかのブラウザ（Chrome・Edge・Safari など）のパスワードの CSV と履歴の取り込み
   'browserImport',
   // よく使うサービスの CLI（gh・wrangler・Ollama・クラウド・デプロイ先）のインストールとログイン
@@ -55,6 +57,8 @@ const SECTION_KEYWORDS: Record<SettingsSectionId, readonly string[]> = {
   accounts: ['account', 'login', 'sign in', 'usage', 'manage', 'limit', 'failover', 'switch', 'アカウント', 'ログイン', '使用量', '管理', '上限', '切り替え'],
   extensions: ['extension', 'extensions', 'chrome', 'add-on', 'addon', 'plugin', 'browser', 'popup', 'crx', 'edge', 'brave',
     '拡張', '拡張機能', 'ブラウザ', 'アドオン', 'プラグイン', 'ポップアップ'],
+  browserProfiles: ['browser', 'login', 'sign in', 'session', 'cookie', 'share', 'shared', 'separate', 'client', 'profile', 'google', 'gmail',
+    'ブラウザ', 'ログイン', 'セッション', '共有', '分ける', 'クライアント', 'プロフィール'],
   browserImport: ['import', 'password', 'passwords', 'csv', 'history', 'autofill', 'login', 'chrome', 'edge', 'safari', 'firefox', 'brave', 'arc', 'browser',
     '取り込み', 'パスワード', '履歴', '自動入力', 'ブラウザ', 'ログイン'],
   cli: ['cli', 'command line', 'install', 'login', 'sign in', 'wrangler', 'cloudflare', 'ollama', 'github', 'gitlab', 'glab', 'gh', 'vercel', 'netlify',

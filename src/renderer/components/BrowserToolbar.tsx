@@ -6,7 +6,7 @@ import { SHORTCUTS } from '../lib/shortcut'
 import { Button, IconButton, Segmented, Tooltip, useToast } from '../ui'
 import { NavControls } from './NavControls'
 import { UrlPresets } from './UrlPresets'
-import { BrowserExtensionsButton } from './BrowserExtensionsButton'
+import { BrowserExtensionActions, BrowserExtensionsButton } from './BrowserExtensionsButton'
 import { PasswordFillButton } from './PasswordFillButton'
 import { ShareButton } from './ShareButton'
 import { useT } from '../lib/i18n'
@@ -106,6 +106,8 @@ export function BrowserToolbar({
         </Tooltip>
       )}
       {/* 内蔵ブラウザの拡張機能のポップアップ（拡張を入れたときだけ出る） */}
+      {/* 拡張のボタン（Chrome の URL 欄の右のアイコン。押すとその拡張のポップアップ） */}
+      <BrowserExtensionActions />
       <BrowserExtensionsButton className="browser-toolbar__extensions" />
       <Segmented
         ariaLabel={t('browser.viewport')}

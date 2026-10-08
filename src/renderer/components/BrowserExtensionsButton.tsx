@@ -45,3 +45,28 @@ export function BrowserExtensionsButton({ className, size = 'sm', testId = 'brow
   return <IconButton label={t('browserExtensions.button')} title={t('browserExtensions.buttonTitle')} size={size} className={className}
     icon={<Puzzle size={size === 'sm' ? 16 : 14} strokeWidth={1.75} />} onClick={open} data-testid={testId} />
 }
+
+/** ツールバーに並べる拡張のボタンの数の上限（ほかはパズルのボタンのメニューから） */
+export const MAX_EXTENSION_ACTIONS = 6
+
+/**
+ * 拡張機能のボタン（Chrome の URL 欄の右のアイコン）。読み込めた拡張を並べ、押すとそのポップアップ（無ければ設定のページ）を
+ * 内蔵ブラウザの右上に開く。Google 翻訳のように、ページの外のボタンから使う拡張のため
+ */
+export function BrowserExtensionActions({ className }: { className?: string }) {
+  const t = useT()
+  const toast = useToast()
+  const list = useBrowserExtensions().filter((e) => e.enabled && e.id && !e.error).slice(0, MAX_EXTENSION_ACTIONS)
+  if (list.length === 0) return null
+  const open = (path: string, name: string) => {
+    void window.ade.invoke('browserExtensions:open', path)
+      .then((result) => { if (result === 'none') toast({ tone: 'info', message: t('browserExtensions.noAction', { name }) }) })
+      .catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
+  }
+  return <div className={`browser-ext-actions${className ? ` ${className}` : ''}`} data-testid="browser-extension-actions">
+    {list.map((ext) => <button key={ext.path} type="button" className="browser-ext-actions__btn" title={ext.name} aria-label={ext.name}
+      onClick={() => open(ext.path, ext.name)} data-testid="browser-extension-action">
+      {ext.icon ? <img src={ext.icon} alt="" width={16} height={16} draggable={false} /> : <span className="browser-ext-actions__letter" aria-hidden="true">{ext.name.slice(0, 1).toUpperCase()}</span>}
+    </button>)}
+  </div>
+}

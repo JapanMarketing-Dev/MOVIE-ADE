@@ -388,3 +388,15 @@ describe('保存の直前に外の変更とまとめる（Agent の書き込み�
     expect(errors.at(-1)).toBeTruthy()
   })
 })
+
+describe('プロジェクトのブラウザのログインの組（browserProfile）', () => {
+  it('名前は整えて残し、空・読めない値は書かない（共有）', () => {
+    const s = sanitize({ projects: [
+      { id: 'a', folderPath: '/w/a', urls: [], browserProfile: '  Client  A ' },
+      { id: 'b', folderPath: '/w/b', urls: [], browserProfile: '   ' },
+      { id: 'c', folderPath: '/w/c', urls: [], browserProfile: 7 }
+    ] })
+    expect(s.projects.map((p) => p.browserProfile)).toEqual(['Client A', undefined, undefined])
+    expect('browserProfile' in s.projects[1]!).toBe(false)
+  })
+})

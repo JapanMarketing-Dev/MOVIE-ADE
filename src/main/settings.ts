@@ -36,6 +36,7 @@ import { sanitizeDecisionPreferences } from '@shared/decision'
 import { errorKind, reportHandled, timedSync } from '@shared/report'
 import type { SettingsFileError, SettingsFileInfo } from '@shared/types'
 import { SettingsFileStore, configDirOverride, legacyConfigDir, mergeSettings, migrateLegacyConfigDir, plaintextKeyPaths, relocateMisplacedDevConfig, resolveConfigDir, splitSettings } from './settingsFile'
+import { sanitizeBrowserProfile } from '@shared/browserProfile'
 
 /**
  * 設定の読み書き。
@@ -93,7 +94,7 @@ function sanitizeProjects(raw: unknown): Project[] {
     const addedAt = stamp(r.addedAt)
     const lastOpenedAt = stamp(r.lastOpenedAt)
     return [{ id: r.id, name: str(r.name) ? r.name : r.folderPath.split(/[\\/]/).pop() ?? r.folderPath, folderPath: r.folderPath, kind, ...origin, urls, ...(session ? { session } : {}),
-      ...(r.starred === true ? { starred: true as const } : {}), ...(r.orchestrator === true ? { orchestrator: true as const } : {}), ...(r.editorWorkspace === true ? { editorWorkspace: true as const } : {}), ...(r.orchestraExcluded === true ? { orchestraExcluded: true as const } : {}), ...(Array.isArray(r.members) && r.members.some(str) ? { members: [...new Set(r.members.filter(str))] } : {}), ...(addedAt ? { addedAt } : {}), ...(lastOpenedAt ? { lastOpenedAt } : {}) }]
+      ...(r.starred === true ? { starred: true as const } : {}), ...(r.orchestrator === true ? { orchestrator: true as const } : {}), ...(r.editorWorkspace === true ? { editorWorkspace: true as const } : {}), ...(r.orchestraExcluded === true ? { orchestraExcluded: true as const } : {}), ...(sanitizeBrowserProfile(r.browserProfile) ? { browserProfile: sanitizeBrowserProfile(r.browserProfile) } : {}), ...(Array.isArray(r.members) && r.members.some(str) ? { members: [...new Set(r.members.filter(str))] } : {}), ...(addedAt ? { addedAt } : {}), ...(lastOpenedAt ? { lastOpenedAt } : {}) }]
   })
 }
 

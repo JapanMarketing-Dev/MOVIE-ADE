@@ -256,6 +256,8 @@ export interface IpcRequests {
    * 「このページの拡張を入れる」（ストアのページを開いているとき）は 'install'
    */
   'browserExtensions:menu': (at: { x: number; y: number }) => 'manage' | 'install' | null
+  /** ツールバーの拡張のボタン：そのポップアップを開く（無ければ設定のページ）。どちらも無ければ 'none'、閉じたら 'closed' */
+  'browserExtensions:open': (path: string) => 'popup' | 'options' | 'closed' | 'none'
   /** ほかのブラウザからの取り込み（パスワードの CSV・履歴）の件数（src/main/browserImport/） */
   'browserImport:status': () => BrowserImportStatus
   /**
@@ -731,7 +733,7 @@ export const IPC_REQUEST_CHANNELS = [
   'browser:openExternal',
   'browser:setViewport',
   'browser:state',
-  'browserExtensions:list', 'browserExtensions:addFolder', 'browserExtensions:scanInstalled', 'browserExtensions:import', 'browserExtensions:setEnabled', 'browserExtensions:remove', 'browserExtensions:menu', 'browserExtensions:installFromStore', 'browserExtensions:addCrx',
+  'browserExtensions:list', 'browserExtensions:addFolder', 'browserExtensions:scanInstalled', 'browserExtensions:import', 'browserExtensions:setEnabled', 'browserExtensions:remove', 'browserExtensions:menu', 'browserExtensions:open', 'browserExtensions:installFromStore', 'browserExtensions:addCrx',
   'browserImport:status', 'browserImport:importPasswords', 'browserImport:findExports', 'browserImport:trashExport', 'browserImport:clearPasswords', 'browserImport:historySources', 'browserImport:importHistory', 'browserImport:clearHistory', 'browserImport:suggest', 'passwords:forPage', 'passwords:fill', 'passwords:menu',
   'share:list', 'share:create', 'share:addPage', 'share:open', 'share:setStatus', 'share:import', 'share:delete',
   'terminal:create',

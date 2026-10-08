@@ -17,6 +17,7 @@ import { AgentResourcesSection } from './AgentResourcesSection'
 import { CliToolsSection } from './CliToolsSection'
 import { BrowserExtensionsSection } from './BrowserExtensionsSection'
 import { BrowserImportSection } from './BrowserImportSection'
+import { BrowserProfilesSection } from './BrowserProfilesSection'
 import { LayoutSettings } from './LayoutSettings'
 import { TranscriptionSection } from './TranscriptionSection'
 import { OrganizeSection } from './OrganizeSection'
@@ -459,6 +460,10 @@ export function SettingsPage({
     extensions: <PageSection key="extensions" id="extensions" title={titleOf('extensions')}>
       {/* 内蔵ブラウザの Chrome 拡張。読み込み・保存は main が行う（src/renderer/components/BrowserExtensionsSection.tsx） */}
       <BrowserExtensionsSection recording={recording} />
+    </PageSection>,
+    browserProfiles: <PageSection key="browserProfiles" id="browserProfiles" title={titleOf('browserProfiles')}>
+      {/* 内蔵ブラウザのログインの組（既定は全プロジェクトで共有）。保存は main の project:update（src/renderer/components/BrowserProfilesSection.tsx） */}
+      <BrowserProfilesSection />
     </PageSection>,
     browserImport: <PageSection key="browserImport" id="browserImport" title={titleOf('browserImport')}>
       {/* ほかのブラウザのパスワードの CSV・履歴の取り込み。読み込み・保存は main が行う（src/renderer/components/BrowserImportSection.tsx） */}
