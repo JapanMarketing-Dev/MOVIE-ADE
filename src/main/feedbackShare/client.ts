@@ -6,13 +6,19 @@ import {
   ITEM_ID_PATTERN,
   OWNER_TOKEN_PATTERN,
   SHARE_BASE,
+  SHARE_ERROR_STATUS,
   SHARE_ID_PATTERN,
-  type ShareCommentStatus,
+  SHARE_LIMITS,
+  sanitizeEventsFile,
   type ShareErrorCode,
-  type SharePage,
+  type ShareEventsFile,
+  type ShareMemo,
+  type ShareRecording,
+  type ShareRecordingStatus,
   type ShareSnapshot,
-  type ShareViewport
+  type ShareUrl
 } from '@shared/feedbackShare'
+import type { ShareAuthVerifier } from '@shared/shareCrypto'
 
 export type ShareFetch = (url: string, init: RequestInit) => Promise<Response>
 
@@ -37,7 +43,15 @@ export interface CreatedShare {
   expiresAt: string
 }
 
-const ERROR_CODES = new Set(['invalid_request', 'empty', 'too_long', 'too_large', 'bad_image', 'unauthorized', 'origin_not_allowed', 'not_found', 'method_not_allowed', 'gone', 'full', 'rate_limited', 'internal'])
+/** 作る・変えるときに送る値。memo の null は「メモなし」、auth の null は「パスワードを外す」。省いたものは変えない */
+export interface SharePatch {
+  title?: string
+  urls?: ShareUrl[]
+  memo?: ShareMemo | null
+  auth?: ShareAuthVerifier | null
+}
+
+const ERROR_CODES = new Set(Object.keys(SHARE_ERROR_STATUS))
 
 export class ShareClient {
   private readonly base: string
@@ -46,19 +60,27 @@ export class ShareClient {
     this.base = opt.base ?? SHARE_BASE
   }
 
-  private async call(path: string, init: RequestInit, token?: string): Promise<Record<string, unknown>> {
+  private headers(init: RequestInit, token?: string): Headers {
     const headers = new Headers(init.headers)
     if (token) {
       if (!OWNER_TOKEN_PATTERN.test(token)) throw new ShareApiError('unauthorized')
       headers.set('authorization', `Bearer ${token}`)
     }
     if (this.opt.userAgent) headers.set('user-agent', this.opt.userAgent)
-    let res: Response
+    return headers
+  }
+
+  private async raw(path: string, init: RequestInit, token?: string, timeoutMs = this.opt.timeoutMs ?? 30_000): Promise<Response> {
     try {
-      res = await this.opt.fetch(`${this.base}${path}`, { ...init, headers, signal: AbortSignal.timeout(this.opt.timeoutMs ?? 30_000) })
-    } catch {
+      return await this.opt.fetch(`${this.base}${path}`, { ...init, headers: this.headers(init, token), signal: AbortSignal.timeout(timeoutMs) })
+    } catch (err) {
+      if (err instanceof ShareApiError) throw err
       throw new ShareApiError('network')
     }
+  }
+
+  private async call(path: string, init: RequestInit, token?: string): Promise<Record<string, unknown>> {
+    const res = await this.raw(path, init, token)
     let body: Record<string, unknown>
     try {
       body = (await res.json()) as Record<string, unknown>
@@ -72,7 +94,7 @@ export class ShareClient {
     return body
   }
 
-  async create(input: { title: string; showOthers: boolean; days?: number; installId?: string }): Promise<CreatedShare> {
+  async create(input: SharePatch & { urls: ShareUrl[]; installId?: string }): Promise<CreatedShare> {
     const body = await this.call('/v1/shares', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) })
     const { id, ownerToken, url, expiresAt } = body as Record<string, string>
     if (!SHARE_ID_PATTERN.test(id ?? '') || !OWNER_TOKEN_PATTERN.test(ownerToken ?? '') || typeof url !== 'string' || !url.startsWith(`${this.base}/s/`) || typeof expiresAt !== 'string') {
@@ -81,27 +103,23 @@ export class ShareClient {
     return { id, ownerToken, url, expiresAt }
   }
 
-  async addPage(shareId: string, token: string, page: { url: string; title: string; viewport: ShareViewport; width: number; height: number; image: Uint8Array; type: 'image/png' | 'image/jpeg' }): Promise<SharePage> {
+  async update(shareId: string, token: string, patch: SharePatch): Promise<void> {
     assertShareId(shareId)
-    const form = new FormData()
-    form.set('meta', JSON.stringify({ url: page.url, title: page.title, viewport: page.viewport, width: page.width, height: page.height }))
-    form.set('image', new Blob([new Uint8Array(page.image)], { type: page.type }), page.type === 'image/png' ? 'page.png' : 'page.jpg')
-    const body = await this.call(`/v1/shares/${shareId}/pages`, { method: 'POST', body: form }, token)
-    return body.page as SharePage
+    await this.call(`/v1/shares/${shareId}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }, token)
   }
 
   async snapshot(shareId: string, token: string): Promise<ShareSnapshot> {
     assertShareId(shareId)
     const body = await this.call(`/v1/shares/${shareId}`, { method: 'GET' }, token)
     const share = body.share as ShareSnapshot | undefined
-    if (!share || !Array.isArray(share.pages) || !Array.isArray(share.comments)) throw new ShareApiError('bad_response')
+    if (!share || !Array.isArray(share.urls) || !Array.isArray(share.recordings)) throw new ShareApiError('bad_response')
     return share
   }
 
-  async setStatus(shareId: string, token: string, commentId: string, status: ShareCommentStatus): Promise<void> {
+  async setStatus(shareId: string, token: string, recordingId: string, status: ShareRecordingStatus): Promise<void> {
     assertShareId(shareId)
-    if (!ITEM_ID_PATTERN.test(commentId)) throw new ShareApiError('invalid_request')
-    await this.call(`/v1/shares/${shareId}/comments/${commentId}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status }) }, token)
+    assertItemId(recordingId)
+    await this.call(`/v1/shares/${shareId}/recordings/${recordingId}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status }) }, token)
   }
 
   async remove(shareId: string, token: string): Promise<void> {
@@ -109,22 +127,96 @@ export class ShareClient {
     await this.call(`/v1/shares/${shareId}`, { method: 'DELETE' }, token)
   }
 
-  /** ページの静止画（相手と同じ公開の口から。持ち主のトークンは付けない）。上限を超える・画像でなければ null */
-  async pageImage(shareId: string, page: Pick<SharePage, 'id' | 'ext'>, maxBytes = 8 * 1024 * 1024): Promise<Uint8Array | null> {
+  /** 録画のファイルを取る（持ち主のトークンで。断ったものも取れる）。上限を超えたら too_large */
+  private async file(shareId: string, token: string, recordingId: string, file: 'media' | 'events.json' | 'thumb.jpg', timeoutMs?: number): Promise<Response> {
     assertShareId(shareId)
-    if (!ITEM_ID_PATTERN.test(page.id) || (page.ext !== 'png' && page.ext !== 'jpg')) return null
-    let res: Response
+    assertItemId(recordingId)
+    const res = await this.raw(`/v1/shares/${shareId}/recordings/${recordingId}/${file}`, { method: 'GET' }, token, timeoutMs)
+    if (!res.ok) {
+      const body = await res.json().catch(() => null) as { code?: unknown } | null
+      throw new ShareApiError(typeof body?.code === 'string' && ERROR_CODES.has(body.code) ? body.code as ShareErrorCode : 'bad_response', res.status)
+    }
+    return res
+  }
+
+  /** サムネイル（JPEG）。無い・上限を超える・画像でなければ null */
+  async thumbnail(shareId: string, token: string, recording: Pick<ShareRecording, 'id' | 'hasThumbnail'>): Promise<Uint8Array | null> {
+    if (!recording.hasThumbnail) return null
     try {
-      res = await this.opt.fetch(`${this.base}/v1/public/${shareId}/pages/${page.id}.${page.ext}`, { method: 'GET', signal: AbortSignal.timeout(this.opt.timeoutMs ?? 30_000) })
+      const res = await this.file(shareId, token, recording.id, 'thumb.jpg')
+      if (res.headers.get('content-type') !== 'image/jpeg') return null
+      const bytes = await readLimited(res, SHARE_LIMITS.thumbnailBytes)
+      return bytes && bytes.byteLength > 0 ? bytes : null
     } catch {
       return null
     }
-    if (!res.ok || !/^image\/(png|jpeg)$/.test(res.headers.get('content-type') ?? '')) return null
-    const bytes = new Uint8Array(await res.arrayBuffer())
-    return bytes.byteLength > 0 && bytes.byteLength <= maxBytes ? bytes : null
   }
+
+  /** 書き込み・文字で指摘・ページの操作の記録。無ければ null（形の合わないものも null） */
+  async events(shareId: string, token: string, recording: Pick<ShareRecording, 'id' | 'durationMs'>): Promise<ShareEventsFile | null> {
+    let res: Response
+    try {
+      res = await this.file(shareId, token, recording.id, 'events.json')
+    } catch (err) {
+      if (err instanceof ShareApiError && err.code === 'not_found') return null
+      throw err
+    }
+    const bytes = await readLimited(res, SHARE_LIMITS.eventsBytes)
+    if (!bytes) throw new ShareApiError('too_large')
+    try {
+      return sanitizeEventsFile(JSON.parse(new TextDecoder().decode(bytes)), recording.durationMs)
+    } catch {
+      return null
+    }
+  }
+
+  /** 録画（声・映像）を少しずつ write に渡す。届いた大きさが録画の大きさ・上限を超えたら too_large */
+  async media(shareId: string, token: string, recording: Pick<ShareRecording, 'id' | 'bytes'>, write: (chunk: Uint8Array) => Promise<void>): Promise<void> {
+    const res = await this.file(shareId, token, recording.id, 'media', 10 * 60_000)
+    const limit = Math.min(recording.bytes, SHARE_LIMITS.recordingBytes)
+    const reader = res.body?.getReader()
+    if (!reader) throw new ShareApiError('bad_response')
+    let total = 0
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      if (total > limit) {
+        await reader.cancel().catch(() => undefined)
+        throw new ShareApiError('too_large')
+      }
+      await write(value)
+    }
+    if (total === 0) throw new ShareApiError('bad_response')
+  }
+}
+
+/** 本文を上限まで読む。超えたら null */
+async function readLimited(res: Response, max: number): Promise<Uint8Array | null> {
+  const reader = res.body?.getReader()
+  if (!reader) return new Uint8Array(0)
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > max) {
+      await reader.cancel().catch(() => undefined)
+      return null
+    }
+    chunks.push(value)
+  }
+  const out = new Uint8Array(total)
+  let at = 0
+  for (const c of chunks) { out.set(c, at); at += c.byteLength }
+  return out
 }
 
 function assertShareId(id: string): void {
   if (!SHARE_ID_PATTERN.test(id)) throw new ShareApiError('not_found')
+}
+
+function assertItemId(id: string): void {
+  if (!ITEM_ID_PATTERN.test(id)) throw new ShareApiError('invalid_request')
 }

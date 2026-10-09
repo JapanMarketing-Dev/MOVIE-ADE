@@ -2,43 +2,39 @@
  * 共有リンク（ログイン無しで誰でも指摘を送れる）の IPC ハンドラ。index.ts の registerIpc の dispatcher に混ぜて登録する
  * （アプリの窓の本体のフレームからだけ受ける。security-5 [1]）。
  *
- * - 共有を作る・ページを足すときは、利用者がボタンを押した直後の1回だけ、いま表示中の内蔵ブラウザのタブを撮って上げる
- *   （撮るのは index.ts の snapshotPage。gestures の screenshot を使う。ページのスクリプトや IPC だけでは撮れない）。
- *   上げるのは http(s) のページだけ（手元のファイルは上げない）
- * - 持ち主のトークンは main だけが持つ（store.ts）。画面へは題名・URL・期限・指摘と、ページの静止画（data URL）だけを返す
- * - 取り込んだ指摘は「文字で指摘」と同じ形でレビューに足す（review.ts の addTextNote）。以後は Agent へ渡し、BEFORE/AFTER を人が確かめる
+ * - 共有は「見てほしいページの URL」で作る（静止画は上げない）。相手は元のページをライブで開き、アプリのフィードバックと同じ道具で録画して送る
+ * - 共有ボタンを押したら、開いているページの共有（同じプロジェクトで同じ URL の、期限内のもの）を使い、無ければ作る。リンクは画面がコピーする
+ * - メモとパスワード: パスワードがあれば、メモは main が暗号化して暗号文だけを送り、Worker にはパスワードの確認の値（証明の SHA-256）だけを送る
+ *   （@shared/shareCrypto）。パスワードは画面へ返さず、コピーは main がクリップボードへ写す
+ * - 持ち主のトークンは main だけが持つ（store.ts）
+ * - 届いた録画は mtg の取り込みと同じ流れでレビューにする（meeting/import.ts の importShareRecording。送った人の名前付き）。
+ *   取り込んだら Worker の側も「取り込み済み」にする
  */
-import { nativeImage, safeStorage } from 'electron'
+import { clipboard, safeStorage } from 'electron'
+import { open } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { IpcRequests } from '@shared/ipc'
-import { SHARE_LIMITS, cleanText, type ShareCommentStatus, type ShareViewport } from '@shared/feedbackShare'
+import {
+  SHARE_LIMITS,
+  cleanText,
+  sanitizeShareUrls,
+  sharePasswordProblem,
+  type ShareEventsFile,
+  type ShareMemo,
+  type ShareRecording,
+  type ShareSettingsInput
+} from '@shared/feedbackShare'
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import type { ReviewData } from '@shared/review'
-import { ShareApiError, ShareClient, type ShareFetch } from './client'
-import type { ShareStore } from './store'
+import { ShareApiError, ShareClient, type ShareFetch, type SharePatch } from './client'
+import type { ShareStore, StoredShare } from './store'
 
-/** 上げるページの静止画と、その URL・題名・表示の大きさ（CSS ピクセル） */
-export interface CapturedPage {
-  url: string
-  title: string
-  viewport: ShareViewport
-  width: number
-  height: number
-  image: Uint8Array
-  type: 'image/jpeg' | 'image/png'
-}
-
-type Channel = 'share:list' | 'share:create' | 'share:addPage' | 'share:open' | 'share:setStatus' | 'share:import' | 'share:delete'
+type Channel = 'share:list' | 'share:forPage' | 'share:create' | 'share:settings' | 'share:update' | 'share:copyPassword' | 'share:open' | 'share:setStatus' | 'share:import' | 'share:delete'
 
 export interface FeedbackShareDeps {
   projectId: () => string | null
   projectDir: () => string | null
-  /**
-   * 利用者がアプリの窓で押した直後の1回だけ、いま表示中の内蔵ブラウザのタブ（http(s) のページ）を撮る（index.ts。撮る処理は決めた場所にだけ置く。
-   * security-5 [1]）。撮れなければ UserFacingError
-   */
-  snapshotPage: () => Promise<CapturedPage>
   fetch: ShareFetch
   /** Worker の場所。省略時は share.ferretade.dev（開発版だけ手元の Worker に向けられる。index.ts） */
   base?: string
@@ -47,13 +43,41 @@ export interface FeedbackShareDeps {
   userDataDir: () => string
   isPackaged: boolean
   isE2E: boolean
-  /** 文字で指摘と同じくレビューに足す（review.ts の addTextNote。urlPresets も index.ts が付ける） */
-  addNote: (projectDir: string, reviewId: string | null, request: { id: string; note: import('../sessions/notes').TextNote; image: { png: Uint8Array; size: { width: number; height: number } } | null; page?: import('../sessions/notes').NotePage }) => Promise<{ review: ReviewData; count: number }>
-  onAdded: (result: { review: ReviewData; count: number }) => void
+  /** 届いた録画を mtg と同じ流れでレビューにする（index.ts が meeting/import.ts の importShareRecording に設定の文字起こしなどを付けて渡す） */
+  importRecording: (input: { projectDir: string; recording: ShareRecording; events: ShareEventsFile | null; download: (dest: string) => Promise<void> }) => Promise<ReviewData>
+  /** 平文をクリップボードへ（テストでは差し替える） */
+  writeClipboard?: (text: string) => void
+}
+
+/** 画面から来た設定を確かめる。合わなければ UserFacingError */
+export function readSettingsInput(raw: unknown): ShareSettingsInput {
+  const r = (raw ?? {}) as Record<string, unknown>
+  const title = cleanText(r.title ?? '', SHARE_LIMITS.titleChars)
+  if (title === null) throw new UserFacingError(t('share.errors.tooLong'))
+  const urls = sanitizeShareUrls(r.urls)
+  if (!urls) throw new UserFacingError(t('share.errors.urls'))
+  const memo = cleanText(r.memo ?? '', SHARE_LIMITS.memoChars, { multiline: true })
+  if (memo === null) throw new UserFacingError(t('share.errors.tooLong'))
+  let password: string | null | undefined
+  if (r.password === null) password = null
+  else if (typeof r.password === 'string') {
+    const problem = sharePasswordProblem(r.password)
+    if (problem) throw new UserFacingError(t(problem === 'short' ? 'share.errors.passwordShort' : 'share.errors.passwordLong', { min: SHARE_LIMITS.passwordMinChars, max: SHARE_LIMITS.passwordMaxChars }))
+    password = r.password
+  }
+  return { title, urls, memo, ...(password !== undefined ? { password } : {}) }
+}
+
+/** 送るメモとパスワードの確認の値。パスワードがあればメモは暗号文だけ */
+async function sealed(memo: string, password: string | undefined): Promise<{ memo: ShareMemo | null; auth: SharePatch['auth'] }> {
+  const { makeAuthVerifier, sealMemo } = await import('@shared/shareCrypto')
+  if (!password) return { memo: memo ? { kind: 'plain', text: memo } : null, auth: null }
+  return { memo: memo ? { kind: 'sealed', sealed: await sealMemo(password, memo) } : null, auth: await makeAuthVerifier(password) }
 }
 
 export function feedbackShareHandlers(deps: FeedbackShareDeps): { [C in Channel]: (...args: Parameters<IpcRequests[C]>) => unknown } {
   const client = new ShareClient({ fetch: deps.fetch, userAgent: deps.userAgent, ...(deps.base ? { base: deps.base } : {}) })
+  const writeClipboard = deps.writeClipboard ?? ((text: string) => clipboard.writeText(text))
   let store: ShareStore | null = null
   const shares = async (): Promise<ShareStore> => {
     if (!store) {
@@ -62,12 +86,13 @@ export function feedbackShareHandlers(deps: FeedbackShareDeps): { [C in Channel]
     }
     return store
   }
+  const summarize = async (share: StoredShare) => (await import('./store')).summarize(share)
   const project = (): string => {
     const id = deps.projectId()
     if (!id) throw new UserFacingError(t('errors.openProjectFolder'))
     return id
   }
-  const owned = async (shareId: unknown) => {
+  const owned = async (shareId: unknown): Promise<StoredShare> => {
     if (typeof shareId !== 'string') throw new UserFacingError(t('share.errors.notFound'))
     const share = await (await shares()).get(project(), shareId)
     if (!share) throw new UserFacingError(t('share.errors.notFound'))
@@ -85,83 +110,113 @@ export function feedbackShareHandlers(deps: FeedbackShareDeps): { [C in Channel]
         : err.code === 'rate_limited' ? 'share.errors.rateLimited'
           : err.code === 'gone' || err.code === 'not_found' || err.code === 'unauthorized' ? 'share.errors.notFound'
             : err.code === 'full' ? 'share.errors.full'
-              : err.code === 'too_large' || err.code === 'bad_image' ? 'share.errors.image' : 'share.errors.failed'
+              : err.code === 'too_large' || err.code === 'bad_media' ? 'share.errors.media' : 'share.errors.failed'
       throw new UserFacingError(t(key))
     }
   }
+  const create = async (input: ShareSettingsInput): Promise<StoredShare> => {
+    const projectId = project()
+    const password = input.password ?? undefined
+    const { memo, auth } = await sealed(input.memo, password)
+    return friendly(async () => {
+      const title = input.title || input.urls[0]!.title || input.urls[0]!.url
+      const created = await client.create({ title, urls: input.urls, ...(memo ? { memo } : {}), ...(auth ? { auth } : {}), ...(deps.installId() ? { installId: deps.installId()! } : {}) })
+      const share: StoredShare = {
+        id: created.id, projectId, title, url: created.url, createdAt: new Date().toISOString(), expiresAt: created.expiresAt,
+        ownerToken: created.ownerToken, urls: input.urls, memo: input.memo, ...(password ? { password } : {})
+      }
+      await (await shares()).add(share)
+      return share
+    })
+  }
+
   return {
     'share:list': async () => {
       const store = await shares()
       return { shares: deps.projectId() ? await store.list(deps.projectId()!) : [], persisted: store.persisted() }
     },
-    'share:create': async (input) => {
+    'share:forPage': async (page) => {
+      const urls = sanitizeShareUrls([page])
+      if (!urls) throw new UserFacingError(t('share.errors.noPage'))
       const projectId = project()
-      const raw = (input ?? {}) as { title?: unknown; showOthers?: unknown }
-      const title = cleanText(raw.title ?? '', SHARE_LIMITS.titleChars) ?? ''
-      // 撮るのを先に（押した直後の許可を使う）。撮れなければ共有も作らない
-      const page = await deps.snapshotPage()
-      return friendly(async () => {
-        const created = await client.create({ title: title || page.title, showOthers: raw.showOthers === true, ...(deps.installId() ? { installId: deps.installId()! } : {}) })
-        const store = await shares()
-        await store.add({ id: created.id, projectId, title: title || page.title, url: created.url, createdAt: new Date().toISOString(), expiresAt: created.expiresAt, ownerToken: created.ownerToken })
-        await client.addPage(created.id, created.ownerToken, page)
-        return (await store.list(projectId)).find((s) => s.id === created.id)!
-      })
+      const store = await shares()
+      // 同じプロジェクトで同じページの、期限まで1日以上ある共有はそのまま使う（押すたびに増やさない）
+      const soon = Date.now() + 24 * 60 * 60 * 1000
+      const mine = await store.list(projectId)
+      const found = mine.find((s) => Date.parse(s.expiresAt) > soon && s.urls.some((u) => u.url === urls[0]!.url))
+      if (found) return { share: found, created: false }
+      return { share: await summarize(await create({ title: '', urls, memo: '' })), created: true }
     },
-    'share:addPage': async (shareId) => {
+    'share:create': async (input) => summarize(await create(readSettingsInput(input))),
+    'share:settings': async (shareId) => {
       const share = await owned(shareId)
-      const page = await deps.snapshotPage()
-      return friendly(() => client.addPage(share.id, share.ownerToken, page), share.id)
+      return { title: share.title, urls: share.urls, memo: share.memo, protected: !!share.password, hasPassword: !!share.password }
+    },
+    'share:update': async (shareId, input) => {
+      const share = await owned(shareId)
+      const next = readSettingsInput(input)
+      const password = next.password === undefined ? share.password : next.password ?? undefined
+      const { memo, auth } = await sealed(next.memo, password)
+      const title = next.title || next.urls[0]!.title || next.urls[0]!.url
+      // パスワードを変えないときは確認の値を送り直さない（相手の確認済みの状態を保つ）。メモはパスワードの有無に合わせて送り直す
+      const passwordChanged = next.password !== undefined && next.password !== (share.password ?? null)
+      await friendly(() => client.update(share.id, share.ownerToken, { title, urls: next.urls, memo, ...(passwordChanged ? { auth } : {}) }), share.id)
+      const updated: StoredShare = { ...share, title, urls: next.urls, memo: next.memo }
+      if (password) updated.password = password
+      else delete updated.password
+      await (await shares()).replace(updated)
+      return summarize(updated)
+    },
+    'share:copyPassword': async (shareId) => {
+      const share = await owned(shareId)
+      if (!share.password) throw new UserFacingError(t('share.errors.noPassword'))
+      writeClipboard(share.password)
     },
     'share:open': async (shareId) => {
       const share = await owned(shareId)
       return friendly(async () => {
         const snapshot = await client.snapshot(share.id, share.ownerToken)
-        const images: Record<string, string> = {}
-        await Promise.all(snapshot.pages.map(async (page) => {
-          const bytes = await client.pageImage(share.id, page)
-          if (bytes) images[page.id] = `data:${page.ext === 'png' ? 'image/png' : 'image/jpeg'};base64,${Buffer.from(bytes).toString('base64')}`
+        const thumbnails: Record<string, string> = {}
+        // サムネイルは新しいものから、数を限って取る（多い共有で待たせない）
+        const wanted = [...snapshot.recordings].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).filter((r) => r.hasThumbnail).slice(0, 30)
+        await Promise.all(wanted.map(async (rec) => {
+          const bytes = await client.thumbnail(share.id, share.ownerToken, rec)
+          if (bytes) thumbnails[rec.id] = `data:image/jpeg;base64,${Buffer.from(bytes).toString('base64')}`
         }))
-        return { snapshot, images }
+        return { snapshot, thumbnails }
       }, share.id)
     },
-    'share:setStatus': async (shareId, commentId, status) => {
+    'share:setStatus': async (shareId, recordingId, status) => {
       const share = await owned(shareId)
-      if (typeof commentId !== 'string' || (status !== 'new' && status !== 'rejected')) throw new UserFacingError(t('share.errors.failed'))
-      await friendly(() => client.setStatus(share.id, share.ownerToken, commentId, status as ShareCommentStatus), share.id)
+      if (typeof recordingId !== 'string' || (status !== 'new' && status !== 'rejected')) throw new UserFacingError(t('share.errors.failed'))
+      await friendly(() => client.setStatus(share.id, share.ownerToken, recordingId, status), share.id)
     },
-    'share:import': async (shareId, commentIds) => {
+    'share:import': async (shareId, recordingId) => {
       const share = await owned(shareId)
       const dir = deps.projectDir()
       if (!dir) throw new UserFacingError(t('errors.openProjectFolder'))
-      if (!Array.isArray(commentIds) || commentIds.length === 0 || commentIds.length > SHARE_LIMITS.comments || !commentIds.every((id) => typeof id === 'string')) {
-        throw new UserFacingError(t('share.errors.failed'))
-      }
-      return friendly(async () => {
-        // 取り込みの処理（レビューの部品）は使うときに読む（起動を遅くしない）
-        const [{ planImport }, { newNoteId }] = await Promise.all([import('./importNotes'), import('../sessions/notes')])
+      if (typeof recordingId !== 'string') throw new UserFacingError(t('share.errors.failed'))
+      const { recording, events } = await friendly(async () => {
         const snapshot = await client.snapshot(share.id, share.ownerToken)
-        const plan = planImport(snapshot, commentIds as string[])
-        if (plan.length === 0) return null
-        // ページの静止画は1回だけ取り、PNG にして使い回す（レビューの静止画は PNG）
-        const pngs = new Map<string, { png: Uint8Array; size: { width: number; height: number } } | null>()
-        for (const item of plan) {
-          if (pngs.has(item.page.id)) continue
-          const bytes = await client.pageImage(share.id, item.page)
-          const image = bytes ? nativeImage.createFromBuffer(Buffer.from(bytes)) : null
-          pngs.set(item.page.id, image && !image.isEmpty() ? { png: new Uint8Array(image.toPNG()), size: image.getSize() } : null)
-        }
-        let reviewId: string | null = null
-        let result: { review: ReviewData; count: number } | null = null
-        for (const item of plan) {
-          result = await deps.addNote(dir, reviewId, { id: newNoteId(), note: item.note, image: pngs.get(item.page.id) ?? null, page: item.notePage })
-          reviewId = result.review.id
-          // 取り込んだ印を付ける（失敗しても取り込みは済んでいる。次に開いたときにまた選べる）
-          await client.setStatus(share.id, share.ownerToken, item.comment.id, 'imported').catch(() => undefined)
-        }
-        if (result) deps.onAdded(result)
-        return result
+        const recording = snapshot.recordings.find((r) => r.id === recordingId)
+        if (!recording) throw new UserFacingError(t('share.errors.notFound'))
+        return { recording, events: await client.events(share.id, share.ownerToken, recording) }
       }, share.id)
+      const review = await deps.importRecording({
+        projectDir: dir, recording, events,
+        // 録画は新しいファイルとして書く（既にある名前・リンクには書かない）
+        download: (dest) => friendly(async () => {
+          const file = await open(dest, 'wx', 0o600)
+          try {
+            await client.media(share.id, share.ownerToken, recording, async (chunk) => { await file.write(chunk) })
+          } finally {
+            await file.close()
+          }
+        }, share.id)
+      })
+      // 取り込んだ印を付ける（失敗しても取り込みは済んでいる。次に開いたときにまた選べる）
+      await client.setStatus(share.id, share.ownerToken, recording.id, 'imported').catch(() => undefined)
+      return review
     },
     'share:delete': async (shareId) => {
       const share = await owned(shareId)

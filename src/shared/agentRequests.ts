@@ -68,12 +68,16 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
         '人が確認・判断すべきことを、すべてのプロダクトから集めて、全体のフォルダの human.md に Markdown でまとめてください。Ferret の全体のダッシュボードの一番上に、この一覧がそのまま出ます（人はそこだけを見れば足りるようにします）。',
         '集めるもの：画面・動きの確認（before / after）、人の承認が要るもの（公開・課金・本番の設定・データの削除・外への送信）、人が用意するもの（鍵・アカウント・契約・ドメイン）、決めてほしいこと（仕様・優先順位・文言）、Agent が止まっている・失敗しているもの。各プロダクトの human.md・TODO・確認待ちの指摘（.ferret/reviews/<id>/progress.json の human_review）・直近の会話の最後の報告から拾い、プロダクトごとの subagent に並行して集めさせてください。',
         '書き方：表 `| 番号 | プロダクト | URL | 見てほしいこと |` に1行1件。番号は B1, B2 …（画面の確認）・A1 …（承認）・P1 …（人が用意するもの）・D1 …（決めること）。画面で確かめるものは開く URL（localhost・dev・prd）を必ず入れ、URL の無いものは URL の列を「-」にする。見てほしいことは1文で、何を見て何を判断すればよいかが分かるように書く。',
+        '選んでほしいことは表ではなく質問のブロックにする：見出し `### Q1 [プロダクト] 質問` の下に補足（任意）と番号の選択肢 `1. …` を書き、おすすめの選択肢の後ろに `(recommended)` を付ける（人は Ferret のダッシュボードで番号を選ぶか自由に書いて答える）。ブロックは次の見出しまで続くので、質問は表の後ろにまとめる。',
+        '人の答えは human.md の最後の `## 回答` に `- Q1: 2. …` の形で Ferret が書きます。答えの行は消さず、項目の中身だけを今の状態に直してください。全体のルールの「人の確認なしで進めてよい操作」に当たるものは human.md に載せないでください。',
         '済んだもの・古いものは消し、重なっているものは1つにまとめ、急ぐもの・大事なものを上に並べてください。秘密の値（鍵・パスワード）は書かないでください。'
       ].join('\n'),
       en: [
         'Collect everything a person must check or decide, across every product, and write it as Markdown into human.md in the top-level folder. Ferret shows this list as-is at the top of the All products dashboard, so it should be the only place a person needs to look.',
         'Collect: screens and behavior to check (before / after); things that need a person\'s approval (publishing, spending money, production settings, deleting data, sending anything outside); things a person must provide (keys, accounts, contracts, domains); decisions (spec, priorities, wording); and agents that are stuck or failing. Gather them from each product\'s human.md, TODOs, findings waiting for a person (human_review in .ferret/reviews/<id>/progress.json) and the final reports of recent conversations, with each product\'s subagent working in parallel.',
         'Format: one row per item in a table `| No. | Product | URL | What to check |`. Numbers are B1, B2 … (check a screen), A1 … (approve), P1 … (provide), D1 … (decide). Always include the URL to open (localhost, dev, prd) for anything checked on screen; use "-" in the URL column when there is none. Write what to check in one sentence that says what to look at and what to decide.',
+        'Anything a person should choose goes in a question block instead of the table: a heading `### Q1 [product] question`, optional explanation lines, then numbered options `1. …` with `(recommended)` after the one you recommend (the person answers on the Ferret dashboard by picking a number or writing freely). A block runs until the next heading, so put questions after the table.',
+        'Ferret writes the person\'s answers under `## Answers` at the end of human.md as `- Q1: 2. …`. Keep those lines; only bring the items up to date. Leave out anything covered by the "operations allowed without asking" in the shared rules.',
         'Remove what is done or stale, merge duplicates, and put urgent and important items first. Never write secret values (keys, passwords).'
       ].join('\n')
     }
@@ -478,8 +482,8 @@ export function builtinRequestText(id: string, lang: RequestLanguage): string | 
  * プロダクトの中でも独立した作業を並行させる（1つずつ順に進めない）
  */
 export const ORCHESTRA_FAN_OUT: Record<RequestLanguage, string> = {
-  ja: 'これはオーケストレーターからの依頼です。対象のプロダクトごとに subagent を1つずつ立て、すべてのプロダクトを同時に並行して進めてください（1つずつ順に進めない）。各プロダクトの中でも、互いに関係しない作業は subagent や並行のタスクに分けて同時に進めてください。共通の部分（共通のルール・共有のコード）は先に1回で済ませ、インフラなどプロダクトごとに分けるものは混ぜないでください。最後にプロダクトごとの結果をまとめてください。',
-  en: 'This request comes from the orchestrator. Start one subagent per included product and run all products at the same time in parallel (never one after another). Inside each product too, split work that does not depend on each other into parallel subagents or tasks. Do the shared part (shared rules, shared code) once first, and keep infrastructure and other per-product things separate. Finish with the results per product.'
+  ja: 'これはオーケストレーターからの依頼です。対象のプロダクトごとに subagent を1つずつ立て、すべてのプロダクトを同時に並行して進めてください（1つずつ順に進めない）。ブラウザの操作（Claude in Chrome・computer use）も、各 subagent が自分のタブ・ウインドウで同時に行い、ほかのプロダクトのブラウザの作業を待たないでください。各プロダクトの中でも、互いに関係しない作業は subagent や並行のタスクに分けて同時に進めてください。共通の部分（共通のルール・共有のコード）は先に1回で済ませ、インフラなどプロダクトごとに分けるものは混ぜないでください。最後にプロダクトごとの結果をまとめてください。',
+  en: 'This request comes from the orchestrator. Start one subagent per included product and run all products at the same time in parallel (never one after another). Browser work (Claude in Chrome, computer use) also runs at the same time: each subagent uses its own tab or window and never waits for another product\'s browser work. Inside each product too, split work that does not depend on each other into parallel subagents or tasks. Do the shared part (shared rules, shared code) once first, and keep infrastructure and other per-product things separate. Finish with the results per product.'
 }
 
 /**

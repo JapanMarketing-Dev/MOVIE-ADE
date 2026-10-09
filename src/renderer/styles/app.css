@@ -486,6 +486,102 @@ button {
   white-space: nowrap;
 }
 
+/* 確認リストの答え（番号の選択肢・おすすめ・自由入力） */
+.orchestra__table tr.orchestra__check-row td {
+  border-bottom: none;
+  padding-bottom: 2px;
+}
+
+.orchestra__answer-row td {
+  padding-top: 2px;
+}
+
+.checklist-answer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.checklist-answer__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 2px 10px 2px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.checklist-answer__option:hover {
+  border-color: var(--color-primary, #4f8cff);
+}
+
+.checklist-answer__option.is-picked {
+  border-color: var(--color-text);
+  background: var(--color-surface-active);
+}
+
+.checklist-answer__num {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--color-border);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.checklist-answer__option.is-picked .checklist-answer__num {
+  background: var(--color-text);
+  color: var(--color-bg-app);
+}
+
+.checklist-answer__rec {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.checklist-answer__input {
+  flex: 1 1 180px;
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12px;
+}
+
+.checklist-answer__clear {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.checklist-answer__allow {
+  font-size: 12px;
+}
+
+.orchestra__allowed {
+  margin-top: var(--space-3);
+}
+
 .orchestra__state--working {
   color: var(--color-primary, #4f8cff);
 }

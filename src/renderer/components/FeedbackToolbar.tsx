@@ -130,7 +130,8 @@ export function FeedbackToolbar({
   tracks,
   onSwitchTrack,
   onAddTrack,
-  mic
+  mic,
+  extensions = true
 }: {
   level?: number
   captureMic?: boolean
@@ -148,7 +149,8 @@ export function FeedbackToolbar({
   noteMode?: boolean
   noteDisabled?: boolean
   onToggleNote?: () => void
-  onBackToEditor: () => void
+  /** エディタへ戻る（一番左）。省けばボタンを出さない（共有リンクの相手の画面。workers/feedback-share/client） */
+  onBackToEditor?: () => void
   paused?: boolean
   busy?: boolean
   onPause?: () => void
@@ -178,6 +180,8 @@ export function FeedbackToolbar({
   onSwitchTrack?: (id: string) => void
   /** 録画中にほかのウインドウ・画面も同時に録る（選択画面を開く） */
   onAddTrack?: () => void
+  /** 内蔵ブラウザの拡張機能のボタンを出すか（共有リンクの相手の画面では出さない） */
+  extensions?: boolean
   /** マイクのメニュー（つながっているマイクの名前・入力レベルのテスト・選択）。フッターのものと同じ */
   mic?: {
     settings: FooterCapture
@@ -321,7 +325,7 @@ export function FeedbackToolbar({
         onBlur={() => setHintId(null)}
       >
         {/* エディタへ戻るのは一番左。右端はレビュー対象のパネルの開閉 */}
-        {slot(
+        {onBackToEditor && slot(
           'editor',
           <IconButton
             label={t('feedback.toEditorMode')}
@@ -333,7 +337,7 @@ export function FeedbackToolbar({
           />
         )}
 
-        {divider}
+        {onBackToEditor && divider}
 
         <span className="fb-status">
           {isPaused ? (
@@ -396,7 +400,7 @@ export function FeedbackToolbar({
           />
         )}
         {/* 拡張機能のポップアップ。録画中も開ける（ポップアップも動画・静止画に重ねて録る） */}
-        {showsBrowserNav(target) && slot('extensions', <BrowserExtensionsButton className="fb-btn" testId="feedback-extensions" />)}
+        {showsBrowserNav(target) && extensions && slot('extensions', <BrowserExtensionsButton className="fb-btn" testId="feedback-extensions" />)}
         {onPickTarget && slot(
           'target',
           <IconButton

@@ -297,6 +297,7 @@ export const SETTINGS_SCHEMA: JsonSchema = {
       description: 'Rules people write for All products (Settings > Orchestra). Ferret puts them in the All products CLAUDE.md / AGENTS.md and in each product\'s subagent.',
       properties: {
         shared: str('Rules shared by all products (conventions, security, design, docs).', { maxLength: 8000 }),
+        allowed: str('Operations agents may do without asking a person, one per line (for example "deploy to the dev environment", "add dependencies"). They go into the All products CLAUDE.md / AGENTS.md and each subagent, are sent with the answers from the dashboard, and are kept out of human.md.', { maxLength: 8000 }),
         products: { type: 'object', description: 'Project id → rules only for that product (infrastructure, tags, instances, deployment).', additionalProperties: str('Rules for one product.', { maxLength: 8000 }) }
       }
     },

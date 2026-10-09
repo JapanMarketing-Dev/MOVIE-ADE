@@ -1,0 +1,495 @@
+/* 共有リンクの相手の画面だけの見た目。色・寸法はアプリの tokens.css の値を使う（録画の帯は feedback.css そのもの） */
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif);
+  font-size: var(--font-size-md);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.share-message {
+  padding: var(--space-9) var(--space-6);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.share-muted {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.share-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+}
+
+.share-warn {
+  color: var(--color-warning, #f5a524);
+}
+
+.share-card {
+  display: grid;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-panel);
+  gap: var(--space-4);
+}
+
+.share-card h2 {
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+
+.share-field {
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.share-field > span {
+  color: var(--color-text-muted);
+}
+
+.share-field input,
+.share-field textarea,
+.share-memo__locked input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.share-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* ── パスワード ── */
+
+.share-gate {
+  display: grid;
+  min-height: 100%;
+  place-items: center;
+  padding: var(--space-6);
+  box-sizing: border-box;
+}
+
+.share-gate__card {
+  width: min(420px, 100%);
+}
+
+.share-gate__card h1 {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-size: 16px;
+  gap: var(--space-3);
+}
+
+/* ── 一覧 ── */
+
+.share-home {
+  display: grid;
+  width: min(880px, 100%);
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-6) var(--space-9);
+  box-sizing: border-box;
+  gap: var(--space-6);
+}
+
+.share-head {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.share-head__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.share-head h1 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.share-logo {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 5px;
+  background: var(--color-accent);
+}
+
+.share-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.share-option {
+  display: grid;
+  justify-items: start;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  gap: var(--space-3);
+}
+
+.share-option:hover {
+  border-color: var(--color-accent);
+}
+
+.share-option__title {
+  font-weight: var(--font-weight-bold, 600);
+}
+
+.share-option__desc {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.share-urls {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.share-url {
+  display: flex;
+  align-items: center;
+  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+}
+
+.share-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  gap: var(--space-4);
+}
+
+.share-item {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+.share-item__thumb {
+  position: relative;
+  display: grid;
+  aspect-ratio: 16 / 10;
+  place-items: center;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.share-item__thumb:disabled {
+  cursor: default;
+}
+
+.share-item__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.share-item__play {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 60%);
+  color: #fff;
+}
+
+.share-item__body {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: var(--space-3);
+}
+
+.share-item__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.share-item__notes {
+  display: grid;
+  margin: 0;
+  padding-left: 18px;
+  gap: var(--space-2);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* ── メモ ── */
+
+.share-memo__toggle {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: var(--font-weight-bold, 600);
+  cursor: pointer;
+  gap: var(--space-2);
+}
+
+.share-memo__body {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.share-memo__line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.share-memo__text {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.share-memo__copy {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  gap: var(--space-2);
+}
+
+.share-memo__copy--all {
+  justify-self: start;
+}
+
+.share-memo__locked {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.share-memo--compact {
+  padding: var(--space-4);
+}
+
+/* ── 録画（帯・ページ・脇） ── */
+
+.share-session {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.share-session .fb-bar {
+  flex: none;
+}
+
+.share-session__main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.share-stage {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+.share-stage__frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.share-stage__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.share-stage__hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.share-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.share-layer__canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.share-session__side {
+  display: grid;
+  align-content: start;
+  width: 280px;
+  flex: none;
+  overflow: auto;
+  padding: var(--space-4);
+  border-left: 1px solid var(--color-border);
+  gap: var(--space-4);
+}
+
+.share-session__info a {
+  color: var(--color-accent);
+}
+
+/* ── 重ねる画面（同意・確認・送信・再生） ── */
+
+.share-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background: var(--color-scrim, rgb(0 0 0 / 55%));
+}
+
+.share-modal__body {
+  display: grid;
+  width: min(560px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: var(--space-6);
+  box-sizing: border-box;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  gap: var(--space-4);
+}
+
+.share-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.share-modal__media {
+  width: 100%;
+  max-height: 70vh;
+  background: #000;
+}
+
+.share-consent h2,
+.share-review h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.share-consent ul {
+  display: grid;
+  margin: 0;
+  padding-left: 18px;
+  gap: var(--space-3);
+}
+
+.share-review__thumb {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.share-file {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  padding: var(--space-4) var(--space-5);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  gap: var(--space-3);
+}
+
+.share-file input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+@media (max-width: 820px) {
+  .share-session__main {
+    flex-direction: column;
+  }
+  .share-session__side {
+    width: auto;
+    border-left: 0;
+    border-top: 1px solid var(--color-border);
+  }
+  .share-stage {
+    min-height: 60vh;
+  }
+  .share-item {
+    grid-template-columns: 110px minmax(0, 1fr);
+  }
+  .share-home {
+    padding: var(--space-6) var(--space-5) var(--space-8);
+  }
+}

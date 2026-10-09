@@ -1,7 +1,7 @@
 import type { BrowserExtensionInfo, InstalledBrowserExtension } from './browserExtensions'
 import type { GithubPreferences, RepoCreateInfo, RepoCreateRequest, RepoCreateResult } from './repoCreate'
 import type { BrowserImportStatus, HistorySourceInfo, PageLogins } from './browserImport'
-import type { ShareCommentStatus, SharePage, ShareSnapshot, ShareSummaryInfo } from './feedbackShare'
+import type { ShareRecordingStatus, ShareSettingsInput, ShareSettingsView, ShareSnapshot, ShareSummaryInfo, ShareUrl } from './feedbackShare'
 import type { MeetingImportProgress, MeetingImportRequest, MeetingMediaPick, MeetingScoreResult, MeetingTranscriptPick } from './meetingImport'
 import type { AgentNotifyOpen, AgentNotifyRequest } from './agentNotify'
 import type { FailoverLaunchRequest, FailoverNotice, LimitFailoverPrefs } from './failover'
@@ -191,8 +191,14 @@ export interface IpcRequests {
   'orchestra:overview': () => import('./agentCost').OrchestraOverview
   /** 全体の human.md の確認リストだけ（フィードバックの帯。コストは数えない） */
   'orchestra:checklist': () => import('./humanChecklist').ChecklistItem[]
+  /** 人の答えを全体の human.md の「## 回答」に書く（空の答えは消す）。書いたあとの確認リストを返す */
+  'orchestra:answer': (entries: Array<{ key: string; answer: string }>) => import('./humanChecklist').ChecklistItem[]
+  /** human.md の答えと「人の確認なしで進めてよい操作」をまとめて、全体の Agent に1回で送る */
+  'orchestra:sendAnswers': () => { ok: boolean; message: string; noAgent?: boolean }
   /** 全体（すべてのプロダクト）の共通のルールとプロダクトごとのルール */
   'settings:orchestra': (rules: import('./orchestrator').OrchestraRules) => void
+  /** 全体として人の確認なしで進めてよい操作だけを書き換える（ダッシュボード） */
+  'settings:orchestraAllowed': (allowed: string) => void
 
   /** Claude Code / Codex のアカウント。一覧を読むたびにログインの済んだ行を登録し直す */
   'accounts:list': () => AgentAccountsState
@@ -286,16 +292,22 @@ export interface IpcRequests {
   'passwords:menu': (at: { x: number; y: number }) => boolean | 'manage'
   /** ログイン無しで誰でも指摘を送れる共有リンク（src/main/feedbackShare/）。このプロジェクトの共有の一覧 */
   'share:list': () => { shares: ShareSummaryInfo[]; persisted: boolean }
-  /** 押した直後の1回だけ、表示中のタブを撮って共有を作る */
-  'share:create': (input: { title: string; showOthers: boolean }) => ShareSummaryInfo
-  /** 押した直後の1回だけ、表示中のタブを撮って共有に足す */
-  'share:addPage': (shareId: string) => SharePage
-  /** 共有の中身と届いた指摘（静止画は data URL） */
-  'share:open': (shareId: string) => { snapshot: ShareSnapshot; images: Record<string, string> }
-  /** 指摘を断る・断ったのを戻す */
-  'share:setStatus': (shareId: string, commentId: string, status: Extract<ShareCommentStatus, 'new' | 'rejected'>) => void
-  /** 選んだ指摘をレビュー（文字で指摘と同じ形）に取り込む。取り込めるものが無ければ null */
-  'share:import': (shareId: string, commentIds: string[]) => { review: ReviewData; count: number } | null
+  /** 開いているページの共有（同じ URL の期限内のもの）を返す。無ければ作る。リンクは画面がコピーする */
+  'share:forPage': (page: ShareUrl) => { share: ShareSummaryInfo; created: boolean }
+  /** 設定（題名・ページ・メモ・パスワード）を決めて共有を作る */
+  'share:create': (input: ShareSettingsInput) => ShareSummaryInfo
+  /** 共有の設定を開く（パスワードそのものは返さない） */
+  'share:settings': (shareId: string) => ShareSettingsView
+  /** 共有の設定を変える */
+  'share:update': (shareId: string, input: ShareSettingsInput) => ShareSummaryInfo
+  /** 覚えているパスワードを main がクリップボードへ写す（画面へは返さない） */
+  'share:copyPassword': (shareId: string) => void
+  /** 共有の中身と届いた録画（サムネイルは data URL） */
+  'share:open': (shareId: string) => { snapshot: ShareSnapshot; thumbnails: Record<string, string> }
+  /** 録画を断る・断ったのを戻す */
+  'share:setStatus': (shareId: string, recordingId: string, status: Extract<ShareRecordingStatus, 'new' | 'rejected'>) => void
+  /** 届いた録画を mtg と同じ流れでレビュー（指摘の候補）にする。進み具合は meeting:progress */
+  'share:import': (shareId: string, recordingId: string) => ReviewData
   /** 共有を消す（相手の画面も見られなくなる） */
   'share:delete': (shareId: string) => void
 
@@ -712,7 +724,10 @@ export const IPC_REQUEST_CHANNELS = [
   'review:pendingAcross',
   'orchestra:overview',
   'orchestra:checklist',
+  'orchestra:answer',
+  'orchestra:sendAnswers',
   'settings:orchestra',
+  'settings:orchestraAllowed',
   'accounts:list',
   'accounts:add',
   'accounts:rename',
@@ -737,7 +752,7 @@ export const IPC_REQUEST_CHANNELS = [
   'browser:state',
   'browserExtensions:list', 'browserExtensions:addFolder', 'browserExtensions:scanInstalled', 'browserExtensions:import', 'browserExtensions:setEnabled', 'browserExtensions:remove', 'browserExtensions:menu', 'browserExtensions:open', 'browserExtensions:installFromStore', 'browserExtensions:addCrx',
   'browserImport:status', 'browserImport:importPasswords', 'browserImport:findExports', 'browserImport:trashExport', 'browserImport:clearPasswords', 'browserImport:historySources', 'browserImport:importHistory', 'browserImport:clearHistory', 'browserImport:suggest', 'passwords:forPage', 'passwords:fill', 'passwords:menu',
-  'share:list', 'share:create', 'share:addPage', 'share:open', 'share:setStatus', 'share:import', 'share:delete',
+  'share:list', 'share:forPage', 'share:create', 'share:settings', 'share:update', 'share:copyPassword', 'share:open', 'share:setStatus', 'share:import', 'share:delete',
   'terminal:create',
   'terminal:write',
   'terminal:resize',

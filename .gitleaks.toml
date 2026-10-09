@@ -10,3 +10,9 @@ paths = [
   '''(^|/)test/unit/stt-provider\.test\.ts$''',
   '''(^|/)test/unit/telemetry\.test\.ts$''',
 ]
+# 共有リンクの相手の画面のまとめ（workers/feedback-share/src/generated.ts）は、元のファイルの名前と sha256 の先頭を持つ。
+# tokens.css の名前と16進の値が API キーに見えるため、その形だけを除外する（ファイル全体は除外しない）
+regexTarget = "line"
+regexes = [
+  '''styles/tokens\.css": "[0-9a-f]{16}"''',
+]

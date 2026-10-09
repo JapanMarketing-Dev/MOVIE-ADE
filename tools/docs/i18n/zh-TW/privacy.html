@@ -21,7 +21,7 @@
 ## 保留期間
 <p><span class="docs-ui">保留錄影</span>（預設 7 天，可選 30 天或 <span class="docs-ui">永久</span>）：啟動時，超過該期間的已完成審查會刪除 <code>recording.webm</code> 與 <code>work/</code>。<code>feedback.md</code> 與意見的圖片會保留。未完成的審查絕不會被清除。清除作業在啟動時針對最後開啟的專案執行。</p>
 
-<!-- @network 43018284d4 -->
+<!-- @network 575731811a -->
 ## 哪些資料會離開你的電腦
 <table>
   <thead><tr><th>時機</th><th>傳送目的地</th><th>資料</th></tr></thead>
@@ -32,7 +32,7 @@
     <tr><td><span class="docs-ui">整理</span></td><td>你的 Claude Code / Codex CLI，或你在 <code>organizer</code> 中設定的 LLM 端點</td><td>僅文字與操作記錄（不含圖片、音訊或影片）</td></tr>
     <tr><td>驗收檢查（判定模型，預設關閉）</td><td>你的 Agent 經由本機中繼送到 Ollama / Cloudflare / AI Gateway / TypeSafe / OpenAI / 你的 URL</td><td>Agent 送出的內容：意見文字、「完成條件」，以及 BEFORE/AFTER 螢幕截圖（僅限圖片模型）</td></tr>
     <tr><td>為匯入的會議候選評分（判定模型，僅在開啟時）</td><td>Ferret 經過本機中繼，傳送到你設定的判定模型</td><td>每個候選的標題和請求、它來源的發言，以及對應的影片畫面（僅限能讀圖片的模型）</td></tr>
-    <tr><td>分享連結（僅在你建立時）</td><td><code>share.ferretade.dev</code>（由開發者營運的 Cloudflare Worker）</td><td>標題、頁面可見部分的截圖及其 URL 和標題，以及隨機安裝 ID（僅以帶金鑰的雜湊形式用於限制一個安裝能建立的連結數）。任何拿到連結的人都能看到截圖；對方的意見和選填的名字也會傳送到同一伺服器（參閱<a href="recording.html#share">分享連結</a>）</td></tr>
+    <tr><td>分享連結（僅在你建立時）</td><td><code>share.ferretade.dev</code>（由開發者營運的 Cloudflare Worker）</td><td>標題、它開啟的頁面的 URL 和標題、備註（設定密碼後會加密；密碼本身永遠不會傳送），以及隨機安裝 ID（僅以帶金鑰的雜湊形式用於限制一個安裝能建立的連結數）。對方的錄製內容、文字備註、繪圖和選填的名字也會傳送到同一伺服器，任何拿到連結的人都能看到它們（參閱<a href="recording.html#share">分享連結</a>）。所有內容都會在 7 天後刪除</td></tr>
     <tr><td><span class="docs-ui">在 GitHub 建立私人儲存庫</span>（僅在點選 <span class="docs-ui">建立</span> 時）</td><td>透過你的 <code>gh</code> 傳送到 GitHub</td><td>用你選擇的名稱和說明建立私人儲存庫，並推送資料夾的提交（Ferret 建立的第一個提交不包含 <code>.gitignore</code> 忽略的檔案和可能含有機密的檔案）</td></tr>
     <tr><td><span class="docs-ui">傳送給 Agent</span></td><td>你終端機中的 Agent</td><td>一則指向 <code>feedback.md</code> 的指示</td></tr>
     <tr><td>頁尾的用量（僅限 Claude Code 與 Codex）</td><td>Anthropic、ChatGPT</td><td>以你自己的登入發出的用量請求</td></tr>

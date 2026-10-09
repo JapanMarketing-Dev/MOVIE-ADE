@@ -1910,6 +1910,29 @@ function registerIpc(): void {
       const editor = currentSettings().projects.find((p) => p.editorWorkspace)
       return editor ? (await (await import('./orchestraOverview')).readChecklist(editor.folderPath)).items : []
     },
+    'orchestra:answer': async (entries) => {
+      const editor = currentSettings().projects.find((p) => p.editorWorkspace)
+      if (!editor) return []
+      const list = Array.isArray(entries) ? entries.slice(0, 500).filter((e): e is { key: string; answer: string } => !!e && typeof e === 'object' && typeof e.key === 'string' && typeof e.answer === 'string') : []
+      return (await import('./orchestraOverview')).writeAnswers(editor.folderPath, list, guideLanguage())
+    },
+    'orchestra:sendAnswers': async () => {
+      const editor = currentSettings().projects.find((p) => p.editorWorkspace)
+      if (!editor) return { ok: false, message: t('orchestra.answersNone') }
+      const [{ readChecklist }, { composeAnswersMessage }] = await Promise.all([import('./orchestraOverview'), import('@shared/humanChecklist')])
+      const { items } = await readChecklist(editor.folderPath)
+      if (!items.some((it) => it.answer)) return { ok: false, message: t('orchestra.answersNone') }
+      // 宛先は全体（すべてのプロダクト）のフォルダの Agent
+      const target = terminals ? await terminals.resolveSendTarget(null, editor.folderPath) : null
+      if (!target) return { ok: false, message: t('terminal.send.noAgent'), noAgent: true }
+      const { ok, message } = await terminals!.sendReview(target, composeAnswersMessage(items, guideLanguage(), currentSettings().orchestra?.allowed))
+      return { ok, message: ok ? t('orchestra.answersSent', { count: items.filter((it) => it.answer).length }) : message }
+    },
+    'settings:orchestraAllowed': async (allowed) => {
+      const { sanitizeOrchestraRules } = await import('@shared/orchestrator')
+      updateSettings({ orchestra: sanitizeOrchestraRules({ ...currentSettings().orchestra, allowed: typeof allowed === 'string' ? allowed : '' }) })
+      syncEditorWorkspace()
+    },
     'settings:orchestra': async (rules) => {
       const { sanitizeOrchestraRules } = await import('@shared/orchestrator')
       updateSettings({ orchestra: sanitizeOrchestraRules(rules) })
@@ -2084,29 +2107,10 @@ function registerIpc(): void {
       isE2E: IS_E2E,
       notifyChanged: () => send('passwords:changed')
     }),
-    // ログイン無しで誰でも指摘を送れる共有リンク（作る・届いた指摘を取り込む。src/main/feedbackShare/ipc.ts）
+    // ログイン無しで誰でも指摘を送れる共有リンク（作る・届いた録画を取り込む。src/main/feedbackShare/ipc.ts）
     ...feedbackShareHandlers({
       projectId: () => workspace.projectId ?? null,
       projectDir: () => workspace.folderPath ?? null,
-      // 撮って外へ上げるのは、利用者がアプリの窓で押した直後の1回だけ（security-5 [1]）。http(s) のページだけ（手元のファイルは上げない）
-      snapshotPage: async () => {
-        if (!gestures.consume('screenshot')) throw new UserFacingError(t('errors.needsUserAction'))
-        const target = browser?.visibleSnapshotTarget() ?? null
-        const url = target?.contents.getURL() ?? ''
-        if (!target || !browser || !/^https?:\/\//i.test(url)) throw new UserFacingError(t('share.errors.noPage'))
-        const shot = await target.contents.capturePage()
-        if (shot.isEmpty()) throw new UserFacingError(t('share.errors.noPage'))
-        const resized = shot.getSize().width > 2000 ? shot.resize({ width: 2000, quality: 'better' }) : shot
-        // 4MB（Worker の上限）に収まるよう JPEG にする。収まらなければ質を下げる
-        let image = resized.toJPEG(85)
-        if (image.byteLength > 4 * 1024 * 1024) image = resized.toJPEG(60)
-        if (image.byteLength > 4 * 1024 * 1024) throw new UserFacingError(t('share.errors.image'))
-        return {
-          url, title: target.contents.getTitle().slice(0, 200), viewport: browser.state().viewport,
-          width: Math.max(1, Math.round(target.bounds.width)), height: Math.max(1, Math.round(target.bounds.height)),
-          image: new Uint8Array(image), type: 'image/jpeg' as const
-        }
-      },
       fetch: (url, init) => import('electron').then(({ net }) => net.fetch(url, init)),
       // 開発版だけ、手元で動かした Worker（127.0.0.1 / localhost）に向けて確かめられる。配布版は常に share.ferretade.dev
       ...(!IS_PACKAGED && /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(process.env.FERRET_SHARE_BASE ?? '') ? { base: process.env.FERRET_SHARE_BASE } : {}),
@@ -2115,12 +2119,17 @@ function registerIpc(): void {
       userDataDir: () => app.getPath('userData'),
       isPackaged: IS_PACKAGED,
       isE2E: IS_E2E,
-      addNote: async (dir, reviewId, request) => {
-        const { addTextNote } = await import('./review')
-        const urlPresets = currentSettings().projects.find((p) => p.id === workspace.projectId)?.urls ?? []
-        return addTextNote(dir, reviewId, { ...request, urlPresets })
-      },
-      onAdded: (result) => send('note:added', result)
+      // 届いた録画は mtg と同じ流れ（文字起こし・コマ・書き込み）で指摘の候補にする（meeting/import.ts）
+      importRecording: async ({ projectDir, recording, events, download }) => {
+        const [{ importShareRecording }, r] = await Promise.all([import('./meeting/import'), import('./review')])
+        return importShareRecording({
+          projectDir, recording, events, download,
+          sttEngine: () => sttEngineFor(currentSettings().capture?.transcription ?? 'local', currentSettings().capture?.language ?? 'auto'),
+          urlPresets: (currentSettings().projects.find((p) => p.id === workspace.projectId)?.urls ?? []).flatMap((u) => (u.url ? [{ id: u.id, label: u.label, url: u.url, ...(u.purpose ? { purpose: u.purpose } : {}) }] : [])),
+          createReview: r.createImportedReview,
+          onProgress: (progress) => send('meeting:progress', progress)
+        })
+      }
     }),
     'browser:state': () =>
       browser?.state() ?? {

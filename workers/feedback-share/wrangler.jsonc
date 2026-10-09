@@ -11,7 +11,7 @@
   "vars": {
     "PUBLIC_BASE": "https://share.ferretade.dev"
   },
-  // ページの静止画の置き場。公開しないバケット。画像は Worker の /v1/public/<id>/pages/ から返す
+  // 録画・書き込みの記録・サムネイルの置き場。公開しないバケット。Worker の /v1/public/<id>/recordings/ と持ち主の API から返す
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "ferret-share-media" }],
   // 共有1つにつき1つの Durable Object（ShareRoom）と、頻度の上限（FeedbackLimiter。中継と同じもの）。無料のプランで使える SQLite の Durable Object
   "durable_objects": {

@@ -5,7 +5,8 @@ import { join } from 'node:path'
 import type { Project } from '@shared/types'
 import { EMPTY_PERIODS, addTranscriptLineByPeriod, periodStarts, sumPeriods, transcriptDirName, type CostPeriods, type OrchestraOverview, type ProjectOverview } from '@shared/agentCost'
 import { EMPTY_EXTRA_PERIODS, extraPeriods, parseCostFile, type ExtraPeriods } from '@shared/extraCost'
-import { parseHumanChecklist, uniqueByUrl, type ChecklistItem } from '@shared/humanChecklist'
+import { parseHumanChecklist, setAnswers, uniqueByUrl, type ChecklistItem } from '@shared/humanChecklist'
+import { writeAtomic } from './orchestrator'
 
 /**
  * 全体（すべてのプロダクト）のダッシュボードに出すもの。プロジェクトごとの進み具合・コスト、人の確認リスト（human.md）。
@@ -142,6 +143,20 @@ export async function readChecklist(editorFolder: string): Promise<{ items: Chec
     if (text !== null) return { items: uniqueByUrl(parseHumanChecklist(text)), path }
   }
   return { items: [], path: null }
+}
+
+/** 人の答えを全体のフォルダの human.md の「## 回答」に書く。human.md が無ければ作らない（答える項目が無い） */
+export async function writeAnswers(editorFolder: string, entries: ReadonlyArray<{ key: string; answer: string }>, lang: 'ja' | 'en'): Promise<ChecklistItem[]> {
+  for (const name of ['human.md', 'HUMAN.md']) {
+    const text = await readFile(join(editorFolder, name), 'utf8').catch(() => null)
+    if (text === null) continue
+    if (text.length > 4 * 1024 * 1024) throw new Error('human.md is too large')
+    const next = setAnswers(text, entries, lang)
+    // リンクの先には書かない（writeAtomic が確かめる）
+    if (next !== text) await writeAtomic(editorFolder, name, next)
+    return uniqueByUrl(parseHumanChecklist(next))
+  }
+  return []
 }
 
 export async function orchestraOverview(

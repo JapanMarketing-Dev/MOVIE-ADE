@@ -363,11 +363,14 @@ export function shouldReportProcessGone(reason: string): boolean {
  * minimizeNativeCrash を通したネイティブのクラッシュを送るか。main（browser）以外のプロセスが外から止められた（killed）・
  * 正常に終わった（clean-exit）ものは、shouldReportProcessGone と同じく送らない。
  * macOS の Utility が SIGTERM（exitCode 15）で止められたときも crashpad が報告を作り、SDK が「Native crash (Utility, killed)」として送っていた（Sentry FERRET-1V）。
- * main は前の起動の理由が分からない（unknown）ことが多いので、理由では捨てない
+ * main は前の起動の理由が分からない（unknown）ことが多いので、理由では捨てない。
+ * 子のプロセスが dyld で読み込みの途中に外から止められた報告（例外なし crash.code 0x0・落ちた場所が dyld）も同じく送らない。
+ * 次の起動で見つかった報告はプロセスと理由が分からない（unknown）ため、killed で捨てられずに「Native crash (unknown): dyld」になっていた（Sentry FERRET-1W。1V と同じ形）
  */
 export function shouldSendNativeCrash(event: { tags?: object }): boolean {
   const tags = (event.tags ?? {}) as Record<string, unknown>
   if (tags['event.process'] === 'browser') return true
+  if (tags['crash.code'] === '0x0' && tags['crash.module'] === 'dyld') return false
   return typeof tags['exit.reason'] !== 'string' || shouldReportProcessGone(tags['exit.reason'])
 }
 

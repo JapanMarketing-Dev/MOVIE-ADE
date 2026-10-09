@@ -1,30 +1,20 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { isPageChange } from '../shared/page'
 import { acceptClick, isSameOriginNavigation, type LastClick } from '../shared/reviewInput'
-import { ANNOTATION_COLORS, DEFAULT_ANNOTATION_COLOR, annotationKeyAction, normalizeAnnotationColor, rectFromDrag, type AnnotationColor } from '../shared/annotation'
-import {
-  addShape,
-  canRedoShapes,
-  canUndoShapes,
-  clearShapes,
-  emptyShapes,
-  grabShapeAt,
-  moveShape,
-  redoShapes,
-  shapeBounds,
-  translateShape,
-  undoShapes,
-  type Shape,
-  type ShapeChange,
-  type ShapeState
-} from '../shared/annotationShapes'
-import { MAX_NOTE_TEXT, NOTE_CHANNELS, noteBoxFromClick, noteEditorPosition, noteKeyAction } from '../shared/textNote'
+import { DEFAULT_ANNOTATION_COLOR, annotationKeyAction, normalizeAnnotationColor, rectFromDrag, type AnnotationColor } from '../shared/annotation'
+import { canRedoShapes, canUndoShapes, shapeBounds, type ShapeChange } from '../shared/annotationShapes'
+import { paintShape, penCursor, preparePenContext } from '../shared/annotationPaint'
+import { ShapeDrawing } from '../shared/annotationPointer'
+import { createNoteBox, createNoteEditor, updateNoteBox } from '../shared/noteEditorDom'
+import { MAX_NOTE_TEXT, NOTE_CHANNELS, noteBoxFromClick } from '../shared/textNote'
 
 /**
  * レビュー対象のページへ入れる注入スクリプト（設計4章「ペン」）。
  * 依頼は声と書き込み（手書きの線・四角の枠）で行う。画面に文字を置く道具（旧 TXT-1）は廃止した。
  * 書き込みは形のデータ（src/shared/annotationShapes.ts）で持ち、描き直しはその一覧から行う。
  * 描いた形は線の近くをつかんで動かせ、描く・動かす・消去を1手として元に戻す／やり直すができる。
+ * 描く手順・見た目・文字で指摘の欄は、共有リンクの相手の画面と同じ部品を使う
+ * （src/shared/annotationPointer.ts・annotationPaint.ts・noteEditorDom.ts）。
 
  *
  * preload として読み込むので、**ページ本体のスクリプトとは別の世界**で動く
@@ -81,19 +71,6 @@ interface RawEvent {
   [key: string]: unknown
 }
 
-/*
- * 書き込みの見た目。白いページでも暗いページでも読めるよう、
- * 選んだ色の線の下に白い縁を敷く。色は利用者が選ぶ（既定はローズ。src/shared/annotation.ts）。
- */
-const PEN_HALO = 'rgba(255, 255, 255, 0.9)'
-const PEN_WIDTH = 4
-const PEN_HALO_WIDTH = PEN_WIDTH + 4
-/** ペンのカーソル。選んだ色の点に白い縁（中心が描く位置）。読めない環境では crosshair */
-function penCursor(): string {
-  const fill = encodeURIComponent(penColor())
-  return "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E" +
-    `%3Ccircle cx='10' cy='10' r='5' fill='${fill}' stroke='white' stroke-width='2'/%3E%3C/svg%3E\") 10 10, crosshair`
-}
 /**
  * 消し忘れの保険（ms）。
  *
@@ -108,7 +85,6 @@ const MAX_SELECTOR_LENGTH = 300
 let enabled = false
 let mode: PenMode = 'off'
 let color: AnnotationColor = DEFAULT_ANNOTATION_COLOR
-const penColor = (): string => ANNOTATION_COLORS[color]
 let seq = 0
 /**
  * このドキュメントの印。ペンの ID（p1）はページを読み直すたびに 1 から振り直されるので、
@@ -342,41 +318,9 @@ function resizeCanvas(): void {
   ctx = canvas.getContext('2d')
   if (!ctx) return
   ctx.scale(ratio, ratio)
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-  ctx.strokeStyle = penColor()
-  ctx.lineWidth = PEN_WIDTH
+  preparePenContext(ctx)
   // 大きさを変えるとキャンバスが空になるので、一覧から描き直す
   redraw()
-}
-
-/** 形の輪郭をパスにする */
-function tracePath(shape: Shape): void {
-  if (!ctx) return
-  ctx.beginPath()
-  if (shape.kind === 'rect') {
-    const [x, y, w, h] = shape.rect
-    ctx.rect(x, y, w, h)
-    return
-  }
-  const [first, ...rest] = shape.points
-  if (!first) return
-  ctx.moveTo(first[0], first[1])
-  // 点を打っただけでも丸く見えるようにする
-  if (rest.length === 0) ctx.lineTo(first[0], first[1])
-  for (const [x, y] of rest) ctx.lineTo(x, y)
-}
-
-/** 形を、白い縁 → その形の色の順で描く */
-function drawShape(shape: Shape): void {
-  if (!ctx) return
-  tracePath(shape)
-  ctx.strokeStyle = PEN_HALO
-  ctx.lineWidth = PEN_HALO_WIDTH
-  ctx.stroke()
-  ctx.strokeStyle = ANNOTATION_COLORS[shape.color]
-  ctx.lineWidth = PEN_WIDTH
-  ctx.stroke()
 }
 
 /** 一覧から全部描き直す。つかんで動かしている形はずらした位置に、描いている途中の形は最後に描く */
@@ -384,10 +328,7 @@ function redraw(): void {
   if (!ctx || !canvas) return
   const ratio = window.devicePixelRatio || 1
   ctx.clearRect(0, 0, canvas.width / ratio, canvas.height / ratio)
-  for (const shape of shapes.shapes) {
-    drawShape(grab && grab.key === shape.key ? translateShape(shape, grab.dx, grab.dy) : shape)
-  }
-  if (draft) drawShape(draft)
+  for (const shape of drawing.visible()) paintShape(ctx, shape)
 }
 
 /**
@@ -396,10 +337,7 @@ function redraw(): void {
  * それ以外（スクロール・発話の区切り・ページ遷移・消し忘れの保険）… 戻す手順ごと片付ける
  */
 function clearAll(manual = false): void {
-  draft = null
-  grab = null
-  shapes = manual ? clearShapes(shapes).state : emptyShapes()
-  redraw()
+  drawing.clear(manual)
   if (autoClearTimer !== null) {
     window.clearTimeout(autoClearTimer)
     autoClearTimer = null
@@ -412,7 +350,7 @@ function clearAll(manual = false): void {
  * 書き込みはその画面だけのもの（新しいページへ引き継がない）だが、記録からは失わない。
  */
 function commitPending(): void {
-  if (draft || grab) finishPointer()
+  if (drawing.busy) drawing.finish()
 }
 
 /**
@@ -429,8 +367,8 @@ let shownCursor = ''
 /** カーソル。つかめる形の上（と動かしている間）は move、それ以外は道具のカーソル */
 function updateCursor(x?: number, y?: number): void {
   if (!layer) return
-  const overShape = x !== undefined && y !== undefined && mode !== 'off' && grabShapeAt(shapes, x, y, GRAB_TOLERANCE) !== undefined
-  const next = grab || overShape ? 'move' : mode === 'pen' ? penCursor() : mode === 'rect' ? 'crosshair' : 'auto'
+  const overShape = x !== undefined && y !== undefined && mode !== 'off' && drawing.canGrab(x, y)
+  const next = drawing.grab || overShape ? 'move' : mode === 'pen' ? penCursor(color) : mode === 'rect' ? 'crosshair' : 'auto'
   if (next === shownCursor) return
   shownCursor = next
   layer.style.cursor = next
@@ -452,7 +390,7 @@ function applyMode(): void {
 let lastHistory = ''
 /** 元に戻す／やり直すができるかを main（ツールバーのボタン）へ知らせる。変わったときだけ */
 function reportHistory(): void {
-  const history = { canUndo: canUndoShapes(shapes), canRedo: canRedoShapes(shapes) }
+  const history = { canUndo: canUndoShapes(drawing.shapes), canRedo: canRedoShapes(drawing.shapes) }
   const key = `${history.canUndo}${history.canRedo}`
   if (key === lastHistory) return
   lastHistory = key
@@ -465,23 +403,11 @@ function reportHistory(): void {
 
 // ───────────────────────── 書き込み（描く・つかんで動かす・元に戻す） ─────────────────────────
 
-/** つかめる距離(px)。四角は枠の線、手書きの線はその線からこの距離まで */
-const GRAB_TOLERANCE = 6
-/** 描いた形の一覧と、元に戻す／やり直すの手順 */
-let shapes: ShapeState = emptyShapes()
-let shapeKey = 0
 /** 記録の ID。動かす・戻すたびに新しくする（操作ログは追記のみ。前の ID は replaces で指す） */
 const newId = (): string => `p${++seq}-${DOC_TAG}`
 
-/** 描いている途中の形。描き始めのモードで決まり、途中で道具を変えても変わらない */
-let draft: Shape | null = null
-/** つかんで動かしている形 */
-let grab: { key: number; startX: number; startY: number; dx: number; dy: number; startedAt: number } | null = null
-let rectStartX = 0
-let rectStartY = 0
-let rectEndX = 0
-let rectEndY = 0
-let strokeStart = 0
+/** 描いた形の一覧と、描く・つかんで動かす・元に戻すの手順（共有リンクの相手の画面と同じ部品。src/shared/annotationPointer.ts） */
+const drawing = new ShapeDrawing({ newId, onApply: (change, atStart) => apply(change, atStart), onRedraw: () => redraw() })
 
 function onPointerDown(event: PointerEvent): void {
   if (noteActive && !enabled) return notePointerDown(event)
@@ -493,90 +419,35 @@ function onPointerDown(event: PointerEvent): void {
     window.clearTimeout(autoClearTimer)
     autoClearTimer = null
   }
-  const x = event.clientX
-  const y = event.clientY
-  strokeStart = Date.now()
-  // 形の線の近くならつかむ。四角の内側の空いたところは、今までどおり新しく描く
-  const hit = grabShapeAt(shapes, x, y, GRAB_TOLERANCE)
-  if (hit) {
-    grab = { key: hit.key, startX: x, startY: y, dx: 0, dy: 0, startedAt: strokeStart }
-    updateCursor(x, y)
-  } else if (mode === 'rect') {
-    rectStartX = rectEndX = x
-    rectStartY = rectEndY = y
-    draft = { key: 0, id: '', color, kind: 'rect', rect: [x, y, 0, 0] }
-  } else {
-    draft = { key: 0, id: '', color, kind: 'pen', points: [[x, y]] }
-  }
+  drawing.down(event.clientX, event.clientY, mode, color)
+  if (drawing.grab) updateCursor(event.clientX, event.clientY)
   layer?.setPointerCapture(event.pointerId)
-  redraw()
 }
 
 function onPointerMove(event: PointerEvent): void {
   if (!event.isTrusted) return
   if (noteActive && !enabled) return notePointerMove(event)
-  const x = event.clientX
-  const y = event.clientY
-  if (grab) {
+  if (drawing.move(event.clientX, event.clientY)) {
     event.preventDefault()
-    grab.dx = x - grab.startX
-    grab.dy = y - grab.startY
-    redraw()
     return
   }
-  if (draft) {
-    event.preventDefault()
-    if (draft.kind === 'rect') {
-      rectEndX = x
-      rectEndY = y
-      draft = { ...draft, rect: rectFromDrag(rectStartX, rectStartY, x, y, 0) ?? [rectStartX, rectStartY, 0, 0] }
-    } else {
-      draft.points.push([x, y])
-    }
-    redraw()
-    return
-  }
-  updateCursor(x, y)
+  updateCursor(event.clientX, event.clientY)
 }
 
 function onPointerUp(event: PointerEvent): void {
   if (noteActive && !enabled) return notePointerUp(event)
-  if (!event.isTrusted || (!draft && !grab)) return
+  if (!event.isTrusted || !drawing.busy) return
   if (layer?.hasPointerCapture(event.pointerId)) layer.releasePointerCapture(event.pointerId)
-  finishPointer()
+  drawing.finish()
   updateCursor(event.clientX, event.clientY)
 }
 
-/** 描いている形・動かしている形を確定して送る（指を離したとき・ページを離れるとき） */
-function finishPointer(): void {
-  if (grab) {
-    const { key, dx, dy, startedAt } = grab
-    grab = null
-    // ほとんど動いていなければ、ただのクリック（1手にしない）
-    const change = Math.abs(dx) < 2 && Math.abs(dy) < 2 ? null : moveShape(shapes, key, Math.round(dx), Math.round(dy), newId())
-    if (change) apply(change, startedAt)
-    else redraw()
-    return
-  }
-  let drawn = draft
-  draft = null
-  if (!drawn) return
-  if (drawn.kind === 'rect') {
-    const box = rectFromDrag(rectStartX, rectStartY, rectEndX, rectEndY)
-    if (!box) {
-      // クリックだけ（枠にならない）。描きかけを消し、記録にも残さない
-      redraw()
-      return
-    }
-    drawn = { ...drawn, rect: box }
-  }
-  apply(addShape(shapes, { ...drawn, key: ++shapeKey, id: newId() }), strokeStart)
-}
+/** 一つ前に戻す・やり直す。描いている途中や、戻すものが無いときは false */
+const undo = (): boolean => drawing.undo()
+const redo = (): boolean => drawing.redo()
 
-/** 一覧を変えた結果を画面に描き、記録へ送る（操作ログは追記のみ） */
-function apply(change: ShapeChange, atStart = Date.now()): void {
-  shapes = change.state
-  redraw()
+/** 一覧を変えた結果を記録へ送る（操作ログは追記のみ）。描き直しは ShapeDrawing が済ませている */
+function apply(change: ShapeChange, atStart: number): void {
   const at = Date.now()
   for (const record of change.records) {
     if (record.type === 'erase') {
@@ -595,29 +466,12 @@ function apply(change: ShapeChange, atStart = Date.now()): void {
       el: describe(x + w / 2, y + h / 2)
     })
   }
-  if (shapes.shapes.length > 0) armSafetyClear()
+  if (drawing.shapes.shapes.length > 0) armSafetyClear()
   else if (autoClearTimer !== null) {
     window.clearTimeout(autoClearTimer)
     autoClearTimer = null
   }
   reportHistory()
-}
-
-/** 一つ前に戻す・やり直す。描いている途中や、戻すものが無いときは false */
-function undo(): boolean {
-  if (draft || grab) return false
-  const change = undoShapes(shapes, newId)
-  if (!change) return false
-  apply(change)
-  return true
-}
-
-function redo(): boolean {
-  if (draft || grab) return false
-  const change = redoShapes(shapes, newId)
-  if (!change) return false
-  apply(change)
-  return true
 }
 
 // ───────────────────────── 文字で指摘（エディタ。録画しない） ─────────────────────────
@@ -641,9 +495,6 @@ let noteBox: HTMLDivElement | null = null
 let noteEditor: HTMLDivElement | null = null
 let noteInput: HTMLTextAreaElement | null = null
 
-const NOTE_EDITOR_WIDTH = 300
-const NOTE_EDITOR_HEIGHT = 112
-
 function insideNoteEditor(target: EventTarget | null): boolean {
   return !!noteEditor && target instanceof Node && noteEditor.contains(target)
 }
@@ -651,23 +502,10 @@ function insideNoteEditor(target: EventTarget | null): boolean {
 function showNoteBox(rect: [number, number, number, number]): void {
   const root = ensureLayer()
   if (!noteBox) {
-    const box = document.createElement('div')
-    box.style.position = 'absolute'
-    box.style.boxSizing = 'border-box'
-    box.style.borderRadius = '4px'
-    box.style.pointerEvents = 'none'
-    box.style.margin = '0px'
-    box.style.padding = '0px'
-    root.append(box)
-    noteBox = box
+    noteBox = createNoteBox(document)
+    root.append(noteBox)
   }
-  noteBox.style.border = `3px solid ${ANNOTATION_COLORS[noteColor]}`
-  // 白いページでも暗いページでも見えるよう、白い縁を外側に敷く
-  noteBox.style.boxShadow = `0 0 0 2px ${PEN_HALO}`
-  noteBox.style.left = `${rect[0]}px`
-  noteBox.style.top = `${rect[1]}px`
-  noteBox.style.width = `${Math.max(1, rect[2])}px`
-  noteBox.style.height = `${Math.max(1, rect[3])}px`
+  updateNoteBox(noteBox, rect, noteColor)
 }
 
 /** 開いている枠と欄を片付ける（取り消し・足し終えた・モードを切った） */
@@ -686,92 +524,14 @@ function closeNote(): void {
 function openNoteEditor(rect: [number, number, number, number]): void {
   const root = ensureLayer()
   noteEditor?.remove()
-  const panel = document.createElement('div')
-  panel.style.position = 'absolute'
-  panel.style.boxSizing = 'border-box'
-  panel.style.width = `${NOTE_EDITOR_WIDTH}px`
-  panel.style.padding = '8px'
-  panel.style.margin = '0px'
-  panel.style.background = '#ffffff'
-  panel.style.color = '#1f2328'
-  panel.style.border = `2px solid ${ANNOTATION_COLORS[noteColor]}`
-  panel.style.borderRadius = '8px'
-  panel.style.boxShadow = '0 6px 24px rgba(0, 0, 0, 0.25)'
-  panel.style.font = '13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif'
-  panel.style.pointerEvents = 'auto'
-  panel.style.cursor = 'auto'
-  const pos = noteEditorPosition(rect, { width: window.innerWidth, height: window.innerHeight }, { width: NOTE_EDITOR_WIDTH, height: NOTE_EDITOR_HEIGHT })
-  panel.style.left = `${pos.left}px`
-  panel.style.top = `${pos.top}px`
-
-  const input = document.createElement('textarea')
-  input.rows = 3
-  input.maxLength = MAX_NOTE_TEXT
-  input.placeholder = noteLabels.placeholder
-  input.spellcheck = false
-  input.style.display = 'block'
-  input.style.boxSizing = 'border-box'
-  input.style.width = '100%'
-  input.style.margin = '0px'
-  input.style.padding = '6px'
-  input.style.border = '1px solid #d0d7de'
-  input.style.borderRadius = '4px'
-  input.style.background = '#ffffff'
-  input.style.color = '#1f2328'
-  input.style.font = 'inherit'
-  input.style.resize = 'vertical'
-  input.style.outline = 'none'
-
-  const footer = document.createElement('div')
-  footer.style.display = 'flex'
-  footer.style.alignItems = 'center'
-  footer.style.justifyContent = 'space-between'
-  footer.style.gap = '8px'
-  footer.style.marginTop = '6px'
-  const hint = document.createElement('span')
-  hint.textContent = noteLabels.hint
-  hint.style.fontSize = '11px'
-  hint.style.color = '#57606a'
-  const add = document.createElement('button')
-  add.type = 'button'
-  add.textContent = noteLabels.add
-  add.style.font = 'inherit'
-  add.style.fontSize = '12px'
-  add.style.padding = '3px 10px'
-  add.style.border = '0px'
-  add.style.borderRadius = '4px'
-  add.style.background = ANNOTATION_COLORS[noteColor]
-  add.style.color = '#ffffff'
-  add.style.cursor = 'pointer'
-  add.addEventListener('click', (event) => {
-    if (!event.isTrusted) return
-    event.preventDefault()
-    submitNote()
+  const editor = createNoteEditor(document, {
+    rect, view: { width: window.innerWidth, height: window.innerHeight }, color: noteColor, labels: noteLabels,
+    onSubmit: (text) => submitNote(text), onCancel: () => closeNote()
   })
-  footer.append(hint, add)
-  panel.append(input, footer)
-
-  input.addEventListener('keydown', (event) => {
-    // ページのスクリプトが合成のキーで足したり取り消したりできないようにする
-    if (!event.isTrusted) return
-    const action = noteKeyAction(event)
-    if (action === 'submit') {
-      event.preventDefault()
-      submitNote()
-    } else if (action === 'cancel') {
-      event.preventDefault()
-      closeNote()
-    }
-  })
-  // 打っている文字・欄の操作をページのショートカットへ渡さない（バブルの段で止める）
-  for (const type of ['keydown', 'keyup', 'keypress', 'input', 'pointerdown', 'pointerup', 'click', 'wheel'] as const) {
-    panel.addEventListener(type, (event) => event.stopPropagation())
-  }
-
-  root.append(panel)
-  noteEditor = panel
-  noteInput = input
-  window.setTimeout(() => input.focus(), 0)
+  root.append(editor.panel)
+  noteEditor = editor.panel
+  noteInput = editor.input
+  window.setTimeout(() => editor.input.focus(), 0)
 }
 
 function notePointerDown(event: PointerEvent): void {
@@ -817,13 +577,8 @@ function notePointerUp(event: PointerEvent): void {
 }
 
 /** 欄を隠してから送る（枠だけが写った画面を main が撮る）。返事（noteResult）まで次は送らない */
-function submitNote(): void {
+function submitNote(text: string): void {
   if (noteSending || !noteInput || !noteRect) return
-  const text = noteInput.value.trim()
-  if (!text) {
-    noteInput.focus()
-    return
-  }
   noteSending = true
   if (noteEditor) noteEditor.style.display = 'none'
   const rect = noteRect

@@ -21,7 +21,7 @@ Reviews आपके प्रोजेक्ट फ़ोल्डर में
 ## कितने समय तक रखा जाता है
 <p><span class="docs-ui">रिकॉर्डिंग रखें</span> (डिफ़ॉल्ट 7 दिन, 30 दिन, या <span class="docs-ui">हमेशा</span>): ऐप शुरू होने पर, इससे पुराने पूरे हो चुके reviews से <code>recording.webm</code> और <code>work/</code> हटा दिए जाते हैं। <code>feedback.md</code> और findings की इमेज रखी जाती हैं। अधूरे reviews कभी नहीं हटाए जाते। यह सफ़ाई launch पर, आख़िरी बार खोले गए प्रोजेक्ट के लिए चलती है।</p>
 
-<!-- @network 43018284d4 -->
+<!-- @network 575731811a -->
 ## आपकी मशीन से क्या बाहर जाता है
 <table>
   <thead><tr><th>कब</th><th>कहाँ</th><th>डेटा</th></tr></thead>
@@ -32,7 +32,7 @@ Reviews आपके प्रोजेक्ट फ़ोल्डर में
     <tr><td><span class="docs-ui">व्यवस्थित करें</span></td><td>आपका Claude Code / Codex CLI, या <code>organizer</code> में आपका सेट किया LLM endpoint</td><td>सिर्फ़ टेक्स्ट और action log (कोई इमेज, ऑडियो या वीडियो नहीं)</td></tr>
     <tr><td>स्वीकृति जाँच (decision model, डिफ़ॉल्ट रूप से बंद)</td><td>आपका agent, local relay से होकर, Ollama / Cloudflare / AI Gateway / TypeSafe / OpenAI / आपके URL तक</td><td>जो agent भेजता है: finding का टेक्स्ट, "Done when", और BEFORE/AFTER screenshots (सिर्फ़ इमेज मॉडल के लिए)</td></tr>
     <tr><td>आयात की गई मीटिंग के उम्मीदवारों का आकलन (decision model, सिर्फ़ चालू होने पर)</td><td>Ferret, लोकल रिले से होकर, आपके सेट किए decision model तक</td><td>हर उम्मीदवार का शीर्षक और अनुरोध, जिन बातों से वह बना, और उसका वीडियो फ़्रेम (सिर्फ़ इमेज मॉडल)</td></tr>
-    <tr><td>शेयर लिंक (सिर्फ़ जब आप बनाते हैं)</td><td><code>share.ferretade.dev</code> (developer द्वारा चलाया जाने वाला एक Cloudflare Worker)</td><td>शीर्षक, पेज के दिखने वाले हिस्से का स्क्रीनशॉट उसके URL और शीर्षक के साथ, और रैंडम install ID (सिर्फ़ keyed hash के रूप में, यह सीमित करने के लिए कि एक इंस्टॉल कितने लिंक बना सकता है)। लिंक वाला कोई भी स्क्रीनशॉट देख सकता है; समीक्षकों के नोट और वैकल्पिक नाम उसी सर्वर पर जाते हैं (<a href="recording.html#share">शेयर लिंक</a> देखें)</td></tr>
+    <tr><td>शेयर लिंक (सिर्फ़ जब आप बनाते हैं)</td><td><code>share.ferretade.dev</code> (developer द्वारा चलाया जाने वाला एक Cloudflare Worker)</td><td>शीर्षक, जो पेज यह खोलता है उनके URL और शीर्षक, मेमो (पासवर्ड सेट करने पर एन्क्रिप्टेड; पासवर्ड खुद कभी नहीं भेजा जाता), और रैंडम install ID (सिर्फ़ keyed hash के रूप में, यह सीमित करने के लिए कि एक इंस्टॉल कितने लिंक बना सकता है)। समीक्षकों की रिकॉर्डिंग, टेक्स्ट नोट, ड्रॉइंग और वैकल्पिक नाम उसी सर्वर पर भेजे जाते हैं, और लिंक वाला कोई भी उन्हें देख सकता है (<a href="recording.html#share">शेयर लिंक</a> देखें)। सब कुछ 7 दिन बाद मिटा दिया जाता है</td></tr>
     <tr><td><span class="docs-ui">GitHub पर प्राइवेट रिपॉज़िटरी बनाएँ</span> (सिर्फ़ जब आप <span class="docs-ui">बनाएँ</span> पर क्लिक करें)</td><td>आपके <code>gh</code> के ज़रिए GitHub</td><td>आपके चुने नाम और विवरण से प्राइवेट रिपॉज़िटरी बनाता है और फ़ोल्डर के commits push करता है (Ferret का बनाया पहला commit <code>.gitignore</code> से अनदेखी फ़ाइलें और secrets वाली संभावित फ़ाइलें छोड़ देता है)</td></tr>
     <tr><td><span class="docs-ui">Agent को भेजें</span></td><td>आपके टर्मिनल का agent</td><td><code>feedback.md</code> की ओर इशारा करने वाला एक निर्देश</td></tr>
     <tr><td>फ़ुटर का usage (सिर्फ़ Claude Code और Codex)</td><td>Anthropic, ChatGPT</td><td>आपके अपने login के साथ usage की request</td></tr>

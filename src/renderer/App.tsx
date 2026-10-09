@@ -89,6 +89,7 @@ import { OnboardingStore } from './onboarding/onboardingStore'
 import { StarPromptHost } from './components/StarPrompt'
 import { FeedbackDialogHost } from './components/FeedbackDialog'
 import { MeetingImportDialog } from './components/MeetingImportDialog'
+import { OPEN_REVIEW_EVENT } from './lib/importedReview'
 import { reportAnomaly, reportHandled } from '@shared/report'
 import type { SttLanguageCode } from '@shared/sttLanguages'
 
@@ -618,6 +619,18 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     const list = await window.ade.invoke('review:list')
     if (Array.isArray(list)) setHistory(list)
   }, [])
+  /** mtg・共有リンクから取り込んだレビューの指摘（候補）を開く。人が確かめてから Agent へ送る */
+  const openImported = useCallback((imported: ReviewData) => {
+    setSessionId(imported.id)
+    setReview(imported)
+    setCenterTab('findings')
+    void run(refreshHistory)
+  }, [run, refreshHistory])
+  useEffect(() => {
+    const onOpen = (e: Event) => { const detail = (e as CustomEvent<ReviewData>).detail; if (detail?.id) openImported(detail) }
+    window.addEventListener(OPEN_REVIEW_EVENT, onOpen)
+    return () => window.removeEventListener(OPEN_REVIEW_EVENT, onOpen)
+  }, [openImported])
   /*
    * 文字で指摘（エディタの内蔵ブラウザ・映したウインドウで、枠を引いて指示を打つ。録画しない）。
    * 使えるのはエディタのブラウザのタブで、録画していないとき。足し先は開いているレビュー（無ければ最初の1件で新しく作る）。
@@ -1570,12 +1583,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
       )}
       {quickOpenOpen && <QuickOpen onOpen={(path) => files.open(path)} onClose={() => setQuickOpenOpen(false)} />}
       {/* 取り込んだら、そのレビューの指摘（候補）を開く。人が確かめてから Agent へ送る */}
-      {meetingOpen && <MeetingImportDialog onClose={() => setMeetingOpen(false)} onImported={(imported) => {
-        setSessionId(imported.id)
-        setReview(imported)
-        setCenterTab('findings')
-        void run(refreshHistory)
-      }} />}
+      {meetingOpen && <MeetingImportDialog onClose={() => setMeetingOpen(false)} onImported={openImported} />}
       {files.pendingClose && <UnsavedChangesDialog name={files.pendingClose.name} onChoose={files.resolveClose} />}
       {addTrackOpen && recording && <CaptureTargetPicker
         value={{ kind: 'browser' }}

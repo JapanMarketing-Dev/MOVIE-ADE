@@ -246,8 +246,11 @@ describe('文字で指摘: 静止画はそのビューへの本物の入力の�
 
   it('注入スクリプトは本物のキー・クリックだけで足し、IME の変換中は送らない', () => {
     const preload = read('src/preload/review.ts')
-    expect(preload).toMatch(/input\.addEventListener\('keydown', \(event\) => \{\n\s+\/\/[^\n]*\n\s+if \(!event\.isTrusted\) return\n\s+const action = noteKeyAction\(event\)/)
-    expect(preload).toMatch(/add\.addEventListener\('click', \(event\) => \{\n\s+if \(!event\.isTrusted\) return/)
+    // 欄の部品は共有リンクの相手の画面と同じもの（src/shared/noteEditorDom.ts）。注入スクリプトはそれを使う
+    const editor = read('src/shared/noteEditorDom.ts')
+    expect(preload).toContain("from '../shared/noteEditorDom'")
+    expect(editor).toMatch(/input\.addEventListener\('keydown', \(event\) => \{\n\s+\/\/[^\n]*\n\s+if \(!event\.isTrusted\) return\n\s+const action = noteKeyAction\(event\)/)
+    expect(editor).toMatch(/add\.addEventListener\('click', \(event\) => \{\n\s+if \(!event\.isTrusted\) return/)
     expect(preload).toMatch(/function notePointerDown\(event: PointerEvent\): void \{\n\s+if \(!event\.isTrusted/)
   })
 })

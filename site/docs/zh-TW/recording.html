@@ -263,19 +263,25 @@
       </section>
 
       <section class="docs-section" aria-labelledby="share">
-        <h2 id="share"><a class="docs-anchor" href="#share" aria-label="連結至「用分享連結收集任何人的回饋」">#</a>用分享連結收集任何人的回饋</h2>
-        <p>想從不使用 Ferret 的人（客戶、設計師、同事）那裡取得回饋，就把分享連結傳給他們。對方不需要帳號，也不需要安裝 App：在瀏覽器中開啟連結，在頁面截圖上做標記，並寫下需要修改的地方。名字可以不填。</p>
+        <h2 id="share"><a class="docs-anchor" href="#share" aria-label="連結至「用分享連結取得任何人的回饋」">#</a>用分享連結取得任何人的回饋</h2>
+        <p>想從不使用 Ferret 的人（客戶、設計師、同事）那裡取得回饋，就把分享連結傳給他們。對方不需要帳號，也不需要應用程式：透過連結開啟真正的頁面、使用它，並用和 Ferret 相同的工具記錄意見（畫筆、方框、<span class="docs-ui">文字回饋</span>和語音）。填寫名字是選填的。</p>
 <ol class="docs-steps">
-  <li>在內建瀏覽器中開啟頁面（僅限 http 或 https），然後點選瀏覽器工具列中的 <span class="docs-ui">分享</span>。</li>
-  <li>可以填寫標題（不填則使用頁面標題），並開啟 <span class="docs-ui">允許回饋者互相看到彼此的意見</span>。點選 <span class="docs-ui">為此頁面建立分享連結</span>，Ferret 會擷取頁面的可見部分並上傳，然後複製連結（<code>https://share.ferretade.dev/s/…</code>）。</li>
-  <li>要在同一個連結加入更多頁面，開啟另一個頁面，然後在該分享上點選 <span class="docs-ui">加入此頁面</span>（最多 20 個頁面）。</li>
+  <li>在內建瀏覽器中開啟頁面（僅限 http 或 https），然後點選瀏覽器工具列中的 <span class="docs-ui">分享</span>。Ferret 會為該頁面產生一個連結（或重複使用你已經建立的連結）並複製它（<code>https://share.ferretade.dev/s/…</code>）。接著用你喜歡的方式傳送出去。</li>
+  <li>要修改它，在 <span class="docs-ui">分享</span> 視窗中開啟該連結的 <span class="docs-ui">設定</span>：標題、它開啟的頁面（最多 10 個，每行一個 URL）、備註和密碼。<span class="docs-ui">新增分享連結</span> 會用這些設定從頭建立另一個連結。</li>
 </ol>
-<p>開啟連結的人可以在截圖上放置圖釘、畫框或用畫筆繪製，並輸入意見（最多 2,000 個字元）。<span class="docs-ui">Live page</span> 會在框架中開啟原始頁面供對方操作，<span class="docs-ui">Annotate live</span> 可以在上面放置圖釘；當時查看的 URL 會隨意見一起傳送。有些網站拒絕在框架中載入，此時對方可以在新分頁中開啟頁面，只用文字傳送意見。對方的頁面會依其瀏覽器顯示為日文或英文。</p>
-<p>收到的意見會顯示在同一個 <span class="docs-ui">分享</span> 視窗中。選擇意見後點選 <span class="docs-ui">匯入所選</span>，或對不需要的意見點選 <span class="docs-ui">拒絕</span>（<span class="docs-ui">復原</span> 可以恢復）。匯入的意見會像 <span class="docs-ui">文字回饋</span> 一樣成為新審查中的發現：帶有對方標記的截圖成為 BEFORE 圖片，並附上頁面 URL 以及對方的名字和意見。在即時頁面上放置的圖釘會顯示為圍住整張截圖的框，因為即時頁面的捲動位置可能與截圖不同。之後照常傳送給代理程式，並檢查 BEFORE 和 AFTER。</p>
+<p>在連結上，對方可以選擇怎麼傳送意見：</p>
 <ul>
-  <li>任何拿到連結的人都能看到截圖並傳送意見，所以不要分享顯示私密資料的頁面。連結 30 天後過期。<span class="docs-ui">刪除</span> 會立即刪除連結、截圖和意見。</li>
-  <li>一個連結最多接收 500 則意見，伺服器也會限制傳送意見和建立連結的頻率。伺服器不儲存 IP 位址。</li>
-  <li>分享連結依專案保存。Ferret 用來讀取和管理連結的擁有者權杖會用 Electron 的 <code>safeStorage</code> 加密，儲存在 <code>&lt;userData&gt;/feedback-share/shares.bin</code>。在開發版本和無法使用 <code>safeStorage</code> 的系統上，它只保留到 Ferret 結束為止（連結本身在過期前仍可使用）。</li>
+  <li><span class="docs-ui">開啟頁面並錄製</span>：頁面會在連結內開啟，上方帶有 Ferret 工具列。對方可以邊說邊點選、在頁面間切換、畫圖並加入文字備註。有些網站拒絕在其他頁面中載入；這時對方可以改用畫面分享，或在新分頁中開啟頁面。</li>
+  <li><span class="docs-ui">分享畫面並錄製</span>：錄製另一個分頁、一個視窗、一個應用程式或整個畫面，桌面和行動應用程式也可以。</li>
+  <li><span class="docs-ui">傳送畫面錄製</span>：上傳一段影片，例如手機畫面錄製（最長 10 分鐘、最大 300 MB）。</li>
+</ul>
+<p>拿到連結的每個人都能看到已送達的意見，所以對方之間不會重複提出相同的意見。頁面會依對方的瀏覽器顯示為日文或英文。</p>
+<p>錄製內容會出現在同一個 <span class="docs-ui">分享</span> 視窗中，帶有寄件者的名字、時間、文字備註和縮圖。<span class="docs-ui">匯入</span> 會把它變成發現，方式和 <span class="docs-ui">匯入會議</span> 一樣：語音會用你的轉錄設定轉錄，畫面會在對方作畫的地方擷取，每則發現都帶有寄件者的名字。<span class="docs-ui">拒絕</span> 掉不需要的（<span class="docs-ui">復原</span> 可以恢復）。之後照常把發現送給你的 Agent，並檢查 BEFORE 和 AFTER。</p>
+<ul>
+  <li>沒有密碼時，任何拿到連結的人都能開啟它並讀取備註。如果備註裡有測試帳號的登入資訊，開啟密碼（<span class="docs-ui">產生</span> 會產生一個）並另外傳送；<span class="docs-ui">複製密碼</span> 可以之後再次複製它。密碼永遠不會傳送到伺服器：對方的瀏覽器只需證明自己知道密碼，備註就是用它加密儲存的。</li>
+  <li>連結及其錄製內容會在 7 天後刪除。<span class="docs-ui">刪除</span> 會立即刪除它們。</li>
+  <li>一個連結最多接收 100 段錄製（共 3 GB），伺服器也會限制傳送錄製和建立連結的頻率。它不會儲存 IP 位址。</li>
+  <li>分享連結依專案保存。讓 Ferret 讀取和管理連結的擁有者權杖、備註和密碼都用 Electron 的 <code>safeStorage</code> 加密，儲存在 <code>&lt;userData&gt;/feedback-share/shares.bin</code>。在開發版本和無法使用 <code>safeStorage</code> 的系統上，它們只保留到 Ferret 結束為止（連結本身在過期前仍可使用）。</li>
   <li>伺服器的程式碼位於儲存庫的 <code>workers/feedback-share</code>。</li>
 </ul>
       </section>
@@ -372,7 +378,7 @@
         <li><a href="#record">開始、暫停、停止</a></li>
         <li><a href="#pen">畫筆</a></li>
         <li><a href="#type">不用說的，改用文字回饋</a></li>
-        <li><a href="#share">用分享連結收集任何人的回饋</a></li>
+        <li><a href="#share">用分享連結取得任何人的回饋</a></li>
         <li><a href="#meeting">匯入會議</a></li>
         <li><a href="#annotations-clear">標記何時消失</a></li>
         <li><a href="#mic">麥克風</a></li>

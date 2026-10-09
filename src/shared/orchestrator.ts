@@ -144,9 +144,13 @@ function oneLine(text: string): string {
 /** 人が Ferret の設定に書いた、共通のルールとプロダクトごとのルール（設定の「オーケストラ」） */
 export interface OrchestraRules {
   shared?: string
+  /** 全体として人の確認なしで進めてよい操作（1行に1つ。例：dev 環境へのデプロイ） */
+  allowed?: string
   /** プロジェクトの id → そのプロダクトだけのルール（インフラ・タグ・インスタンスなど） */
   products?: Record<string, string>
 }
+
+const ALLOWED_TITLE = 'Operations allowed without asking a person (set by the human in Ferret; do them without adding them to human.md):'
 
 function rulesBlock(title: string, text: string | undefined): string[] {
   const body = text?.trim()
@@ -171,7 +175,9 @@ export function renderSubagent(child: OrchestratorChild, rules?: OrchestraRules)
     `- Run commands from that folder (\`cd "${abs}"\` first). Do not edit files outside it. If the task also needs changes in another project, say so in your report instead of making them.`,
     '- When the task is a Ferret review finding, the request names the review folder (`.ferret/reviews/<id>/`). Fix only the findings that belong to this project and record each one\'s status in that review\'s `progress.json` as the request describes.',
     '- Use the tools, connections and permissions this session already has (Claude in Chrome and other browser use, computer use, MCP servers, logins). Do not start a new connection or ask the user to approve again; if something is missing, report it to the orchestrator instead.',
+    '- Browser work (Claude in Chrome, computer use) runs at the same time as the other products\' subagents: open your own tab or window for this product and never wait for another product to finish with the browser.',
     '- End with a short report: what you changed (files), how you checked it, and anything left for the orchestrator.',
+    ...rulesBlock(ALLOWED_TITLE, rules?.allowed),
     ...rulesBlock('Shared rules for all products (set by the human in Ferret):', rules?.shared),
     ...rulesBlock(`Rules only for ${name} (set by the human in Ferret; infrastructure and other per-product settings):`, child.projectId ? rules?.products?.[child.projectId] : undefined),
     ''
@@ -245,10 +251,12 @@ export function renderOrchestratorGuide(children: readonly OrchestratorChild[], 
     '3. Subagents work only in their own folders and report back. Check the reports for consistency across products, fix any mismatch, and summarize for the user per product.',
     '4. Ferret reviews can cover many products in one recording. Each finding names its product by URL, screen or file path (each subagent\'s description lists its pages). Route each finding to its product\'s subagent; findings for different products run in parallel.',
     '5. Work in three levels: you (orchestra) → one subagent per product (its lead) → workers the lead starts inside that product\'s folder for independent pieces. A product can be software or a business (blog, YouTube, ads, sales outreach, data analysis); the lead works the way that product\'s own files describe.',
-    '6. Anything that needs a person (a decision, a login, a value check, an approval) goes into human.md in this folder as a table row: | # | product | URL | what to check |. Keep one row per thing, update it when the state changes, and delete it once it is done. Ferret shows human.md as a checklist and lets the person open every URL in one feedback session.',
+    '6. Anything that needs a person (a decision, a login, a value check, an approval) goes into human.md in this folder as a table row: | # | product | URL | what to check | (B1… screens, A1… approvals, P1… things to provide, D1… decisions). A question with choices goes in a block: a heading `### Q1 [product] question`, optional explanation lines, then numbered options `1. …` with `(recommended)` after the one you recommend; the block runs until the next heading. The person answers in Ferret, which writes `- Q1: 2. …` lines under `## Answers` at the end of human.md; never remove an answer line before you have acted on it. Keep one row per thing, update it when the state changes, and delete it together with its answer once it is done. Do not put the operations allowed without asking (below) into human.md; just do them. Ferret shows human.md as a checklist and lets the person open every URL in one feedback session.',
     '7. Connections and permissions are set up once, here at the top: Claude in Chrome and other browser use, computer use, MCP servers, logins, and permission approvals. Subagents inherit this session\'s tools and approvals, so never set them up again per product and never ask the user to connect or approve again for each product.',
     '8. Security, tests and anything else that must not be missed: run them for every included product in parallel, each with an independent second check, and treat an unchecked product as not done.',
-    '9. Without subagents (for example Codex), do the same steps yourself, working in each product\'s folder in turn.',
+    '9. Every request that reaches you here runs as parallel subagents, one per product, all started together, including browser use (Claude in Chrome, computer use): each subagent works in its own tab or window at the same time. Never run products one after another; a person who wants a serial run asks inside that product instead.',
+    '10. Without subagents (for example Codex), do the same steps yourself, working in each product\'s folder in turn.',
+    ...rulesBlock(`### ${ALLOWED_TITLE}`, rules?.allowed),
     ...rulesBlock('### Shared rules (set by the human in Ferret)', rules?.shared),
     ...children.flatMap((c) => rulesBlock(`### Rules only for ${oneLine(c.name)} (set by the human in Ferret)`, c.projectId ? rules?.products?.[c.projectId] : undefined)),
     GUIDE_END
@@ -354,9 +362,10 @@ export function sanitizeOrchestraRules(raw: unknown): OrchestraRules | undefined
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
   const r = raw as OrchestraRules
   const shared = typeof r.shared === 'string' && r.shared.trim() ? r.shared.slice(0, MAX_RULE_CHARS) : undefined
+  const allowed = typeof r.allowed === 'string' && r.allowed.trim() ? r.allowed.slice(0, MAX_RULE_CHARS) : undefined
   const products = r.products && typeof r.products === 'object' && !Array.isArray(r.products)
     ? Object.fromEntries(Object.entries(r.products).filter((e): e is [string, string] => /^[\w-]{1,128}$/.test(e[0]) && typeof e[1] === 'string' && e[1].trim() !== '').slice(0, 200).map(([k, v]) => [k, v.slice(0, MAX_RULE_CHARS)]))
     : {}
-  if (!shared && !Object.keys(products).length) return undefined
-  return { ...(shared ? { shared } : {}), ...(Object.keys(products).length ? { products } : {}) }
+  if (!shared && !allowed && !Object.keys(products).length) return undefined
+  return { ...(shared ? { shared } : {}), ...(allowed ? { allowed } : {}), ...(Object.keys(products).length ? { products } : {}) }
 }

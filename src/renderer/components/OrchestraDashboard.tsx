@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
-import { ExternalLink, FileText, ListChecks, Play, RefreshCw, ShieldCheck, Video } from 'lucide-react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
+import { ExternalLink, FileText, ListChecks, Play, RefreshCw, Send, ShieldCheck, Sparkles, Video } from 'lucide-react'
 import type { Project } from '@shared/types'
 import { formatUsd, type CostPeriod, type OrchestraOverview } from '@shared/agentCost'
-import { pageItems } from '@shared/humanChecklist'
+import { optionAnswer, pageItems } from '@shared/humanChecklist'
 import { CODEX_AUDIT_PRESET } from '@shared/codexAudit'
 import { requestAgentLaunch } from '../lib/agentLaunchRequest'
 import { errorMessage } from '../lib/errors'
@@ -10,13 +10,16 @@ import { useT } from '../lib/i18n'
 import { useProjectActivity } from '../terminal/agentActivity'
 import { Button, useToast } from '../ui'
 import { AgentRequestsSection } from './AgentRequestsSection'
+import { AllowedOperations, ChecklistAnswer, useOrchestraRules } from './ChecklistAnswer'
 import { OrchestraComposer } from './OrchestraComposer'
 import { OrchestraCost, periodUsd } from './OrchestraCost'
 
 /**
  * 全体（すべてのプロダクト）のダッシュボード。オーケストラ全体を見て、まとめて指示する。
  * - 一番上：人が確認すべきこと（全体の Agent が human.md に書いたもの。URL の無い承認・用意・決めることも）。
- *   「Agent に書き出してもらう」で全プロダクトから集めて human.md に書く依頼を送る。開くとフィードバックの画面でそのページを開く
+ *   「Agent に書き出してもらう」で全プロダクトから集めて human.md に書く依頼を送る。開くとフィードバックの画面でそのページを開く。
+ *   各項目に番号の選択肢（おすすめ付き）か自由な文で答え（human.md の「## 回答」に書く）、「回答をまとめて Agent に送る」で全部を1回で渡す。
+ *   その下に、全体として人の確認なしで進めてよい操作（orchestra.allowed）
  * - 全体の数字（対象のプロダクト・未対応・確認待ち・今月のコスト）と、全体への指示の欄
  * - 全プロダクトを1回の録画でフィードバック（帯のタブでプロダクトを切り替えると、指摘の宛先も切り替わる）・確認の巡回・Codex の監査
  * - Agent への依頼（雛形を選んで送る・まとめて送る・1回きりのものは隠す）
@@ -65,6 +68,33 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
   const checklist = overview?.checklist ?? []
   const pages = pageItems(checklist)
   const rowUsd = (r: (typeof rows)[number], p: CostPeriod) => r.cost[p].usd + r.extra[p].usd
+  const [rules, updateRules] = useOrchestraRules()
+  const answered = checklist.filter((c) => c.answer).length
+  const recommendable = checklist.filter((c) => !c.answer && c.options?.some((o) => o.recommended))
+  /** 答えを human.md に書き、書いたあとの確認リストに入れ替える */
+  const saveAnswers = useCallback(async (entries: Array<{ key: string; answer: string }>) => {
+    try {
+      const items = await window.ade.invoke('orchestra:answer', entries)
+      setOverview((prev) => prev && { ...prev, checklist: items })
+    } catch (err) {
+      toast({ tone: 'warning', message: errorMessage(err) })
+    }
+  }, [toast])
+  const fillRecommended = () => void saveAnswers(recommendable.map((c) => ({ key: c.key, answer: optionAnswer(c.options!.find((o) => o.recommended)!) })))
+  const [sending, setSending] = useState(false)
+  const sendAnswers = () => {
+    if (sending) return
+    setSending(true)
+    void window.ade.invoke('orchestra:sendAnswers')
+      .then((result) => toast({ tone: result.ok ? 'success' : 'warning', message: result.message }))
+      .catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
+      .finally(() => setSending(false))
+  }
+  const allowFromItem = (text: string) => {
+    if (!rules || !text.trim()) return
+    const lines = (rules.allowed ?? '').split('\n').map((l) => l.trim()).filter(Boolean)
+    if (!lines.includes(text.trim())) updateRules({ ...rules, allowed: [...lines, text.trim()].join('\n') })
+  }
   const [asking, setAsking] = useState(false)
   /** 人が確認すべきことを全プロダクトから集めて human.md に書く依頼（@shared/agentRequests の human-checklist）を送る */
   const askChecklist = () => {
@@ -87,6 +117,8 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
         <h3>{t('orchestra.checklistTitle')}</h3>
         <div className="orchestra__section-actions">
           <Button icon={<FileText size={13} />} disabled={asking} title={t('orchestra.checklistAskHint')} onClick={askChecklist} data-testid="orchestra-checklist-ask">{t('orchestra.checklistAsk')}</Button>
+          {recommendable.length > 0 && <Button icon={<Sparkles size={13} />} title={t('orchestra.answerFillHint')} onClick={fillRecommended} data-testid="orchestra-answer-fill">{t('orchestra.answerFill', { count: recommendable.length })}</Button>}
+          {answered > 0 && <Button variant="primary" icon={<Send size={13} />} disabled={sending} title={t('orchestra.answersSendHint')} onClick={sendAnswers} data-testid="orchestra-answers-send">{t('orchestra.answersSend', { count: answered })}</Button>}
           {pages.length > 0 && <Button variant="primary" icon={<Play size={13} />} onClick={() => onReviewChecklist(pages.map((c) => c.url))} data-testid="orchestra-checklist-review">{t('orchestra.checklistReview', { count: pages.length })}</Button>}
         </div>
       </div>
@@ -94,18 +126,25 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
         ? <p className="st-note">{t('orchestra.checklistEmpty')}</p>
         : <table className="orchestra__table">
           <tbody>
-            {checklist.map((item, i) => <tr key={`${item.key}-${i}`} data-testid={`orchestra-check-${item.key}`}>
-              <td className="orchestra__key">{item.key}</td>
-              <td>{item.label}</td>
-              <td className="orchestra__note">{item.note}</td>
-              <td className="orchestra__cell-actions">
-                {item.url && <button type="button" className="st-link" title={item.url} onClick={() => onOpenUrl(item.url)} data-testid={`orchestra-check-open-${item.key}`}>
-                  {t('orchestra.open')}<ExternalLink size={11} aria-hidden="true" />
-                </button>}
-              </td>
-            </tr>)}
+            {checklist.map((item, i) => <Fragment key={`${item.key}-${i}`}>
+              <tr className="orchestra__check-row" data-testid={`orchestra-check-${item.key}`}>
+                <td className="orchestra__key">{item.key}</td>
+                <td>{item.label}</td>
+                <td className="orchestra__note">{item.note}</td>
+                <td className="orchestra__cell-actions">
+                  {item.url && <button type="button" className="st-link" title={item.url} onClick={() => onOpenUrl(item.url)} data-testid={`orchestra-check-open-${item.key}`}>
+                    {t('orchestra.open')}<ExternalLink size={11} aria-hidden="true" />
+                  </button>}
+                </td>
+              </tr>
+              {/^[A-Z]{1,2}\d/.test(item.key) && <tr className={`orchestra__answer-row${item.answer ? ' is-answered' : ''}`}>
+                <td />
+                <td colSpan={3}><ChecklistAnswer item={item} onSave={(key, answer) => saveAnswers([{ key, answer }])} onAllow={rules ? allowFromItem : undefined} /></td>
+              </tr>}
+            </Fragment>)}
           </tbody>
         </table>}
+      {rules && <AllowedOperations rules={rules} onChange={updateRules} />}
     </section>
 
 
