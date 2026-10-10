@@ -26,7 +26,10 @@ describe('Ferret の設定を変える skill の中身', () => {
   })
 
   it('オーケストラ（ダッシュボード・human.md・コスト・対象外・ルール・依頼）を Agent が直接変えられる手順を書く', () => {
-    const section = text.slice(text.indexOf('## Orchestra (All products dashboard)'), text.indexOf('## How to edit'))
+    const section = text.slice(text.indexOf('## Orchestras (dashboards over several products)'), text.indexOf('## How to edit'))
+    expect(section.length).toBeGreaterThan(1000)
+    // 複数のオーケストラと、ダッシュボードを JSON で自由に作る手順
+    for (const word of ['"editorWorkspace": true', '`orchestraId`', '.ferret/dashboard.json', '"type":"metrics"', '"type":"note"', '"type":"links"', '"type":"table"', 'checklist, stats, composer, actions, requests, projects, costs', 'never as HTML']) expect(section).toContain(word)
     for (const word of ['human.md', '| No. | Product | URL | What to check |', 'B1', 'A1', 'P1', 'D1', '.ferret/costs.json', 'monthlyUsd', '`projects[].orchestraExcluded: true`', '`orchestra.shared`', '`agentRequests.items`', '`hidden: true`', 'in parallel', 'Interrupted work']) expect(section).toContain(word)
     expect(section).toContain('<Ferret user data>/editor-workspace')
     expect(renderAgentSkill({ ...context, editorWorkspacePath: '/home/taro/Library/Ferret/editor-workspace' })).toContain('`/home/taro/Library/Ferret/editor-workspace`')

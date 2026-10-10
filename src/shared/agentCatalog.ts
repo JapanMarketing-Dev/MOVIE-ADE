@@ -584,7 +584,8 @@ export const DEFAULT_AGENT_PREFERENCES: AgentPreferences = {
   skipPermissions: true,
   notify: false,
   restoreTerminals: true,
-  windowsShell: 'powershell'
+  windowsShell: 'powershell',
+  agentMail: true
 }
 
 // ───────────────────────── 権限確認を省く引数 ─────────────────────────
@@ -877,6 +878,7 @@ export function sanitizeAgentPreferences(raw: unknown): AgentPreferences {
     skipPermissions,
     notify: typeof r.notify === 'boolean' ? r.notify : DEFAULT_AGENT_PREFERENCES.notify,
     restoreTerminals: typeof r.restoreTerminals === 'boolean' ? r.restoreTerminals : DEFAULT_AGENT_PREFERENCES.restoreTerminals,
-    windowsShell: r.windowsShell === 'cmd' || r.windowsShell === 'powershell' ? r.windowsShell : DEFAULT_AGENT_PREFERENCES.windowsShell
+    windowsShell: r.windowsShell === 'cmd' || r.windowsShell === 'powershell' ? r.windowsShell : DEFAULT_AGENT_PREFERENCES.windowsShell,
+    agentMail: typeof r.agentMail === 'boolean' ? r.agentMail : DEFAULT_AGENT_PREFERENCES.agentMail
   }
 }

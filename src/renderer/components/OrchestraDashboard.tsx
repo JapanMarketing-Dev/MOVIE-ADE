@@ -1,8 +1,9 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState, type ReactNode } from 'react'
 import { ExternalLink, FileText, ListChecks, Play, RefreshCw, Send, ShieldCheck, Sparkles, Video } from 'lucide-react'
 import type { Project } from '@shared/types'
 import { formatUsd, type CostPeriod } from '@shared/extraCost'
 import type { OrchestraOverview } from '@shared/orchestraOverview'
+import { BUILTIN_SECTIONS, DEFAULT_SECTIONS, type BuiltinSection, type DashboardSection } from '@shared/dashboardLayout'
 import { checklistGroups, isChecklistKey, optionAnswer, pageItems } from '@shared/humanChecklist'
 import { CODEX_AUDIT_PRESET } from '@shared/codexAudit'
 import { requestAgentLaunch } from '../lib/agentLaunchRequest'
@@ -107,12 +108,8 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
       .finally(() => setAsking(false))
   }
 
-  return <div className="orchestra" data-testid="orchestra-dashboard">
-    <header className="orchestra__head">
-      <h2 className="orchestra__title">{t('orchestra.dashboardTitle')}</h2>
-      <Button variant="ghost" icon={<RefreshCw size={13} />} disabled={loading} onClick={load} data-testid="orchestra-reload">{t('common.reload')}</Button>
-    </header>
-
+  const builtin: Record<BuiltinSection, ReactNode> = {
+    checklist: <>
     <section className="orchestra__section" data-testid="orchestra-checklist">
       <div className="orchestra__section-head">
         <h3>{t('orchestra.checklistTitle')}</h3>
@@ -152,8 +149,8 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
         </table>}
       {rules && <AllowedOperations rules={rules} onChange={updateRules} />}
     </section>
-
-
+  </>,
+    stats: <>
     <div className="orchestra__stats">
       <Stat label={t('orchestra.statProducts')} value={`${included.length}/${rows.length}`} testId="orchestra-stat-products" />
       <Stat label={t('orchestra.statOpen')} value={String(included.reduce((n, r) => n + r.open, 0))} testId="orchestra-stat-open" />
@@ -161,19 +158,22 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
       <Stat label={t('orchestra.statCostMonth')} value={formatUsd(monthCost)} testId="orchestra-stat-cost" />
       <Stat label={t('orchestra.costForecast')} value={formatUsd(forecastUsd(overview))} testId="orchestra-stat-forecast" />
     </div>
-
-    <OrchestraComposer />
+  </>,
+    composer: <OrchestraComposer />,
+    actions: <>
     <div className="orchestra__actions">
       <Button icon={<Video size={13} />} title={t('orchestra.recordAllHint')} onClick={onRecordAll} data-testid="orchestra-record-all">{t('orchestra.recordAll')}</Button>
       <Button icon={<ListChecks size={13} />} onClick={() => onStartRound('confirm')} data-testid="orchestra-round-confirm">{t('round.startConfirm')}</Button>
       <Button icon={<ShieldCheck size={13} />} title={t('orchestra.codexAuditHint')} onClick={() => requestAgentLaunch('codex', CODEX_AUDIT_PRESET)} data-testid="orchestra-codex-audit">{t('orchestra.codexAudit')}</Button>
     </div>
-
+  </>,
+    requests: <>
     <section className="orchestra__section" data-testid="orchestra-requests">
       <h3>{t('orchestra.requestsTitle')}</h3>
       <AgentRequestsSection />
     </section>
-
+  </>,
+    projects: <>
     <section className="orchestra__section" data-testid="orchestra-projects">
       <h3>{t('orchestra.projectsTitle')}</h3>
       {rows.length === 0 ? <p className="st-note">{t('orchestra.noProducts')}</p> : <table className="orchestra__table">
@@ -210,8 +210,21 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
         </tbody>
       </table>}
     </section>
+  </>,
+    costs: <OrchestraCost overview={overview} />
+  }
+  const dashboard = overview?.dashboard
+  const sections = dashboard?.sections ?? DEFAULT_SECTIONS
 
-    <OrchestraCost overview={overview} />
+  return <div className="orchestra" data-testid="orchestra-dashboard">
+    <header className="orchestra__head">
+      <h2 className="orchestra__title">{t('orchestra.dashboardTitle')}</h2>
+      <Button variant="ghost" icon={<RefreshCw size={13} />} disabled={loading} onClick={load} data-testid="orchestra-reload">{t('common.reload')}</Button>
+    </header>
+    {dashboard?.invalid && <p className="st-note st-note--warn" role="alert" data-testid="orchestra-dashboard-invalid">{t('orchestra.dashboardInvalid')}</p>}
+    {sections.map((section, i) => <Fragment key={`${section.type}-${i}`}>
+      {isBuiltinSection(section) ? builtin[section.type] : <CustomSection section={section} notes={dashboard?.notes ?? {}} />}
+    </Fragment>)}
   </div>
 }
 
@@ -220,4 +233,49 @@ function Stat({ label, value, testId }: { label: string; value: string; testId: 
     <span className="orchestra__stat-value">{value}</span>
     <span className="orchestra__stat-label">{label}</span>
   </div>
+}
+
+function isBuiltinSection(section: DashboardSection): section is Extract<DashboardSection, { type: BuiltinSection }> {
+  return (BUILTIN_SECTIONS as readonly string[]).includes(section.type)
+}
+
+/** .ferret/dashboard.json に書いた自由な部品。中身は文字として出す（HTML にしない） */
+function CustomSection({ section, notes }: { section: Exclude<DashboardSection, { type: BuiltinSection }>; notes: Record<string, string | null> }) {
+  const t = useT()
+  const toast = useToast()
+  const head = section.title ? <h3>{section.title}</h3> : null
+  if (section.type === 'metrics') return <section className="orchestra__section" data-testid="orchestra-custom-metrics">
+    {head}
+    <div className="orchestra__stats">
+      {section.items.map((m, i) => <div key={`${m.label}-${i}`} className="orchestra__stat" title={m.hint}>
+        <span className="orchestra__stat-value">{m.value}</span>
+        <span className="orchestra__stat-label">{m.label}</span>
+        {m.hint && <span className="orchestra__stat-hint">{m.hint}</span>}
+      </div>)}
+    </div>
+  </section>
+  if (section.type === 'note') {
+    const text = notes[section.file]
+    return <section className="orchestra__section" data-testid="orchestra-custom-note">
+      {head}
+      {text == null ? <p className="st-note st-note--warn">{t('orchestra.dashboardNoteMissing', { file: section.file })}</p> : <pre className="orchestra__note-text">{text}</pre>}
+    </section>
+  }
+  if (section.type === 'links') return <section className="orchestra__section" data-testid="orchestra-custom-links">
+    {head}
+    <ul className="orchestra__links">
+      {section.items.map((l, i) => <li key={`${l.url}-${i}`}>
+        <button type="button" className="st-link" title={l.url} onClick={() => void window.ade.invoke('app:openExternal', l.url).catch((err: unknown) => toast({ tone: 'warning', message: errorMessage(err) }))}>
+          {l.label}<ExternalLink size={11} aria-hidden="true" />
+        </button>
+      </li>)}
+    </ul>
+  </section>
+  return <section className="orchestra__section" data-testid="orchestra-custom-table">
+    {head}
+    <table className="orchestra__table">
+      <thead><tr>{section.columns.map((c, i) => <th key={i}>{c}</th>)}</tr></thead>
+      <tbody>{section.rows.map((r, i) => <tr key={i}>{r.map((cell, j) => <td key={j}>{cell}</td>)}</tr>)}</tbody>
+    </table>
+  </section>
 }

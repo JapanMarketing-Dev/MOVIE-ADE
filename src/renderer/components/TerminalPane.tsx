@@ -125,6 +125,8 @@ interface Pane {
   autoStart?: boolean
   /** 上限での自動切り替えで開くタブ（main の failover:launch の token） */
   failoverToken?: string | null
+  /** Agent どうしの依頼で開くタブ（main の agentMail:launch の token） */
+  agentMailToken?: string
   /** 決まった起動（@shared/codexAudit）。開くときに1回だけ使う */
   preset?: TerminalPreset
   /** 起動したアカウント（Claude Code / Codex。main の返事）。null はシステムの既定。戻したタブではこのアカウントで開く */
@@ -228,14 +230,15 @@ interface PaneSpec {
   title?: string | null
   autoStart?: boolean
   failoverToken?: string | null
+  agentMailToken?: string | null
   preset?: TerminalPreset | null
 }
 
-function newPane({ launch = null, cwd, accountLogin = null, command = null, title = null, autoStart = false, failoverToken = null, preset = null }: PaneSpec): Pane {
+function newPane({ launch = null, cwd, accountLogin = null, command = null, title = null, autoStart = false, failoverToken = null, agentMailToken = null, preset = null }: PaneSpec): Pane {
   const label =
     title ||
     (accountLogin ? tNow('terminal.loginTitle', { agent: TUI_AGENT_LABEL[accountLogin.agent] }) : launch ? agentLabel(launch) : tNow('terminal.shell'))
-  return { key: `pane${++paneSeq}`, title: label, state: 'unknown', launch, cwd, accountLogin, command, customTitle: title, autoStart, failoverToken, ...(preset ? { preset } : {}) }
+  return { key: `pane${++paneSeq}`, title: label, state: 'unknown', launch, cwd, accountLogin, command, customTitle: title, autoStart, failoverToken, ...(agentMailToken ? { agentMailToken } : {}), ...(preset ? { preset } : {}) }
 }
 
 /** 読み込み直しの前に書いた記録（同じウインドウの読み込み直しでは残る sessionStorage）。読めなければ null */
@@ -610,7 +613,21 @@ export function TerminalPane({
       }
       if (notice.toTerminalId) window.dispatchEvent(new CustomEvent(FOCUS_TERMINAL_EVENT, { detail: { id: notice.toTerminalId } }))
     })
-    return () => { offLaunch(); offNotice() }
+    // Agent どうしの依頼: 宛先の Agent が居ないので、送り手のペインを上下に分けて開く（送り手も相手も見える）。
+    // 送り手のペインが見つからなければ（別のプロジェクトのタブなど）新しいタブで開く。フォーカスは送り手のまま
+    const offMail = window.ade.on('agentMail:launch', (request) => {
+      const from = paneOf(request.fromTerminalId)
+      const pane = newPane({ launch: request.agent, cwd: request.cwd, agentMailToken: request.token })
+      setPanes((prev) => ({ ...prev, [pane.key]: pane }))
+      if (from) {
+        setTabs((prev) => prev.map((tab) => (tab.key === from.tab.key && hasLeaf(tab.layout, from.paneKey)
+          ? { ...tab, layout: splitLeaf(tab.layout, from.paneKey, 'horizontal', pane.key) }
+          : tab)))
+        return
+      }
+      setTabs((prev) => [...prev, { key: `tab${++tabSeq}`, projectId, layout: leaf(pane.key), activePane: pane.key }])
+    })
+    return () => { offLaunch(); offNotice(); offMail() }
   }, [projectId])
 
   // 「＋」の検索に出す登録URL（全プロジェクト分）
@@ -901,6 +918,7 @@ export function TerminalPane({
         title: pane.customTitle ?? null,
         autoStart: pane.autoStart === true,
         failoverToken: pane.failoverToken ?? null,
+        ...(pane.agentMailToken ? { agentMailToken: pane.agentMailToken } : {}),
         ...(pane.preset ? { preset: pane.preset } : {}),
         // 戻したタブ: 前の会話を続け、前と同じアカウントで開く
         ...(pane.resume ? { resume: true } : {}),

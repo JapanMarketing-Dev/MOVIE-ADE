@@ -166,6 +166,10 @@ export interface IpcRequests {
   'project:addDropped': (path: string) => ProjectsState
   /** 一覧の並べ替え。ids は新しい並び（知らない ID は捨て、無いプロジェクトはその位置のまま） */
   'project:reorder': (ids: string[]) => ProjectsState
+  /** プロジェクトを別のオーケストラへ移す・並べ替える（before の前。null ならそのオーケストラの最後）。オーケストラ同士の並べ替えにも使う */
+  'project:move': (id: string, toOrchestraId: string | null, beforeId: string | null) => ProjectsState
+  /** 新しいオーケストラを作って開く */
+  'orchestra:create': (name: string) => ProjectsState
   /**
    * 外から落としたファイル・フォルダのパスを確かめる（src/main/droppedPaths.ts）。
    * preload の inspectDrop だけが呼ぶ（IPC_REQUEST_CHANNELS には入れない＝window.ade.invoke からは呼べない）
@@ -623,6 +627,8 @@ export interface IpcEvents {
   'usage:changed': (state: UsageState) => void
   /** 上限での自動切り替え: このタブを開いて（開いたら main が引き継ぐ） */
   'failover:launch': (request: FailoverLaunchRequest) => void
+  /** Agent どうしの依頼: 宛先の Agent が居ないので、送り手の隣にこの Agent を開いて（開いたら main が依頼を貼る） */
+  'agentMail:launch': (request: import('./agentMail').AgentMailLaunchRequest) => void
   /** 上限での自動切り替え: 切り替えた・できなかった（フッターとトースト） */
   'failover:notice': (notice: FailoverNotice) => void
   /** Agent の通知が押された: そのプロジェクトへ切り替え、そのタブを開く */
@@ -714,6 +720,8 @@ export const IPC_REQUEST_CHANNELS = [
   'project:addSsh',
   'project:addDropped',
   'project:reorder',
+  'project:move',
+  'orchestra:create',
   'settings:agents',
   'agents:list',
   'cliTools:list',
@@ -808,7 +816,7 @@ export const IPC_EVENT_CHANNELS = [
   'theme:changed',
   'locale:changed',
   'usage:changed',
-  'failover:launch', 'failover:notice', 'agentNotify:open',
+  'failover:launch', 'failover:notice', 'agentMail:launch', 'agentNotify:open',
   'github:headChanged',
   'star:show',
   'feedback:ask',

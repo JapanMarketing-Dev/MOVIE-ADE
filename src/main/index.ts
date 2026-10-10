@@ -6,6 +6,7 @@ import { CAPTURE_INDICATOR, UserGestures, ViewInputGrant, appMediaAllowed, captu
 import { programCopyText } from './terminalClipboard'
 import { showAgentNotification } from './agentNotify'
 import { failoverPrefs, initFailover, onUsageChanged, setFailoverPrefs, switchRunningAgents } from './failover/service'
+import { agentMailEnv, agentMailTerminalCreated, initAgentMail, revokeAgentMailSession, stopAgentMail, syncAgentMailSkill } from './agentMail'
 import { isAccountAgent } from '@shared/agentCatalog'
 import { droppedFolder, inspectDropped } from './droppedPaths'
 import { terminalOwnsMenuKey } from '@shared/terminalMenuKeys'
@@ -45,6 +46,7 @@ import { THEME_BACKGROUND } from '@shared/theme'
 import { normalizeAnnotationColor } from '@shared/annotation'
 import { extensionPopupGetsReviewPreload, shouldCloseExtensionPopup, type AnnotationActivity, type PopupDismissCause } from '@shared/popupAnnotation'
 import { findProjectByFolder, markProjectOpened, newProject, reorderProjects, upsertProjectFolder } from './projects'
+import { currentOrchestra, moveInTree, orchestraList, orchestraMembers, removeOrchestra } from '@shared/orchestras'
 import { checkSshTarget, remoteWorkspaceDirName, sshDefaultName, type SshTarget } from '@shared/sshCommand'
 import { EmbeddedBrowser, browserSession, browserSessions, onBrowserSessionReady, type ProjectTabs, type TabsSnapshot } from './browser'
 import { browserPartition, sanitizeBrowserProfile } from '@shared/browserProfile'
@@ -723,6 +725,7 @@ function applyExternalSettings(settings: Settings): void {
   void listAgentOptions(settings.agents).then((options) => send('agents:changed', options))
     .catch((err: unknown) => reportHandled(err, { area: 'settings', op: 'reload agents' }))
   syncTerminalRestore()
+  syncAgentMailSkillNow()
   send('projects:changed', projectsState())
   // 内蔵ブラウザの拡張機能（足す・外す・有効の切り替え）
   void extensions?.sync(settings.browserExtensions)
@@ -758,10 +761,46 @@ function syncOrchestratorOnOpen(project: Project | null | undefined): void {
     .catch((err: unknown) => { if ((err as Error)?.name !== 'SubagentLinkError') reportHandled(err, { area: 'agent-launch', op: 'sync orchestrator subagents' }) })
 }
 
-/** オーケストレーターの子にするプロジェクト。「すべてのプロダクト」は登録したプロジェクト全部（SSH を除く） */
+/** オーケストレーターの子にするプロジェクト。オーケストラはそこに属するプロジェクト（SSH・外したものを除く。@shared/orchestras） */
 function membersOf(project: Project): string[] {
   if (!project.editorWorkspace) return project.members ?? []
-  return currentSettings().projects.filter((p) => !p.editorWorkspace && !p.orchestrator && !p.orchestraExcluded && p.source !== 'ssh').map((p) => p.id)
+  return orchestraMembers(currentSettings().projects, project.id).map((p) => p.id)
+}
+
+/** 開いているプロジェクトのオーケストラ（オーケストラならそれ、プロダクトならその所属、無ければ先頭） */
+function openOrchestra(): Project | null {
+  return currentOrchestra(currentSettings().projects, workspace.projectId)
+}
+
+/** 足したプロジェクトを、開いているオーケストラに入れる */
+function assignToOpenOrchestra(projects: Project[], id: string): Project[] {
+  const orchestra = currentOrchestra(projects, workspace.projectId)
+  return orchestra ? projects.map((p) => (p.id === id && !p.editorWorkspace ? { ...p, orchestraId: orchestra.id } : p)) : projects
+}
+
+/** 新しいオーケストラを作って開く。Ferret のデータの下に専用のフォルダを作り、そこに所属するプロジェクトがリンクで入る */
+async function createOrchestra(name: string): Promise<ProjectsState> {
+  assertNotRecording()
+  const label = typeof name === 'string' ? name.replace(/\s+/g, ' ').trim().slice(0, 80) : ''
+  if (!label) throw new UserFacingError(t('orchestra.createNameRequired'))
+  const folder = join(app.getPath('userData'), 'orchestras', randomUUID())
+  const { mkdir } = await import('node:fs/promises')
+  await mkdir(folder, { recursive: true })
+  const { projects, project } = upsertProjectFolder(currentSettings().projects, folder)
+  const orchestra: Project = { ...project, name: label, orchestrator: true, editorWorkspace: true }
+  updateSettings({ projects: projects.map((p) => (p.id === orchestra.id ? orchestra : p)) })
+  openProject(orchestra)
+  return projectsState()
+}
+
+/** プロジェクトを別のオーケストラへ移す・並べ替える（オーケストラ同士の並べ替えも）。移す前と後のオーケストラの中身を合わせる */
+function moveProjectInTree(id: string, toOrchestraId: string | null, beforeId: string | null): ProjectsState {
+  const { projects } = currentSettings()
+  if (typeof id !== 'string' || !projects.some((p) => p.id === id)) throw new UserFacingError(t('errors.projectNotFound'))
+  updateSettings({ projects: moveInTree(projects, id, typeof toOrchestraId === 'string' ? toOrchestraId : null, typeof beforeId === 'string' ? beforeId : null) })
+  syncEditorWorkspace()
+  send('projects:changed', projectsState())
+  return projectsState()
 }
 
 /**
@@ -787,10 +826,9 @@ async function ensureEditorWorkspace(): Promise<void> {
   updateSettings({ projects: [editor, ...projects.filter((p) => p.id !== editor.id)] })
 }
 
-/** 「すべてのプロジェクト」の中身（リンク・subagent）を、今の登録に合わせる（プロジェクトを足した・消した・開いたとき） */
+/** オーケストラの中身（リンク・subagent）を、今の登録に合わせる（プロジェクトを足した・消した・移した・開いたとき）。全部のオーケストラ */
 function syncEditorWorkspace(): void {
-  const editor = currentSettings().projects.find((p) => p.editorWorkspace)
-  if (editor) syncOrchestratorOnOpen(editor)
+  for (const orchestra of orchestraList(currentSettings().projects)) syncOrchestratorOnOpen(orchestra)
 }
 
 /** オーケストレーターの README・CLAUDE.md の人が書く部分の雛形の言語（画面の言語が日本語なら日本語） */
@@ -896,7 +934,7 @@ const parkedBrowserTabs = new Map<string, TabsSnapshot>()
 /** フォルダを登録して開く。同じフォルダが登録済みならそれを開く */
 function openFolderAsProject(folderPath: string): WorkspaceState {
   const { projects, project, alreadyPresent } = upsertProjectFolder(currentSettings().projects, folderPath)
-  if (!alreadyPresent) updateSettings({ projects })
+  if (!alreadyPresent) updateSettings({ projects: assignToOpenOrchestra(projects, project.id) })
   return openProject(project)
 }
 
@@ -915,7 +953,7 @@ async function gitSyncModule(): Promise<typeof import('./github/gitSync')> {
 }
 function openClonedProject(folderPath: string, remoteUrl: string): WorkspaceState {
   const { projects, project } = upsertProjectFolder(currentSettings().projects, folderPath)
-  const marked = projects.map((p) => (p.id === project.id ? { ...p, source: 'github' as const, remoteUrl } : p))
+  const marked = assignToOpenOrchestra(projects.map((p) => (p.id === project.id ? { ...p, source: 'github' as const, remoteUrl } : p)), project.id)
   updateSettings({ projects: marked })
   return openProject(marked.find((p) => p.id === project.id) ?? project)
 }
@@ -937,7 +975,7 @@ async function addSshProject(target: SshTarget, name?: string): Promise<Projects
   const folder = join(configDir(), 'remote', remoteWorkspaceDirName(checked.target))
   await mkdir(folder, { recursive: true })
   const project: Project = { ...newProject(folder), name: name?.trim() || sshDefaultName(checked.target), source: 'ssh', ssh: checked.target }
-  updateSettings({ projects: [...projects, project] })
+  updateSettings({ projects: assignToOpenOrchestra([...projects, project], project.id) })
   openProject(currentSettings().projects.find((p) => p.id === project.id) ?? project)
   return projectsState()
 }
@@ -967,7 +1005,11 @@ function removeProject(id: string): ProjectsState {
   if (!settings.projects.some((p) => p.id === id)) return projectsState()
   const wasActive = workspace.projectId === id || settings.activeProjectId === id
   if (wasActive) assertNotRecording()
-  const projects = settings.projects.filter((p) => p.id !== id)
+  const target = settings.projects.find((p) => p.id === id)!
+  // オーケストラを消すときは、属するプロジェクトを残りの先頭のオーケストラへ移す。最後の1つは消さない
+  const removed = target.editorWorkspace ? removeOrchestra(settings.projects, id) : settings.projects.filter((p) => p.id !== id)
+  if (!removed) throw new UserFacingError(t('orchestra.removeLast'))
+  const projects = removed
   updateSettings({ projects, ...(wasActive ? { activeProjectId: null } : {}) })
   syncEditorWorkspace()
   if (wasActive) {
@@ -1231,7 +1273,7 @@ async function ensureRecording(): Promise<RecordingController> {
 /** Agent に入れる設定の skill に書く、この Ferret の設定ファイルの場所 */
 function agentSkillContext(): SkillContext {
   const dir = configDir()
-  return { settingsPath: join(dir, 'settings.json'), schemaPath: join(dir, 'settings.schema.json'), version: app.getVersion(), editorWorkspacePath: join(app.getPath('userData'), 'editor-workspace') }
+  return { settingsPath: join(dir, 'settings.json'), schemaPath: join(dir, 'settings.schema.json'), version: app.getVersion(), editorWorkspacePath: openOrchestra()?.folderPath ?? join(app.getPath('userData'), 'editor-workspace') }
 }
 
 /**
@@ -1242,6 +1284,15 @@ function syncAgentSkillOnStart(): void {
   if (!IS_PACKAGED || IS_E2E) return
   void import('./agentSkill').then(({ syncAgentSkill }) => syncAgentSkill(agentSkillContext()))
     .catch((err: unknown) => reportHandled(err, { area: 'agent-launch', op: 'sync agent skill' }))
+}
+
+/**
+ * Agent どうしの依頼の skill を、設定（agents.agentMail）に合わせて入れる・外す（起動時と設定の変更時）。
+ * 配布版だけ（開発版・E2E は、ふだん使う Agent の skill に触らない）
+ */
+function syncAgentMailSkillNow(): void {
+  if (!IS_PACKAGED || IS_E2E) return
+  void syncAgentMailSkill(app.getVersion()).catch((err: unknown) => reportHandled(err, { area: 'agent-mail', op: 'sync skill' }))
 }
 
 /** main が録画の対象を変える（内蔵ブラウザへ戻すときだけ）。設定に残し、画面へ知らせる */
@@ -1627,7 +1678,8 @@ async function sendSplitByProduct(
     send: (id, text) => terminals!.sendReview(id, text),
     t: (key, values) => t(key as Parameters<typeof t>[0], values)
   }, {
-    products: settings.projects.filter((p) => !p.editorWorkspace && !p.orchestrator && p.source !== 'ssh'),
+    // 開いているオーケストラに属するプロダクトだけ（外したもの・SSH は入れない）
+    products: (() => { const o = openOrchestra(); return o ? orchestraMembers(settings.projects, o.id) : [] })(),
     items,
     pending,
     orchestraFolder: workspace.folderPath,
@@ -1638,7 +1690,7 @@ async function sendSplitByProduct(
 
 /** 「すべてのプロダクト」で動いている Agent（プロダクトに Agent がいないときの渡し先） */
 async function orchestraTarget(): Promise<{ terminalId: string; folder: string } | null> {
-  const editor = currentSettings().projects.find((p) => p.editorWorkspace)
+  const editor = openOrchestra()
   if (!editor || !terminals || editor.folderPath === workspace.folderPath) return null
   const id = await terminals.resolveSendTarget(null, editor.folderPath)
   return id ? { terminalId: id, folder: editor.folderPath } : null
@@ -1647,8 +1699,8 @@ async function orchestraTarget(): Promise<{ terminalId: string; folder: string }
 /** 全体の Agent に渡すとき添える一文：このレビューはどのプロダクトのもので、どの subagent に任せるか */
 async function orchestraNote(productFolder: string | null): Promise<string> {
   const settings = currentSettings()
-  const editor = settings.projects.find((p) => p.editorWorkspace)
   const product = settings.projects.find((p) => p.folderPath === productFolder)
+  const editor = product ? currentOrchestra(settings.projects, product.id) : null
   if (!editor || !product) return ''
   const children = await (await import('./orchestrator')).findOrchestratorChildren(editor.folderPath, settings.projects, membersOf(editor)).catch(() => [])
   const child = children.find((c) => c.outside === product.folderPath || c.path === product.folderPath)
@@ -1659,8 +1711,8 @@ async function orchestraNote(productFolder: string | null): Promise<string> {
 async function pendingAcross(): Promise<Array<{ projectId: string; reviewId: string; count: number }>> {
   const { listSessions } = await import('./sessions')
   const out: Array<{ projectId: string; reviewId: string; count: number }> = []
-  for (const project of currentSettings().projects) {
-    if (project.editorWorkspace || project.orchestrator || project.source === 'ssh') continue
+  const orchestra = openOrchestra()
+  for (const project of orchestra ? orchestraMembers(currentSettings().projects, orchestra.id) : []) {
     const sessions = await listSessions(project.folderPath).catch(() => [])
     for (const s of sessions) if ((s.humanReviewCount ?? 0) > 0) out.push({ projectId: project.id, reviewId: s.id, count: s.humanReviewCount ?? 0 })
   }
@@ -1869,6 +1921,8 @@ function registerIpc(): void {
       openFolderAsProject(folder)
       return projectsState()
     },
+    'orchestra:create': (name) => createOrchestra(name),
+    'project:move': (id, toOrchestraId, beforeId) => moveProjectInTree(id, toOrchestraId, beforeId),
     'project:reorder': (ids) => {
       updateSettings({ projects: reorderProjects(currentSettings().projects, ids) })
       send('projects:changed', projectsState())
@@ -1889,6 +1943,7 @@ function registerIpc(): void {
     'settings:agents': (preferences) => {
       updateSettings({ agents: preferences })
       syncTerminalRestore()
+      syncAgentMailSkillNow()
       // 「＋」メニューと設定画面に、保存した結果（sanitize 後）と検出を配る
       void listAgentOptions(currentSettings().agents).then((options) => send('agents:changed', options))
     },
@@ -1904,20 +1959,20 @@ function registerIpc(): void {
     'review:pendingAcross': () => pendingAcross(),
     'orchestra:overview': async () => {
       const [{ orchestraOverview }, { listSessions }] = await Promise.all([import('./orchestraOverview'), import('./sessions')])
-      return orchestraOverview(currentSettings().projects, listSessions)
+      return orchestraOverview(currentSettings().projects, openOrchestra(), listSessions)
     },
     'orchestra:checklist': async () => {
-      const editor = currentSettings().projects.find((p) => p.editorWorkspace)
+      const editor = openOrchestra()
       return editor ? (await (await import('./orchestraOverview')).readChecklist(editor.folderPath)).items : []
     },
     'orchestra:answer': async (entries) => {
-      const editor = currentSettings().projects.find((p) => p.editorWorkspace)
+      const editor = openOrchestra()
       if (!editor) return []
       const list = Array.isArray(entries) ? entries.slice(0, 500).filter((e): e is { key: string; answer: string } => !!e && typeof e === 'object' && typeof e.key === 'string' && typeof e.answer === 'string') : []
       return (await import('./orchestraOverview')).writeAnswers(editor.folderPath, list, guideLanguage())
     },
     'orchestra:sendAnswers': async () => {
-      const editor = currentSettings().projects.find((p) => p.editorWorkspace)
+      const editor = openOrchestra()
       if (!editor) return { ok: false, message: t('orchestra.answersNone') }
       const [{ readChecklist }, { composeAnswersMessage }] = await Promise.all([import('./orchestraOverview'), import('@shared/humanChecklist')])
       const { items } = await readChecklist(editor.folderPath)
@@ -3158,14 +3213,20 @@ async function main(): Promise<void> {
     (id, code) => send('terminal:exit', id, code)
   )
   // 判定モデルを有効にしていれば、タブごとに中継の URL（合言葉付き）・モデル・画像の可否を渡す。キーは渡さない
-  terminals.launchEnv = async (meta) => currentSettings().decision?.enabled
-    ? (await decision()).launchEnv({ ...(workspace.projectId ? { projectId: workspace.projectId } : {}), ...(meta.agent ? { agent: meta.agent } : {}), sessionId: meta.sessionId })
-    : {}
+  // Agent どうしの依頼（既定は入）。タブごとの合言葉と CLI の場所も渡す（src/main/agentMail.ts）
+  terminals.launchEnv = async (meta) => ({
+    ...(currentSettings().decision?.enabled
+      ? await (await decision()).launchEnv({ ...(workspace.projectId ? { projectId: workspace.projectId } : {}), ...(meta.agent ? { agent: meta.agent } : {}), sessionId: meta.sessionId })
+      : {}),
+    ...(await agentMailEnv(meta.sessionId).catch((err: unknown) => { reportHandled(err, { area: 'agent-mail', op: 'terminal env' }); return {} }))
+  })
   // タブが閉じたら、そのタブに渡した中継の合言葉を無効にする（残った子プロセスが使い続けられないように）
-  terminals.onSessionClosed = (sessionId) => decisionService?.revokeSession(sessionId)
+  terminals.onSessionClosed = (sessionId) => { decisionService?.revokeSession(sessionId); revokeAgentMailSession(sessionId) }
+  terminals.onCreated = agentMailTerminalCreated
+  initAgentMail({ terminals, launch: (request) => send('agentMail:launch', request) })
   // ターミナルを速く開く：次の素のシェルを先に起動しておく。タブの環境変数を決めるもの（プロジェクト・判定モデル）が変われば作り直す
   terminals.spareShells = process.env.ADE_TERMINAL_PREWARM !== '0'
-  terminals.spareContext = () => JSON.stringify([workspace.projectId ?? null, currentSettings().decision ?? null])
+  terminals.spareContext = () => JSON.stringify([workspace.projectId ?? null, currentSettings().decision ?? null, currentSettings().agents.agentMail])
   // 上限での自動切り替え。新しいタブは renderer が開き、引き継ぎは main が行う
   initFailover({ terminals, launch: (request) => send('failover:launch', request), notice: (notice) => send('failover:notice', notice) })
   // 文字起こし・整理の API 呼び出しも同じ記録へ（src/main/decision/callLog.ts の recordApiCall）
@@ -3267,6 +3328,7 @@ async function main(): Promise<void> {
   void syncMirror()
   // 入れてある設定の skill を、この版の設定の項目に合わせる
   syncAgentSkillOnStart()
+  syncAgentMailSkillNow()
 
   const rendererUrl = process.env.ELECTRON_RENDERER_URL
   if (rendererUrl) {
@@ -3456,6 +3518,8 @@ app.on('before-quit', (event) => {
 
 // 準備のできた更新は、閉じたときに入れる（起動し直さない。次に開いたとき新しい版）。落ちたとき（0 以外）は入れない
 app.on('quit', (_event, exitCode) => {
+  // Agent どうしの依頼の受け口（一時フォルダ）を消す
+  stopAgentMail()
   if (exitCode === 0) autoUpdates?.installOnQuit()
 })
 

@@ -155,6 +155,12 @@ function AgentSection({ value, onChange, prompt, onPromptChange }: {
       <p className="st-note">{t('settings.agents.skipPermissionsNote', { claude: AGENT_CATALOG.claude.yoloArgs, codex: AGENT_CATALOG.codex.yoloArgs })}</p>
     </div>
 
+    {/* Agent どうしの依頼（既定は入）。配送と skill は main の agentMail.ts */}
+    <div data-testid="agent-mail">
+      <Switch label={t('settings.agents.agentMail')} checked={value.agentMail} onChange={(agentMail) => onChange({ ...value, agentMail })} />
+      <p className="st-note">{t('settings.agents.agentMailNote')}</p>
+    </div>
+
     {/* Agent が終わった・確認を待っているときの OS 通知（既定は切）。出すかは renderer の terminal/agentAttention.ts */}
     <div data-testid="agent-notify">
       <Switch label={t('settings.agents.notify')} checked={value.notify} onChange={(notify) => onChange({ ...value, notify })} />

@@ -2358,9 +2358,11 @@ body[data-resizing='row'] * {
   min-width: 0;
 }
 
-/* オーケストレーターに入れたプロジェクト。オーケストレーターの下に字下げして並べる */
+/* オーケストラ（親のフォルダ）に属するプロジェクト。サブフォルダのように深く字下げし、親からの線を引く */
 .sb-project--member {
-  margin-left: var(--space-5);
+  margin-left: 18px;
+  padding-left: 9px;
+  border-left: var(--size-border) solid var(--color-border);
 }
 
 /* 並べ替えのドラッグ: 動かしている行は薄く、落とす位置に線を出す（行の間の gap の中ほど） */
@@ -3307,4 +3309,39 @@ button.sb-more__row:hover {
 /* オーケストラの対象外のプロジェクトの印（薄く） */
 .sb-project__excluded {
   opacity: 0.6;
+}
+
+/* 追加のダイアログ：プロジェクトとオーケストラの見出し */
+.apd__group {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.apd__group:first-child {
+  margin-top: 0;
+}
+
+/* サイドバーのオーケストラ（親のフォルダ）と、畳む・開くの印 */
+.sb-project--orchestra > .sb-project__row .sb-project__name {
+  font-weight: 600;
+}
+
+.sb-project__twisty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-right: -2px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.sb-project__twisty .is-collapsed {
+  transform: rotate(-90deg);
 }
