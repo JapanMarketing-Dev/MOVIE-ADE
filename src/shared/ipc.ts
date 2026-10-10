@@ -188,7 +188,7 @@ export interface IpcRequests {
   /** 全プロダクトの確認待ちのレビュー（確認の巡回。src/shared/productRound.ts） */
   'review:pendingAcross': () => Array<{ projectId: string; reviewId: string; count: number }>
   /** 全体のダッシュボード：プロジェクトごとの進み具合・コスト、人の確認リスト（human.md）。src/main/orchestraOverview.ts */
-  'orchestra:overview': () => import('./agentCost').OrchestraOverview
+  'orchestra:overview': () => import('./orchestraOverview').OrchestraOverview
   /** 全体の human.md の確認リストだけ（フィードバックの帯。コストは数えない） */
   'orchestra:checklist': () => import('./humanChecklist').ChecklistItem[]
   /** 人の答えを全体の human.md の「## 回答」に書く（空の答えは消す）。書いたあとの確認リストを返す */

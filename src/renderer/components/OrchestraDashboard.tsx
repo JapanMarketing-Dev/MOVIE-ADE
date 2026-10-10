@@ -1,7 +1,8 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { ExternalLink, FileText, ListChecks, Play, RefreshCw, Send, ShieldCheck, Sparkles, Video } from 'lucide-react'
 import type { Project } from '@shared/types'
-import { formatUsd, type CostPeriod, type OrchestraOverview } from '@shared/agentCost'
+import { formatUsd, type CostPeriod } from '@shared/extraCost'
+import type { OrchestraOverview } from '@shared/orchestraOverview'
 import { optionAnswer, pageItems } from '@shared/humanChecklist'
 import { CODEX_AUDIT_PRESET } from '@shared/codexAudit'
 import { requestAgentLaunch } from '../lib/agentLaunchRequest'
@@ -12,7 +13,7 @@ import { Button, useToast } from '../ui'
 import { AgentRequestsSection } from './AgentRequestsSection'
 import { AllowedOperations, ChecklistAnswer, useOrchestraRules } from './ChecklistAnswer'
 import { OrchestraComposer } from './OrchestraComposer'
-import { OrchestraCost, periodUsd } from './OrchestraCost'
+import { OrchestraCost, forecastUsd, periodUsd } from './OrchestraCost'
 
 /**
  * 全体（すべてのプロダクト）のダッシュボード。オーケストラ全体を見て、まとめて指示する。
@@ -67,7 +68,7 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
   const monthCost = periodUsd(overview, 'month')
   const checklist = overview?.checklist ?? []
   const pages = pageItems(checklist)
-  const rowUsd = (r: (typeof rows)[number], p: CostPeriod) => r.cost[p].usd + r.extra[p].usd
+  const rowUsd = (r: (typeof rows)[number], p: CostPeriod) => r.extra[p].usd
   const [rules, updateRules] = useOrchestraRules()
   const answered = checklist.filter((c) => c.answer).length
   const recommendable = checklist.filter((c) => !c.answer && c.options?.some((o) => o.recommended))
@@ -153,6 +154,7 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
       <Stat label={t('orchestra.statOpen')} value={String(included.reduce((n, r) => n + r.open, 0))} testId="orchestra-stat-open" />
       <Stat label={t('orchestra.statPending')} value={String(included.reduce((n, r) => n + r.pending, 0))} testId="orchestra-stat-pending" />
       <Stat label={t('orchestra.statCostMonth')} value={formatUsd(monthCost)} testId="orchestra-stat-cost" />
+      <Stat label={t('orchestra.costForecast')} value={formatUsd(forecastUsd(overview))} testId="orchestra-stat-forecast" />
     </div>
 
     <OrchestraComposer />
@@ -180,6 +182,7 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
             <th>{t('orchestra.costMonth')}</th>
             <th>{t('orchestra.costYear')}</th>
             <th>{t('orchestra.costTotal')}</th>
+            <th>{t('orchestra.costForecast')}</th>
             <th />
           </tr>
         </thead>
@@ -195,6 +198,7 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
               <td>{formatUsd(rowUsd(r, 'month'))}</td>
               <td>{formatUsd(rowUsd(r, 'year'))}</td>
               <td>{formatUsd(rowUsd(r, 'total'))}</td>
+              <td>{formatUsd(r.forecast.usd)}</td>
               <td className="orchestra__cell-actions"><button type="button" className="st-link" onClick={() => onOpenProject(r.id)} data-testid={`orchestra-open-${r.id}`}>{t('orchestra.openProject')}</button></td>
             </tr>
           })}

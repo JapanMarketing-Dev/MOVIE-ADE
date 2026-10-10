@@ -91,7 +91,7 @@ import { isRiskyToOpenExternally } from '@shared/fileViewer'
 import { refreshPreviewIn, registerPreviewProtocol, renderPreviewSource } from './preview'
 import { PREVIEW_SCHEME, stripPreviewGrant } from '@shared/preview'
 import { PROJECT_PAGE_SCHEME } from '@shared/htmlPreview'
-import { crashReportsActive, initCrashReporting, maybeSendTestEvent, reportMainError, sentryTestKinds, setTelemetryContext, telemetryInstallId, trackIpc } from './telemetry'
+import { crashReportsActive, initCrashReporting, maybeSendTestEvent, reportMainError, sentryTestKinds, setTelemetryContext, noteQuitRequested, telemetryInstallId, trackIpc } from './telemetry'
 import { wrapIpcHandler } from '@shared/telemetry'
 import { flow, reportHandled } from '@shared/report'
 import { TerminalRestoreStore } from './terminalRestore'
@@ -3332,7 +3332,11 @@ function beginShutdown(): boolean {
   }
   shuttingDown = true
   // ネイティブのクラッシュのイベントにも残るパンくず（終了のどの段階で落ちたかを追う。FERRET-1Q）
-  if (shutdownPhase === 'running') flow('quit begin', { terminals: terminals?.pendingCount() ?? 0 })
+  if (shutdownPhase === 'running') {
+    flow('quit begin', { terminals: terminals?.pendingCount() ?? 0 })
+    // ここからの片付け（同期の書き込み・PTY を閉じる）の止まりは main の止まりとして送らない（FERRET-M）
+    noteQuitRequested()
+  }
 
   if (shutdownPhase === 'draining') {
     // すでに後始末中。終わるまで待たせる

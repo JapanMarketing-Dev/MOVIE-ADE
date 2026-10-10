@@ -802,7 +802,7 @@ button {
   background: var(--color-primary, #4f8cff);
 }
 
-/* ダッシュボード：コスト（今月・今年・総額の切り替えと内訳） */
+/* ダッシュボード：インフラのコスト（今月・今年・総額の切り替えと内訳、推定の月額） */
 .orchestra-cost__periods {
   display: inline-flex;
   gap: var(--space-1);
@@ -831,6 +831,23 @@ button {
 .orchestra-cost__period.is-selected {
   border-color: var(--color-border-focus, #4f8cff);
   background: var(--color-surface-selected);
+}
+
+/* 推定の月額（切り替えではなく、実績の隣に出す） */
+.orchestra-cost__forecast {
+  margin-left: var(--space-2);
+  border-style: dashed;
+  cursor: default;
+}
+
+.orchestra-cost__group {
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.orchestra-cost__group .st-note {
+  font-weight: 400;
 }
 
 .orchestra-cost__grid {

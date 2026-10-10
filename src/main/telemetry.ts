@@ -213,7 +213,18 @@ export function trackIpc(channel: string): () => void {
   }
 }
 
-function watchEventLoop(threshold: number): void {
+/**
+ * アプリ自身の終了の手順を始めた（index.ts の beginShutdown。ウィンドウの close からも来る）。
+ * ウィンドウを閉じた終了では、PTY の後始末が終わって app.quit() するまで before-quit が来ないので、
+ * その間の片付けの止まりも終了の途中として送らない（FERRET-M の 0.6.12 の Windows：quit begin の後に 3.8s）
+ */
+let onQuitRequested: (() => void) | null = null
+export function noteQuitRequested(): void {
+  onQuitRequested?.()
+}
+
+/** initCrashReporting から呼ぶ。テスト（telemetry-quit-block.test.ts）からも直接呼ぶ */
+export function watchEventLoop(threshold: number): void {
   const INTERVAL = 250
   // 単調な時計で測る（Date.now は時計合わせ・スリープで飛ぶ）
   let expected = performance.now() + INTERVAL
@@ -226,6 +237,7 @@ function watchEventLoop(threshold: number): void {
   let activeAtLastTick = false
   app.on('will-quit', () => { quitting = true })
   app.on('before-quit', () => { quitRequestedAt = performance.now() })
+  onQuitRequested = () => { quitRequestedAt = performance.now() }
   void app.whenReady().then(() => {
     // powerMonitor は ready の後でしか使えない
     powerMonitor.on('resume', () => { resumedAt = performance.now() })

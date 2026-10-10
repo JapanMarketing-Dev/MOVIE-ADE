@@ -84,21 +84,23 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
   },
   {
     id: 'costs',
-    title: { ja: 'すべてのコストを記録する（インフラ込み）', en: 'Record every cost (infrastructure included)' },
+    title: { ja: 'インフラのコストを記録する（実績と推定）', en: 'Record infrastructure costs (actual and estimated)' },
     text: {
       ja: [
-        'このプロダクト（オーケストラならすべてのプロダクトと全体）にかかっているコストをすべて調べ、Ferret のダッシュボードで今月・今年・総額と内訳を見られるよう `.ferret/costs.json` に書いてください。全体で共有しているもの（Agent のサブスクリプション・共通のドメインやツール）は全体のフォルダの `.ferret/costs.json` に、プロダクトだけのものは各プロダクトのフォルダの `.ferret/costs.json` に分け、プロダクトごとの subagent に並行して調べさせてください。',
-        '対象：インフラ（クラウド・ホスティング・DB・ストレージ・CDN・ドメイン・メール）、外部サービス（Sentry・分析・認証・決済の手数料・API）、AI（Agent のサブスクリプション・API の利用料。Claude Code の会話の分は Ferret が記録から数えるので入れない）、そのほか。',
-        '調べ方：各サービスの CLI・API・請求の書き出しを使う。分からない金額は料金表とプランから見積もり、"estimate": true を付ける。',
-        '形：{"items":[{"name":"Cloudflare Workers Paid","category":"infra","monthlyUsd":5,"since":"2026-01"},{"name":"example.com のドメイン","category":"infra","usd":12,"date":"2026-03-01","estimate":true}]}。category は infra・service・ai・other のどれか。毎月かかるものは monthlyUsd と since（YYYY-MM。終わったものは until も）、1回きりのものは usd と date（YYYY-MM-DD）。金額は USD にそろえ、ほかの通貨はその日のレートで換算して note に元の額を書く。',
-        '鍵・カード・請求先の個人情報は書かないでください。.ferret/ が .gitignore に無ければ足してください。最後に今月・今年・総額の合計を報告してください。'
+        'このプロダクト（オーケストラならすべてのプロダクトと全体）のインフラのコストを調べ、Ferret のダッシュボードで実績（今月・今年・総額）と、今動いているリソースからの推定の月額を見られるよう `.ferret/costs.json` に書いてください。全体で共有しているもの（共通のドメイン・アカウント）は全体のフォルダの `.ferret/costs.json` に、プロダクトだけのものは各プロダクトのフォルダの `.ferret/costs.json` に分け、プロダクトごとの subagent に並行して調べさせてください。',
+        '対象：AWS・Cloudflare・Google Cloud などのクラウド、ホスティング・DB・ストレージ・CDN・ドメイン・メール、外部サービス（Sentry・分析・認証・決済の手数料など）。AI（Agent のサブスクリプション・API の利用料）は入れないでください。',
+        '実績（items）：各事業者の請求・Cost Explorer・billing export・CLI（aws ce get-cost-and-usage、gcloud billing、Cloudflare の請求など）から月ごとの実際の額を取る。分からない額は料金表とプランから見積もり、"estimate": true を付ける。',
+        '推定（estimates）：今動いているリソース（インスタンス・コンテナ・関数・DB・ストレージ・ロードバランサ・IP・ドメインなど）を CLI で列挙し、料金表から1か月（730時間）動かしたときの額にする。計算の元を basis に書き、調べた日を checkedAt に書く。止まっているもの・無料枠に収まるものは入れない。',
+        '形：{"items":[{"name":"AWS 2026-09 の請求","provider":"AWS","category":"infra","usd":41.2,"date":"2026-09-30"},{"name":"Cloudflare Workers Paid","provider":"Cloudflare","category":"infra","monthlyUsd":5,"since":"2026-01"}],"checkedAt":"2026-10-10","estimates":[{"name":"EC2 t3.small ×2 (ap-northeast-1)","provider":"AWS","monthlyUsd":30.4,"basis":"$0.0208/h × 730h × 2"}]}。provider は AWS・Cloudflare・Google Cloud などの事業者名。category は infra・service・other のどれか。毎月決まった額は monthlyUsd と since（YYYY-MM。終わったものは until も）、請求ごとの額は usd と date（YYYY-MM-DD）。金額は USD にそろえ、ほかの通貨はその日のレートで換算して note に元の額を書く。',
+        '鍵・カード・請求先の個人情報は書かないでください。.ferret/ が .gitignore に無ければ足してください。最後に今月・今年・総額の実績と推定の月額を、事業者ごとに報告してください。'
       ].join('\n'),
       en: [
-        'Find every cost of this product (in an orchestra: every product and the shared top level) and write it to `.ferret/costs.json` so Ferret\'s dashboard can show this month, this year, the total and the breakdown. Shared costs (agent subscriptions, shared domains or tools) go in the top-level folder\'s `.ferret/costs.json`; product-only costs go in each product folder\'s `.ferret/costs.json`. Let each product\'s subagent work in parallel.',
-        'Include: infrastructure (cloud, hosting, databases, storage, CDN, domains, email), external services (Sentry, analytics, auth, payment fees, APIs), AI (agent subscriptions and API usage; leave out Claude Code conversations, which Ferret counts from the transcripts) and anything else.',
-        'How: use each service\'s CLI, API or billing export. When an amount is unknown, estimate it from the price list and plan and add "estimate": true.',
-        'Shape: {"items":[{"name":"Cloudflare Workers Paid","category":"infra","monthlyUsd":5,"since":"2026-01"},{"name":"example.com domain","category":"infra","usd":12,"date":"2026-03-01","estimate":true}]}. category is one of infra, service, ai, other. Recurring costs use monthlyUsd and since (YYYY-MM; add until when it ended); one-off costs use usd and date (YYYY-MM-DD). Convert everything to USD at that day\'s rate and put the original amount in note.',
-        'Never write keys, card details or billing contacts. Add .ferret/ to .gitignore if it is missing. Finish by reporting the totals for this month, this year and overall.'
+        'Find the infrastructure costs of this product (in an orchestra: every product and the shared top level) and write them to `.ferret/costs.json` so Ferret\'s dashboard can show the actual cost (this month, this year, total) and the estimated monthly cost of the resources running now. Shared costs (shared domains or accounts) go in the top-level folder\'s `.ferret/costs.json`; product-only costs go in each product folder\'s `.ferret/costs.json`. Let each product\'s subagent work in parallel.',
+        'Include: clouds such as AWS, Cloudflare and Google Cloud, hosting, databases, storage, CDN, domains, email, and external services (Sentry, analytics, auth, payment fees). Leave out AI (agent subscriptions and API usage).',
+        'Actual (items): take each month\'s real amount from each provider\'s bills, Cost Explorer, billing export or CLI (aws ce get-cost-and-usage, gcloud billing, Cloudflare billing). When an amount is unknown, estimate it from the price list and plan and add "estimate": true.',
+        'Estimate (estimates): list the resources running now with the CLIs (instances, containers, functions, databases, storage, load balancers, IPs, domains) and price each for one month (730 hours) from the price list. Put the calculation in basis and the date you checked in checkedAt. Leave out what is stopped or within the free tier.',
+        'Shape: {"items":[{"name":"AWS 2026-09 bill","provider":"AWS","category":"infra","usd":41.2,"date":"2026-09-30"},{"name":"Cloudflare Workers Paid","provider":"Cloudflare","category":"infra","monthlyUsd":5,"since":"2026-01"}],"checkedAt":"2026-10-10","estimates":[{"name":"EC2 t3.small ×2 (ap-northeast-1)","provider":"AWS","monthlyUsd":30.4,"basis":"$0.0208/h × 730h × 2"}]}. provider is the company (AWS, Cloudflare, Google Cloud …). category is one of infra, service, other. Fixed monthly amounts use monthlyUsd and since (YYYY-MM; add until when it ended); per-bill amounts use usd and date (YYYY-MM-DD). Convert everything to USD at that day\'s rate and put the original amount in note.',
+        'Never write keys, card details or billing contacts. Add .ferret/ to .gitignore if it is missing. Finish by reporting, per provider, the actual cost for this month, this year and overall, and the estimated monthly cost.'
       ].join('\n')
     }
   },
