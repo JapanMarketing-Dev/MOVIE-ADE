@@ -42,25 +42,15 @@ function meaningfulText(text: string | undefined): string {
 
 // ---- 言語 ----
 
-const LATIN_LOCALES = new Set<SupportedLocale>(['en', 'es', 'fr', 'de', 'pt-BR', 'it', 'vi', 'id'])
 /** 英語の文と見分けるための機能語 */
 const EN_FUNCTION_WORDS = new Set(['the', 'is', 'are', 'this', 'that', 'it', 'and', 'to', 'of', 'should', 'too', 'please', 'make', 'can', 'not'])
 
 /** 名前の言語。文の文字から決め、決められなければ画面の言語 */
 export function nameLocale(texts: readonly string[], uiLocale: SupportedLocale): SupportedLocale {
   const text = texts.join('\n')
-  if (/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(text)) return 'ja'
-  if (/\p{Script=Hangul}/u.test(text)) return 'ko'
-  if (/\p{Script=Han}/u.test(text)) return uiLocale === 'zh-CN' || uiLocale === 'zh-TW' || uiLocale === 'ja' ? uiLocale : 'zh-CN'
-  if (/\p{Script=Cyrillic}/u.test(text)) return 'ru'
-  if (/\p{Script=Devanagari}/u.test(text)) return 'hi'
-  if (/\p{Script=Latin}/u.test(text)) {
-    if (!LATIN_LOCALES.has(uiLocale)) return 'en'
-    if (uiLocale === 'en') return 'en'
-    // 画面がラテン文字の言語でも、英語で話していれば英語
-    const words = text.toLowerCase().match(/\p{L}+/gu) ?? []
-    return words.filter((w) => EN_FUNCTION_WORDS.has(w)).length >= 2 ? 'en' : uiLocale
-  }
+  // 画面の言語は日本語と英語だけ。かな・漢字があれば日本語、ラテン文字なら英語、ほかは画面の言語
+  if (/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(text)) return 'ja'
+  if (/\p{Script=Latin}/u.test(text)) return 'en'
   return uiLocale
 }
 
@@ -87,7 +77,7 @@ const EN_STOP = new Set([...EN_FUNCTION_WORDS, 'a', 'an', 'be', 'was', 'were', '
 
 function isTopicWord(word: string, locale: SupportedLocale): boolean {
   if (/^\p{N}+$/u.test(word)) return false
-  if (locale === 'ja' || locale === 'zh-CN' || locale === 'zh-TW') {
+  if (locale === 'ja') {
     if (JA_STOP.has(word)) return false
     // ひらがなだけの語（助詞・活用の語尾）は話題にならない
     if (!/[\p{Script=Han}\p{Script=Katakana}\p{Script=Latin}\p{N}]/u.test(word)) return false
@@ -96,9 +86,7 @@ function isTopicWord(word: string, locale: SupportedLocale): boolean {
     if (/\p{Script=Han}/u.test(word)) return word.length >= 2 || JA_SINGLE.has(word)
     return word.length >= 2
   }
-  if (locale === 'en') return word.length >= 3 && !EN_STOP.has(word.toLowerCase())
-  // ほかの言語は機能語の一覧を持たないので、短い語を除くだけ
-  return [...word].length >= 4
+  return word.length >= 3 && !EN_STOP.has(word.toLowerCase())
 }
 
 /** 文から話題の語を拾う（重複なし。見つけた順） */
@@ -116,7 +104,7 @@ function topicWords(text: string, locale: SupportedLocale): string[] {
 // ---- 名前を組み立てる ----
 
 function isCjk(locale: SupportedLocale): boolean {
-  return locale === 'ja' || locale === 'zh-CN' || locale === 'zh-TW' || locale === 'ko'
+  return locale === 'ja'
 }
 
 /** 1行にまとめ、上限で切る（ラテン文字は語の途中で切らない） */

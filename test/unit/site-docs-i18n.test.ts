@@ -28,7 +28,7 @@ const docs = renderDocs()
 const MAC_GLYPHS = /[⌘⌥⇧⌃]/
 
 describe('docs の言語', () => {
-  it('アプリと同じ14言語で、名前はその言語自身の表記', () => {
+  it('アプリと同じ日本語と英語で、名前はその言語自身の表記', () => {
     expect([...LANGS].sort()).toEqual([...SUPPORTED_LOCALES].sort())
     expect(LANG_LABELS).toEqual(LOCALE_LABELS)
   })

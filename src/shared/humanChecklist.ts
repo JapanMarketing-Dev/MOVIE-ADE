@@ -10,8 +10,10 @@
  *   補足の説明（任意）
  *   1. 月額だけ
  *   2. 月額と年額 (recommended)
- * 人の答えはファイルの最後の「## 回答」（## Answers）に `- Q1: 2. 月額と年額` の形で Ferret が書く（setAnswers）。
- * どの項目（B・A・P・D・Q）にも答えられ、ダッシュボードから答えをまとめて Agent に送る（composeAnswersMessage）
+ * おすすめの選択肢は一番上に並べ替えて 1 番にする。表の行と同じ番号の質問のブロックは、その行の選択肢になる。
+ * 番号は B1・P12 のほか DESIGN-6・NY-2 の形も使える。
+ * 人の答えはファイルの最後の「## 回答」（## Answers）に `- Q1: 1. 月額と年額 — 補足` の形で Ferret が書く（setAnswers）。
+ * どの項目にも答えられ、ダッシュボードから答えをまとめて Agent に送る（composeAnswersMessage。プロダクトごとにまとめる）
  */
 
 export interface ChecklistItem {
@@ -37,8 +39,9 @@ export interface ChecklistOption {
 
 const URL_RE = /https?:\/\/[^\s)|>\]]+/
 const MAX_ITEMS = 200
-/** URL の無い表の行を項目にするときの番号（B1・A2・P10 など） */
-const KEY_RE = /^[A-Z]{1,2}\d{1,3}$/
+/** 項目の番号（B1・A2・P10・DESIGN-6・NY-2 など。大文字で始まり数字で終わる） */
+const KEY_SRC = '[A-Z][A-Z0-9]{0,9}-?\\d{1,3}'
+const KEY_RE = new RegExp(`^${KEY_SRC}$`)
 const NO_URL = /^[-–—]?$/
 
 function plain(text: string): string {
@@ -64,7 +67,7 @@ function urlIn(text: string): string | null {
 
 const HEADING_RE = /^#{1,6}\s+(.*)$/
 const ANSWERS_HEADING = /^#{1,6}\s+(?:回答|answers?)\s*(?:[（(].*)?$/i
-const ANSWER_LINE = /^[-*+]\s+([A-Z]{1,2}\d{1,3})\s*[:：]\s*(.*)$/
+const ANSWER_LINE = new RegExp(`^[-*+]\\s+(${KEY_SRC})\\s*[:：]\\s*(.*)$`)
 const OPTION_RE = /^(\d{1,2})[.)]\s+(.+)$/
 const RECOMMENDED_MARK = /\s*(?:[(（\[]\s*(?:recommended|おすすめ|推奨)\s*[)）\]]|★)\s*/i
 const RECOMMEND_LINE = /^(?:おすすめ|推奨|recommended)\s*[:：]\s*(\d{1,2})\b/i
@@ -74,7 +77,7 @@ const MAX_ANSWER = 2000
 function questionHead(line: string): { key: string; label: string; title: string } | null {
   const h = HEADING_RE.exec(line)
   if (!h) return null
-  const m = /^([A-Z]{1,2}\d{1,3})[.:：]?\s+(.*)$/.exec(plain(h[1]!))
+  const m = new RegExp(`^(${KEY_SRC})[.:：]?\\s+(.*)$`).exec(plain(h[1]!))
   if (!m || !KEY_RE.test(m[1]!)) return null
   const product = /^\[([^\]]+)\]\s*(.*)$/.exec(m[2]!)
   return { key: m[1]!, label: product ? product[1]!.trim() : '', title: (product ? product[2]! : m[2]!).trim() }
@@ -106,8 +109,18 @@ export function parseHumanChecklist(markdown: string): ChecklistItem[] {
     const q = question as ChecklistItem & { recommendedAt?: number }
     if (q.recommendedAt) for (const o of q.options ?? []) o.recommended = o.n === q.recommendedAt
     delete q.recommendedAt
-    if (!q.options?.length) delete q.options
-    items.push(q)
+    if (q.options?.length) q.options = recommendedFirst(q.options)
+    else delete q.options
+    // 表の行と同じ番号なら、その行の選択肢・補足にする（行の URL・プロダクトはそのまま）
+    const row = items.find((it) => it.key === q.key && !it.options)
+    if (row) {
+      if (q.options) row.options = q.options
+      if (!row.label && q.label) row.label = q.label
+      if (q.note && q.note !== row.note) row.note = row.note ? `${row.note} / ${q.note}` : q.note
+      if (!row.url && q.url) row.url = q.url
+    } else {
+      items.push(q)
+    }
     question = null
   }
   for (const [index, raw] of lines.entries()) {
@@ -194,6 +207,12 @@ export function parseHumanChecklist(markdown: string): ChecklistItem[] {
   return items.slice(0, MAX_ITEMS).map((it) => (answers[it.key] ? { ...it, answer: answers[it.key] } : it))
 }
 
+/** おすすめの選択肢を一番上にし、番号を 1 から振り直す */
+function recommendedFirst(options: readonly ChecklistOption[]): ChecklistOption[] {
+  const sorted = [...options.filter((o) => o.recommended), ...options.filter((o) => !o.recommended)]
+  return sorted.map((o, i) => ({ ...o, n: i + 1 }))
+}
+
 /** 答えを1行にする（改行・制御文字を除き、長さを切る）。空なら答えを消す */
 export function cleanAnswer(text: string): string {
   // eslint-disable-next-line no-control-regex
@@ -247,17 +266,35 @@ export function setAnswers(markdown: string, entries: ReadonlyArray<{ key: strin
   return [...lines.slice(0, start + 1), ...(body.length ? ['', ...body] : []), '', ...tail].join(eol)
 }
 
-/** 選択肢の答え（`2. 月額と年額`）の番号。自由入力なら null */
-export function answerOption(item: Pick<ChecklistItem, 'options'>, answer: string | undefined): number | null {
-  const m = /^(\d{1,2})\.\s/.exec(answer ?? '')
+/** 選んだ選択肢と補足の区切り */
+const NOTE_SEP = ' — '
+
+/** 答えを選択肢の部分（`1. 月額と年額`）と補足に分ける。選択肢でなければ全体が自由な答え */
+function splitAnswer(answer: string): { n: number; text: string; note: string } | null {
+  const m = /^(\d{1,2})\.\s+(.*)$/.exec(answer)
   if (!m) return null
-  const n = Number(m[1])
-  return item.options?.some((o) => o.n === n) ? n : null
+  const at = m[2]!.indexOf(NOTE_SEP)
+  return { n: Number(m[1]), text: (at < 0 ? m[2]! : m[2]!.slice(0, at)).trim(), note: at < 0 ? '' : m[2]!.slice(at + NOTE_SEP.length).trim() }
 }
 
-/** 選んだ選択肢を答えの形にする（番号と文を両方残し、Agent が取り違えないように） */
-export function optionAnswer(option: ChecklistOption): string {
-  return `${option.n}. ${option.text}`
+/** 選択肢の答えの番号。文が同じ選択肢を先に探し（並べ替えた後も合うように）、無ければ番号で。自由入力なら null */
+export function answerOption(item: Pick<ChecklistItem, 'options'>, answer: string | undefined): number | null {
+  const a = splitAnswer(answer ?? '')
+  if (!a) return null
+  const byText = item.options?.find((o) => o.text === a.text)
+  if (byText) return byText.n
+  return item.options?.some((o) => o.n === a.n) ? a.n : null
+}
+
+/** 答えの補足（選択肢に足した自由な文）。選択肢の答えでなければ空 */
+export function answerNote(item: Pick<ChecklistItem, 'options'>, answer: string | undefined): string {
+  return answerOption(item, answer) === null ? '' : splitAnswer(answer!)!.note
+}
+
+/** 選んだ選択肢を答えの形にする（番号と文を両方残し、Agent が取り違えないように）。補足があれば後ろに足す */
+export function optionAnswer(option: ChecklistOption, note = ''): string {
+  const extra = note.trim()
+  return `${option.n}. ${option.text}${extra ? `${NOTE_SEP}${extra}` : ''}`
 }
 
 /**
@@ -284,12 +321,20 @@ export function composeAnswersMessage(items: readonly ChecklistItem[], lang: 'ja
   const lines: string[] = []
   let used = 0
   let skipped = 0
-  for (const it of answered) {
-    const what = [it.label && `[${it.label}]`, it.note, it.url].filter(Boolean).join(' ')
-    const line = `- ${it.key} ${what}\n  → ${it.answer}`
-    if (used + line.length + 1 > limit) { skipped += 1; continue }
-    lines.push(line)
-    used += line.length + 1
+  // プロダクトごとにまとめる（どのプロダクトのどの質問への答えか分かるように）
+  const products = [...new Set(answered.map((it) => it.label))]
+  for (const product of products) {
+    const head = `### ${product || (ja ? 'プロダクトの指定なし' : 'No product')}`
+    let wroteHead = false
+    for (const it of answered.filter((x) => x.label === product)) {
+      const question = [it.note, it.url].filter(Boolean).join(' ')
+      const line = `- ${it.key}: ${question}\n  → ${ja ? '答え' : 'Answer'}: ${it.answer}`
+      const size = line.length + 1 + (wroteHead ? 0 : head.length + 2)
+      if (used + size > limit) { skipped += 1; continue }
+      if (!wroteHead) { lines.push(`${lines.length ? '\n' : ''}${head}`); wroteHead = true }
+      lines.push(line)
+      used += size
+    }
   }
   const more = skipped ? (ja ? `（ほか ${skipped} 件は human.md の「## 回答」を読んでください）` : `(${skipped} more: read "## Answers" in human.md)`) : ''
   return [head.join('\n'), [ja ? '答え:' : 'Answers:', ...lines, more].filter(Boolean).join('\n'), rules].filter(Boolean).join('\n\n')
@@ -304,4 +349,11 @@ export function uniqueByUrl(items: readonly ChecklistItem[]): ChecklistItem[] {
 /** ページを開いて確かめる項目（URL のあるもの）。確認リストの巡回と全体のフィードバックの帯に使う */
 export function pageItems<T extends { url: string }>(items: readonly T[]): T[] {
   return items.filter((it) => !!it.url)
+}
+
+/** プロダクトごとにまとめる（最初に出た順。プロダクトの無い項目は空の名前） */
+export function checklistGroups<T extends { label: string }>(items: readonly T[]): Array<{ product: string; items: T[] }> {
+  const groups = new Map<string, T[]>()
+  for (const it of items) groups.set(it.label, [...(groups.get(it.label) ?? []), it])
+  return [...groups].map(([product, list]) => ({ product, items: list }))
 }

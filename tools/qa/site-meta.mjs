@@ -57,7 +57,7 @@ function jsonLd() {
 // og:title・og:description はページごとに書いたものを正本にし、twitter:* はそれを写す。何度走らせても同じになる
 const OG_IMAGE_ALT = 'Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.'
 // og:locale は <html lang> から（docs は言語ごとのページがある。tools/docs/build-docs.mjs の OG_LOCALES と同じ）
-const OG_LOCALES = { en: 'en_US', ja: 'ja_JP', 'zh-CN': 'zh_CN', 'zh-TW': 'zh_TW', ko: 'ko_KR', es: 'es_ES', fr: 'fr_FR', de: 'de_DE', it: 'it_IT', 'pt-BR': 'pt_BR', ru: 'ru_RU', hi: 'hi_IN', id: 'id_ID', vi: 'vi_VN' }
+const OG_LOCALES = { en: 'en_US', ja: 'ja_JP' }
 function socialMeta(html) {
   const locale = OG_LOCALES[/<html lang="([^"]+)"/.exec(html)?.[1] ?? 'en'] ?? 'en_US'
   const title = /<meta property="og:title" content="([^"]*)"/.exec(html)?.[1]

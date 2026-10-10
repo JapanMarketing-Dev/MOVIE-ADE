@@ -77,11 +77,11 @@ describe('ルールで名前を作る', () => {
 
   it('名前の言語は文の文字から決め、決められなければ画面の言語', () => {
     expect(nameLocale(['ボタンの色'], 'en')).toBe('ja')
-    expect(nameLocale(['버튼 색상'], 'en')).toBe('ko')
-    expect(nameLocale(['The button is too small'], 'de')).toBe('en')
-    expect(nameLocale(['Der Knopf ist zu klein'], 'de')).toBe('de')
+    expect(nameLocale(['按钮颜色'], 'en')).toBe('ja')
+    expect(nameLocale(['The button is too small'], 'ja')).toBe('en')
     expect(nameLocale(['Botón'], 'ja')).toBe('en')
-    expect(nameLocale(['1234'], 'fr')).toBe('fr')
+    expect(nameLocale(['버튼 색상'], 'en')).toBe('en')
+    expect(nameLocale(['1234'], 'ja')).toBe('ja')
   })
 
   it('長い文は上限で切り、ラテン文字は語の途中で切らない', () => {

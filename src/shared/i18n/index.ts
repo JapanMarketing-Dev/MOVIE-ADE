@@ -1,20 +1,9 @@
 import { en, type MessageKey, type Messages } from './en'
 import { ja } from './ja'
-import { zhCN } from './zh-CN'
-import { zhTW } from './zh-TW'
-import { ko } from './ko'
-import { es } from './es'
-import { fr } from './fr'
-import { de } from './de'
-import { ptBR } from './pt-BR'
-import { it } from './it'
-import { ru } from './ru'
-import { vi } from './vi'
-import { id } from './id'
-import { hi } from './hi'
 
 /**
- * 画面の言語（UI の文言）。main と renderer の両方が同じ t() を使う。
+ * 画面の言語（UI の文言）。日本語と英語だけ（ほかの言語は保守の手間に見合わないので 0.6.14 でやめた）。
+ * main と renderer の両方が同じ t() を使う。
  * 文字起こしの言語（CapturePreferences.language）とは別の軸で、互いに影響しない。
  *
  * 言語を足すには:
@@ -33,19 +22,7 @@ export type { MessageKey, Messages } from './en'
 
 export const LOCALES = {
   en,
-  ja,
-  'zh-CN': zhCN,
-  'zh-TW': zhTW,
-  ko,
-  es,
-  fr,
-  de,
-  'pt-BR': ptBR,
-  it,
-  ru,
-  vi,
-  id,
-  hi
+  ja
 } satisfies Record<string, Readonly<Record<string, string>>>
 export type SupportedLocale = keyof typeof LOCALES
 export type LocalePreference = 'system' | SupportedLocale
@@ -60,19 +37,7 @@ export const LOCALE_PREFERENCES: readonly LocalePreference[] = ['system', ...SUP
 /** 言語の名前は、どの言語の画面でもその言語自身の表記で出す（Orca と同じ） */
 export const LOCALE_LABELS: Record<SupportedLocale, string> = {
   en: 'English',
-  ja: '日本語',
-  'zh-CN': '简体中文',
-  'zh-TW': '繁體中文',
-  ko: '한국어',
-  es: 'Español',
-  fr: 'Français',
-  de: 'Deutsch',
-  'pt-BR': 'Português (Brasil)',
-  it: 'Italiano',
-  ru: 'Русский',
-  vi: 'Tiếng Việt',
-  id: 'Bahasa Indonesia',
-  hi: 'हिन्दी'
+  ja: '日本語'
 }
 
 export function isSupportedLocale(value: unknown): value is SupportedLocale {
@@ -86,19 +51,13 @@ export function normalizeLocalePreference(value: unknown): LocalePreference {
 }
 
 /**
- * OS の言語タグ（ja-JP / en_US / zh-Hant など）を、持っている辞書のどれかへ寄せる。無ければ英語。
+ * OS の言語タグ（ja-JP / en_US など）を、持っている辞書（日本語・英語）へ寄せる。無ければ英語。
  * Orca由来: ~/bench/orca/src/shared/ui-locale.ts の normalizeSupportedUiLocale（MIT）
  */
 function matchLocale(tag: string | null | undefined): SupportedLocale | null {
   const norm = (tag ?? '').trim().toLowerCase().replace(/_/g, '-')
-  const [primary, ...rest] = norm.split('-')
+  const [primary] = norm.split('-')
   if (!primary) return null
-  // 中国語は文字体系で分ける（繁体字: Hant / 台湾・香港・マカオ。それ以外は簡体字）
-  if (primary === 'zh') return rest.some((p) => p === 'hant' || p === 'tw' || p === 'hk' || p === 'mo') ? 'zh-TW' : 'zh-CN'
-  // ポルトガル語は持っている pt-BR に寄せる（pt-PT も最も近いのは pt-BR）
-  if (primary === 'pt') return 'pt-BR'
-  // インドネシア語の古いタグ（in）
-  if (primary === 'in') return 'id'
   return isSupportedLocale(primary) ? primary : null
 }
 
@@ -193,19 +152,7 @@ export function t(key: TranslationKey, params?: MessageParams): string {
 
 const INTL_TAG: Record<SupportedLocale, string> = {
   en: 'en-US',
-  ja: 'ja-JP',
-  'zh-CN': 'zh-CN',
-  'zh-TW': 'zh-TW',
-  ko: 'ko-KR',
-  es: 'es-ES',
-  fr: 'fr-FR',
-  de: 'de-DE',
-  'pt-BR': 'pt-BR',
-  it: 'it-IT',
-  ru: 'ru-RU',
-  vi: 'vi-VN',
-  id: 'id-ID',
-  hi: 'hi-IN'
+  ja: 'ja-JP'
 }
 
 export function intlLocale(locale: SupportedLocale = current): string {

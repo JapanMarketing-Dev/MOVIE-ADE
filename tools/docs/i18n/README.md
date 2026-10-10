@@ -8,9 +8,8 @@ tools/docs/i18n/<lang>/_site.html        header, footer, sidebar groups, banners
 tools/docs/i18n/<lang>/<page>.html       one docs page (quick-start, install, agents, …)
 ```
 
-Languages are the app's 14 (`src/shared/i18n`): `en` (source), `ja`, `zh-CN`, `zh-TW`, `ko`, `es`, `fr`, `de`, `it`, `pt-BR`, `ru`, `hi`, `id`, `vi`.
-English pages are published at `/docs/<page>`, the others at `/docs/<lang>/<page>`.
-Anything without a translation is shown in English, with a "This page is not translated yet" notice in that language, and kept out of search engines until at least part of it is translated.
+Languages are the app's two (`src/shared/i18n`): `en` (source) and `ja`. Other languages were dropped in 0.6.14; their old URLs redirect to the English pages (`site/_redirects`).
+English pages are published at `/docs/<page>`, the Japanese ones at `/docs/ja/<page>`.
 
 Each file can be done on its own, so one person (or agent) per language and page can work in parallel. Do `_site` first in each language: it is short and shows on every page.
 

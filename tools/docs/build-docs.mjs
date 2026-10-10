@@ -853,7 +853,7 @@ page('settings.html', 'Configure', 'Settings reference',
   <li>${ui('Service CLIs')}: install and sign in to service CLIs. See <a href="agents.html#cli-tools">Service CLIs</a>.</li>
   <li>${ui('Import from browsers')}: bring passwords (from an exported CSV) and history into the built-in browser. See <a href="recording.html#import">Import passwords and history</a>.</li>
   <li>${ui('Appearance → Theme')}: ${ui('System')} (default), ${ui('Light')}, ${ui('Dark')}.</li>
-  <li>${ui('Language → Interface')}: ${ui('System')} (default; follows the OS language when ${APP} has it, English otherwise) or one of 14 languages: English, 日本語, 简体中文, 繁體中文, 한국어, Español, Français, Deutsch, Italiano, Português (Brasil), Русский, हिन्दी, Bahasa Indonesia, Tiếng Việt.</li>
+  <li>${ui('Language → Interface')}: ${ui('System')} (default; follows the OS language when ${APP} has it, English otherwise) English or 日本語.</li>
 </ul>
 <p>From the footer: terminal position (right / bottom) and the microphone toggle.</p>`],
     ['settings-json', 'settings.json', `
@@ -1300,25 +1300,13 @@ ${code('pnpm rebuild:native')}`],
 /* ───────────── languages ───────────── */
 
 /**
- * アプリと同じ14言語（src/shared/i18n の LOCALES）。名前はその言語自身の表記（LOCALE_LABELS と同じ。単体テストで確かめる）。
- * 英語は /docs/<page>、ほかは /docs/<lang>/<page> に書き出す。ブラウザの言語での自動の転送はしない（docs.js は選んだ言語だけを覚える）。
+ * アプリと同じ日本語と英語（src/shared/i18n の LOCALES）。名前はその言語自身の表記（LOCALE_LABELS と同じ。単体テストで確かめる）。
+ * 英語は /docs/<page>、日本語は /docs/ja/<page> に書き出す。やめた言語の URL は site/_redirects で英語へ送る。
  */
-export const LANGS = ['en', 'ja', 'zh-CN', 'zh-TW', 'ko', 'es', 'fr', 'de', 'it', 'pt-BR', 'ru', 'hi', 'id', 'vi']
+export const LANGS = ['en', 'ja']
 export const LANG_LABELS = {
   en: 'English',
   ja: '日本語',
-  'zh-CN': '简体中文',
-  'zh-TW': '繁體中文',
-  ko: '한국어',
-  es: 'Español',
-  fr: 'Français',
-  de: 'Deutsch',
-  it: 'Italiano',
-  'pt-BR': 'Português (Brasil)',
-  ru: 'Русский',
-  hi: 'हिन्दी',
-  id: 'Bahasa Indonesia',
-  vi: 'Tiếng Việt',
 }
 /** 訳のファイルの置き場所。書き方は i18n/README.md */
 export const I18N_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'i18n')
@@ -1620,7 +1608,7 @@ const footer = (c) => `<footer class="site-footer">
 
 // SNS のカード。tools/qa/site-meta.mjs の socialMeta と同じ行を書く（site:meta を走らせても差分が出ないように）
 const OG_IMAGE_ALT = 'Ferret: the ADE for feedback by voice and screen. A pen circles Sign up on a pricing page, two findings appear, and a terminal running claude reports Done 2/2.'
-const OG_LOCALES = { en: 'en_US', ja: 'ja_JP', 'zh-CN': 'zh_CN', 'zh-TW': 'zh_TW', ko: 'ko_KR', es: 'es_ES', fr: 'fr_FR', de: 'de_DE', it: 'it_IT', 'pt-BR': 'pt_BR', ru: 'ru_RU', hi: 'hi_IN', id: 'id_ID', vi: 'vi_VN' }
+const OG_LOCALES = { en: 'en_US', ja: 'ja_JP' }
 
 // タグを外す。1回だけだと、外したあとに `<<b>script>` から `<script>` ができるので、変わらなくなるまで繰り返す
 const strip = (s) => {

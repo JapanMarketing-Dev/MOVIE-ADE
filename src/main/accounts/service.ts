@@ -23,6 +23,7 @@ import { resolveAgentEnvFrom } from './env'
 import { claudeKeychainService, readClaudeIdentity, readClaudeSystemIdentity, readCodexIdentity, type AccountIdentity } from './identity'
 import { createManagedAccountDir, isValidAccountId, removeManagedAccountDir, systemConfigDir, verifyManagedAccountDir } from './paths'
 import { normalizeAccountLabel } from './sanitize'
+import { managedClaudeChromePaired, systemClaudeChromePaired } from './chromePairing'
 import { t } from '@shared/i18n'
 import { UserFacingError } from '@shared/errors'
 import { errorKind, reportHandled } from '@shared/report'
@@ -227,6 +228,21 @@ function deleteScopedClaudeKeychainItem(configDir: string): Promise<void> {
   return new Promise((resolve) => {
     execFile('security', ['delete-generic-password', '-s', service, '-a', user], { timeout: 5000 }, () => resolve())
   })
+}
+
+/**
+ * Claude in Chrome とつないだことのある Claude Code のアカウント（null はシステムの既定）。
+ * 拡張機能は同じ claude.ai のアカウントの Claude Code としかつながらないので、上限での切り替えはこれを先に選ぶ（failover/service.ts）。
+ * どれもつないでいなければ空（選び方は変えない）
+ */
+export async function claudeChromeAccounts(): Promise<Set<string | null>> {
+  const found = new Set<string | null>()
+  if (await systemClaudeChromePaired().catch(() => false)) found.add(null)
+  for (const account of accountsSettings().claude.accounts) {
+    const verdict = verifyManagedAccountDir({ userDataDir: userDataDir(), agent: 'claude', accountId: account.id })
+    if (verdict.kind === 'owned' && (await managedClaudeChromePaired(verdict.dir).catch(() => false))) found.add(account.id)
+  }
+  return found
 }
 
 /** null を選ぶとシステムの既定アカウントへ戻す。ログインが済んでいないアカウントは選べない */

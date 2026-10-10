@@ -137,13 +137,8 @@ describe('LLMへの入力', () => {
     expect(prompt).toContain('このボタンの色が薄いです')
   })
 
-  it('条文を持たない言語は英語の条文で、見出しと要望だけをその言語で書かせる', () => {
+  it('英語の条文では見出しと要望を英語で書かせる', () => {
     const stage = buildDraftDocument(material)
-    const de = buildPrompt(stage.organizeInput, 'de')
-    expect(de).toContain('Write title and request in German.')
-    expect(de).not.toContain('Write title and request in English.')
-    expect(de).toContain('Do not change what was said.')
-    expect(buildPrompt(stage.organizeInput, 'zh-TW')).toContain('in Traditional Chinese (Taiwan).')
     expect(buildPrompt(stage.organizeInput, 'en')).toContain('Write title and request in English.')
   })
 })

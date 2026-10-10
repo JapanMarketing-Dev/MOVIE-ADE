@@ -49,8 +49,10 @@ describe('ちらつきと欠けの防止', () => {
     for (const p of all) expect({ page: p, bad: /href="(\.\/|\/)?docs\/"/.test(read(p)) }).toEqual({ page: p, bad: false })
     expect(read('_redirects')).toMatch(/^\/docs\/ \/docs\/quick-start 301$/m)
     // 言語版の docs も、入口（/docs/<lang>/）は描く前に quick-start へ送る
-    for (const lang of ['ja', 'zh-CN', 'zh-TW', 'ko', 'es', 'fr', 'de', 'it', 'pt-BR', 'ru', 'hi', 'id', 'vi'])
-      expect(read('_redirects')).toContain(`/docs/${lang}/ /docs/${lang}/quick-start 301`)
+    expect(read('_redirects')).toContain('/docs/ja/ /docs/ja/quick-start 301')
+    // やめた言語（0.6.14）の URL は英語のページへ送る
+    for (const lang of ['zh-CN', 'zh-TW', 'ko', 'es', 'fr', 'de', 'it', 'pt-BR', 'ru', 'hi', 'id', 'vi'])
+      expect(read('_redirects')).toContain(`/docs/${lang}/* /docs/:splat 301`)
   })
 })
 
