@@ -27,13 +27,15 @@ import {
   isAccountAgentId,
   tabsToSwitch,
   limitKey,
+  nearLimitTabs,
   planFailover,
   planReturn,
   switchAllowed,
   usableAccounts,
   type AccountCandidate,
   type FailoverTarget,
-  type PlanInput
+  type PlanInput,
+  type RunningTab
 } from './plan'
 
 /**
@@ -52,6 +54,9 @@ import {
  * 新しいタブは renderer が開き（failover:launch）、開いたら main が「まずこのファイルを読んで」と送る。
  * 済んだら failover:notice でフッターとトーストに知らせ、上限になった古いタブを閉じる。
  * 回数と間隔の上限（plan.ts の switchAllowed）で、切り替えを繰り返し続けないようにする。
+ * - 上限の手前（handoffPercent。既定 98%）: 動いているタブのアカウントがそこまで来たら、上限の知らせを待たずに、
+ *   手が空いたところで今の Agent に進み具合を引き継ぎのファイルへまとめさせて閉じ、次の優先順位で新しいタブを開いて続ける
+ *   （人がいない夜間も、上限で止まったまま・新しいセッションを人が押すのを待つことにならないように）
  */
 
 /** 上限の知らせを見てから、画面の末尾で確かめるまで（描き直しの途中の誤検出を避ける） */
@@ -102,6 +107,14 @@ let chromeReturnCheckAt = 0
 /** 引き継ぎの指示文を送っている途中のタブ（それを「直前の依頼」として覚えない） */
 const handoffSending = new Set<string>()
 let returnTimer: NodeJS.Timeout | null = null
+/** 上限の手前の確かめ（handoffPercent） */
+let nearLimitTimer: NodeJS.Timeout | null = null
+/** 上限の手前の引き継ぎを始めたタブ（同じタブで繰り返さない） */
+const nearLimitStarted = new Set<string>()
+/** 上限の手前の確かめの間隔 */
+const NEAR_LIMIT_CHECK_MS = 60 * 1000
+/** 作業中のタブが手を空けるのを待つ上限。過ぎたら Ferret が分かる範囲を書いて引き継ぐ（上限で止まるより先に） */
+const NEAR_LIMIT_IDLE_WAIT_MS = 10 * 60 * 1000
 
 export function failoverPrefs(): LimitFailoverPrefs {
   const raw = currentSettings().limitFailover
@@ -112,6 +125,7 @@ export function setFailoverPrefs(next: unknown): LimitFailoverPrefs {
   const prefs = sanitizeLimitFailover(next)
   updateSettings({ limitFailover: prefs })
   syncReturnTimer()
+  syncNearLimitTimer()
   return prefs
 }
 
@@ -176,6 +190,7 @@ export const terminalFailoverHooks = {
     inputs.delete(id)
     launchedAccount.delete(id)
     failoverTabs.delete(id)
+    nearLimitStarted.delete(id)
     const timer = confirmTimers.get(id)
     if (timer) clearTimeout(timer)
     confirmTimers.delete(id)
@@ -566,6 +581,65 @@ async function returnTabsToChrome(prefs: LimitFailoverPrefs): Promise<void> {
   }
 }
 
+// ───────────────────────── 上限の手前で引き継ぐ ─────────────────────────
+
+/**
+ * 動いている Claude Code / Codex のタブのうち、使っているアカウントの使用量が handoffPercent 以上のものを、
+ * 手が空いたところで（最長 NEAR_LIMIT_IDLE_WAIT_MS 待つ）引き継ぎのファイルにまとめさせ、次の優先順位のアカウント・Agent で開き直す
+ */
+export async function checkNearLimit(): Promise<void> {
+  const prefs = failoverPrefs()
+  if (!prefs.enabled || !terminals || prefs.handoffPercent >= 100) return
+  const tabs: RunningTab[] = []
+  for (const info of terminals.list()) {
+    const state = await terminals.agentState(info.id).catch(() => null)
+    const agent = state && state.kind !== 'unknown' ? state.agent : null
+    if (!agent || !isAccountAgentId(agent)) continue
+    tabs.push({ id: info.id, cwd: info.cwd, agent, accountId: launchedAccount.has(info.id) ? launchedAccount.get(info.id)! : activeAccountId(agent) })
+  }
+  if (tabs.length === 0) return
+  const used = new Map<string, number | null>()
+  for (const agent of ['claude', 'codex'] as const) {
+    if (!tabs.some((tab) => tab.agent === agent)) continue
+    for (const row of await getAccountUsage(agent).catch(() => [])) used.set(limitKey({ agent, accountId: row.accountId }), maxUsedPercent(row.rateLimits))
+  }
+  const due = nearLimitTabs(tabs, (agent, accountId) => used.get(limitKey({ agent, accountId })) ?? null, prefs.handoffPercent, nearLimitStarted, busy)
+  for (const tab of due) {
+    nearLimitStarted.add(tab.id)
+    flow('failover near limit', { agent: tab.agent })
+    void handOffNearLimit(tab).catch((err: unknown) => reportHandled(errorKind(err), { area: 'accounts', op: 'hand off near limit' }))
+  }
+}
+
+async function handOffNearLimit(tab: RunningTab): Promise<void> {
+  // 作業の途中で切ると、やりかけが残る。手が空くまで待つ（閉じたら何もしない）
+  const deadline = Date.now() + NEAR_LIMIT_IDLE_WAIT_MS
+  while (terminals && Date.now() < deadline) {
+    if (!terminals.list().some((s) => s.id === tab.id)) return
+    const state = await terminals.agentState(tab.id).catch(() => null)
+    if (!state || state.agent !== tab.agent) return
+    if (state.state === 'idle') break
+    await delay(5000)
+  }
+  if (!terminals?.list().some((s) => s.id === tab.id)) return
+  // このアカウントは上限とみなし、次の優先順位（別のアカウント → 次の Agent）を選ぶ
+  await switchFrom(tab.id, tab.cwd, { agent: tab.agent, accountId: tab.accountId }, 'limit')
+  // 引き継げなかった（どれも上限・回数の上限）ときは、あとでもう一度確かめられるようにする
+  if (terminals?.list().some((s) => s.id === tab.id)) setTimeout(() => nearLimitStarted.delete(tab.id), WAITING_NOTICE_GAP_MS).unref?.()
+}
+
+function syncNearLimitTimer(): void {
+  const prefs = failoverPrefs()
+  const want = prefs.enabled && prefs.handoffPercent < 100
+  if (want && !nearLimitTimer) {
+    nearLimitTimer = setInterval(() => void checkNearLimit().catch((err: unknown) => reportHandled(errorKind(err), { area: 'accounts', op: 'near limit' })), NEAR_LIMIT_CHECK_MS)
+    nearLimitTimer.unref?.()
+  } else if (!want && nearLimitTimer) {
+    clearInterval(nearLimitTimer)
+    nearLimitTimer = null
+  }
+}
+
 function syncReturnTimer(): void {
   const prefs = failoverPrefs()
   const want = prefs.enabled && prefs.returnToPreferred
@@ -588,4 +662,5 @@ export function initFailover(options: {
   emitNotice = options.notice
   terminals.failover = terminalFailoverHooks
   syncReturnTimer()
+  syncNearLimitTimer()
 }

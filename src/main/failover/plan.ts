@@ -158,3 +158,35 @@ export function tabsToSwitch<T extends { id: string; agent: TuiAgent | null; lau
 ): T[] {
   return tabs.filter((tab) => tab.agent === agent && (tab.launchedAccount ?? null) !== accountId)
 }
+
+// ───────────────────────── 上限の手前で引き継ぐ ─────────────────────────
+
+export interface RunningTab {
+  id: string
+  cwd: string
+  agent: AccountAgent
+  /** そのタブを起動したアカウント（null はシステムの既定） */
+  accountId: string | null
+}
+
+/**
+ * 上限の手前で引き継ぐタブ。使っているアカウントの使用量が handoffPercent 以上のタブで、
+ * もう引き継ぎを始めた（started）ものと、同じフォルダで切り替えの途中（busy）のものは除く。
+ * 同じフォルダのタブは1つだけ（切り替えはフォルダごとに1つずつ）。handoffPercent が 100 以上なら何もしない
+ */
+export function nearLimitTabs(
+  tabs: readonly RunningTab[],
+  usedPercent: (agent: AccountAgent, accountId: string | null) => number | null,
+  handoffPercent: number,
+  started: ReadonlySet<string>,
+  busy: ReadonlySet<string>
+): RunningTab[] {
+  if (handoffPercent >= 100) return []
+  const out: RunningTab[] = []
+  for (const tab of tabs) {
+    if (started.has(tab.id) || busy.has(tab.cwd) || out.some((t) => t.cwd === tab.cwd)) continue
+    const used = usedPercent(tab.agent, tab.accountId)
+    if (used !== null && used >= handoffPercent) out.push(tab)
+  }
+  return out
+}

@@ -289,7 +289,8 @@ export const SETTINGS_SCHEMA: JsonSchema = {
         thresholdPercent: { type: 'integer', description: 'An account counts as at its limit when its highest usage (5-hour, weekly or per-model) reaches this percentage.', minimum: MIN_FAILOVER_THRESHOLD, maximum: MAX_FAILOVER_THRESHOLD, default: DEFAULT_LIMIT_FAILOVER.thresholdPercent },
         switchAccounts: bool('Try another signed-in account of the same agent (Claude Code, Codex) before moving to the next agent. Between accounts that Ferret manages, the same conversation is resumed.', { default: DEFAULT_LIMIT_FAILOVER.switchAccounts }),
         agentOrder: { type: 'array', description: 'Agents to hand the work to, highest priority first. Agents not listed are never used.', items: agentId, default: DEFAULT_LIMIT_FAILOVER.agentOrder },
-        returnToPreferred: bool('When a higher agent in agentOrder is available again, move idle switched tabs back to it. Off keeps working with the current agent.', { default: DEFAULT_LIMIT_FAILOVER.returnToPreferred })
+        returnToPreferred: bool('When a higher agent in agentOrder is available again, move idle switched tabs back to it. Off keeps working with the current agent.', { default: DEFAULT_LIMIT_FAILOVER.returnToPreferred }),
+        handoffPercent: { type: 'integer', description: 'Before the limit: when the account a running tab uses reaches this percentage, Ferret has that agent write its progress to .ferret/handoff.md, closes it and continues in a new tab with the next account or agent in agentOrder, so work keeps going with nobody at the computer. 100 waits for the limit message instead.', minimum: MIN_FAILOVER_THRESHOLD, maximum: MAX_FAILOVER_THRESHOLD, default: DEFAULT_LIMIT_FAILOVER.handoffPercent }
       }
     },
     orchestra: {

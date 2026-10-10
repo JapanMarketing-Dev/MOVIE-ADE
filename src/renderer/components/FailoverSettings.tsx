@@ -50,6 +50,7 @@ export function FailoverSettings() {
   const installed = (agent: TuiAgent) => agents.length === 0 || agents.some((a) => a.id === agent && a.installed)
   const name = (agent: TuiAgent) => agents.find((a) => a.id === agent)?.label ?? agentLabel(agent)
   const thresholds = THRESHOLD_STEPS.includes(prefs.thresholdPercent) ? THRESHOLD_STEPS : [...THRESHOLD_STEPS, prefs.thresholdPercent].sort((a, b) => a - b)
+  const handoffs = THRESHOLD_STEPS.includes(prefs.handoffPercent) ? THRESHOLD_STEPS : [...THRESHOLD_STEPS, prefs.handoffPercent].sort((a, b) => a - b)
 
   return (
     <div className="failover" id="settings-failover" data-testid="settings-failover">
@@ -73,6 +74,15 @@ export function FailoverSettings() {
           </span>
         </label>
         <p className="st-note">{t('failover.thresholdHint')}</p>
+        <label className="st-row">
+          <span className="st-row__label">{t('failover.handoff')}</span>
+          <span className="rv-select">
+            <select value={prefs.handoffPercent} onChange={(e) => save({ ...prefs, handoffPercent: Number(e.target.value) })} data-testid="failover-handoff">
+              {handoffs.map((n) => <option key={n} value={n}>{n >= 100 ? t('failover.handoffOff') : `${n}%`}</option>)}
+            </select>
+          </span>
+        </label>
+        <p className="st-note">{t('failover.handoffHint')}</p>
         <label className="st-row st-row--switch">
           <span className="st-row__label">{t('failover.switchAccounts')}</span>
           <input type="checkbox" role="switch" className="st-switch" checked={prefs.switchAccounts} onChange={(e) => save({ ...prefs, switchAccounts: e.target.checked })} data-testid="failover-switch-accounts" />
