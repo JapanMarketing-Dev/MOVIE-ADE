@@ -186,7 +186,7 @@
     <tr><td><span class="docs-ui">整理</span></td><td>自分の Claude Code / Codex CLI か、<code>organizer</code> で設定した LLM のエンドポイント</td><td>文字と操作の記録だけ（画像・音声・動画は送らない）</td></tr>
     <tr><td>受け入れの判定（判定モデル。最初はオフ）</td><td>自分のエージェントから、ローカルの中継を通って Ollama / Cloudflare / AI Gateway / TypeSafe / OpenAI / 自分の URL へ</td><td>エージェントが送るもの: 指摘の文、「完了の条件」、BEFORE/AFTER のスクリーンショット（画像を扱えるモデルのときだけ）</td></tr>
     <tr><td>取り込んだ mtg の候補の判定（判定モデル。有効にしたときだけ）</td><td>Ferret から、ローカルの中継を通って、設定した判定モデルへ</td><td>候補ごとの題名と依頼、もとの発言、そのコマ（画像を扱えるモデルのときだけ）</td></tr>
-    <tr><td>共有リンク（作ったときだけ）</td><td><code>share.ferretade.dev</code>（開発者が動かす Cloudflare Worker）</td><td>題名、ページの見えている部分の静止画とその URL・題名、ランダムなインストール ID（1つのインストールが作れるリンクの数を抑えるために、鍵付きのハッシュとしてだけ使う）。リンクを知っている人は静止画を見られます。相手の指摘と任意の名前も同じサーバーに届きます（<a href="recording.html#share">共有リンク</a>）</td></tr>
+    <tr><td>共有リンク（作ったときだけ）</td><td><code>share.ferretade.dev</code>（開発者が動かす Cloudflare Worker）</td><td>題名、開くページの URL と題名、メモ（パスワードを付けたときは暗号化。パスワード自体は送らない）、ランダムなインストール ID（1つのインストールが作れるリンクの数を抑えるために、鍵付きのハッシュとしてだけ使う）。相手が録った指摘・文字の指摘・描いたもの・任意の名前も同じサーバーに届き、リンクを知っている人は見られます（<a href="recording.html#share">共有リンク</a>を参照）。すべて7日で消えます</td></tr>
     <tr><td><span class="docs-ui">GitHub に private で作る</span>（<span class="docs-ui">作成</span> を押したときだけ）</td><td>自分の <code>gh</code> を通して GitHub へ</td><td>選んだ名前と説明で private のリポジトリを作り、フォルダのコミットを push する（Ferret が作る最初のコミットには、<code>.gitignore</code> の対象と秘密を含みうるファイルを入れない）</td></tr>
     <tr><td><span class="docs-ui">Agentへ送信</span></td><td>ターミナルのエージェント</td><td><code>feedback.md</code> を指す指示1つ</td></tr>
     <tr><td>フッターの使用量（Claude Code と Codex だけ）</td><td>Anthropic、ChatGPT</td><td>自分のログインで使用量を問い合わせる</td></tr>

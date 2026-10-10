@@ -7,6 +7,7 @@ import type { ReviewData } from '@shared/review'
 import { Button, IconButton, Modal, Progress, useToast } from '../ui'
 import { useT } from '../lib/i18n'
 import { errorMessage } from '../lib/errors'
+import { finishImportedReview } from '../lib/importedReview'
 import '../styles/github.css'
 
 /**
@@ -40,27 +41,15 @@ export function MeetingImportDialog({ onClose, onImported }: { onClose: () => vo
     setBusy(true)
     setError(null)
     try {
-      let review = await window.ade.invoke('meeting:import', {
+      let review: ReviewData = await window.ade.invoke('meeting:import', {
         ...(media ? { mediaToken: media.token } : {}),
         ...(transcript.text.trim() ? { transcript: { text: transcript.text, ...(transcript.name ? { name: transcript.name } : {}) } } : {})
       })
-      const notes: string[] = []
-      // 整理（発話から指摘の候補を作る）。失敗しても下書きのまま進む
+      // 整理（発話から指摘の候補を作る）と判定（有効なときだけ点を付ける）。使えなくても下書きのまま進む
       setProgress({ stage: 'draft' })
-      try {
-        if (review.canOrganize) review = await window.ade.invoke('review:organize', review.id, runner)
-      } catch (err) {
-        notes.push(t('meeting.organizeSkipped', { reason: errorMessage(err) }))
-      }
-      // 判定（有効なときだけ点を付け、低い候補を送る対象から外す）
-      try {
-        const scored = await window.ade.invoke('meeting:score', review.id)
-        review = scored.review
-        if (scored.result.skipped) notes.push(t('meeting.scoreSkipped', { reason: scored.result.skipped }))
-        else notes.push(t('meeting.scored', { scored: scored.result.scored, excluded: scored.result.excluded }))
-      } catch (err) {
-        notes.push(t('meeting.scoreSkipped', { reason: errorMessage(err) }))
-      }
+      const finished = await finishImportedReview(review, runner, t)
+      review = finished.review
+      const notes = finished.notes
       toast({ tone: 'success', message: t('meeting.done', { count: review.document.items.length }), detail: notes.join(' ') })
       onImported(review)
       onClose()

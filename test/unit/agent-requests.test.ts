@@ -66,9 +66,15 @@ describe('組み込みの依頼文', () => {
     for (const word of ['human.md', 'top of the All products dashboard', '| No. | Product | URL | What to check |', 'B1', 'A1', 'P1', 'D1', 'in parallel', 'Never write secret values']) expect(text).toContain(word)
   })
 
-  it('コストの記録は、インフラ・サービス・AI を .ferret/costs.json に毎月と1回きりの形で書く', () => {
-    const text = BUILTIN_REQUESTS.find((b) => b.id === 'costs')!.text.en
-    for (const word of ['.ferret/costs.json', 'monthlyUsd', 'since', 'until', '"usd"', 'infra, service, ai, other', 'estimate', 'Never write keys']) expect(text).toContain(word)
+  it('コストの記録はインフラだけ（AI は入れない）。実績を毎月と請求ごとの形で、今のリソースからの推定を estimates に書く', () => {
+    for (const lang of ['ja', 'en'] as const) {
+      const text = BUILTIN_REQUESTS.find((b) => b.id === 'costs')!.text[lang]
+      for (const word of ['.ferret/costs.json', 'monthlyUsd', 'since', 'until', '"usd"', '"provider"', '"estimates"', '"checkedAt"', '"basis"', 'estimate']) expect(text).toContain(word)
+    }
+    const en = BUILTIN_REQUESTS.find((b) => b.id === 'costs')!.text.en
+    expect(en).toContain('infra, service, other')
+    expect(en).toContain('Leave out AI')
+    expect(en).toContain('Never write keys')
   })
 
   it('定期実行は持たない。1回きりの登録の依頼には印があり、隠せる', () => {

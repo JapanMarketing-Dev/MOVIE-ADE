@@ -21,5 +21,7 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["src/main/**/*", "src/shared/**/*", "electron.vite.config.ts"]
+  "include": ["src/main/**/*", "src/shared/**/*", "electron.vite.config.ts"],
+  "//": "画面の上に描く部品（DOM だけを使う）は preload・web の型検査で見る",
+  "exclude": ["src/shared/annotationPaint.ts", "src/shared/annotationPointer.ts", "src/shared/noteEditorDom.ts"]
 }

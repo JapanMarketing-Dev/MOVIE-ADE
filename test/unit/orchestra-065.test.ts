@@ -1,17 +1,16 @@
 /**
  * 0.6.5 のオーケストラ：インフラなどのコスト（src/shared/extraCost.ts）、1回の録画をプロダクトごとに分ける（src/shared/productSplit.ts）、
- * URL の無い確認項目（src/shared/humanChecklist.ts）、会話の記録の差分読み（src/main/orchestraOverview.ts）、
+ * URL の無い確認項目（src/shared/humanChecklist.ts）、
  * 作業の途中で閉じたターミナルの再開の印（src/shared/terminalRestore.ts）
  */
-import { appendFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { extraPeriods, parseCostFile, sumExtra } from '../../src/shared/extraCost'
+import { costForecast, extraPeriods, parseCostFile, parseCosts, providerOf, sumExtra, sumForecast } from '../../src/shared/extraCost'
 import { productForUrl, splitByProduct } from '../../src/shared/productSplit'
 import { pageItems, parseHumanChecklist, uniqueByUrl } from '../../src/shared/humanChecklist'
-import { transcriptDirName } from '../../src/shared/agentCost'
-import { folderExtraCost, projectCost } from '../../src/main/orchestraOverview'
+import { folderCosts } from '../../src/main/orchestraOverview'
 import { sanitizeRestoreSnapshot } from '../../src/shared/terminalRestore'
 
 describe('インフラなどのコスト（.ferret/costs.json）', () => {
@@ -27,8 +26,8 @@ describe('インフラなどのコスト（.ferret/costs.json）', () => {
       { name: 'Negative', monthlyUsd: -1 },
       'x'
     ] })).toEqual([
-      { name: 'Workers', category: 'infra', monthlyUsd: 5, since: '2026-01' },
-      { name: 'Domain', category: 'other', usd: 12, date: '2026-03-01', estimate: true }
+      { name: 'Workers', category: 'infra', provider: 'Cloudflare', monthlyUsd: 5, since: '2026-01' },
+      { name: 'Domain', category: 'other', provider: '', usd: 12, date: '2026-03-01', estimate: true }
     ])
     expect(parseCostFile(null)).toEqual([])
   })
@@ -42,24 +41,33 @@ describe('インフラなどのコスト（.ferret/costs.json）', () => {
       { name: 'Future', category: 'other', usd: 99, date: '2026-12-01' },
       { name: 'Claude Max', category: 'ai', monthlyUsd: 200, estimate: true } // since 無し：今月だけ
     ] }), now)
-    expect(p.month.usd).toBe(5 + 12 + 200)
-    expect(p.year.usd).toBe(5 * 10 + 26 * 5 + 12 + 200)
-    expect(p.total.usd).toBe(5 * 12 + 26 * 5 + 12 + 10 + 200)
-    expect(p.month.byCategory).toEqual({ infra: 17, service: 0, ai: 200, other: 0 })
+    // AI（サブスク）は数えない
+    expect(p.month.usd).toBe(5 + 12)
+    expect(p.year.usd).toBe(5 * 10 + 26 * 5 + 12)
+    expect(p.total.usd).toBe(5 * 12 + 26 * 5 + 12 + 10)
+    expect(p.month.byCategory).toEqual({ infra: 17, service: 0, other: 0 })
     expect(p.total.items['Workers']).toBe(60)
-    expect(p.total.estimated).toBe(true)
-    expect(sumExtra([p.month, p.month]).usd).toBe(434)
+    expect(p.total.items['Claude Max']).toBeUndefined()
+    expect(p.total.byProvider).toEqual({ Cloudflare: 60, Sentry: 130, '': 22 })
+    expect(p.total.estimated).toBe(false)
+    expect(sumExtra([p.month, p.month]).usd).toBe(34)
   })
 
   it('フォルダの .ferret/costs.json を読む。無い・壊れていれば 0', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'ferret-costs-'))
     try {
-      expect((await folderExtraCost(dir, now)).total.usd).toBe(0)
+      expect((await folderCosts(dir, now)).periods.total.usd).toBe(0)
       await mkdir(join(dir, '.ferret'))
       await writeFile(join(dir, '.ferret', 'costs.json'), '{broken')
-      expect((await folderExtraCost(dir, now)).total.usd).toBe(0)
-      await writeFile(join(dir, '.ferret', 'costs.json'), JSON.stringify({ items: [{ name: 'DB', category: 'infra', monthlyUsd: 15, since: '2026-10' }] }))
-      expect((await folderExtraCost(dir, now)).month.usd).toBe(15)
+      expect((await folderCosts(dir, now)).forecast.usd).toBe(0)
+      await writeFile(join(dir, '.ferret', 'costs.json'), JSON.stringify({
+        items: [{ name: 'DB', category: 'infra', monthlyUsd: 15, since: '2026-10' }],
+        checkedAt: '2026-10-08',
+        estimates: [{ name: 'EC2 t3.small ×2', provider: 'aws', monthlyUsd: 30.4, basis: '$0.0208/h × 730h × 2' }]
+      }))
+      const costs = await folderCosts(dir, now)
+      expect(costs.periods.month.usd).toBe(15)
+      expect(costs.forecast).toMatchObject({ usd: 30.4, byProvider: { AWS: 30.4 }, checkedAt: '2026-10-08', fromRecurring: false })
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
@@ -144,66 +152,49 @@ describe('人の確認リスト：URL の無い項目', () => {
   })
 })
 
-describe('会話の記録の差分読み', () => {
-  it('変わっていないファイルは数え直さず、書き足した分だけを足す。途中の行は改行が来てから数える', async () => {
-    const home = await mkdtemp(join(tmpdir(), 'ferret-cost-inc-'))
-    try {
-      const folder = join(home, 'shop')
-      await mkdir(folder)
-      const config = join(home, 'config')
-      const dir = join(config, 'projects', transcriptDirName(folder))
-      await mkdir(dir, { recursive: true })
-      const line = (input: number) => JSON.stringify({ timestamp: new Date().toISOString(), message: { model: 'claude-haiku-4-5', usage: { input_tokens: input } } })
-      const file = join(dir, 'a.jsonl')
-      await writeFile(file, `${line(1_000_000)}\n${line(500_000).slice(0, 20)}`)
-      expect((await projectCost(folder, [config])).total.input).toBe(1_000_000)
-      // 書きかけの行の続きと、新しい行
-      await appendFile(file, `${line(500_000).slice(20)}\n${line(250_000)}\n`)
-      expect((await projectCost(folder, [config])).total.input).toBe(1_750_000)
-      // 何も変わっていなければ同じ
-      expect((await projectCost(folder, [config])).total.input).toBe(1_750_000)
-      // 縮んだら初めから
-      await writeFile(file, `${line(100)}\n`)
-      expect((await projectCost(folder, [config])).total.input).toBe(100)
-    } finally {
-      await rm(home, { recursive: true, force: true })
-    }
+describe('今のリソースからの推定の月額', () => {
+  const now = new Date(2026, 9, 8, 12).getTime()
+
+  it('estimates があればそれだけを足す。AI と額の無いものは捨てる', () => {
+    const f = costForecast(parseCosts({
+      items: [{ name: 'Workers', category: 'infra', monthlyUsd: 5, since: '2026-01' }],
+      checkedAt: '2026-10-08',
+      estimates: [
+        { name: 'EC2 t3.small', provider: 'Amazon Web Services', monthlyUsd: 15.2, basis: '$0.0208/h × 730h' },
+        { name: 'Cloud Run api', provider: 'gcp', monthlyUsd: 8 },
+        { name: 'R2 bucket', monthlyUsd: 1.5 },
+        { name: 'OpenAI', category: 'ai', monthlyUsd: 20 },
+        { name: 'NoAmount' }
+      ]
+    }), now)
+    expect(f.usd).toBeCloseTo(24.7, 5)
+    expect(f.byProvider).toEqual({ AWS: 15.2, 'Google Cloud': 8, Cloudflare: 1.5 })
+    expect(f.basis).toEqual({ 'EC2 t3.small': '$0.0208/h × 730h' })
+    expect(f.checkedAt).toBe('2026-10-08')
+    expect(f.fromRecurring).toBe(false)
   })
 
-  it('同じフォルダを同時に数えるときは1回だけ読む', async () => {
-    const home = await mkdtemp(join(tmpdir(), 'ferret-cost-once-'))
-    try {
-      const a = projectCost(join(home, 'x'), [home])
-      const b = projectCost(join(home, 'x'), [home])
-      expect(a).toBe(b)
-      await a
-    } finally {
-      await rm(home, { recursive: true, force: true })
-    }
-  })
-})
-
-describe('作業の途中で閉じたターミナル', () => {
-  it('Agent のペインの「作業の途中」の印を覚える（シェルには付けない・true 以外は捨てる）', () => {
-    const snapshot = sanitizeRestoreSnapshot({
-      tabs: [{ key: 'tab1', projectId: 'p', layout: { type: 'split', direction: 'vertical', ratio: 0.5, first: { type: 'leaf', leafId: 'pane1' }, second: { type: 'split', direction: 'horizontal', ratio: 0.5, first: { type: 'leaf', leafId: 'pane2' }, second: { type: 'leaf', leafId: 'pane3' } } }, activePane: 'pane1' }],
-      panes: [
-        { key: 'pane1', title: 'Claude', launch: 'claude', cwd: null, accountId: null, scrollback: '', working: true },
-        { key: 'pane2', title: 'zsh', launch: null, cwd: null, accountId: null, scrollback: '', working: true },
-        { key: 'pane3', title: 'Codex', launch: 'codex', cwd: null, accountId: null, scrollback: '', working: 'yes' }
-      ],
-      activeByProject: {},
-      savedAt: Date.now()
-    })!
-    expect(snapshot.panes.map((p) => p.working ?? false)).toEqual([true, false, false])
+  it('estimates が無ければ今月も続いている毎月の items を使う（終わったもの・1回きりは入れない）', () => {
+    const f = costForecast(parseCosts({ items: [
+      { name: 'Workers', provider: 'Cloudflare', category: 'infra', monthlyUsd: 5, since: '2026-01' },
+      { name: 'Old VM', provider: 'AWS', category: 'infra', monthlyUsd: 40, since: '2026-01', until: '2026-08' },
+      { name: 'Domain', category: 'infra', usd: 12, date: '2026-10-01' },
+      { name: 'Claude Max', category: 'ai', monthlyUsd: 200 }
+    ], checkedAt: '2026-10-08' }), now)
+    expect(f).toMatchObject({ usd: 5, items: { Workers: 5 }, checkedAt: null, fromRecurring: true })
   })
 
-  it('戻したペインは続きを頼み、PC のスリープから戻ったら止まっている Agent に続きを頼む', async () => {
-    const { readFile } = await import('node:fs/promises')
-    const pane = await readFile(new URL('../../src/renderer/components/TerminalPane.tsx', import.meta.url), 'utf8')
-    expect(pane).toContain("window.ade.invoke('terminal:continueWork', info.id)")
-    const main = await readFile(new URL('../../src/main/index.ts', import.meta.url), 'utf8')
-    expect(main).toContain("powerMonitor.on('suspend', () => void rememberWorkBeforeSleep())")
-    expect(main).toMatch(/state\.state === 'idle'\) await terminals!\.sendReview\(id, t\('terminal\.continueWork'\)\)/)
+  it('フォルダを足すと、調べた日は一番古いものになる', () => {
+    const a = costForecast(parseCosts({ checkedAt: '2026-10-08', estimates: [{ name: 'EC2', provider: 'AWS', monthlyUsd: 10 }] }), now)
+    const b = costForecast(parseCosts({ checkedAt: '2026-09-30', estimates: [{ name: 'EC2', provider: 'AWS', monthlyUsd: 5 }] }), now)
+    expect(sumForecast([a, b])).toMatchObject({ usd: 15, byProvider: { AWS: 15 }, items: { EC2: 15 }, checkedAt: '2026-09-30' })
+  })
+
+  it('事業者の名前をそろえる。分からなければ書かれたまま、無ければ空', () => {
+    expect(providerOf('amazon web services', 'x')).toBe('AWS')
+    expect(providerOf(undefined, 'Cloudflare Workers Paid')).toBe('Cloudflare')
+    expect(providerOf('Firebase', 'Hosting')).toBe('Google Cloud')
+    expect(providerOf('Sakura Internet', 'VPS')).toBe('Sakura Internet')
+    expect(providerOf(undefined, 'example.com domain')).toBe('')
   })
 })

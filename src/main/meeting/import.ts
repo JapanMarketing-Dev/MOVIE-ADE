@@ -174,6 +174,101 @@ export async function importMeeting(deps: MeetingImportDeps): Promise<ReviewData
   }
 }
 
+// ─── 共有リンクに届いた録画（src/main/feedbackShare/）─────────────────
+
+export interface ShareRecordingImportDeps {
+  projectDir: string
+  recording: import('@shared/feedbackShare').ShareRecording
+  /** 書き込みの記録（events.json）。無ければ null */
+  events: import('@shared/feedbackShare').ShareEventsFile | null
+  /** 録画（声・映像）を dest へ落とす（新しいファイルとして。上限は呼び出し側）。媒体の無い録画（文字だけ）では呼ばない */
+  download: (dest: string) => Promise<void>
+  sttEngine: MeetingImportDeps['sttEngine']
+  urlPresets: MeetingImportDeps['urlPresets']
+  createReview: MeetingImportDeps['createReview']
+  onProgress: MeetingImportDeps['onProgress']
+}
+
+/**
+ * 共有リンクに届いた録画を、mtg と同じ流れで指摘の候補のレビューにする（動画は meeting.<拡張子> として ▷ で見返せる）。
+ * 声は設定の文字起こしで起こし、送った人の名前を話者の名前にする。書き込み・文字で指摘は録画と同じ操作ログにする
+ * （feedbackShare/importRecording.ts）。書き込みは描き終わりのコマ、発言は時刻のコマを撮る
+ */
+export async function importShareRecording(deps: ShareRecordingImportDeps): Promise<ReviewData> {
+  const { recording } = deps
+  const { SHARE_MEDIA_TYPES } = await import('@shared/feedbackShare')
+  const { shareRecordingMaterial } = await import('../feedbackShare/importRecording')
+  await ensureGitExclude(deps.projectDir)
+  const paths = await createSession(deps.projectDir)
+  const warnings: string[] = []
+  const ext = recording.mime ? SHARE_MEDIA_TYPES[recording.mime] : null
+  let videoUrl: string | null = null
+  if (ext) {
+    deps.onProgress({ stage: 'copy' })
+    const dest = join(paths.dir, `meeting.${ext}`)
+    assertContained(paths.dir, dest)
+    await deps.download(dest)
+    videoUrl = `ade-media://review/${paths.id}/meeting.${ext}`
+  }
+  await writeFileNoFollow(join(paths.dir, 'capture.json'), JSON.stringify({ startedAt: recording.createdAt, twoSpeakers: false,
+    share: { mode: recording.mode, ...(recording.name ? { name: recording.name } : {}) }, urlPresets: deps.urlPresets }))
+
+  const player = videoUrl ? new MeetingMedia(videoUrl) : null
+  try {
+    const info = player ? await player.probe().catch((err: unknown) => { reportHandled(err, { area: 'review', op: 'share: probe media' }); return null }) : null
+    if (player && !info) warnings.push(t('meeting.warnings.unplayable'))
+    const hasMarks = recording.notes.length > 0 || (deps.events?.events.some((e) => e.type === 'pen' || e.type === 'note') ?? false)
+    // 声。起こせなくても、文字で指摘・書き込みがあればそれだけで候補にする
+    let spoken: TranscriptSegment[] = []
+    if (player && info && info.durationMs > 0) {
+      try {
+        spoken = await transcribeMedia(player, info.durationMs, paths, deps)
+      } catch (err) {
+        if (!(err instanceof UserFacingError) || !hasMarks) throw err
+        warnings.push(err.message)
+      }
+    }
+    const material = shareRecordingMaterial(recording, deps.events, spoken)
+    if (material.transcript.length === 0 && material.penFrames.length === 0) throw new UserFacingError(t('meeting.errors.noSpeech'))
+
+    // コマ（映像のあるときだけ）。書き込みは描き終わりの少し後、発言はその時刻
+    const frames: FrameRef[] = []
+    if (player && info?.hasVideo) {
+      const durationMs = info.durationMs || recording.durationMs
+      const annotated = new Map<number, string>()
+      for (const p of material.penFrames) if (!annotated.has(p.t)) annotated.set(p.t, p.annotationId)
+      const times = [...new Set([...annotated.keys(), ...meetingFrameTimes(material.transcript.map((s) => s.t0), durationMs)])].sort((a, b) => a - b)
+      let done = 0
+      for (const at of times) {
+        deps.onProgress({ stage: 'frames', done, total: times.length })
+        const shot = await player.frame(at)
+        done++
+        if (!shot) continue
+        const name = `meeting-${String(at).padStart(9, '0')}.jpg`
+        try {
+          await mkdirContained(paths.framesDir, { root: paths.dir })
+          assertContained(paths.dir, paths.framesDir)
+          await writeNewFileContained(join(paths.framesDir, name), shot.jpeg)
+          const annotationId = annotated.get(at)
+          frames.push({ t: at, path: name, size: { width: shot.width, height: shot.height }, ...(annotationId ? { annotationId } : {}) })
+        } catch (err) {
+          reportHandled(err, { area: 'review', op: 'share: save frame' })
+        }
+      }
+    }
+
+    deps.onProgress({ stage: 'draft' })
+    const durationMs = Math.max(info?.durationMs ?? 0, recording.durationMs, ...material.transcript.map((s) => s.t1))
+    return await deps.createReview(paths, {
+      meta: { id: paths.id, startedAt: recording.createdAt, durationMs, twoSpeakers: false,
+        ...(recording.startUrl ? { targetUrl: recording.startUrl } : {}), ...(deps.urlPresets.length ? { urlPresets: deps.urlPresets } : {}) },
+      transcript: material.transcript, events: material.events, frames
+    }, warnings)
+  } finally {
+    player?.close()
+  }
+}
+
 /** 動画を写す（APFS などでは中身を複製しない写し。できなければ流して写す）。既にある名前・リンクには書かない */
 async function copyIntoReview(from: string, dest: string): Promise<void> {
   try {
@@ -191,7 +286,7 @@ async function copyIntoReview(from: string, dest: string): Promise<void> {
 }
 
 /** 動画の音声を設定の文字起こしで起こす（録画と同じ区切り方）。使えなければ理由を投げる */
-async function transcribeMedia(player: MeetingMedia, durationMs: number, paths: SessionPaths, deps: MeetingImportDeps): Promise<TranscriptSegment[]> {
+async function transcribeMedia(player: MeetingMedia, durationMs: number, paths: SessionPaths, deps: Pick<MeetingImportDeps, 'sttEngine' | 'onProgress'>): Promise<TranscriptSegment[]> {
   if (durationMs > MAX_AUDIO_DECODE_MS) throw new UserFacingError(t('meeting.errors.tooLongForAudio'))
   const { engine, kind, warning } = await deps.sttEngine()
   if (!engine) throw new UserFacingError(warning ?? t('meeting.errors.noTranscriber'))

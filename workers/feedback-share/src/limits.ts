@@ -11,16 +11,21 @@ const HOUR = 60 * 60 * 1000
 const DAY = 24 * HOUR
 
 /** 共有を作る数。IP（の HMAC）ごと・インストール ID（送られたとき）ごと */
-export const CREATE_PER_SENDER: readonly Window[] = [{ windowMs: HOUR, max: 10 }, { windowMs: DAY, max: 30 }]
+export const CREATE_PER_SENDER: readonly Window[] = [{ windowMs: HOUR, max: 30 }, { windowMs: DAY, max: 100 }]
 /** 共有を作る数の全体の上限 */
-export const CREATE_GLOBAL: readonly Window[] = [{ windowMs: DAY, max: 1000 }]
-/** 持ち主の操作（ページを足す・一覧を取る・断る）の IP ごとの上限。トークンが違うものも数える */
-export const OWNER_PER_IP: readonly Window[] = [{ windowMs: HOUR, max: 600 }, { windowMs: DAY, max: 3000 }]
-/** 相手の指摘の送信。IP ごと */
-export const COMMENT_PER_IP: readonly Window[] = [{ windowMs: HOUR, max: 60 }, { windowMs: DAY, max: 300 }]
-/** 相手の指摘の送信。共有ごと（大勢から一度に来ても、持ち主の一覧が埋まりきらないように） */
-export const COMMENT_PER_SHARE: readonly Window[] = [{ windowMs: HOUR, max: 200 }]
-/** 相手の指摘の送信の全体の上限 */
-export const COMMENT_GLOBAL: readonly Window[] = [{ windowMs: HOUR, max: 3000 }, { windowMs: DAY, max: 20000 }]
-/** ページを足す本文（multipart）の大きさの上限 */
-export const MAX_PAGE_REQUEST_BYTES = 5 * 1024 * 1024
+export const CREATE_GLOBAL: readonly Window[] = [{ windowMs: DAY, max: 2000 }]
+/** 持ち主の操作（中身を取る・変える・断る）の IP ごとの上限。トークンが違うものも数える */
+export const OWNER_PER_IP: readonly Window[] = [{ windowMs: HOUR, max: 1200 }, { windowMs: DAY, max: 6000 }]
+/** パスワードの確認の試み。IP と共有の組・共有ごと・IP ごと（総当たり対策。外れたものも合ったものも数える） */
+export const UNLOCK_PER_IP_SHARE: readonly Window[] = [{ windowMs: HOUR, max: 8 }, { windowMs: DAY, max: 30 }]
+export const UNLOCK_PER_SHARE: readonly Window[] = [{ windowMs: HOUR, max: 60 }, { windowMs: DAY, max: 300 }]
+export const UNLOCK_PER_IP: readonly Window[] = [{ windowMs: HOUR, max: 60 }, { windowMs: DAY, max: 200 }]
+/** 録画を始める数。IP ごと・共有ごと・全体 */
+export const RECORDING_PER_IP: readonly Window[] = [{ windowMs: HOUR, max: 20 }, { windowMs: DAY, max: 60 }]
+export const RECORDING_PER_SHARE: readonly Window[] = [{ windowMs: HOUR, max: 40 }]
+export const RECORDING_GLOBAL: readonly Window[] = [{ windowMs: HOUR, max: 600 }, { windowMs: DAY, max: 3000 }]
+
+/** パスワードを確かめたあとのセッションの長さ */
+export const SESSION_MS = 12 * HOUR
+/** 送り終わらない録画（途中で閉じた）を片付けるまで */
+export const PENDING_UPLOAD_MS = 2 * HOUR

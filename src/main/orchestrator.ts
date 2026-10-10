@@ -232,7 +232,7 @@ async function syncGuide(folder: string, file: string, block: string | null, tai
   if (next !== null) await writeAtomic(folder, file, next)
 }
 
-async function writeAtomic(dir: string, file: string, text: string): Promise<void> {
+export async function writeAtomic(dir: string, file: string, text: string): Promise<void> {
   const path = join(dir, file)
   if (await isLink(dir) || await isLink(path)) throw new SubagentLinkError(path)
   // 名前に乱数を足す（同じミリ秒の書き込みでもぶつけない）。消すのは自分が作った一時ファイルだけ。

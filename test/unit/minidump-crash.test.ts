@@ -280,3 +280,18 @@ describe('外から止められた子のプロセスは送らない（FERRET-1V�
     expect(shouldSendNativeCrash(scrubEvent(main))).toBe(true)
   })
 })
+
+describe('dyld で読み込みの途中に止められた子のプロセスは、プロセスが分からなくても送らない（FERRET-1W）', () => {
+  const unknown = (dump: { code: string; module?: string; kind?: string }) => scrubEvent(minimizeNativeCrash({ level: 'fatal', platform: 'native', tags: { 'os.platform': 'darwin' }, contexts: { electron: { details: { reason: 'unknown' } } } }, dump))
+
+  it('例外なし（0x0）で dyld の中なら送らない', () => {
+    expect(shouldSendNativeCrash(unknown({ code: '0x0', module: 'dyld' }))).toBe(false)
+  })
+
+  it('dyld でも例外のあるもの・ほかのモジュール・main は送る', () => {
+    expect(shouldSendNativeCrash(unknown({ code: '0x6', kind: 'abort', module: 'dyld' }))).toBe(true)
+    expect(shouldSendNativeCrash(unknown({ code: '0x0', module: 'Electron Framework' }))).toBe(true)
+    const main = minimizeNativeCrash({ level: 'fatal', platform: 'native', tags: { 'event.process': 'browser' }, contexts: { electron: { details: { reason: 'unknown' } } } }, { code: '0x0', module: 'dyld' })
+    expect(shouldSendNativeCrash(scrubEvent(main))).toBe(true)
+  })
+})

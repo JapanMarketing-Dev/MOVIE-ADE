@@ -68,33 +68,39 @@ export const BUILTIN_REQUESTS: readonly Builtin[] = [
         '人が確認・判断すべきことを、すべてのプロダクトから集めて、全体のフォルダの human.md に Markdown でまとめてください。Ferret の全体のダッシュボードの一番上に、この一覧がそのまま出ます（人はそこだけを見れば足りるようにします）。',
         '集めるもの：画面・動きの確認（before / after）、人の承認が要るもの（公開・課金・本番の設定・データの削除・外への送信）、人が用意するもの（鍵・アカウント・契約・ドメイン）、決めてほしいこと（仕様・優先順位・文言）、Agent が止まっている・失敗しているもの。各プロダクトの human.md・TODO・確認待ちの指摘（.ferret/reviews/<id>/progress.json の human_review）・直近の会話の最後の報告から拾い、プロダクトごとの subagent に並行して集めさせてください。',
         '書き方：表 `| 番号 | プロダクト | URL | 見てほしいこと |` に1行1件。番号は B1, B2 …（画面の確認）・A1 …（承認）・P1 …（人が用意するもの）・D1 …（決めること）。画面で確かめるものは開く URL（localhost・dev・prd）を必ず入れ、URL の無いものは URL の列を「-」にする。見てほしいことは1文で、何を見て何を判断すればよいかが分かるように書く。',
+        '選んでほしいことは表ではなく質問のブロックにする：見出し `### Q1 [プロダクト] 質問` の下に補足（任意）と番号の選択肢 `1. …` を書き、おすすめの選択肢の後ろに `(recommended)` を付ける（人は Ferret のダッシュボードで番号を選ぶか自由に書いて答える）。ブロックは次の見出しまで続くので、質問は表の後ろにまとめる。',
+        '人の答えは human.md の最後の `## 回答` に `- Q1: 2. …` の形で Ferret が書きます。答えの行は消さず、項目の中身だけを今の状態に直してください。全体のルールの「人の確認なしで進めてよい操作」に当たるものは human.md に載せないでください。',
         '済んだもの・古いものは消し、重なっているものは1つにまとめ、急ぐもの・大事なものを上に並べてください。秘密の値（鍵・パスワード）は書かないでください。'
       ].join('\n'),
       en: [
         'Collect everything a person must check or decide, across every product, and write it as Markdown into human.md in the top-level folder. Ferret shows this list as-is at the top of the All products dashboard, so it should be the only place a person needs to look.',
         'Collect: screens and behavior to check (before / after); things that need a person\'s approval (publishing, spending money, production settings, deleting data, sending anything outside); things a person must provide (keys, accounts, contracts, domains); decisions (spec, priorities, wording); and agents that are stuck or failing. Gather them from each product\'s human.md, TODOs, findings waiting for a person (human_review in .ferret/reviews/<id>/progress.json) and the final reports of recent conversations, with each product\'s subagent working in parallel.',
         'Format: one row per item in a table `| No. | Product | URL | What to check |`. Numbers are B1, B2 … (check a screen), A1 … (approve), P1 … (provide), D1 … (decide). Always include the URL to open (localhost, dev, prd) for anything checked on screen; use "-" in the URL column when there is none. Write what to check in one sentence that says what to look at and what to decide.',
+        'Anything a person should choose goes in a question block instead of the table: a heading `### Q1 [product] question`, optional explanation lines, then numbered options `1. …` with `(recommended)` after the one you recommend (the person answers on the Ferret dashboard by picking a number or writing freely). A block runs until the next heading, so put questions after the table.',
+        'Ferret writes the person\'s answers under `## Answers` at the end of human.md as `- Q1: 2. …`. Keep those lines; only bring the items up to date. Leave out anything covered by the "operations allowed without asking" in the shared rules.',
         'Remove what is done or stale, merge duplicates, and put urgent and important items first. Never write secret values (keys, passwords).'
       ].join('\n')
     }
   },
   {
     id: 'costs',
-    title: { ja: 'すべてのコストを記録する（インフラ込み）', en: 'Record every cost (infrastructure included)' },
+    title: { ja: 'インフラのコストを記録する（実績と推定）', en: 'Record infrastructure costs (actual and estimated)' },
     text: {
       ja: [
-        'このプロダクト（オーケストラならすべてのプロダクトと全体）にかかっているコストをすべて調べ、Ferret のダッシュボードで今月・今年・総額と内訳を見られるよう `.ferret/costs.json` に書いてください。全体で共有しているもの（Agent のサブスクリプション・共通のドメインやツール）は全体のフォルダの `.ferret/costs.json` に、プロダクトだけのものは各プロダクトのフォルダの `.ferret/costs.json` に分け、プロダクトごとの subagent に並行して調べさせてください。',
-        '対象：インフラ（クラウド・ホスティング・DB・ストレージ・CDN・ドメイン・メール）、外部サービス（Sentry・分析・認証・決済の手数料・API）、AI（Agent のサブスクリプション・API の利用料。Claude Code の会話の分は Ferret が記録から数えるので入れない）、そのほか。',
-        '調べ方：各サービスの CLI・API・請求の書き出しを使う。分からない金額は料金表とプランから見積もり、"estimate": true を付ける。',
-        '形：{"items":[{"name":"Cloudflare Workers Paid","category":"infra","monthlyUsd":5,"since":"2026-01"},{"name":"example.com のドメイン","category":"infra","usd":12,"date":"2026-03-01","estimate":true}]}。category は infra・service・ai・other のどれか。毎月かかるものは monthlyUsd と since（YYYY-MM。終わったものは until も）、1回きりのものは usd と date（YYYY-MM-DD）。金額は USD にそろえ、ほかの通貨はその日のレートで換算して note に元の額を書く。',
-        '鍵・カード・請求先の個人情報は書かないでください。.ferret/ が .gitignore に無ければ足してください。最後に今月・今年・総額の合計を報告してください。'
+        'このプロダクト（オーケストラならすべてのプロダクトと全体）のインフラのコストを調べ、Ferret のダッシュボードで実績（今月・今年・総額）と、今動いているリソースからの推定の月額を見られるよう `.ferret/costs.json` に書いてください。全体で共有しているもの（共通のドメイン・アカウント）は全体のフォルダの `.ferret/costs.json` に、プロダクトだけのものは各プロダクトのフォルダの `.ferret/costs.json` に分け、プロダクトごとの subagent に並行して調べさせてください。',
+        '対象：AWS・Cloudflare・Google Cloud などのクラウド、ホスティング・DB・ストレージ・CDN・ドメイン・メール、外部サービス（Sentry・分析・認証・決済の手数料など）。AI（Agent のサブスクリプション・API の利用料）は入れないでください。',
+        '実績（items）：各事業者の請求・Cost Explorer・billing export・CLI（aws ce get-cost-and-usage、gcloud billing、Cloudflare の請求など）から月ごとの実際の額を取る。分からない額は料金表とプランから見積もり、"estimate": true を付ける。',
+        '推定（estimates）：今動いているリソース（インスタンス・コンテナ・関数・DB・ストレージ・ロードバランサ・IP・ドメインなど）を CLI で列挙し、料金表から1か月（730時間）動かしたときの額にする。計算の元を basis に書き、調べた日を checkedAt に書く。止まっているもの・無料枠に収まるものは入れない。',
+        '形：{"items":[{"name":"AWS 2026-09 の請求","provider":"AWS","category":"infra","usd":41.2,"date":"2026-09-30"},{"name":"Cloudflare Workers Paid","provider":"Cloudflare","category":"infra","monthlyUsd":5,"since":"2026-01"}],"checkedAt":"2026-10-10","estimates":[{"name":"EC2 t3.small ×2 (ap-northeast-1)","provider":"AWS","monthlyUsd":30.4,"basis":"$0.0208/h × 730h × 2"}]}。provider は AWS・Cloudflare・Google Cloud などの事業者名。category は infra・service・other のどれか。毎月決まった額は monthlyUsd と since（YYYY-MM。終わったものは until も）、請求ごとの額は usd と date（YYYY-MM-DD）。金額は USD にそろえ、ほかの通貨はその日のレートで換算して note に元の額を書く。',
+        '鍵・カード・請求先の個人情報は書かないでください。.ferret/ が .gitignore に無ければ足してください。最後に今月・今年・総額の実績と推定の月額を、事業者ごとに報告してください。'
       ].join('\n'),
       en: [
-        'Find every cost of this product (in an orchestra: every product and the shared top level) and write it to `.ferret/costs.json` so Ferret\'s dashboard can show this month, this year, the total and the breakdown. Shared costs (agent subscriptions, shared domains or tools) go in the top-level folder\'s `.ferret/costs.json`; product-only costs go in each product folder\'s `.ferret/costs.json`. Let each product\'s subagent work in parallel.',
-        'Include: infrastructure (cloud, hosting, databases, storage, CDN, domains, email), external services (Sentry, analytics, auth, payment fees, APIs), AI (agent subscriptions and API usage; leave out Claude Code conversations, which Ferret counts from the transcripts) and anything else.',
-        'How: use each service\'s CLI, API or billing export. When an amount is unknown, estimate it from the price list and plan and add "estimate": true.',
-        'Shape: {"items":[{"name":"Cloudflare Workers Paid","category":"infra","monthlyUsd":5,"since":"2026-01"},{"name":"example.com domain","category":"infra","usd":12,"date":"2026-03-01","estimate":true}]}. category is one of infra, service, ai, other. Recurring costs use monthlyUsd and since (YYYY-MM; add until when it ended); one-off costs use usd and date (YYYY-MM-DD). Convert everything to USD at that day\'s rate and put the original amount in note.',
-        'Never write keys, card details or billing contacts. Add .ferret/ to .gitignore if it is missing. Finish by reporting the totals for this month, this year and overall.'
+        'Find the infrastructure costs of this product (in an orchestra: every product and the shared top level) and write them to `.ferret/costs.json` so Ferret\'s dashboard can show the actual cost (this month, this year, total) and the estimated monthly cost of the resources running now. Shared costs (shared domains or accounts) go in the top-level folder\'s `.ferret/costs.json`; product-only costs go in each product folder\'s `.ferret/costs.json`. Let each product\'s subagent work in parallel.',
+        'Include: clouds such as AWS, Cloudflare and Google Cloud, hosting, databases, storage, CDN, domains, email, and external services (Sentry, analytics, auth, payment fees). Leave out AI (agent subscriptions and API usage).',
+        'Actual (items): take each month\'s real amount from each provider\'s bills, Cost Explorer, billing export or CLI (aws ce get-cost-and-usage, gcloud billing, Cloudflare billing). When an amount is unknown, estimate it from the price list and plan and add "estimate": true.',
+        'Estimate (estimates): list the resources running now with the CLIs (instances, containers, functions, databases, storage, load balancers, IPs, domains) and price each for one month (730 hours) from the price list. Put the calculation in basis and the date you checked in checkedAt. Leave out what is stopped or within the free tier.',
+        'Shape: {"items":[{"name":"AWS 2026-09 bill","provider":"AWS","category":"infra","usd":41.2,"date":"2026-09-30"},{"name":"Cloudflare Workers Paid","provider":"Cloudflare","category":"infra","monthlyUsd":5,"since":"2026-01"}],"checkedAt":"2026-10-10","estimates":[{"name":"EC2 t3.small ×2 (ap-northeast-1)","provider":"AWS","monthlyUsd":30.4,"basis":"$0.0208/h × 730h × 2"}]}. provider is the company (AWS, Cloudflare, Google Cloud …). category is one of infra, service, other. Fixed monthly amounts use monthlyUsd and since (YYYY-MM; add until when it ended); per-bill amounts use usd and date (YYYY-MM-DD). Convert everything to USD at that day\'s rate and put the original amount in note.',
+        'Never write keys, card details or billing contacts. Add .ferret/ to .gitignore if it is missing. Finish by reporting, per provider, the actual cost for this month, this year and overall, and the estimated monthly cost.'
       ].join('\n')
     }
   },
@@ -478,8 +484,8 @@ export function builtinRequestText(id: string, lang: RequestLanguage): string | 
  * プロダクトの中でも独立した作業を並行させる（1つずつ順に進めない）
  */
 export const ORCHESTRA_FAN_OUT: Record<RequestLanguage, string> = {
-  ja: 'これはオーケストレーターからの依頼です。対象のプロダクトごとに subagent を1つずつ立て、すべてのプロダクトを同時に並行して進めてください（1つずつ順に進めない）。各プロダクトの中でも、互いに関係しない作業は subagent や並行のタスクに分けて同時に進めてください。共通の部分（共通のルール・共有のコード）は先に1回で済ませ、インフラなどプロダクトごとに分けるものは混ぜないでください。最後にプロダクトごとの結果をまとめてください。',
-  en: 'This request comes from the orchestrator. Start one subagent per included product and run all products at the same time in parallel (never one after another). Inside each product too, split work that does not depend on each other into parallel subagents or tasks. Do the shared part (shared rules, shared code) once first, and keep infrastructure and other per-product things separate. Finish with the results per product.'
+  ja: 'これはオーケストレーターからの依頼です。対象のプロダクトごとに subagent を1つずつ立て、すべてのプロダクトを同時に並行して進めてください（1つずつ順に進めない）。ブラウザの操作（Claude in Chrome・computer use）も、各 subagent が自分のタブ・ウインドウで同時に行い、ほかのプロダクトのブラウザの作業を待たないでください。各プロダクトの中でも、互いに関係しない作業は subagent や並行のタスクに分けて同時に進めてください。共通の部分（共通のルール・共有のコード）は先に1回で済ませ、インフラなどプロダクトごとに分けるものは混ぜないでください。最後にプロダクトごとの結果をまとめてください。',
+  en: 'This request comes from the orchestrator. Start one subagent per included product and run all products at the same time in parallel (never one after another). Browser work (Claude in Chrome, computer use) also runs at the same time: each subagent uses its own tab or window and never waits for another product\'s browser work. Inside each product too, split work that does not depend on each other into parallel subagents or tasks. Do the shared part (shared rules, shared code) once first, and keep infrastructure and other per-product things separate. Finish with the results per product.'
 }
 
 /**

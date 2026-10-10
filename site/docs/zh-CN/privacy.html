@@ -186,7 +186,7 @@
     <tr><td><span class="docs-ui">整理</span></td><td>你的 Claude Code / Codex CLI，或你在 <code>organizer</code> 中设置的 LLM 端点</td><td>仅文本和操作日志（不含图片、音频或视频）</td></tr>
     <tr><td>验收检查（判定模型，默认关闭）</td><td>你的 Agent，经由本地中继，发送到 Ollama / Cloudflare / AI Gateway / TypeSafe / OpenAI / 你的 URL</td><td>Agent 发送的内容：反馈文本、“完成条件”以及 BEFORE/AFTER 截图（仅限图像模型）</td></tr>
     <tr><td>为导入的会议候选打分（判定模型，仅在打开时）</td><td>Ferret 经过本地中继，发送到你设置的判定模型</td><td>每个候选的标题和请求、它来源的发言，以及对应的视频画面（仅限能读图片的模型）</td></tr>
-    <tr><td>分享链接（仅在你创建时）</td><td><code>share.ferretade.dev</code>（由开发者运行的 Cloudflare Worker）</td><td>标题、页面可见部分的截图及其 URL 和标题，以及随机安装 ID（仅以带密钥的哈希形式用于限制一个安装能创建的链接数）。任何拿到链接的人都能看到截图；对方的意见和可选的名字也会发送到同一服务器（参见<a href="recording.html#share">分享链接</a>）</td></tr>
+    <tr><td>分享链接（仅在你创建时）</td><td><code>share.ferretade.dev</code>（由开发者运行的 Cloudflare Worker）</td><td>标题、它打开的页面的 URL 和标题、备注（设置密码后会加密；密码本身永远不会发送），以及随机安装 ID（仅以带密钥的哈希形式用于限制一个安装能创建的链接数）。对方的录制内容、文字备注、绘图和可选的名字也会发送到同一服务器，任何拿到链接的人都能看到它们（参见<a href="recording.html#share">分享链接</a>）。所有内容都会在 7 天后删除</td></tr>
     <tr><td><span class="docs-ui">在 GitHub 上创建私有仓库</span>（仅在点击 <span class="docs-ui">创建</span> 时）</td><td>通过你的 <code>gh</code> 发送到 GitHub</td><td>用你选择的名称和描述创建私有仓库，并推送文件夹的提交（Ferret 创建的首个提交不包含 <code>.gitignore</code> 忽略的文件和可能含有机密的文件）</td></tr>
     <tr><td><span class="docs-ui">发送给 Agent</span></td><td>你终端中的 Agent</td><td>一条指向 <code>feedback.md</code> 的指令</td></tr>
     <tr><td>底部栏用量显示（仅 Claude Code 和 Codex）</td><td>Anthropic、ChatGPT</td><td>使用你自己的登录发出的用量请求</td></tr>
