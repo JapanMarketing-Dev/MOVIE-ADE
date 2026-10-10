@@ -269,12 +269,12 @@ describe('直前の入力', () => {
 describe('設定', () => {
   it('既定は入・95%・アカウントを先に・Claude Code → Codex → Gemini CLI・戻さない', () => {
     expect(sanitizeLimitFailover(undefined)).toEqual(DEFAULT_LIMIT_FAILOVER)
-    expect(DEFAULT_LIMIT_FAILOVER).toEqual({ enabled: true, thresholdPercent: 95, switchAccounts: true, agentOrder: ['claude', 'codex', 'gemini'], returnToPreferred: false })
+    expect(DEFAULT_LIMIT_FAILOVER).toEqual({ enabled: true, thresholdPercent: 95, switchAccounts: true, agentOrder: ['claude', 'codex', 'gemini'], returnToPreferred: false, handoffPercent: 98 })
   })
 
   it('壊れた値は直す（しきい値は 50〜100、知らない Agent・重複は除く）', () => {
     expect(sanitizeLimitFailover({ enabled: false, thresholdPercent: 10, agentOrder: ['codex', 'nope', 'codex', 'custom:mine', 3], returnToPreferred: true, switchAccounts: 'x' }))
-      .toEqual({ enabled: false, thresholdPercent: 50, switchAccounts: true, agentOrder: ['codex', 'custom:mine'], returnToPreferred: true })
+      .toEqual({ enabled: false, thresholdPercent: 50, switchAccounts: true, agentOrder: ['codex', 'custom:mine'], returnToPreferred: true, handoffPercent: 98 })
     expect(sanitizeLimitFailover({ thresholdPercent: 1000 }).thresholdPercent).toBe(100)
     expect(sanitizeLimitFailover({ agentOrder: [] }).agentOrder).toEqual([])
   })

@@ -17,6 +17,12 @@ export interface LimitFailoverPrefs {
   agentOrder: TuiAgent[]
   /** 優先順位の高い Agent の枠が戻ったら、手が空いたときにそちらへ戻す（既定は切。今の Agent で続ける） */
   returnToPreferred: boolean
+  /**
+   * 動いているタブのアカウントの使用量がこの割合（%）以上になったら、上限の知らせを待たずに、
+   * 今の Agent に進み具合を引き継ぎのファイルへまとめさせて終わらせ、次の優先順位のアカウント・Agent で新しいタブを開いて続ける
+   * （人がいない夜間も止まらないように）。100 なら手前では引き継がない
+   */
+  handoffPercent: number
 }
 
 export const MIN_FAILOVER_THRESHOLD = 50
@@ -27,7 +33,8 @@ export const DEFAULT_LIMIT_FAILOVER: LimitFailoverPrefs = {
   thresholdPercent: 95,
   switchAccounts: true,
   agentOrder: ['claude', 'codex', 'gemini'],
-  returnToPreferred: false
+  returnToPreferred: false,
+  handoffPercent: 98
 }
 
 /** 優先順位に並べられる数の上限 */
@@ -51,7 +58,10 @@ export function sanitizeLimitFailover(raw: unknown): LimitFailoverPrefs {
     thresholdPercent: threshold,
     switchAccounts: r.switchAccounts !== false,
     agentOrder: order,
-    returnToPreferred: r.returnToPreferred === true
+    returnToPreferred: r.returnToPreferred === true,
+    handoffPercent: typeof r.handoffPercent === 'number' && Number.isFinite(r.handoffPercent)
+      ? Math.min(MAX_FAILOVER_THRESHOLD, Math.max(MIN_FAILOVER_THRESHOLD, Math.round(r.handoffPercent)))
+      : DEFAULT_LIMIT_FAILOVER.handoffPercent
   }
 }
 

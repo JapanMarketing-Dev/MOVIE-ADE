@@ -12,6 +12,9 @@ import { registerDraftFlush, type OpenFile, type OpenFilesApi } from '../useOpen
 import { registerMarkdownDropTarget, type DropPoint, type MediaEmbed } from '../markdownDrop'
 import { encodeMarkdownUrl, mediaAlt } from '@shared/markdownMedia'
 import { useT } from '../../lib/i18n'
+import { errorMessage } from '../../lib/errors'
+import { useToast } from '../../ui'
+import { clickedLinkHref } from './links'
 import { reportHandled } from '@shared/report'
 import './richMarkdown.css'
 
@@ -142,6 +145,9 @@ function editedNodes(editor: Editor): JSONContent[] {
  */
 export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFile; editor: OpenFilesApi }) {
   const t = useT()
+  const toast = useToast()
+  const toastRef = useRef(toast)
+  toastRef.current = toast
   const hostRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<Editor | null>(null)
   const modelRef = useRef<SourceModel | null>(null)
@@ -287,6 +293,14 @@ export default function RichMarkdownEditor({ file, editor: api }: { file: OpenFi
       editorProps: {
         attributes: { class: 'rich-md markdown-body', spellcheck: 'false', 'data-testid': 'rich-md-editor' },
         handleKeyDown: (_view, event) => slashKeyRef.current(event),
+        // リンクは押すと外部のブラウザで開く（編集のカーソルは動かさない）
+        handleClick: (_view, _pos, event) => {
+          const href = clickedLinkHref(event.target)
+          if (!href) return false
+          event.preventDefault()
+          void window.ade.invoke('app:openExternal', href).catch((err: unknown) => toastRef.current({ tone: 'warning', message: errorMessage(err) }))
+          return true
+        },
         handleTextInput: (_view, _from, _to, text) => slashTextRef.current(text)
       },
       onUpdate: ({ transaction }) => { if (transaction.docChanged) schedule() },
