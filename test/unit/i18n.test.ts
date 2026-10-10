@@ -66,11 +66,8 @@ describe('辞書', () => {
     expect(lonely).toEqual([])
   })
 
-  it('言語の名前はその言語自身の表記で、選択肢は system と14言語', () => {
-    expect(LOCALE_LABELS).toEqual({
-      en: 'English', ja: '日本語', 'zh-CN': '简体中文', 'zh-TW': '繁體中文', ko: '한국어', es: 'Español', fr: 'Français',
-      de: 'Deutsch', 'pt-BR': 'Português (Brasil)', it: 'Italiano', ru: 'Русский', vi: 'Tiếng Việt', id: 'Bahasa Indonesia', hi: 'हिन्दी'
-    })
+  it('言語の名前はその言語自身の表記で、選択肢は system と日本語・英語だけ', () => {
+    expect(LOCALE_LABELS).toEqual({ en: 'English', ja: '日本語' })
     expect(LOCALE_PREFERENCES).toEqual(['system', ...Object.keys(LOCALE_LABELS)])
   })
 
@@ -157,20 +154,11 @@ describe('システムに合わせる', () => {
     expect(normalizeSystemLocale('sw-KE')).toBe('en')
   })
 
-  it('地域・文字体系つきのタグは最も近い言語へ寄せる', () => {
-    expect(normalizeSystemLocale('zh-Hant')).toBe('zh-TW')
-    expect(normalizeSystemLocale('zh-Hant-TW')).toBe('zh-TW')
-    expect(normalizeSystemLocale('zh-HK')).toBe('zh-TW')
-    expect(normalizeSystemLocale('zh-Hans-CN')).toBe('zh-CN')
-    expect(normalizeSystemLocale('zh')).toBe('zh-CN')
-    expect(normalizeSystemLocale('zh_SG')).toBe('zh-CN')
-    expect(normalizeSystemLocale('pt-PT')).toBe('pt-BR')
-    expect(normalizeSystemLocale('pt')).toBe('pt-BR')
-    expect(normalizeSystemLocale('de-AT')).toBe('de')
-    expect(normalizeSystemLocale('es-419')).toBe('es')
-    expect(normalizeSystemLocale('in-ID')).toBe('id')
-    expect(normalizeSystemLocale('hi-IN')).toBe('hi')
-    expect(resolveLocale('system', ['sw-KE', 'ko-KR'])).toBe('ko')
+  it('日本語・英語以外の OS の言語は英語にする。2番目以降に日本語があればそれを使う', () => {
+    expect(normalizeSystemLocale('ja-JP')).toBe('ja')
+    expect(normalizeSystemLocale('en_GB')).toBe('en')
+    for (const tag of ['zh-Hant', 'zh-Hans-CN', 'pt-BR', 'de-AT', 'ko-KR', 'hi-IN']) expect(normalizeSystemLocale(tag)).toBe('en')
+    expect(resolveLocale('system', ['sw-KE', 'ja-JP'])).toBe('ja')
   })
 })
 
@@ -178,8 +166,9 @@ describe('設定の locale', () => {
   it('保存値は system か対応する言語。未設定は system、知らない値は en に直す', () => {
     expect(sanitize({}).locale).toBe('system')
     expect(sanitize({ locale: 'ja' }).locale).toBe('ja')
-    expect(sanitize({ locale: 'zh-TW' }).locale).toBe('zh-TW')
-    expect(sanitize({ locale: 'pt-BR' }).locale).toBe('pt-BR')
+    // 0.6.14 でやめた言語を選んでいた人は英語になる
+    expect(sanitize({ locale: 'zh-TW' }).locale).toBe('en')
+    expect(sanitize({ locale: 'pt-BR' }).locale).toBe('en')
     expect(sanitize({ locale: 'system' }).locale).toBe('system')
     expect(sanitize({ locale: 'xx' }).locale).toBe('en')
     expect(sanitize({ locale: 'zh' }).locale).toBe('en')
@@ -194,18 +183,10 @@ describe('設定の locale', () => {
   })
 })
 
-describe('新しい言語の t()', () => {
-  it('各言語の文を引き、欠けたキーは英語で出す', () => {
-    expect(translate('de', 'menu.file')).not.toBe('File')
-    expect(translate('zh-CN', 'feedbackMd.title', { count: 3 })).toContain('3')
-    expect(translate('ru', 'menu.about', { app: PRODUCT_NAME })).toContain(PRODUCT_NAME)
-    const original = (LOCALES as Record<string, unknown>).ko
-    ;(LOCALES as Record<string, unknown>).ko = {}
-    try {
-      expect(translate('ko', 'menu.file')).toBe('File')
-    } finally {
-      ;(LOCALES as Record<string, unknown>).ko = original
-    }
+describe('画面の言語は日本語と英語だけ', () => {
+  it('辞書は en と ja の2つ', () => {
+    expect(Object.keys(LOCALES)).toEqual(['en', 'ja'])
+    expect(translate('ja', 'menu.about', { app: PRODUCT_NAME })).toContain(PRODUCT_NAME)
   })
 })
 

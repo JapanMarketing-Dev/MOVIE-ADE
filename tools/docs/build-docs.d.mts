@@ -2,7 +2,7 @@
 export const DOCS_DIR: string
 /** site/docs/ からの相対パス（英語は <page>.html、ほかは <lang>/<page>.html）→ HTML */
 export function renderDocs(): Record<string, string>
-/** docs の言語（アプリと同じ14言語）とその自称名 */
+/** docs の言語（アプリと同じ日本語と英語）とその自称名 */
 export const LANGS: string[]
 export const LANG_LABELS: Record<string, string>
 /** 訳のファイルの置き場所（tools/docs/i18n） */

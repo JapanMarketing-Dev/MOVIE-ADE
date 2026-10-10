@@ -12,7 +12,7 @@ import { delay } from '@shared/delay'
 import { formatDateTime, formatTime, t } from '@shared/i18n'
 import { errorKind, flow, reportHandled } from '@shared/report'
 import { currentSettings, updateSettings } from '../settings'
-import { listAgentAccounts, selectAgentAccount } from '../accounts'
+import { claudeChromeAccounts, listAgentAccounts, selectAgentAccount } from '../accounts'
 import { getAccountUsage } from '../usage/service'
 import { listAgentOptions } from '../agentDetection'
 import type { TerminalManager } from '../terminal'
@@ -23,6 +23,7 @@ import { ensureGitExclude } from '../sessions/gitexclude'
 import { AUTOMATIC_GIT_CONFIG, trustedGit } from '../github/gitSync'
 import {
   DEFAULT_LIMIT_COOLDOWN_MS,
+  chromeReturnTarget,
   isAccountAgentId,
   tabsToSwitch,
   limitKey,
@@ -42,6 +43,10 @@ import {
  *   同じ Agent の別のアカウント → 優先順位の次の Agent の順に、同じプロジェクトのフォルダで新しいタブを開いて引き継ぐ
  * - 使用量（フッターの Usage）が しきい値 以上になったら、新しく開く Agent のアカウントを余裕のあるものへ切り替える
  * - returnToPreferred なら、優先順位の高い Agent の枠が戻ったとき、手が空いた（待機中の）タブを戻す
+ * - Claude in Chrome は拡張機能と同じ claude.ai のアカウントの Claude Code としかつながらない。
+ *   切り替え先は Chrome とつながるアカウントを先に選び、そのアカウントの枠が戻ったら新しく開くタブをそちらへ戻す
+ *   （returnToPreferred なら、別のアカウントで動いている待機中のタブも引き継いで戻す）。
+ *   利用者がこの起動のあいだにフッター・設定で選んだアカウントは上書きしない
  * 引き継ぎはプロジェクトの .ferret/handoff.md で行う（Agent の種類に依存しない。handoff.ts）。
  * 切り替える直前に今の Agent へ「更新して」と頼み、応答が無ければ Ferret が分かる範囲を追記する。
  * 新しいタブは renderer が開き（failover:launch）、開いたら main が「まずこのファイルを読んで」と送る。
@@ -89,6 +94,11 @@ const history = new Map<string, number[]>()
 const busy = new Set<string>()
 const usageSwitchAt: Record<AccountAgent, number> = { claude: 0, codex: 0 }
 const waitingNoticeAt = new Map<string, number>()
+/** この起動のあいだに利用者がフッター・設定で選んだアカウント（Chrome のアカウントへ自動では戻さない） */
+const manualChoice: Partial<Record<AccountAgent, string | null>> = {}
+/** Chrome とつながるアカウントへ戻せるかを、使用量の知らせのたびではなくこの間隔で見る */
+const CHROME_RETURN_GAP_MS = 5 * 60 * 1000
+let chromeReturnCheckAt = 0
 /** 引き継ぎの指示文を送っている途中のタブ（それを「直前の依頼」として覚えない） */
 const handoffSending = new Set<string>()
 let returnTimer: NodeJS.Timeout | null = null
@@ -149,9 +159,12 @@ export const terminalFailoverHooks = {
     timer.unref?.()
     confirmTimers.set(id, timer)
   },
-  /** Agent のタブを開いた。token があれば切り替えで開いたタブ。再開の引数を返す */
-  launched(id: string, agent: TuiAgent, token: string | null): void {
-    if (isAccountAgentId(agent)) launchedAccount.set(id, activeAccountId(agent))
+  /**
+   * Agent のタブを開いた。token があれば切り替えで開いたタブ。
+   * accountId はそのタブを実際に起動したアカウント（タブを戻したときは前のアカウントで開くので、選択中と違うことがある）
+   */
+  launched(id: string, agent: TuiAgent, token: string | null, accountId?: string | null): void {
+    if (isAccountAgentId(agent)) launchedAccount.set(id, accountId !== undefined ? accountId : activeAccountId(agent))
     const launch = token ? pending.get(token) : undefined
     if (launch && launch.agent === agent) {
       pending.delete(token!)
@@ -207,6 +220,9 @@ async function planInput(from: FailoverTarget): Promise<PlanInput> {
         .map((a) => ({ accountId: a.id, signedIn: a.signedIn, usedPercent: used(a.id), active: view.activeAccountId === a.id }))
     ]
   }
+  // Claude in Chrome とつながるアカウント（拡張機能と同じ claude.ai のアカウント）を先に選ぶための印
+  const chrome = await claudeChromeAccounts().catch(() => new Set<string | null>())
+  candidates.claude = candidates.claude.map((c) => (chrome.has(c.accountId) ? { ...c, chrome: true } : c))
   const available = new Set(options.filter((o) => o.installed && o.enabled).map((o) => o.id))
   return { prefs, from, accounts: candidates, available, limited, now: Date.now() }
 }
@@ -284,7 +300,7 @@ async function launchTarget(fromId: string, cwd: string, from: FailoverTarget, t
   }
   const message = !sent?.ok
     ? t('failover.notice.notReady', { agent: toLabel })
-    : reason === 'switch' && isAccountAgentId(target.agent)
+    : (reason === 'switch' || (reason === 'return' && sameAgent)) && isAccountAgentId(target.agent)
       ? t('failover.notice.switched', { agent: toLabel, account: accountLabel(target.agent, target.accountId ?? null) })
       : reason === 'return'
       ? t('failover.notice.return', { from: fromLabel, to: toLabel })
@@ -415,6 +431,8 @@ async function waitReady(id: string): Promise<boolean> {
  * 同じフォルダのタブは1つずつ順に（switchFrom はフォルダごとに1つしか同時に動かない）。戻り値は切り替えるタブの数
  */
 export async function switchRunningAgents(agent: AccountAgent, accountId: string | null): Promise<number> {
+  // 利用者が選んだアカウント。Chrome とつながるアカウントへ自動で戻すのは、この起動のあいだは控える
+  manualChoice[agent] = accountId
   if (!terminals) return 0
   const tabs = await Promise.all(terminals.list().map(async (info) => {
     const state = await terminals!.agentState(info.id).catch(() => null)
@@ -463,7 +481,10 @@ export function onUsageChanged(state: UsageState): void {
     const limits = state[agent]
     if (limits?.status !== 'ok') continue
     const used = maxUsedPercent(limits)
-    if (used === null || used < prefs.thresholdPercent) continue
+    if (used === null || used < prefs.thresholdPercent) {
+      if (agent === 'claude') maybeReturnNewTabsToChrome(prefs)
+      continue
+    }
     const from: FailoverTarget = { agent, accountId: activeAccountId(agent) }
     markLimited(from, limitedUntil(limits, prefs.thresholdPercent) ?? Date.now() + DEFAULT_LIMIT_COOLDOWN_MS)
     if (!prefs.switchAccounts || Date.now() - usageSwitchAt[agent] < USAGE_SWITCH_GAP_MS) continue
@@ -477,11 +498,39 @@ export function onUsageChanged(state: UsageState): void {
   }
 }
 
+/** 利用者がこの起動のあいだに選んだアカウントのままにするか */
+function keepManualChoice(agent: AccountAgent): boolean {
+  return agent in manualChoice && manualChoice[agent] === activeAccountId(agent)
+}
+
+/**
+ * 新しく開く Claude Code のタブのアカウントが Claude in Chrome とつながらないものなら、
+ * つながるアカウントの枠が戻ったときにそちらへ戻す（上限で別のアカウントへ移ったあと、ずっと Chrome が切れたままにならないように）
+ */
+export function maybeReturnNewTabsToChrome(prefs: LimitFailoverPrefs = failoverPrefs()): void {
+  if (!prefs.enabled || !prefs.switchAccounts || keepManualChoice('claude')) return
+  const now = Date.now()
+  if (now - chromeReturnCheckAt < CHROME_RETURN_GAP_MS) return
+  chromeReturnCheckAt = now
+  void (async () => {
+    const current = activeAccountId('claude')
+    // 今のアカウントが Chrome とつながる・どれもつないでいないなら、使用量を取りに行かない
+    const chrome = await claudeChromeAccounts()
+    if (chrome.size === 0 || chrome.has(current)) return
+    const target = chromeReturnTarget(await planInput({ agent: 'claude', accountId: current }), 'claude', current)
+    // 調べているあいだに利用者が選び直していたら何もしない
+    if (!target || activeAccountId('claude') !== current || keepManualChoice('claude')) return
+    await selectAgentAccount('claude', target.accountId)
+    flow('failover chrome account', { kind: 'new tabs' })
+  })().catch((err: unknown) => reportHandled(errorKind(err), { area: 'accounts', op: 'return to chrome account' }))
+}
+
 // ───────────────────────── 優先順位の高い Agent へ戻す ─────────────────────────
 
 async function checkReturn(): Promise<void> {
   const prefs = failoverPrefs()
   if (!prefs.enabled || !prefs.returnToPreferred || !terminals) return
+  await returnTabsToChrome(prefs)
   for (const id of [...failoverTabs]) {
     const info = terminals.list().find((s) => s.id === id)
     if (!info || busy.has(info.cwd)) continue
@@ -491,6 +540,29 @@ async function checkReturn(): Promise<void> {
     const from: FailoverTarget = isAccountAgentId(current) ? { agent: current, accountId: launchedAccount.get(id) ?? null } : { agent: current }
     const target = planReturn({ ...(await planInput(from)), current })
     if (target) await switchFrom(id, info.cwd, from, 'return', target)
+  }
+}
+
+/**
+ * Claude in Chrome とつながらないアカウントで動いている Claude Code のタブ（上限で移った・別のアカウントで戻したもの）を、
+ * つながるアカウントの枠が戻ったら、待機中のものから引き継いで開き直す
+ */
+async function returnTabsToChrome(prefs: LimitFailoverPrefs): Promise<void> {
+  if (!terminals || !prefs.switchAccounts || keepManualChoice('claude')) return
+  const chrome = await claudeChromeAccounts().catch(() => new Set<string | null>())
+  if (chrome.size === 0) return
+  const tabs = [...launchedAccount].filter(([id, accountId]) => !chrome.has(accountId) && terminals!.list().some((s) => s.id === id))
+  if (tabs.length === 0) return
+  let input: PlanInput | null = null
+  for (const [id, accountId] of tabs) {
+    const info = terminals.list().find((s) => s.id === id)
+    if (!info || busy.has(info.cwd)) continue
+    const state = await terminals.agentState(id).catch(() => null)
+    if (!state || state.agent !== 'claude' || state.state !== 'idle') continue
+    input ??= await planInput({ agent: 'claude', accountId })
+    const target = chromeReturnTarget(input, 'claude', accountId)
+    if (!target) continue
+    await switchFrom(id, info.cwd, { agent: 'claude', accountId }, 'return', { agent: 'claude', accountId: target.accountId })
   }
 }
 

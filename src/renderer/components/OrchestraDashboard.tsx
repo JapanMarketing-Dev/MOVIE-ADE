@@ -3,7 +3,7 @@ import { ExternalLink, FileText, ListChecks, Play, RefreshCw, Send, ShieldCheck,
 import type { Project } from '@shared/types'
 import { formatUsd, type CostPeriod } from '@shared/extraCost'
 import type { OrchestraOverview } from '@shared/orchestraOverview'
-import { optionAnswer, pageItems } from '@shared/humanChecklist'
+import { checklistGroups, isChecklistKey, optionAnswer, pageItems } from '@shared/humanChecklist'
 import { CODEX_AUDIT_PRESET } from '@shared/codexAudit'
 import { requestAgentLaunch } from '../lib/agentLaunchRequest'
 import { errorMessage } from '../lib/errors'
@@ -127,7 +127,11 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
         ? <p className="st-note">{t('orchestra.checklistEmpty')}</p>
         : <table className="orchestra__table">
           <tbody>
-            {checklist.map((item, i) => <Fragment key={`${item.key}-${i}`}>
+            {checklistGroups(checklist).map(({ product, items }) => <Fragment key={`group-${product}`}>
+              <tr className="orchestra__group-row" data-testid={`orchestra-check-group-${product || 'none'}`}>
+                <th colSpan={4}>{product || t('orchestra.checklistNoProduct')}<span className="orchestra__group-count">{items.filter((c) => c.answer).length}/{items.length}</span></th>
+              </tr>
+              {items.map((item, i) => <Fragment key={`${item.key}-${i}`}>
               <tr className="orchestra__check-row" data-testid={`orchestra-check-${item.key}`}>
                 <td className="orchestra__key">{item.key}</td>
                 <td>{item.label}</td>
@@ -138,10 +142,11 @@ export function OrchestraDashboard({ projects, onOpenProject, onOpenUrl, onRevie
                   </button>}
                 </td>
               </tr>
-              {/^[A-Z]{1,2}\d/.test(item.key) && <tr className={`orchestra__answer-row${item.answer ? ' is-answered' : ''}`}>
+              {isChecklistKey(item.key) && <tr className={`orchestra__answer-row${item.answer ? ' is-answered' : ''}`}>
                 <td />
                 <td colSpan={3}><ChecklistAnswer item={item} onSave={(key, answer) => saveAnswers([{ key, answer }])} onAllow={rules ? allowFromItem : undefined} /></td>
               </tr>}
+              </Fragment>)}
             </Fragment>)}
           </tbody>
         </table>}

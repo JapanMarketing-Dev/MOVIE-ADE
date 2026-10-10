@@ -318,7 +318,7 @@ export class TerminalManager {
     input(id: string, data: string): void
     output(id: string, text: string): void
     sent(id: string, text: string): void
-    launched(id: string, agent: TuiAgent, token: string | null): void
+    launched(id: string, agent: TuiAgent, token: string | null, accountId?: string | null): void
     closed(id: string): void
   } | null = null
 
@@ -580,7 +580,7 @@ export class TerminalManager {
       tail: '', readiness: new ComposerReadiness(), sending: false,
       info: { id, pid: pty.pid, cwd, title, agent: launched }, history: new TerminalHistory(), unacked: 0, paused: false }
     this.sessions.set(id, session)
-    if (agent) this.failover?.launched(id, agent, options.failoverToken ?? null)
+    if (agent) this.failover?.launched(id, agent, options.failoverToken ?? null, accountId)
     this.wirePty(session, pendingWrite, launched)
     flow('terminal create', { kind: launched ? 'agent' : 'shell' })
     // 次に開く素のシェルを裏で先に起動しておく（Agent のタブを開いたあとも）

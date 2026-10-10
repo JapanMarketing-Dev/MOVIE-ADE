@@ -6,7 +6,8 @@ import type { AccountAgent, TuiAgent } from '@shared/types'
  *
  * 選ぶ順:
  * 1. 同じ Agent の別のアカウント（switchAccounts が入のとき。Claude Code / Codex だけ）。
- *    上限とみなしたもの・しきい値以上のものは除き、使用量の低い順。使用量が分からないものは最後
+ *    上限とみなしたもの・しきい値以上のものは除き、Claude in Chrome とつながるアカウント（chrome）を先に、
+ *    そのあと使用量の低い順。使用量が分からないものは最後
  * 2. 優先順位（agentOrder）の先頭から、今の Agent 以外で使えるもの。
  *    Claude Code / Codex は、そのうち使えるアカウント（switchAccounts が切なら選択中のアカウントだけ）
  * どれも無ければ null（枠が戻るのを待つ）。
@@ -21,6 +22,11 @@ export interface AccountCandidate {
   usedPercent: number | null
   /** 選択中 */
   active: boolean
+  /**
+   * Claude in Chrome とつながるアカウント（拡張機能と同じ claude.ai のアカウント。accounts/chromePairing.ts）。
+   * 拡張機能は別のアカウントの Claude Code とはつながらないので、使えるならこれを先に選ぶ
+   */
+  chrome?: boolean
 }
 
 export interface FailoverTarget {
@@ -64,6 +70,7 @@ export function usableAccounts(input: PlanInput, agent: AccountAgent, exclude: s
     .filter((a) => !isLimited(input, { agent, accountId: a.accountId }))
     .filter((a) => a.usedPercent === null || a.usedPercent < threshold)
     .sort((a, b) => {
+      if (Boolean(a.chrome) !== Boolean(b.chrome)) return a.chrome ? -1 : 1
       if (a.usedPercent === null && b.usedPercent !== null) return 1
       if (b.usedPercent === null && a.usedPercent !== null) return -1
       const diff = (a.usedPercent ?? 0) - (b.usedPercent ?? 0)
@@ -108,6 +115,18 @@ export function planReturn(input: Omit<PlanInput, 'from'> & { current: TuiAgent 
     if (target) return target
   }
   return null
+}
+
+/**
+ * Claude in Chrome とつながるアカウントへ戻す先。今のアカウント（current）が Chrome とつながらず、
+ * つながるアカウントに余裕があればそれ。どれもつないでいない・今のアカウントがつながる・余裕が無ければ null
+ */
+export function chromeReturnTarget(input: Omit<PlanInput, 'from'>, agent: AccountAgent, current: string | null): AccountCandidate | null {
+  const candidates = input.accounts[agent]
+  if (!candidates.some((a) => a.chrome)) return null
+  if (candidates.some((a) => a.chrome && a.accountId === current)) return null
+  const usable = usableAccounts({ ...input, from: { agent, accountId: current } }, agent, current)
+  return usable.find((a) => a.chrome) ?? null
 }
 
 // ───────────────────────── 回数と間隔の上限 ─────────────────────────

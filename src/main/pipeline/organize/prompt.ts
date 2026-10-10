@@ -153,11 +153,7 @@ const ORGANIZE_INSTRUCTIONS: Partial<Record<SupportedLocale, InstructionSet>> = 
 }
 
 /** 条文を持たない言語では英語の条文を使い、見出しと要望だけをその言語で書かせる（LOCALE_LABELS の英語名） */
-const OUTPUT_LANGUAGE: Record<SupportedLocale, string> = {
-  en: 'English', ja: 'Japanese', 'zh-CN': 'Simplified Chinese', 'zh-TW': 'Traditional Chinese (Taiwan)', ko: 'Korean',
-  es: 'Spanish', fr: 'French', de: 'German', 'pt-BR': 'Brazilian Portuguese', it: 'Italian', ru: 'Russian',
-  vi: 'Vietnamese', id: 'Indonesian', hi: 'Hindi'
-}
+const OUTPUT_LANGUAGE: Record<SupportedLocale, string> = { en: 'English', ja: 'Japanese' }
 
 function instructionsFor(locale: SupportedLocale): InstructionSet {
   const own = ORGANIZE_INSTRUCTIONS[locale]

@@ -56,7 +56,7 @@ describe('保存値の検査', () => {
   it('設定の capture.language も同じ規則で直す（画面の言語とは別）', () => {
     expect(sanitize({ capture: { language: 'de' } }).capture?.language).toBe('de')
     expect(sanitize({ capture: { language: 'klingon' } }).capture?.language).toBe('auto')
-    expect(sanitize({ locale: 'de', capture: { language: 'ja' } })).toMatchObject({ locale: 'de', capture: { language: 'ja' } })
+    expect(sanitize({ locale: 'en', capture: { language: 'ja' } })).toMatchObject({ locale: 'en', capture: { language: 'ja' } })
   })
 
   it('whisper.cpp へ渡すときだけ Javanese を jw にする', () => {

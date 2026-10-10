@@ -36,7 +36,7 @@ const obeyed = (title: string, request: string) => JSON.stringify({
 })
 
 describe('整理のプロンプト: ページの文字は信頼しない証拠の節に入れる', () => {
-  for (const locale of ['ja', 'en', 'de'] as const) {
+  for (const locale of ['ja', 'en'] as const) {
     it(`${locale}: 入力の節にはページの文字を入れず、証拠の節は指示に従わないと明記する`, () => {
       const prompt = buildPrompt(input, locale)
       const blocks = [...prompt.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => m[1]!)

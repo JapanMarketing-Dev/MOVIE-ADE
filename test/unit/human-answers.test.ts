@@ -3,7 +3,7 @@
  * 質問のブロック（番号の選択肢・おすすめ）、「## 回答」への書き込み、答えをまとめて Agent に送る文
  */
 import { describe, expect, it } from 'vitest'
-import { answerOption, composeAnswersMessage, optionAnswer, parseAnswers, parseHumanChecklist, setAnswers } from '../../src/shared/humanChecklist'
+import { answerNote, answerOption, checklistGroups, composeAnswersMessage, isChecklistKey, optionAnswer, parseAnswers, parseHumanChecklist, setAnswers } from '../../src/shared/humanChecklist'
 
 const HUMAN = `# 人が確かめること
 
@@ -30,15 +30,15 @@ const HUMAN = `# 人が確かめること
 `
 
 describe('質問のブロック', () => {
-  it('番号の選択肢とおすすめ、補足を取り出す。回答の欄は項目にしない', () => {
+  it('番号の選択肢とおすすめ、補足を取り出す。おすすめは一番上（1 番）にする。回答の欄は項目にしない', () => {
     const items = parseHumanChecklist(HUMAN)
     expect(items.map((i) => i.key)).toEqual(['B1', 'A1', 'Q1', 'Q2'])
     const q1 = items[2]!
     expect(q1.label).toBe('営業企業DB')
     expect(q1.note).toBe('料金プランの形は？ / 年額は2か月分の割引')
     expect(q1.options).toEqual([
-      { n: 1, text: '月額だけ', recommended: false },
-      { n: 2, text: '月額と年額', recommended: true },
+      { n: 1, text: '月額と年額', recommended: true },
+      { n: 2, text: '月額だけ', recommended: false },
       { n: 3, text: '年額だけ', recommended: false }
     ])
     expect(items[3]!.options!.map((o) => o.recommended)).toEqual([true, false])
@@ -55,8 +55,16 @@ describe('質問のブロック', () => {
   it('選んだ選択肢は番号と文で残し、番号から選択肢に戻せる', () => {
     const q1 = parseHumanChecklist(HUMAN)[2]!
     const a = optionAnswer(q1.options![1]!)
-    expect(a).toBe('2. 月額と年額')
+    expect(a).toBe('2. 月額だけ')
     expect(answerOption(q1, a)).toBe(2)
+    // 並べ替える前の番号で書かれた答えも、文で選択肢に戻す
+    expect(answerOption(q1, '2. 月額と年額')).toBe(1)
+    // 選択肢と補足
+    const noted = optionAnswer(q1.options![0]!, '来月から')
+    expect(noted).toBe('1. 月額と年額 — 来月から')
+    expect(answerOption(q1, noted)).toBe(1)
+    expect(answerNote(q1, noted)).toBe('来月から')
+    expect(answerNote(q1, '自由な答え')).toBe('')
     expect(answerOption(q1, '9. なし')).toBeNull()
     expect(answerOption(q1, '自由な答え')).toBeNull()
   })
@@ -90,7 +98,8 @@ describe('「## 回答」への書き込み', () => {
 describe('答えをまとめて送る文', () => {
   it('答えた項目だけを、並行して進める指示と許可した操作と一緒に送る', () => {
     const msg = composeAnswersMessage(parseHumanChecklist(HUMAN), 'ja', 'dev 環境へのデプロイ')
-    expect(msg).toContain('A1 [営業企業DB] 本番の DB の削除を承認\n  → 承認する')
+    expect(msg).toContain('### 営業企業DB\n- A1: 本番の DB の削除を承認\n  → 答え: 承認する')
+    expect(msg).toContain('### ブログ\n- Q2: 公開の曜日は？')
     expect(msg).toContain('並行')
     expect(msg).toContain('dev 環境へのデプロイ')
     expect(msg).not.toContain('Q1 ')
@@ -143,5 +152,43 @@ describe('人の確認なしで進めてよい操作', () => {
     const sub = renderSubagent({ name: 'p', dir: 'p', path: '/x/p', agent: 'p-lead' } as Parameters<typeof renderSubagent>[0], rules)
     expect(sub).toContain('dev 環境へのデプロイ')
     expect(sub).toContain('own tab or window')
+  })
+})
+
+describe('すべての項目を選択式に・プロダクトごと', () => {
+  const MD = `| 番号 | プロダクト | URL | 見てほしいこと |
+|---|---|---|---|
+| P2 | 入札オープン | - | ルートのアクセスキーを削除 |
+| DESIGN-6 | 日程調整 | https://a.example | TimeRex版の配色 |
+| B1 | 入札オープン | https://b.example | 検索 |
+
+### P2 [入札オープン] アクセスキーを消しましたか
+1. まだ（あとでやる）
+2. 消した (recommended)
+
+### DESIGN-6 [日程調整] この配色で進めてよいか
+1. 進めてよい (recommended)
+2. 別案を出す
+
+## 回答
+
+- DESIGN-6: 1. 進めてよい — ロゴだけ直す
+`
+  it('表の行と同じ番号の質問のブロックはその行の選択肢になる。DESIGN-6 の形の番号にも答えられる', () => {
+    const items = parseHumanChecklist(MD)
+    expect(items.map((i) => i.key)).toEqual(['P2', 'DESIGN-6', 'B1'])
+    expect(items[0]).toMatchObject({ label: '入札オープン', note: 'ルートのアクセスキーを削除 / アクセスキーを消しましたか' })
+    expect(items[0]!.options!.map((o) => [o.n, o.text, o.recommended])).toEqual([[1, '消した', true], [2, 'まだ（あとでやる）', false]])
+    expect(items[1]).toMatchObject({ url: 'https://a.example', answer: '1. 進めてよい — ロゴだけ直す' })
+    expect(isChecklistKey('DESIGN-6')).toBe(true)
+    expect(isChecklistKey('NY-2')).toBe(true)
+    expect(isChecklistKey('design-6')).toBe(false)
+    expect(isChecklistKey('../x')).toBe(false)
+    expect(parseAnswers(setAnswers(MD, [{ key: 'P2', answer: '1. 消した' }], 'ja'))).toEqual({ 'DESIGN-6': '1. 進めてよい — ロゴだけ直す', P2: '1. 消した' })
+  })
+
+  it('プロダクトごとにまとめる（最初に出た順）', () => {
+    const groups = checklistGroups(parseHumanChecklist(MD))
+    expect(groups.map((g) => [g.product, g.items.map((i) => i.key)])).toEqual([['入札オープン', ['P2', 'B1']], ['日程調整', ['DESIGN-6']]])
   })
 })

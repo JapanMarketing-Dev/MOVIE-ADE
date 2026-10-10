@@ -498,9 +498,42 @@ button {
 
 .checklist-answer {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+/* 選択肢は縦に並べ、おすすめを一番上に（Claude Code の質問と同じ） */
+.checklist-answer__options {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.checklist-answer__free {
+  display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.checklist-answer__free .checklist-answer__input {
+  flex: 1;
+}
+
+/* 確認リストのプロダクトの見出し */
+.orchestra__table tr.orchestra__group-row th {
+  padding-top: var(--space-3);
+  border-bottom: var(--size-border) solid var(--color-border);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.orchestra__group-count {
+  margin-left: var(--space-2);
+  color: var(--color-text-muted);
+  font-weight: 400;
 }
 
 .checklist-answer__option {

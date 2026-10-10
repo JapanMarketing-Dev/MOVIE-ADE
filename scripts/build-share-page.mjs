@@ -8,7 +8,6 @@
  * 外へは何も送らない（手元でまとめるだけ）。アプリの部品（FeedbackToolbar・書き込みの部品・tokens.css など）をそのまま使うので、
  * それらを変えたら作り直す。まとめた元のファイルの sha256 を generated.ts に残し、test/unit/share-page-build.test.ts が
  * 作り直し忘れを止める。
- * 画面は日本語と英語だけなので、アプリの i18n のほかの言語は空にする（英語へ落ちる）。
  */
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -19,23 +18,11 @@ import { build } from 'vite'
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const ENTRY = resolve(ROOT, 'workers/feedback-share/client/main.tsx')
 const OUT = resolve(ROOT, 'workers/feedback-share/src/generated.ts')
-const OTHER_LOCALES = /^\.\/(zh-CN|zh-TW|ko|es|fr|de|it|pt-BR|ru|hi|id|vi)$/
 
 const result = await build({
   configFile: false,
   logLevel: 'error',
   root: ROOT,
-  plugins: [{
-    name: 'share-only-en-ja',
-    enforce: 'pre',
-    resolveId(id, importer) {
-      if (importer && /src[\\/]shared[\\/]i18n[\\/]index\.ts$/.test(importer) && OTHER_LOCALES.test(id)) return '\0share-empty-locale'
-      return null
-    },
-    load(id) {
-      return id === '\0share-empty-locale' ? 'export const zhCN = {}, zhTW = {}, ko = {}, es = {}, fr = {}, de = {}, it = {}, ptBR = {}, ru = {}, hi = {}, id = {}, vi = {}' : null
-    }
-  }],
   resolve: { alias: { '@shared': resolve(ROOT, 'src/shared') } },
   define: { 'process.env.NODE_ENV': '"production"' },
   esbuild: { jsx: 'automatic', legalComments: 'none' },
