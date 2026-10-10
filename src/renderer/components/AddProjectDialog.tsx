@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Folder, FolderGit2, KeyRound, Laptop, Lock, Server, X } from 'lucide-react'
+import { ArrowLeft, Folder, FolderGit2, KeyRound, Laptop, Lock, Network, Server, X } from 'lucide-react'
 import type { Project, ProjectsState } from '@shared/types'
 import { cloneRepoName, normalizeCloneUrl, tildePath, type CloneFailureKind, type GitHubRepoList, type ProjectSource, type SshConfigHost } from '@shared/projectSource'
 import { checkSshTarget } from '@shared/sshCommand'
@@ -20,7 +20,7 @@ import { GITLAB_COM, type Forge } from '@shared/forge'
  *
  * 開いている間は、呼び出し側が内蔵ブラウザのビューを隠す（Modal はネイティブのビューの下になるため）。
  */
-type Step = 'choose' | 'github' | 'ssh'
+type Step = 'choose' | 'github' | 'ssh' | 'orchestra'
 
 /** 前回の保存先（この端末だけの好み） */
 const PARENT_KEY = 'ferret.cloneParent'
@@ -47,18 +47,22 @@ export function AddProjectDialog({ onClose, onAdded }: {
       .catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
   }
 
-  return <Modal className="rv-modal" label={t('projectSource.addTitle')} onClose={onClose}>
+  return <Modal className="rv-modal" label={t('projectSource.addChooseTitle')} onClose={onClose}>
     <div className="rv-modal__panel apd" data-testid="add-project-dialog">
       <header className="rv-modal__head apd__head">
         {step !== 'choose' && <IconButton size="sm" label={t('projectSource.back')} icon={<ArrowLeft size={14} strokeWidth={1.5} />} onClick={() => setStep('choose')} data-testid="add-project-back" />}
-        <h2>{t(step === 'github' ? 'projectSource.choose.github' : step === 'ssh' ? 'projectSource.choose.ssh' : 'projectSource.addTitle')}</h2>
+        <h2>{t(step === 'github' ? 'projectSource.choose.github' : step === 'ssh' ? 'projectSource.choose.ssh' : step === 'orchestra' ? 'orchestra.create' : 'projectSource.addChooseTitle')}</h2>
         <IconButton label={t('common.close')} icon={<X size={16} />} onClick={onClose} />
       </header>
       {step === 'choose' && <div className="apd__choices">
+        <p className="apd__group">{t('projectSource.groupProject')}</p>
         <ChoiceButton icon={<Laptop size={18} strokeWidth={1.5} />} title={t('projectSource.choose.local')} hint={t('projectSource.choose.localHint')} onClick={addLocal} testId="add-project-local" />
         <ChoiceButton icon={<FolderGit2 size={18} strokeWidth={1.5} />} title={t('projectSource.choose.github')} hint={t('projectSource.choose.githubHint')} onClick={() => setStep('github')} testId="add-project-github" />
         <ChoiceButton icon={<Server size={18} strokeWidth={1.5} />} title={t('projectSource.choose.ssh')} hint={t('projectSource.choose.sshHint')} onClick={() => setStep('ssh')} testId="add-project-ssh" />
+        <p className="apd__group">{t('projectSource.groupOrchestra')}</p>
+        <ChoiceButton icon={<Network size={18} strokeWidth={1.5} />} title={t('orchestra.create')} hint={t('orchestra.createHint')} onClick={() => setStep('orchestra')} testId="add-orchestra" />
       </div>}
+      {step === 'orchestra' && <OrchestraStep onDone={(state) => { onClose(); onAdded(state, 'local') }} />}
       {step === 'github' && <GitHubStep onDone={(state) => { onClose(); onAdded(state, 'github') }} />}
       {step === 'ssh' && <SshStep onDone={(state) => { onClose(); onAdded(state, 'ssh') }} />}
     </div>
@@ -250,3 +254,30 @@ export function RemoteFilesNotice({ project }: { project: Project }) {
   </aside>
 }
 
+
+/** 新しいオーケストラ（名前だけ）。作るとそのオーケストラが開き、そのあと足したプロジェクトはその下に入る */
+function OrchestraStep({ onDone }: { onDone: (state: ProjectsState) => void }) {
+  const t = useT()
+  const toast = useToast()
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const create = () => {
+    if (!name.trim() || busy) return
+    setBusy(true)
+    void window.ade.invoke('orchestra:create', name.trim())
+      .then(onDone)
+      .catch((err) => toast({ tone: 'warning', message: errorMessage(err) }))
+      .finally(() => setBusy(false))
+  }
+  return <div className="apd__body">
+    <label className="pt-field">
+      <span>{t('orchestra.createName')}</span>
+      <Field autoFocus value={name} maxLength={80} placeholder={t('orchestra.createNamePlaceholder')} disabled={busy}
+        onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) create() }} data-testid="orchestra-create-name" />
+    </label>
+    <p className="st-note">{t('orchestra.createHint')}</p>
+    <div className="apd__actions">
+      <Button variant="primary" disabled={!name.trim() || busy} onClick={create} data-testid="orchestra-create">{t('orchestra.createButton')}</Button>
+    </div>
+  </div>
+}

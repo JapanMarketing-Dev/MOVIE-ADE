@@ -39,8 +39,9 @@ import { ReviewFilterBar, ReviewList, loadReviewFilter, saveReviewFilter, toRevi
 import { SetupProgressLink } from '../onboarding/SetupChecklist'
 import { FeedbackLink } from './FeedbackDialog'
 import { useProjectActivity } from '../terminal/agentActivity'
-import { dropPositionAt, moveAmongVisible, stepAmongVisible, type DropPosition } from '@shared/reorder'
-import { PROJECT_SORTS, editorFirst, filterProjects, memberParents, nestMembers, sanitizeProjectView, sortProjects, type ProjectListView } from '@shared/projectOrder'
+import { dropPositionAt, stepAmongVisible, type DropPosition } from '@shared/reorder'
+import { PROJECT_SORTS, filterProjects, sanitizeProjectView, sortProjects, type ProjectListView } from '@shared/projectOrder'
+import { isOrchestra, orchestraIdOf, treeDrop, treeRows } from '@shared/orchestras'
 
 export { toReviewSession, type ReviewSession }
 
@@ -120,6 +121,18 @@ const MENU_HEIGHT = 208
  * プロジェクトの行を並べ替えるドラッグの型。外からのファイル（'Files'）・ファイルツリーの行（treeDrag.ts）とは別の型にして、
  * 外からのドロップ（プロジェクトの追加）やターミナル・エディタへのドロップと取り違えない
  */
+/** 畳んだオーケストラ（この PC の localStorage。サイドバーの見た目だけ） */
+const COLLAPSED_ORCHESTRAS_KEY = 'ferret.sidebar.collapsedOrchestras'
+function loadCollapsedOrchestras(): Set<string> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COLLAPSED_ORCHESTRAS_KEY) ?? '[]') as unknown
+    return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string').slice(0, 200) : [])
+  } catch {
+    // 壊れた値・保存できない環境（想定内）
+    return new Set()
+  }
+}
+
 const PROJECT_DRAG_TYPE = 'application/x-ferret-project'
 
 export function Sidebar({
@@ -304,11 +317,20 @@ export function Sidebar({
       return next
     })
   }, [projectActivity])
-  // 「すべてのプロジェクト」（エディタ全体）は、どの並び順でも一番上に置く
-  const displayed = editorFirst(sortProjects(projects.projects, view.sort, { activity: projectActivity, agentActiveAt }))
-  // オーケストレーターに入れたプロジェクトは、そのオーケストレーターのすぐ下に字下げして並べる（以前の版で入れたもの）
-  const shown = nestMembers(filterProjects(displayed, view), projects.projects)
-  const parentOf = memberParents(projects.projects)
+  // オーケストラを親のフォルダにし、属するプロジェクトをその下に字下げして並べる（@shared/orchestras）。子の並びは今の並び順
+  const displayed = sortProjects(projects.projects, view.sort, { activity: projectActivity, agentActiveAt })
+  const [collapsedOrchestras, setCollapsedOrchestras] = useState<Set<string>>(loadCollapsedOrchestras)
+  const toggleOrchestra = (id: string) => setCollapsedOrchestras((prev) => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    try { localStorage.setItem(COLLAPSED_ORCHESTRAS_KEY, JSON.stringify([...next])) } catch { /* 保存できなくても、この起動の間は効く */ }
+    return next
+  })
+  const rows = treeRows(projects.projects, filterProjects(displayed, view), collapsedOrchestras)
+  const shown = rows.map((r) => r.project)
+  const depthOf = new Map(rows.map((r) => [r.project.id, r.depth]))
+  const rowOf = new Map(rows.map((r) => [r.project.id, r]))
 
   /**
    * 並べ替え。全体の並びは今の表示の順で、☆ の中・外のそれぞれの中で動かす（☆ は上にまとめるため）。
@@ -318,7 +340,22 @@ export function Sidebar({
   const projectIds = displayed.map((p) => p.id)
   const shownIds = shown.map((p) => p.id)
   const starredOf = (id: string) => !!projects.projects.find((p) => p.id === id)?.starred
-  const sameGroup = (id: string) => (other: string) => starredOf(other) === starredOf(id)
+  const orchestraOfId = (id: string) => {
+    const p = projects.projects.find((x) => x.id === id)
+    return p ? (isOrchestra(p) ? `o:${p.id}` : orchestraIdOf(projects.projects, p)) : null
+  }
+  // キーボードの並べ替えは、☆ の中・外とオーケストラが同じもの同士（オーケストラ同士はオーケストラの中で）
+  const sameGroup = (id: string) => (other: string) => starredOf(other) === starredOf(id) && (orchestraOfId(id)?.startsWith('o:') ? !!orchestraOfId(other)?.startsWith('o:') : orchestraOfId(other) === orchestraOfId(id))
+  /** ツリーの中へ落としたとき（別のオーケストラへ移す・並べ替える） */
+  const dropInTree = (draggingId: string, targetId: string, position: 'before' | 'after') => {
+    const move = treeDrop(projects.projects, rows, draggingId, targetId, position)
+    if (!move) return
+    run(() => window.ade.invoke('project:move', move.id, move.to, move.before))
+    if (view.sort !== 'manual') {
+      setView({ ...view, sort: 'manual' })
+      toast({ tone: 'info', message: t('sidebar.sort.switchedToManual') })
+    }
+  }
   const reorder = (next: string[] | null) => {
     if (!next) return
     run(() => window.ade.invoke('project:reorder', next))
@@ -460,10 +497,10 @@ export function Sidebar({
               return (
                 <div
                   key={project.id}
-                  className={`sb-project${parentOf.has(project.id) && shownIds.includes(parentOf.get(project.id)!) ? ' sb-project--member' : ''}${active ? ' is-active' : ''}${dragging === project.id ? ' is-dragging' : ''}${dropAt?.id === project.id ? ` is-drop-${dropAt.position}` : ''}`}
+                  className={`sb-project${depthOf.get(project.id) === 1 ? ' sb-project--member' : ''}${isOrchestra(project) ? ' sb-project--orchestra' : ''}${active ? ' is-active' : ''}${dragging === project.id ? ' is-dragging' : ''}${dropAt?.id === project.id ? ` is-drop-${dropAt.position}` : ''}`}
                   data-testid="sidebar-project"
                   onDragOver={(e) => {
-                    if (!dragging || !Array.from(e.dataTransfer.types).includes(PROJECT_DRAG_TYPE) || starredOf(dragging) !== !!project.starred) return
+                    if (!dragging || !Array.from(e.dataTransfer.types).includes(PROJECT_DRAG_TYPE) || !treeDrop(projects.projects, rows, dragging, project.id, 'before')) return
                     e.preventDefault()
                     e.dataTransfer.dropEffect = 'move'
                     // 上か下かは見出しの行で決める（展開した履歴の上は「下」）
@@ -475,11 +512,11 @@ export function Sidebar({
                     if (!e.currentTarget.contains(e.relatedTarget as Node | null) && dropAt?.id === project.id) setDropAt(null)
                   }}
                   onDrop={(e) => {
-                    if (!dragging || !Array.from(e.dataTransfer.types).includes(PROJECT_DRAG_TYPE) || starredOf(dragging) !== !!project.starred) return
+                    if (!dragging || !Array.from(e.dataTransfer.types).includes(PROJECT_DRAG_TYPE)) return
                     e.preventDefault()
                     const row = (e.currentTarget.firstElementChild as HTMLElement | null)?.getBoundingClientRect()
                     const position = row ? dropPositionAt(e.clientY - row.top, row.height) : 'after'
-                    reorder(moveAmongVisible(projectIds, shownIds, dragging, project.id, position))
+                    dropInTree(dragging, project.id, position)
                     endDrag()
                   }}
                 >
@@ -537,6 +574,10 @@ export function Sidebar({
                       }}
                       data-testid={`sidebar-project-${project.id}`}
                     >
+                      {isOrchestra(project) && <button type="button" className="sb-project__twisty" aria-label={t(rowOf.get(project.id)?.collapsed ? 'sidebar.orchestraExpand' : 'sidebar.orchestraCollapse', { name: project.name })} aria-expanded={!rowOf.get(project.id)?.collapsed}
+                        onClick={(e) => { e.stopPropagation(); toggleOrchestra(project.id) }} data-testid={`sidebar-orchestra-toggle-${project.id}`}>
+                        <ChevronDown size={12} strokeWidth={2} className={rowOf.get(project.id)?.collapsed ? 'is-collapsed' : ''} />
+                      </button>}
                       <span className="sb-project__icon" aria-hidden="true" title={t(`projectSource.source.${project.source ?? 'local'}` as TranslationKey)}>
                         {project.source && project.source !== 'local'
                           ? <ProjectSourceIcon project={project} />
@@ -633,7 +674,7 @@ export function Sidebar({
 
                   {confirmRemove === project.id && (
                     <div className="sb-confirm">
-                      <span>{t('sidebar.removeConfirm', { name: project.name })}</span>
+                      <span>{t(isOrchestra(project) ? 'sidebar.removeOrchestraConfirm' : 'sidebar.removeConfirm', { name: project.name })}</span>
                       <span className="sb-confirm__actions">
                         <Button variant="ghost" onClick={() => setConfirmRemove(null)}>{t('sidebar.keep')}</Button>
                         <Button
@@ -742,7 +783,7 @@ export function Sidebar({
           </>}
           <div className="sb-menu__sep" role="separator" />
           {/* 「すべてのプロジェクト」は外せない（Ferret が持つエディタ全体） */}
-          {!menuProject.editorWorkspace && <button type="button" role="menuitem" className="is-danger" onClick={() => { setMenu(null); setConfirmRemove(menuProject.id) }}>
+          {(!menuProject.editorWorkspace || projects.projects.filter(isOrchestra).length > 1) && <button type="button" role="menuitem" className="is-danger" onClick={() => { setMenu(null); setConfirmRemove(menuProject.id) }}>
             <Trash2 size={13} strokeWidth={1.75} />{t('sidebar.removeFromList')}
           </button>}
         </div>

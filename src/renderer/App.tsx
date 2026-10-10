@@ -1,4 +1,5 @@
 import { ExternalDropOverlay, useExternalDrop } from './hooks/useExternalDrop'
+import { currentOrchestra, orchestraMembers } from '@shared/orchestras'
 import { planEditorDrop, readDrop } from './lib/externalDrop'
 import { preloadable } from './lib/preloadable'
 import { embedMedia, markdownDropTargetAt, planMediaDrop, planTreeMediaDrop } from './editor/markdownDrop'
@@ -778,7 +779,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     projects: projects.projects,
     openReview: (projectId, reviewId) => run(() => openReviewIn(projectId, reviewId)),
     openOverview: () => {
-      const editor = projects.projects.find((p) => p.editorWorkspace)
+      const editor = currentOrchestra(projects.projects, workspaceProjectRef.current)
       if (editor) void window.ade.invoke('project:switch', editor.id).catch(() => undefined)
     },
     notify: (tone, message) => toast({ tone, message }),
@@ -855,7 +856,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
     return () => { cancelled = true }
   }, [isOrchestra, mode])
   const dockGroups = isOrchestra
-    ? groupDockTargets(projects.projects.filter((p) => !p.editorWorkspace && !p.orchestrator && !p.orchestraExcluded), pageItems(dockChecklist))
+    ? groupDockTargets(orchestraMembers(projects.projects, workspace.projectId ?? ''), pageItems(dockChecklist))
     : []
   const dockGroupsRef = useRef(dockGroups)
   dockGroupsRef.current = dockGroups
@@ -875,7 +876,7 @@ function Workspace({ onOnboardingSettled }: { onOnboardingSettled: () => void })
    */
   const recordAll = useCallback(() => void run(async () => {
     if (recordingRef.current) { setCenterTab('browser'); changeMode('feedback'); return }
-    const editor = projects.projects.find((p) => p.editorWorkspace)
+    const editor = currentOrchestra(projects.projects, workspaceProjectRef.current)
     if (editor && workspaceProjectRef.current !== editor.id) {
       await window.ade.invoke('project:switch', editor.id)
       for (let i = 0; i < 40 && workspaceProjectRef.current !== editor.id; i++) await delay(50)

@@ -79,6 +79,9 @@ export async function readSystemDefault(agent: AccountAgent): Promise<AccountIde
   return agent === 'codex' ? readCodexIdentity(systemConfigDir('codex')) : readClaudeSystemIdentity()
 }
 
+/** 追加してからこの間にログインが済んだものだけを「追加したばかり」とみなす（重なったときに外す対象） */
+const FRESH_ACCOUNT_MS = 24 * 60 * 60 * 1000
+
 /** 1つの Agent 分を読む。ログインが済んだ行はメールなどを書き戻す */
 async function refreshAgent(agent: AccountAgent): Promise<AgentAccountsView> {
   const list = accountsSettings()[agent]
@@ -88,11 +91,15 @@ async function refreshAgent(agent: AccountAgent): Promise<AgentAccountsView> {
   const summaries = await Promise.all(
     list.accounts.map(async (account) => {
       const verdict = verifyManagedAccountDir({ userDataDir: userDataDir(), agent, accountId: account.id })
-      if (verdict.kind !== 'owned') return { account, signedIn: false, problem: verdict.reason }
+      if (verdict.kind !== 'owned') return { account, signedIn: false, fresh: false, problem: verdict.reason }
       const identity = await readIdentity(agent, verdict.dir)
       let next = account
+      // 追加したばかりで、今回初めてログインが済んだもの。重なったときに外してよいのはこれだけ（duplicateAccountIds）
+      let fresh = false
       if (identity.signedIn) {
         const firstLogin = account.lastAuthenticatedAt === null
+        // 何日も前に追加したまま初めてログインが分かったもの（使っていた可能性がある）は外さない
+        fresh = firstLogin && now - account.createdAt < FRESH_ACCOUNT_MS
         if (firstLogin || identity.email !== account.email || identity.workspaceLabel !== account.workspaceLabel) {
           next = {
             ...account,
@@ -106,16 +113,19 @@ async function refreshAgent(agent: AccountAgent): Promise<AgentAccountsView> {
           if (firstLogin && agent === 'codex') activeAccountId = account.id
         }
       }
-      return { account: next, signedIn: identity.signedIn, problem: null }
+      return { account: next, signedIn: identity.signedIn, fresh, problem: null }
     })
   )
   const systemDefault = await readSystemDefault(agent)
-  // 同じログインを2つ登録しない。追加してログインした先が、登録済みかシステムの既定と同じなら外す（フォルダと Keychain の項目も消す）。
+  // 同じログインを2つ登録しない。追加してログインした先が、登録済みかシステムの既定と同じなら、追加したほうを外す（フォルダと Keychain の項目も消す）。
+  // 前から使っているアカウントは外さない。
   // 消せなかったものは一覧に残す（認証情報の入ったフォルダを消す手段を無くさない）
   const removed = new Set<string>()
-  for (const id of duplicateAccountIds(summaries.map((s) => ({ ...s.account, signedIn: s.signedIn })), activeAccountId, systemDefault)) {
+  for (const id of duplicateAccountIds(summaries.map((s) => ({ ...s.account, signedIn: s.signedIn, fresh: s.fresh })), activeAccountId, systemDefault)) {
     if (await removeOwnedAccountFolder(agent, id)) removed.add(id)
   }
+  // 外した追加したばかりの Codex のアカウントを選択中にしていたら、前の選択に戻す
+  if (activeAccountId !== null && removed.has(activeAccountId)) activeAccountId = list.activeAccountId !== null && removed.has(list.activeAccountId) ? null : list.activeAccountId
   const kept = summaries.filter((s) => !removed.has(s.account.id))
   const accounts = kept.map((s) => s.account)
   if (changed || removed.size > 0) saveList(agent, { accounts, activeAccountId })

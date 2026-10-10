@@ -169,6 +169,8 @@ export interface Project {
   editorWorkspace?: true
   /** オーケストラの対象から外す（全体の subagent・巡回・全体への依頼に巻き込まない。今は更新しないサイトなど） */
   orchestraExcluded?: true
+  /** 属するオーケストラ（editorWorkspace のプロジェクトの id）。無ければ先頭のオーケストラ（@shared/orchestras） */
+  orchestraId?: string
   /**
    * 内蔵ブラウザのログインの組。無ければすべてのプロジェクトで共有（一度ログインすればどこでもログインしたまま）。
    * クライアントが違うなど分けたいときに名前を付け、同じ名前のプロジェクト同士で共有する（@shared/browserProfile）
@@ -305,6 +307,11 @@ export interface AgentPreferences {
    * Windows のターミナルのシェル（既定は PowerShell）。cmd.exe は履歴を残さないので ↑ で前のコマンドが出ない（main の resolveWindowsShell）
    */
   windowsShell: WindowsShell
+  /**
+   * Agent どうしの依頼（既定は入）。ターミナルの Agent が別の Agent（Codex・Claude Code など）に、見えるターミナルで仕事を頼み、
+   * 結果をファイルで受け取る。各タブに FERRET_AGENT_CLI などを渡し、Claude Code・Codex に skill を入れる（main の agentMail.ts）
+   */
+  agentMail: boolean
 }
 
 /** Windows のターミナルのシェル */
@@ -349,6 +356,8 @@ export interface TerminalCreateOptions {
   autoStart?: boolean
   /** 上限での自動切り替えで開くタブ（main の failover:launch の token）。会話の再開と引き継ぎの指示文は main が行う */
   failoverToken?: string | null
+  /** Agent どうしの依頼で開くタブ（main の agentMail:launch の token）。依頼の貼り付けは main が行う */
+  agentMailToken?: string | null
   /**
    * 前の会話を続けて起動する（終了・閉じたあとにタブを戻したとき。Claude Code の --continue、Codex の resume --last）。
    * 続けられないとき（会話が無い・SSH のプロジェクトの Claude Code など）は普通に起動する

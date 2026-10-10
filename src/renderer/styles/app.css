@@ -943,3 +943,29 @@ button {
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
+
+/* ダッシュボードの自由な部品（.ferret/dashboard.json） */
+.orchestra__stat-hint {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.orchestra__note-text {
+  margin: 0;
+  padding: var(--space-3);
+  border: var(--size-border) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.orchestra__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

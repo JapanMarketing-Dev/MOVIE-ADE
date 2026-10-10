@@ -91,7 +91,7 @@ export async function syncAgentSkill(context: SkillContext, where: AgentSkillEnv
   return stale.length
 }
 
-async function writeSkill(path: string, text: string): Promise<void> {
+export async function writeSkill(path: string, text: string): Promise<void> {
   const dir = dirname(path)
   await mkdir(dir, { recursive: true, mode: 0o755 })
   if (await isLink(dir) || await isLink(path)) throw new Error(`refusing to write the skill through a symbolic link: ${path}`)

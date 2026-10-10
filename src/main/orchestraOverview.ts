@@ -1,10 +1,12 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Project } from '@shared/types'
 import type { OrchestraOverview, ProjectOverview } from '@shared/orchestraOverview'
 import { EMPTY_EXTRA_PERIODS, EMPTY_FORECAST, costForecast, extraPeriods, parseCosts, type CostForecast, type ExtraPeriods } from '@shared/extraCost'
 import { parseHumanChecklist, setAnswers, uniqueByUrl, type ChecklistItem } from '@shared/humanChecklist'
 import { writeAtomic } from './orchestrator'
+import { orchestraMembers } from '@shared/orchestras'
+import { DEFAULT_SECTIONS, MAX_NOTE_BYTES, parseDashboard, type DashboardLayout } from '@shared/dashboardLayout'
 
 /**
  * 全体（すべてのプロダクト）のダッシュボードに出すもの。プロジェクトごとの進み具合・インフラのコスト、人の確認リスト（human.md）。
@@ -25,6 +27,30 @@ export async function folderCosts(folder: string, now = Date.now()): Promise<{ p
   } catch {
     return NO_COSTS
   }
+}
+
+/** 中身を読む（大きすぎる・無い・ファイルでないものは null） */
+async function readSmall(path: string, max: number): Promise<string | null> {
+  const info = await stat(path).catch(() => null)
+  if (!info?.isFile() || info.size > max) return null
+  return readFile(path, 'utf8').catch(() => null)
+}
+
+/**
+ * オーケストラのフォルダの .ferret/dashboard.json（@shared/dashboardLayout）。無ければ今までの並び、壊れていれば今までの並びに invalid。
+ * note の中身は、そのフォルダからの相対パスのファイルを読む（parseDashboard が外へ出るパスを断ってある）
+ */
+export async function readDashboard(folder: string | null): Promise<DashboardLayout> {
+  const fallback: DashboardLayout = { sections: DEFAULT_SECTIONS, notes: {}, custom: false }
+  if (!folder) return fallback
+  const text = await readSmall(join(folder, '.ferret', 'dashboard.json'), 256 * 1024)
+  if (text === null) return fallback
+  let sections: ReturnType<typeof parseDashboard> = null
+  try { sections = parseDashboard(JSON.parse(text)) } catch { /* 壊れた JSON（想定内。画面で知らせる） */ }
+  if (!sections) return { ...fallback, custom: true, invalid: true }
+  const notes: Record<string, string | null> = {}
+  for (const s of sections) if (s.type === 'note' && !(s.file in notes)) notes[s.file] = await readSmall(join(folder, s.file), MAX_NOTE_BYTES)
+  return { sections, notes, custom: true }
 }
 
 /** 並べたものを n 個ずつ処理する（順番は保つ） */
@@ -66,10 +92,12 @@ export async function writeAnswers(editorFolder: string, entries: ReadonlyArray<
 
 export async function orchestraOverview(
   projects: readonly Project[],
+  orchestra: Project | null,
   listSessions: (folder: string) => Promise<Array<{ id: string; includedCount: number; doneCount: number; humanReviewCount: number }>>
 ): Promise<OrchestraOverview> {
-  const editor = projects.find((p) => p.editorWorkspace)
-  const rows = await mapLimit(projects.filter((p) => !p.editorWorkspace && !p.orchestrator && p.source !== 'ssh'), CONCURRENCY, async (p): Promise<ProjectOverview> => {
+  const editor = orchestra
+  // そのオーケストラに属するプロダクト（外したものも表に出す）
+  const rows = await mapLimit(editor ? orchestraMembers(projects, editor.id, { includeExcluded: true }) : [], CONCURRENCY, async (p): Promise<ProjectOverview> => {
     const sessions = await listSessions(p.folderPath).catch(() => [])
     const open = sessions.reduce((n, s) => n + Math.max(0, s.includedCount - s.doneCount - s.humanReviewCount), 0)
     const pending = sessions.reduce((n, s) => n + s.humanReviewCount, 0)
@@ -88,6 +116,7 @@ export async function orchestraOverview(
     orchestraExtra: shared.periods,
     orchestraForecast: shared.forecast,
     checklist: checklist.items,
-    checklistPath: checklist.path
+    checklistPath: checklist.path,
+    dashboard: await readDashboard(editor?.folderPath ?? null)
   }
 }

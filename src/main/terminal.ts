@@ -20,7 +20,8 @@ import { remoteTrustedLaunchLine, resolveTrustedExecutable, trustedLaunchLine, w
 import { executionSphere } from './executionSphere'
 import { searchDirs, shellPathIsProvisional } from './agentDetection'
 import { TerminalHistory } from './terminalHistory'
-import { defaultLocaleEnv, isHostTerminalEnv, stripAppImagePaths } from './terminalEnv'
+import { defaultLocaleEnv, prependPathEntry, isHostTerminalEnv, stripAppImagePaths } from './terminalEnv'
+import { AGENT_MAIL_BIN_ENV } from '@shared/agentMail'
 import { windowsTreeKillCommand } from './platform/windowsTreeKill'
 import { applyAgentWorkspaceTrust, registeredProjectIdFor } from './agentWorkspaceTrust'
 import { detectState, parseTitle, stripAnsi } from './agent/state'
@@ -129,6 +130,8 @@ function ptyEnv(extra: Record<string, string> = {}): Record<string, string> {
     if (isInheritedAgentSessionEnv(key, value)) continue
     // 別の Ferret（親）の判定モデルの中継の URL は古い合言葉なので受け継がない（旧名も）。このアプリの値は extra で渡す
     if (DECISION_ENV_PREFIXES.some((prefix) => key.startsWith(prefix))) continue
+    // 別の Ferret（親）の Agent どうしの依頼の合言葉・受け口も受け継がない。このアプリの値は extra で渡す
+    if (key.startsWith('FERRET_AGENT_')) continue
     // Ferret を起動した端末・AppImage・Crashpad・開発起動の変数は渡さない（terminalEnv.ts）
     if (isHostTerminalEnv(key)) continue
     env[key] = value
@@ -138,7 +141,12 @@ function ptyEnv(extra: Record<string, string> = {}): Record<string, string> {
   env.TERM = 'xterm-256color'
   env.COLORTERM = 'truecolor'
   // Windows の cmd.exe に、素の名前を今のフォルダ（プロジェクト）から探させない（security-4 [1]）
-  return { ...env, ...extra, ...windowsSearchPathEnv() }
+  const merged: Record<string, string> = { ...env, ...extra, ...windowsSearchPathEnv() }
+  // Agent どうしの依頼の CLI（タブごとのフォルダ）を PATH の先頭に置く（src/main/agentMail.ts）
+  const agentBin = merged[AGENT_MAIL_BIN_ENV]
+  delete merged[AGENT_MAIL_BIN_ENV]
+  if (agentBin) prependPathEntry(merged, agentBin)
+  return merged
 }
 
 /**
@@ -310,6 +318,9 @@ export class TerminalManager {
    * 起動に失敗したときも呼ぶ
    */
   onSessionClosed: ((sessionId: string) => void) | null = null
+
+  /** タブを作った（Agent どうしの依頼で開いたタブを、待っている配送へ渡す。src/main/agentMail.ts） */
+  onCreated: ((id: string, options: TerminalCreateOptions) => void) | null = null
 
   /**
    * 上限での自動切り替え（src/main/failover/service.ts）。入力・出力・送った指示と、開いた Agent のタブを渡す
@@ -581,6 +592,7 @@ export class TerminalManager {
       info: { id, pid: pty.pid, cwd, title, agent: launched }, history: new TerminalHistory(), unacked: 0, paused: false }
     this.sessions.set(id, session)
     if (agent) this.failover?.launched(id, agent, options.failoverToken ?? null, accountId)
+    this.onCreated?.(id, options)
     this.wirePty(session, pendingWrite, launched)
     flow('terminal create', { kind: launched ? 'agent' : 'shell' })
     // 次に開く素のシェルを裏で先に起動しておく（Agent のタブを開いたあとも）
@@ -840,8 +852,8 @@ export class TerminalManager {
   }
 
   /** その Agent が動いている、同じプロジェクトのターミナル（待機中を先に）。無ければ null */
-  async findAgentTerminal(agent: TuiAgent, projectDir: string | null): Promise<string | null> {
-    const candidates = await Promise.all([...this.sessions.values()].map(async (session) => ({
+  async findAgentTerminal(agent: TuiAgent, projectDir: string | null, exclude: string | null = null): Promise<string | null> {
+    const candidates = await Promise.all([...this.sessions.values()].filter((session) => session.id !== exclude).map(async (session) => ({
       id: session.id, cwd: session.info.cwd, ...(await this.agentState(session.id))
     })))
     return chooseSendTarget(null, candidates.filter((c) => c.agent === agent), projectDir)

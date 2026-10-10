@@ -31,4 +31,6 @@ export interface OrchestraOverview {
   checklist: ChecklistItem[]
   /** human.md の場所（無ければ null） */
   checklistPath: string | null
+  /** ダッシュボードの並びと自由な部品（オーケストラのフォルダの .ferret/dashboard.json。無ければ今までの並び） */
+  dashboard: import('./dashboardLayout').DashboardLayout
 }

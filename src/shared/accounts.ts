@@ -86,11 +86,16 @@ function loginKey(email: string | null | undefined, workspaceLabel: string | nul
 
 /**
  * 外すアカウント（同じログインを2つ以上登録しない）。ログインが済んでメールが分かるものだけを比べる。
- * 同じログインの中で残すのは、選択中のもの → 無ければ（システムの既定が同じログインなら）どれも残さない → 先に追加したもの。
- * システムの既定と同じログインを追加しても使える量は増えない（切り替えの意味が無い）ので外す
+ *
+ * 外してよいのは、今回の読み込みで初めてログインが済んだ（追加したばかりの）アカウントだけ（fresh）。
+ * 前から使っているアカウントは、あとから同じログインのものが増えても、選択中でなくても、決して外さない
+ * （外すと設定フォルダごと会話の履歴・ログインが消える。2026-10-10、10/7 から使っていたアカウントが、
+ * 同じログインを追加して選択中にした直後に消えた）。
+ * 追加したばかりのものは、同じログインが前からある・システムの既定と同じ（切り替えても使える量は増えない）なら外す。
+ * 追加したばかりのものどうしが重なったときは、選択中のもの → 無ければ先に追加したものを残す
  */
 export function duplicateAccountIds(
-  accounts: ReadonlyArray<Pick<AgentAccount, 'id' | 'email' | 'workspaceLabel' | 'createdAt'> & { signedIn: boolean }>,
+  accounts: ReadonlyArray<Pick<AgentAccount, 'id' | 'email' | 'workspaceLabel' | 'createdAt'> & { signedIn: boolean; fresh: boolean }>,
   activeAccountId: string | null,
   systemDefault: { signedIn: boolean; email: string | null; workspaceLabel: string | null } | null
 ): string[] {
@@ -103,9 +108,11 @@ export function duplicateAccountIds(
   }
   const drop: string[] = []
   for (const [key, members] of groups) {
-    const active = members.find((m) => m.id === activeAccountId)
-    const keeper = active ?? (key === systemKey ? null : [...members].sort((a, b) => a.createdAt - b.createdAt)[0])
-    for (const m of members) if (m !== keeper) drop.push(m.id)
+    const fresh = members.filter((m) => m.fresh)
+    if (fresh.length === 0) continue
+    const alreadyKnown = members.some((m) => !m.fresh) || key === systemKey
+    const keeper = alreadyKnown ? null : (fresh.find((m) => m.id === activeAccountId) ?? [...fresh].sort((a, b) => a.createdAt - b.createdAt)[0])
+    for (const m of fresh) if (m !== keeper) drop.push(m.id)
   }
   return drop
 }

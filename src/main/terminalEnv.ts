@@ -50,3 +50,17 @@ export function defaultLocaleEnv(env: Record<string, string>, platform: NodeJS.P
   if (platform !== 'darwin' || env.LANG || env.LC_ALL || env.LC_CTYPE) return {}
   return { LANG: 'en_US.UTF-8' }
 }
+
+/**
+ * PATH の先頭にフォルダを足す（Agent どうしの依頼の CLI。src/main/agentMail.ts）。
+ * Codex は shell_environment_policy.inherit = "core" などで独自の環境変数をコマンドに渡さないことがあるが、PATH は渡す。
+ * Windows は大文字小文字の違う Path を1つにまとめて書く
+ */
+export function prependPathEntry(env: Record<string, string>, dir: string, platform: NodeJS.Platform = process.platform, delimiter: string = hostDelimiter): void {
+  if (!dir) return
+  const keys = platform === 'win32' ? Object.keys(env).filter((key) => key.toUpperCase() === 'PATH') : ['PATH'].filter((key) => key in env)
+  const key = keys[0] ?? (platform === 'win32' ? 'Path' : 'PATH')
+  const entries = [...new Set(keys.flatMap((k) => (env[k] ?? '').split(delimiter)))].filter((entry) => entry && entry !== dir)
+  for (const extra of keys.slice(1)) delete env[extra]
+  env[key] = [dir, ...entries].join(delimiter)
+}
